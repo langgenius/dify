@@ -1,7 +1,7 @@
 import base64
 import logging
 import pickle
-from typing import Any, cast
+from typing import Any, cast, override
 
 import numpy as np
 from sqlalchemy import select
@@ -22,9 +22,29 @@ logger = logging.getLogger(__name__)
 
 
 class CacheEmbedding(Embeddings):
+    QUERY_CACHE_TTL = 600
+
     def __init__(self, model_instance: ModelInstance):
         self._model_instance = model_instance
 
+    @staticmethod
+    def _query_cache_key(provider: str, model_name: str, query_hash: str) -> str:
+        return f"{provider}_{model_name}_{query_hash}"
+
+    @classmethod
+    def get_cached_query_embedding(cls, provider: str, model_name: str, text: str) -> list[float] | None:
+        """Return a cached query vector without requiring a model instance."""
+        query_hash = helper.generate_text_hash(text)
+        embedding_cache_key = cls._query_cache_key(provider, model_name, query_hash)
+        embedding = redis_client.get(embedding_cache_key)
+        if not embedding:
+            return None
+
+        redis_client.expire(embedding_cache_key, cls.QUERY_CACHE_TTL)
+        decoded_embedding = np.frombuffer(base64.b64decode(embedding), dtype="float")
+        return [float(x) for x in decoded_embedding]
+
+    @override
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
         """Embed search docs in batches of 10."""
         # use doc embedding cache or store if not exists
@@ -106,6 +126,7 @@ class CacheEmbedding(Embeddings):
 
         return text_embeddings
 
+    @override
     def embed_multimodal_documents(self, multimodel_documents: list[dict[str, Any]]) -> list[list[float]]:
         """Embed file documents."""
         # use doc embedding cache or store if not exists
@@ -189,16 +210,19 @@ class CacheEmbedding(Embeddings):
 
         return multimodel_embeddings
 
+    @override
     def embed_query(self, text: str) -> list[float]:
         """Embed query text."""
         # use doc embedding cache or store if not exists
         hash = helper.generate_text_hash(text)
-        embedding_cache_key = f"{self._model_instance.provider}_{self._model_instance.model_name}_{hash}"
-        embedding = redis_client.get(embedding_cache_key)
-        if embedding:
-            redis_client.expire(embedding_cache_key, 600)
-            decoded_embedding = np.frombuffer(base64.b64decode(embedding), dtype="float")
-            return [float(x) for x in decoded_embedding]
+        embedding_cache_key = self._query_cache_key(
+            self._model_instance.provider, self._model_instance.model_name, hash
+        )
+        cached_embedding = self.get_cached_query_embedding(
+            self._model_instance.provider, self._model_instance.model_name, text
+        )
+        if cached_embedding is not None:
+            return cached_embedding
         try:
             embedding_result = self._model_instance.invoke_text_embedding(
                 texts=[text], input_type=EmbeddingInputType.QUERY
@@ -222,7 +246,7 @@ class CacheEmbedding(Embeddings):
             encoded_vector = base64.b64encode(vector_bytes)
             # Transform to string
             encoded_str = encoded_vector.decode("utf-8")
-            redis_client.setex(embedding_cache_key, 600, encoded_str)
+            redis_client.setex(embedding_cache_key, self.QUERY_CACHE_TTL, encoded_str)
         except Exception as ex:
             if dify_config.DEBUG:
                 logger.exception(
@@ -232,6 +256,7 @@ class CacheEmbedding(Embeddings):
 
         return embedding_results  # type: ignore
 
+    @override
     def embed_multimodal_query(self, multimodel_document: dict[str, Any]) -> list[float]:
         """Embed multimodal documents."""
         # use doc embedding cache or store if not exists

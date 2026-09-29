@@ -4,11 +4,12 @@ import logging
 import queue
 import threading
 from collections.abc import Iterator
-from typing import Self
+from typing import Self, override
 
 from extensions.redis_names import serialize_redis_name
-from libs.broadcast_channel.channel import Producer, Subscriber, Subscription
+from libs.broadcast_channel.channel import Producer, Subscriber, Subscription, SupportsPreparedSubscription
 from libs.broadcast_channel.exc import SubscriptionClosedError
+from libs.broadcast_channel.signals import SIG_CLOSE
 from redis import Redis, RedisCluster
 
 logger = logging.getLogger(__name__)
@@ -24,16 +25,31 @@ class StreamsBroadcastChannel:
     - The stream key expires `retention_seconds` after the last event is published (to bound storage).
     """
 
-    def __init__(self, redis_client: Redis | RedisCluster, *, retention_seconds: int = 600):
+    def __init__(
+        self,
+        redis_client: Redis | RedisCluster,
+        *,
+        retention_seconds: int = 600,
+    ):
         self._client = redis_client
         self._retention_seconds = max(int(retention_seconds or 0), 0)
 
     def topic(self, topic: str) -> StreamsTopic:
-        return StreamsTopic(self._client, topic, retention_seconds=self._retention_seconds)
+        return StreamsTopic(
+            self._client,
+            topic,
+            retention_seconds=self._retention_seconds,
+        )
 
 
 class StreamsTopic:
-    def __init__(self, redis_client: Redis | RedisCluster, topic: str, *, retention_seconds: int = 600):
+    def __init__(
+        self,
+        redis_client: Redis | RedisCluster,
+        topic: str,
+        *,
+        retention_seconds: int = 600,
+    ):
         self._client = redis_client
         self._topic = topic
         self._key = serialize_redis_name(f"stream:{topic}")
@@ -52,18 +68,41 @@ class StreamsTopic:
                 logger.warning("Failed to set expire for stream key %s: %s", self._key, e, exc_info=True)
 
     def as_subscriber(self) -> Subscriber:
-        return self
+        return _StreamsSubscriber(self._client, self._key)
 
     def subscribe(self) -> Subscription:
+        return self.as_subscriber().subscribe()
+
+
+class _StreamsSubscriber(SupportsPreparedSubscription):
+    def __init__(self, client: Redis | RedisCluster, key: str):
+        self._client = client
+        self._key = key
+
+    @override
+    def subscribe(self) -> Subscription:
         return _StreamsSubscription(self._client, self._key)
+
+    @override
+    def prepare_subscription(self) -> Subscription:
+        entries = self._client.xrevrange(self._key, count=1)
+        start_id = entries[0][0] if entries else "0-0"
+        return _StreamsSubscription(self._client, self._key, start_id=start_id)
 
 
 class _StreamsSubscription(Subscription):
     _SENTINEL = object()
 
-    def __init__(self, client: Redis | RedisCluster, key: str):
+    def __init__(
+        self,
+        client: Redis | RedisCluster,
+        key: str,
+        *,
+        start_id: bytes | str = "$",
+    ):
         self._client = client
         self._key = key
+        self._start_id = start_id
 
         self._queue: queue.Queue[object] = queue.Queue()
 
@@ -76,7 +115,6 @@ class _StreamsSubscription(Subscription):
         # reading and writing the _listener / `_closed` attribute.
         self._lock = threading.Lock()
         self._closed: bool = False
-        # self._closed = threading.Event()
         self._listener: threading.Thread | None = None
 
     def _listen(self) -> None:
@@ -89,10 +127,7 @@ class _StreamsSubscription(Subscription):
         # since this method runs in a dedicated thread, acquiring `_lock` inside this method won't cause
         # deadlock.
 
-        # Setting initial last id to `$` to signal redis that we only want new messages.
-        #
-        # ref: https://redis.io/docs/latest/commands/xread/#the-special--id
-        last_id = "$"
+        last_id = self._start_id
         try:
             while True:
                 with self._lock:
@@ -108,13 +143,22 @@ class _StreamsSubscription(Subscription):
                         if isinstance(fields, dict):
                             data = fields.get(b"data")
                         data_bytes: bytes | None = None
-                        if isinstance(data, str):
-                            data_bytes = data.encode()
-                        elif isinstance(data, (bytes, bytearray)):
-                            data_bytes = bytes(data)
-                        if data_bytes is not None:
-                            self._queue.put_nowait(data_bytes)
+                        match data:
+                            case str():
+                                data_bytes = data.encode()
+                            case bytes() | bytearray():
+                                data_bytes = bytes(data)
                         last_id = entry_id
+                        if data_bytes is None:
+                            continue
+                        if data_bytes == SIG_CLOSE:
+                            # Close signals share the stream with normal events. Ignore signals
+                            # emitted by another subscription while this one is still open.
+                            with self._lock:
+                                if self._closed:
+                                    break
+                            continue
+                        self._queue.put_nowait(data_bytes)
         finally:
             self._queue.put_nowait(self._SENTINEL)
             with self._lock:
@@ -123,11 +167,9 @@ class _StreamsSubscription(Subscription):
 
     def _start_if_needed(self) -> None:
         """This method must be called with `_lock` held."""
-        if self._listener is not None:
-            return
-        # Ensure only one listener thread is created under concurrent calls
         if self._listener is not None or self._closed:
             return
+
         self._listener = threading.Thread(
             target=self._listen,
             name=f"redis-streams-sub-{self._key}",
@@ -135,6 +177,7 @@ class _StreamsSubscription(Subscription):
         )
         self._listener.start()
 
+    @override
     def __iter__(self) -> Iterator[bytes]:
         # Iterator delegates to receive with timeout; stops on closure.
         with self._lock:
@@ -151,6 +194,7 @@ class _StreamsSubscription(Subscription):
             if item is not None:
                 yield item
 
+    @override
     def receive(self, timeout: float | None = 0.1) -> bytes | None:
         with self._lock:
             if self._closed:
@@ -170,6 +214,14 @@ class _StreamsSubscription(Subscription):
         assert isinstance(item, (bytes, bytearray)), "Unexpected item type in stream queue"
         return bytes(item)
 
+    def _publish_close_event(self) -> None:
+        """Publish an empty message to the stream to unblock the listener's xread."""
+        try:
+            self._client.xadd(self._key, {b"data": SIG_CLOSE})
+        except Exception:
+            logger.exception("failed to publish close event")
+
+    @override
     def close(self) -> None:
         with self._lock:
             if self._closed:
@@ -178,22 +230,27 @@ class _StreamsSubscription(Subscription):
             listener = self._listener
             if listener is not None:
                 self._listener = None
-        # We close the listener outside of the with block to avoid holding the
-        # lock for a long time.
+
+        if listener is not None:
+            self._publish_close_event()
+
         if listener is not None and listener.is_alive():
-            listener.join(timeout=2.0)
+            listener.join(timeout=2)
             if listener.is_alive():
-                logger.warning(
-                    "Streams subscription listener for key %s did not stop within timeout; keeping reference.",
+                logger.debug(
+                    "Streams subscription listener for key %s did not stop after join; "
+                    "daemon thread will exit on its own within one poll window.",
                     self._key,
                 )
 
     # Context manager helpers
+    @override
     def __enter__(self) -> Self:
         with self._lock:
             self._start_if_needed()
         return self
 
+    @override
     def __exit__(self, exc_type, exc_value, traceback) -> bool | None:
         self.close()
         return None

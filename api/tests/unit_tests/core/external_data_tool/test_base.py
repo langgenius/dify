@@ -1,4 +1,5 @@
-from typing import Any
+from collections.abc import Mapping
+from typing import Any, override
 
 import pytest
 
@@ -14,10 +15,12 @@ class TestExternalDataTool:
         # Create a concrete subclass to test init
         class ConcreteTool(ExternalDataTool):
             @classmethod
+            @override
             def validate_config(cls, tenant_id: str, config: dict[str, Any]):
                 return super().validate_config(tenant_id, config)
 
-            def query(self, inputs: dict[str, Any], query: str | None = None) -> str:
+            @override
+            def query(self, inputs: Mapping[str, Any], query: str | None = None):
                 return super().query(inputs, query)
 
         tool = ConcreteTool(tenant_id="tenant_1", app_id="app_1", variable="var_1", config={"key": "value"})
@@ -30,10 +33,12 @@ class TestExternalDataTool:
         # Create a concrete subclass to test init
         class ConcreteTool(ExternalDataTool):
             @classmethod
+            @override
             def validate_config(cls, tenant_id: str, config: dict[str, Any]):
                 pass
 
-            def query(self, inputs: dict[str, Any], query: str | None = None) -> str:
+            @override
+            def query(self, inputs: Mapping[str, Any], query: str | None = None) -> str:
                 return ""
 
         tool = ConcreteTool(tenant_id="tenant_1", app_id="app_1", variable="var_1")
@@ -45,10 +50,12 @@ class TestExternalDataTool:
     def test_validate_config_raises_not_implemented(self):
         class ConcreteTool(ExternalDataTool):
             @classmethod
+            @override
             def validate_config(cls, tenant_id: str, config: dict[str, Any]):
                 return super().validate_config(tenant_id, config)
 
-            def query(self, inputs: dict[str, Any], query: str | None = None) -> str:
+            @override
+            def query(self, inputs: Mapping[str, Any], query: str | None = None) -> str:
                 return ""
 
         with pytest.raises(NotImplementedError):
@@ -57,10 +64,12 @@ class TestExternalDataTool:
     def test_query_raises_not_implemented(self):
         class ConcreteTool(ExternalDataTool):
             @classmethod
+            @override
             def validate_config(cls, tenant_id: str, config: dict[str, Any]):
                 pass
 
-            def query(self, inputs: dict[str, Any], query: str | None = None) -> str:
+            @override
+            def query(self, inputs: Mapping[str, Any], query: str | None = None) -> str:
                 return super().query(inputs, query)
 
         tool = ConcreteTool(tenant_id="tenant_1", app_id="app_1", variable="var_1")

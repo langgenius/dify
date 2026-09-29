@@ -1,6 +1,6 @@
 import type { CommonNodeType } from '@/app/components/workflow/types'
 import { useCallback, useEffect, useRef } from 'react'
-import { useNodeDataUpdate } from '@/app/components/workflow/hooks'
+import { useNodeDataUpdate } from '../../../hooks/use-node-data-update'
 
 const useNodeCrud = <T>(id: string, data: CommonNodeType<T>) => {
   const { handleNodeDataUpdateWithSyncDraft } = useNodeDataUpdate()
@@ -10,12 +10,15 @@ const useNodeCrud = <T>(id: string, data: CommonNodeType<T>) => {
     updateRef.current = handleNodeDataUpdateWithSyncDraft
   }, [handleNodeDataUpdateWithSyncDraft])
 
-  const setInputs = useCallback((newInputs: CommonNodeType<T>) => {
-    updateRef.current({
-      id,
-      data: newInputs,
-    })
-  }, [id])
+  const setInputs = useCallback(
+    (newInputs: CommonNodeType<T>) => {
+      updateRef.current({
+        id,
+        data: newInputs,
+      })
+    },
+    [id],
+  )
 
   return {
     inputs: data,

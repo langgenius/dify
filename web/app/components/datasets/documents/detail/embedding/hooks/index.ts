@@ -1,7 +1,1 @@
-export {
-
-  useEmbeddingStatus,
-
-  usePauseIndexing,
-  useResumeIndexing,
-} from './use-embedding-status'
+export { useEmbeddingStatus, usePauseIndexing, useResumeIndexing } from './use-embedding-status'

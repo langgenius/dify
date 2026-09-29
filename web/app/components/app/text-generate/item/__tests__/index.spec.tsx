@@ -1,23 +1,15 @@
-/* eslint-disable ts/no-explicit-any */
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { AppSourceType } from '@/service/share'
 import GenerationItem from '../index'
 
 const mockFetchMoreLikeThis = vi.fn()
 const mockFetchTextGenerationMessage = vi.fn()
 const mockUpdateFeedback = vi.fn()
-const mockSetCurrentLogItem = vi.fn()
-const mockSetShowPromptLogModal = vi.fn()
+const mockOnOpenLog = vi.fn()
 const mockSubmitHumanInputForm = vi.fn()
 const mockSubmitHumanInputFormWorkflow = vi.fn()
 const mockToastWarning = vi.fn()
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 vi.mock('@/next/navigation', () => ({
   useParams: () => ({
     appId: 'app-1',
@@ -42,13 +34,6 @@ vi.mock('@/service/debug', () => ({
   fetchTextGenerationMessage: (...args: unknown[]) => mockFetchTextGenerationMessage(...args),
 }))
 
-vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: Record<string, unknown>) => unknown) => selector({
-    setCurrentLogItem: mockSetCurrentLogItem,
-    setShowPromptLogModal: mockSetShowPromptLogModal,
-  }),
-}))
-
 vi.mock('@/app/components/base/chat/chat/context', () => ({
   useChatContext: () => ({
     config: {
@@ -63,7 +48,7 @@ vi.mock('@/app/components/base/markdown', () => ({
   Markdown: ({ content }: { content: string }) => <div>{`markdown:${content}`}</div>,
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     warning: (...args: unknown[]) => mockToastWarning(...args),
     success: vi.fn(),
@@ -77,12 +62,21 @@ vi.mock('../workflow-body', () => ({
     onSwitchTab,
   }: {
     currentTab: string
-    onSubmitHumanInputForm: (token: string, data: { inputs: Record<string, string>, action: string }) => Promise<void>
+    onSubmitHumanInputForm: (
+      token: string,
+      data: { inputs: Record<string, string>; action: string },
+    ) => Promise<void>
     onSwitchTab: (tab: string) => Promise<void>
   }) => (
     <div>
       <div>{`workflow-body:${currentTab}`}</div>
-      <button onClick={() => void onSubmitHumanInputForm('token-1', { action: 'submit', inputs: { name: 'dify' } })}>submit-human-input</button>
+      <button
+        onClick={() =>
+          void onSubmitHumanInputForm('token-1', { action: 'submit', inputs: { name: 'dify' } })
+        }
+      >
+        submit-human-input
+      </button>
       <button onClick={() => void onSwitchTab('LOG')}>switch-workflow-tab</button>
     </div>
   ),
@@ -118,7 +112,9 @@ describe('GenerationItem', () => {
     expect(screen.getByText('markdown:hello world')).toBeInTheDocument()
 
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'feature.moreLikeThis.title' }))
+      fireEvent.click(
+        screen.getByRole('button', { name: /(?:^|\.)feature\.moreLikeThis\.title(?=$|:)/ }),
+      )
     })
 
     await waitFor(() => {
@@ -127,16 +123,22 @@ describe('GenerationItem', () => {
     expect(mockFetchMoreLikeThis).toHaveBeenCalledWith('msg-1', AppSourceType.webApp, undefined)
 
     await act(async () => {
-      fireEvent.click(screen.getAllByRole('button', { name: 'operation.agree' }).at(-1)!)
+      fireEvent.click(
+        screen.getAllByRole('button', { name: /(?:^|\.)operation\.agree(?=$|:)/ }).at(-1)!,
+      )
     })
 
-    expect(mockUpdateFeedback).toHaveBeenCalledWith({
-      body: { rating: 'like' },
-      url: '/messages/msg-2/feedbacks',
-    }, AppSourceType.webApp, undefined)
+    expect(mockUpdateFeedback).toHaveBeenCalledWith(
+      {
+        body: { rating: 'like' },
+        url: '/messages/msg-2/feedbacks',
+      },
+      AppSourceType.webApp,
+      undefined,
+    )
   })
 
-  it('should open the prompt log modal with normalized log data', async () => {
+  it('should send normalized log data to the owning surface', async () => {
     mockFetchTextGenerationMessage.mockResolvedValue({
       answer: 'assistant answer',
       message: [{ role: 'user', text: 'hello' }],
@@ -150,29 +152,89 @@ describe('GenerationItem', () => {
         isError={false}
         messageId="msg-1"
         onRetry={vi.fn()}
+        onOpenLog={mockOnOpenLog}
         siteInfo={null}
       />,
     )
 
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'operation.log' }))
+      fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)operation\.log(?=$|:)/ }))
     })
 
     expect(mockFetchTextGenerationMessage).toHaveBeenCalledWith({
       appId: 'app-1',
       messageId: 'msg-1',
     })
-    expect(mockSetCurrentLogItem).toHaveBeenCalledWith(expect.objectContaining({
-      log: [
-        { role: 'user', text: 'hello' },
-        {
-          role: 'assistant',
-          text: 'assistant answer',
-          files: [{ belongs_to: 'assistant', id: 'file-1' }],
-        },
-      ],
-    }))
-    expect(mockSetShowPromptLogModal).toHaveBeenCalledWith(true)
+    expect(mockOnOpenLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        log: [
+          { role: 'user', text: 'hello' },
+          {
+            role: 'assistant',
+            text: 'assistant answer',
+            files: [{ belongs_to: 'assistant', id: 'file-1' }],
+          },
+        ],
+      }),
+    )
+  })
+
+  it('keeps the log action absent without an owning surface', () => {
+    render(
+      <GenerationItem
+        appSourceType={AppSourceType.webApp}
+        content="Answer"
+        isError={false}
+        messageId="msg-1"
+        onRetry={vi.fn()}
+        siteInfo={null}
+      />,
+    )
+
+    expect(screen.queryByRole('button', { name: /operation\.log/ })).not.toBeInTheDocument()
+    expect(mockFetchTextGenerationMessage).not.toHaveBeenCalled()
+  })
+
+  it('opens a more-like-this child log through the same owner using the child message', async () => {
+    const user = userEvent.setup()
+    mockFetchMoreLikeThis.mockResolvedValue({ answer: 'Child answer', id: 'child-message' })
+    mockFetchTextGenerationMessage.mockResolvedValue({
+      id: 'child-message',
+      answer: 'Child answer',
+      message: [{ role: 'user', text: 'Child prompt' }],
+    })
+    render(
+      <GenerationItem
+        appSourceType={AppSourceType.webApp}
+        content="Parent answer"
+        isError={false}
+        messageId="parent-message"
+        moreLikeThis
+        onOpenLog={mockOnOpenLog}
+        onRetry={vi.fn()}
+        siteInfo={null}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /feature\.moreLikeThis\.title/ }))
+    expect(await screen.findByText('markdown:Child answer')).toBeInTheDocument()
+    await user.click(screen.getAllByRole('button', { name: /operation\.log/ })[1]!)
+
+    await waitFor(() =>
+      expect(mockOnOpenLog).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({
+          id: 'child-message',
+          log: [
+            { role: 'user', text: 'Child prompt' },
+            { role: 'assistant', text: 'Child answer', files: [] },
+          ],
+        }),
+      ),
+    )
+    expect(mockFetchTextGenerationMessage).toHaveBeenCalledExactlyOnceWith({
+      appId: 'app-1',
+      messageId: 'child-message',
+    })
   })
 
   it('should route human input submissions to the workflow service for installed apps', async () => {
@@ -185,9 +247,11 @@ describe('GenerationItem', () => {
         messageId="msg-1"
         onRetry={vi.fn()}
         siteInfo={null}
-        workflowProcessData={{
-          resultText: 'workflow result',
-        } as any}
+        workflowProcessData={
+          {
+            resultText: 'workflow result',
+          } as any
+        }
       />,
     )
 
@@ -213,9 +277,11 @@ describe('GenerationItem', () => {
         messageId="msg-1"
         onRetry={vi.fn()}
         siteInfo={null}
-        workflowProcessData={{
-          resultText: 'workflow result',
-        } as any}
+        workflowProcessData={
+          {
+            resultText: 'workflow result',
+          } as any
+        }
       />,
     )
 
@@ -255,7 +321,9 @@ describe('GenerationItem', () => {
     )
 
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'feature.moreLikeThis.title' }))
+      fireEvent.click(
+        screen.getByRole('button', { name: /(?:^|\.)feature\.moreLikeThis\.title(?=$|:)/ }),
+      )
     })
 
     await waitFor(() => {
@@ -313,10 +381,14 @@ describe('GenerationItem', () => {
     )
 
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'feature.moreLikeThis.title' }))
+      fireEvent.click(
+        screen.getByRole('button', { name: /(?:^|\.)feature\.moreLikeThis\.title(?=$|:)/ }),
+      )
     })
 
-    expect(mockToastWarning).toHaveBeenCalledWith('errorMessage.waitForResponse')
+    expect(mockToastWarning).toHaveBeenCalledWith(
+      expect.stringMatching(/(?:^|\.)errorMessage\.waitForResponse(?=$|:)/),
+    )
     expect(mockFetchMoreLikeThis).not.toHaveBeenCalled()
   })
 })

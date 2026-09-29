@@ -211,12 +211,13 @@ class SSETransport:
         except queue.Empty:
             raise ValueError("failed to get endpoint URL")
 
-        if isinstance(status, _StatusReady):
-            return status.endpoint_url
-        elif isinstance(status, _StatusError):
-            raise status.exc
-        else:
-            raise ValueError("failed to get endpoint URL")
+        match status:
+            case _StatusReady():
+                return status.endpoint_url
+            case _StatusError():
+                raise status.exc
+            case _:
+                raise ValueError("failed to get endpoint URL")
 
     def connect(
         self,
@@ -296,6 +297,13 @@ def sse_client(
         if exc.response.status_code == 401:
             raise MCPAuthError(response=exc.response)
         raise MCPConnectionError()
+    except httpx.RequestError as exc:
+        # Transport-level failures (refused connection, DNS, protocol errors, timeouts)
+        # must keep the MCP error contract: MCPClient only falls back to streamable
+        # HTTP on MCPConnectionError, and the console API only turns MCP errors into
+        # a 4xx. A raw httpx error skips both and surfaces as an opaque 500.
+        logger.exception("Error connecting to SSE endpoint")
+        raise MCPConnectionError(f"Failed to connect to SSE endpoint: {exc}") from exc
     except Exception:
         logger.exception("Error connecting to SSE endpoint")
         raise

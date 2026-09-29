@@ -33,11 +33,7 @@ vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference
 let i18n: I18nType
 
 const renderWithI18n = (ui: ReactNode) => {
-  return render(
-    <I18nextProvider i18n={i18n}>
-      {ui}
-    </I18nextProvider>,
-  )
+  return render(<I18nextProvider i18n={i18n}>{ui}</I18nextProvider>)
 }
 
 describe('PrePopulate', () => {
@@ -46,11 +42,11 @@ describe('PrePopulate', () => {
     await i18n.use(initReactI18next).init({
       lng: 'en-US',
       fallbackLng: 'en-US',
-      defaultNS: 'workflow',
+      defaultNS: 'workflowHumanInput',
       interpolation: { escapeValue: false },
       resources: {
         'en-US': {
-          workflow: {
+          workflowHumanInput: {
             nodes: {
               humanInput: {
                 insertInputField: {
@@ -72,22 +68,18 @@ describe('PrePopulate', () => {
     vi.clearAllMocks()
   })
 
-  it('should show placeholder initially and switch out of placeholder on Tab key', async () => {
+  it('keeps Tab navigation native and opens static content on activation', async () => {
     const user = userEvent.setup()
-    renderWithI18n(
-      <PrePopulate
-        nodeId="node-1"
-        isVariable={false}
-        value=""
-      />,
-    )
+    renderWithI18n(<PrePopulate nodeId="node-1" isVariable={false} value="" />)
 
     expect(screen.getByText('Static Content'))!.toBeInTheDocument()
 
     await user.keyboard('{Tab}')
 
-    expect(screen.queryByText('Static Content')).not.toBeInTheDocument()
-    expect(screen.getByRole('textbox'))!.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Static Content' })).toHaveFocus()
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    await user.keyboard('{Enter}')
+    expect(screen.getByRole('textbox')).toHaveFocus()
   })
 
   it('should update constant value and toggle to variable mode when type switch is clicked', async () => {
@@ -111,9 +103,7 @@ describe('PrePopulate', () => {
       )
     }
 
-    renderWithI18n(
-      <Wrapper />,
-    )
+    renderWithI18n(<Wrapper />)
 
     await user.clear(screen.getByRole('textbox'))
     await user.type(screen.getByRole('textbox'), 'next')
@@ -147,11 +137,7 @@ describe('PrePopulate', () => {
 
   it('should pass variable type filter to picker that allows string number and secret', () => {
     renderWithI18n(
-      <PrePopulate
-        nodeId="node-3"
-        isVariable
-        valueSelector={['node-3', 'existing']}
-      />,
+      <PrePopulate nodeId="node-3" isVariable valueSelector={['node-3', 'existing']} />,
     )
 
     const pickerProps = mockVarReferencePicker.mock.calls[0]![0] as VarReferencePickerProps

@@ -2,14 +2,13 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-
 import {
   zGetWebsiteCrawlStatusByJobIdPath,
   zGetWebsiteCrawlStatusByJobIdQuery,
   zGetWebsiteCrawlStatusByJobIdResponse,
   zPostWebsiteCrawlBody,
   zPostWebsiteCrawlResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 /**
  * Get website crawl status

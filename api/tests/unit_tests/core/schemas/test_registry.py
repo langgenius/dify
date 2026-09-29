@@ -1,11 +1,14 @@
 import json
+from pathlib import Path
 from unittest.mock import patch
+
+import pytest
 
 from core.schemas.registry import SchemaRegistry
 
 
 class TestSchemaRegistry:
-    def test_initialization(self, tmp_path):
+    def test_initialization(self, tmp_path: Path):
         base_dir = tmp_path / "schemas"
         base_dir.mkdir()
         registry = SchemaRegistry(str(base_dir))
@@ -19,13 +22,13 @@ class TestSchemaRegistry:
         assert registry1 is registry2
         assert isinstance(registry1, SchemaRegistry)
 
-    def test_load_all_versions_non_existent_dir(self, tmp_path):
+    def test_load_all_versions_non_existent_dir(self, tmp_path: Path):
         base_dir = tmp_path / "non_existent"
         registry = SchemaRegistry(str(base_dir))
         registry.load_all_versions()
         assert registry.versions == {}
 
-    def test_load_all_versions_filtering(self, tmp_path):
+    def test_load_all_versions_filtering(self, tmp_path: Path):
         base_dir = tmp_path / "schemas"
         base_dir.mkdir()
         (base_dir / "not_a_version_dir").mkdir()
@@ -38,7 +41,7 @@ class TestSchemaRegistry:
             mock_load.assert_called_once()
             assert mock_load.call_args[0][0] == "v1"
 
-    def test_load_version_dir_filtering(self, tmp_path):
+    def test_load_version_dir_filtering(self, tmp_path: Path):
         version_dir = tmp_path / "v1"
         version_dir.mkdir()
         (version_dir / "schema1.json").write_text("{}")
@@ -50,13 +53,13 @@ class TestSchemaRegistry:
             mock_load.assert_called_once()
             assert mock_load.call_args[0][1] == "schema1"
 
-    def test_load_version_dir_non_existent(self, tmp_path):
+    def test_load_version_dir_non_existent(self, tmp_path: Path):
         version_dir = tmp_path / "non_existent"
         registry = SchemaRegistry(str(tmp_path))
         registry._load_version_dir("v1", version_dir)
         assert "v1" not in registry.versions
 
-    def test_load_schema_success(self, tmp_path):
+    def test_load_schema_success(self, tmp_path: Path):
         schema_path = tmp_path / "test.json"
         schema_content = {"title": "Test Schema", "description": "A test schema"}
         schema_path.write_text(json.dumps(schema_content))
@@ -70,7 +73,7 @@ class TestSchemaRegistry:
         assert registry.metadata[uri]["title"] == "Test Schema"
         assert registry.metadata[uri]["version"] == "v1"
 
-    def test_load_schema_invalid_json(self, tmp_path, caplog):
+    def test_load_schema_invalid_json(self, tmp_path: Path, caplog: pytest.LogCaptureFixture):
         schema_path = tmp_path / "invalid.json"
         schema_path.write_text("invalid json")
 
@@ -80,7 +83,7 @@ class TestSchemaRegistry:
 
         assert "Failed to load schema v1/invalid" in caplog.text
 
-    def test_load_schema_os_error(self, tmp_path, caplog):
+    def test_load_schema_os_error(self, tmp_path: Path, caplog: pytest.LogCaptureFixture):
         schema_path = tmp_path / "error.json"
         schema_path.write_text("{}")
 

@@ -1,0 +1,153 @@
+from __future__ import annotations
+
+from collections.abc import Callable
+from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
+from uuid import UUID, uuid4
+
+import pytest
+from flask import Flask
+from sqlalchemy.orm import Session
+from werkzeug.exceptions import NotFound
+
+from constants.oauth_bearer import TokenType
+from controllers.openapi._models import SessionListQuery
+from controllers.openapi.account import (
+    AccountSessionByIdApi,
+    AccountSessionsApi,
+    AccountSessionsSelfApi,
+)
+from models import Account
+from models.oauth import OAuthAccessToken
+from tests.test_containers_integration_tests.controllers.openapi.conftest import context_for
+
+
+@dataclass(frozen=True, slots=True)
+class _MintResult:
+    token_id: UUID
+
+
+def _mint_account_token(
+    db_session: Session,
+    account: Account,
+    *,
+    client_id: str = "integration-cli",
+    device_label: str = "Test Device",
+) -> _MintResult:
+    """Mint a real, persisted ``dfoa_`` access token for ``account``."""
+    record = OAuthAccessToken(
+        subject_email=account.email,
+        subject_issuer="dify:account",
+        account_id=str(account.id),
+        client_id=client_id,
+        device_label=device_label,
+        prefix=TokenType.OAUTH_ACCOUNT.prefix,
+        token_hash=f"integration-{uuid4().hex}",
+        expires_at=datetime.now(UTC) + timedelta(days=14),
+    )
+    db_session.add(record)
+    db_session.commit()
+    return _MintResult(token_id=UUID(str(record.id)))
+
+
+class TestSessionList:
+    def test_lists_active_session(
+        self, app: Flask, db_session_with_containers: Session, make_account: Callable[..., Account]
+    ) -> None:
+        account = make_account()
+        mint = _mint_account_token(db_session_with_containers, account, device_label="Laptop")
+
+        api = AccountSessionsApi()
+        with app.test_request_context("/openapi/v1/account/sessions"):
+            result = api.get.__handler__(
+                api,
+                context_for(account, session=db_session_with_containers, token_id=mint.token_id),
+                query=SessionListQuery(),
+            )
+
+        assert result.total == 1
+        row = result.data[0]
+        assert row.id == str(mint.token_id)
+        assert row.prefix == TokenType.OAUTH_ACCOUNT.prefix
+        assert row.device_label == "Laptop"
+
+    def test_excludes_other_accounts_sessions(
+        self, app: Flask, db_session_with_containers: Session, make_account: Callable[..., Account]
+    ) -> None:
+        """Sessions are subject-scoped: another account's token must not appear."""
+        account = make_account()
+        other = make_account()
+        mine = _mint_account_token(db_session_with_containers, account)
+        _mint_account_token(db_session_with_containers, other)
+
+        api = AccountSessionsApi()
+        with app.test_request_context("/openapi/v1/account/sessions"):
+            result = api.get.__handler__(
+                api,
+                context_for(account, session=db_session_with_containers, token_id=mine.token_id),
+                query=SessionListQuery(),
+            )
+
+        assert {row.id for row in result.data} == {str(mine.token_id)}
+
+
+class TestSessionRevoke:
+    def test_revoke_self_removes_from_active_list(
+        self, app: Flask, db_session_with_containers: Session, make_account: Callable[..., Account]
+    ) -> None:
+        account = make_account()
+        mint = _mint_account_token(db_session_with_containers, account)
+
+        revoke_api = AccountSessionsSelfApi()
+        with app.test_request_context("/openapi/v1/account/sessions/self", method="DELETE"):
+            result = revoke_api.delete.__handler__(
+                revoke_api, context_for(account, session=db_session_with_containers, token_id=mint.token_id)
+            )
+
+        assert result.status == "revoked"
+
+        # Revocation persisted: the real list path no longer returns it.
+        list_api = AccountSessionsApi()
+        with app.test_request_context("/openapi/v1/account/sessions"):
+            listing = list_api.get.__handler__(
+                list_api,
+                context_for(account, session=db_session_with_containers, token_id=mint.token_id),
+                query=SessionListQuery(),
+            )
+        assert listing.total == 0
+
+    def test_revoke_by_id_for_own_session(
+        self, app: Flask, db_session_with_containers: Session, make_account: Callable[..., Account]
+    ) -> None:
+        account = make_account()
+        mint = _mint_account_token(db_session_with_containers, account)
+        session_id = str(mint.token_id)
+
+        api = AccountSessionByIdApi()
+        ctx = context_for(
+            account,
+            session=db_session_with_containers,
+            view_args={"session_id": session_id},
+            token_id=mint.token_id,
+        )
+        with app.test_request_context(f"/openapi/v1/account/sessions/{session_id}", method="DELETE"):
+            result = api.delete.__handler__(api, ctx, session_id)
+
+        assert result.status == "revoked"
+
+    def test_revoke_foreign_session_is_404(
+        self, app: Flask, db_session_with_containers: Session, make_account: Callable[..., Account]
+    ) -> None:
+        """A token id owned by another subject must be indistinguishable from a
+        missing one (404), so token ids can't be probed across subjects. The
+        access service makes that call; the handler only maps it to 404."""
+        owner = make_account()
+        outsider = make_account()
+        foreign = _mint_account_token(db_session_with_containers, owner)
+
+        session_id = str(foreign.token_id)
+        ctx = context_for(outsider, session=db_session_with_containers, view_args={"session_id": session_id})
+        with app.test_request_context(f"/openapi/v1/account/sessions/{session_id}", method="DELETE"):
+            api = AccountSessionByIdApi()
+            with pytest.raises(NotFound):
+                api.delete.__handler__(api, ctx, session_id)

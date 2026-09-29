@@ -1,38 +1,8 @@
 import type { EntityMatch } from '@lexical/text'
-import type {
-  ElementNode,
-  Klass,
-  LexicalEditor,
-  LexicalNode,
-  RangeSelection,
-  TextNode,
-} from 'lexical'
+import type { Klass, LexicalEditor, LexicalNode, TextNode } from 'lexical'
 import type { MenuTextMatch } from './types'
-import { $isAtNodeEnd } from '@lexical/selection'
-import {
-  $createTextNode,
-  $getSelection,
-  $isRangeSelection,
-  $isTextNode,
-} from 'lexical'
+import { $createTextNode, $getSelection, $isRangeSelection, $isTextNode } from 'lexical'
 import { CustomTextNode } from './plugins/custom-text/node'
-
-export function getSelectedNode(
-  selection: RangeSelection,
-): TextNode | ElementNode {
-  const anchor = selection.anchor
-  const focus = selection.focus
-  const anchorNode = selection.anchor.getNode()
-  const focusNode = selection.focus.getNode()
-  if (anchorNode === focusNode)
-    return anchorNode
-
-  const isBackward = selection.isBackward()
-  if (isBackward)
-    return $isAtNodeEnd(focus) ? anchorNode : focusNode
-  else
-    return $isAtNodeEnd(anchor) ? anchorNode : focusNode
-}
 
 export function registerLexicalTextEntity<T extends TextNode>(
   editor: LexicalEditor,
@@ -55,8 +25,7 @@ export function registerLexicalTextEntity<T extends TextNode>(
   }
 
   const textNodeTransform = (node: TextNode) => {
-    if (!node.isSimpleText())
-      return
+    if (!node.isSimpleText()) return
 
     const prevSibling = node.getPreviousSibling()
     let text = node.getTextContent()
@@ -72,8 +41,7 @@ export function registerLexicalTextEntity<T extends TextNode>(
         if (prevMatch === null || getMode(prevSibling) !== 0) {
           replaceWithSimpleText(prevSibling)
           return
-        }
-        else {
+        } else {
           const diff = prevMatch.end - previousText.length
 
           if (diff > 0) {
@@ -84,8 +52,7 @@ export function registerLexicalTextEntity<T extends TextNode>(
 
             if (diff === text.length) {
               node.remove()
-            }
-            else {
+            } else {
               const remainingText = text.slice(diff)
               node.setTextContent(remainingText)
             }
@@ -93,8 +60,7 @@ export function registerLexicalTextEntity<T extends TextNode>(
             return
           }
         }
-      }
-      else if (prevMatch === null || prevMatch.start < previousText.length) {
+      } else if (prevMatch === null || prevMatch.start < previousText.length) {
         return
       }
     }
@@ -112,44 +78,40 @@ export function registerLexicalTextEntity<T extends TextNode>(
           const nextMatch = getMatch(nextText)
 
           if (nextMatch === null) {
-            if (isTargetNode(nextSibling))
-              replaceWithSimpleText(nextSibling)
-            else
-              nextSibling.markDirty()
+            if (isTargetNode(nextSibling)) replaceWithSimpleText(nextSibling)
+            else nextSibling.markDirty()
 
             return
-          }
-          else if (nextMatch.start !== 0) {
+          } else if (nextMatch.start !== 0) {
             return
           }
         }
-      }
-      else {
+      } else {
         const nextMatch = getMatch(nextText)
 
-        if (nextMatch !== null && nextMatch.start === 0)
-          return
+        if (nextMatch !== null && nextMatch.start === 0) return
       }
 
-      if (match === null)
-        return
+      if (match === null) return
 
-      if (match.start === 0 && $isTextNode(prevSibling) && prevSibling.isTextEntity())
-        continue
+      if (match.start === 0 && $isTextNode(prevSibling) && prevSibling.isTextEntity()) continue
 
       let nodeToReplace
 
       if (match.start === 0)
-        [nodeToReplace, currentNode] = (currentNode.splitText(match.end)) as [any, TextNode]
+        [nodeToReplace, currentNode] = currentNode.splitText(match.end) as [TextNode, TextNode]
       else
-        [, nodeToReplace, currentNode] = (currentNode.splitText(match.start, match.end)) as [unknown, any, TextNode]
+        [, nodeToReplace, currentNode] = currentNode.splitText(match.start, match.end) as [
+          TextNode,
+          TextNode,
+          TextNode,
+        ]
 
       const replacementNode = createNode(nodeToReplace!)
       replacementNode.setFormat(nodeToReplace!.getFormat())
       nodeToReplace!.replace(replacementNode)
 
-      if (currentNode == null)
-        return
+      if (currentNode == null) return
     }
   }
 
@@ -180,8 +142,7 @@ export function registerLexicalTextEntity<T extends TextNode>(
     if ($isTextNode(nextSibling) && nextSibling.isTextEntity()) {
       replaceWithSimpleText(nextSibling) // This may have already been converted in the previous block
 
-      if (isTargetNode(node))
-        replaceWithSimpleText(node)
+      if (isTargetNode(node)) replaceWithSimpleText(node)
     }
   }
 
@@ -194,9 +155,11 @@ export const decoratorTransform = (
   node: CustomTextNode,
   getMatch: (text: string) => null | EntityMatch,
   createNode: (textNode: TextNode) => LexicalNode,
+  options?: {
+    allowAdjacentMatches?: boolean
+  },
 ) => {
-  if (!node.isSimpleText())
-    return
+  if (!node.isSimpleText()) return
 
   const prevSibling = node.getPreviousSibling()
   let text = node.getTextContent()
@@ -218,99 +181,87 @@ export const decoratorTransform = (
         if (nextMatch === null) {
           nextSibling.markDirty()
           return
-        }
-        else if (nextMatch.start !== 0) {
+        } else if (nextMatch.start !== 0) {
           return
         }
       }
-    }
-    else {
+    } else {
       const nextMatch = getMatch(nextText)
 
-      if (nextMatch !== null && nextMatch.start === 0)
-        return
+      if (!options?.allowAdjacentMatches && nextMatch !== null && nextMatch.start === 0) return
     }
 
-    if (match === null)
-      return
+    if (match === null) return
 
-    if (match.start === 0 && $isTextNode(prevSibling) && prevSibling.isTextEntity())
-      continue
+    if (match.start === 0 && $isTextNode(prevSibling) && prevSibling.isTextEntity()) continue
 
     let nodeToReplace
 
     if (match.start === 0)
-      [nodeToReplace, currentNode] = (currentNode.splitText(match.end)) as [any, CustomTextNode]
+      [nodeToReplace, currentNode] = currentNode.splitText(match.end) as [
+        CustomTextNode,
+        CustomTextNode,
+      ]
     else
-      [, nodeToReplace, currentNode] = (currentNode.splitText(match.start, match.end)) as [unknown, any, CustomTextNode]
+      [, nodeToReplace, currentNode] = currentNode.splitText(match.start, match.end) as [
+        CustomTextNode,
+        CustomTextNode,
+        CustomTextNode,
+      ]
 
     const replacementNode = createNode(nodeToReplace!)
     nodeToReplace!.replace(replacementNode)
 
-    if (currentNode == null)
-      return
+    if (currentNode == null) return
   }
 }
 
-function getFullMatchOffset(
-  documentText: string,
-  entryText: string,
-  offset: number,
-): number {
+function getFullMatchOffset(documentText: string, entryText: string, offset: number): number {
   let triggerOffset = offset
   for (let i = triggerOffset; i <= entryText.length; i++) {
-    if (documentText.slice(-i) === entryText.slice(0, i))
-      triggerOffset = i
+    if (documentText.slice(-i) === entryText.slice(0, i)) triggerOffset = i
   }
   return triggerOffset
 }
 
 export function $splitNodeContainingQuery(match: MenuTextMatch): TextNode | null {
   const selection = $getSelection()
-  if (!$isRangeSelection(selection) || !selection.isCollapsed())
-    return null
+  if (!$isRangeSelection(selection) || !selection.isCollapsed()) return null
   const anchor = selection.anchor
-  if (anchor.type !== 'text')
-    return null
+  if (anchor.type !== 'text') return null
   const anchorNode = anchor.getNode()
-  if (!anchorNode.isSimpleText())
-    return null
+  if (!anchorNode.isSimpleText()) return null
   const selectionOffset = anchor.offset
   const textContent = anchorNode.getTextContent().slice(0, selectionOffset)
   const characterOffset = match.replaceableString.length
-  const queryOffset = getFullMatchOffset(
-    textContent,
-    match.matchingString,
-    characterOffset,
-  )
+  const queryOffset = getFullMatchOffset(textContent, match.matchingString, characterOffset)
   const startOffset = selectionOffset - queryOffset
-  if (startOffset < 0)
-    return null
+  if (startOffset < 0) return null
   let newNode
-  if (startOffset === 0)
-    [newNode] = anchorNode.splitText(selectionOffset)
-  else
-    [, newNode] = anchorNode.splitText(startOffset, selectionOffset)
+  if (startOffset === 0) [newNode] = anchorNode.splitText(selectionOffset)
+  else [, newNode] = anchorNode.splitText(startOffset, selectionOffset)
 
   return newNode!
 }
 
 export function textToEditorState(text: string) {
-  const paragraph = text && (typeof text === 'string') ? text.split('\n') : ['']
+  const paragraph = text && typeof text === 'string' ? text.split('\n') : ['']
 
   return JSON.stringify({
     root: {
       children: paragraph.map((p) => {
         return {
-          children: [{
-            detail: 0,
-            format: 0,
-            mode: 'normal',
-            style: '',
-            text: p,
-            type: 'custom-text',
-            version: 1,
-          }],
+          children: [
+            {
+              detail: 0,
+              format: 0,
+              mode: 'normal',
+              style: '',
+              text: p,
+              type: 'custom-text',
+              version: 1,
+            },
+          ],
           direction: 'ltr',
           format: '',
           indent: 0,

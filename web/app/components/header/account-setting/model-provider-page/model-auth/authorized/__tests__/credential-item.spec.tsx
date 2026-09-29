@@ -1,9 +1,12 @@
 import type { Credential } from '../../../declarations'
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import CredentialItem from '../credential-item'
 
-vi.mock('@/app/components/header/indicator', () => ({
-  default: () => <div data-testid="indicator" />,
+vi.mock('@langgenius/dify-ui/status-dot', () => ({
+  StatusDot: ({ status }: { status?: string }) => (
+    <div data-testid="indicator" data-status={status} />
+  ),
 }))
 
 describe('CredentialItem', () => {
@@ -29,6 +32,18 @@ describe('CredentialItem', () => {
     expect(screen.getByText('Enterprise')).toBeInTheDocument()
   })
 
+  it('selects an enterprise credential when its badge is clicked', async () => {
+    const user = userEvent.setup()
+    const onItemClick = vi.fn()
+    const enterpriseCredential = { ...credential, from_enterprise: true }
+
+    render(<CredentialItem credential={enterpriseCredential} onItemClick={onItemClick} />)
+
+    await user.click(screen.getByText('Enterprise'))
+
+    expect(onItemClick).toHaveBeenCalledWith(enterpriseCredential)
+  })
+
   it('should call onItemClick when list item is clicked', () => {
     const onItemClick = vi.fn()
 
@@ -39,14 +54,73 @@ describe('CredentialItem', () => {
     expect(onItemClick).toHaveBeenCalledWith(credential)
   })
 
+  it('selects a credential with the keyboard and exposes its selected state', async () => {
+    const user = userEvent.setup()
+    const onItemClick = vi.fn()
+
+    render(
+      <CredentialItem
+        credential={credential}
+        onItemClick={onItemClick}
+        showSelectedIcon
+        selectedCredentialId="cred-1"
+      />,
+    )
+
+    const option = screen.getByRole('button', { name: 'Test API Key' })
+    expect(option).toHaveAttribute('aria-pressed', 'true')
+    await user.tab()
+    expect(option).toHaveFocus()
+    await user.keyboard('{Enter}')
+    expect(onItemClick).toHaveBeenCalledWith(credential)
+  })
+
+  it('keeps edit and delete reachable by keyboard without hovering', async () => {
+    const user = userEvent.setup()
+    const onEdit = vi.fn()
+    const onDelete = vi.fn()
+
+    render(<CredentialItem credential={credential} onEdit={onEdit} onDelete={onDelete} />)
+
+    await user.tab()
+    const editButton = screen.getByRole('button', { name: 'common.operation.edit' })
+    expect(editButton).toHaveFocus()
+    await user.keyboard('{Enter}')
+    expect(onEdit).toHaveBeenCalledWith(credential)
+
+    await user.tab()
+    const deleteButton = screen.getByRole('button', { name: 'common.operation.delete' })
+    expect(deleteButton).toHaveFocus()
+    await user.keyboard(' ')
+    expect(onDelete).toHaveBeenCalledWith(credential)
+  })
+
   it('should not call onItemClick when credential is unavailable', () => {
     const onItemClick = vi.fn()
 
-    render(<CredentialItem credential={{ ...credential, not_allowed_to_use: true }} onItemClick={onItemClick} />)
+    render(
+      <CredentialItem
+        credential={{ ...credential, not_allowed_to_use: true }}
+        onItemClick={onItemClick}
+      />,
+    )
 
     fireEvent.click(screen.getByText('Test API Key'))
 
     expect(onItemClick).not.toHaveBeenCalled()
+  })
+
+  it('should render unavailable credential with error indicator and unavailable label', () => {
+    render(<CredentialItem credential={{ ...credential, not_allowed_to_use: true }} />)
+
+    expect(screen.getByTestId('indicator')).toHaveAttribute('data-status', 'error')
+    expect(screen.getByText('modelProvider.modelProvider.card.unavailable')).toBeInTheDocument()
+  })
+
+  it('should render available credential with success indicator', () => {
+    render(<CredentialItem credential={credential} />)
+
+    expect(screen.getByTestId('indicator')).toHaveAttribute('data-status', 'success')
   })
 
   it('should call onEdit and onDelete from action buttons', () => {
@@ -56,8 +130,8 @@ describe('CredentialItem', () => {
     render(<CredentialItem credential={credential} onEdit={onEdit} onDelete={onDelete} />)
 
     const buttons = screen.getAllByRole('button')
-    const editButton = buttons.find(b => b.querySelector('.i-ri-equalizer-2-line'))!
-    const deleteButton = buttons.find(b => b.querySelector('.i-ri-delete-bin-line'))!
+    const editButton = buttons.find((b) => b.querySelector('.i-ri-equalizer-2-line'))!
+    const deleteButton = buttons.find((b) => b.querySelector('.i-ri-delete-bin-line'))!
 
     fireEvent.click(editButton)
     fireEvent.click(deleteButton)
@@ -66,7 +140,8 @@ describe('CredentialItem', () => {
     expect(onDelete).toHaveBeenCalledWith(credential)
   })
 
-  it('should block delete action for the currently selected credential when delete is disabled', () => {
+  it('keeps the selected credential delete action focusable but disabled', async () => {
+    const user = userEvent.setup()
     const onDelete = vi.fn()
 
     render(
@@ -79,10 +154,15 @@ describe('CredentialItem', () => {
       />,
     )
 
-    const deleteButton = screen.getAllByRole('button')
-      .find(b => b.querySelector('.i-ri-delete-bin-line'))!
+    const deleteButton = screen
+      .getAllByRole('button')
+      .find((b) => b.querySelector('.i-ri-delete-bin-line'))!
 
-    fireEvent.click(deleteButton)
+    expect(deleteButton).toHaveAttribute('aria-disabled', 'true')
+    await user.tab()
+    await user.tab()
+    expect(deleteButton).toHaveFocus()
+    await user.click(deleteButton)
 
     expect(onDelete).not.toHaveBeenCalled()
   })
@@ -122,8 +202,10 @@ describe('CredentialItem', () => {
 
     render(<CredentialItem credential={credential} disabled onDelete={onDelete} />)
 
-    const deleteButton = screen.getAllByRole('button')
-      .find(b => b.querySelector('.i-ri-delete-bin-line'))!
+    const deleteButton = screen
+      .getAllByRole('button')
+      .find((b) => b.querySelector('.i-ri-delete-bin-line'))!
+    expect(deleteButton).toBeDisabled()
     fireEvent.click(deleteButton)
 
     expect(onDelete).not.toHaveBeenCalled()
@@ -132,11 +214,7 @@ describe('CredentialItem', () => {
   // showSelectedIcon=true: check icon area is always rendered; check icon only appears when IDs match
   it('should render check icon area when showSelectedIcon=true and selectedCredentialId matches', () => {
     const { container } = render(
-      <CredentialItem
-        credential={credential}
-        showSelectedIcon
-        selectedCredentialId="cred-1"
-      />,
+      <CredentialItem credential={credential} showSelectedIcon selectedCredentialId="cred-1" />,
     )
 
     expect(container.querySelector('.i-ri-check-line')).toBeInTheDocument()
@@ -144,11 +222,7 @@ describe('CredentialItem', () => {
 
   it('should not render check icon when showSelectedIcon=true but selectedCredentialId does not match', () => {
     render(
-      <CredentialItem
-        credential={credential}
-        showSelectedIcon
-        selectedCredentialId="other-cred"
-      />,
+      <CredentialItem credential={credential} showSelectedIcon selectedCredentialId="other-cred" />,
     )
 
     expect(screen.queryByTestId('check-icon')).not.toBeInTheDocument()

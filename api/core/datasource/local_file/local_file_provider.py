@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, override
 
 from core.datasource.__base.datasource_provider import DatasourcePluginProviderController
 from core.datasource.__base.datasource_runtime import DatasourceRuntime
@@ -19,12 +19,14 @@ class LocalFileDatasourcePluginProviderController(DatasourcePluginProviderContro
         self.plugin_unique_identifier = plugin_unique_identifier
 
     @property
+    @override
     def provider_type(self) -> DatasourceProviderType:
         """
         returns the type of the provider
         """
         return DatasourceProviderType.LOCAL_FILE
 
+    @override
     def _validate_credentials(self, user_id: str, credentials: dict[str, Any]) -> None:
         """
         validate the credentials of the provider

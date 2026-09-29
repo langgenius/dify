@@ -1,17 +1,17 @@
 import type { ReactNode } from 'react'
 import { act, renderHook } from '@testing-library/react'
 import { Provider as JotaiProvider } from 'jotai'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import {
   useActivePluginType,
   useFilterPluginTags,
+  useFilterTemplateLanguages,
   useMarketplaceMoreClick,
   useMarketplaceSearchMode,
   useMarketplaceSort,
   useMarketplaceSortValue,
   useSearchPluginText,
-  useSetMarketplaceSort,
 } from '../atoms'
 import { DEFAULT_SORT } from '../constants'
 
@@ -19,9 +19,7 @@ const createWrapper = (searchParams = '') => {
   const { wrapper: NuqsWrapper } = createNuqsTestWrapper({ searchParams })
   const wrapper = ({ children }: { children: ReactNode }) => (
     <JotaiProvider>
-      <NuqsWrapper>
-        {children}
-      </NuqsWrapper>
+      <NuqsWrapper>{children}</NuqsWrapper>
     </JotaiProvider>
   )
   return { wrapper }
@@ -45,20 +43,6 @@ describe('Marketplace sort atoms', () => {
     const { result } = renderHook(() => useMarketplaceSortValue(), { wrapper })
 
     expect(result.current).toEqual(DEFAULT_SORT)
-  })
-
-  it('should return setter from useSetMarketplaceSort', () => {
-    const { wrapper } = createWrapper()
-    const { result } = renderHook(() => ({
-      setSort: useSetMarketplaceSort(),
-      sortValue: useMarketplaceSortValue(),
-    }), { wrapper })
-
-    act(() => {
-      result.current.setSort({ sortBy: 'created_at', sortOrder: 'ASC' })
-    })
-
-    expect(result.current.sortValue).toEqual({ sortBy: 'created_at', sortOrder: 'ASC' })
   })
 
   it('should update sort value via useMarketplaceSort setter', () => {
@@ -145,6 +129,25 @@ describe('useFilterPluginTags', () => {
   })
 })
 
+describe('useFilterTemplateLanguages', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('should return empty array as default', () => {
+    const { wrapper } = createWrapper()
+    const { result } = renderHook(() => useFilterTemplateLanguages(), { wrapper })
+
+    expect(result.current[0]).toEqual([])
+  })
+
+  it('parses languages from search params', () => {
+    const { wrapper } = createWrapper('?languages=ja')
+    const { result } = renderHook(() => useFilterTemplateLanguages(), { wrapper })
+    expect(result.current[0]).toEqual(['ja'])
+  })
+})
+
 describe('useMarketplaceSearchMode', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -191,20 +194,16 @@ describe('useMarketplaceMoreClick', () => {
     vi.clearAllMocks()
   })
 
-  it('should return a callback function', () => {
-    const { wrapper } = createWrapper()
-    const { result } = renderHook(() => useMarketplaceMoreClick(), { wrapper })
-
-    expect(typeof result.current).toBe('function')
-  })
-
   it('should do nothing when called with no params', () => {
     const { wrapper } = createWrapper()
-    const { result } = renderHook(() => ({
-      handleMoreClick: useMarketplaceMoreClick(),
-      sort: useMarketplaceSortValue(),
-      searchText: useSearchPluginText()[0],
-    }), { wrapper })
+    const { result } = renderHook(
+      () => ({
+        handleMoreClick: useMarketplaceMoreClick(),
+        sort: useMarketplaceSortValue(),
+        searchText: useSearchPluginText()[0],
+      }),
+      { wrapper },
+    )
 
     const sortBefore = result.current.sort
     const searchTextBefore = result.current.searchText
@@ -220,10 +219,13 @@ describe('useMarketplaceMoreClick', () => {
   it('should update search state when called with search params', () => {
     const { wrapper } = createWrapper()
 
-    const { result } = renderHook(() => ({
-      handleMoreClick: useMarketplaceMoreClick(),
-      sort: useMarketplaceSortValue(),
-    }), { wrapper })
+    const { result } = renderHook(
+      () => ({
+        handleMoreClick: useMarketplaceMoreClick(),
+        sort: useMarketplaceSortValue(),
+      }),
+      { wrapper },
+    )
 
     act(() => {
       result.current.handleMoreClick({
@@ -238,10 +240,13 @@ describe('useMarketplaceMoreClick', () => {
 
   it('should use defaults when search params fields are missing', () => {
     const { wrapper } = createWrapper()
-    const { result } = renderHook(() => ({
-      handleMoreClick: useMarketplaceMoreClick(),
-      sort: useMarketplaceSortValue(),
-    }), { wrapper })
+    const { result } = renderHook(
+      () => ({
+        handleMoreClick: useMarketplaceMoreClick(),
+        sort: useMarketplaceSortValue(),
+      }),
+      { wrapper },
+    )
 
     act(() => {
       result.current.handleMoreClick({})

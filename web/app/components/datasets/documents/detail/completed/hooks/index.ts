@@ -6,4 +6,4 @@ export { useSearchFilter } from './use-search-filter'
 
 export { useSegmentListData } from './use-segment-list-data'
 
-export { useSegmentSelection } from './use-segment-selection'
+export { mergeCurrentPageSelectedSegmentIds, useSegmentSelection } from './use-segment-selection'

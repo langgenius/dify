@@ -456,8 +456,8 @@ class TestDisableSegmentFromIndexTask:
         # Verify index processor was called
         mock_index_processor.clean.assert_called_once()
         call_args = mock_index_processor.clean.call_args
-        # Check that the call was made with the correct parameters
-        assert len(call_args[0]) == 2  # Check two arguments were passed
+        # Check that the call was made with the correct parameters.
+        assert len(call_args[0]) == 2
         assert call_args[0][1] == [segment.index_node_id]  # Check index node IDs
 
         # Verify segment was re-enabled

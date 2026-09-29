@@ -54,6 +54,9 @@ class ToolProviderApiEntity(BaseModel):
     configuration: MCPConfiguration | None = Field(
         default=None, description="The timeout and sse_read_timeout of the MCP tool"
     )
+    # M3 — user-identity forwarding selector. Round-tripped through the
+    # console API so the create/edit modal can hydrate the toggle state.
+    identity_mode: str = Field(default="off", description="Identity-forwarding mechanism: 'off' or 'idp_token'")
     # Workflow
     workflow_app_id: str | None = Field(default=None, description="The app id of the workflow tool")
 
@@ -71,8 +74,6 @@ class ToolProviderApiEntity(BaseModel):
                 for parameter in tool.get("parameters"):
                     if parameter.get("type") == ToolParameter.ToolParameterType.SYSTEM_FILES:
                         parameter["type"] = "files"
-                    if parameter.get("input_schema") is None:
-                        parameter.pop("input_schema", None)
         # -------------
         optional_fields = self.optional_field("server_url", self.server_url)
         match self.type:
@@ -92,6 +93,9 @@ class ToolProviderApiEntity(BaseModel):
                 optional_fields.update(self.optional_field("is_dynamic_registration", self.is_dynamic_registration))
                 optional_fields.update(self.optional_field("masked_headers", self.masked_headers))
                 optional_fields.update(self.optional_field("original_headers", self.original_headers))
+                # M3 — forwarding selector. Always emit ("off" is a valid
+                # value that the UI must hydrate, not skip).
+                optional_fields["identity_mode"] = self.identity_mode
             case ToolProviderType.WORKFLOW:
                 optional_fields.update(self.optional_field("workflow_app_id", self.workflow_app_id))
             case _:
@@ -129,6 +133,24 @@ class ToolProviderCredentialApiEntity(BaseModel):
         default=False, description="Whether the credential is the default credential for the provider in the workspace"
     )
     credentials: Mapping[str, object] = Field(description="The credentials of the provider", default_factory=dict)
+    visibility: str = Field(
+        default="all_team_members",
+        description="Credential visibility: only_me, all_team_members, or partial_members",
+    )
+    created_by: str = Field(default="", description="User ID of the credential creator")
+    partial_member_list: list[str] = Field(
+        default_factory=list,
+        description="List of user IDs allowed when visibility is partial_members",
+    )
+    from_other_member: bool = Field(
+        default=False,
+        description=(
+            "True when this credential is being returned only because a workflow/agent node still "
+            "references it but it would normally be hidden from this user by the visibility filter "
+            "(another member's only_me credential). The frontend renders it as 'borrowed' — "
+            "selectable until the node switches away, but not editable/deletable."
+        ),
+    )
 
 
 class ToolProviderCredentialInfoApiEntity(BaseModel):

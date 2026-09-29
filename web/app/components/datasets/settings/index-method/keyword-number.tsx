@@ -1,3 +1,4 @@
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import {
   NumberField,
   NumberFieldControls,
@@ -6,67 +7,77 @@ import {
   NumberFieldIncrement,
   NumberFieldInput,
 } from '@langgenius/dify-ui/number-field'
-import { Slider } from '@langgenius/dify-ui/slider'
+import {
+  Slider,
+  SliderControl,
+  SliderIndicator,
+  SliderLabel,
+  SliderThumb,
+  SliderTrack,
+} from '@langgenius/dify-ui/slider'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 
 const MIN_KEYWORD_NUMBER = 0
 const MAX_KEYWORD_NUMBER = 50
 
 type KeyWordNumberProps = {
+  disabled?: boolean
   keywordNumber: number
   onKeywordNumberChange: (value: number) => void
 }
 
-const KeyWordNumber = ({
-  keywordNumber,
-  onKeywordNumberChange,
-}: KeyWordNumberProps) => {
-  const { t } = useTranslation()
+const KeyWordNumber = ({ disabled, keywordNumber, onKeywordNumberChange }: KeyWordNumberProps) => {
+  const { t } = useTranslation(['datasetSettings'])
+  const label = t(($) => $['form.numberOfKeywords'], { ns: 'datasetSettings' })
 
-  const handleInputChange = useCallback((value: number | null) => {
-    onKeywordNumberChange(value ?? MIN_KEYWORD_NUMBER)
-  }, [onKeywordNumberChange])
+  const handleInputChange = useCallback(
+    (value: number | null) => {
+      onKeywordNumberChange(value ?? MIN_KEYWORD_NUMBER)
+    },
+    [onKeywordNumberChange],
+  )
 
   return (
-    <div className="flex items-center gap-x-1">
+    <Fieldset className="flex items-center gap-x-1">
+      <FieldsetLegend className="sr-only">{label}</FieldsetLegend>
       <div className="flex grow items-center gap-x-0.5">
-        <div className="truncate system-xs-medium text-text-secondary">
-          {t('form.numberOfKeywords', { ns: 'datasetSettings' })}
-        </div>
-        <Infotip
-          aria-label={t('form.numberOfKeywords', { ns: 'datasetSettings' })}
-          className="h-3.5 w-3.5"
-        >
-          {t('form.numberOfKeywords', { ns: 'datasetSettings' })}
-        </Infotip>
+        <div className="truncate system-xs-medium text-text-secondary">{label}</div>
       </div>
       <Slider
-        className="mr-3 w-[206px] shrink-0"
+        disabled={disabled}
+        className="mr-3 w-51.5 shrink-0"
         value={keywordNumber}
         min={MIN_KEYWORD_NUMBER}
         max={MAX_KEYWORD_NUMBER}
         onValueChange={onKeywordNumberChange}
-        aria-label={t('form.numberOfKeywords', { ns: 'datasetSettings' })}
-      />
+      >
+        <SliderLabel className="sr-only">{label}</SliderLabel>
+        <SliderControl>
+          <SliderTrack>
+            <SliderIndicator />
+            <SliderThumb />
+          </SliderTrack>
+        </SliderControl>
+      </Slider>
       <NumberField
-        className="w-[74px] shrink-0"
+        disabled={disabled}
+        className="w-18.5 shrink-0"
         min={MIN_KEYWORD_NUMBER}
         max={MAX_KEYWORD_NUMBER}
         value={keywordNumber}
         onValueChange={handleInputChange}
       >
         <NumberFieldGroup>
-          <NumberFieldInput className="w-12 flex-none px-2 text-center" />
+          <NumberFieldInput aria-label={label} className="w-12 flex-none px-2 text-center" />
           <NumberFieldControls>
             <NumberFieldIncrement />
             <NumberFieldDecrement />
           </NumberFieldControls>
         </NumberFieldGroup>
       </NumberField>
-    </div>
+    </Fieldset>
   )
 }
 

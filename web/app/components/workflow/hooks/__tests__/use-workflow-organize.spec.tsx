@@ -12,7 +12,7 @@ const mockGetLayoutByELK = vi.hoisted(() => vi.fn())
 
 const runtimeState = vi.hoisted(() => ({
   nodes: [] as ReturnType<typeof createNode>[],
-  edges: [] as { id: string, source: string, target: string }[],
+  edges: [] as { id: string; source: string; target: string }[],
   nodesReadOnly: false,
 }))
 
@@ -58,7 +58,7 @@ vi.mock('../use-workflow-history', () => ({
   },
 }))
 
-vi.mock('../../utils/elk-layout', async importOriginal => ({
+vi.mock('../../utils/elk-layout', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../utils/elk-layout')>()),
   getLayoutForChildNodes: (...args: unknown[]) => mockGetLayoutForChildNodes(...args),
   getLayoutByELK: (...args: unknown[]) => mockGetLayoutByELK(...args),
@@ -99,9 +99,7 @@ describe('useWorkflowOrganize', () => {
     runtimeState.edges = []
     mockGetLayoutForChildNodes.mockResolvedValue({
       bounds: { minX: 0, minY: 0, maxX: 320, maxY: 220 },
-      nodes: new Map([
-        ['loop-child', { x: 40, y: 60, width: 100, height: 60 }],
-      ]),
+      nodes: new Map([['loop-child', { x: 40, y: 60, width: 100, height: 60 }]]),
     })
     mockGetLayoutByELK.mockResolvedValue({
       nodes: new Map([
@@ -121,14 +119,18 @@ describe('useWorkflowOrganize', () => {
 
     expect(mockSetNodes).toHaveBeenCalledTimes(1)
     const nextNodes = mockSetNodes.mock.calls[0]![0]
-    expect(nextNodes.find((node: { id: string }) => node.id === 'loop-node')).toEqual(expect.objectContaining({
-      width: expect.any(Number),
-      height: expect.any(Number),
-      position: { x: 10, y: 20 },
-    }))
-    expect(nextNodes.find((node: { id: string }) => node.id === 'loop-child')).toEqual(expect.objectContaining({
-      position: { x: 100, y: 120 },
-    }))
+    expect(nextNodes.find((node: { id: string }) => node.id === 'loop-node')).toEqual(
+      expect.objectContaining({
+        width: expect.any(Number),
+        height: expect.any(Number),
+        position: { x: 10, y: 20 },
+      }),
+    )
+    expect(nextNodes.find((node: { id: string }) => node.id === 'loop-child')).toEqual(
+      expect.objectContaining({
+        position: { x: 100, y: 120 },
+      }),
+    )
     expect(mockSetViewport).toHaveBeenCalledWith({ x: 0, y: 0, zoom: 0.7 })
     expect(mockSaveStateToHistory).toHaveBeenCalledWith('LayoutOrganize')
     expect(mockHandleSyncWorkflowDraft).toHaveBeenCalled()

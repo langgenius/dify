@@ -9,10 +9,10 @@ The service repository handles operations that require access to database-specif
 tenant_id, app_id, triggered_from, etc., which are not part of the core domain model.
 """
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Protocol
+from typing import Any, Protocol
 
 from sqlalchemy.orm import Session
 
@@ -62,6 +62,10 @@ class DifyAPIWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository, Pr
     - Supports cleanup and maintenance operations
     """
 
+    def load_full_process_data(self, execution: WorkflowNodeExecutionModel) -> Mapping[str, Any] | None:
+        """Return full Process Data, loading offloaded content when necessary."""
+        ...
+
     def get_node_last_execution(
         self,
         tenant_id: str,
@@ -101,8 +105,6 @@ class DifyAPIWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository, Pr
         Args:
             tenant_id: The tenant identifier
             app_id: The application identifier
-            workflow_id: The workflow identifier
-            triggered_from: The workflow trigger source
             workflow_run_id: The workflow run identifier
 
         Returns:
@@ -124,6 +126,8 @@ class DifyAPIWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository, Pr
         Args:
             tenant_id: The tenant identifier
             app_id: The application identifier
+            workflow_id: The workflow identifier
+            triggered_from: The workflow trigger source
             workflow_run_id: The workflow run identifier
 
         Returns:

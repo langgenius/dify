@@ -1,7 +1,7 @@
 import type { GitHubItemAndMarketPlaceDependency, Plugin } from '../../../../types'
 import type { VersionProps } from '@/app/components/plugins/types'
 import { render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import GithubItem from '../github-item'
 
 const mockUseUploadGitHub = vi.fn()
@@ -9,11 +9,13 @@ const mockPluginManifestToCardPluginProps = vi.fn()
 const mockLoadedItem = vi.fn()
 
 vi.mock('@/service/use-plugins', () => ({
-  useUploadGitHub: (params: { repo: string, version: string, package: string }) => mockUseUploadGitHub(params),
+  useUploadGitHub: (params: { repo: string; version: string; package: string }) =>
+    mockUseUploadGitHub(params),
 }))
 
 vi.mock('../../../utils', () => ({
-  pluginManifestToCardPluginProps: (manifest: unknown) => mockPluginManifestToCardPluginProps(manifest),
+  pluginManifestToCardPluginProps: (manifest: unknown) =>
+    mockPluginManifestToCardPluginProps(manifest),
 }))
 
 vi.mock('../../../base/loading', () => ({
@@ -104,14 +106,16 @@ describe('GithubItem', () => {
       expect(screen.getByTestId('loaded-item')).toBeInTheDocument()
     })
 
-    expect(mockLoadedItem).toHaveBeenCalledWith(expect.objectContaining({
-      checked: true,
-      versionInfo,
-      payload: expect.objectContaining({
-        ...payload,
-        from: 'github',
+    expect(mockLoadedItem).toHaveBeenCalledWith(
+      expect.objectContaining({
+        checked: true,
+        versionInfo,
+        payload: expect.objectContaining({
+          ...payload,
+          from: 'github',
+        }),
       }),
-    }))
+    )
   })
 
   it('reports fetch error from upload hook', async () => {

@@ -4,21 +4,49 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
+export type RemoteFileUploadPayload = {
+  url: string
+}
+
+export type FileWithSignedUrl = {
+  created_at: number | null
+  created_by: string | null
+  extension: string | null
+  id: string
+  mime_type: string | null
+  name: string
+  size: number
+  url: string | null
+}
+
+export type RemoteFileInfo = {
+  file_length: number
+  file_type: string
+}
+
 export type PostRemoteFilesUploadData = {
-  body?: never
+  body: RemoteFileUploadPayload
   path?: never
   query?: never
   url: '/remote-files/upload'
 }
 
-export type PostRemoteFilesUploadResponses = {
-  200: {
-    [key: string]: unknown
-  }
+export type PostRemoteFilesUploadErrors = {
+  400: unknown
+  404: unknown
+  413: unknown
+  415: unknown
+  422: unknown
+  500: unknown
+  502: unknown
 }
 
-export type PostRemoteFilesUploadResponse
-  = PostRemoteFilesUploadResponses[keyof PostRemoteFilesUploadResponses]
+export type PostRemoteFilesUploadResponses = {
+  201: FileWithSignedUrl
+}
+
+export type PostRemoteFilesUploadResponse =
+  PostRemoteFilesUploadResponses[keyof PostRemoteFilesUploadResponses]
 
 export type GetRemoteFilesByUrlData = {
   body?: never
@@ -29,11 +57,16 @@ export type GetRemoteFilesByUrlData = {
   url: '/remote-files/{url}'
 }
 
-export type GetRemoteFilesByUrlResponses = {
-  200: {
-    [key: string]: unknown
-  }
+export type GetRemoteFilesByUrlErrors = {
+  400: unknown
+  404: unknown
+  500: unknown
+  502: unknown
 }
 
-export type GetRemoteFilesByUrlResponse
-  = GetRemoteFilesByUrlResponses[keyof GetRemoteFilesByUrlResponses]
+export type GetRemoteFilesByUrlResponses = {
+  200: RemoteFileInfo
+}
+
+export type GetRemoteFilesByUrlResponse =
+  GetRemoteFilesByUrlResponses[keyof GetRemoteFilesByUrlResponses]

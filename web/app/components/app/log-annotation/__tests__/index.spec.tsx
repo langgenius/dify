@@ -1,65 +1,37 @@
-import type { App, AppIconType } from '@/types/app'
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { PageType } from '@/app/components/base/features/new-feature-panel/annotation-reply/type'
+import { createAppDetailFixture, createAppSiteFixture } from '@/test/fixtures/app'
 import { AppModeEnum } from '@/types/app'
 import LogAnnotation from '../index'
 
-const mockRouterPush = vi.fn()
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({
-    push: mockRouterPush,
-  }),
-}))
-
 vi.mock('@/app/components/app/annotation', () => ({
-  default: ({ appDetail }: { appDetail: App }) => (
+  default: ({ appDetail }: { appDetail: AppDetailWithSite }) => (
     <section aria-label="Annotation log">{appDetail.id}</section>
   ),
 }))
 
 vi.mock('@/app/components/app/log', () => ({
-  default: ({ appDetail }: { appDetail: App }) => (
+  default: ({ appDetail }: { appDetail: AppDetailWithSite }) => (
     <section aria-label="App log">{appDetail.id}</section>
   ),
 }))
 
 vi.mock('@/app/components/app/workflow-log', () => ({
-  default: ({ appDetail }: { appDetail: App }) => (
+  default: ({ appDetail }: { appDetail: AppDetailWithSite }) => (
     <section aria-label="Workflow log">{appDetail.id}</section>
   ),
 }))
 
-const createMockApp = (overrides: Partial<App> = {}): App => ({
-  id: 'app-123',
-  name: 'Test App',
-  description: 'Test app description',
-  author_name: 'Test Author',
-  icon_type: 'emoji' as AppIconType,
-  icon: ':icon:',
-  icon_background: '#FFEAD5',
-  icon_url: null,
-  use_icon_as_answer_icon: false,
-  mode: AppModeEnum.CHAT,
-  enable_site: true,
-  enable_api: true,
-  api_rpm: 60,
-  api_rph: 3600,
-  is_demo: false,
-  model_config: {} as App['model_config'],
-  app_model_config: {} as App['app_model_config'],
-  created_at: Date.now(),
-  updated_at: Date.now(),
-  site: {
-    access_token: 'token',
-    app_base_url: 'https://example.com',
-  } as App['site'],
-  api_base_url: 'https://api.example.com',
-  tags: [],
-  access_mode: 'public_access' as App['access_mode'],
-  ...overrides,
-})
+const createMockApp = (overrides: Partial<AppDetailWithSite> = {}): AppDetailWithSite =>
+  createAppDetailFixture({
+    id: 'app-123',
+    name: 'Test App',
+    mode: 'chat',
+    site: createAppSiteFixture({ access_token: 'token', app_base_url: 'https://example.com' }),
+    ...overrides,
+  })
 
 describe('LogAnnotation', () => {
   beforeEach(() => {
@@ -77,10 +49,10 @@ describe('LogAnnotation', () => {
       render(<LogAnnotation pageType={PageType.log} />)
 
       // Assert
-      expect(screen.getByRole('status')).toBeInTheDocument()
+      expect(screen.getByRole('progressbar')).toBeInTheDocument()
     })
 
-    it('should render log and annotation tabs for non-completion apps', () => {
+    it('should render log content without the old page tabs', () => {
       // Arrange
       useAppStore.setState({ appDetail: createMockApp({ mode: AppModeEnum.CHAT }) })
 
@@ -88,11 +60,12 @@ describe('LogAnnotation', () => {
       render(<LogAnnotation pageType={PageType.log} />)
 
       // Assert
-      expect(screen.getByText('appLog.title')).toBeInTheDocument()
-      expect(screen.getByText('appAnnotation.title')).toBeInTheDocument()
+      expect(screen.getByRole('region', { name: 'App log' })).toBeInTheDocument()
+      expect(screen.queryByText('appLog.title')).not.toBeInTheDocument()
+      expect(screen.queryByText('appAnnotation.title')).not.toBeInTheDocument()
     })
 
-    it('should render only log tab for completion apps', () => {
+    it('should render completion logs without the old page tabs', () => {
       // Arrange
       useAppStore.setState({ appDetail: createMockApp({ mode: AppModeEnum.COMPLETION }) })
 
@@ -100,7 +73,8 @@ describe('LogAnnotation', () => {
       render(<LogAnnotation pageType={PageType.log} />)
 
       // Assert
-      expect(screen.getByText('appLog.title')).toBeInTheDocument()
+      expect(screen.getByRole('region', { name: 'App log' })).toBeInTheDocument()
+      expect(screen.queryByText('appLog.title')).not.toBeInTheDocument()
       expect(screen.queryByText('appAnnotation.title')).not.toBeInTheDocument()
     })
 
@@ -141,33 +115,6 @@ describe('LogAnnotation', () => {
       // Assert
       expect(screen.getByRole('region', { name: 'Annotation log' })).toBeInTheDocument()
       expect(screen.queryByRole('region', { name: 'App log' })).not.toBeInTheDocument()
-    })
-  })
-
-  // User interaction behavior
-  describe('User Interactions', () => {
-    it('should navigate to annotations when switching from log tab', async () => {
-      // Arrange
-      const user = userEvent.setup()
-
-      // Act
-      render(<LogAnnotation pageType={PageType.log} />)
-      await user.click(screen.getByText('appAnnotation.title'))
-
-      // Assert
-      expect(mockRouterPush).toHaveBeenCalledWith('/app/app-123/annotations')
-    })
-
-    it('should navigate to logs when switching from annotation tab', async () => {
-      // Arrange
-      const user = userEvent.setup()
-
-      // Act
-      render(<LogAnnotation pageType={PageType.annotation} />)
-      await user.click(screen.getByText('appLog.title'))
-
-      // Assert
-      expect(mockRouterPush).toHaveBeenCalledWith('/app/app-123/logs')
     })
   })
 })

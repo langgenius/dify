@@ -4,12 +4,14 @@ import { createReactI18nextMock } from '@/test/i18n-mock'
 import InlineDeleteConfirm from '../index'
 
 // Mock react-i18next with custom translations for test assertions
-vi.mock('react-i18next', () => createReactI18nextMock({
-  'operation.deleteConfirmTitle': 'Delete?',
-  'operation.yes': 'Yes',
-  'operation.no': 'No',
-  'operation.confirmAction': 'Please confirm your action.',
-}))
+vi.mock('react-i18next', () =>
+  createReactI18nextMock({
+    'operation.deleteConfirmTitle': 'Delete?',
+    'operation.yes': 'Yes',
+    'operation.no': 'No',
+    'operation.confirmAction': 'Please confirm your action.',
+  }),
+)
 
 afterEach(cleanup)
 
@@ -45,16 +47,15 @@ describe('InlineDeleteConfirm', () => {
       expect(getByText('Confirm')).toBeInTheDocument()
     })
 
-    it('should have proper ARIA attributes', () => {
+    it('should expose the prompt title and description on a semantic group', () => {
       const onConfirm = vi.fn()
       const onCancel = vi.fn()
-      const { container } = render(
+      const { getByRole } = render(
         <InlineDeleteConfirm onConfirm={onConfirm} onCancel={onCancel} />,
       )
 
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveAttribute('aria-labelledby', 'inline-delete-confirm-title')
-      expect(wrapper).toHaveAttribute('aria-describedby', 'inline-delete-confirm-description')
+      const prompt = getByRole('group', { name: 'Delete?' })
+      expect(prompt).toHaveAccessibleDescription('Please confirm your action.')
     })
   })
 
@@ -81,23 +82,6 @@ describe('InlineDeleteConfirm', () => {
       fireEvent.click(getByText('Yes'))
       expect(onConfirm).toHaveBeenCalledTimes(1)
       expect(onCancel).not.toHaveBeenCalled()
-    })
-  })
-
-  describe('Custom className', () => {
-    it('should apply custom className to wrapper', () => {
-      const onConfirm = vi.fn()
-      const onCancel = vi.fn()
-      const { container } = render(
-        <InlineDeleteConfirm
-          className="custom-class"
-          onConfirm={onConfirm}
-          onCancel={onCancel}
-        />,
-      )
-
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper.className).toContain('custom-class')
     })
   })
 })

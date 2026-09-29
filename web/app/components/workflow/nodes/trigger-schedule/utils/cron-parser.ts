@@ -25,14 +25,12 @@ const convertToUserTimezoneRepresentation = (utcDate: Date, timezone: string): D
  * @returns Array of Date objects representing the next 5 execution times
  */
 export const parseCronExpression = (cronExpression: string, timezone: string = 'UTC'): Date[] => {
-  if (!cronExpression || cronExpression.trim() === '')
-    return []
+  if (!cronExpression || cronExpression.trim() === '') return []
 
   const parts = cronExpression.trim().split(/\s+/)
 
   // Support both 5-field format and predefined expressions
-  if (parts.length !== 5 && !cronExpression.startsWith('@'))
-    return []
+  if (parts.length !== 5 && !cronExpression.startsWith('@')) return []
 
   try {
     // Parse the cron expression with timezone support
@@ -50,8 +48,7 @@ export const parseCronExpression = (cronExpression: string, timezone: string = '
       const utcDate = cronDate.toDate()
       return convertToUserTimezoneRepresentation(utcDate, timezone)
     })
-  }
-  catch {
+  } catch {
     // Return empty array if parsing fails
     return []
   }
@@ -64,21 +61,18 @@ export const parseCronExpression = (cronExpression: string, timezone: string = '
  * @returns boolean indicating if the cron expression is valid
  */
 export const isValidCronExpression = (cronExpression: string): boolean => {
-  if (!cronExpression || cronExpression.trim() === '')
-    return false
+  if (!cronExpression || cronExpression.trim() === '') return false
 
   const parts = cronExpression.trim().split(/\s+/)
 
   // Support both 5-field format and predefined expressions
-  if (parts.length !== 5 && !cronExpression.startsWith('@'))
-    return false
+  if (parts.length !== 5 && !cronExpression.startsWith('@')) return false
 
   try {
     // Use cron-parser to validate the expression
     CronExpressionParser.parse(cronExpression)
     return true
-  }
-  catch {
+  } catch {
     return false
   }
 }

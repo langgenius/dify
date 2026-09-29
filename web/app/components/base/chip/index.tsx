@@ -1,120 +1,156 @@
-import type { FC } from 'react'
+import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
-import { RiArrowDownSLine, RiCheckLine, RiCloseCircleFill, RiFilter3Line } from '@remixicon/react'
-import { useMemo, useState } from 'react'
+  Select,
+  SelectItem,
+  SelectItemIndicator,
+  SelectItemText,
+  SelectList,
+  SelectPopup,
+  SelectPortal,
+  SelectPositioner,
+  SelectTrigger,
+} from '@langgenius/dify-ui/select'
+import { useTranslation } from 'react-i18next'
 
-export type Item = {
-  value: number | string
+type ItemValue = number | string
+
+export type Item<T extends ItemValue = ItemValue> = {
+  value: T
   name: string
-} & Record<string, any>
+  triggerName?: string
+} & Record<string, unknown>
 
-type Props = {
+type Props<T extends ItemValue> = {
+  id?: string
+  'aria-labelledby'?: string
   className?: string
   panelClassName?: string
   showLeftIcon?: boolean
-  leftIcon?: any
-  value: number | string
-  items: Item[]
-  onSelect: (item: any) => void
+  leftIcon?: ReactNode
+  showItemIndicator?: boolean
+  value: T
+  items: Item<T>[]
+  onSelect: (item: Item<T>) => void
   onClear: () => void
 }
-const Chip: FC<Props> = ({
+
+function Chip<T extends ItemValue>({
+  id,
+  'aria-labelledby': ariaLabelledBy,
   className,
   panelClassName,
   showLeftIcon = true,
   leftIcon,
+  showItemIndicator = true,
   value,
   items,
   onSelect,
   onClear,
-}) => {
-  const [open, setOpen] = useState(false)
-
-  const triggerContent = useMemo(() => {
-    return items.find(item => item.value === value)?.name || ''
-  }, [items, value])
+}: Props<T>) {
+  const { t } = useTranslation(['common'])
+  const selectedItem = items.find((item) => Object.is(item.value, value))
+  const triggerContent = selectedItem?.triggerName || selectedItem?.name || ''
+  const hasValue = selectedItem !== undefined && value !== ''
+  const clearLabel = triggerContent
+    ? `${t(($) => $['operation.clear'], { ns: 'common' })} ${triggerContent}`
+    : t(($) => $['operation.clear'], { ns: 'common' })
 
   return (
-    <DropdownMenu
-      open={open}
-      onOpenChange={setOpen}
+    <Select<T>
+      value={selectedItem?.value ?? null}
+      itemToStringLabel={(itemValue: T) =>
+        items.find((item) => Object.is(item.value, itemValue))?.name ?? ''
+      }
+      itemToStringValue={(itemValue) => String(itemValue)}
+      onValueChange={(nextValue) => {
+        if (nextValue === null) return
+        const selected = items.find((item) => Object.is(item.value, nextValue))
+        if (selected) onSelect(selected)
+      }}
     >
-      <div className="relative">
-        <DropdownMenuTrigger
-          nativeButton={false}
-          render={<div className="block" />}
-        >
-          <div className={cn(
-            'flex min-h-8 cursor-pointer items-center rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt',
-            open && !value && 'bg-state-base-hover-alt! hover:bg-state-base-hover-alt',
-            !open && !!value && 'border-components-button-secondary-border! bg-components-button-secondary-bg! shadow-xs hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover!',
-            open && !!value && 'border-components-button-secondary-border-hover! bg-components-button-secondary-bg-hover! shadow-xs hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover!',
+      <div className="relative w-fit max-w-full">
+        <SelectTrigger
+          id={id}
+          aria-labelledby={ariaLabelledBy}
+          aria-label={
+            ariaLabelledBy
+              ? undefined
+              : triggerContent || t(($) => $['placeholder.select'], { ns: 'common' })
+          }
+          className={cn(
+            'h-auto min-h-8 w-fit max-w-full cursor-pointer items-center rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt! data-popup-open:hover:bg-state-base-hover-alt [&>*:last-child]:hidden',
+            hasValue &&
+              'border-components-button-secondary-border! bg-components-button-secondary-bg! pr-6 shadow-xs hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover! data-popup-open:border-components-button-secondary-border-hover! data-popup-open:bg-components-button-secondary-bg-hover! data-popup-open:hover:border-components-button-secondary-border-hover data-popup-open:hover:bg-components-button-secondary-bg-hover!',
             className,
           )}
-          >
-            {showLeftIcon && (
-              <div className="p-0.5">
-                {leftIcon || (
-                  <RiFilter3Line className={cn('h-4 w-4 text-text-tertiary', !!value && 'text-text-secondary')} />
-                )}
-              </div>
-            )}
-            <div className="flex grow items-center gap-0.5 first-line:p-1">
-              <div className={cn('system-sm-regular text-text-tertiary', !!value && 'text-text-secondary')}>
-                {triggerContent}
-              </div>
-            </div>
-            {!value && <RiArrowDownSLine className="h-4 w-4 text-text-tertiary" />}
-            {!!value && (
-              <div
-                className="group/clear cursor-pointer p-px"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onClear()
-                }}
-              >
-                <RiCloseCircleFill className="h-3.5 w-3.5 text-text-quaternary group-hover/clear:text-text-tertiary" />
-              </div>
-            )}
-          </div>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent
-          placement="bottom-start"
-          sideOffset={4}
-          popupClassName={cn('relative w-[240px] rounded-xl border-[0.5px] bg-components-panel-bg-blur p-0', panelClassName)}
         >
-          <DropdownMenuRadioGroup
-            value={value}
-            onValueChange={(nextValue) => {
-              const selected = items.find(item => item.value === nextValue)
-              if (selected)
-                onSelect(selected)
-            }}
-            className="max-h-72 overflow-auto p-1"
-          >
-            {items.map(item => (
-              <DropdownMenuRadioItem
-                key={item.value}
-                value={item.value}
-                closeOnClick
-                className="gap-2 rounded-lg px-2 py-[6px] pl-3"
+          <span className="flex min-w-0 grow items-center gap-1 text-left">
+            {showLeftIcon && (
+              <span aria-hidden="true" className="p-0.5">
+                {leftIcon || (
+                  <span
+                    aria-hidden
+                    className={cn(
+                      'i-ri-filter-3-line block size-4 text-text-tertiary',
+                      hasValue && 'text-text-secondary',
+                    )}
+                  />
+                )}
+              </span>
+            )}
+            <span className="flex grow items-center gap-0.5 first-line:p-1">
+              <span
+                className={cn(
+                  'system-sm-regular text-text-tertiary',
+                  hasValue && 'text-text-secondary',
+                )}
               >
-                <div title={item.name} className="grow truncate system-sm-medium text-text-secondary">{item.name}</div>
-                {value === item.value && <RiCheckLine className="h-4 w-4 shrink-0 text-util-colors-blue-light-blue-light-600" />}
-              </DropdownMenuRadioItem>
-            ))}
-          </DropdownMenuRadioGroup>
-        </DropdownMenuContent>
+                {triggerContent}
+              </span>
+            </span>
+            {!hasValue && (
+              <span
+                aria-hidden
+                className="i-ri-arrow-down-s-line block size-4 text-text-tertiary"
+              />
+            )}
+          </span>
+        </SelectTrigger>
+        {hasValue && (
+          <button
+            type="button"
+            aria-label={clearLabel}
+            className="group/clear absolute top-1/2 right-1.5 flex size-5 -translate-y-1/2 cursor-pointer touch-manipulation items-center justify-center rounded-md border-none bg-transparent p-0 outline-hidden focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
+            onClick={onClear}
+          >
+            <span
+              aria-hidden
+              className="i-ri-close-circle-fill block size-3.5 text-text-quaternary group-hover/clear:text-text-tertiary"
+            />
+          </button>
+        )}
+        <SelectPortal>
+          <SelectPositioner placement="bottom-start" sideOffset={4}>
+            <SelectPopup
+              className={cn(
+                'relative w-60 rounded-xl border-[0.5px] bg-components-panel-bg-blur p-0 text-sm text-text-secondary shadow-lg outline-hidden backdrop-blur-[5px] focus:outline-hidden focus-visible:outline-hidden',
+                panelClassName,
+              )}
+            >
+              <SelectList className="max-h-72 p-1">
+                {items.map((item) => (
+                  <SelectItem<T> key={item.value} value={item.value}>
+                    <SelectItemText title={item.name}>{item.name}</SelectItemText>
+                    {showItemIndicator && <SelectItemIndicator />}
+                  </SelectItem>
+                ))}
+              </SelectList>
+            </SelectPopup>
+          </SelectPositioner>
+        </SelectPortal>
       </div>
-    </DropdownMenu>
-
+    </Select>
   )
 }
 

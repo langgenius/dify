@@ -1,4 +1,3 @@
-/* eslint-disable ts/no-explicit-any */
 import type { FeatureStoreState } from '@/app/components/base/features/store'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -48,14 +47,11 @@ const setupFeatureStore = (allowedTypes: SupportUploadFileTypes[] = []) => {
   }
   mockStore.getState.mockImplementation(() => mockFeatureStoreState)
   mockUseFeaturesStore.mockReturnValue(mockStore)
-  mockUseFeatures.mockImplementation(selector => selector(mockFeatureStoreState))
+  mockUseFeatures.mockImplementation((selector) => selector(mockFeatureStoreState))
 }
 
 const renderConfigAudio = (options: SetupOptions = {}) => {
-  const {
-    isVisible = true,
-    allowedTypes = [],
-  } = options
+  const { isVisible = true, allowedTypes = [] } = options
   setupFeatureStore(allowedTypes)
   mockUseContext.mockReturnValue({
     isShowAudioConfig: isVisible,
@@ -76,13 +72,13 @@ describe('ConfigAudio', () => {
   it('should not render when the audio configuration is hidden', () => {
     renderConfigAudio({ isVisible: false })
 
-    expect(screen.queryByText('appDebug.feature.audioUpload.title')).not.toBeInTheDocument()
+    expect(screen.queryByText('fileUpload.feature.audioUpload.title')).not.toBeInTheDocument()
   })
 
   it('should display the audio toggle state based on feature store data', () => {
     renderConfigAudio({ allowedTypes: [SupportUploadFileTypes.audio] })
 
-    expect(screen.getByText('appDebug.feature.audioUpload.title')).toBeInTheDocument()
+    expect(screen.getByText('fileUpload.feature.audioUpload.title')).toBeInTheDocument()
     expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'true')
   })
 
@@ -93,26 +89,32 @@ describe('ConfigAudio', () => {
     expect(toggle).toHaveAttribute('aria-checked', 'false')
     await user.click(toggle)
 
-    expect(setFeatures).toHaveBeenCalledWith(expect.objectContaining({
-      file: expect.objectContaining({
-        allowed_file_types: [SupportUploadFileTypes.audio],
-        enabled: true,
+    expect(setFeatures).toHaveBeenCalledWith(
+      expect.objectContaining({
+        file: expect.objectContaining({
+          allowed_file_types: [SupportUploadFileTypes.audio],
+          enabled: true,
+        }),
       }),
-    }))
+    )
   })
 
   it('should disable audio uploads and turn off file feature when last type is removed', async () => {
-    const { user, setFeatures } = renderConfigAudio({ allowedTypes: [SupportUploadFileTypes.audio] })
+    const { user, setFeatures } = renderConfigAudio({
+      allowedTypes: [SupportUploadFileTypes.audio],
+    })
     const toggle = screen.getByRole('switch')
 
     expect(toggle).toHaveAttribute('aria-checked', 'true')
     await user.click(toggle)
 
-    expect(setFeatures).toHaveBeenCalledWith(expect.objectContaining({
-      file: expect.objectContaining({
-        allowed_file_types: [],
-        enabled: false,
+    expect(setFeatures).toHaveBeenCalledWith(
+      expect.objectContaining({
+        file: expect.objectContaining({
+          allowed_file_types: [],
+          enabled: false,
+        }),
       }),
-    }))
+    )
   })
 })

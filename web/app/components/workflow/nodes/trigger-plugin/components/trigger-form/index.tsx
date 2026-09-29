@@ -6,7 +6,7 @@ import type { TriggerWithProvider } from '@/app/components/workflow/block-select
 import type { PluginTriggerVarInputs } from '@/app/components/workflow/nodes/trigger-plugin/types'
 import TriggerFormItem from './item'
 
-type Props = {
+type Props = Readonly<{
   readOnly: boolean
   nodeId: string
   schema: CredentialFormSchema[]
@@ -18,7 +18,7 @@ type Props = {
   currentProvider?: TriggerWithProvider
   extraParams?: Record<string, any>
   disableVariableInsertion?: boolean
-}
+}>
 
 const TriggerForm: FC<Props> = ({
   readOnly,
@@ -34,23 +34,21 @@ const TriggerForm: FC<Props> = ({
 }) => {
   return (
     <div className="space-y-1">
-      {
-        schema.map((schema, index) => (
-          <TriggerFormItem
-            key={index}
-            readOnly={readOnly}
-            nodeId={nodeId}
-            schema={schema}
-            value={value}
-            onChange={onChange}
-            inPanel={inPanel}
-            currentEvent={currentEvent}
-            currentProvider={currentProvider}
-            extraParams={extraParams}
-            disableVariableInsertion={disableVariableInsertion}
-          />
-        ))
-      }
+      {schema.map((schema, index) => (
+        <TriggerFormItem
+          key={index}
+          readOnly={readOnly}
+          nodeId={nodeId}
+          schema={schema}
+          value={value}
+          onChange={onChange}
+          inPanel={inPanel}
+          currentEvent={currentEvent}
+          currentProvider={currentProvider}
+          extraParams={extraParams}
+          disableVariableInsertion={disableVariableInsertion}
+        />
+      ))}
     </div>
   )
 }

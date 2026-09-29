@@ -101,32 +101,6 @@ class TestKnowledgeRetrievalNode:
     Test suite for KnowledgeRetrievalNode.
     """
 
-    def test_node_initialization(self, mock_graph_init_params, mock_graph_runtime_state, mock_rag_retrieval):
-        """Test KnowledgeRetrievalNode initialization."""
-        # Arrange
-        node_id = str(uuid.uuid4())
-        config = {
-            "id": node_id,
-            "data": {
-                "title": "Knowledge Retrieval",
-                "type": "knowledge-retrieval",
-                "dataset_ids": [str(uuid.uuid4())],
-                "retrieval_mode": "multiple",
-            },
-        }
-
-        # Act
-        node = KnowledgeRetrievalNode(
-            node_id=node_id,
-            data=KnowledgeRetrievalNodeData.model_validate(config["data"]),
-            graph_init_params=mock_graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
-        )
-
-        # Assert
-        assert node.id == node_id
-        assert node._rag_retrieval == mock_rag_retrieval
-
     def test_run_with_no_query_or_attachment(
         self,
         mock_graph_init_params,
@@ -488,7 +462,7 @@ class TestFetchDatasetRetriever:
         )
 
         # Act
-        results, usage = node._fetch_dataset_retriever(node_data=node_data, variables=variables)
+        results, usage = node._fetch_dataset_retriever(Mock(), node_data=node_data, variables=variables)
 
         # Assert
         assert len(results) == 1
@@ -525,7 +499,7 @@ class TestFetchDatasetRetriever:
         )
 
         # Act
-        results, usage = node._fetch_dataset_retriever(node_data=sample_node_data, variables=variables)
+        results, usage = node._fetch_dataset_retriever(Mock(), node_data=sample_node_data, variables=variables)
 
         # Assert
         assert isinstance(results, list)
@@ -580,7 +554,7 @@ class TestFetchDatasetRetriever:
         )
 
         # Act
-        results, usage = node._fetch_dataset_retriever(node_data=node_data, variables=variables)
+        results, usage = node._fetch_dataset_retriever(Mock(), node_data=node_data, variables=variables)
 
         # Assert
         assert isinstance(results, list)
@@ -590,14 +564,6 @@ class TestFetchDatasetRetriever:
         call_args = mock_rag_retrieval.knowledge_retrieval.call_args
         request = call_args[1]["request"]
         assert request.reranking_enable is False
-
-    def test_version_method(self):
-        """Test version class method."""
-        # Act
-        version = KnowledgeRetrievalNode.version()
-
-        # Assert
-        assert version == "1"
 
     def test_resolve_metadata_filtering_conditions_templates(
         self,
@@ -692,7 +658,7 @@ class TestFetchDatasetRetriever:
         mock_rag_retrieval.llm_usage = LLMUsage.empty_usage()
 
         # Act
-        node._fetch_dataset_retriever(node_data=node_data, variables=variables)
+        node._fetch_dataset_retriever(Mock(), node_data=node_data, variables=variables)
 
         # Assert the passed request has resolved value
         call_args = mock_rag_retrieval.knowledge_retrieval.call_args

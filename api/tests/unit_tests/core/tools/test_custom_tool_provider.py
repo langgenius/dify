@@ -1,18 +1,31 @@
+"""Tests for custom API tool providers with persisted provider lookup state."""
+
 from __future__ import annotations
 
-from types import SimpleNamespace
-from unittest.mock import Mock, patch
+import json
+from dataclasses import dataclass
+from unittest.mock import MagicMock
+from uuid import uuid4
 
 import pytest
+from sqlalchemy import delete
+from sqlalchemy.orm import Session
 
+from core.tools.custom_tool import provider as provider_module
 from core.tools.custom_tool.provider import ApiToolProviderController
 from core.tools.custom_tool.tool import ApiTool
 from core.tools.entities.tool_bundle import ApiToolBundle
-from core.tools.entities.tool_entities import ApiProviderAuthType, ToolProviderType
+from core.tools.entities.tool_entities import ApiProviderAuthType, ApiProviderSchemaType, ToolProviderType
+from models.tools import ApiToolProvider
 
 
-def _db_provider() -> SimpleNamespace:
-    bundle = ApiToolBundle(
+@dataclass(frozen=True)
+class _Database:
+    session: Session
+
+
+def _tool_bundle() -> ApiToolBundle:
+    return ApiToolBundle(
         server_url="https://api.example.com/items",
         method="GET",
         summary="List items",
@@ -21,19 +34,46 @@ def _db_provider() -> SimpleNamespace:
         author="author",
         openapi={"parameters": []},
     )
-    return SimpleNamespace(
-        id="provider-id",
-        tenant_id="tenant-1",
+
+
+def _db_provider() -> ApiToolProvider:
+    provider = ApiToolProvider(
         name="provider-a",
-        description="desc",
         icon="icon.svg",
-        user=SimpleNamespace(name="Alice"),
-        tools=[bundle],
+        schema="{}",
+        schema_type_str=ApiProviderSchemaType.OPENAPI,
+        user_id="",
+        tenant_id="tenant-1",
+        description="desc",
+        tools_str=json.dumps([_tool_bundle().model_dump(mode="json")]),
+        credentials_str='{"auth_type":"none"}',
     )
+    provider.id = "provider-id"
+    return provider
 
 
-def test_api_tool_provider_from_db_and_parse_tool_bundle():
-    controller = ApiToolProviderController.from_db(_db_provider(), ApiProviderAuthType.API_KEY_HEADER)
+def _persist_provider(session: Session, *, tenant_id: str, name: str = "provider-a") -> ApiToolProvider:
+    bundle = _tool_bundle()
+    provider = ApiToolProvider(
+        name=name,
+        icon="icon.svg",
+        schema="{}",
+        schema_type_str=ApiProviderSchemaType.OPENAPI,
+        user_id=str(uuid4()),
+        tenant_id=tenant_id,
+        description="desc",
+        tools_str=json.dumps([bundle.model_dump(mode="json")]),
+        credentials_str='{"auth_type":"none"}',
+    )
+    session.add(provider)
+    session.commit()
+    return provider
+
+
+def test_api_tool_provider_from_db_and_parse_tool_bundle() -> None:
+    controller = ApiToolProviderController.from_db(
+        _db_provider(), ApiProviderAuthType.API_KEY_HEADER, session=MagicMock()
+    )
     assert controller.provider_type == ToolProviderType.API
     assert any(c.name == "api_key_value" for c in controller.entity.credentials_schema)
 
@@ -42,16 +82,20 @@ def test_api_tool_provider_from_db_and_parse_tool_bundle():
     assert tool.entity.identity.provider == "provider-id"
 
 
-def test_api_tool_provider_from_db_query_auth_and_none_auth():
-    query_controller = ApiToolProviderController.from_db(_db_provider(), ApiProviderAuthType.API_KEY_QUERY)
+def test_api_tool_provider_from_db_query_auth_and_none_auth() -> None:
+    query_controller = ApiToolProviderController.from_db(
+        _db_provider(), ApiProviderAuthType.API_KEY_QUERY, session=MagicMock()
+    )
     assert any(c.name == "api_key_query_param" for c in query_controller.entity.credentials_schema)
 
-    none_controller = ApiToolProviderController.from_db(_db_provider(), ApiProviderAuthType.NONE)
+    none_controller = ApiToolProviderController.from_db(_db_provider(), ApiProviderAuthType.NONE, session=MagicMock())
     assert [c.name for c in none_controller.entity.credentials_schema] == ["auth_type"]
 
 
-def test_api_tool_provider_load_get_tools_and_get_tool():
-    controller = ApiToolProviderController.from_db(_db_provider(), ApiProviderAuthType.NONE)
+def test_api_tool_provider_load_get_tools_and_get_tool(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    controller = ApiToolProviderController.from_db(_db_provider(), ApiProviderAuthType.NONE, session=MagicMock())
     loaded = controller.load_bundled_tools(_db_provider().tools)
     assert len(loaded) == 1
 
@@ -66,10 +110,17 @@ def test_api_tool_provider_load_get_tools_and_get_tool():
 
     # Force DB fetch branch.
     controller.tools = []
-    provider_with_tools = _db_provider()
-    with patch("core.tools.custom_tool.provider.db") as mock_db:
-        scalars_result = Mock()
-        scalars_result.all.return_value = [provider_with_tools]
-        mock_db.session.scalars.return_value = scalars_result
-        tools = controller.get_tools("tenant-1")
+    tenant_id = str(uuid4())
+    provider_with_tools = _persist_provider(sqlite_session, tenant_id=tenant_id)
+    _persist_provider(sqlite_session, tenant_id=str(uuid4()))
+    controller.tenant_id = tenant_id
+    monkeypatch.setattr(provider_module, "db", _Database(session=sqlite_session))
+
+    tools = controller.get_tools(tenant_id)
     assert len(tools) == 1
+    assert tools[0].entity.identity.provider == controller.provider_id
+
+    sqlite_session.execute(delete(ApiToolProvider).where(ApiToolProvider.id == provider_with_tools.id))
+    sqlite_session.commit()
+    controller.tools = []
+    assert controller.get_tools(tenant_id) == []

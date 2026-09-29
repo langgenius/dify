@@ -1,3 +1,5 @@
+import type { GetWorkspacesCurrentModelsModelTypesByModelTypeData } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { OperationKey } from '@orpc/tanstack-query'
 import type { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { render, screen } from '@testing-library/react'
 import { ModelBar } from '../model-bar'
@@ -7,39 +9,33 @@ type ModelProviderItem = {
   models: Array<{ model: string }>
 }
 
-const mockModelLists = new Map<ModelTypeEnum, ModelProviderItem[]>()
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useModelList: (modelType: ModelTypeEnum) => ({
-    data: mockModelLists.get(modelType) || [],
-  }),
-}))
+const mockModelLists = new Map<string, ModelProviderItem[]>()
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  default: ({
-    defaultModel,
-    modelList,
+  ModelSelector: ({
+    value,
+    models,
   }: {
-    defaultModel?: { provider: string, model: string }
-    modelList: ModelProviderItem[]
+    value?: { provider: string; model: string }
+    models: ModelProviderItem[]
   }) => (
     <div>
-      {defaultModel ? `${defaultModel.provider}/${defaultModel.model}` : 'no-model'}
-      :
-      {modelList.length}
+      {value ? `${value.provider}/${value.model}` : 'no-model'}:{models.length}
     </div>
   ),
 }))
 
-vi.mock('@/app/components/header/indicator', () => ({
-  default: ({ color }: { color: string }) => <div>{`indicator:${color}`}</div>,
+vi.mock('@langgenius/dify-ui/status-dot', () => ({
+  StatusDot: ({ status }: { status: string }) => <div>{`indicator:${status}`}</div>,
 }))
 
 describe('agent/model-bar', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockModelLists.clear()
-    mockModelLists.set('llm' as ModelTypeEnum, [{ provider: 'openai', models: [{ model: 'gpt-4o' }] }])
+    mockModelLists.set('llm' as ModelTypeEnum, [
+      { provider: 'openai', models: [{ model: 'gpt-4o' }] },
+    ])
     mockModelLists.set('moderation' as ModelTypeEnum, [])
     mockModelLists.set('rerank' as ModelTypeEnum, [])
     mockModelLists.set('speech2text' as ModelTypeEnum, [])
@@ -47,28 +43,49 @@ describe('agent/model-bar', () => {
     mockModelLists.set('tts' as ModelTypeEnum, [])
   })
 
-  it('should render an empty readonly selector with a warning when no model is selected', () => {
+  it('should render an empty disabled selector with a warning when no model is selected', () => {
     render(<ModelBar />)
 
     const emptySelector = screen.getByText((_, element) => element?.textContent === 'no-model:0')
 
     expect(emptySelector).toBeInTheDocument()
-    expect(screen.getByText('indicator:red')).toBeInTheDocument()
-    expect(screen.getByLabelText('workflow.nodes.agent.modelNotSelected')).toBeInTheDocument()
+    expect(screen.getByText('indicator:error')).toBeInTheDocument()
+    expect(screen.getByText('workflow.nodes.agent.modelNotSelected')).toBeInTheDocument()
   })
 
   it('should render the selected model without warning when it is installed', () => {
     render(<ModelBar provider="openai" model="gpt-4o" />)
 
     expect(screen.getByText('openai/gpt-4o:1')).toBeInTheDocument()
-    expect(screen.queryByText('indicator:red')).not.toBeInTheDocument()
+    expect(screen.queryByText('indicator:error')).not.toBeInTheDocument()
   })
 
   it('should show a warning tooltip when the selected model is not installed', () => {
     render(<ModelBar provider="openai" model="gpt-4.1" />)
 
     expect(screen.getByText('openai/gpt-4.1:1')).toBeInTheDocument()
-    expect(screen.getByText('indicator:red')).toBeInTheDocument()
-    expect(screen.getByLabelText('workflow.nodes.agent.modelNotInstallTooltip')).toBeInTheDocument()
+    expect(screen.getByText('indicator:error')).toBeInTheDocument()
+    expect(screen.getByText('workflowAgent.nodes.agent.modelNotInstallTooltip')).toBeInTheDocument()
   })
+})
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useQuery: (options: {
+      queryKey: OperationKey<
+        'query',
+        { params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path'] }
+      >
+    }) => {
+      if (!options.queryKey[0].includes('modelTypes')) return actual.useQuery(options)
+
+      const modelType = options.queryKey[1].input?.params?.model_type
+      if (!modelType) throw new Error('Missing model type in query')
+      return {
+        data: mockModelLists.get(modelType) || [],
+      }
+    },
+  }
 })

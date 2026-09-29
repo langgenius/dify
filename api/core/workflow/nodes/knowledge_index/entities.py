@@ -1,6 +1,6 @@
-from typing import Union
+from typing import Any, Union
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from core.rag.entities import RerankingModelConfig, WeightedScoreConfig
 from core.rag.index_processor.index_processor_base import SummaryIndexSettingDict
@@ -101,3 +101,14 @@ class KnowledgeIndexNodeData(BaseNodeData):
     index_chunk_variable_selector: list[str]
     indexing_technique: str | None = None
     summary_index_setting: SummaryIndexSettingDict | None = None
+
+    @field_validator("summary_index_setting", mode="before")
+    @classmethod
+    def normalize_summary_index_setting(cls, v: Any) -> Any:
+        """Treat dicts with enable=None (or missing enable) as None (#36233)."""
+        if v is None:
+            return None
+        if isinstance(v, dict):
+            if v.get("enable") is None:
+                return None
+        return v

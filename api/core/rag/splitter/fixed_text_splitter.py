@@ -5,17 +5,14 @@ from __future__ import annotations
 import codecs
 import re
 from collections.abc import Set as AbstractSet
-from typing import Any, Literal
+from typing import Any, Literal, override
 
 from core.model_manager import ModelInstance
 from core.rag.splitter.text_splitter import RecursiveCharacterTextSplitter
-from graphon.model_runtime.model_providers.base.tokenizers.gpt2_tokenizer import GPT2Tokenizer
 
 
 class EnhanceRecursiveCharacterTextSplitter(RecursiveCharacterTextSplitter):
-    """
-    This class is used to implement from_gpt2_encoder, to prevent using of tiktoken
-    """
+    """Create recursive splitters that measure chunk limits in characters."""
 
     @classmethod
     def from_encoder[T: EnhanceRecursiveCharacterTextSplitter](
@@ -25,22 +22,12 @@ class EnhanceRecursiveCharacterTextSplitter(RecursiveCharacterTextSplitter):
         disallowed_special: Literal["all"] | AbstractSet[str] = "all",
         **kwargs: Any,
     ) -> T:
-        def _token_encoder(texts: list[str]) -> list[int]:
-            if not texts:
-                return []
-
-            if embedding_model_instance:
-                return embedding_model_instance.get_text_embedding_num_tokens(texts=texts)
-            else:
-                return [GPT2Tokenizer.get_num_tokens(text) for text in texts]
-
         def _character_encoder(texts: list[str]) -> list[int]:
             if not texts:
                 return []
 
             return [len(text) for text in texts]
 
-        _ = _token_encoder  # kept for future token-length wiring
         return cls(length_function=_character_encoder, **kwargs)
 
 
@@ -51,6 +38,7 @@ class FixedRecursiveCharacterTextSplitter(EnhanceRecursiveCharacterTextSplitter)
         self._fixed_separator = codecs.decode(fixed_separator, "unicode_escape")
         self._separators = separators or ["\n\n", "\n", "。", ". ", " ", ""]
 
+    @override
     def split_text(self, text: str) -> list[str]:
         """Split incoming text and return chunks."""
         if self._fixed_separator:
@@ -90,8 +78,8 @@ class FixedRecursiveCharacterTextSplitter(EnhanceRecursiveCharacterTextSplitter)
                 splits = re.split(r" +", text)
             else:
                 splits = text.split(separator)
-                if self._keep_separator:
-                    splits = [s + separator for s in splits[:-1]] + splits[-1:]
+            if self._keep_separator:
+                splits = [s + separator for s in splits[:-1]] + splits[-1:]
         else:
             splits = list(text)
         if separator == "\n":

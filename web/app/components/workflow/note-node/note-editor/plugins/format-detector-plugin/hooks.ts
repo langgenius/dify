@@ -3,14 +3,8 @@ import { $isLinkNode } from '@lexical/link'
 import { $isListItemNode } from '@lexical/list'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { mergeRegister } from '@lexical/utils'
-import {
-  $getSelection,
-  $isRangeSelection,
-} from 'lexical'
-import {
-  useCallback,
-  useEffect,
-} from 'react'
+import { $getSelection, $isRangeSelection } from 'lexical'
+import { useCallback, useEffect } from 'react'
 import { useNoteEditorStore } from '../../store'
 import { getSelectedNode } from '../../utils'
 
@@ -20,8 +14,7 @@ export const useFormatDetector = () => {
 
   const handleFormat = useCallback(() => {
     editor.getEditorState().read(() => {
-      if (editor.isComposing())
-        return
+      if (editor.isComposing()) return
 
       const selection = $getSelection()
 
@@ -32,6 +25,7 @@ export const useFormatDetector = () => {
           setSelectedIsItalic,
           setSelectedIsStrikeThrough,
           setSelectedLinkUrl,
+          setSelectedLinkKey,
           setSelectedIsLink,
           setSelectedIsBullet,
         } = noteEditorStore.getState()
@@ -40,19 +34,18 @@ export const useFormatDetector = () => {
         setSelectedIsStrikeThrough(selection.hasFormat('strikethrough'))
         const parent = node.getParent()
         if ($isLinkNode(parent) || $isLinkNode(node)) {
-          const linkUrl = ($isLinkNode(parent) ? parent : node as LinkNode).getURL()
-          setSelectedLinkUrl(linkUrl)
+          const linkNode = $isLinkNode(parent) ? parent : (node as LinkNode)
+          setSelectedLinkUrl(linkNode.getURL())
+          setSelectedLinkKey(linkNode.getKey())
           setSelectedIsLink(true)
-        }
-        else {
+        } else {
           setSelectedLinkUrl('')
+          setSelectedLinkKey(null)
           setSelectedIsLink(false)
         }
 
-        if ($isListItemNode(parent) || $isListItemNode(node))
-          setSelectedIsBullet(true)
-        else
-          setSelectedIsBullet(false)
+        if ($isListItemNode(parent) || $isListItemNode(node)) setSelectedIsBullet(true)
+        else setSelectedIsBullet(false)
       }
     })
   }, [editor, noteEditorStore])

@@ -3,12 +3,14 @@ from collections.abc import Mapping
 from typing import Any
 
 from pydantic import TypeAdapter, ValidationError
+from sqlalchemy.orm import Session
 from yarl import URL
 
 from configs import dify_config
 from core.helper.provider_cache import ToolProviderCredentialsCache
 from core.mcp.types import Tool as MCPTool
 from core.plugin.entities.plugin_daemon import CredentialType, PluginDatasourceProviderEntity
+from core.plugin.plugin_service import PluginService
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.builtin_tool.provider import BuiltinToolProviderController
@@ -26,8 +28,8 @@ from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.utils.encryption import create_provider_encrypter, create_tool_provider_encrypter
 from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 from core.tools.workflow_as_tool.tool import WorkflowTool
+from extensions.ext_database import db
 from models.tools import ApiToolProvider, BuiltinToolProvider, MCPToolProvider, WorkflowToolProvider
-from services.plugin.plugin_service import PluginService
 
 logger = logging.getLogger(__name__)
 
@@ -78,32 +80,33 @@ class ToolTransformService:
         :param tenant_id: the tenant id
         :param provider: the provider dict
         """
-        if isinstance(provider, dict) and "icon" in provider:
-            provider["icon"] = ToolTransformService.get_tool_provider_icon_url(
-                provider_type=provider["type"], provider_name=provider["name"], icon=provider["icon"]
-            )
-        elif isinstance(provider, ToolProviderApiEntity):
-            if provider.plugin_id:
-                if isinstance(provider.icon, str):
-                    provider.icon = PluginService.get_plugin_icon_url(tenant_id=tenant_id, filename=provider.icon)
-                if isinstance(provider.icon_dark, str) and provider.icon_dark:
-                    provider.icon_dark = PluginService.get_plugin_icon_url(
-                        tenant_id=tenant_id, filename=provider.icon_dark
-                    )
-            else:
-                provider.icon = ToolTransformService.get_tool_provider_icon_url(
-                    provider_type=provider.type.value, provider_name=provider.name, icon=provider.icon
+        match provider:
+            case dict() if "icon" in provider:
+                provider["icon"] = ToolTransformService.get_tool_provider_icon_url(
+                    provider_type=provider["type"], provider_name=provider["name"], icon=provider["icon"]
                 )
-                if provider.icon_dark:
-                    provider.icon_dark = ToolTransformService.get_tool_provider_icon_url(
-                        provider_type=provider.type.value, provider_name=provider.name, icon=provider.icon_dark
+            case ToolProviderApiEntity():
+                if provider.plugin_id:
+                    if isinstance(provider.icon, str):
+                        provider.icon = PluginService.get_plugin_icon_url(tenant_id=tenant_id, filename=provider.icon)
+                    if isinstance(provider.icon_dark, str) and provider.icon_dark:
+                        provider.icon_dark = PluginService.get_plugin_icon_url(
+                            tenant_id=tenant_id, filename=provider.icon_dark
+                        )
+                else:
+                    provider.icon = ToolTransformService.get_tool_provider_icon_url(
+                        provider_type=provider.type.value, provider_name=provider.name, icon=provider.icon
                     )
-        elif isinstance(provider, PluginDatasourceProviderEntity):
-            if provider.plugin_id:
-                if isinstance(provider.declaration.identity.icon, str):
-                    provider.declaration.identity.icon = PluginService.get_plugin_icon_url(
-                        tenant_id=tenant_id, filename=provider.declaration.identity.icon
-                    )
+                    if provider.icon_dark:
+                        provider.icon_dark = ToolTransformService.get_tool_provider_icon_url(
+                            provider_type=provider.type.value, provider_name=provider.name, icon=provider.icon_dark
+                        )
+            case PluginDatasourceProviderEntity():
+                if provider.plugin_id:
+                    if isinstance(provider.declaration.identity.icon, str):
+                        provider.declaration.identity.icon = PluginService.get_plugin_icon_url(
+                            tenant_id=tenant_id, filename=provider.declaration.identity.icon
+                        )
 
     @classmethod
     def builtin_provider_to_user_provider(
@@ -201,6 +204,7 @@ class ToolTransformService:
         controller = ApiToolProviderController.from_db(
             db_provider=db_provider,
             auth_type=auth_type,
+            session=db.session(),
         )
 
         return controller
@@ -242,7 +246,6 @@ class ToolTransformService:
     @staticmethod
     def mcp_provider_to_user_provider(
         db_provider: MCPToolProvider,
-        for_list: bool = False,
         user_name: str | None = None,
         include_sensitive: bool = True,
     ) -> ToolProviderApiEntity:
@@ -250,7 +253,7 @@ class ToolTransformService:
 
         # Use provided user_name to avoid N+1 query, fallback to load_user() if not provided
         if user_name is None:
-            user = db_provider.load_user()
+            user = db_provider.load_user(db.session())
             user_name = user.name if user else None
 
         # Convert to entity and use its API response method
@@ -262,7 +265,7 @@ class ToolTransformService:
         except (ValidationError, ValueError):
             mcp_tools = []
         # Add additional fields specific to the transform
-        response["id"] = db_provider.server_identifier if not for_list else db_provider.id
+        response["id"] = db_provider.id
         response["tools"] = ToolTransformService.mcp_tool_to_user_tool(db_provider, mcp_tools, user_name=user_name)
         response["server_identifier"] = db_provider.server_identifier
 
@@ -281,14 +284,17 @@ class ToolTransformService:
     ) -> list[ToolApiEntity]:
         # Use provided user_name to avoid N+1 query, fallback to load_user() if not provided
         if user_name is None:
-            user = mcp_provider.load_user()
+            user = mcp_provider.load_user(db.session())
             user_name = user.name if user else "Anonymous"
 
         return [
             ToolApiEntity(
                 author=user_name or "Anonymous",
                 name=tool.name,
-                label=I18nObject(en_US=tool.name, zh_Hans=tool.name),
+                # Prefer the server-provided human-readable title and fall back
+                # to the programmatic name when the server omitted the title
+                # or returned ``title: null`` (e.g. Exa's MCP server).
+                label=I18nObject(en_US=tool.title or tool.name, zh_Hans=tool.title or tool.name),
                 description=I18nObject(en_US=tool.description or "", zh_Hans=tool.description or ""),
                 parameters=ToolTransformService.convert_mcp_schema_to_parameter(tool.inputSchema),
                 labels=[],
@@ -304,15 +310,17 @@ class ToolTransformService:
         db_provider: ApiToolProvider,
         decrypt_credentials: bool = True,
         labels: list[str] | None = None,
+        *,
+        session: Session,
     ) -> ToolProviderApiEntity:
         """
         convert provider controller to user provider
         """
         username = "Anonymous"
-        if db_provider.user is None:
+        user = db_provider.user(session=session)
+        if user is None:
             raise ValueError(f"user is None for api provider {db_provider.id}")
         try:
-            user = db_provider.user
             if not user:
                 raise ValueError("user not found")
 
@@ -455,16 +463,17 @@ class ToolTransformService:
             if depth >= ToolTransformService._MCP_SCHEMA_TYPE_RESOLUTION_MAX_DEPTH:
                 return "string"
             prop_type = prop.get("type")
-            if isinstance(prop_type, list):
-                non_null_types = [type_name for type_name in prop_type if type_name != "null"]
-                if non_null_types:
-                    return non_null_types[0]
-                if prop_type:
-                    return "string"
-            elif isinstance(prop_type, str):
-                if prop_type == "null":
-                    return "string"
-                return prop_type
+            match prop_type:
+                case list():
+                    non_null_types = [type_name for type_name in prop_type if type_name != "null"]
+                    if non_null_types:
+                        return non_null_types[0]
+                    if prop_type:
+                        return "string"
+                case str():
+                    if prop_type == "null":
+                        return "string"
+                    return prop_type
 
             for union_key in ("anyOf", "oneOf"):
                 union_schemas = prop.get(union_key)

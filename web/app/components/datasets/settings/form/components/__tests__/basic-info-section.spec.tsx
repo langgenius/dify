@@ -1,24 +1,47 @@
+import type { ReactElement } from 'react'
 import type { Member } from '@/models/common'
 import type { DataSet, IconInfo } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { IndexingType } from '../../../../create/step-two'
 import BasicInfoSection from '../basic-info-section'
 
-// Mock app-context
-vi.mock('@/context/app-context', () => ({
-  useSelector: () => ({
+const mockConsoleState = vi.hoisted(() => ({
+  userProfile: {
     id: 'user-1',
     name: 'Current User',
     email: 'current@example.com',
     avatar_url: '',
     role: 'owner',
-  }),
+  },
 }))
 
-// Mock image uploader hooks for AppIconPicker
+// Mock app-context
+
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createWorkspaceStateModuleMock(() => mockConsoleState)
+})
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createPermissionStateModuleMock(() => mockConsoleState)
+})
+
+const render = (ui: ReactElement) => {
+  const { wrapper } = createConsoleQueryWrapper({
+    systemFeatures: { rbac_enabled: false },
+  })
+  return renderWithConsoleState(ui, { wrapper })
+}
+
+// Mock image uploader hooks for IconPickerDialog
 vi.mock('@/app/components/base/image-uploader/hooks', () => ({
   useLocalFileUploader: () => ({
     disabled: false,
@@ -105,8 +128,30 @@ describe('BasicInfoSection', () => {
   }
 
   const mockMemberList: Member[] = [
-    { id: 'user-1', name: 'User 1', email: 'user1@example.com', role: 'owner', avatar: '', avatar_url: '', last_login_at: '', created_at: '', status: 'active' },
-    { id: 'user-2', name: 'User 2', email: 'user2@example.com', role: 'admin', avatar: '', avatar_url: '', last_login_at: '', created_at: '', status: 'active' },
+    {
+      id: 'user-1',
+      name: 'User 1',
+      email: 'user1@example.com',
+      role: 'owner',
+      roles: [],
+      avatar: '',
+      avatar_url: '',
+      last_login_at: '',
+      created_at: '',
+      status: 'active',
+    },
+    {
+      id: 'user-2',
+      name: 'User 2',
+      email: 'user2@example.com',
+      role: 'admin',
+      roles: [],
+      avatar: '',
+      avatar_url: '',
+      last_login_at: '',
+      created_at: '',
+      status: 'active',
+    },
   ]
 
   const mockIconInfo: IconInfo = {
@@ -118,16 +163,15 @@ describe('BasicInfoSection', () => {
 
   const defaultProps = {
     currentDataset: mockDataset,
-    isCurrentWorkspaceDatasetOperator: false,
     name: 'Test Dataset',
     setName: vi.fn(),
     description: 'Test description',
     setDescription: vi.fn(),
     iconInfo: mockIconInfo,
-    showAppIconPicker: false,
+    showIconPicker: false,
     handleOpenAppIconPicker: vi.fn(),
     handleSelectAppIcon: vi.fn(),
-    handleCloseAppIconPicker: vi.fn(),
+    setShowIconPicker: vi.fn(),
     permission: DatasetPermission.onlyMe,
     setPermission: vi.fn(),
     selectedMemberIDs: ['user-1'],
@@ -140,11 +184,6 @@ describe('BasicInfoSection', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<BasicInfoSection {...defaultProps} />)
-      expect(screen.getByText(/form\.nameAndIcon/i))!.toBeInTheDocument()
-    })
-
     it('should render name and icon section', () => {
       render(<BasicInfoSection {...defaultProps} />)
       expect(screen.getByText(/form\.nameAndIcon/i))!.toBeInTheDocument()
@@ -164,8 +203,11 @@ describe('BasicInfoSection', () => {
 
     it('should render name input with correct value', () => {
       render(<BasicInfoSection {...defaultProps} />)
-      const nameInput = screen.getByDisplayValue('Test Dataset')
+      const nameInput = screen.getByRole('textbox', {
+        name: 'datasetSettings.form.name',
+      })
       expect(nameInput)!.toBeInTheDocument()
+      expect(nameInput).toHaveValue('Test Dataset')
     })
 
     it('should render description textarea with correct value', () => {
@@ -174,11 +216,45 @@ describe('BasicInfoSection', () => {
       expect(descriptionTextarea)!.toBeInTheDocument()
     })
 
-    it('should render app icon with emoji', () => {
-      const { container } = render(<BasicInfoSection {...defaultProps} />)
-      // The icon section should be rendered (emoji may be in a span or SVG)
-      const iconSection = container.querySelector('[class*="cursor-pointer"]')
-      expect(iconSection)!.toBeInTheDocument()
+    it('names the icon action and opens it with the keyboard', async () => {
+      const user = userEvent.setup()
+      const handleOpenAppIconPicker = vi.fn()
+      render(
+        <BasicInfoSection {...defaultProps} handleOpenAppIconPicker={handleOpenAppIconPicker} />,
+      )
+
+      const trigger = screen.getByRole('button', { name: 'datasetSettings.form.changeIcon' })
+      await user.tab()
+      expect(trigger).toHaveFocus()
+      await user.keyboard('{Enter}')
+      expect(handleOpenAppIconPicker).toHaveBeenCalledOnce()
+    })
+
+    it('associates the permissions field label without losing the selected value', () => {
+      render(<BasicInfoSection {...defaultProps} />)
+
+      expect(
+        screen.getByRole('button', {
+          name: /datasetSettings.form.permissions .*datasetSettings.form.permissionsOnlyMe/,
+        }),
+      ).toBeInTheDocument()
+    })
+
+    it('does not open the icon picker when settings are read-only', async () => {
+      const user = userEvent.setup()
+      const handleOpenAppIconPicker = vi.fn()
+      render(
+        <BasicInfoSection
+          {...defaultProps}
+          readonly
+          handleOpenAppIconPicker={handleOpenAppIconPicker}
+        />,
+      )
+
+      const trigger = screen.getByRole('button', { name: 'datasetSettings.form.changeIcon' })
+      expect(trigger).toBeDisabled()
+      await user.click(trigger)
+      expect(handleOpenAppIconPicker).not.toHaveBeenCalled()
     })
   })
 
@@ -187,7 +263,9 @@ describe('BasicInfoSection', () => {
       const setName = vi.fn()
       render(<BasicInfoSection {...defaultProps} setName={setName} />)
 
-      const nameInput = screen.getByDisplayValue('Test Dataset')
+      const nameInput = screen.getByRole('textbox', {
+        name: 'datasetSettings.form.name',
+      })
       fireEvent.change(nameInput, { target: { value: 'New Name' } })
 
       expect(setName).toHaveBeenCalledWith('New Name')
@@ -245,63 +323,52 @@ describe('BasicInfoSection', () => {
   })
 
   describe('App Icon', () => {
-    it('should call handleOpenAppIconPicker when icon is clicked', () => {
+    it('should call handleOpenAppIconPicker when icon is clicked', async () => {
+      const user = userEvent.setup()
       const handleOpenAppIconPicker = vi.fn()
-      const { container } = render(<BasicInfoSection {...defaultProps} handleOpenAppIconPicker={handleOpenAppIconPicker} />)
+      render(
+        <BasicInfoSection {...defaultProps} handleOpenAppIconPicker={handleOpenAppIconPicker} />,
+      )
 
-      // Find the clickable icon element - it's inside a wrapper that handles the click
-      const iconWrapper = container.querySelector('[class*="cursor-pointer"]')
-      if (iconWrapper) {
-        fireEvent.click(iconWrapper)
-        expect(handleOpenAppIconPicker).toHaveBeenCalled()
-      }
+      await user.click(screen.getByRole('button', { name: 'datasetSettings.form.changeIcon' }))
+      expect(handleOpenAppIconPicker).toHaveBeenCalledOnce()
     })
 
-    it('should render AppIconPicker when showAppIconPicker is true', () => {
-      const { baseElement } = render(<BasicInfoSection {...defaultProps} showAppIconPicker={true} />)
+    it('should not render IconPickerDialog when showIconPicker is false', () => {
+      const { container } = render(<BasicInfoSection {...defaultProps} showIconPicker={false} />)
 
-      // AppIconPicker renders a modal with emoji tabs and options via portal
-      // We just verify the component renders without crashing when picker is shown
-      // AppIconPicker renders a modal with emoji tabs and options via portal
-      // We just verify the component renders without crashing when picker is shown
-      expect(baseElement)!.toBeInTheDocument()
-    })
-
-    it('should not render AppIconPicker when showAppIconPicker is false', () => {
-      const { container } = render(<BasicInfoSection {...defaultProps} showAppIconPicker={false} />)
-
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
       expect(container.querySelector('[data-testid="app-icon-picker"]')).not.toBeInTheDocument()
     })
 
@@ -346,10 +413,8 @@ describe('BasicInfoSection', () => {
       expect(disabledElement)!.toBeInTheDocument()
     })
 
-    it('should be disabled when user is dataset operator', () => {
-      const { container } = render(
-        <BasicInfoSection {...defaultProps} isCurrentWorkspaceDatasetOperator={true} />,
-      )
+    it('should be disabled when form is readonly from dataset ACL editability', () => {
+      const { container } = render(<BasicInfoSection {...defaultProps} readonly />)
 
       const disabledElement = container.querySelector('[class*="cursor-not-allowed"]')
       expect(disabledElement)!.toBeInTheDocument()
@@ -368,25 +433,6 @@ describe('BasicInfoSection', () => {
       })
 
       expect(setPermission).toHaveBeenCalledWith(DatasetPermission.allTeamMembers)
-    })
-
-    it('should call setSelectedMemberIDs when members are selected', async () => {
-      const setSelectedMemberIDs = vi.fn()
-      const { container } = render(
-        <BasicInfoSection
-          {...defaultProps}
-          permission={DatasetPermission.partialMembers}
-          setSelectedMemberIDs={setSelectedMemberIDs}
-        />,
-      )
-
-      // For partial members permission, the member selector should be visible
-      // The exact interaction depends on the MemberSelector component
-      // We verify the component renders without crashing
-      // For partial members permission, the member selector should be visible
-      // The exact interaction depends on the MemberSelector component
-      // We verify the component renders without crashing
-      expect(container)!.toBeInTheDocument()
     })
   })
 
@@ -412,7 +458,9 @@ describe('BasicInfoSection', () => {
     })
 
     it('should update when description prop changes', () => {
-      const { rerender } = render(<BasicInfoSection {...defaultProps} description="Initial Description" />)
+      const { rerender } = render(
+        <BasicInfoSection {...defaultProps} description="Initial Description" />,
+      )
 
       expect(screen.getByDisplayValue('Initial Description'))!.toBeInTheDocument()
 
@@ -422,7 +470,9 @@ describe('BasicInfoSection', () => {
     })
 
     it('should update when permission prop changes', () => {
-      const { rerender } = render(<BasicInfoSection {...defaultProps} permission={DatasetPermission.onlyMe} />)
+      const { rerender } = render(
+        <BasicInfoSection {...defaultProps} permission={DatasetPermission.onlyMe} />,
+      )
 
       expect(screen.getByText(/form\.permissionsOnlyMe/i))!.toBeInTheDocument()
 
@@ -433,29 +483,8 @@ describe('BasicInfoSection', () => {
   })
 
   describe('Member List', () => {
-    it('should pass member list to PermissionSelector', () => {
-      const { container } = render(
-        <BasicInfoSection
-          {...defaultProps}
-          permission={DatasetPermission.partialMembers}
-          memberList={mockMemberList}
-        />,
-      )
-
-      // For partial members, a member selector component should be rendered
-      // We verify it renders without crashing
-      // For partial members, a member selector component should be rendered
-      // We verify it renders without crashing
-      expect(container)!.toBeInTheDocument()
-    })
-
     it('should handle empty member list', () => {
-      render(
-        <BasicInfoSection
-          {...defaultProps}
-          memberList={[]}
-        />,
-      )
+      render(<BasicInfoSection {...defaultProps} memberList={[]} />)
 
       expect(screen.getByText(/form\.permissionsOnlyMe/i))!.toBeInTheDocument()
     })
@@ -465,8 +494,7 @@ describe('BasicInfoSection', () => {
     it('should have accessible name input', () => {
       render(<BasicInfoSection {...defaultProps} />)
 
-      const nameInput = screen.getByDisplayValue('Test Dataset')
-      expect(nameInput.tagName.toLowerCase()).toBe('input')
+      expect(screen.getByRole('textbox', { name: 'datasetSettings.form.name' })).toBeInTheDocument()
     })
 
     it('should have accessible description textarea', () => {

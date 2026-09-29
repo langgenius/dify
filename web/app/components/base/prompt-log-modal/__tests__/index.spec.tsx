@@ -64,7 +64,14 @@ describe('PromptLogModal', () => {
     })
 
     it('returns null when currentLogItem.log is missing', () => {
-      const { container } = render(<PromptLogModal {...defaultProps} currentLogItem={{ id: '1' } as unknown as Parameters<typeof PromptLogModal>[0]['currentLogItem']} />)
+      const { container } = render(
+        <PromptLogModal
+          {...defaultProps}
+          currentLogItem={
+            { id: '1' } as unknown as Parameters<typeof PromptLogModal>[0]['currentLogItem']
+          }
+        />,
+      )
       expect(container.firstChild).toBeNull()
     })
   })
@@ -80,9 +87,7 @@ describe('PromptLogModal', () => {
 
     it('calls onCancel when clicking outside', async () => {
       const onCancel = vi.fn()
-      render(
-        <PromptLogModal {...defaultProps} onCancel={onCancel} />,
-      )
+      render(<PromptLogModal {...defaultProps} onCancel={onCancel} />)
 
       expect(useClickAway).toHaveBeenCalled()
       expect(clickAwayHandlers.length).toBeGreaterThan(0)

@@ -1,11 +1,12 @@
-import type { I18nText } from '@/i18n-config/language'
+import type { I18nText } from '@/i18n/language'
 import type { CodeBasedExtensionForm } from '@/models/common'
 import { fireEvent, render, screen } from '@testing-library/react'
 import FormGeneration from '../form-generation'
 
 const { mockLocale } = vi.hoisted(() => ({ mockLocale: { value: 'en-US' } }))
 
-vi.mock('@/context/i18n', () => ({
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: () => mockLocale.value,
 }))
 
@@ -91,13 +92,7 @@ describe('FormGeneration', () => {
 
   it('should display existing values', () => {
     const form = createForm()
-    render(
-      <FormGeneration
-        forms={[form]}
-        value={{ api_key: 'existing-key' }}
-        onChange={vi.fn()}
-      />,
-    )
+    render(<FormGeneration forms={[form]} value={{ api_key: 'existing-key' }} onChange={vi.fn()} />)
 
     expect(screen.getByDisplayValue('existing-key')).toBeInTheDocument()
   })

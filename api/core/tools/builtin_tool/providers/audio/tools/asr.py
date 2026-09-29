@@ -1,7 +1,11 @@
 import io
 from collections.abc import Generator
-from typing import Any
+from typing import Any, override
 
+from sqlalchemy.orm import Session
+
+from core.credit_usage import CreditUsageCreatedBy
+from core.model_context import with_credit_usage_created_by
 from core.model_manager import ModelManager
 from core.plugin.entities.parameters import PluginParameterOption
 from core.tools.builtin_tool.tool import BuiltinTool
@@ -14,8 +18,11 @@ from services.model_provider_service import ModelProviderService
 
 
 class ASRTool(BuiltinTool):
+    @override
+    @with_credit_usage_created_by(CreditUsageCreatedBy.AUDIO)
     def _invoke(
         self,
+        session: Session,
         user_id: str,
         tool_parameters: dict[str, Any],
         conversation_id: str | None = None,
@@ -56,6 +63,7 @@ class ASRTool(BuiltinTool):
                 items.append((provider, model.model))
         return items
 
+    @override
     def get_runtime_parameters(
         self,
         conversation_id: str | None = None,

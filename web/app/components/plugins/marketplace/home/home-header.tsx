@@ -1,0 +1,71 @@
+import type { HomeCatalogTab, HomeCatalogTabLabels } from './home-catalog-tabs'
+import { cn } from '@langgenius/dify-ui/cn'
+import Link from '@/next/link'
+import { MarketplaceLogo } from '../marketplace-logo'
+import HomeCatalogTabs from './home-catalog-tabs'
+import { HOME_HEADER_HEIGHT_PX } from './home-constants'
+// HomeCreatorCenter stays in its own client module: it derives styles via
+// buttonVariants(), which cannot be invoked inside this server component.
+import HomeCreatorCenter from './home-creator-center'
+import HomeGuide from './home-guide'
+import { HomeStickyCatalogTabs } from './home-sticky-state-provider'
+import styles from './home-sticky.module.css'
+
+type HomeHeaderProps = {
+  activeTab?: HomeCatalogTab | null
+  actions?: React.ReactNode
+  catalogLabels?: HomeCatalogTabLabels
+  isMarketplacePlatform: boolean
+  language?: string
+}
+
+const HomeHeader = ({
+  activeTab = 'plugins',
+  actions,
+  catalogLabels,
+  isMarketplacePlatform,
+  language,
+}: HomeHeaderProps) => {
+  return (
+    <header
+      className="sticky top-0 z-50 flex w-full shrink-0 items-center gap-4 bg-background-default px-4 py-1.5 md:px-9"
+      style={{ height: HOME_HEADER_HEIGHT_PX }}
+    >
+      <div className="flex min-w-0 flex-1 items-center gap-4">
+        <Link
+          // In the embedded console "/" leaves the marketplace entirely, so
+          // the brand mark points back at the marketplace home instead.
+          href={isMarketplacePlatform ? '/' : '/marketplace'}
+          aria-label="Dify Marketplace"
+          className="flex h-full w-[141.933px] shrink-0 items-center"
+        >
+          <MarketplaceLogo />
+        </Link>
+        <HomeStickyCatalogTabs>
+          <HomeCatalogTabs
+            activeTab={activeTab}
+            className={styles.headerCatalogTabs}
+            isMarketplacePlatform={isMarketplacePlatform}
+            labels={catalogLabels}
+            language={language}
+          />
+        </HomeStickyCatalogTabs>
+      </div>
+
+      <div className="flex h-full min-w-0 flex-1 items-center justify-end gap-2.5">
+        <div
+          className={cn(
+            'flex min-w-0 items-center gap-2.5',
+            isMarketplacePlatform && styles.standaloneHeaderActions,
+          )}
+        >
+          <HomeCreatorCenter />
+          <HomeGuide isMarketplacePlatform={isMarketplacePlatform} />
+        </div>
+        {actions}
+      </div>
+    </header>
+  )
+}
+
+export default HomeHeader

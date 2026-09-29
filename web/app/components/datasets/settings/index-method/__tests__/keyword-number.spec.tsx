@@ -11,27 +11,17 @@ describe('KeyWordNumber', () => {
     vi.clearAllMocks()
   })
 
-  const getSlider = () => screen.getByLabelText('datasetSettings.form.numberOfKeywords', {
-    selector: 'input[type="range"]',
-  })
+  const getSlider = () =>
+    screen.getByLabelText('datasetSettings.form.numberOfKeywords', {
+      selector: 'input[type="range"]',
+    })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<KeyWordNumber {...defaultProps} />)
-      expect(screen.getByText(/form\.numberOfKeywords/)).toBeInTheDocument()
-    })
-
     it('should render label text', () => {
       render(<KeyWordNumber {...defaultProps} />)
-      expect(screen.getByText(/form\.numberOfKeywords/)).toBeInTheDocument()
-    })
-
-    it('should render infotip with question icon', () => {
-      render(<KeyWordNumber {...defaultProps} />)
-      const trigger = screen.getByRole('button', { name: 'datasetSettings.form.numberOfKeywords' })
-      const container = trigger.parentElement
-      const questionIcon = container?.querySelector('.i-ri-question-line')
-      expect(questionIcon).toBeInTheDocument()
+      expect(
+        screen.getByText(/form\.numberOfKeywords/, { selector: '.truncate' }),
+      ).toBeInTheDocument()
     })
 
     it('should render slider', () => {
@@ -48,7 +38,7 @@ describe('KeyWordNumber', () => {
   describe('Props', () => {
     it('should display correct keywordNumber value in input', () => {
       render(<KeyWordNumber {...defaultProps} keywordNumber={25} />)
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('textbox', { name: 'datasetSettings.form.numberOfKeywords' })
       expect(input).toHaveValue('25')
     })
 
@@ -84,7 +74,7 @@ describe('KeyWordNumber', () => {
       const handleChange = vi.fn()
       render(<KeyWordNumber {...defaultProps} onKeywordNumberChange={handleChange} />)
 
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('textbox', { name: 'datasetSettings.form.numberOfKeywords' })
       fireEvent.change(input, { target: { value: '30' } })
 
       expect(handleChange).toHaveBeenCalled()
@@ -94,7 +84,7 @@ describe('KeyWordNumber', () => {
       const handleChange = vi.fn()
       render(<KeyWordNumber {...defaultProps} onKeywordNumberChange={handleChange} />)
 
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('textbox', { name: 'datasetSettings.form.numberOfKeywords' })
       fireEvent.change(input, { target: { value: '' } })
 
       expect(handleChange).toHaveBeenCalledWith(0)
@@ -126,13 +116,13 @@ describe('KeyWordNumber', () => {
   describe('Edge Cases', () => {
     it('should handle minimum value (0)', () => {
       render(<KeyWordNumber {...defaultProps} keywordNumber={0} />)
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('textbox', { name: 'datasetSettings.form.numberOfKeywords' })
       expect(input).toHaveValue('0')
     })
 
     it('should handle maximum value (50)', () => {
       render(<KeyWordNumber {...defaultProps} keywordNumber={50} />)
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('textbox', { name: 'datasetSettings.form.numberOfKeywords' })
       expect(input).toHaveValue('50')
     })
 
@@ -151,7 +141,7 @@ describe('KeyWordNumber', () => {
       const handleChange = vi.fn()
       render(<KeyWordNumber {...defaultProps} onKeywordNumberChange={handleChange} />)
 
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('textbox', { name: 'datasetSettings.form.numberOfKeywords' })
 
       // Simulate rapid changes via input with different values
       fireEvent.change(input, { target: { value: '15' } })

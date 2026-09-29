@@ -15,7 +15,9 @@ type EventEmitterMessage = {
 
 export type EventEmitterValue = string | EventEmitterMessage
 
-export const EventEmitterContext = createContext<{ eventEmitter: EventEmitter<EventEmitterValue> | null }>({
+export const EventEmitterContext = createContext<{
+  eventEmitter: EventEmitter<EventEmitterValue> | null
+}>({
   eventEmitter: null,
 })
 

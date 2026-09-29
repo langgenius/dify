@@ -1,30 +1,20 @@
 import type { ToolWithProvider } from '@/app/components/workflow/types'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
-import ToolSettingsPanel from '../tool-settings-panel'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
+import { describe, expect, it, vi } from 'vite-plus/test'
+import { ToolSettingsPanel } from '../tool-settings-panel'
 
-vi.mock('@/app/components/base/tab-slider-plain', () => ({
-  default: ({
-    options,
-    onChange,
-  }: {
-    options: Array<{ value: string, text: string }>
-    onChange: (value: string) => void
-  }) => (
-    <div data-testid="tab-slider">
-      {options.map(option => (
-        <button key={option.value} onClick={() => onChange(option.value)}>{option.text}</button>
-      ))}
-    </div>
+vi.mock('@/app/components/workflow/nodes/tool/components/tool-form', () => ({
+  default: ({ schema }: { schema: Array<{ name: string }> }) => (
+    <div data-testid="tool-form">{schema.map((item) => item.name).join(',')}</div>
   ),
 }))
 
-vi.mock('@/app/components/workflow/nodes/tool/components/tool-form', () => ({
-  default: ({ schema }: { schema: Array<{ name: string }> }) => <div data-testid="tool-form">{schema.map(item => item.name).join(',')}</div>,
-}))
-
 vi.mock('../reasoning-config-form', () => ({
-  default: ({ schemas }: { schemas: Array<{ name: string }> }) => <div data-testid="reasoning-config-form">{schemas.map(item => item.name).join(',')}</div>,
+  default: ({ schemas }: { schemas: Array<{ name: string }> }) => (
+    <div data-testid="reasoning-config-form">{schemas.map((item) => item.name).join(',')}</div>
+  ),
 }))
 
 const baseProps = {
@@ -57,30 +47,49 @@ describe('ToolSettingsPanel', () => {
 
     expect(container).toBeEmptyDOMElement()
 
-    rerender(
-      <ToolSettingsPanel
-        {...baseProps}
-        settingsFormSchemas={[]}
-        paramsFormSchemas={[]}
-      />,
-    )
+    rerender(<ToolSettingsPanel {...baseProps} settingsFormSchemas={[]} paramsFormSchemas={[]} />)
 
     expect(container).toBeEmptyDOMElement()
   })
 
-  it('renders the settings form and lets the tab slider switch to params', () => {
-    const onCurrTypeChange = vi.fn()
+  it('switches the controlled settings and params panels with the keyboard', async () => {
+    const user = userEvent.setup()
+    function ControlledPanel() {
+      const [currType, setCurrType] = useState<'settings' | 'params'>('settings')
+      return <ToolSettingsPanel {...baseProps} currType={currType} onCurrTypeChange={setCurrType} />
+    }
+    render(<ControlledPanel />)
+
+    expect(
+      screen.getByRole('tabpanel', { name: 'plugin.detailPanel.toolSelector.settings' }),
+    ).toHaveTextContent('api_key')
+    await user.click(screen.getByRole('tab', { name: 'plugin.detailPanel.toolSelector.settings' }))
+    await user.keyboard('{ArrowRight}{Enter}')
+    expect(
+      screen.getByRole('tab', { name: 'plugin.detailPanel.toolSelector.params' }),
+    ).toHaveFocus()
+    expect(
+      screen.getByRole('tabpanel', { name: 'plugin.detailPanel.toolSelector.params' }),
+    ).toHaveTextContent('temperature')
+    expect(screen.queryByTestId('tool-form')).not.toBeInTheDocument()
+    await user.keyboard('{ArrowLeft}{Enter}')
+    expect(
+      screen.getByRole('tabpanel', { name: 'plugin.detailPanel.toolSelector.settings' }),
+    ).toHaveTextContent('api_key')
+  })
+
+  it('renders a settings-only form without an orphaned tab panel', () => {
     render(
       <ToolSettingsPanel
         {...baseProps}
-        onCurrTypeChange={onCurrTypeChange}
+        paramsFormSchemas={[]}
+        showTabSlider={false}
+        userSettingsOnly
       />,
     )
-
     expect(screen.getByTestId('tool-form')).toHaveTextContent('api_key')
-    fireEvent.click(screen.getByText('plugin.detailPanel.toolSelector.params'))
-
-    expect(onCurrTypeChange).toHaveBeenCalledWith('params')
+    expect(screen.queryByRole('tablist')).not.toBeInTheDocument()
+    expect(screen.queryByRole('tabpanel')).not.toBeInTheDocument()
   })
 
   it('renders params tips and the reasoning config form for params-only views', () => {
@@ -91,10 +100,13 @@ describe('ToolSettingsPanel', () => {
         settingsFormSchemas={[]}
         userSettingsOnly={false}
         reasoningConfigOnly
+        showTabSlider={false}
       />,
     )
 
-    expect(screen.getAllByText('plugin.detailPanel.toolSelector.paramsTip1')).toHaveLength(2)
+    expect(screen.getByText('plugin.detailPanel.toolSelector.paramsTip1')).toBeInTheDocument()
+    expect(screen.queryByRole('tablist')).not.toBeInTheDocument()
+    expect(screen.queryByRole('tabpanel')).not.toBeInTheDocument()
     expect(screen.getByTestId('reasoning-config-form')).toHaveTextContent('temperature')
   })
 })

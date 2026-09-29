@@ -4,7 +4,7 @@ import { SegmentListContext, useSegmentListContext } from '../segment-list-conte
 
 describe('SegmentListContext', () => {
   it('should expose the default collapsed state', () => {
-    const { result } = renderHook(() => useSegmentListContext(value => value))
+    const { result } = renderHook(() => useSegmentListContext((value) => value))
 
     expect(result.current).toEqual({
       isCollapsed: true,
@@ -18,31 +18,33 @@ describe('SegmentListContext', () => {
   it('should select provider values from the current segment list context', () => {
     const toggleFullScreen = vi.fn()
     const wrapper = ({ children }: { children: ReactNode }) => (
-      <SegmentListContext.Provider value={{
-        isCollapsed: false,
-        fullScreen: true,
-        toggleFullScreen,
-        currSegment: {
-          showModal: true,
-          isEditMode: true,
-          segInfo: { id: 'segment-1' } as never,
-        },
-        currChildChunk: {
-          showModal: true,
-          childChunkInfo: { id: 'child-1' } as never,
-        },
-      }}
+      <SegmentListContext.Provider
+        value={{
+          isCollapsed: false,
+          fullScreen: true,
+          toggleFullScreen,
+          currSegment: {
+            showModal: true,
+            isEditMode: true,
+            segInfo: { id: 'segment-1' } as never,
+          },
+          currChildChunk: {
+            showModal: true,
+            childChunkInfo: { id: 'child-1' } as never,
+          },
+        }}
       >
         {children}
       </SegmentListContext.Provider>
     )
 
     const { result } = renderHook(
-      () => useSegmentListContext(value => ({
-        fullScreen: value.fullScreen,
-        segmentOpen: value.currSegment.showModal,
-        childOpen: value.currChildChunk.showModal,
-      })),
+      () =>
+        useSegmentListContext((value) => ({
+          fullScreen: value.fullScreen,
+          segmentOpen: value.currSegment.showModal,
+          childOpen: value.currChildChunk.showModal,
+        })),
       { wrapper },
     )
 

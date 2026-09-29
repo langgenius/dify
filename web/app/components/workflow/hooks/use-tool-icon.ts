@@ -1,9 +1,11 @@
+import type { RagPipelineDatasourceProviderResponse } from '@dify/contracts/api/console/rag/types.gen'
 import type { TriggerWithProvider } from '../block-selector/types'
 import type { DataSourceNodeType } from '../nodes/data-source/types'
 import type { ToolNodeType } from '../nodes/tool/types'
 import type { PluginTriggerNodeType } from '../nodes/trigger-plugin/types'
 import type { Node, ToolWithProvider } from '../types'
 import { useCallback, useMemo } from 'react'
+import { resolveDatasourceIcon } from '@/app/components/rag-pipeline/utils/datasource-icon'
 import { CollectionType } from '@/app/components/tools/types'
 import useTheme from '@/hooks/use-theme'
 import {
@@ -14,17 +16,21 @@ import {
 } from '@/service/use-tools'
 import { useAllTriggerPlugins } from '@/service/use-triggers'
 import { canFindTool } from '@/utils'
+import { matchesProviderReference } from '@/utils/provider-reference'
 import { useStore, useWorkflowStore } from '../store'
 import { BlockEnum } from '../types'
+import { matchDataSource } from '../utils/plugin-install-check'
 
-const isTriggerPluginNode = (data: Node['data']): data is PluginTriggerNodeType => data.type === BlockEnum.TriggerPlugin
+const isTriggerPluginNode = (data: Node['data']): data is PluginTriggerNodeType =>
+  data.type === BlockEnum.TriggerPlugin
 
 const isToolNode = (data: Node['data']): data is ToolNodeType => data.type === BlockEnum.Tool
 
-const isDataSourceNode = (data: Node['data']): data is DataSourceNodeType => data.type === BlockEnum.DataSource
+const isDataSourceNode = (data: Node['data']): data is DataSourceNodeType =>
+  data.type === BlockEnum.DataSource
 
 type IconValue = ToolWithProvider['icon']
-type ToolCollections = {
+export type ToolIconCollections = {
   buildInTools?: ToolWithProvider[]
   customTools?: ToolWithProvider[]
   workflowTools?: ToolWithProvider[]
@@ -36,8 +42,7 @@ const resolveIconByTheme = (
   icon?: IconValue,
   iconDark?: IconValue,
 ) => {
-  if (currentTheme === 'dark' && iconDark)
-    return iconDark
+  if (currentTheme === 'dark' && iconDark) return iconDark
   return icon
 }
 
@@ -48,18 +53,18 @@ const findTriggerPluginIcon = (
 ) => {
   const targetTriggers = triggers || []
   for (const identifier of identifiers) {
-    if (!identifier)
-      continue
-    const matched = targetTriggers.find(trigger => trigger.id === identifier || canFindTool(trigger.id, identifier))
-    if (matched)
-      return resolveIconByTheme(currentTheme, matched.icon, matched.icon_dark)
+    if (!identifier) continue
+    const matched = targetTriggers.find(
+      (trigger) => trigger.id === identifier || canFindTool(trigger.id, identifier),
+    )
+    if (matched) return resolveIconByTheme(currentTheme, matched.icon, matched.icon_dark)
   }
   return undefined
 }
 
 const getPrimaryToolCollection = (
   providerType: CollectionType | undefined,
-  collections: ToolCollections,
+  collections: ToolIconCollections,
 ) => {
   switch (providerType) {
     case CollectionType.custom:
@@ -76,7 +81,7 @@ const getPrimaryToolCollection = (
 
 const getCollectionsToSearch = (
   providerType: CollectionType | undefined,
-  collections: ToolCollections,
+  collections: ToolIconCollections,
 ) => {
   return [
     getPrimaryToolCollection(providerType, collections),
@@ -94,20 +99,16 @@ const findToolInCollections = (
   const seen = new Set<ToolWithProvider[]>()
 
   for (const collection of collections) {
-    if (!collection || seen.has(collection))
-      continue
+    if (!collection || seen.has(collection)) continue
 
     seen.add(collection)
     const matched = collection.find((toolWithProvider) => {
-      if (canFindTool(toolWithProvider.id, data.provider_id))
-        return true
-      if (data.plugin_id && toolWithProvider.plugin_id === data.plugin_id)
-        return true
+      if (matchesProviderReference(toolWithProvider, data.provider_id)) return true
+      if (data.plugin_id && toolWithProvider.plugin_id === data.plugin_id) return true
       return data.provider_name === toolWithProvider.name
     })
 
-    if (matched)
-      return matched
+    if (matched) return matched
   }
 
   return undefined
@@ -119,14 +120,16 @@ const findToolNodeIcon = ({
   theme,
 }: {
   data: ToolNodeType
-  collections: ToolCollections
+  collections: ToolIconCollections
   theme?: string
 }) => {
-  const matched = findToolInCollections(getCollectionsToSearch(data.provider_type, collections), data)
+  const matched = findToolInCollections(
+    getCollectionsToSearch(data.provider_type, collections),
+    data,
+  )
   if (matched) {
     const matchedIcon = resolveIconByTheme(theme, matched.icon, matched.icon_dark)
-    if (matchedIcon)
-      return matchedIcon
+    if (matchedIcon) return matchedIcon
   }
 
   return resolveIconByTheme(theme, data.provider_icon, data.provider_icon_dark)
@@ -134,12 +137,13 @@ const findToolNodeIcon = ({
 
 const findDataSourceIcon = (
   data: DataSourceNodeType,
-  dataSourceList?: ToolWithProvider[],
+  dataSourceList?: RagPipelineDatasourceProviderResponse[],
 ) => {
-  return dataSourceList?.find(toolWithProvider => toolWithProvider.plugin_id === data.plugin_id)?.icon
+  const provider = matchDataSource(dataSourceList ?? [], data)
+  return provider ? resolveDatasourceIcon(provider.declaration.identity.icon) : undefined
 }
 
-const findNodeIcon = ({
+export const findNodeIcon = ({
   data,
   collections,
   dataSourceList,
@@ -147,13 +151,12 @@ const findNodeIcon = ({
   theme,
 }: {
   data?: Node['data']
-  collections: ToolCollections
-  dataSourceList?: ToolWithProvider[]
+  collections: ToolIconCollections
+  dataSourceList?: RagPipelineDatasourceProviderResponse[]
   triggerPlugins?: TriggerWithProvider[]
   theme?: string
 }) => {
-  if (!data)
-    return undefined
+  if (!data) return undefined
 
   if (isTriggerPluginNode(data)) {
     return findTriggerPluginIcon(
@@ -163,11 +166,9 @@ const findNodeIcon = ({
     )
   }
 
-  if (isToolNode(data))
-    return findToolNodeIcon({ data, collections, theme })
+  if (isToolNode(data)) return findToolNodeIcon({ data, collections, theme })
 
-  if (isDataSourceNode(data))
-    return findDataSourceIcon(data, dataSourceList)
+  if (isDataSourceNode(data)) return findDataSourceIcon(data, dataSourceList)
 
   return undefined
 }
@@ -177,24 +178,35 @@ export const useToolIcon = (data?: Node['data']) => {
   const { data: customTools } = useAllCustomTools()
   const { data: workflowTools } = useAllWorkflowTools()
   const { data: mcpTools } = useAllMCPTools()
-  const dataSourceList = useStore(s => s.dataSourceList)
+  const dataSourceList = useStore((s) => s.dataSourceList)
   const { data: triggerPlugins } = useAllTriggerPlugins()
   const { theme } = useTheme()
 
   const toolIcon = useMemo(() => {
-    return findNodeIcon({
-      data,
-      collections: {
-        buildInTools,
-        customTools,
-        workflowTools,
-        mcpTools,
-      },
-      dataSourceList,
-      triggerPlugins,
-      theme,
-    }) || ''
-  }, [data, dataSourceList, buildInTools, customTools, workflowTools, mcpTools, triggerPlugins, theme])
+    return (
+      findNodeIcon({
+        data,
+        collections: {
+          buildInTools,
+          customTools,
+          workflowTools,
+          mcpTools,
+        },
+        dataSourceList,
+        triggerPlugins,
+        theme,
+      }) || ''
+    )
+  }, [
+    data,
+    dataSourceList,
+    buildInTools,
+    customTools,
+    workflowTools,
+    mcpTools,
+    triggerPlugins,
+    theme,
+  ])
 
   return toolIcon
 }
@@ -208,28 +220,31 @@ export const useGetToolIcon = () => {
   const workflowStore = useWorkflowStore()
   const { theme } = useTheme()
 
-  const getToolIcon = useCallback((data: Node['data']) => {
-    const {
-      buildInTools: storeBuiltInTools,
-      customTools: storeCustomTools,
-      workflowTools: storeWorkflowTools,
-      mcpTools: storeMcpTools,
-      dataSourceList,
-    } = workflowStore.getState()
+  const getToolIcon = useCallback(
+    (data: Node['data']) => {
+      const {
+        buildInTools: storeBuiltInTools,
+        customTools: storeCustomTools,
+        workflowTools: storeWorkflowTools,
+        mcpTools: storeMcpTools,
+        dataSourceList,
+      } = workflowStore.getState()
 
-    return findNodeIcon({
-      data,
-      collections: {
-        buildInTools: storeBuiltInTools ?? buildInTools,
-        customTools: storeCustomTools ?? customTools,
-        workflowTools: storeWorkflowTools ?? workflowTools,
-        mcpTools: storeMcpTools ?? mcpTools,
-      },
-      dataSourceList,
-      triggerPlugins,
-      theme,
-    })
-  }, [workflowStore, triggerPlugins, buildInTools, customTools, workflowTools, mcpTools, theme])
+      return findNodeIcon({
+        data,
+        collections: {
+          buildInTools: storeBuiltInTools ?? buildInTools,
+          customTools: storeCustomTools ?? customTools,
+          workflowTools: storeWorkflowTools ?? workflowTools,
+          mcpTools: storeMcpTools ?? mcpTools,
+        },
+        dataSourceList,
+        triggerPlugins,
+        theme,
+      })
+    },
+    [workflowStore, triggerPlugins, buildInTools, customTools, workflowTools, mcpTools, theme],
+  )
 
   return getToolIcon
 }

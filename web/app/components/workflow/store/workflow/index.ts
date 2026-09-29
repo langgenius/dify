@@ -1,8 +1,5 @@
 import type { TemporalState } from 'zundo'
-import type {
-  StateCreator,
-  StoreApi,
-} from 'zustand'
+import type { StateCreator, StoreApi } from 'zustand'
 import type { ChatVariableSliceShape } from './chat-variable-slice'
 import type { CommentSliceShape } from './comment-slice'
 import type { InspectVarsSliceShape } from './debug/inspect-vars-slice'
@@ -21,9 +18,7 @@ import type { RagPipelineSliceShape } from '@/app/components/rag-pipeline/store'
 import type { WorkflowSliceShape as WorkflowAppSliceShape } from '@/app/components/workflow-app/store/workflow/workflow-slice'
 import { use } from 'react'
 import { temporal } from 'zundo'
-import {
-  useStore as useZustandStore,
-} from 'zustand'
+import { useStore as useZustandStore } from 'zustand'
 import { createStore } from 'zustand/vanilla'
 import { WorkflowContext } from '@/app/components/workflow/context'
 import { createChatVariableSlice } from './chat-variable-slice'
@@ -39,33 +34,29 @@ import {
 } from './history-slice'
 import { createLayoutSlice } from './layout-slice'
 import { createNodeSlice } from './node-slice'
-
 import { createPanelSlice } from './panel-slice'
 import { createToolSlice } from './tool-slice'
 import { createVersionSlice } from './version-slice'
 import { createWorkflowDraftSlice } from './workflow-draft-slice'
 import { createWorkflowSlice } from './workflow-slice'
 
-export type SliceFromInjection
-  = Partial<WorkflowAppSliceShape>
-    & Partial<RagPipelineSliceShape>
+export type SliceFromInjection = Partial<WorkflowAppSliceShape> & Partial<RagPipelineSliceShape>
 
-export type Shape
-  = ChatVariableSliceShape
-    & EnvVariableSliceShape
-    & FormSliceShape
-    & HelpLineSliceShape
-    & HistorySliceShape
-    & NodeSliceShape
-    & PanelSliceShape
-    & ToolSliceShape
-    & VersionSliceShape
-    & WorkflowDraftSliceShape
-    & WorkflowSliceShape
-    & CommentSliceShape
-    & InspectVarsSliceShape
-    & LayoutSliceShape
-    & SliceFromInjection
+export type Shape = ChatVariableSliceShape &
+  EnvVariableSliceShape &
+  FormSliceShape &
+  HelpLineSliceShape &
+  HistorySliceShape &
+  NodeSliceShape &
+  PanelSliceShape &
+  ToolSliceShape &
+  VersionSliceShape &
+  WorkflowDraftSliceShape &
+  WorkflowSliceShape &
+  CommentSliceShape &
+  InspectVarsSliceShape &
+  LayoutSliceShape &
+  SliceFromInjection
 
 type WorkflowStoreApi = StoreApi<Shape> & {
   temporal: StoreApi<TemporalState<WorkflowHistoryTemporalState>>
@@ -97,7 +88,7 @@ export const createWorkflowStore = (params: CreateWorkflowStoreParams) => {
         ...createWorkflowSlice(...args),
         ...createInspectVarsSlice(...args),
         ...createLayoutSlice(...args),
-        ...(injectWorkflowStoreSliceFn?.(...args) || {} as SliceFromInjection),
+        ...(injectWorkflowStoreSliceFn?.(...args) || ({} as SliceFromInjection)),
       }),
       {
         partialize: getWorkflowHistoryTemporalState,
@@ -109,8 +100,7 @@ export const createWorkflowStore = (params: CreateWorkflowStoreParams) => {
 
 export function useStore<T>(selector: (state: Shape) => T): T {
   const store = use(WorkflowContext)
-  if (!store)
-    throw new Error('Missing WorkflowContext.Provider in the tree')
+  if (!store) throw new Error('Missing WorkflowContext.Provider in the tree')
 
   return useZustandStore(store, selector)
 }

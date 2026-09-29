@@ -1,5 +1,8 @@
-import { fireEvent, screen, within } from '@testing-library/react'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import { detectPlatform } from '@tanstack/react-hotkeys'
+import { act, fireEvent, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import ZoomInOut from '../zoom-in-out'
 
 const {
@@ -37,34 +40,46 @@ vi.mock('reactflow', () => ({
   useViewport: () => mockViewport,
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodesSyncDraft: () => ({
-    handleSyncWorkflowDraft: mockHandleSyncWorkflowDraft,
-  }),
-  useWorkflowReadOnly: () => ({
-    workflowReadOnly,
-    getWorkflowReadOnly: () => workflowReadOnly,
-  }),
-}))
+vi.mock('../../hooks/use-nodes-sync-draft', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../hooks/use-nodes-sync-draft')>()
+
+  return {
+    ...actual,
+    useNodesSyncDraft: () => ({
+      handleSyncWorkflowDraft: mockHandleSyncWorkflowDraft,
+    }),
+  }
+})
+
+vi.mock('../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../hooks/use-workflow')>()
+
+  return {
+    ...actual,
+    useWorkflowReadOnly: () => ({
+      workflowReadOnly,
+      getWorkflowReadOnly: () => workflowReadOnly,
+    }),
+  }
+})
 
 vi.mock('../tip-popup', () => ({
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }))
 
 const renderZoomInOut = (ui: React.ReactElement = <ZoomInOut />) =>
-  renderWithSystemFeatures(ui, {
+  renderWithConsoleQuery(ui, {
     systemFeatures: { enable_collaboration_mode: collaborationEnabled },
   })
 
 const getZoomControls = () => {
   const label = Array.from(document.querySelectorAll('button')).find((element) => {
-    return /^\d+%$/.test(element.textContent ?? '') && element.className.includes('w-[34px]')
+    return /^\d+%$/.test(element.textContent ?? '') && element.className.includes('w-8.5')
   })
   const zoomOutIcon = document.querySelector('.i-ri-zoom-out-line')
   const zoomInIcon = document.querySelector('.i-ri-zoom-in-line')
 
-  if (!label || !zoomOutIcon || !zoomInIcon)
-    throw new Error('Missing zoom controls')
+  if (!label || !zoomOutIcon || !zoomInIcon) throw new Error('Missing zoom controls')
 
   return {
     zoomOutTrigger: zoomOutIcon.parentElement as HTMLElement,
@@ -84,6 +99,25 @@ describe('workflow zoom controls', () => {
     mockViewport.zoom = 1
     workflowReadOnly = false
     collaborationEnabled = true
+  })
+
+  it.each([
+    { key: '1', modifier: 'Mod', zoom: undefined },
+    { key: '1', modifier: 'Shift', zoom: 1 },
+    { key: '5', modifier: 'Shift', zoom: 0.5 },
+  ])('applies $modifier+$key from the focused zoom menu', async ({ key, modifier, zoom }) => {
+    const user = userEvent.setup()
+    renderZoomInOut()
+    await user.click(screen.getByRole('button', { name: '100%' }))
+    const item = screen.getByRole('menuitem', { name: '200%' })
+    act(() => item.focus())
+    const mod = detectPlatform() === 'mac' ? 'Meta' : 'Control'
+    const heldKey = modifier === 'Mod' ? mod : modifier
+    await user.keyboard(`{${heldKey}>}${key}{/${heldKey}}`)
+    if (zoom === undefined) expect(mockFitView).toHaveBeenCalledTimes(1)
+    else expect(mockZoomTo).toHaveBeenCalledExactlyOnceWith(zoom)
+    expect(mockHandleSyncWorkflowDraft).toHaveBeenCalledTimes(1)
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
   })
 
   it('zooms out and zooms in when the viewport is within the supported range', () => {
@@ -144,13 +178,43 @@ describe('workflow zoom controls', () => {
     expect(mockToggleUserCursors).toHaveBeenCalledTimes(1)
   })
 
+  it('exposes display settings as checked menu items and updates them with the keyboard', async () => {
+    const user = userEvent.setup()
+    const DisplaySettings = () => {
+      const [showMiniMap, setShowMiniMap] = useState(true)
+      return (
+        <ZoomInOut
+          showMiniMap={showMiniMap}
+          onToggleMiniMap={() => setShowMiniMap((value) => !value)}
+          showUserCursors={false}
+          showUserComments
+        />
+      )
+    }
+    renderZoomInOut(<DisplaySettings />)
+
+    await user.click(screen.getByRole('button', { name: '100%' }))
+    const miniMap = screen.getByRole('menuitemcheckbox', { name: 'workflow.operator.showMiniMap' })
+    expect(miniMap).toBeChecked()
+    expect(
+      screen.getByRole('menuitemcheckbox', { name: 'workflow.operator.showUserCursors' }),
+    ).not.toBeChecked()
+    expect(
+      screen.getByRole('menuitemcheckbox', { name: 'workflow.operator.showUserComments' }),
+    ).toBeChecked()
+    expect(screen.getByRole('menuitem', { name: '200%' })).toBeInTheDocument()
+
+    miniMap.focus()
+    await user.keyboard('{Enter}')
+    await user.click(screen.getByRole('button', { name: '100%' }))
+    expect(
+      screen.getByRole('menuitemcheckbox', { name: 'workflow.operator.showMiniMap' }),
+    ).not.toBeChecked()
+    expect(mockHandleSyncWorkflowDraft).not.toHaveBeenCalled()
+  })
+
   it('keeps the show-user-comments action disabled in comment mode', () => {
-    renderZoomInOut(
-      <ZoomInOut
-        isCommentMode
-        onToggleUserComments={mockToggleUserComments}
-      />,
-    )
+    renderZoomInOut(<ZoomInOut isCommentMode onToggleUserComments={mockToggleUserComments} />)
 
     const menu = openZoomMenu()
     fireEvent.click(menu.getByText('workflow.operator.showUserComments'))

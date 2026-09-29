@@ -2,8 +2,7 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-
-import { zGetCodeBasedExtensionQuery, zGetCodeBasedExtensionResponse } from './zod.gen'
+import { zGetCodeBasedExtensionQuery, zGetCodeBasedExtensionResponse } from './zod.gen.ts'
 
 /**
  * Get code-based extension data by module name
@@ -17,7 +16,7 @@ export const get = oc
     path: '/code-based-extension',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetCodeBasedExtensionQuery.optional() }))
+  .input(z.object({ query: zGetCodeBasedExtensionQuery }))
   .output(zGetCodeBasedExtensionResponse)
 
 export const codeBasedExtension = {

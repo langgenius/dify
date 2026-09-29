@@ -4,7 +4,7 @@ import { WorkflowContextProvider } from '../context'
 import { useStore, useWorkflowStore } from '../store'
 
 const StoreConsumer = () => {
-  const showSingleRunPanel = useStore(s => s.showSingleRunPanel)
+  const showSingleRunPanel = useStore((s) => s.showSingleRunPanel)
   const store = useWorkflowStore()
 
   return (

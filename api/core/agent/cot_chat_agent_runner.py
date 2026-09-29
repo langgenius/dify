@@ -1,4 +1,5 @@
 import json
+from typing import override
 
 from core.agent.cot_agent_runner import CotAgentRunner
 from graphon.file import file_manager
@@ -66,6 +67,7 @@ class CotChatAgentRunner(CotAgentRunner):
 
         return prompt_messages
 
+    @override
     def _organize_prompt_messages(self) -> list[PromptMessage]:
         """
         Organize

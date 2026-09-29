@@ -1,0 +1,45 @@
+"""Unit tests for app payload-rendering helpers — independent of
+HTTP plumbing or DB. Pin the response shapes that are CLI contracts.
+"""
+
+from __future__ import annotations
+
+import pytest
+from sqlalchemy.orm import Session
+
+from controllers.openapi.apps import (  # pyright: ignore[reportPrivateUsage]
+    _EMPTY_PARAMETERS,
+    parameters_payload,
+)
+from controllers.service_api.app.error import AppUnavailableError
+from models.model import App
+from tests.unit_tests.model_factories import make_app
+
+
+def _app() -> App:
+    return make_app(app_id="app1", name="X", description="d", enable_site=False, max_active_requests=0)
+
+
+def test_parameters_payload_raises_app_unavailable_when_no_config(unbound_session: Session):
+    app = _app()
+
+    with pytest.raises(AppUnavailableError):
+        parameters_payload(app, session=unbound_session)
+
+
+def test_empty_parameters_constant_matches_describe_fallback_shape():
+    """The fallback dict served by /describe when an app has no config
+    must match the spec's stated keys (opening_statement, suggested_questions,
+    user_input_form, file_upload, system_parameters)."""
+    assert set(_EMPTY_PARAMETERS.keys()) == {
+        "opening_statement",
+        "suggested_questions",
+        "user_input_form",
+        "file_upload",
+        "system_parameters",
+    }
+    assert _EMPTY_PARAMETERS["suggested_questions"] == []
+    assert _EMPTY_PARAMETERS["user_input_form"] == []
+    assert _EMPTY_PARAMETERS["opening_statement"] is None
+    assert _EMPTY_PARAMETERS["file_upload"] is None
+    assert _EMPTY_PARAMETERS["system_parameters"] == {}

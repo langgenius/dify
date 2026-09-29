@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Any
+from typing import Any, override
 from uuid import UUID, uuid4
 
 from numpy import ndarray
@@ -62,20 +62,22 @@ class PGVectoRS(BaseVector):
         class _Table(CollectionORM):
             __tablename__ = collection_name
             __table_args__ = {"extend_existing": True}
-            id: Mapped[UUID] = mapped_column(
+            id: Mapped[UUID] = mapped_column(  # pyrefly: ignore[missing-override-decorator]
                 postgresql.UUID(as_uuid=True),
                 primary_key=True,
             )
-            text: Mapped[str]
-            meta: Mapped[dict[str, Any]] = mapped_column(postgresql.JSONB)
-            vector: Mapped[ndarray] = mapped_column(VECTOR(dim))
+            text: Mapped[str]  # pyrefly: ignore[missing-override-decorator]
+            meta: Mapped[dict[str, Any]] = mapped_column(postgresql.JSONB)  # pyrefly: ignore[missing-override-decorator]
+            vector: Mapped[ndarray] = mapped_column(VECTOR(dim))  # pyrefly: ignore[missing-override-decorator]
 
         self._table = _Table
         self._distance_op = "<=>"
 
+    @override
     def get_type(self) -> str:
         return VectorType.PGVECTO_RS
 
+    @override
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         self.create_collection(len(embeddings[0]))
         self.add_texts(texts, embeddings)
@@ -112,6 +114,7 @@ class PGVectoRS(BaseVector):
                 session.execute(index_statement)
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
+    @override
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         pks = []
         with sessionmaker(bind=self._client).begin() as session:
@@ -129,6 +132,7 @@ class PGVectoRS(BaseVector):
 
         return pks
 
+    @override
     def get_ids_by_metadata_field(self, key: str, value: str):
         result = None
         with Session(self._client) as session:
@@ -139,6 +143,7 @@ class PGVectoRS(BaseVector):
         else:
             return None
 
+    @override
     def delete_by_metadata_field(self, key: str, value: str):
         ids = self.get_ids_by_metadata_field(key, value)
         if ids:
@@ -146,6 +151,7 @@ class PGVectoRS(BaseVector):
                 select_statement = sql_text(f"DELETE FROM {self._collection_name} WHERE id = ANY(:ids)")
                 session.execute(select_statement, {"ids": ids})
 
+    @override
     def delete_by_ids(self, ids: list[str]):
         with Session(self._client) as session:
             select_statement = sql_text(
@@ -159,10 +165,12 @@ class PGVectoRS(BaseVector):
                     select_statement = sql_text(f"DELETE FROM {self._collection_name} WHERE id = ANY(:ids)")
                     session.execute(select_statement, {"ids": ids})
 
+    @override
     def delete(self):
         with sessionmaker(bind=self._client).begin() as session:
             session.execute(sql_text(f"DROP TABLE IF EXISTS {self._collection_name}"))
 
+    @override
     def text_exists(self, id: str) -> bool:
         with Session(self._client) as session:
             select_statement = sql_text(
@@ -171,6 +179,7 @@ class PGVectoRS(BaseVector):
             result = session.execute(select_statement, {"doc_id": id}).fetchall()
         return len(result) > 0
 
+    @override
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         with Session(self._client) as session:
             stmt = (
@@ -201,11 +210,13 @@ class PGVectoRS(BaseVector):
                 docs.append(doc)
         return docs
 
+    @override
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         return []
 
 
 class PGVectoRSFactory(AbstractVectorFactory):
+    @override
     def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> PGVectoRS:
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]

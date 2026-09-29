@@ -1,0 +1,23 @@
+{
+  "allTags": "Bütün etiketlər",
+  "clearSelectedTags": "Seçilmiş etiketləri təmizlə: {{tags}}",
+  "searchTags": "Etiketləri axtar",
+  "tags.agent": "Agent",
+  "tags.business": "Biznes",
+  "tags.design": "Dizayn",
+  "tags.education": "Təhsil",
+  "tags.entertainment": "Əyləncə",
+  "tags.finance": "Maliyyə",
+  "tags.image": "Şəkil",
+  "tags.medical": "Tibb",
+  "tags.news": "Xəbərlər",
+  "tags.other": "Digər",
+  "tags.productivity": "Məhsuldarlıq",
+  "tags.rag": "RAG",
+  "tags.search": "Axtarış",
+  "tags.social": "Sosial",
+  "tags.travel": "Səyahət",
+  "tags.utilities": "Yardımçı vasitələr",
+  "tags.videos": "Videolar",
+  "tags.weather": "Hava durumu"
+}

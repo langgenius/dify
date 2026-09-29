@@ -1,48 +1,50 @@
 'use client'
-import type { AppIconType } from '@/types/app'
+import type {
+  AppDetailWithSite,
+  UpdateAppPayload,
+} from '@dify/contracts/api/console/apps/types.gen'
+import type { Hotkey } from '@tanstack/react-hotkeys'
+import type { IconPickerDefaultValue, IconPickerValue } from '@/app/components/base/icon-picker'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Input } from '@langgenius/dify-ui/input'
+import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { toast } from '@langgenius/dify-ui/toast'
-import { useDebounceFn, useKeyPress } from 'ahooks'
+import { Textarea } from '@langgenius/dify-ui/textarea'
+import { formatForDisplay, matchesKeyboardEvent } from '@tanstack/react-hotkeys'
+import { useQuery } from '@tanstack/react-query'
+import { useDebounceFn } from 'ahooks'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import Input from '@/app/components/base/input'
-import Textarea from '@/app/components/base/textarea'
+import { IconPickerDialog } from '@/app/components/base/icon-picker'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
-import { useProviderContext } from '@/context/provider-context'
+import { toast } from '@/app/notifications'
+import { deploymentEditionAtom } from '@/features/system-features/state'
+import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
-import AppIconPicker from '../../base/app-icon-picker'
-import ShortcutsName from '../../workflow/shortcuts-name'
 
 export type CreateAppModalProps = {
   show: boolean
   isEditModal?: boolean
   appName: string
   appDescription: string
-  appIconType: AppIconType | null
-  appIcon: string
+  appIconType: AppDetailWithSite['icon_type']
+  appIcon: AppDetailWithSite['icon']
   appIconBackground?: string | null
   appIconUrl?: string | null
   appMode?: string
   appUseIconAsAnswerIcon?: boolean
   max_active_requests?: number | null
-  onConfirm: (info: {
-    name: string
-    icon_type: AppIconType
-    icon: string
-    icon_background?: string
-    description: string
-    use_icon_as_answer_icon?: boolean
-    max_active_requests?: number | null
-  }) => Promise<void>
+  onConfirm: (info: UpdateAppPayload) => Promise<void>
   confirmDisabled?: boolean
   onHide: () => void
 }
 
-type CreateAppPayload = Parameters<CreateAppModalProps['onConfirm']>[0]
+const SUBMIT_APP_HOTKEY = 'Mod+Enter' satisfies Hotkey
 
 const CreateAppModal = ({
   show = false,
@@ -60,156 +62,284 @@ const CreateAppModal = ({
   confirmDisabled,
   onHide,
 }: CreateAppModalProps) => {
-  const { t } = useTranslation()
+  const nameInputId = React.useId()
+  const descriptionInputId = React.useId()
+  const maxActiveRequestsInputId = React.useId()
+  const { t } = useTranslation(['app', 'common', 'explore'])
 
   const [name, setName] = React.useState(appName)
-  const [appIcon, setAppIcon] = useState(
-    () => appIconType === 'image'
-      ? { type: 'image' as const, fileId: _appIcon, url: appIconUrl }
-      : { type: 'emoji' as const, icon: _appIcon, background: appIconBackground },
-  )
-  const [showAppIconPicker, setShowAppIconPicker] = useState(false)
+  const [selectedIcon, setSelectedIcon] = useState<IconPickerValue | null>(null)
+  const pickerDefaultValue: IconPickerDefaultValue | undefined =
+    selectedIcon ??
+    (appIconType === 'image' && _appIcon
+      ? { type: 'image', fileId: _appIcon, url: appIconUrl ?? '' }
+      : appIconType === 'emoji' && _appIcon
+        ? { type: 'emoji', icon: _appIcon, background: appIconBackground }
+        : undefined)
+  const currentIcon = selectedIcon
+    ? {
+        icon_type: selectedIcon.type,
+        icon: selectedIcon.type === 'emoji' ? selectedIcon.icon : selectedIcon.fileId,
+        icon_background: selectedIcon.type === 'emoji' ? selectedIcon.background : undefined,
+        icon_url: selectedIcon.type === 'image' ? selectedIcon.url : undefined,
+      }
+    : {
+        icon_type: appIconType,
+        icon: _appIcon,
+        icon_background: appIconBackground,
+        icon_url: appIconUrl,
+      }
+  const {
+    icon_type: currentIconType,
+    icon: currentIconValue,
+    icon_background: currentIconBackground,
+  } = currentIcon
+  const [showIconPicker, setShowIconPicker] = useState(false)
   const [description, setDescription] = useState(appDescription || '')
   const [useIconAsAnswerIcon, setUseIconAsAnswerIcon] = useState(appUseIconAsAnswerIcon || false)
 
   const [maxActiveRequestsInput, setMaxActiveRequestsInput] = useState(
-    max_active_requests !== null && max_active_requests !== undefined ? String(max_active_requests) : '',
+    max_active_requests !== null && max_active_requests !== undefined
+      ? String(max_active_requests)
+      : '',
   )
 
-  const { plan, enableBilling } = useProviderContext()
-  const isAppsFull = (enableBilling && plan.usage.buildApps >= plan.total.buildApps)
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
+  const { data: appQuota } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      enabled: deploymentEdition === 'CLOUD' && !isEditModal,
+      select: (data) => data.apps,
+    }),
+  )
+  const isAppQuotaUnavailable =
+    deploymentEdition === 'CLOUD' && !isEditModal && appQuota === undefined
+  // A limit of 0 means unlimited.
+  const isAppsFull =
+    deploymentEdition === 'CLOUD' &&
+    appQuota !== undefined &&
+    appQuota.limit > 0 &&
+    appQuota.size >= appQuota.limit
 
   const submit = useCallback(() => {
+    if (confirmDisabled || (!isEditModal && (isAppQuotaUnavailable || isAppsFull))) return
     if (!name.trim()) {
-      toast(t('appCustomize.nameRequired', { ns: 'explore' }), { type: 'error' })
+      toast(
+        t(($) => $['appCustomize.nameRequired'], { ns: 'explore' }),
+        { type: 'error' },
+      )
       return
     }
     const parsedMaxActiveRequests = Number(maxActiveRequestsInput)
     const isValid = maxActiveRequestsInput.trim() !== '' && !Number.isNaN(parsedMaxActiveRequests)
-    const payload: CreateAppPayload = {
+    const payload: UpdateAppPayload = {
       name,
-      icon_type: appIcon.type,
-      icon: appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId,
-      icon_background: appIcon.type === 'emoji' ? appIcon.background! : undefined,
+      icon_type: currentIconType,
+      icon: currentIconValue,
+      icon_background: currentIconBackground,
       description,
       use_icon_as_answer_icon: useIconAsAnswerIcon,
     }
-    if (isValid)
-      payload.max_active_requests = parsedMaxActiveRequests
+    if (isValid) payload.max_active_requests = parsedMaxActiveRequests
 
     onConfirm(payload)
     onHide()
-  }, [name, appIcon, description, useIconAsAnswerIcon, onConfirm, onHide, t, maxActiveRequestsInput])
+  }, [
+    confirmDisabled,
+    isEditModal,
+    isAppQuotaUnavailable,
+    isAppsFull,
+    name,
+    currentIconType,
+    currentIconValue,
+    currentIconBackground,
+    description,
+    useIconAsAnswerIcon,
+    onConfirm,
+    onHide,
+    t,
+    maxActiveRequestsInput,
+  ])
 
   const { run: handleSubmit } = useDebounceFn(submit, { wait: 300 })
 
-  useKeyPress(['meta.enter', 'ctrl.enter'], () => {
-    if (show && !(!isEditModal && isAppsFull) && name.trim())
-      handleSubmit()
-  })
+  const submitDisabled =
+    isAppQuotaUnavailable || (!isEditModal && isAppsFull) || !name.trim() || !!confirmDisabled
 
   return (
     <>
-      <Dialog open={show} onOpenChange={open => !open && onHide()} disablePointerDismissal>
-        <DialogContent className="px-8">
-          <DialogCloseButton />
+      <Dialog open={show} onOpenChange={(open) => !open && onHide()} disablePointerDismissal>
+        <DialogContent
+          onKeyDown={(event) => {
+            if (
+              !show ||
+              submitDisabled ||
+              showIconPicker ||
+              event.defaultPrevented ||
+              event.nativeEvent.isComposing ||
+              !(event.target instanceof Node) ||
+              !event.currentTarget.contains(event.target) ||
+              !matchesKeyboardEvent(event.nativeEvent, SUBMIT_APP_HOTKEY)
+            )
+              return
+            event.preventDefault()
+            event.stopPropagation()
+            if (event.repeat) return
+            handleSubmit()
+          }}
+          backdropProps={{ forceRender: true }}
+          className="px-8"
+        >
+          <DialogClose
+            render={
+              <IconButton
+                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                size="lg"
+                className="absolute inset-e-6 top-6"
+              >
+                <span aria-hidden className="i-ri-close-line size-4" />
+              </IconButton>
+            }
+          />
           {isEditModal && (
-            <DialogTitle className="mb-9 text-xl leading-[30px] font-semibold text-text-primary">{t('editAppTitle', { ns: 'app' })}</DialogTitle>
+            <DialogTitle className="text-xl leading-7.5 font-semibold text-text-primary">
+              {t(($) => $.editAppTitle, { ns: 'app' })}
+            </DialogTitle>
           )}
           {!isEditModal && (
-            <DialogTitle className="mb-9 text-xl leading-[30px] font-semibold text-text-primary">{t('appCustomize.title', { ns: 'explore', name: appName })}</DialogTitle>
+            <DialogTitle className="text-xl leading-7.5 font-semibold text-text-primary">
+              {t(($) => $['appCustomize.title'], { ns: 'explore', name: appName })}
+            </DialogTitle>
           )}
           <div className="mb-9">
             {/* icon & name */}
             <div className="pt-2">
-              <div className="py-2 text-sm leading-[20px] font-medium text-text-primary">{t('newApp.captionName', { ns: 'app' })}</div>
+              <label
+                htmlFor={nameInputId}
+                className="block py-2 text-sm leading-5 font-medium text-text-primary"
+              >
+                {t(($) => $['newApp.captionName'], { ns: 'app' })}
+              </label>
               <div className="flex items-center justify-between space-x-2">
-                <AppIcon
-                  size="large"
-                  onClick={() => { setShowAppIconPicker(true) }}
-                  className="cursor-pointer"
-                  iconType={appIcon.type}
-                  icon={appIcon.type === 'image' ? appIcon.fileId : appIcon.icon}
-                  background={appIcon.type === 'image' ? undefined : appIcon.background}
-                  imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
-                />
+                <button
+                  type="button"
+                  aria-label={t(($) => $['iconPicker.title'], { ns: 'app' })}
+                  className="shrink-0 cursor-pointer rounded-[10px] focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                  onClick={() => setShowIconPicker(true)}
+                >
+                  <AppIcon
+                    decorative
+                    size="large"
+                    iconType={currentIcon.icon_type === 'link' ? 'image' : currentIcon.icon_type}
+                    icon={currentIcon.icon ?? undefined}
+                    background={currentIcon.icon_background}
+                    imageUrl={
+                      currentIcon.icon_type === 'link' ? currentIcon.icon : currentIcon.icon_url
+                    }
+                  />
+                </button>
                 <Input
+                  id={nameInputId}
                   value={name}
-                  onChange={e => setName(e.target.value)}
-                  placeholder={t('newApp.appNamePlaceholder', { ns: 'app' }) || ''}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder={t(($) => $['newApp.appNamePlaceholder'], { ns: 'app' }) || ''}
                   className="h-10 grow"
                 />
               </div>
             </div>
             {/* description */}
             <div className="pt-2">
-              <div className="py-2 text-sm leading-[20px] font-medium text-text-primary">{t('newApp.captionDescription', { ns: 'app' })}</div>
+              <label
+                htmlFor={descriptionInputId}
+                className="block py-2 text-sm leading-5 font-medium text-text-primary"
+              >
+                {t(($) => $['newApp.captionDescription'], { ns: 'app' })}
+              </label>
               <Textarea
+                id={descriptionInputId}
                 className="resize-none"
-                placeholder={t('newApp.appDescriptionPlaceholder', { ns: 'app' }) || ''}
+                placeholder={t(($) => $['newApp.appDescriptionPlaceholder'], { ns: 'app' }) || ''}
                 value={description}
-                onChange={e => setDescription(e.target.value)}
+                onValueChange={(value) => setDescription(value)}
               />
             </div>
             {/* answer icon */}
-            {isEditModal && (appMode === AppModeEnum.CHAT || appMode === AppModeEnum.ADVANCED_CHAT || appMode === AppModeEnum.AGENT_CHAT) && (
-              <div className="pt-2">
-                <div className="flex items-center justify-between">
-                  <div className="py-2 text-sm leading-[20px] font-medium text-text-primary">{t('answerIcon.title', { ns: 'app' })}</div>
-                  <Switch
-                    checked={useIconAsAnswerIcon}
-                    onCheckedChange={v => setUseIconAsAnswerIcon(v)}
-                  />
+            {isEditModal &&
+              (appMode === AppModeEnum.CHAT ||
+                appMode === AppModeEnum.ADVANCED_CHAT ||
+                appMode === AppModeEnum.AGENT_CHAT) && (
+                <div className="pt-2">
+                  <div className="flex items-center justify-between">
+                    <div className="py-2 text-sm leading-5 font-medium text-text-primary">
+                      {t(($) => $['answerIcon.title'], { ns: 'app' })}
+                    </div>
+                    <Switch
+                      checked={useIconAsAnswerIcon}
+                      onCheckedChange={(v) => setUseIconAsAnswerIcon(v)}
+                    />
+                  </div>
+                  <p className="body-xs-regular text-text-tertiary">
+                    {t(($) => $['answerIcon.descriptionInExplore'], { ns: 'app' })}
+                  </p>
                 </div>
-                <p className="body-xs-regular text-text-tertiary">{t('answerIcon.descriptionInExplore', { ns: 'app' })}</p>
-              </div>
-            )}
+              )}
             {isEditModal && (
               <div className="pt-2">
-                <div className="mt-2 mb-2 text-sm leading-[20px] font-medium text-text-primary">{t('maxActiveRequests', { ns: 'app' })}</div>
+                <label
+                  htmlFor={maxActiveRequestsInputId}
+                  className="mt-2 mb-2 block text-sm leading-5 font-medium text-text-primary"
+                >
+                  {t(($) => $.maxActiveRequests, { ns: 'app' })}
+                </label>
                 <Input
+                  id={maxActiveRequestsInputId}
                   type="number"
                   min={1}
-                  placeholder={t('maxActiveRequestsPlaceholder', { ns: 'app' })}
+                  placeholder={t(($) => $.maxActiveRequestsPlaceholder, { ns: 'app' })}
                   value={maxActiveRequestsInput}
                   onChange={(e) => {
                     setMaxActiveRequestsInput(e.target.value)
                   }}
                   className="h-10 w-full"
                 />
-                <p className="mt-2 mb-0 body-xs-regular text-text-tertiary">{t('maxActiveRequestsTip', { ns: 'app' })}</p>
+                <p className="mt-2 mb-0 body-xs-regular text-text-tertiary">
+                  {t(($) => $.maxActiveRequestsTip, { ns: 'app' })}
+                </p>
               </div>
             )}
             {!isEditModal && isAppsFull && <AppsFull className="mt-4" loc="app-explore-create" />}
           </div>
           <div className="flex flex-row-reverse">
             <Button
-              disabled={(!isEditModal && isAppsFull) || !name.trim() || confirmDisabled}
-              className="ml-2 w-24 gap-1"
+              disabled={submitDisabled}
+              className="ml-2 w-24"
               variant="primary"
               onClick={handleSubmit}
             >
-              <span>{!isEditModal ? t('operation.create', { ns: 'common' }) : t('operation.save', { ns: 'common' })}</span>
-              <ShortcutsName keys={['ctrl', '↵']} bgColor="white" />
+              <span>
+                {!isEditModal
+                  ? t(($) => $['operation.create'], { ns: 'common' })
+                  : t(($) => $['operation.save'], { ns: 'common' })}
+              </span>
+              <KbdGroup>
+                {formatForDisplay(SUBMIT_APP_HOTKEY, { parts: true }).map((key) => (
+                  <Kbd key={key} color="white">
+                    {key}
+                  </Kbd>
+                ))}
+              </KbdGroup>
             </Button>
-            <Button className="w-24" onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
+            <Button className="w-24" onClick={onHide}>
+              {t(($) => $['operation.cancel'], { ns: 'common' })}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
-      {showAppIconPicker && (
-        <AppIconPicker
-          initialEmoji={appIcon.type === 'emoji'
-            ? { icon: appIcon.icon, background: appIcon.background }
-            : undefined}
-          onSelect={(payload) => {
-            setAppIcon(payload)
-            setShowAppIconPicker(false)
-          }}
-          onClose={() => {
-            setShowAppIconPicker(false)
-          }}
-        />
-      )}
+      <IconPickerDialog
+        open={showIconPicker}
+        defaultValue={pickerDefaultValue}
+        onOpenChange={setShowIconPicker}
+        onConfirm={setSelectedIcon}
+      />
     </>
   )
 }

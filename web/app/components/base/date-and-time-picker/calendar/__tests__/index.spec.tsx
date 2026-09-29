@@ -48,16 +48,6 @@ describe('Calendar', () => {
       const buttons = screen.getAllByRole('button')
       expect(buttons).toHaveLength(7)
     })
-
-    it('should accept wrapperClassName prop without errors', () => {
-      const props = createCalendarProps({ wrapperClassName: 'custom-class' })
-      const { container } = render(<Calendar {...props} />)
-
-      // Verify the component renders successfully with wrapperClassName
-      const dayLabels = screen.getAllByText(/daysInWeek/)
-      expect(dayLabels).toHaveLength(7)
-      expect(container.firstChild)!.toHaveClass('custom-class')
-    })
   })
 
   // Interaction tests

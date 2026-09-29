@@ -1,5 +1,5 @@
 import type { ConversationVariable } from '@/app/components/workflow/types'
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
@@ -22,10 +22,14 @@ vi.mock('@/hooks/use-timestamp', () => ({
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
-  default: ({ value }: { value?: string }) => <pre data-testid="conversation-code-editor">{value}</pre>,
+  default: ({ value }: { value?: string }) => (
+    <pre data-testid="conversation-code-editor">{value}</pre>
+  ),
 }))
 
-const mockFetchCurrentValueOfConversationVariable = vi.mocked(fetchCurrentValueOfConversationVariable)
+const mockFetchCurrentValueOfConversationVariable = vi.mocked(
+  fetchCurrentValueOfConversationVariable,
+)
 const mockCopy = vi.mocked(copy)
 
 const createConversationVariable = (
@@ -40,7 +44,9 @@ const createConversationVariable = (
 })
 
 const createConversationVariableResponse = (
-  data: Array<Awaited<ReturnType<typeof fetchCurrentValueOfConversationVariable>>['data'][number]> = [],
+  data: Array<
+    Awaited<ReturnType<typeof fetchCurrentValueOfConversationVariable>>['data'][number]
+  > = [],
 ): Awaited<ReturnType<typeof fetchCurrentValueOfConversationVariable>> => ({
   data,
   has_more: false,
@@ -52,7 +58,9 @@ const createConversationVariableResponse = (
 describe('ConversationVariableModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockFetchCurrentValueOfConversationVariable.mockResolvedValue(createConversationVariableResponse())
+    mockFetchCurrentValueOfConversationVariable.mockResolvedValue(
+      createConversationVariableResponse(),
+    )
   })
 
   afterEach(() => {
@@ -62,32 +70,31 @@ describe('ConversationVariableModal', () => {
   it('loads latest values, switches the active variable, and closes the modal', async () => {
     const user = userEvent.setup()
     const onHide = vi.fn()
-    mockFetchCurrentValueOfConversationVariable.mockResolvedValue(createConversationVariableResponse([
-      {
-        ...createConversationVariable({
-          id: 'var-1',
-          value: '{"latest":1}',
-        }),
-        updated_at: 100,
-        created_at: 50,
-      },
-      {
-        ...createConversationVariable({
-          id: 'var-2',
-          name: 'summary',
-          value_type: ChatVarType.String,
-          value: 'latest text',
-        }),
-        updated_at: 200,
-        created_at: 150,
-      },
-    ]))
+    mockFetchCurrentValueOfConversationVariable.mockResolvedValue(
+      createConversationVariableResponse([
+        {
+          ...createConversationVariable({
+            id: 'var-1',
+            value: '{"latest":1}',
+          }),
+          updated_at: 100,
+          created_at: 50,
+        },
+        {
+          ...createConversationVariable({
+            id: 'var-2',
+            name: 'summary',
+            value_type: ChatVarType.String,
+            value: 'latest text',
+          }),
+          updated_at: 200,
+          created_at: 150,
+        },
+      ]),
+    )
 
     renderWorkflowComponent(
-      <ConversationVariableModal
-        conversationID="conversation-1"
-        onHide={onHide}
-      />,
+      <ConversationVariableModal conversationID="conversation-1" onHide={onHide} />,
       {
         initialStoreState: {
           appId: 'app-1',
@@ -112,8 +119,10 @@ describe('ConversationVariableModal', () => {
     })
 
     expect(screen.getAllByText('session_state')).toHaveLength(2)
-    expect(screen.getByText(content => content.includes('formatted-100'))).toBeInTheDocument()
-    expect(screen.getByTestId('conversation-code-editor')).toHaveTextContent('{"latest":1}')
+    expect(
+      await screen.findByText((content) => content.includes('formatted-100')),
+    ).toBeInTheDocument()
+    expect(await screen.findByTestId('conversation-code-editor')).toHaveTextContent('{"latest":1}')
 
     await user.click(screen.getByText('summary'))
     expect(screen.getByText('latest text')).toBeInTheDocument()
@@ -123,14 +132,12 @@ describe('ConversationVariableModal', () => {
     expect(onHide).toHaveBeenCalledTimes(1)
   })
 
-  it('copies the current variable value and resets the copied state after the timeout', () => {
-    vi.useFakeTimers()
+  it('copies the current variable value and resets the copied state after the timeout', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
 
     renderWorkflowComponent(
-      <ConversationVariableModal
-        conversationID="conversation-1"
-        onHide={vi.fn()}
-      />,
+      <ConversationVariableModal conversationID="conversation-1" onHide={vi.fn()} />,
       {
         initialStoreState: {
           appId: 'app-1',
@@ -139,16 +146,21 @@ describe('ConversationVariableModal', () => {
       },
     )
 
-    const copyTrigger = document.querySelector('.flex.items-center.p-1 svg.cursor-pointer') as HTMLElement
+    const copyTrigger = screen.getByRole('button', { name: 'common.operation.copy' })
 
-    act(() => {
-      fireEvent.click(copyTrigger)
-    })
+    await user.click(copyTrigger)
 
     expect(mockCopy).toHaveBeenCalledWith('{"draft":true}')
+    expect(copyTrigger).toHaveFocus()
+    expect(copyTrigger).toHaveAttribute('aria-disabled', 'true')
+    await user.keyboard('{Enter}')
+    expect(mockCopy).toHaveBeenCalledTimes(1)
 
     act(() => {
       vi.advanceTimersByTime(2000)
     })
+    expect(copyTrigger).toHaveAttribute('aria-disabled', 'false')
+    await user.keyboard(' ')
+    expect(mockCopy).toHaveBeenCalledTimes(2)
   })
 })

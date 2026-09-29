@@ -4,7 +4,7 @@ version = "0.0.1"
 
 dependencies = [
     "opensearch-py==3.1.0",
-    "tenacity>=8.0.0",
+    "tenacity>=8.0.0,<9.0.0",
 ]
 description = "Dify vector store backend (dify-vdb-lindorm)."
 

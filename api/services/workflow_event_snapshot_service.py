@@ -13,6 +13,7 @@ from sqlalchemy import desc, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.apps.message_generator import MessageGenerator
+from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity
 from core.app.entities.task_entities import (
     HumanInputRequiredResponse,
     MessageReplaceStreamResponse,
@@ -23,13 +24,26 @@ from core.app.entities.task_entities import (
     WorkflowStartStreamResponse,
 )
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
-from core.workflow.human_input_forms import load_form_tokens_by_form_id
-from core.workflow.human_input_policy import HumanInputSurface, enrich_human_input_pause_reasons
+from core.workflow.human_input_forms import (
+    load_form_dispositions_by_form_id,
+)
+from core.workflow.human_input_policy import (
+    FormDisposition,
+    HumanInputSurface,
+    enrich_human_input_pause_reasons,
+    resolve_human_input_pause_reason_inputs,
+    resolve_variable_select_input_options,
+)
+from core.workflow.nodes.human_input.pause_reason import (
+    DifyHITLEventType,
+    HumanInputRequired,
+)
 from graphon.entities import WorkflowStartReason
-from graphon.entities.pause_reason import PauseReasonType
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.runtime import GraphRuntimeState
+from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
+from libs.datetime_utils import to_utc_timestamp
 from models.human_input import HumanInputForm
 from models.model import AppMode, Message
 from models.workflow import WorkflowNodeExecutionTriggeredFrom, WorkflowRun
@@ -72,9 +86,6 @@ def build_workflow_event_stream(
     topic = MessageGenerator.get_response_topic(app_mode, workflow_run.id)
     workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
     node_execution_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(session_maker)
-    message_context = (
-        _get_message_context(session_maker, workflow_run.id) if app_mode == AppMode.ADVANCED_CHAT else None
-    )
 
     pause_entity: WorkflowPauseEntity | None = None
     if workflow_run.status == WorkflowExecutionStatus.PAUSED:
@@ -85,6 +96,38 @@ def build_workflow_event_stream(
             pause_entity = None
 
     resumption_context = _load_resumption_context(pause_entity)
+    message_context: MessageContext | None = None
+    if app_mode == AppMode.ADVANCED_CHAT:
+        if workflow_run.status == WorkflowExecutionStatus.PAUSED:
+            if resumption_context is None:
+                raise AssertionError(
+                    "WorkflowResumptionContext is required for advanced-chat snapshot replay, "
+                    f"workflow_run_id={workflow_run.id}"
+                )
+            generate_entity = resumption_context.get_generate_entity()
+            if not isinstance(generate_entity, AdvancedChatAppGenerateEntity):
+                raise AssertionError(
+                    "AdvancedChatAppGenerateEntity is required for advanced-chat snapshot replay, "
+                    f"workflow_run_id={workflow_run.id}, generate_entity_type={type(generate_entity).__name__}"
+                )
+            if not generate_entity.conversation_id:
+                raise AssertionError(
+                    f"conversation_id is required for advanced-chat snapshot replay, workflow_run_id={workflow_run.id}"
+                )
+            message_context = _get_message_context_by_conversation(
+                session_maker,
+                conversation_id=generate_entity.conversation_id,
+                workflow_run_id=workflow_run.id,
+            )
+        else:
+            # Compatibility fallback for non-suspended snapshot requests. This app-scoped lookup is not optimal;
+            # a dedicated index or stronger lookup key would be preferable.
+            message_context = _get_message_context_by_app(
+                session_maker,
+                app_id=app_id,
+                workflow_run_id=workflow_run.id,
+            )
+
     node_snapshots = node_execution_repo.get_execution_snapshots_by_workflow_run(
         tenant_id=tenant_id,
         app_id=app_id,
@@ -163,19 +206,68 @@ def build_workflow_event_stream(
     return _generate()
 
 
-def _get_message_context(session_maker: sessionmaker[Session], workflow_run_id: str) -> MessageContext | None:
+def _get_message_context_by_conversation(
+    session_maker: sessionmaker[Session],
+    *,
+    conversation_id: str,
+    workflow_run_id: str,
+) -> MessageContext | None:
+    """Look up a paused or suspended Advanced Chat snapshot message by conversation and workflow run.
+
+    Use this exact lookup after recovering ``conversation_id`` from persisted resumption context. Its predicates match
+    ``message_workflow_run_id_idx``.
+    """
     with session_maker() as session:
-        stmt = select(Message).where(Message.workflow_run_id == workflow_run_id).order_by(desc(Message.created_at))
+        stmt = (
+            select(Message)
+            .where(
+                Message.conversation_id == conversation_id,
+                Message.workflow_run_id == workflow_run_id,
+            )
+            .order_by(desc(Message.created_at))
+            .limit(1)
+        )
         message = session.scalar(stmt)
         if message is None:
             return None
-        created_at = int(message.created_at.timestamp()) if message.created_at else 0
-        return MessageContext(
-            conversation_id=message.conversation_id,
-            message_id=message.id,
-            created_at=created_at,
-            answer=message.answer,
+        return _to_message_context(message)
+
+
+def _get_message_context_by_app(
+    session_maker: sessionmaker[Session],
+    *,
+    app_id: str,
+    workflow_run_id: str,
+) -> MessageContext | None:
+    """Look up a non-suspended or running Advanced Chat reconnect snapshot by app and workflow run.
+
+    This compatibility path applies only when no resumption context is expected. The app-scoped query is not optimal;
+    a dedicated index or stronger lookup key would be preferable.
+    """
+    with session_maker() as session:
+        stmt = (
+            select(Message)
+            .where(
+                Message.app_id == app_id,
+                Message.workflow_run_id == workflow_run_id,
+            )
+            .order_by(desc(Message.created_at))
+            .limit(1)
         )
+        message = session.scalar(stmt)
+        if message is None:
+            return None
+        return _to_message_context(message)
+
+
+def _to_message_context(message: Message) -> MessageContext:
+    created_at = int(message.created_at.timestamp()) if message.created_at else 0
+    return MessageContext(
+        conversation_id=message.conversation_id,
+        message_id=message.id,
+        created_at=created_at,
+        answer=message.answer,
+    )
 
 
 def _load_resumption_context(pause_entity: WorkflowPauseEntity | None) -> WorkflowResumptionContext | None:
@@ -220,6 +312,7 @@ def _build_snapshot_events(
     human_input_surface: HumanInputSurface | None = None,
 ) -> list[Mapping[str, Any]]:
     events: list[Mapping[str, Any]] = []
+    variable_pool = _load_variable_pool_from_resumption_context(resumption_context)
 
     workflow_started = _build_workflow_started_event(
         workflow_run=workflow_run,
@@ -258,6 +351,7 @@ def _build_snapshot_events(
             pause_entity=pause_entity,
             session_maker=session_maker,
             human_input_surface=human_input_surface,
+            variable_pool=variable_pool,
         ):
             _apply_message_context(human_input_event, message_context)
             events.append(human_input_event)
@@ -344,32 +438,27 @@ def _build_human_input_required_events(
     pause_entity: WorkflowPauseEntity,
     session_maker: sessionmaker[Session] | None,
     human_input_surface: HumanInputSurface | None,
+    variable_pool: ReadOnlyVariablePool | None,
 ) -> list[dict[str, Any]]:
-    reasons = [reason.model_dump(mode="json") for reason in pause_entity.get_pause_reasons()]
-    human_input_form_ids = [
-        form_id
-        for reason in reasons
-        if reason.get("TYPE") == PauseReasonType.HUMAN_INPUT_REQUIRED
-        for form_id in [reason.get("form_id")]
-        if isinstance(form_id, str)
-    ]
+    reasons = pause_entity.get_pause_reasons()
+    human_input_form_ids = [reason.form_id for reason in reasons if isinstance(reason, HumanInputRequired)]
 
     expiration_times_by_form_id: dict[str, int] = {}
     display_in_ui_by_form_id: dict[str, bool] = {}
-    form_tokens_by_form_id: dict[str, str] = {}
+    dispositions_by_form_id: dict[str, FormDisposition] = {}
     if human_input_form_ids and session_maker is not None:
         stmt = select(HumanInputForm.id, HumanInputForm.expiration_time, HumanInputForm.form_definition).where(
             HumanInputForm.id.in_(human_input_form_ids)
         )
         with session_maker() as session:
             for form_id, expiration_time, form_definition in session.execute(stmt):
-                expiration_times_by_form_id[str(form_id)] = int(expiration_time.timestamp())
+                expiration_times_by_form_id[str(form_id)] = to_utc_timestamp(expiration_time)
                 try:
                     definition_payload = json.loads(form_definition) if form_definition else {}
                 except (TypeError, json.JSONDecodeError):
                     definition_payload = {}
                 display_in_ui_by_form_id[str(form_id)] = bool(definition_payload.get("display_in_ui"))
-            form_tokens_by_form_id = load_form_tokens_by_form_id(
+            dispositions_by_form_id = load_form_dispositions_by_form_id(
                 human_input_form_ids,
                 session=session,
                 surface=human_input_surface,
@@ -377,47 +466,35 @@ def _build_human_input_required_events(
 
     events: list[dict[str, Any]] = []
     for reason in reasons:
-        if reason.get("TYPE") != PauseReasonType.HUMAN_INPUT_REQUIRED:
+        if not isinstance(reason, HumanInputRequired):
             continue
 
-        form_id_raw = reason.get("form_id")
-        node_id_raw = reason.get("node_id")
-        node_title_raw = reason.get("node_title")
-        form_content_raw = reason.get("form_content")
-        if not isinstance(form_id_raw, str):
-            continue
-        if not isinstance(node_id_raw, str):
-            continue
-        if not isinstance(node_title_raw, str):
-            continue
-        if not isinstance(form_content_raw, str):
-            continue
-        form_id = form_id_raw
-        node_id = node_id_raw
-        node_title = node_title_raw
-        form_content = form_content_raw
-
-        inputs = reason.get("inputs")
-        actions = reason.get("actions")
-        resolved_default_values = reason.get("resolved_default_values")
+        form_id = reason.form_id
 
         expiration_time = expiration_times_by_form_id.get(form_id)
         if expiration_time is None:
             continue
+
+        resolved_inputs = resolve_variable_select_input_options(
+            reason.inputs,
+            variable_pool=variable_pool,
+        )
+        disposition = dispositions_by_form_id.get(form_id)
 
         response = HumanInputRequiredResponse(
             task_id=task_id,
             workflow_run_id=workflow_run_id,
             data=HumanInputRequiredResponse.Data(
                 form_id=form_id,
-                node_id=node_id,
-                node_title=node_title,
-                form_content=form_content,
-                inputs=inputs if isinstance(inputs, list) else [],
-                actions=actions if isinstance(actions, list) else [],
+                node_id=reason.node_id,
+                node_title=reason.node_title,
+                form_content=reason.form_content,
+                inputs=resolved_inputs,
+                actions=reason.actions,
                 display_in_ui=display_in_ui_by_form_id.get(form_id, False),
-                form_token=form_tokens_by_form_id.get(form_id),
-                resolved_default_values=(resolved_default_values if isinstance(resolved_default_values, dict) else {}),
+                form_token=disposition.form_token if disposition else None,
+                approval_channels=list(disposition.approval_channels) if disposition else [],
+                resolved_default_values=reason.resolved_default_values,
                 expiration_time=expiration_time,
             ),
         )
@@ -426,6 +503,16 @@ def _build_human_input_required_events(
         events.append(payload)
 
     return events
+
+
+def _load_variable_pool_from_resumption_context(
+    resumption_context: WorkflowResumptionContext | None,
+) -> ReadOnlyVariablePool | None:
+    if resumption_context is None:
+        return None
+    state = GraphRuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
+
+    return state.variable_pool
 
 
 def _build_node_finished_event(
@@ -475,24 +562,32 @@ def _build_pause_event(
 ) -> dict[str, Any] | None:
     paused_nodes: list[str] = []
     outputs: dict[str, Any] = {}
+    variable_pool: ReadOnlyVariablePool | None = None
     if resumption_context is not None:
         state = GraphRuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
-        paused_nodes = state.get_paused_nodes()
         outputs = dict(WorkflowRuntimeTypeConverter().to_json_encodable(state.outputs or {}))
+        variable_pool = state.variable_pool
 
-    reasons = [reason.model_dump(mode="json") for reason in pause_entity.get_pause_reasons()]
+    resolved_pause_reasons = resolve_human_input_pause_reason_inputs(
+        pause_entity.get_pause_reasons(),
+        variable_pool=variable_pool,
+    )
+    paused_nodes = list(
+        dict.fromkeys(reason.node_id for reason in resolved_pause_reasons if isinstance(reason, HumanInputRequired))
+    )
+    reasons = [reason.model_dump(mode="json") for reason in resolved_pause_reasons]
     human_input_form_ids = [
         form_id
         for reason in reasons
-        if reason.get("TYPE") == PauseReasonType.HUMAN_INPUT_REQUIRED
+        if reason.get("TYPE") == DifyHITLEventType.HUMAN_INPUT_REQUIRED
         for form_id in [reason.get("form_id")]
         if isinstance(form_id, str)
     ]
-    form_tokens_by_form_id: dict[str, str] = {}
+    dispositions_by_form_id: dict[str, FormDisposition] = {}
     expiration_times_by_form_id: dict[str, int] = {}
     if human_input_form_ids and session_maker is not None:
         with session_maker() as session:
-            form_tokens_by_form_id = load_form_tokens_by_form_id(
+            dispositions_by_form_id = load_form_dispositions_by_form_id(
                 human_input_form_ids,
                 session=session,
                 surface=human_input_surface,
@@ -502,12 +597,12 @@ def _build_pause_event(
             )
             for row in session.execute(stmt):
                 form_id, expiration_time, *_rest = row
-                expiration_times_by_form_id[str(form_id)] = int(expiration_time.timestamp())
+                expiration_times_by_form_id[str(form_id)] = to_utc_timestamp(expiration_time)
         # Reconnect paths must preserve the same pause-reason contract as live streams;
         # otherwise clients see schema drift after resume.
         reasons = enrich_human_input_pause_reasons(
             reasons,
-            form_tokens_by_form_id=form_tokens_by_form_id,
+            dispositions_by_form_id=dispositions_by_form_id,
             expiration_times_by_form_id=expiration_times_by_form_id,
         )
 

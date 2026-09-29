@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+from typing import override
 
 import pytest
 
@@ -11,30 +12,39 @@ class _DummyVector(BaseVector):
         super().__init__(collection_name)
         self._existing_ids = existing_ids or set()
 
+    @override
     def get_type(self) -> str:
         return "dummy"
 
+    @override
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         return None
 
+    @override
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         return None
 
+    @override
     def text_exists(self, id: str) -> bool:
         return id in self._existing_ids
 
+    @override
     def delete_by_ids(self, ids: list[str]):
         return None
 
+    @override
     def delete_by_metadata_field(self, key: str, value: str):
         return None
 
+    @override
     def search_by_vector(self, query_vector: list[float], **kwargs):
         return []
 
+    @override
     def search_by_full_text(self, query: str, **kwargs):
         return []
 
+    @override
     def delete(self):
         return None
 

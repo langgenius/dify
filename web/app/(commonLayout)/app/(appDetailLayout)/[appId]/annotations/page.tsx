@@ -7,9 +7,7 @@ export type IProps = {
 }
 
 const Logs = async () => {
-  return (
-    <Main pageType={PageType.annotation} />
-  )
+  return <Main pageType={PageType.annotation} />
 }
 
 export default Logs

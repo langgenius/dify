@@ -1,49 +1,55 @@
 'use client'
+
 import { Button } from '@langgenius/dify-ui/button'
-import { toast } from '@langgenius/dify-ui/toast'
+import { Input } from '@langgenius/dify-ui/input'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
-import { useAppContext } from '@/context/app-context'
-import { updateWorkspaceSettings } from '@/service/common'
+import { toast } from '@/app/notifications'
+import {
+  currentWorkspaceAtom,
+  currentWorkspaceLoadingAtom,
+  isCurrentWorkspaceManagerAtom,
+} from '@/context/workspace-state'
+import { consoleQuery } from '@/service/console'
 
-const UsageLimitsPage = () => {
-  const { t } = useTranslation()
-  const {
-    currentWorkspace,
-    isCurrentWorkspaceManager,
-    isValidatingCurrentWorkspace,
-    mutateCurrentWorkspace,
-  } = useAppContext()
+export default function UsageLimitsPage() {
+  const { t } = useTranslation(['common'])
+  const currentWorkspace = useAtomValue(currentWorkspaceAtom)
+  const isCurrentWorkspaceLoading = useAtomValue(currentWorkspaceLoadingAtom)
+  const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
+  const queryClient = useQueryClient()
+  const updateSettings = useMutation(
+    consoleQuery.workspaces.current.settings.post.mutationOptions(),
+  )
   const inputId = useId()
-  const initialMaxActiveRequests = String(currentWorkspace.max_active_requests ?? 0)
-  const [maxActiveRequests, setMaxActiveRequests] = useState(initialMaxActiveRequests)
-  const [isSaving, setIsSaving] = useState(false)
+  const [draft, setDraft] = useState<string | null>(null)
 
-  const normalizedValue = maxActiveRequests.trim()
+  const currentValue = String(currentWorkspace.max_active_requests)
+  const inputValue = draft ?? currentValue
+  const normalizedValue = inputValue.trim()
   const parsedValue = normalizedValue === '' ? Number.NaN : Number(normalizedValue)
   const isValidValue = Number.isInteger(parsedValue) && parsedValue >= 0
-  const hasChanges = normalizedValue !== initialMaxActiveRequests
-  const canSave = isCurrentWorkspaceManager && isValidValue && hasChanges && !isSaving && !isValidatingCurrentWorkspace
+  const canSave =
+    isCurrentWorkspaceManager &&
+    !isCurrentWorkspaceLoading &&
+    !updateSettings.isPending &&
+    isValidValue &&
+    normalizedValue !== currentValue
 
   const handleSave = async () => {
-    if (!canSave)
-      return
+    if (!canSave) return
 
-    setIsSaving(true)
     try {
-      await updateWorkspaceSettings({
-        name: currentWorkspace.name,
-        max_active_requests: parsedValue,
+      await updateSettings.mutateAsync({ body: { max_active_requests: parsedValue } })
+      await queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.summary.get.queryKey(),
       })
-      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
-      mutateCurrentWorkspace()
-    }
-    catch {
-      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
-    }
-    finally {
-      setIsSaving(false)
+      setDraft(null)
+      toast.success(t(($) => $['actionMsg.modifiedSuccessfully']))
+    } catch {
+      toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully']))
     }
   }
 
@@ -51,30 +57,33 @@ const UsageLimitsPage = () => {
     <div className="max-w-2xl">
       <div className="mb-6">
         <div className="system-md-semibold text-text-primary">
-          {t('usageLimits.requestConcurrency.title', { ns: 'common' })}
+          {t(($) => $['usageLimits.requestConcurrency.title'])}
         </div>
         <div className="mt-1 system-sm-regular text-text-tertiary">
-          {t('usageLimits.requestConcurrency.description', { ns: 'common' })}
+          {t(($) => $['usageLimits.requestConcurrency.description'])}
         </div>
       </div>
 
       <label htmlFor={inputId} className="mb-2 block system-sm-medium text-text-primary">
-        {t('usageLimits.maxActiveRequests.label', { ns: 'common' })}
+        {t(($) => $['usageLimits.maxActiveRequests.label'])}
       </label>
-      <Input
-        id={inputId}
-        type="number"
-        min={0}
-        step={1}
-        value={maxActiveRequests}
-        disabled={!isCurrentWorkspaceManager || isSaving}
-        destructive={normalizedValue !== '' && !isValidValue}
-        placeholder={t('usageLimits.maxActiveRequests.placeholder', { ns: 'common' })}
-        wrapperClassName="max-w-xs"
-        onChange={e => setMaxActiveRequests(e.target.value)}
-      />
+      <div className="max-w-xs">
+        <Input
+          id={inputId}
+          type="number"
+          min={0}
+          step={1}
+          value={inputValue}
+          disabled={
+            !isCurrentWorkspaceManager || isCurrentWorkspaceLoading || updateSettings.isPending
+          }
+          aria-invalid={normalizedValue !== '' && !isValidValue}
+          placeholder={t(($) => $['usageLimits.maxActiveRequests.placeholder'])}
+          onChange={(event) => setDraft(event.target.value)}
+        />
+      </div>
       <div className="mt-2 body-xs-regular text-text-tertiary">
-        {t('usageLimits.maxActiveRequests.tip', { ns: 'common' })}
+        {t(($) => $['usageLimits.maxActiveRequests.tip'])}
       </div>
 
       <div className="mt-6 flex justify-end">
@@ -82,14 +91,12 @@ const UsageLimitsPage = () => {
           size="large"
           variant="primary"
           disabled={!canSave}
-          loading={isSaving}
-          onClick={handleSave}
+          loading={updateSettings.isPending}
+          onClick={() => void handleSave()}
         >
-          {t(isSaving ? 'operation.saving' : 'operation.save', { ns: 'common' })}
+          {t(($) => $['operation.save'])}
         </Button>
       </div>
     </div>
   )
 }
-
-export default UsageLimitsPage

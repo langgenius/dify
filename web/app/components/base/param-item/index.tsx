@@ -1,5 +1,7 @@
 'use client'
 import type { FC } from 'react'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import {
   NumberField,
   NumberFieldControls,
@@ -8,11 +10,18 @@ import {
   NumberFieldIncrement,
   NumberFieldInput,
 } from '@langgenius/dify-ui/number-field'
-import { Slider } from '@langgenius/dify-ui/slider'
+import {
+  Slider,
+  SliderControl,
+  SliderIndicator,
+  SliderLabel,
+  SliderThumb,
+  SliderTrack,
+} from '@langgenius/dify-ui/slider'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { Infotip } from '@/app/components/base/infotip'
+import { useId } from 'react'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   id: string
   name: string
@@ -24,45 +33,70 @@ type Props = {
   min?: number
   max: number
   onChange: (key: string, value: number) => void
+  disabled?: boolean
   hasSwitch?: boolean
   onSwitchChange?: (key: string, enable: boolean) => void
-}
+}>
 
-const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1, min = 0, max, value, enable, onChange, hasSwitch, onSwitchChange }) => {
+const ParamItem: FC<Props> = ({
+  className,
+  id,
+  name,
+  noTooltip,
+  tip,
+  step = 0.1,
+  min = 0,
+  max,
+  value,
+  enable,
+  onChange,
+  disabled = false,
+  hasSwitch,
+  onSwitchChange,
+}) => {
+  const labelId = useId()
   return (
-    <div className={className}>
+    <Fieldset className={className}>
+      <FieldsetLegend className="sr-only">{name}</FieldsetLegend>
       <div className="flex items-center justify-between">
-        <div className="flex h-6 items-center">
+        <div className="flex min-h-6 flex-wrap items-center gap-y-1">
           {hasSwitch && (
             <Switch
+              aria-labelledby={labelId}
               size="md"
               className="mr-2"
               checked={enable}
+              disabled={disabled}
               onCheckedChange={async (val) => {
                 onSwitchChange?.(id, val)
               }}
             />
           )}
-          <span className="mr-1 system-sm-semibold text-text-secondary">{name}</span>
+          <span id={labelId} className="mr-1 system-sm-semibold text-text-secondary">
+            {name}
+          </span>
           {!noTooltip && tip && (
-            <Infotip aria-label={tip} popupClassName="w-[200px]">
-              {tip}
+            <Infotip>
+              <InfotipTrigger aria-labelledby={labelId} />
+              <InfotipContent aria-labelledby={labelId} className="w-50">
+                {tip}
+              </InfotipContent>
             </Infotip>
           )}
         </div>
       </div>
-      <div className="mt-1 flex items-center">
-        <div className="mr-3 flex shrink-0 items-center">
+      <div className="mt-1 flex flex-wrap items-center gap-3">
+        <div className="flex shrink-0 items-center">
           <NumberField
-            disabled={!enable}
+            disabled={disabled || !enable}
             min={min}
             max={max}
             step={step}
             value={value}
-            onValueChange={nextValue => onChange(id, nextValue ?? min)}
+            onValueChange={(nextValue) => onChange(id, nextValue ?? min)}
           >
             <NumberFieldGroup>
-              <NumberFieldInput className="w-[72px]" />
+              <NumberFieldInput aria-label={name} className="w-18" />
               <NumberFieldControls>
                 <NumberFieldIncrement />
                 <NumberFieldDecrement />
@@ -70,19 +104,32 @@ const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1,
             </NumberFieldGroup>
           </NumberField>
         </div>
-        <div className="flex grow items-center">
+        <div className="flex min-w-25 grow items-center">
           <Slider
             className="w-full"
-            disabled={!enable}
+            disabled={disabled || !enable}
             value={max < 5 ? value * 100 : value}
             min={min < 1 ? min * 100 : min}
             max={max < 5 ? max * 100 : max}
-            onValueChange={value => onChange(id, value / (max < 5 ? 100 : 1))}
-            aria-label={name}
-          />
+            onValueChange={(value) => onChange(id, value / (max < 5 ? 100 : 1))}
+          >
+            <SliderLabel className="sr-only">{name}</SliderLabel>
+            <SliderControl>
+              <SliderTrack>
+                <SliderIndicator />
+                <SliderThumb
+                  getAriaValueText={
+                    max < 5
+                      ? (_formattedValue, sliderValue) => (sliderValue / 100).toString()
+                      : undefined
+                  }
+                />
+              </SliderTrack>
+            </SliderControl>
+          </Slider>
         </div>
       </div>
-    </div>
+    </Fieldset>
   )
 }
 export default ParamItem

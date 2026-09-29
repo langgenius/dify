@@ -1,0 +1,552 @@
+"""Shared response substructures for openapi endpoints."""
+
+from __future__ import annotations
+
+from datetime import datetime
+from enum import StrEnum
+from typing import Any, Final, Literal, Self
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+from constants.oauth_bearer import SubjectType
+from controllers.common.human_input import HumanInputFormSubmitPayload
+from controllers.openapi._upload import UploadPart, UploadParts
+from enums import DeploymentEdition
+from libs.helper import EmailStr, UUIDStr, UUIDStrOrEmpty, uuid_value
+from models.model import AppMode
+from services.app_dsl_service import Import
+
+# Server-side cap on `limit` query param for /openapi/v1/* list endpoints.
+MAX_PAGE_LIMIT = 100
+
+
+class SupportedAppType(StrEnum):
+    """App types the ``app`` usage face (``get app``) lists and filters.
+
+    A curated subset of :class:`AppMode`: the real, user-facing app categories.
+    Excludes runtime-only mode tags that are not standalone apps
+    (``rag-pipeline`` is a knowledge ``Pipeline``; ``channel`` is unused) and the
+    roster-owned ``agent`` type (surfaced through the roster, not this list).
+
+    Members reference ``AppMode.*.value`` so the subset relationship is
+    type-checked: dropping a member from ``AppMode`` breaks this at import.
+    This is the single source for the listable set — params, filters, and the
+    generated CLI whitelist all derive from it.
+    """
+
+    COMPLETION = AppMode.COMPLETION.value
+    CHAT = AppMode.CHAT.value
+    ADVANCED_CHAT = AppMode.ADVANCED_CHAT.value
+    WORKFLOW = AppMode.WORKFLOW.value
+    AGENT_CHAT = AppMode.AGENT_CHAT.value
+
+
+SUPPORTED_APP_TYPES: Final[tuple[AppMode, ...]] = tuple(AppMode(t.value) for t in SupportedAppType)
+
+
+class UsageInfo(BaseModel):
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    total_tokens: int = 0
+
+
+class MessageMetadata(BaseModel):
+    usage: UsageInfo | None = None
+    retriever_resources: list[dict[str, Any]] = []
+
+
+class Hint(BaseModel):
+    """A next step the caller can hand straight to `call <op> --input <input>`."""
+
+    summary: str
+    op: str
+    input: dict[str, Any] = Field(description="Ready-to-send input for `op`; unknown values are null")
+    form: list[dict[str, Any]] | None = Field(
+        default=None, description="Form fields behind `input.inputs`, copied from the pausing event"
+    )
+
+
+class Hinted(BaseModel):
+    """The one place a response carries server-built next steps; `hints` is reserved on every op input."""
+
+    hints: list[Hint] = Field(default_factory=list, description="Next steps the caller can take")
+
+
+class PageQuery(BaseModel):
+    """The two query parameters every list op takes; the next-page hint is built from this model."""
+
+    page: int = Field(1, ge=1)
+    limit: int = Field(20, ge=1, le=MAX_PAGE_LIMIT)
+
+
+class PaginationEnvelope[T](Hinted):
+    """The one shape every paginated list on this surface answers with."""
+
+    page: int
+    limit: int
+    total: int
+    has_more: bool
+    data: list[T]
+
+    @classmethod
+    def build(cls, *, page: int, limit: int, total: int, items: list[T]) -> Self:
+        return cls(page=page, limit=limit, total=total, has_more=page * limit < total, data=items)
+
+    @classmethod
+    def page_of(cls, items: list[T], *, query: PageQuery) -> Self:
+        """The page `query` asks for, cut from a list the service returned whole."""
+        start = (query.page - 1) * query.limit
+        return cls.build(page=query.page, limit=query.limit, total=len(items), items=items[start : start + query.limit])
+
+
+class AppListRow(BaseModel):
+    id: str
+    name: str
+    description: str | None = None
+    mode: AppMode
+    updated_at: str | None = None
+    workspace_id: str | None = None
+    workspace_name: str | None = None
+
+
+class AppListResponse(PaginationEnvelope[AppListRow]):
+    pass
+
+
+class PermittedExternalAppsListResponse(PaginationEnvelope[AppListRow]):
+    pass
+
+
+class AppInfo(BaseModel):
+    id: str
+    name: str
+    description: str | None = None
+    mode: str
+
+
+class AppDescribeInfo(AppInfo):
+    updated_at: str | None = None
+    service_api_enabled: bool
+    is_agent: bool = False
+
+
+class AppDescribeResponse(BaseModel):
+    info: AppDescribeInfo | None = None
+    parameters: dict[str, Any] | None = Field(default=None)
+    input_schema: dict[str, Any] | None = Field(default=None)
+
+
+class WorkflowRunData(BaseModel):
+    id: str
+    workflow_id: str
+    status: str
+    outputs: dict[str, Any] = Field(default_factory=dict)
+    error: str | None = None
+    elapsed_time: float | None = None
+    total_tokens: int | None = None
+    total_steps: int | None = None
+    created_at: int | None = None
+    finished_at: int | None = None
+
+
+class AccountPayload(BaseModel):
+    id: str
+    email: str
+    name: str
+
+
+class WorkspacePayload(BaseModel):
+    id: str
+    name: str
+    role: str
+
+
+class DeviceTokenResponse(BaseModel):
+    token: str
+    expires_at: str
+    subject_type: SubjectType
+    account: AccountPayload | None = None
+    workspaces: list[WorkspacePayload] = []
+    default_workspace_id: str | None = None
+    token_id: str
+    subject_email: str | None = None
+    subject_issuer: str | None = None
+
+
+class AccountResponse(BaseModel):
+    subject_type: SubjectType
+    subject_email: str | None = None
+    subject_issuer: str | None = None
+    account: AccountPayload | None = None
+    workspaces: list[WorkspacePayload] = []
+    default_workspace_id: str | None = None
+
+
+class SessionRow(BaseModel):
+    id: str
+    prefix: str
+    client_id: str
+    device_label: str
+    created_at: str | None = None
+    last_used_at: str | None = None
+    expires_at: str | None = None
+
+
+class SessionListResponse(PaginationEnvelope[SessionRow]):
+    pass
+
+
+class SessionListQuery(PageQuery):
+    """Pagination for GET /account/sessions. Strict (extra='forbid')."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    limit: int = Field(100, ge=1, le=MAX_PAGE_LIMIT)
+
+
+class RevokeResponse(BaseModel):
+    status: str
+
+
+class WorkspaceSummaryResponse(BaseModel):
+    id: str
+    name: str
+    role: str
+    status: str
+    current: bool
+
+
+class WorkspaceListResponse(PaginationEnvelope[WorkspaceSummaryResponse]):
+    pass
+
+
+class WorkspaceListQuery(PageQuery):
+    """Strict (extra='forbid')."""
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class WorkspaceDetailResponse(BaseModel):
+    id: str
+    name: str
+    role: str
+    status: str
+    current: bool
+    created_at: str | None = None
+
+
+class DeviceCodeResponse(BaseModel):
+    device_code: str
+    user_code: str
+    verification_uri: str
+    expires_in: int
+    interval: int
+
+
+class DeviceLookupResponse(BaseModel):
+    valid: bool
+    expires_in_remaining: int = 0
+    client_id: str | None = None
+
+
+class DeviceMutateResponse(BaseModel):
+    status: str
+
+
+class DeviceApprovalContextResponse(BaseModel):
+    subject_email: str
+    subject_issuer: str
+    user_code: str
+    csrf_token: str
+    expires_at: datetime
+
+
+class ServerVersionResponse(BaseModel):
+    """Meta endpoint payload for `GET /openapi/v1/_version` — no auth required."""
+
+    version: str
+    edition: DeploymentEdition
+
+
+class HealthResponse(BaseModel):
+    """Liveness payload for `GET /openapi/v1/_health` — no auth required."""
+
+    ok: bool
+
+
+def _csv_string_query_schema(schema: dict[str, Any]) -> None:
+    """Re-shape a set/list field's query schema to a comma-separated string — the wire form the
+    handler actually accepts (`request.args` is flat + the validator splits on ','). Without this
+    the generated contract would type it as an array and serialize `fields[0]=…&fields[1]=…`,
+    which `extra='forbid'` rejects. Runtime `set[str]` validation is unaffected."""
+    schema.pop("anyOf", None)
+    schema.pop("items", None)
+    schema.pop("uniqueItems", None)
+    schema["type"] = "string"
+
+
+class AppDescribeQuery(BaseModel):
+    """`?fields=` allow-list for GET /apps/<id>.
+
+    Empty / omitted → all blocks. Unknown member → ValidationError → 422.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    fields: set[str] | None = Field(default=None, json_schema_extra=_csv_string_query_schema)
+
+    @field_validator("fields", mode="before")
+    @classmethod
+    def _parse_fields(cls, v: object) -> set[str] | None:
+        if v is None or v == "":
+            return None
+        if not isinstance(v, str):
+            raise ValueError("fields must be a comma-separated string")
+        _ALLOWED_DESCRIBE_FIELDS = frozenset({"info", "parameters", "input_schema"})
+        members = {m.strip() for m in v.split(",") if m.strip()}
+        unknown = members - _ALLOWED_DESCRIBE_FIELDS
+        if unknown:
+            raise ValueError(f"unknown field(s): {sorted(unknown)}")
+        return members
+
+
+class AppListQuery(PageQuery):
+    """mode is a closed enum of listable app types."""
+
+    workspace_id: UUIDStr
+    mode: SupportedAppType | None = None
+    name: str | None = Field(None, max_length=200)
+
+
+class _ConversationFields(BaseModel):
+    conversation_id: UUIDStrOrEmpty | None = Field(default=None, description="Continue an existing conversation")
+    auto_generate_name: bool = Field(default=True, description="Let the server name a new conversation")
+
+    @field_validator("conversation_id", mode="before")
+    @classmethod
+    def _normalize_conv(cls, value: str | None) -> str | None:
+        if isinstance(value, str):
+            value = value.strip()
+        if not value:
+            return None
+        try:
+            return uuid_value(value)
+        except ValueError as exc:
+            raise ValueError("conversation_id must be a valid UUID") from exc
+
+
+class _WorkflowVersionFields(BaseModel):
+    workflow_id: str | None = Field(default=None, description="Pin a published workflow version")
+
+
+class RunPayloadBase(BaseModel):
+    """What every run takes; each mode's payload adds its own fields and forbids the rest."""
+
+    inputs: dict[str, Any] = Field(
+        description=(
+            "Variables declared by the app. The exact shape is per app: read `input_schema` from "
+            "console_app.describe. A file variable takes a Dify file mapping (remote url or upload id) here, "
+            "or a local file in `files`, not both."
+        )
+    )
+    files: UploadParts | None = Field(
+        default=None,
+        description=(
+            "Local files keyed by the app's file variable name; the server uploads each one and sets "
+            "`inputs[<name>]`. Send a list (part name `files[<name>][]`) for a file-list variable"
+        ),
+    )
+    attachments: list[UploadPart] | None = Field(
+        default=None, description="Local files attached to the run itself (the app's `sys.files`), not to a variable"
+    )
+    workspace_id: UUIDStrOrEmpty | None = Field(default=None, description="Workspace that owns the app")
+
+
+class WorkflowRunPayload(RunPayloadBase, _WorkflowVersionFields):
+    model_config = ConfigDict(extra="forbid")
+
+
+class ChatRunPayload(RunPayloadBase, _ConversationFields):
+    model_config = ConfigDict(extra="forbid")
+
+    query: str = Field(description="User message")
+
+    @field_validator("query")
+    @classmethod
+    def _non_blank(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("query must not be blank")
+        return value
+
+
+class AdvancedChatRunPayload(ChatRunPayload, _WorkflowVersionFields):
+    """A chat run against an advanced-chat (chatflow) app, which can also pin a workflow version."""
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class CompletionRunPayload(RunPayloadBase):
+    model_config = ConfigDict(extra="forbid")
+
+    query: str = Field(default="", description="Prompt text; most completion apps take their input through `inputs`")
+
+
+class FileUploadPayload(BaseModel):
+    file: UploadPart = Field(
+        description="The file to upload; its id can then be used in an app run's file variables",
+    )
+
+
+class DeviceCodeRequest(BaseModel):
+    client_id: str
+    device_label: str
+
+
+class DevicePollRequest(BaseModel):
+    device_code: str
+    client_id: str
+
+
+class DeviceLookupQuery(BaseModel):
+    user_code: str
+
+
+class DeviceMutateRequest(BaseModel):
+    user_code: str
+
+
+class PermittedExternalAppsListQuery(PageQuery):
+    """Strict (extra='forbid')."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    mode: SupportedAppType | None = None
+    name: str | None = Field(None, max_length=200)
+
+
+# Closed enum for invite/update-role payloads. Owner is intentionally not
+# assignable through these endpoints — ownership transfer goes through the
+# console's three-step email-verification flow.
+MemberAssignableRole = Literal["normal", "admin"]
+
+
+class MemberResponse(BaseModel):
+    id: str
+    name: str
+    email: str
+    role: str
+    status: str
+    avatar: str | None = None
+
+
+class MemberListResponse(PaginationEnvelope[MemberResponse]):
+    pass
+
+
+class MemberListQuery(PageQuery):
+    """Strict (extra='forbid')."""
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class MemberInvitePayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    email: EmailStr
+    role: MemberAssignableRole
+
+
+class MemberRoleUpdatePayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    role: MemberAssignableRole
+
+
+class MemberInviteResponse(BaseModel):
+    result: Literal["success"] = "success"
+    email: str
+    role: str
+    member_id: str
+    invite_url: str
+    tenant_id: str
+
+
+class MemberActionResponse(BaseModel):
+    result: Literal["success"] = "success"
+
+
+class TaskStopResponse(BaseModel):
+    """200 body for POST /apps/<id>/tasks/<task_id>:stop. The handler always returns
+    {"result": "success"}, so `result` is required (no default) — the generated contract
+    types it as a required `'success'` rather than an optional field."""
+
+    result: Literal["success"]
+
+
+class AppDslImportPayload(BaseModel):
+    """Request body for POST /workspaces/<workspace_id>/apps/imports."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    mode: Literal["yaml-content", "yaml-url"] = Field(..., description="Import mode: yaml-content or yaml-url")
+    yaml_content: str | None = Field(None, description="Inline YAML DSL string (required when mode is yaml-content)")
+    yaml_url: str | None = Field(None, description="Remote URL to fetch YAML from (required when mode is yaml-url)")
+    name: str | None = Field(None, description="Override the app name from the DSL")
+    description: str | None = Field(None, description="Override the app description from the DSL")
+    icon_type: str | None = Field(None)
+    icon: str | None = Field(None)
+    icon_background: str | None = Field(None)
+    app_id: str | None = Field(None, description="Existing app ID to overwrite (workflow/advanced-chat apps only)")
+
+    @model_validator(mode="after")
+    def _validate_source_by_mode(self) -> AppDslImportPayload:
+        if self.mode == "yaml-content" and not self.yaml_content:
+            raise ValueError("yaml_content is required when mode is 'yaml-content'")
+        if self.mode == "yaml-url" and not self.yaml_url:
+            raise ValueError("yaml_url is required when mode is 'yaml-url'")
+        return self
+
+
+class AppDslExportQuery(BaseModel):
+    """Query parameters for GET /apps/<app_id>/dsl."""
+
+    include_secret: bool = Field(False, description="Include encrypted secret values in the exported DSL")
+    workflow_id: UUIDStr | None = Field(
+        None, description="Export a specific workflow version instead of the current draft"
+    )
+
+
+class AppDslExportResponse(BaseModel):
+    """Export DSL response."""
+
+    data: str = Field(..., description="DSL YAML string")
+
+
+class AppDslImportResponse(Import, Hinted):
+    """`Import` plus the server-built next step for a pending import."""
+
+
+class FormSubmitResponse(BaseModel):
+    """Empty 200 body for POST /apps/<id>/human-input-forms/<token>:submit. `extra='forbid'`
+    pins `additionalProperties: false` so the generated contract is an exact `{}` rather
+    than an under-annotated open object."""
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class OpenApiFormSubmitPayload(HumanInputFormSubmitPayload):
+    """The console payload plus local file parts; `_files.merge_files` sets them on `inputs`."""
+
+    files: UploadParts | None = Field(
+        default=None,
+        description="Local files keyed by the form's file input name, same convention as the run ops' `files`",
+    )
+
+
+class HumanInputFormDefinitionResponse(BaseModel):
+    form_content: str
+    inputs: list[dict[str, Any]] = Field(default_factory=list)
+    resolved_default_values: dict[str, str]
+    user_actions: list[dict[str, Any]] = Field(default_factory=list)
+    expiration_time: int | None = None

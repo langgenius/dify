@@ -7,7 +7,7 @@ Includes Redis cache operations, database queries, and single-flight concurrency
 
 import logging
 from datetime import datetime
-from typing import Any
+from typing import Any, override
 
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -43,6 +43,11 @@ class CachedApiToken(BaseModel):
     last_used_at: datetime | None
     created_at: datetime | None
 
+    # Dataset key scoping (DatasetApiTokenBinding) is intentionally NOT cached here:
+    # validate_dataset_token queries the bound dataset ids per request so scope changes
+    # take effect immediately. Unknown fields in older cache entries are ignored.
+
+    @override
     def __repr__(self) -> str:
         return f"<CachedApiToken id={self.id} type={self.type}>"
 

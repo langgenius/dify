@@ -1,3 +1,5 @@
+from typing import override
+
 from services.workflow.entities import WorkflowScheduleCFSPlanEntity
 from services.workflow.scheduler import CFSPlanScheduler, SchedulerCommand
 from tasks.workflow_cfs_scheduler.entities import AsyncWorkflowQueue
@@ -11,13 +13,12 @@ class AsyncWorkflowCFSPlanEntity(WorkflowScheduleCFSPlanEntity):
     queue: AsyncWorkflowQueue
 
 
-class AsyncWorkflowCFSPlanScheduler(CFSPlanScheduler):
+class AsyncWorkflowCFSPlanScheduler(CFSPlanScheduler[AsyncWorkflowCFSPlanEntity]):
     """
     Trigger workflow CFS plan scheduler.
     """
 
-    plan: AsyncWorkflowCFSPlanEntity
-
+    @override
     def can_schedule(self) -> SchedulerCommand:
         """
         Check if the workflow can be scheduled.

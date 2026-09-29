@@ -9,6 +9,7 @@ from core.helper.trace_id_helper import ParentTraceContext
 
 
 class BaseTraceInfo(BaseModel):
+    operation_id: str | None = None
     message_id: str | None = None
     message_data: Any | None = None
     inputs: Union[str, dict[str, Any], list[Any]] | None = None
@@ -62,15 +63,16 @@ class BaseTraceInfo(BaseModel):
             parent_span_id_source is the outer node_execution_id.
         """
         parent_ctx = self.metadata.get("parent_trace_context")
-        if isinstance(parent_ctx, ParentTraceContext):
-            context = parent_ctx
-        elif isinstance(parent_ctx, Mapping):
-            try:
-                context = ParentTraceContext.model_validate(parent_ctx)
-            except ValueError:
+        match parent_ctx:
+            case ParentTraceContext():
+                context = parent_ctx
+            case Mapping():
+                try:
+                    context = ParentTraceContext.model_validate(parent_ctx)
+                except ValueError:
+                    return None, None
+            case _:
                 return None, None
-        else:
-            return None, None
         return (
             context.parent_workflow_run_id,
             context.parent_node_execution_id,

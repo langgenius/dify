@@ -1,7 +1,7 @@
 import base64
 import io
 from collections.abc import Generator
-from typing import Any
+from typing import Any, override
 
 from google.cloud import storage as google_cloud_storage  # type: ignore
 from pydantic import TypeAdapter
@@ -29,12 +29,14 @@ class GoogleCloudStorage(BaseStorage):
         else:
             self.client = google_cloud_storage.Client()
 
+    @override
     def save(self, filename, data):
         bucket = self.client.get_bucket(self.bucket_name)
         blob = bucket.blob(filename)
         with io.BytesIO(data) as stream:
             blob.upload_from_file(stream)
 
+    @override
     def load_once(self, filename: str) -> bytes:
         bucket = self.client.get_bucket(self.bucket_name)
         blob = bucket.get_blob(filename)
@@ -43,6 +45,7 @@ class GoogleCloudStorage(BaseStorage):
         data: bytes = blob.download_as_bytes()
         return data
 
+    @override
     def load_stream(self, filename: str) -> Generator:
         bucket = self.client.get_bucket(self.bucket_name)
         blob = bucket.get_blob(filename)
@@ -52,6 +55,7 @@ class GoogleCloudStorage(BaseStorage):
             while chunk := blob_stream.read(4096):
                 yield chunk
 
+    @override
     def download(self, filename, target_filepath):
         bucket = self.client.get_bucket(self.bucket_name)
         blob = bucket.get_blob(filename)
@@ -59,11 +63,13 @@ class GoogleCloudStorage(BaseStorage):
             raise FileNotFoundError("File not found")
         blob.download_to_filename(target_filepath)
 
+    @override
     def exists(self, filename):
         bucket = self.client.get_bucket(self.bucket_name)
         blob = bucket.blob(filename)
         return blob.exists()
 
+    @override
     def delete(self, filename: str):
         bucket = self.client.get_bucket(self.bucket_name)
         bucket.delete_blob(filename)

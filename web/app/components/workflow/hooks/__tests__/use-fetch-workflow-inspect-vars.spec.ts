@@ -14,18 +14,22 @@ const mockInvalidateSysVarValues = vi.hoisted(() => vi.fn())
 const mockHandleCancelAllNodeSuccessStatus = vi.hoisted(() => vi.fn())
 const mockToNodeOutputVars = vi.hoisted(() => vi.fn())
 
-const schemaTypeDefinitions: SchemaTypeDefinition[] = [{
-  name: 'simple',
-  schema: {
-    properties: {},
+const schemaTypeDefinitions: SchemaTypeDefinition[] = [
+  {
+    name: 'simple',
+    schema: {
+      properties: {},
+    },
   },
-}]
+]
 
 vi.mock('reactflow', async () =>
-  (await import('../../__tests__/reactflow-mock-state')).createReactFlowModuleMock())
+  (await import('../../__tests__/reactflow-mock-state')).createReactFlowModuleMock(),
+)
 
 vi.mock('@/service/use-tools', async () =>
-  (await import('../../__tests__/service-mock-factory')).createToolServiceMock())
+  (await import('../../__tests__/service-mock-factory')).createToolServiceMock(),
+)
 
 vi.mock('@/service/use-workflow', () => ({
   useInvalidateConversationVarValues: () => mockInvalidateConversationVarValues,
@@ -84,13 +88,17 @@ describe('use-fetch-workflow-inspect-vars', () => {
         },
       }),
     ]
-    mockToNodeOutputVars.mockReturnValue([{
-      nodeId: 'node-1',
-      vars: [{
-        variable: 'answer',
-        schemaType: 'simple',
-      }],
-    }])
+    mockToNodeOutputVars.mockReturnValue([
+      {
+        nodeId: 'node-1',
+        vars: [
+          {
+            variable: 'answer',
+            schemaType: 'simple',
+          },
+        ],
+      },
+    ])
   })
 
   it('fetches inspect vars, invalidates cached values, and stores schema-enriched node vars', async () => {
@@ -103,10 +111,11 @@ describe('use-fetch-workflow-inspect-vars', () => {
     ])
 
     const { result, store } = renderWorkflowHook(
-      () => useSetWorkflowVarsWithValue({
-        flowType: FlowType.appFlow,
-        flowId: 'flow-1',
-      }),
+      () =>
+        useSetWorkflowVarsWithValue({
+          flowType: FlowType.appFlow,
+          flowId: 'flow-1',
+        }),
       {
         initialStoreState: {
           dataSourceList: [],
@@ -155,10 +164,11 @@ describe('use-fetch-workflow-inspect-vars', () => {
     }
 
     const { result, store } = renderWorkflowHook(
-      () => useSetWorkflowVarsWithValue({
-        flowType: FlowType.appFlow,
-        flowId: 'flow-2',
-      }),
+      () =>
+        useSetWorkflowVarsWithValue({
+          flowType: FlowType.appFlow,
+          flowId: 'flow-2',
+        }),
       {
         initialStoreState: {
           dataSourceList: [],

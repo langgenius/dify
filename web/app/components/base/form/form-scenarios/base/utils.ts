@@ -7,6 +7,12 @@ export const generateZodSchema = (fields: BaseConfiguration[]) => {
   const shape: Record<string, ZodSchema> = {}
 
   fields.forEach((field) => {
+    const textFieldTypes: readonly BaseFieldType[] = [
+      BaseFieldType.textInput,
+      BaseFieldType.paragraph,
+    ]
+    const numberFieldTypes: readonly BaseFieldType[] = [BaseFieldType.numberInput]
+
     let zodType
 
     switch (field.type) {
@@ -29,25 +35,33 @@ export const generateZodSchema = (fields: BaseConfiguration[]) => {
     }
 
     if (field.maxLength) {
-      if ([BaseFieldType.textInput, BaseFieldType.paragraph].includes(field.type))
-        zodType = (zodType as ZodString).max(field.maxLength, `${field.label} exceeds max length of ${field.maxLength}`)
+      if (textFieldTypes.includes(field.type))
+        zodType = (zodType as ZodString).max(
+          field.maxLength,
+          `${field.label} exceeds max length of ${field.maxLength}`,
+        )
     }
 
     if (field.min) {
-      if ([BaseFieldType.numberInput].includes(field.type))
-        zodType = (zodType as ZodNumber).min(field.min, `${field.label} must be at least ${field.min}`)
+      if (numberFieldTypes.includes(field.type))
+        zodType = (zodType as ZodNumber).min(
+          field.min,
+          `${field.label} must be at least ${field.min}`,
+        )
     }
 
     if (field.max) {
-      if ([BaseFieldType.numberInput].includes(field.type))
-        zodType = (zodType as ZodNumber).max(field.max, `${field.label} exceeds max value of ${field.max}`)
+      if (numberFieldTypes.includes(field.type))
+        zodType = (zodType as ZodNumber).max(
+          field.max,
+          `${field.label} exceeds max value of ${field.max}`,
+        )
     }
 
     if (field.required) {
-      if ([BaseFieldType.textInput, BaseFieldType.paragraph].includes(field.type))
+      if (textFieldTypes.includes(field.type))
         zodType = (zodType as ZodString).nonempty(`${field.label} is required`)
-    }
-    else {
+    } else {
       zodType = zodType.optional().nullable()
     }
 

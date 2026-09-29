@@ -1,4 +1,5 @@
 'use client'
+import type { ComponentProps } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Drawer,
@@ -21,6 +22,7 @@ type IFloatRightContainerProps = {
   panelClassName?: string
   title?: string
   mask?: boolean
+  finalFocus?: ComponentProps<typeof DrawerPopup>['finalFocus']
 }
 
 const FloatRightContainer = ({
@@ -32,8 +34,9 @@ const FloatRightContainer = ({
   panelClassName,
   title,
   mask = true,
+  finalFocus,
 }: IFloatRightContainerProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
     <>
@@ -43,26 +46,31 @@ const FloatRightContainer = ({
           modal
           swipeDirection="right"
           onOpenChange={(open) => {
-            if (!open)
-              onClose()
+            if (!open) onClose()
           }}
         >
           <DrawerPortal>
             <DrawerBackdrop className={cn(!mask && 'bg-transparent')} />
             <DrawerViewport>
-              <DrawerPopup className={cn('data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-sm', panelClassName)}>
+              <DrawerPopup
+                finalFocus={finalFocus}
+                className={cn(
+                  'data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-sm',
+                  panelClassName,
+                )}
+              >
                 <DrawerContent className="flex min-h-0 flex-1 flex-col">
                   {(title || showClose) && (
                     <div className="mb-4 flex shrink-0 items-center justify-between">
                       {title && (
-                        <DrawerTitle className="text-lg leading-6 font-medium text-text-primary">
+                        <DrawerTitle className="text-lg/6 font-medium text-text-primary">
                           {title}
                         </DrawerTitle>
                       )}
                       {showClose && (
                         <DrawerCloseButton
-                          aria-label={t('operation.close', { ns: 'common' })}
-                          className="h-6 w-6 rounded-md"
+                          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                          className="size-6 rounded-md"
                         />
                       )}
                     </div>
@@ -74,9 +82,7 @@ const FloatRightContainer = ({
           </DrawerPortal>
         </Drawer>
       )}
-      {(!isMobile && isOpen) && (
-        <>{children}</>
-      )}
+      {!isMobile && isOpen && <>{children}</>}
     </>
   )
 }

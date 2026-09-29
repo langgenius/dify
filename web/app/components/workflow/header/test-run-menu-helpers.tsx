@@ -1,12 +1,7 @@
-/* eslint-disable react-refresh/only-export-components */
-import type { MouseEvent, MouseEventHandler, ReactElement } from 'react'
+import type { KeyboardEvent, MouseEvent, MouseEventHandler, ReactElement } from 'react'
 import type { TriggerOption } from './test-run-menu'
 import { DropdownMenuItem } from '@langgenius/dify-ui/dropdown-menu'
-import {
-  cloneElement,
-  isValidElement,
-  useEffect,
-} from 'react'
+import { cloneElement, isValidElement } from 'react'
 import { ShortcutKbd } from '../shortcuts/shortcut-kbd'
 
 export type ShortcutMapping = {
@@ -14,7 +9,7 @@ export type ShortcutMapping = {
   shortcutKey: string
 }
 
-export const getNormalizedShortcutKey = (event: KeyboardEvent) => {
+export const getNormalizedShortcutKey = (event: Pick<KeyboardEvent, 'key'>) => {
   return event.key === '`' ? '~' : event.key
 }
 
@@ -33,49 +28,38 @@ export const OptionRow = ({
       onClick={() => onSelect(option)}
     >
       <div className="flex min-w-0 flex-1 items-center">
-        <div className="flex h-6 w-6 shrink-0 items-center justify-center">
-          {option.icon}
-        </div>
+        <div className="flex size-6 shrink-0 items-center justify-center">{option.icon}</div>
         <span className="ml-2 truncate">{option.name}</span>
       </div>
       {shortcutKey && (
-        <ShortcutKbd hotkey={shortcutKey} className="ml-2" textColor="secondary" />
+        <ShortcutKbd displayKey={shortcutKey} className="ml-2" textColor="secondary" />
       )}
     </DropdownMenuItem>
   )
 }
 
-export const useShortcutMenu = ({
-  open,
-  shortcutMappings,
-  handleSelect,
-}: {
-  open: boolean
-  shortcutMappings: ShortcutMapping[]
-  handleSelect: (option: TriggerOption) => void
-}) => {
-  useEffect(() => {
-    if (!open)
-      return
+export function handleShortcutMenuKeyDown(
+  event: KeyboardEvent,
+  shortcutMappings: ShortcutMapping[],
+  onSelect: (option: TriggerOption) => void,
+) {
+  if (
+    event.defaultPrevented ||
+    event.nativeEvent.isComposing ||
+    event.repeat ||
+    event.altKey ||
+    event.ctrlKey ||
+    event.metaKey
+  )
+    return
 
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.defaultPrevented || event.repeat || event.altKey || event.ctrlKey || event.metaKey)
-        return
+  const normalizedKey = getNormalizedShortcutKey(event)
+  const mapping = shortcutMappings.find(({ shortcutKey }) => shortcutKey === normalizedKey)
+  if (!mapping) return
 
-      const normalizedKey = getNormalizedShortcutKey(event)
-      const mapping = shortcutMappings.find(({ shortcutKey }) => shortcutKey === normalizedKey)
-
-      if (mapping) {
-        event.preventDefault()
-        handleSelect(mapping.option)
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [handleSelect, open, shortcutMappings])
+  event.preventDefault()
+  event.stopPropagation()
+  onSelect(mapping.option)
 }
 
 export const SingleOptionTrigger = ({
@@ -86,8 +70,7 @@ export const SingleOptionTrigger = ({
   runSoleOption: () => void
 }) => {
   const handleRunClick = (event?: MouseEvent<HTMLElement>) => {
-    if (event?.defaultPrevented)
-      return
+    if (event?.defaultPrevented) return
 
     runSoleOption()
   }
@@ -96,14 +79,12 @@ export const SingleOptionTrigger = ({
     const childElement = children as ReactElement<{ onClick?: MouseEventHandler<HTMLElement> }>
     const originalOnClick = childElement.props?.onClick
 
-    // eslint-disable-next-line react/no-clone-element
+    // oxlint-disable-next-line react/no-clone-element
     return cloneElement(childElement, {
       onClick: (event: MouseEvent<HTMLElement>) => {
-        if (typeof originalOnClick === 'function')
-          originalOnClick(event)
+        if (typeof originalOnClick === 'function') originalOnClick(event)
 
-        if (event?.defaultPrevented)
-          return
+        if (event?.defaultPrevented) return
 
         runSoleOption()
       },

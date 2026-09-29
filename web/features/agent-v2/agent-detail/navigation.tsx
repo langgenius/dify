@@ -1,0 +1,267 @@
+'use client'
+
+import type { AgentDetailSectionKey } from './section'
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbSeparator,
+} from '@langgenius/dify-ui/breadcrumb'
+import { cn } from '@langgenius/dify-ui/cn'
+import { DialogTrigger } from '@langgenius/dify-ui/dialog'
+import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
+import { Separator } from '@langgenius/dify-ui/separator'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { formatForDisplay } from '@tanstack/react-hotkeys'
+import { useTranslation } from 'react-i18next'
+import NavLink from '@/app/components/app-sidebar/nav-link'
+import AppIcon from '@/app/components/base/app-icon'
+import { DetailSidebarToggleButton } from '@/app/components/detail-sidebar/toggle-button'
+import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
+import { GOTO_ANYTHING_HOTKEY } from '@/app/components/goto-anything/hotkeys'
+import { getAgentSectionAccess } from '@/features/agent-v2/acl'
+import { useAgentPermissions } from '@/features/agent-v2/permissions'
+import Link from '@/next/link'
+import { usePathname } from '@/next/navigation'
+import { getAgentDetailPath, getAgentIdFromPathname } from './routes'
+import { AgentDetailSidebarActions } from './sidebar-actions'
+
+type AgentDetailTopProps = {
+  expand?: boolean
+  onToggle?: () => void
+}
+
+type AgentDetailSectionProps = {
+  expand?: boolean
+}
+
+type AgentDetailNavItem = {
+  labelKey: `agentDetail.sections.${AgentDetailSectionKey}`
+  href: string
+  icon: string
+  activeIcon: string
+}
+
+const getAgentDetailNavigation = (agentId: string): AgentDetailNavItem[] => [
+  {
+    labelKey: 'agentDetail.sections.configure',
+    href: getAgentDetailPath(agentId, 'configure'),
+    icon: 'i-custom-vender-agent-v2-configure',
+    activeIcon: 'i-custom-vender-agent-v2-configure-active',
+  },
+  {
+    labelKey: 'agentDetail.sections.access',
+    href: getAgentDetailPath(agentId, 'access'),
+    icon: 'i-custom-vender-agent-v2-access-point',
+    activeIcon: 'i-custom-vender-agent-v2-access-point',
+  },
+  {
+    labelKey: 'agentDetail.sections.logs',
+    href: getAgentDetailPath(agentId, 'logs'),
+    icon: 'i-ri-file-list-3-line',
+    activeIcon: 'i-ri-file-list-3-fill',
+  },
+  {
+    labelKey: 'agentDetail.sections.monitoring',
+    href: getAgentDetailPath(agentId, 'monitoring'),
+    icon: 'i-ri-dashboard-2-line',
+    activeIcon: 'i-ri-dashboard-2-fill',
+  },
+  {
+    labelKey: 'agentDetail.sections.access-config',
+    href: getAgentDetailPath(agentId, 'access-config'),
+    icon: 'i-ri-shield-user-line',
+    activeIcon: 'i-ri-shield-user-line',
+  },
+]
+
+export function AgentDetailTop({ expand = true, onToggle }: AgentDetailTopProps) {
+  const { t: tApp } = useTranslation(['app'])
+  const { t: tCommon } = useTranslation(['navigation', 'agentRoster'])
+
+  if (!expand) {
+    return (
+      <div className="flex w-full items-center justify-center px-3 pt-2 pb-1">
+        {onToggle && (
+          <DetailSidebarToggleButton
+            expand={expand}
+            onToggle={onToggle}
+            icon={
+              <span aria-hidden className="i-custom-vender-line-arrows-sidebar-left-arrow size-4" />
+            }
+          />
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex items-center py-2 pr-2 pl-1">
+      <Breadcrumb
+        aria-label={tCommon(($) => $['roster.title'], { ns: 'agentRoster' })}
+        className="flex-1"
+      >
+        <BreadcrumbList className="gap-px">
+          <BreadcrumbItem className="shrink-0">
+            <BreadcrumbLink
+              render={<Link href="/" />}
+              aria-label={tCommon(($) => $['mainNav.home'], { ns: 'navigation' })}
+              className="gap-0 rounded-lg py-2 pr-1.5 pl-0.5 hover:bg-background-default-hover"
+            >
+              <span aria-hidden className="i-ri-arrow-left-s-line size-4" />
+              <span aria-hidden className="i-custom-vender-main-nav-app-home size-4" />
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator className="system-md-regular" />
+          <BreadcrumbItem className="shrink-0">
+            <BreadcrumbLink
+              render={<Link href="/agents" />}
+              className="rounded-lg px-1.5 py-2 system-sm-semibold-uppercase text-text-secondary hover:bg-background-default-hover hover:text-text-primary"
+            >
+              Agents
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <DialogTrigger
+              handle={gotoAnythingDialogHandle}
+              render={
+                <button
+                  type="button"
+                  aria-label={tApp(($) => $['gotoAnything.searchTitle'])}
+                  className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-[10px] text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                >
+                  <span aria-hidden className="i-custom-vender-main-nav-quick-search size-4" />
+                </button>
+              }
+            />
+          }
+        />
+        <TooltipContent placement="bottom" className="flex items-center gap-1">
+          <span className="px-0.5">{tApp(($) => $['gotoAnything.quickAction'])}</span>
+          <KbdGroup>
+            {formatForDisplay(GOTO_ANYTHING_HOTKEY, { parts: true }).map((key) => (
+              <Kbd key={key}>{key}</Kbd>
+            ))}
+          </KbdGroup>
+        </TooltipContent>
+      </Tooltip>
+      {onToggle && (
+        <DetailSidebarToggleButton
+          expand={expand}
+          onToggle={onToggle}
+          icon={
+            <span aria-hidden className="i-custom-vender-line-arrows-sidebar-left-arrow size-4" />
+          }
+        />
+      )}
+    </div>
+  )
+}
+
+export function AgentDetailSection({ expand = true }: AgentDetailSectionProps) {
+  const { t } = useTranslation(['agentV2'])
+  const pathname = usePathname()
+  const agentId = getAgentIdFromPathname(pathname)
+  const { agentQuery, ...capabilities } = useAgentPermissions(agentId)
+
+  if (!agentId) return null
+
+  const agent = agentQuery.data
+  const sectionAccess = getAgentSectionAccess(capabilities)
+  const navigation = getAgentDetailNavigation(agentId).filter(
+    (item) =>
+      sectionAccess[item.labelKey.slice('agentDetail.sections.'.length) as AgentDetailSectionKey],
+  )
+  const imageUrl =
+    agent?.icon_type === 'image'
+      ? agent.icon_url
+      : agent?.icon_type === 'link'
+        ? agent.icon
+        : undefined
+  const iconType = imageUrl ? 'image' : agent?.icon_type
+
+  return (
+    <div className={cn('flex min-h-0 flex-1 flex-col', expand ? 'px-2 pb-2' : 'pb-2')}>
+      {!expand && (
+        <div className="flex w-full shrink-0 justify-center px-3.5 pt-0.5 pb-0.75">
+          <Separator
+            decorative
+            orientation="horizontal"
+            variant="solid"
+            className="my-0 w-6.75 bg-divider-subtle"
+          />
+        </div>
+      )}
+      <div className={cn('py-2', expand && '-mx-1')}>
+        <div
+          className={cn(
+            'flex h-13 items-center rounded-xl py-1.5 pr-2 pl-1.5',
+            !expand && 'justify-center',
+          )}
+        >
+          <div className={cn('shrink-0', expand && 'mr-2')}>
+            <span aria-hidden>
+              <AppIcon
+                size="large"
+                rounded
+                iconType={iconType}
+                icon={agent?.icon_type === 'emoji' ? (agent.icon ?? undefined) : undefined}
+                background={agent?.icon_background}
+                imageUrl={imageUrl}
+              />
+            </span>
+          </div>
+          <div
+            className={cn(
+              'relative flex h-10 min-w-0 flex-1 flex-col justify-center gap-0.5 pr-7',
+              !expand && 'hidden',
+            )}
+          >
+            <div
+              className="truncate system-md-semibold text-text-secondary"
+              title={agent?.name ?? t(($) => $['agentDetail.title'])}
+            >
+              {agent?.name ?? t(($) => $['agentDetail.title'])}
+            </div>
+            {agent?.role?.trim() && (
+              <div className="truncate system-xs-regular text-text-tertiary">{agent.role}</div>
+            )}
+            {agent && expand && (
+              <div className="absolute -top-px right-0">
+                <AgentDetailSidebarActions agent={agent} />
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+      <div className={cn(expand ? 'px-3 py-0.5' : 'px-1 py-0.5')}>
+        <Separator
+          decorative
+          orientation="horizontal"
+          variant={expand ? 'gradient' : 'solid'}
+          className={cn('my-0', expand ? 'from-divider-subtle' : 'bg-divider-subtle')}
+        />
+      </div>
+      <nav
+        className={cn('flex flex-col gap-y-0.5 py-2', expand ? 'px-1' : 'px-3')}
+        aria-label={t(($) => $['agentDetail.navigationLabel'])}
+      >
+        {navigation.map((item) => (
+          <NavLink
+            key={item.href}
+            mode={expand ? 'expand' : 'collapse'}
+            iconMap={{ selected: item.activeIcon, normal: item.icon }}
+            name={t(($) => $[item.labelKey])}
+            href={item.href}
+            pathname={pathname}
+          />
+        ))}
+      </nav>
+    </div>
+  )
+}

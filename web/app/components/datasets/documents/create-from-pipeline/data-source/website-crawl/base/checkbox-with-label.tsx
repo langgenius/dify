@@ -1,9 +1,8 @@
 'use client'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
-import * as React from 'react'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { useId } from 'react'
-import Checkbox from '@/app/components/base/checkbox'
-import { Infotip } from '@/app/components/base/infotip'
 
 type CheckboxWithLabelProps = {
   className?: string
@@ -14,36 +13,40 @@ type CheckboxWithLabelProps = {
   tooltip?: string
 }
 
-const CheckboxWithLabel = ({
+export default function CheckboxWithLabel({
   className = '',
   isChecked,
   onChange,
   label,
   labelClassName,
   tooltip,
-}: CheckboxWithLabelProps) => {
+}: CheckboxWithLabelProps) {
   const labelId = useId()
-  const handleToggle = () => onChange(!isChecked)
 
   return (
     <div className={cn('flex items-center', className)}>
-      <Checkbox checked={isChecked} onCheck={handleToggle} ariaLabelledBy={labelId} />
-      <div className="ml-2 flex min-w-0 items-center gap-1">
-        <button
-          type="button"
+      <label className="flex min-w-0 cursor-pointer items-center">
+        <Checkbox checked={isChecked} onCheckedChange={(checked) => onChange(checked)} />
+        <span
           id={labelId}
-          className={cn('min-w-0 cursor-pointer border-0 bg-transparent p-0 text-left system-sm-medium text-text-secondary', labelClassName)}
-          onClick={handleToggle}
+          className={cn(
+            'ml-2 min-w-0 text-left system-sm-medium text-text-secondary',
+            labelClassName,
+          )}
         >
           {label}
-        </button>
+        </span>
+      </label>
+      <div className="ml-1 flex min-w-0 items-center">
         {tooltip && (
-          <Infotip aria-label={tooltip} popupClassName="w-[200px]">
-            {tooltip}
+          <Infotip>
+            <InfotipTrigger aria-labelledby={labelId} />
+            <InfotipContent aria-labelledby={labelId} className="w-50">
+              {tooltip}
+            </InfotipContent>
           </Infotip>
         )}
       </div>
     </div>
   )
 }
-export default React.memo(CheckboxWithLabel)

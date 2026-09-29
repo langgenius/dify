@@ -1,6 +1,6 @@
 import logging
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, override
 
 from core.trigger.constants import TRIGGER_WEBHOOK_NODE_TYPE
 from core.workflow.file_reference import resolve_file_record_id
@@ -25,12 +25,14 @@ class TriggerWebhookNode(Node[WebhookData]):
 
     _file_reference_factory: FileReferenceFactoryProtocol
 
+    @override
     def post_init(self) -> None:
         from core.workflow.node_runtime import DifyFileReferenceFactory
 
         self._file_reference_factory = DifyFileReferenceFactory(self.run_context)
 
     @classmethod
+    @override
     def get_default_config(cls, filters: Mapping[str, object] | None = None) -> Mapping[str, object]:
         return {
             "type": "webhook",
@@ -48,9 +50,11 @@ class TriggerWebhookNode(Node[WebhookData]):
         }
 
     @classmethod
+    @override
     def version(cls) -> str:
         return "1"
 
+    @override
     def _run(self) -> NodeRunResult:
         """
         Run the webhook node.

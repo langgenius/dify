@@ -14,23 +14,17 @@ const PluginAuthInDataSourceNode = ({
   isAuthorized,
   onJumpToDataSourcePage,
 }: PluginAuthInDataSourceNodeProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   return (
     <>
-      {
-        !isAuthorized && (
-          <div className="px-4 pb-2">
-            <Button
-              className="w-full"
-              variant="primary"
-              onClick={onJumpToDataSourcePage}
-            >
-              <RiAddLine className="mr-1 h-4 w-4" />
-              {t('integrations.connect', { ns: 'common' })}
-            </Button>
-          </div>
-        )
-      }
+      {!isAuthorized && (
+        <div className="px-4 pb-2">
+          <Button className="w-full" variant="primary" onClick={onJumpToDataSourcePage}>
+            <RiAddLine className="size-4" />
+            {t(($) => $['integrations.connect'], { ns: 'common' })}
+          </Button>
+        </div>
+      )}
       {isAuthorized && children}
     </>
   )

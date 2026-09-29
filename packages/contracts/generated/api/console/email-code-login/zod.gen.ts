@@ -3,11 +3,20 @@
 import * as z from 'zod'
 
 /**
- * EmailPayload
+ * EmailCodeSendPayload
  */
-export const zEmailPayload = z.object({
+export const zEmailCodeSendPayload = z.object({
   email: z.string(),
   language: z.string().nullish(),
+  turnstile_token: z.string().max(2048).nullish(),
+})
+
+/**
+ * SimpleResultDataResponse
+ */
+export const zSimpleResultDataResponse = z.object({
+  data: z.string(),
+  result: z.string(),
 })
 
 /**
@@ -17,19 +26,28 @@ export const zEmailCodeLoginPayload = z.object({
   code: z.string(),
   email: z.string(),
   language: z.string().nullish(),
-  token: z.string(),
+  timezone: z.string().nullish(),
+  token: z.uuid(),
+  turnstile_token: z.string().max(2048).nullish(),
 })
 
-export const zPostEmailCodeLoginBody = zEmailPayload
+/**
+ * SimpleResultResponse
+ */
+export const zSimpleResultResponse = z.object({
+  result: z.string(),
+})
+
+export const zPostEmailCodeLoginBody = zEmailCodeSendPayload
 
 /**
  * Success
  */
-export const zPostEmailCodeLoginResponse = z.record(z.string(), z.unknown())
+export const zPostEmailCodeLoginResponse = zSimpleResultDataResponse
 
 export const zPostEmailCodeLoginValidityBody = zEmailCodeLoginPayload
 
 /**
  * Success
  */
-export const zPostEmailCodeLoginValidityResponse = z.record(z.string(), z.unknown())
+export const zPostEmailCodeLoginValidityResponse = zSimpleResultResponse

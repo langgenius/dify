@@ -17,6 +17,7 @@ type DebugControllerWindow = Window & {
 type WorkflowStoreState = {
   backupDraft?: unknown
   environmentVariables?: unknown
+  workflowRunningData?: unknown
   setBackupDraft?: (value: unknown) => void
   setEnvironmentVariables?: (value: unknown) => void
   setWorkflowRunningData?: (value: unknown) => void
@@ -26,6 +27,17 @@ type WorkflowStoreState = {
   setListeningTriggerNodeIds?: (value: string[]) => void
   setListeningTriggerIsAll?: (value: boolean) => void
   setListeningTriggerNodeId?: (value: string | null) => void
+}
+
+type WorkflowRunFailedTrackingEvent = {
+  workflow_id: string
+  reason?: string
+  node_type?: string
+  data: {
+    workflow_status?: string
+    workflow_tracing_count?: number
+    workflow_data_chunks?: string[]
+  }
 }
 
 const mocks = vi.hoisted(() => {
@@ -142,7 +154,7 @@ vi.mock('@/app/components/base/features/hooks', () => ({
   }),
 }))
 
-vi.mock('@/app/components/workflow/hooks/use-workflow-interactions', () => ({
+vi.mock('@/app/components/workflow/hooks/use-workflow-update', () => ({
   useWorkflowUpdate: () => ({
     handleUpdateWorkflowCanvas: mocks.mockHandleUpdateWorkflowCanvas,
   }),
@@ -219,13 +231,16 @@ vi.mock('../use-workflow-run-callbacks', async (importOriginal) => {
 const createWorkflowStoreState = () => ({
   backupDraft: undefined,
   environmentVariables: [{ id: 'env-current', value: 'secret' }],
+  workflowRunningData: undefined,
   setBackupDraft: vi.fn((value: unknown) => {
     mocks.workflowStoreState.backupDraft = value
   }),
   setEnvironmentVariables: vi.fn((value: unknown) => {
     mocks.workflowStoreState.environmentVariables = value
   }),
-  setWorkflowRunningData: vi.fn(),
+  setWorkflowRunningData: vi.fn((value: unknown) => {
+    mocks.workflowStoreState.workflowRunningData = value
+  }),
   setIsListening: vi.fn(),
   setShowVariableInspectPanel: vi.fn(),
   setListeningTriggerType: vi.fn(),
@@ -247,11 +262,20 @@ describe('useWorkflowRun', () => {
     ])
     mocks.mockGetViewport.mockReturnValue({ x: 1, y: 2, zoom: 1.5 })
     mocks.mockDoSyncWorkflowDraft.mockResolvedValue(undefined)
-    mocks.mockPost.mockResolvedValue(new Response('data: ok', {
-      headers: { 'content-type': 'text/event-stream' },
-    }))
+    mocks.mockPost.mockResolvedValue(
+      new Response('data: ok', {
+        headers: { 'content-type': 'text/event-stream' },
+      }),
+    )
     mocks.mockGetAudioPlayer.mockReturnValue({
       playAudioWithAudio: vi.fn(),
+    })
+    mocks.runEventHandlers.handleWorkflowFailed.mockImplementation(() => {
+      const workflowRunningData = mocks.workflowStoreState.workflowRunningData
+      if (typeof workflowRunningData !== 'object' || workflowRunningData === null) return
+
+      const result = (workflowRunningData as { result?: { status?: string } }).result
+      if (result) result.status = WorkflowRunningStatus.Failed
     })
     mocks.workflowStoreState.backupDraft = undefined
     Object.assign(mocks.workflowStoreState, createWorkflowStoreState())
@@ -304,7 +328,9 @@ describe('useWorkflowRun', () => {
       edges: [{ id: 'backup-edge' }],
       viewport: { x: 0, y: 0, zoom: 2 },
     })
-    expect(mocks.workflowStoreState.setEnvironmentVariables).toHaveBeenCalledWith([{ id: 'env-backup', value: 'value' }])
+    expect(mocks.workflowStoreState.setEnvironmentVariables).toHaveBeenCalledWith([
+      { id: 'env-backup', value: 'value' },
+    ])
     expect(mocks.featuresStoreSetState).toHaveBeenCalledWith({
       features: { opening: { enabled: true } },
     })
@@ -328,11 +354,13 @@ describe('useWorkflowRun', () => {
     expect(mocks.workflowStoreState.setListeningTriggerNodeId).toHaveBeenCalledWith(null)
     expect(mocks.workflowStoreState.setListeningTriggerNodeIds).toHaveBeenCalledWith([])
     expect(mocks.workflowStoreState.setListeningTriggerIsAll).toHaveBeenCalledWith(false)
-    expect(mocks.workflowStoreState.setWorkflowRunningData).toHaveBeenCalledWith(expect.objectContaining({
-      result: expect.objectContaining({
-        status: WorkflowRunningStatus.Running,
+    expect(mocks.workflowStoreState.setWorkflowRunningData).toHaveBeenCalledWith(
+      expect.objectContaining({
+        result: expect.objectContaining({
+          status: WorkflowRunningStatus.Running,
+        }),
       }),
-    }))
+    )
     expect(mocks.mockSsePost).toHaveBeenCalledWith(
       '/apps/app-1/workflows/draft/run',
       { body: { inputs: { query: 'hello' } } },
@@ -379,33 +407,31 @@ describe('useWorkflowRun', () => {
       expectedNodeIds: ['trigger-1', 'trigger-2'],
       expectedIsAll: true,
     },
-  ])('should dispatch $title trigger runs through the debug runner integration', async ({
-    params,
-    options,
-    expectedUrl,
-    expectedBody,
-    expectedNodeIds,
-    expectedIsAll,
-  }) => {
-    const { result } = renderHook(() => useWorkflowRun())
+  ])(
+    'should dispatch $title trigger runs through the debug runner integration',
+    async ({ params, options, expectedUrl, expectedBody, expectedNodeIds, expectedIsAll }) => {
+      const { result } = renderHook(() => useWorkflowRun())
 
-    await act(async () => {
-      await result.current.handleRun(params, undefined, options)
-    })
+      await act(async () => {
+        await result.current.handleRun(params, undefined, options)
+      })
 
-    expect(mocks.mockPost).toHaveBeenCalledWith(
-      expectedUrl,
-      expect.objectContaining({
-        body: expectedBody,
-        signal: expect.any(AbortSignal),
-      }),
-      { needAllResponseContent: true },
-    )
-    expect(mocks.workflowStoreState.setIsListening).toHaveBeenCalledWith(true)
-    expect(mocks.workflowStoreState.setListeningTriggerNodeIds).toHaveBeenCalledWith(expectedNodeIds)
-    expect(mocks.workflowStoreState.setListeningTriggerIsAll).toHaveBeenCalledWith(expectedIsAll)
-    expect(mocks.mockSsePost).not.toHaveBeenCalled()
-  })
+      expect(mocks.mockPost).toHaveBeenCalledWith(
+        expectedUrl,
+        expect.objectContaining({
+          body: expectedBody,
+          signal: expect.any(AbortSignal),
+        }),
+        { needAllResponseContent: true },
+      )
+      expect(mocks.workflowStoreState.setIsListening).toHaveBeenCalledWith(true)
+      expect(mocks.workflowStoreState.setListeningTriggerNodeIds).toHaveBeenCalledWith(
+        expectedNodeIds,
+      )
+      expect(mocks.workflowStoreState.setListeningTriggerIsAll).toHaveBeenCalledWith(expectedIsAll)
+      expect(mocks.mockSsePost).not.toHaveBeenCalled()
+    },
+  )
 
   it('should expose the workflow-failed tracker through the callback factory context', async () => {
     const { result } = renderHook(() => useWorkflowRun())
@@ -414,16 +440,142 @@ describe('useWorkflowRun', () => {
       await result.current.handleRun({ inputs: { query: 'hello' } })
     })
 
-    const baseCallbackFactoryContext = mocks.mockCreateBaseWorkflowRunCallbacks.mock.calls.at(-1)?.[0] as {
-      trackWorkflowRunFailed: (params: { error?: string, node_type?: string }) => void
+    const baseCallbackFactoryContext = mocks.mockCreateBaseWorkflowRunCallbacks.mock.calls.at(
+      -1,
+    )?.[0] as {
+      getWorkflowRunningData: () => unknown
+      trackWorkflowRunFailed: (params: unknown, workflowData: unknown) => void
+    }
+    const workflowData = {
+      result: { status: WorkflowRunningStatus.Running },
+      tracing: [{ node_id: 'node-1', status: 'running' }],
     }
 
-    baseCallbackFactoryContext.trackWorkflowRunFailed({ error: 'failed', node_type: 'llm' })
+    baseCallbackFactoryContext.trackWorkflowRunFailed(
+      { error: 'failed', node_type: 'llm' },
+      workflowData,
+    )
 
     expect(mocks.mockTrackEvent).toHaveBeenCalledWith('workflow_run_failed', {
       workflow_id: 'flow-1',
       reason: 'failed',
       node_type: 'llm',
+      data: {
+        workflow_status: WorkflowRunningStatus.Running,
+        workflow_tracing_count: 1,
+        workflow_data_chunks: [JSON.stringify(workflowData)],
+      },
+    })
+
+    mocks.mockTrackEvent.mockClear()
+    baseCallbackFactoryContext.trackWorkflowRunFailed('Server Error', workflowData)
+
+    expect(mocks.mockTrackEvent).toHaveBeenCalledWith('workflow_run_failed', {
+      workflow_id: 'flow-1',
+      reason: 'Server Error',
+      node_type: undefined,
+      data: {
+        workflow_status: WorkflowRunningStatus.Running,
+        workflow_tracing_count: 1,
+        workflow_data_chunks: [JSON.stringify(workflowData)],
+      },
+    })
+  })
+
+  it('should split serialized workflow data into chunks when it exceeds the amplitude string limit', async () => {
+    const { result } = renderHook(() => useWorkflowRun())
+
+    await act(async () => {
+      await result.current.handleRun({ inputs: { query: 'hello' } })
+    })
+
+    const baseCallbackFactoryContext = mocks.mockCreateBaseWorkflowRunCallbacks.mock.calls.at(
+      -1,
+    )?.[0] as {
+      trackWorkflowRunFailed: (params: unknown, workflowData: unknown) => void
+    }
+    const workflowData = {
+      result: {
+        status: WorkflowRunningStatus.Running,
+        outputs: {
+          text: 'x'.repeat(2200),
+        },
+      },
+      tracing: [{ node_id: 'node-1', status: 'running' }],
+    }
+
+    baseCallbackFactoryContext.trackWorkflowRunFailed(
+      { error: 'failed', node_type: 'llm' },
+      workflowData,
+    )
+
+    const trackingEvent = mocks.mockTrackEvent.mock.calls.at(
+      -1,
+    )?.[1] as WorkflowRunFailedTrackingEvent
+    const chunks = trackingEvent.data.workflow_data_chunks
+    if (!chunks) throw new Error('Expected workflow data chunks to be tracked')
+
+    expect(mocks.mockTrackEvent).toHaveBeenCalledWith('workflow_run_failed', {
+      workflow_id: 'flow-1',
+      reason: 'failed',
+      node_type: 'llm',
+      data: {
+        workflow_status: WorkflowRunningStatus.Running,
+        workflow_tracing_count: 1,
+        workflow_data_chunks: chunks,
+      },
+    })
+    expect(chunks.length).toBeGreaterThan(1)
+    expect(chunks.every((chunk) => chunk.length <= 900)).toBe(true)
+    expect(chunks.join('')).toBe(JSON.stringify(workflowData))
+    expect(trackingEvent.data).not.toHaveProperty('workflow_data')
+  })
+
+  it('should track workflow failures when the error or workflow data is malformed', async () => {
+    const { result } = renderHook(() => useWorkflowRun())
+
+    await act(async () => {
+      await result.current.handleRun({ inputs: { query: 'hello' } })
+    })
+
+    const baseCallbackFactoryContext = mocks.mockCreateBaseWorkflowRunCallbacks.mock.calls.at(
+      -1,
+    )?.[0] as {
+      trackWorkflowRunFailed: (params: unknown, workflowData: unknown) => void
+    }
+
+    baseCallbackFactoryContext.trackWorkflowRunFailed(new Error('network down'), undefined)
+
+    expect(mocks.mockTrackEvent).toHaveBeenCalledWith('workflow_run_failed', {
+      workflow_id: 'flow-1',
+      reason: 'network down',
+      node_type: undefined,
+      data: {
+        workflow_status: undefined,
+        workflow_tracing_count: undefined,
+      },
+    })
+
+    mocks.mockTrackEvent.mockClear()
+    const circularWorkflowData: Record<string, unknown> = {
+      result: null,
+      tracing: 'not-a-list',
+    }
+    circularWorkflowData.self = circularWorkflowData
+
+    baseCallbackFactoryContext.trackWorkflowRunFailed(
+      { message: 'missing error' },
+      circularWorkflowData,
+    )
+
+    expect(mocks.mockTrackEvent).toHaveBeenCalledWith('workflow_run_failed', {
+      workflow_id: 'flow-1',
+      reason: undefined,
+      node_type: undefined,
+      data: {
+        workflow_status: undefined,
+        workflow_tracing_count: undefined,
+      },
     })
   })
 
@@ -434,7 +586,9 @@ describe('useWorkflowRun', () => {
       await result.current.handleRun({ token: 'public-token' })
     })
 
-    const publicBaseCallbackFactoryContext = mocks.mockCreateBaseWorkflowRunCallbacks.mock.calls.at(-1)?.[0] as {
+    const publicBaseCallbackFactoryContext = mocks.mockCreateBaseWorkflowRunCallbacks.mock.calls.at(
+      -1,
+    )?.[0] as {
       getOrCreatePlayer: () => unknown
     }
 
@@ -456,9 +610,10 @@ describe('useWorkflowRun', () => {
       await result.current.handleRun({ appId: 'app-2' })
     })
 
-    const privateBaseCallbackFactoryContext = mocks.mockCreateBaseWorkflowRunCallbacks.mock.calls.at(-1)?.[0] as {
-      getOrCreatePlayer: () => unknown
-    }
+    const privateBaseCallbackFactoryContext =
+      mocks.mockCreateBaseWorkflowRunCallbacks.mock.calls.at(-1)?.[0] as {
+        getOrCreatePlayer: () => unknown
+      }
 
     privateBaseCallbackFactoryContext.getOrCreatePlayer()
 
@@ -483,12 +638,16 @@ describe('useWorkflowRun', () => {
       result.current.handleStopRun('task-1')
     })
 
-    expect(mocks.mockStopWorkflowRun).toHaveBeenCalledWith('/apps/app-1/workflow-runs/tasks/task-1/stop')
-    expect(mocks.workflowStoreState.setWorkflowRunningData).toHaveBeenCalledWith(expect.objectContaining({
-      result: expect.objectContaining({
-        status: WorkflowRunningStatus.Stopped,
+    expect(mocks.mockStopWorkflowRun).toHaveBeenCalledWith(
+      '/apps/app-1/workflow-runs/tasks/task-1/stop',
+    )
+    expect(mocks.workflowStoreState.setWorkflowRunningData).toHaveBeenCalledWith(
+      expect.objectContaining({
+        result: expect.objectContaining({
+          status: WorkflowRunningStatus.Stopped,
+        }),
       }),
-    }))
+    )
 
     const webhookAbort = vi.fn()
     const pluginAbort = vi.fn()
@@ -524,7 +683,9 @@ describe('useWorkflowRun', () => {
     act(() => {
       result.current.handleRestoreFromPublishedWorkflow({
         graph: {
-          nodes: [{ id: 'published-node', selected: true, data: { selected: true, label: 'Published' } }],
+          nodes: [
+            { id: 'published-node', selected: true, data: { selected: true, label: 'Published' } },
+          ],
           edges: [{ id: 'published-edge' }],
           viewport: { x: 10, y: 20, zoom: 0.8 },
         },
@@ -543,7 +704,9 @@ describe('useWorkflowRun', () => {
     })
 
     expect(mocks.mockHandleUpdateWorkflowCanvas).toHaveBeenCalledWith({
-      nodes: [{ id: 'published-node', selected: false, data: { selected: false, label: 'Published' } }],
+      nodes: [
+        { id: 'published-node', selected: false, data: { selected: false, label: 'Published' } },
+      ],
       edges: [{ id: 'published-edge' }],
       viewport: { x: 10, y: 20, zoom: 0.8 },
     })
@@ -556,7 +719,9 @@ describe('useWorkflowRun', () => {
         file: { enabled: true },
       }),
     })
-    expect(mocks.workflowStoreState.setEnvironmentVariables).toHaveBeenCalledWith([{ id: 'env-published', value: 'value' }])
+    expect(mocks.workflowStoreState.setEnvironmentVariables).toHaveBeenCalledWith([
+      { id: 'env-published', value: 'value' },
+    ])
   })
 
   it('should restore published workflows with empty environment variables as an empty list', () => {
@@ -565,7 +730,9 @@ describe('useWorkflowRun', () => {
     act(() => {
       result.current.handleRestoreFromPublishedWorkflow({
         graph: {
-          nodes: [{ id: 'published-node', selected: true, data: { selected: true, label: 'Published' } }],
+          nodes: [
+            { id: 'published-node', selected: true, data: { selected: true, label: 'Published' } },
+          ],
           edges: [],
           viewport: { x: 0, y: 0, zoom: 1 },
         },

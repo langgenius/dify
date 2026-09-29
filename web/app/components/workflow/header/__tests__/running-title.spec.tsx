@@ -4,7 +4,7 @@ import RunningTitle from '../running-title'
 let mockIsChatMode = false
 const mockFormatWorkflowRunIdentifier = vi.fn()
 
-vi.mock('../../hooks', () => ({
+vi.mock('../../hooks/use-workflow', () => ({
   useIsChatMode: () => mockIsChatMode,
 }))
 

@@ -153,6 +153,11 @@ class RedisConfig(BaseSettings):
         default=30,
     )
 
+    REDIS_KEEPALIVE: bool = Field(default=False, description="Keepalive for Redis connections")
+    REDIS_KEEPALIVE_IDLE: PositiveInt = Field(default=30, description="redis keepalive idle timeout")
+    REDIS_KEEPALIVE_INTERVAL: PositiveInt = Field(default=10, description="redis keepalive interval")
+    REDIS_KEEPALIVE_COUNT: PositiveInt = Field(default=10, description="redis keepalive count")
+
     @field_validator("REDIS_MAX_CONNECTIONS", mode="before")
     @classmethod
     def _empty_string_to_none_for_max_conns(cls, v):

@@ -1,4 +1,5 @@
 from collections.abc import Mapping
+from typing import override
 
 from core.trigger.constants import TRIGGER_SCHEDULE_NODE_TYPE
 from core.workflow.variable_prefixes import SYSTEM_VARIABLE_NODE_ID
@@ -14,10 +15,12 @@ class TriggerScheduleNode(Node[TriggerScheduleNodeData]):
     execution_type = NodeExecutionType.ROOT
 
     @classmethod
+    @override
     def version(cls) -> str:
         return "1"
 
     @classmethod
+    @override
     def get_default_config(cls, filters: Mapping[str, object] | None = None) -> Mapping[str, object]:
         return {
             "type": TRIGGER_SCHEDULE_NODE_TYPE,
@@ -29,6 +32,7 @@ class TriggerScheduleNode(Node[TriggerScheduleNodeData]):
             },
         }
 
+    @override
     def _run(self) -> NodeRunResult:
         node_inputs = dict(self.graph_runtime_state.variable_pool.get_by_prefix(self.id))
         system_inputs = self.graph_runtime_state.variable_pool.get_by_prefix(SYSTEM_VARIABLE_NODE_ID)

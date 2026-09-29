@@ -11,14 +11,14 @@ from dify_app import DifyApp
 
 def init_app(app: DifyApp):
     @app.after_request
-    def after_request(response):  # pyright: ignore[reportUnusedFunction]
+    def after_request(response):
         """Add Version headers to the response."""
         response.headers.add("X-Version", dify_config.project.version)
         response.headers.add("X-Env", dify_config.DEPLOY_ENV)
         return response
 
     @app.route("/health")
-    def health():  # pyright: ignore[reportUnusedFunction]
+    def health():
         return Response(
             json.dumps({"pid": os.getpid(), "status": "ok", "version": dify_config.project.version}),
             status=200,
@@ -27,7 +27,7 @@ def init_app(app: DifyApp):
 
     @app.route("/threads")
     @admin_required
-    def threads():  # pyright: ignore[reportUnusedFunction]
+    def threads():
         num_threads = threading.active_count()
         threads = threading.enumerate()
 
@@ -53,7 +53,7 @@ def init_app(app: DifyApp):
 
     @app.route("/db-pool-stat")
     @admin_required
-    def pool_stat():  # pyright: ignore[reportUnusedFunction]
+    def pool_stat():
         from extensions.ext_database import db
 
         engine = db.engine

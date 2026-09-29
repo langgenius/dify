@@ -17,8 +17,8 @@ export type GetDataSourceIntegratesResponses = {
   }
 }
 
-export type GetDataSourceIntegratesResponse
-  = GetDataSourceIntegratesResponses[keyof GetDataSourceIntegratesResponses]
+export type GetDataSourceIntegratesResponse =
+  GetDataSourceIntegratesResponses[keyof GetDataSourceIntegratesResponses]
 
 export type PatchDataSourceIntegratesData = {
   body?: never
@@ -33,14 +33,14 @@ export type PatchDataSourceIntegratesResponses = {
   }
 }
 
-export type PatchDataSourceIntegratesResponse
-  = PatchDataSourceIntegratesResponses[keyof PatchDataSourceIntegratesResponses]
+export type PatchDataSourceIntegratesResponse =
+  PatchDataSourceIntegratesResponses[keyof PatchDataSourceIntegratesResponses]
 
 export type GetDataSourceIntegratesByBindingIdByActionData = {
   body?: never
   path: {
-    binding_id: string
     action: string
+    binding_id: string
   }
   query?: never
   url: '/data-source/integrates/{binding_id}/{action}'
@@ -52,14 +52,14 @@ export type GetDataSourceIntegratesByBindingIdByActionResponses = {
   }
 }
 
-export type GetDataSourceIntegratesByBindingIdByActionResponse
-  = GetDataSourceIntegratesByBindingIdByActionResponses[keyof GetDataSourceIntegratesByBindingIdByActionResponses]
+export type GetDataSourceIntegratesByBindingIdByActionResponse =
+  GetDataSourceIntegratesByBindingIdByActionResponses[keyof GetDataSourceIntegratesByBindingIdByActionResponses]
 
 export type PatchDataSourceIntegratesByBindingIdByActionData = {
   body?: never
   path: {
-    binding_id: string
     action: string
+    binding_id: string
   }
   query?: never
   url: '/data-source/integrates/{binding_id}/{action}'
@@ -71,5 +71,5 @@ export type PatchDataSourceIntegratesByBindingIdByActionResponses = {
   }
 }
 
-export type PatchDataSourceIntegratesByBindingIdByActionResponse
-  = PatchDataSourceIntegratesByBindingIdByActionResponses[keyof PatchDataSourceIntegratesByBindingIdByActionResponses]
+export type PatchDataSourceIntegratesByBindingIdByActionResponse =
+  PatchDataSourceIntegratesByBindingIdByActionResponses[keyof PatchDataSourceIntegratesByBindingIdByActionResponses]

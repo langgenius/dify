@@ -1,12 +1,15 @@
 from typing import Union
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
+from core.credit_usage import CreditUsageCreatedBy
+from core.model_context import with_credit_usage_created_by
 from core.model_manager import ModelInstance
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from graphon.model_runtime.entities.message_entities import PromptMessageTool, SystemPromptMessage, UserPromptMessage
 
 
 class FunctionCallMultiDatasetRouter:
+    @with_credit_usage_created_by(CreditUsageCreatedBy.KNOWLEDGE_RETRIEVAL)
     def invoke(
         self,
         query: str,
@@ -28,10 +31,10 @@ class FunctionCallMultiDatasetRouter:
                 SystemPromptMessage(content="You are a helpful AI assistant."),
                 UserPromptMessage(content=query),
             ]
-            result: LLMResult = model_instance.invoke_llm(  # pyright: ignore[reportCallIssue, reportArgumentType]
+            result: LLMResult = model_instance.invoke_llm(  # pyrefly: ignore[no-matching-overload]
                 prompt_messages=prompt_messages,
                 tools=dataset_tools,
-                stream=False,  # pyright: ignore[reportArgumentType]
+                stream=False,
                 model_parameters={"temperature": 0.2, "top_p": 0.3, "max_tokens": 1500},
             )
             usage = result.usage or LLMUsage.empty_usage()

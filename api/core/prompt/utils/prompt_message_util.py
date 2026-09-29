@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from typing import Any, cast
+from typing import NotRequired, TypedDict, cast
 
 from core.prompt.simple_prompt_transform import ModelMode
 from graphon.model_runtime.entities import (
@@ -13,19 +13,46 @@ from graphon.model_runtime.entities import (
 )
 
 
+class SavedPromptFile(TypedDict):
+    type: str
+    data: str
+    detail: NotRequired[str]
+    format: NotRequired[str]
+
+
+class SavedPromptToolCallFunction(TypedDict):
+    name: str
+    arguments: str
+
+
+class SavedPromptToolCall(TypedDict):
+    id: str
+    type: str
+    function: SavedPromptToolCallFunction
+
+
+class SavedPrompt(TypedDict):
+    role: str
+    text: str
+    files: NotRequired[list[SavedPromptFile]]
+    tool_calls: NotRequired[list[SavedPromptToolCall]]
+
+
 class PromptMessageUtil:
     @staticmethod
-    def prompt_messages_to_prompt_for_saving(model_mode: str, prompt_messages: Sequence[PromptMessage]):
+    def prompt_messages_to_prompt_for_saving(
+        model_mode: str, prompt_messages: Sequence[PromptMessage]
+    ) -> list[SavedPrompt]:
         """
         Prompt messages to prompt for saving.
         :param model_mode: model mode
         :param prompt_messages: prompt messages
         :return:
         """
-        prompts = []
+        prompts: list[SavedPrompt] = []
         if model_mode == ModelMode.CHAT:
-            tool_calls = []
             for prompt_message in prompt_messages:
+                tool_calls: list[SavedPromptToolCall] = []
                 if prompt_message.role == PromptMessageRole.USER:
                     role = "user"
                 elif prompt_message.role == PromptMessageRole.ASSISTANT:
@@ -50,7 +77,7 @@ class PromptMessageUtil:
                     continue
 
                 text = ""
-                files = []
+                files: list[SavedPromptFile] = []
                 if isinstance(prompt_message.content, list):
                     for content in prompt_message.content:
                         match content:
@@ -77,7 +104,7 @@ class PromptMessageUtil:
                 else:
                     text = cast(str, prompt_message.content)
 
-                prompt = {"role": role, "text": text, "files": files}
+                prompt: SavedPrompt = {"role": role, "text": text, "files": files}
 
                 if tool_calls:
                     prompt["tool_calls"] = tool_calls
@@ -86,14 +113,14 @@ class PromptMessageUtil:
         else:
             prompt_message = prompt_messages[0]
             text = ""
-            files = []
+            prompt_files: list[SavedPromptFile] = []
             if isinstance(prompt_message.content, list):
                 for content in prompt_message.content:
                     if content.type == PromptMessageContentType.TEXT:
                         text += content.data
                     else:
                         content = cast(ImagePromptMessageContent, content)
-                        files.append(
+                        prompt_files.append(
                             {
                                 "type": "image",
                                 "data": content.data[:10] + "...[TRUNCATED]..." + content.data[-10:],
@@ -103,13 +130,13 @@ class PromptMessageUtil:
             else:
                 text = cast(str, prompt_message.content)
 
-            params: dict[str, Any] = {
+            params: SavedPrompt = {
                 "role": "user",
                 "text": text,
             }
 
-            if files:
-                params["files"] = files
+            if prompt_files:
+                params["files"] = prompt_files
 
             prompts.append(params)
 

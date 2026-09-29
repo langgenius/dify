@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Any
+from typing import Any, override
 
 from flask import current_app
 
@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 class ElasticSearchJaVector(ElasticSearchVector):
+    @override
     def create_collection(
         self,
         embeddings: list[list[float]],
@@ -71,7 +72,10 @@ class ElasticSearchJaVector(ElasticSearchVector):
                         Field.METADATA_KEY: {
                             "type": "object",
                             "properties": {
-                                "doc_id": {"type": "keyword"}  # Map doc_id to keyword type
+                                "doc_id": {"type": "keyword"},  # Map doc_id to keyword type
+                                "document_id": {
+                                    "type": "keyword"
+                                },  # Map document_id to keyword type; required for document-scoped retrieval
                             },
                         },
                     }
@@ -82,6 +86,7 @@ class ElasticSearchJaVector(ElasticSearchVector):
 
 
 class ElasticSearchJaVectorFactory(ElasticSearchVectorFactory):
+    @override
     def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> ElasticSearchJaVector:
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]
@@ -89,7 +94,7 @@ class ElasticSearchJaVectorFactory(ElasticSearchVectorFactory):
         else:
             dataset_id = dataset.id
             collection_name = Dataset.gen_collection_name_by_id(dataset_id)
-            dataset.index_struct = json.dumps(self.gen_index_struct_dict(VectorType.ELASTICSEARCH, collection_name))
+            dataset.index_struct = json.dumps(self.gen_index_struct_dict(VectorType.ELASTICSEARCH_JA, collection_name))
 
         config = current_app.config
         return ElasticSearchJaVector(

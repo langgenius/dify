@@ -1,8 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-
-vi.mock('@langgenius/dify-ui/popover', () => import('@/__mocks__/base-ui-popover'))
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 vi.mock('@langgenius/dify-ui/cn', () => ({
   cn: (...args: unknown[]) => args.filter(Boolean).join(' '),
@@ -53,19 +52,34 @@ describe('CategoriesFilter', () => {
     expect(screen.getByText('+1'))!.toBeInTheDocument()
   })
 
-  it('should clear all selections when clear button clicked', () => {
-    const mockOnChange = vi.fn()
-    render(<CategoriesFilter value={['tool']} onChange={mockOnChange} />)
+  it('clears categories through a separate keyboard control and restores focus', async () => {
+    const user = userEvent.setup()
+    function Harness() {
+      const [categories, setCategories] = React.useState(['tool'])
+      return <CategoriesFilter value={categories} onChange={setCategories} />
+    }
 
-    const trigger = screen.getByTestId('popover-trigger')
-    const clearSvg = trigger.querySelector('svg')
-    fireEvent.click(clearSvg!)
-    expect(mockOnChange).toHaveBeenCalledWith([])
+    render(<Harness />)
+
+    const trigger = screen.getByRole('button', { name: 'Tool' })
+    const clearButton = screen.getByRole('button', {
+      name: 'plugin.clearSearch:{"label":"plugin.allCategories"}',
+    })
+    expect(trigger).not.toContainElement(clearButton)
+
+    await user.tab()
+    expect(trigger).toHaveFocus()
+    await user.tab()
+    expect(clearButton).toHaveFocus()
+    await user.keyboard('{Enter}')
+
+    expect(clearButton).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'plugin.allCategories' })).toHaveFocus()
   })
 
   it('should render category options in dropdown', () => {
     render(<CategoriesFilter value={[]} onChange={vi.fn()} />)
-    fireEvent.click(screen.getByTestId('popover-trigger'))
+    fireEvent.click(screen.getByRole('button', { name: 'plugin.allCategories' }))
 
     expect(screen.getByText('Tool'))!.toBeInTheDocument()
     expect(screen.getByText('Model'))!.toBeInTheDocument()
@@ -76,7 +90,7 @@ describe('CategoriesFilter', () => {
     const mockOnChange = vi.fn()
     render(<CategoriesFilter value={[]} onChange={mockOnChange} />)
 
-    fireEvent.click(screen.getByTestId('popover-trigger'))
+    fireEvent.click(screen.getByRole('button', { name: 'plugin.allCategories' }))
     fireEvent.click(screen.getByText('Tool'))
     expect(mockOnChange).toHaveBeenCalledWith(['tool'])
   })
@@ -85,17 +99,18 @@ describe('CategoriesFilter', () => {
     const mockOnChange = vi.fn()
     render(<CategoriesFilter value={['tool']} onChange={mockOnChange} />)
 
-    fireEvent.click(screen.getByTestId('popover-trigger'))
+    fireEvent.click(screen.getByRole('button', { name: /Tool/ }))
     const toolElements = screen.getAllByText('Tool')
     fireEvent.click(toolElements[toolElements.length - 1]!)
     expect(mockOnChange).toHaveBeenCalledWith([])
   })
 
-  it('should filter categories by search text', () => {
+  it('should filter categories by search text', async () => {
+    const user = userEvent.setup()
     render(<CategoriesFilter value={[]} onChange={vi.fn()} />)
 
-    fireEvent.click(screen.getByTestId('popover-trigger'))
-    fireEvent.change(screen.getByPlaceholderText('plugin.searchCategories'), { target: { value: 'mod' } })
+    await user.click(screen.getByRole('button', { name: 'plugin.allCategories' }))
+    await user.type(screen.getByRole('searchbox', { name: 'plugin.searchCategories' }), 'mod')
 
     expect(screen.queryByText('Tool')).not.toBeInTheDocument()
     expect(screen.getByText('Model')).toBeInTheDocument()

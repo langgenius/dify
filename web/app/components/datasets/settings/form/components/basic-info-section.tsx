@@ -1,79 +1,92 @@
 'use client'
-import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
+import type { IconPickerValue } from '@/app/components/base/icon-picker'
 import type { Member } from '@/models/common'
 import type { DataSet, DatasetPermission, IconInfo } from '@/models/datasets'
 import type { AppIconType } from '@/types/app'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Input } from '@langgenius/dify-ui/input'
+import { Textarea } from '@langgenius/dify-ui/textarea'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import AppIconPicker from '@/app/components/base/app-icon-picker'
-import Input from '@/app/components/base/input'
-import Textarea from '@/app/components/base/textarea'
+import { IconPickerDialog } from '@/app/components/base/icon-picker'
 import PermissionSelector from '../../permission-selector'
 
-const rowClass = 'flex gap-x-1'
-const labelClass = 'flex items-center shrink-0 w-[180px] h-7 pt-1'
+const rowClass = 'flex min-w-0 flex-col gap-2 @3xl/settings:flex-row @3xl/settings:gap-x-1'
+const labelClass = 'flex shrink-0 flex-col pt-1 @3xl/settings:w-45'
 
 type BasicInfoSectionProps = {
   currentDataset: DataSet | undefined
-  isCurrentWorkspaceDatasetOperator: boolean
   name: string
   setName: (value: string) => void
   description: string
   setDescription: (value: string) => void
   iconInfo: IconInfo
-  showAppIconPicker: boolean
+  showIconPicker: boolean
   handleOpenAppIconPicker: () => void
-  handleSelectAppIcon: (icon: AppIconSelection) => void
-  handleCloseAppIconPicker: () => void
+  handleSelectAppIcon: (icon: IconPickerValue) => void
+  setShowIconPicker: (show: boolean) => void
   permission: DatasetPermission | undefined
   setPermission: (value: DatasetPermission | undefined) => void
   selectedMemberIDs: string[]
   setSelectedMemberIDs: (value: string[]) => void
   memberList: Member[]
+  readonly?: boolean
 }
 
 const BasicInfoSection = ({
   currentDataset,
-  isCurrentWorkspaceDatasetOperator,
   name,
   setName,
   description,
   setDescription,
   iconInfo,
-  showAppIconPicker,
+  showIconPicker,
   handleOpenAppIconPicker,
   handleSelectAppIcon,
-  handleCloseAppIconPicker,
+  setShowIconPicker,
   permission,
   setPermission,
   selectedMemberIDs,
   setSelectedMemberIDs,
   memberList,
+  readonly = false,
 }: BasicInfoSectionProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetSettings'])
+  const permissionLabelId = useId()
 
   return (
     <>
       {/* Dataset name and icon */}
       <div className={rowClass}>
         <div className={labelClass}>
-          <div className="system-sm-semibold text-text-secondary">{t('form.nameAndIcon', { ns: 'datasetSettings' })}</div>
+          <div className="system-sm-semibold text-text-secondary">
+            {t(($) => $['form.nameAndIcon'], { ns: 'datasetSettings' })}
+          </div>
         </div>
-        <div className="flex grow items-center gap-x-2">
-          <AppIcon
-            size="small"
+        <div className="flex min-w-0 grow items-center gap-x-2">
+          <IconButton
+            size="lg"
+            aria-label={t(($) => $['form.changeIcon'], { ns: 'datasetSettings' })}
+            disabled={readonly}
             onClick={handleOpenAppIconPicker}
-            className="cursor-pointer"
-            iconType={iconInfo.icon_type as AppIconType}
-            icon={iconInfo.icon}
-            background={iconInfo.icon_background}
-            imageUrl={iconInfo.icon_url}
-            showEditIcon
-          />
+          >
+            <span aria-hidden="true">
+              <AppIcon
+                size="small"
+                decorative
+                iconType={iconInfo.icon_type as AppIconType}
+                icon={iconInfo.icon}
+                background={iconInfo.icon_background}
+                imageUrl={iconInfo.icon_url}
+              />
+            </span>
+          </IconButton>
           <Input
-            disabled={!currentDataset?.embedding_available}
+            aria-label={t(($) => $['form.name'], { ns: 'datasetSettings' })}
+            disabled={!currentDataset?.embedding_available || readonly}
             value={name}
-            onChange={e => setName(e.target.value)}
+            onValueChange={(nextValue) => setName(nextValue)}
           />
         </div>
       </div>
@@ -81,15 +94,18 @@ const BasicInfoSection = ({
       {/* Dataset description */}
       <div className={rowClass}>
         <div className={labelClass}>
-          <div className="system-sm-semibold text-text-secondary">{t('form.desc', { ns: 'datasetSettings' })}</div>
+          <div className="system-sm-semibold text-text-secondary">
+            {t(($) => $['form.desc'], { ns: 'datasetSettings' })}
+          </div>
         </div>
-        <div className="grow">
+        <div className="min-w-0 grow">
           <Textarea
-            disabled={!currentDataset?.embedding_available}
+            aria-label={t(($) => $['form.desc'], { ns: 'datasetSettings' })}
+            disabled={!currentDataset?.embedding_available || readonly}
             className="resize-none"
-            placeholder={t('form.descPlaceholder', { ns: 'datasetSettings' }) || ''}
+            placeholder={t(($) => $['form.descPlaceholder'], { ns: 'datasetSettings' }) || ''}
             value={description}
-            onChange={e => setDescription(e.target.value)}
+            onValueChange={(value) => setDescription(value)}
           />
         </div>
       </div>
@@ -97,26 +113,37 @@ const BasicInfoSection = ({
       {/* Permissions */}
       <div className={rowClass}>
         <div className={labelClass}>
-          <div className="system-sm-semibold text-text-secondary">{t('form.permissions', { ns: 'datasetSettings' })}</div>
+          <div id={permissionLabelId} className="system-sm-semibold text-text-secondary">
+            {t(($) => $['form.permissions'], { ns: 'datasetSettings' })}
+          </div>
         </div>
-        <div className="grow">
+        <div className="min-w-0 grow">
           <PermissionSelector
-            disabled={!currentDataset?.embedding_available || isCurrentWorkspaceDatasetOperator}
+            aria-labelledby={permissionLabelId}
+            disabled={!currentDataset?.embedding_available || readonly}
             permission={permission}
             value={selectedMemberIDs}
-            onChange={v => setPermission(v)}
+            onChange={(v) => setPermission(v)}
             onMemberSelect={setSelectedMemberIDs}
             memberList={memberList}
           />
         </div>
       </div>
 
-      {showAppIconPicker && (
-        <AppIconPicker
-          onSelect={handleSelectAppIcon}
-          onClose={handleCloseAppIconPicker}
-        />
-      )}
+      <IconPickerDialog
+        open={showIconPicker}
+        defaultValue={
+          iconInfo.icon_type === 'emoji'
+            ? {
+                type: 'emoji',
+                icon: iconInfo.icon,
+                background: iconInfo.icon_background,
+              }
+            : { type: 'image', fileId: iconInfo.icon, url: iconInfo.icon_url || '' }
+        }
+        onOpenChange={setShowIconPicker}
+        onConfirm={handleSelectAppIcon}
+      />
     </>
   )
 }

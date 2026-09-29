@@ -1,4 +1,8 @@
-import type { VarType } from '../workflow/types'
+import type {
+  DatasourceProviderType,
+  ToolProviderType,
+} from '@dify/contracts/api/console/workspaces/types.gen'
+import type { Variable, VarType } from '../workflow/types'
 
 type LocalizedText<T = string> = {
   en_US: T
@@ -6,18 +10,22 @@ type LocalizedText<T = string> = {
   [key: string]: T
 }
 
-export enum AuthType {
-  none = 'none',
-  apiKey = 'api_key', // backward compatibility
-  apiKeyHeader = 'api_key_header',
-  apiKeyQuery = 'api_key_query',
-}
+export const AuthType = {
+  none: 'none',
+  apiKey: 'api_key', // backward compatibility
+  apiKeyHeader: 'api_key_header',
+  apiKeyQuery: 'api_key_query',
+} as const
 
-export enum AuthHeaderPrefix {
-  basic = 'basic',
-  bearer = 'bearer',
-  custom = 'custom',
-}
+export type AuthType = (typeof AuthType)[keyof typeof AuthType]
+
+export const AuthHeaderPrefix = {
+  basic: 'basic',
+  bearer: 'bearer',
+  custom: 'custom',
+} as const
+
+export type AuthHeaderPrefix = (typeof AuthHeaderPrefix)[keyof typeof AuthHeaderPrefix]
 
 export type Credential = {
   auth_type: AuthType
@@ -27,16 +35,20 @@ export type Credential = {
   api_key_query_param?: string
 }
 
-export enum CollectionType {
-  all = 'all',
-  builtIn = 'builtin',
-  custom = 'api',
-  model = 'model',
-  workflow = 'workflow',
-  mcp = 'mcp',
-  datasource = 'datasource',
-  trigger = 'trigger',
-}
+export const CollectionType = {
+  all: 'all',
+  builtIn: 'builtin',
+  custom: 'api',
+  model: 'model',
+  workflow: 'workflow',
+  mcp: 'mcp',
+  datasource: 'datasource',
+  trigger: 'trigger',
+} as const
+
+export type CollectionType = (typeof CollectionType)[keyof typeof CollectionType]
+
+export type CollectionProviderType = CollectionType | DatasourceProviderType | ToolProviderType
 
 export type Emoji = {
   background: string
@@ -51,11 +63,12 @@ export type Collection = {
   icon: string | Emoji
   icon_dark?: string | Emoji
   label: LocalizedText
-  type: CollectionType | string
+  type: CollectionProviderType
   team_credentials: Record<string, any>
   is_team_authorization: boolean
   allow_delete: boolean
   labels: string[]
+  tools?: Tool[]
   plugin_id?: string
   letter?: string
   // MCP Server
@@ -78,6 +91,11 @@ export type Collection = {
     timeout?: number
     sse_read_timeout?: number
   }
+  // M3 — user-identity forwarding (MCP). Single selector now drives both
+  // "is forwarding on?" and "which mechanism to use?". Pre-collapse builds
+  // also sent a redundant `forward_user_identity` boolean; the api dropped
+  // it, so the field is gone here too.
+  identity_mode?: 'off' | 'idp_token'
   // Workflow
   workflow_app_id?: string
 }
@@ -198,19 +216,33 @@ export type WorkflowToolProviderParameter = {
   type?: string
 }
 
+export type WorkflowToolOutputSource = {
+  nodeId: string
+  nodeTitle: string
+  outputIndex: number
+}
+
+export type WorkflowToolOutputVariable = Variable & {
+  source?: WorkflowToolOutputSource
+}
+
 export type WorkflowToolProviderOutputParameter = {
   name: string
   description: string
   type?: VarType
+  source?: WorkflowToolOutputSource
   reserved?: boolean
 }
 
 export type WorkflowToolProviderOutputSchema = {
   type: string
-  properties: Record<string, {
-    type: string
-    description: string
-  }>
+  properties: Record<
+    string,
+    {
+      type: string
+      description: string
+    }
+  >
 }
 
 export type WorkflowToolProviderRequest = {
@@ -251,8 +283,10 @@ export type MCPServerDetail = {
   headers?: Record<string, string>
 }
 
-export enum MCPAuthMethod {
-  authentication = 'authentication',
-  headers = 'headers',
-  configurations = 'configurations',
-}
+export const MCPAuthMethod = {
+  authentication: 'authentication',
+  headers: 'headers',
+  configurations: 'configurations',
+} as const
+
+export type MCPAuthMethod = (typeof MCPAuthMethod)[keyof typeof MCPAuthMethod]

@@ -1,10 +1,17 @@
-import type { DefaultModelResponse, Model, ModelItem } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type {
+  ProviderModelWithStatusEntity,
+  ProviderWithModelsResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import type { RetrievalConfig } from '@/types/app'
-import { describe, expect, it } from 'vitest'
-import { ConfigurationMethodEnum, ModelStatusEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { describe, expect, it } from 'vite-plus/test'
+import {
+  ConfigurationMethodEnum,
+  ModelStatusEnum,
+  ModelTypeEnum,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { RerankingModeEnum } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
-import { ensureRerankModelSelected, isReRankModelSelected } from '../check-rerank-model'
+import { isReRankModelSelected, normalizeRetrievalConfigForSave } from '../check-rerank-model'
 
 // Test data factory
 const createRetrievalConfig = (overrides: Partial<RetrievalConfig> = {}): RetrievalConfig => ({
@@ -20,7 +27,7 @@ const createRetrievalConfig = (overrides: Partial<RetrievalConfig> = {}): Retrie
   ...overrides,
 })
 
-const createModelItem = (model: string): ModelItem => ({
+const createModelItem = (model: string): ProviderModelWithStatusEntity => ({
   model,
   label: { en_US: model, zh_Hans: model },
   model_type: ModelTypeEnum.rerank,
@@ -30,37 +37,24 @@ const createModelItem = (model: string): ModelItem => ({
   load_balancing_enabled: false,
 })
 
-const createRerankModelList = (): Model[] => [
+const createRerankModelList = (): ProviderWithModelsResponse[] => [
   {
+    tenant_id: 'test-workspace',
     provider: 'openai',
     icon_small: { en_US: '', zh_Hans: '' },
     label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
-    models: [
-      createModelItem('gpt-4-turbo'),
-      createModelItem('gpt-3.5-turbo'),
-    ],
+    models: [createModelItem('gpt-4-turbo'), createModelItem('gpt-3.5-turbo')],
     status: ModelStatusEnum.active,
   },
   {
+    tenant_id: 'test-workspace',
     provider: 'cohere',
     icon_small: { en_US: '', zh_Hans: '' },
     label: { en_US: 'Cohere', zh_Hans: 'Cohere' },
-    models: [
-      createModelItem('rerank-english-v2.0'),
-      createModelItem('rerank-multilingual-v2.0'),
-    ],
+    models: [createModelItem('rerank-english-v2.0'), createModelItem('rerank-multilingual-v2.0')],
     status: ModelStatusEnum.active,
   },
 ]
-
-const createDefaultRerankModel = (): DefaultModelResponse => ({
-  model: 'rerank-english-v2.0',
-  model_type: ModelTypeEnum.rerank,
-  provider: {
-    provider: 'cohere',
-    icon_small: { en_US: '', zh_Hans: '' },
-  },
-})
 
 describe('check-rerank-model', () => {
   describe('isReRankModelSelected', () => {
@@ -262,165 +256,106 @@ describe('check-rerank-model', () => {
     })
   })
 
-  describe('ensureRerankModelSelected', () => {
-    describe('Core Functionality', () => {
-      it('should return original config when reranking model already selected', () => {
-        const config = createRetrievalConfig({
-          reranking_enable: true,
-          reranking_model: {
-            reranking_provider_name: 'cohere',
-            reranking_model_name: 'rerank-english-v2.0',
-          },
-        })
+  describe('normalizeRetrievalConfigForSave', () => {
+    const rerankModel = {
+      reranking_provider_name: 'cohere',
+      reranking_model_name: 'rerank-english-v2.0',
+    }
 
-        const result = ensureRerankModelSelected({
-          retrievalConfig: config,
-          rerankDefaultModel: createDefaultRerankModel(),
-          indexMethod: 'high_quality',
-        })
-
-        expect(result).toEqual(config)
+    it('should force reranking_enable to true for hybrid search with a rerank model and a stale false flag', () => {
+      const config = createRetrievalConfig({
+        search_method: RETRIEVE_METHOD.hybrid,
+        reranking_enable: false,
+        reranking_mode: RerankingModeEnum.RerankingModel,
+        reranking_model: rerankModel,
       })
 
-      it('should apply default model when reranking enabled but no model selected', () => {
-        const config = createRetrievalConfig({
-          search_method: RETRIEVE_METHOD.semantic,
-          reranking_enable: true,
-          reranking_model: {
-            reranking_provider_name: '',
-            reranking_model_name: '',
-          },
-        })
+      const result = normalizeRetrievalConfigForSave(config)
 
-        const result = ensureRerankModelSelected({
-          retrievalConfig: config,
-          rerankDefaultModel: createDefaultRerankModel(),
-          indexMethod: 'high_quality',
-        })
-
-        expect(result.reranking_model).toEqual({
-          reranking_provider_name: 'cohere',
-          reranking_model_name: 'rerank-english-v2.0',
-        })
-      })
-
-      it('should apply default model for hybrid search method', () => {
-        const config = createRetrievalConfig({
-          search_method: RETRIEVE_METHOD.hybrid,
-          reranking_enable: false,
-          reranking_model: {
-            reranking_provider_name: '',
-            reranking_model_name: '',
-          },
-        })
-
-        const result = ensureRerankModelSelected({
-          retrievalConfig: config,
-          rerankDefaultModel: createDefaultRerankModel(),
-          indexMethod: 'high_quality',
-        })
-
-        expect(result.reranking_model).toEqual({
-          reranking_provider_name: 'cohere',
-          reranking_model_name: 'rerank-english-v2.0',
-        })
-      })
+      expect(result.reranking_enable).toBe(true)
     })
 
-    describe('Edge Cases', () => {
-      it('should return original config when indexMethod is not high_quality', () => {
-        const config = createRetrievalConfig({
-          reranking_enable: true,
-          reranking_model: {
-            reranking_provider_name: '',
-            reranking_model_name: '',
-          },
-        })
-
-        const result = ensureRerankModelSelected({
-          retrievalConfig: config,
-          rerankDefaultModel: createDefaultRerankModel(),
-          indexMethod: 'economy',
-        })
-
-        expect(result).toEqual(config)
+    it('should not mutate the original config', () => {
+      const config = createRetrievalConfig({
+        search_method: RETRIEVE_METHOD.hybrid,
+        reranking_enable: false,
+        reranking_mode: RerankingModeEnum.RerankingModel,
+        reranking_model: rerankModel,
       })
 
-      it('should return original config when rerankDefaultModel is null', () => {
-        const config = createRetrievalConfig({
-          reranking_enable: true,
-          reranking_model: {
-            reranking_provider_name: '',
-            reranking_model_name: '',
-          },
-        })
+      normalizeRetrievalConfigForSave(config)
 
-        const result = ensureRerankModelSelected({
-          retrievalConfig: config,
-          rerankDefaultModel: null as unknown as DefaultModelResponse,
-          indexMethod: 'high_quality',
-        })
+      expect(config.reranking_enable).toBe(false)
+    })
 
-        expect(result).toEqual(config)
+    it('should leave a weighted-score hybrid config untouched', () => {
+      const config = createRetrievalConfig({
+        search_method: RETRIEVE_METHOD.hybrid,
+        reranking_enable: false,
+        reranking_mode: RerankingModeEnum.WeightedScore,
+        reranking_model: rerankModel,
       })
 
-      it('should return original config when reranking disabled and not hybrid search', () => {
-        const config = createRetrievalConfig({
-          search_method: RETRIEVE_METHOD.semantic,
-          reranking_enable: false,
-          reranking_model: {
-            reranking_provider_name: '',
-            reranking_model_name: '',
-          },
-        })
+      const result = normalizeRetrievalConfigForSave(config)
 
-        const result = ensureRerankModelSelected({
-          retrievalConfig: config,
-          rerankDefaultModel: createDefaultRerankModel(),
-          indexMethod: 'high_quality',
-        })
+      expect(result).toBe(config)
+      expect(result.reranking_enable).toBe(false)
+    })
 
-        expect(result).toEqual(config)
+    it('should leave semantic search untouched', () => {
+      const config = createRetrievalConfig({
+        search_method: RETRIEVE_METHOD.semantic,
+        reranking_enable: false,
+        reranking_mode: RerankingModeEnum.RerankingModel,
+        reranking_model: rerankModel,
       })
 
-      it('should return original config when indexMethod is undefined', () => {
-        const config = createRetrievalConfig({
-          reranking_enable: true,
-          reranking_model: {
-            reranking_provider_name: '',
-            reranking_model_name: '',
-          },
-        })
+      const result = normalizeRetrievalConfigForSave(config)
 
-        const result = ensureRerankModelSelected({
-          retrievalConfig: config,
-          rerankDefaultModel: createDefaultRerankModel(),
-          indexMethod: undefined,
-        })
+      expect(result).toBe(config)
+    })
 
-        expect(result).toEqual(config)
+    it('should leave fullText search untouched', () => {
+      const config = createRetrievalConfig({
+        search_method: RETRIEVE_METHOD.fullText,
+        reranking_enable: false,
+        reranking_mode: RerankingModeEnum.RerankingModel,
+        reranking_model: rerankModel,
       })
 
-      it('should preserve other config properties when applying default model', () => {
-        const config = createRetrievalConfig({
-          search_method: RETRIEVE_METHOD.semantic,
-          reranking_enable: true,
-          top_k: 10,
-          score_threshold_enabled: true,
-          score_threshold: 0.8,
-        })
+      const result = normalizeRetrievalConfigForSave(config)
 
-        const result = ensureRerankModelSelected({
-          retrievalConfig: config,
-          rerankDefaultModel: createDefaultRerankModel(),
-          indexMethod: 'high_quality',
-        })
+      expect(result).toBe(config)
+    })
 
-        expect(result.top_k).toBe(10)
-        expect(result.score_threshold_enabled).toBe(true)
-        expect(result.score_threshold).toBe(0.8)
-        expect(result.search_method).toBe(RETRIEVE_METHOD.semantic)
+    it('should leave hybrid search without a complete rerank model untouched', () => {
+      const config = createRetrievalConfig({
+        search_method: RETRIEVE_METHOD.hybrid,
+        reranking_enable: false,
+        reranking_mode: RerankingModeEnum.RerankingModel,
+        reranking_model: {
+          reranking_provider_name: '',
+          reranking_model_name: '',
+        },
       })
+
+      const result = normalizeRetrievalConfigForSave(config)
+
+      expect(result).toBe(config)
+      expect(result.reranking_enable).toBe(false)
+    })
+
+    it('should keep reranking_enable true when it is already set', () => {
+      const config = createRetrievalConfig({
+        search_method: RETRIEVE_METHOD.hybrid,
+        reranking_enable: true,
+        reranking_mode: RerankingModeEnum.RerankingModel,
+        reranking_model: rerankModel,
+      })
+
+      const result = normalizeRetrievalConfigForSave(config)
+
+      expect(result.reranking_enable).toBe(true)
     })
   })
 })

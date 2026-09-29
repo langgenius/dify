@@ -1,5 +1,6 @@
 import type { DataSourceCredential } from '../types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
 import Item from '../item'
 
@@ -41,15 +42,60 @@ describe('Item Component', () => {
 
       // Assert
       expect(screen.getByText('Test Credential')).toBeInTheDocument()
-      expect(screen.getByText('connected')).toBeInTheDocument()
+      expect(screen.getByText('common.dataSource.notion.connected')).toBeInTheDocument()
       expect(screen.getByRole('button')).toBeInTheDocument() // Dropdown trigger
+    })
+
+    it('should render default badge without a leading avatar', () => {
+      // Act
+      const { container } = render(
+        <Item
+          credentialItem={{
+            ...mockCredentialItem,
+            is_default: true,
+            avatar_url: 'avatar-url',
+          }}
+          onAction={mockOnAction}
+        />,
+      )
+
+      // Assert
+      expect(container.querySelector('img')).not.toBeInTheDocument()
+      expect(screen.getByText('plugin.auth.default')).toBeInTheDocument()
     })
   })
 
   describe('Rename Mode Interactions', () => {
+    it.each(['save', 'cancel'])(
+      'keeps keyboard focus in the credential row after %s',
+      async (action) => {
+        const user = userEvent.setup()
+        render(
+          <Item credentialItem={mockCredentialItem} onAction={mockOnAction} canManageCredential />,
+        )
+
+        await user.click(screen.getByRole('button'))
+        await user.click(await screen.findByText('common.operation.rename'))
+
+        const input = await screen.findByRole('textbox', {
+          name: 'common.operation.rename Test Credential',
+        })
+        expect(input).toHaveFocus()
+
+        await user.click(screen.getByRole('button', { name: `common.operation.${action}` }))
+        await waitFor(() => {
+          expect(
+            screen.getByRole('button', { name: 'common.operation.more Test Credential' }),
+          ).toHaveFocus()
+        })
+      },
+    )
+
     it('should switch to rename mode when Trigger Rename is clicked', async () => {
       // Arrange
-      render(<Item credentialItem={mockCredentialItem} onAction={mockOnAction} />)
+      render(
+        <Item credentialItem={mockCredentialItem} onAction={mockOnAction} canManageCredential />,
+      )
 
       // Act
       await triggerRename()
@@ -60,7 +106,9 @@ describe('Item Component', () => {
 
     it('should update rename input value when changed', async () => {
       // Arrange
-      render(<Item credentialItem={mockCredentialItem} onAction={mockOnAction} />)
+      render(
+        <Item credentialItem={mockCredentialItem} onAction={mockOnAction} canManageCredential />,
+      )
       await triggerRename()
       const input = screen.getByPlaceholderText('common.placeholder.input')
 
@@ -73,7 +121,9 @@ describe('Item Component', () => {
 
     it('should call onAction with "rename" and correct payload when Save is clicked', async () => {
       // Arrange
-      render(<Item credentialItem={mockCredentialItem} onAction={mockOnAction} />)
+      render(
+        <Item credentialItem={mockCredentialItem} onAction={mockOnAction} canManageCredential />,
+      )
       await triggerRename()
       const input = screen.getByPlaceholderText('common.placeholder.input')
       fireEvent.change(input, { target: { value: 'New Name' } })
@@ -82,14 +132,10 @@ describe('Item Component', () => {
       fireEvent.click(screen.getByText('common.operation.save'))
 
       // Assert
-      expect(mockOnAction).toHaveBeenCalledWith(
-        'rename',
-        mockCredentialItem,
-        {
-          credential_id: 'test-id',
-          name: 'New Name',
-        },
-      )
+      expect(mockOnAction).toHaveBeenCalledWith('rename', mockCredentialItem, {
+        credential_id: 'test-id',
+        name: 'New Name',
+      })
       // Should switch back to view mode
       expect(screen.queryByPlaceholderText('common.placeholder.input')).not.toBeInTheDocument()
       expect(screen.getByText('Test Credential')).toBeInTheDocument()
@@ -97,7 +143,9 @@ describe('Item Component', () => {
 
     it('should exit rename mode without calling onAction when Cancel is clicked', async () => {
       // Arrange
-      render(<Item credentialItem={mockCredentialItem} onAction={mockOnAction} />)
+      render(
+        <Item credentialItem={mockCredentialItem} onAction={mockOnAction} canManageCredential />,
+      )
       await triggerRename()
       const input = screen.getByPlaceholderText('common.placeholder.input')
       fireEvent.change(input, { target: { value: 'Cancelled Name' } })
@@ -118,8 +166,9 @@ describe('Item Component', () => {
       // Arrange
       const parentClick = vi.fn()
       render(
+        // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- Test-only ancestor observes click propagation without being a control.
         <div onClick={parentClick}>
-          <Item credentialItem={mockCredentialItem} onAction={mockOnAction} />
+          <Item credentialItem={mockCredentialItem} onAction={mockOnAction} canManageCredential />
         </div>,
       )
       // Act & Assert
@@ -146,7 +195,7 @@ describe('Item Component', () => {
     it('should not throw if onAction is missing', async () => {
       // Arrange & Act
       // @ts-expect-error - Testing runtime tolerance for missing prop
-      render(<Item credentialItem={mockCredentialItem} onAction={undefined} />)
+      render(<Item credentialItem={mockCredentialItem} onAction={undefined} canManageCredential />)
       await triggerRename()
 
       // Assert

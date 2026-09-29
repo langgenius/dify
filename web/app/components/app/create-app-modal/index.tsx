@@ -1,141 +1,239 @@
 'use client'
 
-import type { AppIconSelection } from '../../base/app-icon-picker'
+import type { Hotkey } from '@tanstack/react-hotkeys'
+import type { IconPickerValue } from '@/app/components/base/icon-picker'
+import { zPostAppsBody } from '@dify/contracts/api/console/apps/zod.gen'
 import { Button } from '@langgenius/dify-ui/button'
-
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
-import { RiArrowRightLine, RiArrowRightSLine, RiExchange2Fill } from '@remixicon/react'
-import { useDebounceFn, useKeyPress } from 'ahooks'
-import { useCallback, useRef, useState } from 'react'
+import { Input } from '@langgenius/dify-ui/input'
+import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
+import { Separator } from '@langgenius/dify-ui/separator'
+import { Textarea } from '@langgenius/dify-ui/textarea'
+import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
+import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useDebounceFn } from 'ahooks'
+import { useAtomValue } from 'jotai'
+import { useCallback, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import Divider from '@/app/components/base/divider'
-import { BubbleTextMod, ChatBot, ListSparkle, Logic } from '@/app/components/base/icons/src/vender/solid/communication'
-import Input from '@/app/components/base/input'
-import Textarea from '@/app/components/base/textarea'
+import { IconPickerDialog } from '@/app/components/base/icon-picker'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
-import { useAppContext } from '@/context/app-context'
-import { useProviderContext } from '@/context/provider-context'
+import { toast } from '@/app/notifications'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useTheme from '@/hooks/use-theme'
 import { useRouter } from '@/next/navigation'
-import { createApp } from '@/service/apps'
+import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
+import { hasPermission } from '@/utils/permission'
 import { basePath } from '@/utils/var'
-import AppIconPicker from '../../base/app-icon-picker'
-import ShortcutsName from '../../workflow/shortcuts-name'
 import { CreateAppDialogShell } from '../create-app-dialog-shell'
 
 type CreateAppProps = {
-  onSuccess: () => void
   onClose: () => void
   onCreateFromTemplate?: () => void
   defaultAppMode?: AppModeEnum
 }
 
+const CREATE_APP_HOTKEY = 'Mod+Enter' satisfies Hotkey
+
 const shouldExpandBeginnerAppTypes = (appMode?: AppModeEnum) => {
-  return appMode === AppModeEnum.CHAT || appMode === AppModeEnum.AGENT_CHAT || appMode === AppModeEnum.COMPLETION
+  return (
+    appMode === AppModeEnum.CHAT ||
+    appMode === AppModeEnum.AGENT_CHAT ||
+    appMode === AppModeEnum.COMPLETION
+  )
 }
 
-function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }: CreateAppProps) {
-  const { t } = useTranslation()
+function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppProps) {
+  const { t } = useTranslation(['app'])
   const { push } = useRouter()
+  const nameInputId = useId()
+  const contentRef = useRef<HTMLDivElement>(null)
 
   const [appMode, setAppMode] = useState<AppModeEnum>(defaultAppMode || AppModeEnum.ADVANCED_CHAT)
-  const [appIcon, setAppIcon] = useState<AppIconSelection>({ type: 'emoji', icon: '🤖', background: '#FFEAD5' })
-  const [showAppIconPicker, setShowAppIconPicker] = useState(false)
+  const [appIcon, setAppIcon] = useState<IconPickerValue>({
+    type: 'emoji',
+    icon: '🤖',
+    background: '#FFEAD5',
+  })
+  const [showIconPicker, setShowIconPicker] = useState(false)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
-  const [isAppTypeExpanded, setIsAppTypeExpanded] = useState(() => shouldExpandBeginnerAppTypes(defaultAppMode))
+  const [isAppTypeExpanded, setIsAppTypeExpanded] = useState(() =>
+    shouldExpandBeginnerAppTypes(defaultAppMode),
+  )
 
-  const { plan, enableBilling } = useProviderContext()
-  const isAppsFull = (enableBilling && plan.usage.buildApps >= plan.total.buildApps)
-  const { isCurrentWorkspaceEditor } = useAppContext()
-
-  const isCreatingRef = useRef(false)
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const deploymentEdition = systemFeatures.deployment_edition
+  const { data: appQuota } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      enabled: deploymentEdition === 'CLOUD',
+      select: (data) => data.apps,
+    }),
+  )
+  const isAppQuotaUnavailable = deploymentEdition === 'CLOUD' && appQuota === undefined
+  // A limit of 0 means unlimited.
+  const isAppsFull =
+    deploymentEdition === 'CLOUD' &&
+    appQuota !== undefined &&
+    appQuota.limit > 0 &&
+    appQuota.size >= appQuota.limit
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const isRbacEnabled = systemFeatures.rbac_enabled
+  const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
+  const { mutateAsync: createApp } = useMutation(consoleQuery.apps.post.mutationOptions())
+  const creatingRef = useRef(false)
+  const [isCreating, setIsCreating] = useState(false)
 
   const onCreate = useCallback(async () => {
+    if (isAppQuotaUnavailable || isAppsFull || !canCreateApp) return
+
     if (!appMode) {
-      toast.error(t('newApp.appTypeRequired', { ns: 'app' }))
+      toast.error(t(($) => $['newApp.appTypeRequired'], { ns: 'app' }))
+      return
+    }
+    const appModeResult = zPostAppsBody.shape.mode.safeParse(appMode)
+    if (!appModeResult.success) {
+      toast.error(t(($) => $['newApp.appTypeRequired'], { ns: 'app' }))
       return
     }
     if (!name.trim()) {
-      toast.error(t('newApp.nameNotEmpty', { ns: 'app' }))
+      toast.error(t(($) => $['newApp.nameNotEmpty'], { ns: 'app' }))
       return
     }
-    if (isCreatingRef.current)
-      return
-    isCreatingRef.current = true
+    if (creatingRef.current) return
+    creatingRef.current = true
+    setIsCreating(true)
     try {
       const app = await createApp({
-        name,
-        description,
-        icon_type: appIcon.type,
-        icon: appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId,
-        icon_background: appIcon.type === 'emoji' ? appIcon.background : undefined,
-        mode: appMode,
+        body: {
+          name,
+          description,
+          icon_type: appIcon.type,
+          icon: appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId,
+          icon_background: appIcon.type === 'emoji' ? appIcon.background : undefined,
+          mode: appModeResult.data,
+        },
       })
 
-      trackCreateApp({ appMode: app.mode })
+      try {
+        await trackCreateApp({ source: 'studio_blank', appMode })
+      } catch {
+        // Analytics should not turn a successful app creation into a failed flow.
+      }
 
-      toast.success(t('newApp.appCreated', { ns: 'app' }))
-      onSuccess()
+      toast.success(t(($) => $['newApp.appCreated'], { ns: 'app' }))
       onClose()
-      localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
-      getRedirection(isCurrentWorkspaceEditor, app, push)
+      getRedirection(app, push, {
+        currentUserId,
+        resourceMaintainer: app.maintainer,
+        workspacePermissionKeys,
+        isRbacEnabled,
+      })
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
+      )
+    } finally {
+      creatingRef.current = false
+      setIsCreating(false)
     }
-    catch (error) {
-      toast.error(error instanceof Error ? error.message : t('newApp.appCreateFailed', { ns: 'app' }))
-    }
-    isCreatingRef.current = false
-  }, [name, t, appMode, appIcon, description, onSuccess, onClose, push, isCurrentWorkspaceEditor])
+  }, [
+    isAppQuotaUnavailable,
+    isAppsFull,
+    canCreateApp,
+    currentUserId,
+    name,
+    t,
+    appMode,
+    appIcon,
+    description,
+    onClose,
+    push,
+    workspacePermissionKeys,
+    isRbacEnabled,
+    createApp,
+  ])
 
   const { run: handleCreateApp } = useDebounceFn(onCreate, { wait: 300 })
-  useKeyPress(['meta.enter', 'ctrl.enter'], () => {
-    if (isAppsFull)
-      return
-    handleCreateApp()
-  })
+  const createDisabled = isAppQuotaUnavailable || isAppsFull || !canCreateApp || !name.trim()
+  useHotkey(
+    CREATE_APP_HOTKEY,
+    (event) => {
+      if (event.defaultPrevented || event.isComposing) return
+      event.preventDefault()
+      event.stopPropagation()
+      if (event.repeat) return
+      handleCreateApp()
+    },
+    {
+      target: contentRef,
+      enabled: !createDisabled && !isCreating && !showIconPicker,
+      ignoreInputs: false,
+      preventDefault: false,
+      stopPropagation: false,
+    },
+  )
   return (
     <>
-      <div className="flex h-full justify-center overflow-x-hidden overflow-y-auto">
+      <div
+        ref={contentRef}
+        className="flex h-full justify-center overflow-x-hidden overflow-y-auto"
+      >
         <div className="flex flex-1 shrink-0 justify-end">
           <div className="px-10">
-            <div className="h-6 w-full 2xl:h-[139px]" />
+            <div className="h-6 w-full 2xl:h-34.75" />
             <div className="pt-1 pb-6">
-              <span className="title-2xl-semi-bold text-text-primary">{t('newApp.startFromBlank', { ns: 'app' })}</span>
+              <span className="title-2xl-semi-bold text-text-primary">
+                {t(($) => $['newApp.startFromBlank'], { ns: 'app' })}
+              </span>
             </div>
             <div className="mb-2 leading-6">
-              <span className="system-sm-semibold text-text-secondary">{t('newApp.chooseAppType', { ns: 'app' })}</span>
+              <span className="system-sm-semibold text-text-secondary">
+                {t(($) => $['newApp.chooseAppType'], { ns: 'app' })}
+              </span>
             </div>
-            <div className="flex w-[660px] flex-col gap-4">
+            <div className="flex w-165 flex-col gap-4">
               <div>
                 <div className="flex flex-row gap-2">
                   <AppTypeCard
                     active={appMode === AppModeEnum.WORKFLOW}
-                    title={t('types.workflow', { ns: 'app' })}
-                    description={t('newApp.workflowShortDescription', { ns: 'app' })}
-                    icon={(
-                      <div className="flex h-6 w-6 items-center justify-center rounded-md bg-components-icon-bg-indigo-solid">
-                        <RiExchange2Fill className="h-4 w-4 text-components-avatar-shape-fill-stop-100" />
+                    title={t(($) => $['types.workflow'], { ns: 'app' })}
+                    description={t(($) => $['newApp.workflowShortDescription'], { ns: 'app' })}
+                    icon={
+                      <div className="flex size-6 items-center justify-center rounded-md bg-components-icon-bg-indigo-solid">
+                        <span
+                          aria-hidden
+                          className="i-ri-exchange-2-fill size-4 text-components-avatar-shape-fill-stop-100"
+                        />
                       </div>
-                    )}
+                    }
                     onClick={() => {
                       setAppMode(AppModeEnum.WORKFLOW)
                     }}
                   />
                   <AppTypeCard
                     active={appMode === AppModeEnum.ADVANCED_CHAT}
-                    title={t('types.advanced', { ns: 'app' })}
-                    description={t('newApp.advancedShortDescription', { ns: 'app' })}
-                    icon={(
-                      <div className="flex h-6 w-6 items-center justify-center rounded-md bg-components-icon-bg-blue-light-solid">
-                        <BubbleTextMod className="h-4 w-4 text-components-avatar-shape-fill-stop-100" />
+                    title={t(($) => $['types.advanced'], { ns: 'app' })}
+                    description={t(($) => $['newApp.advancedShortDescription'], { ns: 'app' })}
+                    icon={
+                      <div className="flex size-6 items-center justify-center rounded-md bg-components-icon-bg-blue-light-solid">
+                        <span
+                          aria-hidden
+                          className="i-custom-vender-solid-communication-bubble-text-mod size-4 text-components-avatar-shape-fill-stop-100"
+                        />
                       </div>
-                    )}
+                    }
                     onClick={() => {
                       setAppMode(AppModeEnum.ADVANCED_CHAT)
                     }}
@@ -149,47 +247,61 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
                     className="flex cursor-pointer items-center border-0 bg-transparent p-0 text-left focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                     onClick={() => setIsAppTypeExpanded(!isAppTypeExpanded)}
                   >
-                    <span className="system-2xs-medium-uppercase text-text-tertiary">{t('newApp.forBeginners', { ns: 'app' })}</span>
-                    <RiArrowRightSLine className={`ml-1 h-4 w-4 text-text-tertiary transition-transform ${isAppTypeExpanded ? 'rotate-90' : ''}`} aria-hidden="true" />
+                    <span className="system-2xs-medium-uppercase text-text-tertiary">
+                      {t(($) => $['newApp.forBeginners'], { ns: 'app' })}
+                    </span>
+                    <span
+                      aria-hidden
+                      className={`ml-1 i-ri-arrow-right-s-line size-4 text-text-tertiary transition-transform ${isAppTypeExpanded ? 'rotate-90' : ''}`}
+                    />
                   </button>
                 </div>
                 {isAppTypeExpanded && (
                   <div className="flex flex-row gap-2">
                     <AppTypeCard
                       active={appMode === AppModeEnum.CHAT}
-                      title={t('types.chatbot', { ns: 'app' })}
-                      description={t('newApp.chatbotShortDescription', { ns: 'app' })}
-                      icon={(
-                        <div className="flex h-6 w-6 items-center justify-center rounded-md bg-components-icon-bg-blue-solid">
-                          <ChatBot className="h-4 w-4 text-components-avatar-shape-fill-stop-100" />
+                      title={t(($) => $['types.chatbot'], { ns: 'app' })}
+                      description={t(($) => $['newApp.chatbotShortDescription'], { ns: 'app' })}
+                      icon={
+                        <div className="flex size-6 items-center justify-center rounded-md bg-components-icon-bg-blue-solid">
+                          <span
+                            aria-hidden
+                            className="i-custom-vender-solid-communication-chat-bot size-4 text-components-avatar-shape-fill-stop-100"
+                          />
                         </div>
-                      )}
+                      }
                       onClick={() => {
                         setAppMode(AppModeEnum.CHAT)
                       }}
                     />
                     <AppTypeCard
                       active={appMode === AppModeEnum.AGENT_CHAT}
-                      title={t('types.agent', { ns: 'app' })}
-                      description={t('newApp.agentShortDescription', { ns: 'app' })}
-                      icon={(
-                        <div className="flex h-6 w-6 items-center justify-center rounded-md bg-components-icon-bg-violet-solid">
-                          <Logic className="h-4 w-4 text-components-avatar-shape-fill-stop-100" />
+                      title={t(($) => $['types.agent'], { ns: 'app' })}
+                      description={t(($) => $['newApp.agentShortDescription'], { ns: 'app' })}
+                      icon={
+                        <div className="flex size-6 items-center justify-center rounded-md bg-components-icon-bg-violet-solid">
+                          <span
+                            aria-hidden
+                            className="i-custom-vender-solid-communication-logic size-4 text-components-avatar-shape-fill-stop-100"
+                          />
                         </div>
-                      )}
+                      }
                       onClick={() => {
                         setAppMode(AppModeEnum.AGENT_CHAT)
                       }}
                     />
                     <AppTypeCard
                       active={appMode === AppModeEnum.COMPLETION}
-                      title={t('newApp.completeApp', { ns: 'app' })}
-                      description={t('newApp.completionShortDescription', { ns: 'app' })}
-                      icon={(
-                        <div className="flex h-6 w-6 items-center justify-center rounded-md bg-components-icon-bg-teal-solid">
-                          <ListSparkle className="h-4 w-4 text-components-avatar-shape-fill-stop-100" />
+                      title={t(($) => $['newApp.completeApp'], { ns: 'app' })}
+                      description={t(($) => $['newApp.completionShortDescription'], { ns: 'app' })}
+                      icon={
+                        <div className="flex size-6 items-center justify-center rounded-md bg-components-icon-bg-teal-solid">
+                          <span
+                            aria-hidden
+                            className="i-custom-vender-solid-communication-list-sparkle size-4 text-components-avatar-shape-fill-stop-100"
+                          />
                         </div>
-                      )}
+                      }
                       onClick={() => {
                         setAppMode(AppModeEnum.COMPLETION)
                       }}
@@ -197,53 +309,61 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
                   </div>
                 )}
               </div>
-              <Divider style={{ margin: 0 }} />
+              <Separator />
               <div className="flex items-center space-x-3">
                 <div className="flex-1">
                   <div className="mb-1 flex h-6 items-center">
-                    <label className="system-sm-semibold text-text-secondary">{t('newApp.captionName', { ns: 'app' })}</label>
+                    <label htmlFor={nameInputId} className="system-sm-semibold text-text-secondary">
+                      {t(($) => $['newApp.captionName'], { ns: 'app' })}
+                    </label>
                   </div>
                   <Input
+                    id={nameInputId}
                     value={name}
-                    onChange={e => setName(e.target.value)}
-                    placeholder={t('newApp.appNamePlaceholder', { ns: 'app' }) || ''}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder={t(($) => $['newApp.appNamePlaceholder'], { ns: 'app' }) || ''}
                   />
                 </div>
-                <AppIcon
-                  iconType={appIcon.type}
-                  icon={appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId}
-                  background={appIcon.type === 'emoji' ? appIcon.background : undefined}
-                  imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
-                  size="xxl"
-                  className="cursor-pointer rounded-2xl"
-                  onClick={() => { setShowAppIconPicker(true) }}
-                />
-                {showAppIconPicker && (
-                  <AppIconPicker
-                    onSelect={(payload) => {
-                      setAppIcon(payload)
-                      setShowAppIconPicker(false)
-                    }}
-                    onClose={() => {
-                      setShowAppIconPicker(false)
-                    }}
+                <button
+                  type="button"
+                  aria-label={t(($) => $['iconPicker.title'], { ns: 'app' })}
+                  className="shrink-0 cursor-pointer rounded-2xl focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                  onClick={() => setShowIconPicker(true)}
+                >
+                  <AppIcon
+                    decorative
+                    iconType={appIcon.type}
+                    icon={appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId}
+                    background={appIcon.type === 'emoji' ? appIcon.background : undefined}
+                    imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
+                    size="xxl"
+                    className="rounded-2xl"
                   />
-                )}
+                </button>
+                <IconPickerDialog
+                  open={showIconPicker}
+                  defaultValue={appIcon}
+                  onOpenChange={setShowIconPicker}
+                  onConfirm={(payload) => {
+                    setAppIcon(payload)
+                  }}
+                />
               </div>
               <div>
                 <div className="mb-1 flex h-6 items-center">
-                  <label className="system-sm-semibold text-text-secondary">{t('newApp.captionDescription', { ns: 'app' })}</label>
+                  <label className="system-sm-semibold text-text-secondary">
+                    {t(($) => $['newApp.captionDescription'], { ns: 'app' })}
+                  </label>
                   <span className="ml-1 system-xs-regular text-text-tertiary">
-                    (
-                    {t('newApp.optional', { ns: 'app' })}
-                    )
+                    ({t(($) => $['newApp.optional'], { ns: 'app' })})
                   </span>
                 </div>
                 <Textarea
+                  aria-label={t(($) => $['newApp.captionDescription'], { ns: 'app' })}
                   className="resize-none"
-                  placeholder={t('newApp.appDescriptionPlaceholder', { ns: 'app' }) || ''}
+                  placeholder={t(($) => $['newApp.appDescriptionPlaceholder'], { ns: 'app' }) || ''}
                   value={description}
-                  onChange={e => setDescription(e.target.value)}
+                  onValueChange={(value) => setDescription(value)}
                 />
               </div>
             </div>
@@ -254,35 +374,61 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
                 className="flex cursor-pointer items-center gap-1 border-none bg-transparent p-0 text-left system-xs-regular text-text-tertiary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                 onClick={onCreateFromTemplate}
               >
-                <span>{t('newApp.noIdeaTip', { ns: 'app' })}</span>
+                <span>{t(($) => $['newApp.noIdeaTip'], { ns: 'app' })}</span>
                 <div className="p-px">
-                  <RiArrowRightLine className="h-3.5 w-3.5" aria-hidden="true" />
+                  <span aria-hidden className="i-ri-arrow-right-line size-3.5" />
                 </div>
               </button>
               <div className="flex gap-2">
-                <Button onClick={onClose}>{t('newApp.Cancel', { ns: 'app' })}</Button>
-                <Button disabled={isAppsFull || !name} className="gap-1" variant="primary" onClick={handleCreateApp}>
-                  <span>{t('newApp.Create', { ns: 'app' })}</span>
-                  <ShortcutsName keys={['ctrl', '↵']} bgColor="white" />
+                <Button onClick={onClose}>{t(($) => $['newApp.Cancel'], { ns: 'app' })}</Button>
+                <Button
+                  disabled={createDisabled}
+                  loading={isCreating}
+                  variant="primary"
+                  onClick={handleCreateApp}
+                >
+                  <span>{t(($) => $['newApp.Create'], { ns: 'app' })}</span>
+                  <KbdGroup>
+                    {formatForDisplay(CREATE_APP_HOTKEY, { parts: true }).map((key) => (
+                      <Kbd key={key} color="white">
+                        {key}
+                      </Kbd>
+                    ))}
+                  </KbdGroup>
                 </Button>
               </div>
             </div>
           </div>
         </div>
         <div className="relative flex h-full flex-1 shrink justify-start overflow-hidden">
-          <div className="absolute top-0 right-0 left-0 h-6 border-b border-b-divider-subtle 2xl:h-[139px]"></div>
-          <div className="max-w-[760px] border-x border-x-divider-subtle">
-            <div className="h-6 2xl:h-[139px]" />
+          <div className="absolute top-0 right-0 left-0 h-6 border-b border-b-divider-subtle 2xl:h-34.75"></div>
+          <div className="max-w-190 border-x border-x-divider-subtle">
+            <div className="h-6 2xl:h-34.75" />
             <AppPreview mode={appMode} />
-            <div className="absolute right-0 left-0 border-b border-b-divider-subtle"></div>
-            <div className="flex h-[448px] w-[664px] items-center justify-center" style={{ background: 'repeating-linear-gradient(135deg, transparent, transparent 2px, rgba(16,24,40,0.04) 4px,transparent 3px, transparent 6px)' }}>
+            <div className="absolute inset-x-0 border-b border-b-divider-subtle"></div>
+            <div
+              className="flex h-112 w-166 items-center justify-center"
+              style={{
+                background:
+                  'repeating-linear-gradient(135deg, transparent, transparent 2px, rgba(16,24,40,0.04) 4px,transparent 3px, transparent 6px)',
+              }}
+            >
               <AppScreenShot show={appMode === AppModeEnum.CHAT} mode={AppModeEnum.CHAT} />
-              <AppScreenShot show={appMode === AppModeEnum.ADVANCED_CHAT} mode={AppModeEnum.ADVANCED_CHAT} />
-              <AppScreenShot show={appMode === AppModeEnum.AGENT_CHAT} mode={AppModeEnum.AGENT_CHAT} />
-              <AppScreenShot show={appMode === AppModeEnum.COMPLETION} mode={AppModeEnum.COMPLETION} />
+              <AppScreenShot
+                show={appMode === AppModeEnum.ADVANCED_CHAT}
+                mode={AppModeEnum.ADVANCED_CHAT}
+              />
+              <AppScreenShot
+                show={appMode === AppModeEnum.AGENT_CHAT}
+                mode={AppModeEnum.AGENT_CHAT}
+              />
+              <AppScreenShot
+                show={appMode === AppModeEnum.COMPLETION}
+                mode={AppModeEnum.COMPLETION}
+              />
               <AppScreenShot show={appMode === AppModeEnum.WORKFLOW} mode={AppModeEnum.WORKFLOW} />
             </div>
-            <div className="absolute right-0 left-0 border-b border-b-divider-subtle"></div>
+            <div className="absolute inset-x-0 border-b border-b-divider-subtle"></div>
           </div>
         </div>
       </div>
@@ -292,17 +438,26 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
 type CreateAppDialogProps = CreateAppProps & {
   show: boolean
 }
-const CreateAppModal = ({ show, onClose, onSuccess, onCreateFromTemplate, defaultAppMode }: CreateAppDialogProps) => {
-  const { t } = useTranslation()
+const CreateAppModal = ({
+  show,
+  onClose,
+  onCreateFromTemplate,
+  defaultAppMode,
+}: CreateAppDialogProps) => {
+  const { t } = useTranslation(['app'])
 
   return (
     <CreateAppDialogShell
       show={show}
-      title={t('newApp.startFromBlank', { ns: 'app' })}
+      title={t(($) => $['newApp.startFromBlank'], { ns: 'app' })}
       contentClassName="overflow-visible"
       onClose={onClose}
     >
-      <CreateApp onClose={onClose} onSuccess={onSuccess} onCreateFromTemplate={onCreateFromTemplate} defaultAppMode={defaultAppMode} />
+      <CreateApp
+        onClose={onClose}
+        onCreateFromTemplate={onCreateFromTemplate}
+        defaultAppMode={defaultAppMode}
+      />
     </CreateAppDialogShell>
   )
 }
@@ -318,48 +473,61 @@ type AppTypeCardProps = {
 }
 function AppTypeCard({ icon, title, description, active, onClick }: AppTypeCardProps) {
   return (
-    <div
-      className={
-        cn(`relative box-content h-[84px] w-[191px] cursor-pointer rounded-xl
-      border-[0.5px] border-components-option-card-option-border
-      bg-components-panel-on-panel-item-bg p-3 shadow-xs hover:shadow-md`, active
+    <button
+      type="button"
+      className={cn(
+        'relative box-content h-21 w-47.75 cursor-pointer rounded-xl border-[0.5px] border-components-option-card-option-border bg-components-panel-on-panel-item-bg p-3 text-left shadow-xs outline-hidden hover:shadow-md focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+        active
           ? 'shadow-md outline-[1.5px] outline-components-option-card-option-selected-border outline-solid'
-          : '')
-      }
+          : '',
+      )}
       onClick={onClick}
     >
       {icon}
       <div className="mt-2 mb-0.5 system-sm-semibold text-text-secondary">{title}</div>
-      <div className="line-clamp-2 system-xs-regular text-text-tertiary" title={description}>{description}</div>
-    </div>
+      <div className="line-clamp-2 system-xs-regular text-text-tertiary" title={description}>
+        {description}
+      </div>
+    </button>
   )
 }
 
 function AppPreview({ mode }: { mode: AppModeEnum }) {
-  const { t } = useTranslation()
-  const modeToPreviewInfoMap = {
-    [AppModeEnum.CHAT]: {
-      title: t('types.chatbot', { ns: 'app' }),
-      description: t('newApp.chatbotUserDescription', { ns: 'app' }),
-    },
-    [AppModeEnum.ADVANCED_CHAT]: {
-      title: t('types.advanced', { ns: 'app' }),
-      description: t('newApp.advancedUserDescription', { ns: 'app' }),
-    },
-    [AppModeEnum.AGENT_CHAT]: {
-      title: t('types.agent', { ns: 'app' }),
-      description: t('newApp.agentUserDescription', { ns: 'app' }),
-    },
-    [AppModeEnum.COMPLETION]: {
-      title: t('newApp.completeApp', { ns: 'app' }),
-      description: t('newApp.completionUserDescription', { ns: 'app' }),
-    },
-    [AppModeEnum.WORKFLOW]: {
-      title: t('types.workflow', { ns: 'app' }),
-      description: t('newApp.workflowUserDescription', { ns: 'app' }),
-    },
-  }
-  const previewInfo = modeToPreviewInfoMap[mode]
+  const { t } = useTranslation(['app'])
+  const previewInfo = (() => {
+    switch (mode) {
+      case AppModeEnum.CHAT:
+        return {
+          title: t(($) => $['types.chatbot'], { ns: 'app' }),
+          description: t(($) => $['newApp.chatbotUserDescription'], { ns: 'app' }),
+        }
+      case AppModeEnum.ADVANCED_CHAT:
+        return {
+          title: t(($) => $['types.advanced'], { ns: 'app' }),
+          description: t(($) => $['newApp.advancedUserDescription'], { ns: 'app' }),
+        }
+      case AppModeEnum.AGENT_CHAT:
+        return {
+          title: t(($) => $['types.agent'], { ns: 'app' }),
+          description: t(($) => $['newApp.agentUserDescription'], { ns: 'app' }),
+        }
+      case AppModeEnum.COMPLETION:
+        return {
+          title: t(($) => $['newApp.completeApp'], { ns: 'app' }),
+          description: t(($) => $['newApp.completionUserDescription'], { ns: 'app' }),
+        }
+      case AppModeEnum.WORKFLOW:
+        return {
+          title: t(($) => $['types.workflow'], { ns: 'app' }),
+          description: t(($) => $['newApp.workflowUserDescription'], { ns: 'app' }),
+        }
+      default:
+        return {
+          title: t(($) => $['types.workflow'], { ns: 'app' }),
+          description: t(($) => $['newApp.workflowUserDescription'], { ns: 'app' }),
+        }
+    }
+  })()
   return (
     <div className="px-8 py-4">
       <h4 className="system-sm-semibold-uppercase text-text-secondary">{previewInfo.title}</h4>
@@ -370,7 +538,7 @@ function AppPreview({ mode }: { mode: AppModeEnum }) {
   )
 }
 
-function AppScreenShot({ mode, show }: { mode: AppModeEnum, show: boolean }) {
+function AppScreenShot({ mode, show }: { mode: AppModeEnum; show: boolean }) {
   const { theme } = useTheme()
   const modeToImageMap = {
     [AppModeEnum.CHAT]: 'Chatbot',
@@ -381,9 +549,18 @@ function AppScreenShot({ mode, show }: { mode: AppModeEnum, show: boolean }) {
   }
   return (
     <picture>
-      <source media="(resolution: 1x)" srcSet={`${basePath}/screenshots/${theme}/${modeToImageMap[mode]}.png`} />
-      <source media="(resolution: 2x)" srcSet={`${basePath}/screenshots/${theme}/${modeToImageMap[mode]}@2x.png`} />
-      <source media="(resolution: 3x)" srcSet={`${basePath}/screenshots/${theme}/${modeToImageMap[mode]}@3x.png`} />
+      <source
+        media="(resolution: 1x)"
+        srcSet={`${basePath}/screenshots/${theme}/${modeToImageMap[mode]}.png`}
+      />
+      <source
+        media="(resolution: 2x)"
+        srcSet={`${basePath}/screenshots/${theme}/${modeToImageMap[mode]}@2x.png`}
+      />
+      <source
+        media="(resolution: 3x)"
+        srcSet={`${basePath}/screenshots/${theme}/${modeToImageMap[mode]}@3x.png`}
+      />
       <img
         className={show ? '' : 'hidden'}
         src={`${basePath}/screenshots/${theme}/${modeToImageMap[mode]}.png`}

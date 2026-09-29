@@ -3,6 +3,21 @@
 import * as z from 'zod'
 
 /**
+ * SimpleResultResponse
+ */
+export const zSimpleResultResponse = z.object({
+  result: z.string(),
+})
+
+/**
+ * SimpleResultMessageResponse
+ */
+export const zSimpleResultMessageResponse = z.object({
+  message: z.string(),
+  result: z.string(),
+})
+
+/**
  * Success
  */
-export const zPostRefreshTokenResponse = z.record(z.string(), z.unknown())
+export const zPostRefreshTokenResponse = zSimpleResultResponse

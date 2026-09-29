@@ -7,13 +7,16 @@ const withIconCardListPropsSchema = z.object(commonSchema).strict()
 
 const HTTP_URL_REGEX = /^https?:\/\//i
 
-const withIconCardItemPropsSchema = z.object({
-  ...commonSchema,
-  icon: z.string().trim().url().refine(
-    value => HTTP_URL_REGEX.test(value),
-    'icon must be a http/https URL',
-  ),
-}).strict()
+const withIconCardItemPropsSchema = z
+  .object({
+    ...commonSchema,
+    icon: z
+      .string()
+      .trim()
+      .url()
+      .refine((value) => HTTP_URL_REGEX.test(value), 'icon must be a http/https URL'),
+  })
+  .strict()
 
 const directivePropsSchemas = {
   withiconcardlist: withIconCardListPropsSchema,
@@ -40,7 +43,7 @@ export function validateDirectiveProps(name: string, attributes: Record<string, 
     console.error('[markdown-with-directive] Invalid directive props.', {
       attributes,
       directive: name,
-      issues: parsed.error.issues.map(issue => ({
+      issues: parsed.error.issues.map((issue) => ({
         code: issue.code,
         message: issue.message,
         path: issue.path.join('.'),

@@ -1,16 +1,23 @@
 import type { Node } from '../../types'
+import { createDatasourceProvider } from '@/app/components/rag-pipeline/__tests__/datasource-fixtures'
 import { CollectionType } from '@/app/components/tools/types'
 import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
 import { BlockEnum } from '../../types'
 import { useNodeMetaData, useNodesMetaData } from '../use-nodes-meta-data'
 
-const buildInToolsState = vi.hoisted(() => [] as Array<{ id: string, author: string, description: Record<string, string> }>)
-const customToolsState = vi.hoisted(() => [] as Array<{ id: string, author: string, description: Record<string, string> }>)
-const workflowToolsState = vi.hoisted(() => [] as Array<{ id: string, author: string, description: Record<string, string> }>)
-
 vi.mock('@/context/i18n', () => ({
   useGetLanguage: () => 'en-US',
 }))
+
+const buildInToolsState = vi.hoisted(
+  () => [] as Array<{ id: string; author: string; description: Record<string, string> }>,
+)
+const customToolsState = vi.hoisted(
+  () => [] as Array<{ id: string; author: string; description: Record<string, string> }>,
+)
+const workflowToolsState = vi.hoisted(
+  () => [] as Array<{ id: string; author: string; description: Record<string, string> }>,
+)
 
 vi.mock('@/service/use-tools', () => ({
   useAllBuiltInTools: () => ({ data: buildInToolsState }),
@@ -18,17 +25,18 @@ vi.mock('@/service/use-tools', () => ({
   useAllWorkflowTools: () => ({ data: workflowToolsState }),
 }))
 
-const createNode = (overrides: Partial<Node> = {}): Node => ({
-  id: 'node-1',
-  type: 'custom',
-  position: { x: 0, y: 0 },
-  data: {
-    type: BlockEnum.LLM,
-    title: 'Node',
-    desc: '',
-  },
-  ...overrides,
-} as Node)
+const createNode = (overrides: Partial<Node> = {}): Node =>
+  ({
+    id: 'node-1',
+    type: 'custom',
+    position: { x: 0, y: 0 },
+    data: {
+      type: BlockEnum.LLM,
+      title: 'Node',
+      desc: '',
+    },
+    ...overrides,
+  }) as Node
 
 describe('useNodesMetaData', () => {
   beforeEach(() => {
@@ -76,10 +84,12 @@ describe('useNodesMetaData', () => {
       },
     })
 
-    expect(result.current).toEqual(expect.objectContaining({
-      author: 'Provider Author',
-      description: 'Built-in provider description',
-    }))
+    expect(result.current).toEqual(
+      expect.objectContaining({
+        author: 'Provider Author',
+        description: 'Built-in provider description',
+      }),
+    )
   })
 
   it('prefers workflow store data for datasource nodes and keeps generic metadata for normal blocks', () => {
@@ -100,13 +110,18 @@ describe('useNodesMetaData', () => {
       },
     })
 
-    const datasource = {
+    const provider = createDatasourceProvider()
+    const datasource = createDatasourceProvider({
       plugin_id: 'datasource-1',
-      author: 'Datasource Author',
-      description: {
-        'en-US': 'Datasource description',
+      declaration: {
+        ...provider.declaration,
+        identity: {
+          ...provider.declaration.identity,
+          author: 'Datasource Author',
+          description: { en_US: 'Datasource description', zh_Hans: null },
+        },
       },
-    }
+    })
 
     const metadataMap = {
       [BlockEnum.LLM]: {
@@ -121,7 +136,7 @@ describe('useNodesMetaData', () => {
 
     const datasourceResult = renderWorkflowHook(() => useNodeMetaData(datasourceNode), {
       initialStoreState: {
-        dataSourceList: [datasource as never],
+        dataSourceList: [datasource],
       },
       hooksStoreProps: {
         availableNodesMetaData: {
@@ -140,14 +155,18 @@ describe('useNodesMetaData', () => {
       },
     })
 
-    expect(datasourceResult.result.current).toEqual(expect.objectContaining({
-      author: 'Datasource Author',
-      description: 'Datasource description',
-    }))
-    expect(normalResult.result.current).toEqual(expect.objectContaining({
-      author: 'Dify',
-      description: 'Node description',
-      title: 'LLM',
-    }))
+    expect(datasourceResult.result.current).toEqual(
+      expect.objectContaining({
+        author: 'Datasource Author',
+        description: 'Datasource description',
+      }),
+    )
+    expect(normalResult.result.current).toEqual(
+      expect.objectContaining({
+        author: 'Dify',
+        description: 'Node description',
+        title: 'LLM',
+      }),
+    )
   })
 })

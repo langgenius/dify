@@ -1,57 +1,76 @@
-from flask import request
-from pydantic import TypeAdapter
+from http import HTTPStatus
+from uuid import UUID
+
+from flask_restx import Resource
 from werkzeug.exceptions import NotFound
 
 from controllers.common.controller_schemas import SavedMessageCreatePayload, SavedMessageListQuery
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.explore.error import NotCompletionAppError
-from controllers.console.explore.wraps import InstalledAppResource
+from controllers.console.explore.installed_app_admission import get_installed_app
+from controllers.console.flask_admission import console_account_admission
+from controllers.console.wraps import model_validate
+from extensions.ext_application_services import application_services
 from fields.conversation_fields import ResultResponse
-from fields.message_fields import SavedMessageInfiniteScrollPagination, SavedMessageItem
-from libs.login import current_account_with_tenant
+from fields.message_fields import SavedMessageInfiniteScrollPagination
+from libs.helper import dump_response
+from machinery.context import RequestContext
 from services.errors.message import MessageNotExistsError
-from services.saved_message_service import SavedMessageService
+from services.installed_app_access_service import InstalledAppRef
+from services.saved_message_service import SavedMessageActor
 
 register_schema_models(console_ns, SavedMessageListQuery, SavedMessageCreatePayload)
+register_response_schema_models(console_ns, ResultResponse, SavedMessageInfiniteScrollPagination)
+
+
+def _require_completion_app(installed_app: InstalledAppRef) -> str:
+    if installed_app.app_mode != "completion":
+        raise NotCompletionAppError()
+    return installed_app.app_id
 
 
 @console_ns.route("/installed-apps/<uuid:installed_app_id>/saved-messages", endpoint="installed_app_saved_messages")
-class SavedMessageListApi(InstalledAppResource):
-    @console_ns.expect(console_ns.models[SavedMessageListQuery.__name__])
-    def get(self, installed_app):
-        current_user, _ = current_account_with_tenant()
-        app_model = installed_app.app
-        if app_model.mode != "completion":
-            raise NotCompletionAppError()
-
-        args = SavedMessageListQuery.model_validate(request.args.to_dict())
-
-        pagination = SavedMessageService.pagination_by_last_id(
-            app_model,
-            current_user,
-            str(args.last_id) if args.last_id else None,
-            args.limit,
+class SavedMessageListApi(Resource):
+    @console_ns.doc(params=query_params_from_model(SavedMessageListQuery))
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SavedMessageInfiniteScrollPagination.__name__])
+    @console_account_admission()
+    @get_installed_app
+    @model_validate(SavedMessageListQuery)
+    def get(
+        self,
+        req_data: SavedMessageListQuery,
+        request_context: RequestContext,
+        installed_app: InstalledAppRef,
+    ) -> dict[str, object]:
+        app_id = _require_completion_app(installed_app)
+        pagination = application_services().saved_messages.pagination_by_last_id(
+            app_id=app_id,
+            actor=SavedMessageActor.account(request_context.account_id),
+            last_id=str(req_data.last_id) if req_data.last_id else None,
+            limit=req_data.limit,
         )
-        adapter = TypeAdapter(SavedMessageItem)
-        items = [adapter.validate_python(message, from_attributes=True) for message in pagination.data]
-        return SavedMessageInfiniteScrollPagination(
-            limit=pagination.limit,
-            has_more=pagination.has_more,
-            data=items,
-        ).model_dump(mode="json")
+        return dump_response(SavedMessageInfiniteScrollPagination, pagination)
 
     @console_ns.expect(console_ns.models[SavedMessageCreatePayload.__name__])
-    def post(self, installed_app):
-        current_user, _ = current_account_with_tenant()
-        app_model = installed_app.app
-        if app_model.mode != "completion":
-            raise NotCompletionAppError()
-
-        payload = SavedMessageCreatePayload.model_validate(console_ns.payload or {})
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[ResultResponse.__name__])
+    @console_account_admission()
+    @get_installed_app
+    @model_validate(SavedMessageCreatePayload)
+    def post(
+        self,
+        req_data: SavedMessageCreatePayload,
+        request_context: RequestContext,
+        installed_app: InstalledAppRef,
+    ) -> dict[str, object]:
+        app_id = _require_completion_app(installed_app)
 
         try:
-            SavedMessageService.save(app_model, current_user, str(payload.message_id))
+            application_services().saved_messages.save(
+                app_id=app_id,
+                actor=SavedMessageActor.account(request_context.account_id),
+                message_id=str(req_data.message_id),
+            )
         except MessageNotExistsError:
             raise NotFound("Message Not Exists.")
 
@@ -61,16 +80,21 @@ class SavedMessageListApi(InstalledAppResource):
 @console_ns.route(
     "/installed-apps/<uuid:installed_app_id>/saved-messages/<uuid:message_id>", endpoint="installed_app_saved_message"
 )
-class SavedMessageApi(InstalledAppResource):
-    def delete(self, installed_app, message_id):
-        current_user, _ = current_account_with_tenant()
-        app_model = installed_app.app
+class SavedMessageApi(Resource):
+    @console_ns.response(HTTPStatus.NO_CONTENT, "Saved message deleted successfully")
+    @console_account_admission()
+    @get_installed_app
+    def delete(
+        self,
+        request_context: RequestContext,
+        installed_app: InstalledAppRef,
+        message_id: UUID,
+    ) -> tuple[str, int]:
+        app_id = _require_completion_app(installed_app)
+        application_services().saved_messages.delete(
+            app_id=app_id,
+            actor=SavedMessageActor.account(request_context.account_id),
+            message_id=str(message_id),
+        )
 
-        message_id = str(message_id)
-
-        if app_model.mode != "completion":
-            raise NotCompletionAppError()
-
-        SavedMessageService.delete(app_model, current_user, message_id)
-
-        return ResultResponse(result="success").model_dump(mode="json"), 204
+        return "", HTTPStatus.NO_CONTENT

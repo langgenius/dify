@@ -1,5 +1,6 @@
 import logging
 from collections.abc import Callable
+from typing import override
 
 from opentelemetry.trace import SpanKind, Status, StatusCode, Tracer
 from opentelemetry.util.types import AttributeValue
@@ -14,6 +15,7 @@ logger = logging.getLogger(__name__)
 class AppGenerateHandler(SpanHandler):
     """Span handler for ``AppGenerateService.generate``."""
 
+    @override
     def wrapper[**P, R](
         self,
         tracer: Tracer,

@@ -2,7 +2,6 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-
 import {
   zDeleteTagsByTagIdPath,
   zDeleteTagsByTagIdResponse,
@@ -13,7 +12,7 @@ import {
   zPatchTagsByTagIdResponse,
   zPostTagsBody,
   zPostTagsResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 export const delete_ = oc
   .route({
@@ -21,6 +20,7 @@ export const delete_ = oc
     method: 'DELETE',
     operationId: 'deleteTagsByTagId',
     path: '/tags/{tag_id}',
+    successStatus: 204,
     tags: ['console'],
   })
   .input(z.object({ params: zDeleteTagsByTagIdPath }))
@@ -50,7 +50,7 @@ export const get = oc
     path: '/tags',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetTagsQuery.optional() }))
+  .input(z.object({ query: zGetTagsQuery }))
   .output(zGetTagsResponse)
 
 export const post = oc

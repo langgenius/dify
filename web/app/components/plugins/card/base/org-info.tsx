@@ -1,27 +1,33 @@
 import { cn } from '@langgenius/dify-ui/cn'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   orgName?: string
   packageName: string
   packageNameClassName?: string
-}
+}>
 
-const OrgInfo = ({
-  className,
-  orgName,
-  packageName,
-  packageNameClassName,
-}: Props) => {
+const OrgInfo = ({ className, orgName, packageName, packageNameClassName }: Props) => {
   return (
-    <div className={cn('flex h-4 items-center space-x-0.5', className)}>
+    <div className={cn('flex h-4 min-w-0 items-center gap-0.5', className)}>
       {orgName && (
         <>
-          <span className="shrink-0 system-xs-regular text-text-tertiary">{orgName}</span>
+          <span
+            className="min-w-0 shrink truncate system-xs-regular text-text-tertiary"
+            title={orgName}
+          >
+            {orgName}
+          </span>
           <span className="shrink-0 system-xs-regular text-text-quaternary">/</span>
         </>
       )}
-      <span className={cn('w-0 shrink-0 grow truncate system-xs-regular text-text-tertiary', packageNameClassName)}>
+      <span
+        className={cn(
+          'min-w-0 shrink truncate system-xs-regular text-text-tertiary',
+          packageNameClassName,
+        )}
+        title={packageName}
+      >
         {packageName}
       </span>
     </div>

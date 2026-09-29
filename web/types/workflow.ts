@@ -1,3 +1,4 @@
+import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import type { RefObject } from 'react'
 import type { Viewport } from 'reactflow'
 import type { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
@@ -104,7 +105,8 @@ export type NodeTracing = {
   details?: NodeTracing[][] // iteration or loop detail
   retryDetail?: NodeTracing[] // retry detail
   retry_index?: number
-  parallelDetail?: { // parallel detail. if is in parallel, this field will be set
+  parallelDetail?: {
+    // parallel detail. if is in parallel, this field will be set
     isParallelStartNode?: boolean
     parallelTitle?: string
     branchTitle?: string
@@ -115,6 +117,11 @@ export type NodeTracing = {
   parent_parallel_id?: string
   parent_parallel_start_node_id?: string
   agentLog?: AgentLogItemWithChildren[] // agent log
+}
+
+type VersionEnvironment = {
+  id: string
+  name: string
 }
 
 export type FetchWorkflowDraftResponse = {
@@ -143,8 +150,10 @@ export type FetchWorkflowDraftResponse = {
   conversation_variables?: ConversationVariable[]
   rag_pipeline_variables?: RAGPipelineVariables
   version: string
+  version_number?: number | null
   marked_name: string
   marked_comment: string
+  environments?: VersionEnvironment[]
 }
 
 export type VersionHistory = FetchWorkflowDraftResponse
@@ -305,6 +314,18 @@ export type TextChunkResponse = {
   event: string
   data: {
     text: string
+    from_variable_selector?: string[]
+  }
+}
+
+export type ReasoningChunkResponse = {
+  task_id: string
+  event: string
+  data: {
+    message_id: string
+    reasoning: string
+    node_id?: string
+    is_final?: boolean
   }
 }
 
@@ -330,10 +351,10 @@ export type HumanInputFormData = {
   form_content: string
   inputs: FormInputItem[]
   actions: UserAction[]
-  form_token: string
-  resolved_default_values: Record<string, string>
+  form_token: string | null
+  resolved_default_values: Record<string, HumanInputResolvedValue>
   display_in_ui: boolean
-  expiration_time: number
+  expiration_time: number | null
 }
 
 export type HumanInputRequiredResponse = {
@@ -343,12 +364,19 @@ export type HumanInputRequiredResponse = {
   data: HumanInputFormData
 }
 
+export type HumanInputFormValue = string | FileResponse | FileResponse[]
+
+export type HumanInputResolvedValue = string | FileResponse | FileResponse[]
+
 export type HumanInputFilledFormData = {
   node_id: string
   node_title: string
   rendered_content: string
   action_id: string
   action_text: string
+  form_content?: string
+  inputs?: FormInputItem[]
+  submitted_data?: Record<string, HumanInputFormValue>
 }
 
 export type HumanInputFormFilledResponse = {
@@ -406,7 +434,7 @@ export type NodesDefaultConfigsResponse = {
 }[]
 
 export type ConversationVariableResponse = {
-  data: (ConversationVariable & { updated_at: number, created_at: number })[]
+  data: (ConversationVariable & { updated_at: number; created_at: number })[]
   has_more: boolean
   limit: number
   total: number
@@ -428,6 +456,8 @@ export type PublishWorkflowParams = {
 }
 
 export type UpdateWorkflowParams = {
+  appId?: string
+  appMode?: AppMode
   url: string
   title: string
   releaseNotes: string
@@ -451,7 +481,7 @@ export const VarInInspectType = {
   node: 'node',
   system: 'sys',
 } as const
-export type VarInInspectType = typeof VarInInspectType[keyof typeof VarInInspectType]
+export type VarInInspectType = (typeof VarInInspectType)[keyof typeof VarInInspectType]
 
 type FullContent = {
   size_bytes: number

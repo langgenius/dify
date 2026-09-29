@@ -9,22 +9,18 @@ describe('parameter-extractor/reasoning-mode-picker', () => {
     const handleChange = vi.fn()
 
     const { rerender } = render(
-      <ReasoningModePicker
-        type={ReasoningModeType.prompt}
-        onChange={handleChange}
-      />,
+      <ReasoningModePicker type={ReasoningModeType.prompt} onChange={handleChange} />,
     )
 
-    await user.click(screen.getByText('workflow.nodes.parameterExtractor.reasoningModeFunctionToolCalling'))
-
-    rerender(
-      <ReasoningModePicker
-        type={ReasoningModeType.functionCall}
-        onChange={handleChange}
-      />,
+    await user.click(
+      screen.getByText('workflowModels.nodes.parameterExtractor.reasoningModeFunctionToolCalling'),
     )
 
-    await user.click(screen.getByText('workflow.nodes.parameterExtractor.reasoningModePrompt'))
+    rerender(<ReasoningModePicker type={ReasoningModeType.functionCall} onChange={handleChange} />)
+
+    await user.click(
+      screen.getByText('workflowModels.nodes.parameterExtractor.reasoningModePrompt'),
+    )
 
     expect(handleChange).toHaveBeenNthCalledWith(1, ReasoningModeType.functionCall)
     expect(handleChange).toHaveBeenNthCalledWith(2, ReasoningModeType.prompt)

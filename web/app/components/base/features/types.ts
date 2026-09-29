@@ -1,10 +1,6 @@
+import type { AppModelSelectionResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { FileUploadConfigResponse } from '@/models/common'
-import type {
-  Model,
-  Resolution,
-  TransferMethod,
-  TtsAutoPlay,
-} from '@/types/app'
+import type { Resolution, TransferMethod, TtsAutoPlay } from '@/types/app'
 
 type EnabledOrDisabled = {
   enabled?: boolean
@@ -18,29 +14,31 @@ export type OpeningStatement = EnabledOrDisabled & {
 }
 
 export type SuggestedQuestionsAfterAnswer = EnabledOrDisabled & {
-  model?: Model
+  model?: AppModelSelectionResponse
   prompt?: string
 }
 
-export type TextToSpeech = EnabledOrDisabled & {
+type TextToSpeech = EnabledOrDisabled & {
   language?: string
   voice?: string
   autoPlay?: TtsAutoPlay
 }
 
-export type SpeechToText = EnabledOrDisabled
+type SpeechToText = EnabledOrDisabled
 
-export type RetrieverResource = EnabledOrDisabled
+type RetrieverResource = EnabledOrDisabled
 
-export type SensitiveWordAvoidance = EnabledOrDisabled & {
+type SensitiveWordAvoidance = EnabledOrDisabled & {
   type?: string
   config?: any
 }
 
-export enum PreviewMode {
-  NewPage = 'new_page',
-  CurrentPage = 'current_page',
-}
+export const PreviewMode = {
+  NewPage: 'new_page',
+  CurrentPage: 'current_page',
+} as const
+
+export type PreviewMode = (typeof PreviewMode)[keyof typeof PreviewMode]
 
 export type FileUpload = {
   image?: EnabledOrDisabled & {
@@ -85,17 +83,19 @@ type AnnotationReplyConfig = {
   }
 }
 
-export enum FeatureEnum {
-  moreLikeThis = 'moreLikeThis',
-  opening = 'opening',
-  suggested = 'suggested',
-  text2speech = 'text2speech',
-  speech2text = 'speech2text',
-  citation = 'citation',
-  moderation = 'moderation',
-  file = 'file',
-  annotationReply = 'annotationReply',
-}
+export const FeatureEnum = {
+  moreLikeThis: 'moreLikeThis',
+  opening: 'opening',
+  suggested: 'suggested',
+  text2speech: 'text2speech',
+  speech2text: 'speech2text',
+  citation: 'citation',
+  moderation: 'moderation',
+  file: 'file',
+  annotationReply: 'annotationReply',
+} as const
+
+export type FeatureEnum = (typeof FeatureEnum)[keyof typeof FeatureEnum]
 
 export type Features = {
   [FeatureEnum.moreLikeThis]?: MoreLikeThis

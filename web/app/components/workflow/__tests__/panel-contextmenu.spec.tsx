@@ -1,5 +1,11 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react'
-import PanelContextmenu from '../panel-contextmenu'
+import { ContextMenu } from '@langgenius/dify-ui/context-menu'
+import { detectPlatform } from '@tanstack/react-hotkeys'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { withSelectorKey } from '@/test/i18n-mock'
+import { FlowType } from '@/types/common'
+import { fullWorkflowAccessControl } from '../hooks-store'
+import { PanelContextmenu } from '../panel-contextmenu'
 import { BlockEnum } from '../types'
 import { createNode } from './fixtures'
 import { renderWorkflowFlowComponent } from './workflow-test-env'
@@ -20,17 +26,78 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => mockUseTranslation(),
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useAvailableBlocks: () => mockUseAvailableBlocks(),
-  useDSL: () => mockUseDSL(),
-  useIsChatMode: () => mockUseIsChatMode(),
-  useNodesInteractions: () => mockUseNodesInteractions(),
-  useNodesMetaData: () => mockUseNodesMetaData(),
-  useNodesReadOnly: () => mockUseNodesReadOnly(),
-  usePanelInteractions: () => mockUsePanelInteractions(),
-  useWorkflowMoveMode: () => mockUseWorkflowMoveMode(),
-  useWorkflowStartRun: () => mockUseWorkflowStartRun(),
-}))
+vi.mock('../hooks/use-DSL', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../hooks/use-DSL')>()
+
+  return {
+    ...actual,
+    useDSL: () => mockUseDSL(),
+  }
+})
+
+vi.mock('../hooks/use-available-blocks', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../hooks/use-available-blocks')>()
+
+  return {
+    ...actual,
+    useAvailableBlocks: () => mockUseAvailableBlocks(),
+  }
+})
+
+vi.mock('../hooks/use-nodes-interactions', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../hooks/use-nodes-interactions')>()
+
+  return {
+    ...actual,
+    useNodesInteractions: () => mockUseNodesInteractions(),
+  }
+})
+
+vi.mock('../hooks/use-nodes-meta-data', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../hooks/use-nodes-meta-data')>()
+
+  return {
+    ...actual,
+    useNodesMetaData: () => mockUseNodesMetaData(),
+  }
+})
+
+vi.mock('../hooks/use-panel-interactions', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../hooks/use-panel-interactions')>()
+
+  return {
+    ...actual,
+    usePanelInteractions: () => mockUsePanelInteractions(),
+  }
+})
+
+vi.mock('../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../hooks/use-workflow')>()
+
+  return {
+    ...actual,
+    useIsChatMode: () => mockUseIsChatMode(),
+    useNodesReadOnly: () => mockUseNodesReadOnly(),
+  }
+})
+
+vi.mock('../hooks/use-workflow-panel-interactions', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../hooks/use-workflow-panel-interactions')>()
+
+  return {
+    ...actual,
+    useWorkflowMoveMode: () => mockUseWorkflowMoveMode(),
+  }
+})
+
+vi.mock('../hooks/use-workflow-start-run', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../hooks/use-workflow-start-run')>()
+
+  return {
+    ...actual,
+    useWorkflowStartRun: () => mockUseWorkflowStartRun(),
+  }
+})
 
 vi.mock('@/app/components/workflow/operator/hooks', () => ({
   useOperator: () => mockUseOperator(),
@@ -38,7 +105,7 @@ vi.mock('@/app/components/workflow/operator/hooks', () => ({
 
 describe('PanelContextmenu', () => {
   const mockHandleNodesPaste = vi.fn()
-  const mockHandlePaneContextmenuCancel = vi.fn()
+  const mockClose = vi.fn()
   const mockHandleStartWorkflowRun = vi.fn()
   const mockHandleWorkflowStartRunInChatflow = vi.fn()
   const mockHandleAddNote = vi.fn()
@@ -56,14 +123,12 @@ describe('PanelContextmenu', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseTranslation.mockReturnValue({
-      t: (key: string) => key,
+      t: withSelectorKey((key: string) => key),
     })
     mockUseNodesInteractions.mockReturnValue({
       handleNodesPaste: mockHandleNodesPaste,
     })
-    mockUsePanelInteractions.mockReturnValue({
-      handlePaneContextmenuCancel: mockHandlePaneContextmenuCancel,
-    })
+    mockUsePanelInteractions.mockReturnValue({})
     mockUseWorkflowStartRun.mockReturnValue({
       handleStartWorkflowRun: mockHandleStartWorkflowRun,
       handleWorkflowStartRunInChatflow: mockHandleWorkflowStartRunInChatflow,
@@ -89,16 +154,25 @@ describe('PanelContextmenu', () => {
     mockUseIsChatMode.mockReturnValue(false)
   })
 
+  const renderPanelContextmenu = (options?: Parameters<typeof renderWorkflowFlowComponent>[1]) => {
+    return renderWorkflowFlowComponent(
+      <ContextMenu open>
+        <PanelContextmenu onClose={mockClose} />
+      </ContextMenu>,
+      options,
+    )
+  }
+
   it('should stay hidden when the panel menu is absent', () => {
-    renderWorkflowFlowComponent(<PanelContextmenu />)
+    renderPanelContextmenu()
 
     expect(screen.queryByText('common.addBlock')).not.toBeInTheDocument()
   })
 
   it('should keep paste disabled when the clipboard is empty', async () => {
-    renderWorkflowFlowComponent(<PanelContextmenu />, {
+    renderPanelContextmenu({
       initialStoreState: {
-        panelMenu: { clientX: 24, clientY: 48 },
+        contextMenuTarget: { type: 'panel' },
       },
       hooksStoreProps: {},
     })
@@ -107,13 +181,33 @@ describe('PanelContextmenu', () => {
     fireEvent.click(screen.getByText('common.pasteHere'))
 
     expect(mockHandleNodesPaste).not.toHaveBeenCalled()
-    expect(mockHandlePaneContextmenuCancel).not.toHaveBeenCalled()
+    expect(mockClose).not.toHaveBeenCalled()
   })
 
+  it.each([false, true])(
+    'handles menu paste only when clipboard is available: %s',
+    async (hasClipboard) => {
+      const user = userEvent.setup()
+      renderPanelContextmenu({
+        initialStoreState: {
+          contextMenuTarget: { type: 'panel' },
+          clipboardElements: hasClipboard ? [createNode({ id: 'copied-node' })] : [],
+        },
+        hooksStoreProps: {},
+      })
+      const item = await screen.findByRole('menuitem', { name: /common.run/ })
+      act(() => item.focus())
+      const mod = detectPlatform() === 'mac' ? 'Meta' : 'Control'
+      await user.keyboard(`{${mod}>}v{/${mod}}`)
+      expect(mockHandleNodesPaste).toHaveBeenCalledTimes(hasClipboard ? 1 : 0)
+      expect(mockClose).toHaveBeenCalledTimes(hasClipboard ? 1 : 0)
+    },
+  )
+
   it('should render actions and execute enabled actions', async () => {
-    const { store } = renderWorkflowFlowComponent(<PanelContextmenu />, {
+    const { store } = renderPanelContextmenu({
       initialStoreState: {
-        panelMenu: { clientX: 24, clientY: 48 },
+        contextMenuTarget: { type: 'panel' },
         clipboardElements: [createNode({ id: 'copied-node' })],
       },
       hooksStoreProps: {},
@@ -126,7 +220,7 @@ describe('PanelContextmenu', () => {
     fireEvent.click(screen.getByText('nodes.note.addNote'))
     fireEvent.click(screen.getByText('common.run'))
     fireEvent.click(screen.getByText('common.pasteHere'))
-    fireEvent.click(screen.getByText('export'))
+    fireEvent.click(screen.getByText('exportApp'))
     fireEvent.click(screen.getByText('importApp'))
 
     await waitFor(() => {
@@ -138,12 +232,30 @@ describe('PanelContextmenu', () => {
     })
   })
 
+  it('should hide import app on snippet canvases', async () => {
+    renderPanelContextmenu({
+      initialStoreState: {
+        contextMenuTarget: { type: 'panel' },
+      },
+      hooksStoreProps: {
+        configsMap: {
+          flowId: 'snippet-1',
+          flowType: FlowType.snippet,
+          fileSettings: {},
+        },
+      },
+    })
+
+    expect(await screen.findByText('exportApp')).toBeInTheDocument()
+    expect(screen.queryByText('importApp')).not.toBeInTheDocument()
+  })
+
   it('should render preview action in chat mode', async () => {
     mockUseIsChatMode.mockReturnValue(true)
 
-    renderWorkflowFlowComponent(<PanelContextmenu />, {
+    renderPanelContextmenu({
       initialStoreState: {
-        panelMenu: { clientX: 24, clientY: 48 },
+        contextMenuTarget: { type: 'panel' },
       },
       hooksStoreProps: {},
     })
@@ -156,7 +268,28 @@ describe('PanelContextmenu', () => {
     await waitFor(() => {
       expect(mockHandleWorkflowStartRunInChatflow).toHaveBeenCalledTimes(1)
       expect(mockHandleStartWorkflowRun).not.toHaveBeenCalled()
-      expect(mockHandlePaneContextmenuCancel).toHaveBeenCalled()
+      expect(mockClose).toHaveBeenCalled()
     })
+  })
+
+  it('should hide add note but keep comments available when editing is denied', async () => {
+    mockUseWorkflowMoveMode.mockReturnValue({
+      isCommentModeAvailable: true,
+    })
+
+    renderPanelContextmenu({
+      initialStoreState: {
+        contextMenuTarget: { type: 'panel' },
+      },
+      hooksStoreProps: {
+        accessControl: {
+          ...fullWorkflowAccessControl,
+          canEdit: false,
+        },
+      },
+    })
+
+    expect(await screen.findByText('comments.actions.addComment')).toBeInTheDocument()
+    expect(screen.queryByText('nodes.note.addNote')).not.toBeInTheDocument()
   })
 })

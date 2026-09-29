@@ -1,8 +1,10 @@
-from core.helper import ssrf_proxy
+from typing import Any
 
 
-def download_with_size_limit(url, max_download_size: int, **kwargs):
-    response = ssrf_proxy.get(url, follow_redirects=True, **kwargs)
+def download_with_size_limit(url: str, max_download_size: int, **kwargs: Any) -> bytes:
+    from core.file import remote_fetcher
+
+    response = remote_fetcher.make_request("GET", url, follow_redirects=True, **kwargs)
     if response.status_code == 404:
         raise ValueError("file not found")
 

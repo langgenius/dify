@@ -17,13 +17,22 @@ from extensions.ext_storage import storage
 from services.datasource_provider_service import DatasourceProviderService
 
 # Reuse pooled HTTP clients to avoid creating new connections per request and ease testing.
+# Both clients carry a bounded read/connect timeout so a stalled Jina or
+# adaptive-crawl endpoint fails fast instead of pinning a worker. The values
+# match the floor used in the WaterCrawl PR (#37512). See #39859.
 _jina_http_client: httpx.Client = get_pooled_http_client(
     "website:jinareader",
-    lambda: httpx.Client(limits=httpx.Limits(max_keepalive_connections=50, max_connections=100)),
+    lambda: httpx.Client(
+        timeout=httpx.Timeout(30.0, connect=5.0),
+        limits=httpx.Limits(max_keepalive_connections=50, max_connections=100),
+    ),
 )
 _adaptive_http_client: httpx.Client = get_pooled_http_client(
     "website:adaptivecrawl",
-    lambda: httpx.Client(limits=httpx.Limits(max_keepalive_connections=50, max_connections=100)),
+    lambda: httpx.Client(
+        timeout=httpx.Timeout(30.0, connect=5.0),
+        limits=httpx.Limits(max_keepalive_connections=50, max_connections=100),
+    ),
 )
 
 

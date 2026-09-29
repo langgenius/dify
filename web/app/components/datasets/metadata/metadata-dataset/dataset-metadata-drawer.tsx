@@ -23,22 +23,22 @@ import {
   DrawerTitle,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { Input } from '@langgenius/dify-ui/input'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { toast } from '@langgenius/dify-ui/toast'
-import { RiAddLine, RiDeleteBinLine, RiEditLine } from '@remixicon/react'
 import { useBoolean, useHover } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
-import Input from '@/app/components/base/input'
-import CreateModal from '@/app/components/datasets/metadata/metadata-dataset/create-metadata-modal'
-import { getIcon } from '../utils/get-icon'
+import { CreateMetadataModal } from '@/app/components/datasets/metadata/metadata-dataset/create-metadata-modal'
+import { toast } from '@/app/notifications'
+import { getIconClassName } from '../utils/get-icon'
 import Field from './field'
 
 const i18nPrefix = 'metadata.datasetMetadata'
 
-type Props = {
+type Props = Readonly<{
   userMetadata: MetadataItemWithValueLength[]
   builtInMetadata: BuiltInMetadataItem[]
   isBuiltInEnabled: boolean
@@ -47,7 +47,7 @@ type Props = {
   onAdd: (payload: BuiltInMetadataItem) => void
   onRename: (payload: MetadataItemWithValueLength) => void
   onRemove: (metaDataId: string) => void
-}
+}>
 
 type ItemProps = {
   readonly?: boolean
@@ -56,15 +56,9 @@ type ItemProps = {
   onRename?: () => void
   onDelete?: () => void
 }
-const Item: FC<ItemProps> = ({
-  readonly,
-  disabled,
-  payload,
-  onRename,
-  onDelete,
-}) => {
-  const { t } = useTranslation()
-  const Icon = getIcon(payload.type)
+const Item: FC<ItemProps> = ({ readonly, disabled, payload, onRename, onDelete }) => {
+  const { t } = useTranslation(['common', 'dataset'])
+  const iconClassName = getIconClassName(payload.type)
 
   const handleRename = useCallback(() => {
     onRename?.()
@@ -72,10 +66,8 @@ const Item: FC<ItemProps> = ({
 
   const deleteBtnRef = useRef<HTMLButtonElement>(null)
   const isDeleteHovering = useHover(deleteBtnRef)
-  const [isShowDeleteConfirm, {
-    setTrue: showDeleteConfirm,
-    setFalse: hideDeleteConfirm,
-  }] = useBoolean(false)
+  const [isShowDeleteConfirm, { setTrue: showDeleteConfirm, setFalse: hideDeleteConfirm }] =
+    useBoolean(false)
   const handleDelete = useCallback(() => {
     hideDeleteConfirm()
     onDelete?.()
@@ -96,49 +88,62 @@ const Item: FC<ItemProps> = ({
           disabled && 'opacity-30', // not include border and bg
         )}
       >
-        <div className="flex h-full items-center space-x-1 text-text-tertiary">
-          <Icon className="size-4 shrink-0" />
-          <div className="max-w-[250px] truncate system-sm-medium text-text-primary">{payload.name}</div>
+        <div className="flex h-full min-w-0 items-center space-x-1 text-text-tertiary">
+          <span className={cn(iconClassName, 'size-4 shrink-0')} aria-hidden="true" />
+          <div className="max-w-62.5 truncate system-sm-medium text-text-primary">
+            {payload.name}
+          </div>
           <div className="shrink-0 system-xs-regular">{payload.type}</div>
         </div>
         {(!readonly || disabled) && (
-          <div className="ml-2 shrink-0 system-xs-regular text-text-tertiary group-hover/item:hidden">
-            {disabled ? t(`${i18nPrefix}.disabled`, { ns: 'dataset' }) : t(`${i18nPrefix}.values`, { ns: 'dataset', num: payload.count || 0 })}
+          <div className="ml-2 shrink-0 system-xs-regular text-text-tertiary">
+            {disabled
+              ? t(($) => $[`${i18nPrefix}.disabled`], { ns: 'dataset' })
+              : t(($) => $[`${i18nPrefix}.values`], { ns: 'dataset', num: payload.count || 0 })}
           </div>
         )}
-        <div className="ml-2 hidden items-center space-x-1 text-text-tertiary group-hover/item:flex">
-          <button
-            type="button"
-            aria-label={t('operation.edit', { ns: 'common' })}
-            className="cursor-pointer rounded-md border-none bg-transparent p-0.5 hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-            onClick={handleRename}
-          >
-            <RiEditLine className="size-4" aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            ref={deleteBtnRef}
-            aria-label={t('operation.remove', { ns: 'common' })}
-            className="cursor-pointer rounded-md border-none bg-transparent p-0.5 hover:bg-state-destructive-hover hover:text-text-destructive focus-visible:ring-1 focus-visible:ring-state-destructive-border focus-visible:outline-hidden"
-            onClick={showDeleteConfirm}
-          >
-            <RiDeleteBinLine className="size-4" aria-hidden="true" />
-          </button>
-        </div>
-        <AlertDialog open={isShowDeleteConfirm} onOpenChange={open => !open && hideDeleteConfirm()}>
+        {!readonly && !disabled && (
+          <div className="ml-2 flex shrink-0 items-center space-x-1 text-text-tertiary">
+            <IconButton
+              size="sm"
+              aria-label={t(($) => $['operation.edit'], { ns: 'common' })}
+              onClick={handleRename}
+            >
+              <span className="i-ri-edit-line size-4" aria-hidden="true" />
+            </IconButton>
+            <IconButton
+              size="sm"
+              ref={deleteBtnRef}
+              tone="destructive"
+              aria-label={t(($) => $['operation.remove'], { ns: 'common' })}
+              onClick={showDeleteConfirm}
+            >
+              <span className="i-ri-delete-bin-line size-4" aria-hidden="true" />
+            </IconButton>
+          </div>
+        )}
+        <AlertDialog
+          open={isShowDeleteConfirm}
+          onOpenChange={(open) => !open && hideDeleteConfirm()}
+        >
           <AlertDialogContent>
             <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
               <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-                {t('metadata.datasetMetadata.deleteTitle', { ns: 'dataset' })}
+                {t(($) => $['metadata.datasetMetadata.deleteTitle'], { ns: 'dataset' })}
               </AlertDialogTitle>
               <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-                {t('metadata.datasetMetadata.deleteContent', { ns: 'dataset', name: payload.name })}
+                {t(($) => $['metadata.datasetMetadata.deleteContent'], {
+                  ns: 'dataset',
+                  name: payload.name,
+                })}
               </AlertDialogDescription>
             </div>
             <AlertDialogActions>
-              <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+              <AlertDialogCancelButton>
+                {t(($) => $['operation.cancel'], { ns: 'common' })}
+              </AlertDialogCancelButton>
               <AlertDialogConfirmButton onClick={handleDelete}>
-                {t('operation.confirm', { ns: 'common' })}
+                {t(($) => $['operation.confirm'], { ns: 'common' })}
               </AlertDialogConfirmButton>
             </AlertDialogActions>
           </AlertDialogContent>
@@ -158,43 +163,54 @@ const DatasetMetadataDrawer: FC<Props> = ({
   onRename,
   onRemove,
 }) => {
-  const { t } = useTranslation()
+  const builtInLabelId = React.useId()
+
+  const { t } = useTranslation(['common', 'dataset'])
   const [isShowRenameModal, setIsShowRenameModal] = useState(false)
   const [currPayload, setCurrPayload] = useState<MetadataItemWithValueLength | null>(null)
   const [templeName, setTempleName] = useState('')
-  const handleRename = useCallback((payload: MetadataItemWithValueLength) => {
-    return () => {
-      setCurrPayload(payload)
-      setTempleName(payload.name)
-      setIsShowRenameModal(true)
-    }
-  }, [setCurrPayload, setIsShowRenameModal])
+  const handleRename = useCallback(
+    (payload: MetadataItemWithValueLength) => {
+      return () => {
+        setCurrPayload(payload)
+        setTempleName(payload.name)
+        setIsShowRenameModal(true)
+      }
+    },
+    [setCurrPayload, setIsShowRenameModal],
+  )
 
   const [open, setOpen] = useState(false)
-  const handleAdd = useCallback(async (data: BuiltInMetadataItem) => {
-    await onAdd(data)
-    toast.success(t('api.actionSuccess', { ns: 'common' }))
-    setOpen(false)
-  }, [onAdd, t])
+  const handleAdd = useCallback(
+    async (data: BuiltInMetadataItem) => {
+      await onAdd(data)
+      toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
+      setOpen(false)
+    },
+    [onAdd, t],
+  )
 
   const handleRenamed = useCallback(async () => {
-    const item = userMetadata.find(p => p.id === currPayload?.id)
+    const item = userMetadata.find((p) => p.id === currPayload?.id)
     if (item) {
       await onRename({
         ...item,
         name: templeName,
       })
-      toast.success(t('api.actionSuccess', { ns: 'common' }))
+      toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
     }
     setIsShowRenameModal(false)
   }, [userMetadata, currPayload?.id, onRename, templeName, t])
 
-  const handleDelete = useCallback((payload: MetadataItemWithValueLength) => {
-    return async () => {
-      await onRemove(payload.id)
-      toast.success(t('api.actionSuccess', { ns: 'common' }))
-    }
-  }, [onRemove, t])
+  const handleDelete = useCallback(
+    (payload: MetadataItemWithValueLength) => {
+      return async () => {
+        await onRemove(payload.id)
+        toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
+      }
+    },
+    [onRemove, t],
+  )
 
   return (
     <Drawer
@@ -202,41 +218,42 @@ const DatasetMetadataDrawer: FC<Props> = ({
       modal
       swipeDirection="right"
       onOpenChange={(open) => {
-        if (!open)
-          onClose()
+        if (!open) onClose()
       }}
     >
       <DrawerPortal>
         <DrawerBackdrop />
         <DrawerViewport>
-          <DrawerPopup className="data-[swipe-direction=right]:top-2 data-[swipe-direction=right]:bottom-2 data-[swipe-direction=right]:h-[calc(100dvh-16px)] data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-[420px]">
+          <DrawerPopup className="data-[swipe-direction=right]:top-2 data-[swipe-direction=right]:bottom-2 data-[swipe-direction=right]:h-[calc(100dvh-16px)] data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-105">
             <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
               <div className="flex shrink-0 justify-between px-4 pt-6 pb-4">
-                <DrawerTitle className="text-lg leading-6 font-medium text-text-primary">
-                  {t('metadata.metadata', { ns: 'dataset' })}
+                <DrawerTitle className="text-lg/6 font-medium text-text-primary">
+                  {t(($) => $['metadata.metadata'], { ns: 'dataset' })}
                 </DrawerTitle>
                 <DrawerCloseButton
-                  aria-label={t('operation.close', { ns: 'common' })}
-                  className="h-6 w-6 rounded-md"
+                  aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                  className="size-6 rounded-md"
                 />
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6">
-                <div className="system-sm-regular text-text-tertiary">{t(`${i18nPrefix}.description`, { ns: 'dataset' })}</div>
-                <CreateModal
+                <div className="system-sm-regular text-text-tertiary">
+                  {t(($) => $[`${i18nPrefix}.description`], { ns: 'dataset' })}
+                </div>
+                <CreateMetadataModal
                   open={open}
                   setOpen={setOpen}
-                  trigger={(
+                  trigger={
                     <Button variant="primary" className="mt-3">
-                      <RiAddLine className="mr-1" />
-                      {t(`${i18nPrefix}.addMetaData`, { ns: 'dataset' })}
+                      <span aria-hidden="true" className="i-ri-add-line size-4" />
+                      {t(($) => $[`${i18nPrefix}.addMetaData`], { ns: 'dataset' })}
                     </Button>
-                  )}
+                  }
                   hasBack
                   onSave={handleAdd}
                 />
 
                 <div className="mt-3 space-y-1">
-                  {userMetadata.map(payload => (
+                  {userMetadata.map((payload) => (
                     <Item
                       key={payload.id}
                       payload={payload}
@@ -248,17 +265,26 @@ const DatasetMetadataDrawer: FC<Props> = ({
 
                 <div className="mt-3 flex h-6 items-center">
                   <Switch
+                    aria-labelledby={builtInLabelId}
                     checked={isBuiltInEnabled}
                     onCheckedChange={onIsBuiltInEnabledChange}
                   />
-                  <div className="mr-0.5 ml-2 system-sm-semibold text-text-secondary">{t(`${i18nPrefix}.builtIn`, { ns: 'dataset' })}</div>
-                  <Infotip aria-label={t(`${i18nPrefix}.builtInDescription`, { ns: 'dataset' })} popupClassName="max-w-[100px]">
-                    {t(`${i18nPrefix}.builtInDescription`, { ns: 'dataset' })}
+                  <div
+                    id={builtInLabelId}
+                    className="mr-0.5 ml-2 system-sm-semibold text-text-secondary"
+                  >
+                    {t(($) => $[`${i18nPrefix}.builtIn`], { ns: 'dataset' })}
+                  </div>
+                  <Infotip>
+                    <InfotipTrigger aria-labelledby={builtInLabelId} />
+                    <InfotipContent aria-labelledby={builtInLabelId} className="max-w-25">
+                      {t(($) => $[`${i18nPrefix}.builtInDescription`], { ns: 'dataset' })}
+                    </InfotipContent>
                   </Infotip>
                 </div>
 
                 <div className="mt-1 space-y-1">
-                  {builtInMetadata.map(payload => (
+                  {builtInMetadata.map((payload) => (
                     <Item
                       key={payload.name}
                       readonly
@@ -272,20 +298,25 @@ const DatasetMetadataDrawer: FC<Props> = ({
                   <Dialog
                     open
                     onOpenChange={(open) => {
-                      if (!open)
-                        setIsShowRenameModal(false)
+                      if (!open) setIsShowRenameModal(false)
                     }}
                   >
                     <DialogContent className="overflow-hidden! border-none text-left align-middle">
                       <DialogTitle className="title-2xl-semi-bold text-text-primary">
-                        {t(`${i18nPrefix}.rename`, { ns: 'dataset' })}
+                        {t(($) => $[`${i18nPrefix}.rename`], { ns: 'dataset' })}
                       </DialogTitle>
 
-                      <Field label={t(`${i18nPrefix}.name`, { ns: 'dataset' })} className="mt-4">
+                      <Field
+                        label={t(($) => $[`${i18nPrefix}.name`], { ns: 'dataset' })}
+                        className="mt-4"
+                      >
                         <Input
+                          aria-label={t(($) => $[`${i18nPrefix}.name`], { ns: 'dataset' })}
                           value={templeName}
-                          onChange={e => setTempleName(e.target.value)}
-                          placeholder={t(`${i18nPrefix}.namePlaceholder`, { ns: 'dataset' })}
+                          onValueChange={setTempleName}
+                          placeholder={t(($) => $[`${i18nPrefix}.namePlaceholder`], {
+                            ns: 'dataset',
+                          })}
                         />
                       </Field>
                       <div className="mt-4 flex justify-end">
@@ -296,14 +327,10 @@ const DatasetMetadataDrawer: FC<Props> = ({
                             setTempleName(currPayload!.name)
                           }}
                         >
-                          {t('operation.cancel', { ns: 'common' })}
+                          {t(($) => $['operation.cancel'], { ns: 'common' })}
                         </Button>
-                        <Button
-                          onClick={handleRenamed}
-                          variant="primary"
-                          disabled={!templeName}
-                        >
-                          {t('operation.save', { ns: 'common' })}
+                        <Button onClick={handleRenamed} variant="primary" disabled={!templeName}>
+                          {t(($) => $['operation.save'], { ns: 'common' })}
                         </Button>
                       </div>
                     </DialogContent>

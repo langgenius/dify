@@ -1,5 +1,5 @@
 import os
-from typing import Any, Literal, TypedDict
+from typing import Any, Literal, TypedDict, cast
 from urllib.parse import parse_qsl, quote_plus
 
 from pydantic import Field, NonNegativeFloat, NonNegativeInt, PositiveFloat, PositiveInt, computed_field
@@ -7,6 +7,7 @@ from pydantic_settings import BaseSettings
 
 from .cache.redis_config import RedisConfig
 from .cache.redis_pubsub_config import RedisPubSubConfig
+from .key_provider.azure_keyvault_config import AzureKeyVaultConfig
 from .storage.aliyun_oss_storage_config import AliyunOSSStorageConfig
 from .storage.amazon_s3_storage_config import S3StorageConfig
 from .storage.azure_blob_storage_config import AzureBlobStorageConfig
@@ -50,34 +51,52 @@ from .vdb.vastbase_vector_config import VastbaseVectorConfig
 from .vdb.vikingdb_config import VikingDBConfig
 from .vdb.weaviate_config import WeaviateConfig
 
+_VALID_STORAGE_TYPE = Literal[
+    "opendal",
+    "s3",
+    "aliyun-oss",
+    "azure-blob",
+    "baidu-obs",
+    "clickzetta-volume",
+    "google-storage",
+    "huawei-obs",
+    "oci-storage",
+    "tencent-cos",
+    "volcengine-tos",
+    "supabase",
+    "local",
+]
+
 
 class StorageConfig(BaseSettings):
-    STORAGE_TYPE: Literal[
-        "opendal",
-        "s3",
-        "aliyun-oss",
-        "azure-blob",
-        "baidu-obs",
-        "clickzetta-volume",
-        "google-storage",
-        "huawei-obs",
-        "oci-storage",
-        "tencent-cos",
-        "volcengine-tos",
-        "supabase",
-        "local",
-    ] = Field(
+    STORAGE_TYPE: _VALID_STORAGE_TYPE = Field(
         description="Type of storage to use."
         " Options: 'opendal', '(deprecated) local', 's3', 'aliyun-oss', 'azure-blob', 'baidu-obs', "
         "'clickzetta-volume', 'google-storage', 'huawei-obs', 'oci-storage', 'tencent-cos', "
         "'volcengine-tos', 'supabase'. Default is 'opendal'.",
-        default="opendal",
+        default=cast(_VALID_STORAGE_TYPE, "opendal"),
     )
 
     STORAGE_LOCAL_PATH: str = Field(
         description="Path for local storage when STORAGE_TYPE is set to 'local'.",
         default="storage",
         deprecated=True,
+    )
+
+
+_VALID_KEY_PROVIDER_TYPE = Literal[
+    "local",
+    "azure-keyvault",
+]
+
+
+class KeyProviderConfig(BaseSettings):
+    KEY_PROVIDER_TYPE: _VALID_KEY_PROVIDER_TYPE = Field(
+        description="Key provider used to encrypt/decrypt tenant credentials (LLM/tool provider secrets)."
+        " Options: 'local' (per-tenant RSA key pair, private key kept in the STORAGE_TYPE backend),"
+        " 'azure-keyvault' (per-tenant RSA key kept in Azure Key Vault, private key never leaves the vault)."
+        " Default is 'local'.",
+        default=cast(_VALID_KEY_PROVIDER_TYPE, "local"),
     )
 
 
@@ -316,22 +335,6 @@ class CeleryConfig(DatabaseConfig):
         return self.CELERY_BROKER_URL.startswith("rediss://") if self.CELERY_BROKER_URL else False
 
 
-class InternalTestConfig(BaseSettings):
-    """
-    Configuration settings for Internal Test
-    """
-
-    AWS_SECRET_ACCESS_KEY: str | None = Field(
-        description="Internal test AWS secret access key",
-        default=None,
-    )
-
-    AWS_ACCESS_KEY_ID: str | None = Field(
-        description="Internal test AWS access key ID",
-        default=None,
-    )
-
-
 class DatasetQueueMonitorConfig(BaseSettings):
     """
     Configuration settings for Dataset Queue Monitor
@@ -357,6 +360,9 @@ class MiddlewareConfig(
     KeywordStoreConfig,
     RedisConfig,
     RedisPubSubConfig,
+    # configs of the tenant credential encryption key provider
+    KeyProviderConfig,
+    AzureKeyVaultConfig,
     # configs of storage and storage providers
     StorageConfig,
     AliyunOSSStorageConfig,
@@ -394,7 +400,6 @@ class MiddlewareConfig(
     WeaviateConfig,
     ElasticsearchConfig,
     CouchbaseConfig,
-    InternalTestConfig,
     VikingDBConfig,
     UpstashConfig,
     TidbOnQdrantConfig,

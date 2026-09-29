@@ -2,14 +2,14 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-
 import {
   zGetFilesByFileIdPreviewPath,
   zGetFilesByFileIdPreviewResponse,
   zGetFilesSupportTypeResponse,
   zGetFilesUploadResponse,
+  zPostFilesUploadBody,
   zPostFilesUploadResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 export const get = oc
   .route({
@@ -44,6 +44,7 @@ export const post = oc
     successStatus: 201,
     tags: ['console'],
   })
+  .input(z.object({ body: zPostFilesUploadBody }))
   .output(zPostFilesUploadResponse)
 
 export const upload = {

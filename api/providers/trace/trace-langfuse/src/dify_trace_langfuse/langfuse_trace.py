@@ -2,14 +2,17 @@ import logging
 import os
 import uuid
 from datetime import UTC, datetime, timedelta
+from typing import override
 
-from langfuse import Langfuse
+import httpx
+from langfuse import __version__ as langfuse_version
 from langfuse.api import (
     CreateGenerationBody,
     CreateSpanBody,
     IngestionEvent_GenerationCreate,
     IngestionEvent_SpanCreate,
     IngestionEvent_TraceCreate,
+    LangfuseAPI,
     TraceBody,
 )
 from langfuse.api.commons.types.usage import Usage
@@ -52,12 +55,32 @@ class LangFuseDataTrace(BaseTraceInstance):
         langfuse_config: LangfuseConfig,
     ):
         super().__init__(langfuse_config)
-        self.langfuse_client = Langfuse(
-            public_key=langfuse_config.public_key,
-            secret_key=langfuse_config.secret_key,
-            host=langfuse_config.host,
+        timeout = int(os.environ.get("LANGFUSE_TIMEOUT", 5))
+        self._http_client: httpx.Client | None = httpx.Client(timeout=timeout)
+        self.langfuse_client = LangfuseAPI(
+            base_url=langfuse_config.host,
+            username=langfuse_config.public_key,
+            password=langfuse_config.secret_key,
+            x_langfuse_sdk_name="python",
+            x_langfuse_sdk_version=langfuse_version,
+            x_langfuse_public_key=langfuse_config.public_key,
+            timeout=timeout,
+            httpx_client=self._http_client,
         )
         self.file_base_url = os.getenv("FILES_URL", "http://127.0.0.1:5001")
+
+    def close(self) -> None:
+        client = getattr(self, "_http_client", None)
+        if client is None:
+            return
+        self._http_client = None
+        try:
+            client.close()
+        except Exception:
+            logger.debug("Failed to close Langfuse HTTP client", exc_info=True)
+
+    def __del__(self) -> None:
+        self.close()
 
     @staticmethod
     def _get_completion_start_time(
@@ -77,21 +100,25 @@ class LangFuseDataTrace(BaseTraceInstance):
 
         return start_time + timedelta(seconds=ttft_seconds)
 
+    @override
     def trace(self, trace_info: BaseTraceInfo):
-        if isinstance(trace_info, WorkflowTraceInfo):
-            self.workflow_trace(trace_info)
-        if isinstance(trace_info, MessageTraceInfo):
-            self.message_trace(trace_info)
-        if isinstance(trace_info, ModerationTraceInfo):
-            self.moderation_trace(trace_info)
-        if isinstance(trace_info, SuggestedQuestionTraceInfo):
-            self.suggested_question_trace(trace_info)
-        if isinstance(trace_info, DatasetRetrievalTraceInfo):
-            self.dataset_retrieval_trace(trace_info)
-        if isinstance(trace_info, ToolTraceInfo):
-            self.tool_trace(trace_info)
-        if isinstance(trace_info, GenerateNameTraceInfo):
-            self.generate_name_trace(trace_info)
+        match trace_info:
+            case WorkflowTraceInfo():
+                self.workflow_trace(trace_info)
+            case MessageTraceInfo():
+                self.message_trace(trace_info)
+            case ModerationTraceInfo():
+                self.moderation_trace(trace_info)
+            case SuggestedQuestionTraceInfo():
+                self.suggested_question_trace(trace_info)
+            case DatasetRetrievalTraceInfo():
+                self.dataset_retrieval_trace(trace_info)
+            case ToolTraceInfo():
+                self.tool_trace(trace_info)
+            case GenerateNameTraceInfo():
+                self.generate_name_trace(trace_info)
+            case _:
+                pass
 
     def workflow_trace(self, trace_info: WorkflowTraceInfo):
         trace_id = trace_info.trace_id or trace_info.workflow_run_id
@@ -152,6 +179,7 @@ class LangFuseDataTrace(BaseTraceInstance):
 
         workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
             session_factory=session_factory,
+            tenant_id=trace_info.tenant_id,
             user=service_account,
             app_id=app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
@@ -465,7 +493,7 @@ class LangFuseDataTrace(BaseTraceInstance):
                 id=self._make_event_id(),
                 timestamp=self._now_iso(),
             )
-            self.langfuse_client.api.ingestion.batch(batch=[event])
+            self.langfuse_client.ingestion.batch(batch=[event])
             logger.debug("LangFuse Trace created successfully")
         except Exception as e:
             raise ValueError(f"LangFuse Failed to create trace: {str(e)}")
@@ -492,7 +520,7 @@ class LangFuseDataTrace(BaseTraceInstance):
                 id=self._make_event_id(),
                 timestamp=self._now_iso(),
             )
-            self.langfuse_client.api.ingestion.batch(batch=[event])
+            self.langfuse_client.ingestion.batch(batch=[event])
             logger.debug("LangFuse Span created successfully")
         except Exception as e:
             raise ValueError(f"LangFuse Failed to create span: {str(e)}")
@@ -541,7 +569,7 @@ class LangFuseDataTrace(BaseTraceInstance):
                 id=self._make_event_id(),
                 timestamp=self._now_iso(),
             )
-            self.langfuse_client.api.ingestion.batch(batch=[event])
+            self.langfuse_client.ingestion.batch(batch=[event])
             logger.debug("LangFuse Generation created successfully")
         except Exception as e:
             raise ValueError(f"LangFuse Failed to create generation: {str(e)}")
@@ -555,15 +583,18 @@ class LangFuseDataTrace(BaseTraceInstance):
 
     def api_check(self):
         try:
-            return self.langfuse_client.auth_check()
+            projects = self.langfuse_client.projects.get()
         except Exception as e:
-            logger.debug("LangFuse API check failed: %s", str(e))
+            logger.debug("LangFuse API check failed", exc_info=True)
             raise ValueError(f"LangFuse API check failed: {str(e)}")
+        if not projects.data:
+            raise ValueError("LangFuse API check failed: no project found for the provided credentials")
+        return True
 
     def get_project_key(self):
         try:
-            projects = self.langfuse_client.api.projects.get()
+            projects = self.langfuse_client.projects.get()
             return projects.data[0].id
         except Exception as e:
-            logger.debug("LangFuse get project key failed: %s", str(e))
+            logger.debug("LangFuse get project key failed", exc_info=True)
             raise ValueError(f"LangFuse get project key failed: {str(e)}")

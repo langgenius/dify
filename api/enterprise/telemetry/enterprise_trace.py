@@ -77,28 +77,29 @@ class EnterpriseOtelTrace:
         self._exporter = exporter
 
     def trace(self, trace_info: BaseTraceInfo) -> None:
-        if isinstance(trace_info, WorkflowTraceInfo):
-            self._workflow_trace(trace_info)
-        elif isinstance(trace_info, MessageTraceInfo):
-            self._message_trace(trace_info)
-        elif isinstance(trace_info, ToolTraceInfo):
-            self._tool_trace(trace_info)
-        elif isinstance(trace_info, DraftNodeExecutionTrace):
-            self._draft_node_execution_trace(trace_info)
-        elif isinstance(trace_info, WorkflowNodeTraceInfo):
-            self._node_execution_trace(trace_info)
-        elif isinstance(trace_info, ModerationTraceInfo):
-            self._moderation_trace(trace_info)
-        elif isinstance(trace_info, SuggestedQuestionTraceInfo):
-            self._suggested_question_trace(trace_info)
-        elif isinstance(trace_info, DatasetRetrievalTraceInfo):
-            self._dataset_retrieval_trace(trace_info)
-        elif isinstance(trace_info, GenerateNameTraceInfo):
-            self._generate_name_trace(trace_info)
-        elif isinstance(trace_info, PromptGenerationTraceInfo):
-            self._prompt_generation_trace(trace_info)
-        else:
-            raise AssertionError("this statment should be unreachable")
+        match trace_info:
+            case WorkflowTraceInfo():
+                self._workflow_trace(trace_info)
+            case MessageTraceInfo():
+                self._message_trace(trace_info)
+            case ToolTraceInfo():
+                self._tool_trace(trace_info)
+            case DraftNodeExecutionTrace():
+                self._draft_node_execution_trace(trace_info)
+            case WorkflowNodeTraceInfo():
+                self._node_execution_trace(trace_info)
+            case ModerationTraceInfo():
+                self._moderation_trace(trace_info)
+            case SuggestedQuestionTraceInfo():
+                self._suggested_question_trace(trace_info)
+            case DatasetRetrievalTraceInfo():
+                self._dataset_retrieval_trace(trace_info)
+            case GenerateNameTraceInfo():
+                self._generate_name_trace(trace_info)
+            case PromptGenerationTraceInfo():
+                self._prompt_generation_trace(trace_info)
+            case _:
+                raise AssertionError("this statment should be unreachable")
 
     def _common_attrs(self, trace_info: BaseTraceInfo) -> dict[str, Any]:
         metadata = self._metadata(trace_info)
@@ -288,6 +289,117 @@ class EnterpriseOtelTrace:
                 ),
             )
 
+        # -- Emit child node execution spans from DB records --
+        self._emit_node_executions_for_workflow(info, trace_correlation_override=trace_correlation_override)
+
+    def _emit_node_executions_for_workflow(
+        self,
+        workflow_info: WorkflowTraceInfo,
+        *,
+        trace_correlation_override: str | None = None,
+    ) -> None:
+        """Query node executions from the DB and emit child spans under the workflow run."""
+        from collections.abc import Mapping as MappingABC
+
+        from sqlalchemy.orm import sessionmaker
+
+        from extensions.ext_database import db
+        from graphon.enums import WorkflowNodeExecutionMetadataKey
+        from repositories.factory import DifyAPIRepositoryFactory
+
+        metadata = self._metadata(workflow_info)
+        tenant_id, app_id, user_id = self._context_ids(workflow_info, metadata)
+
+        try:
+            repository = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
+                sessionmaker(bind=db.engine, expire_on_commit=False)
+            )
+            rows = repository.get_executions_by_workflow_run(
+                tenant_id=tenant_id or "",
+                app_id=app_id or "",
+                workflow_run_id=workflow_info.workflow_run_id,
+            )
+        except Exception:
+            logger.exception("Failed to query node executions for workflow_run_id=%s", workflow_info.workflow_run_id)
+            return
+
+        for row in rows:
+            exec_metadata = row.execution_metadata_dict
+            process_data = row.process_data_dict or {}
+
+            # Extract token breakdown from outputs.usage (set by LLM node)
+            usage: MappingABC[str, Any] = {}
+            outputs = row.outputs_dict
+            if isinstance(outputs, MappingABC):
+                raw_usage = outputs.get("usage")
+                if isinstance(raw_usage, MappingABC):
+                    usage = raw_usage
+
+            tool_info = exec_metadata.get(WorkflowNodeExecutionMetadataKey.TOOL_INFO)
+            tool_name = tool_info.get("tool_name") if isinstance(tool_info, dict) else None
+
+            node_trace_metadata: dict[str, Any] = {
+                "tenant_id": tenant_id,
+                "app_id": app_id,
+                "app_name": metadata.get("app_name"),
+                "workspace_name": metadata.get("workspace_name"),
+                "user_id": user_id,
+                "invoke_from": metadata.get("triggered_from"),
+                "conversation_id": metadata.get("conversation_id"),
+            }
+            # NOTE: Do NOT propagate parent_trace_context to node infos.
+            # Cross-trace linking is handled at the workflow-run span level only;
+            # node spans are children of their own workflow run span.
+
+            node_info = WorkflowNodeTraceInfo(
+                trace_id=workflow_info.trace_id,
+                message_id=workflow_info.message_id,
+                start_time=row.created_at,
+                end_time=row.finished_at,
+                metadata=node_trace_metadata,
+                workflow_id=workflow_info.workflow_id,
+                workflow_run_id=workflow_info.workflow_run_id,
+                tenant_id=tenant_id or "",
+                node_execution_id=row.node_execution_id or row.id,
+                node_id=row.node_id,
+                node_type=row.node_type,
+                title=row.title,
+                status=row.status,
+                error=row.error,
+                elapsed_time=row.elapsed_time,
+                index=row.index,
+                predecessor_node_id=row.predecessor_node_id,
+                total_tokens=int(exec_metadata.get(WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS, 0)),
+                total_price=float(exec_metadata.get(WorkflowNodeExecutionMetadataKey.TOTAL_PRICE, 0.0)),
+                currency=exec_metadata.get(WorkflowNodeExecutionMetadataKey.CURRENCY),
+                model_provider=process_data.get("model_provider"),
+                model_name=process_data.get("model_name"),
+                prompt_tokens=usage.get("prompt_tokens"),
+                completion_tokens=usage.get("completion_tokens"),
+                tool_name=tool_name,
+                iteration_id=exec_metadata.get(WorkflowNodeExecutionMetadataKey.ITERATION_ID),
+                iteration_index=exec_metadata.get(WorkflowNodeExecutionMetadataKey.ITERATION_INDEX),
+                loop_id=exec_metadata.get(WorkflowNodeExecutionMetadataKey.LOOP_ID),
+                loop_index=exec_metadata.get(WorkflowNodeExecutionMetadataKey.LOOP_INDEX),
+                parallel_id=exec_metadata.get(WorkflowNodeExecutionMetadataKey.PARALLEL_ID),
+                node_inputs=row.inputs_dict,
+                node_outputs=outputs,
+                process_data=process_data,
+                invoked_by=workflow_info.invoked_by,
+            )
+            try:
+                self._emit_node_execution_trace(
+                    node_info,
+                    EnterpriseTelemetrySpan.NODE_EXECUTION,
+                    "node",
+                    trace_correlation_override_param=trace_correlation_override,
+                )
+            except Exception:
+                logger.exception(
+                    "Failed to emit node execution trace: node_execution_id=%s",
+                    node_info.node_execution_id,
+                )
+
     def _node_execution_trace(self, info: WorkflowNodeTraceInfo) -> None:
         self._emit_node_execution_trace(info, EnterpriseTelemetrySpan.NODE_EXECUTION, "node")
 
@@ -344,6 +456,9 @@ class EnterpriseOtelTrace:
         trace_correlation_override = trace_correlation_override_param or resolved_override
 
         effective_correlation_id = correlation_id_override or info.workflow_run_id
+        # Explicitly set parent to the workflow run span so node executions
+        # are always children of their workflow run in the trace tree.
+        parent_span_id_source = info.workflow_run_id if not correlation_id_override else None
         self._exporter.export_span(
             span_name,
             span_attrs,
@@ -352,6 +467,7 @@ class EnterpriseOtelTrace:
             start_time=info.start_time,
             end_time=info.end_time,
             trace_correlation_override=trace_correlation_override,
+            parent_span_id_source=parent_span_id_source,
         )
 
         # -- Companion log: ALL attrs (span + detail) --
@@ -719,7 +835,7 @@ class EnterpriseOtelTrace:
 
         docs: list[dict[str, Any]] = []
         documents_any: Any = info.documents
-        documents_list: list[Any] = cast(list[Any], documents_any) if isinstance(documents_any, list) else []
+        documents_list: list[Any] = documents_any if isinstance(documents_any, list) else []
         for entry in documents_list:
             if isinstance(entry, dict):
                 entry_dict: dict[str, Any] = cast(dict[str, Any], entry)
@@ -952,7 +1068,7 @@ class EnterpriseOtelTrace:
         self._exporter.record_histogram(
             EnterpriseTelemetryHistogram.PROMPT_GENERATION_DURATION,
             info.latency,
-            labels,
+            self._labels(**labels, status=prompt_status),
         )
 
         if info.error:

@@ -7,6 +7,9 @@ from .delete_tool_parameters_cache_when_sync_draft_workflow import (
     handle as handle_delete_tool_parameters_cache_when_sync_draft_workflow,
 )
 from .queue_credential_sync_when_tenant_created import handle as handle_queue_credential_sync_when_tenant_created
+from .queue_default_plugin_install_when_tenant_created import (
+    handle as handle_queue_default_plugin_install_when_tenant_created,
+)
 from .sync_plugin_trigger_when_app_created import handle as handle_sync_plugin_trigger_when_app_created
 from .sync_webhook_when_app_created import handle as handle_sync_webhook_when_app_created
 from .sync_workflow_schedule_when_app_published import handle as handle_sync_workflow_schedule_when_app_published
@@ -32,6 +35,7 @@ __all__ = [
     "handle_create_site_record_when_app_created",
     "handle_delete_tool_parameters_cache_when_sync_draft_workflow",
     "handle_queue_credential_sync_when_tenant_created",
+    "handle_queue_default_plugin_install_when_tenant_created",
     "handle_sync_plugin_trigger_when_app_created",
     "handle_sync_webhook_when_app_created",
     "handle_sync_workflow_schedule_when_app_published",

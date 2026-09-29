@@ -7,7 +7,7 @@ const { mockReactMarkdownWrapper } = vi.hoisted(() => ({
   mockReactMarkdownWrapper: vi.fn(),
 }))
 
-vi.mock('@/next/dynamic', () => ({
+vi.mock('next/dynamic', () => ({
   default: () => {
     const MockStreamdownWrapper = (props: { latexContent: string }) => {
       mockReactMarkdownWrapper(props)
@@ -45,23 +45,25 @@ describe('Markdown', () => {
     expect(screen.getByTestId('react-markdown-wrapper'))!.toHaveTextContent('Hello World')
   })
 
-  it('should apply default classes', () => {
-    const { container } = render(<Markdown content="Test" />)
-    const markdownDiv = container.querySelector('.markdown-body')
-    expect(markdownDiv)!.toHaveClass('markdown-body', 'text-text-primary!')
-  })
+  it.each(['', ' \n ', '---', ' *** ', '___', '- - -'])(
+    'should leave empty or divider-only Markdown unrendered (%s)',
+    (content) => {
+      render(<Markdown content={content} />)
 
-  it('should merge custom className with default classes', () => {
-    const { container } = render(<Markdown content="Test" className="custom another" />)
-    const markdownDiv = container.querySelector('.markdown-body')
-    expect(markdownDiv)!.toHaveClass('markdown-body', 'text-text-primary!', 'custom', 'another')
-  })
+      expect(screen.getByTestId('markdown-body')).toBeEmptyDOMElement()
+      expect(screen.queryByTestId('react-markdown-wrapper')).not.toBeInTheDocument()
+    },
+  )
 
-  it('should not include undefined in className', () => {
-    const { container } = render(<Markdown content="Test" className={undefined} />)
-    const markdownDiv = container.querySelector('.markdown-body')
-    expect(markdownDiv?.className).not.toContain('undefined')
-  })
+  it.each(['First\n\n---\n\nSecond', '    ---'])(
+    'should preserve meaningful Markdown containing divider characters (%s)',
+    (content) => {
+      render(<Markdown content={content} />)
+
+      expect(screen.getByTestId('react-markdown-wrapper')).toBeInTheDocument()
+      expect(getLastWrapperProps().latexContent).toBe(content)
+    },
+  )
 
   it('should preprocess think tags', () => {
     render(<Markdown content="<think>Thought</think>" />)

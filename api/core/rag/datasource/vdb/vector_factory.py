@@ -2,9 +2,10 @@ import base64
 import logging
 import time
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, override
 
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.model_manager import ModelManager
@@ -15,9 +16,9 @@ from core.rag.embedding.cached_embedding import CacheEmbedding
 from core.rag.embedding.embedding_base import Embeddings
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.models.document import Document
-from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
+from extensions.otel import trace_span
 from graphon.model_runtime.entities.model_entities import ModelType
 from models.dataset import Dataset, Whitelist
 from models.model import UploadFile
@@ -72,27 +73,39 @@ class _LazyEmbeddings(Embeddings):
             self._real = CacheEmbedding(embedding_model)
         return self._real
 
+    @override
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
         return self._ensure().embed_documents(texts)
 
+    @override
     def embed_multimodal_documents(self, multimodel_documents: list[dict[str, Any]]) -> list[list[float]]:
         return self._ensure().embed_multimodal_documents(multimodel_documents)
 
+    @override
     def embed_query(self, text: str) -> list[float]:
+        provider = self._dataset.embedding_model_provider
+        model_name = self._dataset.embedding_model
+        if provider and model_name:
+            cached_embedding = CacheEmbedding.get_cached_query_embedding(provider, model_name, text)
+            if cached_embedding is not None:
+                return cached_embedding
         return self._ensure().embed_query(text)
 
+    @override
     def embed_multimodal_query(self, multimodel_document: dict[str, Any]) -> list[float]:
         return self._ensure().embed_multimodal_query(multimodel_document)
 
+    @override
     async def aembed_documents(self, texts: list[str]) -> list[list[float]]:
         return await self._ensure().aembed_documents(texts)
 
+    @override
     async def aembed_query(self, text: str) -> list[float]:
         return await self._ensure().aembed_query(text)
 
 
 class Vector:
-    def __init__(self, dataset: Dataset, attributes: list | None = None):
+    def __init__(self, dataset: Dataset, attributes: list | None = None, *, session: Session):
         if attributes is None:
             # `is_summary` and `original_chunk_id` are stored on summary vectors
             # by `SummaryIndexService` and read back by `RetrievalService` to
@@ -113,30 +126,36 @@ class Vector:
             ]
         self._dataset = dataset
         # Use a lazy proxy so cleanup paths (delete_by_ids / delete / text_exists)
-        # never transitively trigger billing API calls during ``Vector(dataset)``
+        # never transitively trigger billing API calls during ``Vector(dataset, session=...)``
         # construction. The real embedding model is materialized only when an
         # ``embed_*`` method is actually invoked (i.e. create / search paths).
         self._embeddings: Embeddings = _LazyEmbeddings(dataset)
         self._attributes = attributes
-        self._vector_processor = self._init_vector()
+        self._session = session
+        self._vector_processor = self._init_vector(session=session)
 
-    def _init_vector(self) -> BaseVector:
+    @staticmethod
+    def resolve_vector_type(dataset: Dataset, *, session: Session) -> str:
         vector_type = dify_config.VECTOR_STORE
 
-        if self._dataset.index_struct_dict:
-            vector_type = self._dataset.index_struct_dict["type"]
+        if dataset.index_struct_dict:
+            vector_type = dataset.index_struct_dict["type"]
         else:
             if dify_config.VECTOR_STORE_WHITELIST_ENABLE:
                 stmt = select(Whitelist).where(
-                    Whitelist.tenant_id == self._dataset.tenant_id, Whitelist.category == "vector_db"
+                    Whitelist.tenant_id == dataset.tenant_id, Whitelist.category == "vector_db"
                 )
-                whitelist = db.session.scalars(stmt).one_or_none()
+                whitelist = session.scalars(stmt).one_or_none()
                 if whitelist:
                     vector_type = VectorType.TIDB_ON_QDRANT
 
         if not vector_type:
             raise ValueError("Vector store must be specified.")
 
+        return vector_type
+
+    def _init_vector(self, *, session: Session) -> BaseVector:
+        vector_type = self.resolve_vector_type(self._dataset, session=session)
         vector_factory_cls = self.get_vector_factory(vector_type)
         return vector_factory_cls().init_vector(self._dataset, self._attributes, self._embeddings)
 
@@ -161,7 +180,7 @@ class Vector:
             start = time.time()
             logger.info("start embedding %s texts %s", len(texts), start)
             batch_size = 1000
-            total_batches = len(texts) + batch_size - 1
+            total_batches = (len(texts) + batch_size - 1) // batch_size
             for i in range(0, len(texts), batch_size):
                 batch = texts[i : i + batch_size]
                 batch_start = time.time()
@@ -178,7 +197,7 @@ class Vector:
             start = time.time()
             logger.info("start embedding %s files %s", len(file_documents), start)
             batch_size = 1000
-            total_batches = len(file_documents) + batch_size - 1
+            total_batches = (len(file_documents) + batch_size - 1) // batch_size
             for i in range(0, len(file_documents), batch_size):
                 batch = file_documents[i : i + batch_size]
                 batch_start = time.time()
@@ -187,7 +206,7 @@ class Vector:
                 # Batch query all upload files to avoid N+1 queries
                 attachment_ids = [doc.metadata["doc_id"] for doc in batch]
                 stmt = select(UploadFile).where(UploadFile.id.in_(attachment_ids))
-                upload_files = db.session.scalars(stmt).all()
+                upload_files = self._session.scalars(stmt).all()
                 upload_file_map = {str(f.id): f for f in upload_files}
 
                 file_base64_list = []
@@ -238,10 +257,14 @@ class Vector:
 
     def search_by_vector(self, query: str, **kwargs: Any) -> list[Document]:
         query_vector = self._embeddings.embed_query(query)
+        return self._search_by_vector_traced(query_vector, **kwargs)
+
+    @trace_span()
+    def _search_by_vector_traced(self, query_vector: list[float], **kwargs) -> list[Document]:
         return self._vector_processor.search_by_vector(query_vector, **kwargs)
 
     def search_by_file(self, file_id: str, **kwargs: Any) -> list[Document]:
-        upload_file: UploadFile | None = db.session.get(UploadFile, file_id)
+        upload_file: UploadFile | None = self._session.get(UploadFile, file_id)
 
         if not upload_file:
             return []
@@ -254,7 +277,7 @@ class Vector:
                 "file_id": file_id,
             }
         )
-        return self._vector_processor.search_by_vector(multimodal_vector, **kwargs)
+        return self._search_by_vector_traced(multimodal_vector, **kwargs)
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         return self._vector_processor.search_by_full_text(query, **kwargs)

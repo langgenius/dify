@@ -1,3 +1,4 @@
+import json
 from types import SimpleNamespace
 
 import pytest
@@ -10,25 +11,25 @@ from core.workflow.variable_prefixes import (
     ENVIRONMENT_VARIABLE_NODE_ID,
 )
 from core.workflow.workflow_entry import WorkflowEntry
-from graphon.entities.graph_config import NodeConfigDictAdapter
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.nodes.code.code_node import CodeNode
 from graphon.nodes.code.limits import CodeNodeLimits
 from graphon.runtime import VariablePool
 from graphon.variables.variables import StringVariable
+from models.workflow import Workflow, WorkflowType
 
 
 @pytest.fixture(autouse=True)
 def _mock_ssrf_head(monkeypatch: pytest.MonkeyPatch):
     """Avoid any real network requests during tests.
 
-    factories.file_factory.remote.get_remote_file_info() uses ssrf_proxy.head
-    to inspect
-    remote files. We stub it to return a minimal response object with
+    factories.file_factory.remote.get_remote_file_info() uses remote_fetcher.make_request
+    to inspect remote files. We stub it to return a minimal response object with
     headers so filename/mime/size can be derived deterministically.
     """
 
-    def fake_head(url, *args, **kwargs):
+    def fake_head(method, url, *args, **kwargs):
+        assert method == "HEAD"
         # choose a content-type by file suffix for determinism
         if url.endswith(".pdf"):
             ctype = "application/pdf"
@@ -46,7 +47,7 @@ def _mock_ssrf_head(monkeypatch: pytest.MonkeyPatch):
         }
         return SimpleNamespace(status_code=200, headers=headers)
 
-    monkeypatch.setattr("core.helper.ssrf_proxy.head", fake_head)
+    monkeypatch.setattr("factories.file_factory.remote.remote_fetcher.make_request", fake_head)
 
 
 class TestWorkflowEntry:
@@ -116,18 +117,19 @@ class TestWorkflowEntry:
         }
         node_config = {"id": node_id, "data": node_data}
 
-        class StubWorkflow:
-            def __init__(self):
-                self.tenant_id = "tenant"
-                self.app_id = "app"
-                self.id = "workflow"
-                self.graph_dict = {"nodes": [node_config], "edges": []}
-
-            def get_node_config_by_id(self, target_id: str):
-                assert target_id == node_id
-                return NodeConfigDictAdapter.validate_python(node_config)
-
-        workflow = StubWorkflow()
+        workflow = Workflow.new(
+            tenant_id="tenant",
+            app_id="app",
+            type=WorkflowType.WORKFLOW,
+            version=Workflow.VERSION_DRAFT,
+            graph=json.dumps({"nodes": [node_config], "edges": []}),
+            features="{}",
+            created_by="account",
+            environment_variables=[],
+            conversation_variables=[],
+            rag_pipeline_variables=[],
+        )
+        workflow.id = "workflow"
         variable_pool = VariablePool.from_bootstrap(system_variables=default_system_variables(), user_inputs={})
         expected_limits = CodeNodeLimits(
             max_string_length=dify_config.CODE_MAX_STRING_LENGTH,

@@ -64,40 +64,20 @@ class LangSmithRunModel(LangSmithTokenUsage, LangSmithMultiModel):
             "total_tokens": values.get("total_tokens", 0),
         }
         file_list = values.get("file_list", [])
-        if isinstance(v, str):
-            match field_name:
-                case "inputs":
-                    return {
-                        "messages": {
-                            "role": "user",
-                            "content": v,
-                            "usage_metadata": usage_metadata,
-                            "file_list": file_list,
-                        },
-                    }
-                case "outputs":
-                    return {
-                        "choices": {
-                            "role": "ai",
-                            "content": v,
-                            "usage_metadata": usage_metadata,
-                            "file_list": file_list,
-                        },
-                    }
-                case _:
-                    pass
-        elif isinstance(v, list):
-            data = {}
-            if len(v) > 0 and isinstance(v[0], dict):
-                # rename text to content
-                v = replace_text_with_content(data=v)
+        match v:
+            case str():
                 match field_name:
                     case "inputs":
-                        data = {
-                            "messages": v,
+                        return {
+                            "messages": {
+                                "role": "user",
+                                "content": v,
+                                "usage_metadata": usage_metadata,
+                                "file_list": file_list,
+                            },
                         }
                     case "outputs":
-                        data = {
+                        return {
                             "choices": {
                                 "role": "ai",
                                 "content": v,
@@ -107,16 +87,37 @@ class LangSmithRunModel(LangSmithTokenUsage, LangSmithMultiModel):
                         }
                     case _:
                         pass
-                return data
-            else:
-                return {
-                    "choices": {
-                        "role": "ai" if field_name == "outputs" else "user",
-                        "content": str(v),
-                        "usage_metadata": usage_metadata,
-                        "file_list": file_list,
-                    },
-                }
+            case list():
+                data = {}
+                if len(v) > 0 and isinstance(v[0], dict):
+                    # rename text to content
+                    v = replace_text_with_content(data=v)
+                    match field_name:
+                        case "inputs":
+                            data = {
+                                "messages": v,
+                            }
+                        case "outputs":
+                            data = {
+                                "choices": {
+                                    "role": "ai",
+                                    "content": v,
+                                    "usage_metadata": usage_metadata,
+                                    "file_list": file_list,
+                                },
+                            }
+                        case _:
+                            pass
+                    return data
+                else:
+                    return {
+                        "choices": {
+                            "role": "ai" if field_name == "outputs" else "user",
+                            "content": str(v),
+                            "usage_metadata": usage_metadata,
+                            "file_list": file_list,
+                        },
+                    }
         if isinstance(v, dict):
             v["usage_metadata"] = usage_metadata
             v["file_list"] = file_list

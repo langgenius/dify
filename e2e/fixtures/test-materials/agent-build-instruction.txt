@@ -1,0 +1,3 @@
+Update only the Agent build note for this Build draft.
+The build note should record this durable context exactly: E2E_BUILD_DRAFT_PASS.
+Do not update Agent instructions, prompt, files, skills, tools, knowledge, environment variables, or other capabilities.

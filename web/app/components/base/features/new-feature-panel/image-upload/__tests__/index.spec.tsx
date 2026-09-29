@@ -1,5 +1,4 @@
-import type { Features } from '../../../types'
-import type { OnFeaturesChange } from '@/app/components/base/features/types'
+import type { Features, OnFeaturesChange } from '../../../types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { FeaturesProvider } from '../../../context'
 import ImageUpload from '../index'
@@ -21,7 +20,7 @@ const defaultFeatures: Features = {
 }
 
 const renderWithProvider = (
-  props: { disabled?: boolean, onChange?: OnFeaturesChange } = {},
+  props: { disabled?: boolean; onChange?: OnFeaturesChange } = {},
   featureOverrides?: Partial<Features>,
 ) => {
   const features = { ...defaultFeatures, ...featureOverrides }
@@ -79,33 +78,42 @@ describe('ImageUpload', () => {
   })
 
   it('should show supported types when enabled', () => {
-    renderWithProvider({}, {
-      file: {
-        enabled: true,
-        allowed_file_types: ['image'],
-        number_limits: 3,
+    renderWithProvider(
+      {},
+      {
+        file: {
+          enabled: true,
+          allowed_file_types: ['image'],
+          number_limits: 3,
+        },
       },
-    })
+    )
 
     expect(screen.getByText('image')).toBeInTheDocument()
   })
 
   it('should show number limits when enabled', () => {
-    renderWithProvider({}, {
-      file: {
-        enabled: true,
-        allowed_file_types: ['image'],
-        number_limits: 3,
+    renderWithProvider(
+      {},
+      {
+        file: {
+          enabled: true,
+          allowed_file_types: ['image'],
+          number_limits: 3,
+        },
       },
-    })
+    )
 
     expect(screen.getByText('3')).toBeInTheDocument()
   })
 
   it('should show settings button when hovering', () => {
-    renderWithProvider({}, {
-      file: { enabled: true },
-    })
+    renderWithProvider(
+      {},
+      {
+        file: { enabled: true },
+      },
+    )
 
     const card = screen.getByText(/feature\.imageUpload\.title/).closest('[class]')!
     fireEvent.mouseEnter(card)
@@ -114,9 +122,12 @@ describe('ImageUpload', () => {
   })
 
   it('should open image upload setting modal when settings is clicked', async () => {
-    renderWithProvider({}, {
-      file: { enabled: true },
-    })
+    renderWithProvider(
+      {},
+      {
+        file: { enabled: true },
+      },
+    )
 
     const card = screen.getByText(/feature\.imageUpload\.title/).closest('[class]')!
     fireEvent.mouseEnter(card)
@@ -128,26 +139,32 @@ describe('ImageUpload', () => {
   })
 
   it('should show supported types and number limit labels when enabled', () => {
-    renderWithProvider({}, {
-      file: {
-        enabled: true,
-        allowed_file_types: ['image'],
-        number_limits: 3,
+    renderWithProvider(
+      {},
+      {
+        file: {
+          enabled: true,
+          allowed_file_types: ['image'],
+          number_limits: 3,
+        },
       },
-    })
+    )
 
     expect(screen.getByText(/feature\.imageUpload\.supportedTypes/)).toBeInTheDocument()
     expect(screen.getByText(/feature\.imageUpload\.numberLimit/)).toBeInTheDocument()
   })
 
   it('should hide info display when hovering', () => {
-    renderWithProvider({}, {
-      file: {
-        enabled: true,
-        allowed_file_types: ['image'],
-        number_limits: 3,
+    renderWithProvider(
+      {},
+      {
+        file: {
+          enabled: true,
+          allowed_file_types: ['image'],
+          number_limits: 3,
+        },
       },
-    })
+    )
 
     const card = screen.getByText(/feature\.imageUpload\.title/).closest('[class]')!
     fireEvent.mouseEnter(card)
@@ -157,13 +174,16 @@ describe('ImageUpload', () => {
   })
 
   it('should show info display again when mouse leaves', () => {
-    renderWithProvider({}, {
-      file: {
-        enabled: true,
-        allowed_file_types: ['image'],
-        number_limits: 3,
+    renderWithProvider(
+      {},
+      {
+        file: {
+          enabled: true,
+          allowed_file_types: ['image'],
+          number_limits: 3,
+        },
       },
-    })
+    )
 
     const card = screen.getByText(/feature\.imageUpload\.title/).closest('[class]')!
     fireEvent.mouseEnter(card)
@@ -173,17 +193,23 @@ describe('ImageUpload', () => {
   })
 
   it('should show dash when no file types configured', () => {
-    renderWithProvider({}, {
-      file: { enabled: true },
-    })
+    renderWithProvider(
+      {},
+      {
+        file: { enabled: true },
+      },
+    )
 
     expect(screen.getByText('-')).toBeInTheDocument()
   })
 
   it('should close setting modal when cancel is clicked', async () => {
-    renderWithProvider({}, {
-      file: { enabled: true },
-    })
+    renderWithProvider(
+      {},
+      {
+        file: { enabled: true },
+      },
+    )
 
     const card = screen.getByText(/feature\.imageUpload\.title/).closest('[class]')!
     fireEvent.mouseEnter(card)

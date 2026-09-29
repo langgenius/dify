@@ -2,10 +2,7 @@ import type { NodeDefault } from '../../types'
 import type { KnowledgeBaseNodeType } from './types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { genNodeMetaData } from '@/app/components/workflow/utils'
-import {
-  getKnowledgeBaseValidationIssue,
-  getKnowledgeBaseValidationMessage,
-} from './utils'
+import { getKnowledgeBaseValidationIssue, getKnowledgeBaseValidationMessage } from './utils'
 
 const metaData = genNodeMetaData({
   sort: 3.1,
@@ -28,8 +25,7 @@ const nodeDefault: NodeDefault<KnowledgeBaseNodeType> = {
   },
   checkValid(payload, t) {
     const issue = getKnowledgeBaseValidationIssue(payload)
-    if (issue)
-      return { isValid: false, errorMessage: getKnowledgeBaseValidationMessage(issue, t) }
+    if (issue) return { isValid: false, errorMessage: getKnowledgeBaseValidationMessage(issue, t) }
 
     return {
       isValid: true,

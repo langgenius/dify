@@ -1,9 +1,19 @@
 from libs.exception import BaseHTTPException
+from services.errors.app import (
+    TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE_CODE,
+    TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE_MESSAGE,
+)
 
 
 class AppUnavailableError(BaseHTTPException):
     error_code = "app_unavailable"
     description = "App unavailable, please check your app configurations."
+    code = 400
+
+
+class AgentNotPublishedError(BaseHTTPException):
+    error_code = "agent_not_published"
+    description = "Agent has not been published. Please publish the Agent before using the API."
     code = 400
 
 
@@ -23,6 +33,18 @@ class NotWorkflowAppError(BaseHTTPException):
     error_code = "not_workflow_app"
     description = "Please check if your app mode matches the right API route."
     code = 400
+
+
+class WorkflowVersionExecutionNotAllowedError(BaseHTTPException):
+    error_code = "workflow_version_execution_not_allowed"
+    description = "Workflow version execution is not available on your current plan. Please upgrade to a paid plan."
+    code = 403
+
+
+class TriggerWorkflowServiceModeUnavailableError(BaseHTTPException):
+    error_code = TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE_CODE
+    description = TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE_MESSAGE
+    code = 403
 
 
 class ConversationCompletedError(BaseHTTPException):
@@ -82,6 +104,12 @@ class UnsupportedAudioTypeError(BaseHTTPException):
 class ProviderNotSupportSpeechToTextError(BaseHTTPException):
     error_code = "provider_not_support_speech_to_text"
     description = "Provider not support speech to text."
+    code = 400
+
+
+class SpeechToTextDisabledError(BaseHTTPException):
+    error_code = "speech_to_text_disabled"
+    description = "Speech to text is disabled."
     code = 400
 
 

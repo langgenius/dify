@@ -3,31 +3,72 @@
 import * as z from 'zod'
 
 /**
+ * SimpleResultResponse
+ */
+export const zSimpleResultResponse = z.object({
+  result: z.string(),
+})
+
+/**
+ * ApiKeyAuthDataSourceItem
+ */
+export const zApiKeyAuthDataSourceItem = z.object({
+  category: z.string(),
+  created_at: z.int(),
+  disabled: z.boolean(),
+  id: z.string(),
+  provider: z.string(),
+  updated_at: z.int(),
+})
+
+/**
+ * ApiKeyAuthDataSourceListResponse
+ */
+export const zApiKeyAuthDataSourceListResponse = z.object({
+  sources: z.array(zApiKeyAuthDataSourceItem),
+})
+
+/**
+ * ApiKeyAuthConfigPayload
+ */
+export const zApiKeyAuthConfigPayload = z.object({
+  api_key: z.string().min(1),
+})
+
+/**
+ * ApiKeyAuthCredentialsPayload
+ */
+export const zApiKeyAuthCredentialsPayload = z.object({
+  auth_type: z.string().min(1),
+  config: zApiKeyAuthConfigPayload,
+})
+
+/**
  * ApiKeyAuthBindingPayload
  */
 export const zApiKeyAuthBindingPayload = z.object({
-  category: z.string(),
-  credentials: z.record(z.string(), z.unknown()),
-  provider: z.string(),
+  category: z.string().min(1),
+  credentials: zApiKeyAuthCredentialsPayload,
+  provider: z.string().min(1),
 })
 
 /**
  * Success
  */
-export const zGetApiKeyAuthDataSourceResponse = z.record(z.string(), z.unknown())
+export const zGetApiKeyAuthDataSourceResponse = zApiKeyAuthDataSourceListResponse
 
 export const zPostApiKeyAuthDataSourceBindingBody = zApiKeyAuthBindingPayload
 
 /**
  * Success
  */
-export const zPostApiKeyAuthDataSourceBindingResponse = z.record(z.string(), z.unknown())
+export const zPostApiKeyAuthDataSourceBindingResponse = zSimpleResultResponse
 
 export const zDeleteApiKeyAuthDataSourceByBindingIdPath = z.object({
-  binding_id: z.string(),
+  binding_id: z.uuid(),
 })
 
 /**
- * Success
+ * Binding deleted successfully
  */
-export const zDeleteApiKeyAuthDataSourceByBindingIdResponse = z.record(z.string(), z.unknown())
+export const zDeleteApiKeyAuthDataSourceByBindingIdResponse = z.void()

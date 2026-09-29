@@ -17,19 +17,17 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from libs.broadcast_channel.exc import BroadcastChannelError, SubscriptionClosedError
-from libs.broadcast_channel.redis.channel import (
+from libs.broadcast_channel.exc import SubscriptionClosedError
+from libs.broadcast_channel.redis.pubsub_channel import (
     BroadcastChannel as RedisBroadcastChannel,
 )
-from libs.broadcast_channel.redis.channel import (
-    Topic,
-    _RedisSubscription,
-)
+from libs.broadcast_channel.redis.pubsub_channel import Topic, _RedisSubscription
 from libs.broadcast_channel.redis.sharded_channel import (
     ShardedRedisBroadcastChannel,
     ShardedTopic,
     _RedisShardedSubscription,
 )
+from libs.broadcast_channel.signals import SIG_CLOSE
 
 
 class TestBroadcastChannel:
@@ -139,25 +137,21 @@ class TestTopic:
 
         mock_redis_client.publish.assert_called_once_with("test-topic", payload)
 
-    def test_publish_prefixes_regular_topic(self, mock_redis_client: MagicMock):
-        with patch("extensions.redis_names.dify_config") as mock_config:
-            mock_config.REDIS_KEY_PREFIX = "enterprise-a"
-            topic = Topic(mock_redis_client, "test-topic")
-
-            topic.publish(b"test message")
+    def test_publish_prefixes_regular_topic(self, mock_redis_client: MagicMock, config_overrides):
+        config_overrides(REDIS_KEY_PREFIX="enterprise-a")
+        topic = Topic(mock_redis_client, "test-topic")
+        topic.publish(b"test message")
 
         mock_redis_client.publish.assert_called_once_with("enterprise-a:test-topic", b"test message")
 
-    def test_subscribe_prefixes_regular_topic(self, mock_redis_client: MagicMock):
-        with patch("extensions.redis_names.dify_config") as mock_config:
-            mock_config.REDIS_KEY_PREFIX = "enterprise-a"
-            topic = Topic(mock_redis_client, "test-topic")
-
-            subscription = topic.subscribe()
-            try:
-                subscription._start_if_needed()
-            finally:
-                subscription.close()
+    def test_subscribe_prefixes_regular_topic(self, mock_redis_client: MagicMock, config_overrides):
+        config_overrides(REDIS_KEY_PREFIX="enterprise-a")
+        topic = Topic(mock_redis_client, "test-topic")
+        subscription = topic.subscribe()
+        try:
+            subscription._start_if_needed()
+        finally:
+            subscription.close()
 
         mock_redis_client.pubsub.return_value.subscribe.assert_called_once_with("enterprise-a:test-topic")
 
@@ -198,12 +192,10 @@ class TestShardedTopic:
 
         mock_redis_client.spublish.assert_called_once_with("test-sharded-topic", payload)
 
-    def test_publish_prefixes_sharded_topic(self, mock_redis_client: MagicMock):
-        with patch("extensions.redis_names.dify_config") as mock_config:
-            mock_config.REDIS_KEY_PREFIX = "enterprise-a"
-            sharded_topic = ShardedTopic(mock_redis_client, "test-sharded-topic")
-
-            sharded_topic.publish(b"test sharded message")
+    def test_publish_prefixes_sharded_topic(self, mock_redis_client: MagicMock, config_overrides):
+        config_overrides(REDIS_KEY_PREFIX="enterprise-a")
+        sharded_topic = ShardedTopic(mock_redis_client, "test-sharded-topic")
+        sharded_topic.publish(b"test sharded message")
 
         mock_redis_client.spublish.assert_called_once_with("enterprise-a:test-sharded-topic", b"test sharded message")
 
@@ -216,16 +208,14 @@ class TestShardedTopic:
         assert subscription._pubsub is mock_redis_client.pubsub.return_value
         assert subscription._topic == "test-sharded-topic"
 
-    def test_subscribe_prefixes_sharded_topic(self, mock_redis_client: MagicMock):
-        with patch("extensions.redis_names.dify_config") as mock_config:
-            mock_config.REDIS_KEY_PREFIX = "enterprise-a"
-            sharded_topic = ShardedTopic(mock_redis_client, "test-sharded-topic")
-
-            subscription = sharded_topic.subscribe()
-            try:
-                subscription._start_if_needed()
-            finally:
-                subscription.close()
+    def test_subscribe_prefixes_sharded_topic(self, mock_redis_client: MagicMock, config_overrides):
+        config_overrides(REDIS_KEY_PREFIX="enterprise-a")
+        sharded_topic = ShardedTopic(mock_redis_client, "test-sharded-topic")
+        subscription = sharded_topic.subscribe()
+        try:
+            subscription._start_if_needed()
+        finally:
+            subscription.close()
 
         mock_redis_client.pubsub.return_value.ssubscribe.assert_called_once_with("enterprise-a:test-sharded-topic")
 
@@ -398,11 +388,10 @@ class TestRedisSubscription:
         assert received_messages == test_messages
 
     def test_message_iterator_when_closed(self, subscription: _RedisSubscription):
-        """Test that iterator raises error when subscription is closed."""
+        """Test that iterator stops when subscription is closed."""
         subscription.close()
 
-        with pytest.raises(BroadcastChannelError, match="The Redis regular subscription is closed"):
-            iter(subscription)
+        assert list(subscription) == []
 
     # ==================== Message Enqueue Tests ====================
 
@@ -619,8 +608,15 @@ class TestRedisSubscription:
         """Test iterator behavior after close."""
         subscription.close()
 
-        with pytest.raises(SubscriptionClosedError, match="The Redis regular subscription is closed"):
-            iter(subscription)
+        assert list(subscription) == []
+
+    def test_close_does_not_join_unstarted_listener_thread(self, subscription: _RedisSubscription):
+        """close() should tolerate a listener object that has not been started yet."""
+        subscription._listener_thread = threading.Thread(target=lambda: None)
+
+        subscription.close()
+
+        assert subscription._listener_thread is None
 
     def test_start_after_close(self, subscription: _RedisSubscription):
         """Test start attempts after close."""
@@ -821,11 +817,10 @@ class TestRedisShardedSubscription:
         assert received_messages == test_messages
 
     def test_message_iterator_when_closed(self, sharded_subscription: _RedisShardedSubscription):
-        """Test that iterator raises error when sharded subscription is closed."""
+        """Test that iterator stops when sharded subscription is closed."""
         sharded_subscription.close()
 
-        with pytest.raises(SubscriptionClosedError, match="The Redis sharded subscription is closed"):
-            iter(sharded_subscription)
+        assert list(sharded_subscription) == []
 
     # ==================== Message Enqueue Tests ====================
 
@@ -1096,8 +1091,7 @@ class TestRedisShardedSubscription:
         """Test iterator behavior after close for sharded subscription."""
         sharded_subscription.close()
 
-        with pytest.raises(SubscriptionClosedError, match="The Redis sharded subscription is closed"):
-            iter(sharded_subscription)
+        assert list(sharded_subscription) == []
 
     def test_start_after_close(self, sharded_subscription: _RedisShardedSubscription):
         """Test start attempts after close for sharded subscription."""
@@ -1238,6 +1232,30 @@ class TestRedisSubscriptionCommon:
         subscription_type, _ = subscription_params
         assert subscription._get_subscription_type() == subscription_type
 
+    def test_listener_ignores_close_signal_from_another_subscription(self, subscription, subscription_params):
+        subscription_type, _ = subscription_params
+        topic = f"test-{subscription_type}-topic"
+        message_type = "message" if subscription_type == "regular" else "smessage"
+        messages = iter(
+            [
+                {"type": message_type, "channel": topic, "data": SIG_CLOSE},
+                {"type": message_type, "channel": topic, "data": b"next-event"},
+            ]
+        )
+
+        def get_message():
+            try:
+                return next(messages)
+            except StopIteration:
+                subscription._closed.set()
+                return None
+
+        subscription._get_message = get_message
+        subscription._listen()
+
+        assert subscription._queue.get_nowait() == b"next-event"
+        assert subscription._queue.empty()
+
     # ==================== Lifecycle Tests ====================
 
     def test_start_if_needed_first_call(self, subscription, subscription_params, mock_pubsub: MagicMock):
@@ -1315,12 +1333,10 @@ class TestRedisSubscriptionCommon:
         assert received_messages == test_messages
 
     def test_message_iterator_when_closed(self, subscription, subscription_params):
-        """Test that iterator raises error when subscription is closed."""
-        subscription_type, _ = subscription_params
+        """Test that iterator stops when subscription is closed."""
         subscription.close()
 
-        with pytest.raises(SubscriptionClosedError, match=f"The Redis {subscription_type} subscription is closed"):
-            iter(subscription)
+        assert list(subscription) == []
 
     # ==================== Message Enqueue Tests ====================
 
@@ -1393,11 +1409,9 @@ class TestRedisSubscriptionCommon:
 
     def test_iterator_after_close(self, subscription, subscription_params):
         """Test iterator behavior after close."""
-        subscription_type, _ = subscription_params
         subscription.close()
 
-        with pytest.raises(SubscriptionClosedError, match=f"The Redis {subscription_type} subscription is closed"):
-            iter(subscription)
+        assert list(subscription) == []
 
     def test_start_after_close(self, subscription, subscription_params):
         """Test start attempts after close."""

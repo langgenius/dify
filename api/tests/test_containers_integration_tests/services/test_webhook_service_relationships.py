@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import json
-from types import SimpleNamespace
+import logging
+from datetime import datetime
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
@@ -11,14 +12,42 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.trigger.constants import TRIGGER_WEBHOOK_NODE_TYPE
-from enums.quota_type import QuotaType
+from enums import QuotaType
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
-from models.enums import AppTriggerStatus, AppTriggerType
-from models.model import App
+from models.enums import AppTriggerStatus, AppTriggerType, EndUserType
+from models.model import App, EndUser
 from models.trigger import AppTrigger, WorkflowWebhookTrigger
 from models.workflow import Workflow
 from services.errors.app import QuotaExceededError
 from services.trigger.webhook_service import WebhookService
+
+
+class _EndUserServiceStub:
+    def __init__(self, result: EndUser | Exception) -> None:
+        self._result = result
+        self.calls: list[tuple[EndUserType, str, str, str | None]] = []
+
+    def get_or_create_end_user_by_type(
+        self,
+        type: EndUserType,
+        tenant_id: str,
+        app_id: str,
+        user_id: str | None = None,
+    ) -> EndUser:
+        self.calls.append((type, tenant_id, app_id, user_id))
+        if isinstance(self._result, Exception):
+            raise self._result
+        return self._result
+
+
+def _end_user(*, tenant_id: str, app_id: str) -> EndUser:
+    return EndUser(
+        id=str(uuid4()),
+        tenant_id=tenant_id,
+        app_id=app_id,
+        type=EndUserType.TRIGGER,
+        session_id="trigger-session",
+    )
 
 
 class WebhookServiceRelationshipFactory:
@@ -199,8 +228,12 @@ class TestWebhookServiceLookupWithContainers:
             db_session_with_containers, app=app, node_id="node-1", status=AppTriggerStatus.RATE_LIMITED
         )
 
-        with pytest.raises(ValueError, match="rate limited"):
+        with pytest.raises(QuotaExceededError) as exc_info:
             WebhookService.get_webhook_trigger_and_workflow(webhook_trigger.webhook_id)
+
+        assert exc_info.value.feature == QuotaType.TRIGGER.value
+        assert exc_info.value.tenant_id == tenant.id
+        assert exc_info.value.required == 1
 
     def test_get_webhook_trigger_and_workflow_raises_when_app_trigger_disabled(
         self, db_session_with_containers: Session, flask_app_with_containers: Flask
@@ -238,6 +271,40 @@ class TestWebhookServiceLookupWithContainers:
 
         with pytest.raises(ValueError, match="Workflow not found"):
             WebhookService.get_webhook_trigger_and_workflow(webhook_trigger.webhook_id)
+
+    def test_get_webhook_trigger_and_workflow_uses_app_workflow_id(
+        self, db_session_with_containers: Session, flask_app_with_containers: Flask
+    ):
+        del flask_app_with_containers
+        factory = WebhookServiceRelationshipFactory
+        account, tenant = factory.create_account_and_tenant(db_session_with_containers)
+        app = factory.create_app(db_session_with_containers, tenant, account)
+        current_workflow = factory.create_workflow(
+            db_session_with_containers, app=app, account=account, node_ids=["node-1"], version="2026-04-14.001"
+        )
+        newer_workflow = factory.create_workflow(
+            db_session_with_containers, app=app, account=account, node_ids=["node-1"], version="2026-04-15.001"
+        )
+        current_workflow.created_at = datetime(2026, 4, 14)
+        newer_workflow.created_at = datetime(2026, 4, 15)
+        app.workflow_id = current_workflow.id
+        db_session_with_containers.commit()
+
+        webhook_trigger = factory.create_webhook_trigger(
+            db_session_with_containers, app=app, account=account, node_id="node-1"
+        )
+        factory.create_app_trigger(
+            db_session_with_containers, app=app, node_id="node-1", status=AppTriggerStatus.ENABLED
+        )
+
+        got_trigger, got_workflow, got_node_config = WebhookService.get_webhook_trigger_and_workflow(
+            webhook_trigger.webhook_id
+        )
+
+        assert got_trigger.id == webhook_trigger.id
+        assert got_workflow.id == current_workflow.id
+        assert got_workflow.id != newer_workflow.id
+        assert got_node_config["id"] == "node-1"
 
     def test_get_webhook_trigger_and_workflow_returns_debug_draft_workflow(
         self, db_session_with_containers: Session, flask_app_with_containers: Flask
@@ -289,23 +356,24 @@ class TestWebhookServiceTriggerExecutionWithContainers:
             db_session_with_containers, app=app, account=account, node_id="node-1"
         )
 
-        end_user = SimpleNamespace(id=str(uuid4()))
+        end_user = _end_user(tenant_id=tenant.id, app_id=app.id)
         webhook_data = {"body": {"value": 1}, "headers": {}, "query_params": {}, "files": {}, "method": "POST"}
 
         quota_charge = MagicMock()
 
         with (
             patch(
-                "services.trigger.webhook_service.EndUserService.get_or_create_end_user_by_type",
-                return_value=end_user,
-            ),
-            patch(
                 "services.trigger.webhook_service.QuotaService.reserve",
                 return_value=quota_charge,
             ) as mock_reserve,
             patch("services.trigger.webhook_service.AsyncWorkflowService.trigger_workflow_async") as mock_trigger,
         ):
-            WebhookService.trigger_workflow_execution(webhook_trigger, webhook_data, workflow)
+            WebhookService.trigger_workflow_execution(
+                webhook_trigger,
+                webhook_data,
+                workflow,
+                end_users=_EndUserServiceStub(end_user),
+            )
 
         mock_reserve.assert_called_once()
         reserve_args = mock_reserve.call_args.args
@@ -314,9 +382,10 @@ class TestWebhookServiceTriggerExecutionWithContainers:
         quota_charge.commit.assert_called_once()
         mock_trigger.assert_called_once()
         trigger_args = mock_trigger.call_args.args
-        assert trigger_args[1] is end_user
-        assert trigger_args[2].workflow_id == workflow.id
-        assert trigger_args[2].root_node_id == webhook_trigger.node_id
+        assert trigger_args[0] is end_user
+        assert trigger_args[1].workflow_id == workflow.id
+        assert trigger_args[1].root_node_id == webhook_trigger.node_id
+        assert mock_trigger.call_args.kwargs["session"] is not None
 
     def test_trigger_workflow_execution_marks_tenant_rate_limited_when_quota_exceeded(
         self, db_session_with_containers: Session, flask_app_with_containers: Flask
@@ -334,10 +403,6 @@ class TestWebhookServiceTriggerExecutionWithContainers:
 
         with (
             patch(
-                "services.trigger.webhook_service.EndUserService.get_or_create_end_user_by_type",
-                return_value=SimpleNamespace(id=str(uuid4())),
-            ),
-            patch(
                 "services.trigger.webhook_service.QuotaService.reserve",
                 side_effect=QuotaExceededError(feature="trigger", tenant_id=tenant.id, required=1),
             ),
@@ -350,12 +415,16 @@ class TestWebhookServiceTriggerExecutionWithContainers:
                     webhook_trigger,
                     {"body": {}, "headers": {}, "query_params": {}, "files": {}, "method": "POST"},
                     workflow,
+                    end_users=_EndUserServiceStub(_end_user(tenant_id=tenant.id, app_id=app.id)),
                 )
 
         mock_mark_rate_limited.assert_called_once_with(tenant.id)
 
     def test_trigger_workflow_execution_logs_and_reraises_unexpected_errors(
-        self, db_session_with_containers: Session, flask_app_with_containers: Flask
+        self,
+        db_session_with_containers: Session,
+        flask_app_with_containers: Flask,
+        caplog: pytest.LogCaptureFixture,
     ):
         del flask_app_with_containers
         factory = WebhookServiceRelationshipFactory
@@ -367,22 +436,17 @@ class TestWebhookServiceTriggerExecutionWithContainers:
         webhook_trigger = factory.create_webhook_trigger(
             db_session_with_containers, app=app, account=account, node_id="node-1"
         )
+        caplog.set_level(logging.ERROR, logger="services.trigger.webhook_service")
 
-        with (
-            patch(
-                "services.trigger.webhook_service.EndUserService.get_or_create_end_user_by_type",
-                side_effect=RuntimeError("boom"),
-            ),
-            patch("services.trigger.webhook_service.logger.exception") as mock_logger_exception,
-        ):
-            with pytest.raises(RuntimeError, match="boom"):
-                WebhookService.trigger_workflow_execution(
-                    webhook_trigger,
-                    {"body": {}, "headers": {}, "query_params": {}, "files": {}, "method": "POST"},
-                    workflow,
-                )
+        with pytest.raises(RuntimeError, match="boom"):
+            WebhookService.trigger_workflow_execution(
+                webhook_trigger,
+                {"body": {}, "headers": {}, "query_params": {}, "files": {}, "method": "POST"},
+                workflow,
+                end_users=_EndUserServiceStub(RuntimeError("boom")),
+            )
 
-        mock_logger_exception.assert_called_once()
+        assert caplog.messages.count(f"Failed to trigger workflow for webhook {webhook_trigger.webhook_id}") == 1
 
 
 class TestWebhookServiceRelationshipSyncWithContainers:
@@ -482,7 +546,10 @@ class TestWebhookServiceRelationshipSyncWithContainers:
         assert cached_payload["webhook_id"] == "cache-webhook-id-00001"
 
     def test_sync_webhook_relationships_logs_when_lock_release_fails(
-        self, db_session_with_containers: Session, flask_app_with_containers: Flask
+        self,
+        db_session_with_containers: Session,
+        flask_app_with_containers: Flask,
+        caplog: pytest.LogCaptureFixture,
     ):
         del flask_app_with_containers
         factory = WebhookServiceRelationshipFactory
@@ -494,14 +561,12 @@ class TestWebhookServiceRelationshipSyncWithContainers:
         lock = MagicMock()
         lock.acquire.return_value = True
         lock.release.side_effect = RuntimeError("release failed")
+        caplog.set_level(logging.ERROR, logger="services.trigger.webhook_service")
 
-        with (
-            patch("services.trigger.webhook_service.redis_client.lock", return_value=lock),
-            patch("services.trigger.webhook_service.logger.exception") as mock_logger_exception,
-        ):
+        with patch("services.trigger.webhook_service.redis_client.lock", return_value=lock):
             WebhookService.sync_webhook_relationships(app, workflow)
 
-        mock_logger_exception.assert_called_once()
+        assert caplog.messages.count(f"Failed to release lock for webhook sync, app {app.id}") == 1
 
 
 def _read_cache(cache_key: str) -> dict[str, str] | None:

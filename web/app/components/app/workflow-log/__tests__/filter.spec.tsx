@@ -7,15 +7,37 @@
  * - Keyword search
  */
 
+import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
+import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
+import type { ReactElement } from 'react'
 import type { QueryParam } from '../index'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery,
+  seedFeatures,
+} from '@/test/console/query-data'
 import Filter, { TIME_PERIOD_MAPPING } from '../filter'
 
 // ============================================================================
 // Mocks
 // ============================================================================
+
+const scenario = {
+  deploymentEdition: 'CLOUD' as DeploymentEdition,
+  planType: 'professional' as CloudPlan,
+}
+
+const render = (ui: ReactElement) => {
+  const queryClient = createConsoleQueryClient()
+  seedFeatures(queryClient, { billing: { subscription: { plan: scenario.planType } } })
+  return renderWithConsoleQuery(ui, {
+    queryClient,
+    systemFeatures: { deployment_edition: scenario.deploymentEdition },
+  })
+}
 
 const mockTrackEvent = vi.fn()
 vi.mock('@/app/components/base/amplitude/utils', () => ({
@@ -41,43 +63,30 @@ describe('Filter', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    scenario.deploymentEdition = 'CLOUD'
+    scenario.planType = 'professional'
   })
 
   // --------------------------------------------------------------------------
   // Rendering Tests (REQUIRED)
   // --------------------------------------------------------------------------
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(
-        <Filter
-          queryParams={createDefaultQueryParams()}
-          setQueryParams={defaultSetQueryParams}
-        />,
-      )
-
-      // Should render status chip, period chip, and search input
-      // Should render status chip, period chip, and search input
-      expect(screen.getByText('All'))!.toBeInTheDocument()
-      expect(screen.getByPlaceholderText('common.operation.search'))!.toBeInTheDocument()
-    })
-
     it('should render all filter components', () => {
       render(
-        <Filter
-          queryParams={createDefaultQueryParams()}
-          setQueryParams={defaultSetQueryParams}
-        />,
+        <Filter queryParams={createDefaultQueryParams()} setQueryParams={defaultSetQueryParams} />,
       )
 
       // Status chip
       // Status chip
-      expect(screen.getByText('All'))!.toBeInTheDocument()
+      expect(screen.getByText('appLog.status.all'))!.toBeInTheDocument()
       // Period chip (shows translated key)
       // Period chip (shows translated key)
       expect(screen.getByText('appLog.filter.period.last7days'))!.toBeInTheDocument()
       // Search input
       // Search input
-      expect(screen.getByPlaceholderText('common.operation.search'))!.toBeInTheDocument()
+      expect(
+        screen.getByRole('searchbox', { name: 'common.operation.search' }),
+      )!.toBeInTheDocument()
     })
   })
 
@@ -95,27 +104,24 @@ describe('Filter', () => {
 
       // Chip should show Success for succeeded status
       // Chip should show Success for succeeded status
-      expect(screen.getByText('Success'))!.toBeInTheDocument()
+      expect(screen.getByText('appLog.status.succeeded'))!.toBeInTheDocument()
     })
 
     it('should open status dropdown when clicked', async () => {
       const user = userEvent.setup()
 
       render(
-        <Filter
-          queryParams={createDefaultQueryParams()}
-          setQueryParams={defaultSetQueryParams}
-        />,
+        <Filter queryParams={createDefaultQueryParams()} setQueryParams={defaultSetQueryParams} />,
       )
 
-      await user.click(screen.getByText('All'))
+      await user.click(screen.getByText('appLog.status.all'))
 
       // Should show all status options
       await waitFor(() => {
-        expect(screen.getByText('Success'))!.toBeInTheDocument()
-        expect(screen.getByText('Fail'))!.toBeInTheDocument()
-        expect(screen.getByText('Stop'))!.toBeInTheDocument()
-        expect(screen.getByText('Partial Success'))!.toBeInTheDocument()
+        expect(screen.getByText('appLog.status.succeeded'))!.toBeInTheDocument()
+        expect(screen.getByText('appLog.status.failed'))!.toBeInTheDocument()
+        expect(screen.getByText('appLog.status.stopped'))!.toBeInTheDocument()
+        expect(screen.getByText('appLog.status.partial-succeeded'))!.toBeInTheDocument()
       })
     })
 
@@ -123,15 +129,10 @@ describe('Filter', () => {
       const user = userEvent.setup()
       const setQueryParams = vi.fn()
 
-      render(
-        <Filter
-          queryParams={createDefaultQueryParams()}
-          setQueryParams={setQueryParams}
-        />,
-      )
+      render(<Filter queryParams={createDefaultQueryParams()} setQueryParams={setQueryParams} />)
 
-      await user.click(screen.getByText('All'))
-      await user.click(await screen.findByText('Success'))
+      await user.click(screen.getByText('appLog.status.all'))
+      await user.click(await screen.findByText('appLog.status.succeeded'))
 
       expect(setQueryParams).toHaveBeenCalledWith({
         status: 'succeeded',
@@ -143,37 +144,35 @@ describe('Filter', () => {
       const user = userEvent.setup()
 
       render(
-        <Filter
-          queryParams={createDefaultQueryParams()}
-          setQueryParams={defaultSetQueryParams}
-        />,
+        <Filter queryParams={createDefaultQueryParams()} setQueryParams={defaultSetQueryParams} />,
       )
 
-      await user.click(screen.getByText('All'))
-      await user.click(await screen.findByText('Fail'))
+      await user.click(screen.getByText('appLog.status.all'))
+      await user.click(await screen.findByText('appLog.status.failed'))
 
-      expect(mockTrackEvent).toHaveBeenCalledWith(
-        'workflow_log_filter_status_selected',
-        { workflow_log_filter_status: 'failed' },
-      )
+      expect(mockTrackEvent).toHaveBeenCalledWith('workflow_log_filter_status_selected', {
+        workflow_log_filter_status: 'failed',
+      })
     })
 
     it('should reset to all when status is cleared', async () => {
       const user = userEvent.setup()
       const setQueryParams = vi.fn()
 
-      const { container } = render(
+      render(
         <Filter
           queryParams={createDefaultQueryParams({ status: 'succeeded' })}
           setQueryParams={setQueryParams}
         />,
       )
 
-      // Find the clear icon (div with group/clear class) in the status chip
-      const clearIcon = container.querySelector('.group\\/clear')
+      const statusTrigger = screen.getByRole('combobox', { name: 'appLog.status.succeeded' })
+      const statusChip = statusTrigger.parentElement!
+      const clearButton = within(statusChip).getByRole('button', {
+        name: /common\.operation\.clear appLog\.status\.succeeded/,
+      })
 
-      expect(clearIcon)!.toBeInTheDocument()
-      await user.click(clearIcon!)
+      await user.click(clearButton)
 
       expect(setQueryParams).toHaveBeenCalledWith({
         status: 'all',
@@ -181,12 +180,37 @@ describe('Filter', () => {
       })
     })
 
+    it.each(['running', 'paused', 'scheduled'])(
+      'should filter by %s without changing other filters',
+      async (status) => {
+        const user = userEvent.setup()
+        const setQueryParams = vi.fn()
+        render(
+          <Filter
+            queryParams={createDefaultQueryParams({ keyword: 'invoice' })}
+            setQueryParams={setQueryParams}
+          />,
+        )
+
+        await user.click(screen.getByRole('combobox', { name: 'appLog.status.all' }))
+        await user.click(await screen.findByRole('option', { name: `appLog.status.${status}` }))
+
+        expect(setQueryParams).toHaveBeenCalledWith({ status, period: '2', keyword: 'invoice' })
+        expect(mockTrackEvent).toHaveBeenCalledWith('workflow_log_filter_status_selected', {
+          workflow_log_filter_status: status,
+        })
+      },
+    )
+
     it.each([
-      ['all', 'All'],
-      ['succeeded', 'Success'],
-      ['failed', 'Fail'],
-      ['stopped', 'Stop'],
-      ['partial-succeeded', 'Partial Success'],
+      ['all', 'appLog.status.all'],
+      ['scheduled', 'appLog.status.scheduled'],
+      ['running', 'appLog.status.running'],
+      ['paused', 'appLog.status.paused'],
+      ['succeeded', 'appLog.status.succeeded'],
+      ['failed', 'appLog.status.failed'],
+      ['stopped', 'appLog.status.stopped'],
+      ['partial-succeeded', 'appLog.status.partial-succeeded'],
     ])('should display correct label for %s status', (statusValue, expectedLabel) => {
       render(
         <Filter
@@ -203,6 +227,69 @@ describe('Filter', () => {
   // Time Period Filter Tests
   // --------------------------------------------------------------------------
   describe('Time Period Filter', () => {
+    it('should only show supported periods for Cloud sandbox workspaces', async () => {
+      const user = userEvent.setup()
+      scenario.deploymentEdition = 'CLOUD'
+      scenario.planType = 'sandbox'
+
+      render(
+        <Filter queryParams={createDefaultQueryParams()} setQueryParams={defaultSetQueryParams} />,
+      )
+
+      await user.click(screen.getByRole('combobox', { name: 'appLog.filter.period.last7days' }))
+
+      const listbox = await screen.findByRole('listbox')
+      expect(
+        within(listbox)
+          .getAllByRole('option')
+          .map((option) => option.textContent),
+      ).toEqual([
+        'appLog.filter.period.today',
+        'appLog.filter.period.last7days',
+        'appLog.filter.period.last30days',
+      ])
+    })
+
+    it('should keep all periods for sandbox workspaces outside Cloud', async () => {
+      const user = userEvent.setup()
+      scenario.deploymentEdition = 'COMMUNITY'
+      scenario.planType = 'sandbox'
+
+      render(
+        <Filter queryParams={createDefaultQueryParams()} setQueryParams={defaultSetQueryParams} />,
+      )
+
+      await user.click(screen.getByRole('combobox', { name: 'appLog.filter.period.last7days' }))
+
+      const listbox = await screen.findByRole('listbox')
+      expect(within(listbox).getAllByRole('option')).toHaveLength(9)
+    })
+
+    it('should reset the Cloud sandbox period to today when cleared', async () => {
+      const user = userEvent.setup()
+      const setQueryParams = vi.fn()
+      scenario.deploymentEdition = 'CLOUD'
+      scenario.planType = 'sandbox'
+
+      render(
+        <Filter
+          queryParams={createDefaultQueryParams({ period: '3' })}
+          setQueryParams={setQueryParams}
+        />,
+      )
+
+      await user.click(
+        screen.getByRole('button', {
+          name: /common\.operation\.clear appLog\.filter\.period\.last30days/,
+        }),
+      )
+
+      expect(setQueryParams).toHaveBeenCalledWith({
+        status: 'all',
+        period: '1',
+      })
+    })
+
     it('should display current period value', () => {
       render(
         <Filter
@@ -218,10 +305,7 @@ describe('Filter', () => {
       const user = userEvent.setup()
 
       render(
-        <Filter
-          queryParams={createDefaultQueryParams()}
-          setQueryParams={defaultSetQueryParams}
-        />,
+        <Filter queryParams={createDefaultQueryParams()} setQueryParams={defaultSetQueryParams} />,
       )
 
       await user.click(screen.getByText('appLog.filter.period.last7days'))
@@ -239,12 +323,7 @@ describe('Filter', () => {
       const user = userEvent.setup()
       const setQueryParams = vi.fn()
 
-      render(
-        <Filter
-          queryParams={createDefaultQueryParams()}
-          setQueryParams={setQueryParams}
-        />,
-      )
+      render(<Filter queryParams={createDefaultQueryParams()} setQueryParams={setQueryParams} />)
 
       await user.click(screen.getByText('appLog.filter.period.last7days'))
       await user.click(await screen.findByText('appLog.filter.period.allTime'))
@@ -266,17 +345,17 @@ describe('Filter', () => {
         />,
       )
 
-      // Find the period chip's clear button
-      const periodChip = screen.getByText('appLog.filter.period.last7days').closest('div')
-      const clearButton = periodChip?.querySelector('button[type="button"]')
+      const periodTrigger = screen.getByRole('combobox', { name: 'appLog.filter.period.last7days' })
+      const periodChip = periodTrigger.parentElement!
+      const clearButton = within(periodChip).getByRole('button', {
+        name: /common\.operation\.clear appLog\.filter\.period\.last7days/,
+      })
 
-      if (clearButton) {
-        await user.click(clearButton)
-        expect(setQueryParams).toHaveBeenCalledWith({
-          status: 'all',
-          period: '9',
-        })
-      }
+      await user.click(clearButton)
+      expect(setQueryParams).toHaveBeenCalledWith({
+        status: 'all',
+        period: '9',
+      })
     })
   })
 
@@ -297,29 +376,24 @@ describe('Filter', () => {
 
     it('should call setQueryParams when typing in search', async () => {
       const user = userEvent.setup()
-      const setQueryParams = vi.fn()
+      const onSetQueryParams = vi.fn()
 
       const Wrapper = () => {
-        const [queryParams, updateQueryParams] = useState<QueryParam>(createDefaultQueryParams())
+        const [queryParams, setQueryParams] = useState<QueryParam>(() => createDefaultQueryParams())
         const handleSetQueryParams = (next: QueryParam) => {
-          updateQueryParams(next)
           setQueryParams(next)
+          onSetQueryParams(next)
         }
-        return (
-          <Filter
-            queryParams={queryParams}
-            setQueryParams={handleSetQueryParams}
-          />
-        )
+        return <Filter queryParams={queryParams} setQueryParams={handleSetQueryParams} />
       }
 
       render(<Wrapper />)
 
-      const input = screen.getByPlaceholderText('common.operation.search')
+      const input = screen.getByRole('searchbox', { name: 'common.operation.search' })
       await user.type(input, 'workflow')
 
       // Should call setQueryParams for each character typed
-      expect(setQueryParams).toHaveBeenLastCalledWith(
+      expect(onSetQueryParams).toHaveBeenLastCalledWith(
         expect.objectContaining({ keyword: 'workflow' }),
       )
     })
@@ -335,7 +409,9 @@ describe('Filter', () => {
         />,
       )
 
-      await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
+      const searchInput = screen.getByRole('searchbox', { name: 'common.operation.search' })
+      const searchField = searchInput.closest('div')!
+      await user.click(within(searchField).getByRole('button', { name: 'common.operation.clear' }))
 
       expect(setQueryParams).toHaveBeenCalledWith({
         status: 'all',
@@ -347,14 +423,9 @@ describe('Filter', () => {
     it('should update on direct input change', () => {
       const setQueryParams = vi.fn()
 
-      render(
-        <Filter
-          queryParams={createDefaultQueryParams()}
-          setQueryParams={setQueryParams}
-        />,
-      )
+      render(<Filter queryParams={createDefaultQueryParams()} setQueryParams={setQueryParams} />)
 
-      const input = screen.getByPlaceholderText('common.operation.search')
+      const input = screen.getByRole('searchbox', { name: 'common.operation.search' })
       fireEvent.change(input, { target: { value: 'new search' } })
 
       expect(setQueryParams).toHaveBeenCalledWith({
@@ -394,14 +465,15 @@ describe('Filter', () => {
       ['2', 'last7days', 7],
       ['3', 'last4weeks', 28],
       ['9', 'allTime', -1],
-    ])('TIME_PERIOD_MAPPING[%s] should have name=%s and correct value', (key, name, expectedValue) => {
-      const mapping = TIME_PERIOD_MAPPING[key]
-      expect(mapping!.name).toBe(name)
-      if (expectedValue >= 0)
-        expect(mapping!.value).toBe(expectedValue)
-      else
-        expect(mapping!.value).toBe(-1)
-    })
+    ])(
+      'TIME_PERIOD_MAPPING[%s] should have name=%s and correct value',
+      (key, name, expectedValue) => {
+        const mapping = TIME_PERIOD_MAPPING[key]
+        expect(mapping!.name).toBe(name)
+        if (expectedValue >= 0) expect(mapping!.value).toBe(expectedValue)
+        else expect(mapping!.value).toBe(-1)
+      },
+    )
   })
 
   // --------------------------------------------------------------------------
@@ -416,7 +488,7 @@ describe('Filter', () => {
         />,
       )
 
-      const input = screen.getByPlaceholderText('common.operation.search')
+      const input = screen.getByRole('searchbox', { name: 'common.operation.search' })
       expect(input)!.toHaveValue('')
     })
 
@@ -428,7 +500,7 @@ describe('Filter', () => {
         />,
       )
 
-      const input = screen.getByPlaceholderText('common.operation.search')
+      const input = screen.getByRole('searchbox', { name: 'common.operation.search' })
       expect(input)!.toHaveValue('')
     })
 
@@ -443,8 +515,8 @@ describe('Filter', () => {
         />,
       )
 
-      await user.click(screen.getByText('All'))
-      await user.click(await screen.findByText('Success'))
+      await user.click(screen.getByText('appLog.status.all'))
+      await user.click(await screen.findByText('appLog.status.succeeded'))
 
       expect(setQueryParams).toHaveBeenCalledWith({
         status: 'succeeded',
@@ -485,7 +557,7 @@ describe('Filter', () => {
         />,
       )
 
-      const input = screen.getByPlaceholderText('common.operation.search')
+      const input = screen.getByRole('searchbox', { name: 'common.operation.search' })
       await user.type(input, 'a')
 
       expect(setQueryParams).toHaveBeenCalledWith({
@@ -512,17 +584,14 @@ describe('Filter', () => {
         />,
       )
 
-      expect(screen.getByText('Success'))!.toBeInTheDocument()
+      expect(screen.getByText('appLog.status.succeeded'))!.toBeInTheDocument()
       expect(screen.getByText('appLog.filter.period.today'))!.toBeInTheDocument()
       expect(screen.getByDisplayValue('integration test'))!.toBeInTheDocument()
     })
 
     it('should have proper layout with flex and gap', () => {
       const { container } = render(
-        <Filter
-          queryParams={createDefaultQueryParams()}
-          setQueryParams={defaultSetQueryParams}
-        />,
+        <Filter queryParams={createDefaultQueryParams()} setQueryParams={defaultSetQueryParams} />,
       )
 
       const filterContainer = container.firstChild as HTMLElement

@@ -33,7 +33,9 @@ export const SkeletonRectangle: FC<SkeletonProps> = (props) => {
 export const SkeletonPoint: FC<SkeletonProps> = (props) => {
   const { className, ...rest } = props
   return (
-    <div className={cn('text-xs font-medium text-text-quaternary', className)} {...rest}>·</div>
+    <div className={cn('text-xs font-medium text-text-quaternary', className)} {...rest}>
+      ·
+    </div>
   )
 }
 /**

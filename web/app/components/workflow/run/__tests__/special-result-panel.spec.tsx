@@ -31,8 +31,12 @@ vi.mock('../loop-log', () => ({
   },
 }))
 
-vi.mock('../agent-log', () => ({
-  AgentResultPanel: ({ agentOrToolLogItemStack }: { agentOrToolLogItemStack: AgentLogItemWithChildren[] }) => {
+vi.mock('../agent-log/agent-result-panel', () => ({
+  default: ({
+    agentOrToolLogItemStack,
+  }: {
+    agentOrToolLogItemStack: AgentLogItemWithChildren[]
+  }) => {
     mocks.agentPanel(agentOrToolLogItemStack)
     return <div data-testid="agent-result-panel">{agentOrToolLogItemStack.length}</div>
   },
@@ -71,7 +75,9 @@ const createNodeTracing = (overrides: Partial<NodeTracing> = {}): NodeTracing =>
   ...overrides,
 })
 
-const createAgentLogItem = (overrides: Partial<AgentLogItemWithChildren> = {}): AgentLogItemWithChildren => ({
+const createAgentLogItem = (
+  overrides: Partial<AgentLogItemWithChildren> = {},
+): AgentLogItemWithChildren => ({
   node_execution_id: 'exec-1',
   message_id: 'message-1',
   node_id: 'node-1',
@@ -99,8 +105,7 @@ describe('SpecialResultPanel', () => {
       )
 
       const panelRoot = container.firstElementChild?.firstElementChild
-      if (!panelRoot)
-        throw new Error('Expected panel root element')
+      if (!panelRoot) throw new Error('Expected panel root element')
 
       fireEvent.click(panelRoot)
 

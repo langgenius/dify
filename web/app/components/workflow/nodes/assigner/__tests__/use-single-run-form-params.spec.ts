@@ -13,7 +13,9 @@ vi.mock('../../_base/hooks/use-node-crud', () => ({
 
 const mockUseNodeCrud = vi.mocked(useNodeCrud)
 
-const createOperation = (overrides: Partial<AssignerNodeOperation> = {}): AssignerNodeOperation => ({
+const createOperation = (
+  overrides: Partial<AssignerNodeOperation> = {},
+): AssignerNodeOperation => ({
   variable_selector: ['node-1', 'target'],
   input_type: AssignerNodeInputType.variable,
   operation: WriteMode.overwrite,
@@ -30,8 +32,16 @@ const createData = (overrides: Partial<AssignerNodeType> = {}): AssignerNodeType
     createOperation(),
     createOperation({ operation: WriteMode.append, value: ['node-3', 'items'] }),
     createOperation({ operation: WriteMode.clear, value: ['node-4', 'unused'] }),
-    createOperation({ operation: WriteMode.set, input_type: AssignerNodeInputType.constant, value: 'fixed' }),
-    createOperation({ operation: WriteMode.increment, input_type: AssignerNodeInputType.constant, value: 2 }),
+    createOperation({
+      operation: WriteMode.set,
+      input_type: AssignerNodeInputType.constant,
+      value: 'fixed',
+    }),
+    createOperation({
+      operation: WriteMode.increment,
+      input_type: AssignerNodeInputType.constant,
+      value: 2,
+    }),
   ],
   ...overrides,
 })
@@ -47,24 +57,28 @@ describe('assigner/use-single-run-form-params', () => {
 
   it('exposes only variable-driven dependencies in the single-run form', () => {
     const setRunInputData = vi.fn()
-    const varInputs: InputVar[] = [{
-      label: 'Result',
-      variable: 'result',
-      type: InputVarType.textInput,
-      required: true,
-    }]
+    const varInputs: InputVar[] = [
+      {
+        label: 'Result',
+        variable: 'result',
+        type: InputVarType.textInput,
+        required: true,
+      },
+    ]
     const varSelectorsToVarInputs = vi.fn(() => varInputs)
 
-    const { result } = renderHook(() => useSingleRunFormParams({
-      id: 'assigner-node',
-      payload: createData(),
-      runInputData: { result: 'hello' },
-      runInputDataRef: { current: {} },
-      getInputVars: () => [],
-      setRunInputData,
-      toVarInputs: () => [],
-      varSelectorsToVarInputs,
-    }))
+    const { result } = renderHook(() =>
+      useSingleRunFormParams({
+        id: 'assigner-node',
+        payload: createData(),
+        runInputData: { result: 'hello' },
+        runInputDataRef: { current: {} },
+        getInputVars: () => [],
+        setRunInputData,
+        toVarInputs: () => [],
+        varSelectorsToVarInputs,
+      }),
+    )
 
     expect(varSelectorsToVarInputs).toHaveBeenCalledWith([
       ['node-2', 'result'],

@@ -2,7 +2,6 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-
 import {
   zGetDataSourceIntegratesByBindingIdByActionPath,
   zGetDataSourceIntegratesByBindingIdByActionResponse,
@@ -10,7 +9,7 @@ import {
   zPatchDataSourceIntegratesByBindingIdByActionPath,
   zPatchDataSourceIntegratesByBindingIdByActionResponse,
   zPatchDataSourceIntegratesResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 export const get = oc
   .route({

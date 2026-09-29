@@ -14,14 +14,17 @@ describe('cron-parser + execution-time-calculator integration', () => {
     vi.useRealTimers()
   })
 
-  const createCronData = (overrides: Partial<ScheduleTriggerNodeType> = {}): ScheduleTriggerNodeType => ({
-    type: BlockEnum.TriggerSchedule,
-    title: 'test-schedule',
-    mode: 'cron',
-    frequency: 'daily',
-    timezone: 'UTC',
-    ...overrides,
-  } as ScheduleTriggerNodeType)
+  const createCronData = (
+    overrides: Partial<ScheduleTriggerNodeType> = {},
+  ): ScheduleTriggerNodeType =>
+    ({
+      type: BlockEnum.TriggerSchedule,
+      title: 'test-schedule',
+      mode: 'cron',
+      frequency: 'daily',
+      timezone: 'UTC',
+      ...overrides,
+    }) as ScheduleTriggerNodeType
 
   describe('backward compatibility validation', () => {
     it('maintains exact behavior for legacy cron expressions', () => {
@@ -72,8 +75,8 @@ describe('cron-parser + execution-time-calculator integration', () => {
         expect(calculatorResult).toHaveLength(5)
 
         // All results should show noon (12:00) in their respective timezone
-        directResult.forEach(date => expect(date.getHours()).toBe(12))
-        calculatorResult.forEach(date => expect(date.getHours()).toBe(12))
+        directResult.forEach((date) => expect(date.getHours()).toBe(12))
+        calculatorResult.forEach((date) => expect(date.getHours()).toBe(12))
 
         // Cross-validation: results should be identical
         directResult.forEach((directDate, index) => {
@@ -138,17 +141,13 @@ describe('cron-parser + execution-time-calculator integration', () => {
           expect(date.getMinutes()).toBe(minute)
 
           if (month !== undefined) {
-            if (Array.isArray(month))
-              expect(month).toContain(date.getMonth())
-            else
-              expect(date.getMonth()).toBe(month)
+            if (Array.isArray(month)) expect(month).toContain(date.getMonth())
+            else expect(date.getMonth()).toBe(month)
           }
 
-          if (day !== undefined)
-            expect(date.getDate()).toBe(day)
+          if (day !== undefined) expect(date.getDate()).toBe(day)
 
-          if (weekday !== undefined)
-            expect(date.getDay()).toBe(weekday)
+          if (weekday !== undefined) expect(date.getDay()).toBe(weekday)
         }
 
         directResult.forEach(validateDate)
@@ -176,12 +175,9 @@ describe('cron-parser + execution-time-calculator integration', () => {
           expect(date.getHours()).toBe(hour)
           expect(date.getMinutes()).toBe(minute)
 
-          if (weekday !== undefined)
-            expect(date.getDay()).toBe(weekday)
-          if (day !== undefined)
-            expect(date.getDate()).toBe(day)
-          if (month !== undefined)
-            expect(date.getMonth()).toBe(month)
+          if (weekday !== undefined) expect(date.getDay()).toBe(weekday)
+          if (day !== undefined) expect(date.getDate()).toBe(day)
+          if (month !== undefined) expect(date.getMonth()).toBe(month)
         })
       })
     })
@@ -228,8 +224,8 @@ describe('cron-parser + execution-time-calculator integration', () => {
 
       // Both should handle DST gracefully
       // During DST spring forward, 2 AM becomes 3 AM - this is correct behavior
-      directResult.forEach(date => expect([2, 3]).toContain(date.getHours()))
-      calculatorResult.forEach(date => expect([2, 3]).toContain(date.getHours()))
+      directResult.forEach((date) => expect([2, 3]).toContain(date.getHours()))
+      calculatorResult.forEach((date) => expect([2, 3]).toContain(date.getHours()))
 
       // Results should be identical
       directResult.forEach((directDate, index) => {
