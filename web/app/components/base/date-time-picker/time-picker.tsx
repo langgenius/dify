@@ -25,10 +25,7 @@ export {
   TimePickerTrigger,
   TimePickerValue,
 } from '@langgenius/dify-ui/time-picker'
-/**
- * Prop types for the complete localized picker composition.
- * @public
- */
+/** @public Prop types for the complete localized picker composition. */
 export type {
   TimePickerClearProps,
   TimePickerContentProps,

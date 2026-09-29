@@ -10,12 +10,6 @@ Parts and types are re-exported unchanged; only Root integrates application defa
 whole composition from its matching Web entry, without a shared barrel for all three pickers.
 Do not pass a repeated locale bundle at each call site.
 
-Calendar locales load on demand by application language; English is available synchronously.
-DatePicker and DateTimePicker own a local Suspense boundary: on first load the field appears
-when its locale is ready, without hiding its surrounding form. Language changes retain the
-mounted picker, draft and focus while the next locale loads. Locale promises are shared across
-instances. TimePicker needs no calendar resources; loading adds no public props.
-
 ```tsx
 import {
   DatePicker,
