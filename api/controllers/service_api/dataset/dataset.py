@@ -49,6 +49,7 @@ from models.provider_ids import ModelProviderID
 from services.enterprise import rbac_service as enterprise_rbac_service
 from services.knowledge.dataset_read_service import load_dataset_detail, load_dataset_details
 from services.knowledge.dataset_service import DatasetPermissionService, DatasetService, DocumentService
+from services.knowledge.entities.datasets import DatasetDetailRecord
 from services.knowledge.entities.knowledge_entities import (
     ExternalRetrievalModel,
     KnowledgeProvider,
@@ -100,7 +101,7 @@ _SERVICE_DATASET_DETAIL_EXCLUDE = {"permission_keys"}
 _SERVICE_DATASET_LIST_EXCLUDE = {"data": {"__all__": _SERVICE_DATASET_DETAIL_EXCLUDE}}
 
 
-def _dump_service_dataset_detail(detail: dict[str, Any]) -> dict[str, Any]:
+def _dump_service_dataset_detail(detail: DatasetDetailRecord) -> dict[str, Any]:
     return DatasetDetailResponse.model_validate(detail).model_dump(
         mode="json",
         exclude=_SERVICE_DATASET_DETAIL_EXCLUDE,

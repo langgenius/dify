@@ -6,6 +6,8 @@ import secrets
 import time
 import uuid
 from collections.abc import Sequence
+from contextlib import nullcontext
+from dataclasses import replace
 from typing import Any, Literal, TypedDict, cast
 
 import sqlalchemy as sa
@@ -79,6 +81,7 @@ from services.errors.file import FileNotExistsError
 from services.feature_service import FeatureService
 from services.file_service import FileService
 from services.knowledge.dataset_access import DatasetAccessRecord, DatasetAccessSnapshot, can_access_dataset
+from services.knowledge.entities.document_creation import DocumentCreationDataset, DocumentIndexingJobs
 from services.knowledge.entities.knowledge_entities import (
     KnowledgeConfig,
     RerankingModel,
@@ -2140,14 +2143,47 @@ class DocumentService:
         *,
         session: Session,
     ) -> tuple[list[Document], str]:
-        # check doc_form
+        # Compatibility entry point for existing callers that own their session.
         DatasetService.check_doc_form(dataset, knowledge_config.doc_form, session=session)
-        # check document limit
         assert isinstance(account, Account)
         assert account.current_tenant_id is not None
+        config = DocumentService.prepare_document_creation(
+            DocumentCreationDataset(
+                dataset.tenant_id, dataset.indexing_technique, dataset.embedding_model, dataset.embedding_model_provider
+            ),
+            knowledge_config,
+        )
+        documents: list[Document] = []
+        batch = ""
+        lock = (
+            nullcontext()
+            if config.original_document_id
+            else redis_client.lock(f"add_document_lock_dataset_id_{dataset.id}", timeout=600)
+        )
+        try:
+            with lock:
+                documents, batch, jobs = DocumentService.save_prepared_documents(
+                    dataset, config, account, dataset_process_rule, created_from, session=session
+                )
+                DocumentService.dispatch_document_indexing(jobs)
+        except LockNotOwnedError:
+            if config.original_document_id:
+                raise
+            if not batch:
+                batch = DocumentService.generate_document_batch()
+        return documents, batch
 
+    @staticmethod
+    def generate_document_batch() -> str:
+        return time.strftime("%Y%m%d%H%M%S") + str(100000 + secrets.randbelow(exclusive_upper_bound=900000))
+
+    @staticmethod
+    def prepare_document_creation(
+        dataset: DocumentCreationDataset, knowledge_config: KnowledgeConfig
+    ) -> KnowledgeConfig:
+        """Resolve remote quotas and models from values; new callers close their read transaction first."""
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
-            features = FeatureService.get_features(account.current_tenant_id, exclude_vector_space=True)
+            features = FeatureService.get_features(dataset.tenant_id, exclude_vector_space=True)
             if not knowledge_config.original_document_id:
                 count = 0
                 if knowledge_config.data_source:
@@ -2166,6 +2202,59 @@ class DocumentService:
                         count = len(website_info.urls)
                     DocumentService.check_document_creation_limits(count, features)
 
+        config = knowledge_config
+        effective_dataset = dataset
+        if not dataset.indexing_technique:
+            if config.indexing_technique not in Dataset.INDEXING_TECHNIQUE_LIST:
+                raise ValueError("Indexing technique is invalid")
+            if config.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
+                if not config.embedding_model or not config.embedding_model_provider:
+                    model = ModelManager.for_tenant(tenant_id=dataset.tenant_id).get_default_model_instance(
+                        tenant_id=dataset.tenant_id, model_type=ModelType.TEXT_EMBEDDING
+                    )
+                    config = config.model_copy(
+                        update={"embedding_model": model.model_name, "embedding_model_provider": model.provider}
+                    )
+            effective_dataset = replace(
+                dataset,
+                indexing_technique=config.indexing_technique,
+                embedding_model=config.embedding_model,
+                embedding_model_provider=config.embedding_model_provider,
+            )
+        if config.original_document_id:
+            DatasetService.check_dataset_model_setting(effective_dataset)
+        return config
+
+    @staticmethod
+    def dispatch_document_indexing(jobs: DocumentIndexingJobs) -> None:
+        """Publish only identifiers after the corresponding database writes commit."""
+        ref = jobs.dataset
+        if jobs.removed_notion:
+            clean_notion_document_task.delay(list(jobs.removed_notion), ref.dataset_id)
+        if jobs.created:
+            DocumentIndexingTaskProxy(ref.tenant_id, ref.dataset_id, list(jobs.created)).delay()
+        if jobs.duplicated:
+            DuplicateDocumentIndexingTaskProxy(ref.tenant_id, ref.dataset_id, list(jobs.duplicated)).delay()
+        if jobs.updated:
+            document_indexing_update_task.delay(ref.dataset_id, jobs.updated)
+
+    @staticmethod
+    def save_prepared_documents(
+        dataset: Dataset,
+        knowledge_config: KnowledgeConfig,
+        account: Account | Any,
+        dataset_process_rule: DatasetProcessRule | None = None,
+        created_from: str = DocumentCreatedFrom.WEB,
+        *,
+        session: Session,
+    ) -> tuple[list[Document], str, DocumentIndexingJobs]:
+        """Persist prepared input without remote calls, Redis locks, or task dispatch.
+
+        The caller must resolve quotas/models with prepare_document_creation and
+        hold the dataset's creation lock for new documents. ORM values stay within
+        this persistence adapter; publish the returned jobs after closing its session.
+        """
+        DatasetService.check_doc_form(dataset, knowledge_config.doc_form, session=session)
         # if dataset is empty, update dataset data_source_type
         if not dataset.data_source_type and knowledge_config.data_source:
             dataset.data_source_type = knowledge_config.data_source.info_list.data_source_type
@@ -2176,16 +2265,10 @@ class DocumentService:
 
             dataset.indexing_technique = IndexTechniqueType(knowledge_config.indexing_technique)
             if knowledge_config.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
-                model_manager = ModelManager.for_tenant(tenant_id=account.current_tenant_id)
-                if knowledge_config.embedding_model and knowledge_config.embedding_model_provider:
-                    dataset_embedding_model = knowledge_config.embedding_model
-                    dataset_embedding_model_provider = knowledge_config.embedding_model_provider
-                else:
-                    embedding_model = model_manager.get_default_model_instance(
-                        tenant_id=account.current_tenant_id, model_type=ModelType.TEXT_EMBEDDING
-                    )
-                    dataset_embedding_model = embedding_model.model_name
-                    dataset_embedding_model_provider = embedding_model.provider
+                assert knowledge_config.embedding_model
+                assert knowledge_config.embedding_model_provider
+                dataset_embedding_model = knowledge_config.embedding_model
+                dataset_embedding_model_provider = knowledge_config.embedding_model_provider
                 dataset.embedding_model = dataset_embedding_model
                 dataset.embedding_model_provider = dataset_embedding_model_provider
                 dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
@@ -2207,19 +2290,19 @@ class DocumentService:
                         else default_retrieval_model
                     )
 
-        documents = []
+        documents: list[Document] = []
+        jobs = DocumentIndexingJobs(DatasetRef(dataset.tenant_id, dataset.id))
         if knowledge_config.original_document_id:
-            document = DocumentService.update_document_with_dataset_id(
-                dataset, knowledge_config, account, session=session
-            )
+            document = DocumentService.update_prepared_document(dataset, knowledge_config, account, session=session)
             documents.append(document)
             batch = document.batch
+            jobs = replace(jobs, updated=document.id)
         else:
             # When creating new documents, data_source must be provided
             if not knowledge_config.data_source:
                 raise ValueError("Data source is required when creating new documents")
 
-            batch = time.strftime("%Y%m%d%H%M%S") + str(100000 + secrets.randbelow(exclusive_upper_bound=900000))
+            batch = DocumentService.generate_document_batch()
             # save process rule
             if not dataset_process_rule:
                 process_rule = knowledge_config.process_rule
@@ -2248,7 +2331,7 @@ class DocumentService:
                             "Invalid process rule mode: %s, can not find dataset process rule",
                             process_rule.mode,
                         )
-                        return [], ""
+                        return [], "", jobs
                     session.add(dataset_process_rule)
                     session.flush()
                 else:
@@ -2265,170 +2348,127 @@ class DocumentService:
                         )
                         session.add(dataset_process_rule)
                         session.flush()
-            lock_name = f"add_document_lock_dataset_id_{dataset.id}"
-            try:
-                with redis_client.lock(lock_name, timeout=600):
-                    assert dataset_process_rule
-                    position = DocumentService.get_documents_position(dataset.id, session)
-                    document_ids = []
-                    duplicate_document_ids = []
-                    if knowledge_config.data_source.info_list.data_source_type == "upload_file":
-                        if not knowledge_config.data_source.info_list.file_info_list:
-                            raise ValueError("File source info is required")
-                        upload_file_list = knowledge_config.data_source.info_list.file_info_list.file_ids
-                        # Issue #41735: under MySQL's default
-                        # ``REPEATABLE READ`` isolation, the SELECT snapshot
-                        # for this transaction is pinned by the first
-                        # read done earlier in ``save_document_with_dataset_id``
-                        # (e.g. ``check_doc_form``). The caller has just
-                        # committed the upload in a different session
-                        # (``FileService.upload_text`` /
-                        # ``FileService.upload_file``), so the rows exist
-                        # but are invisible to *this* session until its
-                        # snapshot is refreshed. End the current transaction
-                        # so the next SELECT starts with a fresh snapshot.
-                        # The pending changes on ``dataset`` are also
-                        # flushed, which is what we want — they must be
-                        # persisted by this point anyway. PostgreSQL's
-                        # default ``READ COMMITTED`` rebuilds the read view
-                        # per statement so it isn't affected.
-                        session.commit()
-                        files = list(
-                            session.scalars(
-                                select(UploadFile).where(
-                                    UploadFile.tenant_id == dataset.tenant_id,
-                                    UploadFile.id.in_(upload_file_list),
-                                )
-                            ).all()
+            assert dataset_process_rule
+            position = DocumentService.get_documents_position(dataset.id, session)
+            document_ids = []
+            duplicate_document_ids = []
+            removed_notion_ids: list[str] = []
+            if knowledge_config.data_source.info_list.data_source_type == "upload_file":
+                if not knowledge_config.data_source.info_list.file_info_list:
+                    raise ValueError("File source info is required")
+                upload_file_list = knowledge_config.data_source.info_list.file_info_list.file_ids
+                # Issue #41735: under MySQL's default
+                # ``REPEATABLE READ`` isolation, the SELECT snapshot
+                # for this transaction is pinned by the first
+                # read done earlier in ``save_document_with_dataset_id``
+                # (e.g. ``check_doc_form``). The caller has just
+                # committed the upload in a different session
+                # (``FileService.upload_text`` /
+                # ``FileService.upload_file``), so the rows exist
+                # but are invisible to *this* session until its
+                # snapshot is refreshed. End the current transaction
+                # so the next SELECT starts with a fresh snapshot.
+                # The pending changes on ``dataset`` are also
+                # flushed, which is what we want — they must be
+                # persisted by this point anyway. PostgreSQL's
+                # default ``READ COMMITTED`` rebuilds the read view
+                # per statement so it isn't affected.
+                session.commit()
+                files = list(
+                    session.scalars(
+                        select(UploadFile).where(
+                            UploadFile.tenant_id == dataset.tenant_id,
+                            UploadFile.id.in_(upload_file_list),
                         )
-                        if len(files) != len(set(upload_file_list)):
-                            raise FileNotExistsError("One or more files not found.")
+                    ).all()
+                )
+                if len(files) != len(set(upload_file_list)):
+                    raise FileNotExistsError("One or more files not found.")
 
-                        file_names = [file.name for file in files]
-                        db_documents = list(
-                            session.scalars(
-                                select(Document).where(
-                                    Document.dataset_id == dataset.id,
-                                    Document.tenant_id == account.current_tenant_id,
-                                    Document.data_source_type == DataSourceType.UPLOAD_FILE,
-                                    Document.enabled == True,
-                                    Document.name.in_(file_names),
-                                )
-                            ).all()
+                file_names = [file.name for file in files]
+                db_documents = list(
+                    session.scalars(
+                        select(Document).where(
+                            Document.dataset_id == dataset.id,
+                            Document.tenant_id == account.current_tenant_id,
+                            Document.data_source_type == DataSourceType.UPLOAD_FILE,
+                            Document.enabled == True,
+                            Document.name.in_(file_names),
                         )
-                        documents_map = {document.name: document for document in db_documents}
-                        for file in files:
-                            data_source_info: dict[str, object] = {
-                                "upload_file_id": file.id,
-                            }
-                            document = documents_map.get(file.name)
-                            if knowledge_config.duplicate and document:
-                                document.dataset_process_rule_id = dataset_process_rule.id
-                                document.updated_at = naive_utc_now()
-                                document.created_from = created_from
-                                document.doc_form = IndexStructureType(knowledge_config.doc_form)
-                                document.doc_language = knowledge_config.doc_language
-                                document.data_source_info = json.dumps(data_source_info)
-                                document.batch = batch
-                                document.indexing_status = IndexingStatus.WAITING
-                                session.add(document)
-                                documents.append(document)
-                                duplicate_document_ids.append(document.id)
-                                continue
-                            else:
-                                document = DocumentService.build_document(
-                                    dataset,
-                                    dataset_process_rule.id,
-                                    knowledge_config.data_source.info_list.data_source_type,
-                                    knowledge_config.doc_form,
-                                    knowledge_config.doc_language,
-                                    data_source_info,
-                                    created_from,
-                                    position,
-                                    account,
-                                    file.name,
-                                    batch,
-                                )
-                                session.add(document)
-                                session.flush()
-                                document_ids.append(document.id)
-                                documents.append(document)
-                                position += 1
-                    elif knowledge_config.data_source.info_list.data_source_type == "notion_import":
-                        notion_info_list = knowledge_config.data_source.info_list.notion_info_list  # type: ignore
-                        if not notion_info_list:
-                            raise ValueError("No notion info list found.")
-                        exist_page_ids = []
-                        exist_document = {}
-                        documents = list(
-                            session.scalars(
-                                select(Document).where(
-                                    Document.dataset_id == dataset.id,
-                                    Document.tenant_id == account.current_tenant_id,
-                                    Document.data_source_type == DataSourceType.NOTION_IMPORT,
-                                    Document.enabled == True,
-                                )
-                            ).all()
+                    ).all()
+                )
+                documents_map = {document.name: document for document in db_documents}
+                for file in files:
+                    data_source_info: dict[str, object] = {
+                        "upload_file_id": file.id,
+                    }
+                    document = documents_map.get(file.name)
+                    if knowledge_config.duplicate and document:
+                        document.dataset_process_rule_id = dataset_process_rule.id
+                        document.updated_at = naive_utc_now()
+                        document.created_from = created_from
+                        document.doc_form = IndexStructureType(knowledge_config.doc_form)
+                        document.doc_language = knowledge_config.doc_language
+                        document.data_source_info = json.dumps(data_source_info)
+                        document.batch = batch
+                        document.indexing_status = IndexingStatus.WAITING
+                        session.add(document)
+                        documents.append(document)
+                        duplicate_document_ids.append(document.id)
+                        continue
+                    else:
+                        document = DocumentService.build_document(
+                            dataset,
+                            dataset_process_rule.id,
+                            knowledge_config.data_source.info_list.data_source_type,
+                            knowledge_config.doc_form,
+                            knowledge_config.doc_language,
+                            data_source_info,
+                            created_from,
+                            position,
+                            account,
+                            file.name,
+                            batch,
                         )
-                        if documents:
-                            for document in documents:
-                                data_source_info = json.loads(document.data_source_info)
-                                exist_page_ids.append(data_source_info["notion_page_id"])
-                                exist_document[data_source_info["notion_page_id"]] = document.id
-                        for notion_info in notion_info_list:
-                            workspace_id = notion_info.workspace_id
-                            for page in notion_info.pages:
-                                if page.page_id not in exist_page_ids:
-                                    data_source_info = {
-                                        "credential_id": notion_info.credential_id,
-                                        "notion_workspace_id": workspace_id,
-                                        "notion_page_id": page.page_id,
-                                        "notion_page_icon": page.page_icon.model_dump() if page.page_icon else None,  # type: ignore
-                                        "type": page.type,
-                                    }
-                                    # Truncate page name to 255 characters to prevent DB field length errors
-                                    truncated_page_name = page.page_name[:255] if page.page_name else "nopagename"
-                                    document = DocumentService.build_document(
-                                        dataset,
-                                        dataset_process_rule.id,
-                                        knowledge_config.data_source.info_list.data_source_type,
-                                        knowledge_config.doc_form,
-                                        knowledge_config.doc_language,
-                                        data_source_info,
-                                        created_from,
-                                        position,
-                                        account,
-                                        truncated_page_name,
-                                        batch,
-                                    )
-                                    document.id = str(uuid.uuid4())
-                                    session.add(document)
-                                    document_ids.append(document.id)
-                                    documents.append(document)
-                                    position += 1
-                                else:
-                                    exist_document.pop(page.page_id)
+                        session.add(document)
                         session.flush()
-                        # delete not selected documents
-                        if len(exist_document) > 0:
-                            clean_notion_document_task.delay(list(exist_document.values()), dataset.id)
-                    elif knowledge_config.data_source.info_list.data_source_type == "website_crawl":
-                        website_info = knowledge_config.data_source.info_list.website_info_list
-                        if not website_info:
-                            raise ValueError("No website info list found.")
-                        urls = website_info.urls
-                        for url in urls:
+                        document_ids.append(document.id)
+                        documents.append(document)
+                        position += 1
+            elif knowledge_config.data_source.info_list.data_source_type == "notion_import":
+                notion_info_list = knowledge_config.data_source.info_list.notion_info_list  # type: ignore
+                if not notion_info_list:
+                    raise ValueError("No notion info list found.")
+                exist_page_ids = []
+                exist_document = {}
+                documents = list(
+                    session.scalars(
+                        select(Document).where(
+                            Document.dataset_id == dataset.id,
+                            Document.tenant_id == account.current_tenant_id,
+                            Document.data_source_type == DataSourceType.NOTION_IMPORT,
+                            Document.enabled == True,
+                        )
+                    ).all()
+                )
+                if documents:
+                    for document in documents:
+                        data_source_info = json.loads(document.data_source_info)
+                        exist_page_ids.append(data_source_info["notion_page_id"])
+                        exist_document[data_source_info["notion_page_id"]] = document.id
+                for notion_info in notion_info_list:
+                    workspace_id = notion_info.workspace_id
+                    for page in notion_info.pages:
+                        if page.page_id not in exist_page_ids:
                             data_source_info = {
-                                "url": url,
-                                "provider": website_info.provider,
-                                "job_id": website_info.job_id,
-                                "only_main_content": website_info.only_main_content,
-                                "mode": "crawl",
+                                "credential_id": notion_info.credential_id,
+                                "notion_workspace_id": workspace_id,
+                                "notion_page_id": page.page_id,
+                                "notion_page_icon": page.page_icon.model_dump() if page.page_icon else None,  # type: ignore
+                                "type": page.type,
                             }
-                            if len(url) > 255:
-                                document_name = url[:200] + "..."
-                            else:
-                                document_name = url
+                            # Truncate page name to 255 characters to prevent DB field length errors
+                            truncated_page_name = page.page_name[:255] if page.page_name else "nopagename"
                             document = DocumentService.build_document(
                                 dataset,
                                 dataset_process_rule.id,
@@ -2439,29 +2479,64 @@ class DocumentService:
                                 created_from,
                                 position,
                                 account,
-                                document_name,
+                                truncated_page_name,
                                 batch,
                             )
+                            document.id = str(uuid.uuid4())
                             session.add(document)
-                            session.flush()
                             document_ids.append(document.id)
                             documents.append(document)
                             position += 1
-                    session.commit()
+                        else:
+                            exist_document.pop(page.page_id)
+                session.flush()
+                # delete not selected documents
+                if len(exist_document) > 0:
+                    removed_notion_ids = list(exist_document.values())
+            elif knowledge_config.data_source.info_list.data_source_type == "website_crawl":
+                website_info = knowledge_config.data_source.info_list.website_info_list
+                if not website_info:
+                    raise ValueError("No website info list found.")
+                urls = website_info.urls
+                for url in urls:
+                    data_source_info = {
+                        "url": url,
+                        "provider": website_info.provider,
+                        "job_id": website_info.job_id,
+                        "only_main_content": website_info.only_main_content,
+                        "mode": "crawl",
+                    }
+                    if len(url) > 255:
+                        document_name = url[:200] + "..."
+                    else:
+                        document_name = url
+                    document = DocumentService.build_document(
+                        dataset,
+                        dataset_process_rule.id,
+                        knowledge_config.data_source.info_list.data_source_type,
+                        knowledge_config.doc_form,
+                        knowledge_config.doc_language,
+                        data_source_info,
+                        created_from,
+                        position,
+                        account,
+                        document_name,
+                        batch,
+                    )
+                    session.add(document)
+                    session.flush()
+                    document_ids.append(document.id)
+                    documents.append(document)
+                    position += 1
+            session.commit()
 
-                    # trigger async task
-                    if document_ids:
-                        DocumentIndexingTaskProxy(dataset.tenant_id, dataset.id, document_ids).delay()
-                    if duplicate_document_ids:
-                        DuplicateDocumentIndexingTaskProxy(
-                            dataset.tenant_id, dataset.id, duplicate_document_ids
-                        ).delay()
-                    # Note: Summary index generation is triggered in document_indexing_task after indexing completes
-                    # to ensure segments are available. See tasks/document_indexing_task.py
-            except LockNotOwnedError:
-                pass
-
-        return documents, batch
+            jobs = replace(
+                jobs,
+                created=tuple(document_ids),
+                duplicated=tuple(duplicate_document_ids),
+                removed_notion=tuple(removed_notion_ids),
+            )
+        return documents, batch, jobs
 
     # @staticmethod
     # def save_document_with_dataset_id(
@@ -2837,9 +2912,27 @@ class DocumentService:
         *,
         session: Session,
     ):
+        DatasetService.check_dataset_model_setting(dataset)
+        document = DocumentService.update_prepared_document(
+            dataset, document_data, account, dataset_process_rule, created_from, session=session
+        )
+        DocumentService.dispatch_document_indexing(
+            DocumentIndexingJobs(DatasetRef(dataset.tenant_id, dataset.id), updated=document.id)
+        )
+        return document
+
+    @staticmethod
+    def update_prepared_document(
+        dataset: Dataset,
+        document_data: KnowledgeConfig,
+        account: Account,
+        dataset_process_rule: DatasetProcessRule | None = None,
+        created_from: str = DocumentCreatedFrom.WEB,
+        *,
+        session: Session,
+    ):
         assert isinstance(account, Account)
 
-        DatasetService.check_dataset_model_setting(dataset)
         document = DocumentService.get_document(dataset.id, document_data.original_document_id, session=session)
         if document is None:
             raise NotFound("Document not found")
@@ -2956,8 +3049,6 @@ class DocumentService:
             .values(status=SegmentStatus.RE_SEGMENT)
         )
         session.commit()
-        # trigger async task
-        document_indexing_update_task.delay(document.dataset_id, document.id)
         return document
 
     @staticmethod
@@ -2989,6 +3080,28 @@ class DocumentService:
                     count = len(website_info.urls)
             DocumentService.check_document_creation_limits(count, features)
 
+        dataset = DocumentService.build_dataset_for_documents(
+            DatasetRef(tenant_id, str(uuid.uuid4())), knowledge_config, account, session
+        )
+
+        documents, batch = DocumentService.save_document_with_dataset_id(
+            dataset, knowledge_config, account, session=session
+        )
+
+        cut_length = 18
+        cut_name = documents[0].name[:cut_length]
+        dataset.name = cut_name + "..."
+        dataset.description = "useful for when you want to answer queries about the " + documents[0].name
+        session.flush()
+
+        return dataset, documents, batch
+
+    @staticmethod
+    def build_dataset_for_documents(
+        ref: DatasetRef, knowledge_config: KnowledgeConfig, account: Account, session: Session
+    ) -> Dataset:
+        """Create a dataset inside the caller's SQL-only persistence phase."""
+        assert knowledge_config.data_source
         dataset_collection_binding_id = None
         retrieval_model = None
         if knowledge_config.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
@@ -3012,7 +3125,8 @@ class DocumentService:
             )
         # save dataset
         dataset = Dataset(
-            tenant_id=tenant_id,
+            id=ref.dataset_id,
+            tenant_id=ref.tenant_id,
             name="",
             data_source_type=knowledge_config.data_source.info_list.data_source_type,
             indexing_technique=IndexTechniqueType(knowledge_config.indexing_technique),
@@ -3029,17 +3143,7 @@ class DocumentService:
         session.add(dataset)
         session.flush()
 
-        documents, batch = DocumentService.save_document_with_dataset_id(
-            dataset, knowledge_config, account, session=session
-        )
-
-        cut_length = 18
-        cut_name = documents[0].name[:cut_length]
-        dataset.name = cut_name + "..."
-        dataset.description = "useful for when you want to answer queries about the " + documents[0].name
-        session.flush()
-
-        return dataset, documents, batch
+        return dataset
 
     @classmethod
     def document_create_args_validate(cls, knowledge_config: KnowledgeConfig):

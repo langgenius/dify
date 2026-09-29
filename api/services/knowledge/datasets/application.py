@@ -8,6 +8,7 @@ from libs.url_utils import normalize_api_base_url
 from machinery.context import RequestContext
 from services.knowledge.dataset_access import DatasetAccess
 from services.knowledge.datasets.retrieval import retrieval_methods
+from services.knowledge.entities.datasets import DatasetDetailRecord, DatasetPage
 from services.knowledge.resource_scope import DatasetRef
 
 
@@ -54,11 +55,13 @@ class DatasetOperations(Protocol):
     def visibility(self, context: RequestContext) -> DatasetVisibility: ...
     def list_datasets(
         self, context: RequestContext, query: DatasetListFilter, accessible_ids: list[str] | None, include_own: bool
-    ) -> dict[str, Any]: ...
+    ) -> DatasetPage: ...
     def embedding_models(self, workspace_id: str) -> set[str]: ...
-    def get_dataset(self, context: RequestContext, ref: DatasetRef) -> dict[str, Any]: ...
-    def create_dataset(self, context: RequestContext, values: Mapping[str, Any]) -> dict[str, Any]: ...
-    def update_dataset(self, context: RequestContext, ref: DatasetRef, values: Mapping[str, Any]) -> dict[str, Any]: ...
+    def get_dataset(self, context: RequestContext, ref: DatasetRef) -> DatasetDetailRecord: ...
+    def create_dataset(self, context: RequestContext, values: Mapping[str, Any]) -> DatasetDetailRecord: ...
+    def update_dataset(
+        self, context: RequestContext, ref: DatasetRef, values: Mapping[str, Any]
+    ) -> DatasetDetailRecord: ...
     def delete_dataset(self, context: RequestContext, ref: DatasetRef) -> None: ...
     def is_in_use(self, ref: DatasetRef) -> bool: ...
     def queries(self, ref: DatasetRef, *, page: int, limit: int) -> dict[str, Any]: ...
@@ -93,7 +96,7 @@ class DatasetApplicationService:
         return DatasetRef(dataset.workspace_id, dataset.id)
 
     @staticmethod
-    def _embedding_available(item: dict[str, Any], models: set[str], *, listing: bool) -> None:
+    def _embedding_available(item: DatasetDetailRecord, models: set[str], *, listing: bool) -> None:
         high_quality = item["indexing_technique"] == "high_quality"
         item["embedding_available"] = (
             not high_quality
@@ -101,7 +104,7 @@ class DatasetApplicationService:
             or f"{item['embedding_model']}:{item['embedding_model_provider']}" in models
         )
 
-    def list_datasets(self, context: RequestContext, query: DatasetListFilter) -> dict[str, Any]:
+    def list_datasets(self, context: RequestContext, query: DatasetListFilter) -> DatasetPage:
         visibility = self._operations.visibility(context)
         ids, include_own = visibility.list_scope(rbac_enabled=self._rbac_enabled)
         result = self._operations.list_datasets(context, query, ids, include_own)
@@ -111,17 +114,19 @@ class DatasetApplicationService:
             self._embedding_available(item, models, listing=True)
         return result
 
-    def get_dataset(self, context: RequestContext, *, dataset_id: str) -> dict[str, Any]:
+    def get_dataset(self, context: RequestContext, *, dataset_id: str) -> DatasetDetailRecord:
         result = self._operations.get_dataset(context, self._dataset(context, dataset_id))
         self._embedding_available(result, self._operations.embedding_models(context.active_workspace_id), listing=False)
         return result
 
-    def create_dataset(self, context: RequestContext, *, values: Mapping[str, Any]) -> dict[str, Any]:
+    def create_dataset(self, context: RequestContext, *, values: Mapping[str, Any]) -> DatasetDetailRecord:
         settings = dict(values)
         settings["permission"] = "all_team_members" if self._rbac_enabled else settings.get("permission") or "only_me"
         return self._operations.create_dataset(context, settings)
 
-    def update_dataset(self, context: RequestContext, *, dataset_id: str, values: Mapping[str, Any]) -> dict[str, Any]:
+    def update_dataset(
+        self, context: RequestContext, *, dataset_id: str, values: Mapping[str, Any]
+    ) -> DatasetDetailRecord:
         return self._operations.update_dataset(context, self._dataset(context, dataset_id), values)
 
     def delete_dataset(self, context: RequestContext, *, dataset_id: str) -> None:

@@ -26,6 +26,7 @@ from services.knowledge.datasets.application import (
     DatasetListFilter,
     DatasetVisibility,
 )
+from services.knowledge.entities.datasets import DatasetDetailRecord, DatasetPage
 from services.knowledge.resource_scope import DatasetRef
 from services.tag_application_service import TagTargetQuery
 
@@ -53,7 +54,7 @@ def load_actor(session: Session, context: RequestContext) -> Account:
     return account
 
 
-def _normalize_provider(item: dict[str, Any]) -> dict[str, Any]:
+def _normalize_provider(item: DatasetDetailRecord) -> DatasetDetailRecord:
     if item["indexing_technique"] == "high_quality" and item["embedding_model_provider"]:
         item["embedding_model_provider"] = str(ModelProviderID(item["embedding_model_provider"]))
     return item
@@ -112,7 +113,7 @@ class SQLAlchemyDatasetOperations:
 
     def list_datasets(
         self, context: RequestContext, query: DatasetListFilter, accessible_ids: list[str] | None, include_own: bool
-    ) -> dict[str, Any]:
+    ) -> DatasetPage:
         page, limit = clamp_pagination(query.page, query.limit, 100)
         with self._sessions() as session:
             account = load_actor(session, context)
@@ -162,7 +163,7 @@ class SQLAlchemyDatasetOperations:
             }
 
     @staticmethod
-    def _detail(session: Session, context: RequestContext, dataset: Dataset) -> dict[str, Any]:
+    def _detail(session: Session, context: RequestContext, dataset: Dataset) -> DatasetDetailRecord:
         result = load_dataset_detail(dataset, session=session)
         permissions = rbac_service.RBACService.DatasetPermissions.batch_get(
             context.active_workspace_id, context.account_id, [dataset.id], session=session
@@ -170,7 +171,7 @@ class SQLAlchemyDatasetOperations:
         result["permission_keys"] = permissions.get(dataset.id, [])
         return result
 
-    def get_dataset(self, context: RequestContext, ref: DatasetRef) -> dict[str, Any]:
+    def get_dataset(self, context: RequestContext, ref: DatasetRef) -> DatasetDetailRecord:
         with self._sessions() as session:
             dataset = require_dataset(session, ref)
             result = load_dataset_detail(dataset, session=session)
@@ -184,7 +185,7 @@ class SQLAlchemyDatasetOperations:
                 result["partial_member_list"] = self._members(session, ref)
             return _normalize_provider(result)
 
-    def create_dataset(self, context: RequestContext, values: Mapping[str, Any]) -> dict[str, Any]:
+    def create_dataset(self, context: RequestContext, values: Mapping[str, Any]) -> DatasetDetailRecord:
         with _translate_permissions(), self._sessions() as session:
             dataset = DatasetService.create_empty_dataset(
                 session=session,
@@ -205,7 +206,9 @@ class SQLAlchemyDatasetOperations:
             )
         return result
 
-    def update_dataset(self, context: RequestContext, ref: DatasetRef, values: Mapping[str, Any]) -> dict[str, Any]:
+    def update_dataset(
+        self, context: RequestContext, ref: DatasetRef, values: Mapping[str, Any]
+    ) -> DatasetDetailRecord:
         data = dict(values)
         if (
             data.get("indexing_technique") == "high_quality"

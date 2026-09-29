@@ -20,6 +20,7 @@ from services.entities.external_knowledge_entities.external_knowledge_entities i
 from services.hit_testing_service import HitTestingService
 from services.knowledge.dataset_read_service import load_dataset_detail
 from services.knowledge.datasets.adapters import require_dataset
+from services.knowledge.entities.datasets import DatasetDetailRecord
 from services.knowledge.external.application import ExternalTemplateNotFoundError
 from services.knowledge.external.service import ExternalDatasetService
 from services.knowledge.resource_scope import DatasetRef
@@ -99,7 +100,7 @@ class SQLAlchemyExternalKnowledgeOperations:
         with self._sessions() as session:
             return ExternalDatasetService.external_knowledge_api_use_check(template_id, workspace_id, session=session)
 
-    def create_dataset(self, context: RequestContext, payload: ExternalDatasetCreatePayload) -> dict[str, Any]:
+    def create_dataset(self, context: RequestContext, payload: ExternalDatasetCreatePayload) -> DatasetDetailRecord:
         with self._sessions() as session:
             self._template(session, context.active_workspace_id, payload.external_knowledge_api_id)
             dataset = ExternalDatasetService.create_external_dataset(

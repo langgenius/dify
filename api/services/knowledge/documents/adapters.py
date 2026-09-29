@@ -3,9 +3,11 @@
 import copy
 import json
 from collections.abc import Generator, Mapping, Sequence
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from typing import Any, Literal
+from uuid import uuid4
 
+from redis.exceptions import LockNotOwnedError
 from sqlalchemy import asc, desc, func, select, update
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import NotFound
@@ -15,6 +17,7 @@ from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotIni
 from core.model_manager import ModelManager
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
+from extensions.ext_redis import redis_client
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from libs.pagination import paginate_query
@@ -52,6 +55,7 @@ from services.knowledge.documents.application import (
     DocumentState,
     DocumentZip,
 )
+from services.knowledge.entities.document_creation import DocumentCreationDataset, DocumentIndexingJobs
 from services.knowledge.entities.knowledge_entities import KnowledgeConfig
 from services.knowledge.resource_scope import DatasetRef, DocumentRef
 from services.knowledge.summaries.adapters import SummaryIndexAdapter
@@ -334,18 +338,88 @@ class SQLAlchemyDocumentOperations:
         account.set_tenant_id_with_session(context.active_workspace_id, session=session)
         return account
 
-    def create_documents(self, context: RequestContext, ref: DatasetRef, settings: Mapping[str, Any]) -> dict[str, Any]:
-        config = KnowledgeConfig.model_validate(settings)
-        DocumentService.document_create_args_validate(config)
-        with _translate_errors(), self._sessions() as session:
+    def _creation_dataset(
+        self, context: RequestContext, ref: DatasetRef, config: KnowledgeConfig
+    ) -> DocumentCreationDataset:
+        with self._sessions() as session:
             dataset = _require_dataset(session, ref)
             if not dataset.indexing_technique and not config.indexing_technique:
                 raise ValueError("indexing_technique is required.")
-            account = self._actor(session, context)
-            documents, batch = DocumentService.save_document_with_dataset_id(dataset, config, account, session=session)
-            result = _created_response(dataset, documents, batch, session)
-            session.commit()
-            return result
+            self._actor(session, context)
+            DatasetService.check_doc_form(dataset, config.doc_form, session=session)
+            return DocumentCreationDataset(
+                dataset.tenant_id, dataset.indexing_technique, dataset.embedding_model, dataset.embedding_model_provider
+            )
+
+    def _persist_creation(
+        self, context: RequestContext, ref: DatasetRef, config: KnowledgeConfig, *, initialize: bool
+    ) -> tuple[dict[str, Any], DocumentIndexingJobs]:
+        """Keep ORM values local and materialize the response before closing the session."""
+        jobs: DocumentIndexingJobs | None = None
+        try:
+            with self._sessions() as session:
+                account = self._actor(session, context)
+                dataset = (
+                    DocumentService.build_dataset_for_documents(ref, config, account, session)
+                    if initialize
+                    else _require_dataset(session, ref)
+                )
+                documents, batch, jobs = DocumentService.save_prepared_documents(
+                    dataset, config, account, session=session
+                )
+                if initialize:
+                    dataset.name = documents[0].name[:18] + "..."
+                    dataset.description = "useful for when you want to answer queries about the " + documents[0].name
+                    dataset.permission = (
+                        DatasetPermissionEnum.ALL_TEAM if dify_config.RBAC_ENABLED else DatasetPermissionEnum.ONLY_ME
+                    )
+                    session.flush()
+                result = _created_response(dataset, documents, batch, session)
+                session.commit()
+                return result, jobs
+        except Exception:
+            # The persistence helper commits documents before loading response
+            # details. Preserve their indexing even if that later read fails.
+            if jobs is not None:
+                DocumentService.dispatch_document_indexing(jobs)
+            raise
+
+    def _run_creation(
+        self, context: RequestContext, ref: DatasetRef, config: KnowledgeConfig, *, initialize: bool
+    ) -> dict[str, Any]:
+        lock = (
+            nullcontext()
+            if config.original_document_id
+            else redis_client.lock(f"add_document_lock_dataset_id_{ref.dataset_id}", timeout=600)
+        )
+        result = None
+        try:
+            with lock:
+                result, jobs = self._persist_creation(context, ref, config, initialize=initialize)
+                # No session or ORM entity crosses the task boundary. Keep the
+                # creation lock until committed documents have been dispatched.
+                DocumentService.dispatch_document_indexing(jobs)
+        except LockNotOwnedError:
+            if config.original_document_id:
+                raise
+            # Preserve successful creation when the Redis lease expires on release.
+            if result is None:
+                if initialize:
+                    raise
+                with self._sessions() as session:
+                    result = _created_response(
+                        _require_dataset(session, ref), [], DocumentService.generate_document_batch(), session
+                    )
+        assert result is not None
+        return result
+
+    def create_documents(self, context: RequestContext, ref: DatasetRef, settings: Mapping[str, Any]) -> dict[str, Any]:
+        config = KnowledgeConfig.model_validate(settings)
+        DocumentService.document_create_args_validate(config)
+        with _translate_errors():
+            snapshot = self._creation_dataset(context, ref, config)
+            config = DocumentService.prepare_document_creation(snapshot, config)
+            return self._run_creation(context, ref, config, initialize=False)
 
     def initialize_dataset(self, context: RequestContext, settings: Mapping[str, Any]) -> dict[str, Any]:
         config = KnowledgeConfig.model_validate(settings)
@@ -370,19 +444,20 @@ class SQLAlchemyDocumentOperations:
                 )
             DocumentService.document_create_args_validate(config)
             with self._sessions() as session:
-                dataset, documents, batch = DocumentService.save_document_without_dataset_id(
-                    tenant_id=context.active_workspace_id,
-                    knowledge_config=config,
-                    account=self._actor(session, context),
-                    session=session,
-                )
-                dataset.permission = (
-                    DatasetPermissionEnum.ALL_TEAM if dify_config.RBAC_ENABLED else DatasetPermissionEnum.ONLY_ME
-                )
-                session.flush()
-                result = _created_response(dataset, documents, batch, session)
-                dataset_id = dataset.id
-                session.commit()
+                self._actor(session, context)
+            config = DocumentService.prepare_document_creation(
+                DocumentCreationDataset(
+                    context.active_workspace_id,
+                    config.indexing_technique,
+                    config.embedding_model,
+                    config.embedding_model_provider,
+                ),
+                config,
+            )
+            dataset_id = str(uuid4())
+            result = self._run_creation(
+                context, DatasetRef(context.active_workspace_id, dataset_id), config, initialize=True
+            )
             if dify_config.RBAC_ENABLED:
                 rbac_service.RBACService.DatasetAccess.replace_whitelist(
                     context.active_workspace_id,

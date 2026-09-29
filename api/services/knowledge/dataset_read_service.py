@@ -26,22 +26,23 @@ from repositories.knowledge.dataset_read_repository import (
     load_document_read_batch,
 )
 from repositories.knowledge.segment_read_adapter import get_segment_attachments, sign_segment_content
+from services.knowledge.entities.datasets import DatasetDetailRecord
 
 
 def load_dataset_detail(
     dataset: Dataset, *, session: Session, prefetch: DatasetDetailPrefetch | None = None
-) -> dict[str, Any]:
+) -> DatasetDetailRecord:
     values = prefetch if prefetch is not None else build_dataset_detail_prefetch([dataset], session=session)
     return _dataset_detail_values(dataset, values)
 
 
-def load_dataset_details(datasets: Sequence[Dataset], *, session: Session) -> list[dict[str, Any]]:
+def load_dataset_details(datasets: Sequence[Dataset], *, session: Session) -> list[DatasetDetailRecord]:
     """Read a page in one batch and return values with no ORM or session references."""
     prefetch = build_dataset_detail_prefetch(datasets, session=session)
     return [_dataset_detail_values(dataset, prefetch) for dataset in datasets]
 
 
-def _dataset_detail_values(dataset: Dataset, prefetch: DatasetDetailPrefetch) -> dict[str, Any]:
+def _dataset_detail_values(dataset: Dataset, prefetch: DatasetDetailPrefetch) -> DatasetDetailRecord:
     owner = (dataset.id, dataset.tenant_id)
     return {
         "id": dataset.id,

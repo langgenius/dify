@@ -1154,9 +1154,8 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
 
         with (
             patch("services.knowledge.dataset_service.FeatureService.get_features", return_value=_make_features()),
-            patch.object(
-                DocumentService, "update_document_with_dataset_id", return_value=updated_document
-            ) as update_document,
+            patch("services.knowledge.dataset_service.document_indexing_update_task.delay"),
+            patch.object(DocumentService, "update_prepared_document", return_value=updated_document) as update_document,
         ):
             documents, batch = DocumentService.save_document_with_dataset_id(
                 dataset,
@@ -1807,7 +1806,8 @@ class TestDocumentServiceSaveDocumentAdditionalBranches:
                 "services.knowledge.dataset_service.DatasetCollectionBindingService.get_dataset_collection_binding",
                 return_value=binding,
             ) as get_binding,
-            patch.object(DocumentService, "update_document_with_dataset_id", return_value=updated_document),
+            patch.object(DocumentService, "update_prepared_document", return_value=updated_document),
+            patch("services.knowledge.dataset_service.document_indexing_update_task.delay"),
         ):
             default_model = object.__new__(ModelInstance)
             default_model.model_name = "default-embedding"
@@ -1873,7 +1873,8 @@ class TestDocumentServiceSaveDocumentAdditionalBranches:
                 "services.knowledge.dataset_service.DatasetCollectionBindingService.get_dataset_collection_binding",
                 return_value=binding,
             ) as get_binding,
-            patch.object(DocumentService, "update_document_with_dataset_id", return_value=updated_document),
+            patch.object(DocumentService, "update_prepared_document", return_value=updated_document),
+            patch("services.knowledge.dataset_service.document_indexing_update_task.delay"),
         ):
             DocumentService.save_document_with_dataset_id(
                 dataset, knowledge_config, account_context, session=sqlite_session

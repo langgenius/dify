@@ -175,6 +175,8 @@ type = forbidden
 source_modules =
     core.rag.extractor.entity.extract_setting
     services.knowledge.entities.segments
+    services.knowledge.entities.datasets
+    services.knowledge.entities.document_creation
     services.data_source.binding_application_service
     services.data_source.credential_gateway
     services.data_source.notion_import_application_service

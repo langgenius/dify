@@ -6,6 +6,7 @@ from typing import Any, Protocol
 from machinery.context import RequestContext
 from services.entities.external_knowledge_entities.external_knowledge_entities import ExternalDatasetCreatePayload
 from services.knowledge.dataset_access import DatasetAccess
+from services.knowledge.entities.datasets import DatasetDetailRecord
 from services.knowledge.resource_scope import DatasetRef
 
 
@@ -26,7 +27,7 @@ class ExternalKnowledgeOperations(Protocol):
     ) -> dict[str, Any]: ...
     def delete_template(self, workspace_id: str, template_id: str) -> None: ...
     def template_usage(self, workspace_id: str, template_id: str) -> tuple[bool, int]: ...
-    def create_dataset(self, context: RequestContext, payload: ExternalDatasetCreatePayload) -> dict[str, Any]: ...
+    def create_dataset(self, context: RequestContext, payload: ExternalDatasetCreatePayload) -> DatasetDetailRecord: ...
     def retrieve(
         self,
         context: RequestContext,
@@ -74,7 +75,7 @@ class ExternalKnowledgeApplicationService:
     def template_usage(self, context: RequestContext, *, template_id: str) -> tuple[bool, int]:
         return self._operations.template_usage(context.active_workspace_id, template_id)
 
-    def create_dataset(self, context: RequestContext, *, payload: ExternalDatasetCreatePayload) -> dict[str, Any]:
+    def create_dataset(self, context: RequestContext, *, payload: ExternalDatasetCreatePayload) -> DatasetDetailRecord:
         return self._operations.create_dataset(context, payload)
 
     def hit_testing(

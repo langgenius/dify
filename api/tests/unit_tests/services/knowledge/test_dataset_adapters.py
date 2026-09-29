@@ -28,6 +28,7 @@ from services.knowledge.dataset_access import DatasetNotFoundError
 from services.knowledge.datasets.adapters import SQLAlchemyDatasetOperations
 from services.knowledge.datasets.application import DatasetListFilter
 from services.knowledge.documents.adapters import SQLAlchemyDocumentOperations
+from services.knowledge.entities.document_creation import DocumentIndexingJobs
 from services.knowledge.entities.knowledge_entities import KnowledgeConfig
 from services.knowledge.resource_scope import DatasetRef
 from services.tag_application_service import CreateTagInput, TagApplicationService, TagBindingInput
@@ -233,11 +234,11 @@ def test_created_dataset_initializes_rbac_access(
 
     def save_documents(
         created_dataset: Dataset, _config: KnowledgeConfig, _account: Account, *, session: Session
-    ) -> tuple[list[Document], str]:
+    ) -> tuple[list[Document], str, DocumentIndexingJobs]:
         row = document(id="created-document", dataset_id=created_dataset.id, data_source_type="upload_file")
         session.add(row)
         session.flush()
-        return [row], "batch"
+        return [row], "batch", DocumentIndexingJobs(DatasetRef(created_dataset.tenant_id, created_dataset.id))
 
     with (
         patch.object(rbac_service.RBACService.DatasetAccess, "replace_whitelist") as replace_whitelist,
@@ -246,7 +247,7 @@ def test_created_dataset_initializes_rbac_access(
             "tasks.initialize_created_app_rbac_access_task.initialize_created_app_rbac_access_task.delay"
         ) as initialize,
         patch(
-            "services.knowledge.documents.adapters.DocumentService.save_document_with_dataset_id",
+            "services.knowledge.documents.adapters.DocumentService.save_prepared_documents",
             side_effect=save_documents,
         ),
     ):
