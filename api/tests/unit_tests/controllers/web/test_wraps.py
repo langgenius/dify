@@ -211,6 +211,8 @@ def test_post_missing_app_is_canonical_but_other_not_found_keeps_its_owner(
         if missing == "resource":
             assert response.get_json()["message"] == "Conversation not found."
     assert calls == (["view"] if missing == "resource" else [])
+
+
 @pytest.mark.usefixtures("app_query_services")
 @pytest.mark.parametrize("token", [None, "expired-token"])
 def test_web_auth_rejects_unknown_app_code_with_http_not_found(app, monkeypatch, token):

@@ -343,7 +343,7 @@ describe('AccessControlEntry', () => {
     renderEntry({ plan: 'professional' })
 
     await user.click(getChip())
-    await user.click(screen.getByRole('button', { name: 'Add IP Policy' }))
+    await user.click(screen.getByRole('button', { name: 'Add an IP policy' }))
 
     expect(screen.getByRole('heading', { name: 'New IP Policy' })).toBeInTheDocument()
     expect(mockSetSettingsDestination).not.toHaveBeenCalled()
@@ -354,7 +354,7 @@ describe('AccessControlEntry', () => {
     renderEntry({ plan: 'professional' })
 
     await user.click(getChip())
-    await user.click(screen.getByRole('button', { name: 'Add IP Policy' }))
+    await user.click(screen.getByRole('button', { name: 'Add an IP policy' }))
     await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }))
 
     await waitFor(() => {
@@ -400,7 +400,7 @@ describe('AccessControlEntry', () => {
     renderEntry({ plan: 'professional' })
 
     await user.click(getChip())
-    await user.click(screen.getByRole('button', { name: 'Add IP Policy' }))
+    await user.click(screen.getByRole('button', { name: 'Add an IP policy' }))
     await user.type(screen.getByPlaceholderText('e.g. Internal Network'), 'Office')
     await user.type(screen.getByPlaceholderText('10.0.0.0/8'), '10.0.0.0/8')
     await user.click(screen.getByRole('button', { name: 'Create' }))
@@ -826,7 +826,7 @@ describe('supported access points and binding permission', () => {
     await user.click(getChip())
 
     expect(screen.getByText('Ask a workspace owner or admin to create one.')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Add IP Policy' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Add an IP policy' })).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: /(?:Manage|View) IP policies/ }),
     ).not.toBeInTheDocument()
@@ -852,7 +852,7 @@ describe('supported access points and binding permission', () => {
         groups: [createNetworkAccessGroupFixture()],
       })
       await user.click(getChip())
-      expect(screen.queryByRole('button', { name: 'Add IP Policy' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Add an IP policy' })).not.toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: 'View IP policies' }))
       expect(mockSetSettingsDestination).toHaveBeenCalledWith('ip-policies')
       await user.click(getChip())
@@ -1479,7 +1479,7 @@ describe('returning from policy creation', () => {
       await screen.findByText(lockoutWarning)
       await user.click(screen.getByRole('switch', { name: 'MCP Server' }))
       await user.click(screen.getByRole('combobox', { name: 'IP Policy' }))
-      await user.click(screen.getByRole('option', { name: 'Add IP Policy' }))
+      await user.click(screen.getByRole('option', { name: 'Add an IP policy' }))
       const dialog = await screen.findByRole('dialog')
       if (action !== 'cancel') {
         await user.type(within(dialog).getByRole('textbox', { name: 'Name' }), 'New Office')
