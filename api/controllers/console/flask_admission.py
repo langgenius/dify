@@ -71,7 +71,7 @@ def console_account_admission[T, **P, R](
     ) -> Callable[Concatenate[T, P], R | Response]:
         admitted_view = cloud_edition_billing_resource_check(billing_resource)(view) if billing_resource else view
 
-        @wraps(view, updated=())
+        @wraps(view)
         def inject_request_context(self: T, /, *args: P.args, **kwargs: P.kwargs) -> R:
             account_with_tenant = current_account_with_tenant()
             account = account_with_tenant.account

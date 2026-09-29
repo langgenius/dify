@@ -22,6 +22,7 @@ from core.trigger.entities.api_entities import (
 )
 from core.trigger.entities.entities import RequestLog, SubscriptionBuilderUpdater
 from core.trigger.trigger_manager import TriggerManager
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.helper import dump_response
@@ -213,6 +214,7 @@ class TriggerSubscriptionListApi(Resource):
                     tenant_id=tenant_id,
                     provider_id=TriggerProviderID(provider),
                     user=user,
+                    credential_query=application_services().credential_queries,
                 ),
             )
         except ValueError as e:

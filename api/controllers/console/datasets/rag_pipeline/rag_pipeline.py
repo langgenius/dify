@@ -35,10 +35,11 @@ from libs.helper import dump_response
 from libs.login import login_required
 from models.account import Account
 from models.dataset import Pipeline
-from services.dataset_service import DatasetService
+from repositories.knowledge.dataset_read_repository import get_pipeline_dataset
 from services.entities.knowledge_entities.rag_pipeline_entities import IconInfo, PipelineTemplateInfoEntity
 from services.errors.account import NoPermissionError
 from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
+from services.knowledge.dataset_service import DatasetService
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 
 logger: logging.Logger = logging.getLogger(__name__)
@@ -232,7 +233,7 @@ class PublishCustomizedPipelineTemplateApi(Resource):
         pipeline: Pipeline,
     ) -> tuple[str, int]:
         session = db.session()
-        dataset = pipeline.retrieve_dataset(session=session)
+        dataset = get_pipeline_dataset(pipeline, session=session)
         if dataset is None:
             raise NotFound("Dataset not found")
 

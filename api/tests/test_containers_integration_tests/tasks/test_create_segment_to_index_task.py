@@ -19,6 +19,7 @@ from extensions.ext_redis import redis_client
 from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
+from repositories.knowledge.dataset_read_repository import get_dataset_doc_form
 from tasks.create_segment_to_index_task import create_segment_to_index_task
 
 
@@ -227,7 +228,7 @@ class TestCreateSegmentToIndexTask:
 
         # Verify index processor was called
         mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(
-            dataset.get_doc_form(session=db_session_with_containers)
+            get_dataset_doc_form(dataset, session=db_session_with_containers)
         )
         mock_external_service_dependencies["index_processor"].load.assert_called_once()
 
@@ -555,7 +556,7 @@ class TestCreateSegmentToIndexTask:
 
         # Verify index processor was called
         mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(
-            dataset.get_doc_form(session=db_session_with_containers)
+            get_dataset_doc_form(dataset, session=db_session_with_containers)
         )
         mock_external_service_dependencies["index_processor"].load.assert_called_once()
 
@@ -988,7 +989,7 @@ class TestCreateSegmentToIndexTask:
 
         # Verify index processor was called
         mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(
-            dataset.get_doc_form(session=db_session_with_containers)
+            get_dataset_doc_form(dataset, session=db_session_with_containers)
         )
         mock_external_service_dependencies["index_processor"].load.assert_called_once()
 
@@ -1064,7 +1065,7 @@ class TestCreateSegmentToIndexTask:
 
         # Verify index processor was called
         mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(
-            dataset.get_doc_form(session=db_session_with_containers)
+            get_dataset_doc_form(dataset, session=db_session_with_containers)
         )
         mock_external_service_dependencies["index_processor"].load.assert_called_once()
 

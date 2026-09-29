@@ -16,8 +16,8 @@ from sqlalchemy.orm import Session
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from models.dataset import Dataset, Document
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
-from services.dataset_service import DocumentService
 from services.errors.document import DocumentIndexingError
+from services.knowledge.dataset_service import DocumentService
 
 FIXED_TIME = datetime.datetime(2023, 1, 1, 12, 0, 0)
 
@@ -140,10 +140,10 @@ class TestDatasetServiceBatchUpdateDocumentStatus:
     def patched_dependencies(self):
         """Patch non-DB collaborators only."""
         with (
-            patch("services.dataset_service.redis_client") as redis_client,
-            patch("services.dataset_service.add_document_to_index_task") as add_task,
-            patch("services.dataset_service.remove_document_from_index_task") as remove_task,
-            patch("services.dataset_service.naive_utc_now") as naive_utc_now,
+            patch("services.knowledge.dataset_service.redis_client") as redis_client,
+            patch("services.knowledge.dataset_service.add_document_to_index_task") as add_task,
+            patch("services.knowledge.dataset_service.remove_document_from_index_task") as remove_task,
+            patch("services.knowledge.dataset_service.naive_utc_now") as naive_utc_now,
         ):
             naive_utc_now.return_value = FIXED_TIME
             redis_client.get.return_value = None
