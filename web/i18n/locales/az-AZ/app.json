@@ -100,7 +100,6 @@
   "gotoAnything.groups.workflowNodes": "İş axını düyünləri",
   "gotoAnything.noMatchingCommands": "Uyğun əmr tapılmadı",
   "gotoAnything.noResults": "Nəticə tapılmadı",
-  "gotoAnything.pressEscToClose": "Bağlamaq üçün ESC düyməsini basın",
   "gotoAnything.quickAction": "Sürətli əməliyyat",
   "gotoAnything.resultCount": "{{count}} nəticə",
   "gotoAnything.resultCount_other": "{{count}} nəticə",

@@ -100,7 +100,6 @@
   "gotoAnything.groups.workflowNodes": "ໂນດໃນ Workflow",
   "gotoAnything.noMatchingCommands": "ບໍ່ພົບຄຳສັ່ງທີ່ກົງກັນ",
   "gotoAnything.noResults": "ບໍ່ພົບຜົນການຄົ້ນຫາ",
-  "gotoAnything.pressEscToClose": "ກົດ ESC ເພື່ອປິດ",
   "gotoAnything.quickAction": "ດຳເນີນການດ່ວນ",
   "gotoAnything.resultCount": "{{count}} ຜົນລາຍການ",
   "gotoAnything.resultCount_other": "{{count}} ຜົນລາຍການ",

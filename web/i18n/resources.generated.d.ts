@@ -584,7 +584,6 @@ export default interface Resources {
     'gotoAnything.groups.workflowNodes': 'Workflow Nodes'
     'gotoAnything.noMatchingCommands': 'No matching commands found'
     'gotoAnything.noResults': 'No results found'
-    'gotoAnything.pressEscToClose': 'Press ESC to close'
     'gotoAnything.quickAction': 'Quick action'
     'gotoAnything.resultCount': '{{count}} result' | '{{count}} results'
     'gotoAnything.searchFailed': 'Search failed'

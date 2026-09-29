@@ -100,7 +100,6 @@
   "gotoAnything.groups.workflowNodes": "Узлы рабочих процессов",
   "gotoAnything.noMatchingCommands": "Соответствующие команды не найдены",
   "gotoAnything.noResults": "Ничего не найдено",
-  "gotoAnything.pressEscToClose": "Нажмите ESC для закрытия",
   "gotoAnything.quickAction": "Быстрое действие",
   "gotoAnything.resultCount": "{{count}} результат",
   "gotoAnything.resultCount_other": "{{count}} результатов",
