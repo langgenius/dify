@@ -497,8 +497,10 @@ describe('GotoAnything', () => {
       ]
       renderGotoAnything(<GotoAnything />)
       triggerSearchShortcut()
-      await screen.findByRole('combobox')
+      const input = await screen.findByRole('combobox')
+      await waitFor(() => expect(input).toHaveFocus())
       await user.paste('models')
+      expect(input).toHaveValue('models')
       expect(screen.getByRole('option', { name: /\/models/ })).toBeInTheDocument()
       await user.keyboard('{Enter}')
       expect(execute).toHaveBeenCalledTimes(1)
