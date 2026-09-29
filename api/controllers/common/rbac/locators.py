@@ -116,7 +116,7 @@ class AgentBehindApp(_ParamLocator):
         binding = agent_binding(tenant_id, _required(path_args, self.param))
         if binding is None or binding.scope == AgentScope.WORKFLOW_ONLY:
             return None
-        return ResourceIdentity(self.scope, str(binding.id))
+        return ResourceIdentity(self.scope, binding.id)
 
     def owner_id(self, tenant_id: str, identity: ResourceIdentity) -> str | None:
         return None
