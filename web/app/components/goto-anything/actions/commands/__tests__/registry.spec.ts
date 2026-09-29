@@ -19,6 +19,25 @@ describe('SlashCommandRegistry', () => {
     registry = new SlashCommandRegistry()
   })
 
+  it('publishes stable deduplicated snapshots when commands are registered or removed', () => {
+    const listener = vi.fn()
+    const unsubscribe = registry.subscribe(listener)
+    const empty = registry.getSnapshot()
+    const command = createHandler({ name: 'language', aliases: ['lang'] })
+    registry.register(command)
+    expect(listener).toHaveBeenCalledTimes(1)
+    const registered = registry.getSnapshot()
+    expect(registered).toEqual([command])
+    expect(registry.getSnapshot()).toBe(registered)
+    expect(registered).not.toBe(empty)
+    registry.unregister('language')
+    expect(registry.getSnapshot()).toEqual([])
+    expect(listener).toHaveBeenCalledTimes(2)
+    unsubscribe()
+    registry.register(command)
+    expect(listener).toHaveBeenCalledTimes(2)
+  })
+
   describe('register & findCommand', () => {
     it('registers a handler and retrieves it by name', () => {
       const handler = createHandler({ name: 'docs' })
