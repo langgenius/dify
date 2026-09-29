@@ -235,6 +235,11 @@ async function execute(
     else if (state.insecure) init.tls = { rejectUnauthorized: false }
     if (isVerbose()) init.verbose = true
 
+    // Buffered body from buildRequest is only valid for the original sendable; hooks may
+    // replace ctx.request (URL/body). Match the native-fetch branch by deriving body
+    // from the final Request when hooks swapped it out.
+    const dispatcherBody = ctx.request === sendable ? resolved.body : undefined
+
     try {
       ctx.response = useUndiciFetch
         ? await fetchWithDispatcher(
@@ -244,7 +249,7 @@ async function execute(
               dispatcher: state.dispatcher,
               ...(isVerbose() ? { verbose: true } : {}),
             },
-            resolved.body,
+            dispatcherBody,
           )
         : await fetch(ctx.request, init)
     } catch (err) {
