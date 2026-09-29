@@ -34,7 +34,6 @@
   "agentDetail.access.workflow.nodeCount_other": "{{count}} ໂນດ",
   "agentDetail.access.workflow.notAvailable": "ບໍ່ມີຂໍ້ມູນ",
   "agentDetail.access.workflow.openInStudio": "ເປີດໃນ Studio",
-  "agentDetail.access.workflow.openInStudioFor": "ເປີດ {{name}} ໃນ Studio",
   "agentDetail.access.workflow.table.actions": "ການດຳເນີນການ",
   "agentDetail.access.workflow.table.lastUpdated": "ອັບເດດຫຼ້າສຸດ",
   "agentDetail.access.workflow.table.name": "ຊື່",

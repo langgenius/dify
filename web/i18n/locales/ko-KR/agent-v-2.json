@@ -34,7 +34,6 @@
   "agentDetail.access.workflow.nodeCount_other": "노드 {{count}}개",
   "agentDetail.access.workflow.notAvailable": "N/A",
   "agentDetail.access.workflow.openInStudio": "Studio에서 열기",
-  "agentDetail.access.workflow.openInStudioFor": "Studio에서 {{name}} 열기",
   "agentDetail.access.workflow.table.actions": "작업",
   "agentDetail.access.workflow.table.lastUpdated": "마지막 업데이트",
   "agentDetail.access.workflow.table.name": "이름",

@@ -34,7 +34,6 @@
   "agentDetail.access.workflow.nodeCount_other": "{{count}} nút",
   "agentDetail.access.workflow.notAvailable": "N/A",
   "agentDetail.access.workflow.openInStudio": "Mở trong Studio",
-  "agentDetail.access.workflow.openInStudioFor": "Mở {{name}} trong Studio",
   "agentDetail.access.workflow.table.actions": "Hành động",
   "agentDetail.access.workflow.table.lastUpdated": "Cập nhật lần cuối",
   "agentDetail.access.workflow.table.name": "Tên",

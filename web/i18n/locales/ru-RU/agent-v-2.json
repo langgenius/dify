@@ -34,7 +34,6 @@
   "agentDetail.access.workflow.nodeCount_other": "{{count}} узлов",
   "agentDetail.access.workflow.notAvailable": "Н/Д",
   "agentDetail.access.workflow.openInStudio": "Открыть в Studio",
-  "agentDetail.access.workflow.openInStudioFor": "Открыть {{name}} в Studio",
   "agentDetail.access.workflow.table.actions": "Действия",
   "agentDetail.access.workflow.table.lastUpdated": "Последнее обновление",
   "agentDetail.access.workflow.table.name": "Имя",

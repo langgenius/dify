@@ -159,12 +159,10 @@ function WorkflowAccessRow({ reference }: { reference: AgentReferencingWorkflowR
           href={getWorkflowReferenceHref(reference)}
           target="_blank"
           rel="noopener noreferrer"
-          aria-label={t(($) => $['agentDetail.access.workflow.openInStudioFor'], {
-            name: reference.app_name,
-          })}
           className="inline-flex items-center gap-0.5 rounded-sm text-text-secondary hover:text-text-accent hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
         >
           {t(($) => $['agentDetail.access.workflow.openInStudio'])}
+          <span className="sr-only">{reference.app_name}</span>
           <span aria-hidden className="i-ri-external-link-line size-4" />
         </Link>
       </td>
