@@ -18,7 +18,8 @@ from core.errors.error import (
 )
 from core.model_manager import ModelManager
 from core.plugin.impl.exc import PluginDaemonError
-from core.rag.datasource.keyword.keyword_factory import Keyword
+from core.rag.datasource.keyword.jieba.jieba import Jieba
+from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.embedding.token_counter import calculate_segment_token_counts
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
@@ -51,11 +52,13 @@ class IndexingExecutionAdapter:
         session_factory: sessionmaker[Session],
         documents: SQLAlchemyDocumentRepository,
         segments: SQLAlchemySegmentRepository,
+        uploads: SQLAlchemyKnowledgeUploadRepository,
         sources: CompositeStoredSourceResolver,
     ) -> None:
         self._session_factory = session_factory
         self._documents = documents
         self._segments = segments
+        self._uploads = uploads
         self._sources = sources
 
     def describe_error(self, error: Exception) -> str:
@@ -177,25 +180,40 @@ class IndexingExecutionAdapter:
             # Workers load their own inputs and own their sessions. No ORM
             # instance or session crosses the executor boundary.
             dataset, document = self._documents.get_indexing_models(ref)
-            with self._session_factory() as session:
-                if keywords:
-                    Keyword(dataset).create(chunks, session)
+            if keywords:
+                # Keep the read/modify/write lock while each repository call
+                # closes its transaction before keyword extraction or storage I/O.
+                Jieba(dataset).update_texts(
+                    chunks,
+                    read=lambda: self._segments.get_keyword_table(ref.dataset),
+                    write=lambda storage_type, data, selected: self._segments.save_keyword_table(
+                        ref.dataset, storage_type=storage_type, data=data, keywords=selected
+                    ),
+                    lock=redis_client.lock(f"keyword_indexing_lock_{dataset.id}", timeout=600),
+                )
+            elif dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
+                with self._session_factory() as session:
+                    vector_type = Vector.resolve_vector_type(dataset, session=session)
+                attachments = (
+                    [attachment for chunk in chunks for attachment in chunk.attachments or []]
+                    if dataset.is_multimodal
+                    else []
+                )
+                files = self._uploads.get_files(
+                    workspace_id=ref.dataset.tenant_id,
+                    file_ids=[attachment.metadata["doc_id"] for attachment in attachments],
+                )
+                # All database inputs are materialized before initializing the
+                # vector backend, embedding text/images, or reading object storage.
+                vector = Vector(dataset, session=None, vector_type=vector_type)
+                if document.doc_form == IndexStructureType.PARENT_CHILD_INDEX:
+                    for chunk in chunks:
+                        if chunk.children:
+                            vector.create([Document.model_validate(child.model_dump()) for child in chunk.children])
                 else:
-                    attachments = (
-                        [attachment for chunk in chunks for attachment in chunk.attachments or []]
-                        if dataset.is_multimodal
-                        else []
-                    )
-                    IndexProcessorFactory(document.doc_form).init_index_processor().load(
-                        dataset,
-                        chunks,
-                        multimodal_documents=attachments,
-                        with_keywords=False,
-                        session=session,
-                    )
-                # Vector/keyword implementations still use this local session
-                # for their own metadata. Commit it before document state writes.
-                session.commit()
+                    vector.create(chunks)
+                if attachments:
+                    vector.create_multimodal(attachments, upload_files=files)
             self.check_paused(ref)
             self._segments.complete_indexing_segments(ref, [chunk.metadata["doc_id"] for chunk in chunks])
 
@@ -208,12 +226,11 @@ def build_document_indexing_service(
     """Assemble a fresh indexing use case from explicit database dependencies."""
     documents = SQLAlchemyDocumentRepository(session_factory=session_factory)
     segments = SQLAlchemySegmentRepository(session_factory=session_factory)
+    uploads = SQLAlchemyKnowledgeUploadRepository(session_factory=session_factory)
     credentials = build_data_source_credentials(database_client=session_factory)
     sources = CompositeStoredSourceResolver(
         adapters={
-            DataSourceType.UPLOAD_FILE: FileSourceAdapter(
-                uploads=SQLAlchemyKnowledgeUploadRepository(session_factory=session_factory)
-            ),
+            DataSourceType.UPLOAD_FILE: FileSourceAdapter(uploads=uploads),
             DataSourceType.NOTION_IMPORT: NotionSourceResolver(
                 actor_credentials=credentials.actor, stored_credentials=credentials.stored
             ),
@@ -224,7 +241,7 @@ def build_document_indexing_service(
         documents=documents,
         segments=segments,
         backend=IndexingExecutionAdapter(
-            session_factory=session_factory, documents=documents, segments=segments, sources=sources
+            session_factory=session_factory, documents=documents, segments=segments, uploads=uploads, sources=sources
         ),
         enforce_vector_space_admission=enforce_vector_space_admission,
     )
