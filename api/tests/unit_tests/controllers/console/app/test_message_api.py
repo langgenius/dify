@@ -470,6 +470,7 @@ def test_list_chat_messages_pages_all_tied_timestamps(
     monkeypatch.setattr(message_module, "dump_response", lambda _model, pagination: pagination)
 
     found: list[str] = []
+    newest_first: list[str] = []
     first_id = None
     while True:
         result = message_module._list_chat_messages(
@@ -482,9 +483,12 @@ def test_list_chat_messages_pages_all_tied_timestamps(
         page_ids = result.data
         assert page_ids
         found.extend(page_ids)
+        # The endpoint returns each page oldest-first, although its cursor walks newest-first.
+        newest_first.extend(reversed(page_ids))
         assert result.has_more is (len(found) < len(messages))
         if not result.has_more:
             break
         first_id = page_ids[0]
     assert len(found) == len(messages)
     assert set(found) == {row.id for row in messages}
+    assert newest_first == sorted((row.id for row in messages), reverse=True)
