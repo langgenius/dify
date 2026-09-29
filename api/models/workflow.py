@@ -1497,10 +1497,10 @@ class ConversationVariable(TypeBase):
         """
         row_id = variable.id
         try:
-            UUID(str(row_id))
+            UUID(row_id)
         except (ValueError, TypeError, AttributeError):
             return str(uuid5(NAMESPACE_URL, f"dify:conversation-variable:{variable.name}"))
-        return str(row_id)
+        return row_id
 
     @classmethod
     def from_variable(cls, *, app_id: str, conversation_id: str, variable: VariableBase) -> "ConversationVariable":

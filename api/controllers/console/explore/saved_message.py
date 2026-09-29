@@ -47,7 +47,7 @@ class SavedMessageListApi(Resource):
         pagination = application_services().saved_messages.pagination_by_last_id(
             app_id=app_id,
             actor=SavedMessageActor.account(request_context.account_id),
-            last_id=str(req_data.last_id) if req_data.last_id else None,
+            last_id=req_data.last_id or None,
             limit=req_data.limit,
         )
         return dump_response(SavedMessageInfiniteScrollPagination, pagination)
@@ -69,7 +69,7 @@ class SavedMessageListApi(Resource):
             application_services().saved_messages.save(
                 app_id=app_id,
                 actor=SavedMessageActor.account(request_context.account_id),
-                message_id=str(req_data.message_id),
+                message_id=req_data.message_id,
             )
         except MessageNotExistsError:
             raise NotFound("Message Not Exists.")

@@ -3,6 +3,7 @@ from __future__ import annotations
 import uuid
 
 from flask import request
+from services.end_user_service import EndUserService
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound, Unauthorized
 
 from controllers.openapi.auth.data import AuthData, CallerKind
@@ -11,7 +12,6 @@ from models.account import AccountStatus, TenantStatus
 from models.enums import AppStatus, EndUserType
 from services.account_service import AccountService, TenantService
 from services.app_service import AppService
-from services.end_user_service import EndUserService
 from services.enterprise.enterprise_service import EnterpriseService, WebAppAccessMode
 
 

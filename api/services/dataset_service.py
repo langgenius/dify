@@ -1365,7 +1365,7 @@ class DatasetService:
 
         # Remove any dataset API key scoped only to this knowledge base, so it cannot
         # silently degrade to unrestricted (access-all) once its last binding is gone.
-        dataset_api_key_bindings.delete_keys_scoped_only_to(session, str(dataset.id))
+        dataset_api_key_bindings.delete_keys_scoped_only_to(session, dataset.id)
 
         session.delete(dataset)
         session.commit()

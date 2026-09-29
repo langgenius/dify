@@ -523,7 +523,7 @@ def _serialize_agent_app_pagination(
             item["hidden_app_backed"] = False
             item["id"] = agent.id
             item["debug_conversation_id"] = debug_conversation_ids_by_agent_id.get(agent.id)
-            item["permission_keys"] = permission_keys_by_agent_id.get(str(agent.id), [])
+            item["permission_keys"] = permission_keys_by_agent_id.get(agent.id, [])
             item["role"] = agent.role or ""
             item["active_config_is_published"] = active_config_is_published_by_agent_id.get(agent.id, False)
             item["reference_count"] = reference_counts_by_agent_id.get(agent.id, 0)
@@ -569,7 +569,7 @@ def _agent_api_key_count(session: Session, app_model: App) -> int:
 def _agent_app_access_ready(session: Session, app_model: App) -> bool:
     agent = _agent_roster_service(session).get_app_backing_agent(
         tenant_id=app_model.tenant_id,
-        app_id=str(app_model.id),
+        app_id=app_model.id,
     )
     return bool(agent and agent_has_workflow_callable_active_snapshot(session=session, agent=agent))
 

@@ -145,7 +145,7 @@ class CreditPoolService:
 
     @staticmethod
     def _use_billing_quota() -> bool:
-        return bool(dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD)
+        return dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD
 
     @staticmethod
     def _require_session(session: Session | None) -> Session:

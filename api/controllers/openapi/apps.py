@@ -180,9 +180,7 @@ class AppListApi(Resource):
                 return empty
             # Apply RBAC visibility to the UUID fast-path the same way the service
             # layer does for paginated queries (id in accessible set OR own app).
-            if not access_filter.is_app_accessible(
-                app.id, app.maintainer if app.maintainer else None, account_id
-            ):
+            if not access_filter.is_app_accessible(app.id, app.maintainer or None, account_id):
                 return empty
             tenant_name = TenantService.get_tenant_name(workspace_id, session=ctx.session)
             item = AppListRow(

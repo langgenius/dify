@@ -72,8 +72,8 @@ class PermittedExternalAppsListApi(Resource):
         apps_by_id: dict[str, AppSummary] = {
             a.id: a for a in application_services().apps.queries.find_visible_apps_by_ids(page_result.app_ids)
         }
-        tenant_ids = list({str(a.tenant_id) for a in apps_by_id.values()})
-        tenants_by_id = {str(t.id): t for t in TenantService.get_tenants_by_ids(tenant_ids, session=ctx.session)}
+        tenant_ids = list({a.tenant_id for a in apps_by_id.values()})
+        tenants_by_id = {t.id: t for t in TenantService.get_tenants_by_ids(tenant_ids, session=ctx.session)}
 
         items: list[AppListRow] = []
         for app_id in page_result.app_ids:

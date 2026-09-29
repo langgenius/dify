@@ -93,12 +93,12 @@ class RedisForgotPasswordTokenGateway(ForgotPasswordTokenGateway):
             return None
         if isinstance(payload, ForgotPasswordResetTokenData):
             return ForgotPasswordResetToken(
-                email=str(payload.email),
+                email=payload.email,
                 code=payload.code,
                 account_id=payload.account_id,
             )
         return ForgotPasswordVerificationToken(
-            email=str(payload.email),
+            email=payload.email,
             code=payload.code,
             account_id=payload.account_id,
         )

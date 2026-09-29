@@ -71,7 +71,7 @@ def grant_tool_file_access(tool_file_ids: Iterable[str]) -> None:
     if scope is None:
         return
 
-    granted_tool_file_ids = frozenset(str(file_id) for file_id in tool_file_ids if file_id)
+    granted_tool_file_ids = frozenset(file_id for file_id in tool_file_ids if file_id)
     if not granted_tool_file_ids:
         return
 

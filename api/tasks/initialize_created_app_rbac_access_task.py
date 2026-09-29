@@ -53,7 +53,7 @@ class _WhitelistResourceKind[ItemT]:
             )
             if last_id:
                 stmt = stmt.where(self.model.id > last_id)
-            ids = [str(resource_id) for resource_id in db.session().scalars(stmt).all()]
+            ids = [resource_id for resource_id in db.session().scalars(stmt).all()]
             if not ids:
                 return
             yield ids
