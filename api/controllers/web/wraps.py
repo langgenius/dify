@@ -5,7 +5,6 @@ from typing import Concatenate
 
 from flask import request
 from flask_restx import Resource
-from sqlalchemy import select
 from werkzeug.exceptions import NotFound, Unauthorized
 
 from constants import HEADER_NAME_APP_CODE
@@ -15,14 +14,12 @@ from controllers.web.error import (
     WebAppAuthRequiredError,
     WebAppNotFoundError,
 )
-from core.app.public_runtime import published_app_filter
-from core.db.session_factory import session_factory
 from core.logging.context import set_identity_context
 from extensions.ext_application_services import application_services
 from libs.passport import PassportService
 from libs.token import extract_webapp_passport
-from models.enums import AppStatus
-from models.model import App, EndUser, Site
+from models.model import App, EndUser
+from repositories.web_passport_repository import get_web_passport_identity
 from services.enterprise.enterprise_service import EnterpriseService, WebAppAccessMode, WebAppSettings
 from services.system_feature_service import SystemFeatureService
 from services.web_passport_gateways import resolve_web_app_auth_type
@@ -70,36 +67,18 @@ def decode_jwt_token(app_code: str | None = None, user_id: str | None = None) ->
             raise Unauthorized("App token is missing.")
         decoded = PassportService().verify(tk)
         app_code = decoded.get("app_code")
+        if not isinstance(app_code, str) or not app_code:
+            raise WebAppNotFoundError()
         app_id = decoded.get("app_id")
-        with session_factory.create_session() as session:
-            # A previously issued passport cannot expose an App after its
-            # published artifact disappears. Console/Debug never use this gate.
-            app_model = session.scalar(
-                select(App).where(App.id == app_id, App.status == AppStatus.NORMAL, published_app_filter())
-            )
-            if not app_model:
-                raise WebAppNotFoundError()
-            site = session.scalar(
-                select(Site).where(Site.code == app_code, Site.app_id == app_model.id, Site.status == AppStatus.NORMAL)
-            )
-            if not app_code or not site:
-                raise WebAppNotFoundError()
-            if app_model.enable_site is False:
-                raise WebAppNotFoundError()
-            end_user_id = decoded.get("end_user_id")
-            end_user = session.scalar(
-                select(EndUser).where(
-                    EndUser.id == end_user_id,
-                    EndUser.app_id == app_model.id,
-                    EndUser.tenant_id == app_model.tenant_id,
-                )
-            )
-            if not end_user:
-                raise NotFound()
+        app_model, end_user = get_web_passport_identity(app_id, app_code, decoded.get("end_user_id"))
+        if app_model is None:
+            raise WebAppNotFoundError()
+        if end_user is None:
+            raise NotFound()
 
-            # Validate user_id against end_user's session_id if provided
-            if user_id is not None and end_user.session_id != user_id:
-                raise Unauthorized("Authentication has expired.")
+        # Validate user_id against end_user's session_id if provided.
+        if user_id is not None and end_user.session_id != user_id:
+            raise Unauthorized("Authentication has expired.")
 
         # for enterprise webapp auth
         app_web_auth_enabled = False

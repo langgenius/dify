@@ -4,14 +4,14 @@ from flask import Response, request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, RootModel, ValidationError
 from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 
 from controllers.common.access_response import mcp_server_not_found_response
 from controllers.common.schema import register_response_schema_models, register_schema_model
 from controllers.mcp import mcp_ns
+from core.db.session_factory import session_factory
 from core.mcp import types as mcp_types
 from core.mcp.server.streamable_http import handle_mcp_request, negotiate_protocol_version
-from extensions.ext_database import db
 from graphon.variables.input_entities import VariableEntity, VariableEntityType
 from libs import helper
 from models.enums import EndUserType
@@ -76,7 +76,7 @@ class MCPAppApi(Resource):
             ValidationError: Invalid request format or parameters
         """
         # response-contract:ignore MCP route returns Flask Response from JSON-RPC handler
-        sessions = sessionmaker(db.engine, expire_on_commit=False)
+        sessions = session_factory.get_session_maker()
         try:
             # Resolve identity before parsing the body: missing identities have
             # one bounded response even for malformed or oversized JSON. Only
@@ -220,8 +220,7 @@ class MCPAppApi(Resource):
             app_model_config = app.app_model_config_with_session(session=session)
             if app_model_config is None:
                 raise MCPRequestError(mcp_types.INVALID_REQUEST, "App is unavailable")
-            features_dict = app_model_config.to_dict()
-            raw_user_input_form = features_dict.get("user_input_form", [])
+            raw_user_input_form = app_model_config.user_input_form_list
 
         # Convert to VariableEntity objects
         try:

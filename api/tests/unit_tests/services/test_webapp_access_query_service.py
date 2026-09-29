@@ -321,6 +321,9 @@ class _BatchQueries:
     def find_app_id_by_code(self, app_code: str) -> str | None:
         raise AssertionError(f"Batch queries must not resolve app codes: {app_code}")
 
+    def is_app_available(self, app_id: str) -> bool:
+        raise AssertionError(f"Batch queries must not check app availability: {app_id}")
+
     def get_access_mode(self, app_id: str) -> WebAppAccessMode:
         raise AssertionError(f"Batch queries must not use single-app lookups: {app_id}")
 

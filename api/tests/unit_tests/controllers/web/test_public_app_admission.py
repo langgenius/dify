@@ -268,7 +268,9 @@ def test_real_database_failure_is_not_reclassified_as_unpublished(
     failing_factory = MagicMock(return_value=failing_session)
     h.access_repo._session_factory = failing_factory
     h.passport_repo._session_factory = failing_factory
-    monkeypatch.setattr(wraps.session_factory, "create_session", failing_factory)
+    from repositories import web_passport_repository
+
+    monkeypatch.setattr(web_passport_repository.global_session_factory, "create_session", failing_factory)
     response = h.client.get("/api" + route, headers={"X-App-Code": "fixture-code"})
     assert response.status_code == (503 if route.startswith(("/webapp", "/login")) else 500)
     assert response.get_json()["code"] != "app_not_found"
