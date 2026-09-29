@@ -128,7 +128,7 @@ export const DifyBuilderPanelFooter = () => {
             />
           </AnimatedInteractionDock>
         )}
-        {!interactionPending && <DifyBuilderComposer />}
+        {!interactionVisible && <DifyBuilderComposer />}
       </div>
     </footer>
   )
