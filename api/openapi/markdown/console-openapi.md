@@ -14883,6 +14883,7 @@ section may be empty, which is how callers express "no knowledge layer".
 | from_end_user_id | string |  | No |
 | id | string |  | Yes |
 | latency | number |  | Yes |
+| message_files | [ [MessageFile](#messagefile) ] |  | No |
 | message_id | string |  | Yes |
 | message_tokens | integer |  | Yes |
 | query | string |  | Yes |

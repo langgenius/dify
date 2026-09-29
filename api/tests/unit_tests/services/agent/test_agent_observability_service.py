@@ -418,7 +418,11 @@ def test_list_log_messages_merges_deduplicates_and_sorts_sources(monkeypatch: py
     ]
     monkeypatch.setattr(service, "_list_webapp_messages", lambda **kwargs: [webapp_message])
     monkeypatch.setattr(service, "_list_message_feedbacks", lambda **kwargs: {})
-    monkeypatch.setattr(service, "serialize_log_message", lambda message, feedbacks=(): webapp_row)
+    monkeypatch.setattr(
+        service,
+        "serialize_log_message",
+        lambda message, feedbacks=(), session=None: webapp_row,
+    )
     monkeypatch.setattr(service, "_list_workflow_messages", lambda **kwargs: workflow_rows)
 
     payload = service.list_log_messages(
@@ -649,6 +653,7 @@ def test_serialize_log_message_returns_frontend_log_shape() -> None:
             {"rating": "like", "content": "Useful", "from_source": "user"},
             {"rating": "dislike", "content": "Needs more detail", "from_source": "admin"},
         ],
+        "message_files": [],
         "message_tokens": 3,
         "answer_tokens": 4,
         "total_tokens": 7,
