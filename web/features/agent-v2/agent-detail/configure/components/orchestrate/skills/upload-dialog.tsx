@@ -179,7 +179,7 @@ function AgentSkillPackageUploader({
         </div>
       )}
       {file && (
-        <div className="group flex items-center rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs hover:bg-components-panel-on-panel-item-bg-hover">
+        <div className="flex items-center rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs hover:bg-components-panel-on-panel-item-bg-hover">
           <div className="flex items-center justify-center p-3">
             <span aria-hidden className="i-ri-file-zip-line size-6 shrink-0 text-text-tertiary" />
           </div>
@@ -193,7 +193,7 @@ function AgentSkillPackageUploader({
               <span>{formatFileSize(file.size)}</span>
             </div>
           </div>
-          <div className="hidden items-center pr-3 group-hover:flex">
+          <div className="flex items-center pr-3">
             <IconButton
               aria-label={tCommon(($) => $['operation.remove'])}
               onClick={() => onChange(undefined)}
