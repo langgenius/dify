@@ -1,4 +1,7 @@
+import type { AddressInfo } from 'node:net'
 import type { FetchContext, HttpMethod, ResolvedOptions } from './types.js'
+import * as http from 'node:http'
+import { fetch as undiciFetch } from 'undici'
 import { describe, expect, it } from 'vite-plus/test'
 import { backoffDelay, isIdempotentRetryMethod, shouldRetry } from './retry.js'
 
@@ -29,6 +32,21 @@ describe('shouldRetry', () => {
   it('does not retry non-retryable status codes on GET', () => {
     const res = new Response(null, { status: 404 })
     expect(shouldRetry(res, ctxFor('GET'))).toBe(false)
+  })
+
+  it('classifies undici fetch Response objects as HTTP responses', async () => {
+    const server = http.createServer((_req, res) => {
+      res.writeHead(404)
+      res.end()
+    })
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', () => resolve()))
+    const addr = server.address() as AddressInfo
+    const res = await undiciFetch(`http://127.0.0.1:${addr.port}/`)
+    expect(res.constructor).not.toBe(Response)
+    expect(shouldRetry(res, ctxFor('GET'))).toBe(false)
+    await new Promise<void>((resolve, reject) =>
+      server.close((err) => (err ? reject(err) : resolve())),
+    )
   })
 
   it('no longer retries 429 here (it has a dedicated branch in execute())', () => {

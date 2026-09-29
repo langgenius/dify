@@ -1,4 +1,5 @@
 import type {
+  BodyInit,
   ClientOptions,
   FetchContext,
   HeadersInit,
@@ -157,13 +158,33 @@ function buildRequest(
 type UndiciFetchInit = NonNullable<Parameters<typeof undiciFetch>[1]>
 
 // undici v8 fetch does not accept the global Request object as input (URL parse
-// fails); pass URL + init. Streaming bodies need `duplex: 'half'` per fetch spec.
-async function fetchWithDispatcher(request: Request, init: UndiciFetchInit): Promise<Response> {
-  const hasBody = request.body !== null
+// fails); pass URL + init. Use buffered / caller-provided body data so 307/308
+// redirects can replay the payload; passing request.body is a single-use stream.
+async function dispatcherBodyInit(
+  request: Request,
+  resolvedBody?: BodyInit,
+): Promise<Pick<UndiciFetchInit, 'body' | 'duplex'>> {
+  if (resolvedBody !== undefined) {
+    if (resolvedBody instanceof ReadableStream) return { body: resolvedBody, duplex: 'half' }
+    return { body: resolvedBody as UndiciFetchInit['body'] }
+  }
+  if (request.body === null) return {}
+  const bytes = await request.arrayBuffer()
+  if (bytes.byteLength === 0) return {}
+  return { body: new Uint8Array(bytes) }
+}
+
+async function fetchWithDispatcher(
+  request: Request,
+  init: UndiciFetchInit,
+  resolvedBody?: BodyInit,
+): Promise<Response> {
+  const bodyInit = await dispatcherBodyInit(request, resolvedBody)
   return undiciFetch(request.url, {
     method: request.method,
     headers: request.headers,
-    ...(hasBody ? { body: request.body, duplex: 'half' } : {}),
+    redirect: request.redirect,
+    ...bodyInit,
     ...init,
   })
 }
@@ -216,11 +237,15 @@ async function execute(
 
     try {
       ctx.response = useUndiciFetch
-        ? await fetchWithDispatcher(sendable, {
-            signal,
-            dispatcher: state.dispatcher,
-            ...(isVerbose() ? { verbose: true } : {}),
-          })
+        ? await fetchWithDispatcher(
+            ctx.request,
+            {
+              signal,
+              dispatcher: state.dispatcher,
+              ...(isVerbose() ? { verbose: true } : {}),
+            },
+            resolved.body,
+          )
         : await fetch(ctx.request, init)
     } catch (err) {
       ctx.error = err

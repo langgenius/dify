@@ -8,6 +8,18 @@ export const RETRY_STATUS_CODES = [408, 413, 500, 502, 503, 504] as const
 const RETRY_METHODS_SET: ReadonlySet<string> = new Set(RETRY_METHODS)
 const RETRY_STATUS_SET: ReadonlySet<number> = new Set(RETRY_STATUS_CODES)
 
+function isHttpResponse(target: unknown): target is Response {
+  if (target instanceof Response) return true
+  return (
+    typeof target === 'object' &&
+    target !== null &&
+    'status' in target &&
+    typeof (target as Response).status === 'number' &&
+    'headers' in target &&
+    typeof (target as Response).headers?.get === 'function'
+  )
+}
+
 // GET/PUT/DELETE are idempotent — safe to auto-retry. The 429 branch reuses this to decide which
 // methods may wait-and-retry a throttle without risking a double-run.
 export function isIdempotentRetryMethod(method: string): boolean {
@@ -16,7 +28,7 @@ export function isIdempotentRetryMethod(method: string): boolean {
 
 export function shouldRetry(target: Response | unknown, ctx: FetchContext): boolean {
   if (!RETRY_METHODS_SET.has(ctx.options.method)) return false
-  if (target instanceof Response) return RETRY_STATUS_SET.has(target.status)
+  if (isHttpResponse(target)) return RETRY_STATUS_SET.has(target.status)
   // Any other transport error on a retryable method retries. User aborts are filtered
   // out earlier in dispatch (before this hook ever runs), so they never reach here.
   return true
