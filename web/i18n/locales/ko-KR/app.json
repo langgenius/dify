@@ -68,7 +68,6 @@
   "gotoAnything.actions.docDesc": "문서 열기",
   "gotoAnything.actions.goDesc": "페이지로 이동",
   "gotoAnything.actions.languageChangeDesc": "언어 변경",
-  "gotoAnything.actions.refineCategoryDesc": "현재 워크플로우 또는 챗플로우 그래프를 구체화합니다.",
   "gotoAnything.actions.refineDesc": "현재 초안에 적용할 변경 사항 설명",
   "gotoAnything.actions.refineTitle": "현재 그래프 세분화",
   "gotoAnything.actions.searchApplications": "응용 프로그램 검색",

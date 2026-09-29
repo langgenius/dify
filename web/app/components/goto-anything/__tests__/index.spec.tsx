@@ -6,7 +6,9 @@ import { detectPlatform } from '@tanstack/react-hotkeys'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
+import { toast } from '@/app/notifications'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { goCommand } from '../actions/commands/go'
 import { gotoAnythingDialogHandle } from '../dialog-handle'
 import { GotoAnything } from '../index'
 
@@ -203,10 +205,11 @@ const actionsMock = {
 
 const createActionsMock = vi.fn(
   (
+    _slash: ActionItem,
     _isWorkflowPage?: boolean,
     _isRagPipelinePage?: boolean,
     _availability?: { agents: boolean; skills: boolean },
-  ) => actionsMock,
+  ): Record<string, ActionItem> => actionsMock,
 )
 const matchActionMock = vi.fn<
   (query: string, actions: Record<string, ActionItem>) => ActionItem | undefined
@@ -218,10 +221,6 @@ vi.mock('../actions', () => ({
     matchActionMock(query, actions),
 }))
 
-vi.mock('../actions/commands/slash-provider', () => ({
-  SlashCommandProvider: () => null,
-}))
-
 type MockSlashCommand = {
   mode: SlashCommand['mode']
   execute?: () => void
@@ -230,18 +229,18 @@ type MockSlashCommand = {
 
 let mockFindCommand: MockSlashCommand = null
 let mockAvailableCommands: SlashCommand[] = []
-vi.mock('../actions/commands/registry', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../actions/commands/registry')>()
-  const registry = new actual.SlashCommandRegistry()
-  registry.getSnapshot = () => mockAvailableCommands
-  registry.getAllCommands = () => mockAvailableCommands
+vi.mock('../actions/commands/catalog', async () => {
+  const { SlashCommandRegistry } = await import('../actions/commands/registry')
+  const registry = new SlashCommandRegistry([])
+  registry.getAvailableCommands = (context) =>
+    mockAvailableCommands.filter((command) => command.isAvailable?.(context) ?? true)
   registry.findCommand = (name) =>
     mockFindCommand
-      ? { name, description: '', search: () => [], ...mockFindCommand }
+      ? { name, description: '', search: () => [], execute: vi.fn(), ...mockFindCommand }
       : mockAvailableCommands.find(
           (command) => command.name === name || command.aliases?.includes(name),
         )
-  return { ...actual, slashCommandRegistry: registry }
+  return { slashCommandRegistry: registry }
 })
 
 vi.mock('@/app/components/workflow/utils/node-navigation', () => ({
@@ -289,6 +288,7 @@ describe('GotoAnything', () => {
     enabledRemoteSearches = []
     previousRemoteData = {}
     matchActionMock.mockReset()
+    createActionsMock.mockImplementation(() => actionsMock)
     visibilityState.agentEnabled = true
     visibilityState.datasetOperator = false
     visibilityState.enableSkill = true
@@ -488,6 +488,7 @@ describe('GotoAnything', () => {
         {
           name: 'theme',
           description: 'Theme',
+          execute: vi.fn(),
           search: () => {
             throw new Error('Unavailable')
           },
@@ -507,8 +508,20 @@ describe('GotoAnything', () => {
 
     it('shows available actions before search scopes without requiring a prefix', async () => {
       mockAvailableCommands = [
-        { name: 'models', description: 'Models', mode: 'direct', search: () => [] },
-        { name: 'refine', description: 'Refine', isAvailable: () => false, search: () => [] },
+        {
+          name: 'models',
+          description: 'Models',
+          mode: 'direct',
+          execute: vi.fn(),
+          search: () => [],
+        },
+        {
+          name: 'refine',
+          description: 'Refine',
+          isAvailable: () => false,
+          execute: vi.fn(),
+          search: () => [],
+        },
       ]
       renderGotoAnything(<GotoAnything />)
       triggerSearchShortcut()
@@ -523,7 +536,9 @@ describe('GotoAnything', () => {
 
     it('opens a command submenu and returns home by clearing the input', async () => {
       const user = userEvent.setup()
-      mockAvailableCommands = [{ name: 'theme', description: 'Theme', search: () => [] }]
+      mockAvailableCommands = [
+        { name: 'theme', description: 'Theme', execute: vi.fn(), search: () => [] },
+      ]
       matchActionMock.mockImplementation((query) =>
         query.startsWith('/theme ') ? actionsMock.slash : undefined,
       )
@@ -575,7 +590,13 @@ describe('GotoAnything', () => {
         data: { command: 'theme.set', args: { value: 'dark' } },
       }
       mockAvailableCommands = [
-        { name: 'theme', description: 'Theme', mode: 'submenu', search: () => [result] },
+        {
+          name: 'theme',
+          description: 'Theme',
+          mode: 'submenu',
+          execute: vi.fn(),
+          search: () => [result],
+        },
       ]
       renderGotoAnything(<GotoAnything />)
       triggerSearchShortcut()
@@ -612,6 +633,56 @@ describe('GotoAnything', () => {
     })
   })
 
+  it('shows feedback when an activated command rejects and allows reopening', async () => {
+    const user = userEvent.setup()
+    const failure = new Error('Execution failed')
+    const toastError = vi.spyOn(toast, 'error').mockReturnValue('command-error')
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    mockAvailableCommands = [
+      {
+        name: 'models',
+        description: 'Models',
+        mode: 'direct',
+        search: () => [],
+        execute: () => Promise.reject(failure),
+      },
+    ]
+    renderGotoAnything(<GotoAnything />)
+    triggerSearchShortcut()
+    await user.click(await screen.findByRole('gridcell', { name: /\/models/ }))
+    await waitFor(() =>
+      expect(toastError).toHaveBeenCalledExactlyOnceWith('common.api.actionFailed'),
+    )
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    triggerSearchShortcut()
+    expect(await screen.findByRole('combobox')).toHaveValue('')
+    toastError.mockRestore()
+    consoleError.mockRestore()
+  })
+
+  it('updates an open command submenu when workspace access changes', async () => {
+    const user = userEvent.setup()
+    mockAvailableCommands = [goCommand]
+    createActionsMock.mockImplementation((slash) => ({ ...actionsMock, slash }))
+    matchActionMock.mockImplementation((query, actions) =>
+      actions.slash?.matches?.(query) ? actions.slash : undefined,
+    )
+    const { rerender } = renderGotoAnything(<GotoAnything />)
+    triggerSearchShortcut()
+    const input = await screen.findByRole('combobox')
+    await user.type(input, '/go ')
+    expect(screen.getByRole('option', { name: 'Agents /agents' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Skills /skills' })).toBeInTheDocument()
+    visibilityState.agentEnabled = false
+    visibilityState.datasetOperator = true
+    rerender(<GotoAnything />)
+    expect(screen.queryByRole('option', { name: 'Agents /agents' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: 'Skills /skills' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('option', { name: 'Apps /apps' }))
+    expect(routerPush).toHaveBeenCalledExactlyOnceWith('/apps')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  })
+
   describe('search functionality', () => {
     it.each([
       [{ agentEnabled: true, datasetOperator: false, enableSkill: true }, true, true],
@@ -625,7 +696,10 @@ describe('GotoAnything', () => {
 
         renderGotoAnything(<GotoAnything />)
 
-        expect(createActionsMock).toHaveBeenCalledWith(false, false, { agents, skills })
+        expect(createActionsMock).toHaveBeenCalledWith(expect.any(Object), false, false, {
+          agents,
+          skills,
+        })
       },
     )
 
@@ -690,8 +764,8 @@ describe('GotoAnything', () => {
     it('should navigate and loop within a command grid row with ArrowRight', async () => {
       const user = userEvent.setup()
       mockAvailableCommands = [
-        { search: () => [], name: 'theme', description: 'Change theme' },
-        { search: () => [], name: 'language', description: 'Change language' },
+        { execute: vi.fn(), search: () => [], name: 'theme', description: 'Change theme' },
+        { execute: vi.fn(), search: () => [], name: 'language', description: 'Change language' },
       ]
 
       renderGotoAnything(<GotoAnything />)
@@ -716,8 +790,8 @@ describe('GotoAnything', () => {
     it('should announce the displayed command count', async () => {
       const user = userEvent.setup()
       mockAvailableCommands = [
-        { search: () => [], name: 'theme', description: 'Change theme' },
-        { search: () => [], name: 'language', description: 'Change language' },
+        { execute: vi.fn(), search: () => [], name: 'theme', description: 'Change theme' },
+        { execute: vi.fn(), search: () => [], name: 'language', description: 'Change language' },
       ]
 
       renderGotoAnything(<GotoAnything />)
@@ -770,7 +844,7 @@ describe('GotoAnything', () => {
     it('shows the localized system model name for /models', async () => {
       const user = userEvent.setup()
       mockAvailableCommands = [
-        { search: () => [], name: 'models', description: 'Fallback description' },
+        { execute: vi.fn(), search: () => [], name: 'models', description: 'Fallback description' },
       ]
       renderGotoAnything(<GotoAnything />)
       triggerSearchShortcut()
@@ -788,7 +862,9 @@ describe('GotoAnything', () => {
 
     it('keeps an exact submenu command in the grid until selection commits it', async () => {
       const user = userEvent.setup()
-      mockAvailableCommands = [{ search: () => [], name: 'theme', description: 'Change theme' }]
+      mockAvailableCommands = [
+        { execute: vi.fn(), search: () => [], name: 'theme', description: 'Change theme' },
+      ]
       matchActionMock.mockImplementation((query: string) =>
         query.startsWith('/theme ') ? actionsMock.slash : undefined,
       )
@@ -822,7 +898,9 @@ describe('GotoAnything', () => {
 
     it('keeps a submenu root result visible while the committed delimiter catches up', async () => {
       const user = userEvent.setup()
-      mockAvailableCommands = [{ search: () => [], name: 'theme', description: 'Change theme' }]
+      mockAvailableCommands = [
+        { execute: vi.fn(), search: () => [], name: 'theme', description: 'Change theme' },
+      ]
       matchActionMock.mockImplementation((query: string) =>
         query.startsWith('/theme ') ? actionsMock.slash : undefined,
       )
@@ -858,7 +936,9 @@ describe('GotoAnything', () => {
 
     it('does not leak a pending remote search into command or local-result contexts', async () => {
       const user = userEvent.setup()
-      mockAvailableCommands = [{ search: () => [], name: 'theme', description: 'Change theme' }]
+      mockAvailableCommands = [
+        { execute: vi.fn(), search: () => [], name: 'theme', description: 'Change theme' },
+      ]
       matchActionMock.mockImplementation((query: string) =>
         query.startsWith('/theme ') ? actionsMock.slash : undefined,
       )
@@ -1429,7 +1509,9 @@ describe('GotoAnything', () => {
         execute: executeMock,
         isAvailable: () => true,
       }
-      mockAvailableCommands = [{ search: () => [], name: 'theme', description: 'Change theme' }]
+      mockAvailableCommands = [
+        { execute: vi.fn(), search: () => [], name: 'theme', description: 'Change theme' },
+      ]
 
       renderGotoAnything(<GotoAnything />)
       triggerSearchShortcut()
@@ -1480,7 +1562,7 @@ describe('GotoAnything', () => {
         execute: executeMock,
       }
       mockAvailableCommands = [
-        { search: () => [], name: 'language', description: 'Change language' },
+        { execute: vi.fn(), search: () => [], name: 'language', description: 'Change language' },
       ]
 
       renderGotoAnything(<GotoAnything />)
@@ -1506,7 +1588,9 @@ describe('GotoAnything', () => {
         execute: vi.fn(),
         isAvailable: () => true,
       }
-      mockAvailableCommands = [{ search: () => [], name: 'theme', description: 'Change theme' }]
+      mockAvailableCommands = [
+        { execute: vi.fn(), search: () => [], name: 'theme', description: 'Change theme' },
+      ]
 
       renderGotoAnything(<GotoAnything />)
       triggerSearchShortcut()

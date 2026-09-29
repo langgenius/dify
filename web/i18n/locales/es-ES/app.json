@@ -68,7 +68,6 @@
   "gotoAnything.actions.docDesc": "Abrir documentación",
   "gotoAnything.actions.goDesc": "Ir a una página",
   "gotoAnything.actions.languageChangeDesc": "Cambiar idioma",
-  "gotoAnything.actions.refineCategoryDesc": "Refinar el flujo de trabajo actual o el gráfico de flujo de chat",
   "gotoAnything.actions.refineDesc": "Describir un cambio para aplicar al borrador actual.",
   "gotoAnything.actions.refineTitle": "Refinar el gráfico actual",
   "gotoAnything.actions.searchApplications": "Buscar aplicaciones",

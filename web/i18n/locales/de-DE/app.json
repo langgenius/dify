@@ -68,7 +68,6 @@
   "gotoAnything.actions.docDesc": "Dokumentation öffnen",
   "gotoAnything.actions.goDesc": "Zu einer Seite wechseln",
   "gotoAnything.actions.languageChangeDesc": "Sprache ändern",
-  "gotoAnything.actions.refineCategoryDesc": "Verfeinern Sie den aktuellen Workflow oder das Chatflow-Diagramm",
   "gotoAnything.actions.refineDesc": "Beschreiben Sie eine Änderung, die auf den aktuellen Entwurf angewendet werden soll",
   "gotoAnything.actions.refineTitle": "Aktuelles Diagramm verfeinern",
   "gotoAnything.actions.searchApplications": "Anwendungen durchsuchen",

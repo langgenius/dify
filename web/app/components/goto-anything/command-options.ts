@@ -1,8 +1,8 @@
+import type { CommandContext } from './actions/commands/types'
 import type { ActionItem, CommandSearchResult, SearchResult } from './actions/types'
-import { useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import { MAIN_NAV_ROUTES } from '@/app/components/main-nav/routes'
-import { slashCommandRegistry } from './actions/commands/registry'
+import { slashCommandRegistry } from './actions/commands/catalog'
 
 export type CommandOption = {
   kind: 'command-option'
@@ -55,14 +55,13 @@ function matches(query: string, values: (string | undefined)[]) {
     .every((term) => text.includes(term))
 }
 
-export function useCommandOptions(actions: Record<string, ActionItem>, query: string) {
-  const { t, i18n } = useTranslation(['app', 'common', 'skill', 'modelProvider', 'agentRoster'])
-  const registeredCommands = useSyncExternalStore(
-    slashCommandRegistry.subscribe,
-    slashCommandRegistry.getSnapshot,
-    slashCommandRegistry.getSnapshot,
-  )
-  const commands = registeredCommands.filter((command) => command.isAvailable?.() ?? true)
+export function useCommandOptions(
+  actions: Record<string, ActionItem>,
+  query: string,
+  context: CommandContext,
+) {
+  const { t } = useTranslation(['app', 'common', 'skill', 'modelProvider', 'agentRoster'])
+  const commands = slashCommandRegistry.getAvailableCommands(context)
   const trimmed = query.trim()
   const filter = trimmed.replace(/^[@/]/, '')
 
@@ -115,7 +114,7 @@ export function useCommandOptions(actions: Record<string, ActionItem>, query: st
     if (trimmed.startsWith('/') || command.mode === 'direct') return []
 
     return slashCommandRegistry
-      .search(`/${command.name}`, i18n.language)
+      .search(`/${command.name}`, context)
       .filter((result) => matches(filter, [result.title, result.description, result.id]))
       .map((result) => ({
         ...option,

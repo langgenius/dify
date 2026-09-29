@@ -1940,11 +1940,6 @@
       "count": 2
     }
   },
-  "web/app/components/goto-anything/actions/commands/command-bus.ts": {
-    "typescript/no-explicit-any": {
-      "count": 2
-    }
-  },
   "web/app/components/header/account-setting/data-source-page-new/hooks/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 2

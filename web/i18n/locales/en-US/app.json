@@ -68,7 +68,6 @@
   "gotoAnything.actions.docDesc": "Open documentation",
   "gotoAnything.actions.goDesc": "Go to a page",
   "gotoAnything.actions.languageChangeDesc": "Change language",
-  "gotoAnything.actions.refineCategoryDesc": "Refine the current workflow or chatflow graph",
   "gotoAnything.actions.refineDesc": "Describe a change to apply to the current draft",
   "gotoAnything.actions.refineTitle": "Refine current graph",
   "gotoAnything.actions.searchApplications": "Search Applications",

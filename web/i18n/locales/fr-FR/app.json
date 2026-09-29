@@ -68,7 +68,6 @@
   "gotoAnything.actions.docDesc": "Ouvrir la documentation",
   "gotoAnything.actions.goDesc": "Accéder à une page",
   "gotoAnything.actions.languageChangeDesc": "Changer de langue",
-  "gotoAnything.actions.refineCategoryDesc": "Affiner le flux de travail ou le graphique de chatflow actuel",
   "gotoAnything.actions.refineDesc": "Décrire un changement à appliquer au brouillon actuel",
   "gotoAnything.actions.refineTitle": "Affiner le graphique actuel",
   "gotoAnything.actions.searchApplications": "Rechercher des applications",
