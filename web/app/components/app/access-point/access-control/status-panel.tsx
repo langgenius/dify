@@ -52,7 +52,7 @@ export function AccessControlStatusPanel({
   readOnly = false,
   onEnabledChange,
 }: AccessControlStatusPanelProps) {
-  const { t } = useTranslation(['common', 'deployments', 'appOverview', 'tools'])
+  const { t } = useTranslation(['appOverview', 'common', 'deployments', 'navigation', 'tools'])
   const [confirmPause, setConfirmPause] = useState(false)
   const selectedPolicy = policies.find((policy) => policy.id === draft.selectedPolicyId)
   const summary = selectedPolicy ? splitPolicySummary(selectedPolicy.allowed_cidrs) : undefined
@@ -61,7 +61,7 @@ export function AccessControlStatusPanel({
     webApp: t(($) => $['overview.appInfo.title'], { ns: 'appOverview' }),
     serviceApi: t(($) => $['overview.apiInfo.title'], { ns: 'appOverview' }),
     mcp: t(($) => $['mcp.server.title'], { ns: 'tools' }),
-    trigger: t(($) => $['settings.trigger'], { ns: 'common' }),
+    trigger: t(($) => $['settings.trigger'], { ns: 'navigation' }),
   }
   const policyName = selectedPolicy?.name
 
@@ -133,7 +133,7 @@ export function AccessControlStatusPanel({
                 : summary.listed.length === 1
                   ? t(($) => $['studio.accessControl.policySummaryOne'], {
                       ns: 'deployments',
-                      address: summary.listed[0],
+                      address: summary.listed[0] ?? '',
                     })
                   : summary.moreCount > 0
                     ? t(($) => $['studio.accessControl.policySummaryMany'], {
@@ -143,8 +143,8 @@ export function AccessControlStatusPanel({
                       })
                     : t(($) => $['studio.accessControl.policySummaryTwo'], {
                         ns: 'deployments',
-                        first: summary.listed[0],
-                        second: summary.listed[1],
+                        first: summary.listed[0] ?? '',
+                        second: summary.listed[1] ?? '',
                       })}
             </p>
           </div>

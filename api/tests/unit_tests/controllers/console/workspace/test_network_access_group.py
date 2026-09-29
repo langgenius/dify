@@ -17,6 +17,7 @@ from werkzeug.test import TestResponse
 from controllers.console.app.error import AppNotFoundError
 from controllers.console.workspace.network_access_group import (
     AppNetworkAccessGroupApi,
+    AppNetworkAccessGroupStatusApi,
     AppNetworkAccessGroupUpdatePayload,
     CurrentWorkspaceNetworkAccessGroupApi,
     CurrentWorkspaceNetworkAccessGroupCurrentIPApi,
@@ -34,6 +35,7 @@ from enums import DeploymentEdition
 from machinery.context import RequestContext
 from services.entities.network_access_group_entities import (
     NetworkAccessAppConfig,
+    NetworkAccessAppStatus,
     NetworkAccessBinding,
     NetworkAccessBindingUpdate,
     NetworkAccessCurrentIPCheck,
@@ -247,6 +249,24 @@ def test_app_get_and_put_forward_app_id_without_orm_models() -> None:
     assert get_result["effective_enabled"] is False
     assert put_result["binding"]["version"] == 3
     assert put_result["effective_enabled"] is True
+
+
+def test_app_status_serializes_only_entry_state() -> None:
+    service = MagicMock()
+    service.get_app_status.return_value = NetworkAccessAppStatus(True, True, True, 2, 4)
+    api = AppNetworkAccessGroupStatusApi()
+
+    with _application_services(service):
+        result = unwrap(api.get)(api, request_context=_request_context(), app_id=UUID(APP_ID))
+
+    assert result == {
+        "entitled": True,
+        "configured": True,
+        "enabled": True,
+        "covered_count": 2,
+        "available_count": 4,
+    }
+    service.get_app_status.assert_called_once_with(_request_context(), app_id=APP_ID)
 
 
 @pytest.mark.parametrize(

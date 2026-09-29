@@ -29,7 +29,7 @@ import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import AppIconPicker from '@/app/components/base/app-icon-picker'
+import { IconPickerDialog } from '@/app/components/base/icon-picker'
 import LabelSelector from '@/app/components/tools/labels/selector'
 import ConfirmModal from '@/app/components/tools/workflow-tool/confirm-modal'
 import MethodSelector from '@/app/components/tools/workflow-tool/method-selector'
@@ -228,7 +228,7 @@ export function WorkflowToolDrawer({
   onSave,
   onCreate,
 }: WorkflowToolDrawerProps) {
-  const { t } = useTranslation(['workflow', 'common', 'tools'])
+  const { t } = useTranslation(['workflow', 'common', 'tools', 'navigation'])
   const parameterId = React.useId()
   const toolNameLabelId = React.useId()
 
@@ -319,7 +319,7 @@ export function WorkflowToolDrawer({
     <>
       <WorkflowToolDrawerFrame
         onHide={onHide}
-        title={t(($) => $['common.workflowAsTool'], { ns: 'workflow' })!}
+        title={t(($) => $['common.workflowAsTool'], { ns: 'navigation' })!}
         closeLabel={t(($) => $['operation.close'], { ns: 'common' })!}
       >
         <form
@@ -340,16 +340,20 @@ export function WorkflowToolDrawer({
                 </span>
               </FieldLabel>
               <div className="flex items-center justify-between gap-3">
-                <AppIcon
-                  size="large"
-                  onClick={() => {
-                    setShowEmojiPicker(true)
-                  }}
-                  className="cursor-pointer"
-                  iconType="emoji"
-                  icon={emoji.content}
-                  background={emoji.background}
-                />
+                <button
+                  type="button"
+                  aria-label={t(($) => $['createTool.changeIcon'], { ns: 'tools' })}
+                  className="shrink-0 cursor-pointer rounded-[10px] focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                  onClick={() => setShowEmojiPicker(true)}
+                >
+                  <AppIcon
+                    decorative
+                    size="large"
+                    iconType="emoji"
+                    icon={emoji.content}
+                    background={emoji.background}
+                  />
+                </button>
                 <Input
                   className="h-10 min-w-0 flex-1"
                   placeholder={t(($) => $['createTool.toolNamePlaceHolder'], { ns: 'tools' })!}
@@ -579,15 +583,16 @@ export function WorkflowToolDrawer({
           </div>
         </form>
       </WorkflowToolDrawerFrame>
-      <AppIconPicker
+      <IconPickerDialog
         open={showEmojiPicker}
         enableImageUpload={false}
-        initialEmoji={{
+        defaultValue={{
+          type: 'emoji',
           icon: emoji.content,
           background: emoji.background,
         }}
         onOpenChange={setShowEmojiPicker}
-        onSelect={(payload) => {
+        onConfirm={(payload) => {
           if (payload.type === 'emoji')
             setEmoji({ content: payload.icon, background: payload.background })
         }}

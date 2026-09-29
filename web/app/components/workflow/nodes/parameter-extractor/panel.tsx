@@ -26,7 +26,7 @@ const i18nCommonPrefix = 'common'
 const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({ id, data }) => {
   const instructionLabelId = React.useId()
 
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow', 'workflowModels'])
 
   const {
     readOnly,
@@ -120,12 +120,12 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({ id, data }) => 
           title={
             <div className="flex items-center space-x-1">
               <span id={instructionLabelId} className="uppercase">
-                {t(($) => $[`${i18nPrefix}.instruction`], { ns: 'workflow' })}
+                {t(($) => $[`${i18nPrefix}.instruction`], { ns: 'workflowModels' })}
               </span>
               <Infotip>
                 <InfotipTrigger aria-labelledby={instructionLabelId} className="ml-0.5 size-3.5" />
                 <InfotipContent aria-labelledby={instructionLabelId} className="w-30">
-                  {t(($) => $[`${i18nPrefix}.instructionTip`], { ns: 'workflow' })}
+                  {t(($) => $[`${i18nPrefix}.instructionTip`], { ns: 'workflowModels' })}
                 </InfotipContent>
               </Infotip>
             </div>
@@ -141,7 +141,7 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({ id, data }) => 
           availableNodes={availableNodesWithParent}
         />
       </div>
-      <FieldCollapse title={t(($) => $[`${i18nPrefix}.advancedSetting`], { ns: 'workflow' })}>
+      <FieldCollapse title={t(($) => $[`${i18nPrefix}.advancedSetting`], { ns: 'workflowModels' })}>
         <>
           {/* Memory */}
           {isChatMode && (
@@ -182,20 +182,22 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({ id, data }) => 
                   name="__is_success"
                   type={VarType.number}
                   description={t(($) => $[`${i18nPrefix}.outputVars.isSuccess`], {
-                    ns: 'workflow',
+                    ns: 'workflowModels',
                   })}
                 />
                 <VarItem
                   name="__reason"
                   type={VarType.string}
                   description={t(($) => $[`${i18nPrefix}.outputVars.errorReason`], {
-                    ns: 'workflow',
+                    ns: 'workflowModels',
                   })}
                 />
                 <VarItem
                   name="__usage"
                   type="object"
-                  description={t(($) => $[`${i18nPrefix}.outputVars.usage`], { ns: 'workflow' })}
+                  description={t(($) => $[`${i18nPrefix}.outputVars.usage`], {
+                    ns: 'workflowModels',
+                  })}
                 />
               </>
             </OutputVars>

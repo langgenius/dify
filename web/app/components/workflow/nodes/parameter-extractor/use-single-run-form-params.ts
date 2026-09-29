@@ -30,7 +30,7 @@ const useSingleRunFormParams = ({
   getInputVars,
   setRunInputData,
 }: Params) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow', 'workflowModels'])
   const { inputs } = useNodeCrud<ParameterExtractorNodeType>(id, payload)
 
   const model = inputs.model
@@ -89,7 +89,7 @@ const useSingleRunFormParams = ({
     const forms: FormProps[] = []
 
     forms.push({
-      label: t(($) => $['nodes.llm.singleRun.variable'], { ns: 'workflow' })!,
+      label: t(($) => $['nodes.llm.singleRun.variable'], { ns: 'workflowModels' })!,
       inputs: [
         {
           label: t(($) => $[`${i18nPrefix}.inputVar`], { ns: 'workflow' })!,
@@ -110,7 +110,7 @@ const useSingleRunFormParams = ({
       )
 
       forms.push({
-        label: t(($) => $['nodes.llm.vision'], { ns: 'workflow' })!,
+        label: t(($) => $['nodes.llm.vision'], { ns: 'workflowModels' })!,
         inputs: [
           {
             label: currentVariable?.variable as any,

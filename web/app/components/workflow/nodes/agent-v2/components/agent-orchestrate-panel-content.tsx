@@ -742,13 +742,6 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
             <AgentConfigureRightPanelChat
               agentId={agentId}
               answerActionPosition="below"
-              agentIcon={composerState?.agent?.icon}
-              agentIconBackground={composerState?.agent?.icon_background}
-              agentIconType={
-                composerState?.agent?.icon_type as Parameters<
-                  typeof AgentConfigureRightPanelChat
-                >[0]['agentIconType']
-              }
               agentName={composerState?.agent?.name}
               agentSoulConfig={buildDraft.agentSoulConfig}
               clearChatList={clearPreviewChat}
@@ -815,7 +808,7 @@ function WorkflowInlineAgentConfigureMoreAction({
 }: {
   onSaveInlineToRoster: () => void
 }) {
-  const { t } = useTranslation(['common', 'agentV2'])
+  const { t } = useTranslation(['common', 'agentRoster'])
   const canCreateAgents = useCanCreateAgents()
 
   if (!canCreateAgents) return null
@@ -839,7 +832,7 @@ function WorkflowInlineAgentConfigureMoreAction({
             aria-hidden
             className="i-ri-inbox-archive-line size-4 shrink-0 text-text-tertiary"
           />
-          <span>{t(($) => $['roster.saveToRoster'], { ns: 'agentV2' })}</span>
+          <span>{t(($) => $['roster.saveToRoster'], { ns: 'agentRoster' })}</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

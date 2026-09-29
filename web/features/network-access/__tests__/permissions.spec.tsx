@@ -2,29 +2,37 @@ import { act, waitFor } from '@testing-library/react'
 import { useAtomValue } from 'jotai'
 import { seedCurrentWorkspaceQuery } from '@/test/console/current-workspace'
 import { renderHookWithConsoleQuery } from '@/test/console/query-data'
-import { canManageNetworkAccessPoliciesAtom, canReadNetworkAccessAtom } from '../permissions'
+import {
+  canManageNetworkAccessPoliciesAtom,
+  canReadNetworkAccessAtom,
+  canViewNetworkAccessStatusAtom,
+} from '../permissions'
 
 function useNetworkAccessPermissions() {
   return {
     canRead: useAtomValue(canReadNetworkAccessAtom),
     canManage: useAtomValue(canManageNetworkAccessPoliciesAtom),
+    canViewStatus: useAtomValue(canViewNetworkAccessStatusAtom),
   }
 }
 
 describe('network access permissions', () => {
   it.each([
-    { role: 'owner', canRead: true, canManage: true },
-    { role: 'admin', canRead: true, canManage: true },
-    { role: 'editor', canRead: true, canManage: false },
-    { role: 'normal', canRead: false, canManage: false },
-    { role: 'dataset_operator', canRead: false, canManage: false },
-  ] as const)('allows the supported operations for $role', ({ role, canRead, canManage }) => {
-    const { result } = renderHookWithConsoleQuery(useNetworkAccessPermissions, {
-      currentWorkspace: { role },
-      systemFeatures: { deployment_edition: 'CLOUD' },
-    })
-    expect(result.current).toEqual({ canRead, canManage })
-  })
+    { role: 'owner', canRead: true, canManage: true, canViewStatus: true },
+    { role: 'admin', canRead: true, canManage: true, canViewStatus: true },
+    { role: 'editor', canRead: true, canManage: false, canViewStatus: true },
+    { role: 'normal', canRead: false, canManage: false, canViewStatus: true },
+    { role: 'dataset_operator', canRead: false, canManage: false, canViewStatus: false },
+  ] as const)(
+    'allows the supported operations for $role',
+    ({ role, canRead, canManage, canViewStatus }) => {
+      const { result } = renderHookWithConsoleQuery(useNetworkAccessPermissions, {
+        currentWorkspace: { role },
+        systemFeatures: { deployment_edition: 'CLOUD' },
+      })
+      expect(result.current).toEqual({ canRead, canManage, canViewStatus })
+    },
+  )
 
   it.each(['COMMUNITY', 'ENTERPRISE'] as const)(
     'does not grant access in %s',
@@ -33,7 +41,7 @@ describe('network access permissions', () => {
         currentWorkspace: { role: 'owner' },
         systemFeatures: { deployment_edition },
       })
-      expect(result.current).toEqual({ canRead: false, canManage: false })
+      expect(result.current).toEqual({ canRead: false, canManage: false, canViewStatus: false })
     },
   )
 
@@ -43,16 +51,20 @@ describe('network access permissions', () => {
       currentWorkspace: null,
       systemFeatures: { deployment_edition: 'CLOUD' },
     })
-    expect(result.current).toEqual({ canRead: false, canManage: false })
+    expect(result.current).toEqual({ canRead: false, canManage: false, canViewStatus: false })
 
     await act(async () => {
       seedCurrentWorkspaceQuery(queryClient, { role: 'admin' })
     })
-    await waitFor(() => expect(result.current).toEqual({ canRead: true, canManage: true }))
+    await waitFor(() =>
+      expect(result.current).toEqual({ canRead: true, canManage: true, canViewStatus: true }),
+    )
 
     await act(async () => {
       seedCurrentWorkspaceQuery(queryClient, { role: 'editor' })
     })
-    await waitFor(() => expect(result.current).toEqual({ canRead: true, canManage: false }))
+    await waitFor(() =>
+      expect(result.current).toEqual({ canRead: true, canManage: false, canViewStatus: true }),
+    )
   })
 })

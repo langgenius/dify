@@ -52,7 +52,7 @@ const ConfigPrompt: FC<Props> = ({
   handleAddVariable,
   modelConfig,
 }) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow', 'workflowModels'])
   const workflowStore = useWorkflowStore()
   const { setControlPromptEditorRerenderKey } = workflowStore.getState()
   const prompts = useMemo(
@@ -270,7 +270,7 @@ const ConfigPrompt: FC<Props> = ({
           </div>
           <AddButton
             className="mt-2"
-            text={t(($) => $[`${i18nPrefix}.addMessage`], { ns: 'workflow' })}
+            text={t(($) => $[`${i18nPrefix}.addMessage`], { ns: 'workflowModels' })}
             onClick={handleAddPrompt}
           />
         </div>

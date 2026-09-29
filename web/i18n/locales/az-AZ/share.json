@@ -1,4 +1,8 @@
 {
+  "appNotAccessible.description": "Contact the app administrator if you need help.",
+  "appNotAccessible.documentTitle": "App not accessible · Dify",
+  "appNotAccessible.ipAddress": "Your IP address is <ip>{{ip}}</ip>.",
+  "appNotAccessible.title": "This app doesn’t exist or isn’t accessible from your network.",
   "chat.chatFormTip": "Söhbət başladıqdan sonra söhbət parametrləri dəyişdirilə bilməz.",
   "chat.chatSettingsTitle": "Yeni söhbətin qurulması",
   "chat.collapse": "Yığ",

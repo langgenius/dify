@@ -27,7 +27,10 @@ from services.webapp_access_query_service import (
 )
 from tests.unit_tests.config_override import apply_config_overrides
 
-pytestmark = pytest.mark.parametrize("sqlite_session", [(DifySetup,)], indirect=True)
+pytestmark = [
+    pytest.mark.parametrize("sqlite_session", [(DifySetup,)], indirect=True),
+    pytest.mark.usefixtures("app_query_services"),
+]
 
 
 def encode_code(code: str) -> str:
@@ -421,3 +424,13 @@ class TestLogoutApi:
 
         assert response.get_json() == {"result": "success"}
         mock_clear.assert_called_once()
+
+
+def test_unknown_web_app_code_returns_http_not_found(app: Flask) -> None:
+    from flask_restx import Api
+
+    api = Api(app)
+    api.add_resource(LoginStatusApi, "/web/login/status")
+    response = app.test_client().get("/web/login/status?app_code=does-not-exist")
+    assert response.status_code == 404
+    assert response.get_json()["code"] == "app_not_found"

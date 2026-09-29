@@ -25,7 +25,7 @@ import services
 from controllers.service_api.dataset.hit_testing import HitTestingApi, HitTestingPayload
 from models.account import Account, Tenant, TenantAccountRole
 from models.dataset import Dataset
-from services.entities.knowledge_entities.knowledge_entities import RetrievalModel
+from services.knowledge.entities.knowledge_entities import RetrievalModel
 
 # ---------------------------------------------------------------------------
 # HitTestingPayload Model Tests

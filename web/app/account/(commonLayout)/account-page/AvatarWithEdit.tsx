@@ -1,32 +1,30 @@
 'use client'
 
 import type { AvatarProps } from '@langgenius/dify-ui/avatar'
-import type { Area } from 'react-easy-crop'
-import type { OnImageInput } from '@/app/components/base/app-icon-picker/ImageInput'
+import type { ImageIconInputValue } from '@/app/components/base/icon-picker/image-input'
 import type { ImageFile } from '@/types/app'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Separator } from '@langgenius/dify-ui/separator'
+import { useMutation } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ImageInput from '@/app/components/base/app-icon-picker/ImageInput'
+import { ImageIconInput } from '@/app/components/base/icon-picker/image-input'
 import { useLocalFileUploader } from '@/app/components/base/image-uploader/hooks'
 import { toast } from '@/app/notifications'
 import { DISABLE_UPLOAD_IMAGE_AS_ICON } from '@/config'
-import { updateUserProfile } from '@/service/common'
+import { consoleQuery } from '@/service/console'
 import { createAvatarImageFile, createCroppedAvatarImage } from './avatar-image'
 
-type InputImageInfo =
-  | { file: File }
-  | { tempUrl: string; croppedAreaPixels: Area; fileName: string }
-type AvatarWithEditProps = AvatarProps & { onSave?: () => void }
-
-const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
+const AvatarWithEdit = (props: AvatarProps) => {
   const { t } = useTranslation(['app', 'common'])
+  const { mutateAsync: updateProfile } = useMutation(
+    consoleQuery.account.profile.patch.mutationOptions(),
+  )
 
-  const [inputImageInfo, setInputImageInfo] = useState<InputImageInfo>()
+  const [inputImageInfo, setInputImageInfo] = useState<ImageIconInputValue | null>(null)
   const [isShowAvatarPicker, setIsShowAvatarPicker] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [isShowDeleteConfirm, setIsShowDeleteConfirm] = useState(false)
@@ -34,50 +32,28 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
   const [onAvatarError, setOnAvatarError] = useState(false)
   const canDeleteAvatar = !!props.avatar && !onAvatarError
 
-  const handleImageInput: OnImageInput = useCallback(
-    async (
-      isCropped: boolean,
-      fileOrTempUrl: string | File,
-      croppedAreaPixels?: Area,
-      fileName?: string,
-    ) => {
-      setInputImageInfo(
-        isCropped
-          ? {
-              tempUrl: fileOrTempUrl as string,
-              croppedAreaPixels: croppedAreaPixels!,
-              fileName: fileName!,
-            }
-          : { file: fileOrTempUrl as File },
-      )
-    },
-    [setInputImageInfo],
-  )
-
   const handleSaveAvatar = useCallback(
     async (uploadedFileId: string) => {
       try {
-        await updateUserProfile({ url: 'account/avatar', body: { avatar: uploadedFileId } })
+        await updateProfile({ body: { avatar: uploadedFileId } })
         setIsShowAvatarPicker(false)
-        onSave?.()
         toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       } catch (e) {
         toast.error((e as Error).message)
       }
     },
-    [onSave, t],
+    [t, updateProfile],
   )
 
   const handleDeleteAvatar = useCallback(async () => {
     try {
-      await updateUserProfile({ url: 'account/avatar', body: { avatar: '' } })
+      await updateProfile({ body: { avatar: '' } })
       toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       setIsShowDeleteConfirm(false)
-      onSave?.()
     } catch (e) {
       toast.error((e as Error).message)
     }
-  }, [onSave, t])
+  }, [t, updateProfile])
 
   const handleDeleteAvatarClick = useCallback(() => {
     setIsShowAvatarPicker(false)
@@ -90,7 +66,7 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
     onUpload: (imageFile: ImageFile) => {
       if (imageFile.progress === 100 && imageFile.fileId) {
         setUploading(false)
-        setInputImageInfo(undefined)
+        setInputImageInfo(null)
         handleSaveAvatar(imageFile.fileId)
       }
 
@@ -107,8 +83,8 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
       return
     }
     const blob = await createCroppedAvatarImage(
-      inputImageInfo.tempUrl,
-      inputImageInfo.croppedAreaPixels,
+      inputImageInfo.url,
+      inputImageInfo.area,
       inputImageInfo.fileName,
     )
     const file = createAvatarImageFile(blob, inputImageInfo.fileName)
@@ -124,7 +100,10 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
           type="button"
           aria-label={t(($) => $['avatar.editAction'], { ns: 'common' })}
           className="group relative inline-flex overflow-hidden rounded-full border-none bg-transparent p-0 outline-hidden hover:opacity-90 focus-visible:ring-2 focus-visible:ring-components-input-border-hover active:opacity-80"
-          onClick={() => setIsShowAvatarPicker(true)}
+          onClick={() => {
+            setInputImageInfo(null)
+            setIsShowAvatarPicker(true)
+          }}
         >
           <Avatar
             {...props}
@@ -141,7 +120,10 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
         onOpenChange={(open) => !open && setIsShowAvatarPicker(false)}
       >
         <DialogContent className="w-90.5! p-0!">
-          <ImageInput onImageInput={handleImageInput} cropShape="round" />
+          <DialogTitle className="sr-only">
+            {t(($) => $['avatar.editAction'], { ns: 'common' })}
+          </DialogTitle>
+          <ImageIconInput onChange={setInputImageInfo} cropShape="round" />
           <Separator decorative className="m-0 h-[0.5px]" />
 
           <div className="flex w-full items-center justify-center gap-2 p-3">
@@ -172,9 +154,9 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
         onOpenChange={(open) => !open && setIsShowDeleteConfirm(false)}
       >
         <DialogContent className="w-90.5! p-6!">
-          <div className="mb-3 title-2xl-semi-bold text-text-primary">
+          <DialogTitle className="mb-3 title-2xl-semi-bold text-text-primary">
             {t(($) => $['avatar.deleteTitle'], { ns: 'common' })}
-          </div>
+          </DialogTitle>
           <p className="mb-8 text-text-secondary">
             {t(($) => $['avatar.deleteDescription'], { ns: 'common' })}
           </p>

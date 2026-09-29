@@ -22,7 +22,7 @@ const ConditionVariableSelector = ({
   onChange,
 }: ConditionVariableSelectorProps) => {
   const searchInputRef = useRef<HTMLInputElement>(null)
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowModels'])
   const [open, setOpen] = useState(false)
 
   const handleChange = useCallback(
@@ -55,7 +55,7 @@ const ConditionVariableSelector = ({
                     className="mr-1 i-custom-vender-solid-development-variable-02 size-4"
                   />
                   {t(($) => $['nodes.knowledgeRetrieval.metadata.panel.select'], {
-                    ns: 'workflow',
+                    ns: 'workflowModels',
                   })}
                 </div>
                 <div className="flex h-5 shrink-0 items-center rounded-[5px] border border-divider-deep px-1.25 system-2xs-medium text-text-tertiary">

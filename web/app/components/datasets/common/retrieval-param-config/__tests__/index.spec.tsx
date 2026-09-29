@@ -146,7 +146,7 @@ describe('RetrievalParamConfig', () => {
       )
 
       expect(
-        screen.getByRole('switch', { name: 'common.modelProvider.rerankModel.key' }),
+        screen.getByRole('switch', { name: 'modelProvider.modelProvider.rerankModel.key' }),
       ).toBeChecked()
     })
 
@@ -213,7 +213,9 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      fireEvent.click(screen.getByRole('switch', { name: 'common.modelProvider.rerankModel.key' }))
+      fireEvent.click(
+        screen.getByRole('switch', { name: 'modelProvider.modelProvider.rerankModel.key' }),
+      )
 
       expect(mockOnChange).toHaveBeenCalledWith({
         ...config,
@@ -232,7 +234,9 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      fireEvent.click(screen.getByRole('switch', { name: 'common.modelProvider.rerankModel.key' }))
+      fireEvent.click(
+        screen.getByRole('switch', { name: 'modelProvider.modelProvider.rerankModel.key' }),
+      )
 
       expect(mockNotify).toHaveBeenCalledWith('workflow.errorMsg.rerankModelRequired')
     })
@@ -357,7 +361,7 @@ describe('RetrievalParamConfig', () => {
       )
 
       expect(
-        screen.getByRole('switch', { name: 'common.modelProvider.rerankModel.key' }),
+        screen.getByRole('switch', { name: 'modelProvider.modelProvider.rerankModel.key' }),
       ).toBeChecked()
     })
 
@@ -487,7 +491,7 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      expect(screen.getByText('common.modelProvider.rerankModel.key'))!.toBeInTheDocument()
+      expect(screen.getByText('modelProvider.modelProvider.rerankModel.key'))!.toBeInTheDocument()
     })
 
     it('should show model selector when RerankingModel mode is selected', () => {
@@ -557,7 +561,7 @@ describe('RetrievalParamConfig', () => {
       )
 
       fireEvent.click(
-        screen.getByRole('radio', { name: /common\.modelProvider\.rerankModel\.key/ }),
+        screen.getByRole('radio', { name: /modelProvider\.modelProvider\.rerankModel\.key/ }),
       )
 
       expect(mockOnChange).not.toHaveBeenCalled()
@@ -589,7 +593,7 @@ describe('RetrievalParamConfig', () => {
       )
 
       fireEvent.click(
-        screen.getByRole('radio', { name: /common\.modelProvider\.rerankModel\.key/ }),
+        screen.getByRole('radio', { name: /modelProvider\.modelProvider\.rerankModel\.key/ }),
       )
 
       expect(mockNotify).toHaveBeenCalledWith('workflow.errorMsg.rerankModelRequired')
@@ -781,7 +785,7 @@ describe('RetrievalParamConfig', () => {
       )
 
       expect(
-        screen.getByRole('button', { name: 'common.modelProvider.rerankModel.key' }),
+        screen.getByRole('button', { name: 'modelProvider.modelProvider.rerankModel.key' }),
       )!.toBeInTheDocument()
     })
   })
@@ -797,7 +801,7 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      expect(screen.getByText('common.modelProvider.rerankModel.key'))!.toBeInTheDocument()
+      expect(screen.getByText('modelProvider.modelProvider.rerankModel.key'))!.toBeInTheDocument()
     })
   })
 

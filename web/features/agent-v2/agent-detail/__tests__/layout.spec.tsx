@@ -95,7 +95,7 @@ describe('AgentDetailLayout', () => {
       })
     vi.mocked(fetch).mockResolvedValueOnce(Response.json(createAgentFixture()))
     render(content, { wrapper })
-    expect(await screen.findByRole('alert')).toHaveTextContent('agentV2.roster.loadingError')
+    expect(await screen.findByRole('alert')).toHaveTextContent('agentRoster.roster.loadingError')
     expect(screen.queryByText('Agent detail content')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
     expect(await screen.findByText('Agent detail content')).toBeVisible()
@@ -103,7 +103,7 @@ describe('AgentDetailLayout', () => {
     expect(router.replace).not.toHaveBeenCalled()
   })
 
-  it('leaves a missing agent to the app error boundary without redirecting', async () => {
+  it('keeps a 404 query error on the agent page without redirecting', async () => {
     const { wrapper, queryClient } = setup()
     queryClient.setDefaultOptions({ queries: { retry: false, retryOnMount: false } })
     queryClient
@@ -119,6 +119,7 @@ describe('AgentDetailLayout', () => {
         fetchStatus: 'idle',
       })
     render(content, { wrapper })
+    expect(await screen.findByRole('alert')).toHaveTextContent('agentRoster.roster.loadingError')
     expect(router.replace).not.toHaveBeenCalled()
     expect(screen.queryByText('Agent detail content')).not.toBeInTheDocument()
   })

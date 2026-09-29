@@ -39,6 +39,15 @@ from libs.token import generate_csrf_token
 from machinery.errors import ActiveWorkspaceRequiredError
 from models import Account, AccountTrialAppRecord, App, AppMode, Tenant, TrialApp
 from models.account import AccountStatus
+from models.agent import (
+    Agent,
+    AgentConfigRevision,
+    AgentConfigRevisionOperation,
+    AgentConfigSnapshot,
+    AgentScope,
+    AgentSource,
+)
+from models.agent_config_entities import AgentSoulConfig
 from models.enums import CustomizeTokenStrategy, TagType
 from models.model import AppModelConfig, IconType, Site, Tag, TagBinding
 from models.provider_ids import GenericProviderID
@@ -48,7 +57,7 @@ from repositories.app_preview_query_repository import AppPreviewQueryRepository
 from repositories.trial_app_repository import TrialAppRepository
 from services.app_preview_details_adapters import AppPreviewDetailsRuntime
 from services.app_preview_query_service import AppPreviewQueryService
-from services.app_service import AppResponseView, AppService
+from services.app_service import AppResponseView
 from services.recommended_app_query_service import (
     RecommendedAppCatalogPage,
     RecommendedAppDetailRecord,
@@ -204,9 +213,8 @@ class _Harness:
         with self.app.test_request_context(f"/trial-apps/{self.target.id}"), self.factory() as session:
             app = session.get(App, self.target.id)
             assert app is not None
-            app = AppService().get_app(app, session=session)
             return trial_module.TrialAppDetailResponse.model_validate(
-                AppResponseView(app, session=session), from_attributes=True
+                AppResponseView(app, session=session, account=self.viewer), from_attributes=True
             ).model_dump(mode="json")
 
 
@@ -767,6 +775,48 @@ def test_missing_model_config_retains_nullable_detail(harness: _Harness) -> None
     response = harness.get()
     assert response.status_code == 200, response.get_json()
     assert response.get_json()["model_config"] is None
+
+
+def test_agent_detail_keeps_model_less_presentation_config(harness: _Harness) -> None:
+    with harness.factory.begin() as session:
+        session.execute(update(App).where(App.id == harness.target.id).values(mode=AppMode.AGENT))
+        session.execute(update(AppModelConfig).where(AppModelConfig.id == harness.config.id).values(model=None))
+        agent_id, snapshot_id = str(uuid4()), str(uuid4())
+        session.add_all(
+            [
+                Agent(
+                    id=agent_id,
+                    tenant_id=harness.owner.id,
+                    app_id=harness.target.id,
+                    name="Preview agent",
+                    scope=AgentScope.ROSTER,
+                    source=AgentSource.AGENT_APP,
+                    active_config_snapshot_id=snapshot_id,
+                ),
+                AgentConfigSnapshot(
+                    id=snapshot_id,
+                    tenant_id=harness.owner.id,
+                    agent_id=agent_id,
+                    version=1,
+                    config_snapshot=AgentSoulConfig(),
+                ),
+                AgentConfigRevision(
+                    tenant_id=harness.owner.id,
+                    agent_id=agent_id,
+                    current_snapshot_id=snapshot_id,
+                    revision=1,
+                    operation=AgentConfigRevisionOperation.PUBLISH_DRAFT,
+                ),
+            ]
+        )
+
+    response = harness.get()
+
+    assert response.status_code == 200, response.get_json()
+    body = response.get_json()
+    assert body["mode"] == "agent"
+    assert body["model_config"]["model"] is None
+    assert body["model_config"]["opening_statement"] == ""
 
 
 @pytest.mark.parametrize("missing", ["reference", "workflow"])

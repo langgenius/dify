@@ -28,7 +28,7 @@ const useSingleRunFormParams = ({
   runInputDataRef,
   setRunInputData,
 }: Params) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow', 'workflowModels'])
   const datasetsDetail = useDatasetsDetailStore((s) => s.datasetsDetail)
   const query = runInputData.query
   const queryAttachment = runInputData.queryAttachment
@@ -76,7 +76,7 @@ const useSingleRunFormParams = ({
       {
         inputs: [
           {
-            label: t(($) => $[`${i18nPrefix}.queryText`], { ns: 'workflow' })!,
+            label: t(($) => $[`${i18nPrefix}.queryText`], { ns: 'workflowModels' })!,
             variable: 'query',
             type: InputVarType.paragraph,
             required: false,
@@ -94,7 +94,7 @@ const useSingleRunFormParams = ({
       inputFields.push({
         inputs: [
           {
-            label: t(($) => $[`${i18nPrefix}.queryAttachment`], { ns: 'workflow' })!,
+            label: t(($) => $[`${i18nPrefix}.queryAttachment`], { ns: 'workflowModels' })!,
             variable: 'queryAttachment',
             type: currentVariable?.formType as InputVarType,
             required: false,

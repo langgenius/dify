@@ -91,13 +91,13 @@ describe('question-classifier/class-list', () => {
       screen.getByRole('button', { name: /workflow\.nodes\.questionClassifiers\.class/ }),
     )
     expect(
-      screen.queryByText('workflow.nodes.questionClassifiers.addClass'),
+      screen.queryByText('workflowModels.nodes.questionClassifiers.addClass'),
     ).not.toBeInTheDocument()
 
     await user.click(
       screen.getByRole('button', { name: /workflow\.nodes\.questionClassifiers\.class/ }),
     )
-    await user.click(screen.getByText('workflow.nodes.questionClassifiers.addClass'))
+    await user.click(screen.getByText('workflowModels.nodes.questionClassifiers.addClass'))
     expect(onChange).toHaveBeenCalledWith(
       expect.arrayContaining([expect.objectContaining({ name: '' })]),
     )
@@ -147,7 +147,7 @@ describe('question-classifier/class-list', () => {
     )
 
     expect(
-      screen.queryByText('workflow.nodes.questionClassifiers.addClass'),
+      screen.queryByText('workflowModels.nodes.questionClassifiers.addClass'),
     ).not.toBeInTheDocument()
     expect(container.querySelector('.handle')).toBeNull()
   })

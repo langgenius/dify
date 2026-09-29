@@ -10,6 +10,14 @@ export const canReadNetworkAccessAtom = atom((get) => {
   return Boolean(id) && (role === 'owner' || role === 'admin' || role === 'editor')
 })
 
+export const canViewNetworkAccessStatusAtom = atom((get) => {
+  if (get(currentWorkspaceLoadingAtom) || get(deploymentEditionAtom) !== 'CLOUD') return false
+  const { id, role } = get(currentWorkspaceAtom)
+  return (
+    Boolean(id) && (role === 'owner' || role === 'admin' || role === 'editor' || role === 'normal')
+  )
+})
+
 export const canManageNetworkAccessPoliciesAtom = atom((get) => {
   if (!get(canReadNetworkAccessAtom)) return false
   const { role } = get(currentWorkspaceAtom)

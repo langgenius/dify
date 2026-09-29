@@ -149,7 +149,7 @@ export default function AppNotAccessible(props: AppNotAccessibleProps) {
     return instance
   })
   return (
-    <Suspense fallback={<LoadingPlaceholder className="h-full" />}>
+    <Suspense fallback={<LoadingPlaceholder className="min-h-dvh" />}>
       <I18nextProvider i18n={i18n}>
         <PageContent {...props} />
       </I18nextProvider>

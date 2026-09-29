@@ -1,3 +1,4 @@
+import type { TextGenerationTranslate } from '../../types'
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
 import type { IOtherOptions } from '@/service/base'
 import type { HumanInputFormData, HumanInputFormTimeoutData, NodeTracing } from '@/types/workflow'
@@ -429,7 +430,7 @@ describe('createWorkflowStreamHandlers', () => {
       setMessageId,
       setRespondingFalse,
       setWorkflowProcessData,
-      t: withSelectorKey((key: string) => key),
+      t: withSelectorKey((key: string) => key) as TextGenerationTranslate,
       taskId: 3,
     })
 
@@ -798,7 +799,7 @@ describe('createWorkflowStreamHandlers', () => {
       setWorkflowProcessData: (value) => {
         existingProcess = value!
       },
-      t: withSelectorKey((key: string) => key),
+      t: withSelectorKey((key: string) => key) as TextGenerationTranslate,
       taskId: 5,
     }) as Required<
       Pick<IOtherOptions, 'onWorkflowStarted' | 'onWorkflowFinished' | 'onTextReplace'>

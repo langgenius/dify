@@ -48,6 +48,18 @@ const formatterUnstableInputs = ['web/app/components/develop/template/*.mdx']
 
 export default defineConfig({
   lint: lintConfig,
+  run: {
+    tasks: {
+      'check:cached': {
+        command: ['vp check', 'eslint --concurrency=auto'],
+        cache: {
+          env: ['CI', 'NODE_ENV', 'TAILWIND_CANONICAL_CLASSES'],
+          // Static checks have no artifacts to restore into the working tree.
+          output: [],
+        },
+      },
+    },
+  },
   staged: {
     [lintFiles]: checkFix,
     [eslintFiles]: [eslintFix, formatFix],

@@ -1,4 +1,3 @@
-import type { ComponentProps } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -50,11 +49,7 @@ it('shows the unified error inside a dismissible trial dialog, retaining the par
     <QueryClientProvider client={queryClient}>
       <I18nextProvider i18n={i18n}>
         <p>Explore apps</p>
-        <TryApp
-          app={{ app_id: 'missing', can_trial: true } as ComponentProps<typeof TryApp>['app']}
-          onClose={onClose}
-          onCreate={vi.fn()}
-        />
+        <TryApp appId="missing" canTrial onClose={onClose} onCreate={vi.fn()} />
       </I18nextProvider>
     </QueryClientProvider>,
   )

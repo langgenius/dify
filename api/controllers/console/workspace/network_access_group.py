@@ -162,6 +162,14 @@ class AppNetworkAccessGroupResponse(ResponseModel):
     binding: AppNetworkAccessGroupBindingResponse | None
 
 
+class AppNetworkAccessGroupStatusResponse(ResponseModel):
+    entitled: bool
+    configured: bool
+    enabled: bool
+    covered_count: int = Field(ge=0)
+    available_count: int = Field(ge=0)
+
+
 class AppNetworkAccessGroupMutationResponse(ResponseModel):
     binding: AppNetworkAccessGroupBindingResponse
     effective_enabled: bool
@@ -185,6 +193,7 @@ register_response_schema_models(
     NetworkAccessGroupCurrentIPCheckResponse,
     AppNetworkAccessGroupBindingResponse,
     AppNetworkAccessGroupResponse,
+    AppNetworkAccessGroupStatusResponse,
     AppNetworkAccessGroupMutationResponse,
 )
 
@@ -461,3 +470,22 @@ class AppNetworkAccessGroupApi(Resource):
         except NetworkAccessGroupError as exc:
             raise _translate_service_error(exc) from exc
         return _serialize_response(AppNetworkAccessGroupMutationResponse, payload)
+
+
+@console_ns.route("/apps/<uuid:app_id>/network-access-group/status")
+class AppNetworkAccessGroupStatusApi(Resource):
+    @console_ns.response(
+        200,
+        "App network access control entry status retrieved successfully",
+        console_ns.models[AppNetworkAccessGroupStatusResponse.__name__],
+    )
+    @console_account_admission(editions=frozenset({DeploymentEdition.CLOUD}))
+    def get(self, request_context: RequestContext, app_id: UUID) -> dict[str, Any]:
+        try:
+            payload = application_services().network_access_groups.get_app_status(
+                request_context,
+                app_id=str(app_id),
+            )
+        except NetworkAccessGroupError as exc:
+            raise _translate_service_error(exc) from exc
+        return _serialize_response(AppNetworkAccessGroupStatusResponse, payload)

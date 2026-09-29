@@ -9,20 +9,24 @@ from sqlalchemy import select
 from werkzeug.exceptions import NotFound, Unauthorized
 
 from constants import HEADER_NAME_APP_CODE
-from controllers.web.error import WebAppAuthAccessDeniedError, WebAppAuthRequiredError, WebAppNotFoundError
+from controllers.web.error import (
+    WebAppAccessServiceUnavailableError,
+    WebAppAuthAccessDeniedError,
+    WebAppAuthRequiredError,
+    WebAppNotFoundError,
+)
 from core.app.public_runtime import published_app_filter
 from core.db.session_factory import session_factory
 from core.logging.context import set_identity_context
-from extensions.ext_database import db
+from extensions.ext_application_services import application_services
 from libs.passport import PassportService
 from libs.token import extract_webapp_passport
 from models.enums import AppStatus
 from models.model import App, EndUser, Site
-from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService, WebAppAccessMode, WebAppSettings
 from services.system_feature_service import SystemFeatureService
 from services.web_passport_gateways import resolve_web_app_auth_type
-from services.webapp_auth_service import WebAppAuthService
+from services.webapp_access_query_service import WebAppAccessAppNotFoundError, WebAppAccessUnavailableError
 
 
 def validate_jwt_token[**P, R](
@@ -44,6 +48,16 @@ def validate_jwt_token[**P, R](
     if view:
         return decorator(view)
     return decorator
+
+
+def resolve_web_app_id(app_code: str) -> str:
+    """Translate app lookup failures at the WebApp authentication boundary."""
+    try:
+        return application_services().webapp_access.get_app_id_by_code(app_code)
+    except WebAppAccessAppNotFoundError as exc:
+        raise WebAppNotFoundError() from exc
+    except WebAppAccessUnavailableError as exc:
+        raise WebAppAccessServiceUnavailableError() from exc
 
 
 def decode_jwt_token(app_code: str | None = None, user_id: str | None = None) -> tuple[App, EndUser]:
@@ -91,7 +105,7 @@ def decode_jwt_token(app_code: str | None = None, user_id: str | None = None) ->
         app_web_auth_enabled = False
         webapp_settings = None
         if webapp_auth_enabled:
-            app_id = AppService.get_app_id_by_code(app_code, session=db.session())
+            app_id = resolve_web_app_id(app_code)
             webapp_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id)
             if not webapp_settings:
                 raise NotFound("Web app settings not found.")
@@ -105,7 +119,7 @@ def decode_jwt_token(app_code: str | None = None, user_id: str | None = None) ->
         if webapp_auth_enabled:
             if not app_code:
                 raise Unauthorized("Please re-login to access the web app.")
-            app_id = AppService.get_app_id_by_code(app_code, session=db.session())
+            app_id = resolve_web_app_id(app_code)
             app_web_auth_enabled = (
                 EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=app_id).access_mode
                 != WebAppAccessMode.PUBLIC
@@ -156,10 +170,8 @@ def _validate_user_accessibility(
         if auth_type != expected_auth_type:
             raise WebAppAuthRequiredError()
 
-        if WebAppAuthService.is_app_require_permission_check(
-            access_mode=webapp_settings.access_mode, session=db.session()
-        ):
-            app_id = AppService.get_app_id_by_code(app_code, session=db.session())
+        if application_services().webapp_access.is_permission_check_required(webapp_settings.access_mode):
+            app_id = resolve_web_app_id(app_code)
             if not EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(user_id, app_id):
                 raise WebAppAuthAccessDeniedError()
 

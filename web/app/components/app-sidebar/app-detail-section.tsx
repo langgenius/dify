@@ -14,7 +14,6 @@ import { usePathname } from '@/next/navigation'
 import { AppModeEnum } from '@/types/app'
 import { getAppACLCapabilities } from '@/utils/permission'
 import { AppInfoView } from './app-info'
-import { useAppInfoActions } from './app-info/use-app-info-actions'
 import NavLink from './nav-link'
 
 type AppDetailNavItem = {
@@ -42,7 +41,7 @@ type AppDetailSectionProps = {
 }
 
 const AppDetailSection = ({ expand = true }: AppDetailSectionProps) => {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['common', 'navigation'])
   const pathname = usePathname()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: currentUserId } = useSuspenseQuery({
@@ -52,9 +51,6 @@ const AppDetailSection = ({ expand = true }: AppDetailSectionProps) => {
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isRbacEnabled = systemFeatures.rbac_enabled
   const appDetail = useStore((state) => state.appDetail)
-  const appInfoActions = useAppInfoActions({
-    resetKey: appDetail?.id,
-  })
 
   const navigation = useMemo<AppDetailNavItem[]>(() => {
     if (!appDetail) return []
@@ -136,7 +132,7 @@ const AppDetailSection = ({ expand = true }: AppDetailSectionProps) => {
       ...(supportsResourceAccess && appACLCapabilities.canAccessConfig
         ? [
             {
-              name: t(($) => $['settings.resourceAccess'], { ns: 'common' }),
+              name: t(($) => $['settings.resourceAccess'], { ns: 'navigation' }),
               href: `/app/${appId}/access-config`,
               icon: 'i-ri-lock-2-line',
               selectedIcon: 'i-ri-lock-2-fill',
@@ -164,9 +160,12 @@ const AppDetailSection = ({ expand = true }: AppDetailSectionProps) => {
         </div>
       )}
       <div className={cn('px-1 py-2', expand && '-mx-2')}>
-        <AppInfoView expand={expand} actions={appInfoActions} />
+        <AppInfoView key={appDetail.id} expand={expand} />
       </div>
-      <nav className={cn('flex flex-col gap-y-0.5 py-1', expand ? 'px-1' : 'px-3')}>
+      <nav
+        aria-label={appDetail.name}
+        className={cn('flex flex-col gap-y-0.5 py-1', expand ? 'px-1' : 'px-3')}
+      >
         {navigation.map((item) => {
           const shouldRenderDividerBefore =
             isLogsNavItem(item) || (!hasLogsNavigation && isAnnotationsNavItem(item))

@@ -55,7 +55,7 @@ export function useAgentConfigureSync({
   enabled: boolean
   publishEnabled: boolean
 }) {
-  const { t: tCommon } = useTranslation(['common'])
+  const { t: tCommon } = useTranslation(['common', 'modelProvider'])
   const { t: tWorkflow } = useTranslation(['workflow'])
   const getKnowledgeValidationMessage = useKnowledgeValidationMessage()
   const toolPresentationIdentities = useAtomValue(agentComposerToolPresentationIdentitiesAtom)
@@ -374,7 +374,7 @@ export function useAgentConfigureSync({
   )
 
   useEffect(() => {
-    const scheduleDirtyDraftSave = () => {
+    return store.sub(agentComposerDraftAtom, () => {
       const agentSoulDraft = getAgentSoulDraft()
       const agentSoulDraftKey = JSON.stringify(agentSoulDraft)
       const isDirty = store.get(isAgentComposerDirtyAtom)
@@ -389,11 +389,8 @@ export function useAgentConfigureSync({
       }
 
       debouncedSaveDraft()
-    }
-
-    scheduleDirtyDraftSave()
-    return store.sub(agentComposerDraftAtom, scheduleDirtyDraftSave)
-  }, [debouncedSaveDraft, enabled, getAgentSoulDraft, store])
+    })
+  }, [debouncedSaveDraft, getAgentSoulDraft, store])
 
   useEffect(() => {
     const saveDraftWhenPageHidden = () => {
@@ -433,7 +430,7 @@ export function useAgentConfigureSync({
       currentModel: draft.model,
     })
     if (!configSnapshot.model?.model_provider || !configSnapshot.model.model) {
-      toast.error(tCommon(($) => $['modelProvider.selectModel']))
+      toast.error(tCommon(($) => $['modelProvider.selectModel'], { ns: 'modelProvider' }))
       return false
     }
 
@@ -444,8 +441,14 @@ export function useAgentConfigureSync({
         toolPublishIssue.tool.name
       toast.error(
         toolPublishIssue.type === 'uninstalled'
-          ? tWorkflow(($) => $['nodes.agent.toolNotInstallTooltip'], { tool: toolName })
-          : tWorkflow(($) => $['nodes.agent.toolNotAuthorizedTooltip'], { tool: toolName }),
+          ? tWorkflow(($) => $['nodes.agent.toolNotInstallTooltip'], {
+              ns: 'workflow',
+              tool: toolName,
+            })
+          : tWorkflow(($) => $['nodes.agent.toolNotAuthorizedTooltip'], {
+              ns: 'workflow',
+              tool: toolName,
+            }),
       )
       return false
     }

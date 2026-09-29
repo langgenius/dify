@@ -1,6 +1,7 @@
 'use client'
+
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
-import type { App } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -20,7 +21,7 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { usePathname, useRouter } from '@/next/navigation'
 import { isAppDeletingOrDeleted } from '@/service/app-deletion'
-import { fetchAppDetailDirect } from '@/service/apps'
+import { consoleClient } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
 import { getRedirectionPath } from '@/utils/app-redirection'
 import { getAppACLCapabilities } from '@/utils/permission'
@@ -44,9 +45,9 @@ const appDetailPageTitle = (pathname: string, t: ReturnType<typeof useTranslatio
     return t(($) => $['appMenus.annotations'], { ns: 'common' })
   if (pathname.endsWith('/overview')) return t(($) => $['appMenus.overview'], { ns: 'common' })
   if (pathname.endsWith('/access-config'))
-    return t(($) => $['settings.resourceAccess'], { ns: 'common' })
+    return t(($) => $['settings.resourceAccess'], { ns: 'navigation' })
 
-  return t(($) => $['menus.appDetail'], { ns: 'common' })
+  return t(($) => $['menus.appDetail'], { ns: 'navigation' })
 }
 
 const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
@@ -54,7 +55,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     children,
     appId, // get appId in path
   } = props
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['common', 'navigation'])
   const router = useRouter()
   const pathname = usePathname()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
@@ -74,7 +75,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     })),
   )
   const [isLoadingAppDetail, setIsLoadingAppDetail] = useState(false)
-  const [appDetailRes, setAppDetailRes] = useState<App | null>(null)
+  const [appDetailRes, setAppDetailRes] = useState<AppDetailWithSite | null>(null)
   const routeAppDetail =
     appDetail?.id === appId ? appDetail : appDetailRes?.id === appId ? appDetailRes : null
   const pageTitle = appDetailPageTitle(pathname, t)
@@ -96,7 +97,9 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       : false
   const shouldBlockAccessPointAccess = pathname.endsWith('/access-point') && !canViewAccessPoint
 
-  useDocumentTitle(`${pageTitle} · ${appName || t(($) => $['menus.appDetail'], { ns: 'common' })}`)
+  useDocumentTitle(
+    `${pageTitle} · ${appName || t(($) => $['menus.appDetail'], { ns: 'navigation' })}`,
+  )
 
   useEffect(() => {
     let ignore = false
@@ -112,8 +115,9 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     void Promise.resolve().then(() => {
       if (!ignore) setIsLoadingAppDetail(true)
     })
-    fetchAppDetailDirect({ url: '/apps', id: appId })
-      .then((res: App) => {
+    consoleClient.apps.byAppId
+      .get({ params: { app_id: appId } })
+      .then((res: AppDetailWithSite) => {
         if (ignore) return
 
         setAppDetailRes(res)
@@ -196,8 +200,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       return
     }
 
-    if (appDetailRes && appDetail?.id !== appDetailRes.id)
-      setAppDetail({ ...appDetailRes, enable_sso: false })
+    if (appDetailRes && appDetail?.id !== appDetailRes.id) setAppDetail(appDetailRes)
   }, [
     appDetail?.id,
     appDetailRes,

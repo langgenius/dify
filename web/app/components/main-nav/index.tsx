@@ -28,7 +28,7 @@ import { isMainNavRouteVisible, MAIN_NAV_ROUTES } from './routes'
 const WebAppsSection = lazy(() => import('./components/web-apps-section'))
 
 export function MainNav({ className, initialPlatform }: MainNavProps) {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['common', 'navigation'])
   const pathname = usePathname()
   const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
@@ -58,7 +58,7 @@ export function MainNav({ className, initialPlatform }: MainNavProps) {
         }),
       ).map((route) => ({
         href: route.href,
-        label: 'label' in route ? route.label : t(($) => $[route.labelKey], { ns: 'common' }),
+        label: 'label' in route ? route.label : t(($) => $[route.labelKey], { ns: 'navigation' }),
         active: route.active,
         icon: route.icon,
         activeIcon: route.activeIcon,
@@ -123,7 +123,7 @@ export function MainNav({ className, initialPlatform }: MainNavProps) {
                 <Badge
                   size="xs"
                   variant="dimm"
-                  text={t(($) => $['menus.status'], { ns: 'common' })}
+                  text={t(($) => $['menus.status'], { ns: 'navigation' })}
                   className="ml-auto shrink-0"
                 />
               )}

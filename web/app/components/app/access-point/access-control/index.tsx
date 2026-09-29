@@ -32,10 +32,11 @@ import {
 import {
   canManageNetworkAccessPoliciesAtom,
   canReadNetworkAccessAtom,
+  canViewNetworkAccessStatusAtom,
 } from '@/features/network-access/permissions'
 import { consoleQuery } from '@/service/console'
 import { AccessControlChipAffix } from './chip-affix'
-import { getAccessControlChipState } from './chip-status'
+import { getAccessControlChipState, getAccessControlStatusChipState } from './chip-status'
 import { AccessControlConfigPanel } from './config-panel'
 import { AccessControlDowngradePanel } from './downgrade-panel'
 import { canSaveAccessControl, isAccessControlDraftEqual } from './draft'
@@ -63,7 +64,40 @@ type AccessControlEntryProps = {
 type GtagHandler = (command: 'event', action: 'click_upgrade_btn', payload: { loc: string }) => void
 
 export function AccessControlEntry(props: AccessControlEntryProps) {
+  const canRead = useAtomValue(canReadNetworkAccessAtom)
+  const canViewStatus = useAtomValue(canViewNetworkAccessStatusAtom)
+  if (!canRead) return canViewStatus ? <AccessControlStatusOnlyEntry appId={props.appId} /> : null
   return <AccessControlSession key={`${props.appId}:${props.canEditBinding}`} {...props} />
+}
+
+function AccessControlStatusOnlyEntry({ appId }: { appId: string }) {
+  const { t } = useTranslation(['deployments'])
+  const statusQuery = useQuery(
+    consoleQuery.apps.byAppId.networkAccessGroup.status.get.queryOptions({
+      input: { params: { app_id: appId } },
+      enabled: Boolean(appId),
+      retry: false,
+    }),
+  )
+  if (!statusQuery.data) return null
+
+  const chip = getAccessControlStatusChipState(statusQuery.data)
+  const label = t(($) => $['studio.accessControl.entryLabel'], { ns: 'deployments' })
+  return (
+    <button
+      type="button"
+      disabled
+      className="flex h-8 shrink-0 items-center gap-1.5 rounded-md border-[0.5px] border-divider-deep px-2.5 shadow-xs"
+    >
+      <span aria-hidden className="i-ri-shield-keyhole-line size-4 text-text-secondary" />
+      <span className="system-sm-medium text-text-secondary">{label}</span>
+      <AccessControlChipAffix
+        kind={chip.kind}
+        coveredCount={chip.coveredCount}
+        inServiceCount={chip.inServiceCount}
+      />
+    </button>
+  )
 }
 
 function AccessControlSession({
@@ -526,7 +560,7 @@ function AccessControlSession({
           <AlertDialogDescription>
             {t(($) => $['studio.accessControl.lockoutWarning'], {
               ns: 'deployments',
-              ip: confirmation?.clientIp,
+              ip: confirmation?.clientIp ?? '',
             })}
           </AlertDialogDescription>
           {confirmation?.changed && (

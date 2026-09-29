@@ -26,7 +26,7 @@ function activityLabel(
 
 export function ActivityCell({ activity }: { activity?: EnvironmentDeploymentOperation }) {
   const { t } = useTranslation(['deployments'])
-  const { t: tWorkflow } = useTranslation(['workflow'])
+  const { t: tWorkflow } = useTranslation(['workflowHistory'])
   const { formatTimeFromNow } = useFormatTimeFromNow()
   if (!activity) return <span className="text-text-quaternary">--</span>
 
@@ -55,7 +55,7 @@ export function ActivityCell({ activity }: { activity?: EnvironmentDeploymentOpe
           {activityLabel(
             activity,
             t,
-            tWorkflow(($) => $['versionHistory.defaultName']),
+            tWorkflow(($) => $['versionHistory.defaultName'], { ns: 'workflowHistory' }),
           )}
         </span>
       </div>

@@ -14,7 +14,6 @@ vi.mock('@/i18n/load-resource', () => ({
     default: namespace === 'share' ? enShare : enCommon,
   }),
 }))
-vi.mock('@/i18n', () => ({ setLocaleOnClient: vi.fn() }))
 vi.mock('@/next/navigation', () => ({
   usePathname: () => window.location.pathname,
   useSearchParams: () => new URLSearchParams(window.location.search),

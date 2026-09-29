@@ -97,12 +97,15 @@ export const PLUGIN_PAGE_TABS_MAP = {
 }
 
 export const usePluginPageTabs = () => {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['navigation'])
   const tabs = [
-    { value: PLUGIN_PAGE_TABS_MAP.plugins, text: t(($) => $['menus.plugins'], { ns: 'common' }) },
+    {
+      value: PLUGIN_PAGE_TABS_MAP.plugins,
+      text: t(($) => $['menus.plugins'], { ns: 'navigation' }),
+    },
     {
       value: PLUGIN_PAGE_TABS_MAP.marketplace,
-      text: t(($) => $['menus.exploreMarketplace'], { ns: 'common' }),
+      text: t(($) => $['menus.exploreMarketplace'], { ns: 'navigation' }),
     },
   ]
   return tabs

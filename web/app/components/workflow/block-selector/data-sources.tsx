@@ -8,6 +8,7 @@ import type { ListRef } from '@/app/components/workflow/block-selector/marketpla
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
+import dynamic from 'next/dynamic'
 import { useCallback, useMemo, useRef } from 'react'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/query'
@@ -18,7 +19,13 @@ import { renderI18nObject } from '@/i18n/metadata'
 import { PluginCategoryEnum } from '../../plugins/types'
 import { BlockEnum } from '../types'
 import { DEFAULT_FILE_EXTENSIONS_IN_LOCAL_FILE_DATA_SOURCE } from './constants'
-import { DatasourceList } from './datasource-list'
+
+const DatasourceList = dynamic(
+  () => import('./datasource-list').then((module) => module.DatasourceList),
+  {
+    loading: () => <div className="h-24 animate-pulse rounded-lg bg-background-section" />,
+  },
+)
 
 type DataSourcesProps = {
   className?: string

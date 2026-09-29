@@ -39,7 +39,7 @@ const useSingleRunFormParams = ({
   setRunInputData,
   toVarInputs,
 }: Params) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowModels'])
   const { inputs } = useNodeCrud<LLMNodeType>(id, payload)
   const getVarInputs = getInputVars
   const isChatMode = useIsChatMode()
@@ -159,7 +159,7 @@ const useSingleRunFormParams = ({
 
     if (varInputs.length > 0) {
       forms.push({
-        label: t(($) => $[`${i18nPrefix}.singleRun.variable`], { ns: 'workflow' })!,
+        label: t(($) => $[`${i18nPrefix}.singleRun.variable`], { ns: 'workflowModels' })!,
         inputs: varInputs,
         values: inputVarValues,
         onChange: setInputVarValues,
@@ -168,7 +168,7 @@ const useSingleRunFormParams = ({
 
     if (inputs.context?.variable_selector && inputs.context?.variable_selector.length > 0) {
       forms.push({
-        label: t(($) => $[`${i18nPrefix}.context`], { ns: 'workflow' })!,
+        label: t(($) => $[`${i18nPrefix}.context`], { ns: 'workflowModels' })!,
         inputs: [
           {
             label: '',
@@ -188,7 +188,7 @@ const useSingleRunFormParams = ({
       )
 
       forms.push({
-        label: t(($) => $[`${i18nPrefix}.vision`], { ns: 'workflow' })!,
+        label: t(($) => $[`${i18nPrefix}.vision`], { ns: 'workflowModels' })!,
         inputs: [
           {
             label: currentVariable?.variable as any,

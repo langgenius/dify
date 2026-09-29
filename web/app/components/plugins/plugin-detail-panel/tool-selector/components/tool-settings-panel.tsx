@@ -77,7 +77,6 @@ export function ToolSettingsPanel({
   const settingsForm = (
     <div className="px-4 py-2">
       <ToolForm
-        inPanel
         readOnly={false}
         nodeId={nodeId}
         schema={settingsFormSchemas as CredentialFormSchema[]}

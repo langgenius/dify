@@ -29,13 +29,13 @@ export function AccessControlScopeList({
   readOnly = false,
   onDraftChange,
 }: AccessControlScopeListProps) {
-  const { t } = useTranslation(['common', 'deployments', 'appOverview', 'tools'])
+  const { t } = useTranslation(['appOverview', 'navigation', 'tools'])
 
   const labels: Record<AccessPoint, string> = {
     webApp: t(($) => $['overview.appInfo.title'], { ns: 'appOverview' }),
     serviceApi: t(($) => $['overview.apiInfo.title'], { ns: 'appOverview' }),
     mcp: t(($) => $['mcp.server.title'], { ns: 'tools' }),
-    trigger: t(($) => $['settings.trigger'], { ns: 'common' }),
+    trigger: t(($) => $['settings.trigger'], { ns: 'navigation' }),
   }
 
   return (

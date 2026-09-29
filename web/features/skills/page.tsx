@@ -287,13 +287,7 @@ function DeleteSkillDialog({
     (referenceCount > 0 && confirmDeleteInput !== skill.display_name)
   const description =
     referenceCount > 0
-      ? t(
-          ($) =>
-            referenceCount === 1
-              ? $['skillManagement.deleteDialog.referencedDescription_one']
-              : $['skillManagement.deleteDialog.referencedDescription_other'],
-          { count: referenceCount },
-        )
+      ? t(($) => $['skillManagement.deleteDialog.referencedDescription'], { count: referenceCount })
       : t(($) => $['skillManagement.deleteDialog.description'])
 
   const handleDelete = () => {
@@ -506,13 +500,7 @@ function SkillCard({
         <div className="flex min-w-0 shrink-0 items-center pt-2 pr-3 pb-3 pl-4 system-xs-regular text-text-tertiary">
           <div className="flex min-w-0 flex-1 items-center gap-1">
             <span className="shrink-0">
-              {t(
-                ($) =>
-                  skill.reference_count === 1
-                    ? $['skillManagement.referenceCount_one']
-                    : $['skillManagement.referenceCount_other'],
-                { count: skill.reference_count ?? 0 },
-              )}
+              {t(($) => $['skillManagement.referenceCount'], { count: skill.reference_count ?? 0 })}
             </span>
             <span aria-hidden className="shrink-0 text-text-quaternary">
               ·
@@ -520,7 +508,7 @@ function SkillCard({
             <span className="min-w-0 truncate">
               {isDraft
                 ? t(($) => $['skillManagement.editedAt'], { time: updatedAt })
-                : t(($) => $['skillManagement.publishedAt'], { time: publishedAt })}
+                : t(($) => $['skillManagement.publishedAt'], { time: publishedAt ?? '-' })}
             </span>
           </div>
         </div>

@@ -13,16 +13,16 @@ type Props = Readonly<{
 }>
 
 const IdeaOutput: FC<Props> = ({ value, onChange }) => {
-  const { t } = useTranslation(['appDebug'])
+  const { t } = useTranslation(['appGeneration'])
 
   return (
     <Collapsible className="mt-4 text-[0px]">
       <CollapsibleTrigger className="group mb-1.5 flex cursor-pointer flex-wrap items-center text-left text-sm/5 font-medium text-text-primary focus-visible:ring-2 focus-visible:ring-components-input-border-active focus-visible:outline-hidden">
         <span className="mr-1 system-sm-semibold-uppercase text-text-secondary">
-          {t(($) => $[`${i18nPrefix}.idealOutput`], { ns: 'appDebug' })}
+          {t(($) => $[`${i18nPrefix}.idealOutput`], { ns: 'appGeneration' })}
         </span>
         <span className="system-xs-regular text-text-tertiary">
-          ({t(($) => $[`${i18nPrefix}.optional`], { ns: 'appDebug' })})
+          ({t(($) => $[`${i18nPrefix}.optional`], { ns: 'appGeneration' })})
         </span>
         <span
           aria-hidden
@@ -31,9 +31,9 @@ const IdeaOutput: FC<Props> = ({ value, onChange }) => {
       </CollapsibleTrigger>
       <CollapsiblePanel>
         <Textarea
-          aria-label={t(($) => $[`${i18nPrefix}.idealOutput`], { ns: 'appDebug' })}
+          aria-label={t(($) => $[`${i18nPrefix}.idealOutput`], { ns: 'appGeneration' })}
           className="h-20"
-          placeholder={t(($) => $[`${i18nPrefix}.idealOutputPlaceholder`], { ns: 'appDebug' })}
+          placeholder={t(($) => $[`${i18nPrefix}.idealOutputPlaceholder`], { ns: 'appGeneration' })}
           value={value}
           onValueChange={(value) => onChange(value)}
         />

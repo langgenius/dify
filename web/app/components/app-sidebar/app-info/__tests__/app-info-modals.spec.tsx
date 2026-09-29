@@ -1,11 +1,12 @@
-import type { App, AppSSO } from '@/types/app'
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppModeEnum } from '@/types/app'
 import AppInfoModals from '../app-info-modals'
 
-vi.mock('@/next/dynamic', () => ({
+vi.mock('next/dynamic', () => ({
   default: (loader: () => Promise<{ default: React.ComponentType }>) => {
     const LazyComp = React.lazy(loader)
     return function DynamicWrapper(props: Record<string, unknown>) {
@@ -107,8 +108,8 @@ vi.mock('@/app/components/app/export-confirm-modal', () => ({
   ),
 }))
 
-const createAppDetail = (overrides: Partial<App> = {}): App & Partial<AppSSO> =>
-  ({
+const createAppDetail = (overrides: Partial<AppDetailWithSite> = {}) =>
+  createAppDetailFixture({
     id: 'app-1',
     name: 'Test App',
     mode: AppModeEnum.CHAT,
@@ -120,7 +121,7 @@ const createAppDetail = (overrides: Partial<App> = {}): App & Partial<AppSSO> =>
     use_icon_as_answer_icon: false,
     max_active_requests: null,
     ...overrides,
-  }) as App & Partial<AppSSO>
+  })
 
 const defaultProps = {
   appDetail: createAppDetail(),

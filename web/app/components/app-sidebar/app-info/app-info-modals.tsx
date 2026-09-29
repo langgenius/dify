@@ -1,8 +1,10 @@
-import type { EnvironmentVariableItemResponse } from '@dify/contracts/api/console/apps/types.gen'
+import type {
+  AppDetailWithSite,
+  EnvironmentVariableItemResponse,
+} from '@dify/contracts/api/console/apps/types.gen'
 import type { AppInfoModalType } from './use-app-info-actions'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
-import type { App, AppSSO } from '@/types/app'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -15,11 +17,11 @@ import {
 import { Button } from '@langgenius/dify-ui/button'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
+import dynamic from 'next/dynamic'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { AppExportConfirmContent } from '@/app/components/app/export-confirm-modal'
-import dynamic from '@/next/dynamic'
 
 const SwitchAppModal = dynamic(() => import('@/app/components/app/switch-app-modal'), {
   ssr: false,
@@ -35,7 +37,7 @@ const UpdateDSLModal = dynamic(() => import('@/app/components/workflow/update-ds
 })
 
 type AppInfoModalsProps = {
-  appDetail: App & Partial<AppSSO>
+  appDetail: AppDetailWithSite
   activeModal: AppInfoModalType
   closeModal: () => void
   secretEnvList: EnvironmentVariableItemResponse[]

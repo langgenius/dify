@@ -13,6 +13,7 @@ import { consoleQuery } from '@/service/console'
 import {
   createNetworkAccessGroupFixture,
   seedAppNetworkAccessGroup,
+  seedAppNetworkAccessGroupStatus,
   seedNetworkAccessGroups,
 } from '@/test/console/network-access'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
@@ -93,6 +94,15 @@ const renderEntry = ({
     binding,
     available_access_points: availableAccessPoints,
   })
+  if (role === 'normal') {
+    seedAppNetworkAccessGroupStatus(queryClient, 'app-1', {
+      entitled,
+      configured: Boolean(binding?.group_id),
+      enabled: binding?.enabled ?? false,
+      covered_count: binding?.access_points.length ?? 0,
+      available_count: availableAccessPoints.length,
+    })
+  }
 
   return renderWithConsoleQuery(
     <AccessControlEntry
@@ -1070,8 +1080,18 @@ describe('supported access points and binding permission', () => {
     expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
   })
 
-  it.each(['normal', 'dataset_operator'] as const)('hides the entry from workspace %s', (role) => {
-    renderEntry({ plan: 'professional', role })
+  it('shows Normal members the status but keeps the entry disabled', () => {
+    const binding = createBinding({ enabled: true, access_points: ['webapp', 'service_api'] })
+    renderEntry({ plan: 'professional', role: 'normal', binding })
+    const entry = screen.getByRole('button', { name: /Access Control/ })
+    expect(entry).toBeDisabled()
+    expect(entry).toHaveTextContent('2 of 3')
+    expect(screen.queryByText('Internal Network')).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('hides the entry from Dataset Operators', () => {
+    renderEntry({ plan: 'professional', role: 'dataset_operator' })
     expect(screen.queryByRole('button', { name: /Access Control/ })).not.toBeInTheDocument()
   })
 

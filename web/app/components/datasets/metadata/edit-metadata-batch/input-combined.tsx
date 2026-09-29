@@ -33,7 +33,15 @@ const InputCombined: FC<Props> = ({
 }) => {
   const className = cn('h-6 grow p-0.5 text-xs')
   if (type === DataType.time) {
-    return <Datepicker label={label} className={className} value={value} onChange={onChange} />
+    return (
+      <Datepicker
+        label={label}
+        className={className}
+        value={value}
+        onChange={onChange}
+        readOnly={readOnly}
+      />
+    )
   }
 
   if (type === DataType.number) {

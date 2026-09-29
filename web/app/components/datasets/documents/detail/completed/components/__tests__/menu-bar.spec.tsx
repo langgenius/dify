@@ -94,7 +94,9 @@ describe('MenuBar', () => {
 
   it('should render the selected status in the trigger', () => {
     renderMenuBar()
-    expect(screen.getByText('All')).toBeInTheDocument()
+    expect(
+      screen.getByRole('combobox', { name: 'datasetDocuments.segment.statusFilterLabel' }),
+    ).toHaveTextContent('All')
   })
 
   it('should render status options when dropdown is opened', async () => {

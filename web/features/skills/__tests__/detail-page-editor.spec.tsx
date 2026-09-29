@@ -359,6 +359,8 @@ describe('SkillDetailPage editor', () => {
     if (!liveEditor) throw new Error('live editor not found')
 
     await user.click(liveEditor)
+    expect(fireEvent.keyDown(liveEditor, { key: 'Enter', isComposing: true })).toBe(true)
+    expect(liveEditor).toHaveTextContent('')
     await user.type(liveEditor, 'First line{Enter}Second line')
     await user.click(
       screen.getByRole('button', { name: 'skill.skillManagement.detail.publishUpdate' }),

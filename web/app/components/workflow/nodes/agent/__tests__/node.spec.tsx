@@ -188,7 +188,7 @@ describe('agent/node', () => {
 
     render(<Node id="agent-node" data={createData()} />)
 
-    expect(screen.getByText('workflow.nodes.agent.strategyNotSet:normal:')).toBeInTheDocument()
+    expect(screen.getByText('workflowAgent.nodes.agent.strategyNotSet:normal:')).toBeInTheDocument()
     expect(mockModelBar).not.toHaveBeenCalled()
     expect(mockToolIcon).not.toHaveBeenCalled()
   })
@@ -196,12 +196,12 @@ describe('agent/node', () => {
   it('renders strategy status, required and selected model bars, and tool icons', () => {
     render(<Node id="agent-node" data={createData()} />)
 
-    expect(screen.getByText(/workflow.nodes.agent.strategy.shortLabel:error:/)).toHaveTextContent(
-      'React Agent',
-    )
-    expect(screen.getByText(/workflow.nodes.agent.strategy.shortLabel:error:/)).toHaveTextContent(
-      'Plugin Marketplace',
-    )
+    expect(
+      screen.getByText(/workflowAgent.nodes.agent.strategy.shortLabel:error:/),
+    ).toHaveTextContent('React Agent')
+    expect(
+      screen.getByText(/workflowAgent.nodes.agent.strategy.shortLabel:error:/),
+    ).toHaveTextContent('Plugin Marketplace')
     expect(screen.getByText('requiredModel:empty-model')).toBeInTheDocument()
     expect(screen.getByText('optionalModel:openai/gpt-4o')).toBeInTheDocument()
     expect(screen.getByText('tool:author/tool-b')).toBeInTheDocument()

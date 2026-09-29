@@ -1,10 +1,12 @@
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import { screen } from '@testing-library/react'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppModeEnum } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
 import AppDetailSection from '../app-detail-section'
 
-let mockAppMode = 'chat'
+let mockAppMode: AppDetailWithSite['mode'] = 'chat'
 let mockPathname = '/app/app-1/logs'
 let mockAppPermissionKeys: string[] = []
 let mockIsRbacEnabled = true
@@ -26,7 +28,7 @@ const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) =>
 vi.mock('@/app/components/app/store', () => ({
   useStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
-      appDetail: {
+      appDetail: createAppDetailFixture({
         id: 'app-1',
         name: 'Test App',
         mode: mockAppMode,
@@ -34,7 +36,7 @@ vi.mock('@/app/components/app/store', () => ({
         icon_type: 'emoji',
         icon_background: '#fff',
         permission_keys: mockAppPermissionKeys,
-      },
+      }),
     }),
 }))
 
@@ -52,10 +54,6 @@ vi.mock('@/next/navigation', () => ({
 
 vi.mock('../app-info', () => ({
   AppInfoView: () => <div />,
-}))
-
-vi.mock('../app-info/use-app-info-actions', () => ({
-  useAppInfoActions: vi.fn(() => ({})),
 }))
 
 vi.mock('../nav-link', () => ({
@@ -204,7 +202,7 @@ describe('AppDetailSection', () => {
       ).not.toBeInTheDocument()
     })
 
-    it.each(['workflow', 'advanced-chat'])(
+    it.each(['workflow', 'advanced-chat'] as const)(
       'should render deploy navigation for a %s app with app deploy ACL regardless of the legacy workspace role',
       (mode) => {
         // Arrange
@@ -225,12 +223,12 @@ describe('AppDetailSection', () => {
     it.each([
       {
         label: 'the app is not a workflow app',
-        mode: 'chat',
+        mode: AppModeEnum.CHAT,
         permissionKeys: [AppACLPermission.Deploy],
       },
       {
         label: 'app deploy ACL permission is missing',
-        mode: 'workflow',
+        mode: AppModeEnum.WORKFLOW,
         permissionKeys: [AppACLPermission.Monitor],
       },
     ])('should hide deploy navigation when $label', ({ mode, permissionKeys }) => {
@@ -257,7 +255,7 @@ describe('AppDetailSection', () => {
 
         // Assert
         expect(
-          screen.getByRole('link', { name: 'common.settings.resourceAccess' }),
+          screen.getByRole('link', { name: 'navigation.settings.resourceAccess' }),
         ).toHaveAttribute('href', '/app/app-1/access-config')
         expect(
           screen.queryByRole('link', { name: 'common.appMenus.overview' }),
@@ -275,7 +273,7 @@ describe('AppDetailSection', () => {
 
       // Assert
       expect(
-        screen.queryByRole('link', { name: 'common.settings.resourceAccess' }),
+        screen.queryByRole('link', { name: 'navigation.settings.resourceAccess' }),
       ).not.toBeInTheDocument()
     })
 
@@ -285,7 +283,7 @@ describe('AppDetailSection', () => {
 
       // Assert
       expect(
-        screen.queryByRole('link', { name: 'common.settings.resourceAccess' }),
+        screen.queryByRole('link', { name: 'navigation.settings.resourceAccess' }),
       ).not.toBeInTheDocument()
     })
 
@@ -299,7 +297,7 @@ describe('AppDetailSection', () => {
 
       // Assert
       expect(
-        screen.queryByRole('link', { name: 'common.settings.resourceAccess' }),
+        screen.queryByRole('link', { name: 'navigation.settings.resourceAccess' }),
       ).not.toBeInTheDocument()
     })
   })

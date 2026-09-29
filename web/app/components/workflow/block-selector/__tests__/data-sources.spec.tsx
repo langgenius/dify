@@ -49,7 +49,7 @@ it('selects the built-in local file datasource directly with its file extensions
   const provider = createDatasourceProvider()
   render(<DataSources searchText="" onSelect={onSelect} dataSources={[provider]} />)
 
-  await user.click(screen.getByRole('button', { name: 'File Source' }))
+  await user.click(await screen.findByRole('button', { name: 'File Source' }))
   const action = screen.getByRole('button', { name: 'Local File' })
   expect(action).toHaveAccessibleDescription('Load local files')
   action.focus()
@@ -94,7 +94,7 @@ it('keeps unauthorized installed providers selectable and falls back from null l
   const onSelect = vi.fn()
   render(<DataSources searchText="pages" onSelect={onSelect} dataSources={[provider]} />)
 
-  expect(screen.getByRole('button', { name: 'Drive source' })).toHaveAttribute(
+  expect(await screen.findByRole('button', { name: 'Drive source' })).toHaveAttribute(
     'aria-expanded',
     'true',
   )
@@ -140,14 +140,14 @@ it('filters by raw provider or action name and retains each matching provider gr
       dataSources={[provider, namedProvider('other')]}
     />,
   )
-  expect(screen.getByRole('button', { name: 'Matched action' })).toBeInTheDocument()
+  expect(await screen.findByRole('button', { name: 'Matched action' })).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Sibling action' })).toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'other' })).not.toBeInTheDocument()
 
   rerender(
     <DataSources searchText="searchable-provider" onSelect={vi.fn()} dataSources={[provider]} />,
   )
-  expect(screen.getByRole('button', { name: 'Matched action' })).toBeInTheDocument()
+  expect(await screen.findByRole('button', { name: 'Matched action' })).toBeInTheDocument()
   rerender(<DataSources searchText="" onSelect={vi.fn()} dataSources={[provider]} />)
   await waitFor(() =>
     expect(screen.queryByRole('button', { name: 'Matched action' })).not.toBeInTheDocument(),
@@ -158,7 +158,7 @@ it('filters by raw provider or action name and retains each matching provider gr
   )
 })
 
-it('keeps flat letter navigation sorted with pinyin initials and nonalphabetic providers last', () => {
+it('keeps flat letter navigation sorted with pinyin initials and nonalphabetic providers last', async () => {
   const providers = [
     '1Source',
     '中文',
@@ -173,9 +173,9 @@ it('keeps flat letter navigation sorted with pinyin initials and nonalphabetic p
     'Lima',
   ].map(namedProvider)
   render(<DataSources searchText="" onSelect={vi.fn()} dataSources={providers} />)
-  const letters = screen
-    .getAllByRole('button')
-    .filter((button) => /^[A-Z#]$/.test(button.textContent ?? ''))
+  const letters = (await screen.findAllByRole('button')).filter((button) =>
+    /^[A-Z#]$/.test(button.textContent ?? ''),
+  )
   expect(letters.map((button) => button.textContent)).toEqual([
     'A',
     'E',
@@ -216,7 +216,7 @@ it('keeps an expanded datasource open when the language changes its sort letter'
   const { rerender } = render(
     <DataSources searchText="" onSelect={vi.fn()} dataSources={[provider]} />,
   )
-  await user.click(screen.getByRole('button', { name: 'File Source' }))
+  await user.click(await screen.findByRole('button', { name: 'File Source' }))
   expect(screen.getByRole('button', { name: 'Local File' })).toBeInTheDocument()
 
   language.value = 'zh_Hans'

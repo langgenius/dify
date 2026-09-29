@@ -125,13 +125,15 @@ describe('InstallFromMarketplace', () => {
 
   it('should render expanded by default', () => {
     render(<InstallFromMarketplace searchText="" />)
-    expect(screen.getByText('common.modelProvider.installProvider')).toBeInTheDocument()
+    expect(screen.getByText('modelProvider.modelProvider.installProvider')).toBeInTheDocument()
     expect(screen.getByTestId('plugin-list')).toBeInTheDocument()
   })
 
   it('should collapse when clicked', () => {
     render(<InstallFromMarketplace searchText="" />)
-    const toggle = screen.getByRole('button', { name: /common\.modelProvider\.installProvider/ })
+    const toggle = screen.getByRole('button', {
+      name: /modelProvider\.modelProvider\.installProvider/,
+    })
 
     fireEvent.click(toggle)
     expect(screen.queryByTestId('plugin-list')).not.toBeInTheDocument()
@@ -190,7 +192,7 @@ describe('InstallFromMarketplace', () => {
     expect(target).toHaveClass('absolute', 'inset-x-0', 'top-0', 'h-43.5')
     expect(target).toHaveAttribute('aria-hidden', 'true')
     expect(target?.parentElement).toContainElement(
-      screen.getByRole('button', { name: /common\.modelProvider\.installProvider/ }),
+      screen.getByRole('button', { name: /modelProvider\.modelProvider\.installProvider/ }),
     )
     expect(target?.parentElement).toContainElement(screen.getByTestId('plugin-list'))
   })
