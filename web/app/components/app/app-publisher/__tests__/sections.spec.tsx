@@ -570,6 +570,63 @@ describe('app-publisher sections', () => {
     expect(onConfigureWorkflowTool).toHaveBeenCalledTimes(1)
   })
 
+  it.each([
+    {
+      expectedLabel: /common\.publishAsEvaluationWorkflow\b/,
+      publishedAt: undefined,
+      workflowKind: 'standard' as const,
+      expectedTarget: undefined,
+    },
+    {
+      expectedLabel: /common\.switchToEvaluationWorkflow\b/,
+      publishedAt: Date.now(),
+      workflowKind: 'standard' as const,
+      expectedTarget: 'evaluation' as const,
+    },
+    {
+      expectedLabel: /common\.switchToStandardWorkflow\b/,
+      publishedAt: Date.now(),
+      workflowKind: 'evaluation' as const,
+      expectedTarget: 'standard' as const,
+    },
+  ])(
+    'should expose $expectedLabel for a $workflowKind workflow',
+    async ({ expectedLabel, expectedTarget, publishedAt, workflowKind }) => {
+      const user = userEvent.setup()
+      const onConvertWorkflowKind = vi.fn()
+      const onPublishEvaluation = vi.fn()
+
+      render(
+        <PublisherActionsSection
+          appDetail={{
+            mode: 'workflow',
+            workflow_kind: workflowKind,
+          }}
+          appId="workflow-app"
+          appURL="https://example.com/app"
+          canViewAccessPoint={false}
+          disabledFunctionButton={false}
+          publishedAt={publishedAt}
+          workflowToolIsLoading={false}
+          showWorkflowTool={false}
+          onConfigureWorkflowTool={vi.fn()}
+          onConvertWorkflowKind={onConvertWorkflowKind}
+          onPublishEvaluation={onPublishEvaluation}
+        />,
+      )
+
+      await user.click(screen.getByRole('button', { name: expectedLabel }))
+
+      if (expectedTarget) {
+        expect(onConvertWorkflowKind).toHaveBeenCalledWith(expectedTarget)
+        expect(onPublishEvaluation).not.toHaveBeenCalled()
+      } else {
+        expect(onPublishEvaluation).toHaveBeenCalledTimes(1)
+        expect(onConvertWorkflowKind).not.toHaveBeenCalled()
+      }
+    },
+  )
+
   it('should expose Configure and Manage in Tools actions for a ready workflow tool', async () => {
     const user = userEvent.setup()
     const onConfigureWorkflowTool = vi.fn()

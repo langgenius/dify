@@ -6,6 +6,7 @@ import type { WorkflowToolOutputVariable } from '@/app/components/tools/types'
 import type { EndNodeType } from '@/app/components/workflow/nodes/end/types'
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
 import type { CommonEdgeType, Node } from '@/app/components/workflow/types'
+import type { WorkflowKind } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
@@ -35,7 +36,7 @@ import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useTheme from '@/hooks/use-theme'
 import { consoleQuery } from '@/service/console'
-import { useResetWorkflowVersionHistory } from '@/service/use-workflow'
+import { useInvalidateAppWorkflow, useResetWorkflowVersionHistory } from '@/service/use-workflow'
 
 const FeaturesTrigger = () => {
   const { t } = useTranslation(['common', 'workflow'])
@@ -44,6 +45,9 @@ const FeaturesTrigger = () => {
   const workflowStore = useWorkflowStore()
   const queryClient = useQueryClient()
   const { appId: appID } = useAtomValue(workflowAppIdentityAtom)
+  const { data: appDetail } = useQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appID } } }),
+  )
   const { nodesReadOnly, getNodesReadOnly } = useNodesReadOnly()
   const canReleaseAndVersion = useHooksStore((s) => s.accessControl.canReleaseAndVersion)
   const { data: deploymentEdition } = useSuspenseQuery({
@@ -151,11 +155,22 @@ const FeaturesTrigger = () => {
   const { mutateAsync: publishWorkflow } = useMutation(
     consoleQuery.apps.byAppId.workflows.publish.post.mutationOptions(),
   )
+  const { mutateAsync: publishEvaluationWorkflow } = useMutation(
+    consoleQuery.apps.byAppId.workflows.publish.evaluation.post.mutationOptions(),
+  )
+  const { isPending: workflowKindChangePending, mutateAsync: convertWorkflowKind } = useMutation(
+    consoleQuery.apps.byAppId.workflows.convertType.post.mutationOptions(),
+  )
+  const invalidateAppWorkflow = useInvalidateAppWorkflow()
   // const { validateBeforeRun } = useWorkflowRunValidation()
   const needWarningNodes = useChecklist(nodes, edges)
 
-  const onPublish = useCallback(
-    async (params?: AppPublisherPublishParams, options?: AppPublisherPublishOptions) => {
+  const publishByKind = useCallback(
+    async (
+      publishKind: 'default' | 'evaluation',
+      params?: AppPublisherPublishParams,
+      options?: AppPublisherPublishOptions,
+    ) => {
       const publishParams = params && 'title' in params ? params : undefined
       // First check if there are any items in the checklist
       // if (!validateBeforeRun())
@@ -171,18 +186,37 @@ const FeaturesTrigger = () => {
         const draftSyncResult = await handleSyncWorkflowDraft(true)
         if (!draftSyncResult) throw new Error('Workflow draft sync failed')
 
-        const res = await publishWorkflow({
+        const input = {
           params: { app_id: appID },
           body: {
             marked_name: publishParams?.title || '',
             marked_comment: publishParams?.releaseNotes || '',
           },
-        })
+        }
+        const res = publishKind === 'evaluation'
+          ? await publishEvaluationWorkflow(input)
+          : await publishWorkflow(input)
         if (res) {
           // One toast per publish: a warning from the server replaces the success message.
           if (res.warning) toast.warning(res.warning)
           else if (options?.showSuccessToast !== false)
             toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
+          if (publishKind === 'evaluation') {
+            void Promise.all([
+              invalidateAppWorkflow(appID),
+              queryClient.invalidateQueries({
+                queryKey: consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: appID } } }),
+              }),
+              queryClient.invalidateQueries({
+                queryKey: consoleQuery.apps.byAppId.triggers.get.key({ input: { params: { app_id: appID } } }),
+              }),
+            ]).catch((error) => console.warn('[evaluation] refresh after publish failed', error))
+          }
+          if (publishKind === 'evaluation' || appDetail?.workflow_kind === 'evaluation') {
+            void queryClient.invalidateQueries({
+              queryKey: consoleQuery.workspaces.current.availableEvaluationWorkflows.get.key(),
+            }).catch((error) => console.warn('[evaluation] refresh workflow list failed', error))
+          }
           if (rosterAgentIds.length > 0) {
             void queryClient.invalidateQueries({
               queryKey: consoleQuery.agent.get.key(),
@@ -214,7 +248,10 @@ const FeaturesTrigger = () => {
       handleCheckBeforePublish,
       handleSyncWorkflowDraft,
       publishWorkflow,
+      publishEvaluationWorkflow,
+      invalidateAppWorkflow,
       appID,
+      appDetail?.workflow_kind,
       t,
       rosterAgentIds,
       queryClient,
@@ -222,6 +259,38 @@ const FeaturesTrigger = () => {
       hasUserInputNode,
       resetWorkflowVersionHistory,
     ],
+  )
+
+  const onPublish = useCallback(
+    (params?: AppPublisherPublishParams, options?: AppPublisherPublishOptions) =>
+      publishByKind('default', params, options),
+    [publishByKind],
+  )
+
+  const onPublishEvaluation = useCallback(
+    (params?: AppPublisherPublishParams, options?: AppPublisherPublishOptions) =>
+      publishByKind('evaluation', params, options),
+    [publishByKind],
+  )
+
+  const onConvertWorkflowKind = useCallback(
+    async (targetKind: WorkflowKind) => {
+      await convertWorkflowKind({
+        params: { app_id: appID },
+        query: { target_type: targetKind === 'standard' ? 'workflow' : 'evaluation' },
+      })
+      await Promise.all([
+        invalidateAppWorkflow(appID),
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: appID } } }),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.workspaces.current.availableEvaluationWorkflows.get.key(),
+        }),
+      ])
+      toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
+    },
+    [appID, convertWorkflowKind, invalidateAppWorkflow, queryClient, t],
   )
 
   const onPublisherToggle = useCallback(
@@ -261,7 +330,10 @@ const FeaturesTrigger = () => {
           outputs: endVariables,
           onRefreshData: handleToolConfigureUpdate,
           onPublish,
+          onPublishEvaluation,
+          onConvertWorkflowKind,
           onToggle: onPublisherToggle,
+          workflowKindChangePending,
           workflowToolAvailable: lastPublishedHasUserInput,
           alignOffset: 4,
           missingStartNode: !startNode,

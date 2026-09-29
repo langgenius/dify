@@ -2,7 +2,7 @@ import type { PopoverContentProps } from '@langgenius/dify-ui/popover'
 import type { ModelAndParameter } from '../configuration/debug/types'
 import type { WorkflowToolOutputVariable } from '@/app/components/tools/types'
 import type { InputVar } from '@/app/components/workflow/types'
-import type { PublishWorkflowParams } from '@/types/workflow'
+import type { PublishWorkflowParams, WorkflowKind } from '@/types/workflow'
 
 export type AppPublisherPublishParams = ModelAndParameter | PublishWorkflowParams
 
@@ -10,7 +10,7 @@ export type AppPublisherPublishOptions = {
   showSuccessToast?: boolean
 }
 
-type AppPublisherPublishHandler =
+export type AppPublisherPublishHandler =
   | ((
       params?: AppPublisherPublishParams,
       options?: AppPublisherPublishOptions,
@@ -18,6 +18,10 @@ type AppPublisherPublishHandler =
   | ((params?: unknown, options?: AppPublisherPublishOptions) => Promise<unknown> | unknown)
 
 type AppPublisherRestoreHandler = () => Promise<unknown> | unknown
+
+export type AppPublisherWorkflowKindChangeHandler = (
+  targetKind: WorkflowKind,
+) => Promise<unknown> | unknown
 
 export type AppPublisherProps = Pick<PopoverContentProps, 'alignOffset'> & {
   appId: string
@@ -30,6 +34,9 @@ export type AppPublisherProps = Pick<PopoverContentProps, 'alignOffset'> & {
   multipleModelConfigs?: ModelAndParameter[]
   /** modelAndParameter is passed when debugWithMultipleModel is true */
   onPublish?: AppPublisherPublishHandler
+  onPublishEvaluation?: AppPublisherPublishHandler
+  onConvertWorkflowKind?: AppPublisherWorkflowKindChangeHandler
+  workflowKindChangePending?: boolean
   onRestore?: AppPublisherRestoreHandler
   onToggle?: (state: boolean) => void
   toolPublished?: boolean

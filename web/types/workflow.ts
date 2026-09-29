@@ -439,6 +439,8 @@ export type PublishWorkflowParams = {
   releaseNotes: string
 }
 
+export type WorkflowKind = 'standard' | 'evaluation'
+
 export type PanelProps = {
   getInputVars: (textList: string[]) => InputVar[]
   toVarInputs: (variables: Variable[]) => InputVar[]
