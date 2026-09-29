@@ -229,6 +229,20 @@ const FeaturesTrigger = () => {
           updatePublishedWorkflow(appID)
           await updateAppDetail()
           invalidateAppTriggers(appID)
+          void queryClient.invalidateQueries({
+            queryKey:
+              consoleQuery.byEvaluateTargetType.byEvaluateTargetId.evaluation.defaultMetrics.get.key(
+                {
+                  type: 'query',
+                  input: {
+                    params: {
+                      evaluate_target_id: appID,
+                      evaluate_target_type: 'apps',
+                    },
+                  },
+                },
+              ),
+          })
           if (publishKind === 'evaluation' || appDetail?.workflow_kind === 'evaluation') {
             void queryClient.invalidateQueries({
               queryKey: consoleQuery.workspaces.current.availableEvaluationWorkflows.get.key(),

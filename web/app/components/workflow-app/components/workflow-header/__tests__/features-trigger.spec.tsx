@@ -684,6 +684,28 @@ describe('FeaturesTrigger', () => {
       expect(mockPublishWorkflow).not.toHaveBeenCalled()
     })
 
+    it('should invalidate evaluation metric metadata after publishing a workflow', async () => {
+      const user = userEvent.setup()
+      renderWithToast(<FeaturesTrigger />)
+
+      await user.click(screen.getByRole('button', { name: 'publisher-publish' }))
+
+      await waitFor(() => {
+        expect(mockInvalidateQueries).toHaveBeenCalledWith({
+          queryKey:
+            consoleQuery.byEvaluateTargetType.byEvaluateTargetId.evaluation.defaultMetrics.get.key({
+              type: 'query',
+              input: {
+                params: {
+                  evaluate_target_id: 'app-id',
+                  evaluate_target_type: 'apps',
+                },
+              },
+            }),
+        })
+      })
+    })
+
     it.each([
       ['evaluation', 'evaluation'],
       ['standard', 'workflow'],
