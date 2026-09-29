@@ -603,7 +603,7 @@ class TestWorkflowTrace:
         mock_factory = MagicMock()
         mock_factory.create_workflow_node_execution_repository.return_value = repo
 
-        monkeypatch.setattr("dify_trace_weave.weave_trace.DifyCoreRepositoryFactory", mock_factory)
+        monkeypatch.setattr("dify_trace_weave.weave_trace.workflow_writers", mock_factory)
         monkeypatch.setattr("dify_trace_weave.weave_trace.sessionmaker", lambda bind: MagicMock())
         monkeypatch.setattr("dify_trace_weave.weave_trace.db", MagicMock(engine="engine"))
         return repo

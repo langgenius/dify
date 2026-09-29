@@ -342,7 +342,7 @@ def test_repository_loader_scopes_repository_to_trace(monkeypatch: pytest.Monkey
     repository.get_by_workflow_execution.return_value = [node_execution()]
     factory = MagicMock()
     factory.create_workflow_node_execution_repository.return_value = repository
-    monkeypatch.setattr("core.ops.unified_trace.trace_builder.DifyCoreRepositoryFactory", factory)
+    monkeypatch.setattr("core.ops.unified_trace.trace_builder.workflow_writers", factory)
     monkeypatch.setattr("core.ops.unified_trace.trace_builder.db", MagicMock(engine="engine"))
     account = MagicMock()
     get_account = MagicMock(return_value=account)

@@ -31,9 +31,11 @@ from __future__ import annotations
 
 import json
 import logging
+from collections.abc import Mapping as MappingABC
 from typing import Any, cast
 
 from opentelemetry.util.types import AttributeValue
+from sqlalchemy.orm import sessionmaker
 
 from core.ops.entities.trace_entity import (
     BaseTraceInfo,
@@ -57,6 +59,9 @@ from enterprise.telemetry.entities import (
     TokenMetricLabels,
 )
 from enterprise.telemetry.telemetry_log import emit_metric_only_event, emit_telemetry_log
+from extensions.application_services import workflow_storage
+from extensions.ext_database import db
+from graphon.enums import WorkflowNodeExecutionMetadataKey
 
 logger = logging.getLogger(__name__)
 
@@ -299,19 +304,12 @@ class EnterpriseOtelTrace:
         trace_correlation_override: str | None = None,
     ) -> None:
         """Query node executions from the DB and emit child spans under the workflow run."""
-        from collections.abc import Mapping as MappingABC
-
-        from sqlalchemy.orm import sessionmaker
-
-        from extensions.ext_database import db
-        from graphon.enums import WorkflowNodeExecutionMetadataKey
-        from repositories.factory import DifyAPIRepositoryFactory
 
         metadata = self._metadata(workflow_info)
         tenant_id, app_id, user_id = self._context_ids(workflow_info, metadata)
 
         try:
-            repository = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
+            repository = workflow_storage.create_api_workflow_node_execution_repository(
                 sessionmaker(bind=db.engine, expire_on_commit=False)
             )
             rows = repository.get_executions_by_workflow_run(

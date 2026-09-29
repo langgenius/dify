@@ -37,7 +37,7 @@ from models.model import (
     TraceAppConfig,
 )
 from models.workflow import WorkflowAppLog, WorkflowAppLogCreatedFrom, WorkflowRun, WorkflowType
-from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
+from repositories.workflow.run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from tests.unit_tests.config_override import apply_config_overrides
 from tests.unit_tests.model_factories import make_app
 

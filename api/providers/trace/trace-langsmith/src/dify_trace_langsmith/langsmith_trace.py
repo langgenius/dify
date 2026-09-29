@@ -21,13 +21,13 @@ from core.ops.entities.trace_entity import (
     WorkflowTraceInfo,
 )
 from core.ops.utils import filter_none_values, generate_dotted_order
-from core.repositories import DifyCoreRepositoryFactory
 from dify_trace_langsmith.config import LangSmithConfig
 from dify_trace_langsmith.entities.langsmith_trace_entity import (
     LangSmithRunModel,
     LangSmithRunType,
     LangSmithRunUpdateModel,
 )
+from extensions.application_services import workflow_writers
 from extensions.ext_database import db
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 from models import EndUser, MessageFile, WorkflowNodeExecutionTriggeredFrom
@@ -152,7 +152,7 @@ class LangSmithDataTrace(BaseTraceInstance):
 
         service_account = self.get_service_account_with_tenant(app_id)
 
-        workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+        workflow_node_execution_repository = workflow_writers.create_workflow_node_execution_repository(
             session_factory=session_factory,
             tenant_id=trace_info.tenant_id,
             user=service_account,

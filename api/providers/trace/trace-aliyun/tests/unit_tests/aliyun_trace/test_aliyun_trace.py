@@ -456,7 +456,7 @@ def test_get_workflow_node_executions_builds_repo_and_fetches(
     repo.get_by_workflow_execution.return_value = ["node1"]
     mock_factory = MagicMock()
     mock_factory.create_workflow_node_execution_repository.return_value = repo
-    monkeypatch.setattr(aliyun_trace_module, "DifyCoreRepositoryFactory", mock_factory)
+    monkeypatch.setattr(aliyun_trace_module, "workflow_writers", mock_factory)
 
     result = trace_instance.get_workflow_node_executions(trace_info)
     assert result == ["node1"]

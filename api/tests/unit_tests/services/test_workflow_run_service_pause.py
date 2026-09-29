@@ -9,7 +9,7 @@ from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from graphon.entities.pause_reason import SchedulingPause
 from graphon.enums import WorkflowExecutionStatus
 from machinery.context import RequestContext
-from repositories.sqlalchemy_api_workflow_run_repository import WorkflowRunPauseRecord
+from services.workflow.run_entities import WorkflowRunPauseRecord
 from services.workflow_run_service import (
     WorkflowRunPauseDetails,
     WorkflowRunPausedNode,

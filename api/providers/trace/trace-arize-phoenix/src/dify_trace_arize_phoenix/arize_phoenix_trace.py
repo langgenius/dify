@@ -42,8 +42,8 @@ from core.ops.entities.trace_entity import (
 )
 from core.ops.exceptions import PendingTraceParentContextError
 from core.ops.utils import JSON_DICT_ADAPTER
-from core.repositories import DifyCoreRepositoryFactory
 from dify_trace_arize_phoenix.config import ArizeConfig, PhoenixConfig
+from extensions.application_services import workflow_writers
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from graphon.enums import WorkflowNodeExecutionStatus
@@ -843,7 +843,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
 
         service_account = self.get_service_account_with_tenant(app_id)
 
-        workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+        workflow_node_execution_repository = workflow_writers.create_workflow_node_execution_repository(
             session_factory=session_factory,
             tenant_id=trace_info.tenant_id,
             user=service_account,

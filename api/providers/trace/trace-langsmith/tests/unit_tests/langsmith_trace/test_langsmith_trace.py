@@ -205,7 +205,7 @@ def test_workflow_trace(trace_instance, monkeypatch: pytest.MonkeyPatch, sqlite3
 
     mock_factory = MagicMock()
     mock_factory.create_workflow_node_execution_repository.return_value = repo
-    monkeypatch.setattr("dify_trace_langsmith.langsmith_trace.DifyCoreRepositoryFactory", mock_factory)
+    monkeypatch.setattr("dify_trace_langsmith.langsmith_trace.workflow_writers", mock_factory)
 
     monkeypatch.setattr(trace_instance, "get_service_account_with_tenant", lambda app_id: MagicMock())
 
@@ -283,7 +283,7 @@ def test_workflow_trace_no_start_time(
     repo.get_by_workflow_execution.return_value = []
     mock_factory = MagicMock()
     mock_factory.create_workflow_node_execution_repository.return_value = repo
-    monkeypatch.setattr("dify_trace_langsmith.langsmith_trace.DifyCoreRepositoryFactory", mock_factory)
+    monkeypatch.setattr("dify_trace_langsmith.langsmith_trace.workflow_writers", mock_factory)
     monkeypatch.setattr(trace_instance, "get_service_account_with_tenant", lambda app_id: MagicMock())
 
     trace_instance.add_run = MagicMock()
@@ -613,7 +613,7 @@ def test_workflow_trace_usage_extraction_error(
 
     mock_factory = MagicMock()
     mock_factory.create_workflow_node_execution_repository.return_value = repo
-    monkeypatch.setattr("dify_trace_langsmith.langsmith_trace.DifyCoreRepositoryFactory", mock_factory)
+    monkeypatch.setattr("dify_trace_langsmith.langsmith_trace.workflow_writers", mock_factory)
     monkeypatch.setattr(
         "dify_trace_langsmith.langsmith_trace.db",
         SimpleNamespace(engine=sqlite3_session.get_bind(), session=sqlite3_session),
@@ -693,7 +693,7 @@ def _patch_workflow_trace_deps(monkeypatch, trace_instance, sqlite3_session: Ses
     repo.get_by_workflow_execution.return_value = []
     factory = MagicMock()
     factory.create_workflow_node_execution_repository.return_value = repo
-    monkeypatch.setattr("dify_trace_langsmith.langsmith_trace.DifyCoreRepositoryFactory", factory)
+    monkeypatch.setattr("dify_trace_langsmith.langsmith_trace.workflow_writers", factory)
     monkeypatch.setattr(trace_instance, "get_service_account_with_tenant", lambda app_id: MagicMock())
     trace_instance.add_run = MagicMock()
 

@@ -21,8 +21,8 @@ from core.ops.entities.trace_entity import (
     TraceTaskName,
     WorkflowTraceInfo,
 )
-from core.repositories import DifyCoreRepositoryFactory
 from dify_trace_opik.config import OpikConfig
+from extensions.application_services import workflow_writers
 from extensions.ext_database import db
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 from models import EndUser, MessageFile, WorkflowNodeExecutionTriggeredFrom
@@ -172,7 +172,7 @@ class OpikDataTrace(BaseTraceInstance):
 
         service_account = self.get_service_account_with_tenant(app_id)
 
-        workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+        workflow_node_execution_repository = workflow_writers.create_workflow_node_execution_repository(
             session_factory=session_factory,
             tenant_id=trace_info.tenant_id,
             user=service_account,

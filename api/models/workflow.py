@@ -54,13 +54,12 @@ from graphon.file import File
 from graphon.file.constants import maybe_file_object
 from graphon.variables import utils as variable_utils
 from graphon.variables.variables import FloatVariable, IntegerVariable, RAGPipelineVariable, StringVariable
-from libs.datetime_utils import naive_utc_now
+from libs.datetime_utils import ensure_naive_utc, naive_utc_now
 from libs.uuid_utils import uuidv7
-
-from ._workflow_exc import NodeNotFoundError, WorkflowDataError
+from models._workflow_exc import NodeNotFoundError, WorkflowDataError
 
 if TYPE_CHECKING:
-    from .model import AppMode
+    from models.model import AppMode
 
 
 from constants import DEFAULT_FILE_NUMBER_LIMITS, HIDDEN_VALUE
@@ -68,17 +67,16 @@ from core.helper import encrypter
 from factories import variable_factory
 from graphon.variables import SecretVariable, Segment, SegmentType, VariableBase
 from libs import helper
-
-from .account import Account
-from .base import Base, DefaultFieldsDCMixin, TypeBase
-from .engine import db
-from .enums import CreatorUserRole, DraftVariableType, ExecutionOffLoadType, WorkflowRunTriggeredFrom
+from models.account import Account
+from models.base import Base, DefaultFieldsDCMixin, TypeBase
+from models.engine import db
+from models.enums import CreatorUserRole, DraftVariableType, ExecutionOffLoadType, WorkflowRunTriggeredFrom
 
 # UploadFile and workflow execution offload use TypeBase, so importing the class object keeps
 # relationship joins explicit where the related execution model still uses Base.
-from .model import UploadFile
-from .types import EnumText, LongText, StringUUID
-from .utils.file_input_compat import (
+from models.model import UploadFile
+from models.types import EnumText, LongText, StringUUID
+from models.utils.file_input_compat import (
     build_file_from_mapping_without_lookup,
     build_file_from_stored_mapping,
 )
@@ -90,7 +88,7 @@ SerializedWorkflowVariables = dict[str, SerializedWorkflowValue]
 
 
 def _resolve_workflow_app_tenant_id(app_id: str) -> str:
-    from .model import App
+    from models.model import App
 
     tenant_id = db.session.scalar(select(App.tenant_id).where(App.id == app_id))
     if not tenant_id:
@@ -145,7 +143,7 @@ class WorkflowType(StrEnum):
         :param app_mode: app mode
         :return: workflow type
         """
-        from .model import AppMode
+        from models.model import AppMode
 
         app_mode = app_mode if isinstance(app_mode, AppMode) else AppMode.value_of(app_mode)
         return cls.WORKFLOW if app_mode == AppMode.WORKFLOW else cls.CHAT
@@ -576,7 +574,7 @@ class Workflow(Base):  # bug
 
         For accurate checking, use a direct query with tenant_id, app_id, and version.
         """
-        from .tools import WorkflowToolProvider
+        from models.tools import WorkflowToolProvider
 
         stmt = select(
             exists().where(
@@ -840,7 +838,7 @@ class WorkflowRun(Base):
         return session.get(Account, self.created_by) if created_by_role == CreatorUserRole.ACCOUNT else None
 
     def created_by_end_user(self, session: orm.Session):
-        from .model import EndUser
+        from models.model import EndUser
 
         created_by_role = CreatorUserRole(self.created_by_role)
         return session.get(EndUser, self.created_by) if created_by_role == CreatorUserRole.END_USER else None
@@ -1063,7 +1061,7 @@ class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offlo
         return None
 
     def created_by_end_user(self, session: orm.Session):
-        from .model import EndUser
+        from models.model import EndUser
 
         created_by_role = CreatorUserRole(self.created_by_role)
         if created_by_role == CreatorUserRole.END_USER:
@@ -1088,7 +1086,21 @@ class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offlo
         # When the metadata is unset, we return an empty dictionary instead of `None`.
         # This approach streamlines the logic for the caller, making it easier to handle
         # cases where metadata is absent.
-        return json.loads(self.execution_metadata) if self.execution_metadata else {}
+        metadata = json.loads(self.execution_metadata) if self.execution_metadata else {}
+        # Persistence ordering is internal; API responses and runtime enum keys exclude it.
+        metadata.pop("__dify_execution_attempt", None)
+        return metadata
+
+    @property
+    def execution_attempt_version(self) -> str | None:
+        """Lossless engine start time identifying a node attempt, independent of DATETIME precision."""
+        metadata = json.loads(self.execution_metadata) if self.execution_metadata else {}
+        return metadata.get("__dify_execution_attempt")
+
+    def set_execution_attempt(self, started_at: datetime) -> None:
+        metadata = json.loads(self.execution_metadata) if self.execution_metadata else {}
+        metadata["__dify_execution_attempt"] = ensure_naive_utc(started_at).isoformat(timespec="microseconds")
+        self.execution_metadata = json.dumps(metadata)
 
     @property
     def extras(self) -> dict[str, Any]:
@@ -1329,25 +1341,12 @@ class WorkflowAppLog(TypeBase):
         DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
 
-    @property
-    def workflow_run(self):
-        if self.workflow_run_id:
-            from sqlalchemy.orm import sessionmaker
-
-            from repositories.factory import DifyAPIRepositoryFactory
-
-            session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
-            repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
-            return repo.get_workflow_run_by_id_without_tenant(run_id=self.workflow_run_id)
-
-        return None
-
     def created_by_account(self, session: orm.Session) -> Account | None:
         created_by_role = CreatorUserRole(self.created_by_role)
         return session.get(Account, self.created_by) if created_by_role == CreatorUserRole.ACCOUNT else None
 
     def created_by_end_user(self, session: orm.Session):
-        from .model import EndUser
+        from models.model import EndUser
 
         created_by_role = CreatorUserRole(self.created_by_role)
         return session.get(EndUser, self.created_by) if created_by_role == CreatorUserRole.END_USER else None

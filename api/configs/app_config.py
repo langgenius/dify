@@ -5,18 +5,17 @@ from typing import Any, override
 from pydantic.fields import FieldInfo
 from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict, TomlConfigSettingsSource
 
+from configs.deploy import DeploymentConfig
+from configs.enterprise import EnterpriseFeatureConfig, EnterpriseTelemetryConfig
+from configs.extra import ExtraServiceConfig
+from configs.feature import FeatureConfig
+from configs.middleware import MiddlewareConfig
+from configs.observability import ObservabilityConfig
+from configs.packaging import PackagingInfo
+from configs.remote_settings_sources import RemoteSettingsSource, RemoteSettingsSourceConfig, RemoteSettingsSourceName
+from configs.remote_settings_sources.apollo import ApolloSettingsSource
+from configs.remote_settings_sources.nacos import NacosSettingsSource
 from libs.file_utils import search_file_upwards
-
-from .deploy import DeploymentConfig
-from .enterprise import EnterpriseFeatureConfig, EnterpriseTelemetryConfig
-from .extra import ExtraServiceConfig
-from .feature import FeatureConfig
-from .middleware import MiddlewareConfig
-from .observability import ObservabilityConfig
-from .packaging import PackagingInfo
-from .remote_settings_sources import RemoteSettingsSource, RemoteSettingsSourceConfig, RemoteSettingsSourceName
-from .remote_settings_sources.apollo import ApolloSettingsSource
-from .remote_settings_sources.nacos import NacosSettingsSource
 
 logger = logging.getLogger(__name__)
 

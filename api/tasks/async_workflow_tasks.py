@@ -21,7 +21,7 @@ from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, Wor
 from core.app.layers.timeslice_layer import TimeSliceLayer
 from core.app.layers.trigger_post_layer import TriggerPostLayer
 from core.db.session_factory import session_factory
-from core.repositories import DifyCoreRepositoryFactory
+from extensions.application_services import workflow_storage, workflow_writers
 from extensions.ext_database import db
 from graphon.runtime import GraphRuntimeState
 from models.account import Account
@@ -29,7 +29,6 @@ from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom, WorkflowTrig
 from models.model import App, EndUser, Tenant
 from models.trigger import WorkflowTriggerLog
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
-from repositories.factory import DifyAPIRepositoryFactory
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
 from services.errors.app import WorkflowNotFoundError
 from services.workflow.entities import (
@@ -198,7 +197,7 @@ def resume_workflow_execution(task_data_dict: dict[str, Any]) -> None:
     """Resume a paused workflow run via Celery."""
     task_data = WorkflowResumeTaskData.model_validate(task_data_dict)
     session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
-    workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_factory)
+    workflow_run_repo = workflow_storage.create_api_workflow_run_repository(session_factory)
 
     pause_entity = workflow_run_repo.get_workflow_pause(task_data.workflow_run_id)
     if pause_entity is None:
@@ -238,14 +237,14 @@ def resume_workflow_execution(task_data_dict: dict[str, Any]) -> None:
         if app_model is None:
             raise _AppNotFoundError(f"App not found: app_id={workflow_run.app_id}, workflow_run_id={workflow_run.id}")
 
-    workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
+    workflow_execution_repository = workflow_writers.create_workflow_execution_repository(
         session_factory=session_factory,
         tenant_id=app_model.tenant_id,
         user=user,
         app_id=generate_entity.app_config.app_id,
         triggered_from=WorkflowRunTriggeredFrom(workflow_run.triggered_from),
     )
-    workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+    workflow_node_execution_repository = workflow_writers.create_workflow_node_execution_repository(
         session_factory=session_factory,
         tenant_id=app_model.tenant_id,
         user=user,

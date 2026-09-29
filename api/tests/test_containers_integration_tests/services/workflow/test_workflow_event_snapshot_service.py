@@ -21,7 +21,7 @@ from models.enums import CreatorUserRole
 from models.human_input import HumanInputForm
 from models.model import AppMode
 from models.workflow import WorkflowRun
-from repositories.entities.workflow_pause import WorkflowPauseEntity
+from services.workflow.run_entities import WorkflowPauseEntity
 from services.workflow_event_snapshot_service import _build_snapshot_events
 
 

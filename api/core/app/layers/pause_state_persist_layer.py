@@ -9,12 +9,12 @@ from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity,
 from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
 from core.workflow.nodes.human_input.boundary import enrich_graph_pause_reasons
 from core.workflow.system_variables import SystemVariableKey, get_system_text
+from extensions.application_services import workflow_storage
 from graphon.filters import ResponseStreamFilter
 from graphon.graph_engine.layers import GraphEngineLayer
 from graphon.graph_events import GraphEngineEvent, GraphRunPausedEvent
 from models.model import AppMode
-from repositories.api_workflow_run_repository import APIWorkflowRunRepository
-from repositories.factory import DifyAPIRepositoryFactory
+from services.workflow.run_repository import APIWorkflowRunRepository
 
 
 # Wrapper types for `WorkflowAppGenerateEntity` and
@@ -101,7 +101,7 @@ class PauseStatePersistenceLayer(GraphEngineLayer):
         self._response_stream_filter = response_stream_filter
 
     def _get_repo(self) -> APIWorkflowRunRepository:
-        return DifyAPIRepositoryFactory.create_api_workflow_run_repository(self._session_maker)
+        return workflow_storage.create_api_workflow_run_repository(self._session_maker)
 
     @override
     def on_graph_start(self) -> None:

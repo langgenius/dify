@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from enums import CloudPlan, DeploymentEdition
+from extensions.application_services import workflow_storage
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from graphon.model_runtime.utils.encoders import jsonable_encoder
@@ -28,7 +29,6 @@ from models.model import (
 )
 from models.web import SavedMessage
 from models.workflow import WorkflowAppLog
-from repositories.factory import DifyAPIRepositoryFactory
 from services.billing_service import BillingService
 
 logger = logging.getLogger(__name__)
@@ -209,7 +209,7 @@ class ClearFreePlanTenantExpiredLogs:
 
             # Process expired workflow node executions with backup
             session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
-            node_execution_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(session_maker)
+            node_execution_repo = workflow_storage.create_api_workflow_node_execution_repository(session_maker)
             before_date = datetime.datetime.now() - datetime.timedelta(days=days)
             total_deleted = 0
 
@@ -261,7 +261,7 @@ class ClearFreePlanTenantExpiredLogs:
 
             # Process expired workflow runs with backup
             session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
-            workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
+            workflow_run_repo = workflow_storage.create_api_workflow_run_repository(session_maker)
             before_date = datetime.datetime.now() - datetime.timedelta(days=days)
             total_deleted = 0
 

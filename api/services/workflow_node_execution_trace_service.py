@@ -13,8 +13,8 @@ from sqlalchemy.orm import Session
 from core.app.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY, WorkflowNodeRetryAttempt
 from libs.helper import to_timestamp
 from models.workflow import WorkflowNodeExecutionModel
-from repositories.api_workflow_node_execution_repository import DifyAPIWorkflowNodeExecutionRepository
 from services.variable_truncator import VariableTruncator
+from services.workflow.node_execution_queries import DifyAPIWorkflowNodeExecutionRepository
 
 logger = logging.getLogger(__name__)
 

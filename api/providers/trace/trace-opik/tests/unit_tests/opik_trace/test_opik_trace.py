@@ -211,7 +211,7 @@ def test_workflow_trace_with_message_id(
 
     mock_factory = MagicMock()
     mock_factory.create_workflow_node_execution_repository.return_value = repo
-    monkeypatch.setattr("dify_trace_opik.opik_trace.DifyCoreRepositoryFactory", mock_factory)
+    monkeypatch.setattr("dify_trace_opik.opik_trace.workflow_writers", mock_factory)
 
     monkeypatch.setattr(trace_instance, "get_service_account_with_tenant", lambda app_id: MagicMock())
 
@@ -269,7 +269,7 @@ def test_workflow_trace_no_message_id(
     repo.get_by_workflow_execution.return_value = []
     mock_factory = MagicMock()
     mock_factory.create_workflow_node_execution_repository.return_value = repo
-    monkeypatch.setattr("dify_trace_opik.opik_trace.DifyCoreRepositoryFactory", mock_factory)
+    monkeypatch.setattr("dify_trace_opik.opik_trace.workflow_writers", mock_factory)
     monkeypatch.setattr(trace_instance, "get_service_account_with_tenant", lambda app_id: MagicMock())
 
     trace_instance.add_trace = MagicMock()
@@ -696,7 +696,7 @@ def test_workflow_trace_usage_extraction_error_fixed(
     repo.get_by_workflow_execution.return_value = [node]
     mock_factory = MagicMock()
     mock_factory.create_workflow_node_execution_repository.return_value = repo
-    monkeypatch.setattr("dify_trace_opik.opik_trace.DifyCoreRepositoryFactory", mock_factory)
+    monkeypatch.setattr("dify_trace_opik.opik_trace.workflow_writers", mock_factory)
     monkeypatch.setattr(
         "dify_trace_opik.opik_trace.db",
         SimpleNamespace(engine=sqlite3_session.get_bind(), session=sqlite3_session),

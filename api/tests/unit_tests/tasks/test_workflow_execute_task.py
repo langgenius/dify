@@ -22,7 +22,7 @@ from models.account import Account
 from models.enums import ConversationFromSource, CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, Conversation, Message
 from models.workflow import Workflow, WorkflowRun, WorkflowType
-from repositories.sqlalchemy_api_workflow_run_repository import _WorkflowRunError
+from repositories.workflow.pause_repository import _WorkflowRunError
 from tasks.app_generate import workflow_execute_task as workflow_execute_task_module
 from tasks.app_generate.workflow_execute_task import (
     AppExecutionParams,
@@ -845,7 +845,7 @@ def test_resume_app_execution_queries_message_by_conversation_and_workflow_run(
     workflow_run_repo = MagicMock()
     workflow_run_repo.get_workflow_pause.return_value = pause_entity
     monkeypatch.setattr(
-        "tasks.app_generate.workflow_execute_task.DifyAPIRepositoryFactory.create_api_workflow_run_repository",
+        "tasks.app_generate.workflow_execute_task.workflow_storage.create_api_workflow_run_repository",
         lambda *_args, **_kwargs: workflow_run_repo,
     )
 
@@ -893,7 +893,7 @@ def test_resume_app_execution_returns_early_when_advanced_chat_missing_conversat
     workflow_run_repo = MagicMock()
     workflow_run_repo.get_workflow_pause.return_value = pause_entity
     monkeypatch.setattr(
-        "tasks.app_generate.workflow_execute_task.DifyAPIRepositoryFactory.create_api_workflow_run_repository",
+        "tasks.app_generate.workflow_execute_task.workflow_storage.create_api_workflow_run_repository",
         lambda *_args, **_kwargs: workflow_run_repo,
     )
 
@@ -944,7 +944,7 @@ def test_resume_app_execution_clears_stale_cancellation_signals_before_resuming(
     workflow_run_repo = MagicMock()
     workflow_run_repo.get_workflow_pause.return_value = pause_entity
     monkeypatch.setattr(
-        "tasks.app_generate.workflow_execute_task.DifyAPIRepositoryFactory.create_api_workflow_run_repository",
+        "tasks.app_generate.workflow_execute_task.workflow_storage.create_api_workflow_run_repository",
         lambda *_args, **_kwargs: workflow_run_repo,
     )
 
@@ -994,7 +994,7 @@ def test_resume_app_execution_keeps_cancellation_signals_when_resume_is_abandone
     workflow_run_repo = MagicMock()
     workflow_run_repo.get_workflow_pause.return_value = pause_entity
     monkeypatch.setattr(
-        "tasks.app_generate.workflow_execute_task.DifyAPIRepositoryFactory.create_api_workflow_run_repository",
+        "tasks.app_generate.workflow_execute_task.workflow_storage.create_api_workflow_run_repository",
         lambda *_args, **_kwargs: workflow_run_repo,
     )
 
@@ -1046,11 +1046,11 @@ def test_resume_advanced_chat_publishes_events_for_originally_blocking_runs(
         "tasks.app_generate.workflow_execute_task._publish_streaming_response", publish_streaming_response
     )
     monkeypatch.setattr(
-        "tasks.app_generate.workflow_execute_task.DifyCoreRepositoryFactory.create_workflow_execution_repository",
+        "tasks.app_generate.workflow_execute_task.workflow_writers.create_workflow_execution_repository",
         lambda **kwargs: MagicMock(),
     )
     monkeypatch.setattr(
-        "tasks.app_generate.workflow_execute_task.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+        "tasks.app_generate.workflow_execute_task.workflow_writers.create_workflow_node_execution_repository",
         lambda **kwargs: MagicMock(),
     )
     _resume_advanced_chat(
@@ -1102,11 +1102,11 @@ def test_resume_workflow_publishes_events_for_originally_blocking_runs(
         "tasks.app_generate.workflow_execute_task._publish_streaming_response", publish_streaming_response
     )
     monkeypatch.setattr(
-        "tasks.app_generate.workflow_execute_task.DifyCoreRepositoryFactory.create_workflow_execution_repository",
+        "tasks.app_generate.workflow_execute_task.workflow_writers.create_workflow_execution_repository",
         lambda **kwargs: MagicMock(),
     )
     monkeypatch.setattr(
-        "tasks.app_generate.workflow_execute_task.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+        "tasks.app_generate.workflow_execute_task.workflow_writers.create_workflow_node_execution_repository",
         lambda **kwargs: MagicMock(),
     )
     workflow_run_repo = MagicMock()
@@ -1160,11 +1160,11 @@ def test_resume_workflow_ignores_missing_old_pause_after_repause(
         "tasks.app_generate.workflow_execute_task._publish_streaming_response", publish_streaming_response
     )
     monkeypatch.setattr(
-        "tasks.app_generate.workflow_execute_task.DifyCoreRepositoryFactory.create_workflow_execution_repository",
+        "tasks.app_generate.workflow_execute_task.workflow_writers.create_workflow_execution_repository",
         lambda **kwargs: MagicMock(),
     )
     monkeypatch.setattr(
-        "tasks.app_generate.workflow_execute_task.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+        "tasks.app_generate.workflow_execute_task.workflow_writers.create_workflow_node_execution_repository",
         lambda **kwargs: MagicMock(),
     )
     workflow_run_repo = MagicMock()

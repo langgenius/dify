@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 
 from machinery.context import RequestContext
 from models.enums import WorkflowRunTriggeredFrom
-from repositories.api_workflow_run_repository import APIWorkflowRunRepository
+from services.workflow.run_repository import APIWorkflowRunRepository
 from services.workflow_statistic_query_service import WorkflowStatisticQueryService
 
 

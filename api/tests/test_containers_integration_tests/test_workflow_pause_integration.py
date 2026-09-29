@@ -36,10 +36,8 @@ from models import WorkflowPause as WorkflowPauseModel
 from models.account import AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.model import UploadFile
 from models.workflow import Workflow, WorkflowRun
-from repositories.sqlalchemy_api_workflow_run_repository import (
-    DifyAPISQLAlchemyWorkflowRunRepository,
-    _WorkflowRunError,
-)
+from repositories.workflow.pause_repository import _WorkflowRunError
+from repositories.workflow.run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 
 
 @dataclass

@@ -74,7 +74,7 @@ def _mock_repo_for_run(monkeypatch: pytest.MonkeyPatch, workflow_run, sqlite_eng
     workflow_events_module = sys.modules["controllers.service_api.app.workflow_events"]
     repo = SimpleNamespace(get_workflow_run_by_id_and_tenant_id=lambda **_kwargs: workflow_run)
     monkeypatch.setattr(
-        workflow_events_module.DifyAPIRepositoryFactory,
+        workflow_events_module.workflow_storage,
         "create_api_workflow_run_repository",
         lambda *_args, **_kwargs: repo,
     )

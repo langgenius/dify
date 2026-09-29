@@ -463,7 +463,7 @@ class TestTencentDataTrace:
         monkeypatch.setattr("dify_trace_tencent.tencent_trace.db", database)
         monkeypatch.setattr("models.account.db", database)
 
-        with patch("dify_trace_tencent.tencent_trace.SQLAlchemyWorkflowNodeExecutionRepository") as mock_repo:
+        with patch("dify_trace_tencent.tencent_trace.create_workflow_node_execution_repository") as mock_repo:
             mock_repo.return_value.get_by_workflow_execution.return_value = []
             results = tencent_data_trace._get_workflow_node_executions(trace_info)
 

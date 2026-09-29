@@ -83,8 +83,6 @@ ignore_imports =
     core.rag.retrieval.dataset_retrieval -> services.feature_service
     core.rag.summary_index.summary_index -> services.summary_index_service
     core.rag.summary_index.summary_index -> tasks.generate_summary_index_task
-    core.repositories.sqlalchemy_workflow_node_execution_repository -> services.file_service
-    core.repositories.sqlalchemy_workflow_node_execution_repository -> services.variable_truncator
     core.tools.tool_manager -> services
     core.workflow.node_runtime -> services
     core.workflow.nodes.agent.message_transformer -> services
@@ -97,6 +95,15 @@ ignore_imports =
     core.workflow.nodes.agent_v2.session_store -> services.agent.workspace_service
     core.workflow.nodes.agent_v2.validators -> services.agent.knowledge_datasets
     core.workflow.nodes.agent_v2.workspace_retirement_layer -> tasks.collect_agent_resources_task
+    # Legacy core callers still construct storage here; keep exceptions at this
+    # composition boundary while the generation-chain refactor is out of scope.
+    extensions.application_services.workflow_storage -> repositories.workflow.logstore.run_repository
+    extensions.application_services.workflow_storage -> repositories.workflow.logstore.node_execution_repository
+    extensions.application_services.workflow_storage -> repositories.workflow.node_execution_repository
+    extensions.application_services.workflow_storage -> repositories.workflow.run_repository
+    extensions.application_services.workflow_writers -> services.file_service
+    extensions.application_services.workflow_storage -> services.workflow.node_execution_queries
+    extensions.application_services.workflow_storage -> services.workflow.run_repository
     libs.email_i18n -> services.entities.feature_entities
     libs.email_i18n -> services.system_feature_service
     libs.external_api -> core
@@ -114,6 +121,7 @@ ignore_imports =
     libs.oauth_bearer -> models
     libs.rsa -> extensions.ext_storage
     libs.workspace_permission -> services.enterprise.enterprise_service
+    repositories.workflow.node_execution_writer -> services.variable_truncator
     services.account_service -> controllers
     services.account_service -> controllers.console.error
     services.app_generate_service -> controllers.console.app.workflow
@@ -801,3 +809,42 @@ forbidden_modules =
     services.audio_service
     sqlalchemy
     werkzeug
+
+[importlinter:contract:logstore-client-boundary]
+name = LogStore clients do not own workflow persistence
+type = forbidden
+source_modules =
+    extensions.logstore
+forbidden_modules =
+    repositories
+    core.repositories
+    services
+    models.workflow
+
+[importlinter:contract:web-workflow-controller-boundary]
+name = Web workflow handlers use admission and application services
+type = forbidden
+source_modules =
+    controllers.web.workflow
+forbidden_modules =
+    sqlalchemy
+    models
+    repositories
+    services.app_generate_service
+    core.app.apps.base_app_queue_manager
+    extensions.ext_redis
+allow_indirect_imports = True
+
+[importlinter:contract:web-workflow-application-boundary]
+name = Web workflow application policy is independent of transport and persistence
+type = forbidden
+source_modules =
+    services.app.web_workflow_service
+forbidden_modules =
+    flask
+    werkzeug
+    sqlalchemy
+    models
+    repositories
+    controllers
+    extensions

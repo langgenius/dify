@@ -11,14 +11,13 @@ from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.workflow.layers import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from core.repositories.human_input_repository import HumanInputFormEntity, HumanInputFormRepository
-from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
-from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.nodes.human_input.callback import (
     DifyHITLCallback,
 )
 from core.workflow.nodes.human_input.entities import HumanInputNodeData, UserActionConfig
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from core.workflow.system_variables import build_system_variables
+from extensions.application_services.workflow_writers import build_workflow_offload_uploader
 from graphon.enums import WorkflowType
 from graphon.graph import Graph
 from graphon.graph_engine import GraphEngine
@@ -35,6 +34,8 @@ from models.account import AccountStatus, Tenant, TenantAccountJoin, TenantAccou
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, IconType
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
+from repositories.workflow.execution_writer import SQLAlchemyWorkflowExecutionRepository
+from repositories.workflow.node_execution_writer import SQLAlchemyWorkflowNodeExecutionRepository
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
@@ -278,6 +279,9 @@ class TestHumanInputResumeNodeExecutionIntegration:
             user=self.account,
             app_id=self.app.id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+            upload_file=build_workflow_offload_uploader(
+                session_factory=self.session.get_bind(), tenant_id=self.tenant.id, user=self.account
+            ),
         )
         return WorkflowPersistenceLayer(
             application_generate_entity=generate_entity,

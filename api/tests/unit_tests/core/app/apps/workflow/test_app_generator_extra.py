@@ -330,11 +330,11 @@ class TestWorkflowAppGeneratorValidation:
             lambda **kwargs: app_config,
         )
         monkeypatch.setattr(
-            "core.app.apps.workflow.app_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
+            "core.app.apps.workflow.app_generator.workflow_writers.create_workflow_execution_repository",
             lambda **kwargs: repository_session_makers.append(kwargs["session_factory"]) or SimpleNamespace(),
         )
         monkeypatch.setattr(
-            "core.app.apps.workflow.app_generator.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+            "core.app.apps.workflow.app_generator.workflow_writers.create_workflow_node_execution_repository",
             lambda **kwargs: repository_session_makers.append(kwargs["session_factory"]) or SimpleNamespace(),
         )
         monkeypatch.setattr("core.app.apps.workflow.app_generator.DraftVarLoader", lambda **kwargs: SimpleNamespace())
@@ -390,11 +390,11 @@ class TestWorkflowAppGeneratorValidation:
             lambda **kwargs: app_config,
         )
         monkeypatch.setattr(
-            "core.app.apps.workflow.app_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
+            "core.app.apps.workflow.app_generator.workflow_writers.create_workflow_execution_repository",
             lambda **kwargs: repository_session_makers.append(kwargs["session_factory"]) or SimpleNamespace(),
         )
         monkeypatch.setattr(
-            "core.app.apps.workflow.app_generator.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+            "core.app.apps.workflow.app_generator.workflow_writers.create_workflow_node_execution_repository",
             lambda **kwargs: repository_session_makers.append(kwargs["session_factory"]) or SimpleNamespace(),
         )
         monkeypatch.setattr("core.app.apps.workflow.app_generator.DraftVarLoader", lambda **kwargs: SimpleNamespace())

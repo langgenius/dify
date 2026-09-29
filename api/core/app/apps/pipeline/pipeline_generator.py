@@ -32,6 +32,7 @@ from core.app.entities.task_entities import (
     WorkflowAppPausedBlockingResponse,
     WorkflowAppStreamResponse,
 )
+from core.app.workflow.persistence_ports import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.datasource.entities.datasource_entities import (
     DatasourceProviderType,
     OnlineDriveBrowseFilesRequest,
@@ -39,11 +40,7 @@ from core.datasource.entities.datasource_entities import (
 from core.datasource.online_drive.online_drive_plugin import OnlineDriveDatasourcePlugin
 from core.entities.knowledge_entities import PipelineDataset, PipelineDocument
 from core.rag.index_processor.constant.built_in_field import BuiltInField
-from core.repositories.factory import (
-    DifyCoreRepositoryFactory,
-    WorkflowExecutionRepository,
-    WorkflowNodeExecutionRepository,
-)
+from extensions.application_services import workflow_writers
 from extensions.ext_database import db
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
@@ -214,7 +211,7 @@ class PipelineGenerator(BaseAppGenerator):
                 workflow_triggered_from = WorkflowRunTriggeredFrom.RAG_PIPELINE_RUN
             # Create workflow node execution repository
             session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
-            workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
+            workflow_execution_repository = workflow_writers.create_workflow_execution_repository(
                 session_factory=session_factory,
                 tenant_id=pipeline.tenant_id,
                 user=user,
@@ -222,7 +219,7 @@ class PipelineGenerator(BaseAppGenerator):
                 triggered_from=workflow_triggered_from,
             )
 
-            workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+            workflow_node_execution_repository = workflow_writers.create_workflow_node_execution_repository(
                 session_factory=session_factory,
                 tenant_id=pipeline.tenant_id,
                 user=user,
@@ -437,7 +434,7 @@ class PipelineGenerator(BaseAppGenerator):
         # Create workflow node execution repository
         session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
 
-        workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
+        workflow_execution_repository = workflow_writers.create_workflow_execution_repository(
             session_factory=session_factory,
             tenant_id=pipeline.tenant_id,
             user=user,
@@ -445,7 +442,7 @@ class PipelineGenerator(BaseAppGenerator):
             triggered_from=WorkflowRunTriggeredFrom.RAG_PIPELINE_DEBUGGING,
         )
 
-        workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+        workflow_node_execution_repository = workflow_writers.create_workflow_node_execution_repository(
             session_factory=session_factory,
             tenant_id=pipeline.tenant_id,
             user=user,
@@ -538,7 +535,7 @@ class PipelineGenerator(BaseAppGenerator):
         # Create workflow node execution repository
         session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
 
-        workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
+        workflow_execution_repository = workflow_writers.create_workflow_execution_repository(
             session_factory=session_factory,
             tenant_id=pipeline.tenant_id,
             user=user,
@@ -546,7 +543,7 @@ class PipelineGenerator(BaseAppGenerator):
             triggered_from=WorkflowRunTriggeredFrom.RAG_PIPELINE_DEBUGGING,
         )
 
-        workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+        workflow_node_execution_repository = workflow_writers.create_workflow_node_execution_repository(
             session_factory=session_factory,
             tenant_id=pipeline.tenant_id,
             user=user,

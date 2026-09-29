@@ -170,11 +170,11 @@ def test_generate_falls_back_to_new_conversation_when_conversation_missing(
         lambda **_kwargs: trace_manager,
     )
     monkeypatch.setattr(
-        "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
+        "core.app.apps.advanced_chat.app_generator.workflow_writers.create_workflow_execution_repository",
         lambda **_kwargs: SimpleNamespace(),
     )
     monkeypatch.setattr(
-        "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+        "core.app.apps.advanced_chat.app_generator.workflow_writers.create_workflow_node_execution_repository",
         lambda **_kwargs: SimpleNamespace(),
     )
 

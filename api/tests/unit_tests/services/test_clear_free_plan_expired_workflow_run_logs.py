@@ -5,10 +5,10 @@ from typing import Any
 import pytest
 
 from enums import DeploymentEdition
-from repositories.api_workflow_run_repository import WorkflowRunCleanupRef
 from services.billing_service import SubscriptionPlan
 from services.retention.workflow_run import clear_free_plan_expired_workflow_run_logs as cleanup_module
 from services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs import WorkflowRunCleanup
+from services.workflow.run_entities import WorkflowRunCleanupRef
 
 
 @pytest.fixture(autouse=True)

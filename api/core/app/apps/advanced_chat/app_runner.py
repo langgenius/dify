@@ -30,10 +30,10 @@ from core.app.entities.queue_entities import (
 from core.app.features.annotation_reply.annotation_reply import AnnotationReplyFeature
 from core.app.layers.conversation_variable_persist_layer import ConversationVariablePersistenceLayer
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
+from core.app.workflow.persistence_ports import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.db.session_factory import create_session, session_factory
 from core.moderation.base import ModerationError
 from core.moderation.input_moderation import InputModeration
-from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.workflow.node_factory import get_default_root_node_id
 from core.workflow.nodes.agent_v2.workspace_retirement_layer import build_workflow_agent_workspace_retirement_layer
 from core.workflow.system_variables import (

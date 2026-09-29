@@ -16,7 +16,6 @@ from core.ops.entities.trace_entity import (
     ToolTraceInfo,
     WorkflowTraceInfo,
 )
-from core.repositories import DifyCoreRepositoryFactory
 from dify_trace_aliyun.config import AliyunConfig
 from dify_trace_aliyun.data_exporter.traceclient import (
     TraceClient,
@@ -76,6 +75,7 @@ from dify_trace_aliyun.utils import (
     parse_agent_log_entries,
     serialize_json_data,
 )
+from extensions.application_services import workflow_writers
 from extensions.ext_database import db
 from graphon.entities import WorkflowNodeExecution
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
@@ -329,7 +329,7 @@ class AliyunDataTrace(BaseTraceInstance):
         service_account = self.get_service_account_with_tenant(app_id)
 
         session_factory = sessionmaker(bind=db.engine)
-        workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+        workflow_node_execution_repository = workflow_writers.create_workflow_node_execution_repository(
             session_factory=session_factory,
             tenant_id=trace_info.tenant_id,
             user=service_account,

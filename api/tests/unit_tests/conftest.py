@@ -253,10 +253,12 @@ def app_services(sqlite_session_factory: sessionmaker[Session]) -> AppServices:
     from extensions.application_services.app import build_app_services
     from extensions.ext_application_services import _build_oauth_server_service
     from extensions.ext_redis import redis_client
+    from services.app_task_service import AppTaskControlService
 
     return build_app_services(
         database_client=sqlite_session_factory,
         oauth=_build_oauth_server_service(database_client=sqlite_session_factory, redis=redis_client),
+        tasks=AppTaskControlService(redis_client=redis_client),
     )
 
 

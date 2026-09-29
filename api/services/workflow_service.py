@@ -15,7 +15,6 @@ from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.app.file_access import DatabaseFileAccessController
 from core.entities import PluginCredentialType
 from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly, create_plugin_provider_manager
-from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.human_input_repository import FormCreateParams, HumanInputFormRepositoryImpl
 from core.trigger.constants import is_trigger_node_type
 from core.workflow.human_input_adapter import (
@@ -52,6 +51,7 @@ from core.workflow.workflow_entry import WorkflowEntry
 from enterprise.telemetry.draft_trace import enqueue_draft_node_execution_trace
 from enums import CloudPlan, DeploymentEdition
 from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
+from extensions.application_services import workflow_storage, workflow_writers
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from factories.file_factory import build_from_mapping, build_from_mappings
@@ -85,7 +85,6 @@ from models.human_input import HumanInputFormRecipient, RecipientType
 from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowType
-from repositories.factory import DifyAPIRepositoryFactory
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.billing_service import BillingService
 from services.errors.app import (
@@ -141,21 +140,20 @@ class _DebugHumanInputNode:
 
 
 HumanInputNode = _DebugHumanInputNode
-from services.human_input_service import HumanInputService
-from services.workflow.workflow_converter import WorkflowConverter
-from services.workflow_ref_service import WorkflowRef
-from services.workflow_version_number_service import allocate_version_number
-
-from .errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
-from .human_input_delivery_test_service import (
+from services.errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
+from services.human_input_delivery_test_service import (
     DeliveryTestContext,
     DeliveryTestEmailRecipient,
     DeliveryTestError,
     DeliveryTestUnsupportedError,
     HumanInputDeliveryTestService,
 )
-from .workflow_draft_variable_service import DraftVariableSaver, DraftVarLoader, WorkflowDraftVariableService
-from .workflow_restore import apply_published_workflow_snapshot_to_draft
+from services.human_input_service import HumanInputService
+from services.workflow.workflow_converter import WorkflowConverter
+from services.workflow_draft_variable_service import DraftVariableSaver, DraftVarLoader, WorkflowDraftVariableService
+from services.workflow_ref_service import WorkflowRef
+from services.workflow_restore import apply_published_workflow_snapshot_to_draft
+from services.workflow_version_number_service import allocate_version_number
 
 _file_access_controller = DatabaseFileAccessController()
 
@@ -211,7 +209,7 @@ class WorkflowService:
         """Initialize WorkflowService with repository dependencies."""
         if session_maker is None:
             session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
-        self._node_execution_service_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
+        self._node_execution_service_repo = workflow_storage.create_api_workflow_node_execution_repository(
             session_maker
         )
 
@@ -1232,7 +1230,7 @@ class WorkflowService:
         node_execution.workflow_id = draft_workflow.id
 
         # Create repository and save the node execution
-        repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+        repository = workflow_writers.create_workflow_node_execution_repository(
             session_factory=db.engine,
             tenant_id=app_model.tenant_id,
             user=account,
