@@ -63,6 +63,12 @@ vi.mock('@/app/notifications', () => ({
   },
 }))
 
+vi.mock('i18next', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('i18next')>()
+  const { createI18nextMock } = await import('@/test/i18n-mock')
+  return { ...actual, ...createI18nextMock() }
+})
+
 describe('useBatchEditDocumentMetadata', () => {
   const mockDocList: DocListItem[] = [
     {
@@ -748,7 +754,7 @@ describe('useBatchEditDocumentMetadata', () => {
 
       expect(result.current.isShowEditModal).toBe(false)
       expect(mockMutateAsync).not.toHaveBeenCalled()
-      expect(toast.error).toHaveBeenCalled()
+      expect(toast.error).toHaveBeenCalledWith('api.actionFailed')
 
       mockConsoleCall.mockResolvedValueOnce(otherPageDocument)
       await act(async () => {
@@ -758,6 +764,62 @@ describe('useBatchEditDocumentMetadata', () => {
       expect(result.current.originalList).toEqual(
         expect.arrayContaining([expect.objectContaining(otherPageOnly)]),
       )
+    })
+
+    it.each([
+      { type: 'unsupported', value: 'Unsupported type' },
+      { type: DataType.string, value: true },
+    ])(
+      'rejects unsupported server metadata ($type, $value) without allowing edits',
+      async (field) => {
+        const response: GetDatasetsByDatasetIdDocumentsByDocumentIdResponse = {
+          id: 'other-page',
+          doc_metadata: [{ ...otherPageOnly, ...field }],
+        }
+        mockConsoleCall.mockResolvedValueOnce(response)
+        const { result } = renderHook(() => useBatchEditDocumentMetadata(crossPageProps))
+
+        await act(async () => {
+          await result.current.showEditModal()
+        })
+        await act(async () => {
+          await result.current.handleSave([], [], false)
+        })
+
+        expect(result.current.isShowEditModal).toBe(false)
+        expect(result.current.isLoadingMetadata).toBe(false)
+        expect(mockMutateAsync).not.toHaveBeenCalled()
+        expect(toast.error).toHaveBeenCalledExactlyOnceWith('api.actionFailed')
+      },
+    )
+
+    it('stops queued metadata requests when loading is cancelled without reporting an error', async () => {
+      const pending = createDeferred<GetDatasetsByDatasetIdDocumentsByDocumentIdResponse>()
+      mockConsoleCall.mockReturnValue(pending.promise)
+      const { result } = renderHook(() =>
+        useBatchEditDocumentMetadata({
+          ...crossPageProps,
+          docList: [],
+          selectedDocumentIds: ['doc-1', 'doc-2', 'doc-3', 'doc-4', 'doc-5', 'doc-6'],
+        }),
+      )
+      let opening: Promise<void>
+      act(() => {
+        opening = result.current.showEditModal()
+      })
+      await waitFor(() => expect(mockConsoleCall).toHaveBeenCalledTimes(4))
+
+      act(() => result.current.hideEditModal())
+      await act(async () => {
+        pending.resolve(otherPageDocument)
+        await opening
+      })
+
+      expect(mockConsoleCall).toHaveBeenCalledTimes(4)
+      expect(result.current.isShowEditModal).toBe(false)
+      expect(result.current.isLoadingMetadata).toBe(false)
+      expect(mockMutateAsync).not.toHaveBeenCalled()
+      expect(toast.error).not.toHaveBeenCalled()
     })
 
     it('loads fresh metadata when the editing session is reopened', async () => {
@@ -831,7 +893,7 @@ describe('useBatchEditDocumentMetadata', () => {
       expect(result.current.isShowEditModal).toBe(true)
       expect(result.current.originalList).toEqual(originalList)
       expect(toast.success).not.toHaveBeenCalled()
-      expect(toast.error).toHaveBeenCalled()
+      expect(toast.error).toHaveBeenCalledWith('actionMsg.modifiedUnsuccessfully')
     })
 
     it('discards an in-flight editing session when switching datasets', async () => {
@@ -913,6 +975,7 @@ describe('useBatchEditDocumentMetadata', () => {
       act(() => {
         opening = result.current.showEditModal()
       })
+      await waitFor(() => expect(mockConsoleCall).toHaveBeenCalledOnce())
       act(() => result.current.hideEditModal())
       await act(async () => {
         pending.resolve(otherPageDocument)
@@ -920,6 +983,8 @@ describe('useBatchEditDocumentMetadata', () => {
       })
 
       expect(result.current.isShowEditModal).toBe(false)
+      expect(result.current.isLoadingMetadata).toBe(false)
+      expect(toast.error).not.toHaveBeenCalled()
       expect(mockMutateAsync).not.toHaveBeenCalled()
     })
   })
