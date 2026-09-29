@@ -8,6 +8,7 @@ import {
   difyBuilderCanComposeAtom,
   difyBuilderCanSendDraftAtom,
   difyBuilderDraftAtom,
+  difyBuilderInteractionBusyAtom,
   difyBuilderSendDraftAtom,
 } from './store'
 import { useDifyBuilderModel } from './use-dify-builder-model'
@@ -18,8 +19,14 @@ const DifyBuilderPromptInput = ({ descriptionId }: { descriptionId?: string }) =
   const { t } = useTranslation(['workflow'])
   const [draft, setDraft] = useAtom(difyBuilderDraftAtom)
   const canCompose = useAtomValue(difyBuilderCanComposeAtom)
+  const interactionBusy = useAtomValue(difyBuilderInteractionBusyAtom)
   const isComposingRef = useRef(false)
   const compositionEndTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const placeholder = canCompose
+    ? t(($) => $['difyBuilder.messagePlaceholder'], { ns: 'workflow' })
+    : interactionBusy
+      ? t(($) => $['difyBuilder.workingPlaceholder'], { ns: 'workflow' })
+      : t(($) => $['difyBuilder.inputUnavailable'], { ns: 'workflow' })
 
   useEffect(() => {
     return () => {
@@ -33,11 +40,7 @@ const DifyBuilderPromptInput = ({ descriptionId }: { descriptionId?: string }) =
       disabled={!canCompose}
       aria-label={t(($) => $['difyBuilder.messagePlaceholder'], { ns: 'workflow' })}
       aria-describedby={descriptionId}
-      placeholder={
-        canCompose
-          ? t(($) => $['difyBuilder.messagePlaceholder'], { ns: 'workflow' })
-          : t(($) => $['difyBuilder.useActions'], { ns: 'workflow' })
-      }
+      placeholder={placeholder}
       className="block min-h-10 w-full grow resize-none bg-transparent px-2 py-1 text-sm leading-5 tracking-[-0.07px] text-text-primary caret-[#295EFF] outline-hidden placeholder:text-text-placeholder disabled:cursor-not-allowed"
       onChange={(event) => setDraft(event.currentTarget.value)}
       onCompositionStart={() => {
