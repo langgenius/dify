@@ -521,7 +521,7 @@ class TestWorkflowDraftVariableService:
             assert variable.last_edited_at is None
             flush.assert_called()
             # Should return the updated variable
-            assert result == variable
+            assert result is variable
 
     def test_reset_non_editable_system_variable_raises_error(self, sqlite_session: Session):
         """Test that resetting a non-editable system variable raises an error"""
@@ -574,7 +574,7 @@ class TestWorkflowDraftVariableService:
             result = service._reset_node_var_or_sys_var(workflow, variable)
 
         # Should succeed and return the variable
-        assert result == variable
+        assert result is variable
         assert variable.last_edited_at is None
         flush.assert_called()
 
@@ -607,7 +607,7 @@ class TestWorkflowDraftVariableService:
             result = service._reset_node_var_or_sys_var(workflow, variable)
 
         # Should succeed and return the variable
-        assert result == variable
+        assert result is variable
         assert variable.last_edited_at is None
         flush.assert_called()
 

@@ -7,7 +7,6 @@ service branch that owns the behavior under test.
 
 from __future__ import annotations
 
-import json
 from collections.abc import Generator
 from contextlib import contextmanager
 from types import SimpleNamespace
@@ -29,7 +28,7 @@ from models.dataset import (
     PipelineCustomizedTemplate,
 )
 from models.enums import DataSourceType
-from models.workflow import Workflow, WorkflowKind, WorkflowType
+from models.workflow import Workflow, WorkflowType
 from services.dsl_version import check_version_compatibility
 from services.entities.knowledge_entities.rag_pipeline_entities import IconInfo, RagPipelineDatasetCreateEntity
 from services.rag_pipeline import rag_pipeline_dsl_service as module
@@ -93,22 +92,14 @@ def _workflow(session: Session, pipeline: Pipeline, *, graph: dict[str, Any] | N
 def _workflow_for_dependencies(
     *, graph: dict[str, Any], environment_variables: list[LLMEnvironmentVariable] | None = None
 ) -> Workflow:
-    workflow = Workflow(
-        id="workflow-dependencies",
+    return make_workflow(
+        workflow_id="workflow-dependencies",
         tenant_id="tenant-1",
         app_id="pipeline-1",
-        type=WorkflowType.RAG_PIPELINE,
-        kind=WorkflowKind.STANDARD,
-        version=Workflow.VERSION_DRAFT,
-        graph=json.dumps(graph),
-        features="{}",
-        created_by="account-1",
-        environment_variables=[],
-        conversation_variables=[],
-        rag_pipeline_variables=[],
+        workflow_type=WorkflowType.RAG_PIPELINE,
+        graph=graph,
+        environment_variables=environment_variables or [],
     )
-    workflow.environment_variables = environment_variables or []
-    return workflow
 
 
 def _dataset(
