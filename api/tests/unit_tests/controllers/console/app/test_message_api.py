@@ -95,7 +95,7 @@ def _persist_message(session: Session, *, message_id: str, app_id: str = "app-1"
     session.add_all([_account(), _app(app_id=app_id), conversation, message])
     session.flush()
     return message
-    
+
 
 def test_app_message_routes_pass_injected_session(
     app: Flask, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
