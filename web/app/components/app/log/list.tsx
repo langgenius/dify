@@ -304,7 +304,7 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
     },
     [allChatItems, appDetail.id, t, threadChatItems],
   )
-  
+
   const fetchInitiated = useRef(false)
 
   // Only load initial messages, don't auto-load more
