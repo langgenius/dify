@@ -655,7 +655,7 @@ describe('ConversationList', () => {
     expect(screen.getByText('2')).toBeInTheDocument()
     expect(screen.getAllByText('1').length).toBeGreaterThan(0)
   })
-  
+
   it('should remove the annotation of the displayed answer when the conversation has regenerated branches', async () => {
     mockChatConversationDetail = {
       id: 'conversation-1',
@@ -699,7 +699,7 @@ describe('ConversationList', () => {
       expect(mockDelAnnotation).toHaveBeenCalledWith('app-1', 'annotation-3')
     })
   })
-  
+
   it('should support annotation changes and paginated scroll loading in the detail drawer', async () => {
     mockChatConversationDetail = {
       id: 'conversation-1',
