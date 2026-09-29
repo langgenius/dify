@@ -93,7 +93,11 @@ export const createFilterVar = (type: string) => {
 export const coerceReasoningScalarDefault = (schema: ToolFormSchema): unknown => {
   const raw = schema.default
   const formType = schema.type
-  if (schema._type === 'boolean' || formType === FormTypeEnum.checkbox || formType === FormTypeEnum.boolean) {
+  if (
+    schema._type === 'boolean'
+    || formType === FormTypeEnum.checkbox
+    || formType === FormTypeEnum.boolean
+  ) {
     if (typeof raw === 'string')
       return raw === 'true' || raw === '1'
     if (typeof raw === 'boolean')

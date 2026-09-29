@@ -1,9 +1,10 @@
 import type { ReasoningConfigValue } from '../utils/show-on'
 import type { ToolFormSchema } from '@/app/components/tools/utils/to-form-schema'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
+import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import ReasoningConfigForm from './reasoning-config-form'
 
 function reasoningSchema(overrides: Partial<ToolFormSchema>): ToolFormSchema {
@@ -40,9 +41,13 @@ describe('ReasoningConfigForm show_on visibility', () => {
       show_on: [{ variable: 'mode', value: 'true' }],
     })
 
+    const extraValue: ReasoningConfigValue[string] = {
+      auto: 0,
+      value: { type: VarKindType.constant, value: 'should-hide' },
+    }
     const hiddenValue: ReasoningConfigValue = {
       mode: { auto: 0, value: { type: VarKindType.constant, value: false } },
-      extra: { auto: 0, value: { type: VarKindType.constant, value: 'should-hide' } },
+      extra: extraValue,
     }
 
     const { rerender } = render(
@@ -62,7 +67,7 @@ describe('ReasoningConfigForm show_on visibility', () => {
       <ReasoningConfigForm
         value={{
           mode: { auto: 0, value: { type: VarKindType.constant, value: true } },
-          extra: hiddenValue.extra,
+          extra: extraValue,
         }}
         onChange={vi.fn()}
         schemas={[modeSchema, extraSchema]}

@@ -283,7 +283,7 @@ export function flattenToolSettingStoredEntry(stored: unknown): ResourceVarInput
         : inner.type === VarKindType.mixed
           ? VarKindType.mixed
           : VarKindType.constant
-    return { type: outerType, value: inner.value }
+    return { ...inner, type: outerType }
   }
   if ('value' in row && !('type' in row)) {
     const only = row.value
@@ -292,8 +292,8 @@ export function flattenToolSettingStoredEntry(stored: unknown): ResourceVarInput
   }
   if ('type' in row) {
     return {
+      ...row,
       type: row.type as VarKindType,
-      value: 'value' in row ? row.value : undefined,
     }
   }
   return undefined

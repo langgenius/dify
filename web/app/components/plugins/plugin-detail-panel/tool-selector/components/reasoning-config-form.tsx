@@ -427,11 +427,13 @@ const ReasoningConfigForm: React.FC<Props> = ({
   }
   return (
     <div className="space-y-3 px-4 py-2">
-      {!isShowSchema && visibleSchemas.map(schema => renderField(schema, (s: SchemaRoot, rootName: string) => {
-        setSchema(s)
-        setSchemaRootName(rootName)
-        showSchema()
-      }))}
+      {!isShowSchema && visibleSchemas.map(schema =>
+        renderField(schema, (s: SchemaRoot, rootName: string) => {
+          setSchema(s)
+          setSchemaRootName(rootName)
+          showSchema()
+        }),
+      )}
       {isShowSchema && (
         <SchemaModal
           isShow={isShowSchema}

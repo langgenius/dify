@@ -39,9 +39,9 @@ describe('toolParametersToFormSchemas', () => {
     ]
 
     const schemas = toolParametersToFormSchemas(parameters)
-    expect(schemas[0].show_on).toEqual([])
-    expect(schemas[1].show_on).toEqual([{ variable: 'mode', value: 'pro' }])
-    expect(schemas[1].options?.[0].show_on).toEqual([{ variable: 'mode', value: 'pro' }])
+    expect(schemas[0]?.show_on).toEqual([])
+    expect(schemas[1]?.show_on).toEqual([{ variable: 'mode', value: 'pro' }])
+    expect(schemas[1]?.options?.[0]?.show_on).toEqual([{ variable: 'mode', value: 'pro' }])
   })
 
   it('should normalize missing show_on to empty arrays', () => {
@@ -60,8 +60,8 @@ describe('toolParametersToFormSchemas', () => {
       },
     ]
     const schemas = toolParametersToFormSchemas(parameters)
-    expect(schemas[0].show_on).toEqual([])
-    expect(schemas[0].options?.[0].show_on).toEqual([])
+    expect(schemas[0]?.show_on).toEqual([])
+    expect(schemas[0]?.options?.[0]?.show_on).toEqual([])
   })
 })
 

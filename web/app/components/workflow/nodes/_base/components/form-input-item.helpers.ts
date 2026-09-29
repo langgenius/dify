@@ -12,9 +12,6 @@ import { toolSettingShowOnConditionMet } from '@/app/components/plugins/plugin-d
 import { VarType } from '@/app/components/workflow/types'
 import { VarKindType } from '../types'
 
-/** Nested select options may carry recursive `children` (not on base {@link FormOption}). */
-export type FormOptionTree = FormOption & { children?: FormOptionTree[] }
-
 export type FormInputSchema = Omit<CredentialFormSchema, 'default'> &
   Partial<{
     default: unknown
@@ -220,22 +217,6 @@ export const filterVisibleOptions = (
   return true
 })
 
-export const filterVisibleTreeOptions = (
-  options: FormOptionTree[],
-  values: ResourceVarInputs,
-): FormOptionTree[] => {
-  return options.reduce<FormOptionTree[]>((acc, option) => {
-    const isVisible = !option.show_on?.length || option.show_on.every(
-      showOnItem => toolSettingShowOnConditionMet(values, showOnItem),
-    )
-    if (!isVisible)
-      return acc
-    const children = option.children?.length ? filterVisibleTreeOptions(option.children, values) : undefined
-    acc.push({ ...option, children })
-    return acc
-  }, [])
-}
-
 export const mapSelectItems = (
   options: SelectableOption[],
   language: string,
@@ -244,8 +225,6 @@ export const mapSelectItems = (
   name: getOptionLabel(option, language),
   value: option.value,
 }))
-
-export const hasOptionIcon = (options: SelectableOption[]) => options.some(option => !!option.icon)
 
 export const getSelectedLabels = (
   selectedValues: string[] | undefined,

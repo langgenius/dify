@@ -3,13 +3,13 @@ import type { ResourceVarInputs } from '@/app/components/workflow/nodes/_base/ty
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 
 /** Inner `{ type, value }` piece stored under ReasoningConfigEntry.value when auto === 0. */
-export type ReasoningConfigInner = {
+type ReasoningConfigInner = {
   type?: VarKindType
   value?: unknown
 } | null
 
 /** Params panel (`ReasoningConfigForm`) value shape per parameter key. */
-export type ReasoningConfigEntry = {
+type ReasoningConfigEntry = {
   value: ReasoningConfigInner
   auto?: 0 | 1
 }
@@ -80,7 +80,7 @@ export function reasoningShowOnConditionMet(
   const inner = entry.value
   if (inner === null || inner === undefined)
     return false
-  if (typeof inner !== 'object' || !('type' in inner))
+  if (typeof inner !== 'object')
     return false
   if (inner.type === VarKindType.variable)
     return false
