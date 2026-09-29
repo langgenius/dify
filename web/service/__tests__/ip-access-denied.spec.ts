@@ -1,6 +1,6 @@
-import { toast } from '@/app/notifications'
 import { waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { toast } from '@/app/notifications'
 import {
   appAccessErrorAtom,
   appAccessStore,

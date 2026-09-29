@@ -35,7 +35,7 @@ type DialogState =
   | null
 
 function IpPoliciesListSkeleton() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'deployments'])
 
   return (
     <div role="status" aria-label={t(($) => $.loading, { ns: 'common' })}>
@@ -57,7 +57,7 @@ function IpPoliciesListSkeleton() {
 }
 
 export default function IpPoliciesPage() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'deployments'])
   const queryClient = useQueryClient()
   const canReadPolicies = useAtomValue(canReadNetworkAccessAtom)
   const canManagePolicies = useAtomValue(canManageNetworkAccessPoliciesAtom)

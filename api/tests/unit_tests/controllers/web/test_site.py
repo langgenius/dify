@@ -14,6 +14,7 @@ from services.web_app_runtime_query_service import (
     WebAppBootstrap,
     WebAppRuntimeUnavailableError,
 )
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 def _bootstrap() -> WebAppBootstrap:
@@ -101,7 +102,6 @@ def test_app_site_api_maps_unavailable_runtime_to_app_not_found() -> None:
 def test_site_final_response_only_reclassifies_terminal_runtime_failure(
     failure: Exception, status: int, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from configs import dify_config
     from controllers.web import wraps
 
     app = Flask(__name__)
@@ -122,7 +122,7 @@ def test_site_final_response_only_reclassifies_terminal_runtime_failure(
             SimpleNamespace(id="fixture-user", tenant_id="fixture-tenant", type="browser"),
         ),
     )
-    monkeypatch.setattr(dify_config, "NETWORK_ACCESS_TRUSTED_PROXY_CIDRS", "172.18.0.0/16")
+    apply_config_overrides(monkeypatch, NETWORK_ACCESS_TRUSTED_PROXY_CIDRS="172.18.0.0/16")
     response = app.test_client().get("/api/site", environ_overrides={"REMOTE_ADDR": "203.0.113.42"})
     assert response.status_code == status
     if status == 404:

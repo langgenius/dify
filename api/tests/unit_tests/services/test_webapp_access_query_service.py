@@ -8,7 +8,7 @@ from sqlalchemy.orm import sessionmaker
 
 from enums import WebAppAccessMode
 from models.enums import CustomizeTokenStrategy
-from models.model import Site
+from models.model import App, AppModelConfig, Site
 from repositories.webapp_access_query_repository import WebAppAccessQueryRepository
 from services.webapp_access_query_service import (
     WebAppAccessAppNotFoundError,
@@ -232,6 +232,20 @@ def test_app_code_lookup_releases_database_before_access_policy(sqlite_engine: E
     factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False, close_resets_only=False)
     app_id = "11111111-1111-1111-1111-111111111111"
     with factory.begin() as session:
+        config = AppModelConfig(app_id=app_id)
+        config.id = "22222222-2222-2222-2222-222222222222"
+        session.add(config)
+        session.add(
+            App(
+                id=app_id,
+                tenant_id=app_id,
+                name="Test App",
+                mode="chat",
+                enable_site=True,
+                enable_api=True,
+                app_model_config_id=config.id,
+            )
+        )
         session.add(
             Site(
                 app_id=app_id,

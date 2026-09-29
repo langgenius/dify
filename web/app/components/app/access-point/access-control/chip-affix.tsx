@@ -17,7 +17,7 @@ export function AccessControlChipAffix({
   coveredCount,
   inServiceCount,
 }: AccessControlChipAffixProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['deployments'])
 
   if (kind === 'pro') {
     return (

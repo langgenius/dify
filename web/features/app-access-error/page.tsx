@@ -109,6 +109,7 @@ function PageContent({ clientIp, embedded }: AppNotAccessibleProps) {
               <p className="mt-8 max-w-full system-sm-regular text-text-primary">
                 <Trans
                   t={t}
+                  ns="share"
                   i18nKey={($) => $['appNotAccessible.ipAddress']}
                   values={{ ip }}
                   components={{

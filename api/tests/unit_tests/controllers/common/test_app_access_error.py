@@ -11,10 +11,10 @@ from flask_restx import Resource
 from werkzeug.exceptions import NotFound
 from werkzeug.middleware.proxy_fix import ProxyFix
 
-from configs import dify_config
 from controllers.common.app_access_error import register_app_access_error_metadata
 from libs.exception import BaseHTTPException
 from libs.external_api import ExternalApi
+from tests.unit_tests.config_override import apply_config_overrides
 
 APP_ID = "9d6e3fb3-94ce-48f9-a958-58ca80b1c02e"
 TRUSTED = "172.18.0.0/16,10.0.0.0/8,2400:cb00::/32"
@@ -90,7 +90,7 @@ def _path(rule: str) -> str:
 
 @pytest.fixture(autouse=True)
 def _trusted_proxies(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(dify_config, "NETWORK_ACCESS_TRUSTED_PROXY_CIDRS", TRUSTED)
+    apply_config_overrides(monkeypatch, NETWORK_ACCESS_TRUSTED_PROXY_CIDRS=TRUSTED)
 
 
 @pytest.mark.parametrize("rule", WEB_IDENTITIES)
@@ -190,7 +190,7 @@ def test_trust_boundary_ignores_spoofed_arguments_and_headers(
 def test_missing_or_invalid_trust_configuration_preserves_original_404(
     monkeypatch: pytest.MonkeyPatch, config: str
 ) -> None:
-    monkeypatch.setattr(dify_config, "NETWORK_ACCESS_TRUSTED_PROXY_CIDRS", config)
+    apply_config_overrides(monkeypatch, NETWORK_ACCESS_TRUSTED_PROXY_CIDRS=config)
     response = (
         _create_app()
         .test_client()
@@ -216,7 +216,7 @@ def test_unavailable_client_ip_never_exposes_internal_peer_or_changes_status(for
 def test_unavailable_client_ip_removes_existing_unverified_metadata(
     monkeypatch: pytest.MonkeyPatch, config: str
 ) -> None:
-    monkeypatch.setattr(dify_config, "NETWORK_ACCESS_TRUSTED_PROXY_CIDRS", config)
+    apply_config_overrides(monkeypatch, NETWORK_ACCESS_TRUSTED_PROXY_CIDRS=config)
     payload = {
         "code": "app_not_found",
         "message": "missing",
