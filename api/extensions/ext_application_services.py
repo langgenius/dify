@@ -54,12 +54,13 @@ from repositories.account_oauth_repository import (
     RegisterServiceOAuthInvitationGateway,
 )
 from repositories.account_repository import SQLAlchemyAccountRepository
+from repositories.app.mcp_server_repository import AppMCPServerRepository
+from repositories.app.site_command_repository import AppSiteCommandRepository
+from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfigRepository
 from repositories.app_definition_query_repository import AppDefinitionQueryRepository
 from repositories.app_preview_query_repository import AppPreviewQueryRepository
 from repositories.app_scoped_end_user_repository import AppScopedEndUserRepo
-from repositories.app_site_command_repository import AppSiteCommandRepository
 from repositories.app_statistic_query_repository import AppStatisticQueryRepository
-from repositories.app_tracing_config_repository import SQLAlchemyAppTracingConfigRepository
 from repositories.credentials.query_repository import CredentialQueryRepository
 from repositories.explore_banner_query_repository import ExploreBannerQueryRepository
 from repositories.factory import DifyAPIRepositoryFactory
@@ -154,8 +155,10 @@ from services.account_oauth_service import AccountOAuthService, OAuthProviderGat
 from services.account_password_hasher import DefaultAccountPasswordHasher
 from services.account_password_service import AccountPasswordService
 from services.account_profile_service import AccountProfileService
+from services.agent.roster_package_exporter import RosterAgentPackageExporter
 from services.app.advanced_prompt_template_service import AdvancedPromptTemplateService
 from services.app.api_key_service import AppApiKeyService
+from services.app.mcp_server_service import AppMCPServerService
 from services.app_audio_adapters import AppAudioRuntime
 from services.app_audio_service import AppAudio
 from services.app_definition_query_service import AppDefinitionQueryService
@@ -213,6 +216,7 @@ from services.recommended_app_catalog_gateway import (
     RecommendedAppCatalogRouter,
     RemoteRecommendedAppCatalogGateway,
 )
+from services.recommended_app_package_service import RecommendedAppPackageService
 from services.recommended_app_query_service import RecommendedAppQueryService
 from services.remote_file_service import RemoteFileService
 from services.retention.workflow_run.archive_download_adapters import (
@@ -342,6 +346,7 @@ class ApplicationServices:
     account_activation: AccountActivationService
     apps: AppServices
     app_definitions: AppDefinitionQueryService
+    app_mcp_servers: AppMCPServerService
     app_preview_details: AppPreviewDetails
     app_previews: AppPreviewQueryService
     app_sites: AppSiteService
@@ -374,6 +379,7 @@ class ApplicationServices:
     step_by_step_tour: StepByStepTourService
     partner_tenant_bindings: PartnerTenantBindingService
     recommended_app_queries: RecommendedAppQueryService
+    recommended_app_packages: RecommendedAppPackageService
     remote_files: RemoteFileService
     saved_messages: SavedMessageService
     app_tasks: AppTaskControlService
@@ -551,6 +557,9 @@ def build_application_services(
         trial_apps=trial_apps,
         trial_enabled=trial_app_enabled,
     )
+    recommended_app_packages = RecommendedAppPackageService(
+        sources=database_catalog, exporter=RosterAgentPackageExporter()
+    )
     workspace_query_repository = WorkspaceQueryRepository(session_factory=database_client)
     workspace_member_repository = WorkspaceMemberQueryRepository(session_factory=database_client)
     dataset_dependencies = build_dataset_dependencies(
@@ -567,7 +576,11 @@ def build_application_services(
         providers=datasource_credentials.providers,
     )
     oauth_server = _build_oauth_server_service(database_client=database_client, redis=redis)
-    apps = build_app_services(database_client=database_client, oauth=oauth_server)
+    apps = build_app_services(
+        database_client=database_client,
+        oauth=oauth_server,
+        recommended_packages=recommended_app_packages,
+    )
     tags = TagApplicationService(tags=TagRepository(session_factory=database_client))
     knowledge = build_knowledge_services(
         database_client=database_client,
@@ -752,6 +765,9 @@ def build_application_services(
         agent_apps=build_agent_app_services(database_client=database_client),
         advanced_prompt_templates=AdvancedPromptTemplateService(),
         app_definitions=app_definitions,
+        app_mcp_servers=AppMCPServerService(
+            servers=AppMCPServerRepository(session_factory=database_client),
+        ),
         app_preview_details=AppPreviewDetailsRuntime(details=app_preview_repository),
         app_previews=AppPreviewQueryService(
             apps=app_preview_repository,
@@ -868,6 +884,7 @@ def build_application_services(
             sync_bindings=BillingService.sync_partner_tenants_bindings,
         ),
         recommended_app_queries=recommended_app_queries,
+        recommended_app_packages=recommended_app_packages,
         remote_files=remote_file_service,
         saved_messages=SavedMessageService(
             saved_messages=SQLAlchemySavedMessageRepository(session_factory=database_client),

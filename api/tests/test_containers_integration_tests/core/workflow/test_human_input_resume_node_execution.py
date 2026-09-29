@@ -203,7 +203,7 @@ class TestHumanInputResumeNodeExecutionIntegration:
         db_session_with_containers.add(tenant_join)
         db_session_with_containers.commit()
 
-        account.current_tenant = tenant
+        account.set_current_tenant_with_session(tenant, session=db_session_with_containers)
 
         app = App(
             tenant_id=tenant.id,

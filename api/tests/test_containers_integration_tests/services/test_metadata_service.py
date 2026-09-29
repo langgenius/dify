@@ -54,8 +54,8 @@ class TestMetadataService:
         join = TenantAccountJoin(tenant_id=tenant.id, account_id=account.id, role=TenantAccountRole.OWNER, current=True)
         db_session_with_containers.add(join)
         db_session_with_containers.commit()
-        account.current_tenant = tenant
-        return (account, tenant)
+        account.set_current_tenant_with_session(tenant, session=db_session_with_containers)
+        return account, tenant
 
     def _create_test_dataset(self, db_session_with_containers: Session, account: Account, tenant: Tenant) -> Dataset:
         """

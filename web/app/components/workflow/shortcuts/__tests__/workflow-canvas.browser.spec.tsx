@@ -8,7 +8,7 @@ import {
   ContextMenuTrigger,
 } from '@langgenius/dify-ui/context-menu'
 import { detectPlatform } from '@tanstack/react-hotkeys'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Handle, Position, ReactFlowProvider, useStore as useReactFlowStore } from 'reactflow'
 import { page, userEvent } from 'vite-plus/test/browser'
@@ -574,6 +574,63 @@ function VariableConnectionCanvas({ onSelect }: { onSelect: (value: string[]) =>
     </div>
   )
 }
+
+function KeyboardPanelFocusCanvas({ store }: { store: ReturnType<typeof createWorkflowStore> }) {
+  const [open, setOpen] = useState(false)
+  const pendingFocusId = useStore(store, (state) => state.pendingNodePanelFocusId)
+  const panelRef = useRef<HTMLDivElement>(null)
+  const descriptionRef = useRef<HTMLTextAreaElement>(null)
+  const handleNodeKeyDown = useNodeKeyboardInteractions(() => setOpen(true))
+
+  useEffect(() => {
+    if (!open || pendingFocusId !== 'node') return
+    ;(descriptionRef.current ?? panelRef.current)?.focus({ preventScroll: true })
+    store.getState().setPendingNodePanelFocusId(undefined)
+  }, [open, pendingFocusId, store])
+
+  return (
+    <>
+      <div style={{ width: 800, height: 500 }}>
+        <WorkflowCanvas
+          nodes={[
+            {
+              id: 'node',
+              type: 'focus',
+              position: { x: 100, y: 100 },
+              data: { type: BlockEnum.Code },
+            },
+          ]}
+          edges={[]}
+          nodeTypes={{ focus: () => <div>Workflow node</div> }}
+          onKeyDownCapture={handleNodeKeyDown}
+        />
+      </div>
+      {open && (
+        <div ref={panelRef} role="region" aria-label="Node configuration" tabIndex={-1}>
+          <textarea ref={descriptionRef} aria-label="Description" />
+          <button type="button">First setting</button>
+        </div>
+      )}
+    </>
+  )
+}
+
+it('keeps focus in the panel after Enter opens it from a real ReactFlow node', async () => {
+  const store = createWorkflowStore({})
+  const screen = await render(
+    <WorkflowContext value={store}>
+      <ReactFlowProvider>
+        <KeyboardPanelFocusCanvas store={store} />
+      </ReactFlowProvider>
+    </WorkflowContext>,
+  )
+
+  const node = screen.getByTestId('rf__node-node')
+  await node.click()
+  await expect.element(node).toHaveFocus()
+  await userEvent.keyboard('{Enter}')
+  await expect.element(screen.getByRole('textbox', { name: 'Description' })).toHaveFocus()
+})
 
 it('selects a connection variable before node movement handles the focused node keys', async () => {
   // Real handle dragging preserves node focus; React capture must not move that node before the picker sees its keys.

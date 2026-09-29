@@ -45,7 +45,6 @@
   "nodes.triggerSchedule.nextExecutionTimes": "5 waktu eksekusi berikutnya",
   "nodes.triggerSchedule.onMinute": "Dalam Sejuta",
   "nodes.triggerSchedule.selectFrequency": "Pilih frekuensi",
-  "nodes.triggerSchedule.selectTime": "Pilih waktu",
   "nodes.triggerSchedule.title": "Jadwal",
   "nodes.triggerSchedule.useCronExpression": "Gunakan ekspresi cron",
   "nodes.triggerSchedule.useVisualPicker": "Gunakan pemilih visual",
