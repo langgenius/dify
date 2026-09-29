@@ -1,6 +1,6 @@
 import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { PluginDeclaration, PluginDetail } from '@/app/components/plugins/types'
-import { act, fireEvent, screen } from '@testing-library/react'
+import { act, fireEvent, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vite-plus/test'
 import { PluginCategoryEnum, PluginSource } from '@/app/components/plugins/types'
 import {
@@ -607,11 +607,19 @@ describe('ModelProviderPage', () => {
 
     openUpdateSettings()
     fireEvent.click(screen.getByRole('button', { name: /12:00 AM/ }))
-    fireEvent.click(screen.getByRole('button', { name: '01' }))
-    fireEvent.click(screen.getByRole('button', { name: '15' }))
+    fireEvent.click(
+      within(screen.getByRole('listbox', { name: 'time.picker.hour' })).getByRole('option', {
+        name: '1',
+      }),
+    )
+    fireEvent.click(
+      within(screen.getByRole('listbox', { name: 'time.picker.minute' })).getByRole('option', {
+        name: '15',
+      }),
+    )
     fireEvent.click(screen.getByRole('button', { name: 'time.operation.ok' }))
 
-    expect(screen.getByRole('button', { name: /01:15 AM/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /1:15 AM/ })).toBeInTheDocument()
 
     saveUpdateSettings()
 
