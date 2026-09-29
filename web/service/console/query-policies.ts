@@ -3,6 +3,7 @@ import type {
   AgentAppPagination,
 } from '@dify/contracts/api/console/agent/types.gen'
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import type { RouterUtils } from '@orpc/tanstack-query'
 import type { InfiniteData, QueryClient, QueryKey } from '@tanstack/react-query'
@@ -338,14 +339,16 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           },
         },
         byAppId: {
-          // Shared invalidation uses onSettled so feature-owned onSuccess callbacks can coexist.
+          get: {
+            queryOptions: { retry: false, context: { silent: true } },
+          },
+          // Cache updates belong here; feature onSuccess callbacks own interaction feedback.
           apiEnable: {
             post: {
               mutationOptions: {
-                onSettled: (_data, error, variables, _onMutateResult, context) => {
+                onSettled: (_data, error, variables, _result, context) => {
                   if (error) return
-
-                  void context.client.invalidateQueries({
+                  return context.client.invalidateQueries({
                     queryKey: consoleQuery.apps.byAppId.get.queryKey({
                       input: { params: variables.params },
                     }),
@@ -356,7 +359,13 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           },
           delete: {
             mutationOptions: {
-              onSuccess: (_data, _variables, _onMutateResult, context) => {
+              onSettled: async (_data, error, variables, _result, context) => {
+                if (error) return
+                const queryKey = consoleQuery.apps.byAppId.get.queryKey({
+                  input: { params: variables.params },
+                })
+                await context.client.cancelQueries({ queryKey, exact: true })
+                context.client.removeQueries({ queryKey, exact: true })
                 void context.client.invalidateQueries({ queryKey: consoleQuery.features.get.key() })
                 return Promise.all([
                   context.client.invalidateQueries({ queryKey: consoleQuery.apps.get.key() }),
@@ -372,30 +381,45 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           },
           put: {
             mutationOptions: {
-              onSuccess: (data, variables, _onMutateResult, context) => {
-                context.client.setQueryData(
-                  consoleQuery.apps.byAppId.get.queryKey({
-                    input: { params: variables.params },
+              onSettled: (data, error, variables, _result, context) => {
+                if (error || !data) return
+                const queryKey = consoleQuery.apps.byAppId.get.queryKey({
+                  input: { params: variables.params },
+                })
+                context.client.setQueryData(queryKey, data)
+                return Promise.all([
+                  context.client.invalidateQueries({ queryKey }),
+                  context.client.invalidateQueries({ queryKey: consoleQuery.apps.get.key() }),
+                  context.client.invalidateQueries({
+                    queryKey: consoleQuery.apps.starred.get.key(),
                   }),
-                  data,
-                )
-                void context.client.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
-                void context.client.invalidateQueries({
-                  queryKey: consoleQuery.apps.starred.get.key(),
-                })
-                void context.client.invalidateQueries({
-                  queryKey: consoleQuery.apps.recent.get.key(),
-                })
+                  context.client.invalidateQueries({
+                    queryKey: consoleQuery.apps.recent.get.key(),
+                  }),
+                ])
+              },
+            },
+          },
+          modelConfig: {
+            post: {
+              mutationOptions: {
+                onSettled: (_data, error, variables, _result, context) => {
+                  if (error) return
+                  return context.client.invalidateQueries({
+                    queryKey: consoleQuery.apps.byAppId.get.queryKey({
+                      input: { params: variables.params },
+                    }),
+                  })
+                },
               },
             },
           },
           siteEnable: {
             post: {
               mutationOptions: {
-                onSettled: (_data, error, variables, _onMutateResult, context) => {
+                onSettled: (_data, error, variables, _result, context) => {
                   if (error) return
-
-                  void context.client.invalidateQueries({
+                  return context.client.invalidateQueries({
                     queryKey: consoleQuery.apps.byAppId.get.queryKey({
                       input: { params: variables.params },
                     }),
@@ -405,16 +429,45 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
             },
           },
           site: {
-            accessTokenReset: {
-              post: {
-                mutationOptions: {
-                  onSettled: (_data, error, variables, _onMutateResult, context) => {
-                    if (error) return
-
-                    void context.client.invalidateQueries({
+            post: {
+              mutationOptions: {
+                onSettled: (_data, error, variables, _result, context) => {
+                  if (error) return
+                  return Promise.all([
+                    context.client.invalidateQueries({
                       queryKey: consoleQuery.apps.byAppId.get.queryKey({
                         input: { params: variables.params },
                       }),
+                    }),
+                    context.client.invalidateQueries({ queryKey: consoleQuery.apps.get.key() }),
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.apps.starred.get.key(),
+                    }),
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.apps.recent.get.key(),
+                    }),
+                  ])
+                },
+              },
+            },
+            accessTokenReset: {
+              post: {
+                mutationOptions: {
+                  onSettled: (data, error, variables, _result, context) => {
+                    if (error || !data) return
+                    const queryKey = consoleQuery.apps.byAppId.get.queryKey({
+                      input: { params: variables.params },
+                    })
+                    context.client.setQueryData<AppDetailWithSite>(queryKey, (detail) =>
+                      detail?.site
+                        ? {
+                            ...detail,
+                            site: { ...detail.site, access_token: data.code ?? null },
+                          }
+                        : detail,
+                    )
+                    return context.client.invalidateQueries({
+                      queryKey,
                     })
                   },
                 },
@@ -424,14 +477,17 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           convertToWorkflow: {
             post: {
               mutationOptions: {
-                onSuccess: (_data, _variables, _onMutateResult, context) => {
-                  void context.client.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
-                  void context.client.invalidateQueries({
-                    queryKey: consoleQuery.apps.starred.get.key(),
-                  })
-                  void context.client.invalidateQueries({
-                    queryKey: consoleQuery.apps.recent.get.key(),
-                  })
+                onSettled: (_data, error, _variables, _result, context) => {
+                  if (error) return
+                  return Promise.all([
+                    context.client.invalidateQueries({ queryKey: consoleQuery.apps.get.key() }),
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.apps.starred.get.key(),
+                    }),
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.apps.recent.get.key(),
+                    }),
+                  ])
                 },
               },
             },
@@ -439,19 +495,20 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           copy: {
             post: {
               mutationOptions: {
-                onSuccess: (data, _variables, _onMutateResult, context) => {
-                  if (!('mode' in data)) return
-
+                onSettled: (data, error, _variables, _result, context) => {
+                  if (error || !data || !('mode' in data)) return
                   void context.client.invalidateQueries({
                     queryKey: consoleQuery.features.get.key(),
                   })
-                  void context.client.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
-                  void context.client.invalidateQueries({
-                    queryKey: consoleQuery.apps.starred.get.key(),
-                  })
-                  void context.client.invalidateQueries({
-                    queryKey: consoleQuery.apps.recent.get.key(),
-                  })
+                  return Promise.all([
+                    context.client.invalidateQueries({ queryKey: consoleQuery.apps.get.key() }),
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.apps.starred.get.key(),
+                    }),
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.apps.recent.get.key(),
+                    }),
+                  ])
                 },
               },
             },
@@ -1322,16 +1379,23 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
         webAppAuth: {
           updateWebAppWhitelistSubjects: {
             mutationOptions: {
-              onSuccess: (_data, _variables, _result, context) => {
-                void context.client.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
-                void context.client.invalidateQueries({
-                  queryKey: consoleQuery.apps.starred.get.key(),
-                })
-                void context.client.invalidateQueries({
-                  queryKey: consoleQuery.apps.recent.get.key(),
-                })
-
+              onSettled: (_data, error, variables, _result, context) => {
+                if (error) return
                 return Promise.all([
+                  variables.body.appId
+                    ? context.client.invalidateQueries({
+                        queryKey: consoleQuery.apps.byAppId.get.queryKey({
+                          input: { params: { app_id: variables.body.appId } },
+                        }),
+                      })
+                    : undefined,
+                  context.client.invalidateQueries({ queryKey: consoleQuery.apps.get.key() }),
+                  context.client.invalidateQueries({
+                    queryKey: consoleQuery.apps.starred.get.key(),
+                  }),
+                  context.client.invalidateQueries({
+                    queryKey: consoleQuery.apps.recent.get.key(),
+                  }),
                   context.client.invalidateQueries({
                     queryKey: consoleQuery.enterprise.webAppAuth.getWebAppAccessMode.key(),
                   }),

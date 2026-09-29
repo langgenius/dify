@@ -4,12 +4,15 @@ import type { EventEmitterValue } from '@/context/event-emitter'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { EventEmitter } from 'ahooks/lib/useEventEmitter'
 import { ReactFlowProvider, useStoreApi } from 'reactflow'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { isWorkflowDraftReplacedEvent } from '@/app/components/workflow/workflow-data-update-event'
 import { EventEmitterContext, useEventEmitterContextContext } from '@/context/event-emitter'
-import { renderWithAccountProfile } from '@/test/console/account-profile'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery,
+  seedAppDetail,
+} from '@/test/console/query-data'
 import { AppACLPermission } from '@/utils/permission'
 import WorkflowMain from '../workflow-main'
 
@@ -19,7 +22,8 @@ const withWorkflowProviders = (ui: ReactNode) => (
     <ReactFlowProvider>{ui}</ReactFlowProvider>
   </EventEmitterContext.Provider>
 )
-const render = (ui: ReactNode) => renderWithAccountProfile(withWorkflowProviders(ui))
+let queryClient = createConsoleQueryClient()
+const render = (ui: ReactNode) => renderWithConsoleQuery(withWorkflowProviders(ui), { queryClient })
 
 const mockSetFeatures = vi.fn()
 const mockSetConversationVariables = vi.fn()
@@ -547,7 +551,8 @@ describe('WorkflowMain', () => {
     mockIsWorkflowReplacementPending.mockReturnValue(false)
     hookFns.doSyncWorkflowDraft.mockResolvedValue({ hash: 'saved-hash', updatedAt: 2 })
     hookFns.handleRefreshWorkflowDraft.mockResolvedValue(true)
-    useAppStore.setState({ appDetail: undefined })
+    queryClient = createConsoleQueryClient()
+    seedAppDetail(queryClient, { id: 'app-1', mode: 'workflow' })
   })
 
   it('validates a follower snapshot marker and updates metadata without replacing peer graph edits', async () => {
@@ -1454,9 +1459,7 @@ describe('WorkflowMain', () => {
   })
 
   it('disables collaboration for view-only apps', () => {
-    useAppStore.setState({
-      appDetail: { permission_keys: [AppACLPermission.ViewLayout] } as never,
-    })
+    seedAppDetail(queryClient, { id: 'app-1', permission_keys: [AppACLPermission.ViewLayout] })
 
     render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
 

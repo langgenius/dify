@@ -1,13 +1,13 @@
 import type { PeriodParams } from '@/app/components/app/overview/app-chart'
 import { screen } from '@testing-library/react'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { AppACLPermission } from '@/utils/permission'
 import ChartView from '../chart-view'
 
 const testState = vi.hoisted(() => ({
   appDetail: {
     id: 'app-1',
-    mode: 'chat',
+    mode: 'chat' as const,
     maintainer: 'maintainer-1',
     permission_keys: [] as string[],
   },
@@ -17,19 +17,15 @@ const testState = vi.hoisted(() => ({
   conversationPeriodSpy: vi.fn(),
 }))
 
+const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) =>
+  renderWithConsoleQuery(ui, { appDetail: testState.appDetail })
+
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => ({
     currentWorkspace: { id: 'workspace-1' },
   }))
 })
-
-vi.mock('@/app/components/app/store', () => ({
-  useStore: <T,>(selector: (state: { appDetail: typeof testState.appDetail }) => T): T =>
-    selector({
-      appDetail: testState.appDetail,
-    }),
-}))
 
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => path,
@@ -108,7 +104,7 @@ describe('ChartView monitor permission', () => {
     vi.clearAllMocks()
     testState.appDetail = {
       id: 'app-1',
-      mode: 'chat',
+      mode: 'chat' as const,
       maintainer: 'maintainer-1',
       permission_keys: [],
     }

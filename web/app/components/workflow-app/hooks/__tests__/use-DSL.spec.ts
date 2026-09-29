@@ -5,6 +5,7 @@ import { createElement } from 'react'
 import { DSL_EXPORT_CHECK } from '@/app/components/workflow/constants'
 import { WorkflowContext } from '@/app/components/workflow/context'
 import { createWorkflowStore } from '@/app/components/workflow/store'
+import { seedAppDetail } from '@/test/console/query-data'
 import { useDSLByCanEdit } from '../use-DSL'
 
 const toastMocks = vi.hoisted(() => ({
@@ -39,13 +40,6 @@ const mockExportAppConfig = vi.fn()
 const mockFetchEnvironmentVariables = vi.fn()
 const mockDownloadBlob = vi.fn()
 
-let appStoreState: {
-  appDetail?: {
-    id: string
-    name: string
-  }
-}
-
 vi.mock('@/context/event-emitter', () => ({
   useEventEmitterContextContext: () => ({
     eventEmitter: {
@@ -54,17 +48,14 @@ vi.mock('@/context/event-emitter', () => ({
   }),
 }))
 
-vi.mock('@/app/components/app/store', () => ({
-  useStore: <T>(selector: (state: typeof appStoreState) => T) => selector(appStoreState),
-}))
-
 vi.mock('../use-nodes-sync-draft', () => ({
   useNodesSyncDraftByCanEdit: () => ({
     doSyncWorkflowDraft: mockDoSyncWorkflowDraft,
   }),
 }))
 
-vi.mock('@/service/console', () => ({
+vi.mock('@/service/console', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/console')>()),
   consoleClient: {
     apps: {
       byAppId: {
@@ -105,15 +96,12 @@ const wrapper = ({ children }: { children: ReactNode }) =>
 describe('useDSLByCanEdit', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } })
+    queryClient = new QueryClient({
+      defaultOptions: { mutations: { retry: false }, queries: { staleTime: Infinity } },
+    })
     workflowStore = createWorkflowStore({})
     workflowStore.setState({ appId: 'app-1' })
-    appStoreState = {
-      appDetail: {
-        id: 'other-app',
-        name: 'Workflow App',
-      },
-    }
+    seedAppDetail(queryClient, { id: 'app-1', name: 'Workflow App' })
     mockDoSyncWorkflowDraft.mockResolvedValue(undefined)
     mockExportAppConfig.mockResolvedValue({ data: 'yaml-content' })
     mockFetchEnvironmentVariables.mockResolvedValue({ items: [] })
@@ -287,7 +275,7 @@ workflow:
 
     act(() => {
       workflowStore.setState({ appId: 'app-2' })
-      appStoreState = { appDetail: { id: 'app-2', name: 'Next App' } }
+      seedAppDetail(queryClient, { id: 'app-2', name: 'Next App' })
       rerender()
     })
     await act(async () => {
@@ -305,7 +293,7 @@ workflow:
   })
 
   it('should return early when app detail is unavailable', async () => {
-    appStoreState = {}
+    workflowStore.setState({ appId: undefined })
 
     const { result } = renderHook(() => useDSLByCanEdit(true), { wrapper })
 

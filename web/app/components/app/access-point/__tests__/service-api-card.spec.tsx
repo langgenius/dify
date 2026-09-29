@@ -1,9 +1,10 @@
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
-import { QueryClientProvider } from '@tanstack/react-query'
+import { QueryClientProvider, useQuery } from '@tanstack/react-query'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { toast } from '@/app/notifications'
+import { consoleQuery } from '@/service/console'
+import { seedAppDetail } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createTestQueryClient } from '@/test/query-client'
@@ -22,20 +23,18 @@ vi.mock('@/app/notifications', () => ({
   },
 }))
 
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    apps: {
-      byAppId: {
-        apiEnable: {
-          post: {
-            mutationOptions: (options = {}) => ({
-              mutationFn: mocks.apiEnable,
-              ...options,
-            }),
-          },
-        },
-      },
-    },
+let serverAppDetail: AppDetailWithSite
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  request: async (url: string, _init: RequestInit, { request }: { request: Request }) => {
+    if (request.method === 'GET') return Response.json(serverAppDetail)
+    if (request.method === 'POST' && new URL(url).pathname.endsWith('/api-enable')) {
+      const body = await request.json()
+      const response = await mocks.apiEnable({ params: { app_id: 'app-1' }, body })
+      serverAppDetail = { ...serverAppDetail, ...response }
+      return Response.json(response)
+    }
+    throw new Error(`Unexpected request: ${request.method} ${url}`)
   },
 }))
 
@@ -73,24 +72,27 @@ function renderCard(
   canManage = true,
   overrides: Partial<AppDetailWithSite> = {},
 ) {
-  useAppStore.setState({ appDetail: createAppInfo(mode, overrides) })
+  serverAppDetail = createAppInfo(mode, overrides)
   const queryClient = createTestQueryClient()
+  seedAppDetail(queryClient, serverAppDetail)
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <StoreConnectedServiceApiCard availability={availability} canManage={canManage} />
+      <QueryConnectedServiceApiCard availability={availability} canManage={canManage} />
     </QueryClientProvider>,
   )
 }
 
-function StoreConnectedServiceApiCard({
+function QueryConnectedServiceApiCard({
   availability,
   canManage,
 }: {
   availability: 'available' | 'loading' | 'unavailable'
   canManage: boolean
 }) {
-  const appInfo = useAppStore((state) => state.appDetail)
+  const appInfo = useQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: 'app-1' } } }),
+  ).data
   if (!appInfo) return null
 
   return (
@@ -216,7 +218,7 @@ describe('ServiceApiAccessPointCard', () => {
     await user.click(accessSwitch)
 
     await waitFor(() => {
-      expect(useAppStore.getState().appDetail?.enable_api).toBe(false)
+      expect(accessSwitch).toHaveAttribute('aria-checked', 'false')
     })
     expect(accessSwitch).toHaveAttribute('aria-checked', 'false')
     expect(toast.success).not.toHaveBeenCalled()

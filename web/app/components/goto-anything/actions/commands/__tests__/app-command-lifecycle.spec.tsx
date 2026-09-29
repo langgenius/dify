@@ -1,8 +1,10 @@
-import { act } from '@testing-library/react'
-import { useStore as useAppStore } from '@/app/components/app/store'
+import { act, waitFor } from '@testing-library/react'
 import { useWorkflowGeneratorStore } from '@/app/components/workflow/workflow-generator/store'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
-import { createAppDetailFixture } from '@/test/fixtures/app'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery,
+  seedAppDetail,
+} from '@/test/console/query-data'
 import { executeCommand } from '../command-bus'
 import { slashCommandRegistry } from '../registry'
 import { SlashCommandProvider } from '../slash-provider'
@@ -24,6 +26,15 @@ vi.mock('@/config', async (importOriginal) => ({
 vi.mock('@/i18n/client', () => ({ setLocaleOnClient: vi.fn() }))
 vi.mock('@/features/agent-v2/feature-flag', () => ({ isAgentV2Enabled: () => true }))
 
+let queryClient = createConsoleQueryClient()
+const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) =>
+  renderWithConsoleQuery(ui, { queryClient })
+
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  request: () => new Promise<Response>(() => {}),
+}))
+
 const isRefineAvailable = () =>
   slashCommandRegistry.getAvailableCommands().some((command) => command.name === 'refine')
 
@@ -31,10 +42,11 @@ beforeEach(() => {
   route.appId = 'app-a'
   route.pathname = '/app/app-a/logs'
   theme.setTheme = vi.fn()
-  useAppStore.setState({ appDetail: createAppDetailFixture({ id: 'app-a', mode: 'workflow' }) })
+  queryClient = createConsoleQueryClient()
+  seedAppDetail(queryClient, { id: 'app-a', mode: 'workflow' })
 })
 
-it('binds commands to the current route through stale snapshots, late selections, and unmount', async () => {
+it('binds commands to the current route through pending queries, late selections, and unmount', async () => {
   const view = render(<SlashCommandProvider />)
   expect(isRefineAvailable()).toBe(true)
   await executeCommand('refine.open')
@@ -62,9 +74,9 @@ it('binds commands to the current route through stale snapshots, late selections
   })
 
   act(() => {
-    useAppStore.setState({ appDetail: createAppDetailFixture({ id: 'app-b', mode: 'workflow' }) })
+    seedAppDetail(queryClient, { id: 'app-b', mode: 'workflow' })
   })
-  expect(isRefineAvailable()).toBe(true)
+  await waitFor(() => expect(isRefineAvailable()).toBe(true))
   await executeCommand('refine.open')
   expect(useWorkflowGeneratorStore.getState()).toMatchObject({
     intent: 'refine',
@@ -101,9 +113,7 @@ it('binds commands to the current route through stale snapshots, late selections
 })
 
 it('retains graph app commands on logs when unrelated theme commands are registered again', async () => {
-  useAppStore.setState({
-    appDetail: createAppDetailFixture({ id: 'app-a', mode: 'advanced-chat' }),
-  })
+  seedAppDetail(queryClient, { id: 'app-a', mode: 'advanced-chat' })
   const view = render(<SlashCommandProvider />)
   theme.setTheme = vi.fn()
   view.rerender(<SlashCommandProvider />)

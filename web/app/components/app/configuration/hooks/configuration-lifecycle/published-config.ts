@@ -18,7 +18,7 @@ import { userInputsFormToPromptVariables } from '@/utils/model-config'
 import { matchesProviderReference } from '@/utils/provider-reference'
 import { normalizeChatPromptConfig, normalizeCompletionPromptConfig } from './prompt-config'
 
-export function buildAnnotationDraft(
+function buildAnnotationDraft(
   annotation: AppModelConfigResponse['annotation_reply'],
 ): AnnotationReplyConfig {
   if (!annotation.enabled) {

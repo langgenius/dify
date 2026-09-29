@@ -1,8 +1,8 @@
 'use client'
-import type { ConfigurationPublishConfig } from './configuration-lifecycle/types'
+import type { UploadConfig } from '@dify/contracts/api/console/files/types.gen'
+import type { buildConfigurationDefaults } from './configuration-lifecycle/load'
 import type { ConfigurationViewModel } from './configuration-view-model'
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
-import type { Collection } from '@/app/components/tools/types'
 import type { Inputs, ModelConfig, PromptConfig, PromptVariable } from '@/models/debug'
 import { useBoolean } from 'ahooks'
 import { produce } from 'immer'
@@ -24,7 +24,6 @@ import {
 } from '@/app/components/header/account-setting/query-params'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { PromptMode } from '@/models/debug'
-import { useFileUploadConfig } from '@/service/use-common'
 import { AppModeEnum, ModelModeType } from '@/types/app'
 import { supportFunctionCall } from '@/utils/tool-call'
 import { buildConfigurationFeaturesData, getConfigurationPublishingState } from '../utils'
@@ -32,15 +31,19 @@ import { buildConfigurationContextValue } from './build-configuration-context'
 import { useDatasetSelectHandler } from './configuration-lifecycle/dataset'
 import { useModelChangeHandler } from './configuration-lifecycle/model'
 import { useConfigurationAppContext } from './configuration-lifecycle/use-configuration-app-context'
-import { useConfigurationLoader } from './configuration-lifecycle/use-configuration-loader'
 import { useConfigurationPublish } from './configuration-lifecycle/use-configuration-publish'
+import { useConfigurationRestore } from './configuration-lifecycle/use-configuration-restore'
 import { useDatasetConfigurationState } from './configuration-lifecycle/use-dataset-configuration-state'
 import { useFeatureConfigurationState } from './configuration-lifecycle/use-feature-configuration-state'
 import { useModelConfigurationState } from './configuration-lifecycle/use-model-configuration-state'
 import { useMultipleModelDebug } from './configuration-lifecycle/use-multiple-model-debug'
 import { usePublishedConfigSync } from './configuration-lifecycle/use-published-config-sync'
 
-export const useConfiguration = (): ConfigurationViewModel => {
+export const useConfiguration = (
+  defaults: ReturnType<typeof buildConfigurationDefaults> & {
+    fileUploadConfigResponse: UploadConfig
+  },
+): ConfigurationViewModel => {
   const { t } = useTranslation(['appDebug', 'common', 'modelProvider'])
   const [_settingsDestination, setSettingsDestination] = useQueryState(
     settingsQueryParamName,
@@ -55,14 +58,11 @@ export const useConfiguration = (): ConfigurationViewModel => {
     serverLatestPublishedAt,
     updateModelConfig,
   } = useConfigurationAppContext()
-  const { data: fileUploadConfigResponse } = useFileUploadConfig()
+  const { fileUploadConfigResponse, mode, collectionList } = defaults
   const [showAppConfigureFeaturesModal, setShowAppConfigureFeaturesModal] = useState(false)
   const [formattingChanged, setFormattingChanged] = useState(false)
-  const [hasFetchedDetail, setHasFetchedDetail] = useState(false)
   // oxlint-disable-next-line eslint-react/use-state -- This custom hook returns a state object.
-  const featureConfiguration = useFeatureConfigurationState()
-  const [mode, setMode] = useState<AppModeEnum>(AppModeEnum.CHAT)
-  const [publishedConfig, setPublishedConfig] = useState<ConfigurationPublishConfig | null>(null)
+  const featureConfiguration = useFeatureConfigurationState(defaults.publishedConfig)
   const [conversationId, setConversationId] = useState<string | null>('')
 
   const media = useBreakpoints()
@@ -94,6 +94,7 @@ export const useConfiguration = (): ConfigurationViewModel => {
   // oxlint-disable-next-line eslint-react/use-state -- This custom hook returns a state object.
   const modelConfiguration = useModelConfigurationState({
     formattingChangedDispatcher,
+    initialConfig: defaults.publishedConfig,
   })
   const {
     completionParams: completionParamsState,
@@ -108,9 +109,8 @@ export const useConfiguration = (): ConfigurationViewModel => {
   const modelModeType = modelConfig.mode
   const isAgent = mode === AppModeEnum.AGENT_CHAT
 
-  const [collectionList, setCollectionList] = useState<Collection[]>([])
   // oxlint-disable-next-line eslint-react/use-state -- This custom hook returns a state object.
-  const datasetConfiguration = useDatasetConfigurationState()
+  const datasetConfiguration = useDatasetConfigurationState(defaults.publishedConfig)
   const { dataSets, datasetConfigs, datasetConfigsRef, setDataSets, setDatasetConfigs } =
     datasetConfiguration
   const contextVar = modelConfig.configs.prompt_variables.find((item) => item.is_context_var)?.key
@@ -126,15 +126,18 @@ export const useConfiguration = (): ConfigurationViewModel => {
   const { currentModel: currentRerankModel, currentProvider: currentRerankProvider } =
     useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
 
+  const loadPublishedConfig = useConfigurationRestore({
+    appId,
+    currentRerankModel: currentRerankModel?.model,
+    currentRerankProvider: currentRerankProvider?.provider,
+  })
+
   const { currentModel: currModel } = useTextGenerationCurrentProviderAndModelAndModelList({
     provider: modelConfig.provider,
     model: modelConfig.model_id,
   })
   const resolvedModelModeType =
-    (modelModeType ||
-      (hasFetchedDetail
-        ? (currModel?.model_properties.mode as ModelModeType | undefined)
-        : undefined)) ??
+    (modelModeType || (currModel?.model_properties.mode as ModelModeType | undefined)) ??
     ModelModeType.unset
 
   const isFunctionCall = supportFunctionCall(currModel?.features)
@@ -143,11 +146,13 @@ export const useConfiguration = (): ConfigurationViewModel => {
     modelModeTypeRef.current = resolvedModelModeType
   }, [modelModeTypeRef, resolvedModelModeType])
 
-  const [promptMode, setPromptMode] = useState<PromptMode>(PromptMode.simple)
+  const [promptMode, setPromptMode] = useState<PromptMode>(defaults.publishedConfig.promptMode)
   const isAdvancedMode = promptMode === PromptMode.advanced
-  const [canReturnToSimpleMode, setCanReturnToSimpleMode] = useState(true)
+  const [canReturnToSimpleMode, setCanReturnToSimpleMode] = useState(defaults.canReturnToSimpleMode)
 
   const advancedPromptConfiguration = useAdvancedPromptConfig({
+    initialChatPromptConfig: defaults.publishedConfig.chatPromptConfig,
+    initialCompletionPromptConfig: defaults.publishedConfig.completionPromptConfig,
     appMode: mode,
     modelName: modelConfig.model_id,
     promptMode,
@@ -172,6 +177,7 @@ export const useConfiguration = (): ConfigurationViewModel => {
   } = advancedPromptConfiguration
 
   const syncToPublishedConfig = usePublishedConfigSync({
+    setAnnotationConfig,
     setCanReturnToSimpleMode,
     setChatPromptConfig,
     setCitationConfig,
@@ -260,18 +266,6 @@ export const useConfiguration = (): ConfigurationViewModel => {
     [modelConfig, setModelConfig],
   )
 
-  useConfigurationLoader({
-    appId,
-    currentRerankModel: currentRerankModel?.model,
-    currentRerankProvider: currentRerankProvider?.provider,
-    setAnnotationConfig,
-    setCollectionList,
-    setHasFetchedDetail,
-    setMode,
-    setPublishedConfig,
-    syncToPublishedConfig,
-  })
-
   const { promptEmpty, cannotPublish, contextVarEmpty } = useMemo(
     () =>
       getConfigurationPublishingState({
@@ -318,8 +312,6 @@ export const useConfiguration = (): ConfigurationViewModel => {
     promptMode,
     resolvedModelModeType,
     setCanReturnToSimpleMode,
-    setPublishedConfig,
-    syncToPublishedConfig,
     t,
     updateModelConfig,
   })
@@ -400,11 +392,8 @@ export const useConfiguration = (): ConfigurationViewModel => {
       debugWithMultipleModel,
       multipleModelConfigs,
       onPublish,
-      publishedConfig: publishedConfig as ConfigurationPublishConfig,
-      resetAppConfig: () => {
-        if (!publishedConfig) return
-        syncToPublishedConfig(publishedConfig)
-      },
+      loadPublishedConfig,
+      resetAppConfig: syncToPublishedConfig,
     },
     contextValue,
     featuresData,
@@ -441,7 +430,7 @@ export const useConfiguration = (): ConfigurationViewModel => {
     promptVariables: modelConfig.configs.prompt_variables,
     selectedIds,
     showAppConfigureFeaturesModal,
-    showLoading: !hasFetchedDetail || isLoadingCurrentWorkspace || !currentWorkspace?.id,
+    showLoading: isLoadingCurrentWorkspace || !currentWorkspace?.id,
     showUseGPT4Confirm,
     setShowUseGPT4Confirm,
   }

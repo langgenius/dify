@@ -10,7 +10,6 @@
   "actionMsg.generatedUnsuccessfully": "Dihasilkan tidak berhasil",
   "actionMsg.modifiedSuccessfully": "Berhasil dimodifikasi",
   "actionMsg.modifiedUnsuccessfully": "Dimodifikasi tidak berhasil",
-  "actionMsg.noModification": "Tidak ada modifikasi saat ini.",
   "actionMsg.payCancelled": "Pembayaran dibatalkan",
   "actionMsg.paySucceeded": "Pembayaran berhasil",
   "agentStrategyPage.description": "Tentukan cara AI Agent Anda bernalar dan mengambil keputusan — termasuk memilih alat, menangani hasil, dan menyelesaikan masalah secara mandiri.",

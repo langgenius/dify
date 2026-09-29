@@ -182,14 +182,9 @@
       "count": 1
     }
   },
-  "web/app/components/app/app-publisher/__tests__/features-wrapper.spec.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 6
-    }
-  },
   "web/app/components/app/app-publisher/__tests__/index.spec.tsx": {
     "typescript/no-explicit-any": {
-      "count": 9
+      "count": 7
     }
   },
   "web/app/components/app/app-publisher/__tests__/version-info-modal.spec.tsx": {

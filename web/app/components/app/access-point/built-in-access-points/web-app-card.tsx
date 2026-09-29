@@ -25,7 +25,6 @@ import CustomizeModal from '@/app/components/app/overview/customize'
 import EmbeddedModal from '@/app/components/app/overview/embedded'
 import SettingsModal from '@/app/components/app/overview/settings'
 import { WorkflowLaunchDialog } from '@/app/components/app/overview/workflow-launch-dialog'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { AccessPointCard } from '@/app/components/base/access-point/card'
 import { getAccessPointStatus } from '@/app/components/base/access-point/status'
 import { AccessPointUrl } from '@/app/components/base/access-point/url'
@@ -66,7 +65,6 @@ type WebAppAccessPointCardProps = {
   canManageAccessPoint: boolean
   highlighted?: boolean
   showAccessControl: boolean
-  onRefreshApp: () => Promise<void>
   onSaveSiteConfig: (params: AppSiteUpdatePayload) => Promise<void>
   workflow: PublishedWorkflow
 }
@@ -77,7 +75,6 @@ export function WebAppAccessPointCard({
   canDeploy,
   canManageAccessPoint,
   highlighted,
-  onRefreshApp,
   onSaveSiteConfig,
   showAccessControl,
   workflow,
@@ -90,7 +87,6 @@ export function WebAppAccessPointCard({
     'deployments',
     'navigation',
   ])
-  const setAppDetail = useAppStore((state) => state.setAppDetail)
   const [showSettings, setShowSettings] = useState(false)
   const [showEmbedded, setShowEmbedded] = useState(false)
   const [showCustomize, setShowCustomize] = useState(false)
@@ -102,16 +98,6 @@ export function WebAppAccessPointCard({
       scope: {
         id: `app-web-app-toggle:${appInfo.id}`,
       },
-      onSuccess: (updatedApp) => {
-        const currentAppDetail = useAppStore.getState().appDetail
-        if (!currentAppDetail || currentAppDetail.id !== appInfo.id) return
-
-        setAppDetail({
-          ...currentAppDetail,
-          enable_site: updatedApp.enable_site,
-          updated_at: updatedApp.updated_at ?? currentAppDetail.updated_at,
-        })
-      },
       onError: () => {
         toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
       },
@@ -119,10 +105,6 @@ export function WebAppAccessPointCard({
   )
   const resetSiteAccessToken = useMutation(
     consoleQuery.apps.byAppId.site.accessTokenReset.post.mutationOptions({
-      onSuccess: async () => {
-        await onRefreshApp()
-        setShowRegenerate(false)
-      },
       onError: () => {
         toast.error(t(($) => $['actionMsg.generatedUnsuccessfully'], { ns: 'common' }))
         setShowRegenerate(false)
@@ -138,7 +120,11 @@ export function WebAppAccessPointCard({
       ? pendingEnabled
       : appInfo.enable_site
   const running = siteAvailability === 'available' && optimisticEnabled
-  const actionsAvailable = running && Boolean(webAppUrl) && !toggleSiteMutation.isPending
+  const actionsAvailable =
+    running &&
+    Boolean(webAppUrl) &&
+    !toggleSiteMutation.isPending &&
+    !resetSiteAccessToken.isPending
   const supportsEmbedded =
     appInfo.mode !== AppModeEnum.COMPLETION && appInfo.mode !== AppModeEnum.WORKFLOW
   const hiddenLaunchVariables = getHiddenStartInputs(workflow)
@@ -164,7 +150,10 @@ export function WebAppAccessPointCard({
   const handleRegenerate = () => {
     if (!canManageAccessPoint || resetSiteAccessToken.isPending) return
 
-    resetSiteAccessToken.mutate({ params: { app_id: appInfo.id } })
+    void resetSiteAccessToken.mutateAsync({ params: { app_id: appInfo.id } }).then(
+      () => setShowRegenerate(false),
+      () => undefined,
+    )
   }
 
   const handleEnabledChange = (enabled: boolean) => {
@@ -256,6 +245,7 @@ export function WebAppAccessPointCard({
           label={t(($) => $['agentDetail.access.webApp.accessUrl'], { ns: 'agentV2' })}
           value={webAppUrl}
           enabled={running}
+          copyDisabled={resetSiteAccessToken.isPending}
           loading={siteAvailability === 'loading'}
           unavailable={siteAvailability === 'unavailable'}
           unavailableLabel={t(($) => $['health.ENVIRONMENT_STATUS_FAILED'], {
@@ -322,7 +312,7 @@ export function WebAppAccessPointCard({
           app={appInfo}
           onClose={() => setShowAccess(false)}
           onConfirm={async () => {
-            await Promise.all([onRefreshApp(), refetchUserCanAccessApp()])
+            await refetchUserCanAccessApp()
             setShowAccess(false)
           }}
         />
@@ -334,7 +324,12 @@ export function WebAppAccessPointCard({
         targetUrl={webAppUrl}
         onOpenChange={setShowWorkflowLaunch}
       />
-      <AlertDialog open={showRegenerate} onOpenChange={(open) => !open && setShowRegenerate(false)}>
+      <AlertDialog
+        open={showRegenerate}
+        onOpenChange={(open) =>
+          !open && !resetSiteAccessToken.isPending && setShowRegenerate(false)
+        }
+      >
         <AlertDialogContent>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
             <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
@@ -345,7 +340,7 @@ export function WebAppAccessPointCard({
             </AlertDialogDescription>
           </div>
           <AlertDialogActions>
-            <AlertDialogCancelButton>
+            <AlertDialogCancelButton disabled={resetSiteAccessToken.isPending}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton

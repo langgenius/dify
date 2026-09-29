@@ -3,12 +3,12 @@ import type { AudioPlayer } from '@/app/components/base/audio-btn/audio'
 import type { Node } from '@/app/components/workflow/types'
 import type { IOtherOptions } from '@/service/base'
 import type { VersionHistory } from '@/types/workflow'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
 import { useCallback } from 'react'
 import { useReactFlow, useStoreApi } from 'reactflow'
 import { v4 as uuidV4 } from 'uuid'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
@@ -16,9 +16,10 @@ import { TriggerType } from '@/app/components/workflow/header/test-run-menu'
 import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars'
 import { useWorkflowRunEvent } from '@/app/components/workflow/hooks/use-workflow-run-event/use-workflow-run-event'
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
-import { useWorkflowStore } from '@/app/components/workflow/store'
+import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { usePathname } from '@/next/navigation'
 import { ssePost } from '@/service/base'
+import { consoleQuery } from '@/service/console'
 import { useInvalidAllLastRun, useInvalidateWorkflowRunHistory } from '@/service/use-workflow'
 import { stopWorkflowRun } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
@@ -101,7 +102,13 @@ type DoSyncWorkflowDraft = ReturnType<typeof useNodesSyncDraft>['doSyncWorkflowD
 const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
-  const appMode = useAppStore((state) => state.appDetail?.mode)
+  const appId = useStore((state) => state.appId)
+  const { data: appMode } = useQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({
+      input: appId ? { params: { app_id: appId } } : skipToken,
+      select: (app) => app.mode,
+    }),
+  )
   const reactflow = useReactFlow()
   const featuresStore = useFeaturesStore()
   const { handleUpdateWorkflowCanvas } = useWorkflowUpdate()

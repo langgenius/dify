@@ -1,3 +1,4 @@
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { HumanInputNodeType } from '../../types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { InputVar } from '@/app/components/workflow/types'
@@ -9,23 +10,18 @@ import { withSelectorKey } from '@/test/i18n-mock'
 import { AppModeEnum, TransferMethod } from '@/types/app'
 import useSingleRunFormParams from '../use-single-run-form-params'
 
+let appDetail: Partial<AppDetailWithSite> | undefined
 let workflowAppId: string | undefined = 'app-1'
 const renderHook = <Result>(callback: () => Result) =>
-  renderWorkflowHook(callback, { initialStoreState: { appId: workflowAppId } })
+  renderWorkflowHook(callback, { initialStoreState: { appId: workflowAppId }, appDetail })
 
 const mockUseTranslation = vi.hoisted(() => vi.fn())
-const mockUseAppStore = vi.hoisted(() => vi.fn())
 const mockFetchHumanInputNodeStepRunForm = vi.hoisted(() => vi.fn())
 const mockSubmitHumanInputNodeStepRunForm = vi.hoisted(() => vi.fn())
 const mockUseNodeCrud = vi.hoisted(() => vi.fn())
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => mockUseTranslation(),
-}))
-
-vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: { appDetail?: { id?: string; mode?: AppModeEnum } }) => unknown) =>
-    mockUseAppStore(selector),
 }))
 
 vi.mock('@/service/workflow', () => ({
@@ -91,7 +87,6 @@ describe('human-input/hooks/use-single-run-form-params', () => {
   const mockSetRunInputData = vi.fn()
   const getInputVars = vi.fn()
   let currentInputs = createPayload()
-  let appDetail: { id?: string; mode?: AppModeEnum } | undefined
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -105,10 +100,6 @@ describe('human-input/hooks/use-single-run-form-params', () => {
     mockUseTranslation.mockReturnValue({
       t: withSelectorKey((key: string) => key),
     })
-    mockUseAppStore.mockImplementation(
-      (selector: (state: { appDetail?: { id?: string; mode?: AppModeEnum } }) => unknown) =>
-        selector({ appDetail }),
-    )
     mockUseNodeCrud.mockImplementation(() => ({
       inputs: currentInputs,
     }))

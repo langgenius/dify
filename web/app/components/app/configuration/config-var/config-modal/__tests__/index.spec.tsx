@@ -3,12 +3,10 @@ import { fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { toast } from '@/app/components/app/configuration/toast'
-import { useStore } from '@/app/components/app/store'
 import { InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { commonQueryKeys } from '@/service/use-common'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
-import { createAppDetailFixture } from '@/test/fixtures/app'
-import { AppModeEnum, TransferMethod } from '@/types/app'
+import { TransferMethod } from '@/types/app'
 import ConfigModal from '../index'
 
 vi.mock('next/navigation', async () => ({
@@ -55,14 +53,33 @@ const createPayload = (overrides: Partial<InputVar> = {}): InputVar => ({
 describe('ConfigModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    useStore.setState({
-      appDetail: createAppDetailFixture({ mode: AppModeEnum.CHAT }),
-    })
   })
+
+  it.each([false, true])(
+    'offers JSON input only when the owner enables it: %s',
+    async (supportJson) => {
+      const user = userEvent.setup()
+      render(
+        <ConfigModal
+          supportJson={supportJson}
+          isCreate
+          isShow
+          payload={createPayload()}
+          onClose={vi.fn()}
+          onConfirm={vi.fn()}
+        />,
+      )
+      await user.click(screen.getByRole('combobox', { name: 'appDebug.variableConfig.fieldType' }))
+      const jsonOption = screen.queryByRole('option', { name: /appDebug.variableConfig.json/ })
+      if (supportJson) expect(jsonOption).toBeInTheDocument()
+      else expect(jsonOption).not.toBeInTheDocument()
+    },
+  )
 
   it('should copy the variable name into the label when the label is empty', () => {
     render(
       <ConfigModal
+        supportJson={false}
         isCreate
         isShow
         payload={createPayload()}
@@ -81,6 +98,7 @@ describe('ConfigModal', () => {
     const onConfirm = vi.fn()
     render(
       <ConfigModal
+        supportJson={false}
         isCreate
         isShow
         payload={createPayload({ label: 'Question' })}
@@ -107,6 +125,7 @@ describe('ConfigModal', () => {
     const onConfirm = vi.fn()
     render(
       <ConfigModal
+        supportJson={false}
         isCreate
         isShow
         payload={createPayload({ label: 'Question' })}
@@ -138,6 +157,7 @@ describe('ConfigModal', () => {
     const user = userEvent.setup()
     render(
       <ConfigModal
+        supportJson={false}
         isShow
         payload={createPayload({ variable: '', label: '' })}
         onClose={vi.fn()}
@@ -162,6 +182,7 @@ describe('ConfigModal', () => {
       const onConfirm = vi.fn()
       render(
         <ConfigModal
+          supportJson={false}
           isShow
           payload={createPayload({
             type: InputVarType.number,
@@ -199,6 +220,7 @@ describe('ConfigModal', () => {
     const onConfirm = vi.fn()
     render(
       <ConfigModal
+        supportJson={false}
         isShow
         payload={createPayload({ type: InputVarType.number, label: 'Amount', default: -7.123456 })}
         onClose={vi.fn()}
@@ -229,6 +251,7 @@ describe('ConfigModal', () => {
       const onConfirm = vi.fn()
       render(
         <ConfigModal
+          supportJson={false}
           isShow
           payload={createPayload({ label: 'Question', default: initialDefault })}
           onClose={vi.fn()}
@@ -259,6 +282,7 @@ describe('ConfigModal', () => {
       const onConfirm = vi.fn()
       render(
         <ConfigModal
+          supportJson={false}
           isShow
           payload={createPayload({
             type,
@@ -291,6 +315,7 @@ describe('ConfigModal', () => {
       const onClose = vi.fn()
       render(
         <ConfigModal
+          supportJson={false}
           isShow
           supportFile
           payload={createPayload({
@@ -337,6 +362,7 @@ describe('ConfigModal', () => {
       const onConfirm = vi.fn()
       render(
         <ConfigModal
+          supportJson={false}
           isShow
           supportFile
           payload={createPayload({
@@ -373,6 +399,7 @@ describe('ConfigModal', () => {
     const onConfirm = vi.fn()
     const { queryClient } = render(
       <ConfigModal
+        supportJson={false}
         isShow
         supportFile
         payload={createPayload({
@@ -415,6 +442,7 @@ describe('ConfigModal', () => {
       const onConfirm = vi.fn()
       render(
         <ConfigModal
+          supportJson={false}
           isShow
           payload={createPayload({ label: field === 'variable' ? '' : 'Question', [field]: '' })}
           onClose={vi.fn()}
@@ -448,6 +476,7 @@ describe('ConfigModal', () => {
       const onConfirm = vi.fn()
       render(
         <ConfigModal
+          supportJson={false}
           isShow
           payload={createPayload({
             type: InputVarType.select,
@@ -485,6 +514,7 @@ describe('ConfigModal', () => {
       const onConfirm = vi.fn()
       render(
         <ConfigModal
+          supportJson={false}
           isShow
           supportFile
           payload={createPayload({
@@ -520,6 +550,7 @@ describe('ConfigModal', () => {
     const onConfirm = vi.fn()
     render(
       <ConfigModal
+        supportJson
         isShow
         payload={createPayload({
           type: InputVarType.jsonObject,
@@ -559,6 +590,7 @@ describe('ConfigModal', () => {
     (type) => {
       render(
         <ConfigModal
+          supportJson={false}
           isShow
           payload={createPayload({
             type,
@@ -586,6 +618,7 @@ describe('ConfigModal', () => {
     const onClose = vi.fn()
     render(
       <ConfigModal
+        supportJson={false}
         isShow
         payload={createPayload({ label: 'Question' })}
         onClose={onClose}
@@ -602,6 +635,7 @@ describe('ConfigModal', () => {
   it('should keep scrolling inside the form body so scrollbars do not cover dialog corners', () => {
     render(
       <ConfigModal
+        supportJson={false}
         isCreate
         isShow
         payload={createPayload({ label: 'Question' })}
@@ -621,6 +655,7 @@ describe('ConfigModal', () => {
   it('should block save when the label is missing', () => {
     render(
       <ConfigModal
+        supportJson={false}
         isCreate
         isShow
         payload={createPayload({ label: '' })}

@@ -71,11 +71,6 @@ vi.mock('@/app/components/workflow/store', () => ({
   }),
 }))
 
-vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: { appDetail: { mode: string } }) => unknown) =>
-    selector({ appDetail: { mode: 'workflow' } }),
-}))
-
 vi.mock('@/context/event-emitter', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/context/event-emitter')>()
   return {

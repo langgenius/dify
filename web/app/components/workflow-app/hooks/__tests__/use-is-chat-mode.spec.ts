@@ -1,41 +1,30 @@
-import { renderHook } from '@testing-library/react'
+import { act, waitFor } from '@testing-library/react'
+import { renderWorkflowHook } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { createConsoleQueryClient, seedAppDetail } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
 import { useIsChatMode } from '../use-is-chat-mode'
 
-const { mockStoreState } = vi.hoisted(() => ({
-  mockStoreState: {
-    appDetail: undefined as { mode?: AppModeEnum } | undefined,
-  },
-}))
-
-vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: typeof mockStoreState) => unknown) => selector(mockStoreState),
-}))
-
 describe('useIsChatMode', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockStoreState.appDetail = undefined
-  })
-
-  it('should return true when the app mode is ADVANCED_CHAT', () => {
-    mockStoreState.appDetail = { mode: AppModeEnum.ADVANCED_CHAT }
-
-    const { result } = renderHook(() => useIsChatMode())
-
+  it('reads the session app mode and reacts to its query updates', async () => {
+    const queryClient = createConsoleQueryClient()
+    seedAppDetail(queryClient, { id: 'app-1', mode: AppModeEnum.ADVANCED_CHAT })
+    seedAppDetail(queryClient, { id: 'another-app', mode: AppModeEnum.WORKFLOW })
+    const { result } = renderWorkflowHook(() => useIsChatMode(), {
+      initialStoreState: { appId: 'app-1' },
+      queryClient,
+    })
     expect(result.current).toBe(true)
+
+    act(() => {
+      seedAppDetail(queryClient, { id: 'app-1', mode: AppModeEnum.WORKFLOW })
+    })
+    await waitFor(() => expect(result.current).toBe(false))
   })
 
-  it('should return false when the app mode is not chat or app detail is missing', () => {
-    mockStoreState.appDetail = { mode: AppModeEnum.WORKFLOW }
-
-    const { result, rerender } = renderHook(() => useIsChatMode())
-
-    expect(result.current).toBe(false)
-
-    mockStoreState.appDetail = undefined
-    rerender()
-
+  it('does not borrow another app mode when a generic workflow has no app identity', () => {
+    const queryClient = createConsoleQueryClient()
+    seedAppDetail(queryClient, { id: 'another-app', mode: AppModeEnum.ADVANCED_CHAT })
+    const { result } = renderWorkflowHook(() => useIsChatMode(), { queryClient })
     expect(result.current).toBe(false)
   })
 })

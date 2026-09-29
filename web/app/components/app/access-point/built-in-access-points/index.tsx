@@ -4,8 +4,8 @@ import type { AccessPoint } from '@/app/components/app/deploy/utils/access-point
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useDocLink } from '@/context/i18n'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -13,6 +13,7 @@ import Link from '@/next/link'
 import { useAppWorkflow } from '@/service/use-workflow'
 import { useAccessPointActions } from '../shared/use-access-point-actions'
 import { getPublishedWorkflowState, isAdvancedApp } from '../shared/utils'
+import { accessPointAppDetailAtom } from '../state'
 import { MCPAccessPointCard } from './mcp-card'
 import { ServiceApiAccessPointCard } from './service-api-card'
 import { TriggerAccessPointCard } from './trigger-card'
@@ -35,7 +36,7 @@ export function BuiltInAccessPoints({
 }: BuiltInAccessPointsProps) {
   const { t } = useTranslation(['common', 'deployments'])
   const docLink = useDocLink()
-  const appInfo = useAppStore((state) => state.appDetail)
+  const appInfo = useAtomValue(accessPointAppDetailAtom)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const shouldFetchWorkflow = Boolean(appInfo && isAdvancedApp(appInfo))
   const {
@@ -111,7 +112,6 @@ export function BuiltInAccessPoints({
           canDeploy={canDeploy}
           canManageAccessPoint={canManageAccessPoint}
           showAccessControl={systemFeatures.webapp_auth.enabled}
-          onRefreshApp={actions.refreshAppDetail}
           onSaveSiteConfig={actions.saveSiteConfig}
           workflow={workflow}
           highlighted={highlightedAccessPoint === 'webApp'}

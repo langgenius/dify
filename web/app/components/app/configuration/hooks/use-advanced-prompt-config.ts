@@ -20,6 +20,8 @@ import { fetchPromptTemplate } from '@/service/debug'
 import { AppModeEnum, ModelModeType } from '@/types/app'
 
 type Param = {
+  initialChatPromptConfig?: ChatPromptConfig
+  initialCompletionPromptConfig?: CompletionPromptConfig
   appMode?: AppModeEnum
   modelModeType: ModelModeType
   modelName: string
@@ -33,6 +35,8 @@ type Param = {
 }
 
 const useAdvancedPromptConfig = ({
+  initialChatPromptConfig,
+  initialCompletionPromptConfig,
   appMode,
   modelModeType,
   modelName,
@@ -45,11 +49,11 @@ const useAdvancedPromptConfig = ({
   setStop,
 }: Param) => {
   const isAdvancedPrompt = promptMode === PromptMode.advanced
-  const [chatPromptConfig, setChatPromptConfig] = useState<ChatPromptConfig>(() =>
-    clone(DEFAULT_CHAT_PROMPT_CONFIG),
+  const [chatPromptConfig, setChatPromptConfig] = useState<ChatPromptConfig>(
+    () => initialChatPromptConfig ?? clone(DEFAULT_CHAT_PROMPT_CONFIG),
   )
-  const [completionPromptConfig, setCompletionPromptConfig] = useState<CompletionPromptConfig>(() =>
-    clone(DEFAULT_COMPLETION_PROMPT_CONFIG),
+  const [completionPromptConfig, setCompletionPromptConfig] = useState<CompletionPromptConfig>(
+    () => initialCompletionPromptConfig ?? clone(DEFAULT_COMPLETION_PROMPT_CONFIG),
   )
 
   const currentAdvancedPrompt = (() => {

@@ -10,6 +10,7 @@ import { screen, waitFor } from '@testing-library/react'
 import { createElement, Fragment } from 'react'
 import { CollectionType } from '@/app/components/tools/types'
 import { consoleQuery } from '@/service/console'
+import { AppModeEnum } from '@/types/app'
 import { FlowType } from '@/types/common'
 import { createEdge, createNode, resetFixtureCounters } from '../../__tests__/fixtures'
 import { resetReactFlowMockState, rfState } from '../../__tests__/reactflow-mock-state'
@@ -128,13 +129,6 @@ vi.mock('../../nodes/_base/components/variable/utils', () => ({
   isSpecialVar: () => false,
 }))
 
-vi.mock('@/app/components/app/store', () => {
-  const state = { appDetail: { mode: 'workflow' } }
-  return {
-    useStore: <T>(selector: (value: typeof state) => T) => selector(state),
-  }
-})
-
 vi.mock('../../datasets-detail-store/store', () => ({
   useDatasetsDetailStore: () => ({}),
 }))
@@ -188,6 +182,11 @@ function setupNodesMap() {
     checkValid: () => ({ errorMessage: '' }),
     metaData: { isStart: false, isRequired: false },
   }
+}
+
+const workflowOptions = {
+  initialStoreState: { appId: 'app-1' },
+  appDetail: { id: 'app-1', mode: AppModeEnum.WORKFLOW },
 }
 
 beforeEach(() => {
@@ -320,6 +319,8 @@ function buildInlineAgentGraph({
     nodes: [startNode, agentNode],
     options: {
       queryClient,
+      initialStoreState: { appId },
+      appDetail: { id: appId, mode: AppModeEnum.WORKFLOW },
       hooksStoreProps: {
         configsMap: {
           flowId: appId,
@@ -378,7 +379,7 @@ describe('useChecklist', () => {
   it('should return empty list when all nodes are valid and connected', () => {
     const { nodes, edges } = buildConnectedGraph()
 
-    const { result } = renderWorkflowHook(() => useChecklist(nodes, edges))
+    const { result } = renderWorkflowHook(() => useChecklist(nodes, edges), workflowOptions)
 
     expect(result.current).toEqual([])
   })
@@ -390,8 +391,9 @@ describe('useChecklist', () => {
 
     const edges = [createEdge({ source: 'start', target: 'code' })]
 
-    const { result } = renderWorkflowHook(() =>
-      useChecklist([startNode, codeNode, isolatedLlm], edges),
+    const { result } = renderWorkflowHook(
+      () => useChecklist([startNode, codeNode, isolatedLlm], edges),
+      workflowOptions,
     )
 
     const warning = result.current.find((item: ChecklistItem) => item.id === 'llm')
@@ -410,7 +412,10 @@ describe('useChecklist', () => {
 
     const edges = [createEdge({ source: 'start', target: 'llm' })]
 
-    const { result } = renderWorkflowHook(() => useChecklist([startNode, llmNode], edges))
+    const { result } = renderWorkflowHook(
+      () => useChecklist([startNode, llmNode], edges),
+      workflowOptions,
+    )
 
     const warning = result.current.find((item: ChecklistItem) => item.id === 'llm')
     expect(warning).toBeDefined()
@@ -420,7 +425,7 @@ describe('useChecklist', () => {
   it('should validate legacy Agent nodes when their metadata is hidden by Agent v2', async () => {
     const { nodes, edges } = buildLegacyAgentGraph()
 
-    const { result } = renderWorkflowHook(() => useChecklist(nodes, edges))
+    const { result } = renderWorkflowHook(() => useChecklist(nodes, edges), workflowOptions)
 
     await waitFor(() =>
       expect(result.current).toEqual([
@@ -552,8 +557,9 @@ describe('useChecklist', () => {
 
     const edges = [createEdge({ source: 'start', target: 'llm' })]
 
-    renderWorkflowHook(() =>
-      useChecklist([startNode, llmNode], edges, { flowType: FlowType.snippet }),
+    renderWorkflowHook(
+      () => useChecklist([startNode, llmNode], edges, { flowType: FlowType.snippet }),
+      workflowOptions,
     )
 
     expect(checkValid).toHaveBeenCalledWith(
@@ -566,7 +572,7 @@ describe('useChecklist', () => {
   it('should report missing start node in workflow mode', () => {
     const codeNode = createNode({ id: 'code', data: { type: BlockEnum.Code, title: 'Code' } })
 
-    const { result } = renderWorkflowHook(() => useChecklist([codeNode], []))
+    const { result } = renderWorkflowHook(() => useChecklist([codeNode], []), workflowOptions)
 
     const startRequired = result.current.find(
       (item: ChecklistItem) => item.id === 'start-node-required',
@@ -585,7 +591,10 @@ describe('useChecklist', () => {
       data: { type: BlockEnum.StartPlaceholder, title: 'Workflow start' },
     })
 
-    const { result } = renderWorkflowHook(() => useChecklist([placeholderNode], []))
+    const { result } = renderWorkflowHook(
+      () => useChecklist([placeholderNode], []),
+      workflowOptions,
+    )
 
     expect(
       result.current.find((item: ChecklistItem) => item.id === 'start-node-required'),
@@ -615,7 +624,10 @@ describe('useChecklist', () => {
 
     const edges = [createEdge({ source: 'start', target: 'tool' })]
 
-    const { result } = renderWorkflowHook(() => useChecklist([startNode, toolNode], edges))
+    const { result } = renderWorkflowHook(
+      () => useChecklist([startNode, toolNode], edges),
+      workflowOptions,
+    )
 
     const warning = result.current.find((item: ChecklistItem) => item.id === 'tool')
     expect(warning).toBeDefined()
@@ -634,7 +646,7 @@ describe('useChecklist', () => {
 
     const startNode = createNode({ id: 'start', data: { type: BlockEnum.Start, title: 'Start' } })
 
-    const { result } = renderWorkflowHook(() => useChecklist([startNode], []))
+    const { result } = renderWorkflowHook(() => useChecklist([startNode], []), workflowOptions)
 
     const requiredItem = result.current.find(
       (item: ChecklistItem) => item.id === `${BlockEnum.End}-need-added`,
@@ -647,7 +659,10 @@ describe('useChecklist', () => {
     const startNode = createNode({ id: 'start', data: { type: BlockEnum.Start, title: 'Start' } })
     const codeNode = createNode({ id: 'code', data: { type: BlockEnum.Code, title: 'Code' } })
 
-    const { result } = renderWorkflowHook(() => useChecklist([startNode, codeNode], []))
+    const { result } = renderWorkflowHook(
+      () => useChecklist([startNode, codeNode], []),
+      workflowOptions,
+    )
 
     const startWarning = result.current.find((item: ChecklistItem) => item.id === 'start')
     expect(startWarning).toBeUndefined()
@@ -661,7 +676,10 @@ describe('useChecklist', () => {
     })
     const startNode = createNode({ id: 'start', data: { type: BlockEnum.Start, title: 'Start' } })
 
-    const { result } = renderWorkflowHook(() => useChecklist([startNode, nonCustomNode], []))
+    const { result } = renderWorkflowHook(
+      () => useChecklist([startNode, nonCustomNode], []),
+      workflowOptions,
+    )
 
     const alienWarning = result.current.find((item: ChecklistItem) => item.id === 'alien')
     expect(alienWarning).toBeUndefined()
@@ -682,7 +700,10 @@ describe('useChecklist', () => {
 
     const edges = [createEdge({ source: 'start', target: 'llm' })]
 
-    const { result } = renderWorkflowHook(() => useChecklist([startNode, llmNode], edges))
+    const { result } = renderWorkflowHook(
+      () => useChecklist([startNode, llmNode], edges),
+      workflowOptions,
+    )
 
     const warning = result.current.find((item: ChecklistItem) => item.id === 'llm')
     expect(warning).toBeDefined()
@@ -716,7 +737,10 @@ describe('useChecklist', () => {
 
     const edges = [createEdge({ source: 'start', target: 'llm' })]
 
-    const { result } = renderWorkflowHook(() => useChecklist([startNode, llmNode], edges))
+    const { result } = renderWorkflowHook(
+      () => useChecklist([startNode, llmNode], edges),
+      workflowOptions,
+    )
 
     const warning = result.current.find((item: ChecklistItem) => item.id === 'llm')
     expect(warning).toBeDefined()
@@ -750,8 +774,9 @@ describe('useChecklist', () => {
       createEdge({ source: 'start', target: 'end-2' }),
     ]
 
-    const { result } = renderWorkflowHook(() =>
-      useChecklist([startNode, firstEndNode, secondEndNode], edges),
+    const { result } = renderWorkflowHook(
+      () => useChecklist([startNode, firstEndNode, secondEndNode], edges),
+      workflowOptions,
     )
 
     const firstWarning = result.current.find((item: ChecklistItem) => item.id === 'end-1')
@@ -783,6 +808,7 @@ describe('useChecklist', () => {
 
       const { store } = renderWorkflowComponent(
         createElement(Fragment, null, createElement(Operator), createElement(WorkflowChecklist)),
+        workflowOptions,
       )
 
       await waitFor(() => {
@@ -811,7 +837,7 @@ describe('useChecklistBeforePublish', () => {
     rfState.nodes = nodes as unknown as typeof rfState.nodes
     rfState.edges = edges as unknown as typeof rfState.edges
 
-    const { result } = renderWorkflowHook(() => useChecklistBeforePublish())
+    const { result } = renderWorkflowHook(() => useChecklistBeforePublish(), workflowOptions)
     await waitFor(async () => expect(await result.current.handleCheckBeforePublish()).toBe(false))
   })
 })
@@ -826,7 +852,8 @@ describe('useWorkflowRunValidation', () => {
     rfState.edges = edges as unknown as typeof rfState.edges
 
     const { result } = renderWorkflowHook(() => useWorkflowRunValidation(), {
-      initialStoreState: { nodes: nodes as Node[] },
+      ...workflowOptions,
+      initialStoreState: { appId: 'app-1', nodes: nodes as Node[] },
       hooksStoreProps: {},
     })
 
@@ -839,7 +866,8 @@ describe('useWorkflowRunValidation', () => {
     rfState.edges = edges as unknown as typeof rfState.edges
 
     const { result } = renderWorkflowHook(() => useWorkflowRunValidation(), {
-      initialStoreState: { nodes: nodes as Node[] },
+      ...workflowOptions,
+      initialStoreState: { appId: 'app-1', nodes: nodes as Node[] },
       hooksStoreProps: {},
     })
 

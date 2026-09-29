@@ -11,10 +11,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { toast } from '@/app/components/app/configuration/toast'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import ConfigContext from '@/context/debug-configuration'
 import { commonQueryKeys } from '@/service/use-common'
-import { AppModeEnum } from '@/types/app'
 import {
   checkKeys,
   getNewVarInWorkflow,
@@ -40,6 +38,7 @@ type IConfigModalProps = {
   varKeys?: string[]
   onClose: () => void
   onConfirm: (newValue: InputVar, moreInfo?: MoreInfo) => void
+  supportJson: boolean
   supportFile?: boolean
   showHiddenField?: boolean
 }
@@ -52,6 +51,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
   onConfirm,
   showHiddenField,
   supportFile,
+  supportJson,
 }) => {
   const { modelConfig } = useContext(ConfigContext)
   const { t } = useTranslation(['appDebug', 'workflow'])
@@ -62,9 +62,6 @@ const ConfigModal: FC<IConfigModalProps> = ({
   const queryClient = useQueryClient()
   const { type, options, max_length } = tempPayload
   const modalRef = useRef<HTMLDivElement>(null)
-  const appDetail = useAppStore((state) => state.appDetail)
-  const isBasicApp =
-    appDetail?.mode !== AppModeEnum.ADVANCED_CHAT && appDetail?.mode !== AppModeEnum.WORKFLOW
   const jsonSchemaStr = useMemo(
     () => getJsonSchemaEditorValue(type, tempPayload.json_schema),
     [tempPayload.json_schema, type],
@@ -122,11 +119,11 @@ const ConfigModal: FC<IConfigModalProps> = ({
   const selectOptions: SelectItem[] = useMemo(
     () =>
       buildSelectOptions({
-        isBasicApp,
+        isBasicApp: !supportJson,
         supportFile,
         t,
       }),
-    [isBasicApp, supportFile, t],
+    [supportJson, supportFile, t],
   )
 
   const handleTypeChange = useCallback((item: SelectItem) => {

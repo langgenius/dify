@@ -1,13 +1,12 @@
 'use client'
 
 import type { AccessPolicyMemberBindingRemoval } from '@/app/components/access-rules-editor'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import AccessRulesEditor from '@/app/components/access-rules-editor'
-import { useStore } from '@/app/components/app/store'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -22,6 +21,7 @@ import {
   useUpdateAppAutomaticIncludeWorkspaceMembers,
   useUpdateAppUserAccessSettings,
 } from '@/service/access-control/use-app-access-config'
+import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
 import { getAppACLCapabilities } from '@/utils/permission'
 
@@ -240,7 +240,11 @@ const AppAccessConfigPage = ({ appId }: AppAccessConfigPageProps) => {
   })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isRbacEnabled = systemFeatures.rbac_enabled
-  const appDetail = useStore((state) => state.appDetail)
+  const { data: appDetail } = useQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({
+      input: { params: { app_id: appId } },
+    }),
+  )
   const appACLCapabilities = useMemo(
     () =>
       getAppACLCapabilities(appDetail?.permission_keys, {

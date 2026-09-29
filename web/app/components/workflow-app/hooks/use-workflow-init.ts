@@ -2,10 +2,9 @@ import type { RefObject } from 'react'
 import type { Edge, Node } from '@/app/components/workflow/types'
 import type { FileUploadConfigResponse } from '@/models/common'
 import type { FetchAppWorkflowDraftResponse } from '@/types/workflow'
-import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { skipToken, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { useWorkflowDraftGraphForCanvas } from '@/app/components/workflow/hooks/use-workflow-draft-graph-for-canvas'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -13,6 +12,7 @@ import { isWorkflowDraftReplacedEvent } from '@/app/components/workflow/workflow
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { consoleQuery } from '@/service/console'
 import { useWorkflowConfig } from '@/service/use-workflow'
 import {
   fetchAppWorkflowDraft,
@@ -84,7 +84,11 @@ export const useWorkflowInit = (canvasReadyRef: RefObject<boolean>) => {
   const workflowStore = useWorkflowStore()
   const appId = useStore((state) => state.appId)
   const { nodes: nodesTemplate, edges: edgesTemplate } = useWorkflowTemplate()
-  const appDetail = useAppStore((state) => state.appDetail)!
+  const { data: appDetail } = useQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({
+      input: appId ? { params: { app_id: appId } } : skipToken,
+    }),
+  )
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.id,
@@ -92,14 +96,14 @@ export const useWorkflowInit = (canvasReadyRef: RefObject<boolean>) => {
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const appACLCapabilities = useMemo(
     () =>
-      getAppACLCapabilities(appDetail.permission_keys, {
+      getAppACLCapabilities(appDetail?.permission_keys, {
         currentUserId,
-        resourceMaintainer: appDetail.maintainer,
+        resourceMaintainer: appDetail?.maintainer,
         workspacePermissionKeys,
       }),
-    [appDetail.maintainer, appDetail.permission_keys, currentUserId, workspacePermissionKeys],
+    [appDetail?.maintainer, appDetail?.permission_keys, currentUserId, workspacePermissionKeys],
   )
-  const { getWorkflowDraftGraphForCanvas } = useWorkflowDraftGraphForCanvas(appDetail.mode)
+  const { getWorkflowDraftGraphForCanvas } = useWorkflowDraftGraphForCanvas(appDetail?.mode)
   const setSyncWorkflowDraftHash = useStore((s) => s.setSyncWorkflowDraftHash)
   const setLastAppliedReplacementId = useStore((s) => s.setLastAppliedReplacementId)
   const [data, setData] = useState<FetchAppWorkflowDraftResponse>()
@@ -108,9 +112,6 @@ export const useWorkflowInit = (canvasReadyRef: RefObject<boolean>) => {
   const [canvasInitEpoch, setCanvasInitEpoch] = useState(0)
   const requestGenerationRef = useRef(0)
   const { eventEmitter } = useEventEmitterContextContext()
-  useEffect(() => {
-    workflowStore.setState({ appName: appDetail.name })
-  }, [appDetail.name, workflowStore])
 
   const handleUpdateWorkflowFileUploadConfig = useCallback(
     (config: FileUploadConfigResponse) => {
@@ -169,7 +170,7 @@ export const useWorkflowInit = (canvasReadyRef: RefObject<boolean>) => {
   )
 
   const handleGetInitialWorkflowData = useCallback(async () => {
-    if (!appId) return
+    if (!appId || !appDetail) return
     const requestGeneration = ++requestGenerationRef.current
     try {
       const res = await fetchAppWorkflowDraft(appId)
@@ -262,12 +263,13 @@ export const useWorkflowInit = (canvasReadyRef: RefObject<boolean>) => {
 
   const loadInitialWorkflowData = useEffectEvent(handleGetInitialWorkflowData)
   useEffect(() => {
+    if (!appDetail?.id) return
     const requestGeneration = requestGenerationRef
     void loadInitialWorkflowData()
     return () => {
       requestGeneration.current++
     }
-  }, [])
+  }, [appDetail?.id, appId])
 
   eventEmitter?.useSubscription((event) => {
     if (!isWorkflowDraftReplacedEvent(event)) return

@@ -1,3 +1,4 @@
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import { EnvironmentStatus, RuntimeState } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -7,10 +8,13 @@ import { AccessMode } from '@/models/access-control'
 import { consoleQuery } from '@/service/console'
 import { appWorkflowVersionsInfiniteQueryOptions } from '@/service/workflow-queries'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createAppDetailFixture, createAppSiteFixture } from '@/test/fixtures/app'
 import { AppModeEnum } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
 import { basePath } from '@/utils/var'
 import { AppPublisher } from '../index'
+
+let mockAppDetail: AppDetailWithSite | null = null
 
 const render = (
   ui: React.ReactElement,
@@ -18,6 +22,7 @@ const render = (
 ) =>
   renderWithConsoleQuery(ui, {
     queryClient,
+    appDetail: mockAppDetail ?? undefined,
     systemFeatures: { webapp_auth: { enabled: true } },
   })
 
@@ -54,13 +59,9 @@ const collaborationMocks = vi.hoisted(() => ({
     | undefined,
 }))
 
-let mockAppDetail: Record<string, any> | null = null
 let mockWorkspacePermissionKeys: string[] = ['tool.manage']
 
-vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: { appDetail: Record<string, any> | null }) => unknown) =>
-    selector({ appDetail: mockAppDetail }),
-}))
+vi.mock('@/next/navigation', () => ({ useParams: () => ({ appId: mockAppDetail?.id }) }))
 
 vi.mock('@/hooks/use-format-time-from-now', () => ({
   useFormatTimeFromNow: () => ({
@@ -255,18 +256,15 @@ describe('AppPublisher', () => {
     }
     mockFetchPublishedWorkflow.mockResolvedValue(null)
     mockWorkspacePermissionKeys = ['tool.manage']
-    mockAppDetail = {
+    mockAppDetail = createAppDetailFixture({
       id: 'app-1',
       name: 'Demo App',
       mode: AppModeEnum.CHAT,
       maintainer: 'user-2',
       permission_keys: [],
       access_mode: AccessMode.SPECIFIC_GROUPS_MEMBERS,
-      site: {
-        app_base_url: 'https://example.com',
-        access_token: 'token-1',
-      },
-    }
+      site: createAppSiteFixture({ app_base_url: 'https://example.com', access_token: 'token-1' }),
+    })
     Object.defineProperty(window, 'open', {
       configurable: true,
       writable: true,
@@ -334,7 +332,7 @@ describe('AppPublisher', () => {
     const queryClient = createConsoleQueryClient()
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
     mockAppDetail = {
-      ...mockAppDetail,
+      ...createAppDetailFixture(mockAppDetail ?? {}),
       mode: AppModeEnum.WORKFLOW,
       permission_keys: [AppACLPermission.Deploy],
     }
@@ -352,6 +350,7 @@ describe('AppPublisher', () => {
     queryClient.setQueryData(environmentsQuery.queryKey, { data: [] })
 
     renderWithConsoleQuery(<AppPublisher publishedAt={Date.now()} onPublish={mockOnPublish} />, {
+      appDetail: mockAppDetail ?? undefined,
       queryClient,
     })
 
@@ -383,13 +382,14 @@ describe('AppPublisher', () => {
     const queryClient = createConsoleQueryClient()
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
     mockAppDetail = {
-      ...mockAppDetail,
+      ...createAppDetailFixture(mockAppDetail ?? {}),
       mode: AppModeEnum.WORKFLOW,
       permission_keys: [],
     }
     mockOnPublish.mockResolvedValue(undefined)
 
     renderWithConsoleQuery(<AppPublisher publishedAt={Date.now()} onPublish={mockOnPublish} />, {
+      appDetail: mockAppDetail ?? undefined,
       queryClient,
     })
 
@@ -405,7 +405,7 @@ describe('AppPublisher', () => {
   it('should edit the current workflow version from the publish summary', async () => {
     const user = userEvent.setup()
     mockAppDetail = {
-      ...mockAppDetail,
+      ...createAppDetailFixture(mockAppDetail ?? {}),
       mode: AppModeEnum.WORKFLOW,
     }
     mockPublishedWorkflow = {
@@ -462,7 +462,7 @@ describe('AppPublisher', () => {
   it('should expose app deployment with deploy ACL regardless of the legacy workspace role', () => {
     const queryClient = createConsoleQueryClient()
     mockAppDetail = {
-      ...mockAppDetail,
+      ...createAppDetailFixture(mockAppDetail ?? {}),
       mode: AppModeEnum.WORKFLOW,
       permission_keys: [AppACLPermission.Deploy],
     }
@@ -479,6 +479,7 @@ describe('AppPublisher', () => {
     queryClient.setQueryData(environmentsQuery.queryKey, { data: [] })
 
     renderWithConsoleQuery(<AppPublisher publishedAt={Date.now()} />, {
+      appDetail: mockAppDetail ?? undefined,
       queryClient,
       systemFeatures: { webapp_auth: { enabled: true }, enable_app_deploy: false },
     })
@@ -495,12 +496,13 @@ describe('AppPublisher', () => {
 
   it('should keep the workflow publisher single-environment without app deploy ACL', () => {
     mockAppDetail = {
-      ...mockAppDetail,
+      ...createAppDetailFixture(mockAppDetail ?? {}),
       mode: AppModeEnum.WORKFLOW,
       permission_keys: [],
     }
 
     renderWithConsoleQuery(<AppPublisher publishedAt={Date.now()} />, {
+      appDetail: mockAppDetail ?? undefined,
       systemFeatures: { webapp_auth: { enabled: true }, enable_app_deploy: false },
     })
 
@@ -513,6 +515,7 @@ describe('AppPublisher', () => {
 
   it('should keep the single-environment publisher for unsupported app types', () => {
     renderWithConsoleQuery(<AppPublisher publishedAt={Date.now()} />, {
+      appDetail: mockAppDetail ?? undefined,
       systemFeatures: { webapp_auth: { enabled: true }, enable_app_deploy: true },
     })
 
@@ -563,7 +566,7 @@ describe('AppPublisher', () => {
       isSuccess: false,
     }
     mockAppDetail = {
-      ...mockAppDetail,
+      ...createAppDetailFixture(mockAppDetail ?? {}),
       mode: AppModeEnum.WORKFLOW,
       permission_keys: [AppACLPermission.Deploy],
     }
@@ -603,6 +606,7 @@ describe('AppPublisher', () => {
       ],
     })
     const { rerender } = renderWithConsoleQuery(<AppPublisher publishedAt={publishedAt} />, {
+      appDetail: mockAppDetail ?? undefined,
       queryClient,
       systemFeatures: { webapp_auth: { enabled: true }, enable_app_deploy: true },
     })
@@ -663,7 +667,7 @@ describe('AppPublisher', () => {
     const queryClient = createConsoleQueryClient()
     const detailRequests: Request[] = []
     mockAppDetail = {
-      ...mockAppDetail,
+      ...createAppDetailFixture(mockAppDetail ?? {}),
       mode: AppModeEnum.WORKFLOW,
       permission_keys: [AppACLPermission.Deploy],
     }
@@ -731,6 +735,7 @@ describe('AppPublisher', () => {
     })
 
     renderWithConsoleQuery(<AppPublisher publishedAt={Date.now()} />, {
+      appDetail: mockAppDetail ?? undefined,
       queryClient,
       systemFeatures: { webapp_auth: { enabled: true }, enable_app_deploy: true },
     })
@@ -810,7 +815,7 @@ describe('AppPublisher', () => {
 
   it('should keep workflow tool drawer mounted after closing the publish popover', () => {
     mockAppDetail = {
-      ...mockAppDetail,
+      ...createAppDetailFixture(mockAppDetail ?? {}),
       mode: AppModeEnum.WORKFLOW,
     }
 
@@ -831,7 +836,7 @@ describe('AppPublisher', () => {
 
   it('should show one success toast when automatically publishing a workflow tool', async () => {
     mockAppDetail = {
-      ...mockAppDetail,
+      ...createAppDetailFixture(mockAppDetail ?? {}),
       mode: AppModeEnum.WORKFLOW,
     }
     mockOnPublish.mockImplementation(async (_params, options?: { showSuccessToast?: boolean }) => {
@@ -854,7 +859,7 @@ describe('AppPublisher', () => {
 
   it('should not show a success toast when workflow tool creation fails after publishing', async () => {
     mockAppDetail = {
-      ...mockAppDetail,
+      ...createAppDetailFixture(mockAppDetail ?? {}),
       mode: AppModeEnum.WORKFLOW,
     }
     mockOnPublish.mockImplementation(async (_params, options?: { showSuccessToast?: boolean }) => {
@@ -878,7 +883,7 @@ describe('AppPublisher', () => {
   it('should not create a workflow tool when automatic publishing fails', async () => {
     const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
     mockAppDetail = {
-      ...mockAppDetail,
+      ...createAppDetailFixture(mockAppDetail ?? {}),
       mode: AppModeEnum.WORKFLOW,
     }
     mockOnPublish.mockRejectedValueOnce(new Error('publish failed'))
@@ -900,7 +905,7 @@ describe('AppPublisher', () => {
   it('should not open workflow tool drawer without tool.manage', () => {
     mockWorkspacePermissionKeys = []
     mockAppDetail = {
-      ...mockAppDetail,
+      ...createAppDetailFixture(mockAppDetail ?? {}),
       mode: AppModeEnum.WORKFLOW,
     }
 
@@ -952,6 +957,7 @@ describe('AppPublisher', () => {
     const windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
 
     renderWithConsoleQuery(<AppPublisher publishedAt={Date.now()} onPublish={mockOnPublish} />, {
+      appDetail: mockAppDetail ?? undefined,
       systemFeatures: { webapp_auth: { enabled: true }, enable_creators_platform: true },
     })
 
@@ -979,6 +985,7 @@ describe('AppPublisher', () => {
     mockPublishToCreatorsPlatform.mockRejectedValue(new Error('network error'))
 
     renderWithConsoleQuery(<AppPublisher publishedAt={Date.now()} onPublish={mockOnPublish} />, {
+      appDetail: mockAppDetail ?? undefined,
       systemFeatures: { webapp_auth: { enabled: true }, enable_creators_platform: true },
     })
 
@@ -994,6 +1001,7 @@ describe('AppPublisher', () => {
 
   it('should disable marketplace button when not yet published', () => {
     renderWithConsoleQuery(<AppPublisher onPublish={mockOnPublish} />, {
+      appDetail: mockAppDetail ?? undefined,
       systemFeatures: { webapp_auth: { enabled: true }, enable_creators_platform: true },
     })
 
@@ -1042,7 +1050,7 @@ describe('AppPublisher', () => {
   it('should keep workflow publishing available for an existing published version', async () => {
     const user = userEvent.setup()
     mockAppDetail = {
-      ...mockAppDetail,
+      ...createAppDetailFixture(mockAppDetail ?? {}),
       mode: AppModeEnum.WORKFLOW,
     }
     mockPublishedWorkflow = {
@@ -1077,7 +1085,7 @@ describe('AppPublisher', () => {
       getState: () => ({ setPublishedAt }),
     }
     mockAppDetail = {
-      ...mockAppDetail,
+      ...createAppDetailFixture(mockAppDetail ?? {}),
       mode: AppModeEnum.WORKFLOW,
     }
     mockFetchPublishedWorkflow.mockResolvedValue({

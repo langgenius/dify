@@ -10,7 +10,6 @@
   "actionMsg.generatedUnsuccessfully": "उत्पन्न असफल रहा",
   "actionMsg.modifiedSuccessfully": "सफलतापूर्वक संशोधित किया गया",
   "actionMsg.modifiedUnsuccessfully": "संशोधन असफल रहा",
-  "actionMsg.noModification": "इस समय कोई संशोधन नहीं।",
   "actionMsg.payCancelled": "भुगतान रद्द कर दिया गया",
   "actionMsg.paySucceeded": "भुगतान सफल रहा",
   "agentStrategyPage.description": "परिभाषित करें कि आपका AI Agent कैसे सोचता और निर्णय लेता है — वह टूल कैसे चुनता है, परिणाम कैसे संभालता है और समस्याएँ स्वायत्त रूप से कैसे हल करता है।",

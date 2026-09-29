@@ -166,6 +166,7 @@ export const SnippetSidebarContent = ({
 
       {isShowAddVarModal && (
         <ConfigVarModal
+          supportJson
           isCreate
           supportFile
           isShow={isShowAddVarModal}

@@ -1,11 +1,10 @@
 import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { currentWorkspaceAtom, currentWorkspaceLoadingAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { usePathname } from '@/next/navigation'
+import { useParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { getAppACLCapabilities } from '@/utils/permission'
 
@@ -17,29 +16,22 @@ export function useConfigurationAppContext() {
     select: (data) => data.profile.id,
   })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const appDetail = useAppStore((state) => state.appDetail)
-  const pathname = usePathname()
-  const matched = /\/app\/([^/]+)/.exec(pathname)
-  const appId = matched?.[1] || ''
-  const serverLatestPublishedAt = useMemo(() => appDetail?.model_config?.updated_at, [appDetail])
+  const { appId } = useParams<{ appId: string }>()
+  const { data: appDetail } = useSuspenseQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId } } }),
+  )
+  const serverLatestPublishedAt = appDetail.model_config?.updated_at
   const appACLCapabilities = useMemo(
     () =>
-      getAppACLCapabilities(appDetail?.permission_keys, {
+      getAppACLCapabilities(appDetail.permission_keys, {
         currentUserId,
-        resourceMaintainer: appDetail?.maintainer,
+        resourceMaintainer: appDetail.maintainer,
         workspacePermissionKeys,
       }),
-    [appDetail?.maintainer, appDetail?.permission_keys, currentUserId, workspacePermissionKeys],
+    [appDetail.maintainer, appDetail.permission_keys, currentUserId, workspacePermissionKeys],
   )
   const { mutateAsync: updateModelConfig } = useMutation(
-    consoleQuery.apps.byAppId.modelConfig.post.mutationOptions({
-      onSuccess: (_data, variables, _onMutateResult, context) =>
-        context.client.invalidateQueries({
-          queryKey: consoleQuery.apps.byAppId.get.queryKey({
-            input: { params: { app_id: variables.params.app_id } },
-          }),
-        }),
-    }),
+    consoleQuery.apps.byAppId.modelConfig.post.mutationOptions(),
   )
 
   return {
