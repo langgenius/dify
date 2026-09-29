@@ -275,7 +275,7 @@ function DiffyAgentsManager({ token }: { token: string }) {
   const queryClient = useQueryClient()
 
   return (
-    <div className="flex h-0 min-w-0 grow flex-col gap-5 overflow-y-auto bg-background-body p-8">
+    <div className="flex h-0 min-w-0 grow flex-col gap-5 overflow-y-auto bg-background-body p-8 *:shrink-0">
       <div className="flex items-center justify-between">
         <h1 className="text-[18px]/[21.6px] font-semibold text-text-primary">Diffy Agents</h1>
         <Button
