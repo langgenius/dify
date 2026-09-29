@@ -1,6 +1,9 @@
 'use client'
+import type {
+  AgentIterationLogResponse,
+  AgentToolCallResponse,
+} from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
-import type { ToolCall } from '@/models/log'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiCheckboxCircleLine, RiErrorWarningLine } from '@remixicon/react'
 import { useState } from 'react'
@@ -10,28 +13,28 @@ import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 
-type Props = Readonly<{
-  toolCall: ToolCall
-  isLLM: boolean
-  isFinal?: boolean
-  tokens?: number
-  observation?: any
-  finalAnswer?: any
-}>
+type Props = Readonly<
+  | {
+      isLLM: true
+      isFinal: boolean
+      tokens: AgentIterationLogResponse['tokens']
+      observation: AgentIterationLogResponse['tool_raw']['outputs']
+      finalAnswer: AgentIterationLogResponse['thought']
+    }
+  | { isLLM: false; toolCall: AgentToolCallResponse }
+>
 
-const ToolCallItem: FC<Props> = ({
-  toolCall,
-  isLLM = false,
-  isFinal,
-  tokens,
-  observation,
-  finalAnswer,
-}) => {
+const ToolCallItem: FC<Props> = (props) => {
   const [collapseState, setCollapseState] = useState<boolean>(true)
   const locale = useLocale()
-  const toolName = isLLM
+  const toolCall = props.isLLM ? undefined : props.toolCall
+  const toolLabel = toolCall?.tool_label
+  const toolName = props.isLLM
     ? 'LLM'
-    : toolCall.tool_label[locale] || toolCall.tool_label[locale.replaceAll('-', '_')]
+    : typeof toolLabel === 'string'
+      ? toolLabel
+      : (toolLabel?.[locale] ?? toolLabel?.[locale.replaceAll('-', '_')] ?? toolCall?.tool_name)
+  const status = toolCall?.status ?? 'success'
 
   const getTime = (time: number) => {
     if (time < 1) return `${(time * 1000).toFixed(3)} ms`
@@ -53,9 +56,11 @@ const ToolCallItem: FC<Props> = ({
           'group rounded-2xl border border-components-panel-border bg-background-default shadow-xs transition-all hover:shadow-md',
         )}
       >
-        <div
+        <button
+          type="button"
+          aria-expanded={!collapseState}
           className={cn(
-            'flex cursor-pointer items-center py-3 pr-3 pl-1.5',
+            'flex w-full cursor-pointer items-center rounded-2xl py-3 pr-3 pl-1.5 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-components-input-border-active',
             !collapseState && 'pb-2!',
           )}
           onClick={() => setCollapseState(!collapseState)}
@@ -72,8 +77,8 @@ const ToolCallItem: FC<Props> = ({
           />
           <BlockIcon
             className={cn('mr-2 shrink-0')}
-            type={isLLM ? BlockEnum.LLM : BlockEnum.Tool}
-            toolIcon={toolCall.tool_icon}
+            type={props.isLLM ? BlockEnum.LLM : BlockEnum.Tool}
+            toolIcon={toolCall?.tool_icon}
           />
           <div
             className={cn('grow truncate text-[13px] leading-4 font-semibold text-text-secondary')}
@@ -82,66 +87,72 @@ const ToolCallItem: FC<Props> = ({
             {toolName}
           </div>
           <div className="shrink-0 text-xs leading-4.5 text-text-tertiary">
-            {!!toolCall.time_cost && <span>{getTime(toolCall.time_cost || 0)}</span>}
-            {isLLM && <span>{`${getTokenCount(tokens || 0)} tokens`}</span>}
+            {toolCall && <span>{getTime(toolCall.time_cost)}</span>}
+            {props.isLLM && props.tokens !== null && (
+              <span>{`${getTokenCount(props.tokens)} tokens`}</span>
+            )}
           </div>
-          {toolCall.status === 'success' && (
+          {status === 'success' && (
             <RiCheckboxCircleLine className="ml-2 h-3.5 w-3.5 shrink-0 text-[#12B76A]" />
           )}
-          {toolCall.status === 'error' && (
+          {status === 'error' && (
             <RiErrorWarningLine className="ml-2 h-3.5 w-3.5 shrink-0 text-[#F04438]" />
           )}
-        </div>
+        </button>
         {!collapseState && (
           <div className="pb-2">
             <div className={cn('px-2.5 py-1')}>
-              {toolCall.status === 'error' && (
+              {toolCall?.status === 'error' && (
                 <div className="rounded-lg border-[0.5px] border-[rbga(0,0,0,0.05)] bg-[#fef3f2] px-3 py-2.5 text-xs leading-4.5 text-[#d92d20] shadow-xs">
                   {toolCall.error}
                 </div>
               )}
             </div>
-            {toolCall.tool_input && (
+            {toolCall && (
               <div className={cn('px-2.5 py-1')}>
                 <CodeEditor
                   readOnly
                   title={<div>INPUT</div>}
                   language={CodeLanguage.json}
-                  value={toolCall.tool_input}
-                  isJSONStringifyBeauty
+                  value={
+                    typeof toolCall.tool_input === 'string'
+                      ? toolCall.tool_input
+                      : JSON.stringify(toolCall.tool_input, null, 2)
+                  }
                 />
               </div>
             )}
-            {toolCall.tool_output && (
+            {toolCall && (
               <div className={cn('px-2.5 py-1')}>
                 <CodeEditor
                   readOnly
                   title={<div>OUTPUT</div>}
                   language={CodeLanguage.json}
-                  value={toolCall.tool_output}
-                  isJSONStringifyBeauty
+                  value={
+                    typeof toolCall.tool_output === 'string'
+                      ? toolCall.tool_output
+                      : JSON.stringify(toolCall.tool_output, null, 2)
+                  }
                 />
               </div>
             )}
-            {isLLM && (
+            {props.isLLM && (
               <div className={cn('px-2.5 py-1')}>
                 <CodeEditor
                   readOnly
                   title={<div>OBSERVATION</div>}
                   language={CodeLanguage.json}
-                  value={observation}
-                  isJSONStringifyBeauty
+                  value={props.observation ?? ''}
                 />
               </div>
             )}
-            {isLLM && (
+            {props.isLLM && (
               <div className={cn('px-2.5 py-1')}>
                 <CodeEditor
                   readOnly
-                  title={<div>{isFinal ? 'FINAL ANSWER' : 'THOUGHT'}</div>}
+                  title={<div>{props.isFinal ? 'FINAL ANSWER' : 'THOUGHT'}</div>}
                   language={CodeLanguage.json}
-                  value={finalAnswer}
-                  isJSONStringifyBeauty
+                  value={props.finalAnswer ?? ''}
                 />
               </div>
             )}

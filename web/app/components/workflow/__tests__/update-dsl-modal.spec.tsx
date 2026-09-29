@@ -1,18 +1,41 @@
+import type { Import } from '@dify/contracts/api/console/apps/types.gen'
 import type { EventEmitter } from 'ahooks/lib/useEventEmitter'
 import type { ReactNode } from 'react'
 import type { EventEmitterValue } from '@/context/event-emitter'
+import type { FetchAppWorkflowDraftResponse } from '@/types/workflow'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render as rtlRender, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { BlockEnum } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
 import { EventEmitterContext } from '@/context/event-emitter'
 import { DSLImportStatus } from '@/models/app'
+import { AppModeEnum } from '@/types/app'
+import { useStore as usePluginDependenciesStore } from '../plugin-dependency/store'
 import UpdateDSLModal from '../update-dsl-modal'
 
 const mockEmit = vi.fn()
-const mockEmitWorkflowUpdate = vi.hoisted(() => vi.fn())
-const mockIsCollaborationConnected = vi.hoisted(() => vi.fn(() => true))
-const mockReplaceGraphFromCommittedDraft = vi.hoisted(() => vi.fn((..._args: unknown[]) => true))
+const mockBeginWorkflowReplacement = vi.hoisted(() => vi.fn())
+const mockIsWorkflowReplacementCurrent = vi.hoisted(() => vi.fn())
+const EventEmitterProvider = EventEmitterContext.Provider
+const baseDraftResponse = {
+  id: 'draft-1',
+  graph: { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } },
+  features: {},
+  hash: 'hash-1',
+  last_replacement_id: 'import-1',
+  conversation_variables: [],
+  environment_variables: [],
+  rag_pipeline_variables: [],
+  created_at: 0,
+  created_by: { id: 'user-1', name: 'User', email: 'user@example.com' },
+  updated_at: 1,
+  updated_by: { id: 'user-1', name: 'User', email: 'user@example.com' },
+  tool_published: false,
+  version: '1',
+  marked_name: '',
+  marked_comment: '',
+} satisfies FetchAppWorkflowDraftResponse
 
 vi.mock('@/app/notifications', () => ({
   toast: {
@@ -25,10 +48,21 @@ vi.mock('@/app/notifications', () => ({
 
 const mockImportDSL = vi.fn()
 const mockImportDSLConfirm = vi.fn()
+const mockCheckDependencies = vi.fn()
 vi.mock('@/service/console', () => ({
   consoleQuery: {
     apps: {
       imports: {
+        byAppId: {
+          checkDependencies: {
+            get: {
+              mutationOptions: (options: Record<string, unknown>) => ({
+                ...options,
+                mutationFn: ({ params }: { params: unknown }) => mockCheckDependencies(params),
+              }),
+            },
+          },
+        },
         post: {
           mutationOptions: (options: Record<string, unknown>) => ({
             ...options,
@@ -52,32 +86,14 @@ vi.mock('@/service/console', () => ({
 
 const mockFetchWorkflowDraft = vi.fn()
 vi.mock('@/service/workflow', () => ({
-  fetchWorkflowDraft: (path: string) => mockFetchWorkflowDraft(path),
+  fetchAppWorkflowDraft: (appId: string) => mockFetchWorkflowDraft(appId),
 }))
 
 vi.mock('../collaboration/core/collaboration-manager', () => ({
   collaborationManager: {
-    emitWorkflowUpdate: mockEmitWorkflowUpdate,
-    isConnected: mockIsCollaborationConnected,
-    replaceGraphFromCommittedDraft: mockReplaceGraphFromCommittedDraft,
+    beginWorkflowReplacement: mockBeginWorkflowReplacement,
+    isWorkflowReplacementCurrent: mockIsWorkflowReplacementCurrent,
   },
-}))
-
-const mockHandleCheckPluginDependencies = vi.fn()
-vi.mock('@/app/components/workflow/plugin-dependency/hooks', () => ({
-  usePluginDependencies: () => ({
-    handleCheckPluginDependencies: mockHandleCheckPluginDependencies,
-  }),
-}))
-
-vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: { appDetail: { id: string; mode: string } }) => unknown) =>
-    selector({
-      appDetail: {
-        id: 'app-1',
-        mode: 'chat',
-      },
-    }),
 }))
 
 vi.mock('@/app/components/app/create-from-dsl-modal/uploader', () => ({
@@ -98,6 +114,8 @@ function render(children: ReactNode) {
 describe('UpdateDSLModal', () => {
   const mockToastError = vi.mocked(toast.error)
   const defaultProps = {
+    appId: 'app-1',
+    appMode: AppModeEnum.CHAT,
     onCancel: vi.fn(),
     onBackup: vi.fn(),
     onImport: vi.fn(),
@@ -105,6 +123,8 @@ describe('UpdateDSLModal', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockBeginWorkflowReplacement.mockReturnValue(null)
+    mockIsWorkflowReplacementCurrent.mockReturnValue(true)
     vi.useRealTimers()
     Object.defineProperty(File.prototype, 'text', {
       configurable: true,
@@ -114,39 +134,218 @@ describe('UpdateDSLModal', () => {
           'workflow:\n  graph:\n    nodes:\n      - data:\n          type: tool\n',
         ),
     })
-    mockFetchWorkflowDraft.mockResolvedValue({
-      graph: { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } },
-      features: {},
-      hash: 'hash-1',
-      conversation_variables: [],
-      environment_variables: [],
-    })
+    mockFetchWorkflowDraft.mockResolvedValue(baseDraftResponse)
     mockImportDSL.mockResolvedValue({
       id: 'import-1',
       status: DSLImportStatus.COMPLETED,
       app_id: 'app-1',
     })
     mockImportDSLConfirm.mockResolvedValue({
+      id: 'import-1',
       status: DSLImportStatus.COMPLETED,
       app_id: 'app-1',
     })
-    mockIsCollaborationConnected.mockReturnValue(true)
-    mockReplaceGraphFromCommittedDraft.mockReturnValue(true)
-    mockHandleCheckPluginDependencies.mockResolvedValue(undefined)
+    mockCheckDependencies.mockResolvedValue({ leaked_dependencies: [] })
+    usePluginDependenciesStore.setState({ dependencies: [] })
   })
 
   const renderModal = (props = defaultProps) => {
     const eventEmitter = { emit: mockEmit } as unknown as EventEmitter<EventEmitterValue>
 
     return render(
-      <EventEmitterContext.Provider value={{ eventEmitter }}>
+      <EventEmitterProvider value={{ eventEmitter }}>
         <UpdateDSLModal {...props} />
-      </EventEmitterContext.Provider>,
+      </EventEmitterProvider>,
     )
   }
 
+  it.each(['import', 'confirmation'] as const)(
+    'does not block a new canvas when an old %s request completes after unmount',
+    async (phase) => {
+      const user = userEvent.setup()
+      let resolveRequest!: (response: Import) => void
+      const request = new Promise<Import>((resolve) => {
+        resolveRequest = resolve
+      })
+      if (phase === 'confirmation') {
+        mockImportDSL.mockResolvedValueOnce({ id: 'import-1', status: DSLImportStatus.PENDING })
+        mockImportDSLConfirm.mockReturnValueOnce(request)
+      } else {
+        mockImportDSL.mockReturnValueOnce(request)
+      }
+      const first = renderModal()
+      await user.upload(
+        screen.getByTestId('dsl-file-input'),
+        new File(['workflow'], 'workflow.ifpkg'),
+      )
+      await user.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
+      if (phase === 'confirmation') {
+        await user.click(await screen.findByRole('button', { name: 'app.newApp.Confirm' }))
+        await waitFor(() => expect(mockImportDSLConfirm).toHaveBeenCalledOnce())
+      } else {
+        await waitFor(() => expect(mockImportDSL).toHaveBeenCalledOnce())
+      }
+      first.unmount()
+      renderModal()
+      mockBeginWorkflowReplacement.mockReturnValue(7)
+
+      await act(async () => {
+        resolveRequest({ id: 'import-1', status: DSLImportStatus.COMPLETED, app_id: 'app-1' })
+      })
+
+      expect(mockBeginWorkflowReplacement).not.toHaveBeenCalled()
+      expect(mockFetchWorkflowDraft).not.toHaveBeenCalled()
+      expect(mockEmit).not.toHaveBeenCalled()
+      expect(defaultProps.onImport).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each(['import', 'confirmation'] as const)(
+    'keeps %s submission disabled until its committed draft is ready',
+    async (phase) => {
+      const user = userEvent.setup()
+      let resolveDraft!: (draft: FetchAppWorkflowDraftResponse) => void
+      mockFetchWorkflowDraft.mockReturnValueOnce(
+        new Promise<FetchAppWorkflowDraftResponse>((resolve) => {
+          resolveDraft = resolve
+        }),
+      )
+      if (phase === 'confirmation')
+        mockImportDSL.mockResolvedValueOnce({ id: 'import-1', status: DSLImportStatus.PENDING })
+      renderModal()
+      await user.upload(
+        screen.getByTestId('dsl-file-input'),
+        new File(['workflow'], 'workflow.ifpkg'),
+      )
+      await user.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
+      const button =
+        phase === 'confirmation'
+          ? await screen.findByRole('button', { name: 'app.newApp.Confirm' })
+          : screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' })
+      if (phase === 'confirmation') await user.click(button)
+      await waitFor(() => expect(mockFetchWorkflowDraft).toHaveBeenCalledWith('app-1'))
+
+      expect(button).toHaveAttribute('aria-disabled', 'true')
+      await user.click(button)
+      expect(mockImportDSL).toHaveBeenCalledOnce()
+      expect(mockImportDSLConfirm).toHaveBeenCalledTimes(phase === 'confirmation' ? 1 : 0)
+      expect(defaultProps.onImport).not.toHaveBeenCalled()
+
+      await act(async () => resolveDraft(baseDraftResponse))
+
+      await waitFor(() => expect(defaultProps.onImport).toHaveBeenCalledOnce())
+      expect(mockEmit).toHaveBeenCalledOnce()
+    },
+  )
+
+  it('does not replace the active graph when an old import completes after its session unmounts', async () => {
+    let resolveDraft!: (value: unknown) => void
+    mockFetchWorkflowDraft.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveDraft = resolve
+      }),
+    )
+    const { unmount } = renderModal()
+    const file = new File(['workflow'], 'workflow.ifpkg')
+    fireEvent.change(screen.getByTestId('dsl-file-input'), { target: { files: [file] } })
+    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
+    await waitFor(() => expect(mockFetchWorkflowDraft).toHaveBeenCalledWith('app-1'))
+    unmount()
+
+    await act(async () => {
+      resolveDraft({ graph: { nodes: [], edges: [] }, features: {}, hash: 'old-app-hash' })
+    })
+
+    expect(mockEmit).not.toHaveBeenCalled()
+    expect(defaultProps.onImport).not.toHaveBeenCalled()
+    expect(defaultProps.onCancel).not.toHaveBeenCalled()
+  })
+
+  it('does not replace dependency UI when an old import finishes after a new modal opens', async () => {
+    let resolveDependencies!: (value: { leaked_dependencies: unknown[] }) => void
+    mockCheckDependencies.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveDependencies = resolve
+      }),
+    )
+    const first = renderModal()
+    fireEvent.change(screen.getByTestId('dsl-file-input'), {
+      target: { files: [new File(['workflow'], 'workflow.ifpkg')] },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
+    await waitFor(() => expect(mockCheckDependencies).toHaveBeenCalledWith({ app_id: 'app-1' }))
+    expect(mockEmit).toHaveBeenCalledOnce()
+    expect(
+      screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }),
+    ).toHaveAttribute('aria-disabled', 'true')
+    first.unmount()
+    renderModal()
+    const currentDependencies = [
+      { type: 'marketplace' as const, value: { plugin: 'current-plugin' } },
+    ]
+    usePluginDependenciesStore.setState({ dependencies: currentDependencies })
+
+    await act(async () =>
+      resolveDependencies({
+        leaked_dependencies: [{ type: 'marketplace', value: { plugin: 'old-plugin' } }],
+      }),
+    )
+
+    expect(usePluginDependenciesStore.getState().dependencies).toEqual(currentDependencies)
+    expect(mockEmit).toHaveBeenCalledOnce()
+    expect(defaultProps.onImport).toHaveBeenCalledOnce()
+    expect(defaultProps.onCancel).not.toHaveBeenCalled()
+    expect(toast.success).toHaveBeenCalledOnce()
+  })
+
+  it('does not reload the new page when an old committed draft refresh fails', async () => {
+    const reload = vi.spyOn(window.location, 'reload').mockImplementation(() => {})
+    let rejectDraft!: (reason: Error) => void
+    mockFetchWorkflowDraft.mockReturnValueOnce(
+      new Promise((_resolve, reject) => {
+        rejectDraft = reject
+      }),
+    )
+    const first = renderModal()
+    fireEvent.change(screen.getByTestId('dsl-file-input'), {
+      target: { files: [new File(['workflow'], 'workflow.ifpkg')] },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
+    await waitFor(() => expect(mockFetchWorkflowDraft).toHaveBeenCalled())
+    first.unmount()
+    renderModal()
+
+    await act(async () => rejectDraft(new Error('Old draft unavailable')))
+
+    expect(reload).not.toHaveBeenCalled()
+    expect(toast.error).not.toHaveBeenCalled()
+    expect(defaultProps.onCancel).not.toHaveBeenCalled()
+    reload.mockRestore()
+  })
+
+  it('applies imported dependencies and keeps dependency errors separate from import success', async () => {
+    mockCheckDependencies.mockRejectedValueOnce(new Error('Dependencies unavailable'))
+    renderModal()
+    fireEvent.change(screen.getByTestId('dsl-file-input'), {
+      target: { files: [new File(['workflow'], 'workflow.ifpkg')] },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
+
+    await waitFor(() => expect(defaultProps.onCancel).toHaveBeenCalled())
+    expect(toast.success).toHaveBeenCalledWith('workflow.common.importSuccess', undefined)
+    expect(toast.error).toHaveBeenCalledWith('common.error', {
+      description: 'Dependencies unavailable',
+    })
+    expect(mockEmit).toHaveBeenCalled()
+    expect(usePluginDependenciesStore.getState().dependencies).toEqual([])
+  })
+
   it('uploads an ifpkg without decoding it as YAML when overwriting a workflow', async () => {
-    mockImportDSL.mockResolvedValue({ status: DSLImportStatus.COMPLETED, app_id: 'app-1' })
+    mockImportDSL.mockResolvedValue({
+      id: 'import-1',
+      status: DSLImportStatus.COMPLETED,
+      app_id: 'app-1',
+    })
     render(<UpdateDSLModal {...defaultProps} />)
     const file = new File([new Uint8Array([0x50, 0x4b, 0xff])], 'workflow.IFPKG')
     fireEvent.change(screen.getByTestId('dsl-file-input'), { target: { files: [file] } })
@@ -209,28 +408,28 @@ describe('UpdateDSLModal', () => {
 
     expect(mockEmit).toHaveBeenCalledWith(
       expect.objectContaining({
-        type: 'WORKFLOW_DATA_UPDATE',
+        type: 'WORKFLOW_DRAFT_REPLACED',
+        payload: expect.objectContaining({ appId: 'app-1' }),
       }),
     )
-    expect(mockEmitWorkflowUpdate).toHaveBeenCalledWith('app-1')
     expect(defaultProps.onImport).toHaveBeenCalledTimes(1)
     expect(defaultProps.onCancel).toHaveBeenCalledTimes(1)
   })
 
-  it('commits the imported graph to collaboration before updating the canvas or other clients', async () => {
+  it('sends the committed draft and raw features to the local canvas', async () => {
     const importedNode = {
       id: 'imported-start',
       type: 'custom',
       position: { x: 0, y: 0 },
-      data: { type: 'start', title: 'Start', desc: '' },
+      data: { type: BlockEnum.Start, title: 'Start', desc: '' },
     }
-    mockFetchWorkflowDraft.mockResolvedValueOnce({
+    const importedDraft = {
+      ...baseDraftResponse,
       graph: { nodes: [importedNode], edges: [], viewport: { x: 0, y: 0, zoom: 1 } },
-      features: {},
+      features: { file_upload: { enabled: true } },
       hash: 'imported-hash',
-      conversation_variables: [],
-      environment_variables: [],
-    })
+    } satisfies FetchAppWorkflowDraftResponse
+    mockFetchWorkflowDraft.mockResolvedValueOnce(importedDraft)
     renderModal()
 
     fireEvent.change(screen.getByTestId('dsl-file-input'), {
@@ -239,41 +438,123 @@ describe('UpdateDSLModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
 
     await waitFor(() => expect(defaultProps.onCancel).toHaveBeenCalledTimes(1))
-    const [appId, nodes, edges] = mockReplaceGraphFromCommittedDraft.mock.calls[0]!
-    expect(appId).toBe('app-1')
-    expect(nodes).toEqual([expect.objectContaining({ id: 'imported-start' })])
-    expect(edges).toEqual([])
     expect(mockEmit).toHaveBeenCalledWith(
       expect.objectContaining({
-        type: 'WORKFLOW_DATA_UPDATE',
-        payload: expect.objectContaining({ nodes, edges, hash: 'imported-hash' }),
+        type: 'WORKFLOW_DRAFT_REPLACED',
+        payload: expect.objectContaining({
+          appId: 'app-1',
+          appliedReplacementId: 'import-1',
+          replacementId: 'import-1',
+          draft: importedDraft,
+          workflowData: expect.objectContaining({
+            nodes: [expect.objectContaining({ id: 'imported-start' })],
+            edges: [],
+            hash: 'imported-hash',
+            features: { file_upload: { enabled: true } },
+          }),
+        }),
       }),
-    )
-    expect(mockReplaceGraphFromCommittedDraft.mock.invocationCallOrder[0]).toBeLessThan(
-      mockEmit.mock.invocationCallOrder[0]!,
-    )
-    expect(mockEmit.mock.invocationCallOrder[0]).toBeLessThan(
-      mockEmitWorkflowUpdate.mock.invocationCallOrder[0]!,
     )
   })
 
-  it('updates the imported canvas when collaboration is disconnected', async () => {
-    mockIsCollaborationConnected.mockReturnValue(false)
+  it('uses the latest draft when a restore follows the completed import before its GET', async () => {
+    const restoredDraft = {
+      ...baseDraftResponse,
+      hash: 'restored-hash',
+      last_replacement_id: 'restore-C',
+    }
+    mockFetchWorkflowDraft.mockResolvedValueOnce(restoredDraft)
     renderModal()
 
     fireEvent.change(screen.getByTestId('dsl-file-input'), {
-      target: { files: [new File(['workflow'], 'workflow.yml', { type: 'text/yaml' })] },
+      target: { files: [new File(['workflow'], 'workflow.ifpkg')] },
     })
     fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
 
-    await waitFor(() => expect(defaultProps.onCancel).toHaveBeenCalledTimes(1))
-    expect(mockReplaceGraphFromCommittedDraft).not.toHaveBeenCalled()
-    expect(mockEmit).toHaveBeenCalledWith(expect.objectContaining({ type: 'WORKFLOW_DATA_UPDATE' }))
+    await waitFor(() => expect(defaultProps.onCancel).toHaveBeenCalledOnce())
+    expect(mockEmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payload: expect.objectContaining({
+          replacementId: 'import-1',
+          appliedReplacementId: 'restore-C',
+          draft: restoredDraft,
+          workflowData: expect.objectContaining({ hash: 'restored-hash' }),
+        }),
+      }),
+    )
+  })
+
+  it('claims the replacement before fetching and applies only its current token', async () => {
+    mockBeginWorkflowReplacement.mockReturnValue(7)
+    let resolveDraft: ((draft: unknown) => void) | undefined
+    mockFetchWorkflowDraft.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveDraft = resolve
+      }),
+    )
+    mockEmit.mockImplementationOnce(() => {
+      mockIsWorkflowReplacementCurrent.mockReturnValue(false)
+    })
+    renderModal()
+    fireEvent.change(screen.getByTestId('dsl-file-input'), {
+      target: { files: [new File(['workflow'], 'workflow.ifpkg')] },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
+    await waitFor(() => expect(mockFetchWorkflowDraft).toHaveBeenCalledWith('app-1'))
+    expect(mockBeginWorkflowReplacement).toHaveBeenCalledWith('app-1')
+
+    await act(async () => {
+      resolveDraft?.({
+        graph: { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } },
+        features: {},
+        hash: 'imported-hash',
+        last_replacement_id: 'import-1',
+      })
+    })
+    await waitFor(() => expect(defaultProps.onImport).toHaveBeenCalledOnce())
+    expect(mockEmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payload: expect.objectContaining({ workflowReplacementToken: 7 }),
+      }),
+    )
+  })
+
+  it('does not apply a delayed local import after a newer notification supersedes its token', async () => {
+    mockBeginWorkflowReplacement.mockReturnValue(7)
+    let resolveDraft: ((draft: unknown) => void) | undefined
+    mockFetchWorkflowDraft.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveDraft = resolve
+      }),
+    )
+    const reload = vi.spyOn(window.location, 'reload').mockImplementation(() => {})
+    renderModal()
+    fireEvent.change(screen.getByTestId('dsl-file-input'), {
+      target: { files: [new File(['workflow'], 'workflow.ifpkg')] },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
+    await waitFor(() => expect(mockFetchWorkflowDraft).toHaveBeenCalledWith('app-1'))
+    mockIsWorkflowReplacementCurrent.mockReturnValue(false)
+
+    await act(async () => {
+      resolveDraft?.({
+        graph: { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } },
+        features: {},
+        hash: 'older-import-hash',
+        last_replacement_id: 'import-1',
+      })
+    })
+    await waitFor(() => expect(defaultProps.onImport).toHaveBeenCalledOnce())
+    expect(mockEmit).not.toHaveBeenCalled()
+    expect(reload).not.toHaveBeenCalled()
+    reload.mockRestore()
   })
 
   it('reloads instead of showing a graph that collaboration cannot accept', async () => {
     const reload = vi.spyOn(window.location, 'reload').mockImplementation(() => {})
-    mockReplaceGraphFromCommittedDraft.mockReturnValue(false)
+    mockEmit.mockImplementationOnce(() => {
+      throw new Error('Collaborative graph is not ready to apply the imported draft.')
+    })
     renderModal()
 
     fireEvent.change(screen.getByTestId('dsl-file-input'), {
@@ -282,7 +563,7 @@ describe('UpdateDSLModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
 
     await waitFor(() => expect(reload).toHaveBeenCalledTimes(1))
-    expect(mockEmit).not.toHaveBeenCalled()
+    expect(mockEmit).toHaveBeenCalledOnce()
     expect(defaultProps.onCancel).not.toHaveBeenCalled()
     reload.mockRestore()
   })
@@ -370,7 +651,6 @@ describe('UpdateDSLModal', () => {
     await waitFor(() => {
       expect(mockImportDSLConfirm).toHaveBeenCalledWith({ import_id: 'import-2' })
     })
-    expect(mockEmitWorkflowUpdate).toHaveBeenCalledWith('app-1')
   })
 
   it('should show Agent package warnings returned after confirming a pending import', async () => {
@@ -484,9 +764,7 @@ describe('UpdateDSLModal', () => {
     )
     expect(toast.success).toHaveBeenCalledWith('workflow.common.importSuccess', undefined)
     expect(defaultProps.onCancel).not.toHaveBeenCalled()
-    expect(mockEmitWorkflowUpdate).toHaveBeenCalledWith('app-1')
-    expect(mockReplaceGraphFromCommittedDraft).not.toHaveBeenCalled()
-    expect(mockHandleCheckPluginDependencies).not.toHaveBeenCalled()
+    expect(mockCheckDependencies).not.toHaveBeenCalled()
     expect(reload).toHaveBeenCalledTimes(1)
     reload.mockRestore()
   })

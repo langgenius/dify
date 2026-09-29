@@ -639,11 +639,14 @@ const createApiConfig = (job: ApiJob): UserConfig => ({
       '~resolvers': {
         union: (ctx) => {
           // The generator's recursive lazy schemas infer `any`. Keep this JSON
-          // leaf typed through Zod so oRPC clients retain the request contract.
+          // leaf typed through Zod so oRPC clients retain the JSON contract.
           if (
             ctx.path['~ref'].some(
               (segment) =>
-                segment === 'AppConfigJsonValue' || segment === 'AppConfigJsonValueWritable',
+                segment === 'AppConfigJsonValue' ||
+                segment === 'AppConfigJsonValueWritable' ||
+                segment === 'AgentLogJsonValue' ||
+                segment === 'AgentLogJsonValueWritable',
             )
           )
             return $(ctx.symbols.z).attr('json').call()

@@ -1,4 +1,5 @@
 import type { MouseEventHandler } from 'react'
+import type { WorkflowDataUpdateEvent } from '@/app/components/workflow/workflow-data-update-event'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WORKFLOW_DATA_UPDATE } from '@/app/components/workflow/constants'
@@ -89,15 +90,16 @@ export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParam
       eventEmitter?.emit({
         type: WORKFLOW_DATA_UPDATE,
         payload: {
+          target: workflowStore,
           nodes: initialNodes(nodes, edges),
           edges: initialEdges(edges, nodes),
           viewport,
           hash,
           rag_pipeline_variables: rag_pipeline_variables || [],
         },
-      })
+      } satisfies WorkflowDataUpdateEvent)
     },
-    [eventEmitter],
+    [eventEmitter, workflowStore],
   )
   const completeImport = useCallback(
     async (pipelineId: string | undefined, status: DSLImportStatus = DSLImportStatus.COMPLETED) => {

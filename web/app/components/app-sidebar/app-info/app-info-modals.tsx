@@ -44,6 +44,7 @@ type AppInfoModalsProps = {
   setSecretEnvList: (list: EnvironmentVariableItemResponse[]) => void
   onEdit: CreateAppModalProps['onConfirm']
   onCopy: DuplicateAppModalProps['onConfirm']
+  onImport: () => void
   onExport: (include?: boolean) => Promise<boolean>
   isExporting: boolean
   exportCheck: () => void
@@ -59,6 +60,7 @@ const AppInfoModals = ({
   setSecretEnvList,
   onEdit,
   onCopy,
+  onImport,
   onExport,
   isExporting,
   exportCheck,
@@ -197,7 +199,13 @@ const AppInfoModals = ({
         </AlertDialogContent>
       </AlertDialog>
       {activeModal === 'importDSL' && (
-        <UpdateDSLModal onCancel={closeModal} onBackup={exportCheck} />
+        <UpdateDSLModal
+          appId={appDetail.id}
+          appMode={appDetail.mode}
+          onCancel={closeModal}
+          onBackup={exportCheck}
+          onImport={onImport}
+        />
       )}
       <AlertDialog open={isExportDialogOpen} onOpenChange={handleExportDialogOpenChange}>
         {exportDialogMode === 'secret' ? (

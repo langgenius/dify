@@ -993,6 +993,27 @@ class TestWorkflowCollaborationService:
         repository.delete_leader.assert_called_once_with("wf-1")
         broadcast_leader_change.assert_called_once_with("wf-1", "sid-2")
 
+    def test_get_or_set_leader_prefers_existing_peer_over_joining_tab(
+        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
+    ) -> None:
+        collaboration_service, repository, _socketio = service
+        repository.get_current_leader.return_value = None
+        repository.set_leader_if_absent.return_value = True
+        repository.list_sessions.return_value = [
+            {"sid": "sid-new", "graph_active": True},
+            {"sid": "sid-existing", "graph_active": False},
+        ]
+
+        with (
+            patch.object(collaboration_service, "is_session_active", return_value=True),
+            patch.object(collaboration_service, "broadcast_leader_change") as broadcast_leader_change,
+        ):
+            result = collaboration_service.get_or_set_leader("wf-1", "sid-new")
+
+        assert result == "sid-existing"
+        repository.set_leader_if_absent.assert_called_once_with("wf-1", "sid-existing")
+        broadcast_leader_change.assert_called_once_with("wf-1", "sid-existing")
+
     def test_get_or_set_leader_falls_back_to_existing(
         self, service: tuple[WorkflowCollaborationService, Mock, Mock]
     ) -> None:
@@ -1023,6 +1044,7 @@ class TestWorkflowCollaborationService:
         collaboration_service, repository, _socketio = service
         repository.get_current_leader.side_effect = [None, None]
         repository.set_leader_if_absent.return_value = False
+        repository.list_sessions.return_value = []
 
         result = collaboration_service.get_or_set_leader("wf-1", "sid-2")
 

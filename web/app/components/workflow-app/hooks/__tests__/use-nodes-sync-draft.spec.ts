@@ -10,13 +10,20 @@ const mockGetNodes = vi.fn()
 const mockPostWithKeepalive = vi.fn()
 const mockSetSyncWorkflowDraftHash = vi.fn()
 const mockSetDraftUpdatedAt = vi.fn()
+const mockSetIsWorkflowDataLoaded = vi.fn()
+const mockDebouncedSyncWorkflowDraft = Object.assign(vi.fn(), { cancel: vi.fn() })
+const mockEventEmitterEmit = vi.fn()
+const mockFetchAppWorkflowDraft = vi.fn()
 const mockGetNodesReadOnly = vi.fn()
 const mockCollaborationIsConnected = vi.fn()
+const mockOwnsReactFlowStore = vi.fn()
 const mockCollaborationGetIsLeader = vi.fn()
 const mockCollaborationRequestWorkflowSync = vi.fn()
 const mockCollaborationCanPersistLocalGraph = vi.fn()
 const mockCollaborationCanFlushGraphOnPageClose = vi.fn()
 const mockCollaborationCanUseLocalDraftFallback = vi.fn()
+const mockGetWorkflowReplacementSequence = vi.fn()
+const mockIsWorkflowReplacementPending = vi.fn()
 let isCollaborationEnabled = false
 
 let reactFlowState: {
@@ -29,9 +36,13 @@ let workflowStoreState: {
   appId: string
   isWorkflowDataLoaded: boolean
   syncWorkflowDraftHash: string | null
+  lastAppliedReplacementId: string | null
+  draftReplacementEpoch: number
   conversationVariables: Array<Record<string, unknown>>
   setSyncWorkflowDraftHash: typeof mockSetSyncWorkflowDraftHash
   setDraftUpdatedAt: typeof mockSetDraftUpdatedAt
+  setIsWorkflowDataLoaded: typeof mockSetIsWorkflowDataLoaded
+  debouncedSyncWorkflowDraft: typeof mockDebouncedSyncWorkflowDraft
 }
 
 let featuresState: {
@@ -46,13 +57,36 @@ let featuresState: {
   }
 }
 
-vi.mock('reactflow', () => ({
-  useStoreApi: () => ({ getState: () => reactFlowState }),
-}))
+vi.mock('reactflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('reactflow')>()
+  return {
+    ...actual,
+    useStoreApi: () => ({ getState: () => reactFlowState }),
+  }
+})
 
 vi.mock('@/app/components/workflow/store', () => ({
   useWorkflowStore: () => ({
     getState: () => workflowStoreState,
+  }),
+}))
+
+vi.mock('@/app/components/app/store', () => ({
+  useStore: (selector: (state: { appDetail: { mode: string } }) => unknown) =>
+    selector({ appDetail: { mode: 'workflow' } }),
+}))
+
+vi.mock('@/context/event-emitter', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/context/event-emitter')>()
+  return {
+    ...actual,
+    useEventEmitterContextContext: () => ({ eventEmitter: { emit: mockEventEmitterEmit } }),
+  }
+})
+
+vi.mock('@/app/components/workflow/hooks/use-workflow-draft-graph-for-canvas', () => ({
+  useWorkflowDraftGraphForCanvas: () => ({
+    getWorkflowDraftGraphForCanvas: (graph: unknown) => graph,
   }),
 }))
 
@@ -68,6 +102,7 @@ vi.mock('@/app/components/workflow/hooks/use-workflow', () => ({
 
 vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', () => ({
   collaborationManager: {
+    ownsReactFlowStore: (...args: unknown[]) => mockOwnsReactFlowStore(...args),
     isConnected: (...args: unknown[]) => mockCollaborationIsConnected(...args),
     getIsLeader: (...args: unknown[]) => mockCollaborationGetIsLeader(...args),
     requestWorkflowSync: (...args: unknown[]) => mockCollaborationRequestWorkflowSync(...args),
@@ -76,12 +111,16 @@ vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', ()
       mockCollaborationCanFlushGraphOnPageClose(...args),
     canUseLocalDraftFallback: (...args: unknown[]) =>
       mockCollaborationCanUseLocalDraftFallback(...args),
+    getWorkflowReplacementSequence: (...args: unknown[]) =>
+      mockGetWorkflowReplacementSequence(...args),
+    isWorkflowReplacementPending: (...args: unknown[]) => mockIsWorkflowReplacementPending(...args),
   },
 }))
 
 const mockSyncWorkflowDraft = vi.fn()
 vi.mock('@/service/workflow', () => ({
   syncWorkflowDraft: (p: unknown) => mockSyncWorkflowDraft(p),
+  fetchAppWorkflowDraft: (...args: unknown[]) => mockFetchAppWorkflowDraft(...args),
 }))
 
 vi.mock('@/service/fetch', async (importOriginal) => {
@@ -109,6 +148,8 @@ const renderUseNodesSyncDraft = () =>
 describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockGetWorkflowReplacementSequence.mockReturnValue(null)
+    mockIsWorkflowReplacementPending.mockReturnValue(false)
     reactFlowState = {
       getNodes: mockGetNodes,
       edges: [],
@@ -118,9 +159,13 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
       appId: 'app-1',
       isWorkflowDataLoaded: true,
       syncWorkflowDraftHash: 'hash-123',
+      lastAppliedReplacementId: null,
+      draftReplacementEpoch: 0,
       conversationVariables: [],
       setSyncWorkflowDraftHash: mockSetSyncWorkflowDraftHash,
       setDraftUpdatedAt: mockSetDraftUpdatedAt,
+      setIsWorkflowDataLoaded: mockSetIsWorkflowDataLoaded,
+      debouncedSyncWorkflowDraft: mockDebouncedSyncWorkflowDraft,
     }
     featuresState = {
       features: {
@@ -138,6 +183,15 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
       { id: 'n1', position: { x: 0, y: 0 }, data: { type: BlockEnum.Start } },
     ])
     mockSyncWorkflowDraft.mockResolvedValue({ hash: 'new', updated_at: 1 })
+    mockFetchAppWorkflowDraft.mockResolvedValue({ last_replacement_id: null })
+    mockHandleRefreshWorkflowDraft.mockResolvedValue(true)
+    mockSetIsWorkflowDataLoaded.mockImplementation((loaded: boolean) => {
+      workflowStoreState.isWorkflowDataLoaded = loaded
+    })
+    mockSetSyncWorkflowDraftHash.mockImplementation((hash: string) => {
+      workflowStoreState.syncWorkflowDraftHash = hash
+    })
+    mockOwnsReactFlowStore.mockReturnValue(true)
     mockCollaborationIsConnected.mockReturnValue(false)
     mockCollaborationGetIsLeader.mockReturnValue(true)
     mockCollaborationCanPersistLocalGraph.mockReturnValue(true)
@@ -156,6 +210,7 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
       bodyUsed: false,
     }
     mockSyncWorkflowDraft.mockRejectedValue(error)
+    mockFetchAppWorkflowDraft.mockResolvedValue({ last_replacement_id: null })
 
     const { result } = renderUseNodesSyncDraft()
     await act(async () => {
@@ -163,7 +218,284 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
     })
     await new Promise((r) => setTimeout(r, 0))
 
-    expect(mockHandleRefreshWorkflowDraft).toHaveBeenCalledWith(true)
+    expect(mockHandleRefreshWorkflowDraft).toHaveBeenCalledWith(
+      true,
+      expect.objectContaining({
+        prefetchedDraft: expect.objectContaining({ last_replacement_id: null }),
+      }),
+    )
+  })
+
+  it('replaces an imported draft after a stale hash conflict and drops queued old-graph saves', async () => {
+    const oldNode = { id: 'old', position: { x: 0, y: 0 }, data: { type: BlockEnum.Start } }
+    const importedNode = {
+      id: 'imported',
+      position: { x: 1, y: 1 },
+      data: { type: BlockEnum.Start },
+    }
+    mockGetNodes.mockReturnValue([oldNode])
+    mockSyncWorkflowDraft
+      .mockRejectedValueOnce({
+        json: vi.fn().mockResolvedValue({ code: 'draft_workflow_not_sync' }),
+        bodyUsed: false,
+      })
+      .mockResolvedValue({ hash: 'saved-hash', updated_at: 3 })
+    let resolveDraft!: (draft: unknown) => void
+    mockFetchAppWorkflowDraft.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveDraft = resolve
+        }),
+    )
+    const importedDraft = {
+      last_replacement_id: 'import-B',
+      hash: 'imported-hash',
+      updated_at: 2,
+      tool_published: false,
+      graph: { nodes: [importedNode], edges: [], viewport: { x: 0, y: 0, zoom: 1 } },
+      features: { opening_statement: 'Imported' },
+      conversation_variables: [],
+      environment_variables: [],
+    }
+    mockEventEmitterEmit.mockImplementation(() => {
+      mockGetNodes.mockReturnValue([importedNode])
+      workflowStoreState.lastAppliedReplacementId = 'import-B'
+      workflowStoreState.draftReplacementEpoch += 1
+      workflowStoreState.syncWorkflowDraftHash = 'imported-hash'
+    })
+    mockHandleRefreshWorkflowDraft.mockImplementation(async (_notUpdateCanvas, options) => {
+      mockEventEmitterEmit(options.prefetchedDraft)
+      return true
+    })
+
+    const { result } = renderUseNodesSyncDraft()
+    let firstSave!: ReturnType<typeof result.current.doSyncWorkflowDraft>
+    let queuedOldSave!: ReturnType<typeof result.current.doSyncWorkflowDraft>
+    act(() => {
+      firstSave = result.current.doSyncWorkflowDraft(false)
+      queuedOldSave = result.current.doSyncWorkflowDraft(false)
+    })
+    await vi.waitFor(() => expect(mockFetchAppWorkflowDraft).toHaveBeenCalledWith('app-1'))
+
+    expect(workflowStoreState.isWorkflowDataLoaded).toBe(false)
+    act(() => result.current.syncWorkflowDraftWhenPageClose())
+    expect(mockPostWithKeepalive).not.toHaveBeenCalled()
+    await act(async () => {
+      await expect(result.current.doSyncWorkflowDraft(false)).resolves.toBeNull()
+      resolveDraft(importedDraft)
+      await Promise.all([firstSave, queuedOldSave])
+    })
+
+    expect(mockHandleRefreshWorkflowDraft).toHaveBeenCalledWith(
+      true,
+      expect.objectContaining({ prefetchedDraft: importedDraft }),
+    )
+    expect(mockSyncWorkflowDraft).toHaveBeenCalledTimes(1)
+    expect(workflowStoreState.isWorkflowDataLoaded).toBe(true)
+
+    await act(async () => {
+      await result.current.doSyncWorkflowDraft(false)
+    })
+    expect(mockSyncWorkflowDraft).toHaveBeenCalledTimes(2)
+    expect(mockSyncWorkflowDraft).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        params: expect.objectContaining({
+          graph: expect.objectContaining({ nodes: [importedNode] }),
+          hash: 'imported-hash',
+        }),
+      }),
+    )
+  })
+
+  it('keeps local graph edits when a hash conflict has the same import marker', async () => {
+    mockSyncWorkflowDraft.mockRejectedValue({
+      json: vi.fn().mockResolvedValue({ code: 'draft_workflow_not_sync' }),
+      bodyUsed: false,
+    })
+    workflowStoreState.lastAppliedReplacementId = 'import-A'
+    mockFetchAppWorkflowDraft.mockResolvedValue({ last_replacement_id: 'import-A' })
+
+    const { result } = renderUseNodesSyncDraft()
+    await act(async () => {
+      await result.current.doSyncWorkflowDraft(false)
+    })
+
+    expect(mockHandleRefreshWorkflowDraft).toHaveBeenCalledWith(
+      true,
+      expect.objectContaining({
+        prefetchedDraft: expect.objectContaining({ last_replacement_id: 'import-A' }),
+      }),
+    )
+    expect(mockFetchAppWorkflowDraft).toHaveBeenCalledTimes(1)
+    expect(mockEventEmitterEmit).not.toHaveBeenCalled()
+    expect(workflowStoreState.isWorkflowDataLoaded).toBe(true)
+  })
+
+  it('does not advance the hash from a 409 GET after another replacement begins', async () => {
+    mockSyncWorkflowDraft.mockRejectedValue({
+      json: vi.fn().mockResolvedValue({ code: 'draft_workflow_not_sync' }),
+      bodyUsed: false,
+    })
+    mockGetWorkflowReplacementSequence.mockReturnValue(1)
+    let resolveDraft!: (draft: unknown) => void
+    mockFetchAppWorkflowDraft.mockReturnValue(
+      new Promise((resolve) => {
+        resolveDraft = resolve
+      }),
+    )
+    const { result } = renderUseNodesSyncDraft()
+    let save!: ReturnType<typeof result.current.doSyncWorkflowDraft>
+    act(() => {
+      save = result.current.doSyncWorkflowDraft(true)
+    })
+    await vi.waitFor(() => expect(mockFetchAppWorkflowDraft).toHaveBeenCalledOnce())
+
+    mockGetWorkflowReplacementSequence.mockReturnValue(2)
+    mockIsWorkflowReplacementPending.mockReturnValue(true)
+    await act(async () => {
+      resolveDraft({ last_replacement_id: null, hash: 'new-import-hash' })
+      await save
+    })
+    expect(mockSetSyncWorkflowDraftHash).not.toHaveBeenCalledWith('new-import-hash')
+    expect(mockHandleRefreshWorkflowDraft).not.toHaveBeenCalled()
+  })
+
+  it('does not replay a late 409 GET after the imported draft was already applied', async () => {
+    mockSyncWorkflowDraft
+      .mockRejectedValueOnce({
+        json: vi.fn().mockResolvedValue({ code: 'draft_workflow_not_sync' }),
+        bodyUsed: false,
+      })
+      .mockResolvedValue({ hash: 'saved-hash', updated_at: 3 })
+    let resolveDraft!: (draft: unknown) => void
+    mockFetchAppWorkflowDraft.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveDraft = resolve
+        }),
+    )
+    const editedNode = {
+      id: 'edited-after-import',
+      position: { x: 2, y: 2 },
+      data: { type: BlockEnum.Start },
+    }
+
+    const { result } = renderUseNodesSyncDraft()
+    let rejectedSave!: ReturnType<typeof result.current.doSyncWorkflowDraft>
+    act(() => {
+      rejectedSave = result.current.doSyncWorkflowDraft(false)
+    })
+    await vi.waitFor(() => expect(mockFetchAppWorkflowDraft).toHaveBeenCalledTimes(1))
+
+    workflowStoreState.lastAppliedReplacementId = 'import-B'
+    workflowStoreState.syncWorkflowDraftHash = 'imported-hash'
+    mockGetNodes.mockReturnValue([editedNode])
+    await act(async () => {
+      resolveDraft({ last_replacement_id: 'import-B', hash: 'imported-hash' })
+      await rejectedSave
+    })
+
+    expect(mockEventEmitterEmit).not.toHaveBeenCalled()
+    expect(mockHandleRefreshWorkflowDraft).not.toHaveBeenCalled()
+    expect(workflowStoreState.isWorkflowDataLoaded).toBe(true)
+
+    await act(async () => {
+      await result.current.doSyncWorkflowDraft(false)
+    })
+    expect(mockSyncWorkflowDraft).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        params: expect.objectContaining({
+          graph: expect.objectContaining({ nodes: [editedNode] }),
+          hash: 'imported-hash',
+        }),
+      }),
+    )
+  })
+
+  it('discards a late 409 GET after a same-marker restore replaced the draft', async () => {
+    mockSyncWorkflowDraft.mockRejectedValueOnce({
+      json: vi.fn().mockResolvedValue({ code: 'draft_workflow_not_sync' }),
+      bodyUsed: false,
+    })
+    let resolveDraft!: (draft: unknown) => void
+    mockFetchAppWorkflowDraft.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveDraft = resolve
+        }),
+    )
+
+    const { result } = renderUseNodesSyncDraft()
+    let save!: ReturnType<typeof result.current.doSyncWorkflowDraft>
+    act(() => {
+      save = result.current.doSyncWorkflowDraft(false)
+    })
+    await vi.waitFor(() => expect(mockFetchAppWorkflowDraft).toHaveBeenCalledOnce())
+
+    workflowStoreState.draftReplacementEpoch += 1
+    workflowStoreState.syncWorkflowDraftHash = 'restored-hash'
+    await act(async () => {
+      resolveDraft({ last_replacement_id: null, hash: 'old-hash' })
+      await save
+    })
+
+    expect(mockHandleRefreshWorkflowDraft).not.toHaveBeenCalled()
+    expect(workflowStoreState.syncWorkflowDraftHash).toBe('restored-hash')
+    expect(workflowStoreState.isWorkflowDataLoaded).toBe(true)
+  })
+
+  it('drops queued old-graph saves after a same-marker draft replacement', async () => {
+    let resolveFirstSave!: (result: { hash: string; updated_at: number }) => void
+    mockSyncWorkflowDraft.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveFirstSave = resolve
+        }),
+    )
+    const { result } = renderUseNodesSyncDraft()
+    let firstSave!: ReturnType<typeof result.current.doSyncWorkflowDraft>
+    let queuedOldSave!: ReturnType<typeof result.current.doSyncWorkflowDraft>
+    act(() => {
+      firstSave = result.current.doSyncWorkflowDraft(false)
+      queuedOldSave = result.current.doSyncWorkflowDraft(false)
+    })
+    await vi.waitFor(() => expect(mockSyncWorkflowDraft).toHaveBeenCalledOnce())
+
+    workflowStoreState.draftReplacementEpoch += 1
+    workflowStoreState.syncWorkflowDraftHash = 'restored-hash'
+    await act(async () => {
+      resolveFirstSave({ hash: 'old-save-hash', updated_at: 1 })
+      await Promise.all([firstSave, queuedOldSave])
+    })
+
+    expect(mockSyncWorkflowDraft).toHaveBeenCalledOnce()
+    expect(workflowStoreState.syncWorkflowDraftHash).toBe('restored-hash')
+  })
+
+  it('ignores a local save response that arrives after an import was applied', async () => {
+    let resolveSave!: (result: { hash: string; updated_at: number }) => void
+    mockSyncWorkflowDraft.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveSave = resolve
+        }),
+    )
+    const { result } = renderUseNodesSyncDraft()
+    let save!: ReturnType<typeof result.current.doSyncWorkflowDraft>
+    act(() => {
+      save = result.current.doSyncWorkflowDraft(false)
+    })
+    await vi.waitFor(() => expect(mockSyncWorkflowDraft).toHaveBeenCalledOnce())
+
+    workflowStoreState.lastAppliedReplacementId = 'import-B'
+    workflowStoreState.syncWorkflowDraftHash = 'imported-hash'
+    await act(async () => {
+      resolveSave({ hash: 'old-save-hash', updated_at: 1 })
+      await expect(save).resolves.toBeNull()
+    })
+
+    expect(workflowStoreState.syncWorkflowDraftHash).toBe('imported-hash')
+    expect(mockSetDraftUpdatedAt).not.toHaveBeenCalled()
   })
 
   it('should NOT refresh when notRefreshWhenSyncError=true', async () => {
@@ -172,6 +504,7 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
       bodyUsed: false,
     }
     mockSyncWorkflowDraft.mockRejectedValue(error)
+    mockFetchAppWorkflowDraft.mockResolvedValue({ last_replacement_id: null, hash: 'current-hash' })
 
     const { result } = renderUseNodesSyncDraft()
     await act(async () => {
@@ -180,6 +513,7 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
     await new Promise((r) => setTimeout(r, 0))
 
     expect(mockHandleRefreshWorkflowDraft).not.toHaveBeenCalled()
+    expect(workflowStoreState.syncWorkflowDraftHash).toBe('current-hash')
   })
 
   it('should NOT refresh for a different error code', async () => {
@@ -639,6 +973,40 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
     )
   })
 
+  it('does not save or request another canvas leader after ownership changes', async () => {
+    isCollaborationEnabled = true
+    mockCollaborationIsConnected.mockReturnValue(true)
+    mockCollaborationGetIsLeader.mockReturnValue(false)
+    const { result } = renderUseNodesSyncDraft()
+    mockOwnsReactFlowStore.mockReturnValue(false)
+    const onSettled = vi.fn()
+
+    await act(async () => {
+      await result.current.doSyncWorkflowDraft(false, { onSettled })
+      result.current.syncWorkflowDraftWhenPageClose()
+    })
+
+    expect(mockCollaborationRequestWorkflowSync).not.toHaveBeenCalled()
+    expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
+    expect(mockPostWithKeepalive).not.toHaveBeenCalled()
+    expect(onSettled).toHaveBeenCalledOnce()
+  })
+
+  it('keeps HTTP saves available without a connected collaboration owner', async () => {
+    isCollaborationEnabled = true
+    mockOwnsReactFlowStore.mockReturnValue(false)
+    const { result } = renderUseNodesSyncDraft()
+
+    await act(async () => {
+      await result.current.doSyncWorkflowDraft()
+    })
+
+    expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(
+      expect.objectContaining({ url: '/apps/app-1/workflows/draft' }),
+    )
+    expect(mockCollaborationRequestWorkflowSync).not.toHaveBeenCalled()
+  })
+
   it('should wait for the leader save result when current user is collaboration follower', async () => {
     isCollaborationEnabled = true
     mockCollaborationIsConnected.mockReturnValue(true)
@@ -662,6 +1030,36 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
     expect(callbacks.onSuccess).toHaveBeenCalled()
     expect(callbacks.onError).not.toHaveBeenCalled()
     expect(callbacks.onSettled).toHaveBeenCalled()
+  })
+
+  it('ignores a follower save result that arrives after an import was applied', async () => {
+    isCollaborationEnabled = true
+    mockCollaborationIsConnected.mockReturnValue(true)
+    mockCollaborationGetIsLeader.mockReturnValue(false)
+    let resolveLeaderSync!: (result: { hash: string; updatedAt: number }) => void
+    mockCollaborationRequestWorkflowSync.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveLeaderSync = resolve
+        }),
+    )
+
+    const { result } = renderUseNodesSyncDraft()
+    let save!: ReturnType<typeof result.current.doSyncWorkflowDraft>
+    act(() => {
+      save = result.current.doSyncWorkflowDraft(false)
+    })
+    await vi.waitFor(() => expect(mockCollaborationRequestWorkflowSync).toHaveBeenCalledOnce())
+
+    workflowStoreState.lastAppliedReplacementId = 'import-B'
+    workflowStoreState.syncWorkflowDraftHash = 'imported-hash'
+    await act(async () => {
+      resolveLeaderSync({ hash: 'old-save-hash', updatedAt: 1 })
+      await expect(save).resolves.toBeNull()
+    })
+
+    expect(workflowStoreState.syncWorkflowDraftHash).toBe('imported-hash')
+    expect(mockSetDraftUpdatedAt).not.toHaveBeenCalled()
   })
 
   it('should report a failed leader save to the follower caller', async () => {
@@ -772,6 +1170,23 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
     expect(mockPostWithKeepalive).not.toHaveBeenCalled()
   })
 
+  it('does not request a leader save while a committed import is pending locally', async () => {
+    isCollaborationEnabled = true
+    mockCollaborationIsConnected.mockReturnValue(true)
+    mockCollaborationGetIsLeader.mockReturnValue(false)
+    mockCollaborationCanPersistLocalGraph.mockReturnValue(false)
+    const callbacks = { onSettled: vi.fn() }
+    const { result } = renderUseNodesSyncDraft()
+
+    await act(async () => {
+      await expect(result.current.doSyncWorkflowDraft(false, callbacks)).resolves.toBeNull()
+    })
+
+    expect(mockCollaborationRequestWorkflowSync).not.toHaveBeenCalled()
+    expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
+    expect(callbacks.onSettled).toHaveBeenCalledOnce()
+  })
+
   it('should allow the trusted sole leader to flush with keepalive while hidden', () => {
     isCollaborationEnabled = true
     mockCollaborationIsConnected.mockReturnValue(true)
@@ -791,6 +1206,7 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
     // Without a connection there is no leader election, so the collaborative flush guard can never
     // be satisfied. Skipping the save here would silently drop the edits made before leaving.
     isCollaborationEnabled = true
+    mockOwnsReactFlowStore.mockReturnValue(true)
     mockCollaborationIsConnected.mockReturnValue(false)
     mockCollaborationGetIsLeader.mockReturnValue(false)
     mockCollaborationCanFlushGraphOnPageClose.mockReturnValue(false)
@@ -805,8 +1221,25 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
     expect(mockPostWithKeepalive).toHaveBeenCalledTimes(1)
   })
 
+  it('does not flush a pending import through local fallback on page close', () => {
+    isCollaborationEnabled = true
+    mockCollaborationIsConnected.mockReturnValue(false)
+    mockCollaborationCanFlushGraphOnPageClose.mockReturnValue(false)
+    mockCollaborationCanUseLocalDraftFallback.mockReturnValue(true)
+    mockCollaborationCanPersistLocalGraph.mockReturnValue(false)
+
+    const { result } = renderUseNodesSyncDraft()
+
+    act(() => {
+      result.current.syncWorkflowDraftWhenPageClose()
+    })
+
+    expect(mockPostWithKeepalive).not.toHaveBeenCalled()
+  })
+
   it('should not flush an untrusted graph after an established collaboration disconnects', () => {
     isCollaborationEnabled = true
+    mockOwnsReactFlowStore.mockReturnValue(true)
     mockCollaborationIsConnected.mockReturnValue(false)
     mockCollaborationCanFlushGraphOnPageClose.mockReturnValue(false)
     mockCollaborationCanUseLocalDraftFallback.mockReturnValue(false)

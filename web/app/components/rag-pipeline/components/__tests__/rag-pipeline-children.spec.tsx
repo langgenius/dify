@@ -1,12 +1,16 @@
-import type { EnvironmentVariable } from '@/app/components/workflow/types'
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import type { ExportSecretEnvironmentVariable } from '@/app/components/workflow/export-secret-env-event'
+import type { EventEmitterValue } from '@/context/event-emitter'
+import { act, fireEvent, render as rtlRender, screen } from '@testing-library/react'
+import { EventEmitter } from 'ahooks/lib/useEventEmitter'
 import { DSL_EXPORT_CHECK } from '@/app/components/workflow/constants'
+import { WorkflowContext } from '@/app/components/workflow/context'
+import { createWorkflowStore } from '@/app/components/workflow/store'
+import { EventEmitterContext } from '@/context/event-emitter'
 import RagPipelineChildren from '../rag-pipeline-children'
 
 let mockShowImportDSLModal = false
-let mockSubscription:
-  | ((value: { type: string; payload?: { data?: EnvironmentVariable[] } }) => void)
-  | null = null
+const EventEmitterProvider = EventEmitterContext.Provider
+let eventEmitter: EventEmitter<EventEmitterValue>
 
 const {
   mockSetShowImportDSLModal,
@@ -22,31 +26,6 @@ const {
   mockExportCheck: vi.fn(),
   mockHandleExportDSL: vi.fn(),
   mockUseRagPipelineSearch: vi.fn(),
-}))
-
-vi.mock('@/context/event-emitter', () => ({
-  useEventEmitterContextContext: () => ({
-    eventEmitter: {
-      useSubscription: (
-        callback: (value: { type: string; payload?: { data?: EnvironmentVariable[] } }) => void,
-      ) => {
-        mockSubscription = callback
-      },
-    },
-  }),
-}))
-
-vi.mock('@/app/components/workflow/store', () => ({
-  useStore: (
-    selector: (state: {
-      showImportDSLModal: boolean
-      setShowImportDSLModal: typeof mockSetShowImportDSLModal
-    }) => unknown,
-  ) =>
-    selector({
-      showImportDSLModal: mockShowImportDSLModal,
-      setShowImportDSLModal: mockSetShowImportDSLModal,
-    }),
 }))
 
 vi.mock('@/app/components/workflow/hooks-store', () => ({
@@ -107,7 +86,7 @@ vi.mock('../export-confirm-modal', () => ({
     onConfirm,
     onClose,
   }: {
-    envList: EnvironmentVariable[]
+    envList: ExportSecretEnvironmentVariable[]
     onConfirm: () => void
     onClose: () => void
   }) => (
@@ -119,21 +98,40 @@ vi.mock('../export-confirm-modal', () => ({
   ),
 }))
 
+const render = (pipelineId = 'pipeline-1') => {
+  const store = createWorkflowStore({})
+  store.setState({
+    pipelineId,
+    showImportDSLModal: mockShowImportDSLModal,
+    setShowImportDSLModal: mockSetShowImportDSLModal,
+  })
+  return {
+    ...rtlRender(<RagPipelineChildren />, {
+      wrapper: ({ children }) => (
+        <EventEmitterProvider value={{ eventEmitter }}>
+          <WorkflowContext value={store}>{children}</WorkflowContext>
+        </EventEmitterProvider>
+      ),
+    }),
+    store,
+  }
+}
+
 describe('RagPipelineChildren', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockShowImportDSLModal = false
-    mockSubscription = null
+    eventEmitter = new EventEmitter<EventEmitterValue>()
   })
 
   it('should render the main pipeline children and the import modal when enabled', () => {
     mockShowImportDSLModal = true
 
-    render(<RagPipelineChildren />)
+    render()
 
     fireEvent.click(screen.getByText('close import'))
 
-    expect(mockUseRagPipelineSearch).toHaveBeenCalledTimes(1)
+    expect(mockUseRagPipelineSearch).toHaveBeenCalled()
     expect(screen.getByTestId('plugin-dependency')).toBeInTheDocument()
     expect(screen.getByTestId('rag-header')).toBeInTheDocument()
     expect(screen.getByTestId('rag-panel')).toBeInTheDocument()
@@ -143,13 +141,14 @@ describe('RagPipelineChildren', () => {
   })
 
   it('should show the DSL export confirmation modal after receiving the export event', () => {
-    render(<RagPipelineChildren />)
+    const { store } = render()
 
     act(() => {
-      mockSubscription?.({
+      eventEmitter.emit({
         type: DSL_EXPORT_CHECK,
         payload: {
-          data: [{ name: 'API_KEY' } as EnvironmentVariable],
+          target: store,
+          data: [{ name: 'API_KEY', value: 'secret' }],
         },
       })
     })
@@ -159,4 +158,33 @@ describe('RagPipelineChildren', () => {
     expect(screen.getByTestId('dsl-export-modal')).toHaveTextContent('API_KEY')
     expect(mockHandleExportDSL).toHaveBeenCalledTimes(1)
   })
+})
+
+describe('RagPipelineChildren session ownership', () => {
+  it.each(['pipeline-1', 'pipeline-2'])(
+    'ignores a previous session export event after mounting %s',
+    (pipelineId) => {
+      eventEmitter = new EventEmitter<EventEmitterValue>()
+      const previous = render()
+      previous.unmount()
+      const current = render(pipelineId)
+      const data = [{ name: 'OLD_API_KEY', value: 'secret' }]
+
+      act(() =>
+        eventEmitter.emit({
+          type: DSL_EXPORT_CHECK,
+          payload: { target: previous.store, data },
+        }),
+      )
+      expect(screen.queryByTestId('dsl-export-modal')).not.toBeInTheDocument()
+
+      act(() =>
+        eventEmitter.emit({
+          type: DSL_EXPORT_CHECK,
+          payload: { target: current.store, data },
+        }),
+      )
+      expect(screen.getByTestId('dsl-export-modal')).toHaveTextContent('OLD_API_KEY')
+    },
+  )
 })

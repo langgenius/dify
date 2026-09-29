@@ -710,7 +710,7 @@ class TestAppDslService:
     def test_create_or_update_app_missing_mode_raises(self, db_session_with_containers: Session):
         service = AppDslService(db_session_with_containers)
         with pytest.raises(ValueError, match="loss app mode"):
-            service._create_or_update_app(app=None, data={"app": {}}, account=_account_mock())
+            service._create_or_update_app(import_id="test-import", app=None, data={"app": {}}, account=_account_mock())
 
     def test_create_or_update_app_existing_app_updates_fields(
         self, db_session_with_containers: Session, monkeypatch: pytest.MonkeyPatch
@@ -744,6 +744,7 @@ class TestAppDslService:
         )
         service = AppDslService(db_session_with_containers)
         updated = service._create_or_update_app(
+            import_id="test-import",
             app=app,
             data={
                 "app": {
@@ -772,6 +773,7 @@ class TestAppDslService:
         service = AppDslService(db_session_with_containers)
         with pytest.raises(ValueError, match="Current tenant is not set"):
             service._create_or_update_app(
+                import_id="test-import",
                 app=None,
                 data={"app": {"mode": AppMode.WORKFLOW, "name": "n"}},
                 account=account,
@@ -805,7 +807,9 @@ class TestAppDslService:
             },
         }
 
-        app = service._create_or_update_app(app=None, data=data, account=account, dependencies=deps)
+        app = service._create_or_update_app(
+            import_id="test-import", app=None, data=data, account=account, dependencies=deps
+        )
 
         assert app.tenant_id == account.current_tenant_id
         mock_external_service_dependencies["app_was_created"].send.assert_called_once()
@@ -818,6 +822,7 @@ class TestAppDslService:
         service = AppDslService(db_session_with_containers)
         with pytest.raises(ValueError, match="Missing workflow data"):
             service._create_or_update_app(
+                import_id="test-import",
                 app=_app_stub(mode=AppMode.WORKFLOW),
                 data={"app": {"mode": AppMode.WORKFLOW}},
                 account=_account_mock(),
@@ -827,6 +832,7 @@ class TestAppDslService:
         service = AppDslService(db_session_with_containers)
         with pytest.raises(ValueError, match="Missing model_config"):
             service._create_or_update_app(
+                import_id="test-import",
                 app=_app_stub(mode=AppMode.CHAT),
                 data={"app": {"mode": AppMode.CHAT}},
                 account=_account_mock(),
@@ -842,6 +848,7 @@ class TestAppDslService:
         service = AppDslService(db_session_with_containers)
         with patch("services.app_dsl_service.app_model_config_was_updated") as signal:
             service._create_or_update_app(
+                import_id="test-import",
                 app=app,
                 data={
                     "app": {"mode": AppMode.CHAT},
@@ -858,6 +865,7 @@ class TestAppDslService:
         service = AppDslService(db_session_with_containers)
         with pytest.raises(ValueError, match="Invalid app mode"):
             service._create_or_update_app(
+                import_id="test-import",
                 app=_app_stub(mode=AppMode.RAG_PIPELINE),
                 data={"app": {"mode": AppMode.RAG_PIPELINE}},
                 account=_account_mock(),

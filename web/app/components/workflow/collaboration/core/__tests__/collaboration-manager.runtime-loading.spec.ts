@@ -92,9 +92,19 @@ describe('CollaborationManager CRDT runtime loading', () => {
       .spyOn(webSocketClient, 'disconnect')
       .mockImplementation(() => undefined)
 
+    const firstStore = {
+      sourceStore: { getState: vi.fn() },
+      getState: () => ({
+        getNodes: () => [],
+        setNodes: vi.fn(),
+        getEdges: () => [],
+        setEdges: vi.fn(),
+      }),
+    }
+    const secondStore = { ...firstStore, sourceStore: { getState: vi.fn() } }
     const [firstConnectionId, secondConnectionId] = await Promise.all([
-      manager.connect('app-concurrent'),
-      manager.connect('app-concurrent'),
+      manager.connect('app-concurrent', firstStore),
+      manager.connect('app-concurrent', secondStore),
     ])
 
     expect(firstConnectionId).not.toBe(secondConnectionId)
@@ -104,6 +114,8 @@ describe('CollaborationManager CRDT runtime loading', () => {
 
     manager.disconnect(firstConnectionId)
     expect(disconnectSpy).not.toHaveBeenCalled()
+    expect(manager.ownsReactFlowStore(secondStore.sourceStore)).toBe(true)
+    expect(manager.ownsReactFlowStore(firstStore.sourceStore)).toBe(false)
 
     manager.disconnect(secondConnectionId)
     expect(disconnectSpy).toHaveBeenCalledWith('app-concurrent')

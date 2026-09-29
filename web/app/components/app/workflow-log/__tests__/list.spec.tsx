@@ -13,7 +13,6 @@ import type { WorkflowAppLogDetail, WorkflowLogsResponse, WorkflowRunDetail } fr
 import type { AppModeEnum } from '@/types/app'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { APP_PAGE_LIMIT } from '@/config'
 import { WorkflowRunTriggeredFrom } from '@/models/log'
 import { createAppDetailFixture, createAppSiteFixture } from '@/test/fixtures/app'
@@ -150,7 +149,6 @@ describe('WorkflowAppLogList', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    useAppStore.setState({ appDetail: createMockApp() })
   })
 
   // --------------------------------------------------------------------------
@@ -447,7 +445,6 @@ describe('WorkflowAppLogList', () => {
   describe('Drawer', () => {
     it('should open drawer when clicking on a log row', async () => {
       const user = userEvent.setup()
-      useAppStore.setState({ appDetail: createMockApp({ id: 'app-123' }) })
       const logs = createMockLogsResponse([
         createMockWorkflowLog({
           id: 'log-1',
@@ -473,7 +470,6 @@ describe('WorkflowAppLogList', () => {
         const user = userEvent.setup()
         const appDetail = createMockApp()
         const onRefresh = vi.fn()
-        useAppStore.setState({ appDetail })
         const logs = createMockLogsResponse([
           createMockWorkflowLog({ id: 'log-1', created_at: 100 }),
           createMockWorkflowLog({ id: 'log-2', created_at: 200 }),
@@ -508,7 +504,6 @@ describe('WorkflowAppLogList', () => {
     it('should close drawer and call onRefresh when closing', async () => {
       const user = userEvent.setup()
       const onRefresh = vi.fn()
-      useAppStore.setState({ appDetail: createMockApp() })
       const logs = createMockLogsResponse([createMockWorkflowLog()])
 
       render(<WorkflowAppLogList logs={logs} appDetail={createMockApp()} onRefresh={onRefresh} />)
@@ -588,7 +583,6 @@ describe('WorkflowAppLogList', () => {
   describe('Replay Functionality', () => {
     it('should allow replay when triggered from app-run', async () => {
       const user = userEvent.setup()
-      useAppStore.setState({ appDetail: createMockApp({ id: 'app-replay' }) })
       const logs = createMockLogsResponse([
         createMockWorkflowLog({
           workflow_run: createMockWorkflowRun({
@@ -612,13 +606,12 @@ describe('WorkflowAppLogList', () => {
       await user.click(replayButton)
 
       expect(mockRouterPush).toHaveBeenCalledWith(
-        '/app/app-replay/workflow?replayRunId=run-to-replay',
+        '/app/test-app-id/workflow?replayRunId=run-to-replay',
       )
     })
 
     it('should allow replay when triggered from debugging', async () => {
       const user = userEvent.setup()
-      useAppStore.setState({ appDetail: createMockApp({ id: 'app-debug' }) })
       const logs = createMockLogsResponse([
         createMockWorkflowLog({
           workflow_run: createMockWorkflowRun({
@@ -644,7 +637,6 @@ describe('WorkflowAppLogList', () => {
 
     it('should not show replay for webhook triggers', async () => {
       const user = userEvent.setup()
-      useAppStore.setState({ appDetail: createMockApp({ id: 'app-webhook' }) })
       const logs = createMockLogsResponse([
         createMockWorkflowLog({
           workflow_run: createMockWorkflowRun({

@@ -356,12 +356,15 @@ class WorkflowCollaborationService:
             self._repository.delete_session(workflow_id, current_leader)
             self._repository.delete_leader(workflow_id)
 
-        was_set = self._repository.set_leader_if_absent(workflow_id, sid)
+        # Existing peers own the room graph; a joining tab's HTTP draft may be older than
+        # their unsaved CRDT edits or a recently committed DSL import.
+        candidate_sid = self._select_graph_leader(workflow_id, exclude_sid=sid) or sid
+        was_set = self._repository.set_leader_if_absent(workflow_id, candidate_sid)
 
         if was_set:
-            if current_leader:
-                self.broadcast_leader_change(workflow_id, sid)
-            return sid
+            if current_leader or candidate_sid != sid:
+                self.broadcast_leader_change(workflow_id, candidate_sid)
+            return candidate_sid
 
         current_leader = self._repository.get_current_leader(workflow_id)
         if current_leader:
@@ -463,6 +466,7 @@ class WorkflowCollaborationService:
         preferred_sid: str | None = None,
         *,
         require_graph_active: bool = False,
+        exclude_sid: str | None = None,
     ) -> str | None:
         """Pick a leader, preferring sessions whose canvas tab is visible.
 
@@ -474,7 +478,7 @@ class WorkflowCollaborationService:
         active_sessions = [
             session
             for session in self._repository.list_sessions(workflow_id)
-            if self.is_session_active(workflow_id, session["sid"])
+            if session["sid"] != exclude_sid and self.is_session_active(workflow_id, session["sid"])
         ]
         visible_sids = [session["sid"] for session in active_sessions if session.get("graph_active", True)]
 

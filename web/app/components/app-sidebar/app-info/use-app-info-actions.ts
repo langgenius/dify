@@ -5,7 +5,7 @@ import type {
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useExportAppDsl, useExportWorkflowAppDsl } from '@/app/components/app/use-export-app-dsl'
@@ -81,6 +81,13 @@ export function useAppInfoActions() {
 
   const [activeModal, setActiveModal] = useState<AppInfoModalType>(null)
   const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariableItemResponse[]>([])
+  const detailRefreshGenerationRef = useRef(0)
+  useEffect(
+    () => () => {
+      detailRefreshGenerationRef.current++
+    },
+    [],
+  )
 
   const openModal = useCallback(
     (modal: Exclude<AppInfoModalType, null>) => {
@@ -109,6 +116,37 @@ export function useAppInfoActions() {
       .catch(() => {})
   }, [appDetail?.id])
 
+  const applyRefreshedAppDetail = useCallback(
+    (appId: string, res: AppDetailWithSite) => {
+      if (res.id !== appId || useAppStore.getState().appDetail?.id !== appId) return
+
+      queryClient.setQueryData(
+        consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: appId } } }),
+        res,
+      )
+      void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
+      void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.starred.get.key() })
+      void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.recent.get.key() })
+      setAppDetail(res)
+    },
+    [queryClient, setAppDetail],
+  )
+
+  const onImport = useCallback(() => {
+    if (!appDetail?.id) return
+    const appId = appDetail.id
+    const requestGeneration = ++detailRefreshGenerationRef.current
+    void consoleClient.apps.byAppId
+      .get({ params: { app_id: appId } })
+      .then((res) => {
+        if (requestGeneration === detailRefreshGenerationRef.current)
+          applyRefreshedAppDetail(appId, res)
+      })
+      .catch((error: unknown) => {
+        console.error('Failed to refresh app detail after DSL import:', error)
+      })
+  }, [appDetail?.id, applyRefreshedAppDetail])
+
   useEffect(() => {
     if (!appDetail?.id) return
 
@@ -121,18 +159,10 @@ export function useAppInfoActions() {
 
         unsubscribe = collaborationManager.onAppMetaUpdate(async () => {
           try {
+            const requestGeneration = ++detailRefreshGenerationRef.current
             const res = await consoleClient.apps.byAppId.get({ params: { app_id: appDetail.id } })
-            if (disposed) return
-            queryClient.setQueryData(
-              consoleQuery.apps.byAppId.get.queryKey({
-                input: { params: { app_id: appDetail.id } },
-              }),
-              (cachedApp) => updateCachedAppMetadata(cachedApp, res),
-            )
-            void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
-            void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.starred.get.key() })
-            void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.recent.get.key() })
-            setAppDetail({ ...res })
+            if (disposed || requestGeneration !== detailRefreshGenerationRef.current) return
+            applyRefreshedAppDetail(appDetail.id, res)
           } catch (error) {
             console.error('failed to refresh app detail from collaboration update:', error)
           }
@@ -144,7 +174,7 @@ export function useAppInfoActions() {
       disposed = true
       unsubscribe?.()
     }
-  }, [appDetail?.id, queryClient, setAppDetail])
+  }, [appDetail?.id, applyRefreshedAppDetail])
 
   const onEdit: CreateAppModalProps['onConfirm'] = useCallback(
     async ({
@@ -185,6 +215,7 @@ export function useAppInfoActions() {
         void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.starred.get.key() })
         void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.recent.get.key() })
         setAppDetail(app)
+        detailRefreshGenerationRef.current++
         emitAppMetaUpdate()
       } catch {
         toast(
@@ -291,6 +322,7 @@ export function useAppInfoActions() {
     setSecretEnvList,
     onEdit,
     onCopy,
+    onImport,
     onExport,
     isExporting,
     exportCheck,

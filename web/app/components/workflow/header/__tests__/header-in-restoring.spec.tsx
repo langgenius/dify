@@ -14,6 +14,7 @@ import { WorkflowVersion } from '../../types'
 import HeaderInRestoring from '../header-in-restoring'
 
 const mockRestoreWorkflow = vi.fn()
+const mockRestoreAppWorkflow = vi.fn()
 const mockInvalidAllLastRun = vi.fn()
 const mockResetWorkflowVersionHistory = vi.fn()
 const mockHandleLoadBackupDraft = vi.fn()
@@ -44,6 +45,9 @@ vi.mock('@/service/use-workflow', () => ({
   useResetWorkflowVersionHistory: () => mockResetWorkflowVersionHistory,
   useRestoreWorkflow: () => ({
     mutateAsync: mockRestoreWorkflow,
+  }),
+  useRestoreAppWorkflow: () => ({
+    mutateAsync: mockRestoreAppWorkflow,
   }),
 }))
 
@@ -160,6 +164,7 @@ describe('HeaderInRestoring', () => {
 
     expect(screen.getByText('billing.upgrade.workflowRestore.title')).toBeInTheDocument()
     expect(mockRestoreWorkflow).not.toHaveBeenCalled()
+    expect(mockRestoreAppWorkflow).not.toHaveBeenCalled()
     expect(mockHandleRefreshWorkflowDraft).not.toHaveBeenCalled()
   })
 })

@@ -3881,7 +3881,7 @@ Get draft workflow for an application
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Draft workflow retrieved successfully | **application/json**: [WorkflowResponse](#workflowresponse)<br> |
+| 200 | Draft workflow retrieved successfully | **application/json**: [DraftWorkflowResponse](#draftworkflowresponse)<br> |
 | 404 | Draft workflow not found |  |
 
 ### [POST] /apps/{app_id}/workflows/draft
@@ -4791,7 +4791,7 @@ Restore a published workflow version into the draft workflow
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Workflow restored successfully | **application/json**: [WorkflowRestoreResponse](#workflowrestoreresponse)<br> |
+| 200 | Workflow restored successfully | **application/json**: [AppWorkflowRestoreResponse](#appworkflowrestoreresponse)<br> |
 | 400 | Source workflow must be published |  |
 | 404 | Workflow not found |  |
 
@@ -14682,11 +14682,11 @@ Supported icon storage formats for Agent roster entries.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | created_at | string |  | Yes |
-| files | [  ] |  | No |
-| thought | string |  | No |
+| files | [ string ] |  | Yes |
+| thought | string |  | Yes |
 | tokens | integer |  | Yes |
 | tool_calls | [ [AgentToolCallResponse](#agenttoolcallresponse) ] |  | Yes |
-| tool_raw | object |  | Yes |
+| tool_raw | [AgentToolRawResponse](#agenttoolrawresponse) |  | Yes |
 
 #### AgentKind
 
@@ -14857,6 +14857,31 @@ section may be empty, which is how callers express "no knowledge layer".
 | from_source | string, <br>**Available values:** "admin", "user" | *Enum:* `"admin"`, `"user"` | Yes |
 | rating | string, <br>**Available values:** "dislike", "like" | *Enum:* `"dislike"`, `"like"` | Yes |
 
+#### AgentLogFileResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| belongs_to | [MessageFileBelongsTo](#messagefilebelongsto) |  | Yes |
+| dify_model_identity | string |  | Yes |
+| extension | string |  | Yes |
+| filename | string |  | Yes |
+| id | string |  | Yes |
+| mime_type | string |  | Yes |
+| reference | string |  | Yes |
+| related_id | string |  | Yes |
+| remote_url | string |  | Yes |
+| size | integer |  | Yes |
+| transfer_method | [FileTransferMethod](#filetransfermethod) |  | Yes |
+| type | [FileType](#filetype) |  | Yes |
+| upload_file_id | string |  | Yes |
+| url | string |  | Yes |
+
+#### AgentLogJsonValue
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AgentLogJsonValue | string<br>integer<br>number<br>boolean<br>[ [AgentLogJsonValue](#agentlogjsonvalue) ]<br>object |  |  |
+
 #### AgentLogListResponse
 
 | Name | Type | Description | Required |
@@ -14906,7 +14931,7 @@ section may be empty, which is how callers express "no knowledge layer".
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | agent_mode | string |  | Yes |
-| elapsed_time | number |  | No |
+| elapsed_time | number |  | Yes |
 | executor | string |  | Yes |
 | iterations | integer |  | Yes |
 | start_time | string |  | Yes |
@@ -14917,7 +14942,7 @@ section may be empty, which is how callers express "no knowledge layer".
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| files | [  ] |  | No |
+| files | [ [AgentLogFileResponse](#agentlogfileresponse) ] |  | Yes |
 | iterations | [ [AgentIterationLogResponse](#agentiterationlogresponse) ] |  | Yes |
 | meta | [AgentLogMetaResponse](#agentlogmetaresponse) |  | Yes |
 
@@ -15587,15 +15612,22 @@ Legacy Chat App model config used only for follow-up question generation.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| error | string |  | No |
-| status | string |  | Yes |
-| time_cost | number<br>integer |  | Yes |
-| tool_icon |  |  | No |
-| tool_input | object |  | Yes |
-| tool_label | string |  | Yes |
+| error | string |  | Yes |
+| status | string, <br>**Available values:** "error", "success" | *Enum:* `"error"`, `"success"` | Yes |
+| time_cost | number |  | Yes |
+| tool_icon | string<br>[EmojiIconDict](#emojiicondict) |  | Yes |
+| tool_input | [AgentLogJsonValue](#agentlogjsonvalue) |  | Yes |
+| tool_label | string<br>object |  | Yes |
 | tool_name | string |  | Yes |
-| tool_output | object |  | Yes |
+| tool_output | [AgentLogJsonValue](#agentlogjsonvalue) |  | Yes |
 | tool_parameters | object |  | Yes |
+
+#### AgentToolRawResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| inputs | string |  | Yes |
+| outputs | string |  | Yes |
 
 #### AgentUserSatisfactionRateStatisticResponse
 
@@ -17112,6 +17144,15 @@ Write transport; app-mode validators own defaults and feature-specific rules.
 | keyword_setting | [AppKeywordSettingResponse](#appkeywordsettingresponse) |  | Yes |
 | vector_setting | [AppVectorSettingResponse](#appvectorsettingresponse) |  | Yes |
 | weight_type | string, <br>**Available values:** "customized", "keyword_first", "semantic_first" | *Enum:* `"customized"`, `"keyword_first"`, `"semantic_first"` | No |
+
+#### AppWorkflowRestoreResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| hash | string |  | Yes |
+| replacement_id | string (uuid) |  | Yes |
+| result | string |  | Yes |
+| updated_at | integer |  | Yes |
 
 #### AudioBinaryResponse
 
@@ -19053,6 +19094,28 @@ Request payload for bulk downloading documents as a zip archive.
 | inputs | object |  | Yes |
 | query | string |  | No |
 
+#### DraftWorkflowResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| conversation_variables | [ [WorkflowConversationVariableResponse](#workflowconversationvariableresponse) ] |  | Yes |
+| created_at | integer |  | Yes |
+| created_by | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
+| environment_variables | [ [WorkflowEnvironmentVariableResponse](#workflowenvironmentvariableresponse) ] |  | Yes |
+| features | object |  | Yes |
+| graph | object |  | Yes |
+| hash | string |  | Yes |
+| id | string |  | Yes |
+| last_replacement_id | string |  | Yes |
+| marked_comment | string |  | Yes |
+| marked_name | string |  | Yes |
+| rag_pipeline_variables | [ [PipelineVariableResponse](#pipelinevariableresponse) ] |  | Yes |
+| tool_published | boolean |  | Yes |
+| updated_at | integer |  | Yes |
+| updated_by | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
+| version | string |  | Yes |
+| version_number | integer |  | No |
+
 #### DraftWorkflowRunPayload
 
 | Name | Type | Description | Required |
@@ -19213,6 +19276,13 @@ Portable DSL reference that could not be restored in the target workspace.
 | code | string |  | Yes |
 | email | string |  | Yes |
 | token | string |  | Yes |
+
+#### EmojiIconDict
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| background | string |  | Yes |
+| content | string |  | Yes |
 
 #### EmptyObjectResponse
 
@@ -20653,6 +20723,14 @@ Enum class for large language model mode.
 | type | string |  | Yes |
 | upload_file_id | string |  | No |
 | url | string |  | No |
+
+#### MessageFileBelongsTo
+
+MessageFile belongs_to
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| MessageFileBelongsTo | string | MessageFile belongs_to |  |
 
 #### MessageInfiniteScrollPaginationResponse
 

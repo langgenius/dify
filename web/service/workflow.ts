@@ -8,12 +8,14 @@ import type { CommonResponse } from '@/models/common'
 import type { FlowType } from '@/types/common'
 import type {
   ConversationVariableResponse,
+  FetchAppWorkflowDraftResponse,
   FetchWorkflowDraftResponse,
   HumanInputFormData,
   NodesDefaultConfigsResponse,
   VarInInspect,
 } from '@/types/workflow'
 import { consoleClient } from '@/service/console'
+import { parseAppWorkflowDraftResponse } from './app-workflow-draft-response'
 import { get, post } from './base'
 import { getFlowPrefix } from './utils'
 
@@ -31,6 +33,16 @@ type EnvironmentVariablePatchPayload = {
 
 export const fetchWorkflowDraft = (url: string) => {
   return get(url, {}, { silent: true }) as Promise<FetchWorkflowDraftResponse>
+}
+
+export const fetchAppWorkflowDraft = async (
+  appId: string,
+): Promise<FetchAppWorkflowDraftResponse> => {
+  const draft = await consoleClient.apps.byAppId.workflows.draft.get(
+    { params: { app_id: appId } },
+    { context: { silent: true } },
+  )
+  return parseAppWorkflowDraftResponse(draft)
 }
 
 export const syncWorkflowDraft = ({

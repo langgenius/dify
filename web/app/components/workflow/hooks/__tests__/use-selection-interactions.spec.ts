@@ -142,6 +142,9 @@ describe('useSelectionInteractions', () => {
   it('handleSelectionDrag should sync node positions', async () => {
     const setNodesSpy = vi.spyOn(collaborationManager, 'setNodes')
     const { result, store } = renderSelectionInteractions()
+    vi.spyOn(collaborationManager, 'ownsReactFlowStore').mockImplementation(
+      (sourceStore) => sourceStore.getState === result.current.reactFlowStore.getState,
+    )
     const draggedNodes = [{ id: 'n1', position: { x: 50, y: 60 }, data: {} }] as never
 
     act(() => {

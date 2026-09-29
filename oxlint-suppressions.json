@@ -598,38 +598,14 @@
       "count": 2
     }
   },
-  "web/app/components/base/agent-log-modal/detail.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/components/base/agent-log-modal/index.stories.tsx": {
     "no-console": {
-      "count": 1
-    },
-    "typescript/no-explicit-any": {
       "count": 1
     }
   },
   "web/app/components/base/agent-log-modal/index.tsx": {
     "eslint-react/set-state-in-effect": {
       "count": 1
-    }
-  },
-  "web/app/components/base/agent-log-modal/result.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 2
-    }
-  },
-  "web/app/components/base/agent-log-modal/tool-call.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    },
-    "typescript/no-explicit-any": {
-      "count": 2
     }
   },
   "web/app/components/base/amplitude/index.ts": {
@@ -1151,16 +1127,8 @@
       "count": 4
     }
   },
-  "web/app/components/base/message-log-modal/__tests__/index.spec.tsx": {
-    "dify/require-disable-directive-description": {
-      "count": 1
-    }
-  },
   "web/app/components/base/message-log-modal/index.stories.tsx": {
     "no-console": {
-      "count": 1
-    },
-    "typescript/no-explicit-any": {
       "count": 1
     }
   },
@@ -3929,7 +3897,7 @@
       "count": 3
     },
     "typescript/no-explicit-any": {
-      "count": 6
+      "count": 5
     }
   },
   "web/app/components/workflow/utils/__tests__/node-navigation.spec.ts": {
@@ -4213,7 +4181,7 @@
   },
   "web/models/log.ts": {
     "typescript/no-explicit-any": {
-      "count": 6
+      "count": 1
     }
   },
   "web/models/pipeline.ts": {

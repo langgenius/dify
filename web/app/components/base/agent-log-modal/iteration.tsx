@@ -1,6 +1,6 @@
 'use client'
+import type { AgentIterationLogResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
-import type { AgentIteration } from '@/models/log'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { useTranslation } from 'react-i18next'
@@ -9,7 +9,7 @@ import ToolCall from './tool-call'
 type Props = Readonly<{
   isFinal: boolean
   index: number
-  iterationInfo: AgentIteration
+  iterationInfo: AgentIterationLogResponse
 }>
 
 const Iteration: FC<Props> = ({ iterationInfo, isFinal, index }) => {
@@ -34,10 +34,6 @@ const Iteration: FC<Props> = ({ iterationInfo, isFinal, index }) => {
         tokens={iterationInfo.tokens}
         observation={iterationInfo.tool_raw.outputs}
         finalAnswer={iterationInfo.thought}
-        toolCall={{
-          status: 'success',
-          tool_icon: null,
-        }}
       />
       {iterationInfo.tool_calls.map((toolCall, index) => (
         <ToolCall isLLM={false} key={index} toolCall={toolCall} />

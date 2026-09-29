@@ -1,5 +1,7 @@
 import { executeCommand } from '../command-bus'
-import { createCommand } from '../create'
+import { createCreateCommand } from '../create'
+
+let createCommand = createCreateCommand(undefined)
 // We spy on the store at module scope so the `create.open` handler that
 // register() pushes into the command bus can be observed by the tests.
 const mockOpenGenerator = vi.fn()
@@ -9,21 +11,10 @@ vi.mock('@/app/components/workflow/workflow-generator/store', () => ({
   },
 }))
 
-// Controllable app-store state — the handler reads `appDetail` to decide
-// whether to thread the current Studio app through to the generator. Mutated
-// per-test; getState() reads it lazily so updates land after the mock factory.
-const mockAppStore: { appDetail: { id: string; mode: string } | undefined } = {
-  appDetail: undefined,
-}
-vi.mock('@/app/components/app/store', () => ({
-  useStore: {
-    getState: () => ({ appDetail: mockAppStore.appDetail }),
-  },
-}))
-
 describe('/create slash command', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    createCommand = createCreateCommand(undefined)
   })
 
   describe('handler metadata', () => {
@@ -118,8 +109,8 @@ describe('/create slash command', () => {
 
   describe('register() — `create.open` command-bus handler', () => {
     beforeEach(() => {
-      mockAppStore.appDetail = undefined
-      createCommand.register?.({} as never)
+      createCommand = createCreateCommand(undefined)
+      createCommand.register?.({})
     })
 
     afterEach(() => {
@@ -151,7 +142,8 @@ describe('/create slash command', () => {
     // Auto-mode always creates a new app, even with a matching Studio open,
     // because the planner may resolve a different type than the open canvas.
     it('should open new-app auto-mode even when a matching Studio app is open', async () => {
-      mockAppStore.appDetail = { id: 'abc-123', mode: 'advanced-chat' }
+      createCommand = createCreateCommand({ id: 'abc-123', mode: 'advanced-chat' })
+      createCommand.register?.({})
 
       await executeCommand('create.open', { mode: 'advanced-chat', auto: true })
 
@@ -165,7 +157,8 @@ describe('/create slash command', () => {
     // In-Studio create-and-apply: a matching graph-based app threads id + mode
     // through so the modal can offer "Apply to current draft".
     it('should thread the current app context when a matching Studio app is open', async () => {
-      mockAppStore.appDetail = { id: 'abc-123', mode: 'workflow' }
+      createCommand = createCreateCommand({ id: 'abc-123', mode: 'workflow' })
+      createCommand.register?.({})
 
       await executeCommand('create.open', { mode: 'workflow' })
 
@@ -180,7 +173,8 @@ describe('/create slash command', () => {
     // Mode mismatch must NOT capture currentAppId — applying a chatflow graph
     // onto a workflow draft is the dead-end we explicitly avoid.
     it('should fall back to new-app only when the picked mode differs from the open app', async () => {
-      mockAppStore.appDetail = { id: 'abc-123', mode: 'workflow' }
+      createCommand = createCreateCommand({ id: 'abc-123', mode: 'workflow' })
+      createCommand.register?.({})
 
       await executeCommand('create.open', { mode: 'advanced-chat' })
 
@@ -194,7 +188,8 @@ describe('/create slash command', () => {
     // Non-graph Studio apps (Chat / Agent / Completion) have no canvas to apply
     // onto, so the handler ignores them and opens new-app only.
     it('should ignore non-graph app modes and open new-app only', async () => {
-      mockAppStore.appDetail = { id: 'abc-123', mode: 'chat' }
+      createCommand = createCreateCommand({ id: 'abc-123', mode: 'chat' })
+      createCommand.register?.({})
 
       await executeCommand('create.open', { mode: 'workflow' })
 
@@ -221,13 +216,8 @@ describe('/create slash command', () => {
     // After unregister, the bus must drop the handler so a later execute call
     // becomes a silent no-op (prevents stale references between mounts).
     it('should remove the command-bus handler so it stops firing', async () => {
-      createCommand.register?.({} as never)
+      createCommand.register?.({})
       createCommand.unregister?.()
-
-      Object.defineProperty(window, 'location', {
-        writable: true,
-        value: { pathname: '/apps' },
-      })
 
       await executeCommand('create.open', { mode: 'workflow' })
       expect(mockOpenGenerator).not.toHaveBeenCalled()

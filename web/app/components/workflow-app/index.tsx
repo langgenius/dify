@@ -4,13 +4,13 @@ import type { Features as FeaturesData } from '@/app/components/base/features/ty
 import type { InjectWorkflowStoreSliceFn } from '@/app/components/workflow/store'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useEffect, useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { FeaturesProvider } from '@/app/components/base/features'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import WorkflowWithDefaultContext from '@/app/components/workflow'
 import { WorkflowContextProvider } from '@/app/components/workflow/context'
-import { useWorkflowStore } from '@/app/components/workflow/store'
+import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { useTriggerStatusStore } from '@/app/components/workflow/store/trigger-status'
 import { initialEdges, initialNodes } from '@/app/components/workflow/utils'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
@@ -28,8 +28,19 @@ import { createWorkflowSlice } from './store/workflow/workflow-slice'
 import { buildInitialFeatures, buildTriggerStatusMap, coerceReplayUserInputs } from './utils'
 
 const WorkflowAppWithAdditionalContext = () => {
-  const { data, isLoading, fileUploadConfigResponse } = useWorkflowInit()
+  const canvasReadyRef = useRef(false)
+  const { data, isLoading, fileUploadConfigResponse, canvasInitEpoch, initializationError } =
+    useWorkflowInit(canvasReadyRef)
+  const handleDraftReplacementListenerReadyChange = useCallback((ready: boolean) => {
+    canvasReadyRef.current = ready
+  }, [])
   const workflowStore = useWorkflowStore()
+  useEffect(
+    () => () => {
+      workflowStore.getState().workflowRunAbortController?.abort()
+    },
+    [workflowStore],
+  )
   const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const { data: currentUserId } = useSuspenseQuery({
@@ -50,7 +61,7 @@ const WorkflowAppWithAdditionalContext = () => {
       }),
     [appDetail?.maintainer, appDetail?.permission_keys, currentUserId, workspacePermissionKeys],
   )
-  const appId = appDetail?.id
+  const appId = useStore((state) => state.appId)
   const isWorkflowMode = appDetail?.mode === AppModeEnum.WORKFLOW
   const { data: triggersResponse } = useAppTriggers(isWorkflowMode ? appId : undefined, {
     staleTime: 5 * 60 * 1000, // 5 minutes cache
@@ -113,6 +124,8 @@ const WorkflowAppWithAdditionalContext = () => {
     })
   }, [appACLCapabilities.canTestAndRun, replayRunId, workflowStore, getWorkflowRunAndTraceUrl])
 
+  if (initializationError) throw initializationError
+
   if (!data || isLoading || isLoadingCurrentWorkspace || !currentWorkspace.id) {
     return (
       <div className="relative flex size-full items-center justify-center">
@@ -127,18 +140,25 @@ const WorkflowAppWithAdditionalContext = () => {
   )
 
   return (
-    <WorkflowWithDefaultContext edges={edgesData} nodes={nodesData}>
+    <WorkflowWithDefaultContext key={canvasInitEpoch} edges={edgesData} nodes={nodesData}>
       <FeaturesProvider features={initialFeatures}>
-        <WorkflowAppMain nodes={nodesData} edges={edgesData} viewport={data.graph.viewport} />
+        <WorkflowAppMain
+          nodes={nodesData}
+          edges={edgesData}
+          viewport={data.graph.viewport}
+          initialReplacementId={data.last_replacement_id}
+          onDraftReplacementListenerReadyChange={handleDraftReplacementListenerReadyChange}
+        />
       </FeaturesProvider>
     </WorkflowWithDefaultContext>
   )
 }
 
-const WorkflowAppWrapper = () => {
+const WorkflowAppWrapper = ({ appId }: { appId: string }) => {
   return (
     <WorkflowContextProvider
-      injectWorkflowStoreSliceFn={createWorkflowSlice as InjectWorkflowStoreSliceFn}
+      key={appId}
+      injectWorkflowStoreSliceFn={createWorkflowSlice(appId) as InjectWorkflowStoreSliceFn}
     >
       <WorkflowAppWithAdditionalContext />
     </WorkflowContextProvider>

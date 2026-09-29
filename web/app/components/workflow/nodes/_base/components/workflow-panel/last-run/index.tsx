@@ -13,7 +13,6 @@ import { FlowType } from '@/types/common'
 import NoData from './no-data'
 
 type Props = Readonly<{
-  appId: string
   nodeId: string
   canSingleRun: boolean
   isRunAfterSingleRun: boolean
@@ -27,7 +26,6 @@ type Props = Readonly<{
   Partial<ResultPanelProps>
 
 const LastRun: FC<Props> = ({
-  appId: _appId,
   nodeId,
   canSingleRun,
   isRunAfterSingleRun,

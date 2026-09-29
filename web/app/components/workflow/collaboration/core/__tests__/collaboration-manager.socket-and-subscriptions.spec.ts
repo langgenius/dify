@@ -1,7 +1,9 @@
+import type { useStoreApi } from 'reactflow'
 import type { Socket } from 'socket.io-client'
 import type {
   CollaborationUpdate,
   GraphReloadRequest,
+  GraphSnapshotValidationRequest,
   NodePanelPresenceMap,
   OnlineUser,
   RestoreCompleteData,
@@ -18,6 +20,9 @@ import { attachCrdtRuntime } from './test-crdt-runtime'
 const { webSocketClient } = websocketManager
 
 type ReactFlowStore = {
+  sourceStore: Pick<ReturnType<typeof useStoreApi>, 'getState'>
+  getInitialReplacementId?: () => string | null | undefined
+  projectNodesForCanvas?: (nodes: Node[], localNodes: Node[]) => Node[]
   getState: () => {
     getNodes: () => Node[]
     setNodes: (nodes: Node[]) => void
@@ -51,6 +56,7 @@ type CollaborationManagerInternals = {
   doc: LoroDoc | null
   nodesMap: LoroMap | null
   edgesMap: LoroMap | null
+  draftRevisionMap: LoroMap | null
   undoManager: UndoManagerLike | null
   activeConnections: Set<string>
   currentAppId: string | null
@@ -69,6 +75,7 @@ type CollaborationManagerInternals = {
   graphViewSequence: number
   visibilityListenerAttached: boolean
   crdtTrusted: boolean
+  localDraftFallbackActive: boolean
   rebuildCrdtOnNextConnect: boolean
   reconnectedWithFreshDoc: boolean
   awaitingSnapshotImport: boolean
@@ -156,9 +163,786 @@ const setupManagerWithDoc = () => {
   internals.doc = doc
   internals.nodesMap = doc.getMap('nodes')
   internals.edgesMap = doc.getMap('edges')
+  internals.draftRevisionMap = doc.getMap('draft_revision')
   internals.crdtTrusted = true
   return { manager, internals }
 }
+
+describe('workflow replacement ownership', () => {
+  it('keeps saving and graph restoration closed until the current replacement is applied', () => {
+    const { manager, internals } = setupManagerWithDoc()
+    const sourceStore = { getState: vi.fn() }
+    internals.currentAppId = 'app-replacement'
+    internals.isLeader = true
+    internals.reactFlowStore = {
+      sourceStore,
+      getState: () => ({
+        getNodes: () => [],
+        setNodes: vi.fn(),
+        getEdges: () => [],
+        setEdges: vi.fn(),
+      }),
+    }
+
+    expect(manager.canPersistLocalGraph()).toBe(true)
+    expect(manager.canFlushGraphOnPageClose()).toBe(true)
+    const observedSequence = manager.getWorkflowReplacementSequence('app-replacement')!
+    expect(manager.isWorkflowReplacementPending('app-replacement')).toBe(false)
+    const oldToken = manager.beginWorkflowReplacement('app-replacement')!
+    expect(oldToken).toBeGreaterThan(observedSequence)
+    expect(manager.isWorkflowReplacementPending('app-replacement')).toBe(true)
+    expect(
+      manager.beginWorkflowReplacementIfUnchanged('app-replacement', observedSequence),
+    ).toBeNull()
+    expect(manager.canPersistLocalGraph()).toBe(false)
+    expect(manager.canRestoreGraphFromCrdt()).toBe(false)
+    expect(manager.canFlushGraphOnPageClose()).toBe(false)
+
+    const currentToken = manager.beginWorkflowReplacement('app-replacement')!
+    expect(currentToken).toBeGreaterThan(oldToken)
+    expect(manager.completeWorkflowReplacement('app-replacement', sourceStore, oldToken)).toBe(
+      false,
+    )
+    expect(manager.cancelWorkflowReplacement('app-replacement', sourceStore, oldToken)).toBe(false)
+    expect(manager.canPersistLocalGraph()).toBe(false)
+    expect(manager.isWorkflowReplacementCurrent('app-replacement', currentToken)).toBe(true)
+
+    const unrelatedStore = { getState: vi.fn() }
+    expect(
+      manager.completeWorkflowReplacement('app-replacement', unrelatedStore, currentToken),
+    ).toBe(false)
+    expect(manager.canPersistLocalGraph()).toBe(false)
+    expect(manager.completeWorkflowReplacement('app-replacement', sourceStore, currentToken)).toBe(
+      true,
+    )
+    expect(manager.isWorkflowReplacementCurrent('app-replacement', currentToken)).toBe(false)
+    expect(manager.isWorkflowReplacementPending('app-replacement')).toBe(false)
+    expect(manager.canPersistLocalGraph()).toBe(true)
+    expect(manager.canRestoreGraphFromCrdt()).toBe(true)
+    expect(manager.canFlushGraphOnPageClose()).toBe(true)
+  })
+
+  it('atomically rejects a refresh started before another replacement', () => {
+    const { manager, internals } = setupManagerWithDoc()
+    internals.currentAppId = 'app-refresh-order'
+    const observedSequence = manager.getWorkflowReplacementSequence('app-refresh-order')!
+    const remoteToken = manager.beginWorkflowReplacement('app-refresh-order')!
+
+    expect(
+      manager.beginWorkflowReplacementIfUnchanged('app-refresh-order', observedSequence),
+    ).toBeNull()
+    expect(manager.isWorkflowReplacementCurrent('app-refresh-order', remoteToken)).toBe(true)
+    expect(manager.beginWorkflowReplacementIfUnchanged('other-app', observedSequence)).toBeNull()
+    const latestSequence = manager.getWorkflowReplacementSequence('app-refresh-order')!
+    const refreshToken = manager.beginWorkflowReplacementIfUnchanged(
+      'app-refresh-order',
+      latestSequence,
+    )!
+    expect(refreshToken).toBeGreaterThan(remoteToken)
+    expect(manager.isWorkflowReplacementCurrent('app-refresh-order', remoteToken)).toBe(false)
+  })
+
+  it('projects an already-applied import only from a trusted matching CRDT document', () => {
+    const { manager, internals } = setupManagerWithDoc()
+    const sourceStore = { getState: vi.fn() }
+    const projectedNodes: Node[][] = []
+    manager.onGraphImport(({ nodes }) => projectedNodes.push(nodes))
+    internals.currentAppId = 'app-applied-import'
+    internals.reactFlowStore = {
+      sourceStore,
+      getState: () => ({
+        getNodes: () => [],
+        setNodes: (nodes) => projectedNodes.push(nodes),
+        getEdges: () => [],
+        setEdges: vi.fn(),
+      }),
+    }
+    vi.spyOn(webSocketClient, 'getSocket').mockReturnValue(createMockSocket() as unknown as Socket)
+    expect(
+      manager.replaceGraphFromCommittedDraft(
+        'app-applied-import',
+        sourceStore,
+        [createNode('graph-b')],
+        [],
+        'import-b',
+      ),
+    ).toBe(true)
+
+    internals.crdtTrusted = false
+    expect(
+      manager.refreshGraphForAppliedReplacement('app-applied-import', sourceStore, 'import-b'),
+    ).toBe(false)
+    expect(projectedNodes).toEqual([])
+
+    internals.crdtTrusted = true
+    expect(() =>
+      manager.refreshGraphForAppliedReplacement('app-applied-import', sourceStore, 'import-a'),
+    ).toThrow('replacement marker differs')
+    expect(
+      manager.refreshGraphForAppliedReplacement('app-applied-import', sourceStore, 'import-b'),
+    ).toBe(true)
+    expect(projectedNodes.at(-1)?.map((node) => node.id)).toEqual(['graph-b'])
+  })
+
+  it('blocks local fallback edits while a full replacement is pending', () => {
+    const { manager, internals } = setupManagerWithDoc()
+    const sourceStore = { getState: vi.fn() }
+    internals.currentAppId = 'app-local-fallback'
+    internals.localDraftFallbackActive = true
+    internals.reactFlowStore = {
+      sourceStore,
+      getState: () => ({
+        getNodes: () => [],
+        setNodes: vi.fn(),
+        getEdges: () => [],
+        setEdges: vi.fn(),
+      }),
+    }
+    expect(manager.canApplyLocalGraphMutation()).toBe(true)
+    const token = manager.beginWorkflowReplacement('app-local-fallback')!
+    expect(manager.canApplyLocalGraphMutation()).toBe(false)
+    expect(manager.canPersistLocalGraph()).toBe(false)
+    expect(manager.canUseLocalDraftFallback()).toBe(false)
+    expect(
+      manager.canApplyWorkflowReplacementToLocalFallback('app-local-fallback', sourceStore, token),
+    ).toBe(true)
+    expect(
+      manager.canApplyWorkflowReplacementToLocalFallback(
+        'app-local-fallback',
+        { getState: vi.fn() },
+        token,
+      ),
+    ).toBe(false)
+    expect(manager.completeWorkflowReplacement('app-local-fallback', sourceStore, token)).toBe(true)
+    expect(manager.canApplyLocalGraphMutation()).toBe(true)
+    expect(
+      manager.canApplyWorkflowReplacementToLocalFallback('app-local-fallback', sourceStore, token),
+    ).toBe(false)
+  })
+
+  it('lets a newer replacement token take over the older import gate', () => {
+    const { manager, internals } = setupManagerWithDoc()
+    const sourceStore = { getState: vi.fn() }
+    internals.currentAppId = 'app-import-order'
+    internals.reactFlowStore = {
+      sourceStore,
+      getState: () => ({
+        getNodes: () => [],
+        setNodes: vi.fn(),
+        getEdges: () => [],
+        setEdges: vi.fn(),
+      }),
+    }
+    vi.spyOn(webSocketClient, 'getSocket').mockReturnValue(createMockSocket() as unknown as Socket)
+
+    expect(manager.beginCommittedReplacement('app-import-order', 'import-c')).toBe(true)
+    const oldToken = manager.beginWorkflowReplacement('app-import-order')!
+    const token = manager.beginWorkflowReplacement('app-import-order')!
+    expect(manager.completeWorkflowReplacement('app-import-order', sourceStore, oldToken)).toBe(
+      false,
+    )
+    expect(manager.canPersistLocalGraph()).toBe(false)
+    expect(
+      manager.replaceGraphFromCommittedDraft(
+        'app-import-order',
+        sourceStore,
+        [createNode('import-d')],
+        [],
+        'import-d',
+      ),
+    ).toBe(true)
+    expect(manager.completeWorkflowReplacement('app-import-order', sourceStore, token)).toBe(true)
+    expect(manager.canPersistLocalGraph()).toBe(true)
+    expect(manager.getNodes().map((node) => node.id)).toEqual(['import-d'])
+    expect(manager.hasAppliedReplacement('app-import-order', 'import-c')).toBe(false)
+  })
+
+  it('keeps a newer notification pending after an older graph is applied', () => {
+    const { manager, internals } = setupManagerWithDoc()
+    const sourceStore = { getState: vi.fn() }
+    internals.currentAppId = 'app-replacement'
+    internals.reactFlowStore = {
+      sourceStore,
+      getState: () => ({
+        getNodes: () => [],
+        setNodes: vi.fn(),
+        getEdges: () => [],
+        setEdges: vi.fn(),
+      }),
+    }
+    const socket = createMockSocket()
+    vi.spyOn(webSocketClient, 'getSocket').mockReturnValue(socket as unknown as Socket)
+
+    const oldToken = manager.beginWorkflowReplacement('app-replacement')!
+    const currentToken = manager.beginWorkflowReplacement('app-replacement')!
+    expect(
+      manager.replaceGraphFromCommittedDraft(
+        'app-replacement',
+        sourceStore,
+        [createNode('older-graph')],
+        [],
+        'import-older',
+      ),
+    ).toBe(true)
+    expect(manager.completeWorkflowReplacement('app-replacement', sourceStore, oldToken)).toBe(
+      false,
+    )
+    expect(manager.canPersistLocalGraph()).toBe(false)
+    expect(manager.isWorkflowReplacementCurrent('app-replacement', currentToken)).toBe(true)
+  })
+})
+
+describe('collaborative draft revision snapshots', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('keeps follower persistence closed until the restored draft marker is verified', async () => {
+    const { manager: leader, internals: leaderInternals } = setupManagerWithDoc()
+    const leaderSocket = createMockSocket('leader-socket')
+    const leaderStore = { getState: vi.fn() }
+    leaderInternals.currentAppId = 'app-revision'
+    leaderInternals.reactFlowStore = {
+      sourceStore: leaderStore,
+      getState: () => ({
+        getNodes: () => [],
+        setNodes: vi.fn(),
+        getEdges: () => [],
+        setEdges: vi.fn(),
+      }),
+    }
+    vi.spyOn(webSocketClient, 'getSocket').mockReturnValue(leaderSocket as unknown as Socket)
+    expect(
+      leader.replaceGraphFromCommittedDraft(
+        'app-revision',
+        leaderStore,
+        [createNode('saved-node'), createNode('peer-unsaved-node')],
+        [],
+        'restore-b',
+      ),
+    ).toBe(true)
+    const snapshot = leaderInternals.doc!.export({ mode: 'snapshot' })
+
+    const follower = new CollaborationManager()
+    const followerSocket = createMockSocket('follower-socket')
+    const followerStore = { getState: vi.fn() }
+    const canvasNodes: Node[][] = []
+    const requests: GraphSnapshotValidationRequest[] = []
+    vi.spyOn(webSocketClient, 'connect').mockReturnValue(followerSocket as unknown as Socket)
+    vi.spyOn(webSocketClient, 'getSocket').mockReturnValue(followerSocket as unknown as Socket)
+    vi.spyOn(webSocketClient, 'isConnected').mockReturnValue(true)
+    vi.spyOn(webSocketClient, 'disconnect').mockImplementation(() => undefined)
+    follower.onGraphImport(({ nodes }) => canvasNodes.push(nodes))
+    follower.onGraphSnapshotValidationRequired((request) => requests.push(request))
+    const connectionId = await follower.connect('app-revision', {
+      sourceStore: followerStore,
+      getInitialReplacementId: () => null,
+      getState: () => ({
+        getNodes: () => [],
+        setNodes: vi.fn(),
+        getEdges: () => [],
+        setEdges: vi.fn(),
+      }),
+    })
+    followerSocket.trigger('status', { isLeader: false })
+    followerSocket.trigger('graph_update', snapshot)
+
+    const request = requests.at(-1)!
+    expect(request.lastReplacementId).toBe('restore-b')
+    expect(
+      canvasNodes
+        .at(-1)
+        ?.map((node) => node.id)
+        .sort(),
+    ).toEqual(['saved-node', 'peer-unsaved-node'].sort())
+    expect(follower.canPersistLocalGraph()).toBe(false)
+    expect(follower.canRestoreGraphFromCrdt()).toBe(false)
+    expect(follower.canFlushGraphOnPageClose()).toBe(false)
+    expect(follower.isGraphSnapshotValidationPending('app-revision')).toBe(true)
+    expect(
+      follower.replaceGraphFromCommittedDraft(
+        'app-revision',
+        followerStore,
+        [createNode('stale-http-node')],
+        [],
+        'restore-a',
+      ),
+    ).toBe(false)
+    expect(
+      follower
+        .getNodes()
+        .map((node) => node.id)
+        .sort(),
+    ).toEqual(['saved-node', 'peer-unsaved-node'].sort())
+
+    expect(follower.completeGraphSnapshotValidation(request, 'restore-b')).toBe(true)
+    expect(follower.isGraphSnapshotValidationPending('app-revision')).toBe(false)
+    expect(follower.canPersistLocalGraph()).toBe(true)
+    expect(follower.hasAppliedReplacement('app-revision', 'restore-b')).toBe(true)
+    expect(
+      follower
+        .getNodes()
+        .map((node) => node.id)
+        .sort(),
+    ).toEqual(['saved-node', 'peer-unsaved-node'].sort())
+    follower.disconnect(connectionId)
+  })
+
+  it('does not mark a newer import notification applied when an older snapshot validates', async () => {
+    const { manager: source, internals: sourceInternals } = setupManagerWithDoc()
+    sourceInternals.draftRevisionMap!.set('last_replacement_id', 'import-b')
+    source.setNodes([], [createNode('graph-b')])
+    sourceInternals.doc!.commit()
+
+    const manager = new CollaborationManager()
+    const socket = createMockSocket('follower-pending-c')
+    vi.spyOn(webSocketClient, 'connect').mockReturnValue(socket as unknown as Socket)
+    vi.spyOn(webSocketClient, 'getSocket').mockReturnValue(socket as unknown as Socket)
+    vi.spyOn(webSocketClient, 'isConnected').mockReturnValue(true)
+    vi.spyOn(webSocketClient, 'disconnect').mockImplementation(() => undefined)
+    const requests: GraphSnapshotValidationRequest[] = []
+    manager.onGraphSnapshotValidationRequired((request) => requests.push(request))
+    const connectionId = await manager.connect('app-import-order', {
+      sourceStore: { getState: vi.fn() },
+      getState: () => ({
+        getNodes: () => [],
+        setNodes: vi.fn(),
+        getEdges: () => [],
+        setEdges: vi.fn(),
+      }),
+    })
+    socket.trigger('status', { isLeader: false })
+    socket.trigger('graph_update', sourceInternals.doc!.export({ mode: 'snapshot' }))
+
+    expect(manager.beginCommittedReplacement('app-import-order', 'import-c')).toBe(true)
+    expect(manager.completeGraphSnapshotValidation(requests.at(-1)!, 'import-b')).toBe(true)
+    expect(manager.hasAppliedReplacement('app-import-order', 'import-b')).toBe(true)
+    expect(manager.hasAppliedReplacement('app-import-order', 'import-c')).toBe(false)
+    expect(manager.canPersistLocalGraph()).toBe(false)
+    expect(manager.getNodes().map((node) => node.id)).toEqual(['graph-b'])
+    manager.disconnect(connectionId)
+  })
+
+  it('rejects stale validation tokens and asks the leader to reconcile a marker mismatch', async () => {
+    const { manager: source, internals: sourceInternals } = setupManagerWithDoc()
+    sourceInternals.draftRevisionMap!.set('last_replacement_id', 'import-a')
+    source.setNodes([], [createNode('old-node')])
+    sourceInternals.doc!.commit()
+
+    const follower = new CollaborationManager()
+    const socket = createMockSocket('follower-retry')
+    vi.spyOn(webSocketClient, 'connect').mockReturnValue(socket as unknown as Socket)
+    vi.spyOn(webSocketClient, 'getSocket').mockReturnValue(socket as unknown as Socket)
+    vi.spyOn(webSocketClient, 'isConnected').mockReturnValue(true)
+    vi.spyOn(webSocketClient, 'disconnect').mockImplementation(() => undefined)
+    const requests: GraphSnapshotValidationRequest[] = []
+    follower.onGraphSnapshotValidationRequired((request) => requests.push(request))
+    const connectionId = await follower.connect('app-revision', {
+      sourceStore: { getState: vi.fn() },
+      getState: () => ({
+        getNodes: () => [],
+        setNodes: vi.fn(),
+        getEdges: () => [],
+        setEdges: vi.fn(),
+      }),
+    })
+    socket.trigger('status', { isLeader: false })
+    socket.trigger('graph_update', sourceInternals.doc!.export({ mode: 'snapshot' }))
+
+    const staleRequest = requests.at(-1)!
+    expect(follower.completeGraphSnapshotValidation(staleRequest, 'import-b')).toBe(false)
+    expect(follower.canPersistLocalGraph()).toBe(false)
+    expect(socket.emit).toHaveBeenCalledWith(
+      'collaboration_event',
+      expect.objectContaining({
+        type: 'graph_revision_mismatch',
+        data: { appId: 'app-revision', lastReplacementId: 'import-b' },
+      }),
+      expect.anything(),
+    )
+
+    sourceInternals.draftRevisionMap!.set('last_replacement_id', 'import-b')
+    source.setNodes([createNode('old-node')], [createNode('new-node'), createNode('peer-unsaved')])
+    sourceInternals.doc!.commit()
+    socket.trigger('graph_update', sourceInternals.doc!.export({ mode: 'snapshot' }))
+    const currentRequest = requests.at(-1)!
+    expect(currentRequest.token).toBeGreaterThan(staleRequest.token)
+    expect(currentRequest.lastReplacementId).toBe('import-b')
+    expect(follower.completeGraphSnapshotValidation(staleRequest, 'import-a')).toBe(false)
+    expect(follower.completeGraphSnapshotValidation(currentRequest, 'import-b')).toBe(true)
+    expect(follower.getNodes().map((node) => node.id)).toEqual(['new-node', 'peer-unsaved'])
+    follower.disconnect(connectionId)
+  })
+
+  it('revalidates a pending snapshot after follower promotion before allowing a save', async () => {
+    const { manager: source, internals: sourceInternals } = setupManagerWithDoc()
+    sourceInternals.draftRevisionMap!.set('last_replacement_id', 'import-a')
+    source.setNodes([], [createNode('old-node')])
+    sourceInternals.doc!.commit()
+
+    const manager = new CollaborationManager()
+    const socket = createMockSocket('promoted-follower')
+    vi.spyOn(webSocketClient, 'connect').mockReturnValue(socket as unknown as Socket)
+    vi.spyOn(webSocketClient, 'getSocket').mockReturnValue(socket as unknown as Socket)
+    vi.spyOn(webSocketClient, 'isConnected').mockReturnValue(true)
+    vi.spyOn(webSocketClient, 'disconnect').mockImplementation(() => undefined)
+    const validationRequests: GraphSnapshotValidationRequest[] = []
+    const reloadRequests: GraphReloadRequest[] = []
+    manager.onGraphSnapshotValidationRequired((request) => validationRequests.push(request))
+    manager.onGraphReloadRequired((request) => reloadRequests.push(request))
+    const connectionId = await manager.connect('app-promoted', {
+      sourceStore: { getState: vi.fn() },
+      getState: () => ({
+        getNodes: () => [],
+        setNodes: vi.fn(),
+        getEdges: () => [],
+        setEdges: vi.fn(),
+      }),
+    })
+    socket.trigger('status', { isLeader: false })
+    socket.trigger('graph_update', sourceInternals.doc!.export({ mode: 'snapshot' }))
+
+    const followerRequest = validationRequests.at(-1)!
+    expect(manager.completeGraphSnapshotValidation(followerRequest, 'import-b')).toBe(false)
+    socket.trigger('status', { isLeader: true })
+    const leaderRequest = validationRequests.at(-1)!
+    expect(leaderRequest.token).toBeGreaterThan(followerRequest.token)
+    expect(manager.isGraphSnapshotValidationCurrent(followerRequest)).toBe(false)
+    expect(manager.canPersistLocalGraph()).toBe(false)
+
+    expect(manager.completeGraphSnapshotValidation(leaderRequest, 'import-b')).toBe(false)
+    expect(reloadRequests).toHaveLength(1)
+    expect(
+      manager.replaceGraphFromServerDraft(
+        reloadRequests[0]!,
+        [createNode('new-node')],
+        [],
+        'import-b',
+      ),
+    ).toBe(true)
+    expect(manager.getNodes().map((node) => node.id)).toEqual(['new-node'])
+    expect(manager.canPersistLocalGraph()).toBe(true)
+    manager.disconnect(connectionId)
+  })
+
+  it('revalidates a newer CRDT revision while a promoted follower still awaits snapshot validation', async () => {
+    const { manager: source, internals: sourceInternals } = setupManagerWithDoc()
+    sourceInternals.draftRevisionMap!.set('last_replacement_id', 'import-a')
+    source.setNodes([], [createNode('graph-a')])
+    sourceInternals.doc!.commit()
+
+    const manager = new CollaborationManager()
+    const socket = createMockSocket('promoted-during-validation')
+    vi.spyOn(webSocketClient, 'connect').mockReturnValue(socket as unknown as Socket)
+    vi.spyOn(webSocketClient, 'getSocket').mockReturnValue(socket as unknown as Socket)
+    vi.spyOn(webSocketClient, 'isConnected').mockReturnValue(true)
+    vi.spyOn(webSocketClient, 'disconnect').mockImplementation(() => undefined)
+    const validationRequests: GraphSnapshotValidationRequest[] = []
+    const graphReadyStates: boolean[] = []
+    manager.onGraphSnapshotValidationRequired((request) => validationRequests.push(request))
+    manager.onGraphReadyChange((ready) => graphReadyStates.push(ready))
+    let canvasNodes: Node[] = []
+    manager.onGraphImport(({ nodes }) => {
+      canvasNodes = nodes
+    })
+    const connectionId = await manager.connect('app-promoted-revision', {
+      sourceStore: { getState: vi.fn() },
+      getState: () => ({
+        getNodes: () => canvasNodes,
+        setNodes: (nodes) => {
+          canvasNodes = nodes
+        },
+        getEdges: () => [],
+        setEdges: vi.fn(),
+      }),
+    })
+
+    try {
+      socket.trigger('status', { isLeader: false })
+      socket.trigger('graph_update', sourceInternals.doc!.export({ mode: 'snapshot' }))
+      const followerRequest = validationRequests.at(-1)
+      if (!followerRequest) throw new Error('Expected follower snapshot validation')
+      expect(followerRequest.lastReplacementId).toBe('import-a')
+
+      socket.trigger('status', { isLeader: true })
+      const promotedRequest = validationRequests.at(-1)
+      if (!promotedRequest) throw new Error('Expected promoted snapshot validation')
+      expect(manager.getIsLeader()).toBe(true)
+      expect(promotedRequest.token).toBeGreaterThan(followerRequest.token)
+      expect(manager.canApplyLocalGraphMutation()).toBe(false)
+
+      sourceInternals.draftRevisionMap!.set('last_replacement_id', 'import-b')
+      source.setNodes([createNode('graph-a')], [createNode('graph-b')])
+      sourceInternals.doc!.commit()
+      socket.trigger('graph_update', sourceInternals.doc!.export({ mode: 'update' }))
+
+      const currentRequest = validationRequests.at(-1)
+      if (!currentRequest) throw new Error('Expected current snapshot validation')
+      expect(currentRequest.lastReplacementId).toBe('import-b')
+      expect(currentRequest.token).toBeGreaterThan(promotedRequest.token)
+      expect(manager.completeGraphSnapshotValidation(followerRequest, 'import-a')).toBe(false)
+      expect(manager.completeGraphSnapshotValidation(promotedRequest, 'import-a')).toBe(false)
+      expect(manager.isGraphSnapshotValidationPending('app-promoted-revision')).toBe(true)
+      expect(manager.canApplyLocalGraphMutation()).toBe(false)
+      expect(manager.canPersistLocalGraph()).toBe(false)
+      expect(graphReadyStates.at(-1)).toBe(false)
+
+      expect(manager.completeGraphSnapshotValidation(currentRequest, 'import-b')).toBe(true)
+      expect(manager.isGraphSnapshotValidationPending('app-promoted-revision')).toBe(false)
+      expect(canvasNodes.map((node) => node.id)).toEqual(['graph-b'])
+      expect(manager.hasAppliedReplacement('app-promoted-revision', 'import-b')).toBe(true)
+      expect(manager.canApplyLocalGraphMutation()).toBe(true)
+      expect(manager.canPersistLocalGraph()).toBe(true)
+      expect(graphReadyStates.at(-1)).toBe(true)
+
+      expect(manager.completeGraphSnapshotValidation(promotedRequest, 'import-a')).toBe(false)
+      expect(manager.isGraphSnapshotValidationPending('app-promoted-revision')).toBe(false)
+      expect(canvasNodes.map((node) => node.id)).toEqual(['graph-b'])
+      expect(manager.canApplyLocalGraphMutation()).toBe(true)
+      expect(manager.canPersistLocalGraph()).toBe(true)
+      expect(graphReadyStates.at(-1)).toBe(true)
+    } finally {
+      manager.disconnect(connectionId)
+    }
+  })
+
+  it('does not start snapshot validation for a trusted leader with no pending validation', async () => {
+    const { manager: source, internals: sourceInternals } = setupManagerWithDoc()
+    sourceInternals.draftRevisionMap!.set('last_replacement_id', 'import-a')
+    source.setNodes([], [createNode('graph-a')])
+    sourceInternals.doc!.commit()
+
+    const manager = new CollaborationManager()
+    const socket = createMockSocket('validated-before-promotion')
+    vi.spyOn(webSocketClient, 'connect').mockReturnValue(socket as unknown as Socket)
+    vi.spyOn(webSocketClient, 'getSocket').mockReturnValue(socket as unknown as Socket)
+    vi.spyOn(webSocketClient, 'isConnected').mockReturnValue(true)
+    vi.spyOn(webSocketClient, 'disconnect').mockImplementation(() => undefined)
+    const validationRequests: GraphSnapshotValidationRequest[] = []
+    manager.onGraphSnapshotValidationRequired((request) => validationRequests.push(request))
+    const connectionId = await manager.connect('app-validated-leader', {
+      sourceStore: { getState: vi.fn() },
+      getState: () => ({
+        getNodes: () => [],
+        setNodes: vi.fn(),
+        getEdges: () => [],
+        setEdges: vi.fn(),
+      }),
+    })
+
+    try {
+      socket.trigger('status', { isLeader: false })
+      socket.trigger('graph_update', sourceInternals.doc!.export({ mode: 'snapshot' }))
+      const request = validationRequests.at(-1)
+      if (!request) throw new Error('Expected follower snapshot validation')
+      expect(manager.completeGraphSnapshotValidation(request, 'import-a')).toBe(true)
+      socket.trigger('status', { isLeader: true })
+      expect(manager.getIsLeader()).toBe(true)
+      expect(manager.canApplyLocalGraphMutation()).toBe(true)
+      const completedRequestCount = validationRequests.length
+
+      sourceInternals.draftRevisionMap!.set('last_replacement_id', 'import-b')
+      source.setNodes([createNode('graph-a')], [createNode('graph-b')])
+      sourceInternals.doc!.commit()
+      socket.trigger('graph_update', sourceInternals.doc!.export({ mode: 'update' }))
+
+      expect(manager.getNodes().map((node) => node.id)).toEqual(['graph-b'])
+      expect(validationRequests).toHaveLength(completedRequestCount)
+      expect(manager.isGraphSnapshotValidationPending('app-validated-leader')).toBe(false)
+      expect(manager.canApplyLocalGraphMutation()).toBe(true)
+      expect(manager.canPersistLocalGraph()).toBe(true)
+    } finally {
+      manager.disconnect(connectionId)
+    }
+  })
+
+  it('projects imported graph synchronously before releasing validation when animation frames stall', async () => {
+    const { manager: source, internals: sourceInternals } = setupManagerWithDoc()
+    sourceInternals.draftRevisionMap!.set('last_replacement_id', 'import-a')
+    source.setNodes([], [createNode('old-node')])
+    sourceInternals.doc!.commit()
+
+    const manager = new CollaborationManager()
+    const socket = createMockSocket('stalled-frame-follower')
+    vi.spyOn(webSocketClient, 'connect').mockReturnValue(socket as unknown as Socket)
+    vi.spyOn(webSocketClient, 'getSocket').mockReturnValue(socket as unknown as Socket)
+    vi.spyOn(webSocketClient, 'isConnected').mockReturnValue(true)
+    vi.spyOn(webSocketClient, 'disconnect').mockImplementation(() => undefined)
+    const validationRequests: GraphSnapshotValidationRequest[] = []
+    manager.onGraphSnapshotValidationRequired((request) => validationRequests.push(request))
+    let canvasNodeIds: string[] = []
+    const projectionGateStates: boolean[] = []
+    manager.onGraphImport(({ nodes }) => {
+      canvasNodeIds = nodes.map((node) => node.id)
+      projectionGateStates.push(manager.canPersistLocalGraph())
+    })
+    const connectionId = await manager.connect('app-stalled-frame', {
+      sourceStore: { getState: vi.fn() },
+      getState: () => ({
+        getNodes: () => canvasNodeIds.map((id) => createNode(id)),
+        setNodes: vi.fn(),
+        getEdges: () => [],
+        setEdges: vi.fn(),
+      }),
+    })
+    socket.trigger('status', { isLeader: false })
+    socket.trigger('graph_update', sourceInternals.doc!.export({ mode: 'snapshot' }))
+    expect(manager.completeGraphSnapshotValidation(validationRequests.at(-1)!, 'import-a')).toBe(
+      true,
+    )
+    expect(canvasNodeIds).toEqual(['old-node'])
+
+    const animationFrame = vi.spyOn(globalThis, 'requestAnimationFrame').mockImplementation(() => 1)
+    try {
+      sourceInternals.draftRevisionMap!.set('last_replacement_id', 'import-b')
+      source.setNodes([createNode('old-node')], [createNode('new-node')])
+      sourceInternals.doc!.commit()
+      socket.trigger('graph_update', sourceInternals.doc!.export({ mode: 'update' }))
+
+      const request = validationRequests.at(-1)!
+      expect(request.lastReplacementId).toBe('import-b')
+      expect(canvasNodeIds).toEqual(['old-node'])
+      expect(manager.canPersistLocalGraph()).toBe(false)
+      expect(manager.completeGraphSnapshotValidation(request, 'import-b')).toBe(true)
+      expect(canvasNodeIds).toEqual(['new-node'])
+      expect(projectionGateStates.at(-1)).toBe(false)
+      expect(manager.canPersistLocalGraph()).toBe(true)
+      expect(animationFrame).toHaveBeenCalled()
+    } finally {
+      animationFrame.mockRestore()
+      manager.disconnect(connectionId)
+    }
+  })
+
+  it('rebroadcasts an already imported empty graph without seeding a canvas placeholder', () => {
+    const { manager, internals } = setupManagerWithDoc()
+    const socket = createMockSocket('leader-empty')
+    const placeholder = {
+      ...createNode('local-placeholder'),
+      data: { ...createNode('local-placeholder').data, type: BlockEnum.StartPlaceholder },
+    }
+    const sourceStore = { getState: vi.fn() }
+    internals.currentAppId = 'app-empty'
+    internals.isLeader = true
+    internals.reactFlowStore = {
+      sourceStore,
+      getState: () => ({
+        getNodes: () => [placeholder],
+        setNodes: vi.fn(),
+        getEdges: () => [],
+        setEdges: vi.fn(),
+      }),
+    }
+    vi.spyOn(webSocketClient, 'getSocket').mockReturnValue(socket as unknown as Socket)
+    vi.spyOn(webSocketClient, 'isConnected').mockReturnValue(true)
+    expect(
+      manager.replaceGraphFromCommittedDraft('app-empty', sourceStore, [], [], 'import-b'),
+    ).toBe(true)
+    internals.setupSocketEventListeners(socket as unknown as Socket)
+
+    socket.trigger('collaboration_update', {
+      type: 'graph_revision_mismatch',
+      userId: 'follower',
+      data: { appId: 'app-empty', lastReplacementId: 'import-b' },
+      timestamp: 1,
+    } satisfies CollaborationUpdate)
+
+    expect(manager.getNodes()).toEqual([])
+    expect(internals.draftRevisionMap!.get('last_replacement_id')).toBe('import-b')
+    expect(socket.emit.mock.calls.some(([name]) => name === 'graph_event')).toBe(true)
+    expect(internals.graphReloadRequired).toBe(false)
+  })
+
+  it('rebroadcasts peer edits when the leader and server import markers match', () => {
+    const { manager, internals } = setupManagerWithDoc()
+    const socket = createMockSocket('leader-with-peer-edits')
+    const sourceStore = { getState: vi.fn() }
+    internals.currentAppId = 'app-peer-edits'
+    internals.isLeader = true
+    internals.reactFlowStore = {
+      sourceStore,
+      getState: () => ({
+        getNodes: () => [],
+        setNodes: vi.fn(),
+        getEdges: () => [],
+        setEdges: vi.fn(),
+      }),
+    }
+    vi.spyOn(webSocketClient, 'getSocket').mockReturnValue(socket as unknown as Socket)
+    vi.spyOn(webSocketClient, 'isConnected').mockReturnValue(true)
+    expect(
+      manager.replaceGraphFromCommittedDraft(
+        'app-peer-edits',
+        sourceStore,
+        [createNode('saved')],
+        [],
+        'import-b',
+      ),
+    ).toBe(true)
+    manager.setNodes([createNode('saved')], [createNode('saved'), createNode('peer-unsaved')])
+    internals.setupSocketEventListeners(socket as unknown as Socket)
+
+    socket.trigger('collaboration_update', {
+      type: 'graph_revision_mismatch',
+      userId: 'follower',
+      data: { appId: 'app-peer-edits', lastReplacementId: 'import-b' },
+      timestamp: 1,
+    } satisfies CollaborationUpdate)
+
+    const graphEvent = socket.emit.mock.calls.filter(([name]) => name === 'graph_event').at(-1)
+    expect(graphEvent).toBeDefined()
+    const followerDoc = new LoroDoc()
+    followerDoc.import(graphEvent![1] as Uint8Array)
+    expect(Array.from(followerDoc.getMap('nodes').keys()).sort()).toEqual(['peer-unsaved', 'saved'])
+    expect(followerDoc.getMap('draft_revision').get('last_replacement_id')).toBe('import-b')
+    expect(internals.graphReloadRequired).toBe(false)
+  })
+
+  it('requires a server reload when the leader snapshot has an older import marker', () => {
+    const { manager, internals } = setupManagerWithDoc()
+    const socket = createMockSocket('leader-stale')
+    const sourceStore = { getState: vi.fn() }
+    internals.currentAppId = 'app-stale'
+    internals.isLeader = true
+    internals.reactFlowStore = {
+      sourceStore,
+      getState: () => ({
+        getNodes: () => [createNode('peer-unsaved')],
+        setNodes: vi.fn(),
+        getEdges: () => [],
+        setEdges: vi.fn(),
+      }),
+    }
+    vi.spyOn(webSocketClient, 'getSocket').mockReturnValue(socket as unknown as Socket)
+    vi.spyOn(webSocketClient, 'isConnected').mockReturnValue(true)
+    manager.replaceGraphFromCommittedDraft(
+      'app-stale',
+      sourceStore,
+      [createNode('old')],
+      [],
+      'import-a',
+    )
+    const reloads: GraphReloadRequest[] = []
+    manager.onGraphReloadRequired((request) => reloads.push(request))
+    internals.setupSocketEventListeners(socket as unknown as Socket)
+
+    socket.trigger('collaboration_update', {
+      type: 'graph_revision_mismatch',
+      userId: 'follower',
+      data: { appId: 'app-stale', lastReplacementId: 'import-b' },
+      timestamp: 1,
+    } satisfies CollaborationUpdate)
+
+    expect(manager.canPersistLocalGraph()).toBe(false)
+    expect(reloads).toHaveLength(1)
+    expect(
+      manager.replaceGraphFromServerDraft(reloads[0]!, [createNode('new')], [], 'import-b'),
+    ).toBe(true)
+    expect(manager.getNodes().map((node) => node.id)).toEqual(['new'])
+    expect(internals.draftRevisionMap!.get('last_replacement_id')).toBe('import-b')
+    expect(socket.emit.mock.calls.some(([name]) => name === 'graph_event')).toBe(true)
+  })
+})
 
 describe('CollaborationManager socket and subscription behavior', () => {
   beforeEach(() => {
@@ -182,6 +966,30 @@ describe('CollaborationManager socket and subscription behavior', () => {
     expect(manager.canUseLocalDraftFallback()).toBe(false)
   })
 
+  it('records only the applied replacement when the notified draft was superseded', () => {
+    const { manager, internals } = setupManagerWithDoc()
+    const sourceStore = { getState: vi.fn() }
+    internals.currentAppId = 'app-1'
+    internals.reactFlowStore = {
+      sourceStore,
+      getState: () => ({
+        getNodes: () => [],
+        setNodes: vi.fn(),
+        getEdges: () => [],
+        setEdges: vi.fn(),
+      }),
+    }
+
+    manager.beginCommittedReplacement('app-1', 'import-a')
+    expect(manager.canPersistLocalGraph()).toBe(false)
+
+    manager.completeCommittedReplacement('app-1', sourceStore, 'restore-b', 'import-a')
+
+    expect(manager.canPersistLocalGraph()).toBe(true)
+    expect(manager.hasAppliedReplacement('app-1', 'import-a')).toBe(false)
+    expect(manager.hasAppliedReplacement('app-1', 'restore-b')).toBe(true)
+  })
+
   it('switches to local editing and stops reconnecting when the initial connection fails', async () => {
     vi.spyOn(websocketManager, 'isDefaultSocketUrl').mockReturnValueOnce(true)
     const manager = new CollaborationManager()
@@ -189,6 +997,7 @@ describe('CollaborationManager socket and subscription behavior', () => {
     const socket = createMockSocket('socket-initial-failure')
     socket.connected = false
     const reactFlowStore: ReactFlowStore = {
+      sourceStore: { getState: vi.fn() },
       getState: () => ({
         getNodes: () => [],
         setNodes: vi.fn(),
@@ -255,6 +1064,7 @@ describe('CollaborationManager socket and subscription behavior', () => {
     attachCrdtRuntime(manager)
     const socket = createMockSocket('socket-established-failure')
     const reactFlowStore: ReactFlowStore = {
+      sourceStore: { getState: vi.fn() },
       getState: () => ({
         getNodes: () => [],
         setNodes: vi.fn(),
@@ -270,7 +1080,13 @@ describe('CollaborationManager socket and subscription behavior', () => {
       .mockImplementation(() => undefined)
 
     const connectionId = await manager.connect('app-established-failure', reactFlowStore)
+    let firstReload: GraphReloadRequest | undefined
+    manager.onGraphReloadRequired((request) => {
+      firstReload = request
+    })
     socket.trigger('status', { isLeader: true })
+    if (!firstReload) throw new Error('Expected a first leader graph reload')
+    expect(manager.replaceGraphFromServerDraft(firstReload, [], [], null)).toBe(true)
     expect(manager.canApplyLocalGraphMutation()).toBe(true)
 
     socket.connected = false
@@ -284,7 +1100,7 @@ describe('CollaborationManager socket and subscription behavior', () => {
     manager.disconnect(connectionId)
   })
 
-  it('emits cursor/sync/workflow events via collaboration_event when connected', async () => {
+  it('emits cursor and sync events via collaboration_event when connected', async () => {
     const { manager, internals } = setupManagerWithDoc()
     const socket = createMockSocket('socket-connected')
 
@@ -294,20 +1110,14 @@ describe('CollaborationManager socket and subscription behavior', () => {
 
     manager.emitCursorMove({ x: 11, y: 22, userId: 'u-1', timestamp: Date.now() })
     const syncPromise = manager.requestWorkflowSync()
-    manager.emitWorkflowUpdate('wf-1')
 
-    expect(socket.emit).toHaveBeenCalledTimes(3)
+    expect(socket.emit).toHaveBeenCalledTimes(2)
     const payloads = socket.emit.mock.calls.map(
       (call) => call[1] as { type: string; data: Record<string, unknown> },
     )
-    expect(payloads.map((item) => item.type)).toEqual([
-      'mouse_move',
-      'sync_request',
-      'workflow_update',
-    ])
+    expect(payloads.map((item) => item.type)).toEqual(['mouse_move', 'sync_request'])
     expect(payloads[0]?.data).toMatchObject({ x: 11, y: 22 })
     expect(payloads[1]?.data.graphSnapshot).toBeInstanceOf(Uint8Array)
-    expect(payloads[2]?.data).toMatchObject({ appId: 'wf-1' })
 
     const syncCall = socket.emit.mock.calls.find(
       (call) => (call[1] as { type?: string })?.type === 'sync_request',
@@ -456,6 +1266,10 @@ describe('CollaborationManager socket and subscription behavior', () => {
 
     internals.graphViewActive = true
     expect(manager.canFlushGraphOnPageClose()).toBe(true)
+
+    manager.beginCommittedReplacement('app-page-close', 'import-pending')
+    expect(manager.canPersistLocalGraph()).toBe(false)
+    expect(manager.canFlushGraphOnPageClose()).toBe(false)
   })
 
   it('tries to rejoin on unauthorized and forces disconnect on unauthorized ack', () => {
@@ -493,6 +1307,7 @@ describe('CollaborationManager socket and subscription behavior', () => {
   it('routes collaboration_update payloads to corresponding event channels', () => {
     const { manager, internals } = setupManagerWithDoc()
     const socket = createMockSocket('socket-events')
+    internals.currentAppId = 'wf'
 
     const broadcastSpy = vi
       .spyOn(internals, 'broadcastCurrentGraph')
@@ -556,6 +1371,11 @@ describe('CollaborationManager socket and subscription behavior', () => {
     socket.trigger('collaboration_update', {
       ...baseUpdate,
       type: 'workflow_update',
+      data: { appId: 'wf', replacementId: 'restore-b', timestamp: 9 },
+    } satisfies CollaborationUpdate)
+    socket.trigger('collaboration_update', {
+      ...baseUpdate,
+      type: 'workflow_update',
       data: { appId: 'wf', timestamp: 9 },
     } satisfies CollaborationUpdate)
     socket.trigger('collaboration_update', {
@@ -615,7 +1435,11 @@ describe('CollaborationManager socket and subscription behavior', () => {
     expect(varsFeatureHandler).toHaveBeenCalledTimes(1)
     expect(appMetaHandler).toHaveBeenCalledTimes(1)
     expect(appPublishHandler).toHaveBeenCalledTimes(1)
-    expect(workflowUpdateHandler).toHaveBeenCalledWith({ appId: 'wf', timestamp: 9 })
+    expect(workflowUpdateHandler).toHaveBeenCalledExactlyOnceWith({
+      appId: 'wf',
+      replacementId: 'restore-b',
+      timestamp: 1000,
+    })
     expect(commentsHandler).toHaveBeenCalledWith({ appId: 'wf', timestamp: 10 })
     expect(latestPresence).toMatchObject({ 'n-1': { 'socket-events': { userId: 'u-1' } } })
     expect(syncRequestHandler).toHaveBeenCalledTimes(1)
@@ -834,6 +1658,7 @@ describe('CollaborationManager socket and subscription behavior', () => {
       reactFlowEdges = edges
     })
     internals.reactFlowStore = {
+      sourceStore: { getState: vi.fn() },
       getState: () => ({
         getNodes: () => reactFlowNodes,
         setNodes: setNodesSpy,
@@ -891,6 +1716,71 @@ describe('CollaborationManager socket and subscription behavior', () => {
 
     rafSpy.mockRestore()
   })
+
+  it.each(['GET before CRDT patch', 'CRDT patch before GET'])(
+    'keeps an empty workflow placeholder in the canvas after %s',
+    (ordering) => {
+      const { manager, internals } = setupManagerWithDoc()
+      const rafSpy = vi
+        .spyOn(globalThis, 'requestAnimationFrame')
+        .mockImplementation((callback: FrameRequestCallback) => {
+          callback(0)
+          return 1
+        })
+      const placeholder = {
+        ...createNode('local-placeholder'),
+        data: {
+          ...createNode('local-placeholder').data,
+          type: BlockEnum.StartPlaceholder,
+          selected: true,
+        },
+      }
+      let reactFlowNodes: Node[] = ordering === 'GET before CRDT patch' ? [placeholder] : []
+      const projectNodesForCanvas = vi.fn((nodes: Node[], localNodes: Node[]) =>
+        nodes.length
+          ? nodes
+          : [
+              localNodes.find((node) => node.data.type === BlockEnum.StartPlaceholder) ??
+                placeholder,
+            ],
+      )
+      internals.reactFlowStore = {
+        sourceStore: { getState: vi.fn() },
+        projectNodesForCanvas,
+        getState: () => ({
+          getNodes: () => reactFlowNodes,
+          setNodes: (nextNodes: Node[]) => {
+            reactFlowNodes = nextNodes
+          },
+          getEdges: () => [],
+          setEdges: vi.fn(),
+        }),
+      }
+      let onNodesChange: (event: LoroSubscribeEvent) => void = () => {}
+      vi.spyOn(
+        internals.nodesMap as object as {
+          subscribe: (handler: (event: LoroSubscribeEvent) => void) => void
+        },
+        'subscribe',
+      ).mockImplementation((handler) => {
+        onNodesChange = handler
+      })
+      const graphImports: Node[][] = []
+      manager.onGraphImport(({ nodes }) => graphImports.push(nodes))
+
+      internals.setupSubscriptions()
+      onNodesChange({ by: 'import' })
+
+      expect(reactFlowNodes).toEqual([placeholder])
+      expect(graphImports.at(-1)).toEqual([placeholder])
+      expect(manager.getNodes()).toEqual([])
+      expect(projectNodesForCanvas).toHaveBeenCalledWith(
+        [],
+        ordering === 'GET before CRDT patch' ? [placeholder] : [],
+      )
+      rafSpy.mockRestore()
+    },
+  )
 
   it('respects diagnostic and anomaly log limits', () => {
     const { internals } = setupManagerWithDoc()
@@ -975,7 +1865,10 @@ describe('CollaborationManager socket and subscription behavior', () => {
       'CollaborationManager.init called without reactFlowStore, deferring to connect()',
     )
 
+    let visibleReplacementId = 'import-visible'
     const reactFlowStore = {
+      sourceStore: { getState: vi.fn() },
+      getInitialReplacementId: () => visibleReplacementId,
       getState: () => ({
         getNodes: () => [],
         setNodes: vi.fn(),
@@ -990,14 +1883,19 @@ describe('CollaborationManager socket and subscription behavior', () => {
     expect(firstConnectionId).toBeTruthy()
     expect(internals.currentAppId).toBe('app-1')
     expect(internals.activeConnections.size).toBe(1)
+    expect(manager.hasAppliedReplacement('app-1', 'import-visible')).toBe(true)
 
-    const secondConnectionId = await manager.connect('app-1')
+    visibleReplacementId = 'import-visible-after-remount'
+    const secondConnectionId = await manager.connect('app-1', reactFlowStore)
     expect(secondConnectionId).toBeTruthy()
+    expect(manager.hasAppliedReplacement('app-1', 'import-visible-after-remount')).toBe(true)
     expect(disconnectSpy).not.toHaveBeenCalled()
 
+    visibleReplacementId = 'app-2-import'
     const thirdConnectionId = await manager.connect('app-2', reactFlowStore)
     expect(disconnectSpy).toHaveBeenCalledWith('app-1')
     expect(internals.currentAppId).toBe('app-2')
+    expect(manager.hasAppliedReplacement('app-2', 'import-visible-after-remount')).toBe(false)
 
     internals.isLeader = true
     manager.disconnect(secondConnectionId)
@@ -1012,12 +1910,105 @@ describe('CollaborationManager socket and subscription behavior', () => {
     expect(internals.activeConnections.size).toBe(0)
   })
 
+  it('registers the import visible after an asynchronous collaboration startup', async () => {
+    const manager = new CollaborationManager()
+    const socket = createMockSocket('socket-delayed-runtime')
+    vi.spyOn(webSocketClient, 'connect').mockReturnValue(socket as unknown as Socket)
+    vi.spyOn(webSocketClient, 'getSocket').mockReturnValue(socket as unknown as Socket)
+    vi.spyOn(webSocketClient, 'disconnect').mockImplementation(() => undefined)
+    let releaseRuntime: (() => void) | undefined
+    vi.spyOn(
+      manager as unknown as { ensureCrdtRuntime: () => Promise<void> },
+      'ensureCrdtRuntime',
+    ).mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          releaseRuntime = () => {
+            attachCrdtRuntime(manager)
+            resolve()
+          }
+        }),
+    )
+    let visibleReplacementId = 'import-before-mount'
+    const reactFlowStore: ReactFlowStore = {
+      sourceStore: { getState: vi.fn() },
+      getInitialReplacementId: () => visibleReplacementId,
+      getState: () => ({
+        getNodes: () => [],
+        setNodes: vi.fn(),
+        getEdges: () => [],
+        setEdges: vi.fn(),
+      }),
+    }
+
+    const connection = manager.connect('app-delayed-runtime', reactFlowStore)
+    visibleReplacementId = 'import-applied-during-startup'
+    releaseRuntime?.()
+    const connectionId = await connection
+
+    expect(manager.hasAppliedReplacement('app-delayed-runtime', 'import-before-mount')).toBe(false)
+    expect(
+      manager.hasAppliedReplacement('app-delayed-runtime', 'import-applied-during-startup'),
+    ).toBe(true)
+    manager.disconnect(connectionId)
+  })
+
+  it('waits for a fresh server draft before trusting the first solo leader graph', async () => {
+    const manager = new CollaborationManager()
+    const socket = createMockSocket('socket-first-leader')
+    const staleNode = createNode('node-stale', 'Stale')
+    const currentNode = createNode('node-current', 'Current')
+    let canvasNodes = [staleNode]
+    const reactFlowStore: ReactFlowStore = {
+      sourceStore: { getState: vi.fn() },
+      getState: () => ({
+        getNodes: () => canvasNodes,
+        setNodes: (nodes) => {
+          canvasNodes = nodes
+        },
+        getEdges: () => [],
+        setEdges: vi.fn(),
+      }),
+    }
+    vi.spyOn(webSocketClient, 'connect').mockReturnValue(socket as unknown as Socket)
+    vi.spyOn(webSocketClient, 'getSocket').mockReturnValue(socket as unknown as Socket)
+    vi.spyOn(webSocketClient, 'isConnected').mockReturnValue(true)
+    vi.spyOn(webSocketClient, 'disconnect').mockImplementation(() => undefined)
+
+    const connectionId = await manager.connect('app-first-leader', reactFlowStore)
+    manager.beginCommittedReplacement('app-first-leader', 'import-notification')
+    const reloadRequired = vi.fn()
+    manager.onGraphReloadRequired(reloadRequired)
+    socket.trigger('status', { isLeader: true })
+
+    expect(reloadRequired).toHaveBeenCalledTimes(1)
+    expect(manager.canPersistLocalGraph()).toBe(false)
+    expect(manager.getNodes()).toEqual([])
+
+    canvasNodes = [currentNode]
+    const staleRequest = reloadRequired.mock.calls[0]?.[0] as GraphReloadRequest
+    expect(manager.refreshPendingGraphReload('app-first-leader')).toBe(true)
+    expect(reloadRequired).toHaveBeenCalledTimes(2)
+    const currentRequest = reloadRequired.mock.calls[1]?.[0] as GraphReloadRequest
+    expect(manager.replaceGraphFromServerDraft(staleRequest, [staleNode], [], null)).toBe(false)
+    expect(
+      manager.replaceGraphFromServerDraft(currentRequest, [currentNode], [], 'import-current'),
+    ).toBe(true)
+    expect(manager.getNodes()).toEqual([expect.objectContaining({ id: 'node-current' })])
+    expect(manager.canPersistLocalGraph()).toBe(true)
+    expect(manager.hasAppliedReplacement('app-first-leader', 'import-notification')).toBe(false)
+    expect(manager.hasAppliedReplacement('app-first-leader', 'import-current')).toBe(true)
+
+    manager.disconnect(connectionId)
+  })
+
   it('rebuilds the CRDT document on reconnect and reloads a re-elected leader from HTTP', async () => {
     const manager = new CollaborationManager()
     const internals = getManagerInternals(manager)
     const socket = createMockSocket('socket-reconnect')
     const authoritativeNode = createNode('node-latest', 'Latest')
     const reactFlowStore: ReactFlowStore = {
+      sourceStore: { getState: vi.fn() },
       getState: () => ({
         getNodes: () => [authoritativeNode],
         setNodes: vi.fn(),
@@ -1032,7 +2023,15 @@ describe('CollaborationManager socket and subscription behavior', () => {
 
     const connectionId = await manager.connect('app-reconnect', reactFlowStore)
     const firstDocument = internals.doc
+    let firstReload: GraphReloadRequest | undefined
+    manager.onGraphReloadRequired((request) => {
+      firstReload = request
+    })
     socket.trigger('status', { isLeader: true })
+    if (!firstReload) throw new Error('Expected a first leader graph reload')
+    expect(manager.replaceGraphFromServerDraft(firstReload, [authoritativeNode], [], null)).toBe(
+      true,
+    )
     expect(manager.canPersistLocalGraph()).toBe(true)
 
     socket.trigger('disconnect', 'transport close')
@@ -1057,7 +2056,7 @@ describe('CollaborationManager socket and subscription behavior', () => {
         'sendGraphEvent',
       )
       .mockImplementation(() => undefined)
-    manager.replaceGraphFromReactFlow(reloadRequest)
+    manager.replaceGraphFromServerDraft(reloadRequest, [authoritativeNode], [], null)
     expect(manager.getNodes()).toEqual([
       expect.objectContaining({
         id: authoritativeNode.id,
@@ -1078,6 +2077,7 @@ describe('CollaborationManager socket and subscription behavior', () => {
     const socket = createMockSocket('socket-reconnect-promotion')
     const staleNode = createNode('node-stale', 'Stale')
     const reactFlowStore: ReactFlowStore = {
+      sourceStore: { getState: vi.fn() },
       getState: () => ({
         getNodes: () => [staleNode],
         setNodes: vi.fn(),
@@ -1118,6 +2118,7 @@ describe('CollaborationManager socket and subscription behavior', () => {
       const manager = new CollaborationManager()
       const socket = createMockSocket('socket-resync-retry')
       const reactFlowStore: ReactFlowStore = {
+        sourceStore: { getState: vi.fn() },
         getState: () => ({
           getNodes: () => [],
           setNodes: vi.fn(),
@@ -1129,6 +2130,9 @@ describe('CollaborationManager socket and subscription behavior', () => {
       vi.spyOn(webSocketClient, 'getSocket').mockReturnValue(socket as unknown as Socket)
       vi.spyOn(webSocketClient, 'isConnected').mockReturnValue(true)
       vi.spyOn(webSocketClient, 'disconnect').mockImplementation(() => undefined)
+
+      const validationRequests: GraphSnapshotValidationRequest[] = []
+      manager.onGraphSnapshotValidationRequired((request) => validationRequests.push(request))
 
       const connectionId = await manager.connect('app-resync-retry', reactFlowStore)
       socket.trigger('status', { isLeader: false })
@@ -1150,6 +2154,8 @@ describe('CollaborationManager socket and subscription behavior', () => {
 
       await vi.advanceTimersByTimeAsync(20_000)
       expect(getResyncRequestCount()).toBe(2)
+      expect(manager.canPersistLocalGraph()).toBe(false)
+      expect(manager.completeGraphSnapshotValidation(validationRequests.at(-1)!, null)).toBe(true)
       expect(manager.canPersistLocalGraph()).toBe(true)
 
       manager.disconnect(connectionId)
@@ -1162,6 +2168,7 @@ describe('CollaborationManager socket and subscription behavior', () => {
     const manager = new CollaborationManager()
     const socket = createMockSocket('socket-snapshot-race')
     const reactFlowStore: ReactFlowStore = {
+      sourceStore: { getState: vi.fn() },
       getState: () => ({
         getNodes: () => [createNode('node-stale', 'Stale')],
         setNodes: vi.fn(),
@@ -1173,6 +2180,9 @@ describe('CollaborationManager socket and subscription behavior', () => {
     vi.spyOn(webSocketClient, 'getSocket').mockReturnValue(socket as unknown as Socket)
     vi.spyOn(webSocketClient, 'isConnected').mockReturnValue(true)
     vi.spyOn(webSocketClient, 'disconnect').mockImplementation(() => undefined)
+
+    const validationRequests: GraphSnapshotValidationRequest[] = []
+    manager.onGraphSnapshotValidationRequired((request) => validationRequests.push(request))
 
     const connectionId = await manager.connect('app-snapshot-race', reactFlowStore)
     socket.trigger('status', { isLeader: true })
@@ -1197,6 +2207,8 @@ describe('CollaborationManager socket and subscription behavior', () => {
         data: expect.objectContaining({ title: 'Latest' }),
       }),
     ])
+    expect(manager.canPersistLocalGraph()).toBe(false)
+    expect(manager.completeGraphSnapshotValidation(validationRequests.at(-1)!, null)).toBe(true)
     expect(manager.canPersistLocalGraph()).toBe(true)
     expect(manager.isGraphReloadCurrent(reloadRequest!)).toBe(false)
 
@@ -1208,6 +2220,7 @@ describe('CollaborationManager socket and subscription behavior', () => {
     const manager = new CollaborationManager()
     const socket = createMockSocket('socket-double-reconnect')
     const reactFlowStore: ReactFlowStore = {
+      sourceStore: { getState: vi.fn() },
       getState: () => ({
         getNodes: () => [createNode('node-local')],
         setNodes: vi.fn(),
@@ -1316,7 +2329,6 @@ describe('CollaborationManager socket and subscription behavior', () => {
     const getSocketSpy = vi.spyOn(webSocketClient, 'getSocket').mockReturnValue(null)
 
     manager.emitCursorMove({ x: 1, y: 1, userId: 'u-1', timestamp: 1 })
-    manager.emitWorkflowUpdate('app-1')
     manager.emitNodePanelPresence('node-1', true, { userId: 'u-1', username: 'Alice' })
     expect(sendSpy).not.toHaveBeenCalled()
 
@@ -1349,6 +2361,7 @@ describe('CollaborationManager socket and subscription behavior', () => {
   it('covers merge/import log helper branches and log cap', () => {
     const { manager, internals } = setupManagerWithDoc()
     const reactFlowStore = {
+      sourceStore: { getState: vi.fn() },
       getState: () => ({
         getNodes: () => [{ ...createNode('local-node'), selected: true }],
         setNodes: vi.fn(),
@@ -1536,6 +2549,7 @@ describe('CollaborationManager socket and subscription behavior', () => {
     expect(resyncSpy).not.toHaveBeenCalled()
 
     const reactFlowStore = {
+      sourceStore: { getState: vi.fn() },
       getState: () => ({
         getNodes: () => [],
         setNodes: vi.fn(),
@@ -1599,6 +2613,7 @@ describe('CollaborationManager socket and subscription behavior', () => {
   it('covers import subscription skip branches', () => {
     const { internals } = setupManagerWithDoc()
     const reactFlowStore = {
+      sourceStore: { getState: vi.fn() },
       getState: () => ({
         getNodes: () => [],
         setNodes: vi.fn(),
@@ -1686,6 +2701,7 @@ describe('CollaborationManager socket and subscription behavior', () => {
       edges = nextEdges
     })
     const reactFlowStore = {
+      sourceStore: { getState: vi.fn() },
       getState: () => ({
         getNodes: () => nodes,
         setNodes: setNodesSpy,
@@ -1698,8 +2714,18 @@ describe('CollaborationManager socket and subscription behavior', () => {
     manager.onUndoRedoStateChange(undoStateSpy)
 
     const connectionId = await manager.connect('app-undo-pop', reactFlowStore)
+    let firstReload: GraphReloadRequest | undefined
+    manager.onGraphReloadRequired((request) => {
+      firstReload = request
+    })
     socket.trigger('status', { isLeader: true })
-    manager.setNodes([], nodes)
+    if (!firstReload) throw new Error('Expected a first leader graph reload')
+    expect(manager.replaceGraphFromServerDraft(firstReload, nodes, edges, null)).toBe(true)
+    vi.advanceTimersByTime(600)
+    const addedNode = createNode('undo-added')
+    manager.setNodes(nodes, [...nodes, addedNode])
+    nodes = [...nodes, addedNode]
+    vi.advanceTimersByTime(600)
     const nextNodes = nodes.map((node) => {
       if (node.id === 'undo-node-1') {
         return {
@@ -1801,6 +2827,7 @@ describe('CollaborationManager socket and subscription behavior', () => {
 
       stubVisibilityState('visible')
       const connectionId = await manager.connect('app-visibility', {
+        sourceStore: { getState: vi.fn() },
         getState: () => ({
           getNodes: () => [],
           setNodes: vi.fn(),

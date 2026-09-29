@@ -131,9 +131,7 @@ vi.mock('../../nodes/_base/components/variable/utils', () => ({
 vi.mock('@/app/components/app/store', () => {
   const state = { appDetail: { mode: 'workflow' } }
   return {
-    useStore: {
-      getState: () => state,
-    },
+    useStore: <T>(selector: (value: typeof state) => T) => selector(state),
   }
 })
 

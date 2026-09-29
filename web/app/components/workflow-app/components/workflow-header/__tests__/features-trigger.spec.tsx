@@ -91,6 +91,7 @@ vi.mock('@/app/components/workflow/hooks/use-nodes-sync-draft', () => ({
 vi.mock('@/app/components/workflow/store', () => ({
   useStore: (selector: (state: Record<string, unknown>) => unknown) => {
     const state: Record<string, unknown> = {
+      appId: 'app-id',
       publishedAt: null,
       draftUpdatedAt: null,
       toolPublished: false,

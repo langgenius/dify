@@ -2,6 +2,7 @@ import type { StateCreator } from 'zustand'
 
 export type WorkflowSliceShape = {
   appId: string
+  workflowRunAbortController: AbortController | null
   appName: string
   notInitialWorkflow: boolean
   setNotInitialWorkflow: (notInitialWorkflow: boolean) => void
@@ -17,20 +18,23 @@ export type WorkflowSliceShape = {
   setHasShownOnboarding: (hasShownOnboarding: boolean) => void
 }
 
-export const createWorkflowSlice: StateCreator<WorkflowSliceShape> = (set) => ({
-  appId: '',
-  appName: '',
-  notInitialWorkflow: false,
-  setNotInitialWorkflow: (notInitialWorkflow) => set(() => ({ notInitialWorkflow })),
-  shouldAutoOpenStartNodeSelector: false,
-  setShouldAutoOpenStartNodeSelector: (shouldAutoOpenStartNodeSelector) =>
-    set(() => ({ shouldAutoOpenStartNodeSelector })),
-  nodesDefaultConfigs: {},
-  setNodesDefaultConfigs: (nodesDefaultConfigs) => set(() => ({ nodesDefaultConfigs })),
-  showOnboarding: false,
-  setShowOnboarding: (showOnboarding) => set(() => ({ showOnboarding })),
-  hasSelectedStartNode: false,
-  setHasSelectedStartNode: (hasSelectedStartNode) => set(() => ({ hasSelectedStartNode })),
-  hasShownOnboarding: false,
-  setHasShownOnboarding: (hasShownOnboarding) => set(() => ({ hasShownOnboarding })),
-})
+export const createWorkflowSlice =
+  (appId: string): StateCreator<WorkflowSliceShape> =>
+  (set) => ({
+    appId,
+    workflowRunAbortController: null,
+    appName: '',
+    notInitialWorkflow: false,
+    setNotInitialWorkflow: (notInitialWorkflow) => set(() => ({ notInitialWorkflow })),
+    shouldAutoOpenStartNodeSelector: false,
+    setShouldAutoOpenStartNodeSelector: (shouldAutoOpenStartNodeSelector) =>
+      set(() => ({ shouldAutoOpenStartNodeSelector })),
+    nodesDefaultConfigs: {},
+    setNodesDefaultConfigs: (nodesDefaultConfigs) => set(() => ({ nodesDefaultConfigs })),
+    showOnboarding: false,
+    setShowOnboarding: (showOnboarding) => set(() => ({ showOnboarding })),
+    hasSelectedStartNode: false,
+    setHasSelectedStartNode: (hasSelectedStartNode) => set(() => ({ hasSelectedStartNode })),
+    hasShownOnboarding: false,
+    setHasShownOnboarding: (hasShownOnboarding) => set(() => ({ hasShownOnboarding })),
+  })

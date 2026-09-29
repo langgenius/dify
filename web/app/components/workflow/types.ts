@@ -14,7 +14,6 @@ import type {
 import type { WorkflowRetryConfig } from '@/app/components/workflow/nodes/_base/components/retry/types'
 import type { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import type { StructuredOutput } from '@/app/components/workflow/nodes/llm/types'
-import type { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 import type { SchemaTypeDefinition } from '@/service/use-common'
 import type { Resolution, TransferMethod } from '@/types/app'
 import type {
@@ -142,8 +141,8 @@ export type CommonEdgeType = {
   iteration_id?: string
   isInLoop?: boolean
   loop_id?: string
-  sourceType: BlockEnum
-  targetType: BlockEnum
+  sourceType?: BlockEnum
+  targetType?: BlockEnum
   _isTemp?: boolean
 }
 
@@ -191,21 +190,19 @@ export type LLMEnvironmentVariableValue = {
   completion_params?: LLMCompletionParams
 }
 
-export type EnvironmentVariableValue = string | number | LLMEnvironmentVariableValue
-
 export type EnvironmentVariable = {
   id: string
   name: string
-  value: EnvironmentVariableValue
-  value_type: 'string' | 'number' | 'secret' | 'llm'
+  value: unknown
+  value_type: string
   description: string
 }
 
 export type ConversationVariable = {
   id: string
   name: string
-  value_type: ChatVarType
-  value: any
+  value_type: string
+  value: unknown
   description: string
 }
 

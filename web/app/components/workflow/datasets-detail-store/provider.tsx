@@ -1,8 +1,9 @@
 import type { FC } from 'react'
 import type { KnowledgeRetrievalNodeType } from '../nodes/knowledge-retrieval/types'
 import type { CommonNodeType, Node } from '../types'
-import { createContext, useCallback, useEffect, useState } from 'react'
+import { createContext, useEffect, useMemo, useRef, useState } from 'react'
 import { fetchDatasets } from '@/service/datasets'
+import { useStore } from '../store/workflow'
 import { BlockEnum } from '../types'
 import { createDatasetsDetailStore } from './store'
 
@@ -17,35 +18,50 @@ type DatasetsDetailProviderProps = {
   children: React.ReactNode
 }
 
+function getKnowledgeDatasetIds(nodes: Node[]) {
+  return Array.from(
+    new Set(
+      nodes.flatMap((node) =>
+        node.data.type === BlockEnum.KnowledgeRetrieval
+          ? (node.data as CommonNodeType<KnowledgeRetrievalNodeType>).dataset_ids
+          : [],
+      ),
+    ),
+  )
+}
+
 const DatasetsDetailProvider: FC<DatasetsDetailProviderProps> = ({ nodes, children }) => {
   const [store] = useState(createDatasetsDetailStore)
-
-  const updateDatasetsDetail = useCallback(
-    async (datasetIds: string[]) => {
-      const { data: datasetsDetail } = await fetchDatasets({
-        url: '/datasets',
-        params: { page: 1, ids: datasetIds },
-      })
-      if (datasetsDetail && datasetsDetail.length > 0)
-        store.getState().updateDatasetsDetail(datasetsDetail)
-    },
-    [store],
-  )
+  const workflowNodes = useStore((state) => state.nodes)
+  const sourceNodes = workflowNodes.length ? workflowNodes : nodes
+  const datasetIds = useMemo(() => getKnowledgeDatasetIds(sourceNodes).sort(), [sourceNodes])
+  const datasetIdsKey = JSON.stringify(datasetIds)
+  const lastDatasetIdsKeyRef = useRef('[]')
+  const requestedDatasetIdsRef = useRef(new Set<string>())
 
   useEffect(() => {
-    const knowledgeRetrievalNodes = nodes.filter(
-      (node) => node.data.type === BlockEnum.KnowledgeRetrieval,
+    if (datasetIdsKey === lastDatasetIdsKeyRef.current) return
+    lastDatasetIdsKeyRef.current = datasetIdsKey
+    const missingIds = datasetIds.filter(
+      (id) => !store.getState().datasetsDetail[id] && !requestedDatasetIdsRef.current.has(id),
     )
-    const allDatasetIds = knowledgeRetrievalNodes.reduce<string[]>((acc, node) => {
-      return Array.from(
-        new Set([...acc, ...(node.data as CommonNodeType<KnowledgeRetrievalNodeType>).dataset_ids]),
-      )
-    }, [])
-    if (allDatasetIds.length === 0) return
-    updateDatasetsDetail(allDatasetIds)
-  }, [])
+    if (!missingIds.length) return
+    missingIds.forEach((id) => requestedDatasetIdsRef.current.add(id))
 
-  return <DatasetsDetailContext.Provider value={store}>{children}</DatasetsDetailContext.Provider>
+    void fetchDatasets({ url: '/datasets', params: { page: 1, ids: missingIds } })
+      .then(({ data }) => {
+        if (data?.length) store.getState().updateDatasetsDetail(data)
+      })
+      .catch((error: unknown) => {
+        if (lastDatasetIdsKeyRef.current === datasetIdsKey) lastDatasetIdsKeyRef.current = ''
+        console.error('Failed to load workflow dataset details', error)
+      })
+      .finally(() => {
+        missingIds.forEach((id) => requestedDatasetIdsRef.current.delete(id))
+      })
+  }, [datasetIds, datasetIdsKey, store])
+
+  return <DatasetsDetailContext value={store}>{children}</DatasetsDetailContext>
 }
 
 export default DatasetsDetailProvider

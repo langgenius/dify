@@ -376,7 +376,10 @@ def test_pending_import_is_scoped_to_its_owner(monkeypatch: pytest.MonkeyPatch, 
     ):
         assert service.confirm_import(import_id=pending.id, account=other_account).status == ImportStatus.FAILED
 
-    assert service.confirm_import(import_id=pending.id, account=creator).status == ImportStatus.COMPLETED
+    confirmed = service.confirm_import(import_id=pending.id, account=creator)
+    assert confirmed.status == ImportStatus.COMPLETED
+    assert confirmed.id == pending.id
+    assert create_or_update.call_args.kwargs["import_id"] == pending.id
     assert redis_key not in pending_imports
 
 
@@ -452,6 +455,7 @@ def test_create_or_update_app_loads_existing_model_config_with_service_session(
 
     with sqlite_session_factory() as service_session:
         result = AppDslService(session=service_session)._create_or_update_app(
+            import_id="test-import",
             app=app,
             data={"app": {"mode": AppMode.CHAT}, "model_config": {"model": {}}},
             account=_account(),
@@ -468,6 +472,7 @@ def test_create_or_update_app_silently_discards_invalid_image_icon(sqlite_sessio
     service = AppDslService(session=sqlite_session)
 
     result = service._create_or_update_app(
+        import_id="test-import",
         app=app,
         data={
             "app": {
@@ -504,6 +509,7 @@ def test_create_or_update_app_applies_site_settings_without_changing_access(
 
     service = AppDslService(session=sqlite_session)
     service._create_or_update_app(
+        import_id="test-import",
         app=app,
         data={
             "app": {"mode": AppMode.CHAT.value, "icon_type": "emoji", "icon": "robot"},
@@ -537,6 +543,7 @@ def test_create_or_update_app_rejects_null_required_site_setting_before_mutation
 
     with pytest.raises(ValueError, match="Required Site settings cannot be null"):
         AppDslService(unbound_session)._create_or_update_app(
+            import_id="test-import",
             app=app,
             data={"app": {"mode": AppMode.CHAT.value}, "site": {"title": None}},
             account=_account(),
@@ -571,6 +578,7 @@ def test_import_app_resolves_site_entitlement_before_database_writes(
     assert result.status == ImportStatus.COMPLETED
     entitlement.assert_called_once_with("tenant-1")
     assert create_or_update.call_args.kwargs["allow_premium_site_settings"] is False
+    assert create_or_update.call_args.kwargs["import_id"] == result.id
 
     entitlement.reset_mock()
     result = service.import_app(
@@ -684,6 +692,7 @@ def test_create_or_update_app_flushes_new_model_config_before_signal(
 
     try:
         AppDslService(session=sqlite_session)._create_or_update_app(
+            import_id="test-import",
             app=app,
             data={"app": {"mode": AppMode.CHAT}, "model_config": {"model": {}}},
             account=_account(account_id="22222222-2222-2222-2222-222222222222"),
@@ -715,6 +724,7 @@ def test_chat_dsl_import_rejects_invalid_feature_fields(
 
     with pytest.raises(ValueError, match=field):
         AppDslService(session=sqlite_session)._create_or_update_app(
+            import_id="test-import",
             app=app,
             data={"app": {"mode": AppMode.CHAT}, "model_config": {feature: {"enabled": True, field: value}}},
             account=_account(),
@@ -732,6 +742,7 @@ def test_chat_dsl_import_preserves_valid_feature_fields(sqlite_session: Session)
     }
 
     AppDslService(session=sqlite_session)._create_or_update_app(
+        import_id="test-import",
         app=app,
         data={"app": {"mode": AppMode.CHAT}, "model_config": model_config},
         account=_account(),
@@ -768,6 +779,7 @@ def test_create_or_update_app_removes_imported_workflow_viewport(monkeypatch: py
     }
 
     service._create_or_update_app(
+        import_id="test-import",
         app=cast(App, app),
         data={
             "app": {"mode": AppMode.WORKFLOW.value},
@@ -780,6 +792,7 @@ def test_create_or_update_app_removes_imported_workflow_viewport(monkeypatch: py
         "nodes": [],
         "edges": [],
     }
+    assert workflow_service.sync_draft_workflow.call_args.kwargs["import_id"] == "test-import"
     assert imported_graph["viewport"] == {"x": 100, "y": 200, "zoom": 1.5}
 
 
@@ -820,6 +833,7 @@ def test_create_or_update_app_forwards_imported_agent_purge_ids(monkeypatch: pyt
     )
 
     service._create_or_update_app(
+        import_id="test-import",
         app=cast(App, app),
         data={
             "app": {"mode": AppMode.WORKFLOW.value},
@@ -901,6 +915,7 @@ def test_create_or_update_app_gates_agent_mode_before_creation(
 
     with pytest.raises(NoPermissionError):
         service._create_or_update_app(
+            import_id="test-import",
             app=None,
             data={"app": {"mode": "agent", "name": "Gated agent"}},
             account=_account(),

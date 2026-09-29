@@ -1,5 +1,6 @@
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import { act, screen, waitFor } from '@testing-library/react'
+import { useEffect } from 'react'
 import { useStore } from '@/app/components/app/store'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
@@ -195,6 +196,40 @@ describe('AppDetailLayout', () => {
     await waitForAppContent()
 
     expect(screen.queryByRole('main')).not.toBeInTheDocument()
+  })
+
+  it('waits for the destination app before starting its editor session', async () => {
+    useStore.getState().setAppDetail(createAppDetail())
+    mockPathname = '/app/app-2/workflow'
+    let resolveAppResponse!: (value: AppDetailWithSite) => void
+    const appResponse = new Promise<AppDetailWithSite>((resolve) => {
+      resolveAppResponse = resolve
+    })
+    mockAppResponse.mockReturnValue(appResponse)
+    const startEditorSession = vi.fn()
+    const Editor = () => {
+      useEffect(() => {
+        startEditorSession(useStore.getState().appDetail?.id)
+      }, [])
+      return <div>Destination editor</div>
+    }
+
+    render(
+      <AppDetailLayout appId="app-2">
+        <Editor />
+      </AppDetailLayout>,
+    )
+
+    expect(startEditorSession).not.toHaveBeenCalled()
+    expect(screen.queryByText('Destination editor')).not.toBeInTheDocument()
+
+    await act(async () => {
+      resolveAppResponse(createAppDetail({ id: 'app-2' }))
+      await appResponse
+    })
+
+    expect(await screen.findByText('Destination editor')).toBeInTheDocument()
+    expect(startEditorSession).toHaveBeenCalledExactlyOnceWith('app-2')
   })
 
   it('should redirect restricted app pages before exposing app detail content', async () => {

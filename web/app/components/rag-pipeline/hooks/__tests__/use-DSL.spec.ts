@@ -42,8 +42,9 @@ vi.mock('../use-nodes-sync-draft', () => ({
 }))
 
 const mockGetState = vi.fn()
+const mockWorkflowStore = { getState: mockGetState }
 vi.mock('@/app/components/workflow/store', () => ({
-  useWorkflowStore: () => ({ getState: mockGetState }),
+  useWorkflowStore: () => mockWorkflowStore,
 }))
 
 const mockExportPipelineConfig = vi.fn()
@@ -287,6 +288,7 @@ describe('useDSLByCanEdit', () => {
         expect(mockEventEmitter.emit).toHaveBeenCalledWith({
           type: expect.any(String),
           payload: {
+            target: mockWorkflowStore,
             data: secretVars,
           },
         })

@@ -5,7 +5,6 @@ import type { ChatItem, OnSend } from '@/app/components/base/chat/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { memo, useCallback, useEffect, useImperativeHandle, useMemo } from 'react'
 import { useNodes } from 'reactflow'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import Chat from '@/app/components/base/chat/chat'
 import { getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
 import { useFeatures } from '@/app/components/base/features/hooks'
@@ -38,7 +37,7 @@ const ChatWrapper = ({
   const nodes = useNodes<StartNodeType>()
   const startNode = nodes.find((node) => node.data.type === BlockEnum.Start)
   const startVariables = startNode?.data.variables
-  const appDetail = useAppStore((s) => s.appDetail)
+  const appId = useStore((state) => state.appId)
   const workflowStore = useWorkflowStore()
   const setMessageLogItem = useStore((state) => state.setMessageLogItem)
   const inputs = useStore((s) => s.inputs)
@@ -97,7 +96,9 @@ const ChatWrapper = ({
       inputsForm: (startVariables || []) as any,
     },
     [],
-    (taskId) => stopChatMessageResponding(appDetail!.id, taskId),
+    (taskId) => {
+      if (appId) return stopChatMessageResponding(appId, taskId)
+    },
   )
 
   const handleRestartChat = useCallback(() => {
@@ -108,6 +109,7 @@ const ChatWrapper = ({
 
   const doSend: OnSend = useCallback(
     (message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {
+      if (!appId) return
       handleSend(
         {
           query: message,
@@ -119,11 +121,11 @@ const ChatWrapper = ({
         },
         {
           onGetSuggestedQuestions: (messageId, getAbortController) =>
-            fetchSuggestedQuestions(appDetail!.id, messageId, getAbortController),
+            fetchSuggestedQuestions(appId, messageId, getAbortController),
         },
       )
     },
-    [handleSend, workflowStore, conversationId, chatList, appDetail],
+    [handleSend, workflowStore, conversationId, chatList, appId],
   )
 
   const doRegenerate = useCallback(
@@ -144,12 +146,13 @@ const ChatWrapper = ({
 
   const doSwitchSibling = useCallback(
     (siblingMessageId: string) => {
+      if (!appId) return
       handleSwitchSibling(siblingMessageId, {
         onGetSuggestedQuestions: (messageId, getAbortController) =>
-          fetchSuggestedQuestions(appDetail!.id, messageId, getAbortController),
+          fetchSuggestedQuestions(appId, messageId, getAbortController),
       })
     },
-    [handleSwitchSibling, appDetail],
+    [handleSwitchSibling, appId],
   )
 
   const doHumanInputFormSubmit = useCallback(
@@ -200,7 +203,7 @@ const ChatWrapper = ({
             supportCitationHitInfo: true,
           } as any
         }
-        speechToTextTarget={appDetail ? { type: 'consoleApp', appId: appDetail.id } : undefined}
+        speechToTextTarget={appId ? { type: 'consoleApp', appId } : undefined}
         chatList={chatList}
         isResponding={isResponding}
         chatContainerClassName="px-3"

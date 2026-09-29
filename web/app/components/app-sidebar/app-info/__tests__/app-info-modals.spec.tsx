@@ -61,13 +61,24 @@ vi.mock('@/app/components/app/duplicate-modal', () => ({
 }))
 
 vi.mock('@/app/components/workflow/update-dsl-modal', () => ({
-  default: ({ onCancel, onBackup }: { onCancel: () => void; onBackup: () => void }) => (
+  default: ({
+    onCancel,
+    onBackup,
+    onImport,
+  }: {
+    onCancel: () => void
+    onBackup: () => void
+    onImport: () => void
+  }) => (
     <div data-testid="import-dsl-modal">
       <button type="button" onClick={onCancel}>
         Cancel Import
       </button>
       <button type="button" onClick={onBackup}>
         Backup
+      </button>
+      <button type="button" onClick={onImport}>
+        Complete Import
       </button>
     </div>
   ),
@@ -130,6 +141,7 @@ const defaultProps = {
   setSecretEnvList: vi.fn(),
   onEdit: vi.fn(),
   onCopy: vi.fn(),
+  onImport: vi.fn(),
   onExport: vi.fn(async () => true),
   isExporting: false,
   exportCheck: vi.fn(),
@@ -208,6 +220,8 @@ describe('AppInfoModals', () => {
     await waitFor(() => {
       expect(screen.getByTestId('import-dsl-modal')).toBeInTheDocument()
     })
+    fireEvent.click(screen.getByRole('button', { name: 'Complete Import' }))
+    expect(defaultProps.onImport).toHaveBeenCalledOnce()
   })
 
   it('should render export warning alert dialog when activeModal is exportWarning', async () => {

@@ -1,6 +1,4 @@
 import type {
-  AgentLogDetailRequest,
-  AgentLogDetailResponse,
   ChatMessagesRequest,
   ChatMessagesResponse,
   LogMessageAnnotationsRequest,
@@ -49,14 +47,4 @@ export const fetchRunDetail = (url: string): Promise<WorkflowRunDetailResponse> 
 
 export const fetchTracingList = ({ url }: { url: string }): Promise<NodeTracingListResponse> => {
   return get<NodeTracingListResponse>(url)
-}
-
-export const fetchAgentLogDetail = ({
-  appID,
-  params,
-}: {
-  appID: string
-  params: AgentLogDetailRequest
-}): Promise<AgentLogDetailResponse> => {
-  return get<AgentLogDetailResponse>(`/apps/${appID}/agent/logs`, { params })
 }

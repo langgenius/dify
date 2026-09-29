@@ -314,6 +314,14 @@ export const useRestoreWorkflow = () => {
   })
 }
 
+export const useRestoreAppWorkflow = () => {
+  return useMutation(
+    consoleQuery.apps.byAppId.workflows.byWorkflowId.restore.post.mutationOptions({
+      context: { silent: true },
+    }),
+  )
+}
+
 export const usePublishWorkflow = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'publish'],

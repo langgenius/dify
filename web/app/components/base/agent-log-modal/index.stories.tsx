@@ -1,21 +1,19 @@
+import type { AgentLogResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
-import type { AgentLogDetailResponse } from '@/models/log'
 import { useEffect, useRef } from 'react'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { AppToastHost } from '@/app/notifications/host'
 import AgentLogModal from '.'
 
-const MOCK_RESPONSE: AgentLogDetailResponse = {
+const MOCK_RESPONSE: AgentLogResponse = {
   meta: {
-    status: 'finished',
+    status: 'success',
     executor: 'Agent Runner',
     start_time: '2024-03-12T10:00:00Z',
     elapsed_time: 12.45,
     total_tokens: 2589,
     agent_mode: 'ReACT',
     iterations: 2,
-    error: undefined,
   },
   iterations: [
     {
@@ -26,7 +24,9 @@ const MOCK_RESPONSE: AgentLogDetailResponse = {
       tool_calls: [
         {
           status: 'success',
-          tool_icon: null,
+          error: null,
+          tool_icon: '',
+          tool_parameters: {},
           tool_input: { query: 'Latest revenue numbers' },
           tool_output: { answer: 'Revenue up 12% QoQ' },
           tool_name: 'search',
@@ -66,15 +66,8 @@ const MOCK_CHAT_ITEM: IChatItem = {
 
 const AgentLogModalDemo = ({ width = 960 }: { width?: number }) => {
   const originalFetchRef = useRef<typeof globalThis.fetch>(null)
-  const setAppDetail = useAppStore((state) => state.setAppDetail)
 
   useEffect(() => {
-    setAppDetail({
-      id: 'app-1',
-      name: 'Analytics Agent',
-      mode: 'agent-chat',
-    } as any)
-
     originalFetchRef.current = globalThis.fetch?.bind(globalThis)
 
     const handler = async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -94,19 +87,19 @@ const AgentLogModalDemo = ({ width = 960 }: { width?: number }) => {
       throw new Error(`Unhandled request: ${url}`)
     }
 
-    globalThis.fetch = handler as typeof globalThis.fetch
+    globalThis.fetch = handler
 
     return () => {
       if (originalFetchRef.current) globalThis.fetch = originalFetchRef.current
-      setAppDetail(undefined)
     }
-  }, [setAppDetail])
+  }, [])
 
   return (
     <>
       <AppToastHost />
       <div className="relative min-h-135 w-full bg-background-default-subtle p-6">
         <AgentLogModal
+          appId="app-1"
           currentLogItem={MOCK_CHAT_ITEM}
           width={width}
           onCancel={() => {

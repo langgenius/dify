@@ -7,7 +7,10 @@ import type { ConversationVariable } from '@/app/components/workflow/types'
 import { useMemo, useState } from 'react'
 import { v4 as uuid4 } from 'uuid'
 import { DEFAULT_OBJECT_VALUE } from '@/app/components/workflow/panel/chat-variable-panel/components/object-value-item'
-import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
+import {
+  ChatVarType,
+  isChatVarType,
+} from '@/app/components/workflow/panel/chat-variable-panel/type'
 import {
   buildObjectValueItems,
   formatChatVariableValue,
@@ -15,6 +18,7 @@ import {
   getEditorMinHeight,
   getPlaceholderByType,
   getTypeChangeState,
+  isEditableConversationVariable,
   MAX_DESCRIPTION_LENGTH,
   parseEditorContent,
   validateVariableName,
@@ -67,7 +71,7 @@ const buildInitialState = (chatVar?: ConversationVariable): VariableModalState =
       chatVar.value_type === ChatVarType.ArrayObject ? JSON.stringify(chatVar.value) : undefined,
     name: chatVar.name,
     objectValue: buildObjectValueItems(chatVar),
-    type: chatVar.value_type,
+    type: isChatVarType(chatVar.value_type) ? chatVar.value_type : ChatVarType.String,
     value: chatVar.value,
   }
 }
@@ -185,6 +189,7 @@ export const useVariableModalState = ({
   }
 
   const handleSave = () => {
+    if (chatVar && !isEditableConversationVariable(chatVar)) return
     if (!validateVariableName({ name: state.name, notify, t })) return
 
     if (!chatVar && conversationVariables.some((item) => item.name === state.name)) {

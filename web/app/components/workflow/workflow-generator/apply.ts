@@ -1,7 +1,7 @@
 import type { GeneratedGraph, WorkflowGeneratorMode } from './types'
 import type { AppModeEnum } from '@/types/app'
 import { consoleClient } from '@/service/console'
-import { fetchWorkflowDraft, syncWorkflowDraft } from '@/service/workflow'
+import { fetchAppWorkflowDraft, syncWorkflowDraft } from '@/service/workflow'
 
 const MODE_TO_APP_MODE = {
   workflow: 'workflow',
@@ -163,12 +163,12 @@ export const applyToCurrentApp = async ({
   const url = `apps/${appId}/workflows/draft`
 
   // First sync may have no existing draft (workflow apps can exist before Studio
-  // has created/saved a draft). ``fetchWorkflowDraft`` rejects on non-2xx (e.g.
+  // has created/saved a draft). ``fetchAppWorkflowDraft`` rejects on non-2xx (e.g.
   // 404), so we treat any fetch failure as "no existing draft" and sync without
   // a hash.
-  let existing: Awaited<ReturnType<typeof fetchWorkflowDraft>> | null = null
+  let existing: Awaited<ReturnType<typeof fetchAppWorkflowDraft>> | null = null
   try {
-    existing = await fetchWorkflowDraft(url)
+    existing = await fetchAppWorkflowDraft(appId)
   } catch {
     existing = null
   }

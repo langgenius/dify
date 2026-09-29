@@ -25,7 +25,7 @@ import { API_PREFIX } from '@/config'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { isAppDeletingOrDeleted } from '@/service/app-deletion'
 import { postWithKeepalive } from '@/service/fetch'
-import { syncWorkflowDraft } from '@/service/workflow'
+import { fetchAppWorkflowDraft, syncWorkflowDraft } from '@/service/workflow'
 import { useWorkflowRefreshDraft } from './use-workflow-refresh-draft'
 
 const shouldSkipDraftSync = (appId: string | undefined, isWorkflowDataLoaded: boolean) =>
@@ -40,6 +40,13 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
     ...systemFeaturesQueryOptions(),
     select: (s) => s.enable_collaboration_mode,
   })
+  const isAnotherCanvasConnected = useCallback(
+    () =>
+      isCollaborationEnabled &&
+      collaborationManager.isConnected() &&
+      !collaborationManager.ownsReactFlowStore(store),
+    [isCollaborationEnabled, store],
+  )
 
   const getPostParams = useCallback(() => {
     const { getNodes, edges, transform } = store.getState()
@@ -125,18 +132,19 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
   }, [store, featuresStore, workflowStore, isCollaborationEnabled])
 
   const syncWorkflowDraftWhenPageClose = useCallback(() => {
-    if (getNodesReadOnly()) return
+    if (getNodesReadOnly() || isAnotherCanvasConnected()) return
 
     const canPersistOnPageClose =
       !isCollaborationEnabled ||
       collaborationManager.canFlushGraphOnPageClose() ||
-      collaborationManager.canUseLocalDraftFallback()
+      (collaborationManager.canUseLocalDraftFallback() &&
+        collaborationManager.canPersistLocalGraph())
     if (!canPersistOnPageClose) return
 
     const postParams = getPostParams()
 
     if (postParams) postWithKeepalive(`${API_PREFIX}${postParams.url}`, postParams.params)
-  }, [getPostParams, getNodesReadOnly, isCollaborationEnabled])
+  }, [getPostParams, getNodesReadOnly, isCollaborationEnabled, isAnotherCanvasConnected])
 
   const performLocalSync = useCallback(
     async (
@@ -144,10 +152,21 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       notRefreshWhenSyncError?: boolean,
       callback?: SyncDraftCallback,
       options?: SyncDraftOptions,
+      capturedReplacementId?: string | null,
+      capturedReplacementEpoch?: number,
     ): Promise<SyncDraftResult | null> => {
       if (getNodesReadOnly()) return null
-      const { appId, isWorkflowDataLoaded } = workflowStore.getState()
-      if (shouldSkipDraftSync(appId, isWorkflowDataLoaded)) {
+      if (isAnotherCanvasConnected()) {
+        callback?.onSettled?.()
+        return null
+      }
+      const { appId, isWorkflowDataLoaded, lastAppliedReplacementId, draftReplacementEpoch } =
+        workflowStore.getState()
+      if (
+        shouldSkipDraftSync(appId, isWorkflowDataLoaded) ||
+        capturedReplacementId !== lastAppliedReplacementId ||
+        capturedReplacementEpoch !== draftReplacementEpoch
+      ) {
         callback?.onSettled?.()
         return null
       }
@@ -180,25 +199,90 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         }
 
         const res = await syncWorkflowDraft(postParams)
+        if (
+          workflowStore.getState().lastAppliedReplacementId !== capturedReplacementId ||
+          workflowStore.getState().draftReplacementEpoch !== capturedReplacementEpoch
+        )
+          return null
         setSyncWorkflowDraftHash(res.hash)
         setDraftUpdatedAt(res.updated_at)
         callback?.onSuccess?.()
         return { hash: res.hash, updatedAt: res.updated_at }
       } catch (error: unknown) {
-        const { appId, isWorkflowDataLoaded } = workflowStore.getState()
-        if (shouldSkipDraftSync(appId, isWorkflowDataLoaded)) return null
+        const { appId, isWorkflowDataLoaded, lastAppliedReplacementId, draftReplacementEpoch } =
+          workflowStore.getState()
+        if (
+          shouldSkipDraftSync(appId, isWorkflowDataLoaded) ||
+          lastAppliedReplacementId !== capturedReplacementId ||
+          draftReplacementEpoch !== capturedReplacementEpoch
+        )
+          return null
 
         const responseError = error as {
           bodyUsed?: boolean
           json?: () => Promise<{ code?: string }>
         }
         if (responseError.json && !responseError.bodyUsed) {
+          let errorCode: string | undefined
           try {
-            const err = await responseError.json()
-            if (err.code === 'draft_workflow_not_sync' && !notRefreshWhenSyncError)
-              handleRefreshWorkflowDraft(true)
+            errorCode = (await responseError.json()).code
           } catch {
             // Non-JSON upstream errors should not surface as unhandled promise rejections.
+          }
+          if (errorCode === 'draft_workflow_not_sync' && appId) {
+            const currentState = workflowStore.getState()
+            const replacementIdBeforeRefresh = currentState.lastAppliedReplacementId
+            const replacementEpochBeforeRefresh = currentState.draftReplacementEpoch
+            const replacementSequenceBeforeRefresh =
+              collaborationManager.getWorkflowReplacementSequence(appId)
+            const replacementPendingBeforeRefresh =
+              collaborationManager.isWorkflowReplacementPending(appId)
+            currentState.debouncedSyncWorkflowDraft.cancel?.()
+            currentState.setIsWorkflowDataLoaded(false)
+            try {
+              const draft = await fetchAppWorkflowDraft(appId)
+              if (
+                workflowStore.getState().lastAppliedReplacementId === replacementIdBeforeRefresh &&
+                workflowStore.getState().draftReplacementEpoch === replacementEpochBeforeRefresh &&
+                !replacementPendingBeforeRefresh &&
+                !collaborationManager.isWorkflowReplacementPending(appId) &&
+                collaborationManager.getWorkflowReplacementSequence(appId) ===
+                  replacementSequenceBeforeRefresh
+              ) {
+                if (
+                  notRefreshWhenSyncError &&
+                  draft.last_replacement_id === replacementIdBeforeRefresh
+                ) {
+                  currentState.setSyncWorkflowDraftHash(draft.hash)
+                } else {
+                  const refreshed = await handleRefreshWorkflowDraft(true, {
+                    prefetchedDraft: draft,
+                    shouldApply: () =>
+                      workflowStore.getState().lastAppliedReplacementId ===
+                        replacementIdBeforeRefresh &&
+                      workflowStore.getState().draftReplacementEpoch ===
+                        replacementEpochBeforeRefresh &&
+                      !collaborationManager.isWorkflowReplacementPending(appId) &&
+                      collaborationManager.getWorkflowReplacementSequence(appId) ===
+                        replacementSequenceBeforeRefresh,
+                  })
+                  if (
+                    !refreshed &&
+                    workflowStore.getState().lastAppliedReplacementId ===
+                      replacementIdBeforeRefresh &&
+                    workflowStore.getState().draftReplacementEpoch ===
+                      replacementEpochBeforeRefresh &&
+                    !collaborationManager.isWorkflowReplacementPending(appId) &&
+                    collaborationManager.getWorkflowReplacementSequence(appId) ===
+                      replacementSequenceBeforeRefresh
+                  )
+                    throw new Error('Workflow draft conflict could not be refreshed.')
+                }
+              }
+              workflowStore.getState().setIsWorkflowDataLoaded(true)
+            } catch {
+              window.location.reload()
+            }
           }
         }
         callback?.onError?.()
@@ -207,7 +291,13 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         callback?.onSettled?.()
       }
     },
-    [workflowStore, getNodesReadOnly, handleRefreshWorkflowDraft, isCollaborationEnabled],
+    [
+      workflowStore,
+      getNodesReadOnly,
+      handleRefreshWorkflowDraft,
+      isCollaborationEnabled,
+      isAnotherCanvasConnected,
+    ],
   )
 
   const doSyncWorkflowDraftLocally = useSerialAsyncCallback(performLocalSync, getNodesReadOnly)
@@ -218,8 +308,18 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       options?: SyncDraftOptions,
     ): Promise<SyncDraftResult | null> => {
       if (getNodesReadOnly()) return null
-      const { appId, isWorkflowDataLoaded } = workflowStore.getState()
+      if (isAnotherCanvasConnected()) {
+        callback?.onSettled?.()
+        return null
+      }
+      const { appId, isWorkflowDataLoaded, lastAppliedReplacementId, draftReplacementEpoch } =
+        workflowStore.getState()
       if (shouldSkipDraftSync(appId, isWorkflowDataLoaded)) {
+        callback?.onSettled?.()
+        return null
+      }
+
+      if (isCollaborationEnabled && !collaborationManager.canPersistLocalGraph()) {
         callback?.onSettled?.()
         return null
       }
@@ -238,11 +338,23 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
           return null
         }
 
-        return doSyncWorkflowDraftLocally(baseParams, notRefreshWhenSyncError, callback, options)
+        return doSyncWorkflowDraftLocally(
+          baseParams,
+          notRefreshWhenSyncError,
+          callback,
+          options,
+          lastAppliedReplacementId,
+          draftReplacementEpoch,
+        )
       }
 
       try {
         const result = await collaborationManager.requestWorkflowSync()
+        if (
+          workflowStore.getState().lastAppliedReplacementId !== lastAppliedReplacementId ||
+          workflowStore.getState().draftReplacementEpoch !== draftReplacementEpoch
+        )
+          return null
         const { setSyncWorkflowDraftHash, setDraftUpdatedAt } = workflowStore.getState()
         setSyncWorkflowDraftHash(result.hash)
         setDraftUpdatedAt(result.updatedAt)
@@ -261,6 +373,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       getNodesReadOnly,
       getPostParams,
       isCollaborationEnabled,
+      isAnotherCanvasConnected,
       workflowStore,
     ],
   )

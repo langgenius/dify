@@ -239,6 +239,7 @@ class Workflow(Base):  # bug
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     updated_by: Mapped[str | None] = mapped_column(StringUUID)
+    last_replacement_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
@@ -552,11 +553,13 @@ class Workflow(Base):  # bug
     @property
     def unique_hash(self) -> str:
         """
-        Get hash of workflow.
+        Return the draft's optimistic-concurrency token.
 
-        :return: hash
+        A full draft replacement invalidates earlier graph saves even when it commits the same graph.
         """
-        entity = {"graph": self.graph_dict}
+        entity: dict[str, object] = {"graph": self.graph_dict}
+        if self.last_replacement_id is not None:
+            entity["last_replacement_id"] = self.last_replacement_id
 
         return helper.generate_text_hash(json.dumps(entity, sort_keys=True))
 

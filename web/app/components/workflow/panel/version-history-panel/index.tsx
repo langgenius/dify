@@ -21,6 +21,7 @@ import {
   useInvalidAllLastRun,
   useInvalidateAppWorkflow,
   useResetWorkflowVersionHistory,
+  useRestoreAppWorkflow,
   useRestoreWorkflow,
   useUpdateWorkflow,
   useWorkflowVersionHistory,
@@ -249,20 +250,8 @@ export const VersionHistoryPanel = ({
     [],
   )
 
-  const emitWorkflowUpdate = useCallback(async () => {
-    try {
-      const appId = configsMap?.flowId
-      if (!appId) return
-
-      const { collaborationManager } =
-        await import('../../collaboration/core/collaboration-manager')
-      collaborationManager.emitWorkflowUpdate(appId)
-    } catch (error) {
-      console.error('Failed to emit workflow update:', error)
-    }
-  }, [configsMap?.flowId])
-
   const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()
+  const { mutateAsync: restoreAppWorkflow } = useRestoreAppWorkflow()
   const { mutateAsync: restoreWorkflow } = useRestoreWorkflow()
 
   const handleRestore = useCallback(
@@ -271,7 +260,15 @@ export const VersionHistoryPanel = ({
       await emitRestoreIntent(item)
 
       try {
-        await restoreWorkflow(restoreVersionUrl(item.id))
+        if (configsMap?.flowType === FlowType.appFlow && !configsMap.flowId)
+          throw new Error('App workflow ID is unavailable during restore.')
+        if (configsMap?.flowType === FlowType.appFlow) {
+          await restoreAppWorkflow({
+            params: { app_id: configsMap.flowId, workflow_id: item.id },
+          })
+        } else {
+          await restoreWorkflow(restoreVersionUrl(item.id))
+        }
         setCurrentVersion(item)
         workflowStore.setState({ isRestoring: false })
         workflowStore.setState({ backupDraft: undefined })
@@ -282,7 +279,6 @@ export const VersionHistoryPanel = ({
         deleteAllInspectVars()
         invalidAllLastRun()
         await emitRestoreComplete(item, true)
-        await emitWorkflowUpdate()
       } catch {
         toast.error(t(($) => $['versionHistory.action.restoreFailure'], { ns: 'workflowHistory' }))
         await emitRestoreComplete(item, false, 'restore failed')
@@ -293,6 +289,9 @@ export const VersionHistoryPanel = ({
     [
       setShowWorkflowVersionHistoryPanel,
       emitRestoreIntent,
+      configsMap?.flowType,
+      configsMap?.flowId,
+      restoreAppWorkflow,
       restoreWorkflow,
       restoreVersionUrl,
       setCurrentVersion,
@@ -302,7 +301,6 @@ export const VersionHistoryPanel = ({
       deleteAllInspectVars,
       invalidAllLastRun,
       emitRestoreComplete,
-      emitWorkflowUpdate,
       resetWorkflowVersionHistory,
     ],
   )

@@ -1,7 +1,7 @@
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { SlashCommandHandler } from './types'
 import type { WorkflowGeneratorMode } from '@/app/components/workflow/workflow-generator/types'
 import { getI18n } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { useWorkflowGeneratorStore } from '@/app/components/workflow/workflow-generator/store'
 import { AppModeEnum } from '@/types/app'
 import { registerCommands, unregisterCommands } from './command-bus'
@@ -66,7 +66,9 @@ const OPTIONS = [
  * through so the modal offers "Apply to current draft". Auto-mode always creates
  * a new app since the planner may pick a different type than the open Studio.
  */
-export const createCommand: SlashCommandHandler = {
+export const createCreateCommand = (
+  currentApp: Pick<AppDetailWithSite, 'id' | 'mode'> | undefined,
+): SlashCommandHandler => ({
   name: 'create',
   aliases: ['new', 'generate'],
   description: getI18n().t(($) => $['gotoAnything.actions.createCategoryDesc'], { ns: 'app' }),
@@ -131,18 +133,17 @@ export const createCommand: SlashCommandHandler = {
         // Auto-mode always creates a new app — the planner may resolve a type
         // different from the open Studio, so applying to the current draft is
         // unsafe.
-        const appDetail = useAppStore.getState().appDetail
         const currentAppMode: WorkflowGeneratorMode | null =
-          appDetail?.mode === AppModeEnum.WORKFLOW
+          currentApp?.mode === AppModeEnum.WORKFLOW
             ? 'workflow'
-            : appDetail?.mode === AppModeEnum.ADVANCED_CHAT
+            : currentApp?.mode === AppModeEnum.ADVANCED_CHAT
               ? 'advanced-chat'
               : null
 
-        if (!autoMode && appDetail && currentAppMode === mode) {
+        if (!autoMode && currentApp && currentAppMode === mode) {
           useWorkflowGeneratorStore.getState().openGenerator({
             mode,
-            currentAppId: appDetail.id,
+            currentAppId: currentApp.id,
             currentAppMode,
             initialInstruction,
           })
@@ -157,4 +158,4 @@ export const createCommand: SlashCommandHandler = {
   unregister() {
     unregisterCommands(['create.open'])
   },
-}
+})

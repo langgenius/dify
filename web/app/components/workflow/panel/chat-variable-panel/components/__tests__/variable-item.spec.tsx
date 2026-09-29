@@ -35,4 +35,20 @@ describe('VariableItem', () => {
     expect(onEdit).toHaveBeenCalledWith(expect.objectContaining({ id: 'var-1' }))
     expect(onDelete).toHaveBeenCalledWith(expect.objectContaining({ id: 'var-1' }))
   })
+
+  it('keeps a server-provided secret variable visible without offering an unsupported editor', () => {
+    const onEdit = vi.fn()
+    const { container, getByText } = render(
+      <VariableItem
+        item={createVariable({ value_type: 'secret', value: null })}
+        onEdit={onEdit}
+        onDelete={vi.fn()}
+      />,
+    )
+
+    expect(getByText('conversation_var')).toBeInTheDocument()
+    expect(getByText('Secret')).toBeInTheDocument()
+    expect(container.querySelectorAll('.cursor-pointer')).toHaveLength(1)
+    expect(onEdit).not.toHaveBeenCalled()
+  })
 })

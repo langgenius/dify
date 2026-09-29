@@ -262,7 +262,7 @@ export type AgentConfigSkillInspectResponse = {
 }
 
 export type AgentLogResponse = {
-  files?: Array<unknown>
+  files: Array<AgentLogFileResponse>
   iterations: Array<AgentIterationLogResponse>
   meta: AgentLogMetaResponse
 }
@@ -889,7 +889,7 @@ export type DefaultBlockConfigResponse = {
   [key: string]: unknown
 }
 
-export type WorkflowResponse = {
+export type DraftWorkflowResponse = {
   conversation_variables: Array<WorkflowConversationVariableResponse>
   created_at: number
   created_by?: SimpleAccountResponse | null
@@ -902,6 +902,7 @@ export type WorkflowResponse = {
   }
   hash: string
   id: string
+  last_replacement_id: string | null
   marked_comment: string
   marked_name: string
   rag_pipeline_variables: Array<PipelineVariableResponse>
@@ -1139,6 +1140,29 @@ export type WorkflowDraftVariableUpdatePayload = {
   value?: unknown | null
 }
 
+export type WorkflowResponse = {
+  conversation_variables: Array<WorkflowConversationVariableResponse>
+  created_at: number
+  created_by?: SimpleAccountResponse | null
+  environment_variables: Array<WorkflowEnvironmentVariableResponse>
+  features: {
+    [key: string]: unknown
+  }
+  graph: {
+    [key: string]: unknown
+  }
+  hash: string
+  id: string
+  marked_comment: string
+  marked_name: string
+  rag_pipeline_variables: Array<PipelineVariableResponse>
+  tool_published: boolean
+  updated_at: number
+  updated_by?: SimpleAccountResponse | null
+  version: string
+  version_number?: number | null
+}
+
 export type PublishWorkflowPayload = {
   knowledge_base_setting?: {
     [key: string]: unknown
@@ -1167,8 +1191,9 @@ export type WorkflowUpdatePayload = {
   marked_name?: string | null
 }
 
-export type WorkflowRestoreResponse = {
+export type AppWorkflowRestoreResponse = {
   hash: string
+  replacement_id: string
   result: string
   updated_at: number
 }
@@ -1430,24 +1455,39 @@ export type AgentConfigSkillMarkdownResponse = {
   truncated: boolean
 }
 
+export type AgentLogFileResponse = {
+  belongs_to: MessageFileBelongsTo | null
+  dify_model_identity: '__dify__file__'
+  extension: string | null
+  filename: string | null
+  id: string
+  mime_type: string | null
+  reference: string | null
+  related_id: string | null
+  remote_url: string | null
+  size: number
+  transfer_method: FileTransferMethod
+  type: FileType
+  upload_file_id: string | null
+  url: string | null
+}
+
 export type AgentIterationLogResponse = {
   created_at: string
-  files?: Array<unknown>
-  thought?: string | null
-  tokens: number
+  files: Array<string>
+  thought: string | null
+  tokens: number | null
   tool_calls: Array<AgentToolCallResponse>
-  tool_raw: {
-    [key: string]: unknown
-  }
+  tool_raw: AgentToolRawResponse
 }
 
 export type AgentLogMetaResponse = {
-  agent_mode: string
-  elapsed_time?: number | null
+  agent_mode: string | null
+  elapsed_time: number
   executor: string
   iterations: number
   start_time: string
-  status: string
+  status: 'success'
   total_tokens: number
 }
 
@@ -2491,22 +2531,33 @@ export type WorkflowOnlineUser = {
   username: string
 }
 
+export type MessageFileBelongsTo = 'assistant' | 'user'
+
+export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url' | 'tool_file'
+
+export type FileType = 'audio' | 'custom' | 'document' | 'image' | 'video'
+
 export type AgentToolCallResponse = {
-  error?: string | null
-  status: string
-  time_cost: number | number
-  tool_icon?: unknown
-  tool_input: {
-    [key: string]: unknown
-  }
-  tool_label: string
+  error: string | null
+  status: 'error' | 'success'
+  time_cost: number
+  tool_icon: string | EmojiIconDict
+  tool_input: AgentLogJsonValue
+  tool_label:
+    | string
+    | {
+        [key: string]: string
+      }
   tool_name: string
-  tool_output: {
-    [key: string]: unknown
-  }
+  tool_output: AgentLogJsonValue
   tool_parameters: {
-    [key: string]: unknown
+    [key: string]: AgentLogJsonValue
   }
+}
+
+export type AgentToolRawResponse = {
+  inputs: string | null
+  outputs: string | null
 }
 
 export type SimpleModelConfig = {
@@ -2673,10 +2724,6 @@ export type AppRetrievalWeightsPayload = {
     | 'semantic_first'
     | undefined
 }
-
-export type FileType = 'audio' | 'custom' | 'document' | 'image' | 'video'
-
-export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url' | 'tool_file'
 
 export type AppFileTypeUploadPayload = {
   enabled?: boolean | null
@@ -3220,6 +3267,22 @@ export type AppUserInputFormConfigResponse = {
   variable: string
   [key: string]: unknown
 }
+
+export type EmojiIconDict = {
+  background: string
+  content: string
+}
+
+export type AgentLogJsonValue =
+  | string
+  | number
+  | number
+  | boolean
+  | Array<AgentLogJsonValue>
+  | {
+      [key: string]: AgentLogJsonValue
+    }
+  | null
 
 export type UserActionConfig = {
   button_style?: ButtonStyle
@@ -4168,6 +4231,17 @@ export type AppConfigJsonValueWritable =
 export type AppEmptyDatasetCollectionPayloadWritable = {
   [key: string]: never
 }
+
+export type AgentLogJsonValueWritable =
+  | string
+  | number
+  | number
+  | boolean
+  | Array<AgentLogJsonValueWritable>
+  | {
+      [key: string]: AgentLogJsonValueWritable
+    }
+  | null
 
 export type GetAppsData = {
   body?: never
@@ -6728,7 +6802,7 @@ export type GetAppsByAppIdWorkflowsDraftErrors = {
 }
 
 export type GetAppsByAppIdWorkflowsDraftResponses = {
-  200: WorkflowResponse
+  200: DraftWorkflowResponse
 }
 
 export type GetAppsByAppIdWorkflowsDraftResponse =
@@ -7642,7 +7716,7 @@ export type PostAppsByAppIdWorkflowsByWorkflowIdRestoreErrors = {
 }
 
 export type PostAppsByAppIdWorkflowsByWorkflowIdRestoreResponses = {
-  200: WorkflowRestoreResponse
+  200: AppWorkflowRestoreResponse
 }
 
 export type PostAppsByAppIdWorkflowsByWorkflowIdRestoreResponse =

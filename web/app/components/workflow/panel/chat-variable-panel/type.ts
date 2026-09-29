@@ -10,3 +10,7 @@ export const ChatVarType = {
 } as const
 
 export type ChatVarType = (typeof ChatVarType)[keyof typeof ChatVarType]
+
+const chatVarTypes = new Set<string>(Object.values(ChatVarType))
+
+export const isChatVarType = (value: string): value is ChatVarType => chatVarTypes.has(value)

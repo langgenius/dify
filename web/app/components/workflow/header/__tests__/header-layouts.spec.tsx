@@ -16,11 +16,11 @@ const mockHandleNodeSelect = vi.fn()
 const mockHandleRefreshWorkflowDraft = vi.fn()
 const mockCloseAllInputFieldPanels = vi.fn()
 const mockInvalidAllLastRun = vi.fn()
+const mockRestoreAppWorkflow = vi.fn()
 const mockRestoreWorkflow = vi.fn()
 const mockResetWorkflowVersionHistory = vi.fn()
 const mockEmitRestoreIntent = vi.fn()
 const mockEmitRestoreComplete = vi.fn()
-const mockEmitWorkflowUpdate = vi.fn()
 const mockNotify = vi.fn()
 const mockRunAndHistory = vi.fn()
 const mockViewHistory = vi.fn()
@@ -73,6 +73,9 @@ vi.mock('@/hooks/use-theme', () => ({
 vi.mock('@/service/use-workflow', () => ({
   useInvalidAllLastRun: () => mockInvalidAllLastRun,
   useResetWorkflowVersionHistory: () => mockResetWorkflowVersionHistory,
+  useRestoreAppWorkflow: () => ({
+    mutateAsync: mockRestoreAppWorkflow,
+  }),
   useRestoreWorkflow: () => ({
     mutateAsync: mockRestoreWorkflow,
   }),
@@ -82,7 +85,6 @@ vi.mock('../../collaboration/core/collaboration-manager', () => ({
   collaborationManager: {
     emitRestoreIntent: mockEmitRestoreIntent,
     emitRestoreComplete: mockEmitRestoreComplete,
-    emitWorkflowUpdate: mockEmitWorkflowUpdate,
   },
 }))
 
@@ -197,6 +199,7 @@ describe('Header layout components', () => {
     mockNodesReadOnly = false
     mockTheme = 'light'
     mockUseNodes.mockReturnValue([])
+    mockRestoreAppWorkflow.mockResolvedValue({ replacement_id: 'replacement-C' })
     mockRestoreWorkflow.mockResolvedValue({})
   })
 
@@ -317,7 +320,10 @@ describe('Header layout components', () => {
       fireEvent.click(screen.getByRole('button', { name: 'workflow.common.restore' }))
 
       await waitFor(() => {
-        expect(mockRestoreWorkflow).toHaveBeenCalledWith('/apps/flow-1/workflows/version-1/restore')
+        expect(mockRestoreAppWorkflow).toHaveBeenCalledWith({
+          params: { app_id: 'flow-1', workflow_id: 'version-1' },
+        })
+        expect(mockRestoreWorkflow).not.toHaveBeenCalled()
         expect(store.getState().showWorkflowVersionHistoryPanel).toBe(false)
         expect(store.getState().isRestoring).toBe(false)
         expect(store.getState().backupDraft).toBeUndefined()
@@ -339,7 +345,6 @@ describe('Header layout components', () => {
         versionId: currentVersion.id,
         success: true,
       })
-      expect(mockEmitWorkflowUpdate).toHaveBeenCalledWith('flow-1')
       expect(mockResetWorkflowVersionHistory).toHaveBeenCalledTimes(1)
       expect(onRestoreSettled).toHaveBeenCalledTimes(1)
     })
@@ -373,7 +378,6 @@ describe('Header layout components', () => {
       })
       expect(mockEmitRestoreIntent).not.toHaveBeenCalled()
       expect(mockEmitRestoreComplete).not.toHaveBeenCalled()
-      expect(mockEmitWorkflowUpdate).not.toHaveBeenCalled()
     })
 
     it('should restore snippet versions through snippet routes without emitting collaboration events', async () => {
@@ -405,7 +409,6 @@ describe('Header layout components', () => {
       })
       expect(mockEmitRestoreIntent).not.toHaveBeenCalled()
       expect(mockEmitRestoreComplete).not.toHaveBeenCalled()
-      expect(mockEmitWorkflowUpdate).not.toHaveBeenCalled()
     })
   })
 

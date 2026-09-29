@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import type { ChatVarType } from '../type'
 import type { ConversationVariable } from '@/app/components/workflow/types'
 import { checkKeys } from '@/utils/var'
-import { ChatVarType as ChatVarTypeEnum } from '../type'
+import { ChatVarType as ChatVarTypeEnum, isChatVarType } from '../type'
 import {
   arrayBoolPlaceholder,
   arrayNumberPlaceholder,
@@ -66,16 +66,36 @@ export const getPlaceholderByType = (type: ChatVarType) => {
   return objectPlaceholder
 }
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+
+export const isEditableConversationVariable = (variable: ConversationVariable) => {
+  if (!isChatVarType(variable.value_type)) return false
+  if (variable.value_type !== ChatVarTypeEnum.Object) return true
+  return (
+    isRecord(variable.value) &&
+    Object.values(variable.value).every(
+      (value) => typeof value === 'string' || typeof value === 'number',
+    )
+  )
+}
+
 export const buildObjectValueItems = (chatVar?: ConversationVariable): ObjectValueItem[] => {
-  if (!chatVar || !chatVar.value || Object.keys(chatVar.value).length === 0)
+  const value = chatVar?.value
+  if (
+    !chatVar ||
+    chatVar.value_type !== ChatVarTypeEnum.Object ||
+    !isRecord(value) ||
+    Object.keys(value).length === 0
+  )
     return [DEFAULT_OBJECT_VALUE]
 
-  return Object.keys(chatVar.value).map((key) => {
-    const itemValue = chatVar.value[key]
+  return Object.keys(value).map((key) => {
+    const itemValue = value[key]
     return {
       key,
       type: typeof itemValue === 'string' ? ChatVarTypeEnum.String : ChatVarTypeEnum.Number,
-      value: itemValue,
+      value: typeof itemValue === 'string' || typeof itemValue === 'number' ? itemValue : undefined,
     }
   })
 }

@@ -54,6 +54,7 @@ describe('node keyboard interactions', () => {
     vi.clearAllMocks()
     resetReactFlowMockState()
     vi.spyOn(collaborationManager, 'canApplyLocalGraphMutation').mockReturnValue(true)
+    vi.spyOn(collaborationManager, 'ownsReactFlowStore').mockReturnValue(true)
     vi.spyOn(collaborationManager, 'setNodes').mockImplementation(() => {})
     state.readonly = false
     rfState.nodes = [

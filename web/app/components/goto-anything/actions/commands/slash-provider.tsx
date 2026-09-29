@@ -1,20 +1,22 @@
 'use client'
 import { useAtomValue } from 'jotai'
 import { useTheme } from 'next-themes'
-import { useEffect } from 'react'
+import { useEffect, useLayoutEffect } from 'react'
+import { useStore as useAppStore } from '@/app/components/app/store'
 import { ENABLE_FEATURE_PREVIEW } from '@/config'
 import { useDocLink } from '@/context/i18n'
 import { isCurrentWorkspaceDatasetOperatorAtom } from '@/context/workspace-state'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
 import { setLocaleOnClient } from '@/i18n/client'
+import { useParams } from '@/next/navigation'
 import { accountCommand } from './account'
-import { createCommand } from './create'
+import { createCreateCommand } from './create'
 import { discordCommand } from './discord'
 import { docsCommand } from './docs'
 import { goCommand } from './go'
 import { languageCommand } from './language'
 import { modelsCommand } from './models'
-import { refineCommand } from './refine'
+import { createRefineCommand } from './refine'
 import { slashCommandRegistry } from './registry'
 import { themeCommand } from './theme'
 
@@ -39,10 +41,6 @@ const registerSlashCommands = (deps: SlashCommandDeps) => {
     agentsAvailable: deps.agentsAvailable,
     skillsAvailable: deps.skillsAvailable,
   })
-  if (ENABLE_FEATURE_PREVIEW) {
-    slashCommandRegistry.register(createCommand, {})
-    slashCommandRegistry.register(refineCommand, {})
-  }
 }
 
 const unregisterSlashCommands = () => {
@@ -53,11 +51,25 @@ const unregisterSlashCommands = () => {
   slashCommandRegistry.unregister('models')
   slashCommandRegistry.unregister('account')
   slashCommandRegistry.unregister('go')
-  slashCommandRegistry.unregister('create')
-  slashCommandRegistry.unregister('refine')
 }
 
 export const SlashCommandProvider = () => {
+  const params = useParams()
+  const appId = typeof params.appId === 'string' ? params.appId : undefined
+  const appMode = useAppStore((state) =>
+    state.appDetail && state.appDetail.id === appId ? state.appDetail.mode : undefined,
+  )
+  useLayoutEffect(() => {
+    if (!ENABLE_FEATURE_PREVIEW) return
+    const currentApp = appId && appMode ? { id: appId, mode: appMode } : undefined
+    slashCommandRegistry.register(createCreateCommand(currentApp), {})
+    slashCommandRegistry.register(createRefineCommand(currentApp), {})
+    return () => {
+      slashCommandRegistry.unregister('create')
+      slashCommandRegistry.unregister('refine')
+    }
+  }, [appId, appMode])
+
   const theme = useTheme()
   const getDocsHomeUrl = useDocLink()
   const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)

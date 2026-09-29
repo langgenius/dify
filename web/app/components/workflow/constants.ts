@@ -290,6 +290,7 @@ export const DEFAULT_FILE_UPLOAD_SETTING = {
 }
 
 export const WORKFLOW_DATA_UPDATE = 'WORKFLOW_DATA_UPDATE'
+export const WORKFLOW_DRAFT_REPLACED = 'WORKFLOW_DRAFT_REPLACED'
 export const CUSTOM_NODE = 'custom'
 export const CUSTOM_EDGE = 'custom'
 export const DSL_EXPORT_CHECK = 'DSL_EXPORT_CHECK'

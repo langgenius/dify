@@ -219,7 +219,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
 
   const isWorkflowPage = pathname.endsWith('/workflow')
   const content =
-    !appDetail || shouldBlockAgentResourceAccess || shouldBlockAccessPointAccess ? (
+    appDetail?.id !== appId || shouldBlockAgentResourceAccess || shouldBlockAccessPointAccess ? (
       <div className="flex min-w-0 grow items-center justify-center bg-background-body">
         <LoadingPlaceholder />
       </div>

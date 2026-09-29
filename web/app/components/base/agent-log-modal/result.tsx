@@ -1,4 +1,5 @@
 'use client'
+import type { AgentLogResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
@@ -7,53 +8,33 @@ import StatusPanel from '@/app/components/workflow/run/status'
 import useTimestamp from '@/hooks/use-timestamp'
 
 type ResultPanelProps = Readonly<{
-  status: string
-  elapsed_time?: number
-  total_tokens?: number
-  error?: string
-  inputs?: any
-  outputs?: any
-  created_by?: string
-  created_at: string
-  agentMode?: string
-  tools?: string[]
-  iterations?: number
+  meta: AgentLogResponse['meta']
+  inputs?: unknown
+  outputs: string
+  tools: string[]
 }>
 
-const ResultPanel: FC<ResultPanelProps> = ({
-  elapsed_time,
-  total_tokens,
-  error,
-  inputs,
-  outputs,
-  created_by,
-  created_at,
-  agentMode,
-  tools,
-  iterations,
-}) => {
+const ResultPanel: FC<ResultPanelProps> = ({ meta, inputs, outputs, tools }) => {
   const { t } = useTranslation(['appDebug', 'appLog', 'runLog'])
   const { formatTime } = useTimestamp()
 
   return (
     <div className="bg-components-panel-bg py-2">
       <div className="px-4 py-2">
-        <StatusPanel status="succeeded" time={elapsed_time} tokens={total_tokens} error={error} />
+        <StatusPanel status="succeeded" time={meta.elapsed_time} tokens={meta.total_tokens} />
       </div>
       <div className="flex flex-col gap-2 px-4 py-2">
         <CodeEditor
           readOnly
           title={<div>INPUT</div>}
           language={CodeLanguage.json}
-          value={inputs}
-          isJSONStringifyBeauty
+          value={typeof inputs === 'string' ? inputs : JSON.stringify(inputs, null, 2)}
         />
         <CodeEditor
           readOnly
           title={<div>OUTPUT</div>}
           language={CodeLanguage.json}
           value={outputs}
-          isJSONStringifyBeauty
         />
       </div>
       <div className="px-4 py-2">
@@ -78,7 +59,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
                 {t(($) => $['meta.executor'], { ns: 'runLog' })}
               </div>
               <div className="grow px-2 py-1.25 text-xs leading-4.5 text-text-primary">
-                <span>{created_by || 'N/A'}</span>
+                <span>{meta.executor || 'N/A'}</span>
               </div>
             </div>
             <div className="flex">
@@ -88,7 +69,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
               <div className="grow px-2 py-1.25 text-xs leading-4.5 text-text-primary">
                 <span>
                   {formatTime(
-                    Date.parse(created_at) / 1000,
+                    Date.parse(meta.start_time) / 1000,
                     t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
                   )}
                 </span>
@@ -99,7 +80,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
                 {t(($) => $['meta.time'], { ns: 'runLog' })}
               </div>
               <div className="grow px-2 py-1.25 text-xs leading-4.5 text-text-primary">
-                <span>{`${elapsed_time?.toFixed(3)}s`}</span>
+                <span>{`${meta.elapsed_time.toFixed(3)}s`}</span>
               </div>
             </div>
             <div className="flex">
@@ -107,7 +88,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
                 {t(($) => $['meta.tokens'], { ns: 'runLog' })}
               </div>
               <div className="grow px-2 py-1.25 text-xs leading-4.5 text-text-primary">
-                <span>{`${total_tokens || 0} Tokens`}</span>
+                <span>{`${meta.total_tokens} Tokens`}</span>
               </div>
             </div>
             <div className="flex">
@@ -116,7 +97,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
               </div>
               <div className="grow px-2 py-1.25 text-xs leading-4.5 text-text-primary">
                 <span>
-                  {agentMode === 'function_call'
+                  {meta.agent_mode === 'function_call'
                     ? t(($) => $['agent.agentModeType.functionCall'], { ns: 'appDebug' })
                     : t(($) => $['agent.agentModeType.ReACT'], { ns: 'appDebug' })}
                 </span>
@@ -127,7 +108,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
                 {t(($) => $['agentLogDetail.toolUsed'], { ns: 'appLog' })}
               </div>
               <div className="grow px-2 py-1.25 text-xs leading-4.5 text-text-primary">
-                <span>{tools?.length ? tools?.join(', ') : 'Null'}</span>
+                <span>{tools.length ? tools.join(', ') : 'Null'}</span>
               </div>
             </div>
             <div className="flex">
@@ -135,7 +116,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
                 {t(($) => $['agentLogDetail.iterations'], { ns: 'appLog' })}
               </div>
               <div className="grow px-2 py-1.25 text-xs leading-4.5 text-text-primary">
-                <span>{iterations}</span>
+                <span>{meta.iterations}</span>
               </div>
             </div>
           </div>

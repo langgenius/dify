@@ -1,188 +1,258 @@
 'use client'
 
-import type { Import } from '@dify/contracts/api/console/apps/types.gen'
+import type { AppMode, Import } from '@dify/contracts/api/console/apps/types.gen'
 import type { MouseEventHandler } from 'react'
+import type { WorkflowDraftReplacedEvent } from './workflow-data-update-event'
+import type { Dependency } from '@/app/components/plugins/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { RiAlertFill, RiCloseLine, RiFileDownloadLine } from '@remixicon/react'
 import { useMutation } from '@tanstack/react-query'
-import { memo, useCallback, useState } from 'react'
+import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import DSLImportWarningDescription from '@/app/components/app/create-from-dsl-modal/dsl-import-warning-description'
 import { Uploader } from '@/app/components/app/create-from-dsl-modal/uploader'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { getAppTransferErrorMessage } from '@/app/components/app/transfer-error'
-import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
+import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
+import { useStore as usePluginDependenciesStore } from '@/app/components/workflow/plugin-dependency/store'
 import { toast } from '@/app/notifications'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'
 import { consoleQuery } from '@/service/console'
-import { fetchWorkflowDraft } from '@/service/workflow'
-import { collaborationManager } from './collaboration/core/collaboration-manager'
-import { WORKFLOW_DATA_UPDATE } from './constants'
+import { fetchAppWorkflowDraft } from '@/service/workflow'
+import { createWorkflowDraftReplacedEvent } from './create-workflow-draft-replaced-event'
+import { useWorkflowDraftGraphForCanvas } from './hooks/use-workflow-draft-graph-for-canvas'
 import {
   getImportNotificationPayload,
   isImportCompleted,
-  normalizeWorkflowFeatures,
   validateDSLContent,
 } from './update-dsl-modal.helpers'
-import { initialEdges, initialNodes } from './utils'
 
 type UpdateDSLModalProps = {
+  appId: string
+  appMode: AppMode
   onCancel: () => void
   onBackup: () => void
   onImport?: () => void
 }
 
-const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) => {
+type PreparedImport = {
+  response: Import
+  preparedEvent?: WorkflowDraftReplacedEvent
+  workflowReplacementToken?: number | null
+  refreshError?: string
+}
+
+const UpdateDSLModal = ({ appId, appMode, onCancel, onBackup, onImport }: UpdateDSLModalProps) => {
   const { t } = useTranslation(['workflow', 'app', 'common'])
-  const appDetail = useAppStore((s) => s.appDetail)
+  const { getWorkflowDraftGraphForCanvas } = useWorkflowDraftGraphForCanvas(appMode)
   const [currentFile, setCurrentFile] = useState<File>()
   const { eventEmitter } = useEventEmitterContextContext()
-  const { handleCheckPluginDependencies } = usePluginDependencies()
-
-  const handleWorkflowUpdate = useCallback(
-    async (app_id: string) => {
-      const { graph, features, hash, conversation_variables, environment_variables } =
-        await fetchWorkflowDraft(`/apps/${app_id}/workflows/draft`)
-
-      const { nodes, edges, viewport } = graph
-      const importedNodes = initialNodes(nodes, edges)
-      const importedEdges = initialEdges(edges, nodes)
-      if (
-        collaborationManager.isConnected() &&
-        !collaborationManager.replaceGraphFromCommittedDraft(app_id, importedNodes, importedEdges)
-      )
-        throw new Error('Collaborative graph is not ready to apply the imported draft.')
-
-      eventEmitter?.emit({
-        type: WORKFLOW_DATA_UPDATE,
-        payload: {
-          nodes: importedNodes,
-          edges: importedEdges,
-          viewport,
-          features: normalizeWorkflowFeatures(features),
-          hash,
-          conversation_variables: conversation_variables || [],
-          environment_variables: environment_variables || [],
-        },
-      })
-    },
-    [eventEmitter],
+  const { mutateAsync: requestImport } = useMutation(
+    consoleQuery.apps.imports.post.mutationOptions({ context: { silent: true } }),
+  )
+  const { mutateAsync: requestConfirmation } = useMutation(
+    consoleQuery.apps.imports.byImportId.confirm.post.mutationOptions({
+      context: { silent: true },
+    }),
+  )
+  const { mutateAsync: requestDependencies } = useMutation(
+    consoleQuery.apps.imports.byAppId.checkDependencies.get.mutationOptions({
+      context: { silent: true },
+    }),
   )
 
-  const handleCompletedImport = useCallback(
-    async (status: Import['status'], appId?: string | null, warnings: Import['warnings'] = []) => {
-      if (!appId) {
+  const draftPreparationMutation = useMutation({
+    mutationFn: async ({
+      response,
+      workflowReplacementToken,
+    }: {
+      response: Import
+      workflowReplacementToken: number | null
+    }): Promise<PreparedImport> => {
+      try {
+        const draft = await fetchAppWorkflowDraft(appId)
+        return {
+          response,
+          workflowReplacementToken,
+          preparedEvent: createWorkflowDraftReplacedEvent(
+            appId,
+            draft,
+            getWorkflowDraftGraphForCanvas(draft.graph),
+            draft.last_replacement_id ?? undefined,
+            response.id,
+            workflowReplacementToken ?? undefined,
+          ),
+        }
+      } catch (error) {
+        return {
+          response,
+          workflowReplacementToken,
+          refreshError: await getAppTransferErrorMessage(error),
+        }
+      }
+    },
+  })
+
+  const dependencyMutation = useMutation({
+    mutationFn: async (appId: string): Promise<{ dependencies: Dependency[]; error?: string }> => {
+      try {
+        const { leaked_dependencies } = await requestDependencies({ params: { app_id: appId } })
+        return {
+          dependencies: (leaked_dependencies ?? []).map((dependency) => ({
+            ...dependency,
+            value: { ...dependency.value, version: dependency.value.version ?? undefined },
+          })),
+        }
+      } catch (error) {
+        return { dependencies: [], error: await getAppTransferErrorMessage(error) }
+      }
+    },
+  })
+
+  const handleImportResponse = (result: PreparedImport | undefined) => {
+    if (!result) return
+    const { response, preparedEvent, refreshError, workflowReplacementToken } = result
+    if (isImportCompleted(response.status)) {
+      if (response.app_id !== appId) {
         toast.error(t(($) => $['common.importFailure'], { ns: 'workflow' }))
         return
       }
 
-      const payload = getImportNotificationPayload(status, t)
-      toast[payload.type](
-        payload.message,
-        payload.children
+      const notification = getImportNotificationPayload(response.status, t)
+      toast[notification.type](
+        notification.message,
+        notification.children
           ? {
               description: (
-                <DSLImportWarningDescription warnings={warnings} fallback={payload.children} />
+                <DSLImportWarningDescription
+                  warnings={response.warnings ?? []}
+                  fallback={notification.children}
+                />
               ),
             }
           : undefined,
       )
-      try {
-        await handleWorkflowUpdate(appId)
-      } catch (error) {
-        collaborationManager.emitWorkflowUpdate(appId)
+
+      const isCurrentReplacement =
+        workflowReplacementToken === null ||
+        workflowReplacementToken === undefined ||
+        collaborationManager.isWorkflowReplacementCurrent(appId, workflowReplacementToken)
+      let applyError = isCurrentReplacement ? refreshError : undefined
+      if (!applyError && preparedEvent && isCurrentReplacement) {
+        try {
+          eventEmitter?.emit(preparedEvent)
+          if (
+            workflowReplacementToken !== null &&
+            workflowReplacementToken !== undefined &&
+            collaborationManager.isWorkflowReplacementCurrent(appId, workflowReplacementToken)
+          )
+            throw new Error('Workflow draft replacement listener did not apply the update.')
+        } catch (error) {
+          applyError = error instanceof Error ? error.message : String(error)
+        }
+      }
+      if (applyError) {
         toast.error(
           t(($) => $.error, { ns: 'common' }),
-          {
-            description: await getAppTransferErrorMessage(error),
-          },
+          { description: applyError },
         )
-        // Reload the committed graph before the old canvas can resume autosaving.
+        // Reload the committed graph before this canvas can resume autosaving.
         window.location.reload()
         return
       }
-      collaborationManager.emitWorkflowUpdate(appId)
-      onImport?.()
-      // Dependency checks own their feedback after the import has already succeeded.
-      await handleCheckPluginDependencies(appId)
-      onCancel()
-    },
-    [handleCheckPluginDependencies, handleWorkflowUpdate, onCancel, onImport, t],
-  )
 
-  const handleImportResponse = async (response: Import) => {
-    if (isImportCompleted(response.status)) {
-      await handleCompletedImport(response.status, response.app_id, response.warnings)
+      onImport?.()
+      dependencyMutation.mutate(response.app_id, {
+        onSuccess: ({ dependencies, error }) => {
+          usePluginDependenciesStore.getState().setDependencies(dependencies)
+          if (error)
+            toast.error(
+              t(($) => $.error, { ns: 'common' }),
+              { description: error },
+            )
+          onCancel()
+        },
+      })
     } else if (response.status === DSLImportStatus.FAILED) {
       toast.error(
         t(($) => $['common.importFailure'], { ns: 'workflow' }),
-        {
-          description: response.error || undefined,
-        },
+        { description: response.error || undefined },
       )
     }
   }
 
-  const notifyImportError = async (error: unknown) => {
+  const notifyImportError = (error: Error) => {
     toast.error(
       t(($) => $['common.importFailure'], { ns: 'workflow' }),
-      {
-        description: await getAppTransferErrorMessage(error),
-      },
+      { description: error.message },
     )
   }
 
-  const { mutateAsync: requestImport } = useMutation(
-    consoleQuery.apps.imports.post.mutationOptions({ context: { silent: true } }),
-  )
+  const handleImportSuccess = (response: Import) => {
+    if (!isImportCompleted(response.status) || response.app_id !== appId) {
+      handleImportResponse({ response })
+      return
+    }
+
+    const workflowReplacementToken = collaborationManager.beginWorkflowReplacement(appId)
+    draftPreparationMutation.mutate(
+      { response, workflowReplacementToken },
+      { onSuccess: handleImportResponse },
+    )
+  }
+
   const importMutation = useMutation({
     mutationFn: async (file: File) => {
-      if (!appDetail) return
-      if (file.name.toLowerCase().endsWith('.ifpkg'))
-        return requestImport({ body: { file, app_id: appDetail.id } })
+      try {
+        if (file.name.toLowerCase().endsWith('.ifpkg'))
+          return await requestImport({ body: { file, app_id: appId } })
 
-      const content = await file.text()
-      if (!content || !validateDSLContent(content, appDetail.mode)) {
-        toast.error(t(($) => $['common.importFailure'], { ns: 'workflow' }))
-        return
+        const content = await file.text()
+        if (!content || !validateDSLContent(content, appMode))
+          throw new Error(t(($) => $['common.importFailure'], { ns: 'workflow' }))
+
+        return await requestImport({
+          body: {
+            mode: DSLImportMode.YAML_CONTENT,
+            yaml_content: content,
+            app_id: appId,
+          },
+        })
+      } catch (error) {
+        throw new Error(await getAppTransferErrorMessage(error))
       }
-      return requestImport({
-        body: {
-          mode: DSLImportMode.YAML_CONTENT,
-          yaml_content: content,
-          app_id: appDetail.id,
-        },
-      })
-    },
-    onError: notifyImportError,
-    onSettled: async (response) => {
-      if (response) await handleImportResponse(response)
     },
   })
-  const confirmImportMutation = useMutation(
-    consoleQuery.apps.imports.byImportId.confirm.post.mutationOptions({
-      context: { silent: true },
-      onError: (error) => notifyImportError(error),
-      onSettled: async (response) => {
-        if (response) await handleImportResponse(response)
-      },
-    }),
-  )
+  const confirmImportMutation = useMutation({
+    mutationFn: async (importId: string) => {
+      try {
+        return await requestConfirmation({ params: { import_id: importId } })
+      } catch (error) {
+        throw new Error(await getAppTransferErrorMessage(error))
+      }
+    },
+  })
   const pendingImport = importMutation.data?.status === 'pending' ? importMutation.data : undefined
-  const isImporting = importMutation.isPending || confirmImportMutation.isPending
+  const isImporting =
+    importMutation.isPending ||
+    confirmImportMutation.isPending ||
+    draftPreparationMutation.isPending ||
+    dependencyMutation.isPending
 
   const handleImport: MouseEventHandler = () => {
-    if (isImporting || !currentFile || !appDetail) return
-    importMutation.mutate(currentFile)
+    if (isImporting || !currentFile) return
+    importMutation.mutate(currentFile, {
+      onSuccess: handleImportSuccess,
+      onError: notifyImportError,
+    })
   }
 
   const onUpdateDSLConfirm: MouseEventHandler = () => {
     if (!pendingImport || isImporting) return
-
-    confirmImportMutation.mutate({
-      params: { import_id: pendingImport.id },
+    confirmImportMutation.mutate(pendingImport.id, {
+      onSuccess: handleImportSuccess,
+      onError: notifyImportError,
     })
   }
 
@@ -253,11 +323,11 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
               {t(($) => $['newApp.Cancel'], { ns: 'app' })}
             </Button>
             <Button
-              disabled={isImporting || !currentFile || !appDetail}
+              disabled={isImporting || !currentFile}
               variant="primary"
               tone="destructive"
               onClick={handleImport}
-              loading={importMutation.isPending}
+              loading={isImporting}
             >
               {t(($) => $['common.overwriteAndImport'], { ns: 'workflow' })}
             </Button>
@@ -297,7 +367,7 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
               variant="primary"
               tone="destructive"
               disabled={isImporting}
-              loading={confirmImportMutation.isPending}
+              loading={isImporting}
               onClick={onUpdateDSLConfirm}
             >
               {t(($) => $['newApp.Confirm'], { ns: 'app' })}
