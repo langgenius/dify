@@ -73,6 +73,61 @@ describe('fetchAppWorkflowDraft', () => {
     await expect(fetchAppWorkflowDraft('app-1')).rejects.toThrow('Invalid app workflow draft graph')
   })
 
+  it('loads persisted canvas notes alongside executable workflow nodes', async () => {
+    const note = {
+      id: 'note-1',
+      type: 'custom-note',
+      position: { x: 300, y: 100 },
+      data: {
+        type: '',
+        title: '',
+        desc: '',
+        text: '',
+        theme: 'blue',
+        author: 'Editor',
+        showAuthor: true,
+        width: 240,
+        height: 88,
+      },
+    }
+    const draft = {
+      ...createDraft({}),
+      graph: {
+        nodes: [
+          {
+            id: 'start-1',
+            type: 'custom',
+            position: { x: 0, y: 0 },
+            data: { type: 'start', title: 'Start', desc: '' },
+          },
+          note,
+        ],
+        edges: [],
+      },
+    } satisfies DraftWorkflowResponse
+    mockGetAppDraft.mockResolvedValue(draft)
+
+    const result = await fetchAppWorkflowDraft('app-1')
+
+    expect(result.graph.nodes).toHaveLength(2)
+    expect(result.graph.nodes[1]).toEqual(note)
+  })
+
+  it.each([
+    { type: 'custom', data: { type: '' } },
+    { type: 'custom-note', data: { type: 'unknown-block' } },
+  ])('rejects unsupported node data types for the $type renderer', async (node) => {
+    mockGetAppDraft.mockResolvedValue({
+      ...createDraft({}),
+      graph: {
+        nodes: [{ ...node, id: 'node-1', position: { x: 0, y: 0 } }],
+        edges: [],
+      },
+    } satisfies DraftWorkflowResponse)
+
+    await expect(fetchAppWorkflowDraft('app-1')).rejects.toThrow('Invalid app workflow draft graph')
+  })
+
   it('rejects malformed known features before updating the workflow UI', async () => {
     mockGetAppDraft.mockResolvedValue(createDraft({ opening_statement: 42 }))
 

@@ -3,6 +3,7 @@ import type { Viewport } from 'reactflow'
 import type { Edge, Node } from '@/app/components/workflow/types'
 import type { AppWorkflowDraftFeatures, FetchAppWorkflowDraftResponse } from '@/types/workflow'
 import { NODE_WIDTH_X_OFFSET, START_INITIAL_POSITION } from '@/app/components/workflow/constants'
+import { CUSTOM_NOTE_NODE } from '@/app/components/workflow/note-node/constants'
 import { BlockEnum } from '@/app/components/workflow/types'
 
 const blockTypes = new Set<string>(Object.values(BlockEnum))
@@ -23,7 +24,7 @@ const isString = (value: unknown): value is string => typeof value === 'string'
 type PersistedWorkflowNode = Record<string, unknown> & {
   id: string
   data: Record<string, unknown> & {
-    type: BlockEnum
+    type: BlockEnum | ''
     title?: string | null
     desc?: string | null
   }
@@ -50,7 +51,7 @@ const isWorkflowNode = (value: unknown): value is PersistedWorkflowNode => {
 
   return (
     isString(value.id) &&
-    isBlockType(value.data.type) &&
+    (isBlockType(value.data.type) || (value.type === CUSTOM_NOTE_NODE && value.data.type === '')) &&
     isOptionalNullable(value.data.title, isString) &&
     isOptionalNullable(value.data.desc, isString) &&
     isOptionalNullable(
@@ -134,7 +135,7 @@ const isConversationVariable = (
 
 const normalizeWorkflowGraph = (graph: PersistedWorkflowGraph) => {
   const needsInitialLayout = !graph.nodes[0]?.position
-  const nodes: Node[] = graph.nodes.map((node, index) => ({
+  const nodes = graph.nodes.map((node, index) => ({
     ...node,
     id: node.id,
     position:
@@ -151,7 +152,9 @@ const normalizeWorkflowGraph = (graph: PersistedWorkflowGraph) => {
       desc: node.data.desc ?? '',
     },
   }))
-  const nodeTypes = new Map(nodes.map((node) => [node.id, node.data.type]))
+  const nodeTypes = new Map(
+    nodes.flatMap((node) => (isBlockType(node.data.type) ? [[node.id, node.data.type]] : [])),
+  )
   const edges: Edge[] = graph.edges.map((edge) => {
     const sourceType = nodeTypes.get(edge.source)
     const targetType = nodeTypes.get(edge.target)
@@ -178,7 +181,9 @@ const normalizeWorkflowGraph = (graph: PersistedWorkflowGraph) => {
 
   return {
     ...graph,
-    nodes,
+    // The existing canvas Node type only models executable data.type values.
+    // Notes use the outer custom-note renderer and must retain their empty data.type.
+    nodes: nodes as Node[],
     edges,
     viewport: graph.viewport ?? undefined,
   }
