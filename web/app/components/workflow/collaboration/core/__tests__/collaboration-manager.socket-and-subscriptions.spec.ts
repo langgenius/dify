@@ -625,6 +625,137 @@ describe('collaborative draft revision snapshots', () => {
     manager.disconnect(connectionId)
   })
 
+  it('revalidates a newer CRDT revision while a promoted follower still awaits snapshot validation', async () => {
+    const { manager: source, internals: sourceInternals } = setupManagerWithDoc()
+    sourceInternals.draftRevisionMap!.set('last_replacement_id', 'import-a')
+    source.setNodes([], [createNode('graph-a')])
+    sourceInternals.doc!.commit()
+
+    const manager = new CollaborationManager()
+    const socket = createMockSocket('promoted-during-validation')
+    vi.spyOn(webSocketClient, 'connect').mockReturnValue(socket as unknown as Socket)
+    vi.spyOn(webSocketClient, 'getSocket').mockReturnValue(socket as unknown as Socket)
+    vi.spyOn(webSocketClient, 'isConnected').mockReturnValue(true)
+    vi.spyOn(webSocketClient, 'disconnect').mockImplementation(() => undefined)
+    const validationRequests: GraphSnapshotValidationRequest[] = []
+    const graphReadyStates: boolean[] = []
+    manager.onGraphSnapshotValidationRequired((request) => validationRequests.push(request))
+    manager.onGraphReadyChange((ready) => graphReadyStates.push(ready))
+    let canvasNodes: Node[] = []
+    manager.onGraphImport(({ nodes }) => {
+      canvasNodes = nodes
+    })
+    const connectionId = await manager.connect('app-promoted-revision', {
+      sourceStore: { getState: vi.fn() },
+      getState: () => ({
+        getNodes: () => canvasNodes,
+        setNodes: (nodes) => {
+          canvasNodes = nodes
+        },
+        getEdges: () => [],
+        setEdges: vi.fn(),
+      }),
+    })
+
+    try {
+      socket.trigger('status', { isLeader: false })
+      socket.trigger('graph_update', sourceInternals.doc!.export({ mode: 'snapshot' }))
+      const followerRequest = validationRequests.at(-1)
+      if (!followerRequest) throw new Error('Expected follower snapshot validation')
+      expect(followerRequest.lastReplacementId).toBe('import-a')
+
+      socket.trigger('status', { isLeader: true })
+      const promotedRequest = validationRequests.at(-1)
+      if (!promotedRequest) throw new Error('Expected promoted snapshot validation')
+      expect(manager.getIsLeader()).toBe(true)
+      expect(promotedRequest.token).toBeGreaterThan(followerRequest.token)
+      expect(manager.canApplyLocalGraphMutation()).toBe(false)
+
+      sourceInternals.draftRevisionMap!.set('last_replacement_id', 'import-b')
+      source.setNodes([createNode('graph-a')], [createNode('graph-b')])
+      sourceInternals.doc!.commit()
+      socket.trigger('graph_update', sourceInternals.doc!.export({ mode: 'update' }))
+
+      const currentRequest = validationRequests.at(-1)
+      if (!currentRequest) throw new Error('Expected current snapshot validation')
+      expect(currentRequest.lastReplacementId).toBe('import-b')
+      expect(currentRequest.token).toBeGreaterThan(promotedRequest.token)
+      expect(manager.completeGraphSnapshotValidation(followerRequest, 'import-a')).toBe(false)
+      expect(manager.completeGraphSnapshotValidation(promotedRequest, 'import-a')).toBe(false)
+      expect(manager.isGraphSnapshotValidationPending('app-promoted-revision')).toBe(true)
+      expect(manager.canApplyLocalGraphMutation()).toBe(false)
+      expect(manager.canPersistLocalGraph()).toBe(false)
+      expect(graphReadyStates.at(-1)).toBe(false)
+
+      expect(manager.completeGraphSnapshotValidation(currentRequest, 'import-b')).toBe(true)
+      expect(manager.isGraphSnapshotValidationPending('app-promoted-revision')).toBe(false)
+      expect(canvasNodes.map((node) => node.id)).toEqual(['graph-b'])
+      expect(manager.hasAppliedReplacement('app-promoted-revision', 'import-b')).toBe(true)
+      expect(manager.canApplyLocalGraphMutation()).toBe(true)
+      expect(manager.canPersistLocalGraph()).toBe(true)
+      expect(graphReadyStates.at(-1)).toBe(true)
+
+      expect(manager.completeGraphSnapshotValidation(promotedRequest, 'import-a')).toBe(false)
+      expect(manager.isGraphSnapshotValidationPending('app-promoted-revision')).toBe(false)
+      expect(canvasNodes.map((node) => node.id)).toEqual(['graph-b'])
+      expect(manager.canApplyLocalGraphMutation()).toBe(true)
+      expect(manager.canPersistLocalGraph()).toBe(true)
+      expect(graphReadyStates.at(-1)).toBe(true)
+    } finally {
+      manager.disconnect(connectionId)
+    }
+  })
+
+  it('does not start snapshot validation for a trusted leader with no pending validation', async () => {
+    const { manager: source, internals: sourceInternals } = setupManagerWithDoc()
+    sourceInternals.draftRevisionMap!.set('last_replacement_id', 'import-a')
+    source.setNodes([], [createNode('graph-a')])
+    sourceInternals.doc!.commit()
+
+    const manager = new CollaborationManager()
+    const socket = createMockSocket('validated-before-promotion')
+    vi.spyOn(webSocketClient, 'connect').mockReturnValue(socket as unknown as Socket)
+    vi.spyOn(webSocketClient, 'getSocket').mockReturnValue(socket as unknown as Socket)
+    vi.spyOn(webSocketClient, 'isConnected').mockReturnValue(true)
+    vi.spyOn(webSocketClient, 'disconnect').mockImplementation(() => undefined)
+    const validationRequests: GraphSnapshotValidationRequest[] = []
+    manager.onGraphSnapshotValidationRequired((request) => validationRequests.push(request))
+    const connectionId = await manager.connect('app-validated-leader', {
+      sourceStore: { getState: vi.fn() },
+      getState: () => ({
+        getNodes: () => [],
+        setNodes: vi.fn(),
+        getEdges: () => [],
+        setEdges: vi.fn(),
+      }),
+    })
+
+    try {
+      socket.trigger('status', { isLeader: false })
+      socket.trigger('graph_update', sourceInternals.doc!.export({ mode: 'snapshot' }))
+      const request = validationRequests.at(-1)
+      if (!request) throw new Error('Expected follower snapshot validation')
+      expect(manager.completeGraphSnapshotValidation(request, 'import-a')).toBe(true)
+      socket.trigger('status', { isLeader: true })
+      expect(manager.getIsLeader()).toBe(true)
+      expect(manager.canApplyLocalGraphMutation()).toBe(true)
+      const completedRequestCount = validationRequests.length
+
+      sourceInternals.draftRevisionMap!.set('last_replacement_id', 'import-b')
+      source.setNodes([createNode('graph-a')], [createNode('graph-b')])
+      sourceInternals.doc!.commit()
+      socket.trigger('graph_update', sourceInternals.doc!.export({ mode: 'update' }))
+
+      expect(manager.getNodes().map((node) => node.id)).toEqual(['graph-b'])
+      expect(validationRequests).toHaveLength(completedRequestCount)
+      expect(manager.isGraphSnapshotValidationPending('app-validated-leader')).toBe(false)
+      expect(manager.canApplyLocalGraphMutation()).toBe(true)
+      expect(manager.canPersistLocalGraph()).toBe(true)
+    } finally {
+      manager.disconnect(connectionId)
+    }
+  })
+
   it('projects imported graph synchronously before releasing validation when animation frames stall', async () => {
     const { manager: source, internals: sourceInternals } = setupManagerWithDoc()
     sourceInternals.draftRevisionMap!.set('last_replacement_id', 'import-a')

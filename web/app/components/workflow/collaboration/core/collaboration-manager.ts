@@ -1647,7 +1647,13 @@ export class CollaborationManager {
     const generation = this.crdtGeneration
     this.draftRevisionMap?.subscribe((event: LoroSubscribeEvent) => {
       if (generation !== this.crdtGeneration || event.by !== 'import') return
-      if (this.isLeader || !this.crdtTrusted || this.awaitingSnapshotImport) return
+      // A promoted leader must finish validating the latest revision before enabling edits.
+      if (
+        (this.isLeader && !this.snapshotValidationRequest) ||
+        !this.crdtTrusted ||
+        this.awaitingSnapshotImport
+      )
+        return
       if (this.graphReloadRequired) return
       this.requireGraphSnapshotValidation()
     })
