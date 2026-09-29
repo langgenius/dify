@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useSyncExternalStore } from 'react'
 import { validateRedirectUrl } from '@/utils/urlValidation'
 
 export type OAuthCallbackState = {
@@ -13,15 +13,23 @@ export type OAuthCallbackState = {
   errorDescription: string | null
 }
 
+// OAuth redirects load a new page. The URL and opener do not change during
+// this page's lifetime, so a subscription is not needed after hydration.
+const subscribeToCallback = () => () => {}
+const getCallbackSnapshot = () => JSON.stringify([!!window.opener, window.location.search])
+const getServerCallbackSnapshot = () => null
+
 export const useOAuthCallback = (): OAuthCallbackState => {
-  // The first render must be identical on the server and client. Browser
-  // state and callback URL parameters are read only after hydration.
-  const [state, setState] = useState<OAuthCallbackState>({
-    hasOpener: false,
-    finished: false,
-    error: null,
-    errorDescription: null,
-  })
+  const snapshot = useSyncExternalStore(
+    subscribeToCallback,
+    getCallbackSnapshot,
+    getServerCallbackSnapshot,
+  )
+  const [hasOpener, search] =
+    snapshot === null ? [false, ''] : (JSON.parse(snapshot) as [boolean, string])
+  const urlParams = new URLSearchParams(search)
+  const error = urlParams.get('error')
+  const errorDescription = urlParams.get('error_description')
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
@@ -30,12 +38,6 @@ export const useOAuthCallback = (): OAuthCallbackState => {
     const errorDescription = urlParams.get('error_description')
     const opener = window.opener
 
-    setState({
-      hasOpener: !!opener,
-      finished: true,
-      error,
-      errorDescription,
-    })
     if (!opener) return
 
     // Use window.opener.origin instead of '*' for security.
@@ -54,7 +56,12 @@ export const useOAuthCallback = (): OAuthCallbackState => {
     window.close()
   }, [])
 
-  return state
+  return {
+    hasOpener,
+    finished: snapshot !== null,
+    error,
+    errorDescription,
+  }
 }
 
 type OAuthCallbackMessage = {
