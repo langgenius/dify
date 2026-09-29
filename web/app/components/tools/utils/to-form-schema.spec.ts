@@ -4,6 +4,7 @@ import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import {
   flattenToolSettingStoredEntry,
   getPlainValue,
+  resetToolSettingFieldValue,
   toolParametersToFormSchemas,
 } from './to-form-schema'
 
@@ -80,6 +81,32 @@ describe('flattenToolSettingStoredEntry / getPlainValue', () => {
     })
   })
 
+  it('should preserve variable and mixed input kinds from saved settings', () => {
+    expect(
+      flattenToolSettingStoredEntry({
+        value: { type: VarKindType.variable, value: ['node', 'result'] },
+      }),
+    ).toEqual({ type: VarKindType.variable, value: ['node', 'result'] })
+    expect(
+      flattenToolSettingStoredEntry({
+        value: { type: VarKindType.mixed, value: '{{#node.result#}}' },
+      }),
+    ).toEqual({ type: VarKindType.mixed, value: '{{#node.result#}}' })
+  })
+
+  it('should normalize legacy value-only rows and skip absent settings', () => {
+    expect(flattenToolSettingStoredEntry({ value: 'pro' })).toEqual({
+      type: VarKindType.constant,
+      value: 'pro',
+    })
+    expect(
+      getPlainValue({
+        mode: { value: 'pro' },
+        absent: null as unknown as { value: unknown },
+      }),
+    ).toEqual({ mode: { type: VarKindType.constant, value: 'pro' } })
+  })
+
   it('should pass through flat ResourceVarInputs rows', () => {
     expect(
       flattenToolSettingStoredEntry({
@@ -110,5 +137,22 @@ describe('flattenToolSettingStoredEntry / getPlainValue', () => {
     } as Record<string, { value: unknown }>)
     expect(plain.mode).toEqual({ type: VarKindType.constant, value: 'pro' })
     expect(plain.legacy).toEqual({ type: VarKindType.constant, value: 'free' })
+  })
+})
+
+describe('resetToolSettingFieldValue', () => {
+  it('should restore saved setting types from schema defaults', () => {
+    expect(resetToolSettingFieldValue({ type: 'checkbox', default: 'false' })).toEqual({
+      type: VarKindType.constant,
+      value: false,
+    })
+    expect(resetToolSettingFieldValue({ type: 'number-input', default: '2.5' })).toEqual({
+      type: VarKindType.constant,
+      value: 2.5,
+    })
+    expect(resetToolSettingFieldValue({ type: 'text-input', default: 'hello' })).toEqual({
+      type: VarKindType.mixed,
+      value: 'hello',
+    })
   })
 })
