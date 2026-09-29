@@ -8,7 +8,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
-from sqlalchemy.orm import Session
+from pytest_mock import MockerFixture
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.apps.advanced_chat.generate_response_converter import AdvancedChatAppGenerateResponseConverter
@@ -36,7 +37,6 @@ from core.app.entities.queue_entities import (
 )
 from core.repositories.human_input_repository import (
     HumanInputFormEntity,
-    HumanInputFormRecord,
     HumanInputFormRepository,
     HumanInputFormSubmissionRepository,
 )
@@ -47,6 +47,7 @@ from core.workflow.nodes.human_input.callback import (
 from core.workflow.nodes.human_input.entities import (
     FileInputConfig,
     FileListInputConfig,
+    FormDefinition,
     HumanInputNodeData,
     ParagraphInputConfig,
     SelectInputConfig,
@@ -82,7 +83,33 @@ from libs.datetime_utils import naive_utc_now
 from libs.helper import compact_generate_response
 from models.account import Account
 from models.enums import MessageStatus
+from models.human_input import HumanInputForm
 from models.model import AppMode, Message
+
+
+def _persist_form(
+    sessions: sessionmaker[Session],
+    *,
+    form_id: str,
+    app_id: str,
+    node_id: str,
+    expiration_time: datetime.datetime,
+    status: HumanInputFormStatus,
+) -> None:
+    definition = FormDefinition(form_content="content", rendered_content="content", expiration_time=expiration_time)
+    form = HumanInputForm(
+        tenant_id="tenant",
+        app_id=app_id,
+        workflow_run_id="run-1",
+        node_id=node_id,
+        form_definition=definition.model_dump_json(),
+        rendered_content="content",
+        expiration_time=expiration_time,
+        status=status,
+    )
+    form.id = form_id
+    with sessions.begin() as session:
+        session.add(form)
 
 
 class _FakeFormRepository:
@@ -498,21 +525,21 @@ def test_button_only_human_input_reaches_response_stream(app: Flask):
 
 @pytest.mark.parametrize("status", [HumanInputFormStatus.TIMEOUT, HumanInputFormStatus.WAITING])
 def test_timed_out_human_input_reaches_response_stream(
-    status: HumanInputFormStatus, monkeypatch: pytest.MonkeyPatch, app: Flask
+    status: HumanInputFormStatus, sqlite_session_factory: sessionmaker[Session], app: Flask
 ):
     expiration_time = datetime.datetime(2025, 1, 1)
-    form = MagicMock(spec=HumanInputFormRecord)
-    form.app_id = "app"
-    form.node_id = "node-1"
-    form.expiration_time = expiration_time
-    repository = MagicMock(spec=HumanInputFormSubmissionRepository)
-    earlier_form = SimpleNamespace(app_id="app", node_id="node-1", expiration_time=datetime.datetime(2024, 1, 1))
-    forms = {
-        "previous-execution": earlier_form,
-        "00000000-0000-4000-8000-000000000001": form,
-    }
-    repository.get_by_form_id.side_effect = forms.get
-    monkeypatch.setattr(HumanInputFormSubmissionRepository, "get_by_form_id", repository.get_by_form_id)
+    for form_id, expiration in (
+        ("previous-execution", datetime.datetime(2024, 1, 1)),
+        ("00000000-0000-4000-8000-000000000001", expiration_time),
+    ):
+        _persist_form(
+            sqlite_session_factory,
+            form_id=form_id,
+            app_id="app",
+            node_id="node-1",
+            expiration_time=expiration,
+            status=status,
+        )
 
     events = _publish_node_events(_build_timeout_node(expiration_time, status=status))
 
@@ -532,7 +559,7 @@ def test_timed_out_human_input_reaches_response_stream(
 @pytest.mark.parametrize("timed_out", [False, True])
 @pytest.mark.parametrize("terminal", ["end", "answer"])
 def test_human_input_completion_and_referenced_answer_reach_response_stream(
-    timed_out: bool, terminal: str, monkeypatch: pytest.MonkeyPatch, app: Flask
+    timed_out: bool, terminal: str, mocker: MockerFixture, app: Flask, sqlite_session_factory: sessionmaker[Session]
 ):
     expiration_time = datetime.datetime(2025, 1, 1)
     node = (
@@ -577,13 +604,20 @@ def test_human_input_completion_and_referenced_answer_reach_response_stream(
         command_channel=InMemoryChannel(),
         config=GraphEngineConfig(min_workers=1, max_workers=1),
     )
-    form = MagicMock(spec=HumanInputFormRecord)
-    form.app_id = "app"
-    form.node_id = node.id
-    form.expiration_time = expiration_time
-    repository = MagicMock(spec=HumanInputFormSubmissionRepository)
-    repository.get_by_form_id.return_value = form
-    monkeypatch.setattr(HumanInputFormSubmissionRepository, "get_by_form_id", repository.get_by_form_id)
+    bind_execution_id = node.bind_execution_id
+
+    def bind_form(execution_id: str) -> None:
+        bind_execution_id(execution_id)
+        _persist_form(
+            sqlite_session_factory,
+            form_id=execution_id,
+            app_id="app",
+            node_id=node.id,
+            expiration_time=expiration_time,
+            status=HumanInputFormStatus.TIMEOUT if timed_out else HumanInputFormStatus.SUBMITTED,
+        )
+
+    mocker.patch.object(node, "bind_execution_id", side_effect=bind_form)
 
     events = _publish_graph_events(iter_dify_graph_engine_events(engine))
     payloads = _sse_payloads(events, InvokeFrom.WEB_APP, app, runtime_state)
@@ -609,14 +643,19 @@ def test_human_input_completion_and_referenced_answer_reach_response_stream(
 
 
 @pytest.mark.parametrize("form_owner", [None, ("other-app", "node-1"), ("app", "other-node")])
-def test_timeout_rejects_missing_or_unrelated_form(form_owner: tuple[str, str] | None, monkeypatch: pytest.MonkeyPatch):
-    form = None
+def test_timeout_rejects_missing_or_unrelated_form(
+    form_owner: tuple[str, str] | None, sqlite_session_factory: sessionmaker[Session]
+):
     if form_owner is not None:
-        form = MagicMock(spec=HumanInputFormRecord)
-        form.app_id, form.node_id = form_owner
-    repository = MagicMock(spec=HumanInputFormSubmissionRepository)
-    repository.get_by_form_id.return_value = form
-    monkeypatch.setattr(HumanInputFormSubmissionRepository, "get_by_form_id", repository.get_by_form_id)
+        app_id, node_id = form_owner
+        _persist_form(
+            sqlite_session_factory,
+            form_id="00000000-0000-4000-8000-000000000001",
+            app_id=app_id,
+            node_id=node_id,
+            expiration_time=datetime.datetime(2025, 1, 1),
+            status=HumanInputFormStatus.TIMEOUT,
+        )
 
     with pytest.raises(ValueError, match="Cannot resolve timed-out human input form"):
         _publish_node_events(_build_timeout_node())
