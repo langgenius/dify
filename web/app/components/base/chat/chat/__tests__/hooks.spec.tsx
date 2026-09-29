@@ -1,6 +1,6 @@
 import type { ChatConfig, ChatItemInTree } from '../../types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
-import { toast } from '@langgenius/dify-ui/toast'
+import { toast } from '@/app/notifications'
 import { act, renderHook } from '@testing-library/react'
 import { InputVarType, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { captureAppAccessScope, handleAppAccessError } from '@/features/app-access-error/state'
@@ -26,7 +26,7 @@ vi.mock('@/app/components/base/audio-btn/audio.player.manager', () => ({
   },
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   default: { notify: vi.fn() },
   toast: {
     success: vi.fn(),

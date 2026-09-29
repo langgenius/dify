@@ -11,15 +11,23 @@ export const useInitialData = (
   const initialData = useMemo(() => {
     return variables.reduce(
       (acc, item) => {
+        const stringFieldTypes: readonly BaseFieldType[] = [
+          BaseFieldType.textInput,
+          BaseFieldType.paragraph,
+          BaseFieldType.select,
+        ]
+        const fileFieldTypes: readonly BaseFieldType[] = [
+          BaseFieldType.file,
+          BaseFieldType.fileList,
+        ]
+
         const type = VAR_TYPE_MAP[item.type]
         const variableName = item.variable
         const defaultValue = lastRunInputData?.[variableName] || item.default_value
-        if ([BaseFieldType.textInput, BaseFieldType.paragraph, BaseFieldType.select].includes(type))
-          acc[variableName] = defaultValue ?? ''
+        if (stringFieldTypes.includes(type)) acc[variableName] = defaultValue ?? ''
         if (type === BaseFieldType.numberInput) acc[variableName] = defaultValue ?? 0
         if (type === BaseFieldType.checkbox) acc[variableName] = defaultValue ?? false
-        if ([BaseFieldType.file, BaseFieldType.fileList].includes(type))
-          acc[variableName] = defaultValue ?? []
+        if (fileFieldTypes.includes(type)) acc[variableName] = defaultValue ?? []
         return acc
       },
       {} as Record<string, any>,

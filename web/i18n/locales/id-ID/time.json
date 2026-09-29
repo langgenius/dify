@@ -1,0 +1,22 @@
+{
+  "dateFormats.compact": "MM/DD/YYYY HH:mm",
+  "dateFormats.withSeconds": "MM/DD/YYYY hh:mm:ss A",
+  "operation.cancel": "Membatalkan",
+  "operation.now": "Sekarang",
+  "operation.ok": "OKE",
+  "operation.pickDate": "Tanggal Pilih",
+  "picker.chooseMonthAndYear": "Pilih bulan dan tahun",
+  "picker.endDate": "Tanggal akhir",
+  "picker.hour": "Jam",
+  "picker.minute": "Menit",
+  "picker.month": "Bulan",
+  "picker.nextMonth": "Bulan berikutnya",
+  "picker.period": "AM/PM",
+  "picker.previousMonth": "Bulan sebelumnya",
+  "picker.required": "Pilih nilai.",
+  "picker.requiredLabel": "Wajib",
+  "picker.startDate": "Tanggal mulai",
+  "picker.unavailable": "Tanggal atau waktu ini tidak tersedia.",
+  "picker.year": "Tahun",
+  "title.pickTime": "Waktu Pilih"
+}

@@ -15,8 +15,8 @@ vi.mock('@/service/use-plugins', () => ({
   useInstalledPluginList: () => mockInstalledPluginList,
 }))
 
-vi.mock('@/app/components/base/loading', () => ({
-  default: () => <div data-testid="loading">loading</div>,
+vi.mock('@/app/components/base/loading-placeholder', () => ({
+  LoadingPlaceholder: () => <div data-testid="loading">loading</div>,
 }))
 
 vi.mock('@/app/components/plugins/marketplace/search-box', () => ({

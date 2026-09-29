@@ -5,10 +5,12 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
+from sqlalchemy import event
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
+from controllers.common.rbac import DatasetId
 from controllers.console import console_ns
 from controllers.console.datasets.datasets_document import (
     DatasetDocumentListApi,
@@ -45,6 +47,7 @@ from controllers.console.datasets.error import (
     InvalidActionError,
     InvalidMetadataError,
 )
+from controllers.console.wraps import RBACPermission
 from core.entities.knowledge_entities import IndexingEstimate
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from extensions.storage.storage_type import StorageType
@@ -65,6 +68,7 @@ from services.vector_space_admission_service import (
     format_vector_space_admission_error,
 )
 from tests.unit_tests.config_override import config_overrides_context
+from tests.unit_tests.controllers.rbac_introspection import rbac_checks
 
 
 def make_serializable_document(**overrides):
@@ -128,11 +132,11 @@ def make_account(role: TenantAccountRole = TenantAccountRole.EDITOR) -> Account:
     return account
 
 
-def make_segment(*, position: int, completed: bool = True) -> DocumentSegment:
+def make_segment(*, position: int, completed: bool = True, document_id: str = "doc-1") -> DocumentSegment:
     return DocumentSegment(
         tenant_id="tenant-1",
         dataset_id="ds-1",
-        document_id="doc-1",
+        document_id=document_id,
         position=position,
         content=f"segment {position}",
         word_count=2,
@@ -223,6 +227,51 @@ class _UsesSQLiteSession:
         self.session = sqlite_session
 
 
+@pytest.mark.parametrize(
+    "method",
+    [
+        DatasetDocumentListApi.get,
+        DocumentBatchIndexingStatusApi.get,
+        DocumentIndexingStatusApi.get,
+        DocumentApi.get,
+        DocumentPipelineExecutionLogApi.get,
+        DocumentSummaryStatusApi.get,
+    ],
+)
+def test_document_read_routes_require_dataset_readonly_permission(method) -> None:
+    [check] = rbac_checks(method)
+
+    assert check.scene is RBACPermission.DATASET_READONLY
+    assert isinstance(check.locator, DatasetId)
+
+
+@pytest.mark.parametrize(
+    "method",
+    [DocumentIndexingEstimateApi.get, DocumentBatchIndexingEstimateApi.get],
+)
+def test_document_indexing_estimates_require_dataset_use_permission(method) -> None:
+    [check] = rbac_checks(method)
+
+    assert check.scene is RBACPermission.DATASET_USE
+    assert isinstance(check.locator, DatasetId)
+
+
+@pytest.mark.parametrize(
+    ("method", "expected_scene"),
+    [
+        (DatasetDocumentListApi.post, RBACPermission.DATASET_USE),
+        (DatasetDocumentListApi.delete, RBACPermission.DATASET_DELETE_FILE),
+        (DocumentApi.delete, RBACPermission.DATASET_DELETE_FILE),
+        (DocumentBatchDownloadZipApi.post, RBACPermission.DATASET_DOCUMENT_DOWNLOAD),
+    ],
+)
+def test_document_mutation_routes_require_operation_specific_permissions(method, expected_scene) -> None:
+    [check] = rbac_checks(method)
+
+    assert check.scene is expected_scene
+    assert isinstance(check.locator, DatasetId)
+
+
 class TestGetProcessRuleApi(_UsesSQLiteSession):
     def test_get_default_success(self, app: Flask, patch_tenant):
         api = GetProcessRuleApi()
@@ -299,6 +348,40 @@ class TestGetProcessRuleApi(_UsesSQLiteSession):
 
         assert response["mode"] == "custom"
         assert response["rules"] is None
+
+    def test_get_with_document_requires_dataset_readonly_permission(self, app: Flask, patch_tenant):
+        api = GetProcessRuleApi()
+        method = unwrap(api.get)
+        user, tenant_id = patch_tenant
+        document = make_document()
+        dataset = make_dataset(tenant_id=tenant_id)
+
+        with (
+            app.test_request_context("/?document_id=doc-1"),
+            patch(
+                "controllers.console.datasets.datasets_document.DocumentService.get_document_by_id",
+                return_value=document,
+            ),
+            patch(
+                "controllers.console.datasets.datasets_document.DatasetService.get_dataset",
+                return_value=dataset,
+            ),
+            patch(
+                "controllers.console.datasets.datasets_document.DatasetService.check_dataset_permission",
+                return_value=None,
+            ),
+            patch("controllers.console.datasets.datasets_document.enforce_rbac_checks", create=True) as enforce_checks,
+        ):
+            method(api, self.session, user)
+
+        enforce_checks.assert_called_once()
+        kwargs = enforce_checks.call_args.kwargs
+        assert kwargs["tenant_id"] == tenant_id
+        assert kwargs["account_id"] == user.id
+        assert kwargs["path_args"] == {"dataset_id": dataset.id}
+        [check] = kwargs["checks"]
+        assert check.scene is RBACPermission.DATASET_READONLY
+        assert isinstance(check.locator, DatasetId)
 
     def test_get_with_document_dataset_not_found(self, app: Flask, patch_tenant):
         api = GetProcessRuleApi()
@@ -488,7 +571,6 @@ class TestDatasetInitApi(_UsesSQLiteSession):
             patch(
                 "controllers.console.datasets.datasets_document.enterprise_rbac_service.RBACService.DatasetAccess.replace_whitelist"
             ),
-            patch("controllers.console.datasets.datasets_document.initialize_created_app_rbac_access_task.delay"),
         ):
             response = method(api, session, tenant_id, user)
         assert response["dataset"]["id"] == "ds-1"
@@ -497,6 +579,46 @@ class TestDatasetInitApi(_UsesSQLiteSession):
         assert response["documents"][0]["doc_metadata"] == []
         assert response["batch"] == "batch-init"
         assert created_dataset.permission == DatasetPermissionEnum.ALL_TEAM
+
+    def test_post_success_syncs_creator_access_on_upload_create(self, app: Flask, patch_tenant):
+        """RBAC: the console upload create must keep the creator bound to their own dataset.
+
+        Regression guard for the #42430 flip to automatic_include_workspace_members=False:
+        unlike POST /console/api/datasets (DatasetService.create_empty_dataset syncs the
+        creator internally), this path bypasses that helper, so the controller has to sync
+        the creator explicitly or the creator gets 403 on their own dataset.
+        """
+        api = DatasetInitApi()
+        method = unwrap(api.post)
+        user, tenant_id = patch_tenant
+        payload = {"indexing_technique": "economy"}
+        created_dataset = make_dataset()
+        created_document = make_document(id="doc-init")
+        session = self.session
+        captured = {}
+        with (
+            app.test_request_context("/", json=payload),
+            patch.object(type(console_ns), "payload", payload),
+            config_overrides_context(RBAC_ENABLED=True),
+            patch(
+                "controllers.console.datasets.datasets_document.DocumentService.document_create_args_validate",
+                return_value=None,
+            ),
+            patch(
+                "controllers.console.datasets.datasets_document.DocumentService.save_document_without_dataset_id",
+                return_value=(created_dataset, [created_document], "batch-init"),
+            ),
+            patch(
+                "controllers.console.datasets.datasets_document.enterprise_rbac_service.RBACService.DatasetAccess.replace_whitelist"
+            ),
+            patch(
+                "controllers.console.datasets.datasets_document.enterprise_rbac_service.try_sync_creator_access_policy_member_bindings"
+            ) as sync_creator,
+        ):
+            response = method(api, session, tenant_id, user)
+        captured["sync_calls"] = sync_creator.call_args_list
+        assert sync_creator.called, "upload create must sync the creator's own access byte-through"
+        assert response["dataset"]["id"] == "ds-1"
 
 
 class TestDocumentResource(_UsesSQLiteSession):
@@ -528,9 +650,10 @@ class TestDocumentResource(_UsesSQLiteSession):
             session=session,
         )
 
-    def test_get_document_relies_on_rbac_in_rbac_mode(self, dataset):
+    def test_get_document_delegates_permission_check_in_rbac_mode(self, dataset):
         api = DocumentResource()
         session = self.session
+        user = make_account()
         with (
             config_overrides_context(RBAC_ENABLED=True),
             patch(
@@ -545,9 +668,9 @@ class TestDocumentResource(_UsesSQLiteSession):
                 return_value=make_document(),
             ),
         ):
-            api.get_document(session, "ds-1", "doc-1", make_account(), "tenant-1")
+            api.get_document(session, "ds-1", "doc-1", user, "tenant-1")
 
-        check_permission.assert_not_called()
+        check_permission.assert_called_once_with(dataset, user, session)
 
 
 class TestDocumentApi(_UsesSQLiteSession):
@@ -1335,6 +1458,43 @@ class TestDocumentBatchIndexingStatusApi(_UsesSQLiteSession):
         with app.test_request_context("/"), patch.object(api, "get_batch_documents", side_effect=NotFound()):
             with pytest.raises(NotFound):
                 method(api, self.session, user, "ds-1", "invalid-batch")
+
+    def test_get_batch_status_uses_one_aggregate_query(self, app: Flask, patch_tenant, sqlite_engine):
+        api = DocumentBatchIndexingStatusApi()
+        method = unwrap(api.get)
+        user, _ = patch_tenant
+        documents = [make_document(id=f"doc-{index}", position=index) for index in range(1, 6)]
+        session = self.session
+        session.add_all(
+            [
+                make_segment(
+                    position=position,
+                    completed=position <= 2,
+                    document_id=document.id,
+                )
+                for document in documents
+                for position in range(1, 4)
+            ]
+        )
+        session.flush()
+
+        select_statements: list[str] = []
+
+        def record_select(_connection, _cursor, statement, _parameters, _context, _executemany):
+            if statement.lstrip().upper().startswith("SELECT"):
+                select_statements.append(statement)
+
+        event.listen(sqlite_engine, "before_cursor_execute", record_select)
+        try:
+            with app.test_request_context("/"), patch.object(api, "get_batch_documents", return_value=documents):
+                response = method(api, session, user, "ds-1", "batch-1")
+        finally:
+            event.remove(sqlite_engine, "before_cursor_execute", record_select)
+
+        assert len(response["data"]) == 5
+        assert all(item["completed_segments"] == 2 for item in response["data"])
+        assert all(item["total_segments"] == 3 for item in response["data"])
+        assert len(select_statements) == 1
 
 
 class TestDocumentIndexingStatusApi(_UsesSQLiteSession):

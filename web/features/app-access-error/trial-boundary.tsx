@@ -5,7 +5,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { useAtomValueRawSync } from 'jotai/react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import AppNotAccessible from './page'
 import {
   appAccessStore,
@@ -20,7 +20,7 @@ export default function TrialAppAccessBoundary({
   onClose,
   children,
 }: PropsWithChildren<{ appId: string; onClose: () => void }>) {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
   const scope = useAtomValueRawSync(trialAppAccessScopeAtom, { store: appAccessStore })
   const error = useAtomValueRawSync(trialAppAccessErrorAtom, { store: appAccessStore })
   useEffect(() => {
@@ -28,7 +28,7 @@ export default function TrialAppAccessBoundary({
     return () => endTrialAppAccess(visit)
   }, [appId])
 
-  if (!scope || scope.key !== `trial:${appId}`) return <Loading type="area" />
+  if (!scope || scope.key !== `trial:${appId}`) return <LoadingPlaceholder className="h-full" />
   if (error?.scope !== scope) return children
   return (
     <div className="relative h-full overflow-y-auto">

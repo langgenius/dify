@@ -29,9 +29,8 @@ describe('VariableItem', () => {
     fireEvent.mouseOut(actions[1] as Element)
     expect(card.className).not.toContain('border-state-destructive-border')
 
-    const icons = container.querySelectorAll('svg')
-    await user.click(icons[1] as SVGElement)
-    await user.click(icons[2] as SVGElement)
+    await user.click(actions[0]!.querySelector('svg')!)
+    await user.click(actions[1]!.querySelector('svg')!)
 
     expect(onEdit).toHaveBeenCalledWith(expect.objectContaining({ id: 'var-1' }))
     expect(onDelete).toHaveBeenCalledWith(expect.objectContaining({ id: 'var-1' }))

@@ -14,8 +14,9 @@ from core.mcp.server.streamable_http import handle_mcp_request, negotiate_protoc
 from extensions.ext_database import db
 from graphon.variables.input_entities import VariableEntity, VariableEntityType
 from libs import helper
-from models.enums import AppMCPServerStatus, EndUserType
+from models.enums import EndUserType
 from models.model import App, AppMCPServer, AppMode, EndUser
+from services.app.mcp_server_service import AppMCPServerStatus
 
 
 class MCPRequestError(Exception):
@@ -264,16 +265,15 @@ class MCPAppApi(Resource):
             except ValidationError as e:
                 raise MCPRequestError(mcp_types.INVALID_PARAMS, f"Invalid MCP request: {str(e)}")
 
-    def _retrieve_end_user(self, tenant_id: str, mcp_server_id: str) -> EndUser | None:
-        """Get end user - manages its own database session"""
-        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
-            return session.scalar(
-                select(EndUser)
-                .where(
-                    EndUser.tenant_id == tenant_id, EndUser.session_id == mcp_server_id, EndUser.type == EndUserType.MCP
-                )
-                .limit(1)
-            )
+    def _retrieve_end_user(self, tenant_id: str, mcp_server_id: str, session: Session) -> EndUser | None:
+        """Get end user in the caller session"""
+        return session.scalar(
+            select(EndUser)
+            .where(EndUser.tenant_id == tenant_id)
+            .where(EndUser.session_id == mcp_server_id)
+            .where(EndUser.type == EndUserType.MCP)
+            .limit(1)
+        )
 
     def _create_end_user(
         self, client_name: str, tenant_id: str, app_id: str, mcp_server_id: str, session: Session
@@ -302,7 +302,7 @@ class MCPAppApi(Resource):
         protocol_version: str,
     ) -> mcp_types.JSONRPCResponse | mcp_types.JSONRPCError | None:
         """Handle MCP request and return response"""
-        end_user = self._retrieve_end_user(mcp_server.tenant_id, mcp_server.id)
+        end_user = self._retrieve_end_user(mcp_server.tenant_id, mcp_server.id, session)
 
         if not end_user and isinstance(mcp_request.root, mcp_types.InitializeRequest):
             client_info = mcp_request.root.params.clientInfo

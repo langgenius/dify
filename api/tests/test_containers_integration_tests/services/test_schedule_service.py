@@ -42,7 +42,7 @@ class ScheduleServiceIntegrationFactory:
         db_session_with_containers.add(join)
         db_session_with_containers.commit()
 
-        account.current_tenant = tenant
+        account.set_current_tenant_with_session(tenant, session=db_session_with_containers)
         return account, tenant
 
     @staticmethod
@@ -176,7 +176,7 @@ class TestScheduleServiceIntegration:
         with pytest.MonkeyPatch.context() as monkeypatch:
             calls: list[tuple] = []
 
-            def _track(*args, **kwargs):
+            def _track[**P](*args: P.args, **kwargs: P.kwargs):
                 calls.append((args, kwargs))
                 return datetime(2026, 1, 9, 10, 0, 0)
 

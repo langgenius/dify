@@ -34,7 +34,7 @@ function Canvas() {
     <div onKeyDownCapture={onKeyDownCapture}>
       <div role="button" tabIndex={0} className="react-flow__node" data-id="node">
         Node
-        <button type="button" data-node-keyboard-target onClick={() => state.select('node')}>
+        <button type="button" onClick={() => state.select('node')}>
           Select node
         </button>
       </div>
@@ -81,15 +81,36 @@ describe('node keyboard interactions', () => {
 
   it('selects and deselects the focused node while leaving editor keys alone', async () => {
     const user = userEvent.setup()
-    renderWorkflowComponent(<Canvas />)
+    const { store } = renderWorkflowComponent(<Canvas />)
     await user.tab()
-    await user.keyboard('{Enter}{Escape}')
+    await user.keyboard('{Enter}')
+    expect(store.getState().pendingNodePanelFocusId).toBe('node')
+    await user.keyboard('{Escape}')
+    expect(store.getState().pendingNodePanelFocusId).toBeUndefined()
+    await user.keyboard(' ')
+    expect(store.getState().pendingNodePanelFocusId).toBe('node')
     expect(state.select.mock.calls).toEqual([
       ['node', false],
       ['node', true],
+      ['node', false],
     ])
     await user.click(screen.getByRole('textbox', { name: 'Node title' }))
     await user.keyboard('{ArrowDown}')
+    expect(state.sync).not.toHaveBeenCalled()
+  })
+
+  it('allows readonly nodes to be selected and inspected without allowing movement', async () => {
+    state.readonly = true
+    const user = userEvent.setup()
+    renderWorkflowComponent(<Canvas />)
+    await user.tab()
+    await user.keyboard('{Enter}{Escape} {ArrowRight}')
+    expect(state.select.mock.calls).toEqual([
+      ['node', false],
+      ['node', true],
+      ['node', false],
+    ])
+    expect(rfState.nodes[0]!.position).toEqual({ x: 0, y: 0 })
     expect(state.sync).not.toHaveBeenCalled()
   })
 
@@ -110,20 +131,14 @@ describe('node keyboard interactions', () => {
     expect(state.history).toHaveBeenCalledWith('NodeDragStop', { nodeId: 'node' })
   })
 
-  it('moves from the title button through collaboration and keeps its native activation', async () => {
+  it('leaves independent node button keys to that button', async () => {
     const user = userEvent.setup()
     renderWorkflowComponent(<Canvas />)
     await user.click(screen.getByRole('button', { name: 'Select node' }))
-    await user.keyboard('{ArrowRight}')
-    expect(rfState.nodes[0]!.position).toEqual({ x: 5, y: 0 })
-    expect(collaborationManager.setNodes).toHaveBeenCalledWith(
-      expect.arrayContaining([expect.objectContaining({ position: { x: 0, y: 0 } })]),
-      expect.arrayContaining([expect.objectContaining({ position: { x: 5, y: 0 } })]),
-      'keyboard-node-movement',
-    )
-    expect(state.sync).toHaveBeenCalledOnce()
     state.select.mockClear()
-    await user.keyboard('{Enter} ')
+    await user.keyboard('{ArrowRight}{Enter} ')
+    expect(rfState.nodes[0]!.position).toEqual({ x: 0, y: 0 })
+    expect(state.sync).not.toHaveBeenCalled()
     expect(state.select.mock.calls).toEqual([['node'], ['node']])
   })
 

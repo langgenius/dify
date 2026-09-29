@@ -29,8 +29,8 @@ from libs.datetime_utils import naive_utc_now
 from models.enums import CreatorUserRole, EndUserType
 from models.model import App, EndUser, UploadFile
 from models.tools import ToolFile
-from services import end_user_service
-from services.end_user_service import EndUserService
+from repositories.app_scoped_end_user_repository import AppScopedEndUserRepo
+from services.app_scoped_end_user_service import AppScopedEndUserService
 from services.file_grant_gateways import FILE_GRANT_AUDIENCE
 from services.file_grant_service import (
     MAX_RUN_GRANT_TTL_SECONDS,
@@ -326,7 +326,9 @@ def test_mint_folds_an_oversized_subject_into_one_identity(app: Flask, sqlite_se
 
     end_users = sqlite_session.scalars(select(EndUser).order_by(EndUser.created_at)).all()
     assert len(end_users) == 2
-    assert all(len(end_user.external_user_id) == 255 for end_user in end_users)
+    assert all(
+        end_user.external_user_id is not None and len(end_user.external_user_id) == 255 for end_user in end_users
+    )
     assert _subject_of(first) == _subject_of(again) != _subject_of(other)
 
 
@@ -435,9 +437,8 @@ def test_mint_reports_optional_files_item_by_item(app: Flask, sqlite_session: Se
 
 @pytest.mark.usefixtures("seeded_app")
 def test_end_user_service_never_retypes_an_app_deploy_row(
-    sqlite_engine: Engine,
     sqlite_session: Session,
-    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     """Retyping would hide the row from the grant read and strand its files."""
 
@@ -454,9 +455,10 @@ def test_end_user_service_never_retypes_an_app_deploy_row(
     sqlite_session.add(owner)
     sqlite_session.commit()
     owner_id = owner.id
-    monkeypatch.setattr(end_user_service, "db", SimpleNamespace(engine=sqlite_engine))
 
-    EndUserService.get_or_create_end_user_by_type(EndUserType.SERVICE_API, TENANT_ID, APP_ID, session_id)
+    AppScopedEndUserService(
+        end_users=AppScopedEndUserRepo(session_factory=sqlite_session_factory)
+    ).get_or_create_end_user_by_type(EndUserType.SERVICE_API, TENANT_ID, APP_ID, session_id)
 
     sqlite_session.expire_all()
     persisted_owner = sqlite_session.get(EndUser, owner_id)
@@ -470,7 +472,7 @@ SKIPPED_DIRECTORY_NAMES = frozenset({".git", ".venv", "__pycache__", "migrations
 def test_app_deploy_end_users_have_exactly_one_writer() -> None:
     """``end_users`` has no unique constraint, so a second writer would fork identities.
 
-    ``end_user_service`` names the type only to exclude it from the legacy retype;
+    ``app_scoped_end_user_service`` names the type only to exclude it from the legacy retype;
     the behavioural guard above is what holds that exclusion in place.
     """
 
@@ -489,5 +491,5 @@ def test_app_deploy_end_users_have_exactly_one_writer() -> None:
 
     assert referencing_modules == {
         "repositories/file_grant_repository.py",
-        "services/end_user_service.py",
+        "services/app_scoped_end_user_service.py",
     }

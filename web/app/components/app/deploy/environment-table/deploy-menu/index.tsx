@@ -12,7 +12,7 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import {
   appEnvironmentsIsErrorAtom,
   appEnvironmentsIsLoadingAtom,
@@ -30,8 +30,8 @@ export function EnvironmentDeployMenu({
   appearance = 'header',
   onSelectEnvironment,
 }: EnvironmentDeployMenuProps) {
-  const { t } = useTranslation('deployments')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['deployments'])
+  const { t: tCommon } = useTranslation(['common'])
   const undeployedEnvironments = useAtomValue(undeployedAppEnvironmentsAtom) ?? []
   const isLoading = useAtomValue(appEnvironmentsIsLoadingAtom)
   const isError = useAtomValue(appEnvironmentsIsErrorAtom)
@@ -62,7 +62,7 @@ export function EnvironmentDeployMenu({
             {t(($) => $['card.notDeployed'])}
           </DropdownMenuLabel>
           {isLoading ? (
-            <Loading className="h-7" />
+            <LoadingPlaceholder className="h-7" />
           ) : isError ? (
             <div className="flex flex-col items-center">
               <p role="alert" className="px-2 py-1.5 system-xs-regular text-text-destructive">

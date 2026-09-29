@@ -28,22 +28,6 @@
   transform: translateY(0);
 }
 
-.marketplaceLogoLight {
-  display: block;
-}
-
-.marketplaceLogoDark {
-  display: none;
-}
-
-:global(html[data-theme='dark']) .marketplaceLogoLight {
-  display: none;
-}
-
-:global(html[data-theme='dark']) .marketplaceLogoDark {
-  display: block;
-}
-
 .search {
   position: sticky;
   z-index: 60;

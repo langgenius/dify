@@ -4,10 +4,10 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useAtomValue } from 'jotai'
 import { useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { currentWorkspaceAtom, isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
 import { updateWorkspaceInfo } from '@/service/common'
 
@@ -15,7 +15,7 @@ type IEditWorkspaceModalProps = {
   onCancel: () => void
 }
 const EditWorkspaceModal = ({ onCancel }: IEditWorkspaceModalProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'accountSettings'])
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
   const [name, setName] = useState<string>(currentWorkspace.name)
@@ -31,7 +31,7 @@ const EditWorkspaceModal = ({ onCancel }: IEditWorkspaceModalProps) => {
     if (!hasError) return ''
     return t(($) => $['errorMsg.fieldRequired'], {
       ns: 'common',
-      field: t(($) => $['account.workspaceName'], { ns: 'common' }),
+      field: t(($) => $['account.workspaceName'], { ns: 'accountSettings' }),
     })
   }, [hasError, t])
   const changeWorkspaceInfo = async () => {
@@ -81,18 +81,20 @@ const EditWorkspaceModal = ({ onCancel }: IEditWorkspaceModalProps) => {
         >
           <div className="mb-4 pr-8">
             <DialogTitle className="text-xl font-semibold text-text-primary">
-              {t(($) => $['account.editWorkspaceInfo'], { ns: 'common' })}
+              {t(($) => $['account.editWorkspaceInfo'], { ns: 'accountSettings' })}
             </DialogTitle>
           </div>
 
           <div className="space-y-2">
             <label htmlFor={inputId} className="block text-sm font-medium text-text-primary">
-              {t(($) => $['account.workspaceName'], { ns: 'common' })}
+              {t(($) => $['account.workspaceName'], { ns: 'accountSettings' })}
             </label>
             <Input
               id={inputId}
               value={name}
-              placeholder={t(($) => $['account.workspaceNamePlaceholder'], { ns: 'common' })}
+              placeholder={t(($) => $['account.workspaceNamePlaceholder'], {
+                ns: 'accountSettings',
+              })}
               onChange={(e) => {
                 setName(e.target.value)
               }}

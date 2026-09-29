@@ -32,6 +32,7 @@ from graphon.enums import BuiltinNodeTypes, NodeType, WorkflowType
 from models.model import App, AppMode
 from models.workflow import Workflow
 from tests.unit_tests.core.trigger.conftest import VALID_PROVIDER_ID
+from tests.unit_tests.model_factories import make_app
 
 
 def _make_poller_args(node_config: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -75,14 +76,12 @@ def _workflow_with_node(node_type: NodeType | None) -> Workflow:
 
 
 def _app() -> App:
-    return App(
-        id="a1",
+    return make_app(
+        app_id="a1",
         tenant_id="t1",
         name="Trigger App",
-        description="",
         mode=AppMode.WORKFLOW,
-        enable_site=True,
-        enable_api=True,
+        icon_type=None,
         max_active_requests=0,
     )
 

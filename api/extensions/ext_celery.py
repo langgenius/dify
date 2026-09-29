@@ -1,6 +1,7 @@
+import logging
 import ssl
 from datetime import timedelta
-from typing import Any
+from typing import Any, NotRequired
 
 import pytz  # type: ignore[import-untyped]
 from celery import Celery, Task
@@ -13,6 +14,8 @@ from dify_app import DifyApp
 from enums import DeploymentEdition
 from extensions.redis_names import normalize_redis_key_prefix
 from extensions.workflow_warm_shutdown import setup_workflow_warm_shutdown_handler
+
+logger = logging.getLogger(__name__)
 
 
 class _CelerySentinelKwargsDict(TypedDict):
@@ -36,6 +39,7 @@ class CelerySSLOptionsDict(TypedDict):
 class CeleryBeatScheduleEntry(TypedDict):
     task: str
     schedule: crontab | timedelta
+    options: NotRequired[dict[str, Any]]
 
 
 def _enqueue_initial_community_telemetry_heartbeat(sender: Any, **_: Any) -> None:
@@ -166,6 +170,7 @@ def init_app(app: DifyApp) -> Celery:
     setup_workflow_warm_shutdown_handler()
 
     imports = [
+        "schedule.collect_agent_sandbox_usage",  # optional background provider accounting
         "tasks.async_workflow_tasks",  # trigger workers
         "tasks.collect_agent_resources_task",  # retired Agent resource collection
         "tasks.trigger_processing_tasks",  # async trigger processing
@@ -182,6 +187,20 @@ def init_app(app: DifyApp) -> Celery:
 
     # if you add a new task, please add the switch to CeleryScheduleTasksConfig
     beat_schedule: dict[str, CeleryBeatScheduleEntry] = {}
+    if dify_config.AGENT_SANDBOX_METERING_ENABLED:
+        try:
+            interval = int(dify_config.AGENT_SANDBOX_METERING_INTERVAL_SECONDS)
+            if interval < 1:
+                raise ValueError("collection interval must be positive")
+            collection_schedule = timedelta(seconds=interval)
+        except (ValueError, OverflowError):
+            logger.warning("Skipping sandbox usage schedule: interval must be a valid positive number of seconds")
+        else:
+            beat_schedule["collect_agent_sandbox_usage"] = {
+                "task": "schedule.collect_agent_sandbox_usage.collect_agent_sandbox_usage",
+                "schedule": collection_schedule,
+                "options": {"expires": interval},
+            }
     if dify_config.ENABLE_CONVERSATION_CLEANUP_TASK:
         imports.append("tasks.delete_conversation_task")
         beat_schedule["conversation_cleanup_sweeper"] = {

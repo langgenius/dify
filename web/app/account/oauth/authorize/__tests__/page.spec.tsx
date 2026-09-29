@@ -7,6 +7,8 @@ import OAuthAuthorize from '../page'
 
 const mocks = vi.hoisted(() => ({
   profileLoggedIn: true,
+  logoutError: false,
+  replaceDocument: vi.fn(),
   push: vi.fn(),
   replace: vi.fn(),
   request: vi.fn(),
@@ -64,6 +66,10 @@ function findRequest(path: string) {
 
 function mockProviderResponses({ autoAuthorize }: { autoAuthorize: boolean }) {
   mocks.request.mockImplementation(async (url: string) => {
+    if (url.endsWith('/logout')) {
+      if (mocks.logoutError) throw new Error('Logout failed')
+      return jsonResponse({ result: 'success' })
+    }
     if (url.endsWith('/oauth/provider/authorize')) return jsonResponse({ code: 'oauth-code' })
     if (url.endsWith('/oauth/provider')) {
       return jsonResponse({
@@ -85,6 +91,7 @@ describe('OAuthAuthorize', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.profileLoggedIn = true
+    mocks.logoutError = false
     mocks.searchParams = new URLSearchParams({
       client_id: 'client-1',
       redirect_uri: 'https://client.example.com/callback',
@@ -94,11 +101,37 @@ describe('OAuthAuthorize', () => {
     vi.stubGlobal('location', {
       href: 'https://dify.test/account/oauth/authorize',
       origin: 'https://dify.test',
+      replace: mocks.replaceDocument,
     })
   })
 
   afterEach(() => {
     vi.unstubAllGlobals()
+  })
+
+  it('replaces the document when switching accounts and preserves the authorize URL', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(await screen.findByRole('button', { name: 'oauth.switchAccount' }))
+    await waitFor(() =>
+      expect(mocks.replaceDocument).toHaveBeenCalledExactlyOnceWith(
+        `/signin?redirect_url=${encodeURIComponent(`https://dify.test/account/oauth/authorize?${mocks.searchParams.toString()}`)}`,
+      ),
+    )
+    expect(findRequest('/logout')).toBeDefined()
+    expect(mocks.push).not.toHaveBeenCalled()
+  })
+
+  it('stays on the authorization page if switching accounts cannot log out', async () => {
+    const user = userEvent.setup()
+    mocks.logoutError = true
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    renderPage()
+    await user.click(await screen.findByRole('button', { name: 'oauth.switchAccount' }))
+    await waitFor(() => expect(error).toHaveBeenCalled())
+    expect(mocks.replaceDocument).not.toHaveBeenCalled()
+    expect(mocks.push).not.toHaveBeenCalled()
+    error.mockRestore()
   })
 
   it('authorizes the displayed app and redirects with the returned code and state', async () => {
@@ -165,6 +198,26 @@ describe('OAuthAuthorize', () => {
     expect(screen.queryByRole('button', { name: /continue/i })).not.toBeInTheDocument()
   })
 
+  it('still returns to marketplace after a new-user registration with utm_source', async () => {
+    mocks.searchParams = new URLSearchParams({
+      client_id: 'marketplace-client',
+      redirect_uri: 'https://api.marketplace.example.com/api/v1/auth/callback/dify',
+      response_type: 'code',
+      state: 'marketplace-state',
+      oauth_new_user: 'true',
+      utm_source: 'dify_marketplace',
+    })
+    mockProviderResponses({ autoAuthorize: true })
+
+    renderPage()
+
+    await waitFor(() =>
+      expect(globalThis.location.href).toBe(
+        'https://api.marketplace.example.com/api/v1/auth/callback/dify?code=oauth-code&state=marketplace-state',
+      ),
+    )
+  })
+
   it('keeps the consent flow when the app is not flagged with auto_authorize', async () => {
     renderPage()
 
@@ -193,6 +246,28 @@ describe('OAuthAuthorize', () => {
     )
     expect(findRequest('/oauth/provider')).toBeDefined()
     expect(findRequest('/oauth/provider/authorize')).toBeUndefined()
+  })
+
+  it('keeps marketplace utm_source on the signin return URL', async () => {
+    mocks.profileLoggedIn = false
+    mocks.searchParams = new URLSearchParams({
+      client_id: 'marketplace-client',
+      redirect_uri: 'https://api.marketplace.example.com/api/v1/auth/callback/dify',
+      response_type: 'code',
+      state: 'marketplace-state',
+      utm_source: 'dify_marketplace',
+    })
+    mockProviderResponses({ autoAuthorize: true })
+
+    renderPage()
+
+    await waitFor(() =>
+      expect(mocks.replace).toHaveBeenCalledWith(
+        `/signin?redirect_url=${encodeURIComponent(
+          'https://dify.test/account/oauth/authorize?client_id=marketplace-client&redirect_uri=https%3A%2F%2Fapi.marketplace.example.com%2Fapi%2Fv1%2Fauth%2Fcallback%2Fdify&response_type=code&state=marketplace-state&utm_source=dify_marketplace',
+        )}`,
+      ),
+    )
   })
 
   it('does not auto-authorize with incomplete OAuth parameters', async () => {

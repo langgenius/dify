@@ -16,7 +16,7 @@ type UpdateDSLModalProps = {
 }
 
 const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common', 'workflow'])
   const {
     currentFile,
     handleFile,
@@ -79,8 +79,7 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
                 file={currentFile}
                 updateFile={handleFile}
                 className="mt-0! w-full"
-                accept=".pipeline"
-                displayName="PIPELINE"
+                importType="pipeline"
               />
             </div>
           </div>

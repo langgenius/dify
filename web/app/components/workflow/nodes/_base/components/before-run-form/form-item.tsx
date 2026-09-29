@@ -3,6 +3,8 @@ import type { FC } from 'react'
 import type { InputVar } from '../../../../types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Input } from '@langgenius/dify-ui/input'
+import { NumberField, NumberFieldGroup, NumberFieldInput } from '@langgenius/dify-ui/number-field'
 import {
   Select,
   SelectContent,
@@ -19,11 +21,7 @@ import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
-import { Line3 } from '@/app/components/base/icons/src/public/common'
-import { BubbleX } from '@/app/components/base/icons/src/vender/line/others'
-import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import TextGenerationImageUploader from '@/app/components/base/image-uploader/text-generation-image-uploader'
-import Input from '@/app/components/base/input'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
@@ -51,7 +49,13 @@ const FormItem: FC<Props> = ({
   autoFocus,
   inStepRun = false,
 }) => {
-  const { t } = useTranslation()
+  const collectionInputTypes: readonly InputVarType[] = [
+    InputVarType.contexts,
+    InputVarType.iterator,
+  ]
+
+  const { t } = useTranslation(['appDebug', 'common', 'workflow'])
+  const labelId = React.useId()
   const { type } = payload
   const fileSettings = useHooksStore((s) => s.configsMap?.fileSettings)
   const jsonSchemaPlaceholder = React.useMemo(() => {
@@ -99,12 +103,22 @@ const FormItem: FC<Props> = ({
               >
                 {nodeName}
               </div>
-              <Line3 className="mr-0.5"></Line3>
+              <span aria-hidden className="mr-0.5 i-custom-public-common-line-3 h-3 w-1.25" />
             </div>
           )}
           <div className="flex items-center text-primary-600">
-            {!isChatVar && <Variable02 className="size-3.5" />}
-            {isChatVar && <BubbleX className="size-3.5 text-util-colors-teal-teal-700" />}
+            {!isChatVar && (
+              <span
+                aria-hidden
+                className="i-custom-vender-solid-development-variable-02 size-3.5"
+              />
+            )}
+            {isChatVar && (
+              <span
+                aria-hidden
+                className="i-custom-vender-line-others-bubble-x size-3.5 text-util-colors-teal-teal-700"
+              />
+            )}
             <div
               className={cn(
                 'ml-0.5 max-w-37.5 truncate text-xs font-medium',
@@ -122,7 +136,7 @@ const FormItem: FC<Props> = ({
   })()
 
   const isBooleanType = type === InputVarType.checkbox
-  const isArrayLikeType = [InputVarType.contexts, InputVarType.iterator].includes(type)
+  const isArrayLikeType = collectionInputTypes.includes(type)
   const isContext = type === InputVarType.contexts
   const isIterator = type === InputVarType.iterator
   const isIteratorItemFile = isIterator && payload.isFileItem
@@ -144,7 +158,7 @@ const FormItem: FC<Props> = ({
     <div className={cn(className)}>
       {!isArrayLikeType && !isBooleanType && (
         <div className="mb-1 flex h-6 items-center gap-1 system-sm-semibold text-text-secondary">
-          <div className="truncate">
+          <div id={labelId} className="truncate">
             {typeof payload.label === 'object' ? nodeKey : payload.label}
           </div>
           {payload.hide === true ? (
@@ -163,26 +177,37 @@ const FormItem: FC<Props> = ({
       <div className="grow">
         {type === InputVarType.textInput && (
           <Input
+            name={payload.variable}
+            aria-labelledby={labelId}
             value={value || ''}
-            onChange={(e) => onChange(e.target.value)}
+            onValueChange={(value) => onChange(value)}
             placeholder={typeof payload.label === 'object' ? payload.label.variable : payload.label}
             autoFocus={autoFocus}
           />
         )}
 
         {type === InputVarType.number && (
-          <Input
-            type="number"
-            value={value || ''}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder={typeof payload.label === 'object' ? payload.label.variable : payload.label}
-            autoFocus={autoFocus}
-          />
+          <NumberField
+            step="any"
+            name={payload.variable}
+            value={value == null || value === '' ? null : Number(value)}
+            onValueChange={(value) => onChange(value)}
+          >
+            <NumberFieldGroup>
+              <NumberFieldInput
+                aria-labelledby={labelId}
+                placeholder={
+                  typeof payload.label === 'object' ? payload.label.variable : payload.label
+                }
+                autoFocus={autoFocus}
+              />
+            </NumberFieldGroup>
+          </NumberField>
         )}
 
         {type === InputVarType.paragraph && (
           <Textarea
-            aria-label={typeof payload.label === 'object' ? payload.label.variable : payload.label}
+            aria-labelledby={labelId}
             value={value || ''}
             onValueChange={(value) => onChange(value)}
             placeholder={typeof payload.label === 'object' ? payload.label.variable : payload.label}

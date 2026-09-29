@@ -15,7 +15,7 @@ const createUploadError = (ipDenied: boolean | 'cancelled') => {
   }
   return error
 }
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: (message: string) => mockNotify({ type: 'error', message }),
   },

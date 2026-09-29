@@ -1,4 +1,5 @@
 import { act, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { AgentPermission } from '@/features/agent-v2/acl'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { consoleQuery } from '@/service/console'
@@ -78,7 +79,31 @@ describe('AgentDetailLayout', () => {
     await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/agents/agent-1/configure'))
   })
 
-  it('leaves a missing agent to the app error boundary without redirecting', async () => {
+  it('retries a failed access page request at the detail boundary', async () => {
+    const user = userEvent.setup()
+    location.pathname = '/agents/agent-1/access'
+    const { wrapper, queryClient } = setup()
+    queryClient.setDefaultOptions({ queries: { retry: false, retryOnMount: false } })
+    queryClient
+      .getQueryCache()
+      .find({ queryKey: detailKey })!
+      .setState({
+        data: undefined,
+        error: new Error('Unavailable'),
+        status: 'error',
+        fetchStatus: 'idle',
+      })
+    vi.mocked(fetch).mockResolvedValueOnce(Response.json(createAgentFixture()))
+    render(content, { wrapper })
+    expect(await screen.findByRole('alert')).toHaveTextContent('agentRoster.roster.loadingError')
+    expect(screen.queryByText('Agent detail content')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    expect(await screen.findByText('Agent detail content')).toBeVisible()
+    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(router.replace).not.toHaveBeenCalled()
+  })
+
+  it('keeps a 404 query error on the agent page without redirecting', async () => {
     const { wrapper, queryClient } = setup()
     queryClient.setDefaultOptions({ queries: { retry: false, retryOnMount: false } })
     queryClient
@@ -94,6 +119,7 @@ describe('AgentDetailLayout', () => {
         fetchStatus: 'idle',
       })
     render(content, { wrapper })
+    expect(await screen.findByRole('alert')).toHaveTextContent('agentRoster.roster.loadingError')
     expect(router.replace).not.toHaveBeenCalled()
     expect(screen.queryByText('Agent detail content')).not.toBeInTheDocument()
   })

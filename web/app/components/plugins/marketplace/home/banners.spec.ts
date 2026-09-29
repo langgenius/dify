@@ -110,6 +110,7 @@ describe('fetchPluginBanners', () => {
               blog_title: 'Dify v1.9 new launch',
               subtitle: 'New Agent node support',
               description: 'Build agent workflows with the new Agent node.',
+              cover_image: '/api/v1/banners/images/banners/blog-cover.png',
               link: 'https://dify.ai/blog',
               link_target_type: 'blog',
             },
@@ -152,6 +153,12 @@ describe('fetchPluginBanners', () => {
       })
     }
 
+    const blog = banners[1]
+    expect(blog?.style_type).toBe('blog')
+    if (blog?.style_type === 'blog') {
+      expect(blog.content.cover_image).toBe('/api/v1/banners/images/banners/blog-cover.png')
+    }
+
     const event = banners[2]
     expect(event?.style_type).toBe('event')
     if (event?.style_type === 'event') {
@@ -159,6 +166,48 @@ describe('fetchPluginBanners', () => {
         desktop: '/api/v1/banners/images/banners/event.png',
         mobile: '/api/v1/banners/images/banners/event-mobile.png',
       })
+    }
+  })
+
+  it('keeps a blog banner when cover_image is missing or blank', async () => {
+    mockedListBanners.mockResolvedValue({
+      data: {
+        banners: [
+          {
+            id: 'blog-blank-cover',
+            style_type: 'blog',
+            title: 'Dify Updates',
+            sort: 0,
+            language: 'en',
+            content: {
+              blog_title: 'Dify v1.9 new launch',
+              link: 'https://dify.ai/blog',
+              link_target_type: 'blog',
+              cover_image: '',
+            },
+          },
+          {
+            id: 'blog-no-cover',
+            style_type: 'blog',
+            title: 'Product',
+            sort: 1,
+            language: 'en',
+            content: {
+              blog_title: 'Another post',
+              link: 'https://dify.ai/blog/another',
+              link_target_type: 'blog',
+            },
+          },
+        ],
+      },
+    })
+
+    const banners = await fetchPluginBanners('en-US')
+
+    expect(banners.map((banner) => banner.id)).toEqual(['blog-blank-cover', 'blog-no-cover'])
+    for (const banner of banners) {
+      expect(banner.style_type).toBe('blog')
+      if (banner.style_type === 'blog') expect(banner.content.cover_image).toBeUndefined()
     }
   })
 

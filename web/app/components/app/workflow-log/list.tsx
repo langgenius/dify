@@ -1,11 +1,12 @@
 'use client'
+
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
 import type {
   WorkflowAppLogDetail,
   WorkflowLogsResponse,
   WorkflowRunTriggeredFrom,
 } from '@/models/log'
-import type { App } from '@/types/app'
 import { ArrowDownIcon } from '@heroicons/react/24/outline'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -21,7 +22,7 @@ import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useTimestamp from '@/hooks/use-timestamp'
 import { AppModeEnum } from '@/types/app'
@@ -30,14 +31,14 @@ import TriggerByDisplay from './trigger-by-display'
 
 type ILogs = {
   logs?: WorkflowLogsResponse
-  appDetail?: App
+  appDetail?: AppDetailWithSite
   onRefresh: () => void
 }
 
 const defaultValue = 'N/A'
 
 const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appLog'])
   const { formatTime } = useTimestamp()
 
   const media = useBreakpoints()
@@ -73,7 +74,9 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
       return (
         <div className="inline-flex items-center gap-1 system-xs-semibold-uppercase">
           <StatusDot status="success" />
-          <span className="text-util-colors-green-green-600">Success</span>
+          <span className="text-util-colors-green-green-600">
+            {t(($) => $['status.succeeded'], { ns: 'appLog' })}
+          </span>
         </div>
       )
     }
@@ -81,7 +84,9 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
       return (
         <div className="inline-flex items-center gap-1 system-xs-semibold-uppercase">
           <StatusDot status="error" />
-          <span className="text-util-colors-red-red-600">Failure</span>
+          <span className="text-util-colors-red-red-600">
+            {t(($) => $['status.failed'], { ns: 'appLog' })}
+          </span>
         </div>
       )
     }
@@ -89,7 +94,9 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
       return (
         <div className="inline-flex items-center gap-1 system-xs-semibold-uppercase">
           <StatusDot status="warning" />
-          <span className="text-util-colors-warning-warning-600">Stop</span>
+          <span className="text-util-colors-warning-warning-600">
+            {t(($) => $['status.stopped'], { ns: 'appLog' })}
+          </span>
         </div>
       )
     }
@@ -97,7 +104,19 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
       return (
         <div className="inline-flex items-center gap-1 system-xs-semibold-uppercase">
           <StatusDot status="warning" />
-          <span className="text-util-colors-warning-warning-600">Pending</span>
+          <span className="text-util-colors-warning-warning-600">
+            {t(($) => $['status.paused'], { ns: 'appLog' })}
+          </span>
+        </div>
+      )
+    }
+    if (status === 'scheduled') {
+      return (
+        <div className="inline-flex items-center gap-1 system-xs-semibold-uppercase">
+          <StatusDot status="disabled" />
+          <span className="text-text-secondary">
+            {t(($) => $['status.scheduled'], { ns: 'appLog' })}
+          </span>
         </div>
       )
     }
@@ -105,7 +124,9 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
       return (
         <div className="inline-flex items-center gap-1 system-xs-semibold-uppercase">
           <StatusDot status="normal" />
-          <span className="text-util-colors-blue-light-blue-light-600">Running</span>
+          <span className="text-util-colors-blue-light-blue-light-600">
+            {t(($) => $['status.running'], { ns: 'appLog' })}
+          </span>
         </div>
       )
     }
@@ -113,7 +134,9 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
       return (
         <div className="inline-flex items-center gap-1 system-xs-semibold-uppercase">
           <StatusDot status="success" />
-          <span className="text-util-colors-green-green-600">Partial Success</span>
+          <span className="text-util-colors-green-green-600">
+            {t(($) => $['status.partial-succeeded'], { ns: 'appLog' })}
+          </span>
         </div>
       )
     }
@@ -125,7 +148,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
     setCurrentLog(undefined)
   }
 
-  if (!logs || !appDetail) return <Loading />
+  if (!logs || !appDetail) return <LoadingPlaceholder />
 
   return (
     <div className="overflow-x-auto">
@@ -141,7 +164,10 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
           <thead className="system-xs-medium-uppercase text-text-tertiary">
             <tr>
               <td className="w-5 rounded-l-lg bg-background-section-burn pr-1 pl-2 whitespace-nowrap"></td>
-              <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+              <th
+                aria-sort={sortOrder === 'asc' ? 'ascending' : 'descending'}
+                className="bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap"
+              >
                 <button
                   type="button"
                   className="flex cursor-pointer items-center border-none bg-transparent p-0 text-left hover:text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
@@ -157,28 +183,28 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
                     aria-hidden="true"
                   />
                 </button>
-              </td>
-              <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+              </th>
+              <th className="bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
                 {t(($) => $['table.header.status'], { ns: 'appLog' })}
-              </td>
-              <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+              </th>
+              <th className="bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
                 {t(($) => $['table.header.runtime'], { ns: 'appLog' })}
-              </td>
-              <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+              </th>
+              <th className="bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
                 {t(($) => $['table.header.tokens'], { ns: 'appLog' })}
-              </td>
-              <td
+              </th>
+              <th
                 className={cn(
-                  'bg-background-section-burn py-1.5 pl-3 whitespace-nowrap',
+                  'bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap',
                   !isWorkflow ? 'rounded-r-lg' : '',
                 )}
               >
                 {t(($) => $['table.header.user'], { ns: 'appLog' })}
-              </td>
+              </th>
               {isWorkflow && (
-                <td className="rounded-r-lg bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+                <th className="rounded-r-lg bg-background-section-burn py-1.5 pl-3 text-left font-[weight:inherit] whitespace-nowrap">
                   {t(($) => $['table.header.triggered_from'], { ns: 'appLog' })}
-                </td>
+                </th>
               )}
             </tr>
           </thead>

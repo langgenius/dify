@@ -109,7 +109,7 @@ describe('AccessRulesEditor', () => {
       />,
     )
 
-    expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
     expect(screen.queryByText('permission.accessRule.noUserAccessSettings')).not.toBeInTheDocument()
   })
 
@@ -375,6 +375,90 @@ describe('AccessRulesEditor', () => {
         }),
       ).not.toBeInTheDocument()
       expect(onAddAccessSubject).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each([
+    ['app', 'admin', 'Workspace Admin'],
+    ['dataset', '', 'admin'],
+  ] as const)(
+    'should identify and protect a workspace admin in %s access',
+    async (resourceType, roleTag, roleName) => {
+      const user = userEvent.setup()
+      const adminSetting: ResourceUserAccessSetting = {
+        ...createUserAccessSetting(resourceType),
+        account: {
+          account_id: 'workspace-admin',
+          account_name: 'Workspace Admin',
+          email: 'admin@example.com',
+        },
+        roles: [
+          {
+            id: 'admin-role',
+            type: 'workspace',
+            category: 'global_system_default',
+            name: roleName,
+            is_builtin: true,
+            permission_keys: [],
+            role_tag: roleTag,
+          },
+        ],
+      }
+      const memberSetting: ResourceUserAccessSetting = {
+        ...createDefaultUserAccessSetting(),
+        account: {
+          account_id: 'account-2',
+          account_name: 'Mia',
+          email: 'mia@example.com',
+        },
+      }
+      const onUserAccessPoliciesChange = vi.fn()
+      const onRemoveAccessPolicyMemberBinding = vi.fn()
+      const onBatchRemoveAccessPolicyMemberBindings = vi.fn().mockResolvedValue(undefined)
+
+      render(
+        <AccessRulesEditor
+          rules={[createRule(resourceType)]}
+          userAccessSettings={[adminSetting, memberSetting]}
+          isLoadingRules={false}
+          isLoadingUserAccessSettings={false}
+          automaticIncludeWorkspaceMembers={false}
+          isUpdatingAutomaticIncludeWorkspaceMembers={false}
+          updatingAccountId={null}
+          onUserAccessPoliciesChange={onUserAccessPoliciesChange}
+          onRemoveAccessPolicyMemberBinding={onRemoveAccessPolicyMemberBinding}
+          onBatchRemoveAccessPolicyMemberBindings={onBatchRemoveAccessPolicyMemberBindings}
+        />,
+      )
+
+      const adminRow = screen.getByRole('row', { name: /Workspace Admin/ })
+      expect(within(adminRow).getByText('permission.accessRule.workspaceAdmin')).toBeInTheDocument()
+      expect(within(adminRow).getByRole('checkbox', { name: 'Workspace Admin' })).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      )
+      expect(
+        within(adminRow).getByLabelText(/permission\.accessRule\.exceptionPermissionFor/),
+      ).toBeDisabled()
+      expect(
+        within(adminRow).getByRole('button', { name: 'common.operation.remove' }),
+      ).toBeDisabled()
+
+      await user.click(screen.getByRole('checkbox', { name: 'common.operation.selectAll' }))
+      expect(screen.getByRole('checkbox', { name: 'Workspace Admin' })).not.toBeChecked()
+      expect(screen.getByRole('checkbox', { name: 'Mia' })).toBeChecked()
+
+      await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
+      const dialog = screen.getByRole('alertdialog', {
+        name: 'permission.accessRule.batchRemoveTitle',
+      })
+      await user.click(within(dialog).getByRole('button', { name: 'common.operation.sure' }))
+
+      expect(onBatchRemoveAccessPolicyMemberBindings).toHaveBeenCalledWith([
+        { accessPolicyId: 'default', accountIds: ['account-2'] },
+      ])
+      expect(onUserAccessPoliciesChange).not.toHaveBeenCalled()
+      expect(onRemoveAccessPolicyMemberBinding).not.toHaveBeenCalled()
     },
   )
 

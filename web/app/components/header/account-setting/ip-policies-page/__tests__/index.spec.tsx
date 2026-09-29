@@ -3,8 +3,8 @@ import userEvent from '@testing-library/user-event'
 import { createInstance } from 'i18next'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { initReactI18next } from 'react-i18next'
-import commonTranslations from '@/i18n/en-US/common.json'
-import deploymentTranslations from '@/i18n/en-US/deployments.json'
+import commonTranslations from '@/i18n/locales/en-US/common.json'
+import deploymentTranslations from '@/i18n/locales/en-US/deployments.json'
 import { seedCurrentWorkspaceQuery } from '@/test/console/current-workspace'
 import {
   createNetworkAccessGroupFixture,

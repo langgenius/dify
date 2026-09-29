@@ -4,7 +4,7 @@ import Negotiator from 'negotiator'
 import { APP_UNAVAILABLE_IP_HEADER } from '@/features/app-access-error/document-response'
 import { getBrowserLocale } from '@/features/app-access-error/locale'
 import AppNotAccessible from '@/features/app-access-error/page'
-import { loadI18nResource } from '@/i18n-config/load-resource'
+import { loadI18nResource } from '@/i18n/load-resource'
 import { headers } from '@/next/headers'
 
 export const dynamic = 'force-dynamic'

@@ -13,7 +13,7 @@ type IResDownloadProps = {
 }
 
 const ResDownload: FC<IResDownloadProps> = ({ isMobile, values }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const { CSVDownloader, Type } = useCSVDownloader()
 
   return (

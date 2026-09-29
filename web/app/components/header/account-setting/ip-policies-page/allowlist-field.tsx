@@ -25,7 +25,7 @@ export function AllowlistField({
   onRetryCurrentIp,
   onEntriesChange,
 }: AllowlistFieldProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   const errorMessage = (code: IpEntryErrorCode, max?: 32 | 128) => {
     switch (code) {
@@ -38,7 +38,7 @@ export function AllowlistField({
       case 'prefixNotNumber':
         return t(($) => $['settings.ipPolicyEntryPrefixNotNumber'], { ns: 'common' })
       case 'prefixRange':
-        return t(($) => $['settings.ipPolicyEntryPrefixRange'], { ns: 'common', max })
+        return t(($) => $['settings.ipPolicyEntryPrefixRange'], { ns: 'common', max: max ?? 32 })
       case 'invalidIpv6':
         return t(($) => $['settings.ipPolicyEntryInvalidIpv6'], { ns: 'common' })
       default:

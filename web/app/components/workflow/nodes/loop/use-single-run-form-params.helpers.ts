@@ -67,7 +67,9 @@ export const buildUsedOutVars = ({
   const allVarObject: Record<string, { inSingleRunPassedKey: string }> = {}
 
   loopChildrenNodes.forEach((node) => {
-    const nodeVars = getNodeUsedVars(node).filter((item) => item && item.length > 0)
+    const nodeVars = getNodeUsedVars(node, { forExecution: true }).filter(
+      (item) => item && item.length > 0,
+    )
     nodeVars.forEach((varSelector) => {
       if (varSelector[0] === currentNodeId) return
       if (isNodeInLoop(varSelector[0]!)) return

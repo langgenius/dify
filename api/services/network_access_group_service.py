@@ -9,6 +9,7 @@ from typing import Protocol
 from machinery.context import RequestContext
 from services.entities.network_access_group_entities import (
     NetworkAccessAppConfig,
+    NetworkAccessAppStatus,
     NetworkAccessBinding,
     NetworkAccessBindingUpdate,
     NetworkAccessCurrentIPCheck,
@@ -23,6 +24,7 @@ logger = logging.getLogger(__name__)
 _POLICY_READ_ROLES = frozenset({"owner", "admin", "editor"})
 _POLICY_WRITE_ROLES = frozenset({"owner", "admin"})
 _APP_BINDING_ROLES = _POLICY_READ_ROLES
+_APP_STATUS_ROLES = _APP_BINDING_ROLES | frozenset({"normal"})
 
 _ACCESS_POINTS_BY_APP_MODE: dict[str, tuple[NetworkAccessPoint, ...]] = {
     "workflow": ("webapp", "service_api", "mcp", "trigger"),
@@ -242,6 +244,22 @@ class NetworkAccessGroupService:
 
     def get_app_binding(self, context: RequestContext, *, app_id: str) -> NetworkAccessAppConfig:
         self._ensure_workspace_role(context, _APP_BINDING_ROLES)
+        return self._read_app_binding(context, app_id=app_id)
+
+    def get_app_status(self, context: RequestContext, *, app_id: str) -> NetworkAccessAppStatus:
+        """Expose only the Access Point entry state to Normal workspace members."""
+        self._ensure_workspace_role(context, _APP_STATUS_ROLES)
+        config = self._read_app_binding(context, app_id=app_id)
+        binding = config.binding
+        return NetworkAccessAppStatus(
+            entitled=config.entitled,
+            configured=bool(binding and binding.group_id),
+            enabled=bool(binding and binding.enabled),
+            covered_count=len(binding.access_points) if binding else 0,
+            available_count=len(config.available_access_points),
+        )
+
+    def _read_app_binding(self, context: RequestContext, *, app_id: str) -> NetworkAccessAppConfig:
         app = self._get_manageable_app(context.active_workspace_id, app_id)
         available_access_points = self._available_access_points(app.mode)
         result = self._control_plane.get_app_binding(

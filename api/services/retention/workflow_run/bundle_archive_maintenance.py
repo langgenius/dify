@@ -25,13 +25,20 @@ from typing import Any, TypedDict, cast
 
 import pyarrow.parquet as pq
 import sqlalchemy as sa
+from botocore.exceptions import ClientError, HTTPClientError
+from botocore.exceptions import ConnectionError as BotoCoreConnectionError
 from sqlalchemy import delete, func, inspect, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, sessionmaker
 
 from extensions.ext_database import db
-from libs.archive_storage import ArchiveStorage, ArchiveStorageNotConfiguredError, get_archive_storage
+from libs.archive_storage import (
+    ArchiveStorage,
+    ArchiveStorageError,
+    ArchiveStorageNotConfiguredError,
+    get_archive_storage,
+)
 from models.trigger import WorkflowTriggerLog
 from models.workflow import (
     WorkflowAppLog,
@@ -871,7 +878,7 @@ class WorkflowRunBundleArchiveMaintenance:
         table_records: dict[str, list[dict[str, Any]]],
         live_records: dict[str, list[dict[str, Any]]],
     ) -> None:
-        """Require every live row in the bundle scope to exist unchanged in the validated archive."""
+        """Require every live row to match its archive row, except for null live-only fields."""
         manifest_run_ids = {str(run_id) for run_id in manifest["run_ids"]}
         if len(manifest_run_ids) != len(manifest["run_ids"]):
             raise ValueError("archive manifest contains duplicate workflow run IDs")
@@ -899,7 +906,16 @@ class WorkflowRunBundleArchiveMaintenance:
                 )
 
             archive_subset = [archive_by_id[row_id] for row_id in live_ids]
-            live_checksum = cls._records_checksum(live_records[table_name])
+            live_subset = []
+            for live_record, archive_record in zip(live_records[table_name], archive_subset, strict=True):
+                live_only_fields = live_record.keys() - archive_record.keys()
+                if live_only_fields and all(live_record[field] is None for field in live_only_fields):
+                    live_record = {
+                        field: value for field, value in live_record.items() if field not in live_only_fields
+                    }
+                live_subset.append(live_record)
+
+            live_checksum = cls._records_checksum(live_subset)
             archive_checksum = cls._records_checksum(archive_subset)
             if live_checksum != archive_checksum:
                 raise ValueError(
@@ -1198,8 +1214,68 @@ class WorkflowRunBundleArchiveMaintenance:
     @staticmethod
     def _delete_marker(storage: ArchiveStorage, object_prefix: str, marker_name: str) -> None:
         marker_key = f"{object_prefix}/{marker_name}"
-        if storage.object_exists(marker_key):
-            storage.delete_object(marker_key)
+        retry_delays = (0.5, 1.0)
+        retryable_error_codes = frozenset(
+            {
+                "408",
+                "429",
+                "500",
+                "502",
+                "503",
+                "504",
+                "InternalError",
+                "RequestLimitExceeded",
+                "RequestTimeout",
+                "RequestTimeoutException",
+                "ServiceUnavailable",
+                "SlowDown",
+                "Throttling",
+                "ThrottlingException",
+                "TooManyRequestsException",
+            }
+        )
+
+        def is_retryable(error: ArchiveStorageError) -> bool:
+            cause = error.__cause__
+            if isinstance(cause, BotoCoreConnectionError | HTTPClientError):
+                return True
+            if not isinstance(cause, ClientError):
+                return False
+            error_code = str(cause.response.get("Error", {}).get("Code", ""))
+            status_code = str(cause.response.get("ResponseMetadata", {}).get("HTTPStatusCode", ""))
+            return error_code in retryable_error_codes or status_code in retryable_error_codes
+
+        attempts = len(retry_delays) + 1
+        for attempt in range(attempts):
+            delete_error: ArchiveStorageError | None = None
+            try:
+                storage.delete_object(marker_key)
+            except ArchiveStorageError as error:
+                if not is_retryable(error):
+                    raise
+                delete_error = error
+                logger.warning(
+                    "Retryable archive marker delete failed; verifying marker state: key=%s, attempt=%s/%s",
+                    marker_key,
+                    attempt + 1,
+                    attempts,
+                    exc_info=True,
+                )
+
+            if not storage.object_exists(marker_key):
+                return
+            if attempt == attempts - 1:
+                raise ArchiveStorageError(
+                    f"Archive marker still exists after {attempts} delete attempts: {marker_key}"
+                ) from delete_error
+
+            logger.warning(
+                "Archive marker still exists after delete; retrying: key=%s, attempt=%s/%s",
+                marker_key,
+                attempt + 1,
+                attempts,
+            )
+            time.sleep(retry_delays[attempt])
 
     @staticmethod
     def _chunks(values: Sequence[Any], size: int) -> list[Sequence[Any]]:

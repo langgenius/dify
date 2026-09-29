@@ -54,7 +54,7 @@ function AccessPointContent({
   canReleaseAndVersion,
   showEnvironmentTabs,
 }: AccessPointContentProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'deployments', 'workflow'])
   const appInfo = useAppStore((state) => state.appDetail)
   const environments = useAtomValue(inUseAppEnvironmentsAtom)
   const [queryStates, setQueryStates] = useQueryStates(accessPointQueryStates)
@@ -86,7 +86,7 @@ function AccessPointContent({
               )}
               appIcon={{
                 iconType: appInfo?.icon_type,
-                icon: appInfo?.icon,
+                icon: appInfo?.icon ?? undefined,
                 background: appInfo?.icon_background,
                 imageUrl: appInfo?.icon_url,
               }}
@@ -153,7 +153,6 @@ function AccessPointContent({
                 appId={appId}
                 environmentId={selectedEnvironment}
                 canManageAccessPoint={canManageAccessPoint}
-                canReleaseAndVersion={canReleaseAndVersion}
                 highlightedAccessPoint={selectedHighlightedAccessPoint}
               />
             )}

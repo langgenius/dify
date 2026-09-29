@@ -43,7 +43,7 @@ describe('ImportFromMarketplaceTemplateModal', () => {
 
     expect(screen.getByText('Human Input: Writing Assistant')).toBeInTheDocument()
     expect(screen.queryByText('technologist')).not.toBeInTheDocument()
-    expect(document.querySelector('em-emoji')?.parentElement).toHaveAttribute('aria-hidden', 'true')
+    expect(screen.getByText('🧑‍💻')).toHaveAttribute('aria-hidden', 'true')
     expect(
       screen.getByRole('dialog', { name: /marketplace\.template\.modalTitle/ }),
     ).toBeInTheDocument()

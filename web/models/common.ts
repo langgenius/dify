@@ -1,6 +1,7 @@
 import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
+import type { AppConfigJsonValue } from '@dify/contracts/api/console/apps/types.gen'
 import type { Role } from './access-control'
-import type { I18nText } from '@/i18n-config/language'
+import type { I18nText } from '@/i18n/language'
 import type { Model } from '@/types/app'
 
 export type CommonResponse = {
@@ -84,7 +85,7 @@ export type CodeBasedExtensionForm = {
   variable: string
   required: boolean
   options: { label: I18nText; value: string }[]
-  default: string
+  default?: string
   placeholder: string
   max_length?: number
 }
@@ -108,7 +109,7 @@ export type ExternalDataTool = {
   enabled?: boolean
   config?: {
     api_based_extension_id?: string
-  } & Partial<Record<string, string | undefined>>
+  } & Record<string, AppConfigJsonValue>
 }
 
 export type StructuredOutputRulesRequestBody = {

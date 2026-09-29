@@ -1,4 +1,5 @@
 import logging
+from http import HTTPStatus
 
 from flask import make_response, request
 from flask_restx import Resource
@@ -30,8 +31,7 @@ from controllers.console.wraps import (
     setup_required,
 )
 from controllers.web import web_ns
-from controllers.web.error import WebAppAccessServiceUnavailableError, WebAppNotFoundError
-from controllers.web.wraps import decode_jwt_token
+from controllers.web.wraps import decode_jwt_token, resolve_web_app_id
 from enums import DeploymentEdition
 from extensions.ext_application_services import application_services
 from extensions.ext_database import db
@@ -142,9 +142,11 @@ class LoginStatusApi(Resource):
             401: "Login status",
             404: "App not found",
             503: "Web app access service unavailable",
+            HTTPStatus.OK: "Login status",
+            HTTPStatus.UNAUTHORIZED: "Login status",
         }
     )
-    @web_ns.response(200, "Login status", web_ns.models[LoginStatusResponse.__name__])
+    @web_ns.response(HTTPStatus.OK, "Login status", web_ns.models[LoginStatusResponse.__name__])
     @model_validate(LoginStatusQuery)
     def get(self, query: LoginStatusQuery):
         app_code = query.app_code
@@ -152,15 +154,10 @@ class LoginStatusApi(Resource):
         token = extract_webapp_access_token(request)
         if not app_code:
             return LoginStatusResponse(logged_in=bool(token), app_logged_in=False).model_dump(mode="json")
-        try:
-            app_id = application_services().webapp_access.resolve_app_id(app_code=app_code)
-        except WebAppAccessAppNotFoundError:
-            raise WebAppNotFoundError() from None
-        except WebAppAccessUnavailableError:
-            raise WebAppAccessServiceUnavailableError() from None
+        app_id = resolve_web_app_id(app_code)
         is_public = (
             dify_config.DEPLOYMENT_EDITION != DeploymentEdition.ENTERPRISE
-            or not WebAppAuthService.is_app_require_permission_check(app_id=app_id, session=db.session())
+            or not application_services().webapp_access.requires_permission_check(app_id)
         )
         user_logged_in = False
 

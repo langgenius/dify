@@ -55,7 +55,7 @@ class DatasetPermissionTestDataFactory:
         db.session.add(join)
         db.session.commit()
 
-        account.current_tenant = tenant
+        account.set_current_tenant_with_session(tenant, session=db.session)
         return account, tenant
 
     @staticmethod

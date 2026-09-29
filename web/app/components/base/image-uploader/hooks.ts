@@ -1,8 +1,8 @@
 import type { ImageFile } from '@/types/app'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isAppAccessError } from '@/features/app-access-error/state'
+import { toast } from '@/app/notifications'
 import { useParams } from '@/next/navigation'
 import { ALLOW_FILE_EXTENSIONS, TransferMethod } from '@/types/app'
 import { isAbortError } from '@/utils/is-abort-error'
@@ -10,7 +10,7 @@ import { getImageUploadErrorMessage, imageUpload } from './utils'
 
 export const useImageFiles = () => {
   const params = useParams()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [files, setFiles] = useState<ImageFile[]>([])
   const filesRef = useRef<ImageFile[]>([])
   const handleUpload = (imageFile: ImageFile) => {
@@ -147,7 +147,7 @@ export const useLocalFileUploader = ({
   onUpload,
 }: useLocalUploaderProps) => {
   const params = useParams()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const handleLocalFileUpload = useCallback(
     (file: File) => {
       if (disabled) {

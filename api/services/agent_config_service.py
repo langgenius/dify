@@ -609,7 +609,7 @@ class AgentConfigService:
             )
             self._require_writable(target, surface=surface)
             try:
-                skill_ref, _package = self._skill_normalizer.normalize(
+                skill_ref = self._skill_normalizer.normalize(
                     content=content,
                     filename=filename,
                     requested_name=None,
@@ -1064,7 +1064,7 @@ class AgentConfigService:
             )
             archive_bytes = storage.load_once(tool_file.file_key)
             try:
-                skill_ref, _package = self._skill_normalizer.normalize(
+                skill_ref = self._skill_normalizer.normalize(
                     content=archive_bytes,
                     filename=tool_file.name,
                     requested_name=name,

@@ -22,7 +22,7 @@ function Divider() {
 
 export const BuiltInEnvironmentCard = memo(
   ({ canViewAccessPoint }: { canViewAccessPoint: boolean }) => {
-    const { t } = useTranslation('deployments')
+    const { t } = useTranslation(['deployments'])
     const { formatTime } = useTimestamp()
     const appDetail = useAppStore((state) => state.appDetail)
     const appId = appDetail?.id ?? ''
@@ -40,7 +40,7 @@ export const BuiltInEnvironmentCard = memo(
       trigger: Boolean(publishedWorkflow && hasTriggerNode),
       webApp: serviceModeAvailable && Boolean(appDetail?.enable_site),
     }
-    const publishedBy = publishedWorkflow?.created_by?.name ?? appDetail?.author_name ?? '--'
+    const publishedBy = publishedWorkflow?.created_by?.name ?? '--'
     const updatedBy = publishedWorkflow?.updated_by?.name ?? publishedBy
     const publishedVersion: WorkflowVersion | undefined = publishedWorkflow
       ? {

@@ -28,10 +28,7 @@ from controllers.web.human_input_file_upload import (
     InvalidUploadTokenForbiddenError,
     InvalidUploadTokenUnauthorizedError,
 )
-from extensions.storage.storage_type import StorageType
 from models import Account
-from models.account import AccountStatus
-from models.enums import CreatorUserRole
 from models.model import UploadFile
 from services.errors.file import (
     BlockedFileExtensionError as BlockedFileExtensionServiceError,
@@ -53,6 +50,7 @@ from services.remote_file_service import RemoteFileNotFoundError as RemoteFileNo
 from services.remote_file_service import RemoteFileUnavailableError as RemoteFileUnavailableServiceError
 from services.remote_file_service import RemoteFileUploadResult
 from services.remote_file_service import RemoteFileUrlBlockedError as RemoteFileUrlBlockedServiceError
+from tests.unit_tests.model_factories import make_account, make_upload_file
 
 
 @pytest.fixture
@@ -63,9 +61,7 @@ def app() -> Flask:
 
 
 def _account() -> Account:
-    account = Account(name="Form Owner", email="owner@example.com", status=AccountStatus.ACTIVE)
-    account.id = "owner-1"
-    return account
+    return make_account(account_id="owner-1", name="Form Owner", email="owner@example.com")
 
 
 def _upload_context() -> HumanInputUploadContext:
@@ -80,22 +76,14 @@ def _upload_context() -> HumanInputUploadContext:
 
 
 def _upload_file() -> UploadFile:
-    upload_file = UploadFile(
-        tenant_id="tenant-1",
-        storage_type=StorageType.LOCAL,
+    return make_upload_file(
+        file_id="file-1",
         key="upload/sample.txt",
         name="sample.txt",
         size=7,
-        extension="txt",
-        mime_type="text/plain",
-        created_by_role=CreatorUserRole.ACCOUNT,
         created_by="end-user-1",
-        created_at=datetime(2024, 1, 1),
-        used=False,
         source_url="signed-source-url",
     )
-    upload_file.id = "file-1"
-    return upload_file
 
 
 def _remote_upload_file() -> RemoteFileUploadResult:

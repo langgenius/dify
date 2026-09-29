@@ -30,7 +30,7 @@ try {
  * E2E tests run against a real staging Dify server and require
  * DIFY_E2E_* environment variables to be set (see test/e2e/setup/env.ts).
  *
- * Run: bun vitest --config vitest.e2e.config.ts
+ * Run: vp test --config vitest.e2e.config.ts
  */
 export default defineConfig({
   resolve: {

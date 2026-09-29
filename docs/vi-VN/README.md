@@ -135,7 +135,7 @@ Dify chào đón mọi hình thức đóng góp:
 
 - **Mã nguồn**: đọc [Hướng dẫn đóng góp](./CONTRIBUTING.md), sau đó xem các [issue phù hợp cho người mới](https://github.com/langgenius/dify/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22).
 - **Ý tưởng và phản hồi**: bắt đầu hoặc tham gia một [thảo luận trên GitHub](https://github.com/langgenius/dify/discussions).
-- **Bản dịch**: làm theo [hướng dẫn quốc tế hóa](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md) để thêm hoặc cập nhật một ngôn ngữ.
+- **Bản dịch**: làm theo [hướng dẫn quốc tế hóa](https://github.com/langgenius/dify/blob/main/web/i18n/README.md) để thêm hoặc cập nhật một ngôn ngữ.
 - **Cộng đồng**: chia sẻ ứng dụng bạn xây dựng, hỗ trợ người dùng khác và giới thiệu Dify đến nhiều người hơn.
 
 ### Người đóng góp

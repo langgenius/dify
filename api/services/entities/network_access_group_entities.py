@@ -67,6 +67,17 @@ class NetworkAccessAppConfig:
 
 
 @dataclass(frozen=True)
+class NetworkAccessAppStatus:
+    """Public entry status without policy identity or configuration."""
+
+    entitled: bool
+    configured: bool
+    enabled: bool
+    covered_count: int
+    available_count: int
+
+
+@dataclass(frozen=True)
 class NetworkAccessBindingUpdate:
     binding: NetworkAccessBinding
     effective_enabled: bool

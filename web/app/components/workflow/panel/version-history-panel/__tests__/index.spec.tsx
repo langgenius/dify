@@ -81,7 +81,7 @@ type MockVersionHistoryItemProps = {
   handleClickActionMenuItem: (operation: VersionHistoryContextMenuOptions) => void
 }
 
-vi.mock('@langgenius/dify-ui/toast', () => ({ toast: mockToast }))
+vi.mock('@/app/notifications', () => ({ toast: mockToast }))
 
 vi.mock('@/service/use-workflow', () => ({
   useDeleteWorkflow: () => ({ mutateAsync: vi.fn() }),
@@ -435,7 +435,7 @@ describe('VersionHistoryPanel', () => {
     fireEvent.click(screen.getByText('delete-published-version-id'))
 
     expect(mockToast.error).toHaveBeenCalledWith(
-      'workflow.versionHistory.action.deleteDeployedVersionError',
+      'workflowHistory.versionHistory.action.deleteDeployedVersionError',
     )
     expect(screen.queryByText('confirm delete')).not.toBeInTheDocument()
   })

@@ -37,7 +37,7 @@ vi.mock('@/utils/download', () => ({
   downloadBlob: (args: { data: Blob; fileName: string }) => mockDownloadBlob(args),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: (...args: unknown[]) => mockToastSuccess(...args),
     error: (...args: unknown[]) => mockToastError(...args),

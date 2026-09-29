@@ -186,7 +186,7 @@ describe('Base Chat Flow', () => {
       const { container } = render(<ChatWithHistory className="mobile-chat-shell" />)
 
       expect(useDocumentTitle).toHaveBeenCalledWith('Chat')
-      expect(screen.getByRole('status')).toBeInTheDocument()
+      expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
       expect(container.querySelector('.mobile-chat-shell')).toBeInTheDocument()
       expect(container.querySelector('.rounded-t-2xl')).toBeInTheDocument()
       expect(container.querySelector('.rounded-2xl')).not.toBeInTheDocument()

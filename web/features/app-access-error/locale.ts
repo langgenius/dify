@@ -1,6 +1,6 @@
-import type { Locale } from '@/i18n-config'
+import type { Locale } from '@/i18n'
 import { match } from '@formatjs/intl-localematcher'
-import { LanguagesSupported } from '@/i18n-config/language'
+import { LanguagesSupported } from '@/i18n/language'
 
 export function getBrowserLocale(preferences: readonly string[]): Locale {
   const valid = preferences.filter((language) => {

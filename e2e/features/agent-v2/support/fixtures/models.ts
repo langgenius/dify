@@ -1,7 +1,7 @@
-import type { ConsoleClient } from '../../../../support/api/console-client'
-import type { DifyWorld } from '../../../support/world'
-import { agentBuilderPreseededResources } from '../agent-builder-resources'
-import { failFixturePrerequisite } from './common'
+import type { ConsoleClient } from '../../../../support/api/console-client.ts'
+import type { DifyWorld } from '../../../support/world.ts'
+import { agentBuilderPreseededResources } from '../agent-builder-resources.ts'
+import { failFixturePrerequisite } from './common.ts'
 
 const stableChatModelProviderEnv = 'E2E_STABLE_MODEL_PROVIDER'
 const stableChatModelNameEnv = 'E2E_STABLE_MODEL_NAME'

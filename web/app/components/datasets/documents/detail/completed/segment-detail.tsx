@@ -1,11 +1,11 @@
 import type { FileEntity } from '@/app/components/datasets/common/image-uploader/types'
 import type { SegmentDetailModel } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { RiCloseLine, RiCollapseDiagonalLine, RiExpandDiagonalLine } from '@remixicon/react'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { v4 as uuid4 } from 'uuid'
-import Divider from '@/app/components/base/divider'
 import ImageUploaderInChunk from '@/app/components/datasets/common/image-uploader/image-uploader-in-chunk'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
@@ -42,13 +42,14 @@ export function SegmentDetail({
   segInfo,
   onUpdate,
   onCancel,
-  isEditMode,
+  isEditMode: requestedEditMode,
   docForm,
 }: ISegmentDetailProps) {
-  const { t } = useTranslation()
-  const [question, setQuestion] = useState(
-    isEditMode ? segInfo?.content || '' : segInfo?.sign_content || '',
-  )
+  const editorRef = useRef<HTMLDivElement>(null)
+  const { t } = useTranslation(['common', 'datasetDocuments'])
+  const canEdit = useDocumentContext((s) => s.canEdit)
+  const isEditMode = requestedEditMode && canEdit
+  const [question, setQuestion] = useState(segInfo?.content || '')
   const [answer, setAnswer] = useState(segInfo?.answer || '')
   const [summary, setSummary] = useState(segInfo?.summary || '')
   const [attachments, setAttachments] = useState<FileEntity[]>(() => {
@@ -130,7 +131,7 @@ export function SegmentDetail({
   const isECOIndexing = indexingTechnique === IndexingType.ECONOMICAL
 
   return (
-    <div className="flex h-full flex-col">
+    <div ref={editorRef} className="flex h-full flex-col">
       <div
         className={cn(
           'flex shrink-0 items-center justify-between',
@@ -153,13 +154,14 @@ export function SegmentDetail({
           {isEditMode && fullScreen && (
             <>
               <ActionButtons
+                target={editorRef}
                 handleCancel={handleCancel}
                 handleRegeneration={handleRegeneration}
                 handleSave={handleSave}
                 loading={loading}
                 showRegenerationButton={runtimeMode === 'general'}
               />
-              <Divider type="vertical" className="mr-2 ml-4 h-3.5 bg-divider-regular" />
+              <Separator orientation="vertical" className="mr-2 ml-4 h-3.5" />
             </>
           )}
           <button
@@ -192,7 +194,6 @@ export function SegmentDetail({
           fullScreen
             ? 'w-full flex-row justify-center gap-x-8 px-6 pt-6'
             : 'flex-col gap-y-1 px-4 py-3',
-          !isEditMode && 'pb-0',
         )}
       >
         <div
@@ -203,7 +204,7 @@ export function SegmentDetail({
         >
           <ChunkContent
             docForm={docForm}
-            question={question}
+            question={isEditMode ? question : segInfo?.sign_content || segInfo?.content || ''}
             answer={answer}
             onQuestionChange={(question) => setQuestion(question)}
             onAnswerChange={(answer) => setAnswer(answer)}
@@ -242,6 +243,7 @@ export function SegmentDetail({
       {isEditMode && !fullScreen && (
         <div className="flex items-center justify-end border-t border-t-divider-subtle p-4 pt-3">
           <ActionButtons
+            target={editorRef}
             handleCancel={handleCancel}
             handleRegeneration={handleRegeneration}
             handleSave={handleSave}
@@ -250,7 +252,7 @@ export function SegmentDetail({
           />
         </div>
       )}
-      {showRegenerationModal && (
+      {isEditMode && showRegenerationModal && (
         <RegenerationModal
           isShow={showRegenerationModal}
           onConfirm={onConfirmRegeneration}

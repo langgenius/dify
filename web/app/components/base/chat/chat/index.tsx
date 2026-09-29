@@ -1,22 +1,19 @@
-import type { FC, ReactNode } from 'react'
+import type { FC, ReactNode, Ref } from 'react'
 import type { Theme } from '../embedded-chatbot/theme/theme'
 import type { ChatConfig, ChatItem, OnFeedback, OnRegenerate, OnSend } from '../types'
 import type { HumanInputFormSubmitData } from './answer/human-input-content/type'
 import type { AnswerActionPosition } from './answer/operation'
-import type { InputForm } from './type'
+import type { IChatItem, InputForm } from './type'
 import type { SpeechToTextTarget } from '@/app/components/base/voice-input/types'
 import type { HumanInputNodeType } from '@/app/components/workflow/nodes/human-input/types'
 import type { Node } from '@/app/components/workflow/types'
 import type { AppData, ToolIcon } from '@/models/share'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { memo } from 'react'
+import { memo, useEffect, useImperativeHandle, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useShallow } from 'zustand/react/shallow'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import Answer from './answer'
 import ChatInputArea from './chat-input-area'
-import ChatLogModals from './chat-log-modals'
 import { ChatContextProvider } from './context-provider'
 import Question from './question'
 import TryToAsk from './try-to-ask'
@@ -38,12 +35,14 @@ export type ChatProps = {
   inputs?: Record<string, unknown>
   inputsForm?: InputForm[]
   onRegenerate?: OnRegenerate
+  chatContainerRef?: Ref<HTMLDivElement>
   chatContainerClassName?: string
   chatContainerInnerClassName?: string
   chatFooterClassName?: string
   chatFooterInnerClassName?: string
   suggestedQuestions?: string[]
-  showPromptLog?: boolean
+  onOpenLog?: (item: IChatItem) => void
+  canOpenLog?: (item: IChatItem) => boolean
   questionIcon?: ReactNode
   answerIcon?: ReactNode
   allToolIcons?: Record<string, ToolIcon>
@@ -61,7 +60,6 @@ export type ChatProps = {
   onFeedback?: OnFeedback
   chatAnswerContainerInner?: string
   hideProcessDetail?: boolean
-  hideLogModal?: boolean
   theme?: Theme
   switchSibling?: (siblingMessageId: string) => void
   showFeatureBar?: boolean
@@ -106,12 +104,14 @@ const Chat: FC<ChatProps> = ({
   onStopResponding,
   noChatInput,
   showRegenerate,
+  chatContainerRef: externalChatContainerRef,
   chatContainerClassName,
   chatContainerInnerClassName,
   chatFooterClassName,
   chatFooterInnerClassName,
   suggestedQuestions,
-  showPromptLog,
+  onOpenLog,
+  canOpenLog,
   questionIcon,
   answerIcon,
   onAnnotationAdded,
@@ -122,7 +122,6 @@ const Chat: FC<ChatProps> = ({
   onFeedback,
   chatAnswerContainerInner,
   hideProcessDetail,
-  hideLogModal,
   theme,
   switchSibling,
   showFeatureBar,
@@ -146,29 +145,35 @@ const Chat: FC<ChatProps> = ({
   onHumanInputFormSubmit,
   getHumanInputNodeData,
 }) => {
-  const { t } = useTranslation()
-  const {
-    currentLogItem,
-    setCurrentLogItem,
-    showPromptLogModal,
-    setShowPromptLogModal,
-    showAgentLogModal,
-    setShowAgentLogModal,
-  } = useAppStore(
-    useShallow((state) => ({
-      currentLogItem: state.currentLogItem,
-      setCurrentLogItem: state.setCurrentLogItem,
-      showPromptLogModal: state.showPromptLogModal,
-      setShowPromptLogModal: state.setShowPromptLogModal,
-      showAgentLogModal: state.showAgentLogModal,
-      setShowAgentLogModal: state.setShowAgentLogModal,
-    })),
-  )
-  const { width, chatContainerRef, chatContainerInnerRef, chatFooterRef, chatFooterInnerRef } =
+  const { t } = useTranslation(['agentV2', 'appDebug'])
+  const responseStatusRef = useRef<HTMLDivElement>(null)
+  const wasRespondingRef = useRef(false)
+  const hasAgentContent = !!renderAgentContent
+
+  // Keep the live region mounted before a response starts. Synchronize only
+  // lifecycle transitions, never the streaming answer or elapsed-time counter.
+  useEffect(() => {
+    const status = responseStatusRef.current
+    if (!status) {
+      wasRespondingRef.current = false
+      return
+    }
+
+    const announcement = isResponding
+      ? t(($) => $['agentDetail.configure.answer.thinking'], { ns: 'agentV2' })
+      : wasRespondingRef.current
+        ? t(($) => $['agentDetail.configure.answer.responseEnded'], { ns: 'agentV2' })
+        : undefined
+    if (announcement && status.textContent !== announcement) status.textContent = announcement
+    wasRespondingRef.current = !!isResponding
+  }, [hasAgentContent, isResponding, t])
+  const { chatContainerRef, chatContainerInnerRef, chatFooterRef, chatFooterInnerRef } =
     useChatLayout({
       chatList,
       sidebarCollapseState,
     })
+
+  useImperativeHandle(externalChatContainerRef, () => chatContainerRef.current!, [chatContainerRef])
 
   const hasTryToAsk =
     config?.suggested_questions_after_answer?.enabled && !!suggestedQuestions?.length && onSend
@@ -179,7 +184,8 @@ const Chat: FC<ChatProps> = ({
       config={config}
       chatList={chatList}
       isResponding={isResponding}
-      showPromptLog={showPromptLog}
+      onOpenLog={onOpenLog}
+      canOpenLog={canOpenLog}
       questionIcon={questionIcon}
       answerIcon={answerIcon}
       onSend={onSend}
@@ -192,6 +198,9 @@ const Chat: FC<ChatProps> = ({
       onFeedback={onFeedback}
       getHumanInputNodeData={getHumanInputNodeData}
     >
+      {hasAgentContent && (
+        <div ref={responseStatusRef} role="status" aria-atomic="true" className="sr-only" />
+      )}
       <div data-testid="chat-root" className={cn('relative h-full', isTryApp && 'flex flex-col')}>
         <div
           data-testid="chat-container"
@@ -226,7 +235,6 @@ const Chat: FC<ChatProps> = ({
                     config={config}
                     answerIcon={answerIcon}
                     responding={isLast && isResponding}
-                    showPromptLog={showPromptLog}
                     chatAnswerContainerInner={chatAnswerContainerInner}
                     hideProcessDetail={hideProcessDetail}
                     noChatInput={noChatInput}
@@ -310,16 +318,6 @@ const Chat: FC<ChatProps> = ({
             )}
           </div>
         </div>
-        <ChatLogModals
-          width={width}
-          currentLogItem={currentLogItem}
-          showPromptLogModal={showPromptLogModal}
-          showAgentLogModal={showAgentLogModal}
-          hideLogModal={hideLogModal}
-          setCurrentLogItem={setCurrentLogItem}
-          setShowPromptLogModal={setShowPromptLogModal}
-          setShowAgentLogModal={setShowAgentLogModal}
-        />
       </div>
     </ChatContextProvider>
   )

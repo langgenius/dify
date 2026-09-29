@@ -25,10 +25,9 @@ class ConcreteTraceInstance(BaseTraceInstance):
 
 @pytest.fixture(autouse=True)
 def _bind_production_sessions(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> None:
-    """Bind both service-owned ORM sessions to the test's SQLite engine."""
+    """Bind the service-owned ORM session to the test's SQLite engine."""
     database = SimpleNamespace(engine=sqlite_engine)
     monkeypatch.setattr("core.ops.base_trace_instance.db", database)
-    monkeypatch.setattr("models.account.db", database)
 
 
 def _persist_app(session: Session, *, created_by: str | None) -> App:

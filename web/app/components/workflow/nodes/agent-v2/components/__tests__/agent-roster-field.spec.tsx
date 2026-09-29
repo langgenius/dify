@@ -66,11 +66,11 @@ describe('AgentRosterField', () => {
     renderDetailRosterField()
 
     await user.click(
-      screen.getByRole('button', { name: /^workflow\.nodes\.agent\.roster\.openPanel/ }),
+      screen.getByRole('button', { name: /^workflowAgent\.nodes\.agent\.roster\.openPanel/ }),
     )
 
     expect(
-      await screen.findByRole('button', { name: 'workflow.nodes.agent.roster.makeCopy' }),
+      await screen.findByRole('button', { name: 'workflowAgent.nodes.agent.roster.makeCopy' }),
     ).toBeInTheDocument()
   })
 
@@ -79,11 +79,11 @@ describe('AgentRosterField', () => {
     renderDetailRosterField(['agent.acl.preview'])
 
     await user.click(
-      screen.getByRole('button', { name: /^workflow\.nodes\.agent\.roster\.openPanel/ }),
+      screen.getByRole('button', { name: /^workflowAgent\.nodes\.agent\.roster\.openPanel/ }),
     )
 
     expect(
-      screen.queryByRole('link', { name: 'workflow.nodes.agent.roster.editInConsole' }),
+      screen.queryByRole('link', { name: 'workflowAgent.nodes.agent.roster.editInConsole' }),
     ).not.toBeInTheDocument()
   })
 
@@ -92,7 +92,7 @@ describe('AgentRosterField', () => {
     renderInlineRosterField()
 
     const trigger = screen.getByRole('button', {
-      name: /^workflow\.nodes\.agent\.roster\.openPanel/,
+      name: /^workflowAgent\.nodes\.agent\.roster\.openPanel/,
     })
 
     await user.click(trigger)

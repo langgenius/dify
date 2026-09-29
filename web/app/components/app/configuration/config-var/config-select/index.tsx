@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { RiAddLine, RiDeleteBinLine, RiDraggable } from '@remixicon/react'
@@ -13,10 +14,12 @@ export type Options = string[]
 type IConfigSelectProps = {
   options: Options
   onChange: (options: Options) => void
+  errorMessage?: string
+  errorId?: string
 }
 
-const ConfigSelect: FC<IConfigSelectProps> = ({ options, onChange }) => {
-  const { t } = useTranslation()
+const ConfigSelect: FC<IConfigSelectProps> = ({ options, onChange, errorMessage, errorId }) => {
+  const { t } = useTranslation(['appDebug', 'common'])
   const [focusID, setFocusID] = useState<number | null>(null)
   const [deletingID, setDeletingID] = useState<number | null>(null)
 
@@ -57,13 +60,16 @@ const ConfigSelect: FC<IConfigSelectProps> = ({ options, onChange }) => {
               >
                 <IconButton
                   {...getHandleProps(index)}
-                  className="handle size-6 shrink-0 cursor-grab aria-pressed:bg-state-accent-hover"
+                  className="handle shrink-0 cursor-grab aria-pressed:bg-state-accent-hover"
                 >
                   <RiDraggable aria-hidden="true" className="size-4 text-text-quaternary" />
                 </IconButton>
                 <input
                   key={getItemKey(index)}
                   type="input"
+                  aria-label={`${t(($) => $['variableConfig.options'], { ns: 'appDebug' })} ${index + 1}`}
+                  aria-invalid={!!errorMessage || undefined}
+                  aria-describedby={errorMessage ? errorId : undefined}
                   value={o || ''}
                   onChange={(e) => {
                     const value = e.target.value
@@ -98,17 +104,21 @@ const ConfigSelect: FC<IConfigSelectProps> = ({ options, onChange }) => {
         </div>
       )}
 
-      <div
+      <Button
+        type="button"
+        variant="tertiary"
+        aria-invalid={(options.length === 0 && !!errorMessage) || undefined}
+        aria-describedby={options.length === 0 && errorMessage ? errorId : undefined}
         onClick={() => {
           onChange([...options, ''])
         }}
-        className="mt-1 flex h-9 cursor-pointer items-center gap-2 rounded-lg bg-components-button-tertiary-bg px-3 text-components-button-tertiary-text hover:bg-components-button-tertiary-bg-hover"
+        className="mt-1 flex h-9 w-full justify-start gap-2 px-3"
       >
-        <RiAddLine className="size-4" />
-        <div className="system-sm-medium text-[13px]">
+        <RiAddLine aria-hidden="true" className="size-4" />
+        <span className="system-sm-medium text-[13px]">
           {t(($) => $['variableConfig.addOption'], { ns: 'appDebug' })}
-        </div>
-      </div>
+        </span>
+      </Button>
     </div>
   )
 }

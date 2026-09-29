@@ -1,3 +1,4 @@
+import type { AppNetworkAccessGroupStatusResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { AccessControlDraft } from './draft'
 import type { AccessPoint } from '@/app/components/app/deploy/utils/access-point'
 
@@ -59,6 +60,26 @@ export function getAccessControlChipState({
         ? 'on'
         : 'partial',
     policyName: assignment.policyName,
+    ...coverage,
+  }
+}
+
+export function getAccessControlStatusChipState(
+  status: AppNetworkAccessGroupStatusResponse,
+): AccessControlChipState {
+  if (!status.entitled) return { kind: 'pro', coveredCount: 0, inServiceCount: 0 }
+  if (!status.configured) return { kind: 'off', coveredCount: 0, inServiceCount: 0 }
+
+  const coverage = {
+    coveredCount: status.covered_count,
+    inServiceCount: status.available_count,
+  }
+  if (!status.enabled) return { kind: 'paused', ...coverage }
+  return {
+    kind:
+      coverage.inServiceCount > 0 && coverage.coveredCount === coverage.inServiceCount
+        ? 'on'
+        : 'partial',
     ...coverage,
   }
 }

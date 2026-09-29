@@ -8,7 +8,7 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useDocumentTitle from '@/hooks/use-document-title'
 
 export default function SignInLayout({ children }: PropsWithChildren) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['login'])
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   useDocumentTitle(t(($) => $['webapp.login'], { ns: 'login' }))
   return (

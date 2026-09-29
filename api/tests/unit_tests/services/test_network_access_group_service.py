@@ -340,6 +340,35 @@ def test_app_binding_rejects_disallowed_roles_before_app_lookup(operation: Mutat
     assert harness.control_plane.method_calls == []
 
 
+def test_normal_member_can_read_only_app_entry_status() -> None:
+    harness = _harness(role="normal")
+    harness.control_plane.get_app_binding.return_value = _config(
+        _binding(enabled=True, group_id=GROUP_ID, access_points=("webapp", "service_api"))
+    )
+
+    status = harness.service.get_app_status(_context(), app_id=APP_ID)
+
+    assert status.entitled is True
+    assert status.configured is True
+    assert status.enabled is True
+    assert status.covered_count == 2
+    assert status.available_count == 4
+    assert not hasattr(status, "group_id")
+    assert not hasattr(status, "allowed_cidrs")
+    harness.control_plane.get_app_binding.assert_called_once_with(WORKSPACE_ID, APP_ID, ACCOUNT_ID)
+
+
+@pytest.mark.parametrize("role", ["dataset_operator", None])
+def test_app_entry_status_rejects_roles_without_app_access(role: str | None) -> None:
+    harness = _harness(role=role)
+
+    with pytest.raises(NetworkAccessGroupAccessDeniedError):
+        harness.service.get_app_status(_context(), app_id=APP_ID)
+
+    harness.apps.get_manageable_app.assert_not_called()
+    harness.control_plane.get_app_binding.assert_not_called()
+
+
 def test_mutation_does_not_repeat_http_paid_plan_admission() -> None:
     harness = _harness()
     harness.control_plane.create_group.return_value = _group()

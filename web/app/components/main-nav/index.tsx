@@ -4,7 +4,7 @@ import type { MainNavItem, MainNavProps } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useMemo, useRef } from 'react'
+import { lazy, Suspense, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { DifyLogo } from '@/app/components/base/logo/dify-logo'
@@ -15,7 +15,6 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
 import { useCanViewSkills } from '@/features/skills/permissions'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import dynamic from '@/next/dynamic'
 import Link from '@/next/link'
 import { usePathname } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
@@ -26,10 +25,10 @@ import { MainNavSearchButton } from './components/search-button'
 import { WorkspaceCard } from './components/workspace-card'
 import { isMainNavRouteVisible, MAIN_NAV_ROUTES } from './routes'
 
-const WebAppsSection = dynamic(() => import('./components/web-apps-section'), { ssr: false })
+const WebAppsSection = lazy(() => import('./components/web-apps-section'))
 
-export function MainNav({ className }: MainNavProps) {
-  const { t } = useTranslation()
+export function MainNav({ className, initialPlatform }: MainNavProps) {
+  const { t } = useTranslation(['common', 'navigation'])
   const pathname = usePathname()
   const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
@@ -59,7 +58,7 @@ export function MainNav({ className }: MainNavProps) {
         }),
       ).map((route) => ({
         href: route.href,
-        label: 'label' in route ? route.label : t(($) => $[route.labelKey], { ns: 'common' }),
+        label: 'label' in route ? route.label : t(($) => $[route.labelKey], { ns: 'navigation' }),
         active: route.active,
         icon: route.icon,
         activeIcon: route.activeIcon,
@@ -109,7 +108,7 @@ export function MainNav({ className }: MainNavProps) {
       <div className="flex min-h-0 w-60 flex-1 flex-col overflow-hidden">
         <div className="flex items-center justify-between pt-3 pr-2 pb-2 pl-4">
           {renderLogo()}
-          <MainNavSearchButton />
+          <MainNavSearchButton initialPlatform={initialPlatform} />
         </div>
         <div className="p-2">
           <WorkspaceCard />
@@ -124,14 +123,18 @@ export function MainNav({ className }: MainNavProps) {
                 <Badge
                   size="xs"
                   variant="dimm"
-                  text={t(($) => $['menus.status'], { ns: 'common' })}
+                  text={t(($) => $['menus.status'], { ns: 'navigation' })}
                   className="ml-auto shrink-0"
                 />
               )}
             </MainNavLink>
           ))}
         </nav>
-        {!isCurrentWorkspaceDatasetOperator && <WebAppsSection />}
+        {!isCurrentWorkspaceDatasetOperator && (
+          <Suspense fallback={null}>
+            <WebAppsSection />
+          </Suspense>
+        )}
         {showEnvTag && (
           <div className="mt-auto shrink-0 px-3 pb-2">
             <EnvNav />

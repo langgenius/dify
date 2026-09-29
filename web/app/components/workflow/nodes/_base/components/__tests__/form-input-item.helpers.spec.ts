@@ -12,7 +12,6 @@ import {
   getCheckboxListValue,
   getFilterVar,
   getFormInputState,
-  getNumberInputValue,
   getSelectedLabels,
   getTargetVarType,
   getVarKindType,
@@ -178,11 +177,7 @@ describe('form-input-item helpers', () => {
     expect(getCheckboxListValue(['alpha', 'missing'], ['beta'], options)).toEqual(['alpha'])
   })
 
-  it('should normalize number and variable selector values', () => {
-    expect(getNumberInputValue(Number.NaN)).toBe('')
-    expect(getNumberInputValue(2)).toBe(2)
-    expect(getNumberInputValue('3')).toBe('3')
-    expect(getNumberInputValue(undefined)).toBe('')
+  it('should normalize variable selector values', () => {
     expect(normalizeVariableSelectorValue([])).toEqual([])
     expect(normalizeVariableSelectorValue(['node', 'answer'])).toEqual(['node', 'answer'])
     expect(normalizeVariableSelectorValue('')).toBe('')

@@ -18,8 +18,9 @@ import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
+import Cookies from 'js-cookie'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
-import { DETAIL_SIDEBAR_STORAGE_KEY } from '@/app/components/detail-sidebar/storage'
+import { DETAIL_SIDEBAR_COOKIE_NAME } from '@/app/components/detail-sidebar/cookie'
 import { LEARN_DIFY_HIDDEN_STORAGE_KEY } from '@/app/components/explore/learn-dify/storage'
 import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
@@ -53,7 +54,6 @@ const {
   mockIsAgentV2Enabled,
   mockSwitchWorkspace,
   mockToastSuccess,
-  mockUninstall,
   mockUpdatePinStatus,
 } = vi.hoisted(() => ({
   mockFetchNextInstalledAppsPage: vi.fn(),
@@ -61,7 +61,6 @@ const {
   mockIsAgentV2Enabled: vi.fn(() => true),
   mockSwitchWorkspace: vi.fn(),
   mockToastSuccess: vi.fn(),
-  mockUninstall: vi.fn(),
   mockUpdatePinStatus: vi.fn(),
 }))
 const mockStepByStepTour = vi.hoisted(() => {
@@ -216,32 +215,32 @@ vi.mock('react-i18next', async () => {
   return {
     ...actual,
     ...createReactI18nextMock({
-      'common.stepByStepTour.title': 'Get to know Dify',
-      'common.stepByStepTour.duration': 'A quick tour — about 5 minutes',
-      'common.stepByStepTour.skip': 'Skip tour',
-      'common.stepByStepTour.minimize': 'Minimize tour',
-      'common.stepByStepTour.restore': 'Open step-by-step tour',
-      'common.stepByStepTour.learnMore': 'Learn more',
-      'common.stepByStepTour.skipRecovery.label': 'Step-by-step Tour recovery tip',
-      'common.stepByStepTour.skipRecovery.message':
+      'onboarding.stepByStepTour.title': 'Get to know Dify',
+      'onboarding.stepByStepTour.duration': 'A quick tour — about 5 minutes',
+      'onboarding.stepByStepTour.skip': 'Skip tour',
+      'onboarding.stepByStepTour.minimize': 'Minimize tour',
+      'onboarding.stepByStepTour.restore': 'Open step-by-step tour',
+      'onboarding.stepByStepTour.learnMore': 'Learn more',
+      'onboarding.stepByStepTour.skipRecovery.label': 'Step-by-step Tour recovery tip',
+      'onboarding.stepByStepTour.skipRecovery.message':
         'Tour hidden. Turn it back on anytime in Help → Step-by-step Tour.',
-      'common.stepByStepTour.skipRecovery.dismiss': 'Got it',
-      'common.stepByStepTour.tasks.home.title': 'Try a Learn Dify lesson',
-      'common.stepByStepTour.tasks.home.description':
+      'onboarding.stepByStepTour.skipRecovery.dismiss': 'Got it',
+      'onboarding.stepByStepTour.tasks.home.title': 'Try a Learn Dify lesson',
+      'onboarding.stepByStepTour.tasks.home.description':
         'Open a hands-on lesson from Learn Dify to see Dify in action.',
-      'common.stepByStepTour.tasks.home.primaryActionLabel': 'Show me',
-      'common.stepByStepTour.tasks.studio.title': 'Manage your apps in Studio',
-      'common.stepByStepTour.tasks.studio.description':
+      'onboarding.stepByStepTour.tasks.home.primaryActionLabel': 'Show me',
+      'onboarding.stepByStepTour.tasks.studio.title': 'Manage your apps in Studio',
+      'onboarding.stepByStepTour.tasks.studio.description':
         'All your apps live in Studio — edit, organize, and publish them here.',
-      'common.stepByStepTour.tasks.studio.primaryActionLabel': 'Take a look',
-      'common.stepByStepTour.tasks.knowledge.title': 'Add your own data',
-      'common.stepByStepTour.tasks.knowledge.description':
+      'onboarding.stepByStepTour.tasks.studio.primaryActionLabel': 'Take a look',
+      'onboarding.stepByStepTour.tasks.knowledge.title': 'Add your own data',
+      'onboarding.stepByStepTour.tasks.knowledge.description':
         'Build a knowledge base so your apps answer from your documents.',
-      'common.stepByStepTour.tasks.knowledge.primaryActionLabel': 'Take a look',
-      'common.stepByStepTour.tasks.integration.title': 'Explore integrations',
-      'common.stepByStepTour.tasks.integration.description':
+      'onboarding.stepByStepTour.tasks.knowledge.primaryActionLabel': 'Take a look',
+      'onboarding.stepByStepTour.tasks.integration.title': 'Explore integrations',
+      'onboarding.stepByStepTour.tasks.integration.description':
         'Models, tools, data sources & more — explore what you can connect.',
-      'common.stepByStepTour.tasks.integration.primaryActionLabel': 'Take a look',
+      'onboarding.stepByStepTour.tasks.integration.primaryActionLabel': 'Take a look',
     }),
   }
 })
@@ -340,11 +339,6 @@ vi.mock('@/service/console', async (importOriginal) => {
             }),
           },
           byInstalledAppId: {
-            delete: {
-              mutationOptions: () => ({
-                mutationFn: (input: unknown) => mockUninstall(input),
-              }),
-            },
             patch: {
               mutationOptions: () => ({
                 mutationFn: (input: unknown) => mockUpdatePinStatus(input),
@@ -364,8 +358,8 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 
-vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@langgenius/dify-ui/toast')>()
+vi.mock('@/app/notifications', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/notifications')>()
   return {
     ...actual,
     toast: {
@@ -379,18 +373,14 @@ vi.mock('@/app/components/header/github-star', () => ({
   default: ({ className }: { className?: string }) => <span className={className}>1,234</span>,
 }))
 
-vi.mock('@/context/i18n', () => ({
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: () => 'en-US',
-  useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
 }))
 
-vi.mock('@/next/dynamic', async () => {
-  const { default: WebAppsSection } = await import('../components/web-apps-section')
-
-  return {
-    default: () => WebAppsSection,
-  }
-})
+vi.mock('@/context/i18n', () => ({
+  useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
+}))
 
 vi.mock('@/config', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/config')>()
@@ -478,7 +468,6 @@ const createInstalledApp = (
   app_owner_tenant_id: overrides.app_owner_tenant_id ?? 'tenant-1',
   editable: overrides.editable ?? true,
   last_used_at: overrides.last_used_at ?? null,
-  uninstallable: overrides.uninstallable ?? false,
   is_pinned: overrides.is_pinned ?? false,
   app: {
     id: overrides.app?.id ?? 'app-1',
@@ -501,7 +490,7 @@ const mainNavUserProfile = {
   avatar_url: '',
   is_password_set: true,
 }
-const accountMenuAccessibleName = `${mainNavUserProfile.name} common.account.account`
+const accountMenuAccessibleName = `${mainNavUserProfile.name} accountSettings.account.account`
 
 const consoleState: MainNavConsoleState = {
   userProfile: mainNavUserProfile,
@@ -528,7 +517,7 @@ const consoleState: MainNavConsoleState = {
   isLoadingWorkspacePermissionKeys: false,
   workspacePermissionKeys: ownerWorkspacePermissionKeys,
 }
-const workspaceMenuAccessibleName = /Solar Studio.*common\.mainNav\.workspace\.openMenu/
+const workspaceMenuAccessibleName = /Solar Studio.*navigation\.mainNav\.workspace\.openMenu/
 
 type MainNavSystemFeatures = Exclude<
   NonNullable<Parameters<typeof renderWithoutPricing>[1]>['systemFeatures'],
@@ -622,6 +611,7 @@ describe('MainNav', () => {
     vi.clearAllMocks()
     gotoAnythingDialogHandle.close()
     localStorage.clear()
+    Cookies.remove(DETAIL_SIDEBAR_COOKIE_NAME)
     mockPathname = '/apps'
     mockInstalledApps = []
     mockInstalledAppsPending = false
@@ -680,7 +670,6 @@ describe('MainNav', () => {
         }
       },
     )
-    mockUninstall.mockResolvedValue(undefined)
     mockUpdatePinStatus.mockResolvedValue({ result: 'success', message: 'updated' })
     mockSwitchWorkspace.mockReturnValue(new Promise(() => {}))
   })
@@ -692,30 +681,30 @@ describe('MainNav', () => {
     expect(screen.getByRole('button', { name: accountMenuAccessibleName })).not.toHaveTextContent(
       'team',
     )
-    const homeLink = screen.getByRole('link', { name: /common.mainNav.home/ })
+    const homeLink = screen.getByRole('link', { name: /navigation.mainNav.home/ })
     expect(homeLink).toHaveAttribute('href', '/')
     expect(homeLink.querySelector('.i-custom-vender-main-nav-home-v2')).toBeInTheDocument()
-    const studioLink = screen.getByRole('link', { name: /common.menus.apps/ })
+    const studioLink = screen.getByRole('link', { name: /navigation.menus.apps/ })
     expect(studioLink).toHaveAttribute('href', '/apps')
     expect(studioLink.querySelector('.i-custom-vender-main-nav-studio-v2')).toBeInTheDocument()
     const agentsLink = screen.getByRole('link', { name: /Agents/ })
     expect(agentsLink).toHaveAttribute('href', '/agents')
-    expect(screen.getByRole('link', { name: /Agents common.menus.status/ })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Agents navigation.menus.status/ })).toBeInTheDocument()
     expect(agentsLink.querySelector('.i-custom-vender-main-nav-agent')).toBeInTheDocument()
-    const skillsLink = screen.getByRole('link', { name: /common.mainNav.skills/ })
+    const skillsLink = screen.getByRole('link', { name: /navigation.mainNav.skills/ })
     expect(skillsLink).toHaveAttribute('href', '/skills')
     expect(skillsLink.querySelector('.i-custom-vender-main-nav-skill')).toBeInTheDocument()
-    const knowledgeLink = screen.getByRole('link', { name: /common.menus.datasets/ })
+    const knowledgeLink = screen.getByRole('link', { name: /navigation.menus.datasets/ })
     expect(knowledgeLink).toHaveAttribute('href', '/datasets')
     expect(
       knowledgeLink.querySelector('.i-custom-vender-main-nav-knowledge-v2'),
     ).toBeInTheDocument()
-    const integrationsLink = screen.getByRole('link', { name: /common.mainNav.integrations/ })
+    const integrationsLink = screen.getByRole('link', { name: /navigation.mainNav.integrations/ })
     expect(integrationsLink).toHaveAttribute('href', '/integrations/model-provider')
     expect(
       integrationsLink.querySelector('.i-custom-vender-main-nav-integrations-v2'),
     ).toBeInTheDocument()
-    const marketplaceLink = screen.getByRole('link', { name: /common.mainNav.marketplace/ })
+    const marketplaceLink = screen.getByRole('link', { name: /navigation.mainNav.marketplace/ })
     expect(marketplaceLink).toHaveAttribute('href', '/marketplace')
     expect(
       marketplaceLink.querySelector('.i-custom-vender-main-nav-marketplace-v2'),
@@ -741,7 +730,7 @@ describe('MainNav', () => {
     renderMainNav()
 
     expect(screen.queryByRole('link', { name: /Agents/ })).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /common.mainNav.skills/ })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /navigation.mainNav.skills/ })).toHaveAttribute(
       'href',
       '/skills',
     )
@@ -764,7 +753,7 @@ describe('MainNav', () => {
     renderMainNav({ enable_marketplace: false })
 
     expect(
-      screen.queryByRole('link', { name: /common.mainNav.marketplace/ }),
+      screen.queryByRole('link', { name: /navigation.mainNav.marketplace/ }),
     ).not.toBeInTheDocument()
   })
 
@@ -773,7 +762,9 @@ describe('MainNav', () => {
 
     renderMainNav()
 
-    expect(screen.queryByRole('link', { name: /common.mainNav.skills/ })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('link', { name: /navigation.mainNav.skills/ }),
+    ).not.toBeInTheDocument()
   })
 
   it('hides the skills entry when the user lacks skill.view', () => {
@@ -784,7 +775,9 @@ describe('MainNav', () => {
 
     renderMainNav()
 
-    expect(screen.queryByRole('link', { name: /common.mainNav.skills/ })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('link', { name: /navigation.mainNav.skills/ }),
+    ).not.toBeInTheDocument()
   })
 
   it('orders the Step-by-step Tour before the account and help actions', async () => {
@@ -794,7 +787,7 @@ describe('MainNav', () => {
 
     const tourTrigger = await screen.findByRole('button', { name: 'Open step-by-step tour' })
     const accountButton = screen.getByRole('button', { name: accountMenuAccessibleName })
-    const helpButton = screen.getByRole('button', { name: 'common.mainNav.help.openMenu' })
+    const helpButton = screen.getByRole('button', { name: 'navigation.mainNav.help.openMenu' })
 
     expect(tourTrigger.compareDocumentPosition(accountButton)).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING,
@@ -803,7 +796,7 @@ describe('MainNav', () => {
   })
 
   it('keeps the global navigation account section expanded on home routes', () => {
-    localStorage.setItem(DETAIL_SIDEBAR_STORAGE_KEY, 'collapse')
+    Cookies.set(DETAIL_SIDEBAR_COOKIE_NAME, 'collapse')
     mockPathname = '/'
 
     renderMainNav()
@@ -851,19 +844,27 @@ describe('MainNav', () => {
 
     renderMainNav()
 
-    expect(screen.getByRole('link', { name: /common.mainNav.home/ })).toHaveAttribute('href', '/')
-    expect(screen.getByRole('link', { name: /common.menus.apps/ })).toHaveAttribute('href', '/apps')
+    expect(screen.getByRole('link', { name: /navigation.mainNav.home/ })).toHaveAttribute(
+      'href',
+      '/',
+    )
+    expect(screen.getByRole('link', { name: /navigation.menus.apps/ })).toHaveAttribute(
+      'href',
+      '/apps',
+    )
     expect(screen.getByRole('link', { name: /Agents/ })).toHaveAttribute('href', '/agents')
-    expect(screen.queryByRole('link', { name: /common.mainNav.skills/ })).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /common.menus.datasets/ })).toHaveAttribute(
+    expect(
+      screen.queryByRole('link', { name: /navigation.mainNav.skills/ }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /navigation.menus.datasets/ })).toHaveAttribute(
       'href',
       '/datasets',
     )
-    expect(screen.getByRole('link', { name: /common.mainNav.integrations/ })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /navigation.mainNav.integrations/ })).toHaveAttribute(
       'href',
       '/integrations/model-provider',
     )
-    expect(screen.getByRole('link', { name: /common.mainNav.marketplace/ })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /navigation.mainNav.marketplace/ })).toHaveAttribute(
       'href',
       '/marketplace',
     )
@@ -887,12 +888,14 @@ describe('MainNav', () => {
 
     renderMainNav({ branding: { enabled: false } })
 
-    expect(screen.getByRole('link', { name: /common.mainNav.home/ })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /common.menus.apps/ })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /navigation.mainNav.home/ })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /navigation.menus.apps/ })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /Agents/ })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /common.menus.datasets/ })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /common.mainNav.integrations/ })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /common.mainNav.marketplace/ })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /navigation.menus.datasets/ })).toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: /navigation.mainNav.integrations/ }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /navigation.mainNav.marketplace/ })).toBeInTheDocument()
   })
 
   it('marks the matching primary route active', () => {
@@ -900,10 +903,10 @@ describe('MainNav', () => {
 
     renderMainNav()
 
-    const datasetsLink = screen.getByRole('link', { name: /common.menus.datasets/ })
+    const datasetsLink = screen.getByRole('link', { name: /navigation.menus.datasets/ })
     expect(datasetsLink).toHaveClass(activeGradientMaskClassName)
     expect(datasetsLink).toHaveAttribute('aria-current', 'page')
-    expect(screen.getByRole('link', { name: /common.mainNav.home/ })).not.toHaveAttribute(
+    expect(screen.getByRole('link', { name: /navigation.mainNav.home/ })).not.toHaveAttribute(
       'aria-current',
     )
   })
@@ -913,10 +916,10 @@ describe('MainNav', () => {
 
     renderMainNav()
 
-    const studioLink = screen.getByRole('link', { name: /common.menus.apps/ })
+    const studioLink = screen.getByRole('link', { name: /navigation.menus.apps/ })
     expect(studioLink).toHaveClass(activeGradientMaskClassName)
     expect(studioLink).toHaveAttribute('aria-current', 'page')
-    expect(screen.getByRole('link', { name: /common.mainNav.home/ })).not.toHaveAttribute(
+    expect(screen.getByRole('link', { name: /navigation.mainNav.home/ })).not.toHaveAttribute(
       'aria-current',
     )
   })
@@ -940,7 +943,10 @@ describe('MainNav', () => {
     expect(screen.queryByTestId('app-detail-top')).not.toBeInTheDocument()
     expect(screen.queryByTestId('app-detail-section')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: workspaceMenuAccessibleName })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /common.menus.apps/ })).toHaveAttribute('href', '/apps')
+    expect(screen.getByRole('link', { name: /navigation.menus.apps/ })).toHaveAttribute(
+      'href',
+      '/apps',
+    )
   })
 
   it.each([
@@ -957,7 +963,7 @@ describe('MainNav', () => {
     expect(screen.queryByTestId('dataset-detail-top')).not.toBeInTheDocument()
     expect(screen.queryByTestId('dataset-detail-section')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: workspaceMenuAccessibleName })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /common.menus.datasets/ })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /navigation.menus.datasets/ })).toHaveAttribute(
       'href',
       '/datasets',
     )
@@ -970,7 +976,7 @@ describe('MainNav', () => {
 
       renderMainNav()
 
-      const marketplaceLink = screen.getByRole('link', { name: /common.mainNav.marketplace/ })
+      const marketplaceLink = screen.getByRole('link', { name: /navigation.mainNav.marketplace/ })
       expect(marketplaceLink).toHaveClass(activeGradientMaskClassName)
     },
   )
@@ -990,7 +996,7 @@ describe('MainNav', () => {
 
     renderMainNav()
 
-    const homeLink = screen.getByRole('link', { name: /common.mainNav.home/ })
+    const homeLink = screen.getByRole('link', { name: /navigation.mainNav.home/ })
 
     expect(homeLink).toHaveClass(activeGradientMaskClassName)
     expect(homeLink).toHaveClass(activeStackingClassName)
@@ -1017,14 +1023,14 @@ describe('MainNav', () => {
 
     renderMainNav({ enable_learn_app: true })
 
-    const helpTrigger = screen.getByRole('button', { name: 'common.mainNav.help.openMenu' })
+    const helpTrigger = screen.getByRole('button', { name: 'navigation.mainNav.help.openMenu' })
     expect(helpTrigger).not.toHaveAttribute('data-popup-open')
 
     fireEvent.click(helpTrigger)
 
     expect(helpTrigger).toHaveAttribute('data-popup-open', '')
     const learnDifyItem = await screen.findByRole('menuitemcheckbox', {
-      name: 'common.mainNav.help.learnDify',
+      name: 'navigation.mainNav.help.learnDify',
     })
     expect(learnDifyItem).toHaveAttribute('aria-checked', 'false')
 
@@ -1046,7 +1052,7 @@ describe('MainNav', () => {
       await screen.findByRole('dialog', { name: 'Step-by-step Tour recovery tip' }),
     ).toBeInTheDocument()
 
-    const helpTrigger = screen.getByRole('button', { name: 'common.mainNav.help.openMenu' })
+    const helpTrigger = screen.getByRole('button', { name: 'navigation.mainNav.help.openMenu' })
     await user.click(helpTrigger)
 
     expect(
@@ -1061,9 +1067,9 @@ describe('MainNav', () => {
     const user = userEvent.setup()
     renderMainNav({ enable_learn_app: true })
 
-    await user.click(screen.getByRole('button', { name: 'common.mainNav.help.openMenu' }))
+    await user.click(screen.getByRole('button', { name: 'navigation.mainNav.help.openMenu' }))
     const stepByStepTourItem = await screen.findByRole('menuitemcheckbox', {
-      name: 'common.mainNav.help.stepByStepTour',
+      name: 'navigation.mainNav.help.stepByStepTour',
     })
     expect(stepByStepTourItem).toHaveAttribute('aria-checked', 'true')
 
@@ -1090,10 +1096,12 @@ describe('MainNav', () => {
 
     renderMainNav({ enable_learn_app: true })
 
-    await user.click(screen.getByRole('button', { name: 'common.mainNav.help.openMenu' }))
+    await user.click(screen.getByRole('button', { name: 'navigation.mainNav.help.openMenu' }))
 
     expect(
-      await screen.findByRole('menuitemcheckbox', { name: 'common.mainNav.help.stepByStepTour' }),
+      await screen.findByRole('menuitemcheckbox', {
+        name: 'navigation.mainNav.help.stepByStepTour',
+      }),
     ).toHaveAttribute('aria-checked', 'false')
   })
 
@@ -1108,9 +1116,9 @@ describe('MainNav', () => {
 
     renderMainNav({ enable_learn_app: true })
 
-    await user.click(screen.getByRole('button', { name: 'common.mainNav.help.openMenu' }))
+    await user.click(screen.getByRole('button', { name: 'navigation.mainNav.help.openMenu' }))
     const stepByStepTourItem = await screen.findByRole('menuitemcheckbox', {
-      name: 'common.mainNav.help.stepByStepTour',
+      name: 'navigation.mainNav.help.stepByStepTour',
     })
     expect(stepByStepTourItem).toHaveAttribute('aria-checked', 'false')
 
@@ -1128,9 +1136,11 @@ describe('MainNav', () => {
     })
     expect(await screen.findByRole('dialog', { name: 'Get to know Dify' })).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'common.mainNav.help.openMenu' }))
+    await user.click(screen.getByRole('button', { name: 'navigation.mainNav.help.openMenu' }))
     expect(
-      await screen.findByRole('menuitemcheckbox', { name: 'common.mainNav.help.stepByStepTour' }),
+      await screen.findByRole('menuitemcheckbox', {
+        name: 'navigation.mainNav.help.stepByStepTour',
+      }),
     ).toHaveAttribute('aria-checked', 'true')
   })
 
@@ -1141,38 +1151,38 @@ describe('MainNav', () => {
       enable_step_by_step_tour: false,
     })
 
-    await user.click(screen.getByRole('button', { name: 'common.mainNav.help.openMenu' }))
+    await user.click(screen.getByRole('button', { name: 'navigation.mainNav.help.openMenu' }))
 
-    await screen.findByText('common.mainNav.help.docs')
+    await screen.findByText('navigation.mainNav.help.docs')
     expect(
-      screen.queryByRole('menuitemcheckbox', { name: 'common.mainNav.help.stepByStepTour' }),
+      screen.queryByRole('menuitemcheckbox', { name: 'navigation.mainNav.help.stepByStepTour' }),
     ).not.toBeInTheDocument()
   })
 
   it('hides Learn Dify switch in help menu when learn app is disabled', async () => {
     renderMainNav({ enable_learn_app: false })
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.help.openMenu' }))
+    fireEvent.click(screen.getByRole('button', { name: 'navigation.mainNav.help.openMenu' }))
 
-    await screen.findByText('common.mainNav.help.docs')
+    await screen.findByText('navigation.mainNav.help.docs')
     expect(
-      screen.queryByRole('menuitemcheckbox', { name: 'common.mainNav.help.learnDify' }),
+      screen.queryByRole('menuitemcheckbox', { name: 'navigation.mainNav.help.learnDify' }),
     ).not.toBeInTheDocument()
   })
 
   it('orders help menu items to match the nav shell design', async () => {
     renderMainNav({ enable_learn_app: true })
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.help.openMenu' }))
+    fireEvent.click(screen.getByRole('button', { name: 'navigation.mainNav.help.openMenu' }))
 
     const labels = [
-      'common.mainNav.help.docs',
+      'navigation.mainNav.help.docs',
       'common.userProfile.roadmap',
-      'common.mainNav.help.learnDify',
-      'common.mainNav.help.stepByStepTour',
+      'navigation.mainNav.help.learnDify',
+      'navigation.mainNav.help.stepByStepTour',
       'common.userProfile.compliance',
       'common.userProfile.discord',
-      'common.mainNav.help.creatorCenter',
+      'navigation.mainNav.help.creatorCenter',
       'common.userProfile.github',
       'common.userProfile.about',
     ]
@@ -1186,10 +1196,10 @@ describe('MainNav', () => {
   it('opens Creator Center from the help menu above GitHub', async () => {
     renderMainNav()
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.help.openMenu' }))
+    fireEvent.click(screen.getByRole('button', { name: 'navigation.mainNav.help.openMenu' }))
 
     const creatorCenter = await screen.findByRole('menuitem', {
-      name: 'common.mainNav.help.creatorCenter',
+      name: 'navigation.mainNav.help.creatorCenter',
     })
     const github = screen.getByRole('menuitem', { name: /common\.userProfile\.github/ })
 
@@ -1211,7 +1221,7 @@ describe('MainNav', () => {
     }
     renderMainNav()
 
-    const helpButton = screen.getByRole('button', { name: 'common.mainNav.help.openMenu' })
+    const helpButton = screen.getByRole('button', { name: 'navigation.mainNav.help.openMenu' })
     await user.click(helpButton)
     await user.click(await screen.findByRole('menuitem', { name: /common\.userProfile\.about/ }))
 
@@ -1248,7 +1258,7 @@ describe('MainNav', () => {
     const user = userEvent.setup()
     renderMainNav({ deployment_edition: 'COMMUNITY' })
 
-    await user.click(screen.getByRole('button', { name: 'common.mainNav.help.openMenu' }))
+    await user.click(screen.getByRole('button', { name: 'navigation.mainNav.help.openMenu' }))
     await user.click(await screen.findByRole('menuitem', { name: /common\.userProfile\.about/ }))
 
     expect(await screen.findByRole('link', { name: 'Open Source License' })).toHaveAttribute(
@@ -1261,7 +1271,7 @@ describe('MainNav', () => {
   it('closes the help menu from the support upgrade action', async () => {
     renderMainNav()
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.help.openMenu' }))
+    fireEvent.click(screen.getByRole('button', { name: 'navigation.mainNav.help.openMenu' }))
     const contactUsItem = await screen.findByRole('menuitem', {
       name: 'common.userProfile.contactUs billing.upgradeBtn.encourageShort',
     })
@@ -1283,7 +1293,7 @@ describe('MainNav', () => {
     renderMainNav({ branding: { enabled: true } }, { skipRecoveryVisible: true })
 
     expect(
-      screen.queryByRole('button', { name: 'common.mainNav.help.openMenu' }),
+      screen.queryByRole('button', { name: 'navigation.mainNav.help.openMenu' }),
     ).not.toBeInTheDocument()
     expect(
       screen.queryByRole('dialog', { name: 'Step-by-step Tour recovery tip' }),
@@ -1294,7 +1304,7 @@ describe('MainNav', () => {
     renderMainNav()
 
     expect(
-      screen.getByRole('link', { name: /common\.mainNav\.workspace\.credits|7,500 credits/ }),
+      screen.getByRole('link', { name: /navigation\.mainNav\.workspace\.credits|7,500 credits/ }),
     ).toHaveAttribute('href', '/integrations/model-provider')
     expect(mockSetSettingsDestination).not.toHaveBeenCalledWith('provider')
 
@@ -1304,11 +1314,11 @@ describe('MainNav', () => {
     )
 
     fireEvent.click(screen.getByRole('button', { name: workspaceMenuAccessibleName }))
-    fireEvent.click(await screen.findByText('common.mainNav.workspace.settings'))
+    fireEvent.click(await screen.findByText('navigation.mainNav.workspace.settings'))
     expect(mockSetSettingsDestination).toHaveBeenCalledWith(ACCOUNT_SETTING_TAB.BILLING)
 
     fireEvent.click(screen.getByRole('button', { name: workspaceMenuAccessibleName }))
-    fireEvent.click(await screen.findByText('common.mainNav.workspace.inviteMembers'))
+    fireEvent.click(await screen.findByText('navigation.mainNav.workspace.inviteMembers'))
     expect(mockSetSettingsDestination).toHaveBeenCalledWith(ACCOUNT_SETTING_TAB.MEMBERS)
 
     fireEvent.click(screen.getByRole('button', { name: workspaceMenuAccessibleName }))
@@ -1370,8 +1380,8 @@ describe('MainNav', () => {
 
     fireEvent.click(screen.getByRole('button', { name: workspaceMenuAccessibleName }))
 
-    expect(await screen.findByText('common.mainNav.workspace.settings')).toBeInTheDocument()
-    expect(screen.queryByText('common.mainNav.workspace.inviteMembers')).not.toBeInTheDocument()
+    expect(await screen.findByText('navigation.mainNav.workspace.settings')).toBeInTheDocument()
+    expect(screen.queryByText('navigation.mainNav.workspace.inviteMembers')).not.toBeInTheDocument()
   })
 
   it('keeps workspace settings visible and hides invite members without member management permission', () => {
@@ -1391,8 +1401,8 @@ describe('MainNav', () => {
 
     fireEvent.click(screen.getByRole('button', { name: workspaceMenuAccessibleName }))
 
-    expect(screen.getByText('common.mainNav.workspace.settings')).toBeInTheDocument()
-    expect(screen.queryByText('common.mainNav.workspace.inviteMembers')).not.toBeInTheDocument()
+    expect(screen.getByText('navigation.mainNav.workspace.settings')).toBeInTheDocument()
+    expect(screen.queryByText('navigation.mainNav.workspace.inviteMembers')).not.toBeInTheDocument()
   })
 
   it('searches installed web apps and renders the matching navigation link', async () => {
@@ -1410,7 +1420,7 @@ describe('MainNav', () => {
 
     renderMainNav()
 
-    const scrollViewport = await screen.findByRole('region', {
+    const scrollViewport = await screen.findByRole('navigation', {
       name: 'explore.sidebar.webApps',
     })
     scrollViewport.scrollTop = 240
@@ -1424,7 +1434,15 @@ describe('MainNav', () => {
     await user.click(searchButton)
     expect(searchButton).toHaveAttribute('aria-expanded', 'true')
 
-    const searchInput = screen.getByPlaceholderText('common.mainNav.webApps.searchPlaceholder')
+    const searchInput = screen.getByRole('searchbox', {
+      name: 'navigation.mainNav.webApps.searchPlaceholder',
+    })
+    const webAppsButton = screen.getByRole('button', { name: 'explore.sidebar.webApps' })
+    const listPanel = document.getElementById(webAppsButton.getAttribute('aria-controls')!)
+    const searchPanel = document.getElementById(searchButton.getAttribute('aria-controls')!)
+    expect(listPanel).toContainElement(scrollViewport)
+    expect(searchPanel).toContainElement(searchInput)
+    expect(listPanel).not.toContainElement(searchInput)
     await user.type(searchInput, 'beta')
 
     await waitFor(() => {
@@ -1433,22 +1451,26 @@ describe('MainNav', () => {
       expect(screen.getByText('Beta Tool')).toBeInTheDocument()
     })
     expect(searchInput).toHaveFocus()
-    expect(
-      screen.getByRole('link', { name: 'common.mainNav.webApps.openApp:{"name":"Beta Tool"}' }),
-    ).toHaveAttribute('href', '/installed/installed-2')
+    expect(screen.getByRole('link', { name: 'Beta Tool' })).toHaveAttribute(
+      'href',
+      '/installed/installed-2',
+    )
 
-    const webAppsButton = screen.getByRole('button', { name: 'explore.sidebar.webApps' })
     await user.click(webAppsButton)
     expect(searchButton).toHaveAttribute('aria-expanded', 'false')
     expect(
-      screen.queryByPlaceholderText('common.mainNav.webApps.searchPlaceholder'),
+      screen.queryByPlaceholderText('navigation.mainNav.webApps.searchPlaceholder'),
     ).not.toBeInTheDocument()
 
     await user.click(webAppsButton)
     expect(searchButton).toHaveAttribute('aria-expanded', 'true')
-    expect(screen.getByPlaceholderText('common.mainNav.webApps.searchPlaceholder')).toHaveValue(
+    expect(screen.getByPlaceholderText('navigation.mainNav.webApps.searchPlaceholder')).toHaveValue(
       'beta',
     )
+    expect(webAppsButton).toHaveFocus()
+    await user.click(searchButton)
+    expect(screen.queryByRole('searchbox')).not.toBeInTheDocument()
+    expect(searchButton).toHaveFocus()
   })
 
   it('announces no installed web app results only after the search settles', async () => {
@@ -1477,14 +1499,17 @@ describe('MainNav', () => {
 
     renderMainNav()
 
-    const webAppsRegion = await screen.findByRole('region', {
+    const webAppsRegion = await screen.findByRole('navigation', {
       name: 'explore.sidebar.webApps',
     })
     await user.click(screen.getByRole('button', { name: 'common.operation.search' }))
     const resultStatus = within(webAppsRegion).getByRole('status')
     expect(resultStatus).toBeEmptyDOMElement()
 
-    await user.type(screen.getByPlaceholderText('common.mainNav.webApps.searchPlaceholder'), 'z')
+    await user.type(
+      screen.getByPlaceholderText('navigation.mainNav.webApps.searchPlaceholder'),
+      'z',
+    )
 
     await waitFor(() => {
       expect(webAppsRegion).toHaveAttribute('aria-busy', 'true')
@@ -1497,7 +1522,7 @@ describe('MainNav', () => {
 
     await waitFor(() => {
       expect(webAppsRegion).toHaveAttribute('aria-busy', 'false')
-      expect(resultStatus).toHaveTextContent('common.mainNav.webApps.noResults')
+      expect(resultStatus).toHaveTextContent('navigation.mainNav.webApps.noResults')
     })
     expect(within(webAppsRegion).getByRole('status')).toBe(resultStatus)
   })
@@ -1508,7 +1533,7 @@ describe('MainNav', () => {
     renderMainNav()
 
     expect(
-      screen.queryByRole('region', { name: 'explore.sidebar.webApps' }),
+      screen.queryByRole('navigation', { name: 'explore.sidebar.webApps' }),
     ).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: 'explore.sidebar.webApps' }),
@@ -1528,7 +1553,7 @@ describe('MainNav', () => {
         screen.queryByRole('button', { name: 'explore.sidebar.webApps' }),
       ).not.toBeInTheDocument()
       expect(
-        screen.queryByRole('region', { name: 'explore.sidebar.webApps' }),
+        screen.queryByRole('navigation', { name: 'explore.sidebar.webApps' }),
       ).not.toBeInTheDocument()
     })
     expect(
@@ -1536,7 +1561,7 @@ describe('MainNav', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('separates pinned and unpinned installed web apps', async () => {
+  it('keeps pinned and unpinned installed web apps in one accessible list', async () => {
     mockInstalledApps = [
       createInstalledApp({
         id: 'installed-1',
@@ -1554,7 +1579,14 @@ describe('MainNav', () => {
 
     expect(await screen.findByText('Pinned App')).toBeInTheDocument()
     expect(screen.getByText('Unpinned App')).toBeInTheDocument()
-    expect(screen.getByTestId('divider')).toBeInTheDocument()
+
+    const rows = within(
+      screen.getByRole('navigation', { name: 'explore.sidebar.webApps' }),
+    ).getAllByRole('listitem')
+    expect(rows).toHaveLength(2)
+    expect(rows[0]).toHaveAttribute('aria-posinset', '1')
+    expect(rows[1]).toHaveAttribute('aria-posinset', '2')
+    for (const row of rows) expect(row).toHaveAttribute('aria-setsize', '2')
   })
 
   it('keeps long installed web app names truncated in the main nav item', async () => {
@@ -1623,7 +1655,7 @@ describe('MainNav', () => {
     )
     renderMainNav()
     const firstAppLink = await screen.findByRole('link', {
-      name: 'common.mainNav.webApps.openApp:{"name":"Alpha App"}',
+      name: 'Alpha App',
     })
 
     await triggerIntersection()
@@ -1634,7 +1666,7 @@ describe('MainNav', () => {
     ).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
 
     const retryButton = screen.getByRole('button', { name: 'common.operation.retry' })
-    const webAppsRegion = screen.getByRole('region', { name: 'explore.sidebar.webApps' })
+    const webAppsRegion = screen.getByRole('navigation', { name: 'explore.sidebar.webApps' })
     retryButton.focus()
     expect(retryButton).toHaveFocus()
 
@@ -1679,10 +1711,9 @@ describe('MainNav', () => {
     expect(screen.getByText('Alpha App')).toBeInTheDocument()
   })
 
-  it('updates pin status and reuses the existing delete confirmation for installed web apps', async () => {
+  it('updates pin status for installed web apps', async () => {
     const user = userEvent.setup()
     mockInstalledApps = [createInstalledApp()]
-    mockUninstall.mockResolvedValue(undefined)
     mockUpdatePinStatus.mockResolvedValue(undefined)
 
     renderMainNav()
@@ -1698,20 +1729,6 @@ describe('MainNav', () => {
         params: { installed_app_id: 'installed-1' },
         body: { is_pinned: true },
       })
-    })
-
-    await user.hover(screen.getByText('Alpha App'))
-    await user.click(
-      screen.getByRole('button', { name: /common\.operation\.moreActionsFor.*Alpha App/ }),
-    )
-    await user.click(await screen.findByText('explore.sidebar.action.delete'))
-    await user.click(await screen.findByText('common.operation.confirm'))
-
-    await waitFor(() => {
-      expect(mockUninstall).toHaveBeenCalledWith({
-        params: { installed_app_id: 'installed-1' },
-      })
-      expect(mockToastSuccess).toHaveBeenCalledWith('common.api.remove')
     })
   })
 })

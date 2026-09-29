@@ -11,9 +11,10 @@ from flask import Flask
 from controllers.common.errors import NotFoundError
 from controllers.web.workflow_events import WorkflowEventsApi
 from graphon.enums import WorkflowExecutionStatus
-from models.enums import CreatorUserRole, EndUserType, WorkflowRunTriggeredFrom
+from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, EndUser
 from models.workflow import WorkflowRun, WorkflowType
+from tests.unit_tests.model_factories import make_end_user
 
 
 def _workflow_app() -> App:
@@ -21,12 +22,7 @@ def _workflow_app() -> App:
 
 
 def _end_user() -> EndUser:
-    return EndUser(
-        id="eu-1",
-        tenant_id="tenant-1",
-        type=EndUserType.BROWSER,
-        session_id="session-1",
-    )
+    return make_end_user(end_user_id="eu-1")
 
 
 def _workflow_run(

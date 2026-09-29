@@ -5,6 +5,7 @@ import type {
 } from '@dify/contracts/marketplace'
 import { describe, expect, it } from 'vite-plus/test'
 import {
+  adaptCreations,
   adaptCreatorProfile,
   getStandaloneCreationHref,
   normalizeCreatorSocialLink,
@@ -41,6 +42,7 @@ const template = {
   icon_background: '#fff',
   icon_file_key: '',
   publisher_unique_handle: 'dify',
+  publisher_handle: 'Dify Display Name',
   usage_count: 10,
   categories: [],
   deps_plugins: ['dify/search'],
@@ -100,8 +102,35 @@ describe('creator profile model', () => {
       '/bundles/dify/research?language=zh-Hans',
     )
     expect(getStandaloneCreationHref(viewModel.creations[1]!, 'zh-Hans')).toBe(
-      '/template/dify/Research%20template?templateId=template%2Fone&creationType=templates&language=zh-Hans',
+      '/template/dify/template%2Fone?language=zh-Hans',
     )
+    expect(getStandaloneCreationHref(viewModel.creations[1]!)).toBe('/template/dify/template%2Fone')
+  })
+
+  it('uses stable template links for publisher handle fallbacks without exposing creator email', () => {
+    const creations = adaptCreations({
+      locale: 'en-US',
+      plugins: [],
+      templates: [
+        { ...template, publisher_unique_handle: '', publisher_handle: '研究 / Team' },
+        {
+          ...template,
+          publisher_unique_handle: '',
+          publisher_handle: '',
+          creator_email: 'private@example.com',
+        },
+        { ...template, template_name: 'Renamed research template' },
+      ],
+      resolvePluginIcon: () => '',
+      resolveTemplateIcon: () => '',
+      resolveDependencyIcon: () => '',
+    })
+
+    expect(creations.map((creation) => getStandaloneCreationHref(creation))).toEqual([
+      '/template/%E7%A0%94%E7%A9%B6%20%2F%20Team/template%2Fone',
+      '/template/template/template%2Fone',
+      '/template/dify/template%2Fone',
+    ])
   })
 
   it('normalizes Unix-second, Unix-millisecond, and ISO timestamps', () => {

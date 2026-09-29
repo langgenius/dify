@@ -6,7 +6,6 @@ import type { Annotation } from '@/models/log'
 import type { IOnDataMoreInfo, IOtherOptions } from '@/service/base'
 import type { VisionFile } from '@/types/app'
 import type { FileResponse, ReasoningChunkResponse } from '@/types/workflow'
-import { toast } from '@langgenius/dify-ui/toast'
 import { uniqBy } from 'es-toolkit/compat'
 import { noop } from 'es-toolkit/function'
 import { produce, setAutoFreeze } from 'immer'
@@ -27,6 +26,7 @@ import {
   hasAppAccessError,
   isAppAccessScopeCurrent,
 } from '@/features/app-access-error/state'
+import { toast } from '@/app/notifications'
 import useTimestamp from '@/hooks/use-timestamp'
 import { useParams, usePathname } from '@/next/navigation'
 import { sseGet, ssePost } from '@/service/base'
@@ -203,7 +203,7 @@ export const useChat = (
   initialConversationId?: string,
   options: UseChatOptions = {},
 ) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   const { formatTime } = useTimestamp({ timezone: options.timezone })
   const conversationIdRef = useRef(initialConversationId ?? '')
   const initialConversationIdRef = useRef(initialConversationId ?? '')
