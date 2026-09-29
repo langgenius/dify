@@ -1,19 +1,43 @@
 const { randomUUID } = require("crypto");
 const { loadAgents, saveAgents, resolveAgent } = require("../lib/diffyAgents");
 
-function checkAuth(request, reply) {
-  const password = process.env.ADMIN_PASSWORD;
-  if (!password) {
-    reply.code(500).send({ error: "ADMIN_PASSWORD not configured" });
-    return false;
-  }
+// Asks Dify itself whether the caller is the workspace owner, by replaying the
+// caller's own console session (cookie + CSRF header) against Dify's API over
+// the internal network. Dify makes the decision; nothing here is trusted from
+// the client except the credentials Dify will verify. Disabled unless
+// DIFY_INTERNAL_API_URL is set (e.g. http://api:5001 in the docker stack).
+async function isDifyWorkspaceOwner(request) {
+  const base = (process.env.DIFY_INTERNAL_API_URL || "").replace(/\/+$/, "");
+  const cookie = request.headers.cookie;
+  if (!base || !cookie) return false;
 
-  const auth = request.headers.authorization;
-  if (!auth || auth !== `Bearer ${password}`) {
-    reply.code(401).send({ error: "Unauthorized" });
+  const headers = { cookie };
+  const csrf = request.headers["x-csrf-token"];
+  if (csrf) headers["x-csrf-token"] = csrf;
+
+  try {
+    const res = await fetch(`${base}/console/api/workspaces/current/summary`, {
+      headers,
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) return false;
+    const data = await res.json();
+    return data?.role === "owner";
+  } catch {
     return false;
   }
-  return true;
+}
+
+// Allowed: the admin password (Bearer), or a logged-in Dify workspace owner.
+async function checkAuth(request, reply) {
+  const password = process.env.ADMIN_PASSWORD;
+  const auth = request.headers.authorization;
+  if (password && auth === `Bearer ${password}`) return true;
+
+  if (await isDifyWorkspaceOwner(request)) return true;
+
+  reply.code(401).send({ error: "Unauthorized" });
+  return false;
 }
 
 async function diffyIframeRoutes(app) {
@@ -33,12 +57,12 @@ async function diffyIframeRoutes(app) {
 
   // Admin CRUD for page -> Diffy iframe URL mappings
   app.get("/admin/diffy-agents", async (request, reply) => {
-    if (!checkAuth(request, reply)) return;
+    if (!(await checkAuth(request, reply))) return;
     return { agents: loadAgents() };
   });
 
   app.post("/admin/diffy-agents", async (request, reply) => {
-    if (!checkAuth(request, reply)) return;
+    if (!(await checkAuth(request, reply))) return;
 
     const { hostname: rawHostname, name, iframe_url: rawIframeUrl } = request.body || {};
 
@@ -71,7 +95,7 @@ async function diffyIframeRoutes(app) {
   });
 
   app.put("/admin/diffy-agents/:id", async (request, reply) => {
-    if (!checkAuth(request, reply)) return;
+    if (!(await checkAuth(request, reply))) return;
 
     const agents = loadAgents();
     const index = agents.findIndex((a) => a.id === request.params.id);
@@ -94,7 +118,7 @@ async function diffyIframeRoutes(app) {
   });
 
   app.delete("/admin/diffy-agents/:id", async (request, reply) => {
-    if (!checkAuth(request, reply)) return;
+    if (!(await checkAuth(request, reply))) return;
 
     const agents = loadAgents();
     const index = agents.findIndex((a) => a.id === request.params.id);
