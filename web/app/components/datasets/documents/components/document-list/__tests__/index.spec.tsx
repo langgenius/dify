@@ -66,6 +66,8 @@ vi.mock('@/features/system-features/state', async () => {
 vi.mock('@/app/components/datasets/metadata/hooks/use-batch-edit-document-metadata', () => ({
   default: () => ({
     isShowEditModal: false,
+    isLoadingMetadata: false,
+    documentCount: 0,
     showEditModal: vi.fn(),
     hideEditModal: vi.fn(),
     originalList: [],
