@@ -262,6 +262,38 @@ def test_agent_tts_routes_document_voice_queries_and_binary_audio(openapi_json: 
         assert _response_content_types(preview, status) == {"application/json"}
 
 
+def test_console_segment_mutation_contracts_survive_admission(openapi_json: OpenAPIJSONLoader) -> None:
+    from controllers.console import bp as console_bp
+
+    payload = json.loads(openapi_json(console_bp, "/console/api/openapi.json", False))
+    paths = payload["paths"]
+    document_path = "/datasets/{dataset_id}/documents/{document_id}"
+    mutations = (
+        (f"{document_path}/segment", "post", "SegmentCreatePayload", "SegmentDetailResponse"),
+        (f"{document_path}/segments/{{segment_id}}", "patch", "SegmentUpdatePayload", "SegmentDetailResponse"),
+        (
+            f"{document_path}/segments/{{segment_id}}/child_chunks",
+            "patch",
+            "ChildChunkBatchUpdatePayload",
+            "ChildChunkBatchUpdateResponse",
+        ),
+    )
+    for path, method, request_schema, response_schema in mutations:
+        operation = paths[path][method]
+        assert operation["requestBody"]["content"]["application/json"]["schema"] == {
+            "$ref": f"#/components/schemas/{request_schema}"
+        }
+        assert operation["responses"]["200"]["content"]["application/json"]["schema"] == {
+            "$ref": f"#/components/schemas/{response_schema}"
+        }
+
+    delete_operation = paths[f"{document_path}/segments"]["delete"]
+    assert set(delete_operation["responses"]) == {"204"}
+    parameters = _parameters_by_name(delete_operation)
+    assert parameters["segment_id"]["in"] == "query"
+    assert parameters["segment_id"]["schema"]["type"] == "array"
+
+
 def test_service_document_file_routes_document_multipart_form_data(openapi_json: OpenAPIJSONLoader):
     from controllers.service_api import bp as service_api_bp
 

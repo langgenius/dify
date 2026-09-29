@@ -748,11 +748,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/chat/chat/chat-input-area/index.tsx": {
-    "dify/require-disable-directive-description": {
-      "count": 1
-    }
-  },
   "web/app/components/base/chat/chat/check-input-forms-hooks.ts": {
     "typescript/no-explicit-any": {
       "count": 1
@@ -4105,11 +4100,6 @@
   },
   "web/features/agent-v2/agent-detail/configure/components/orchestrate/files/__tests__/index.spec.tsx": {
     "@tanstack/query/prefer-query-options": {
-      "count": 1
-    }
-  },
-  "web/features/agent-v2/agent-detail/configure/components/preview/chat-session.tsx": {
-    "dify/require-disable-directive-description": {
       "count": 1
     }
   },

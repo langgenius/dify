@@ -18,6 +18,7 @@ function FilterItem({
   return (
     <button
       type="button"
+      aria-pressed={selected}
       onClick={onClick}
       className="flex w-full cursor-pointer items-center justify-between gap-x-1 rounded-lg px-2 py-1.5 text-left hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
     >

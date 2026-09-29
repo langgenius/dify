@@ -7,15 +7,16 @@ from sqlalchemy import delete, select
 
 from configs import dify_config
 from core.db.session_factory import session_factory
-from core.indexing_runner import IndexingRunner
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from enums import DeploymentEdition
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, DocumentSegment
 from models.enums import IndexingStatus
-from services.dataset_ref_service import DatasetRefService
+from repositories.knowledge.document_repository import _get_document
 from services.feature_service import FeatureService
+from services.knowledge.indexing.adapters.execution import build_document_indexing_service
+from services.knowledge.resource_scope import DatasetRef
 
 logger = logging.getLogger(__name__)
 
@@ -36,9 +37,9 @@ def sync_website_document_indexing_task(dataset_id: str, document_id: str):
         if dataset is None:
             raise ValueError("Dataset not found")
         tenant_id = dataset.tenant_id
-        dataset_ref = DatasetRefService.create_dataset_ref(dataset)
-        document_ref = DatasetRefService.create_document_ref_from_id(dataset_ref, document_id)
-        document = DatasetRefService.get_document_by_ref(document_ref, session=session)
+        dataset_ref = DatasetRef(tenant_id=dataset.tenant_id, dataset_id=dataset.id)
+        document_ref = dataset_ref.document(document_id)
+        document = _get_document(session, document_ref)
         if document is None:
             logger.info(click.style(f"Document not found: {document_id}", fg="yellow"))
             return
@@ -100,16 +101,14 @@ def sync_website_document_indexing_task(dataset_id: str, document_id: str):
             document.indexing_status = IndexingStatus.PARSING
             document.processing_started_at = naive_utc_now()
             session.add(document)
+            indexing_service = build_document_indexing_service(session_factory=session_factory.get_session_maker())
             # Release document/segment locks before extraction starts.
             session.commit()
-
-            indexing_runner = IndexingRunner()
-            indexing_runner.run([document], session)
-            session.commit()
+            indexing_service.run([document_ref])
             redis_client.delete(sync_indexing_cache_key)
         except Exception as ex:
             session.rollback()
-            document = DatasetRefService.get_document_by_ref(document_ref, session=session)
+            document = _get_document(session, document_ref)
             if document:
                 document.indexing_status = IndexingStatus.ERROR
                 document.error = str(ex)
