@@ -34,6 +34,8 @@ export type AppPublisherProps = {
   toolPublished?: boolean
   inputs?: InputVar[]
   outputs?: WorkflowToolOutputVariable[]
+  /** Duplicate output names proven safe by the workflow graph validator. */
+  nonConflictingOutputNames?: string[]
   onRefreshData?: () => void
   workflowToolAvailable?: boolean
   missingStartNode?: boolean

@@ -3,10 +3,12 @@ import type {
   WorkflowToolProviderOutputParameter,
   WorkflowToolProviderOutputSchema,
 } from '../../types'
-import { VarType } from '@/app/components/workflow/types'
+import { createEdge, createNode } from '@/app/components/workflow/__tests__/fixtures'
+import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import {
   buildWorkflowOutputParameters,
   getDuplicateWorkflowOutputGroups,
+  getNonConflictingWorkflowOutputNames,
   getSourceNodeDisplayName,
   getUniqueWorkflowOutputSources,
 } from '../utils'
@@ -30,6 +32,50 @@ describe('workflow output sources', () => {
   it('numbers sources with the same title without exposing their node IDs', () => {
     expect(getSourceNodeDisplayName(duplicateSources[0]!, duplicateSources)).toBe('Output (1/2)')
     expect(getSourceNodeDisplayName(duplicateSources[1]!, duplicateSources)).toBe('Output (2/2)')
+  })
+})
+
+describe('getNonConflictingWorkflowOutputNames', () => {
+  const start = createNode({ id: 'start', data: { type: BlockEnum.Start, title: 'Start' } })
+  const branch = createNode({ id: 'branch', data: { type: BlockEnum.IfElse, title: 'If/Else' } })
+  const end = (id: string, type: VarType = VarType.string) =>
+    createNode({
+      id,
+      data: {
+        type: BlockEnum.End,
+        title: id,
+        outputs: [{ variable: 'result', value_type: type, value_selector: ['sys', 'result'] }],
+      },
+    })
+  const edge = (source: string, target: string, sourceHandle?: string) =>
+    createEdge({ source, target, ...(sourceHandle ? { sourceHandle } : {}) })
+  const nodes = [start, branch, end('end-true'), end('end-false')]
+  const edges = [
+    edge('start', 'branch'),
+    edge('branch', 'end-true', 'true'),
+    edge('branch', 'end-false', 'false'),
+  ]
+
+  it('allows same-typed output names behind opposite IF/ELSE handles', () => {
+    expect(getNonConflictingWorkflowOutputNames(nodes, edges)).toEqual(['result'])
+  })
+
+  it('keeps the warning for outputs that can run together', () => {
+    expect(
+      getNonConflictingWorkflowOutputNames(nodes, [
+        edge('start', 'end-true'),
+        edge('start', 'end-false'),
+      ]),
+    ).toEqual([])
+  })
+
+  it('keeps the warning when exclusive outputs have conflicting types', () => {
+    expect(
+      getNonConflictingWorkflowOutputNames(
+        [start, branch, end('end-true'), end('end-false', VarType.object)],
+        edges,
+      ),
+    ).toEqual([])
   })
 })
 
