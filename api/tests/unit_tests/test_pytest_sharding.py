@@ -118,7 +118,8 @@ def test_cli_freezes_current_files_and_every_shard_consumes_the_same_plan(
     for path in (slow, new, root / "helper.py"):
         path.touch()
     history = tmp_path / "history.json"
-    history.write_text(json.dumps({str(slow): 100, str(root / "test_deleted.py"): 1000}))
+    # A medium-sized file must also be split with the CLI's default threshold.
+    history.write_text(json.dumps({str(slow): 40, str(root / "test_deleted.py"): 1000}))
     plan_path = tmp_path / "plan.json"
     arguments = ["pytest_sharding.py", "--shard-index", "1", "--shard-total", "2", "--write-plan", str(plan_path)]
     if with_history:

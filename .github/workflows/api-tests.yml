@@ -43,7 +43,7 @@ jobs:
             --shard-index 1 --shard-total 2 \
             --durations unit-test-durations.json \
             --write-plan unit-test-plan.json \
-            --split-threshold 60 \
+            --split-threshold 30 \
             --ignore api/tests/unit_tests/controllers \
             api/tests/unit_tests \
             api/providers/vdb/*/tests/unit_tests \

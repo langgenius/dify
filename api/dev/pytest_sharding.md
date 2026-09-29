@@ -6,18 +6,24 @@ assigned round robin. File discovery always comes from the current checkout, so
 stale history cannot omit new tests or reintroduce deleted files.
 
 Like PyTorch's `tools/testing/test_selections.py`, oversized files become logical
-parts. Our default is 60 summed testcase seconds per part, capped at the number of
+parts. Our default is 30 summed testcase seconds per part, capped at the number of
 CI shards. This is worker work, including setup/call/teardown, not wall time; the
-threshold corresponds roughly to 30 seconds of work on two workers. Each case's
+threshold corresponds roughly to 15 seconds of work on two workers. Each case's
 SHA-256 hash assigns it to one part, including new parametrized cases. Only files
 assigned to a runner are collected; shared oversized files are collected on each
 assigned runner. All workers use the same frozen plan. Ordinary xdist scheduling
 continues inside each runner.
 
+The threshold bounds how much historical work stays pinned to one CI runner.
+For example, a file estimated at 40 seconds now contributes cases to both shards
+instead of leaving its entire timing variance on one runner. Hash partitions are
+not guaranteed to contain equal work, so evaluate changes against several runs,
+including the extra collection and fixture costs of shared files.
+
 Successful coordinator reports are uploaded as two small timing artifacts. The
 public [dify-test-infra](https://github.com/langgenius/dify-test-infra) repository
-collects complete observations from successful CI on merged Dify PRs daily at
-03:05 UTC. It averages up to five recent samples and publishes `stats/test-times.json`
+collects complete observations from successful CI on merged Dify PRs. It averages
+up to five recent samples and publishes `stats/test-times.json`
 on its `generated-stats` branch. Metadata records the source runs. No timing data
 or generated history is committed to Dify itself.
 
@@ -26,7 +32,8 @@ Unmerged PR observations do not update the shared baseline automatically. The
 initial baseline is explicitly marked as a bootstrap from validated CI on #42593;
 automatic updates use merged PRs only. Keeping the producer in the statistics
 repository avoids needing a cross-repository write token in Dify or additional
-main-branch test runs.
+main-branch test runs. The producer's README documents its refresh schedule and
+sample selection policy.
 
 A single planning job downloads the baseline once and publishes both the input
 and assignment plan as run artifacts. All shards therefore use the same snapshot,

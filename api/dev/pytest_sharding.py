@@ -89,7 +89,7 @@ def main() -> None:
     parser.add_argument("--durations", type=Path)
     parser.add_argument("--write-plan", type=Path)
     parser.add_argument("--plan", type=Path)
-    parser.add_argument("--split-threshold", type=float, default=60, help="Summed testcase seconds per logical part.")
+    parser.add_argument("--split-threshold", type=float, default=30, help="Summed testcase seconds per logical part.")
     parser.add_argument("roots", type=Path, nargs="+")
     args = parser.parse_args()
     if args.write_plan:
