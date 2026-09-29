@@ -1176,6 +1176,7 @@ def test_agent_version_queries_do_not_require_paid_plan(app: Flask, monkeypatch:
 )
 def test_agent_version_restore_requires_cloud_paid_plan(
     monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
     edition: DeploymentEdition,
     plan: CloudPlan,
     allowed: bool,
@@ -1187,7 +1188,7 @@ def test_agent_version_restore_requires_cloud_paid_plan(
     monkeypatch.setattr(roster_controller.FeatureService, "get_workspace_plan", get_plan)
     restore = Mock(return_value={"result": "success", "active_config_snapshot_id": version_id})
     monkeypatch.setattr(roster_controller.AgentRosterService, "restore_agent_version", restore)
-    session = MagicMock(spec=Session)
+    session = sqlite_session
     api = AgentRosterVersionRestoreApi()
 
     if not allowed:
@@ -1195,7 +1196,7 @@ def test_agent_version_restore_requires_cloud_paid_plan(
             unwrap(api.post)(api, session, "tenant-1", _account(), agent_id, version_id)
         assert exc_info.value.code == 403
         restore.assert_not_called()
-        assert session.mock_calls == []
+        assert not session.in_transaction()
     else:
         restored = unwrap(api.post)(api, session, "tenant-1", _account(), agent_id, version_id)
         assert restored == {
