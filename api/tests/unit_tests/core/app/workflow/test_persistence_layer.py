@@ -118,6 +118,7 @@ class TestWorkflowPersistenceLayer:
         layer, _, _, _ = _make_layer()
         layer._workflow_execution = object()
         layer._node_execution_cache["cached"] = object()
+        layer._persisted_caller_execution_ids.add("cached")
         layer._node_snapshots["cached"] = object()
         layer._node_sequence = 9
 
@@ -125,6 +126,7 @@ class TestWorkflowPersistenceLayer:
 
         assert layer._workflow_execution is None
         assert layer._node_execution_cache == {}
+        assert layer._persisted_caller_execution_ids == set()
         assert layer._node_snapshots == {}
         assert layer._node_sequence == 0
 
@@ -382,6 +384,23 @@ class TestWorkflowPersistenceLayer:
     def test_agent_v2_caller_row_is_saved_synchronously_before_node_run(self):
         layer, _, node_repo, _ = _make_layer()
         layer._handle_graph_run_started()
+        persistence_results: list[Exception | None] = []
+
+        node = SimpleNamespace(
+            id="agent-node",
+            execution_id="agent-exec",
+            node_type=BuiltinNodeTypes.AGENT,
+            title="Agent",
+            version=lambda: "2",
+            record_caller_persistence_result=lambda *, error=None: persistence_results.append(error),
+        )
+
+        layer.on_node_run_start(node)
+        layer.on_node_run_start(node)
+
+        assert [execution.id for execution in node_repo.synchronously_saved] == ["agent-exec"]
+        assert node_repo.saved == []
+        assert persistence_results == [None, None]
 
         layer._handle_node_started(
             NodeRunStartedEvent(
@@ -394,7 +413,30 @@ class TestWorkflowPersistenceLayer:
             )
         )
 
-        assert [execution.id for execution in node_repo.synchronously_saved] == ["agent-exec"]
+        assert len(node_repo.synchronously_saved) == 1
+        assert [execution.id for execution in node_repo.saved] == ["agent-exec"]
+        assert node_repo.saved[0].index == node_repo.synchronously_saved[0].index
+
+    def test_agent_v2_caller_persistence_failure_is_reported_to_node(self):
+        layer, _, node_repo, _ = _make_layer()
+        layer._handle_graph_run_started()
+        failure = RuntimeError("database unavailable")
+        node_repo.save_synchronously = lambda _execution: (_ for _ in ()).throw(failure)
+        persistence_results: list[Exception | None] = []
+
+        node = SimpleNamespace(
+            id="agent-node",
+            execution_id="agent-exec",
+            node_type=BuiltinNodeTypes.AGENT,
+            title="Agent",
+            version=lambda: "2",
+            record_caller_persistence_result=lambda *, error=None: persistence_results.append(error),
+        )
+
+        with pytest.raises(RuntimeError, match="database unavailable"):
+            layer.on_node_run_start(node)
+
+        assert persistence_results == [failure]
         assert node_repo.saved == []
 
     def test_retry_history_is_preserved_after_node_succeeds(self):

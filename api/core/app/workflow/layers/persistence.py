@@ -12,7 +12,8 @@ state.
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Union, override
+from threading import Lock
+from typing import Any, Protocol, Union, override, runtime_checkable
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
 from core.app.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY, WorkflowNodeRetryAttempt
@@ -49,6 +50,7 @@ from graphon.graph_events import (
     NodeRunSucceededEvent,
 )
 from graphon.node_events import NodeRunResult
+from graphon.nodes.base.node import Node
 from libs.datetime_utils import naive_utc_now
 from services.workflow.inspector_events import (
     publish_node_changed as _inspector_publish_node_changed,
@@ -56,6 +58,13 @@ from services.workflow.inspector_events import (
 from services.workflow.inspector_events import (
     publish_workflow_completed as _inspector_publish_workflow_completed,
 )
+
+
+@runtime_checkable
+class _CallerPersistenceAwareNode(Protocol):
+    """Node contract for reporting worker-side caller-row persistence."""
+
+    def record_caller_persistence_result(self, *, error: Exception | None = None) -> None: ...
 
 
 @dataclass(slots=True)
@@ -101,8 +110,11 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
 
         self._workflow_execution: WorkflowExecution | None = None
         self._node_execution_cache: dict[str, WorkflowNodeExecution] = {}
+        self._persisted_caller_execution_ids: set[str] = set()
         self._node_snapshots: dict[str, _NodeRuntimeSnapshot] = {}
         self._node_sequence: int = 0
+        self._node_sequence_lock = Lock()
+        self._node_start_lock = Lock()
 
     # ------------------------------------------------------------------
     # GraphEngineLayer lifecycle
@@ -111,6 +123,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
     def on_graph_start(self) -> None:
         self._workflow_execution = None
         self._node_execution_cache.clear()
+        self._persisted_caller_execution_ids.clear()
         self._node_snapshots.clear()
         self._node_sequence = 0
 
@@ -143,6 +156,42 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
                 self._handle_node_pause_requested(event)
 
     @override
+    def on_node_run_start(self, node: Node) -> None:
+        """Commit Agent v2's caller row before the node generator can advance.
+
+        Graphon invokes this hook synchronously in the worker before ``node.run()``.
+        Its dispatcher catches hook failures, so the result is also recorded on the
+        node: Agent v2 checks that result before resolving bindings or allocating a
+        participant session.
+        """
+
+        if node.node_type != BuiltinNodeTypes.AGENT or node.version() != "2":
+            return
+        if not isinstance(node, _CallerPersistenceAwareNode):
+            raise TypeError("Agent v2 node must support caller persistence coordination")
+
+        try:
+            with self._node_start_lock:
+                execution = self._node_execution_cache.get(node.execution_id)
+                if execution is None:
+                    execution = self._new_node_execution(
+                        node_execution_id=node.execution_id,
+                        node_id=node.id,
+                        node_type=node.node_type,
+                        title=node.title,
+                        created_at=naive_utc_now(),
+                    )
+                    self._node_execution_cache[node.execution_id] = execution
+                if node.execution_id not in self._persisted_caller_execution_ids:
+                    self._workflow_node_execution_repository.save_synchronously(execution)
+                    self._persisted_caller_execution_ids.add(node.execution_id)
+        except Exception as error:
+            node.record_caller_persistence_result(error=error)
+            raise
+        else:
+            node.record_caller_persistence_result()
+
+    @override
     def on_graph_end(self, error: Exception | None) -> None:
         return
 
@@ -166,6 +215,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         if event is not None and event.reason == WorkflowStartReason.RESUMPTION:
             node_executions = self._workflow_node_execution_repository.get_by_workflow_execution(execution_id)
             self._node_execution_cache = {execution.id: execution for execution in node_executions}
+            self._persisted_caller_execution_ids = set(self._node_execution_cache)
             self._node_sequence = max((execution.index for execution in node_executions), default=0)
 
     def _handle_graph_run_succeeded(self, event: GraphRunSucceededEvent) -> None:
@@ -231,25 +281,23 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
             WorkflowNodeExecutionMetadataKey.LOOP_ID: event.in_loop_id,
         }
 
-        domain_execution = WorkflowNodeExecution(
-            id=event.id,
-            node_execution_id=event.id,
-            workflow_id=execution.workflow_id,
-            workflow_execution_id=execution.id_,
-            predecessor_node_id=event.predecessor_node_id,
-            index=self._next_node_sequence(),
-            node_id=event.node_id,
-            node_type=event.node_type,
-            title=event.node_title,
-            status=WorkflowNodeExecutionStatus.RUNNING,
-            metadata=metadata,
-            created_at=event.start_at,
-        )
-
-        self._node_execution_cache[event.id] = domain_execution
-        if event.node_type == BuiltinNodeTypes.AGENT and event.node_version == "2":
-            self._workflow_node_execution_repository.save_synchronously(domain_execution)
+        domain_execution = self._node_execution_cache.get(event.id)
+        if domain_execution is not None:
+            domain_execution.predecessor_node_id = event.predecessor_node_id
+            domain_execution.metadata = metadata
+            domain_execution.created_at = event.start_at
+            self._workflow_node_execution_repository.save(domain_execution)
         else:
+            domain_execution = self._new_node_execution(
+                node_execution_id=event.id,
+                node_id=event.node_id,
+                node_type=event.node_type,
+                title=event.node_title,
+                created_at=event.start_at,
+                predecessor_node_id=event.predecessor_node_id,
+                metadata=metadata,
+            )
+            self._node_execution_cache[event.id] = domain_execution
             self._workflow_node_execution_repository.save(domain_execution)
 
         snapshot = _NodeRuntimeSnapshot(
@@ -262,6 +310,33 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         )
         self._node_snapshots[event.id] = snapshot
         _inspector_publish_node_changed(workflow_run_id=execution.id_, node_id=event.node_id, status="running")
+
+    def _new_node_execution(
+        self,
+        *,
+        node_execution_id: str,
+        node_id: str,
+        node_type: str,
+        title: str,
+        created_at: datetime,
+        predecessor_node_id: str | None = None,
+        metadata: Mapping[WorkflowNodeExecutionMetadataKey, str | None] | None = None,
+    ) -> WorkflowNodeExecution:
+        execution = self._get_workflow_execution()
+        return WorkflowNodeExecution(
+            id=node_execution_id,
+            node_execution_id=node_execution_id,
+            workflow_id=execution.workflow_id,
+            workflow_execution_id=execution.id_,
+            predecessor_node_id=predecessor_node_id,
+            index=self._next_node_sequence(),
+            node_id=node_id,
+            node_type=node_type,
+            title=title,
+            status=WorkflowNodeExecutionStatus.RUNNING,
+            metadata=dict(metadata or {}),
+            created_at=created_at,
+        )
 
     def _handle_node_retry(self, event: NodeRunRetryEvent) -> None:
         domain_execution = self._get_node_execution(event.id)
@@ -364,8 +439,9 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         return self._node_execution_cache[node_execution_id]
 
     def _next_node_sequence(self) -> int:
-        self._node_sequence += 1
-        return self._node_sequence
+        with self._node_sequence_lock:
+            self._node_sequence += 1
+            return self._node_sequence
 
     def _append_retry_history(self, execution: WorkflowNodeExecution, event: NodeRunRetryEvent) -> None:
         """Append a validated full attempt before repository truncation or offload."""
