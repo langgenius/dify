@@ -3467,6 +3467,10 @@ export default interface Resources {
     'toolsPage.toolPlugin': 'Tool Plugin'
   }
   oauth: {
+    'callback.error': 'Authorization failed'
+    'callback.errorHint': 'Please return to the previous page and try again.'
+    'callback.success': 'Authorization complete'
+    'callback.successHint': 'You can now close this tab and return to the previous page.'
     connect: 'Connect to'
     continue: 'Continue'
     'error.authAppInfoFetchFailed': 'Failed to fetch app info for authorization'
