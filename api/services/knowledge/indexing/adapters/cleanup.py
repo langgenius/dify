@@ -16,7 +16,12 @@ from repositories.knowledge.keyword_table_repository import persist_keyword_tabl
 
 
 def clean_document_indexes(
-    *, dataset_id: str, document_ids: Sequence[str], doc_form: str | None, new_session: Callable[[], Session]
+    *,
+    dataset_id: str,
+    document_ids: Sequence[str],
+    doc_form: str | None,
+    new_session: Callable[[], Session],
+    extra_node_ids: Sequence[str] = (),
 ) -> str | None:
     """Clean indexes even when the owning document rows have already been deleted.
 
@@ -24,6 +29,13 @@ def clean_document_indexes(
     indexes, then delete the selected summary and child rows in one transaction.
     A failed vector deletion leaves those rows available for a retry.
     Empty document selections never mean deleting the entire dataset index.
+
+    ``extra_node_ids`` carries vector ids that no segment, child chunk or summary
+    row points at, so this function cannot derive them from the database. Segment
+    attachments are the case that needs it: their vectors are written under
+    ``doc_id == UploadFile.id``. They join the vector deletion only -- the keyword
+    index never held them -- and the caller owns deciding which of them are really
+    orphaned, because an attachment may still be bound to another document.
     """
     if not document_ids:
         return None
@@ -61,7 +73,9 @@ def clean_document_indexes(
             else [segment.index_node_id for segment in segments if segment.index_node_id]
         )
         high_quality = dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY
-        node_ids = list(dict.fromkeys([*summary_node_ids, *body_node_ids]))
+        # extra_node_ids 只进向量删除集合，不进 body_node_ids：后者驱动 Jieba 关键词索引，
+        # 而附件向量从未写入关键词索引。
+        node_ids = list(dict.fromkeys([*summary_node_ids, *body_node_ids, *extra_node_ids]))
         vector_type = Vector.resolve_vector_type(dataset, session=session) if high_quality and node_ids else None
         session.expunge(dataset)
 

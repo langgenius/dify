@@ -59,7 +59,26 @@ def clean_document_task(
 
             attachment_ids = [attachment_file.id for _, attachment_file in attachments_with_bindings]
             binding_ids = [binding.id for binding, _ in attachments_with_bindings]
-            total_attachment_files.extend([attachment_file.key for _, attachment_file in attachments_with_bindings])
+
+            # 一个附件可能同时绑定到其它文档的分段上（SegmentAttachmentBinding.attachment_id
+            # 没有唯一约束）。删整个文档意味着本文档的绑定全部消失，因此只要还存在任何一条
+            # 属于其它文档的绑定，这个附件就必须保留。
+            shared_attachment_ids = set(
+                session.scalars(
+                    select(SegmentAttachmentBinding.attachment_id).where(
+                        SegmentAttachmentBinding.attachment_id.in_(attachment_ids),
+                        SegmentAttachmentBinding.document_id != document_id,
+                    )
+                ).all()
+            )
+            orphan_attachment_ids = [
+                attachment_id for attachment_id in attachment_ids if attachment_id not in shared_attachment_ids
+            ]
+            total_attachment_files.extend(
+                attachment_file.key
+                for _, attachment_file in attachments_with_bindings
+                if attachment_file.id not in shared_attachment_ids and attachment_file.key
+            )
 
             index_node_ids = [segment.index_node_id for segment in segments if segment.index_node_id]
             segment_contents = [segment.content for segment in segments]
@@ -76,6 +95,8 @@ def clean_document_task(
                 document_ids=[document_id],
                 doc_form=doc_form,
                 new_session=session_factory.create_session,
+                # 附件向量写在 doc_id == UploadFile.id 下，分段的 index_node_id 覆盖不到它们。
+                extra_node_ids=orphan_attachment_ids,
             )
             is not None
         )
@@ -124,13 +145,15 @@ def clean_document_task(
 
     with session_factory.create_session() as session, session.begin():
         # delete segment attachments
-        if attachment_ids:
-            attachment_file_delete_stmt = delete(UploadFile).where(UploadFile.id.in_(attachment_ids))
-            session.execute(attachment_file_delete_stmt)
-
+        # 绑定必须先删：附件行一旦先消失，幸存的绑定就会指向不存在的 UploadFile。
         if binding_ids:
             binding_delete_stmt = delete(SegmentAttachmentBinding).where(SegmentAttachmentBinding.id.in_(binding_ids))
             session.execute(binding_delete_stmt)
+
+        # 只删已确认无人再引用的附件行，其余留给仍然绑定着它们的文档。
+        if orphan_attachment_ids:
+            attachment_file_delete_stmt = delete(UploadFile).where(UploadFile.id.in_(orphan_attachment_ids))
+            session.execute(attachment_file_delete_stmt)
 
     for attachment_file_key in total_attachment_files:
         try:
