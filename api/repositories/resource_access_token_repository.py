@@ -3,8 +3,9 @@
 from typing import override
 from uuid import uuid4
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.sql.elements import ColumnElement
 
 from constants.resource_access_token import TOKEN_PREFIX, ResourceAccessTokenResourceType
 from libs.datetime_utils import naive_utc_now
@@ -55,12 +56,32 @@ class ResourceAccessTokenRepository(ResourceAccessTokenStore):
             )
 
     @override
-    def list_rows(self, tenant_id: str, page: int, limit: int) -> tuple[ResourceAccessTokenRow, ...]:
+    def list_rows(
+        self, tenant_id: str, page: int, limit: int, keyword: str | None = None
+    ) -> tuple[ResourceAccessTokenRow, ...]:
         with self._session_factory() as session:
+            token_query = (
+                select(ResourceAccessToken.id, ResourceAccessToken.created_at)
+                .outerjoin(
+                    ResourceAccessTokenRelation,
+                    ResourceAccessTokenRelation.token_id == ResourceAccessToken.id,
+                )
+                .outerjoin(
+                    App,
+                    (App.id == ResourceAccessTokenRelation.app_id) & (App.tenant_id == tenant_id),
+                )
+                .outerjoin(
+                    Dataset,
+                    (Dataset.id == ResourceAccessTokenRelation.dataset_id) & (Dataset.tenant_id == tenant_id),
+                )
+                .where(ResourceAccessToken.tenant_id == tenant_id)
+            )
+            if keyword:
+                token_query = token_query.where(self._keyword_filter(keyword))
             token_ids = tuple(
-                session.scalars(
-                    select(ResourceAccessToken.id)
-                    .where(ResourceAccessToken.tenant_id == tenant_id)
+                row.id
+                for row in session.execute(
+                    token_query.distinct()
                     .order_by(ResourceAccessToken.created_at.desc())
                     .offset(max(page - 1, 0) * limit)
                     .limit(limit)
@@ -69,14 +90,40 @@ class ResourceAccessTokenRepository(ResourceAccessTokenStore):
             return self._rows(session, tenant_id, token_ids, include_token=False)
 
     @override
-    def count_tokens(self, tenant_id: str) -> int:
+    def count_tokens(self, tenant_id: str, keyword: str | None = None) -> int:
         with self._session_factory() as session:
-            return (
-                session.scalar(
-                    select(func.count(ResourceAccessToken.id)).where(ResourceAccessToken.tenant_id == tenant_id)
+            count_query = (
+                select(func.count(func.distinct(ResourceAccessToken.id)))
+                .outerjoin(
+                    ResourceAccessTokenRelation,
+                    ResourceAccessTokenRelation.token_id == ResourceAccessToken.id,
                 )
-                or 0
+                .outerjoin(
+                    App,
+                    (App.id == ResourceAccessTokenRelation.app_id) & (App.tenant_id == tenant_id),
+                )
+                .outerjoin(
+                    Dataset,
+                    (Dataset.id == ResourceAccessTokenRelation.dataset_id) & (Dataset.tenant_id == tenant_id),
+                )
+                .where(ResourceAccessToken.tenant_id == tenant_id)
             )
+            if keyword:
+                count_query = count_query.where(self._keyword_filter(keyword))
+            return session.scalar(count_query) or 0
+
+    @staticmethod
+    def _keyword_filter(keyword: str) -> ColumnElement[bool]:
+        from libs.helper import escape_like_pattern
+
+        pattern = f"%{escape_like_pattern(keyword[:100])}%"
+        return or_(
+            ResourceAccessToken.name.ilike(pattern, escape="\\"),
+            ResourceAccessToken.track_id.ilike(pattern, escape="\\"),
+            ResourceAccessToken.token.ilike(pattern, escape="\\"),
+            App.name.ilike(pattern, escape="\\"),
+            Dataset.name.ilike(pattern, escape="\\"),
+        )
 
     @override
     def update(

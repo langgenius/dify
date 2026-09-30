@@ -420,7 +420,7 @@ class TestValidateAppToken:
         # Act & Assert
         with (
             app.test_request_context("/", method="GET"),
-            patch("controllers.service_api.wraps.db.session", sqlite_session),
+            patch("controllers.service_api.wraps.db.session", _session_proxy(sqlite_session)),
         ):
             with pytest.raises(Forbidden) as exc_info:
                 protected_view()
@@ -448,7 +448,7 @@ class TestValidateAppToken:
         # Act & Assert
         with (
             app.test_request_context("/", method="GET"),
-            patch("controllers.service_api.wraps.db.session", sqlite_session),
+            patch("controllers.service_api.wraps.db.session", _session_proxy(sqlite_session)),
         ):
             with pytest.raises(Forbidden) as exc_info:
                 protected_view()
@@ -475,7 +475,7 @@ class TestValidateAppToken:
         # Act & Assert
         with (
             app.test_request_context("/", method="GET"),
-            patch("controllers.service_api.wraps.db.session", sqlite_session),
+            patch("controllers.service_api.wraps.db.session", _session_proxy(sqlite_session)),
         ):
             with pytest.raises(Forbidden) as exc_info:
                 protected_view()

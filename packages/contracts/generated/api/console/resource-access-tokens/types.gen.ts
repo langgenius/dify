@@ -52,6 +52,7 @@ export type GetResourceAccessTokensData = {
   body?: never
   path?: never
   query?: {
+    keyword?: string
     limit?: number
     page?: number
   }

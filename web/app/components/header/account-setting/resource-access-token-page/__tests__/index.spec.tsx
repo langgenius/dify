@@ -23,6 +23,22 @@ vi.mock('@/service/console', () => ({
           queryFn: mocks.listApps,
           queryKey: ['apps'],
         }),
+        infiniteOptions: (options: unknown) => {
+          const query = options as {
+            enabled?: boolean
+            getNextPageParam: (page: { has_more: boolean; page: number }) => number | undefined
+            initialPageParam: number
+            input: (page: number) => unknown
+          }
+          return {
+            enabled: query.enabled,
+            getNextPageParam: query.getNextPageParam,
+            initialPageParam: query.initialPageParam,
+            queryFn: ({ pageParam }: { pageParam: number }) =>
+              mocks.listApps(query.input(pageParam)),
+            queryKey: ['apps', query.input(query.initialPageParam)],
+          }
+        },
       },
     },
     datasets: {
@@ -32,6 +48,22 @@ vi.mock('@/service/console', () => ({
           queryFn: mocks.listDatasets,
           queryKey: ['datasets'],
         }),
+        infiniteOptions: (options: unknown) => {
+          const query = options as {
+            enabled?: boolean
+            getNextPageParam: (page: { has_more: boolean; page: number }) => number | undefined
+            initialPageParam: number
+            input: (page: number) => unknown
+          }
+          return {
+            enabled: query.enabled,
+            getNextPageParam: query.getNextPageParam,
+            initialPageParam: query.initialPageParam,
+            queryFn: ({ pageParam }: { pageParam: number }) =>
+              mocks.listDatasets(query.input(pageParam)),
+            queryKey: ['datasets', query.input(query.initialPageParam)],
+          }
+        },
       },
     },
     resourceAccessTokens: {
@@ -277,6 +309,51 @@ describe('ResourceAccessTokenPage', () => {
 
     expect(screen.queryByText('Production clients')).not.toBeInTheDocument()
     expect(screen.getByText('CLI automation')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(mocks.listResourceAccessTokens).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          input: { query: expect.objectContaining({ keyword: 'help' }) },
+        }),
+      )
+    })
+  })
+
+  it('loads additional API-enabled apps from later pages', async () => {
+    const user = userEvent.setup()
+    mocks.listApps
+      .mockResolvedValueOnce({
+        data: [{ id: 'app-2', name: 'Sales Bot' }],
+        has_more: true,
+        limit: 100,
+        page: 1,
+        total: 2,
+      })
+      .mockResolvedValueOnce({
+        data: [{ id: 'app-3', name: 'More Sales Bot' }],
+        has_more: false,
+        limit: 100,
+        page: 2,
+        total: 2,
+      })
+    renderWithQueryClient(<ResourceAccessTokenPage />)
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'accountSettings.resourceAccessToken.createButton',
+      }),
+    )
+    const dialog = screen.getByRole('dialog')
+    await user.click(
+      await within(dialog).findByRole('button', {
+        name: 'accountSettings.resourceAccessToken.next',
+      }),
+    )
+
+    expect(
+      await within(dialog).findByRole('checkbox', { name: 'More Sales Bot' }),
+    ).toBeInTheDocument()
+    expect(mocks.listApps).toHaveBeenLastCalledWith({
+      query: { limit: 100, name: undefined, openapi_visible: true, page: 2 },
+    })
   })
 
   it('creates one token for selected app and knowledge resources', async () => {
@@ -374,6 +451,14 @@ describe('ResourceAccessTokenPage', () => {
     expect(within(dialog).getByRole('checkbox', { name: 'Sales Docs' })).toBeInTheDocument()
     expect(within(dialog).queryByRole('checkbox', { name: 'Support Bot' })).not.toBeInTheDocument()
     expect(within(dialog).queryByRole('checkbox', { name: 'Support Docs' })).not.toBeInTheDocument()
+    await waitFor(() => {
+      expect(mocks.listApps).toHaveBeenLastCalledWith({
+        query: { limit: 100, name: 'sales', openapi_visible: true, page: 1 },
+      })
+      expect(mocks.listDatasets).toHaveBeenLastCalledWith({
+        query: { include_all: true, keyword: 'sales', limit: 100, page: 1 },
+      })
+    })
 
     await user.click(
       within(dialog).getByRole('tab', { name: 'accountSettings.resourceAccessToken.tabApps' }),

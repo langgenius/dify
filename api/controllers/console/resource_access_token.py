@@ -41,6 +41,7 @@ class ResourceAccessTokenUpdatePayload(ResponseModel):
 class ResourceAccessTokenListQuery(ResponseModel):
     page: int = Field(default=1, ge=1)
     limit: int = Field(default=20, ge=1, le=100)
+    keyword: str | None = Field(default=None, min_length=1, max_length=100)
 
 
 class ResourceAccessTokenRowResponse(ResponseModel):
@@ -120,8 +121,9 @@ class ResourceAccessTokenListApi(Resource):
                 context,
                 page=query.page,
                 limit=query.limit,
+                keyword=query.keyword,
             )
-            total = application_services().resource_access_tokens.count_rows(context)
+            total = application_services().resource_access_tokens.count_rows(context, keyword=query.keyword)
         return dump_response(
             ResourceAccessTokenListResponse,
             {

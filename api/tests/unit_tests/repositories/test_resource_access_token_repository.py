@@ -137,6 +137,15 @@ def test_list_paginates_and_counts_tokens_not_relations(
     assert {row.token_id for row in rows} == {newest.token_id}
     assert len(rows) == 2
 
+    keyword = "Newest integration"
+    searched = service.list_rows(RequestContext("test", None, owner.id, tenant.id), page=1, limit=1, keyword=keyword)
+    assert {row.token_id for row in searched} == {newest.token_id}
+    assert service.count_rows(RequestContext("test", None, owner.id, tenant.id), keyword=keyword) == 1
+    resource_search = service.list_rows(
+        RequestContext("test", None, owner.id, tenant.id), page=1, limit=20, keyword="Customer Support"
+    )
+    assert {row.token_id for row in resource_search} == {newest.token_id}
+
 
 @pytest.mark.parametrize(
     "sqlite_session",

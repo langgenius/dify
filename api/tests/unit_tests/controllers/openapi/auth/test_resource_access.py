@@ -60,11 +60,16 @@ def resource_fixture(
     sqlite_session.commit()
     flask_app = Flask(__name__)
     flask_app.login_manager = MagicMock()  # type: ignore[attr-defined]
+    workspaces = SimpleNamespace(
+        identity=SimpleNamespace(get_workspace=lambda workspace_id: sqlite_session.get(Tenant, workspace_id)),
+        management=SimpleNamespace(get=lambda workspace_id: sqlite_session.get(Tenant, workspace_id)),
+    )
     with (
         patch(
             "controllers.openapi.auth.resource_access.application_services",
             return_value=SimpleNamespace(
-                resource_access_tokens=build_resource_access_token_service(database_client=get_session_maker())
+                resource_access_tokens=build_resource_access_token_service(database_client=get_session_maker()),
+                workspaces=workspaces,
             ),
         ),
         patch("controllers.openapi.auth.resource_access.enforce_bearer_rate_limit"),
@@ -74,7 +79,10 @@ def resource_fixture(
         ) as end_user,
         patch("controllers.openapi.auth.pipelines._mount_flask_login"),
         patch("controllers.openapi.auth.requirements.emit_wrong_surface"),
-        patch("controllers.openapi.apps.application_services", return_value=SimpleNamespace(apps=app_services)),
+        patch(
+            "controllers.openapi.apps.application_services",
+            return_value=SimpleNamespace(apps=app_services, workspaces=workspaces),
+        ),
     ):
         end_user = end_user.return_value.app_scoped_end_users.commands.get_or_create_end_user_by_type
         end_user.return_value = EndUser(id="machine-user", tenant_id=tenant.id, app_id=app.id, type="openapi")
