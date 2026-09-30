@@ -197,6 +197,7 @@ class OracleVector(BaseVector):
                         conn.commit()
                     except Exception:
                         logger.exception("Failed to insert record %s into %s", value[0], self.table_name)
+                        raise
             conn.close()
         return pks
 
