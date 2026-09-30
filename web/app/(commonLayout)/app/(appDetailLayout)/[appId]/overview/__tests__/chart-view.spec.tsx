@@ -1,20 +1,9 @@
 import type { PeriodParams } from '@/app/components/app/overview/app-chart'
 import { screen } from '@testing-library/react'
-import { consoleQuery } from '@/service/console'
-import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
-import { createAppDetailFixture } from '@/test/fixtures/app'
-import { AppACLPermission } from '@/utils/permission'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import ChartView from '../chart-view'
 
 const testState = vi.hoisted(() => ({
-  appDetail: {
-    id: 'app-1',
-    mode: 'chat',
-    maintainer: 'maintainer-1',
-    permission_keys: [] as string[],
-  },
-  currentUserId: 'user-1',
-  workspacePermissionKeys: [] as string[],
   chartRenderSpy: vi.fn(),
   conversationPeriodSpy: vi.fn(),
 }))
@@ -98,67 +87,33 @@ vi.mock('@/context/permission-state', async () => {
   }))
 })
 
-const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) => {
-  const queryClient = createConsoleQueryClient()
-  const detail = createAppDetailFixture({ ...testState.appDetail, mode: 'chat' })
-  queryClient.setQueryData(
-    consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: detail.id } } }),
-    detail,
-  )
-  return renderWithConsoleQuery(ui, { queryClient })
-}
+describe('ChartView', () => {
+  beforeEach(() => vi.clearAllMocks())
 
-describe('ChartView monitor permission', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    testState.appDetail = {
-      id: 'app-1',
-      mode: 'chat',
-      maintainer: 'maintainer-1',
-      permission_keys: [],
-    }
-    testState.currentUserId = 'user-1'
-    testState.workspacePermissionKeys = []
+  it('renders chat charts and the page-provided header action', () => {
+    renderWithConsoleQuery(
+      <ChartView
+        appId="app-1"
+        appMode="chat"
+        headerRight={<button type="button">header action</button>}
+      />,
+    )
+
+    expect(screen.getByRole('heading', { name: 'common.appMenus.overview' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'header action' })).toBeInTheDocument()
+    expect(screen.getByText('conversations chart')).toBeInTheDocument()
+    expect(screen.getByText('avg session interactions chart')).toBeInTheDocument()
   })
 
-  // Monitoring charts are part of the app monitor permission surface.
-  describe('Permissions', () => {
-    it('should not render monitoring charts when app monitor permission is missing', () => {
-      render(<ChartView appId="app-1" headerRight={<button type="button">header action</button>} />)
-
-      expect(
-        screen.queryByRole('heading', { name: 'common.appMenus.overview' }),
-      ).not.toBeInTheDocument()
-      expect(screen.queryByText('header action')).not.toBeInTheDocument()
-      expect(testState.chartRenderSpy).not.toHaveBeenCalled()
-    })
-
-    it('should render monitoring charts when app monitor permission is granted', () => {
-      testState.appDetail.permission_keys = [AppACLPermission.Monitor]
-
-      render(<ChartView appId="app-1" headerRight={<button type="button">header action</button>} />)
-
-      expect(screen.getByRole('heading', { name: 'common.appMenus.overview' })).toBeInTheDocument()
-      expect(screen.getByText('header action')).toBeInTheDocument()
-      expect(screen.getByText('conversations chart')).toBeInTheDocument()
-      expect(testState.chartRenderSpy).toHaveBeenCalledWith('conversations')
-    })
+  it('renders completion charts from the explicit app mode', () => {
+    renderWithConsoleQuery(<ChartView appId="app-1" appMode="completion" headerRight={null} />)
+    expect(screen.getByText('avg response time chart')).toBeInTheDocument()
+    expect(screen.queryByText('avg session interactions chart')).not.toBeInTheDocument()
   })
-})
 
-it('switches the visible charts to the destination app mode', () => {
-  testState.appDetail.permission_keys = [AppACLPermission.Monitor]
-  const { queryClient, rerender } = render(<ChartView appId="app-1" headerRight={null} />)
-  queryClient.setQueryData(
-    consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-2' } } }),
-    createAppDetailFixture({
-      id: 'app-2',
-      mode: 'workflow',
-      permission_keys: [AppACLPermission.Monitor],
-    }),
-  )
-  expect(screen.getByText('conversations chart')).toBeInTheDocument()
-  rerender(<ChartView appId="app-2" headerRight={null} />)
-  expect(screen.getByText('workflow messages chart')).toBeInTheDocument()
-  expect(screen.queryByText('conversations chart')).not.toBeInTheDocument()
+  it('renders workflow charts from the explicit app mode', () => {
+    renderWithConsoleQuery(<ChartView appId="app-2" appMode="workflow" headerRight={null} />)
+    expect(screen.getByText('workflow messages chart')).toBeInTheDocument()
+    expect(screen.queryByText('conversations chart')).not.toBeInTheDocument()
+  })
 })

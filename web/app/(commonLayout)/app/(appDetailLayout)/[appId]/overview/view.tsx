@@ -1,6 +1,6 @@
 'use client'
 
-import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useSuspenseQueries } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import ApikeyInfoPanel from '@/app/components/app/overview/apikey-info-panel'
@@ -16,28 +16,27 @@ type OverviewViewProps = {
 }
 
 const OverviewView = ({ appId }: OverviewViewProps) => {
-  const { data: appDetail } = useQuery(
-    consoleQuery.apps.byAppId.get.queryOptions({
-      input: { params: { app_id: appId } },
-      throwOnError: true,
-    }),
-  )
-  const { data: currentUserId } = useSuspenseQuery({
-    ...userProfileQueryOptions(),
-    select: (data) => data.profile.id,
+  const [{ data: appDetail }, { data: userProfile }] = useSuspenseQueries({
+    queries: [
+      consoleQuery.apps.byAppId.get.queryOptions({
+        input: { params: { app_id: appId } },
+      }),
+      userProfileQueryOptions(),
+    ],
   })
+  const currentUserId = userProfile.profile.id
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const appACLCapabilities = React.useMemo(
     () =>
-      getAppACLCapabilities(appDetail?.permission_keys, {
+      getAppACLCapabilities(appDetail.permission_keys, {
         currentUserId,
-        resourceMaintainer: appDetail?.maintainer,
+        resourceMaintainer: appDetail.maintainer,
         workspacePermissionKeys,
       }),
-    [appDetail?.maintainer, appDetail?.permission_keys, currentUserId, workspacePermissionKeys],
+    [appDetail.maintainer, appDetail.permission_keys, currentUserId, workspacePermissionKeys],
   )
 
-  if (!appDetail || !appACLCapabilities.canMonitor) return null
+  if (!appACLCapabilities.canMonitor) return null
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -45,8 +44,11 @@ const OverviewView = ({ appId }: OverviewViewProps) => {
       <div className="min-h-0 flex-1">
         <ChartView
           appId={appId}
+          appMode={appDetail.mode}
           headerRight={
-            appACLCapabilities.canConfigureTracing ? <TracingPanel appId={appId} /> : null
+            appACLCapabilities.canConfigureTracing ? (
+              <TracingPanel appId={appId} readOnly={false} />
+            ) : null
           }
         />
       </div>
