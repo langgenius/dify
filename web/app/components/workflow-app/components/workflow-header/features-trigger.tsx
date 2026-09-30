@@ -165,10 +165,13 @@ const FeaturesTrigger = () => {
 
       const res = await consoleClient.apps.byAppId.get({ params: { app_id: appID } })
       setAppDetail({ ...res })
+      void queryClient.invalidateQueries({
+        queryKey: consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: appID } } }),
+      })
     } catch (error) {
       console.error(error)
     }
-  }, [appID, setAppDetail])
+  }, [appID, setAppDetail, queryClient])
 
   const { mutateAsync: publishWorkflow } = usePublishWorkflow()
   // const { validateBeforeRun } = useWorkflowRunValidation()
@@ -276,6 +279,7 @@ const FeaturesTrigger = () => {
         </Button>
       )}
       <AppPublisher
+        appId={appID!}
         {...{
           publishedAt,
           draftUpdatedAt,

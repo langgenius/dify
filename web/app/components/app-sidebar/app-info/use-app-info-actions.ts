@@ -7,7 +7,6 @@ import type { CreateAppModalProps } from '@/app/components/explore/create-app-mo
 import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { useExportAppDsl, useExportWorkflowAppDsl } from '@/app/components/app/use-export-app-dsl'
 import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -63,7 +62,7 @@ const updateCachedAppMetadata = (cachedApp: AppDetailWithSite | undefined, app: 
   }
 }
 
-export function useAppInfoActions() {
+export function useAppInfoActions(appDetail: AppDetailWithSite) {
   const { t } = useTranslation(['app'])
   const { replace } = useRouter()
   const queryClient = useQueryClient()
@@ -71,8 +70,6 @@ export function useAppInfoActions() {
     consoleQuery.apps.byAppId.copy.post.mutationOptions(),
   )
   const { mutateAsync: deleteApp } = useMutation(consoleQuery.apps.byAppId.delete.mutationOptions())
-  const appDetail = useAppStore((state) => state.appDetail)
-  const setAppDetail = useAppStore((state) => state.setAppDetail)
   const { exportAppDsl, isExporting: isAppDslExporting } = useExportAppDsl()
   const { exportWorkflowAppDsl, isExporting: isWorkflowAppDslExporting } = useExportWorkflowAppDsl()
   const isExporting = isAppDslExporting || isWorkflowAppDslExporting
@@ -94,8 +91,6 @@ export function useAppInfoActions() {
   }, [setActiveModal])
 
   const emitAppMetaUpdate = useCallback(() => {
-    if (!appDetail?.id) return
-
     void import('@/app/components/workflow/collaboration/core/websocket-manager')
       .then(({ webSocketClient }) => {
         const socket = webSocketClient.getSocket(appDetail.id)
@@ -107,11 +102,9 @@ export function useAppInfoActions() {
         })
       })
       .catch(() => {})
-  }, [appDetail?.id])
+  }, [appDetail.id])
 
   useEffect(() => {
-    if (!appDetail?.id) return
-
     let unsubscribe: (() => void) | null = null
     let disposed = false
 
@@ -132,7 +125,6 @@ export function useAppInfoActions() {
             void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
             void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.starred.get.key() })
             void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.recent.get.key() })
-            setAppDetail({ ...res })
           } catch (error) {
             console.error('failed to refresh app detail from collaboration update:', error)
           }
@@ -144,7 +136,7 @@ export function useAppInfoActions() {
       disposed = true
       unsubscribe?.()
     }
-  }, [appDetail?.id, queryClient, setAppDetail])
+  }, [appDetail.id, queryClient])
 
   const onEdit: CreateAppModalProps['onConfirm'] = useCallback(
     async ({
@@ -156,7 +148,6 @@ export function useAppInfoActions() {
       use_icon_as_answer_icon,
       max_active_requests,
     }) => {
-      if (!appDetail) return
       try {
         const app = await consoleClient.apps.byAppId.put({
           params: { app_id: appDetail.id },
@@ -184,7 +175,6 @@ export function useAppInfoActions() {
         void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
         void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.starred.get.key() })
         void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.recent.get.key() })
-        setAppDetail(app)
         emitAppMetaUpdate()
       } catch {
         toast(
@@ -193,12 +183,11 @@ export function useAppInfoActions() {
         )
       }
     },
-    [appDetail, closeModal, setAppDetail, t, emitAppMetaUpdate, queryClient],
+    [appDetail, closeModal, t, emitAppMetaUpdate, queryClient],
   )
 
   const onCopy: DuplicateAppModalProps['onConfirm'] = useCallback(
     async ({ name, icon_type, icon, icon_background }) => {
-      if (!appDetail) return
       try {
         const newApp = await copyApp({
           params: { app_id: appDetail.id },
@@ -229,7 +218,6 @@ export function useAppInfoActions() {
 
   const onExport = useCallback(
     async (include = false) => {
-      if (!appDetail) return false
       const result = await exportAppDsl({
         appId: appDetail.id,
         appName: appDetail.name,
@@ -241,7 +229,7 @@ export function useAppInfoActions() {
   )
 
   const exportCheck = useCallback(async () => {
-    if (!appDetail || isExporting) return
+    if (isExporting) return
     if (appDetail.mode !== AppModeEnum.WORKFLOW && appDetail.mode !== AppModeEnum.ADVANCED_CHAT) {
       onExport()
       return
@@ -250,7 +238,7 @@ export function useAppInfoActions() {
   }, [appDetail, isExporting, onExport, setActiveModal])
 
   const handleConfirmExport = useCallback(async () => {
-    if (!appDetail || isExporting) return
+    if (isExporting) return
     const result = await exportWorkflowAppDsl({
       appId: appDetail.id,
       appName: appDetail.name,
@@ -261,7 +249,6 @@ export function useAppInfoActions() {
   }, [appDetail, closeModal, exportWorkflowAppDsl, isExporting, setSecretEnvList])
 
   const onConfirmDelete = useCallback(async () => {
-    if (!appDetail) return
     markAppDeletionStarted(appDetail.id)
     try {
       await deleteApp({ params: { app_id: appDetail.id } })
@@ -270,7 +257,6 @@ export function useAppInfoActions() {
         t(($) => $.appDeleted, { ns: 'app' }),
         { type: 'success' },
       )
-      setAppDetail()
       replace('/apps')
     } catch (e: unknown) {
       markAppDeletionFailed(appDetail.id)
@@ -280,10 +266,9 @@ export function useAppInfoActions() {
       )
     }
     closeModal()
-  }, [appDetail, closeModal, deleteApp, replace, setAppDetail, t])
+  }, [appDetail, closeModal, deleteApp, replace, t])
 
   return {
-    appDetail,
     activeModal,
     openModal,
     closeModal,

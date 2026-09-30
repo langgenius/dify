@@ -70,16 +70,6 @@ vi.mock('@/app/components/workflow/plugin-dependency/hooks', () => ({
   }),
 }))
 
-vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: { appDetail: { id: string; mode: string } }) => unknown) =>
-    selector({
-      appDetail: {
-        id: 'app-1',
-        mode: 'chat',
-      },
-    }),
-}))
-
 vi.mock('@/app/components/app/create-from-dsl-modal/uploader', () => ({
   Uploader: ({ updateFile }: { updateFile: (file?: File) => void }) => (
     <input
@@ -98,6 +88,8 @@ function render(children: ReactNode) {
 describe('UpdateDSLModal', () => {
   const mockToastError = vi.mocked(toast.error)
   const defaultProps = {
+    appId: 'app-1',
+    appMode: 'workflow' as const,
     onCancel: vi.fn(),
     onBackup: vi.fn(),
     onImport: vi.fn(),

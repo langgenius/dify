@@ -1,16 +1,20 @@
 'use client'
 
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Separator } from '@langgenius/dify-ui/separator'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQueries } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { Fragment, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore } from '@/app/components/app/store'
+import AppIcon from '@/app/components/base/app-icon'
+import { SkeletonContainer, SkeletonRectangle } from '@/app/components/base/skeleton'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { getAppIdFromPathname } from '@/features/app-detail/routes'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { usePathname } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
 import { getAppACLCapabilities } from '@/utils/permission'
 import { AppInfoView } from './app-info'
@@ -41,19 +45,30 @@ type AppDetailSectionProps = {
 }
 
 const AppDetailSection = ({ expand = true }: AppDetailSectionProps) => {
+  const pathname = usePathname()
+  const appId = getAppIdFromPathname(pathname)
+  if (!appId) return null
+  return <AppDetailContent key={appId} appId={appId} expand={expand} />
+}
+
+function AppDetailContent({ appId, expand }: { appId: string; expand: boolean }) {
   const { t } = useTranslation(['common', 'navigation'])
   const pathname = usePathname()
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const { data: currentUserId } = useSuspenseQuery({
-    ...userProfileQueryOptions(),
-    select: (data) => data.profile.id,
+  const [detailQuery, featuresQuery, profileQuery] = useQueries({
+    queries: [
+      consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId } } }),
+      systemFeaturesQueryOptions(),
+      userProfileQueryOptions(),
+    ],
   })
+  const systemFeatures = featuresQuery.data
+  const currentUserId = profileQuery.data?.profile.id
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const isRbacEnabled = systemFeatures.rbac_enabled
-  const appDetail = useStore((state) => state.appDetail)
+  const isRbacEnabled = systemFeatures?.rbac_enabled
+  const appDetail = detailQuery.data
 
   const navigation = useMemo<AppDetailNavItem[]>(() => {
-    if (!appDetail) return []
+    if (!appDetail || !systemFeatures || !currentUserId) return []
 
     const appId = appDetail.id
     const isWorkflowApp =
@@ -140,9 +155,39 @@ const AppDetailSection = ({ expand = true }: AppDetailSectionProps) => {
           ]
         : []),
     ]
-  }, [appDetail, t, currentUserId, workspacePermissionKeys, isRbacEnabled])
+  }, [appDetail, t, currentUserId, workspacePermissionKeys, isRbacEnabled, systemFeatures])
 
-  if (!appDetail) return null
+  if (!appDetail || !systemFeatures || !currentUserId) {
+    const failedQuery = [detailQuery, featuresQuery, profileQuery].find(
+      (query) => query.isError && !query.data,
+    )
+    return (
+      <div className={cn('px-3 py-2', !expand && 'px-2')}>
+        <div className="flex h-13 items-center gap-2">
+          <AppIcon size="large" rounded decorative />
+          {expand && <SkeletonRectangle className="h-4 w-24" />}
+        </div>
+        {failedQuery ? (
+          <div role="alert" className="mt-3 flex flex-col gap-2">
+            {expand && (
+              <p className="system-xs-regular text-text-tertiary">
+                {t(($) => $['errorBoundary.message'], { ns: 'common' })}
+              </p>
+            )}
+            <Button variant="secondary" onClick={() => void failedQuery.refetch()}>
+              {t(($) => $['errorBoundary.tryAgain'], { ns: 'common' })}
+            </Button>
+          </div>
+        ) : (
+          <SkeletonContainer className="mt-3 gap-3" aria-busy="true">
+            {[0, 1, 2, 3].map((row) => (
+              <SkeletonRectangle key={row} className="h-8 w-full" />
+            ))}
+          </SkeletonContainer>
+        )}
+      </div>
+    )
+  }
 
   const hasLogsNavigation = navigation.some(isLogsNavItem)
   const hasAnnotationsNavigation = navigation.some(isAnnotationsNavItem)
@@ -160,7 +205,7 @@ const AppDetailSection = ({ expand = true }: AppDetailSectionProps) => {
         </div>
       )}
       <div className={cn('px-1 py-2', expand && '-mx-2')}>
-        <AppInfoView key={appDetail.id} expand={expand} />
+        <AppInfoView appDetail={appDetail} expand={expand} />
       </div>
       <nav
         aria-label={appDetail.name}

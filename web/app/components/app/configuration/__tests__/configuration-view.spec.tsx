@@ -243,6 +243,7 @@ const createViewModel = (
   overrides: Partial<ConfigurationViewModel> = {},
 ): ConfigurationViewModel => ({
   appPublisherProps: {
+    appId: 'app-1',
     publishDisabled: false,
     publishedAt: 0,
     debugWithMultipleModel: false,

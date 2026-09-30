@@ -13,6 +13,8 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import { detailSidebarModeAtom } from '@/app/components/detail-sidebar/state'
 import { isCurrentWorkspaceDatasetOperatorAtom } from '@/context/workspace-state'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
+import { AppDetailPrefetch } from '@/features/app-detail/prefetch'
+import { getAppIdFromPathname } from '@/features/app-detail/routes'
 import { usePathname } from '@/next/navigation'
 import { MainNav } from '.'
 import { ResponsiveMainNav } from './responsive-main-nav'
@@ -54,6 +56,7 @@ const MainNavLayout = ({
   const { t } = useTranslation(['common'])
   const pathname = usePathname()
   const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)
+  const appId = getAppIdFromPathname(pathname)
   const useResponsiveNavigation =
     pathname === '/agents' ||
     pathname === '/datasets/create' ||
@@ -72,6 +75,7 @@ const MainNavLayout = ({
       )}
     >
       <SkipNav>{t(($) => $['navigation.skipToMain'])}</SkipNav>
+      {appId && <AppDetailPrefetch appId={appId} />}
       <AppDetailStoreCleanup />
       {hideMainNavigation ? null : useDetailSidebar ? (
         detailSidebar

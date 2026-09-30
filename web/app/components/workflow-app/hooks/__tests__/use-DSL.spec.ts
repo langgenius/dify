@@ -3,6 +3,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { createElement } from 'react'
 import { DSL_EXPORT_CHECK } from '@/app/components/workflow/constants'
+import { consoleQuery } from '@/service/console'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { useDSLByCanEdit } from '../use-DSL'
 
 const toastMocks = vi.hoisted(() => ({
@@ -37,7 +39,7 @@ const mockExportAppConfig = vi.fn()
 const mockFetchEnvironmentVariables = vi.fn()
 const mockDownloadBlob = vi.fn()
 
-let appStoreState: {
+let appQueryFixture: {
   appDetail?: {
     id: string
     name: string
@@ -52,9 +54,12 @@ vi.mock('@/context/event-emitter', () => ({
   }),
 }))
 
-vi.mock('@/app/components/app/store', () => ({
-  useStore: <T>(selector: (state: typeof appStoreState) => T) => selector(appStoreState),
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  request: () => new Promise<Response>(() => {}),
 }))
+
+vi.mock('@/next/navigation', () => ({ useParams: () => ({ appId: 'app-1' }) }))
 
 vi.mock('../use-nodes-sync-draft', () => ({
   useNodesSyncDraftByCanEdit: () => ({
@@ -62,7 +67,8 @@ vi.mock('../use-nodes-sync-draft', () => ({
   }),
 }))
 
-vi.mock('@/service/console', () => ({
+vi.mock('@/service/console', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/console')>()),
   consoleClient: {
     apps: {
       byAppId: {
@@ -92,14 +98,25 @@ const createDeferred = <T>() => {
 }
 
 let queryClient: QueryClient
-const wrapper = ({ children }: { children: ReactNode }) =>
-  createElement(QueryClientProvider, { client: queryClient }, children)
+const wrapper = ({ children }: { children: ReactNode }) => {
+  if (appQueryFixture.appDetail)
+    queryClient.setQueryData(
+      consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
+      createAppDetailFixture(appQueryFixture.appDetail),
+    )
+  return createElement(QueryClientProvider, { client: queryClient }, children)
+}
 
 describe('useDSLByCanEdit', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } })
-    appStoreState = {
+    queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { staleTime: Infinity, retry: false },
+        mutations: { retry: false },
+      },
+    })
+    appQueryFixture = {
       appDetail: {
         id: 'app-1',
         name: 'Workflow App',
@@ -108,6 +125,25 @@ describe('useDSLByCanEdit', () => {
     mockDoSyncWorkflowDraft.mockResolvedValue(undefined)
     mockExportAppConfig.mockResolvedValue({ data: 'yaml-content' })
     mockFetchEnvironmentVariables.mockResolvedValue({ items: [] })
+  })
+
+  it('exports with the latest name from the detail query', async () => {
+    const { result } = renderHook(() => useDSLByCanEdit(true), { wrapper })
+    const beforeRename = result.current
+    act(() => {
+      queryClient.setQueryData(
+        consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
+        createAppDetailFixture({ name: 'Renamed workflow' }),
+      )
+    })
+    await waitFor(() => expect(result.current).not.toBe(beforeRename))
+    await act(async () => {
+      await result.current.handleExportDSL()
+    })
+    expect(mockDownloadBlob).toHaveBeenCalledWith({
+      data: expect.any(Blob),
+      fileName: 'Renamed workflow.yml',
+    })
   })
 
   it('does not export a stale draft after synchronization reports a failure', async () => {
@@ -244,7 +280,7 @@ workflow:
   })
 
   it('should return early when app detail is unavailable', async () => {
-    appStoreState = {}
+    appQueryFixture = {}
 
     const { result } = renderHook(() => useDSLByCanEdit(true), { wrapper })
 

@@ -1,9 +1,9 @@
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { AppPublisherProps } from '../types'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { toDeploymentVersion } from '@/app/components/app/deploy/utils/version'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { WorkflowToolDrawer } from '@/app/components/tools/workflow-tool'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
@@ -33,6 +33,7 @@ import { useWorkflowLaunch } from './use-workflow-launch'
 import { useWorkflowTool } from './use-workflow-tool'
 
 type PublisherContentProps = AppPublisherProps & {
+  appDetail: AppDetailWithSite
   canViewAccessPoint: boolean
   open: boolean
   supportsMultiEnvironment: boolean
@@ -40,6 +41,7 @@ type PublisherContentProps = AppPublisherProps & {
 }
 
 export function PublisherContent({
+  appDetail,
   canViewAccessPoint,
   crossAxisOffset = 0,
   debugWithMultipleModel = false,
@@ -65,7 +67,6 @@ export function PublisherContent({
   workflowToolAvailable = true,
 }: PublisherContentProps) {
   const { t } = useTranslation(['app', 'workflow', 'workflowHistory'])
-  const appDetail = useAppStore((state) => state.appDetail)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const environments = useAtomValue(appPublisherEnvironmentsAtom)
