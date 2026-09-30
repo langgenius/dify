@@ -33,47 +33,26 @@ const stubElementMetric = (
 
 const renderScrollArea = (
   options: {
-    rootClassName?: string
     contentStyle?: React.CSSProperties
-    viewportClassName?: string
     viewportStyle?: React.CSSProperties
-    verticalScrollbarClassName?: string
-    horizontalScrollbarClassName?: string
-    verticalThumbClassName?: string
-    horizontalThumbClassName?: string
   } = {},
 ) => {
   return render(
-    <ScrollArea className={options.rootClassName ?? 'h-40 w-40'} data-testid="scroll-area-root">
-      <ScrollAreaViewport
-        data-testid="scroll-area-viewport"
-        style={options.viewportStyle}
-        className={options.viewportClassName}
-      >
+    <ScrollArea className="h-40 w-40" data-testid="scroll-area-root">
+      <ScrollAreaViewport data-testid="scroll-area-viewport" style={options.viewportStyle}>
         <ScrollAreaContent data-testid="scroll-area-content" style={options.contentStyle}>
           <div className="h-48 w-48">Scrollable content</div>
         </ScrollAreaContent>
       </ScrollAreaViewport>
-      <ScrollAreaScrollbar
-        keepMounted
-        data-testid="scroll-area-vertical-scrollbar"
-        className={options.verticalScrollbarClassName}
-      >
-        <ScrollAreaThumb
-          data-testid="scroll-area-vertical-thumb"
-          className={options.verticalThumbClassName}
-        />
+      <ScrollAreaScrollbar keepMounted data-testid="scroll-area-vertical-scrollbar">
+        <ScrollAreaThumb data-testid="scroll-area-vertical-thumb" />
       </ScrollAreaScrollbar>
       <ScrollAreaScrollbar
         keepMounted
         orientation="horizontal"
         data-testid="scroll-area-horizontal-scrollbar"
-        className={options.horizontalScrollbarClassName}
       >
-        <ScrollAreaThumb
-          data-testid="scroll-area-horizontal-thumb"
-          className={options.horizontalThumbClassName}
-        />
+        <ScrollAreaThumb data-testid="scroll-area-horizontal-thumb" />
       </ScrollAreaScrollbar>
     </ScrollArea>,
   )
@@ -110,14 +89,14 @@ describe('scroll area', () => {
           <ScrollArea className="h-40 w-40" data-testid="scroll-area-root">
             <ScrollAreaViewport
               aria-labelledby="installed-apps-label"
-              className="custom-viewport-class"
+
               role="region"
             >
-              <ScrollAreaContent className="custom-content-class">
+              <ScrollAreaContent>
                 <div className="h-48 w-20">Scrollable content</div>
               </ScrollAreaContent>
             </ScrollAreaViewport>
-            <ScrollAreaScrollbar className="custom-scrollbar-class">
+            <ScrollAreaScrollbar>
               <ScrollAreaThumb />
             </ScrollAreaScrollbar>
           </ScrollArea>
@@ -125,14 +104,11 @@ describe('scroll area', () => {
       )
 
       const viewport = screen.getByRole('region', { name: 'Installed apps' })
-      const content = screen.getByText('Scrollable content').element().parentElement
 
       await expect
         .element(screen.getByTestId('scroll-area-root'))
         .not.toHaveAttribute('role', 'region')
-      await expect.element(viewport).toHaveClass('custom-viewport-class')
       await expect.element(viewport).toHaveAccessibleName('Installed apps')
-      expect(content).toHaveClass('custom-content-class')
       await expect.element(screen.getByText('Scrollable content')).toBeInTheDocument()
     })
 
@@ -220,32 +196,6 @@ describe('scroll area', () => {
   })
 
   describe('Props', () => {
-    it('should forward className to the viewport', async () => {
-      const screen = await renderScrollArea({
-        viewportClassName: 'custom-viewport-class',
-      })
-
-      await expect
-        .element(screen.getByTestId('scroll-area-viewport'))
-        .toHaveClass('custom-viewport-class')
-    })
-
-    it('should let callers control scrollbar inset spacing via margin-based className overrides', async () => {
-      const screen = await renderScrollArea({
-        verticalScrollbarClassName:
-          'data-[orientation=vertical]:my-2 data-[orientation=vertical]:-me-3',
-        horizontalScrollbarClassName:
-          'data-[orientation=horizontal]:mx-2 data-[orientation=horizontal]:mb-2',
-      })
-
-      await expect
-        .element(screen.getByTestId('scroll-area-vertical-scrollbar'))
-        .toHaveClass('data-[orientation=vertical]:my-2', 'data-[orientation=vertical]:-me-3')
-      await expect
-        .element(screen.getByTestId('scroll-area-horizontal-scrollbar'))
-        .toHaveClass('data-[orientation=horizontal]:mx-2', 'data-[orientation=horizontal]:mb-2')
-    })
-
     it('should let vertical layouts override the content minimum width without important CSS', async () => {
       const screen = await renderScrollArea({ contentStyle: { minWidth: 0 } })
       const content = screen.getByTestId('scroll-area-content').element()
