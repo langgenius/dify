@@ -11,7 +11,7 @@ from controllers.openapi.app_dsl import AppDslImportApi, AppDslImportConfirmApi
 from controllers.openapi.auth.spec import EndpointSpec
 from machinery.context import RequestContext
 from services.entities.dsl_entities import Import, ImportStatus
-from services.errors.account import NoPermissionError
+from services.errors.base import NoPermissionError
 from tests.unit_tests.controllers.conftest import ControllerTestServices
 
 

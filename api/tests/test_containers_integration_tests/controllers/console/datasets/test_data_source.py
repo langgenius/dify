@@ -15,7 +15,7 @@ from models.dataset import Dataset, Document
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepository
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
-from repositories.workspace_member_query_repository import WorkspaceMemberQueryRepository
+from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.data_source.credential_gateway import ActorDatasourceCredentialResolver
 from services.data_source.notion_import_adapters import PluginNotionSourceGateway
 from services.data_source.notion_import_application_service import NotionImportApplicationService
@@ -94,7 +94,7 @@ def test_notion_page_is_marked_bound_from_persisted_document(
     notion_imports = NotionImportApplicationService(
         dataset_access=DatasetAccessService(
             datasets=datasets,
-            workspace_roles=WorkspaceMemberQueryRepository(session_factory=sessions),
+            workspace_roles=WorkspaceRepository(session_factory=sessions),
             legacy_permissions_enabled=True,
         ),
         datasets=datasets,

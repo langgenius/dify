@@ -13,6 +13,7 @@ from werkzeug.exceptions import Forbidden, Unauthorized
 
 from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
 from controllers.openapi._errors import CatalogStale
+from controllers.openapi.auth import loaders
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.pipelines import (
     _PIPELINES,
@@ -34,7 +35,6 @@ from controllers.openapi.auth.subjects import _SUBJECT_CLASSES, AccountSubject, 
 from enums import DeploymentEdition
 from libs.oauth_bearer import AuthContext, try_get_auth_ctx
 from machinery.context import RequestContext
-from services.account_service import AccountService, TenantService
 from services.app_service import AppService
 from services.enterprise.enterprise_service import WebAppAccessMode
 
@@ -199,8 +199,16 @@ def test_the_requirements_that_share_a_datum_fetch_it_once(
     with (
         app.test_request_context(f"/openapi/v1/apps/{APP_ID}", headers=_current_catalog(app)),
         patch.object(AppService, "get_app_by_id", wraps=AppService.get_app_by_id) as app_fetch,
-        patch.object(TenantService, "get_tenant_by_id", wraps=TenantService.get_tenant_by_id) as workspace_fetch,
-        patch.object(AccountService, "get_account_by_id", wraps=AccountService.get_account_by_id) as caller_fetch,
+        patch.object(
+            loaders.application_services().workspaces.identity,
+            "get_workspace",
+            wraps=loaders.application_services().workspaces.identity.get_workspace,
+        ) as workspace_fetch,
+        patch.object(
+            loaders.application_services().accounts.identity,
+            "get_account_by_id",
+            wraps=loaders.application_services().accounts.identity.get_account_by_id,
+        ) as caller_fetch,
     ):
         _run(
             AccountPipeline(),

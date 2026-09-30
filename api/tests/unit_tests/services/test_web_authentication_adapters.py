@@ -10,7 +10,7 @@ from enums import WebAppAccessMode
 from services.entities.auth_audit_entities import LoginFailureReason
 from services.entities.authentication_entities import WebAppSessionRecord
 from services.web_authentication_adapters import (
-    AccountServiceWebAuthenticationSecurityGateway,
+    AccountWebAuthenticationSecurityGateway,
     LoggingWebAuthenticationAuditGateway,
     PassportWebAppSessionGateway,
     TokenManagerWebAuthenticationGateway,
@@ -221,11 +221,15 @@ def test_generate_code_uses_six_random_digits() -> None:
     randbelow.assert_called_with(10)
 
 
-def test_security_gateway_delegates_rate_limits_to_account_service() -> None:
-    account_service = MagicMock()
-    account_service.is_email_send_ip_limit.return_value = 1
-    account_service.is_forgot_password_error_rate_limit.return_value = 0
-    gateway = AccountServiceWebAuthenticationSecurityGateway(account_service=account_service)
+def test_security_gateway_delegates_to_account_security_gateways() -> None:
+    password_security = MagicMock()
+    login_security = MagicMock()
+    password_security.is_ip_limited.return_value = True
+    password_security.is_verification_limited.return_value = False
+    gateway = AccountWebAuthenticationSecurityGateway(
+        password_security=password_security,
+        login_security=login_security,
+    )
 
     assert gateway.is_email_send_ip_limited("203.0.113.1") is True
     assert gateway.is_password_reset_verification_limited("user@example.com") is False
@@ -233,11 +237,11 @@ def test_security_gateway_delegates_rate_limits_to_account_service() -> None:
     gateway.reset_password_reset_verification_failures("user@example.com")
     gateway.reset_login_failures("user@example.com")
 
-    account_service.is_email_send_ip_limit.assert_called_once_with("203.0.113.1")
-    account_service.is_forgot_password_error_rate_limit.assert_called_once_with("user@example.com")
-    account_service.add_forgot_password_error_rate_limit.assert_called_once_with("user@example.com")
-    account_service.reset_forgot_password_error_rate_limit.assert_called_once_with("user@example.com")
-    account_service.reset_login_error_rate_limit.assert_called_once_with("user@example.com")
+    password_security.is_ip_limited.assert_called_once_with("203.0.113.1")
+    password_security.is_verification_limited.assert_called_once_with("user@example.com")
+    password_security.record_verification_failure.assert_called_once_with("user@example.com")
+    password_security.reset_verification_failures.assert_called_once_with("user@example.com")
+    login_security.reset_login_failures.assert_called_once_with("user@example.com")
 
 
 @dataclass

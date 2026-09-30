@@ -7,7 +7,8 @@ from typing import Any, override
 
 from libs.helper import RateLimiter, TokenManager
 from libs.passport import PassportService
-from services.account_service import AccountService
+from services.account.forgot_password_service import ForgotPasswordSecurityGateway
+from services.account.login_service import ConsoleAuthSecurityGateway
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.auth_audit_entities import LoginFailureReason
 from services.entities.authentication_entities import StoredAuthenticationToken
@@ -136,29 +137,35 @@ class TokenManagerWebAuthenticationGateway(WebAuthenticationTokenGateway):
         )
 
 
-class AccountServiceWebAuthenticationSecurityGateway(WebAuthenticationSecurityGateway):
-    def __init__(self, *, account_service: type[AccountService]) -> None:
-        self._account_service = account_service
+class AccountWebAuthenticationSecurityGateway(WebAuthenticationSecurityGateway):
+    def __init__(
+        self,
+        *,
+        password_security: ForgotPasswordSecurityGateway,
+        login_security: ConsoleAuthSecurityGateway,
+    ) -> None:
+        self._password_security = password_security
+        self._login_security = login_security
 
     @override
     def is_email_send_ip_limited(self, ip_address: str) -> bool:
-        return bool(self._account_service.is_email_send_ip_limit(ip_address))
+        return self._password_security.is_ip_limited(ip_address)
 
     @override
     def is_password_reset_verification_limited(self, email: str) -> bool:
-        return bool(self._account_service.is_forgot_password_error_rate_limit(email))
+        return self._password_security.is_verification_limited(email)
 
     @override
     def record_password_reset_verification_failure(self, email: str) -> None:
-        self._account_service.add_forgot_password_error_rate_limit(email)
+        self._password_security.record_verification_failure(email)
 
     @override
     def reset_password_reset_verification_failures(self, email: str) -> None:
-        self._account_service.reset_forgot_password_error_rate_limit(email)
+        self._password_security.reset_verification_failures(email)
 
     @override
     def reset_login_failures(self, email: str) -> None:
-        self._account_service.reset_login_error_rate_limit(email)
+        self._login_security.reset_login_failures(email)
 
 
 class PassportWebAppSessionGateway(WebAppSessionGateway):
