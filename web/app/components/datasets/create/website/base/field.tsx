@@ -1,8 +1,8 @@
 'use client'
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import * as React from 'react'
-import { Infotip } from '@/app/components/base/infotip'
 import Input from './text-input'
 
 type Props = Readonly<{
@@ -28,10 +28,13 @@ const Field: FC<Props> = ({
   isNumber = false,
   tooltip,
 }) => {
+  const labelId = React.useId()
+
   return (
     <div className={cn(className)}>
       <div className="flex py-1.75">
         <div
+          id={labelId}
           className={cn(
             labelClassName,
             'flex h-4 items-center text-[13px] font-semibold text-text-secondary',
@@ -43,8 +46,11 @@ const Field: FC<Props> = ({
           <span className="ml-0.5 text-xs font-semibold text-text-destructive">*</span>
         )}
         {tooltip && (
-          <Infotip aria-label={tooltip} className="ml-0.5" popupClassName="w-[200px]">
-            {tooltip}
+          <Infotip>
+            <InfotipTrigger aria-labelledby={labelId} className="ml-0.5" />
+            <InfotipContent aria-labelledby={labelId} className="w-50">
+              {tooltip}
+            </InfotipContent>
           </Infotip>
         )}
       </div>

@@ -16,7 +16,7 @@ from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dataset import Dataset, DatasetPermissionEnum, Document, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, SegmentStatus
-from services.dataset_service import SegmentService
+from services.knowledge.dataset_service import SegmentService
 
 
 class SegmentServiceTestDataFactory:
@@ -54,7 +54,7 @@ class SegmentServiceTestDataFactory:
         db_session_with_containers.add(join)
         db_session_with_containers.commit()
 
-        account.current_tenant = tenant
+        account.set_current_tenant_with_session(tenant, session=db_session_with_containers)
         return account, tenant
 
     @staticmethod

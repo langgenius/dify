@@ -1,7 +1,7 @@
 > [!IMPORTANT]
 >
 > 1. Make sure you have read our [contribution guidelines](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md)
-> 1. Ensure there is an associated issue and you have been assigned to it
+> 1. Ensure there is an associated issue
 > 1. Use the correct syntax to link this PR: `Fixes #<issue number>`.
 
 ## Summary

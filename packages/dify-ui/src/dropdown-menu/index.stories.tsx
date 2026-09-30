@@ -19,18 +19,20 @@ import {
   DropdownMenuTrigger,
 } from '.'
 
-const TriggerButton = ({ label = 'Open Menu' }: { label?: string }) => (
-  <DropdownMenuTrigger
-    render={
-      <button
-        type="button"
-        className="rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-1.5 text-sm text-text-secondary shadow-xs outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-      />
-    }
-  >
-    {label}
-  </DropdownMenuTrigger>
-)
+function TriggerButton({ label = 'Open Menu' }: { label?: string }) {
+  return (
+    <DropdownMenuTrigger
+      render={
+        <button
+          type="button"
+          className="rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-1.5 text-sm text-text-secondary shadow-xs outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+        />
+      }
+    >
+      {label}
+    </DropdownMenuTrigger>
+  )
+}
 
 const meta = {
   title: 'Base/UI/DropdownMenu',
@@ -140,7 +142,7 @@ export const WithSubmenu: Story = {
 
 type Density = 'compact' | 'comfortable' | 'spacious'
 
-const WithRadioItemsDemo = () => {
+function WithRadioItemsDemo() {
   const [density, setDensity] = React.useState<Density>('comfortable')
 
   return (
@@ -170,7 +172,7 @@ export const WithRadioItems: Story = {
   render: () => <WithRadioItemsDemo />,
 }
 
-const WithCheckboxItemsDemo = () => {
+function WithCheckboxItemsDemo() {
   const [showToolbar, setShowToolbar] = React.useState(true)
   const [showSidebar, setShowSidebar] = React.useState(false)
   const [showStatusBar, setShowStatusBar] = React.useState(true)
@@ -265,7 +267,7 @@ export const WithLinkItems: Story = {
 
 type SortOrder = 'newest' | 'oldest' | 'name'
 
-const ComplexDemo = () => {
+function ComplexDemo() {
   const [sortOrder, setSortOrder] = React.useState<SortOrder>('newest')
   const [showArchived, setShowArchived] = React.useState(false)
 

@@ -483,13 +483,13 @@ describe('ToolPicker', () => {
     expect(trigger).toHaveFocus()
   })
 
-  it('should link the find-more footer to the marketplace tool category', () => {
+  it('should link the find-more footer to the marketplace tool category', async () => {
     renderToolPicker({
       isShow: true,
       selectedTools: [],
     })
 
-    const footerLink = screen.getByRole('link', { name: /plugin\.findMoreInMarketplace/i })
+    const footerLink = await screen.findByRole('link', { name: /plugin\.findMoreInMarketplace/i })
     expect(footerLink.closest('footer')).toBeInTheDocument()
     expect(footerLink).toHaveAttribute('href', 'https://marketplace.test/plugins/tool')
   })
@@ -507,7 +507,7 @@ describe('ToolPicker', () => {
     })
 
     expect(screen.queryByText('Built-in Provider')).not.toBeInTheDocument()
-    expect(screen.getByText('Custom Provider')).toBeInTheDocument()
+    expect(await screen.findByText('Custom Provider')).toBeInTheDocument()
     expect(screen.getByText('MCP Provider')).toBeInTheDocument()
 
     await user.type(screen.getByRole('searchbox', { name: 'plugin.searchTools' }), 'weather')
@@ -612,7 +612,7 @@ describe('ToolPicker', () => {
 
       renderToolPicker({ isShow: true, scope, selectedTools: [] })
 
-      expect(screen.getByText(visibleProvider)).toBeInTheDocument()
+      expect(await screen.findByText(visibleProvider)).toBeInTheDocument()
       expect(screen.queryByText(hiddenProvider)).not.toBeInTheDocument()
       expect(screen.queryByText('Built-in Provider')).not.toBeInTheDocument()
 

@@ -14,7 +14,7 @@ type Props = Readonly<{
 }>
 
 const BoolInput: FC<Props> = ({ value, onChange, name, required, readonly }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const handleChange = useCallback(
     (checked: boolean) => {
       onChange(checked)

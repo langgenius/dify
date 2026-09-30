@@ -76,7 +76,7 @@ export const useSegmentListData = (
     onCloseSegmentDetail,
     clearSelection,
   } = options
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetDocuments'])
   const pathname = usePathname()
   const { eventEmitter } = useEventEmitterContextContext()
   const queryClient = useQueryClient()

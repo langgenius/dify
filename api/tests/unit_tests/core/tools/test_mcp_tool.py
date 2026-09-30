@@ -42,7 +42,7 @@ def _build_mcp_tool(*, with_output_schema: bool = True) -> MCPTool:
         tenant_id="tenant-1",
         icon="icon.svg",
         server_url="https://mcp.example.com",
-        provider_id="provider-id",
+        server_identifier="mcp_server",
         headers={"x-auth": "token"},
     )
 
@@ -54,7 +54,7 @@ def test_mcp_tool_provider_type_and_fork_runtime():
     forked = tool.fork_tool_runtime(ToolRuntime(tenant_id="tenant-2"))
     assert isinstance(forked, MCPTool)
     assert forked.runtime.tenant_id == "tenant-2"
-    assert forked.provider_id == "provider-id"
+    assert forked.server_identifier == "mcp_server"
 
 
 def test_mcp_tool_text_and_json_processing_helpers():
@@ -177,7 +177,7 @@ def _build_forwarding_tool(*, mode: str = "idp_token") -> MCPTool:
         tenant_id="tenant-1",
         icon="icon.svg",
         server_url="https://mcp.example.com/mcp/",
-        provider_id="provider-id",
+        server_identifier="mcp_server",
         identity_mode=mode,
     )
 

@@ -46,7 +46,7 @@ const WorkflowVariableBlockComponent = ({
   availableVariables,
   getVarType,
 }: WorkflowVariableBlockComponentProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const [editor] = useLexicalComposerContext()
   const [ref, isSelected] = useSelectOrDelete(nodeKey, DELETE_WORKFLOW_VARIABLE_BLOCK_COMMAND)
   const variablesLength = variables.length

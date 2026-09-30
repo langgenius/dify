@@ -23,6 +23,7 @@
   "stepOne.uploader.button": "Перетягніть файли або папки або",
   "stepOne.uploader.buttonSingleFile": "Перетягніть файл або",
   "stepOne.uploader.change": "Змінити",
+  "stepOne.uploader.completed": "Завантаження завершено",
   "stepOne.uploader.failed": "Завантаження не вдалося",
   "stepOne.uploader.tip": "Підтримуються {{supportTypes}}. Максимум {{batchCount}} файлів за раз, кожен до {{size}} МБ.",
   "stepOne.uploader.tipWithTotalLimit": "Підтримуються {{supportTypes}}. Максимум {{batchCount}} файлів за раз, кожен до {{size}} МБ. Загалом максимум {{totalCount}} файлів.",

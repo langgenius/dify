@@ -44,7 +44,7 @@ const normalizeFormType = (type: string): FormTypeEnum => {
 }
 
 export const ManualEditModal = ({ onClose, subscription, pluginDetail }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'pluginTrigger'])
   const detail = usePluginStore((state) => state.detail)
   const { refetch } = useSubscriptionList()
 

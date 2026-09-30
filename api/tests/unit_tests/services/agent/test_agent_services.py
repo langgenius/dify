@@ -1143,6 +1143,8 @@ def test_repeated_publish_reuses_normal_draft_home_without_creating_resources(
         account_id="account-1",
     )
 
+    assert first["publication_kind"] == "first"
+    assert second["publication_kind"] == "update"
     assert first["active_config_snapshot_id"] == "version-2"
     assert second["active_config_snapshot_id"] == "version-3"
     assert published_homes == ["home-1", "home-1"]
@@ -2648,7 +2650,18 @@ def test_node_job_only_updates_inline_agent_soul(monkeypatch: pytest.MonkeyPatch
         binding_type=WorkflowAgentBindingType.INLINE_AGENT,
         agent_id="inline-agent-1",
         current_snapshot_id="inline-version-1",
+        node_job_config=WorkflowNodeJobConfig.model_validate(
+            {
+                "workflow_prompt": "use prior output",
+                "declared_outputs": [{"name": "summary", "type": "string"}],
+                "output_routes": {
+                    "enabled": True,
+                    "routes": [{"id": "accepted", "name": "Accept"}, {"id": "rejected", "name": "Reject"}],
+                },
+            }
+        ),
     )
+    original_node_job = binding.node_job_config_dict
     payload = ComposerSavePayload.model_validate(
         {
             "variant": ComposerVariant.WORKFLOW.value,
@@ -2661,7 +2674,6 @@ def test_node_job_only_updates_inline_agent_soul(monkeypatch: pytest.MonkeyPatch
                 },
                 "prompt": {"system_prompt": "new"},
             },
-            "node_job": {"workflow_prompt": "use prior output"},
         }
     )
 
@@ -2677,7 +2689,7 @@ def test_node_job_only_updates_inline_agent_soul(monkeypatch: pytest.MonkeyPatch
     )
 
     assert updated_binding.current_snapshot_id == "inline-version-2"
-    assert updated_binding.node_job_config_dict["workflow_prompt"] == "use prior output"
+    assert updated_binding.node_job_config_dict == original_node_job
     assert updated_binding.updated_by == "account-1"
     assert inline_agent.active_config_snapshot_id == "inline-version-2"
     assert inline_agent.active_config_has_model is True
@@ -6738,7 +6750,7 @@ def test_dataset_rows_filters_malformed_ids(monkeypatch: pytest.MonkeyPatch, sql
         captured["ids"] = ids
         return [], 0
 
-    import services.dataset_service as dataset_service_module
+    import services.knowledge.dataset_service as dataset_service_module
     from services.agent.knowledge_datasets import get_tenant_knowledge_dataset_rows
 
     monkeypatch.setattr(dataset_service_module.DatasetService, "get_datasets_by_ids", fake_get_datasets_by_ids)
@@ -6767,7 +6779,7 @@ def test_composer_save_rejects_malformed_knowledge_dataset_ids(
         captured["tenant_id"] = tenant_id
         return [], 0
 
-    import services.dataset_service as dataset_service_module
+    import services.knowledge.dataset_service as dataset_service_module
 
     monkeypatch.setattr(dataset_service_module.DatasetService, "get_datasets_by_ids", fake_get_datasets_by_ids)
 
@@ -6806,7 +6818,7 @@ def test_composer_save_rejects_missing_or_out_of_scope_knowledge_datasets(
         captured["tenant_id"] = tenant_id
         return [], 0
 
-    import services.dataset_service as dataset_service_module
+    import services.knowledge.dataset_service as dataset_service_module
 
     monkeypatch.setattr(dataset_service_module.DatasetService, "get_datasets_by_ids", fake_get_datasets_by_ids)
 
@@ -6865,7 +6877,7 @@ def test_save_agent_composer_allows_incomplete_knowledge_draft(
 
     event.listen(session, "after_flush", count_flush)
 
-    import services.dataset_service as dataset_service_module
+    import services.knowledge.dataset_service as dataset_service_module
 
     monkeypatch.setattr(
         dataset_service_module.DatasetService,
@@ -6991,3 +7003,40 @@ def test_resolve_workflow_node_agent_id_degrades_without_workflow_or_binding(
         AgentComposerService.resolve_workflow_node_agent_id(session=session, tenant_id="t", app_id="a", node_id="n")
         == "agent-7"
     )
+
+
+def test_save_as_new_agent_preserves_omitted_node_job(monkeypatch: pytest.MonkeyPatch):
+    job = WorkflowNodeJobConfig.model_validate(
+        {
+            "workflow_prompt": "Keep this task",
+            "output_routes": {
+                "enabled": True,
+                "routes": [{"id": "accepted", "name": "Accept"}, {"id": "rejected", "name": "Reject"}],
+            },
+        }
+    )
+    binding = WorkflowAgentNodeBinding(agent_id="old-agent", current_snapshot_id="old-snapshot", node_job_config=job)
+    monkeypatch.setattr(
+        AgentComposerService,
+        "_create_roster_agent_for_composer",
+        lambda **kwargs: Agent(id="new-agent", active_config_snapshot_id="new-snapshot"),
+    )
+    monkeypatch.setattr(
+        "services.agent.composer_service.SkillManagementService.copy_agent_bindings", lambda self, **kwargs: None
+    )
+    result = AgentComposerService._save_as_new_agent(
+        session=MagicMock(spec=Session),
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_id="workflow-1",
+        node_id="node-1",
+        account_id="account-1",
+        binding=binding,
+        payload=ComposerSavePayload(
+            variant=ComposerVariant.WORKFLOW,
+            save_strategy=ComposerSaveStrategy.SAVE_AS_NEW_AGENT,
+            agent_soul=AgentSoulConfig(),
+        ),
+    )
+    assert result.agent_id == "new-agent"
+    assert result.node_job_config_dict == job.model_dump(mode="json")

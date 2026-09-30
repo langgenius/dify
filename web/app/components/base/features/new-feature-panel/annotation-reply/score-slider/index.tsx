@@ -27,7 +27,7 @@ const SCORE_MIN = 0
 const SCORE_MAX = 100
 
 const ScoreSlider: FC<Props> = ({ className, value, onChange }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   const safeValue = clamp(value, SCORE_MIN, SCORE_MAX)
 
   return (

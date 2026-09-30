@@ -61,7 +61,7 @@ function SnippetDSLConfirmDialog({
   onCancel: () => void
   onConfirm: MouseEventHandler
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'snippet'])
 
   return (
     <AlertDialog
@@ -107,7 +107,7 @@ function SnippetDSLConfirmDialog({
 
 function ImportSnippetDSLDialog({ isOpen, onClose }: ImportSnippetDSLDialogProps) {
   const dslUrlInputId = useId()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'snippet'])
   const { push } = useRouter()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canCreateAndModifySnippet = canCreateAndModifySnippets(workspacePermissionKeys)

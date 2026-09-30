@@ -10,7 +10,7 @@ type PermissionFieldProps = {
 }
 
 const PermissionField = ({ value, onChange, readonly = false }: PermissionFieldProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['permission'])
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2">

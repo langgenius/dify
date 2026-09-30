@@ -246,7 +246,6 @@ class ToolTransformService:
     @staticmethod
     def mcp_provider_to_user_provider(
         db_provider: MCPToolProvider,
-        for_list: bool = False,
         user_name: str | None = None,
         include_sensitive: bool = True,
     ) -> ToolProviderApiEntity:
@@ -266,7 +265,7 @@ class ToolTransformService:
         except (ValidationError, ValueError):
             mcp_tools = []
         # Add additional fields specific to the transform
-        response["id"] = db_provider.server_identifier if not for_list else db_provider.id
+        response["id"] = db_provider.id
         response["tools"] = ToolTransformService.mcp_tool_to_user_tool(db_provider, mcp_tools, user_name=user_name)
         response["server_identifier"] = db_provider.server_identifier
 
@@ -292,7 +291,10 @@ class ToolTransformService:
             ToolApiEntity(
                 author=user_name or "Anonymous",
                 name=tool.name,
-                label=I18nObject(en_US=tool.name, zh_Hans=tool.name),
+                # Prefer the server-provided human-readable title and fall back
+                # to the programmatic name when the server omitted the title
+                # or returned ``title: null`` (e.g. Exa's MCP server).
+                label=I18nObject(en_US=tool.title or tool.name, zh_Hans=tool.title or tool.name),
                 description=I18nObject(en_US=tool.description or "", zh_Hans=tool.description or ""),
                 parameters=ToolTransformService.convert_mcp_schema_to_parameter(tool.inputSchema),
                 labels=[],

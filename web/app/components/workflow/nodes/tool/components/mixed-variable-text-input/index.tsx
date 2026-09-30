@@ -27,7 +27,7 @@ const MixedVariableTextInput = ({
   onManageInputField,
   disableVariableInsertion = false,
 }: MixedVariableTextInputProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const controlPromptEditorRerenderKey = useStore((s) => s.controlPromptEditorRerenderKey)
 
   return (

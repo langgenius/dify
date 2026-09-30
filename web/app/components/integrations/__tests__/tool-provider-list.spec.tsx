@@ -513,7 +513,7 @@ describe('ProviderList', () => {
       renderProviderList()
       const toolbar = screen.getByRole('searchbox').closest('.bg-components-panel-bg')
 
-      expect(screen.getByRole('region', { name: 'common.menus.tools' })).toBeInTheDocument()
+      expect(screen.getByRole('region', { name: 'navigation.menus.tools' })).toBeInTheDocument()
       expect(toolbar).toHaveClass('px-12', 'pt-2', 'pb-0', 'bg-components-panel-bg')
       expect(toolbar).toHaveClass('max-w-[1600px]')
       expect(toolbar).not.toHaveClass('sticky')
@@ -531,7 +531,7 @@ describe('ProviderList', () => {
       renderProviderList(undefined, 'builtin', 'compact')
       const toolbar = screen.getByRole('searchbox').closest('.bg-components-panel-bg')
 
-      expect(screen.getByRole('region', { name: 'common.menus.tools' })).toBeInTheDocument()
+      expect(screen.getByRole('region', { name: 'navigation.menus.tools' })).toBeInTheDocument()
       expect(toolbar).toHaveClass('px-6', 'pt-2', 'pb-0', 'bg-components-panel-bg')
       expect(toolbar).toHaveClass('max-w-[1600px]')
       expect(toolbar).not.toHaveClass('sticky')
@@ -1121,7 +1121,7 @@ describe('ProviderList', () => {
       mockEnableMarketplace = true
       renderProviderList()
       const scrollContainer = screen.getByRole('region', {
-        name: 'common.menus.tools',
+        name: 'navigation.menus.tools',
       }) as HTMLDivElement
       fireEvent.scroll(scrollContainer)
       expect(mockHandleScroll).toHaveBeenCalled()
@@ -1132,7 +1132,7 @@ describe('ProviderList', () => {
       renderProviderList()
       expect(screen.getByTestId('marketplace-arrow')).toHaveTextContent('arrow-visible')
       const scrollContainer = screen.getByRole('region', {
-        name: 'common.menus.tools',
+        name: 'navigation.menus.tools',
       }) as HTMLDivElement
       fireEvent.scroll(scrollContainer)
       expect(screen.getByTestId('marketplace-arrow')).toHaveTextContent('arrow-hidden')

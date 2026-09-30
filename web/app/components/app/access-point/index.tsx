@@ -53,7 +53,7 @@ function AccessPointContent({
   canReleaseAndVersion,
   showEnvironmentTabs,
 }: AccessPointContentProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'deployments', 'workflow'])
   const environments = useAtomValue(inUseAppEnvironmentsAtom)
   const [queryStates, setQueryStates] = useQueryStates(accessPointQueryStates)
   const { accessPoint: highlightedAccessPoint, environment } = queryStates
@@ -135,7 +135,6 @@ function AccessPointContent({
                 appId={appId}
                 environmentId={selectedEnvironment}
                 canManageAccessPoint={canManageAccessPoint}
-                canReleaseAndVersion={canReleaseAndVersion}
                 highlightedAccessPoint={selectedHighlightedAccessPoint}
               />
             )}

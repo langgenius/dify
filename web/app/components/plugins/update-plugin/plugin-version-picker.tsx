@@ -17,6 +17,7 @@ type Props = Readonly<{
   pluginID: string
   currentVersion: string
   trigger: (open: boolean) => React.ReactNode
+  triggerAccessibleName?: string
   sideOffset?: number
   alignOffset?: number
   onSelect: ({
@@ -37,11 +38,12 @@ const PluginVersionPicker: FC<Props> = ({
   pluginID,
   currentVersion,
   trigger,
+  triggerAccessibleName,
   sideOffset = 4,
   alignOffset = 0,
   onSelect,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appLog', 'common', 'plugin'])
   const format = t(($) => $.dateTimeFormat, { ns: 'appLog' }).split(' ')[0]
   const { formatDate } = useTimestamp()
 
@@ -77,6 +79,7 @@ const PluginVersionPicker: FC<Props> = ({
           <button
             {...props}
             type="button"
+            aria-label={triggerAccessibleName}
             className={cn(
               'inline-flex cursor-pointer items-center data-disabled:cursor-default',
               props.className,

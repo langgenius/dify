@@ -44,7 +44,7 @@ type CloudPlanItemProps = {
 export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemProps) {
   const currentPlan = billing?.currentPlan
   const isEducationDiscountEligible = billing?.isEducationDiscountEligible
-  const { t } = useTranslation()
+  const { t } = useTranslation(['billing', 'common', 'education'])
   const canManageBilling = useAtomValue(isCurrentWorkspaceManagerAtom)
   const [isPlanActionPending, setIsPlanActionPending] = React.useState(false)
   const isYearly = billingInterval === 'year'

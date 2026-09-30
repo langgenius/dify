@@ -13,6 +13,8 @@ domain value type through its public API.
 - [`Autocomplete`] accepts free-form text with optional suggestions.
 - [`Combobox`] selects and remembers one or more values from a searchable collection.
 - [`Select`] chooses from a closed, scannable list without text entry.
+- [Date and time pickers] select civil dates, wall times or instants. Their fixed value models
+  do not use collection generics; the family guide owns anatomy and commit semantics.
 
 Multiple-selection comboboxes follow the Base UI chips composition: chips and the input share the
 input group, chips wrap, and the group grows vertically.
@@ -149,6 +151,7 @@ current result window, or provide an ID-only label fallback.
 `CheckboxGroup` follows Base UI and uses `string[]`. Model stronger business ID distinctions at
 the domain boundary unless the upstream primitive contract changes.
 
+[Date and time pickers]: ../src/date-time/README.md
 [`Autocomplete`]: https://base-ui.com/react/components/autocomplete
 [`Combobox`]: https://base-ui.com/react/components/combobox
 [`RadioGroup`]: https://base-ui.com/react/components/radio

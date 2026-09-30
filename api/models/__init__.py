@@ -30,6 +30,7 @@ from .agent import (
     WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
+from .agent_sandbox_usage import AgentSandboxExecution, AgentSandboxUsageEvent
 from .api_based_extension import APIBasedExtension, APIBasedExtensionPoint
 from .comment import (
     WorkflowComment,
@@ -171,6 +172,8 @@ __all__ = [
     "AgentHomeSnapshot",
     "AgentIconType",
     "AgentKind",
+    "AgentSandboxExecution",
+    "AgentSandboxUsageEvent",
     "AgentScope",
     "AgentSkillBinding",
     "AgentSource",

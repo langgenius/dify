@@ -91,7 +91,7 @@ export const useOpenLink = () => {
   }, [editor, noteEditorStore])
 }
 export const useLink = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const [editor] = useLexicalComposerContext()
   const noteEditorStore = useNoteEditorStore()
   const handleSaveLink = useCallback(

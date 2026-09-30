@@ -1,15 +1,29 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import EmbeddedMarketplaceSearch from '../embedded-marketplace-search'
 
-const { debounceState, mockPluginSearch, mockTemplateSearch } = vi.hoisted(() => ({
-  debounceState: { useRealDebounce: false },
-  mockPluginSearch: vi.fn(),
-  mockTemplateSearch: vi.fn(),
+const deploymentState = vi.hoisted(() => ({
+  deploymentEdition: 'CLOUD' as 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE',
 }))
+
+vi.mock('@/features/system-features/state', async () => {
+  const { createSystemFeaturesStateModuleMock } = await import('@/test/console/state-fixture')
+  return createSystemFeaturesStateModuleMock(() => deploymentState)
+})
+
+const { debounceState, mockPluginSearch, mockTemplateSearch, mockCheckInstalled } = vi.hoisted(
+  () => ({
+    debounceState: { useRealDebounce: false },
+    mockCheckInstalled: vi.fn((_options: { pluginIds: string[]; enabled: boolean }) => ({
+      installedInfo: {},
+    })),
+    mockPluginSearch: vi.fn(),
+    mockTemplateSearch: vi.fn(),
+  }),
+)
 
 vi.mock('ahooks', async (importOriginal) => {
   const original = await importOriginal<typeof import('ahooks')>()
@@ -60,7 +74,7 @@ vi.mock('@/service/marketplace', () => ({
 }))
 
 vi.mock('@/app/components/plugins/install-plugin/hooks/use-check-installed', () => ({
-  default: () => ({ installedInfo: {} }),
+  default: mockCheckInstalled,
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -97,6 +111,7 @@ const renderSearch = () => {
 
 describe('EmbeddedMarketplaceSearch', () => {
   beforeEach(() => {
+    deploymentState.deploymentEdition = 'CLOUD'
     vi.clearAllMocks()
     debounceState.useRealDebounce = false
     queryClient = new QueryClient({
@@ -239,5 +254,85 @@ describe('EmbeddedMarketplaceSearch', () => {
       expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('q')).toBe('google')
     })
     expect(screen.queryByRole('dialog', { name: 'plugin-detail' })).not.toBeInTheDocument()
+  })
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  describe.each(['COMMUNITY', 'ENTERPRISE'] as const)('%s external search', (edition) => {
+    it.each([
+      ['plugin', 'mouse'],
+      ['plugin', 'keyboard'],
+      ['template', 'mouse'],
+      ['template', 'keyboard'],
+    ] as const)(
+      'opens one tab for a %s using %s without changing the catalog',
+      async (kind, interaction) => {
+        deploymentState.deploymentEdition = edition
+        const open = vi.spyOn(window, 'open').mockReturnValue(null)
+        mockPluginSearch.mockResolvedValue({
+          data: {
+            plugins:
+              kind === 'plugin'
+                ? [
+                    {
+                      type: 'plugin',
+                      org: 'langgenius',
+                      name: 'google-search',
+                      plugin_id: 'langgenius/google-search',
+                      label: { en_US: 'Google Search' },
+                      brief: {},
+                      category: 'tool',
+                    },
+                  ]
+                : [],
+            total: 1,
+          },
+        })
+        mockTemplateSearch.mockResolvedValue({
+          data: {
+            templates:
+              kind === 'template'
+                ? [
+                    {
+                      id: 'template-1',
+                      template_name: 'Legal Research Agent',
+                      publisher_unique_handle: 'dify',
+                      overview: '',
+                      usage_count: 1,
+                      categories: [],
+                      icon: '',
+                      icon_background: '',
+                      icon_file_key: '',
+                    },
+                  ]
+                : [],
+            total: 1,
+          },
+        })
+        const user = userEvent.setup()
+        const { onUrlUpdate } = renderSearch()
+        const input = screen.getByRole('combobox')
+        await user.type(input, 'search')
+        const option = await screen.findByRole('option')
+        if (interaction === 'mouse') await user.click(option)
+        else await user.keyboard('{ArrowDown}{Enter}')
+        expect(open).toHaveBeenCalledTimes(1)
+        const [href, target, features] = open.mock.calls[0]!
+        const url = new URL(String(href))
+        expect(url.origin).toBe('https://marketplace.dify.ai')
+        expect(url.pathname).toBe(
+          kind === 'plugin' ? '/plugin/langgenius/google-search' : '/template/dify/template-1',
+        )
+        expect(url.searchParams.get('source')).toBe(window.location.origin)
+        expect(target).toBe('_blank')
+        expect(features).toBe('noopener,noreferrer')
+        expect(input).toHaveValue('search')
+
+        expect(onUrlUpdate).not.toHaveBeenCalled()
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+        expect(mockCheckInstalled.mock.calls.every(([options]) => !options.enabled)).toBe(true)
+      },
+    )
   })
 })

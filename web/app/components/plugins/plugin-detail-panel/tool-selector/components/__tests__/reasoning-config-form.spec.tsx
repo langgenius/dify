@@ -5,8 +5,8 @@ import { fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { Type } from '@/app/components/workflow/nodes/llm/types'
-import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import ReasoningConfigForm from '../reasoning-config-form'
 
@@ -140,6 +140,31 @@ describe('ReasoningConfigForm', () => {
     vi.clearAllMocks()
   })
 
+  it('names date parameters from their field title and emits tool storage values', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    render(
+      <ReasoningConfigForm
+        value={{ field: { auto: 0, value: { type: VarKindType.constant, value: '2025-01-15' } } }}
+        onChange={onChange}
+        schemas={[
+          createSchema({
+            type: FormTypeEnum.date,
+            label: { en_US: 'Departure', zh_Hans: '出发日期' },
+          }),
+        ]}
+        nodeOutputVars={[]}
+        availableNodes={[]}
+        nodeId="node-1"
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: 'Departure Jan 15, 2025' }))
+    await user.click(await screen.findByRole('button', { name: /January 16th, 2025/ }))
+    expect(onChange).toHaveBeenCalledWith({
+      field: { auto: 0, value: { type: VarKindType.constant, value: '2025-01-16' } },
+    })
+  })
+
   it('should toggle automatic values for text fields', () => {
     const onChange = vi.fn()
 
@@ -259,7 +284,7 @@ describe('ReasoningConfigForm', () => {
     )
 
     fireEvent.click(
-      screen.getByRole('button', { name: 'workflow.nodes.agent.clickToViewParameterSchema' }),
+      screen.getByRole('button', { name: 'workflowAgent.nodes.agent.clickToViewParameterSchema' }),
     )
     expect(screen.getByTestId('schema-modal')).toHaveTextContent('Config')
     fireEvent.click(screen.getByTestId('close-schema'))

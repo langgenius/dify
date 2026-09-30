@@ -1,5 +1,4 @@
 import logging
-from datetime import UTC, datetime
 from io import BytesIO
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -19,6 +18,24 @@ from services.errors.app import QuotaExceededError
 from services.trigger import webhook_service as webhook_service_module
 from services.trigger.webhook_service import WebhookService
 from tests.unit_tests.model_factories import make_app, make_end_user, make_workflow
+
+
+class _EndUserServiceStub:
+    def __init__(self, result: EndUser | Exception) -> None:
+        self._result = result
+        self.calls: list[tuple[EndUserType, str, str, str | None]] = []
+
+    def get_or_create_end_user_by_type(
+        self,
+        type: EndUserType,
+        tenant_id: str,
+        app_id: str,
+        user_id: str | None = None,
+    ) -> EndUser:
+        self.calls.append((type, tenant_id, app_id, user_id))
+        if isinstance(self._result, Exception):
+            raise self._result
+        return self._result
 
 
 def _webhook_trigger(
@@ -108,13 +125,11 @@ class TestWebhookServiceLookup:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         target_workflow = _workflow()
-        target_workflow.created_at = datetime(2025, 1, 1, tzinfo=UTC).replace(tzinfo=None)
         tenant_decoy = _workflow(
             workflow_id="workflow-decoy",
             tenant_id="tenant-other",
             app_id="app-123",
         )
-        tenant_decoy.created_at = datetime(2026, 1, 1, tzinfo=UTC).replace(tzinfo=None)
         sqlite_session.add_all([_webhook_trigger(), target_workflow, tenant_decoy])
         sqlite_session.commit()
         monkeypatch.setattr(webhook_service_module, "db", SimpleNamespace(engine=sqlite_engine))
@@ -229,10 +244,6 @@ class TestWebhookServiceUnit:
 
         caplog.set_level(logging.INFO)
         with (
-            patch(
-                "services.trigger.webhook_service.EndUserService.get_or_create_end_user_by_type",
-                return_value=_end_user(),
-            ),
             patch("services.trigger.webhook_service.QuotaService.reserve", return_value=quota_charge),
             patch(
                 "services.trigger.webhook_service.AsyncWorkflowService.trigger_workflow_async",
@@ -244,6 +255,7 @@ class TestWebhookServiceUnit:
                     webhook_trigger,
                     {"body": {}, "headers": {}, "query_params": {}, "files": {}, "method": "POST"},
                     workflow,
+                    end_users=_EndUserServiceStub(_end_user()),
                 )
 
         assert exc_info.value is quota_error
@@ -276,18 +288,18 @@ class TestWebhookServiceUnit:
         }
 
         with (
-            patch.object(
-                webhook_service_module.EndUserService,
-                "get_or_create_end_user_by_type",
-                return_value=end_user,
-            ),
             patch.object(webhook_service_module.QuotaService, "reserve", return_value=quota_charge),
             patch.object(
                 webhook_service_module.AsyncWorkflowService,
                 "trigger_workflow_async",
             ) as mock_trigger,
         ):
-            WebhookService.trigger_workflow_execution(webhook_trigger, webhook_data, workflow)
+            WebhookService.trigger_workflow_execution(
+                webhook_trigger,
+                webhook_data,
+                workflow,
+                end_users=_EndUserServiceStub(end_user),
+            )
 
         call_session = mock_trigger.call_args.kwargs["session"]
         assert call_session.get_bind() is sqlite_engine
@@ -299,13 +311,13 @@ class TestWebhookServiceUnit:
         workflow = _workflow()
         webhook_data = {"method": "POST", "headers": {}, "query_params": {}, "body": {}, "files": {}}
 
-        with patch.object(
-            webhook_service_module.EndUserService,
-            "get_or_create_end_user_by_type",
-            side_effect=ValueError("Failed to create end user"),
-        ):
-            with pytest.raises(ValueError, match="Failed to create end user"):
-                WebhookService.trigger_workflow_execution(webhook_trigger, webhook_data, workflow)
+        with pytest.raises(ValueError, match="Failed to create end user"):
+            WebhookService.trigger_workflow_execution(
+                webhook_trigger,
+                webhook_data,
+                workflow,
+                end_users=_EndUserServiceStub(ValueError("Failed to create end user")),
+            )
 
     def test_extract_webhook_data_json(self):
         """Test webhook data extraction from JSON request."""

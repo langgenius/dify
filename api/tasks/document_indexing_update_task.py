@@ -6,7 +6,6 @@ from celery import shared_task
 from sqlalchemy import delete, select
 
 from core.db.session_factory import session_factory
-from core.indexing_runner import DocumentIsPausedError, IndexingRunner
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from extensions.ext_storage import storage
@@ -14,6 +13,9 @@ from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, Document, DocumentSegment, SegmentAttachmentBinding
 from models.enums import IndexingStatus
 from models.model import UploadFile
+from services.knowledge.indexing.adapters.execution import build_document_indexing_service
+from services.knowledge.indexing.errors import DocumentIsPausedError
+from services.knowledge.resource_scope import DatasetRef
 from tasks.generate_summary_index_task import generate_summary_index_task
 
 logger = logging.getLogger(__name__)
@@ -164,9 +166,10 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
                             storage_key,
                         )
 
-            indexing_runner = IndexingRunner()
-            indexing_runner.run([document], session)
+            indexing_service = build_document_indexing_service(session_factory=session_factory.get_session_maker())
+            document_refs = [DatasetRef(document.tenant_id, document.dataset_id).document(document.id)]
             session.commit()
+            indexing_service.run(document_refs)
 
             end_at = time.perf_counter()
             logger.info(click.style(f"update document: {document.id} latency: {end_at - start_at}", fg="green"))

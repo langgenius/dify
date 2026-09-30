@@ -23,6 +23,7 @@
   "stepOne.uploader.button": "Seret dan lepas file atau folder, atau",
   "stepOne.uploader.buttonSingleFile": "Seret dan lepas file, atau",
   "stepOne.uploader.change": "Ubah",
+  "stepOne.uploader.completed": "Unggahan selesai",
   "stepOne.uploader.failed": "Upload gagal",
   "stepOne.uploader.tip": "Mendukung {{supportTypes}}. Maksimal {{batchCount}} dalam satu batch dan {{size}} MB masing-masing.",
   "stepOne.uploader.tipWithTotalLimit": "Mendukung {{supportTypes}}. Maksimal {{batchCount}} dalam satu batch dan {{size}} MB masing-masing. Total maksimal {{totalCount}} file.",

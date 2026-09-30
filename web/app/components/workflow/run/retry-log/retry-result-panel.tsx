@@ -11,7 +11,7 @@ type Props = {
 }
 
 function RetryResultPanel({ list, onBack }: Props) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   return (
     <div>

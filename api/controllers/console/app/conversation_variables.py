@@ -132,6 +132,7 @@ class ConversationVariablesApi(Resource):
                             "created_at": row.created_at,
                             "updated_at": row.updated_at,
                             **row.to_variable().model_dump(),
+                            "id": row.id,
                         }
                     )
                     for row in rows

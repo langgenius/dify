@@ -23,14 +23,16 @@ import {
   fetchSuggestedQuestions,
   stopChatMessageResponding,
 } from '@/service/debug'
-import { canFindTool } from '@/utils'
+import { matchesProviderReference } from '@/utils/provider-reference'
 import { useConfigFromDebugContext, useFormattingChangedSubscription } from '../hooks'
 import { APP_CHAT_WITH_MULTIPLE_MODEL, APP_CHAT_WITH_MULTIPLE_MODEL_RESTART } from '../types'
+import { useDebugWithMultipleModelContext } from './context'
 
 type ChatItemProps = {
   modelAndParameter: ModelAndParameter
 }
 const ChatItem: FC<ChatItemProps> = ({ modelAndParameter }) => {
+  const { onOpenLog } = useDebugWithMultipleModelContext()
   const { data: userProfile } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile,
@@ -145,7 +147,7 @@ const ChatItem: FC<ChatItemProps> = ({ modelAndParameter }) => {
     const icons: Record<string, any> = {}
     modelConfig.agentConfig.tools?.forEach((item: any) => {
       icons[item.tool_name] = collectionList.find((collection: any) =>
-        canFindTool(collection.id, item.provider_id),
+        matchesProviderReference(collection, item.provider_id),
       )?.icon
     })
     return icons
@@ -164,10 +166,9 @@ const ChatItem: FC<ChatItemProps> = ({ modelAndParameter }) => {
       chatFooterClassName="p-4 pb-0"
       suggestedQuestions={suggestedQuestions}
       onSend={doSend}
-      showPromptLog
+      onOpenLog={onOpenLog}
       questionIcon={<Avatar avatar={userProfile.avatar_url} name={userProfile.name} size="xl" />}
       allToolIcons={allToolIcons}
-      hideLogModal
       noSpacing
     />
   )

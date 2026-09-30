@@ -13,7 +13,7 @@ import { resolveWebAppAddress } from '@/service/webapp-address'
 import { webAppLogout } from '@/service/webapp-auth'
 
 const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const updateAppInfo = useWebAppStore((s) => s.updateAppInfo)
   const updateAppParams = useWebAppStore((s) => s.updateAppParams)
   const updateWebAppMeta = useWebAppStore((s) => s.updateWebAppMeta)

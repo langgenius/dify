@@ -19,7 +19,7 @@ type Props = Readonly<{
 }>
 
 const ClearAllAnnotationsConfirmModal: FC<Props> = ({ isShow, onHide, onConfirm }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appAnnotation', 'common'])
   const title = t(($) => $['table.header.clearAllConfirm'], { ns: 'appAnnotation' })
 
   return (

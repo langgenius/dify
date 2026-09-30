@@ -7,7 +7,7 @@ const { mockReactMarkdownWrapper } = vi.hoisted(() => ({
   mockReactMarkdownWrapper: vi.fn(),
 }))
 
-vi.mock('@/next/dynamic', () => ({
+vi.mock('next/dynamic', () => ({
   default: () => {
     const MockStreamdownWrapper = (props: { latexContent: string }) => {
       mockReactMarkdownWrapper(props)
@@ -44,6 +44,26 @@ describe('Markdown', () => {
     render(<Markdown content="Hello World" />)
     expect(screen.getByTestId('react-markdown-wrapper'))!.toHaveTextContent('Hello World')
   })
+
+  it.each(['', ' \n ', '---', ' *** ', '___', '- - -'])(
+    'should leave empty or divider-only Markdown unrendered (%s)',
+    (content) => {
+      render(<Markdown content={content} />)
+
+      expect(screen.getByTestId('markdown-body')).toBeEmptyDOMElement()
+      expect(screen.queryByTestId('react-markdown-wrapper')).not.toBeInTheDocument()
+    },
+  )
+
+  it.each(['First\n\n---\n\nSecond', '    ---'])(
+    'should preserve meaningful Markdown containing divider characters (%s)',
+    (content) => {
+      render(<Markdown content={content} />)
+
+      expect(screen.getByTestId('react-markdown-wrapper')).toBeInTheDocument()
+      expect(getLastWrapperProps().latexContent).toBe(content)
+    },
+  )
 
   it('should preprocess think tags', () => {
     render(<Markdown content="<think>Thought</think>" />)

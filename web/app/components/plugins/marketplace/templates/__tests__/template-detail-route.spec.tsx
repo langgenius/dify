@@ -1,9 +1,19 @@
 import type { MarketplaceTemplate } from '@dify/contracts/marketplace'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { render } from '@/test/console/render'
 import { TemplateDetailRouteProvider } from '../template-detail-route'
 import { useOptionalTemplateDetailRoute } from '../use-optional-template-detail-route'
+
+const deploymentState = vi.hoisted(() => ({
+  deploymentEdition: 'CLOUD' as 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE',
+}))
+
+vi.mock('@/features/system-features/state', async () => {
+  const { createSystemFeaturesStateModuleMock } = await import('@/test/console/state-fixture')
+  return createSystemFeaturesStateModuleMock(() => deploymentState)
+})
 
 const id = 'c558a1fb-bb8c-4a5e-9404-d681c6659cf2'
 
@@ -53,6 +63,7 @@ function OpenButton() {
 
 describe('TemplateDetailRouteProvider', () => {
   beforeEach(() => {
+    deploymentState.deploymentEdition = 'CLOUD'
     window.history.replaceState(window.history.state, '', '/templates')
   })
 
@@ -101,4 +112,25 @@ describe('TemplateDetailRouteProvider', () => {
     await user.click(screen.getByRole('button', { name: 'Close' }))
     expect(window.location.pathname).toBe('/templates/marketing')
   })
+  it.each(['COMMUNITY', 'ENTERPRISE'] as const)(
+    'replaces a legacy %s template detail URL with its official detail',
+    (edition) => {
+      deploymentState.deploymentEdition = edition
+      window.history.replaceState(window.history.state, '', `/templates/dify/${id}`)
+      const replace = vi.spyOn(window.location, 'replace').mockImplementation(() => {})
+      render(
+        <TemplateDetailRouteProvider initialSelection={{ publisher: 'dify', id }}>
+          <span>catalog</span>
+        </TemplateDetailRouteProvider>,
+      )
+      expect(replace).toHaveBeenCalledOnce()
+      const url = new URL(replace.mock.calls[0]![0])
+      expect(url.origin).toBe('https://marketplace.dify.ai')
+      expect(url.pathname).toBe(`/template/dify/${id}`)
+      expect(url.searchParams.get('source')).toBe(window.location.origin)
+      expect(url.searchParams.has('view')).toBe(false)
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      replace.mockRestore()
+    },
+  )
 })

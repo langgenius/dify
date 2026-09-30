@@ -4,8 +4,6 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useClickAway } from 'ahooks'
 import * as React from 'react'
 import { useState } from 'react'
-import { ChevronSelectorVertical } from '@/app/components/base/icons/src/vender/line/arrows'
-import { Check } from '@/app/components/base/icons/src/vender/line/general'
 
 type Item = {
   value: string
@@ -14,7 +12,7 @@ type Item = {
 type Props = Readonly<{
   className?: string
   trigger?: React.JSX.Element
-  DropDownIcon?: any
+  dropdownIconClassName?: string
   noLeft?: boolean
   options: Item[]
   allOptions?: Item[]
@@ -32,7 +30,7 @@ type Props = Readonly<{
 const TypeSelector: FC<Props> = ({
   className,
   trigger,
-  DropDownIcon = ChevronSelectorVertical,
+  dropdownIconClassName = 'i-custom-vender-line-arrows-chevron-selector-vertical',
   noLeft,
   options: list,
   allOptions,
@@ -85,7 +83,7 @@ const TypeSelector: FC<Props> = ({
           >
             {!noValue ? item?.label : placeholder}
           </div>
-          {!readonly && <DropDownIcon className="size-3" />}
+          {!readonly && <span aria-hidden className={cn(dropdownIconClassName, 'size-3')} />}
         </div>
       )}
 
@@ -111,7 +109,10 @@ const TypeSelector: FC<Props> = ({
             >
               <div>{item.label}</div>
               {showChecked && item.value === value && (
-                <Check className="size-4 text-text-primary" />
+                <span
+                  aria-hidden
+                  className="i-custom-vender-line-general-check size-4 text-text-primary"
+                />
               )}
             </div>
           ))}

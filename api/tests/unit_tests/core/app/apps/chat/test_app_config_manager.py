@@ -1,6 +1,7 @@
 import json
 from unittest.mock import patch
 
+import pytest
 from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import EasyUIBasedAppModelConfigFrom, ModelConfigEntity, PromptTemplateEntity
@@ -87,11 +88,19 @@ class TestChatAppConfigManager:
 
         to_dict.assert_called_once_with(annotation_reply=annotation_reply)
 
+    def test_get_app_config_requires_annotation_reply_without_override(self):
+        with pytest.raises(ValueError, match="Annotation reply config is required"):
+            ChatAppConfigManager.get_app_config(
+                app_model=_app(),
+                app_model_config=_app_model_config(),
+                annotation_reply=None,
+            )
+
     def test_config_validate_filters_related_keys(self, unbound_session: Session):
         config = {"extra": 1}
 
         def _add_key(key, value):
-            def _inner(*args, **kwargs):
+            def _inner[**P](*args: P.args, **kwargs: P.kwargs):
                 config = args[-1]
                 config = {**config, key: value}
                 return config, [key]

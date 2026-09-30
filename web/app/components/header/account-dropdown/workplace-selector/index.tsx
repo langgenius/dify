@@ -39,7 +39,7 @@ export const WorkplaceSelectorContent = memo(
     workspaces,
     popupClassName = 'w-[280px] transition-none data-starting-style:scale-100 data-starting-style:opacity-100 data-ending-style:scale-100 data-ending-style:opacity-100',
   }: WorkplaceSelectorContentProps) => {
-    const { t } = useTranslation()
+    const { t } = useTranslation(['common'])
 
     return (
       <SelectContent className={popupClassName}>

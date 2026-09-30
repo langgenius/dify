@@ -64,7 +64,7 @@ export function PublisherContent({
   toolPublished,
   workflowToolAvailable = true,
 }: PublisherContentProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'workflow', 'workflowHistory'])
   const appDetail = useAppStore((state) => state.appDetail)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { formatTimeFromNow } = useFormatTimeFromNow()
@@ -95,7 +95,6 @@ export function PublisherContent({
     onClose: closePublisher,
     onPublish,
     onRestore,
-    publishDisabled,
     publishedAt,
     supportsMultiEnvironment,
   })
@@ -142,7 +141,7 @@ export function PublisherContent({
   const { app_base_url: appBaseURL = '', access_token: accessToken = '' } = appDetail?.site ?? {}
   const appURL = getPublisherAppUrl({
     appBaseUrl: appBaseURL,
-    accessToken,
+    accessToken: accessToken ?? '',
     mode: appDetail?.mode,
   })
   const shouldLoadUserCanAccessApp = Boolean(
@@ -170,7 +169,7 @@ export function PublisherContent({
     ? publish.publishedWorkflow
       ? toDeploymentVersion(
           publish.publishedWorkflow,
-          t(($) => $['versionHistory.defaultName'], { ns: 'workflow' }),
+          t(($) => $['versionHistory.defaultName'], { ns: 'workflowHistory' }),
           publish.publishedWorkflow.id,
         )
       : null
@@ -202,6 +201,7 @@ export function PublisherContent({
             handlePublish: publish.handlePublish,
             handleRestore: publish.handleRestore,
             isChatApp: publish.isChatApp,
+            isPublishing: publish.isPublishing,
             isWorkflowApp: publish.isWorkflowApp,
             multipleModelConfigs,
             onEditVersion: versionInfo.openEditor,

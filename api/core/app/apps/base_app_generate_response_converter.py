@@ -25,7 +25,7 @@ class AppGenerateResponseConverter[TBlockingResponse: AppBlockingResponse](ABC):
     def convert(
         cls, response: Union[AppBlockingResponse, Generator[AppStreamResponse, Any, None]], invoke_from: InvokeFrom
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], Any, None]:
-        if invoke_from in {InvokeFrom.DEBUGGER, InvokeFrom.SERVICE_API}:
+        if invoke_from in {InvokeFrom.DEBUGGER, InvokeFrom.SERVICE_API, InvokeFrom.OPENAPI}:
             if isinstance(response, AppBlockingResponse):
                 return cls.convert_blocking_full_response(cls._cast_blocking_response(response))
             else:

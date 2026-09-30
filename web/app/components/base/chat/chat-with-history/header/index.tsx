@@ -38,7 +38,7 @@ const Header = ({ toggleButtonRef }: { toggleButtonRef?: Ref<HTMLButtonElement> 
     handleSidebarCollapse,
     isResponding,
   } = useChatWithHistoryContext()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'layout', 'share'])
   const isSidebarCollapsed = sidebarCollapseState
 
   const isPin = pinnedConversationList.some((item) => item.id === currentConversationId)

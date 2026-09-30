@@ -25,7 +25,7 @@ import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { basePath } from '@/utils/var'
 
 function Splash({ children }: PropsWithChildren) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'share'])
   const shareCode = useWebAppStore((s) => s.shareCode)
   const webAppAccessMode = useWebAppStore((s) => s.webAppAccessMode)
   const embeddedUserId = useWebAppStore((s) => s.embeddedUserId)

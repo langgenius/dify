@@ -23,18 +23,22 @@ vi.mock('@/next/navigation', () => ({
 
 const mockConvertToWorkflow = vi.hoisted(() => vi.fn())
 const mockDeleteOriginalApp = vi.hoisted(() => vi.fn())
-const mockMutationState = vi.hoisted(() => ({ hookIndex: 0 }))
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-query')>()
 
   return {
     ...actual,
-    useMutation: () => {
-      const mutationIndex = mockMutationState.hookIndex++ % 2
-      return {
-        mutateAsync: mutationIndex === 0 ? mockConvertToWorkflow : mockDeleteOriginalApp,
-      }
+    useMutation: (options: Parameters<typeof actual.useMutation>[0]) => {
+      const key = JSON.stringify(options.mutationKey)
+      return actual.useMutation({
+        ...options,
+        ...(key.includes('convertToWorkflow')
+          ? { mutationFn: (input: unknown) => mockConvertToWorkflow(input) }
+          : key.includes('delete')
+            ? { mutationFn: (input: unknown) => mockDeleteOriginalApp(input) }
+            : {}),
+      })
     },
   }
 })
@@ -91,7 +95,7 @@ const createMockApp = (overrides: Partial<AppPartial> = {}): AppPartial => ({
   created_at: Date.now(),
   updated_at: Date.now(),
   tags: [],
-  access_mode: 'public_access',
+  access_mode: 'public',
   ...overrides,
 })
 
@@ -146,7 +150,6 @@ function render(ui: ReactElement) {
 describe('SwitchAppModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockMutationState.hookIndex = 0
     mockConvertToWorkflow.mockReset()
     mockDeleteOriginalApp.mockReset()
     // Spy on setAppDetail
@@ -296,13 +299,13 @@ describe('SwitchAppModal', () => {
 
       await user.click(screen.getByText('open-icon-picker'))
       await waitFor(() => {
-        expect(screen.getByPlaceholderText('common.operation.search')).toBeInTheDocument()
+        expect(screen.getByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
       })
 
-      await user.click(screen.getByRole('button', { name: '#E4FBCC' }))
+      await user.click(screen.getByRole('radio', { name: 'app.iconPicker.color.green' }))
       await user.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
       await waitFor(() => {
-        expect(screen.queryByPlaceholderText('common.operation.search')).not.toBeInTheDocument()
+        expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
       })
       await user.click(screen.getByRole('button', { name: 'app.switchStart' }))
 
@@ -313,7 +316,7 @@ describe('SwitchAppModal', () => {
             body: expect.objectContaining({
               icon_type: 'emoji',
               icon: '🚀',
-              icon_background: '#E4FBCC',
+              icon_background: '#F3FEE7',
             }),
           }),
         )
@@ -326,13 +329,13 @@ describe('SwitchAppModal', () => {
 
       await user.click(screen.getByText('open-icon-picker'))
       await waitFor(() => {
-        expect(screen.getByPlaceholderText('common.operation.search')).toBeInTheDocument()
+        expect(screen.getByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
       })
-      await user.click(screen.getByRole('button', { name: /iconPicker\.cancel/ }))
+      await user.keyboard('{Escape}')
       await waitFor(() => {
-        expect(screen.queryByPlaceholderText('common.operation.search')).not.toBeInTheDocument()
+        expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
       })
-      expect(screen.queryByPlaceholderText('common.operation.search')).not.toBeInTheDocument()
+      expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
 
       await user.click(screen.getByText('app.removeOriginal'))
       expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeInTheDocument()

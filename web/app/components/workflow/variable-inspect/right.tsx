@@ -1,8 +1,7 @@
 import type { currentVarType } from './panel'
 import type { GenRes } from '@/service/debug'
-import { buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { IconButton, iconButtonVariants } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useBoolean } from 'ahooks'
 import { produce } from 'immer'
@@ -39,7 +38,7 @@ type Props = Readonly<{
 }>
 
 const Right = ({ nodeId, currentNodeVar, handleOpenMenu, isValueFetching }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflowDebug', 'appGeneration'])
   const bottomPanelWidth = useStore((s) => s.bottomPanelWidth)
   const setShowVariableInspectPanel = useStore((s) => s.setShowVariableInspectPanel)
   const setCurrentFocusNodeId = useStore((s) => s.setCurrentFocusNodeId)
@@ -140,7 +139,7 @@ const Right = ({ nodeId, currentNodeVar, handleOpenMenu, isValueFetching }: Prop
       <div className="flex shrink-0 items-center justify-between gap-1 px-2 pt-2">
         {bottomPanelWidth < 488 && (
           <IconButton
-            aria-label={t(($) => $['debug.variableInspect.title'], { ns: 'workflow' })}
+            aria-label={t(($) => $['debug.variableInspect.title'], { ns: 'workflowDebug' })}
             className="shrink-0"
             onClick={handleOpenMenu}
           >
@@ -218,7 +217,7 @@ const Right = ({ nodeId, currentNodeVar, handleOpenMenu, isValueFetching }: Prop
                     }
                   />
                   <TooltipContent>
-                    {t(($) => $['generate.optimizePromptTooltip'], { ns: 'appDebug' })}
+                    {t(($) => $['generate.optimizePromptTooltip'], { ns: 'appGeneration' })}
                   </TooltipContent>
                 </Tooltip>
               )}
@@ -228,29 +227,28 @@ const Right = ({ nodeId, currentNodeVar, handleOpenMenu, isValueFetching }: Prop
                     render={
                       <a
                         aria-label={t(($) => $['debug.variableInspect.exportToolTip'], {
-                          ns: 'workflow',
+                          ns: 'workflowDebug',
                         })}
                         href={fullContent?.download_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className={cn(
-                          buttonVariants({ variant: 'ghost', size: 'small' }),
-                          'size-6 rounded-lg p-0 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
-                        )}
+                        className={iconButtonVariants({ size: 'md' })}
                       >
                         <span aria-hidden className="i-ri-file-download-fill size-4" />
                       </a>
                     }
                   />
                   <TooltipContent>
-                    {t(($) => $['debug.variableInspect.exportToolTip'], { ns: 'workflow' })}
+                    {t(($) => $['debug.variableInspect.exportToolTip'], { ns: 'workflowDebug' })}
                   </TooltipContent>
                 </Tooltip>
               )}
               {!isTruncated && currentNodeVar.var.edited && (
                 <Badge>
                   <span className="mr-[4.5px] ml-[2.5px] h-0.75 w-0.75 rounded-sm bg-text-accent-secondary"></span>
-                  <span>{t(($) => $['debug.variableInspect.edited'], { ns: 'workflow' })}</span>
+                  <span>
+                    {t(($) => $['debug.variableInspect.edited'], { ns: 'workflowDebug' })}
+                  </span>
                 </Badge>
               )}
               {!isTruncated &&
@@ -261,7 +259,7 @@ const Right = ({ nodeId, currentNodeVar, handleOpenMenu, isValueFetching }: Prop
                       render={
                         <IconButton
                           aria-label={t(($) => $['debug.variableInspect.reset'], {
-                            ns: 'workflow',
+                            ns: 'workflowDebug',
                           })}
                           onClick={resetValue}
                         >
@@ -270,7 +268,7 @@ const Right = ({ nodeId, currentNodeVar, handleOpenMenu, isValueFetching }: Prop
                       }
                     />
                     <TooltipContent>
-                      {t(($) => $['debug.variableInspect.reset'], { ns: 'workflow' })}
+                      {t(($) => $['debug.variableInspect.reset'], { ns: 'workflowDebug' })}
                     </TooltipContent>
                   </Tooltip>
                 )}
@@ -282,7 +280,7 @@ const Right = ({ nodeId, currentNodeVar, handleOpenMenu, isValueFetching }: Prop
                       render={
                         <IconButton
                           aria-label={t(($) => $['debug.variableInspect.resetConversationVar'], {
-                            ns: 'workflow',
+                            ns: 'workflowDebug',
                           })}
                           onClick={handleClear}
                         >
@@ -292,7 +290,7 @@ const Right = ({ nodeId, currentNodeVar, handleOpenMenu, isValueFetching }: Prop
                     />
                     <TooltipContent>
                       {t(($) => $['debug.variableInspect.resetConversationVar'], {
-                        ns: 'workflow',
+                        ns: 'workflowDebug',
                       })}
                     </TooltipContent>
                   </Tooltip>
