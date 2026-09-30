@@ -58,9 +58,11 @@ describe('App sidebar route loading', () => {
   it('keeps the shell visible and consumes the in-flight prefetch without an App Store producer', async () => {
     const pending = deferredResponse()
     request.mockReturnValue(pending.promise)
-    const view = renderWithConsoleQuery(<Route />)
+    renderWithConsoleQuery(<Route />)
     expect(screen.getByRole('link', { name: 'Back to Apps' })).toBeVisible()
-    expect(view.container.querySelector('[aria-busy="true"]')).toBeInTheDocument()
+    expect(screen.getByText('navigation.menus.appDetail')).toBeVisible()
+    expect(screen.getByRole('button', { name: /common\.operation\.moreActionsFor/ })).toBeDisabled()
+    expect(screen.getByRole('navigation', { name: 'navigation.menus.appDetail' })).toBeVisible()
     expect(screen.queryByRole('link', { name: 'common.appMenus.overview' })).not.toBeInTheDocument()
     await waitFor(() => expect(request).toHaveBeenCalledTimes(1))
     await act(async () => pending.resolve(Response.json(app('app-1', 'First app'))))

@@ -168,7 +168,7 @@ describe('AppInfoTrigger', () => {
     expect(readyProps.exportCheck).toHaveBeenCalledTimes(1)
   })
 
-  it('hides the operations trigger when no operation is permitted', () => {
+  it('keeps the operations trigger disabled when no operation is permitted', () => {
     mockWorkspacePermissionKeys.value = []
     render(
       <AppInfoTrigger
@@ -181,6 +181,6 @@ describe('AppInfoTrigger', () => {
       />,
     )
 
-    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+    expect(getOperationsTrigger()).toBeDisabled()
   })
 })
