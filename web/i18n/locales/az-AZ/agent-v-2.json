@@ -34,7 +34,6 @@
   "agentDetail.access.workflow.nodeCount_other": "{{count}} düyün",
   "agentDetail.access.workflow.notAvailable": "Tətbiq olunmur",
   "agentDetail.access.workflow.openInStudio": "Studiyada aç",
-  "agentDetail.access.workflow.openInStudioFor": "{{name}} iş axınını studiyada aç",
   "agentDetail.access.workflow.table.actions": "Əməliyyatlar",
   "agentDetail.access.workflow.table.lastUpdated": "Son yenilənmə",
   "agentDetail.access.workflow.table.name": "Ad",

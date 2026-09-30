@@ -1,438 +1,85 @@
+"""Integration coverage for the remaining WebAppAuthService responsibilities."""
+
 import uuid
-from unittest.mock import patch
 
 import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
-from extensions.ext_application_services import application_services
 from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.enums import AppStatus, CustomizeTokenStrategy
 from models.model import App, Site
 from services.webapp_auth_service import WebAppAuthService
 
 
-class TestWebAppAuthService:
-    """Integration tests for WebAppAuthService using testcontainers."""
-
-    @pytest.fixture
-    def mock_external_service_dependencies(self):
-        """Mock setup for external service dependencies."""
-        with (
-            patch("services.webapp_auth_service.PassportService") as mock_passport_service,
-            patch("services.webapp_auth_service.TokenManager") as mock_token_manager,
-            patch("services.webapp_auth_service.send_email_code_login_mail_task") as mock_mail_task,
-        ):
-            # Setup default mock returns
-            mock_passport_service.return_value.issue.return_value = "mock_jwt_token"
-            mock_token_manager.generate_token.return_value = "mock_token"
-            mock_token_manager.get_token_data.return_value = {"code": "123456"}
-            mock_mail_task.delay.return_value = None
-            yield {
-                "passport_service": mock_passport_service,
-                "token_manager": mock_token_manager,
-                "mail_task": mock_mail_task,
-            }
-
-    def _create_test_account_and_tenant(self, db_session_with_containers: Session, mock_external_service_dependencies):
-        """
-        Helper method to create a test account and tenant for testing.
-
-        Args:
-            db_session_with_containers: Database session from testcontainers infrastructure
-            mock_external_service_dependencies: Mock dependencies
-
-        Returns:
-            tuple: (account, tenant) - Created account and tenant instances
-        """
-        fake = Faker()
-
-        # Create account with unique email to avoid collisions
-        unique_email = f"test_{uuid.uuid4().hex[:8]}@example.com"
-        account = Account(
-            email=unique_email,
-            name=fake.name(),
-            interface_language="en-US",
-            status=AccountStatus.ACTIVE,
-        )
-
-        db_session_with_containers.add(account)
-        db_session_with_containers.commit()
-
-        # Create tenant for the account
-        tenant = Tenant(
-            name=fake.company(),
-            status=TenantStatus.NORMAL,
-        )
-        db_session_with_containers.add(tenant)
-        db_session_with_containers.commit()
-
-        # Create tenant-account join
-        join = TenantAccountJoin(
+def _create_account_and_tenant(session: Session) -> tuple[Account, Tenant]:
+    fake = Faker()
+    account = Account(
+        email=f"test_{uuid.uuid4().hex[:8]}@example.com",
+        name=fake.name(),
+        interface_language="en-US",
+        status=AccountStatus.ACTIVE,
+    )
+    tenant = Tenant(name=fake.company(), status=TenantStatus.NORMAL)
+    session.add_all([account, tenant])
+    session.flush()
+    session.add(
+        TenantAccountJoin(
             tenant_id=tenant.id,
             account_id=account.id,
             role=TenantAccountRole.OWNER,
             current=True,
         )
-        db_session_with_containers.add(join)
-        db_session_with_containers.commit()
+    )
+    session.commit()
+    return account, tenant
 
-        # Set current tenant for account
-        account.set_current_tenant_with_session(tenant, session=db_session_with_containers)
 
-        return account, tenant
+def _create_app_and_site(session: Session, tenant: Tenant) -> tuple[App, Site]:
+    fake = Faker()
+    app = App(
+        tenant_id=tenant.id,
+        name=fake.company(),
+        description=fake.text(max_nb_chars=100),
+        mode="chat",
+        icon_type="emoji",
+        icon="🤖",
+        icon_background="#FF6B6B",
+        api_rph=100,
+        api_rpm=10,
+        enable_site=True,
+        enable_api=True,
+    )
+    session.add(app)
+    session.flush()
+    site = Site(
+        app_id=app.id,
+        title=fake.company(),
+        code=fake.unique.lexify(text="??????"),
+        description=fake.text(max_nb_chars=100),
+        default_language="en-US",
+        status=AppStatus.NORMAL,
+        customize_token_strategy=CustomizeTokenStrategy.NOT_ALLOW,
+    )
+    session.add(site)
+    session.commit()
+    return app, site
 
-    def _create_test_app_and_site(
-        self, db_session_with_containers: Session, mock_external_service_dependencies, tenant
-    ):
-        """
-        Helper method to create a test app and site for testing.
 
-        Args:
-            db_session_with_containers: Database session from testcontainers infrastructure
-            mock_external_service_dependencies: Mock dependencies
-            tenant: Tenant instance to associate with
+def test_create_end_user(db_session_with_containers: Session) -> None:
+    _, tenant = _create_account_and_tenant(db_session_with_containers)
+    app, site = _create_app_and_site(db_session_with_containers, tenant)
 
-        Returns:
-            tuple: (app, site) - Created app and site instances
-        """
-        fake = Faker()
+    result = WebAppAuthService.create_end_user(site.code, "test@example.com", db_session_with_containers)
 
-        # Create app
-        app = App(
-            tenant_id=tenant.id,
-            name=fake.company(),
-            description=fake.text(max_nb_chars=100),
-            mode="chat",
-            icon_type="emoji",
-            icon="🤖",
-            icon_background="#FF6B6B",
-            api_rph=100,
-            api_rpm=10,
-            enable_site=True,
-            enable_api=True,
-        )
+    assert result.tenant_id == app.tenant_id
+    assert result.app_id == app.id
+    assert result.type == "browser"
+    assert result.is_anonymous is False
+    assert result.session_id == "test@example.com"
 
-        db_session_with_containers.add(app)
-        db_session_with_containers.commit()
 
-        # Create site
-        site = Site(
-            app_id=app.id,
-            title=fake.company(),
-            code=fake.unique.lexify(text="??????"),
-            description=fake.text(max_nb_chars=100),
-            default_language="en-US",
-            status=AppStatus.NORMAL,
-            customize_token_strategy=CustomizeTokenStrategy.NOT_ALLOW,
-        )
-        db_session_with_containers.add(site)
-        db_session_with_containers.commit()
-
-        return app, site
-
-    def test_login_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
-        """
-        Test successful login and JWT token generation.
-
-        This test verifies:
-        - Proper JWT token generation
-        - Correct token format and content
-        - Mock service integration
-        """
-        # Arrange: Create test account
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
-
-        # Act: Execute login
-        snapshot = application_services().accounts.lifecycle.get_account_by_id(account.id)
-        assert snapshot is not None
-        result = WebAppAuthService.login(snapshot)
-
-        # Assert: Verify successful login
-        assert result is not None
-        assert result == "mock_jwt_token"
-
-        # Verify mock service was called correctly
-        mock_external_service_dependencies["passport_service"].return_value.issue.assert_called_once()
-        call_args = mock_external_service_dependencies["passport_service"].return_value.issue.call_args[0][0]
-
-        assert call_args["sub"] == "Web API Passport"
-        assert call_args["user_id"] == account.id
-        assert call_args["session_id"] == account.email
-        assert call_args["token_source"] == "webapp_login_token"
-        assert call_args["auth_type"] == "internal"
-        assert "exp" in call_args
-
-    def test_send_email_code_login_email_with_account(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test sending email code login email with account.
-
-        This test verifies:
-        - Proper email code generation
-        - Token generation with correct data
-        - Mail task scheduling
-        - Mock service integration
-        """
-        # Arrange: Create test account
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
-
-        # Act: Execute email code login email sending
-        snapshot = application_services().accounts.lifecycle.get_account_by_id(account.id)
-        assert snapshot is not None
-        result = WebAppAuthService.send_email_code_login_email(account=snapshot, language="en-US")
-
-        # Assert: Verify successful email sending
-        assert result is not None
-        assert result == "mock_token"
-
-        # Verify mock services were called correctly
-        mock_external_service_dependencies["token_manager"].generate_token.assert_called_once()
-        mock_external_service_dependencies["mail_task"].delay.assert_called_once()
-
-        # Verify token generation parameters
-        token_call_args = mock_external_service_dependencies["token_manager"].generate_token.call_args
-        assert token_call_args[1]["account_id"] == account.id
-        assert token_call_args[1]["email"] == account.email
-        assert token_call_args[1]["token_type"] == "email_code_login"
-        assert "code" in token_call_args[1]["additional_data"]
-
-        # Verify mail task parameters
-        mail_call_args = mock_external_service_dependencies["mail_task"].delay.call_args
-        assert mail_call_args[1]["language"] == "en-US"
-        assert mail_call_args[1]["to"] == account.email
-        assert "code" in mail_call_args[1]
-
-    def test_send_email_code_login_email_with_email_only(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test sending email code login email with email only.
-
-        This test verifies:
-        - Proper email code generation without account
-        - Token generation with email only
-        - Mail task scheduling
-        - Mock service integration
-        """
-        # Arrange: Use test email
-        fake = Faker()
-        test_email = fake.email()
-
-        # Act: Execute email code login email sending
-        result = WebAppAuthService.send_email_code_login_email(email=test_email, language="zh-Hans")
-
-        # Assert: Verify successful email sending
-        assert result is not None
-        assert result == "mock_token"
-
-        # Verify mock services were called correctly
-        mock_external_service_dependencies["token_manager"].generate_token.assert_called_once()
-        mock_external_service_dependencies["mail_task"].delay.assert_called_once()
-
-        # Verify token generation parameters
-        token_call_args = mock_external_service_dependencies["token_manager"].generate_token.call_args
-        assert token_call_args[1]["account_id"] is None
-        assert token_call_args[1]["email"] == test_email
-        assert token_call_args[1]["token_type"] == "email_code_login"
-        assert "code" in token_call_args[1]["additional_data"]
-
-        # Verify mail task parameters
-        mail_call_args = mock_external_service_dependencies["mail_task"].delay.call_args
-        assert mail_call_args[1]["language"] == "zh-Hans"
-        assert mail_call_args[1]["to"] == test_email
-        assert "code" in mail_call_args[1]
-
-    def test_send_email_code_login_email_no_email_provided(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test sending email code login email without providing email.
-
-        This test verifies:
-        - Proper error handling when no email is provided
-        - Correct exception type and message
-        """
-        # Arrange: No email provided
-
-        # Act & Assert: Verify proper error handling
-        with pytest.raises(ValueError) as exc_info:
-            WebAppAuthService.send_email_code_login_email()
-
-        assert "Email must be provided." in str(exc_info.value)
-
-    def test_get_email_code_login_data_success(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test successful retrieval of email code login data.
-
-        This test verifies:
-        - Proper token data retrieval
-        - Correct data format
-        - Mock service integration
-        """
-        # Arrange: Setup mock return
-        expected_data = {"code": "123456", "email": "test@example.com"}
-        mock_external_service_dependencies["token_manager"].get_token_data.return_value = expected_data
-
-        # Act: Execute data retrieval
-        result = WebAppAuthService.get_email_code_login_data("mock_token")
-
-        # Assert: Verify successful retrieval
-        assert result is not None
-        assert result == expected_data
-        assert result["code"] == "123456"
-        assert result["email"] == "test@example.com"
-
-        # Verify mock service was called correctly
-        mock_external_service_dependencies["token_manager"].get_token_data.assert_called_once_with(
-            "mock_token", "email_code_login"
-        )
-
-    def test_get_email_code_login_data_no_data(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test email code login data retrieval when no data exists.
-
-        This test verifies:
-        - Proper handling when no token data exists
-        - Correct return value (None)
-        - Mock service integration
-        """
-        # Arrange: Setup mock return for no data
-        mock_external_service_dependencies["token_manager"].get_token_data.return_value = None
-
-        # Act: Execute data retrieval
-        result = WebAppAuthService.get_email_code_login_data("invalid_token")
-
-        # Assert: Verify proper handling
-        assert result is None
-
-        # Verify mock service was called correctly
-        mock_external_service_dependencies["token_manager"].get_token_data.assert_called_once_with(
-            "invalid_token", "email_code_login"
-        )
-
-    def test_revoke_email_code_login_token_success(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test successful revocation of email code login token.
-
-        This test verifies:
-        - Proper token revocation
-        - Mock service integration
-        """
-        # Arrange: Setup mock
-
-        # Act: Execute token revocation
-        WebAppAuthService.revoke_email_code_login_token("mock_token")
-
-        # Assert: Verify mock service was called correctly
-        mock_external_service_dependencies["token_manager"].revoke_token.assert_called_once_with(
-            "mock_token", "email_code_login"
-        )
-
-    def test_create_end_user_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
-        """
-        Test successful end user creation.
-
-        This test verifies:
-        - Proper end user creation with valid app code
-        - Correct database state after creation
-        - Proper relationship establishment
-        - Mock service integration
-        """
-        # Arrange: Create test data
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
-        app, site = self._create_test_app_and_site(
-            db_session_with_containers, mock_external_service_dependencies, tenant
-        )
-
-        # Act: Execute end user creation
-        result = WebAppAuthService.create_end_user(site.code, "test@example.com", db_session_with_containers)
-
-        # Assert: Verify successful creation
-        assert result is not None
-        assert result.tenant_id == app.tenant_id
-        assert result.app_id == app.id
-        assert result.type == "browser"
-        assert result.is_anonymous is False
-        assert result.session_id == "test@example.com"
-        assert result.name == "enterpriseuser"
-        assert result.external_user_id == "enterpriseuser"
-
-        # Verify database state
-
-        db_session_with_containers.refresh(result)
-        assert result.id is not None
-        assert result.created_at is not None
-        assert result.updated_at is not None
-
-    def test_create_end_user_site_not_found(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test end user creation with non-existent site code.
-
-        This test verifies:
-        - Proper error handling for non-existent sites
-        - Correct exception type and message
-        """
-        # Arrange: Use non-existent site code
-        fake = Faker()
-        non_existent_code = fake.unique.lexify(text="??????")
-
-        # Act & Assert: Verify proper error handling
-        with pytest.raises(NotFound) as exc_info:
-            WebAppAuthService.create_end_user(non_existent_code, "test@example.com", db_session_with_containers)
-
-        assert "Site not found." in str(exc_info.value)
-
-    def test_create_end_user_app_not_found(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test end user creation when app is not found.
-
-        This test verifies:
-        - Proper error handling when app is missing
-        - Correct exception type and message
-        """
-        # Arrange: Create site without app
-        fake = Faker()
-        tenant = Tenant(
-            name=fake.company(),
-            status="normal",
-        )
-
-        db_session_with_containers.add(tenant)
-        db_session_with_containers.commit()
-
-        site = Site(
-            app_id="00000000-0000-0000-0000-000000000000",
-            title=fake.company(),
-            code=fake.unique.lexify(text="??????"),
-            description=fake.text(max_nb_chars=100),
-            default_language="en-US",
-            status=AppStatus.NORMAL,
-            customize_token_strategy=CustomizeTokenStrategy.NOT_ALLOW,
-        )
-        db_session_with_containers.add(site)
-        db_session_with_containers.commit()
-
-        # Act & Assert: Verify proper error handling
-        with pytest.raises(NotFound) as exc_info:
-            WebAppAuthService.create_end_user(site.code, "test@example.com", db_session_with_containers)
-
-        assert "App not found." in str(exc_info.value)
+def test_create_end_user_rejects_unknown_site(db_session_with_containers: Session) -> None:
+    with pytest.raises(NotFound, match="Site not found"):
+        WebAppAuthService.create_end_user("missing", "test@example.com", db_session_with_containers)

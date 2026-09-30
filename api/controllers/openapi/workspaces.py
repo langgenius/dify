@@ -75,7 +75,7 @@ def _member_response(account: WorkspaceMemberRecord) -> MemberResponse:
 @openapi_ns.route("/workspaces")
 class WorkspacesApi(Resource):
     @endpoint(
-        op="workspace.list",
+        op="get.workspace",
         kind=Kind.LIST,
         summary="List workspaces of the current account",
         examples=(Example(title="List my workspaces, first page", input={"page": 1, "limit": 20}),),
@@ -91,7 +91,7 @@ class WorkspacesApi(Resource):
 @openapi_ns.route("/workspaces/<string:workspace_id>")
 class WorkspaceByIdApi(Resource):
     @endpoint(
-        op="workspace.get",
+        op="describe.workspace",
         kind=Kind.OBJECT,
         summary="Workspace detail",
         examples=(
@@ -119,7 +119,7 @@ class WorkspaceSwitchApi(Resource):
     """
 
     @endpoint(
-        op="workspace.switch",
+        op="switch.workspace",
         kind=Kind.OBJECT,
         summary="Server-side current workspace switch (shared with the web console)",
         examples=(Example(title="Make a workspace current on the server", input={"workspace_id": "<workspace_id>"}),),
@@ -150,7 +150,7 @@ class WorkspaceMembersApi(Resource):
     """
 
     @endpoint(
-        op="workspace.members.list",
+        op="get.workspace.member",
         kind=Kind.LIST,
         summary="List workspace members",
         examples=(Example(title="List members of the pinned workspace, first page", input={"page": 1, "limit": 20}),),
@@ -174,7 +174,7 @@ class WorkspaceMembersApi(Resource):
         )
 
     @endpoint(
-        op="workspace.members.invite",
+        op="invite.workspace.member",
         kind=Kind.OBJECT,
         summary="Invite a member by email",
         examples=(
@@ -225,7 +225,7 @@ class WorkspaceMemberApi(Resource):
     """
 
     @endpoint(
-        op="workspace.members.remove",
+        op="delete.workspace.member",
         kind=Kind.OBJECT,
         summary="Remove a member",
         examples=(Example(title="Remove a member by account id", input={"member_id": "<member_id>"}),),
@@ -254,7 +254,7 @@ class WorkspaceMemberApi(Resource):
         return MemberActionResponse()
 
     @endpoint(
-        op="workspace.members.set_role",
+        op="set.workspace.member_role",
         kind=Kind.OBJECT,
         summary="Change a member's role",
         examples=(

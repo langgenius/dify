@@ -34,7 +34,6 @@
   "agentDetail.access.workflow.nodeCount_other": "{{count}} noduri",
   "agentDetail.access.workflow.notAvailable": "N/A",
   "agentDetail.access.workflow.openInStudio": "Deschide în Studio",
-  "agentDetail.access.workflow.openInStudioFor": "Deschide {{name}} în Studio",
   "agentDetail.access.workflow.table.actions": "Acțiuni",
   "agentDetail.access.workflow.table.lastUpdated": "Ultima actualizare",
   "agentDetail.access.workflow.table.name": "Nume",

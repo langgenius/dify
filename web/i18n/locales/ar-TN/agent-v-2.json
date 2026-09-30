@@ -34,7 +34,6 @@
   "agentDetail.access.workflow.nodeCount_other": "{{count}} عقد",
   "agentDetail.access.workflow.notAvailable": "N/A",
   "agentDetail.access.workflow.openInStudio": "افتح في Studio",
-  "agentDetail.access.workflow.openInStudioFor": "افتح {{name}} في Studio",
   "agentDetail.access.workflow.table.actions": "الإجراءات",
   "agentDetail.access.workflow.table.lastUpdated": "آخر تحديث",
   "agentDetail.access.workflow.table.name": "الاسم",

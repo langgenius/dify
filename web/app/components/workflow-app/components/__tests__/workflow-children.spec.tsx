@@ -6,6 +6,7 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import WorkflowChildren from '../workflow-children'
 
 type WorkflowStoreState = {
+  appId?: string
   showFeaturesPanel: boolean
   showImportDSLModal: boolean
   setShowImportDSLModal: (show: boolean) => void
@@ -334,6 +335,7 @@ describe('WorkflowChildren', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     workflowStoreState = {
+      appId: 'app-1',
       showFeaturesPanel: false,
       showImportDSLModal: false,
       setShowImportDSLModal: mockSetShowImportDSLModal,

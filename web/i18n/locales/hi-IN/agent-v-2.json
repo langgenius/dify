@@ -34,7 +34,6 @@
   "agentDetail.access.workflow.nodeCount_other": "{{count}} नोड",
   "agentDetail.access.workflow.notAvailable": "N/A",
   "agentDetail.access.workflow.openInStudio": "Studio में खोलें",
-  "agentDetail.access.workflow.openInStudioFor": "{{name}} को Studio में खोलें",
   "agentDetail.access.workflow.table.actions": "क्रियाएँ",
   "agentDetail.access.workflow.table.lastUpdated": "अंतिम अद्यतन",
   "agentDetail.access.workflow.table.name": "नाम",

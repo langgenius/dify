@@ -174,9 +174,9 @@ export const Schedule: Story = {
         <TimePickerTrigger>
           <TimePickerValue>
             {(value) => (
-              <>
+              <React.Fragment>
                 {value} <span className="text-text-tertiary">UTC+0</span>
-              </>
+              </React.Fragment>
             )}
           </TimePickerValue>
         </TimePickerTrigger>

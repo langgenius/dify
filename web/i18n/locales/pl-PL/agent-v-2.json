@@ -34,7 +34,6 @@
   "agentDetail.access.workflow.nodeCount_other": "{{count}} węzłów",
   "agentDetail.access.workflow.notAvailable": "Nd.",
   "agentDetail.access.workflow.openInStudio": "Otwórz w Studio",
-  "agentDetail.access.workflow.openInStudioFor": "Otwórz {{name}} w Studio",
   "agentDetail.access.workflow.table.actions": "Akcje",
   "agentDetail.access.workflow.table.lastUpdated": "Ostatnia aktualizacja",
   "agentDetail.access.workflow.table.name": "Nazwa",
