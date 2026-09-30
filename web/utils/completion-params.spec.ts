@@ -2,7 +2,7 @@ import type {
   FormValue,
   ModelParameterRule,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { mergeValidCompletionParams } from './completion-params'
+import { fetchModelParameterRulesForModel, mergeValidCompletionParams } from './completion-params'
 
 describe('completion-params', () => {
   describe('mergeValidCompletionParams', () => {
@@ -336,4 +336,13 @@ describe('completion-params', () => {
       expect(result.removedDetails.custom).toContain('unsupported rule type')
     })
   })
+})
+
+vi.mock('@/service/common', () => ({ fetchModelParameterRules: vi.fn(async () => ({ data: [] })) }))
+it('encodes reserved characters in model IDs', async () => {
+  const { fetchModelParameterRules } = await import('@/service/common')
+  await fetchModelParameterRulesForModel('langgenius/openai/openai', 'a+b&x=1')
+  expect(fetchModelParameterRules).toHaveBeenCalledWith(
+    '/workspaces/current/model-providers/langgenius/openai/openai/models/parameter-rules?model=a%2Bb%26x%3D1',
+  )
 })
