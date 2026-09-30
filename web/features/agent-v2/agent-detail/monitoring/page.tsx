@@ -101,70 +101,71 @@ export function AgentMonitoringPage({ agentId }: AgentMonitoringPageProps) {
 
   return (
     <AgentDetailSectionSurface label={t(($) => $['agentDetail.sections.monitoring'])}>
-      <header className="h-26.5 shrink-0 px-6 pt-3 pb-2">
-        <div className="min-w-0">
-          <h2 className="system-xl-semibold text-text-primary">
-            {t(($) => $['agentDetail.monitoring.title'])}
-          </h2>
-          <p className="mt-1 system-xs-regular text-text-tertiary">
-            {t(($) => $['agentDetail.monitoring.description'])}
-          </p>
-        </div>
-
-        <div className="mt-3 flex min-w-0 flex-wrap items-center gap-2">
-          <AgentMonitoringTimeRangePicker value={period} onChange={setPeriod} />
-
-          <AgentMonitoringSourceFilter
-            value={sourceFilter}
-            items={sourceItems}
-            label={t(($) => $['agentDetail.metadata.sourceLabel'])}
-            onSelect={(item) => {
-              setSourceFilter(item.value)
-            }}
-            onClear={() => {
-              setSourceFilter('all')
-            }}
-          />
-        </div>
-      </header>
-
       <ScrollArea className="min-h-0 flex-1 overflow-hidden">
         <ScrollAreaViewport>
-          <ScrollAreaContent className="px-6 pt-2 pb-3">
-            {shouldShowInitialSkeleton && <AgentMonitoringSkeletonGrid />}
-            {shouldShowError && (
-              <AgentMonitoringState>
-                <div className="flex items-center justify-center gap-2">
-                  <span>{t(($) => $['agentDetail.monitoring.loadFailed'])}</span>
-                  <Button
-                    variant="secondary"
-                    size="small"
-                    onClick={() => {
-                      void statisticsQuery.refetch()
-                    }}
-                  >
-                    {tCommon(($) => $['operation.retry'])}
-                  </Button>
-                </div>
-              </AgentMonitoringState>
-            )}
-            {!shouldShowInitialSkeleton && !shouldShowError && (
-              <div className="grid w-full grid-cols-1 gap-3 xl:grid-cols-2">
-                {metrics.map((metric) => (
-                  <AgentMonitoringChart
-                    key={metric.id}
-                    titleKey={metric.titleKey}
-                    explanationKey={metric.explanationKey}
-                    summaryValue={metric.summaryValue}
-                    rows={metric.rows}
-                    chartType={metric.chartType}
-                    valueKey={metric.valueKey}
-                    unitKey={metric.unitKey}
-                    yMaxWhenEmpty={metric.yMaxWhenEmpty}
-                  />
-                ))}
+          <ScrollAreaContent className="pb-3">
+            <header className="px-6 pt-3 pb-2">
+              <div className="min-w-0">
+                <h2 className="system-xl-semibold text-text-primary">
+                  {t(($) => $['agentDetail.monitoring.title'])}
+                </h2>
+                <p className="mt-1 system-xs-regular text-text-tertiary">
+                  {t(($) => $['agentDetail.monitoring.description'])}
+                </p>
               </div>
-            )}
+
+              <div className="mt-3 flex min-w-0 flex-wrap items-center gap-2">
+                <AgentMonitoringTimeRangePicker value={period} onChange={setPeriod} />
+
+                <AgentMonitoringSourceFilter
+                  value={sourceFilter}
+                  items={sourceItems}
+                  label={t(($) => $['agentDetail.metadata.sourceLabel'])}
+                  onSelect={(item) => {
+                    setSourceFilter(item.value)
+                  }}
+                  onClear={() => {
+                    setSourceFilter('all')
+                  }}
+                />
+              </div>
+            </header>
+            <div className="px-6 pt-2">
+              {shouldShowInitialSkeleton && <AgentMonitoringSkeletonGrid />}
+              {shouldShowError && (
+                <AgentMonitoringState>
+                  <div className="flex items-center justify-center gap-2">
+                    <span>{t(($) => $['agentDetail.monitoring.loadFailed'])}</span>
+                    <Button
+                      variant="secondary"
+                      size="small"
+                      onClick={() => {
+                        void statisticsQuery.refetch()
+                      }}
+                    >
+                      {tCommon(($) => $['operation.retry'])}
+                    </Button>
+                  </div>
+                </AgentMonitoringState>
+              )}
+              {!shouldShowInitialSkeleton && !shouldShowError && (
+                <div className="grid w-full grid-cols-1 gap-3 xl:grid-cols-2">
+                  {metrics.map((metric) => (
+                    <AgentMonitoringChart
+                      key={metric.id}
+                      titleKey={metric.titleKey}
+                      explanationKey={metric.explanationKey}
+                      summaryValue={metric.summaryValue}
+                      rows={metric.rows}
+                      chartType={metric.chartType}
+                      valueKey={metric.valueKey}
+                      unitKey={metric.unitKey}
+                      yMaxWhenEmpty={metric.yMaxWhenEmpty}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
           </ScrollAreaContent>
         </ScrollAreaViewport>
         <ScrollAreaScrollbar>
