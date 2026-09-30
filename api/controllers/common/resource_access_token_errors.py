@@ -1,6 +1,6 @@
 """Translate machine credential application failures at HTTP transport boundaries."""
 
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound, Unauthorized
@@ -14,7 +14,7 @@ from services.auth.resource_access_token_contracts import (
 
 
 @contextmanager
-def resource_access_token_errors() -> Iterator[None]:
+def resource_access_token_errors() -> Generator[None, None, None]:
     try:
         yield
     except ResourceAccessTokenInputError as error:

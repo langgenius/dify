@@ -122,11 +122,11 @@ def validate_app_token[**P, R](
                 app_model = AppService.get_app_in_workspace(
                     tenant_id=grant.tenant_id,
                     app_id=next(iter(grant.app_ids)),
-                    session=db.session,
+                    session=db.session(),
                 )
             else:
                 api_token = validate_and_get_api_token("app")
-                app_model = AppService.get_app_by_id(api_token.app_id, session=db.session)
+                app_model = AppService.get_app_by_id(api_token.app_id, session=db.session())
             if not app_model:
                 raise Forbidden("The app no longer exists.")
 

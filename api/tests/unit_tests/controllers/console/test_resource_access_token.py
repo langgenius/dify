@@ -1,5 +1,7 @@
 import inspect
-from types import SimpleNamespace
+from collections.abc import Callable
+from types import CodeType, SimpleNamespace
+from typing import Protocol, cast
 from unittest.mock import MagicMock
 from uuid import uuid4
 
@@ -22,10 +24,16 @@ _ENDPOINTS = [
 ]
 
 
-def _admission_injector(method):
-    while "inject_request_context" not in method.__code__.co_qualname:
-        method = method.__wrapped__
-    return method
+class _WrappedEndpoint(Protocol):
+    __code__: CodeType
+    __wrapped__: _WrappedEndpoint
+
+
+def _admission_injector(method: Callable[..., object]) -> Callable[..., object]:
+    current = cast(_WrappedEndpoint, method)
+    while "inject_request_context" not in current.__code__.co_qualname:
+        current = current.__wrapped__
+    return cast(Callable[..., object], current)
 
 
 def _admit_as(monkeypatch: pytest.MonkeyPatch, role: TenantAccountRole) -> None:
@@ -40,14 +48,16 @@ def _admit_as(monkeypatch: pytest.MonkeyPatch, role: TenantAccountRole) -> None:
 
 
 @pytest.mark.parametrize("method", _ENDPOINTS)
-def test_endpoints_declare_owner_only_admission(method) -> None:
+def test_endpoints_declare_owner_only_admission(method: Callable[..., object]) -> None:
     allowed_roles = inspect.getclosurevars(_admission_injector(method)).nonlocals["allowed_roles"]
     assert allowed_roles == frozenset({TenantAccountRole.OWNER})
 
 
 @pytest.mark.parametrize("method", _ENDPOINTS)
 @pytest.mark.parametrize("role", [TenantAccountRole.ADMIN, TenantAccountRole.EDITOR, TenantAccountRole.NORMAL])
-def test_endpoints_reject_non_owner(monkeypatch: pytest.MonkeyPatch, method, role: TenantAccountRole) -> None:
+def test_endpoints_reject_non_owner(
+    monkeypatch: pytest.MonkeyPatch, method: Callable[..., object], role: TenantAccountRole
+) -> None:
     _admit_as(monkeypatch, role)
     with Flask(__name__).test_request_context(), pytest.raises(Forbidden):
         _admission_injector(method)(None)

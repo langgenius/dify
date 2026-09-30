@@ -306,9 +306,11 @@ class AppService:
 
     @staticmethod
     def get_app_by_id(
-        app_id: str,
+        app_id: str | None,
         session: Session,
     ) -> App | None:
+        if app_id is None:
+            return None
         return session.get(App, app_id)
 
     @staticmethod
