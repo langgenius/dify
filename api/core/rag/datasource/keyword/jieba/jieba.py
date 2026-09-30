@@ -87,7 +87,7 @@ class Jieba(BaseKeyword):
             if removed:
                 table = self._delete_ids_from_keyword_table(table, removed)
             handler: JiebaKeywordTableHandler | None = None
-            keyword_number = self.dataset.keyword_number or self._config.max_keywords_per_chunk
+            keyword_number = self.dataset.keyword_number if self.dataset.keyword_number is not None else self._config.max_keywords_per_chunk
             selected: dict[str, Sequence[str]] = {}
             for position, text in enumerate(texts):
                 keywords = keywords_list[position] if keywords_list else None
@@ -235,61 +235,3 @@ class Jieba(BaseKeyword):
         )
 
         return sorted_chunk_indices[:k]
-<<<<<<< fix/keyword-number-explicit-zero
-
-    def _update_segment_keywords(self, dataset_id: str, node_id: str, keywords: list[str], session: Session):
-        stmt = select(DocumentSegment).where(
-            DocumentSegment.dataset_id == dataset_id, DocumentSegment.index_node_id == node_id
-        )
-        document_segment = session.scalar(stmt)
-        if document_segment:
-            document_segment.keywords = keywords
-            session.add(document_segment)
-            session.flush()
-
-    def create_segment_keywords(self, node_id: str, keywords: list[str], session: Session):
-        keyword_table = self._get_dataset_keyword_table(session)
-        self._update_segment_keywords(self.dataset.id, node_id, keywords, session)
-        keyword_table = self._add_text_to_keyword_table(keyword_table or {}, node_id, keywords)
-        self._save_dataset_keyword_table(keyword_table, session)
-
-    def multi_create_segment_keywords(self, pre_segment_data_list: list[PreSegmentData], session: Session):
-        keyword_table_handler = JiebaKeywordTableHandler()
-        keyword_table = self._get_dataset_keyword_table(session)
-        for pre_segment_data in pre_segment_data_list:
-            segment = pre_segment_data["segment"]
-            if pre_segment_data["keywords"]:
-                segment.keywords = pre_segment_data["keywords"]
-                assert segment.index_node_id
-                keyword_table = self._add_text_to_keyword_table(
-                    keyword_table or {}, segment.index_node_id, pre_segment_data["keywords"]
-                )
-            else:
-                keyword_number = self.dataset.keyword_number if self.dataset.keyword_number is not None else self._config.max_keywords_per_chunk
-
-                keywords = keyword_table_handler.extract_keywords(segment.content, keyword_number)
-                segment.keywords = list(keywords)
-                assert segment.index_node_id
-                keyword_table = self._add_text_to_keyword_table(
-                    keyword_table or {}, segment.index_node_id, list(keywords)
-                )
-        self._save_dataset_keyword_table(keyword_table, session)
-
-    def update_segment_keywords_index(self, node_id: str, keywords: list[str], session: Session):
-        keyword_table = self._get_dataset_keyword_table(session)
-        keyword_table = self._add_text_to_keyword_table(keyword_table or {}, node_id, keywords)
-        self._save_dataset_keyword_table(keyword_table, session)
-
-
-def set_orjson_default(obj: Any):
-    """Default function for orjson serialization of set types"""
-    if isinstance(obj, set):
-        return list(obj)
-    raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
-
-
-def dumps_with_sets(obj: Any) -> str:
-    """JSON dumps with set support using orjson"""
-    return orjson.dumps(obj, default=set_orjson_default).decode("utf-8")
-=======
->>>>>>> main
