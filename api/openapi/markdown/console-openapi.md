@@ -345,6 +345,7 @@ Check if activation token is valid
 | limit | query | Page size (1-100) | No | integer, <br>**Default:** 20 |
 | mode | query | App mode filter | No | string, <br>**Available values:** "advanced-chat", "agent", "agent-chat", "all", "channel", "chat", "completion", "workflow", <br>**Default:** all |
 | name | query | Filter by app name | No | string |
+| openapi_visible | query | Only return apps with API access enabled | No | boolean |
 | page | query | Page number (1-99999) | No | integer, <br>**Default:** 1 |
 | publication_status | query | Filter by published or draft Agent configuration status | No | string, <br>**Available values:** "drafts", "published" |
 | sort_by | query | Sort apps by last modified, recently created, or earliest created | No | string, <br>**Available values:** "earliest_created", "last_modified", "recently_created", <br>**Default:** last_modified |
@@ -1512,6 +1513,7 @@ Get list of applications with pagination and filtering
 | limit | query | Page size (1-100) | No | integer, <br>**Default:** 20 |
 | mode | query | App mode filter | No | string, <br>**Available values:** "advanced-chat", "agent", "agent-chat", "all", "channel", "chat", "completion", "workflow", <br>**Default:** all |
 | name | query | Filter by app name | No | string |
+| openapi_visible | query | Only return apps with API access enabled | No | boolean |
 | page | query | Page number (1-99999) | No | integer, <br>**Default:** 1 |
 | sort_by | query | Sort apps by last modified, recently created, or earliest created | No | string, <br>**Available values:** "earliest_created", "last_modified", "recently_created", <br>**Default:** last_modified |
 | tag_ids | query | Filter by tag IDs | No | [ string ] |
@@ -1611,6 +1613,7 @@ Get applications starred by the current account
 | limit | query | Page size (1-100) | No | integer, <br>**Default:** 20 |
 | mode | query | App mode filter | No | string, <br>**Available values:** "advanced-chat", "agent", "agent-chat", "all", "channel", "chat", "completion", "workflow", <br>**Default:** all |
 | name | query | Filter by app name | No | string |
+| openapi_visible | query | Only return apps with API access enabled | No | boolean |
 | page | query | Page number (1-99999) | No | integer, <br>**Default:** 1 |
 | sort_by | query | Sort apps by last modified, recently created, or earliest created | No | string, <br>**Available values:** "earliest_created", "last_modified", "recently_created", <br>**Default:** last_modified |
 | tag_ids | query | Filter by tag IDs | No | [ string ] |
@@ -8391,6 +8394,7 @@ Update account-level Step-by-step Tour state
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| keyword | query |  | No | string |
 | limit | query |  | No | integer, <br>**Default:** 20 |
 | page | query |  | No | integer, <br>**Default:** 1 |
 
@@ -13922,6 +13926,7 @@ default (the config form sends the full desired feature state on save).
 | limit | integer, <br>**Default:** 20 | Page size (1-100) | No |
 | mode | string, <br>**Available values:** "advanced-chat", "agent", "agent-chat", "all", "channel", "chat", "completion", "workflow", <br>**Default:** all | App mode filter<br>*Enum:* `"advanced-chat"`, `"agent"`, `"agent-chat"`, `"all"`, `"channel"`, `"chat"`, `"completion"`, `"workflow"` | No |
 | name | string | Filter by app name | No |
+| openapi_visible | boolean | Only return apps with API access enabled | No |
 | page | integer, <br>**Default:** 1 | Page number (1-99999) | No |
 | publication_status | string, <br>**Available values:** "drafts", "published" | Filter by published or draft Agent configuration status | No |
 | sort_by | string, <br>**Available values:** "earliest_created", "last_modified", "recently_created", <br>**Default:** last_modified | Sort apps by last modified, recently created, or earliest created<br>*Enum:* `"earliest_created"`, `"last_modified"`, `"recently_created"` | No |
@@ -16587,6 +16592,7 @@ This class is used to store the schema information of an api based tool.
 | limit | integer, <br>**Default:** 20 | Page size (1-100) | No |
 | mode | string, <br>**Available values:** "advanced-chat", "agent", "agent-chat", "all", "channel", "chat", "completion", "workflow", <br>**Default:** all | App mode filter<br>*Enum:* `"advanced-chat"`, `"agent"`, `"agent-chat"`, `"all"`, `"channel"`, `"chat"`, `"completion"`, `"workflow"` | No |
 | name | string | Filter by app name | No |
+| openapi_visible | boolean | Only return apps with API access enabled | No |
 | page | integer, <br>**Default:** 1 | Page number (1-99999) | No |
 | sort_by | string, <br>**Available values:** "earliest_created", "last_modified", "recently_created", <br>**Default:** last_modified | Sort apps by last modified, recently created, or earliest created<br>*Enum:* `"earliest_created"`, `"last_modified"`, `"recently_created"` | No |
 | tag_ids | [ string ] | Filter by tag IDs | No |
@@ -22856,6 +22862,7 @@ Resource types understood by access policies.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| keyword | string |  | No |
 | limit | integer, <br>**Default:** 20 |  | No |
 | page | integer, <br>**Default:** 1 |  | No |
 
@@ -23984,6 +23991,7 @@ Query parameters for listing snippet published workflows.
 | limit | integer, <br>**Default:** 20 | Page size (1-100) | No |
 | mode | string, <br>**Available values:** "advanced-chat", "agent", "agent-chat", "all", "channel", "chat", "completion", "workflow", <br>**Default:** all | App mode filter<br>*Enum:* `"advanced-chat"`, `"agent"`, `"agent-chat"`, `"all"`, `"channel"`, `"chat"`, `"completion"`, `"workflow"` | No |
 | name | string | Filter by app name | No |
+| openapi_visible | boolean | Only return apps with API access enabled | No |
 | page | integer, <br>**Default:** 1 | Page number (1-99999) | No |
 | sort_by | string, <br>**Available values:** "earliest_created", "last_modified", "recently_created", <br>**Default:** last_modified | Sort apps by last modified, recently created, or earliest created<br>*Enum:* `"earliest_created"`, `"last_modified"`, `"recently_created"` | No |
 | tag_ids | [ string ] | Filter by tag IDs | No |
