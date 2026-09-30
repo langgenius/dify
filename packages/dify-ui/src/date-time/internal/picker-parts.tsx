@@ -283,13 +283,13 @@ function PickerTrigger({
       }
     >
       {children ?? (
-        <>
+        <React.Fragment>
           <PickerValue />
           <span
             className="i-ri-calendar-line size-4 shrink-0 text-text-tertiary forced-colors:text-[ButtonText] forced-colors:forced-color-adjust-none"
             aria-hidden="true"
           />
-        </>
+        </React.Fragment>
       )}
     </PopoverTrigger>
   )

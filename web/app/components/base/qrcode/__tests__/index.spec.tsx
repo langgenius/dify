@@ -49,9 +49,13 @@ describe('ShareQRCode', () => {
       const trigger = screen.getByRole('button', {
         name: 'appOverview.overview.appInfo.qrcode.title',
       })
+      expect(trigger).toHaveAttribute('aria-expanded', 'false')
+      expect(trigger).not.toHaveAttribute('aria-controls')
       await user.click(trigger)
 
       expect(screen.getByRole('img')).toBeInTheDocument()
+      expect(trigger).toHaveAttribute('aria-expanded', 'true')
+      expect(trigger).toHaveAttribute('aria-controls', screen.getByRole('img').parentElement?.id)
       expect(
         screen.getByRole('button', { name: 'appOverview.overview.appInfo.qrcode.download' }),
       ).toBeInTheDocument()
@@ -59,6 +63,8 @@ describe('ShareQRCode', () => {
 
       await user.click(trigger)
       expect(screen.queryByRole('img')).not.toBeInTheDocument()
+      expect(trigger).toHaveAttribute('aria-expanded', 'false')
+      expect(trigger).not.toHaveAttribute('aria-controls')
     })
 
     it('closes panel when clicking outside', async () => {
@@ -96,23 +102,21 @@ describe('ShareQRCode', () => {
       expect(canvas).toBeInTheDocument()
     })
 
-    it('lets panel interactions bubble without closing the panel', async () => {
+    it('closes with Escape and restores focus to the trigger', async () => {
       const user = userEvent.setup()
-      const onClick = vi.fn()
-      const { container } = render(<ShareQRCode content={content} />)
-      container.addEventListener('click', onClick)
+      render(<ShareQRCode content={content} />)
 
-      await user.click(
-        screen.getByRole('button', {
-          name: 'appOverview.overview.appInfo.qrcode.title',
-        }),
-      )
-      onClick.mockClear()
-
-      await user.click(screen.getByRole('img'))
-
-      expect(onClick).toHaveBeenCalledOnce()
+      const trigger = screen.getByRole('button', {
+        name: 'appOverview.overview.appInfo.qrcode.title',
+      })
+      await user.click(trigger)
       expect(screen.getByRole('img')).toBeInTheDocument()
+
+      await user.keyboard('{Escape}')
+
+      expect(screen.queryByRole('img')).not.toBeInTheDocument()
+      expect(trigger).toHaveAttribute('aria-expanded', 'false')
+      expect(trigger).toHaveFocus()
     })
 
     it('calls downloadUrl when clicking download', async () => {

@@ -34,7 +34,6 @@
   "agentDetail.access.workflow.nodeCount_other": "{{count}} vozlišč",
   "agentDetail.access.workflow.notAvailable": "Ni na voljo",
   "agentDetail.access.workflow.openInStudio": "Odpri v Studiu",
-  "agentDetail.access.workflow.openInStudioFor": "Odpri {{name}} v Studiu",
   "agentDetail.access.workflow.table.actions": "Dejanja",
   "agentDetail.access.workflow.table.lastUpdated": "Zadnja posodobitev",
   "agentDetail.access.workflow.table.name": "Ime",
