@@ -1,8 +1,9 @@
 import type { AppPublisherProps } from './types'
+import { Button } from '@langgenius/dify-ui/button'
 import { useSuspenseQueries } from '@tanstack/react-query'
 import { useAtom, useAtomValue } from 'jotai'
 import { Suspense } from 'react'
-import { SkeletonRectangle } from '@/app/components/base/skeleton'
+import { useTranslation } from 'react-i18next'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleQuery } from '@/service/console'
@@ -12,8 +13,16 @@ import { PublisherContent } from './publisher-content'
 import { appPublisherOpenAtom, AppPublisherStateBoundary } from './state'
 
 export function AppPublisher(props: AppPublisherProps) {
+  const { t } = useTranslation(['workflow'])
   return (
-    <Suspense fallback={<SkeletonRectangle className="h-8 w-20" />}>
+    <Suspense
+      fallback={
+        <Button variant="primary" className="py-2 pr-2 pl-3" disabled>
+          {t(($) => $['common.publish'], { ns: 'workflow' })}
+          <span className="i-ri-arrow-down-s-line size-4 text-components-button-primary-text" />
+        </Button>
+      }
+    >
       <AppPublisherContent {...props} />
     </Suspense>
   )
