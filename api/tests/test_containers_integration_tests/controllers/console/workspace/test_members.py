@@ -78,7 +78,7 @@ class WorkspaceMembersIntegrationFactory:
             )
             db_session_with_containers.add(join)
             db_session_with_containers.commit()
-            account.current_tenant = tenant
+            account.set_current_tenant_with_session(tenant, session=db_session_with_containers)
         return account
 
     @staticmethod
@@ -300,7 +300,7 @@ class TestOwnerTransferApiWithContainers:
         )
         assert (
             factory.get_join(db_session_with_containers, tenant=tenant, account=current_user).role
-            == TenantAccountRole.ADMIN
+            == TenantAccountRole.NORMAL
         )
         mock_new_owner_email.assert_called_once()
         mock_old_owner_email.assert_called_once()

@@ -1,9 +1,6 @@
-/* oxlint-disable typescript/no-explicit-any */
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import TypeSelector from '../type-select'
-
-vi.mock('@langgenius/dify-ui/select', () => import('@/__mocks__/base-ui-select'))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/input-var-type-icon', () => ({
   default: ({ type }: { type: string }) => <span>{type}</span>,
@@ -16,6 +13,7 @@ describe('TypeSelector', () => {
 
     render(
       <TypeSelector
+        label="Field type"
         value="text-input"
         onSelect={onSelect}
         items={[

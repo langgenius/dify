@@ -3,7 +3,7 @@
 import json
 from collections.abc import Mapping
 from typing import Any
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, create_autospec
 
 import pytest
 from pytest_mock import MockerFixture
@@ -11,6 +11,8 @@ from pytest_mock import MockerFixture
 import core.rag.extractor.firecrawl.firecrawl_app as firecrawl_module
 from core.rag.extractor.firecrawl.firecrawl_app import FirecrawlApp
 from core.rag.extractor.firecrawl.firecrawl_web_extractor import FirecrawlWebExtractor
+from services.data_source.provider_service import DatasourceProviderService
+from services.data_source.website_service import WebsiteService
 
 
 def _response(status_code: int, json_data: Mapping[str, Any] | None = None, text: str = "") -> MagicMock:
@@ -34,6 +36,18 @@ class TestFirecrawlApp:
             "Authorization": "Bearer fc-key",
         }
         assert app._build_url("/v2/crawl") == "https://custom.firecrawl.dev/v2/crawl"
+
+    def test_requests_use_bounded_timeout(self, mocker: MockerFixture):
+        """Outbound requests must carry a bounded timeout so a hanging endpoint cannot block extraction."""
+        app = FirecrawlApp(api_key="fc-key", base_url="https://custom.firecrawl.dev")
+        mock_post = mocker.patch("httpx.post", return_value=_response(200, {"id": "job-1"}))
+        mock_get = mocker.patch("httpx.get", return_value=_response(200, {"status": "completed"}))
+
+        app._post_request("https://custom.firecrawl.dev/v1/crawl", {}, app._prepare_headers())
+        app._get_request("https://custom.firecrawl.dev/v1/crawl/job-1", app._prepare_headers())
+
+        assert mock_post.call_args.kwargs["timeout"] == firecrawl_module._REQUEST_TIMEOUT
+        assert mock_get.call_args.kwargs["timeout"] == firecrawl_module._REQUEST_TIMEOUT
 
     def test_scrape_url_success(self, mocker: MockerFixture):
         app = FirecrawlApp(api_key="fc-key", base_url="https://custom.firecrawl.dev")
@@ -377,7 +391,13 @@ class TestFirecrawlWebExtractor:
             },
         )
 
-        extractor = FirecrawlWebExtractor("https://example.com", "job-1", "tenant-1", mode="crawl")
+        extractor = FirecrawlWebExtractor(
+            "https://example.com",
+            "job-1",
+            "tenant-1",
+            mode="crawl",
+            website_service=WebsiteService(providers=create_autospec(DatasourceProviderService, instance=True)),
+        )
         docs = extractor.extract()
 
         assert len(docs) == 1
@@ -390,7 +410,13 @@ class TestFirecrawlWebExtractor:
             return_value=None,
         )
 
-        extractor = FirecrawlWebExtractor("https://example.com", "job-1", "tenant-1", mode="crawl")
+        extractor = FirecrawlWebExtractor(
+            "https://example.com",
+            "job-1",
+            "tenant-1",
+            mode="crawl",
+            website_service=WebsiteService(providers=create_autospec(DatasourceProviderService, instance=True)),
+        )
         assert extractor.extract() == []
 
     def test_extract_scrape_mode_returns_document(self, mocker: MockerFixture):
@@ -405,7 +431,12 @@ class TestFirecrawlWebExtractor:
         )
 
         extractor = FirecrawlWebExtractor(
-            "https://example.com", "job-1", "tenant-1", mode="scrape", only_main_content=False
+            "https://example.com",
+            "job-1",
+            "tenant-1",
+            mode="scrape",
+            only_main_content=False,
+            website_service=WebsiteService(providers=create_autospec(DatasourceProviderService, instance=True)),
         )
         docs = extractor.extract()
 
@@ -414,5 +445,11 @@ class TestFirecrawlWebExtractor:
         mock_scrape.assert_called_once_with("firecrawl", "https://example.com", "tenant-1", False)
 
     def test_extract_unknown_mode_returns_empty(self):
-        extractor = FirecrawlWebExtractor("https://example.com", "job-1", "tenant-1", mode="unknown")
+        extractor = FirecrawlWebExtractor(
+            "https://example.com",
+            "job-1",
+            "tenant-1",
+            mode="unknown",
+            website_service=WebsiteService(providers=create_autospec(DatasourceProviderService, instance=True)),
+        )
         assert extractor.extract() == []

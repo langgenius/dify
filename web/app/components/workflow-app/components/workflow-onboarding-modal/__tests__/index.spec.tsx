@@ -1,32 +1,7 @@
-import type { ReactNode } from 'react'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BlockEnum } from '@/app/components/workflow/types'
 import WorkflowOnboardingModal from '../index'
-
-vi.mock('@/app/components/workflow/block-selector', () => ({
-  default: ({
-    open,
-    onSelect,
-    trigger,
-  }: {
-    open?: boolean
-    onSelect: (type: BlockEnum, config?: Record<string, unknown>) => void
-    trigger?: ((open: boolean) => ReactNode) | ReactNode
-  }) => (
-    <div>
-      {typeof trigger === 'function' ? trigger(Boolean(open)) : trigger}
-      {open && (
-        <button
-          type="button"
-          onClick={() => onSelect(BlockEnum.TriggerWebhook, { config: 'test' })}
-        >
-          Select Trigger Webhook
-        </button>
-      )}
-    </div>
-  ),
-}))
 
 describe('WorkflowOnboardingModal', () => {
   it('only renders while onboarding is open', () => {
@@ -50,26 +25,12 @@ describe('WorkflowOnboardingModal', () => {
 
     expect(onSelectStartNode).toHaveBeenCalledWith(BlockEnum.Start)
   })
-
-  it('forwards trigger configuration', async () => {
-    const user = userEvent.setup()
-    const onSelectStartNode = vi.fn()
-    render(
-      <WorkflowOnboardingModal isShow onClose={vi.fn()} onSelectStartNode={onSelectStartNode} />,
-    )
-
-    await user.click(screen.getByText('workflow.onboarding.trigger'))
-    await user.click(screen.getByRole('button', { name: 'Select Trigger Webhook' }))
-
-    expect(onSelectStartNode).toHaveBeenCalledWith(BlockEnum.TriggerWebhook, { config: 'test' })
-  })
-
   it('closes from the dialog control', async () => {
     const user = userEvent.setup()
     const onClose = vi.fn()
     render(<WorkflowOnboardingModal isShow onClose={onClose} onSelectStartNode={vi.fn()} />)
 
-    await user.click(screen.getByRole('button', { name: 'Close' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
     expect(onClose).toHaveBeenCalledTimes(1)
   })

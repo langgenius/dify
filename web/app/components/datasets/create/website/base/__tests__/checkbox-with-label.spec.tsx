@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import CheckboxWithLabel from '../checkbox-with-label'
 
 describe('CheckboxWithLabel', () => {
@@ -23,12 +23,12 @@ describe('CheckboxWithLabel', () => {
         tooltip="Help text"
       />,
     )
-    expect(screen.getByLabelText('Help text')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Option' })).toBeInTheDocument()
   })
 
   it('should not render tooltip when not provided', () => {
     render(<CheckboxWithLabel isChecked={false} onChange={onChange} label="Option" />)
-    expect(screen.queryByLabelText('Help text')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Option' })).not.toBeInTheDocument()
   })
 
   it('should toggle checked state on checkbox click', () => {

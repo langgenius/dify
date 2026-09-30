@@ -5,6 +5,7 @@ from contextlib import AbstractContextManager, nullcontext
 from typing import TYPE_CHECKING, Any, Union, final
 
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import set_committed_value
 
 from core.app.apps.draft_variable_saver import (
     DraftVariableSaver,
@@ -19,7 +20,7 @@ from graphon.enums import NodeType
 from graphon.file import File, FileUploadConfig
 from graphon.variables.input_entities import VariableEntityType
 from libs.orjson import orjson_dumps
-from models import Account, EndUser
+from models import Account, EndUser, Workflow, WorkflowRun
 from services.workflow_draft_variable_service import DraftVariableSaver as DraftVariableSaverImpl
 
 if TYPE_CHECKING:
@@ -69,6 +70,15 @@ class _DebuggerDraftVariableSaver:
 
 class BaseAppGenerator:
     _file_access_controller: DatabaseFileAccessController = DatabaseFileAccessController()
+
+    @staticmethod
+    def _restore_workflow_run_graph(*, session: Session, workflow: Workflow, workflow_run_id: str | None) -> None:
+        if workflow_run_id is None:
+            raise ValueError("Workflow run id is required when resuming")
+        workflow_run = session.get(WorkflowRun, workflow_run_id)
+        if workflow_run is None or workflow_run.graph is None:
+            raise ValueError(f"Workflow run graph not found: {workflow_run_id}")
+        set_committed_value(workflow, "graph", workflow_run.graph)
 
     @staticmethod
     def _join_worker_thread(worker_thread: threading.Thread) -> None:

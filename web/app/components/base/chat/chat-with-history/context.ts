@@ -3,7 +3,7 @@
 import type { RefObject } from 'react'
 import type { ChatProps } from '../chat'
 import type { Theme } from '../embedded-chatbot/theme/theme'
-import type { Callback, ChatConfig, ChatItemInTree, Feedback } from '../types'
+import type { Callback, ChatConfig, ChatItemInTree, OnFeedback } from '../types'
 import type { AppConversationData, AppData, AppMeta, ConversationItem } from '@/models/share'
 import { noop } from 'es-toolkit/function'
 import { createContext, useContext } from 'use-context-selector'
@@ -35,7 +35,7 @@ export type ChatWithHistoryContextValue = {
   isMobile: boolean
   isInstalledApp: boolean
   appId?: string
-  handleFeedback: (messageId: string, feedback: Feedback) => void
+  handleFeedback: OnFeedback
   currentChatInstanceRef: RefObject<{ handleStop: () => void }>
   theme?: Theme
   sidebarCollapseState?: boolean
@@ -76,7 +76,7 @@ export const ChatWithHistoryContext = createContext<ChatWithHistoryContextValue>
   chatShouldReloadKey: '',
   isMobile: false,
   isInstalledApp: false,
-  handleFeedback: noop,
+  handleFeedback: () => Promise.resolve(),
   currentChatInstanceRef: { current: { handleStop: noop } },
   sidebarCollapseState: false,
   handleSidebarCollapse: noop,

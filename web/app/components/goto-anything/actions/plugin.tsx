@@ -1,7 +1,7 @@
 import type { Plugin } from '../../plugins/types'
-import type { ActionItem, PluginSearchResult } from './types'
-import { renderI18nObject } from '@/i18n-config'
-import { marketplaceQuery } from '@/service/client'
+import type { ActionItem, PluginSearchResult, SearchQueryOptions } from './types'
+import { renderI18nObject } from '@/i18n/metadata'
+import { marketplaceQuery } from '@/service/marketplace'
 import Icon from '../../plugins/card/base/card-icon'
 import { getFormattedPlugin } from '../../plugins/marketplace/utils'
 
@@ -26,7 +26,11 @@ export const pluginAction: ActionItem = {
   source: 'remote',
 }
 
-export function pluginSearchQueryOptions(searchTerm: string, locale: string) {
+export function pluginSearchQueryOptions(
+  searchTerm: string,
+  locale: string,
+  options: SearchQueryOptions = {},
+) {
   return marketplaceQuery.searchAdvanced.queryOptions({
     input: {
       params: { kind: 'plugins' },
@@ -37,6 +41,7 @@ export function pluginSearchQueryOptions(searchTerm: string, locale: string) {
       },
     },
     retry: false,
+    ...options,
     select: (response) => {
       const plugins = response.data?.plugins ?? []
       return parser(

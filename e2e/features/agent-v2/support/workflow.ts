@@ -1,5 +1,5 @@
 import type { SyncDraftWorkflowPayload } from '@dify/contracts/api/console/apps/types.gen'
-import type { ConsoleClient } from '../../../support/api/console-client'
+import type { ConsoleClient } from '../../../support/api/console-client.ts'
 import * as z from 'zod'
 
 const agentV2WorkflowNodeId = 'agent-v2'
@@ -60,7 +60,6 @@ export async function syncAgentV2WorkflowDraft(
       viewport: { x: 0, y: 0, zoom: 1 },
     },
     features: {},
-    environment_variables: [],
     conversation_variables: [],
   } satisfies SyncDraftWorkflowPayload
   await client.apps.byAppId.workflows.draft.post({ body, params: { app_id: appId } })

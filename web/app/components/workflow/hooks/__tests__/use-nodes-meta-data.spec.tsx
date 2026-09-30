@@ -1,4 +1,5 @@
 import type { Node } from '../../types'
+import { createDatasourceProvider } from '@/app/components/rag-pipeline/__tests__/datasource-fixtures'
 import { CollectionType } from '@/app/components/tools/types'
 import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
 import { BlockEnum } from '../../types'
@@ -109,13 +110,18 @@ describe('useNodesMetaData', () => {
       },
     })
 
-    const datasource = {
+    const provider = createDatasourceProvider()
+    const datasource = createDatasourceProvider({
       plugin_id: 'datasource-1',
-      author: 'Datasource Author',
-      description: {
-        'en-US': 'Datasource description',
+      declaration: {
+        ...provider.declaration,
+        identity: {
+          ...provider.declaration.identity,
+          author: 'Datasource Author',
+          description: { en_US: 'Datasource description', zh_Hans: null },
+        },
       },
-    }
+    })
 
     const metadataMap = {
       [BlockEnum.LLM]: {
@@ -130,7 +136,7 @@ describe('useNodesMetaData', () => {
 
     const datasourceResult = renderWorkflowHook(() => useNodeMetaData(datasourceNode), {
       initialStoreState: {
-        dataSourceList: [datasource as never],
+        dataSourceList: [datasource],
       },
       hooksStoreProps: {
         availableNodesMetaData: {

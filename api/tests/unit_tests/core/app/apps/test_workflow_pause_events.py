@@ -1,3 +1,4 @@
+import json
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock
@@ -26,6 +27,7 @@ from graphon.graph_events import GraphRunPausedEvent
 from graphon.runtime import GraphRuntimeState, VariablePool
 from models.account import Account
 from models.human_input import HumanInputForm, HumanInputFormRecipient, RecipientType
+from models.workflow import Workflow, WorkflowType
 
 
 class _RecordingWorkflowAppRunner(WorkflowAppRunner):
@@ -39,9 +41,6 @@ class _RecordingWorkflowAppRunner(WorkflowAppRunner):
 
 class _FakeRuntimeState:
     variable_pool = object()
-
-    def get_paused_nodes(self):
-        return ["node-pause-1"]
 
 
 @pytest.fixture
@@ -95,12 +94,19 @@ def _build_runner():
         workflow_execution_id="run-id",
         user_id="user-id",
     )
-    workflow = SimpleNamespace(
-        graph_dict={},
+    workflow = Workflow.new(
         tenant_id="tenant-id",
-        environment_variables={},
-        id="workflow-id",
+        app_id="app-id",
+        type=WorkflowType.WORKFLOW,
+        version=Workflow.VERSION_DRAFT,
+        graph=json.dumps({}),
+        features="{}",
+        created_by="account-id",
+        environment_variables=[],
+        conversation_variables=[],
+        rag_pipeline_variables=[],
     )
+    workflow.id = "workflow-id"
     queue_manager = SimpleNamespace(publish=lambda event, pub_from: None)
     return _RecordingWorkflowAppRunner(
         application_generate_entity=app_entity,
@@ -140,6 +146,7 @@ def test_graph_run_paused_event_emits_queue_pause_event(monkeypatch: pytest.Monk
         "core.app.apps.workflow_app_runner.enrich_graph_pause_reasons",
         lambda **_: [enriched_reason],
     )
+    monkeypatch.setattr("core.app.apps.workflow_app_runner.dispatch_human_input_email_task", MagicMock())
 
     runner._handle_event(workflow_entry, event)
 
@@ -148,7 +155,7 @@ def test_graph_run_paused_event_emits_queue_pause_event(monkeypatch: pytest.Monk
     assert isinstance(queue_event, QueueWorkflowPausedEvent)
     assert queue_event.reasons == [enriched_reason]
     assert queue_event.outputs == {"foo": "bar"}
-    assert queue_event.paused_nodes == ["node-pause-1"]
+    assert queue_event.paused_nodes == ["node-human"]
 
 
 def _build_converter(*, invoke_from: InvokeFrom = InvokeFrom.SERVICE_API):
@@ -164,10 +171,8 @@ def _build_converter(*, invoke_from: InvokeFrom = InvokeFrom.SERVICE_API):
         workflow_id="workflow-id",
         workflow_execution_id="run-id",
     )
-    user = MagicMock(spec=Account)
+    user = Account(name="Tester", email="tester@example.com")
     user.id = "account-id"
-    user.name = "Tester"
-    user.email = "tester@example.com"
     return WorkflowResponseConverter(
         application_generate_entity=application_generate_entity,
         user=user,

@@ -1,22 +1,18 @@
 'use client'
-
-import type { TriggerParams } from '@/app/components/base/date-and-time-picker/types'
 import type { AutoUpdateConfig } from '@/app/components/plugins/reference-setting-modal/auto-update-setting/types'
 import type { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
-  DialogCloseButton,
+  DialogClose,
   DialogContent,
   DialogTitle,
   DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
-import { toast } from '@langgenius/dify-ui/toast'
-import { useAtomValue } from 'jotai'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { convertTimezoneToOffsetStr } from '@/app/components/base/date-and-time-picker/utils/dayjs'
 import {
   AUTO_UPDATE_MODE,
   AUTO_UPDATE_STRATEGY,
@@ -24,10 +20,9 @@ import {
 import {
   convertLocalSecondsToUTCDaySeconds,
   convertUTCDaySecondsToLocalSeconds,
-  dayjsToTimeOfDay,
-  timeOfDayToDayjs,
 } from '@/app/components/plugins/reference-setting-modal/auto-update-setting/utils'
-import { userProfileAtom } from '@/context/account-state'
+import { toast } from '@/app/notifications'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import {
   useMutationPluginAutoUpgradeSettings,
   usePluginAutoUpgradeSettings,
@@ -40,9 +35,11 @@ type Props = {
 }
 
 const UpdateSettingDialog = ({ category, disabled = false }: Props) => {
-  const { t } = useTranslation()
-  const userProfile = useAtomValue(userProfileAtom)
-  const timezone = userProfile.timezone || 'UTC'
+  const { t } = useTranslation(['common', 'plugin'])
+  const { data: timezone } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.timezone || 'UTC',
+  })
   const {
     data: autoUpgradeSetting,
     error,
@@ -90,15 +87,12 @@ const UpdateSettingDialog = ({ category, disabled = false }: Props) => {
         return []
     }
   }, [autoUpgrade])
-  const updateTimeValue = useMemo(() => {
-    if (!autoUpgrade) return ''
-
-    const localSeconds = convertUTCDaySecondsToLocalSeconds(
-      autoUpgrade.upgrade_time_of_day,
-      timezone,
-    )
-    return timeOfDayToDayjs(localSeconds).format('HH:mm')
-  }, [autoUpgrade, timezone])
+  const localSeconds = autoUpgrade
+    ? convertUTCDaySecondsToLocalSeconds(autoUpgrade.upgrade_time_of_day, timezone)
+    : 0
+  const updateTimeValue = autoUpgrade
+    ? `${String(Math.floor(localSeconds / 3600)).padStart(2, '0')}:${String(Math.floor((localSeconds % 3600) / 60)).padStart(2, '0')}`
+    : ''
   const strategyOptions = useMemo(
     () => [
       {
@@ -165,20 +159,15 @@ const UpdateSettingDialog = ({ category, disabled = false }: Props) => {
     },
     [autoUpgrade, updateAutoUpgrade],
   )
-  const minuteFilter = useCallback((minutes: string[]) => {
-    return minutes.filter((m) => {
-      const time = Number.parseInt(m, 10)
-      return time % 15 === 0
+  const handleUpdateTimeChange = (value: string | null) => {
+    const [hour, minute] = (value ?? '00:00').split(':').map(Number)
+    updateAutoUpgrade({
+      upgrade_time_of_day: convertLocalSecondsToUTCDaySeconds(
+        hour! * 3600 + minute! * 60,
+        timezone,
+      ),
     })
-  }, [])
-  const handleUpdateTimeChange = useCallback(
-    (value: Parameters<typeof dayjsToTimeOfDay>[0]) => {
-      updateAutoUpgrade({
-        upgrade_time_of_day: convertLocalSecondsToUTCDaySeconds(dayjsToTimeOfDay(value), timezone),
-      })
-    },
-    [timezone, updateAutoUpgrade],
-  )
+  }
   const handleOpenChange = useCallback(
     (open: boolean) => {
       if (disabled) {
@@ -203,44 +192,14 @@ const UpdateSettingDialog = ({ category, disabled = false }: Props) => {
     setDraftAutoUpgrade(undefined)
     setIsOpen(false)
   }, [autoUpgrade, saveAutoUpgrade])
-  const renderTimePickerTrigger = useCallback(
-    ({ inputElem, onClick, isOpen }: TriggerParams) => {
-      return (
-        <button
-          type="button"
-          className="group flex h-8 w-full cursor-pointer items-center gap-1 rounded-lg border-none bg-components-input-bg-normal px-2 py-1 text-left shadow-none hover:bg-state-base-hover-alt focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-          onClick={onClick}
-        >
-          <span
-            aria-hidden
-            className={cn(
-              'i-ri-time-line size-4 shrink-0 text-text-tertiary',
-              isOpen ? 'text-text-secondary' : 'group-hover:text-text-secondary',
-            )}
-          />
-          <span className="min-w-0 flex-1 p-1 system-sm-regular text-components-input-text-filled">
-            {inputElem}
-          </span>
-          <span className="shrink-0 pr-0.5 system-sm-regular text-text-tertiary">
-            {convertTimezoneToOffsetStr(timezone)}
-          </span>
-        </button>
-      )
-    },
-    [timezone],
-  )
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger
         render={
-          <Button
-            variant="secondary"
-            className="h-8 gap-0.5 px-3 system-sm-medium"
-            disabled={disabled}
-          >
+          <Button variant="secondary" className="h-8 system-sm-medium" disabled={disabled}>
             <span aria-hidden className="i-custom-vender-system-auto-update-line size-4" />
-            <span className="px-0.5">{t(($) => $['autoUpdate.autoUpdate'], { ns: 'plugin' })}</span>
+            <span>{t(($) => $['autoUpdate.autoUpdate'], { ns: 'plugin' })}</span>
             {selectedStrategyLabel && (
               <span className="flex min-w-4 items-center justify-center rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
                 {selectedStrategyLabel}
@@ -255,7 +214,17 @@ const UpdateSettingDialog = ({ category, disabled = false }: Props) => {
             <DialogTitle className="min-w-0 flex-1 title-2xl-semi-bold text-text-primary">
               {t(($) => $['autoUpdate.autoUpdateSettings'], { ns: 'plugin' })}
             </DialogTitle>
-            <DialogCloseButton className="top-5 right-5 size-8 rounded-lg" />
+            <DialogClose
+              render={
+                <IconButton
+                  aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                  size="lg"
+                  className="absolute top-5 right-5"
+                >
+                  <span aria-hidden className="i-ri-close-line size-4" />
+                </IconButton>
+              }
+            />
           </div>
           {isSettingsLoading && (
             <div
@@ -284,12 +253,10 @@ const UpdateSettingDialog = ({ category, disabled = false }: Props) => {
                 strategyOptions={strategyOptions}
                 timezone={timezone}
                 updateTimeValue={updateTimeValue}
-                minuteFilter={minuteFilter}
                 onAutoUpgradeChange={updateAutoUpgrade}
                 onPluginsChange={handlePluginsChange}
                 onRequestClose={handleCancel}
                 onUpdateTimeChange={handleUpdateTimeChange}
-                renderTimePickerTrigger={renderTimePickerTrigger}
               />
               <div className="flex h-19 items-center justify-end gap-2 px-6 pt-5 pb-6">
                 <Button variant="secondary" className="min-w-18" onClick={handleCancel}>

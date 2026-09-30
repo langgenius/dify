@@ -79,12 +79,12 @@ vi.mock('@/context/workspace-state', async () => {
   return { currentWorkspaceIdAtom: atom('workspace-1') }
 })
 
-vi.mock('@/context/system-features-state', async () => {
+vi.mock('@/features/system-features/state', async () => {
   const { atom } = await vi.importActual<typeof import('jotai')>('jotai')
   return { deploymentEditionAtom: atom('CLOUD') }
 })
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     onboarding: {
       stepByStepTour: {

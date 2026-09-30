@@ -5,6 +5,7 @@ export {
   usePathname,
   useRouter,
   useSearchParams,
+  useServerInsertedHTML,
   useSelectedLayoutSegment,
   useSelectedLayoutSegments,
 } from 'next/navigation'

@@ -288,7 +288,7 @@ describe('OpeningSettingModal', () => {
     expect(screen.getByTestId('opener-questions-section')).toBeInTheDocument()
     expect(screen.getByText(/openingStatement\.editorTitle/)).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: /openingStatement\.openingQuestionDescription/ }),
+      screen.getByRole('button', { name: /openingStatement\.openingQuestion/ }),
     ).toBeInTheDocument()
     expect(
       screen.queryByText(/openingStatement\.openingQuestionDescription/),
@@ -298,9 +298,7 @@ describe('OpeningSettingModal', () => {
   it('should show the opening questions description in an infotip', async () => {
     await render(<OpeningSettingModal data={defaultData} onSave={vi.fn()} onCancel={vi.fn()} />)
 
-    await userEvent.hover(
-      screen.getByRole('button', { name: /openingStatement\.openingQuestionDescription/ }),
-    )
+    await userEvent.hover(screen.getByRole('button', { name: /openingStatement\.openingQuestion/ }))
 
     expect(
       await screen.findByText(/openingStatement\.openingQuestionDescription/),
@@ -560,5 +558,26 @@ describe('OpeningSettingModal', () => {
 
     await userEvent.click(screen.getByTestId('cancel-add'))
     expect(onSave).not.toHaveBeenCalled()
+  })
+  it('cancels sorting with Escape without closing the dialog, then saves a confirmed reorder', async () => {
+    const user = userEvent.setup()
+    const onSave = vi.fn()
+    const onCancel = vi.fn()
+    render(<OpeningSettingModal data={defaultData} onSave={onSave} onCancel={onCancel} />)
+    const handle = screen.getAllByRole('button', { name: /sort.handle/ })[0]!
+    await user.click(handle)
+    await user.keyboard('{Enter}{ArrowDown}{Escape}')
+    expect(onCancel).not.toHaveBeenCalled()
+    expect(
+      screen
+        .getAllByPlaceholderText('appDebug.openingStatement.openingQuestionPlaceholder')
+        .map((input) => (input as HTMLInputElement).value),
+    ).toEqual(['Question 1', 'Question 2'])
+    expect(handle).toHaveFocus()
+    await user.keyboard('{Enter}{ArrowDown}{Enter}')
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    expect(onSave).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ suggested_questions: ['Question 2', 'Question 1'] }),
+    )
   })
 })

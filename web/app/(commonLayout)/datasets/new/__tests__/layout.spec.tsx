@@ -2,27 +2,14 @@ import type { ReactElement, ReactNode } from 'react'
 import { render, screen } from '@testing-library/react'
 
 const mocks = vi.hoisted(() => ({
-  ensureQueryData: vi.fn(),
+  getSystemFeatures: vi.fn(),
   redirect: vi.fn((_href: string) => {
     throw new Error('NEXT_REDIRECT')
   }),
-  systemFeaturesQueryOptions: { queryKey: ['console', 'system-features'] },
 }))
 
-vi.mock('@/context/query-client-server', () => ({
-  getQueryClientServer: () => ({
-    ensureQueryData: mocks.ensureQueryData,
-  }),
-}))
-
-vi.mock('@/service/server', () => ({
-  serverConsoleQuery: {
-    systemFeatures: {
-      get: {
-        queryOptions: () => mocks.systemFeaturesQueryOptions,
-      },
-    },
-  },
+vi.mock('@/features/system-features/server', () => ({
+  getSystemFeatures: () => mocks.getSystemFeatures(),
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -38,19 +25,19 @@ async function renderLayout(children: ReactNode) {
 describe('NewKnowledgeLayout', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.ensureQueryData.mockResolvedValue({ knowledge_fs_enabled: true })
+    mocks.getSystemFeatures.mockResolvedValue({ knowledge_fs_enabled: true })
   })
 
   it('renders new knowledge routes when KnowledgeFS is enabled', async () => {
     await renderLayout(<div>New knowledge content</div>)
 
-    expect(mocks.ensureQueryData).toHaveBeenCalledWith(mocks.systemFeaturesQueryOptions)
+    expect(mocks.getSystemFeatures).toHaveBeenCalledOnce()
     expect(screen.getByText('New knowledge content')).toBeInTheDocument()
     expect(mocks.redirect).not.toHaveBeenCalled()
   })
 
   it('redirects to datasets when KnowledgeFS is disabled', async () => {
-    mocks.ensureQueryData.mockResolvedValue({ knowledge_fs_enabled: false })
+    mocks.getSystemFeatures.mockResolvedValue({ knowledge_fs_enabled: false })
     const { default: Layout } = await import('../layout')
 
     await expect(Layout({ children: <div>New knowledge content</div> })).rejects.toThrow(
@@ -62,7 +49,7 @@ describe('NewKnowledgeLayout', () => {
 
   it('preserves System Features failures', async () => {
     const error = new Error('System Features unavailable')
-    mocks.ensureQueryData.mockRejectedValue(error)
+    mocks.getSystemFeatures.mockRejectedValue(error)
     const { default: Layout } = await import('../layout')
 
     await expect(Layout({ children: <div>New knowledge content</div> })).rejects.toBe(error)

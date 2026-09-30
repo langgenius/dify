@@ -12,9 +12,12 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from dify_agent.agent_stub.protocol.agent_stub import (
+    AgentStubConfigDownloadSource,
     AgentStubConfigManifestResponse,
     AgentStubConfigPushRequest,
     AgentStubConfigPushResponse,
+    AgentStubFileDownloadRequest,
+    AgentStubFileDownloadResponse,
 )
 from dify_agent.agent_stub.server.agent_stub_config import (
     AgentStubConfigRequestError,
@@ -36,7 +39,7 @@ def _token_codec() -> AgentStubTokenCodec:
 
 
 def _execution_context(**updates: object) -> DifyExecutionContextLayerConfig:
-    payload = {
+    payload: dict[str, object] = {
         "tenant_id": "tenant-1",
         "user_id": "user-1",
         "user_from": "account",
@@ -91,6 +94,7 @@ async def test_dify_api_handler_manifest_success(monkeypatch: pytest.MonkeyPatch
     response = await DifyApiAgentStubConfigRequestHandler(
         inner_api_url="https://api.example.com",
         inner_api_key="inner-secret",
+        sandbox_files_base_url="https://sandbox-files.example.com",
     ).manifest(principal=_principal())
 
     assert isinstance(response, AgentStubConfigManifestResponse)
@@ -112,16 +116,29 @@ async def test_dify_api_handler_manifest_success(monkeypatch: pytest.MonkeyPatch
 
 
 @pytest.mark.anyio
-async def test_dify_api_handler_pull_endpoints_return_bytes(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_dify_api_handler_config_download_returns_sandbox_data_plane_url(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     original_async_client = httpx.AsyncClient
 
     def handler(request: httpx.Request) -> httpx.Response:
-        assert request.url.params["user_id"] == "user-1"
-        if request.url.path.endswith("/skills/alpha/pull"):
-            return httpx.Response(200, content=b"zip-bytes")
-        if request.url.path.endswith("/files/guide.txt/pull"):
-            return httpx.Response(200, content=b"file-bytes")
-        raise AssertionError(f"unexpected path: {request.url.path}")
+        assert request.url.path == "/inner/api/agent-config/agent-1/download-request"
+        assert json.loads(request.content) == {
+            "tenant_id": "tenant-1",
+            "user_id": "user-1",
+            "config_version_id": "cfg-1",
+            "config_version_kind": "build_draft",
+            "config": {"kind": "skill", "name": "alpha"},
+        }
+        return httpx.Response(
+            200,
+            json={
+                "filename": "alpha.zip",
+                "mime_type": "application/zip",
+                "size": 123,
+                "download_uri": "/files/tools/alpha.zip?sign=1",
+            },
+        )
 
     monkeypatch.setattr(
         "dify_agent.agent_stub.server.agent_stub_config.httpx.AsyncClient",
@@ -131,10 +148,20 @@ async def test_dify_api_handler_pull_endpoints_return_bytes(monkeypatch: pytest.
     request_handler = DifyApiAgentStubConfigRequestHandler(
         inner_api_url="https://api.example.com",
         inner_api_key="inner-secret",
+        sandbox_files_base_url="https://sandbox-files.example.com/dify",
     )
 
-    assert await request_handler.pull_skill(principal=_principal(), name="alpha") == b"zip-bytes"
-    assert await request_handler.pull_file(principal=_principal(), name="guide.txt") == b"file-bytes"
+    response = await request_handler.create_download_request(
+        principal=_principal(),
+        source=AgentStubConfigDownloadSource(kind="skill", name="alpha"),
+    )
+
+    assert response == AgentStubFileDownloadResponse(
+        filename="alpha.zip",
+        mime_type="application/zip",
+        size=123,
+        download_url="https://sandbox-files.example.com/dify/files/tools/alpha.zip?sign=1",
+    )
 
 
 @pytest.mark.anyio
@@ -161,6 +188,7 @@ async def test_dify_api_handler_push_env_and_note_success(monkeypatch: pytest.Mo
     request_handler = DifyApiAgentStubConfigRequestHandler(
         inner_api_url="https://api.example.com",
         inner_api_key="inner-secret",
+        sandbox_files_base_url="https://sandbox-files.example.com",
     )
 
     push_response = await request_handler.push(
@@ -221,8 +249,8 @@ async def test_dify_api_handler_push_env_and_note_success(monkeypatch: pytest.Mo
             "manifest",
         ),
         (
-            "pull_skill",
-            "/inner/api/agent-config/agent-1/skills/alpha/pull",
+            "create_download_request",
+            "/inner/api/agent-config/agent-1/download-request",
             httpx.Response(404, json={"detail": "missing"}),
             404,
             "missing",
@@ -260,14 +288,18 @@ async def test_dify_api_handler_maps_error_cases(
     request_handler = DifyApiAgentStubConfigRequestHandler(
         inner_api_url="https://api.example.com",
         inner_api_key="inner-secret",
+        sandbox_files_base_url="https://sandbox-files.example.com",
     )
 
     with pytest.raises(AgentStubConfigRequestError, match=expected_message) as exc_info:
         match method_name:
             case "manifest":
                 await request_handler.manifest(principal=_principal())
-            case "pull_skill":
-                await request_handler.pull_skill(principal=_principal(), name="alpha")
+            case "create_download_request":
+                await request_handler.create_download_request(
+                    principal=_principal(),
+                    source=AgentStubConfigDownloadSource(kind="skill", name="alpha"),
+                )
             case "push":
                 await request_handler.push(principal=_principal(), request=AgentStubConfigPushRequest())
             case "update_env":
@@ -297,6 +329,7 @@ async def test_dify_api_handler_validates_required_execution_context_fields(
     request_handler = DifyApiAgentStubConfigRequestHandler(
         inner_api_url="https://api.example.com",
         inner_api_key="inner-secret",
+        sandbox_files_base_url="https://sandbox-files.example.com",
     )
 
     with pytest.raises(AgentStubConfigRequestError, match=expected_message) as exc_info:
@@ -313,9 +346,8 @@ async def test_dify_api_handler_validates_required_execution_context_fields(
     "method_name",
     [
         "get_config_manifest",
-        "pull_config_skill",
+        "create_file_download_request",
         "inspect_config_skill",
-        "pull_config_file",
         "push_config",
         "update_config_env",
         "update_config_note",
@@ -330,15 +362,11 @@ async def test_control_plane_maps_config_request_errors(method_name: str) -> Non
             del principal
             raise AgentStubConfigRequestError(409, {"code": "conflict"})
 
-        async def pull_skill(self, *, principal, name):
-            del principal, name
+        async def create_download_request(self, *, principal, source):
+            del principal, source
             raise AgentStubConfigRequestError(409, {"code": "conflict"})
 
         async def inspect_skill(self, *, principal, name):
-            del principal, name
-            raise AgentStubConfigRequestError(409, {"code": "conflict"})
-
-        async def pull_file(self, *, principal, name):
             del principal, name
             raise AgentStubConfigRequestError(409, {"code": "conflict"})
 
@@ -362,12 +390,16 @@ async def test_control_plane_maps_config_request_errors(method_name: str) -> Non
         match method_name:
             case "get_config_manifest":
                 await service.get_config_manifest(authorization=authorization)
-            case "pull_config_skill":
-                await service.pull_config_skill(name="alpha", authorization=authorization)
+            case "create_file_download_request":
+                await service.create_file_download_request(
+                    request=AgentStubFileDownloadRequest(
+                        config=AgentStubConfigDownloadSource(kind="skill", name="alpha"),
+                        for_frontend=False,
+                    ),
+                    authorization=authorization,
+                )
             case "inspect_config_skill":
                 await service.inspect_config_skill(name="alpha", authorization=authorization)
-            case "pull_config_file":
-                await service.pull_config_file(name="guide.txt", authorization=authorization)
             case "push_config":
                 await service.push_config(request=AgentStubConfigPushRequest(), authorization=authorization)
             case "update_config_env":
@@ -385,9 +417,14 @@ async def test_control_plane_maps_config_request_errors(method_name: str) -> Non
     ("path", "method", "body", "expected_status", "expected_detail"),
     [
         ("/agent-stub/config/manifest", "get", None, 200, {"agent_id": "agent-1"}),
-        ("/agent-stub/config/skills/alpha/pull", "get", None, 200, b"zip-bytes"),
+        (
+            "/agent-stub/files/download-request",
+            "post",
+            {"config": {"kind": "skill", "name": "alpha"}, "for_frontend": False},
+            200,
+            {"download_url": "https://sandbox-files.example.com/files/alpha.zip"},
+        ),
         ("/agent-stub/config/skills/alpha/inspect", "get", None, 200, {"name": "alpha", "files": ["SKILL.md"]}),
-        ("/agent-stub/config/files/guide.txt/pull", "get", None, 200, b"file-bytes"),
         ("/agent-stub/config/push", "post", {"note": "hello"}, 200, {"agent_id": "agent-1"}),
         ("/agent-stub/config/env", "patch", {"env_text": "API_KEY=value\n"}, 200, {"env_keys": ["API_KEY"]}),
         ("/agent-stub/config/note", "put", {"note": "hello"}, 200, {"note": "hello"}),
@@ -398,7 +435,7 @@ def test_http_config_routes_forward_requests(
     method: str,
     body: dict[str, object] | None,
     expected_status: int,
-    expected_detail: dict[str, object] | bytes,
+    expected_detail: dict[str, object],
 ) -> None:
     codec = _token_codec()
     token = codec.encode_connection_token(_execution_context(), now=int(time.time()) - 1)
@@ -409,20 +446,20 @@ def test_http_config_routes_forward_requests(
             captured["manifest_agent_id"] = principal.execution_context.agent_id
             return AgentStubConfigManifestResponse.model_validate(_manifest_payload())
 
-        async def pull_skill(self, *, principal, name):
-            del principal
-            captured["skill_name"] = name
-            return b"zip-bytes"
+        async def create_download_request(self, *, principal, source):
+            captured["download_agent_id"] = principal.execution_context.agent_id
+            captured["download_source"] = source.model_dump()
+            return AgentStubFileDownloadResponse(
+                filename="alpha.zip",
+                mime_type="application/zip",
+                size=123,
+                download_url="https://sandbox-files.example.com/files/alpha.zip",
+            )
 
         async def inspect_skill(self, *, principal, name):
             del principal
             captured["inspect_name"] = name
             return {"name": name, "files": ["SKILL.md"]}
-
-        async def pull_file(self, *, principal, name):
-            del principal
-            captured["file_name"] = name
-            return b"file-bytes"
 
         async def push(self, *, principal, request):
             del principal
@@ -441,29 +478,26 @@ def test_http_config_routes_forward_requests(
 
     app = FastAPI()
     app.include_router(
-        create_agent_stub_http_router(codec, config_request_handler=cast(AgentStubConfigRequestHandler, FakeHandler()))
+        create_agent_stub_http_router(
+            codec,
+            config_request_handler=cast(AgentStubConfigRequestHandler, cast(object, FakeHandler())),
+        )
     )
     client = TestClient(app)
     headers = {"Authorization": f"Bearer {token}"}
     response = client.request(method.upper(), path, headers=headers, json=body)
 
     assert response.status_code == expected_status
-    if isinstance(expected_detail, bytes):
-        assert response.content == expected_detail
-    else:
-        for key, value in expected_detail.items():
-            assert response.json()[key] == value
+    for key, value in expected_detail.items():
+        assert response.json()[key] == value
 
     if path.endswith("/manifest"):
         assert captured["manifest_agent_id"] == "agent-1"
-    elif path.endswith("/skills/alpha/pull"):
-        assert captured["skill_name"] == "alpha"
-        assert response.headers["content-type"] == "application/zip"
+    elif path.endswith("/files/download-request"):
+        assert captured["download_agent_id"] == "agent-1"
+        assert captured["download_source"] == {"kind": "skill", "name": "alpha"}
     elif path.endswith("/skills/alpha/inspect"):
         assert captured["inspect_name"] == "alpha"
-    elif path.endswith("/files/guide.txt/pull"):
-        assert captured["file_name"] == "guide.txt"
-        assert response.headers["content-type"] == "application/octet-stream"
     elif path.endswith("/config/push"):
         assert captured["push_note"] == "hello"
     elif path.endswith("/config/env"):
@@ -481,15 +515,11 @@ def test_http_config_routes_map_handler_errors() -> None:
             del principal
             raise AgentStubConfigRequestError(422, {"code": "invalid_request"})
 
-        async def pull_skill(self, *, principal, name):
-            del principal, name
+        async def create_download_request(self, *, principal, source):
+            del principal, source
             raise AssertionError("unexpected route")
 
         async def inspect_skill(self, *, principal, name):
-            del principal, name
-            raise AssertionError("unexpected route")
-
-        async def pull_file(self, *, principal, name):
             del principal, name
             raise AssertionError("unexpected route")
 

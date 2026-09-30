@@ -1,6 +1,6 @@
 import type { CustomCollectionBackend } from '../../types'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { render } from '@/test/console/render'
 import { AuthType } from '../../types'
 import CustomCreateCard, { NewCustomToolButton } from '../custom-create-card'
@@ -18,15 +18,20 @@ vi.mock('@/context/permission-state', async () => {
 })
 
 // Mock useLocale and useDocLink
-vi.mock('@/context/i18n', () => ({
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: () => 'en-US',
+}))
+
+vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path?: string) =>
     `https://docs.dify.ai/en${path?.startsWith('/use-dify/') ? `/cloud${path}` : path || ''}`,
 }))
 
-// Mock getLanguage
-vi.mock('@/i18n-config/language', () => ({
-  getLanguage: () => 'en-US',
+// Mock getPluginLanguage
+vi.mock('@/i18n/metadata', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/i18n/metadata')>()),
+  getPluginLanguage: () => 'en-US',
 }))
 
 // Mock createCustomCollection service
@@ -82,7 +87,7 @@ vi.mock('@/app/components/tools/edit-custom-collection-modal', () => ({
 
 // Mock toast
 const mockToastSuccess = vi.fn()
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: (title: string) => mockToastSuccess(title),
   },

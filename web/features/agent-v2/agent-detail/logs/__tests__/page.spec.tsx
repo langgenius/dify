@@ -4,7 +4,7 @@ import type {
   AgentLogSourceListResponse,
 } from '@dify/contracts/api/console/agent/types.gen'
 import { QueryClient } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
@@ -23,6 +23,7 @@ const mocks = vi.hoisted(() => ({
   logsQueryFn: vi.fn(),
   logSourcesQueryFn: vi.fn(),
   messagesQueryFn: vi.fn(),
+  feedbackMutationFn: vi.fn(),
   logsQueryOptions: vi.fn((input: AgentLogsQueryInput) => ({
     queryKey: ['agent-logs', input],
     queryFn: () => mocks.logsQueryFn(input),
@@ -35,6 +36,9 @@ const mocks = vi.hoisted(() => ({
     queryKey: ['agent-log-messages', input],
     queryFn: () => mocks.messagesQueryFn(input),
   })),
+  feedbackMutationOptions: vi.fn(() => ({
+    mutationFn: mocks.feedbackMutationFn,
+  })),
 }))
 
 vi.mock('@/hooks/use-timestamp', () => ({
@@ -43,7 +47,7 @@ vi.mock('@/hooks/use-timestamp', () => ({
   }),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     systemFeatures: {
       get: {
@@ -57,6 +61,11 @@ vi.mock('@/service/client', () => ({
     },
     agent: {
       byAgentId: {
+        feedbacks: {
+          post: {
+            mutationOptions: mocks.feedbackMutationOptions,
+          },
+        },
         logSources: {
           get: {
             queryOptions: mocks.logSourcesQueryOptions,
@@ -64,11 +73,13 @@ vi.mock('@/service/client', () => ({
         },
         logs: {
           get: {
+            key: () => ['agent-logs'],
             queryOptions: mocks.logsQueryOptions,
           },
           byConversationId: {
             messages: {
               get: {
+                key: () => ['agent-log-messages'],
                 queryOptions: mocks.messagesQueryOptions,
               },
             },
@@ -202,6 +213,8 @@ const messagesResponse: AgentLogMessageListResponse = {
       error: null,
       from_account_id: null,
       from_end_user_id: 'end-user-1',
+      feedback_enabled: true,
+      feedbacks: [],
       id: 'message-1',
       latency: 1.234,
       message_id: 'message-1',
@@ -255,6 +268,7 @@ describe('AgentLogsPage', () => {
     mocks.logsQueryFn.mockResolvedValue(emptyLogsResponse)
     mocks.logSourcesQueryFn.mockResolvedValue(logSourcesResponse)
     mocks.messagesQueryFn.mockResolvedValue(messagesResponse)
+    mocks.feedbackMutationFn.mockResolvedValue({ result: 'success' })
   })
 
   describe('Query contract', () => {
@@ -315,6 +329,15 @@ describe('AgentLogsPage', () => {
 
       renderPage()
 
+      const createdHeader = screen.getByRole('columnheader', {
+        name: 'agentV2.agentDetail.logs.table.createdTime',
+      })
+      const updatedHeader = screen.getByRole('columnheader', {
+        name: 'agentV2.agentDetail.logs.table.updatedTime',
+      })
+      expect(createdHeader).toHaveAttribute('aria-sort', 'descending')
+      expect(updatedHeader).not.toHaveAttribute('aria-sort')
+
       await user.click(screen.getByRole('button', { name: /appLog\.filter\.sortBy/ }))
       await user.click(
         await screen.findByRole('menuitemradio', {
@@ -331,6 +354,9 @@ describe('AgentLogsPage', () => {
         )
       })
 
+      expect(createdHeader).not.toHaveAttribute('aria-sort')
+      expect(updatedHeader).toHaveAttribute('aria-sort', 'descending')
+
       await user.click(screen.getByRole('button', { name: 'appLog.filter.ascending' }))
 
       await waitFor(() => {
@@ -341,6 +367,48 @@ describe('AgentLogsPage', () => {
           }),
         )
       })
+      expect(createdHeader).not.toHaveAttribute('aria-sort')
+      expect(updatedHeader).toHaveAttribute('aria-sort', 'ascending')
+    })
+
+    it('should expose unread status in the matching log row', async () => {
+      const readLog = populatedLogsResponse.data[0]!
+      mocks.logsQueryFn.mockResolvedValue({
+        ...populatedLogsResponse,
+        data: [
+          readLog,
+          { ...readLog, id: 'unread-log', title: 'Unread conversation', unread: true },
+        ],
+        total: 2,
+      })
+
+      renderPage()
+
+      const unreadRow = await screen.findByRole('row', { name: /Unread conversation/ })
+      const readRow = screen.getByRole('row', { name: /Previous conversation/ })
+      expect(
+        within(unreadRow).getByRole('cell', {
+          name: 'agentV2.agentDetail.logs.table.unread',
+        }),
+      ).toBeInTheDocument()
+      expect(
+        within(readRow).queryByText('agentV2.agentDetail.logs.table.unread'),
+      ).not.toBeInTheDocument()
+    })
+
+    it('includes the visible fallback label in an untitled log button name', async () => {
+      mocks.logsQueryFn.mockResolvedValue({
+        ...populatedLogsResponse,
+        data: [{ ...populatedLogsResponse.data[0]!, title: '' }],
+      })
+
+      renderPage()
+
+      expect(
+        await screen.findByRole('button', {
+          name: 'agentV2.agentDetail.logs.notAvailable conversation-1',
+        }),
+      ).toBeInTheDocument()
     })
 
     it('should keep existing log rows visible while filter changes refetch', async () => {
@@ -389,6 +457,8 @@ describe('AgentLogsPage', () => {
       renderPage()
 
       await user.click(await screen.findByRole('button', { name: 'Previous conversation' }))
+
+      expect(screen.getByRole('dialog', { name: 'Previous conversation' })).toBeInTheDocument()
 
       await waitFor(() => {
         expect(mocks.messagesQueryOptions).toHaveBeenCalledWith({

@@ -16,7 +16,7 @@ type IRunBatchProps = {
 }
 
 const RunBatch: FC<IRunBatchProps> = ({ vars, onSend, isAllFinished }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['share'])
   const media = useBreakpoints()
   const isPC = media === MediaType.pc
 
@@ -44,7 +44,7 @@ const RunBatch: FC<IRunBatchProps> = ({ vars, onSend, isAllFinished }) => {
           disabled={!isParsed || !isAllFinished}
         >
           <Icon
-            className={cn(!isAllFinished && 'animate-spin', 'mr-1 size-4 shrink-0')}
+            className={cn(!isAllFinished && 'animate-spin', 'size-4 shrink-0')}
             aria-hidden="true"
           />
           <span className="text-[13px] uppercase">

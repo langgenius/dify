@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from contextlib import contextmanager
+from contextlib import nullcontext
 from types import SimpleNamespace
 
 import pytest
@@ -56,6 +56,7 @@ from core.workflow.nodes.human_input.pause_reason import DifyHITLEventType
 from core.workflow.system_variables import build_system_variables
 from graphon.enums import BuiltinNodeTypes
 from graphon.file import FileTransferMethod, FileType
+from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.runtime import GraphRuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
 from models.enums import MessageStatus
@@ -174,7 +175,7 @@ class TestAdvancedChatGenerateTaskPipeline:
                 variables=build_system_variables(workflow_execution_id="run-id"),
             ),
             start_at=0.0,
-            total_tokens=7,
+            llm_usage=LLMUsage.empty_usage().model_copy(update={"total_tokens": 7}),
             node_run_steps=3,
         )
 
@@ -272,7 +273,7 @@ class TestAdvancedChatGenerateTaskPipeline:
 
     def test_listen_audio_msg_returns_audio_stream(self):
         pipeline = _make_pipeline()
-        publisher = SimpleNamespace(check_and_get_audio=lambda: AudioTrunk(status="stream", audio="data"))
+        publisher = SimpleNamespace(check_and_get_audio=lambda: AudioTrunk(status="responding", audio="data"))
 
         response = pipeline._listen_audio_msg(publisher=publisher, task_id="task")
 
@@ -492,7 +493,7 @@ class TestAdvancedChatGenerateTaskPipeline:
         pipeline._base_task_pipeline.queue_manager.publish = lambda *args, **kwargs: None
         pipeline._base_task_pipeline.handle_error = lambda **kwargs: ValueError("boom")
         pipeline._base_task_pipeline.error_to_stream_response = lambda err: err
-        pipeline._get_message = lambda **kwargs: SimpleNamespace(id="message-id")
+        pipeline._get_message = lambda **kwargs: Message(id="message-id")
 
         succeeded_responses = list(pipeline._handle_workflow_succeeded_event(QueueWorkflowSucceededEvent(outputs={})))
         assert len(succeeded_responses) == 2
@@ -586,7 +587,7 @@ class TestAdvancedChatGenerateTaskPipeline:
         assert result is False
         assert seen == ["token"]
 
-    def test_handle_retriever_and_annotation_events(self, monkeypatch: pytest.MonkeyPatch):
+    def test_handle_retriever_and_annotation_events(self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session):
         pipeline = _make_pipeline()
         calls = {"retriever": 0, "annotation": 0}
 
@@ -602,11 +603,7 @@ class TestAdvancedChatGenerateTaskPipeline:
         retriever_event = QueueRetrieverResourcesEvent(retriever_resources=[])
         annotation_event = QueueAnnotationReplyEvent(message_annotation_id="ann")
 
-        @contextmanager
-        def _fake_session():
-            yield SimpleNamespace()
-
-        monkeypatch.setattr(pipeline, "_database_session", _fake_session)
+        monkeypatch.setattr(pipeline, "_database_session", lambda: nullcontext(unbound_session))
 
         assert list(pipeline._handle_retriever_resources_event(retriever_event)) == []
         assert list(pipeline._handle_annotation_reply_event(annotation_event)) == []

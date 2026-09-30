@@ -1,6 +1,9 @@
+import type { ReactElement } from 'react'
 import type { WorkflowCommentDetail } from '@/app/components/workflow/comment/types'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { render } from '@/test/console/render'
+import userEvent from '@testing-library/user-event'
+import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import { CommentThread } from './thread'
 
 const mockSetCommentPreviewHovering = vi.hoisted(() => vi.fn())
@@ -14,6 +17,11 @@ const mockConsoleState = vi.hoisted(() => ({
     avatar_url: 'alice.png',
   },
 }))
+
+const render = (ui: ReactElement) =>
+  renderWithConsoleState(ui, {
+    wrapper: createAccountProfileQueryWrapper(mockConsoleState.userProfile),
+  })
 
 const storeState = vi.hoisted(() => ({
   mentionableUsersCache: {
@@ -34,11 +42,6 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
   }),
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState)
-})
-
 vi.mock('reactflow', () => ({
   useReactFlow: () => ({
     flowToScreenPosition: mockFlowToScreenPosition,
@@ -54,55 +57,12 @@ vi.mock('@/app/components/workflow/collaboration/utils/user-color', () => ({
   getUserColor: () => '#22c55e',
 }))
 
-vi.mock('@/app/components/base/divider', () => ({
-  default: () => <div data-testid="divider" />,
-}))
-
 vi.mock('@/app/components/base/inline-delete-confirm', () => ({
   default: ({ onConfirm }: { onConfirm: () => void }) => (
     <button type="button" data-testid="confirm-delete-reply" onClick={onConfirm}>
       confirm delete
     </button>
   ),
-}))
-
-vi.mock('@langgenius/dify-ui/avatar', () => ({
-  Avatar: ({ name }: { name: string }) => <div data-testid="avatar">{name}</div>,
-  AvatarRoot: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="avatar-root">{children}</div>
-  ),
-  AvatarImage: ({ alt }: { alt: string }) => <div data-testid="avatar-image">{alt}</div>,
-  AvatarFallback: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="avatar-fallback">{children}</div>
-  ),
-}))
-
-vi.mock('@langgenius/dify-ui/dropdown-menu', () => ({
-  DropdownMenu: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DropdownMenuTrigger: ({ children, ...props }: React.ComponentProps<'button'>) => (
-    <button type="button" {...props}>
-      {children}
-    </button>
-  ),
-  DropdownMenuContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-}))
-
-vi.mock('@langgenius/dify-ui/tooltip', () => ({
-  Tooltip: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  TooltipTrigger: ({
-    children,
-    render,
-    ...props
-  }: React.ComponentProps<'button'> & { children?: React.ReactNode; render?: React.ReactNode }) => {
-    if (render) return <>{render}</>
-
-    return (
-      <button type="button" {...props}>
-        {children}
-      </button>
-    )
-  },
-  TooltipContent: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }))
 
 vi.mock('./mention-input', () => ({
@@ -194,13 +154,15 @@ describe('CommentThread', () => {
       />,
     )
 
-    fireEvent.click(screen.getByLabelText('workflow.comments.aria.deleteComment'))
-    fireEvent.click(screen.getByLabelText('workflow.comments.aria.resolveComment'))
-    fireEvent.click(screen.getByLabelText('workflow.comments.aria.previousComment'))
-    fireEvent.click(screen.getByLabelText('workflow.comments.aria.nextComment'))
-    fireEvent.click(screen.getByLabelText('workflow.comments.aria.closeComment'))
+    fireEvent.click(screen.getByLabelText('workflowComments.comments.aria.deleteComment'))
+    fireEvent.click(screen.getByLabelText('workflowComments.comments.aria.resolveComment'))
+    fireEvent.click(screen.getByLabelText('workflowComments.comments.aria.previousComment'))
+    fireEvent.click(screen.getByLabelText('workflowComments.comments.aria.nextComment'))
+    fireEvent.click(screen.getByLabelText('workflowComments.comments.aria.closeComment'))
 
     fireEvent.keyDown(document, { key: 'Escape' })
+    expect(onClose).toHaveBeenCalledTimes(1)
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
 
     expect(onDelete).toHaveBeenCalledTimes(1)
     expect(onResolve).toHaveBeenCalledTimes(1)
@@ -233,9 +195,9 @@ describe('CommentThread', () => {
       <CommentThread comment={createComment()} onClose={vi.fn()} onCommentEdit={onCommentEdit} />,
     )
 
-    fireEvent.click(screen.getByLabelText('workflow.comments.aria.commentActions'))
-    fireEvent.click(screen.getByText('workflow.comments.actions.editComment'))
-    fireEvent.click(screen.getByText('submit-workflow.comments.placeholder.editComment'))
+    fireEvent.click(screen.getByLabelText('workflowComments.comments.aria.commentActions'))
+    fireEvent.click(screen.getByText('workflowComments.comments.actions.editComment'))
+    fireEvent.click(screen.getByText('submit-workflowComments.comments.placeholder.editComment'))
 
     await waitFor(() => {
       expect(onCommentEdit).toHaveBeenCalledWith('@Alice original comment', ['user-2'])
@@ -254,16 +216,17 @@ describe('CommentThread', () => {
     expect(mockSetCommentPreviewHovering).toHaveBeenNthCalledWith(1, true)
     expect(mockSetCommentPreviewHovering).toHaveBeenNthCalledWith(2, false)
 
-    fireEvent.click(screen.getByText('submit-workflow.comments.placeholder.reply'))
+    fireEvent.click(screen.getByText('submit-workflowComments.comments.placeholder.reply'))
 
     await waitFor(() => {
-      expect(onReply).toHaveBeenCalledWith('content:workflow.comments.placeholder.reply', [
+      expect(onReply).toHaveBeenCalledWith('content:workflowComments.comments.placeholder.reply', [
         'user-2',
       ])
     })
   })
 
   it('supports editing and direct deleting an existing reply', async () => {
+    const user = userEvent.setup()
     const onReplyEdit = vi.fn()
     const onReplyDeleteDirect = vi.fn()
 
@@ -276,18 +239,22 @@ describe('CommentThread', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('workflow.comments.actions.editReply'))
-    fireEvent.click(screen.getByText('submit-workflow.comments.placeholder.editReply'))
+    await user.click(screen.getByLabelText('workflowComments.comments.aria.replyActions'))
+    await user.click(await screen.findByText('workflowComments.comments.actions.editReply'))
+    await user.click(screen.getByText('submit-workflowComments.comments.placeholder.editReply'))
 
     await waitFor(() => {
       expect(onReplyEdit).toHaveBeenCalledWith('reply-1', 'first reply', ['user-2'])
     })
 
     await waitFor(() => {
-      expect(screen.getByText('workflow.comments.actions.deleteReply')).toBeInTheDocument()
+      expect(
+        screen.getByLabelText('workflowComments.comments.aria.replyActions'),
+      ).toBeInTheDocument()
     })
-    fireEvent.click(screen.getByText('workflow.comments.actions.deleteReply'))
-    fireEvent.click(screen.getByTestId('confirm-delete-reply'))
+    await user.click(screen.getByLabelText('workflowComments.comments.aria.replyActions'))
+    await user.click(await screen.findByText('workflowComments.comments.actions.deleteReply'))
+    await user.click(screen.getByTestId('confirm-delete-reply'))
 
     expect(onReplyDeleteDirect).toHaveBeenCalledWith('reply-1')
   })

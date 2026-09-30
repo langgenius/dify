@@ -2,7 +2,7 @@ import type { DataSourceCredential } from '@/app/components/header/account-setti
 import type { DataSourceNotionWorkspace } from '@/models/common'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import NotionPageSelector from '@/app/components/base/notion-page-selector/base'
 import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
 

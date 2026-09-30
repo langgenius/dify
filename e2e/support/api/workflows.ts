@@ -1,5 +1,5 @@
 import type { SyncDraftWorkflowPayload } from '@dify/contracts/api/console/apps/types.gen'
-import type { ConsoleClient } from './console-client'
+import type { ConsoleClient } from './console-client.ts'
 
 export async function syncMinimalWorkflowDraft(
   client: ConsoleClient,
@@ -19,7 +19,6 @@ export async function syncMinimalWorkflowDraft(
       viewport: { x: 0, y: 0, zoom: 1 },
     },
     features: {},
-    environment_variables: [],
     conversation_variables: [],
   } satisfies SyncDraftWorkflowPayload
   await client.apps.byAppId.workflows.draft.post({ body, params: { app_id: appId } })
@@ -63,7 +62,6 @@ export async function syncRunnableWorkflowDraft(
       viewport: { x: 0, y: 0, zoom: 1 },
     },
     features: {},
-    environment_variables: [],
     conversation_variables: [],
   } satisfies SyncDraftWorkflowPayload
   await client.apps.byAppId.workflows.draft.post({ body, params: { app_id: appId } })

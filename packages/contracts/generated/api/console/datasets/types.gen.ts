@@ -22,6 +22,83 @@ export type DatasetCreatePayload = {
   provider?: string
 }
 
+export type DatasetDetailWithPartialMembersResponse = {
+  app_count: number
+  author_name: string | null
+  built_in_field_enabled: boolean
+  chunk_structure: string | null
+  created_at: number
+  created_by: string
+  data_source_type: string | null
+  description: string | null
+  doc_form: string | null
+  doc_metadata: Array<DatasetDocMetadataResponse>
+  document_count: number
+  embedding_available?: boolean | null
+  embedding_model: string | null
+  embedding_model_provider: string | null
+  enable_api: boolean
+  external_knowledge_info?: DatasetExternalKnowledgeInfoResponse
+  external_retrieval_model: DatasetExternalRetrievalModelResponse | null
+  icon_info?: DatasetIconInfoResponse
+  id: string
+  indexing_technique: string | null
+  is_multimodal: boolean
+  is_published: boolean
+  maintainer?: string | null
+  name: string
+  partial_member_list?: Array<string> | null
+  permission: string
+  permission_keys?: Array<string>
+  pipeline_id: string | null
+  provider: string
+  retrieval_model_dict: DatasetRetrievalModelResponse
+  runtime_mode: string | null
+  summary_index_setting?: DatasetSummaryIndexSettingResponse
+  tags: Array<DatasetTagResponse>
+  total_available_documents: number
+  total_documents: number
+  updated_at: number
+  updated_by: string | null
+  word_count: number
+}
+
+export type ApiBaseUrlResponse = {
+  api_base_url: string
+}
+
+export type ApiKeyList = {
+  data: Array<ApiKeyItem>
+}
+
+export type DatasetApiKeyCreatePayload = {
+  dataset_ids?: Array<string>
+}
+
+export type ApiKeyItem = {
+  created_at?: number | null
+  dataset_ids?: Array<string>
+  id: string
+  last_used_at?: number | null
+  token: string
+  type: string
+}
+
+export type SegmentBatchImportStatusResponse = {
+  job_id: string
+  job_status: string
+}
+
+export type ExternalDatasetCreatePayload = {
+  description?: string | null
+  external_knowledge_api_id: string
+  external_knowledge_id: string
+  external_retrieval_model?: {
+    [key: string]: unknown
+  } | null
+  name: string
+}
+
 export type DatasetDetailResponse = {
   app_count: number
   author_name: string | null
@@ -60,41 +137,6 @@ export type DatasetDetailResponse = {
   updated_at: number
   updated_by: string | null
   word_count: number
-}
-
-export type ApiBaseUrlResponse = {
-  api_base_url: string
-}
-
-export type ApiKeyList = {
-  data: Array<ApiKeyItem>
-}
-
-export type ApiKeyItem = {
-  created_at?: number | null
-  id: string
-  last_used_at?: number | null
-  token: string
-  type: string
-}
-
-export type SegmentBatchImportStatusResponse = {
-  job_id: string
-  job_status: string
-}
-
-export type BatchImportPayload = {
-  upload_file_id: string
-}
-
-export type ExternalDatasetCreatePayload = {
-  description?: string | null
-  external_knowledge_api_id: string
-  external_knowledge_id: string
-  external_retrieval_model?: {
-    [key: string]: unknown
-  } | null
-  name: string
 }
 
 export type ExternalKnowledgeApiListResponse = {
@@ -186,9 +228,7 @@ export type DatasetMetadataBuiltInFieldsResponse = {
 export type NotionEstimatePayload = {
   doc_form?: string
   doc_language?: string
-  notion_info_list: Array<{
-    [key: string]: unknown
-  }>
+  notion_info_list: Array<NotionEstimateWorkspacePayload>
   process_rule: {
     [key: string]: unknown
   }
@@ -210,47 +250,6 @@ export type ProcessRuleResponse = {
 
 export type RetrievalSettingResponse = {
   retrieval_method: Array<string>
-}
-
-export type DatasetDetailWithPartialMembersResponse = {
-  app_count: number
-  author_name: string | null
-  built_in_field_enabled: boolean
-  chunk_structure: string | null
-  created_at: number
-  created_by: string
-  data_source_type: string | null
-  description: string | null
-  doc_form: string | null
-  doc_metadata: Array<DatasetDocMetadataResponse>
-  document_count: number
-  embedding_available?: boolean | null
-  embedding_model: string | null
-  embedding_model_provider: string | null
-  enable_api: boolean
-  external_knowledge_info?: DatasetExternalKnowledgeInfoResponse
-  external_retrieval_model: DatasetExternalRetrievalModelResponse | null
-  icon_info?: DatasetIconInfoResponse
-  id: string
-  indexing_technique: string | null
-  is_multimodal: boolean
-  is_published: boolean
-  maintainer?: string | null
-  name: string
-  partial_member_list?: Array<string> | null
-  permission: string
-  permission_keys?: Array<string>
-  pipeline_id: string | null
-  provider: string
-  retrieval_model_dict: DatasetRetrievalModelResponse
-  runtime_mode: string | null
-  summary_index_setting?: DatasetSummaryIndexSettingResponse
-  tags: Array<DatasetTagResponse>
-  total_available_documents: number
-  total_documents: number
-  updated_at: number
-  updated_by: string | null
-  word_count: number
 }
 
 export type DatasetUpdatePayload = {
@@ -392,8 +391,12 @@ export type DocumentResponse = {
   created_at?: number | null
   created_by?: string | null
   created_from?: string | null
-  data_source_detail_dict?: unknown
-  data_source_info?: unknown
+  data_source_detail_dict: {
+    [key: string]: unknown
+  }
+  data_source_info?: {
+    [key: string]: unknown
+  } | null
   data_source_type?: string | null
   dataset_process_rule_id?: string | null
   disabled_at?: number | null
@@ -432,6 +435,10 @@ export type ConsoleSegmentListResponse = {
   page: number
   total: number
   total_pages: number
+}
+
+export type BatchImportPayload = {
+  upload_file_id: string
 }
 
 export type SegmentUpdatePayload = {
@@ -704,6 +711,12 @@ export type DatasetMetadataBuiltInFieldResponse = {
   type: string
 }
 
+export type NotionEstimateWorkspacePayload = {
+  credential_id: string
+  pages: Array<NotionEstimatePagePayload>
+  workspace_id: string
+}
+
 export type ProcessRuleMode = 'automatic' | 'custom' | 'hierarchical'
 
 export type Rule = {
@@ -719,8 +732,12 @@ export type DocumentWithSegmentsResponse = {
   created_at?: number | null
   created_by?: string | null
   created_from?: string | null
-  data_source_detail_dict?: unknown
-  data_source_info?: unknown
+  data_source_detail_dict: {
+    [key: string]: unknown
+  }
+  data_source_info?: {
+    [key: string]: unknown
+  } | null
   data_source_type?: string | null
   dataset_process_rule_id?: string | null
   disabled_at?: number | null
@@ -916,9 +933,14 @@ export type WeightModel = {
   weight_type?: 'customized' | 'keyword_first' | 'semantic_first' | null
 }
 
+export type NotionEstimatePagePayload = {
+  page_id: string
+  type: NotionPageType
+}
+
 export type PreProcessingRule = {
   enabled: boolean
-  id: 'remove_extra_spaces' | 'remove_stopwords' | 'remove_urls_emails'
+  id: PreProcessingRuleKey
 }
 
 export type Segmentation = {
@@ -1051,6 +1073,10 @@ export type WeightVectorSetting = {
   vector_weight: number
 }
 
+export type NotionPageType = 'database' | 'page'
+
+export type PreProcessingRuleKey = 'remove_extra_spaces' | 'remove_stopwords' | 'remove_urls_emails'
+
 export type HitTestingDocument = {
   data_source_type: string
   doc_metadata: unknown | null
@@ -1113,7 +1139,7 @@ export type PostDatasetsErrors = {
 }
 
 export type PostDatasetsResponses = {
-  201: DatasetDetailResponse
+  201: DatasetDetailWithPartialMembersResponse
 }
 
 export type PostDatasetsResponse = PostDatasetsResponses[keyof PostDatasetsResponses]
@@ -1147,7 +1173,7 @@ export type GetDatasetsApiKeysResponse =
   GetDatasetsApiKeysResponses[keyof GetDatasetsApiKeysResponses]
 
 export type PostDatasetsApiKeysData = {
-  body?: never
+  body: DatasetApiKeyCreatePayload
   path?: never
   query?: never
   url: '/datasets/api-keys'
@@ -1195,22 +1221,6 @@ export type GetDatasetsBatchImportStatusByJobIdResponses = {
 
 export type GetDatasetsBatchImportStatusByJobIdResponse =
   GetDatasetsBatchImportStatusByJobIdResponses[keyof GetDatasetsBatchImportStatusByJobIdResponses]
-
-export type PostDatasetsBatchImportStatusByJobIdData = {
-  body: BatchImportPayload
-  path: {
-    job_id: string
-  }
-  query?: never
-  url: '/datasets/batch_import_status/{job_id}'
-}
-
-export type PostDatasetsBatchImportStatusByJobIdResponses = {
-  200: SegmentBatchImportStatusResponse
-}
-
-export type PostDatasetsBatchImportStatusByJobIdResponse =
-  PostDatasetsBatchImportStatusByJobIdResponses[keyof PostDatasetsBatchImportStatusByJobIdResponses]
 
 export type PostDatasetsExternalData = {
   body: ExternalDatasetCreatePayload
@@ -1677,6 +1687,10 @@ export type PostDatasetsByDatasetIdDocumentsMetadataData = {
   url: '/datasets/{dataset_id}/documents/metadata'
 }
 
+export type PostDatasetsByDatasetIdDocumentsMetadataErrors = {
+  404: unknown
+}
+
 export type PostDatasetsByDatasetIdDocumentsMetadataResponses = {
   204: void
 }
@@ -2010,23 +2024,6 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses = {
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse =
   GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses]
-
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportData = {
-  body?: never
-  path: {
-    dataset_id: string
-    document_id: string
-  }
-  query?: never
-  url: '/datasets/{dataset_id}/documents/{document_id}/segments/batch_import'
-}
-
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponses = {
-  200: SegmentBatchImportStatusResponse
-}
-
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponse =
-  GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponses]
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportData = {
   body: BatchImportPayload

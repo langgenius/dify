@@ -21,9 +21,21 @@
       "types": "./src/avatar/index.tsx",
       "import": "./src/avatar/index.tsx"
     },
+    "./breadcrumb": {
+      "types": "./src/breadcrumb/index.tsx",
+      "import": "./src/breadcrumb/index.tsx"
+    },
     "./button": {
       "types": "./src/button/index.tsx",
       "import": "./src/button/index.tsx"
+    },
+    "./icon-button": {
+      "types": "./src/icon-button/index.tsx",
+      "import": "./src/icon-button/index.tsx"
+    },
+    "./toggle": {
+      "types": "./src/toggle/index.tsx",
+      "import": "./src/toggle/index.tsx"
     },
     "./checkbox": {
       "types": "./src/checkbox/index.tsx",
@@ -48,6 +60,14 @@
     "./dialog": {
       "types": "./src/dialog/index.tsx",
       "import": "./src/dialog/index.tsx"
+    },
+    "./date-picker": {
+      "types": "./src/date-time/date-picker/index.tsx",
+      "import": "./src/date-time/date-picker/index.tsx"
+    },
+    "./date-time-picker": {
+      "types": "./src/date-time/date-time-picker/index.tsx",
+      "import": "./src/date-time/date-time-picker/index.tsx"
     },
     "./drawer": {
       "types": "./src/drawer/index.tsx",
@@ -77,6 +97,10 @@
       "types": "./src/input/index.tsx",
       "import": "./src/input/index.tsx"
     },
+    "./input-group": {
+      "types": "./src/input-group/index.tsx",
+      "import": "./src/input-group/index.tsx"
+    },
     "./kbd": {
       "types": "./src/kbd/index.tsx",
       "import": "./src/kbd/index.tsx"
@@ -97,9 +121,9 @@
       "types": "./src/pagination/index.tsx",
       "import": "./src/pagination/index.tsx"
     },
-    "./radio": {
-      "types": "./src/radio/index.tsx",
-      "import": "./src/radio/index.tsx"
+    "./radio-group": {
+      "types": "./src/radio-group/index.tsx",
+      "import": "./src/radio-group/index.tsx"
     },
     "./popover": {
       "types": "./src/popover/index.tsx",
@@ -141,6 +165,10 @@
       "types": "./src/textarea/index.tsx",
       "import": "./src/textarea/index.tsx"
     },
+    "./time-picker": {
+      "types": "./src/date-time/time-picker/index.tsx",
+      "import": "./src/date-time/time-picker/index.tsx"
+    },
     "./toast": {
       "types": "./src/toast/index.tsx",
       "import": "./src/toast/index.tsx"
@@ -148,6 +176,22 @@
     "./tooltip": {
       "types": "./src/tooltip/index.tsx",
       "import": "./src/tooltip/index.tsx"
+    },
+    "./spinner": {
+      "types": "./src/spinner/index.tsx",
+      "import": "./src/spinner/index.tsx"
+    },
+    "./separator": {
+      "types": "./src/separator/index.tsx",
+      "import": "./src/separator/index.tsx"
+    },
+    "./infotip": {
+      "types": "./src/infotip/index.tsx",
+      "import": "./src/infotip/index.tsx"
+    },
+    "./direction-provider": {
+      "types": "./src/direction-provider/index.tsx",
+      "import": "./src/direction-provider/index.tsx"
     }
   },
   "scripts": {
@@ -159,8 +203,11 @@
     "type-check": "tsc"
   },
   "dependencies": {
-    "clsx": "catalog:",
-    "tailwind-merge": "catalog:"
+    "@base-ui/utils": "catalog:",
+    "@date-fns/tz": "catalog:",
+    "@daypicker/react": "catalog:",
+    "cn": "catalog:",
+    "date-fns": "catalog:"
   },
   "devDependencies": {
     "@base-ui/react": "catalog:",
@@ -181,7 +228,6 @@
     "@types/react-dom": "catalog:",
     "@typescript/native": "catalog:",
     "@vitejs/plugin-react": "catalog:",
-    "@vitest/browser": "catalog:",
     "@vitest/browser-playwright": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "class-variance-authority": "catalog:",

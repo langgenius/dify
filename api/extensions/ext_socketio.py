@@ -73,5 +73,6 @@ sio = cast(
         async_mode="gevent",
         client_manager=create_socketio_client_manager(),
         cors_allowed_origins=dify_config.CONSOLE_CORS_ALLOW_ORIGINS,
+        max_http_buffer_size=dify_config.WEBSOCKET_MAX_HTTP_BUFFER_SIZE,
     ),
 )

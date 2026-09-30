@@ -1,8 +1,10 @@
+import type { ReactElement } from 'react'
 import type { Plugin, PluginManifestInMarket } from '../../../../types'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { act } from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render } from '@/test/console/render'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import { PluginCategoryEnum, TaskStatus } from '../../../../types'
 import Install from '../install'
 
@@ -78,13 +80,14 @@ vi.mock('@/app/components/plugins/install-plugin/hooks/use-check-installed', () 
   }),
 }))
 
-vi.mock('@/context/version-state', async () => {
-  const { createVersionStateModuleMock } = await import('@/test/console/state-fixture')
-
-  return createVersionStateModuleMock(() => ({
-    langGeniusVersionInfo: mockConsoleState.langGeniusVersionInfo,
-  }))
-})
+const render = (ui: ReactElement) => {
+  const { wrapper } = createConsoleQueryWrapper({
+    accountProfileMeta: {
+      currentVersion: mockConsoleState.langGeniusVersionInfo.current_version ?? null,
+    },
+  })
+  return renderWithConsoleState(ui, { wrapper })
+}
 
 // Mock service hooks
 vi.mock('@/service/use-plugins', () => ({

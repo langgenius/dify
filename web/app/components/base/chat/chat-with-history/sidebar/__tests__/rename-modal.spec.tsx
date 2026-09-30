@@ -1,17 +1,9 @@
-import type { ReactNode } from 'react'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as ReactI18next from 'react-i18next'
 import { expectLoadingButton } from '@/test/button'
 import { withSelectorKey } from '@/test/i18n-mock'
 import RenameModal from '../rename-modal'
-
-vi.mock('@langgenius/dify-ui/dialog', () => ({
-  Dialog: ({ children, open }: { children: ReactNode; open?: boolean }) =>
-    open === false ? null : <>{children}</>,
-  DialogContent: ({ children }: { children: ReactNode }) => <div role="dialog">{children}</div>,
-  DialogTitle: ({ children }: { children: ReactNode }) => <h2>{children}</h2>,
-}))
 
 describe('RenameModal', () => {
   const defaultProps = {
@@ -30,8 +22,7 @@ describe('RenameModal', () => {
     render(<RenameModal {...defaultProps} />)
 
     expect(screen.getByText('common.chat.renameConversation')).toBeInTheDocument()
-    expect(screen.getByText('common.chat.conversationName')).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('common.chat.conversationNamePlaceholder')).toHaveValue(
+    expect(screen.getByRole('textbox', { name: 'common.chat.conversationName' })).toHaveValue(
       'Original Name',
     )
     expect(screen.getByText('common.operation.cancel')).toBeInTheDocument()
@@ -58,9 +49,19 @@ describe('RenameModal', () => {
     const input = screen.getByRole('textbox')
     await user.clear(input)
     await user.type(input, 'Updated Name')
-    await user.click(screen.getByText('common.operation.save'))
+    await user.keyboard('{Enter}')
 
     expect(defaultProps.onSave).toHaveBeenCalledWith('Updated Name')
+  })
+
+  it('does not resubmit while save is pending', async () => {
+    const user = userEvent.setup()
+    render(<RenameModal {...defaultProps} saveLoading />)
+
+    await user.click(screen.getByRole('textbox', { name: 'common.chat.conversationName' }))
+    await user.keyboard('{Enter}')
+
+    expect(defaultProps.onSave).not.toHaveBeenCalled()
   })
 
   it('calls onSave with initial name when unchanged', async () => {

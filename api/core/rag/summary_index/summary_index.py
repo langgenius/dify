@@ -6,8 +6,9 @@ from sqlalchemy import select
 from core.db.session_factory import session_factory
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.index_processor.index_processor_base import SummaryIndexSettingDict
+from extensions.otel import propagate_context
 from models.dataset import Dataset, Document, DocumentSegment, DocumentSegmentSummary
-from services.summary_index_service import SummaryIndexService
+from services.knowledge.summaries.adapters import SummaryIndexAdapter
 from tasks.generate_summary_index_task import generate_summary_index_task
 
 logger = logging.getLogger(__name__)
@@ -81,7 +82,7 @@ class SummaryIndex:
                     if segment is None:
                         return
                     try:
-                        SummaryIndexService.generate_and_vectorize_summary(
+                        SummaryIndexAdapter.generate_and_vectorize_summary(
                             segment, dataset, summary_index_setting, session=session
                         )
                     except Exception:
@@ -92,7 +93,10 @@ class SummaryIndex:
                         # Continue processing other segments
 
             with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-                futures = [executor.submit(process_segment, segment_id) for segment_id in pending_segment_ids]
+                futures = [
+                    executor.submit(propagate_context(process_segment), segment_id)
+                    for segment_id in pending_segment_ids
+                ]
                 concurrent.futures.wait(futures)
         else:
             generate_summary_index_task.delay(dataset_id, document_id, None)

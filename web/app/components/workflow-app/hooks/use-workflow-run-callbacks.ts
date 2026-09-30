@@ -1,4 +1,4 @@
-import type AudioPlayer from '@/app/components/base/audio-btn/audio'
+import type { AudioPlayer } from '@/app/components/base/audio-btn/audio'
 import type { IOtherOptions } from '@/service/base'
 import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
 import { sseGet } from '@/service/base'
@@ -147,6 +147,7 @@ export const createBaseWorkflowRunCallbacks = ({
     onHumanInputFormTimeout,
     onCompleted,
   } = callbacks
+  let hasStartedResumeStream = false
 
   const wrappedOnError: IOtherOptions['onError'] = (params, code) => {
     clearAbortController()
@@ -244,11 +245,11 @@ export const createBaseWorkflowRunCallbacks = ({
     onReasoning: (params) => {
       handleWorkflowReasoning(params)
     },
-    onTTSChunk: (messageId: string, audio: string) => {
+    onTTSChunk: (messageId: string, audio: string, audioType?: string) => {
       if (!audio || audio === '') return
       const audioPlayer = getOrCreatePlayer()
       if (audioPlayer) {
-        audioPlayer.playAudioWithAudio(audio, true)
+        audioPlayer.playAudioWithAudio(audio, true, audioType)
         AudioPlayerManager.getInstance().resetMsgId(messageId)
       }
     },
@@ -260,8 +261,11 @@ export const createBaseWorkflowRunCallbacks = ({
       handleWorkflowPaused()
       invalidateRunHistory(runHistoryUrl)
       if (onWorkflowPaused) onWorkflowPaused(params)
-      const url = `/workflow/${params.workflow_run_id}/events`
-      sseGet(url, {}, baseSseOptions)
+      if (!hasStartedResumeStream) {
+        hasStartedResumeStream = true
+        const url = `/workflow/${params.workflow_run_id}/events?include_state_snapshot=true&continue_on_pause=true`
+        sseGet(url, {}, baseSseOptions)
+      }
     },
     onHumanInputRequired: (params) => {
       handleWorkflowNodeHumanInputRequired(params)
@@ -340,6 +344,7 @@ export const createFinalWorkflowRunCallbacks = ({
     onHumanInputFormFilled,
     onHumanInputFormTimeout,
   } = callbacks
+  let hasStartedResumeStream = false
 
   const finalCallbacks: IOtherOptions = {
     ...baseSseOptions,
@@ -425,9 +430,9 @@ export const createFinalWorkflowRunCallbacks = ({
     onReasoning: (params) => {
       handleWorkflowReasoning(params)
     },
-    onTTSChunk: (messageId: string, audio: string) => {
+    onTTSChunk: (messageId: string, audio: string, audioType?: string) => {
       if (!audio || audio === '') return
-      player?.playAudioWithAudio(audio, true)
+      player?.playAudioWithAudio(audio, true, audioType)
       AudioPlayerManager.getInstance().resetMsgId(messageId)
     },
     onTTSEnd: (_messageId: string, audio: string) => {
@@ -437,8 +442,11 @@ export const createFinalWorkflowRunCallbacks = ({
       handleWorkflowPaused()
       invalidateRunHistory(runHistoryUrl)
       if (onWorkflowPaused) onWorkflowPaused(params)
-      const url = `/workflow/${params.workflow_run_id}/events`
-      sseGet(url, {}, finalCallbacks)
+      if (!hasStartedResumeStream) {
+        hasStartedResumeStream = true
+        const url = `/workflow/${params.workflow_run_id}/events?include_state_snapshot=true&continue_on_pause=true`
+        sseGet(url, {}, finalCallbacks)
+      }
     },
     onHumanInputRequired: (params) => {
       handleWorkflowNodeHumanInputRequired(params)

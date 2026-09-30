@@ -43,9 +43,18 @@ vi.mock('../value-content-sections', () => ({
   BoolArraySection: ({ onChange }: { onChange: (value: boolean[]) => void }) => (
     <button onClick={() => onChange([true, true])}>bool-array-editor</button>
   ),
-  JsonEditorSection: ({ json, onChange }: { json: string; onChange: (value: string) => void }) => (
+  JsonEditorSection: ({
+    json,
+    readonly,
+    onChange,
+  }: {
+    json: string
+    readonly: boolean
+    onChange: (value: string) => void
+  }) => (
     <textarea
       data-testid="json-editor"
+      readOnly={readonly}
       value={json}
       onChange={(event) => onChange(event.target.value)}
     />
@@ -310,6 +319,36 @@ describe('ValueContent', () => {
     await waitFor(() => {
       expect(handleValueChange).toHaveBeenCalledWith('var-7', { foo: 2 })
     })
+  })
+
+  it('should render LLM environment variables as read-only JSON', async () => {
+    const value = { provider: 'openai', name: 'gpt-4o', mode: 'chat' }
+
+    renderWorkflowComponent(
+      <ValueContent
+        currentVar={createVar({
+          id: 'var-llm',
+          name: 'for_summarize',
+          type: VarInInspectType.environment,
+          value_type: 'llm' as VarType,
+          value,
+        })}
+        handleValueChange={vi.fn()}
+        isTruncated={false}
+      />,
+      {
+        initialStoreState: {
+          fileUploadConfig: {
+            workflow_file_upload_limit: 5,
+          } as never,
+        },
+      },
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTestId('json-editor')).toHaveValue(JSON.stringify(value, null, 2))
+    })
+    expect(screen.getByTestId('json-editor')).toHaveAttribute('readonly')
   })
 
   it('should update uploaded single file values and ignore pending uploads', async () => {

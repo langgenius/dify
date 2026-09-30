@@ -1,15 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { SchemaModal } from '../schema-modal'
-
-vi.mock('@langgenius/dify-ui/dialog', () => ({
-  Dialog: ({ children, open }: { children: React.ReactNode; open?: boolean }) =>
-    open === false ? null : <>{children}</>,
-  DialogContent: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="modal">{children}</div>
-  ),
-  DialogTitle: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-}))
 
 vi.mock(
   '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor',
@@ -50,7 +41,7 @@ describe('SchemaModal', () => {
       />,
     )
 
-    expect(screen.getByText('workflow.nodes.agent.parameterSchema')).toBeInTheDocument()
+    expect(screen.getByText('workflowAgent.nodes.agent.parameterSchema')).toBeInTheDocument()
     expect(screen.getByTestId('visual-editor')).toHaveTextContent('response')
 
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))

@@ -1,10 +1,12 @@
+import type { TrialAppDetailResponse } from '@dify/contracts/api/console/trial-apps/types.gen'
 import type { ReactNode } from 'react'
 import type { ChatConfig } from '../../types'
 import type { AppConversationData, AppData, AppMeta, ConversationItem } from '@/models/share'
-import { ToastHost } from '@langgenius/dify-ui/toast'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { InputVarType } from '@/app/components/workflow/types'
+import { AppToastHost } from '@/app/notifications/host'
+import { consoleQuery } from '@/service/console'
 import {
   AppSourceType,
   fetchChatList,
@@ -13,7 +15,7 @@ import {
 } from '@/service/share'
 import { shareQueryKeys } from '@/service/use-share'
 import { TransferMethod } from '@/types/app'
-import { CONVERSATION_ID_INFO } from '../../constants'
+import { CONVERSATION_ID_INFO, TAB_CONVERSATION_ID_INFO } from '../../constants'
 import { useEmbeddedChatbot } from '../hooks'
 
 type InputForm = {
@@ -27,7 +29,7 @@ type InputForm = {
   hide?: boolean
 }
 
-vi.mock('@/i18n-config/client', () => ({
+vi.mock('@/i18n/client', () => ({
   changeLanguage: vi.fn().mockResolvedValue(undefined),
 }))
 
@@ -90,8 +92,15 @@ vi.mock('@/service/share', async (importOriginal) => {
 })
 
 const STABLE_MOCK_DATA = { data: {} }
+const createTryAppDetail = (id: string, title: string): TrialAppDetailResponse => ({
+  id,
+  name: title,
+  mode: 'chat',
+  enable_api: false,
+  enable_site: true,
+  site: { title, default_language: 'en-US' },
+})
 vi.mock('@/service/use-try-app', () => ({
-  useGetTryAppInfo: vi.fn(() => STABLE_MOCK_DATA),
   useGetTryAppParams: vi.fn(() => STABLE_MOCK_DATA),
 }))
 
@@ -111,14 +120,15 @@ const createQueryClient = () =>
 const createWrapper = (queryClient: QueryClient) => {
   return ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>
-      <ToastHost />
+      <AppToastHost />
       {children}
     </QueryClientProvider>
   )
 }
 
-const renderWithClient = async <T,>(hook: () => T) => {
+const renderWithClient = async <T,>(hook: () => T, setup?: (client: QueryClient) => void) => {
   const queryClient = createQueryClient()
+  setup?.(queryClient)
   const wrapper = createWrapper(queryClient)
   let result: ReturnType<typeof renderHook<T, unknown>> | undefined
   act(() => {
@@ -162,8 +172,10 @@ describe('useEmbeddedChatbot', () => {
     mockGetProcessedSystemVariablesFromUrlParams.mockResolvedValue({})
     mockGetProcessedUserVariablesFromUrlParams.mockResolvedValue({})
     localStorage.removeItem(CONVERSATION_ID_INFO)
+    sessionStorage.removeItem(TAB_CONVERSATION_ID_INFO)
     mockStoreState.appInfo = {
       app_id: 'app-1',
+      end_user_id: 'user-1',
       custom_config: null,
       site: {
         title: 'Test App',
@@ -182,6 +194,7 @@ describe('useEmbeddedChatbot', () => {
 
   afterEach(() => {
     localStorage.removeItem(CONVERSATION_ID_INFO)
+    sessionStorage.removeItem(TAB_CONVERSATION_ID_INFO)
   })
 
   // Scenario: share query results populate conversation lists and trigger chat list fetch.
@@ -367,9 +380,9 @@ describe('useEmbeddedChatbot', () => {
     })
   })
 
-  // Scenario: conversation id updates persist to localStorage.
+  // Scenario: conversation id updates persist to tab and cross-tab storage.
   describe('Conversation id persistence', () => {
-    it('should store new conversation id in localStorage after completion', async () => {
+    it('should store the current and last conversation after completion', async () => {
       // Arrange
       const listData = createConversationData({
         data: [createConversationItem({ id: 'conversation-1', name: 'First' })],
@@ -389,11 +402,13 @@ describe('useEmbeddedChatbot', () => {
 
       // Assert
       await waitFor(() => {
-        const storedValue = localStorage.getItem(CONVERSATION_ID_INFO)
-        const parsed = storedValue ? JSON.parse(storedValue) : {}
-        const storedUserId = parsed['app-1']?.['embedded-user-1']
-        const storedDefaultId = parsed['app-1']?.DEFAULT
-        expect([storedUserId, storedDefaultId]).toContain('conversation-new')
+        const lastStoredValue = localStorage.getItem(CONVERSATION_ID_INFO)
+        const lastConversationIdInfo = lastStoredValue ? JSON.parse(lastStoredValue) : {}
+        const tabStoredValue = sessionStorage.getItem(TAB_CONVERSATION_ID_INFO)
+        const tabConversationIdInfo = tabStoredValue ? JSON.parse(tabStoredValue) : {}
+
+        expect(lastConversationIdInfo['app-1']?.['user-1']).toBe('conversation-new')
+        expect(tabConversationIdInfo['app-1']?.['user-1']).toBe('conversation-new')
       })
     })
   })
@@ -402,17 +417,20 @@ describe('useEmbeddedChatbot', () => {
   describe('TryApp mode', () => {
     it('should use tryApp source type and skip URL overrides and user fetch', async () => {
       // Arrange
-      const { useGetTryAppInfo } = await import('@/service/use-try-app')
-      const mockTryAppInfo = { app_id: 'try-app-1', site: { title: 'Try App' } }
-      ;(useGetTryAppInfo as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
-        data: mockTryAppInfo,
-      })
+      const mockTryAppInfo = createTryAppDetail('try-app-1', 'Try App')
 
       mockGetProcessedSystemVariablesFromUrlParams.mockResolvedValue({})
 
       // Act
-      const { result } = await renderWithClient(() =>
-        useEmbeddedChatbot(AppSourceType.tryApp, 'try-app-1'),
+      const { result } = await renderWithClient(
+        () => useEmbeddedChatbot(AppSourceType.tryApp, 'try-app-1'),
+        (client) => {
+          const key = consoleQuery.trialApps.byAppId.get.queryKey({
+            input: { params: { app_id: 'try-app-1' } },
+          })
+          client.setQueryDefaults(key, { staleTime: Infinity })
+          client.setQueryData(key, mockTryAppInfo)
+        },
       )
 
       // Assert
@@ -434,17 +452,24 @@ describe('useEmbeddedChatbot', () => {
         CONVERSATION_ID_INFO,
         JSON.stringify({ 'app-1': { 'user-1': 'conv-id' } }),
       )
+      sessionStorage.setItem(
+        TAB_CONVERSATION_ID_INFO,
+        JSON.stringify({ 'app-1': { 'user-1': 'conv-id' } }),
+      )
 
       const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
 
       act(() => {
-        result.current.removeConversationIdInfo('app-1')
+        result.current.removeConversationIdInfo()
       })
 
       await waitFor(() => {
         const storedValue = localStorage.getItem(CONVERSATION_ID_INFO)
         const parsed = storedValue ? JSON.parse(storedValue) : {}
         expect(parsed['app-1']).toBeUndefined()
+        const tabStoredValue = sessionStorage.getItem(TAB_CONVERSATION_ID_INFO)
+        const tabParsed = tabStoredValue ? JSON.parse(tabStoredValue) : {}
+        expect(Object.values(tabParsed['app-1'] ?? {})).toContain('')
       })
     })
   })
@@ -580,8 +605,15 @@ describe('useEmbeddedChatbot', () => {
     })
 
     it('handleNewConversation sets clearChatList to true for tryApp without complex parsing', async () => {
-      const { result } = await renderWithClient(() =>
-        useEmbeddedChatbot(AppSourceType.tryApp, 'app-try-1'),
+      const { result } = await renderWithClient(
+        () => useEmbeddedChatbot(AppSourceType.tryApp, 'app-try-1'),
+        (client) => {
+          const key = consoleQuery.trialApps.byAppId.get.queryKey({
+            input: { params: { app_id: 'app-try-1' } },
+          })
+          client.setQueryDefaults(key, { staleTime: Infinity })
+          client.setQueryData(key, createTryAppDetail('app-try-1', 'Try App'))
+        },
       )
 
       await act(async () => {
@@ -639,7 +671,7 @@ describe('useEmbeddedChatbot', () => {
       localStorage.setItem(
         CONVERSATION_ID_INFO,
         JSON.stringify({
-          'app-1': { DEFAULT: 'stored-conv-id' },
+          'app-1': { 'user-1': 'stored-conv-id' },
         }),
       )
       mockStoreState.embeddedConversationId = null
@@ -680,22 +712,18 @@ describe('useEmbeddedChatbot', () => {
 
   describe('Language settings', () => {
     it('should set language from URL parameters', async () => {
-      const originalSearch = window.location.search
-      Object.defineProperty(window, 'location', {
-        writable: true,
-        value: { search: '?locale=zh-Hans' },
-      })
-      const { changeLanguage } = await import('@/i18n-config/client')
+      window.history.replaceState({}, '', '/?locale=zh-Hans')
+      const { changeLanguage } = await import('@/i18n/client')
 
       await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
 
       expect(changeLanguage).toHaveBeenCalledWith('zh-Hans')
-      Object.defineProperty(window, 'location', { value: { search: originalSearch } })
+      window.history.replaceState({}, '', '/')
     })
 
     it('should set language from system variables when URL param is missing', async () => {
       mockGetProcessedSystemVariablesFromUrlParams.mockResolvedValue({ locale: 'fr-FR' })
-      const { changeLanguage } = await import('@/i18n-config/client')
+      const { changeLanguage } = await import('@/i18n/client')
 
       await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
 
@@ -711,7 +739,7 @@ describe('useEmbeddedChatbot', () => {
           default_language: 'ja-JP',
         },
       } as unknown as AppData
-      const { changeLanguage } = await import('@/i18n-config/client')
+      const { changeLanguage } = await import('@/i18n/client')
 
       await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
 
@@ -763,14 +791,11 @@ describe('useEmbeddedChatbot', () => {
       await waitFor(() => {
         const stored = JSON.parse(localStorage.getItem(CONVERSATION_ID_INFO) || '{}')
         const appEntry = stored['app-1']
-        // userId may be 'embedded-user-1' or 'DEFAULT' depending on timing; either is valid
-        const storedId = appEntry?.['embedded-user-1'] ?? appEntry?.DEFAULT
-        expect(storedId).toBe('new-conv-id')
+        expect(appEntry?.['user-1']).toBe('new-conv-id')
       })
     })
 
-    it('should use DEFAULT when userId is null', async () => {
-      // Override userId to be null/empty to exercise the "|| 'DEFAULT'" fallback path
+    it('should use the site EndUser when embeddedUserId is null', async () => {
       mockStoreState.embeddedUserId = null
       const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
 
@@ -781,8 +806,7 @@ describe('useEmbeddedChatbot', () => {
       await waitFor(() => {
         const stored = JSON.parse(localStorage.getItem(CONVERSATION_ID_INFO) || '{}')
         const appEntry = stored['app-1']
-        // Should use DEFAULT key since userId is null
-        expect(appEntry?.DEFAULT).toBe('default-conv-id')
+        expect(appEntry?.['user-1']).toBe('default-conv-id')
       })
     })
   })
@@ -922,7 +946,7 @@ describe('useEmbeddedChatbot', () => {
       // Ensure a currentConversationId is set so appChatListData is fetched
       localStorage.setItem(
         CONVERSATION_ID_INFO,
-        JSON.stringify({ 'app-1': { DEFAULT: 'conversation-1' } }),
+        JSON.stringify({ 'app-1': { 'user-1': 'conversation-1' } }),
       )
       mockFetchConversations.mockResolvedValue(
         createConversationData({ data: [createConversationItem({ id: 'conversation-1' })] }),
@@ -964,7 +988,7 @@ describe('useEmbeddedChatbot', () => {
       mockFetchChatList.mockResolvedValue({ data: [] })
       localStorage.setItem(
         CONVERSATION_ID_INFO,
-        JSON.stringify({ 'app-1': { DEFAULT: 'pinned-conv' } }),
+        JSON.stringify({ 'app-1': { 'user-1': 'pinned-conv' } }),
       )
 
       const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
@@ -1012,7 +1036,7 @@ describe('useEmbeddedChatbot', () => {
   describe('currentConversationLatestInputs', () => {
     it('should return inputs from latest chat message when conversation has data', async () => {
       const convId = 'conversation-with-inputs'
-      localStorage.setItem(CONVERSATION_ID_INFO, JSON.stringify({ 'app-1': { DEFAULT: convId } }))
+      localStorage.setItem(CONVERSATION_ID_INFO, JSON.stringify({ 'app-1': { 'user-1': convId } }))
       mockFetchConversations.mockResolvedValue(
         createConversationData({ data: [createConversationItem({ id: convId })] }),
       )

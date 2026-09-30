@@ -2,7 +2,7 @@ import type {
   DatasourceProviderType,
   ToolProviderType,
 } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { VarType } from '../workflow/types'
+import type { Variable, VarType } from '../workflow/types'
 
 type LocalizedText<T = string> = {
   en_US: T
@@ -10,18 +10,22 @@ type LocalizedText<T = string> = {
   [key: string]: T
 }
 
-export enum AuthType {
-  none = 'none',
-  apiKey = 'api_key', // backward compatibility
-  apiKeyHeader = 'api_key_header',
-  apiKeyQuery = 'api_key_query',
-}
+export const AuthType = {
+  none: 'none',
+  apiKey: 'api_key', // backward compatibility
+  apiKeyHeader: 'api_key_header',
+  apiKeyQuery: 'api_key_query',
+} as const
 
-export enum AuthHeaderPrefix {
-  basic = 'basic',
-  bearer = 'bearer',
-  custom = 'custom',
-}
+export type AuthType = (typeof AuthType)[keyof typeof AuthType]
+
+export const AuthHeaderPrefix = {
+  basic: 'basic',
+  bearer: 'bearer',
+  custom: 'custom',
+} as const
+
+export type AuthHeaderPrefix = (typeof AuthHeaderPrefix)[keyof typeof AuthHeaderPrefix]
 
 export type Credential = {
   auth_type: AuthType
@@ -212,10 +216,21 @@ export type WorkflowToolProviderParameter = {
   type?: string
 }
 
+export type WorkflowToolOutputSource = {
+  nodeId: string
+  nodeTitle: string
+  outputIndex: number
+}
+
+export type WorkflowToolOutputVariable = Variable & {
+  source?: WorkflowToolOutputSource
+}
+
 export type WorkflowToolProviderOutputParameter = {
   name: string
   description: string
   type?: VarType
+  source?: WorkflowToolOutputSource
   reserved?: boolean
 }
 
@@ -268,8 +283,10 @@ export type MCPServerDetail = {
   headers?: Record<string, string>
 }
 
-export enum MCPAuthMethod {
-  authentication = 'authentication',
-  headers = 'headers',
-  configurations = 'configurations',
-}
+export const MCPAuthMethod = {
+  authentication: 'authentication',
+  headers: 'headers',
+  configurations: 'configurations',
+} as const
+
+export type MCPAuthMethod = (typeof MCPAuthMethod)[keyof typeof MCPAuthMethod]

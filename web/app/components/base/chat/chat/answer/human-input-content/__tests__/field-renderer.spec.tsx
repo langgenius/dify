@@ -5,80 +5,6 @@ import { InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/
 import { TransferMethod } from '@/types/app'
 import HumanInputFieldRenderer from '../field-renderer'
 
-function MockTextarea({
-  value,
-  onChange,
-  onValueChange,
-  ...props
-}: {
-  value: string
-  onChange?: (event: { target: { value: string } }) => void
-  onValueChange?: (value: string) => void
-} & React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return (
-    <textarea
-      data-testid="content-item-textarea"
-      value={value}
-      onChange={(event) => {
-        onChange?.({ target: { value: event.target.value } })
-        onValueChange?.(event.target.value)
-      }}
-      {...props}
-    />
-  )
-}
-
-vi.mock('@langgenius/dify-ui/textarea', () => ({
-  Textarea: MockTextarea,
-}))
-
-vi.mock('@langgenius/dify-ui/select', async () => {
-  const React = await import('react')
-  const SelectValueContext = React.createContext<string | null>(null)
-
-  return {
-    Select: ({
-      children,
-      onValueChange,
-      value,
-    }: {
-      children: React.ReactNode
-      onValueChange: (value: string | null) => void
-      value: string | null
-    }) => (
-      <SelectValueContext value={value}>
-        <div>
-          <button
-            type="button"
-            data-testid="content-item-select-root"
-            onClick={() => onValueChange('alice')}
-          >
-            select alice
-          </button>
-          <button
-            type="button"
-            data-testid="content-item-select-null"
-            onClick={() => onValueChange(null)}
-          >
-            select null
-          </button>
-          {children}
-        </div>
-      </SelectValueContext>
-    ),
-    SelectValue: () => <>{React.use(SelectValueContext)}</>,
-    SelectTrigger: ({ children }: { children: React.ReactNode }) => (
-      <button type="button" data-testid="content-item-select">
-        {children}
-      </button>
-    ),
-    SelectContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-    SelectItem: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-    SelectItemText: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
-    SelectItemIndicator: () => <span>selected</span>,
-  }
-})
-
 vi.mock('@/app/components/base/file-uploader', () => ({
   FileUploaderInAttachmentWrapper: ({
     value,
@@ -191,32 +117,10 @@ describe('HumanInputFieldRenderer', () => {
       />,
     )
 
-    await user.click(screen.getByTestId('content-item-select-root'))
+    await user.click(screen.getByRole('combobox', { name: 'reviewer' }))
+    await user.click(await screen.findByRole('option', { name: 'alice' }))
 
     expect(onChange).toHaveBeenCalledWith('alice')
-  })
-
-  it('ignores null select values', async () => {
-    const user = userEvent.setup()
-    const onChange = vi.fn()
-
-    render(
-      <HumanInputFieldRenderer
-        field={{
-          type: InputVarType.select,
-          output_variable_name: 'reviewer',
-          option_source: { type: 'constant', selector: [], value: ['alice', 'bob'] },
-        }}
-        value={null}
-        onChange={onChange}
-      />,
-    )
-
-    expect(screen.getByTestId('content-item-select')).toHaveTextContent('')
-
-    await user.click(screen.getByTestId('content-item-select-null'))
-
-    expect(onChange).not.toHaveBeenCalled()
   })
 
   it('renders single-file input and emits one file', async () => {

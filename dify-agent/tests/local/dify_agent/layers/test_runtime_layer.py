@@ -27,15 +27,17 @@ class _Backend:
 async def test_runtime_layer_acquires_and_releases_operation_scoped_lease() -> None:
     lease = cast(
         RuntimeLease,
-        type(
-            "Lease",
-            (),
-            {
-                "layout": RuntimeLayout(home_dir="/home/agent", workspace_dir="/workspace"),
-                "commands": object(),
-                "files": object(),
-            },
-        )(),
+        cast(
+            object,
+            type(
+                "Lease",
+                (),
+                {
+                    "layout": RuntimeLayout(home_dir="/home/agent", workspace_dir="/workspace"),
+                    "commands": object(),
+                },
+            )(),
+        ),
     )
     backend = _Backend(lease=lease)
     layer = DifyRuntimeLayer.from_config_with_backend(

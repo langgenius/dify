@@ -69,34 +69,56 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
   }, [getPostParams, getNodesReadOnly])
 
   const performSync = useCallback(
-    async (notRefreshWhenSyncError?: boolean, callback?: SyncDraftCallback) => {
+    async (
+      baseParams: NonNullable<ReturnType<typeof getPostParams>>,
+      notRefreshWhenSyncError?: boolean,
+      callback?: SyncDraftCallback,
+    ) => {
       if (getNodesReadOnly()) return
 
-      const postParams = getPostParams()
-      if (postParams) {
-        const { setSyncWorkflowDraftHash, setDraftUpdatedAt } = workflowStore.getState()
-        try {
-          const res = await syncWorkflowDraft(postParams)
-          setSyncWorkflowDraftHash(res.hash)
-          setDraftUpdatedAt(res.updated_at)
-          callback?.onSuccess?.()
-        } catch (error: any) {
-          if (error && error.json && !error.bodyUsed) {
-            error.json().then((err: any) => {
-              if (err.code === 'draft_workflow_not_sync' && !notRefreshWhenSyncError)
-                handleRefreshWorkflowDraft()
-            })
-          }
-          callback?.onError?.()
-        } finally {
-          callback?.onSettled?.()
+      const { setSyncWorkflowDraftHash, setDraftUpdatedAt, syncWorkflowDraftHash } =
+        workflowStore.getState()
+      const postParams = {
+        ...baseParams,
+        params: {
+          ...baseParams.params,
+          hash: syncWorkflowDraftHash,
+        },
+      }
+
+      try {
+        const res = await syncWorkflowDraft(postParams)
+        setSyncWorkflowDraftHash(res.hash)
+        setDraftUpdatedAt(res.updated_at)
+        callback?.onSuccess?.()
+      } catch (error: any) {
+        if (error && error.json && !error.bodyUsed) {
+          error.json().then((err: any) => {
+            if (err.code === 'draft_workflow_not_sync' && !notRefreshWhenSyncError)
+              handleRefreshWorkflowDraft()
+          })
         }
+        callback?.onError?.()
+      } finally {
+        callback?.onSettled?.()
       }
     },
-    [getPostParams, getNodesReadOnly, workflowStore, handleRefreshWorkflowDraft],
+    [getNodesReadOnly, workflowStore, handleRefreshWorkflowDraft],
   )
 
-  const doSyncWorkflowDraft = useSerialAsyncCallback(performSync, getNodesReadOnly)
+  const queueSyncWorkflowDraft = useSerialAsyncCallback(performSync, getNodesReadOnly)
+  const doSyncWorkflowDraft = useCallback(
+    (notRefreshWhenSyncError?: boolean, callback?: SyncDraftCallback) => {
+      if (getNodesReadOnly()) return Promise.resolve()
+
+      // Capture before ReactFlow resets its store during route unmount.
+      const postParams = getPostParams()
+      if (!postParams) return Promise.resolve()
+
+      return queueSyncWorkflowDraft(postParams, notRefreshWhenSyncError, callback)
+    },
+    [getNodesReadOnly, getPostParams, queueSyncWorkflowDraft],
+  )
 
   return {
     doSyncWorkflowDraft,

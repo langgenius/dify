@@ -1,5 +1,5 @@
-/* oxlint-disable typescript/no-explicit-any */
-import type { QuestionClassifierNodeType, Topic } from '../types'
+import type { QuestionClassifierNodeType } from '../types'
+import type { Topic } from '@/app/components/workflow/nodes/_base/components/branch-list/types'
 import type { PanelProps } from '@/types/workflow'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -7,9 +7,9 @@ import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/comp
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import { useEdgesInteractions } from '../../../hooks/use-edges-interactions'
+import ClassItem from '../../_base/components/branch-list/class-item'
+import ClassList from '../../_base/components/branch-list/class-list'
 import AdvancedSetting from '../components/advanced-setting'
-import ClassItem from '../components/class-item'
-import ClassList from '../components/class-list'
 import Node from '../node'
 import Panel from '../panel'
 import useConfig from '../use-config'
@@ -64,17 +64,11 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  default: ({ defaultModel }: any) => (
+  ModelSelector: ({ value }: any) => (
     <div>
-      {defaultModel.provider}:{defaultModel.model}
+      {value.provider}:{value.model}
     </div>
   ),
-}))
-
-vi.mock('@langgenius/dify-ui/tooltip', () => ({
-  Tooltip: ({ children }: any) => <div>{children}</div>,
-  TooltipTrigger: ({ children }: any) => <>{children}</>,
-  TooltipContent: ({ children }: any) => <div>{children}</div>,
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/readonly-input-with-select-var', () => ({
@@ -100,15 +94,6 @@ vi.mock(
     ),
   }),
 )
-
-vi.mock('@/app/components/workflow/nodes/_base/components/collapse', () => ({
-  FieldCollapse: ({ title, children }: any) => (
-    <div>
-      <div>{title}</div>
-      {children}
-    </div>
-  ),
-}))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/field', () => ({
   default: ({ title, operations, children }: any) => (
@@ -306,13 +291,15 @@ describe('question-classifier path', () => {
         />,
       )
 
-      await user.click(screen.getByText('workflow.nodes.questionClassifiers.addClass'))
+      await user.click(screen.getByText('workflowModels.nodes.questionClassifiers.addClass'))
       await user.click(screen.getByText('workflow.nodes.questionClassifiers.class'))
       expect(
-        screen.queryByText('workflow.nodes.questionClassifiers.addClass'),
+        screen.queryByText('workflowModels.nodes.questionClassifiers.addClass'),
       ).not.toBeInTheDocument()
       await user.click(screen.getByText('workflow.nodes.questionClassifiers.class'))
-      expect(screen.getByText('workflow.nodes.questionClassifiers.addClass')).toBeInTheDocument()
+      expect(
+        screen.getByText('workflowModels.nodes.questionClassifiers.addClass'),
+      ).toBeInTheDocument()
       expect(container.querySelector('.handle')).not.toBeNull()
 
       expect(onChange).toHaveBeenCalled()
@@ -358,7 +345,7 @@ describe('question-classifier path', () => {
       )
 
       expect(
-        screen.queryByText('workflow.nodes.questionClassifiers.addClass'),
+        screen.queryByText('workflowModels.nodes.questionClassifiers.addClass'),
       ).not.toBeInTheDocument()
       expect(container.querySelector('.handle')).toBeNull()
     })

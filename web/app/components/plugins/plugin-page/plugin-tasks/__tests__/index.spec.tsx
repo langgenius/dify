@@ -1,6 +1,7 @@
 import type { PluginStatus } from '@/app/components/plugins/types'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PluginSource, TaskStatus } from '@/app/components/plugins/types'
 // Import mocked modules
 import { useMutationClearTaskPlugin, usePluginTaskList } from '@/service/use-plugins'
@@ -67,8 +68,7 @@ const setupMocks = (plugins: PluginStatus[] = []) => {
   return { mockMutateAsync, mockHandleRefetch }
 }
 
-const getTaskMenuTrigger = () =>
-  document.getElementById('plugin-task-trigger')!.closest('[role="button"]') as HTMLElement
+const getTaskMenuTrigger = () => document.getElementById('plugin-task-trigger') as HTMLButtonElement
 
 describe('usePluginTaskStatus Hook', () => {
   beforeEach(() => {
@@ -299,6 +299,7 @@ describe('usePluginTaskStatus Hook', () => {
 // ============================================================================
 describe('TaskStatusIndicator Component', () => {
   const defaultProps = {
+    id: 'plugin-task-trigger',
     tip: 'Test tooltip',
     isInstalling: false,
     isInstallingWithSuccess: false,
@@ -307,7 +308,6 @@ describe('TaskStatusIndicator Component', () => {
     isFailed: false,
     successPluginsLength: 0,
     runningPluginsLength: 0,
-    totalPluginsLength: 1,
     onClick: vi.fn(),
   }
 
@@ -316,64 +316,29 @@ describe('TaskStatusIndicator Component', () => {
   })
 
   describe('Rendering', () => {
-    it('should render with correct id', () => {
+    it('should render an accessible button', () => {
       render(<TaskStatusIndicator {...defaultProps} />)
-      expect(document.getElementById('plugin-task-trigger'))!.toBeInTheDocument()
-    })
-  })
-
-  describe('Icon display', () => {
-    it('should show downloading icon when installing', () => {
-      render(<TaskStatusIndicator {...defaultProps} isInstalling />)
-      // DownloadingIcon is rendered when isInstalling is true
-      // DownloadingIcon is rendered when isInstalling is true
-      expect(document.getElementById('plugin-task-trigger'))!.toBeInTheDocument()
-    })
-
-    it('should show downloading icon when installing with error', () => {
-      render(<TaskStatusIndicator {...defaultProps} isInstallingWithError />)
-      expect(document.getElementById('plugin-task-trigger'))!.toBeInTheDocument()
-    })
-
-    it('should show install icon when not installing', () => {
-      render(<TaskStatusIndicator {...defaultProps} isSuccess />)
-      expect(document.getElementById('plugin-task-trigger'))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: defaultProps.tip })).toBeInTheDocument()
     })
   })
 
   describe('Status badge', () => {
     it('should not show a badge when installing has no success or error yet', () => {
-      render(
-        <TaskStatusIndicator
-          {...defaultProps}
-          isInstalling
-          successPluginsLength={1}
-          totalPluginsLength={3}
-        />,
-      )
-      expect(document.getElementById('plugin-task-trigger'))!.toBeInTheDocument()
+      render(<TaskStatusIndicator {...defaultProps} isInstalling successPluginsLength={1} />)
+      expect(screen.queryByTestId('task-status-success-badge')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('task-status-error-badge')).not.toBeInTheDocument()
     })
 
     it('should not show success badge when installing with success', () => {
       render(
-        <TaskStatusIndicator
-          {...defaultProps}
-          isInstallingWithSuccess
-          successPluginsLength={2}
-          totalPluginsLength={3}
-        />,
+        <TaskStatusIndicator {...defaultProps} isInstallingWithSuccess successPluginsLength={2} />,
       )
       expect(screen.queryByTestId('task-status-success-badge')).not.toBeInTheDocument()
     })
 
     it('should show error badge when installing with error', () => {
       render(
-        <TaskStatusIndicator
-          {...defaultProps}
-          isInstallingWithError
-          runningPluginsLength={1}
-          totalPluginsLength={3}
-        />,
+        <TaskStatusIndicator {...defaultProps} isInstallingWithError runningPluginsLength={1} />,
       )
       expect(screen.getByTestId('task-status-error-badge')).toBeInTheDocument()
     })
@@ -385,42 +350,32 @@ describe('TaskStatusIndicator Component', () => {
           isSuccess
           successPluginsLength={3}
           runningPluginsLength={0}
-          totalPluginsLength={3}
         />,
       )
-      const trigger = document.getElementById('plugin-task-trigger')
-      expect(trigger)!.toHaveClass(
-        'border-components-panel-border-subtle',
-        'bg-components-panel-bg',
-      )
-      expect(screen.getByTestId('task-status-success-badge')).toHaveClass('text-text-success')
+      expect(screen.getByTestId('task-status-success-badge')).toBeInTheDocument()
     })
 
     it('should show error icon when failed', () => {
       render(<TaskStatusIndicator {...defaultProps} isFailed />)
-      const trigger = document.getElementById('plugin-task-trigger')
-      expect(trigger)!.toHaveClass(
-        'border-components-button-destructive-secondary-border-hover',
-        'bg-state-destructive-hover',
-      )
-      expect(screen.getByTestId('task-status-error-badge')).toHaveClass('text-text-destructive')
+      expect(screen.getByTestId('task-status-error-badge')).toBeInTheDocument()
     })
   })
 
-  describe('Styling', () => {
-    it('should apply cursor-pointer for statuses that open the task menu', () => {
+  describe('Availability', () => {
+    it('should keep active installation status enabled', () => {
       render(<TaskStatusIndicator {...defaultProps} isInstalling />)
       const trigger = document.getElementById('plugin-task-trigger')
-      expect(trigger)!.toHaveClass('cursor-pointer')
+      expect(trigger).toHaveAttribute('aria-disabled', 'false')
     })
   })
 
   describe('User interactions', () => {
-    it('should call onClick when clicked', () => {
+    it('should call onClick when clicked', async () => {
+      const user = userEvent.setup()
       const handleClick = vi.fn()
       render(<TaskStatusIndicator {...defaultProps} onClick={handleClick} />)
 
-      fireEvent.click(document.getElementById('plugin-task-trigger')!)
+      await user.click(screen.getByRole('button', { name: defaultProps.tip }))
 
       expect(handleClick).toHaveBeenCalledTimes(1)
     })
@@ -640,24 +595,27 @@ describe('PluginTasks Component', () => {
       expect(screen.getByTestId('plugin-task-list'))!.toBeInTheDocument()
     })
 
-    it('should apply open styling to the trigger while the task menu is expanded', () => {
+    it('should expose the expanded state on the trigger', async () => {
+      const user = userEvent.setup()
       setupMocks([createMockPlugin({ status: TaskStatus.failed })])
 
       render(<PluginTasks />)
 
-      fireEvent.click(getTaskMenuTrigger())
+      const taskMenuTrigger = getTaskMenuTrigger()
+      expect(taskMenuTrigger).not.toHaveAttribute('data-menu-open')
 
-      expect(document.getElementById('plugin-task-trigger'))!.toHaveClass(
-        'bg-state-destructive-hover-alt',
-      )
+      await user.click(taskMenuTrigger)
+
+      expect(taskMenuTrigger).toHaveAttribute('aria-expanded', 'true')
+      expect(taskMenuTrigger).toHaveAttribute('data-menu-open', '')
     })
 
-    it('should apply pointer cursor to the task menu trigger when it can open', () => {
+    it('should keep the task menu trigger enabled when it can open', () => {
       setupMocks([createMockPlugin({ status: TaskStatus.failed })])
 
       render(<PluginTasks />)
 
-      expect(getTaskMenuTrigger()).toHaveClass('cursor-pointer')
+      expect(getTaskMenuTrigger()).toHaveAttribute('aria-disabled', 'false')
     })
 
     it('should apply custom dropdown positioning props', () => {

@@ -4,7 +4,6 @@ import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ApiAggregate } from '@/app/components/base/icons/src/vender/knowledge'
 import Card from './card'
 
 type ApiAccessProps = {
@@ -13,23 +12,34 @@ type ApiAccessProps = {
 }
 
 const ApiAccess = ({ expand, apiEnabled }: ApiAccessProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [open, setOpen] = useState(false)
 
   return (
     <div className={cn(expand ? 'px-1 py-2' : 'flex justify-center px-3 py-2')}>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger
-          render={
-            <button type="button" className="w-full border-none bg-transparent p-0 text-left">
+          render={(props, state) => (
+            <button
+              {...props}
+              type="button"
+              aria-label={!expand ? t(($) => $['appMenus.apiAccess'], { ns: 'common' }) : undefined}
+              className={cn(
+                'nokey w-full rounded-lg border-none bg-transparent p-0 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-state-accent-solid',
+                props.className,
+              )}
+            >
               <div
                 className={cn(
                   'relative flex h-8 cursor-pointer items-center gap-2 rounded-lg border border-components-panel-border px-3',
                   !expand && 'w-8 justify-center',
-                  open ? 'bg-state-base-hover' : 'hover:bg-state-base-hover',
+                  state.open ? 'bg-state-base-hover' : 'hover:bg-state-base-hover',
                 )}
               >
-                <ApiAggregate className="size-4 shrink-0 text-text-secondary" />
+                <span
+                  aria-hidden
+                  className="i-custom-vender-knowledge-api-aggregate size-4 shrink-0 text-text-secondary"
+                />
                 {expand && (
                   <div className="min-w-0 grow truncate system-sm-regular text-text-secondary">
                     {t(($) => $['appMenus.apiAccess'], { ns: 'common' })}
@@ -41,13 +51,13 @@ const ApiAccess = ({ expand, apiEnabled }: ApiAccessProps) => {
                 />
               </div>
             </button>
-          }
+          )}
         />
         <PopoverContent
           placement="top-start"
           sideOffset={4}
           alignOffset={-4}
-          popupClassName="border-none bg-transparent shadow-none"
+          className="border-none bg-transparent shadow-none"
         >
           <Card apiEnabled={apiEnabled} />
         </PopoverContent>

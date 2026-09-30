@@ -40,6 +40,10 @@ _HARD_MAX_ACTION_LABEL_CHARS = 120
 _FILE_FIELD_TYPES: Final[frozenset[AskHumanFieldType]] = frozenset({"file", "file-list"})
 
 
+def _default_allowed_field_types() -> list[AskHumanFieldType]:
+    return ["paragraph", "select"]
+
+
 class DifyAskHumanLayerConfig(LayerConfig):
     """Public config for the optional ask-human deferred tool layer.
 
@@ -58,7 +62,7 @@ class DifyAskHumanLayerConfig(LayerConfig):
     tool_description: str | None = None
     max_fields: int = Field(default=8, ge=0)
     max_actions: int = Field(default=4, ge=1)
-    allowed_field_types: list[AskHumanFieldType] = Field(default_factory=lambda: ["paragraph", "select"])
+    allowed_field_types: list[AskHumanFieldType] = Field(default_factory=_default_allowed_field_types)
     allow_file_fields: bool = False
     max_markdown_chars: int = Field(default=8_000, ge=0)
     max_question_chars: int = Field(default=1_000, ge=1)

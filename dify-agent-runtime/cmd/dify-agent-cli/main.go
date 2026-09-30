@@ -1,6 +1,6 @@
 // dify-agent-cli is the Go replacement for the Python dify-agent CLI.
-// It communicates with the Agent Stub server via HTTP or gRPC to provide
-// connect, file, drive, and config operations inside the sandbox container.
+// It communicates with the Agent Stub server via HTTP to provide
+// connect, file, and config operations inside the sandbox container.
 package main
 
 import (
@@ -17,7 +17,6 @@ import (
 var knownRootCommands = map[string]struct{}{
 	"config":  {},
 	"connect": {},
-	"drive":   {},
 	"file":    {},
 }
 
@@ -76,7 +75,6 @@ func newRootCommand() *cobra.Command {
 	root.AddCommand(
 		newConnectCommand(),
 		newFileCommand(),
-		newDriveCommand(),
 		newConfigCommand(),
 	)
 	return root
@@ -103,12 +101,27 @@ func newFileCommand() *cobra.Command {
 		Short: "Upload or download workflow files through the Agent Stub.",
 	}
 
+	var noDownloadLink bool
 	upload := &cobra.Command{
 		Use:   "upload PATH",
 		Short: "Upload one sandbox-local file as a ToolFile output reference.",
 		Args:  cobra.ExactArgs(1),
 		RunE: withEnv(func(env *agentcli.Environment, args []string, _ *cobra.Command) error {
-			return agentcli.RunFileUpload(env, args[0])
+			return agentcli.RunFileUpload(env, args[0], noDownloadLink)
+		}),
+	}
+	upload.Flags().BoolVar(
+		&noDownloadLink,
+		"no-download-link",
+		false,
+		"Skip creating a public download link after upload.",
+	)
+	publicURL := &cobra.Command{
+		Use:   "public-url REFERENCE",
+		Short: "Create a browser-visible download URL for an existing ToolFile reference.",
+		Args:  cobra.ExactArgs(1),
+		RunE: withEnv(func(env *agentcli.Environment, args []string, _ *cobra.Command) error {
+			return agentcli.RunFilePublicURL(env, args[0])
 		}),
 	}
 
@@ -123,61 +136,7 @@ func newFileCommand() *cobra.Command {
 	}
 	download.Flags().StringVar(&downloadTo, "to", "", "Local directory for the downloaded file.")
 
-	cmd.AddCommand(upload, download)
-	return cmd
-}
-
-func newDriveCommand() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "drive",
-		Short: "List, pull, or push agent drive files through the Agent Stub.",
-	}
-
-	var listJSON bool
-	list := &cobra.Command{
-		Use:   "list [REMOTE_PREFIX]",
-		Short: "List drive files visible to the current sandbox execution.",
-		Args:  cobra.MaximumNArgs(1),
-		RunE: withEnv(func(env *agentcli.Environment, args []string, _ *cobra.Command) error {
-			prefix := ""
-			if len(args) > 0 {
-				prefix = args[0]
-			}
-			return agentcli.RunDriveList(env, prefix, listJSON)
-		}),
-	}
-	list.Flags().BoolVar(&listJSON, "json", false, "Emit the drive manifest as JSON.")
-
-	var pullTo string
-	var pullJSON bool
-	pull := &cobra.Command{
-		Use:   "pull [REMOTE]...",
-		Short: "Pull one or more drive keys/prefixes into one local directory tree.",
-		RunE: withEnv(func(env *agentcli.Environment, args []string, _ *cobra.Command) error {
-			localBase := pullTo
-			if localBase == "" {
-				localBase = agentcli.ReadDriveBase()
-			}
-			return agentcli.RunDrivePull(env, args, localBase, pullJSON)
-		}),
-	}
-	pull.Flags().StringVar(&pullTo, "to", "", "Local base directory for pulled drive files.")
-	pull.Flags().BoolVar(&pullJSON, "json", false, "Emit the pull result as JSON.")
-
-	var pushKind string
-	var pushJSON bool
-	push := &cobra.Command{
-		Use:   "push LOCAL_PATH REMOTE_PATH",
-		Short: "Upload one local file or directory into the agent drive.",
-		Args:  cobra.ExactArgs(2),
-		RunE: withEnv(func(env *agentcli.Environment, args []string, _ *cobra.Command) error {
-			return agentcli.RunDrivePush(env, args[0], args[1], pushKind)
-		}),
-	}
-	push.Flags().StringVar(&pushKind, "kind", "", "Directory upload kind: skill or dir.")
-	push.Flags().BoolVar(&pushJSON, "json", false, "Accepted for consistency; drive push output is already emitted as JSON.")
-
-	cmd.AddCommand(list, pull, push)
+	cmd.AddCommand(upload, download, publicURL)
 	return cmd
 }
 

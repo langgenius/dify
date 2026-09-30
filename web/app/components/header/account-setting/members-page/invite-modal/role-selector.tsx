@@ -4,18 +4,21 @@ import type { Role } from '@/models/access-control'
 import { Field, FieldError } from '@langgenius/dify-ui/field'
 import {
   Select,
-  SelectContent,
   SelectItem,
   SelectItemIndicator,
   SelectItemText,
   SelectLabel,
+  SelectList,
+  SelectPopup,
+  SelectPortal,
+  SelectPositioner,
   SelectTrigger,
   SelectValue,
 } from '@langgenius/dify-ui/select'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useLocale } from '@/context/i18n'
-import { getAccessControlTemplateLanguage } from '@/i18n-config/language'
+import { useLocale } from '#i18n'
+import { getAccessControlTemplateLanguage } from '@/i18n/language'
 import { useWorkspaceRoleList } from '@/service/access-control/use-workspace-roles'
 
 type RoleSelectorProps = {
@@ -47,7 +50,7 @@ function getLegacyRoleDescriptionKey(role: Role) {
 }
 
 export function RoleSelector({ hasServerError = false, disabled = false }: RoleSelectorProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'permission', 'workspaceMembers'])
   const locale = useLocale()
   const [open, setOpen] = useState(false)
   const listRef = useRef<HTMLDivElement>(null)
@@ -125,13 +128,13 @@ export function RoleSelector({ hasServerError = false, disabled = false }: RoleS
 
     switch (getLegacyRoleDescriptionKey(role)) {
       case 'admin':
-        return t(($) => $['members.adminTip'], { ns: 'common' })
+        return t(($) => $['members.adminTip'], { ns: 'workspaceMembers' })
       case 'editor':
-        return t(($) => $['members.editorTip'], { ns: 'common' })
+        return t(($) => $['members.editorTip'], { ns: 'workspaceMembers' })
       case 'normal':
-        return t(($) => $['members.normalTip'], { ns: 'common' })
+        return t(($) => $['members.normalTip'], { ns: 'workspaceMembers' })
       case 'dataset_operator':
-        return t(($) => $['members.datasetOperatorTip'], { ns: 'common' })
+        return t(($) => $['members.datasetOperatorTip'], { ns: 'workspaceMembers' })
     }
 
     return t(($) => $['role.noDescription'], { ns: 'permission' })
@@ -149,54 +152,56 @@ export function RoleSelector({ hasServerError = false, disabled = false }: RoleS
         itemToStringValue={(role) => role.id}
         isItemEqualToValue={(role, selectedRole) => role.id === selectedRole.id}
       >
-        <SelectLabel>{t(($) => $['members.role'], { ns: 'common' })}</SelectLabel>
+        <SelectLabel>{t(($) => $['members.role'], { ns: 'workspaceMembers' })}</SelectLabel>
         <SelectTrigger>
-          <SelectValue placeholder={t(($) => $['members.selectRole'], { ns: 'common' })} />
+          <SelectValue
+            placeholder={t(($) => $['members.selectRole'], { ns: 'workspaceMembers' })}
+          />
         </SelectTrigger>
-        <SelectContent
-          listClassName="max-h-70"
-          listProps={{
-            ref: setListElement,
-            'aria-label': t(($) => $['members.role'], { ns: 'common' }),
-          }}
-        >
-          {rolesLoading ? (
-            <div className="px-3 py-6 text-center system-sm-regular text-text-tertiary">
-              {t(($) => $.loading, { ns: 'common' })}
-            </div>
-          ) : rolesError && roles.length === 0 ? (
-            <div className="px-3 py-6 text-center system-sm-regular text-text-destructive-secondary">
-              {t(($) => $['dynamicSelect.error'], { ns: 'common' })}
-            </div>
-          ) : roles.length === 0 ? (
-            <div className="px-3 py-6 text-center system-sm-regular text-text-tertiary">
-              {t(($) => $['dynamicSelect.noData'], { ns: 'common' })}
-            </div>
-          ) : (
-            <>
-              {roles.map((role) => (
-                <SelectItem key={role.id} value={role} className="h-auto items-start py-2">
-                  <SelectItemText className="grid gap-0.5">
-                    <span className="truncate text-sm leading-5 text-text-secondary">
-                      {role.name}
-                    </span>
-                    <span className="line-clamp-2 text-xs leading-4.5 text-text-tertiary">
-                      {getRoleDescription(role)}
-                    </span>
-                  </SelectItemText>
-                  <SelectItemIndicator className="mt-0.5" />
-                </SelectItem>
-              ))}
-              <div ref={setAnchorElement} className="h-0" />
-            </>
-          )}
-        </SelectContent>
+        <SelectPortal>
+          <SelectPositioner>
+            <SelectPopup>
+              <SelectList className="max-h-70" ref={setListElement}>
+                {rolesLoading ? (
+                  <div className="px-3 py-6 text-center system-sm-regular text-text-tertiary">
+                    {t(($) => $.loading, { ns: 'common' })}
+                  </div>
+                ) : rolesError && roles.length === 0 ? (
+                  <div className="px-3 py-6 text-center system-sm-regular text-text-destructive-secondary">
+                    {t(($) => $['dynamicSelect.error'], { ns: 'common' })}
+                  </div>
+                ) : roles.length === 0 ? (
+                  <div className="px-3 py-6 text-center system-sm-regular text-text-tertiary">
+                    {t(($) => $['dynamicSelect.noData'], { ns: 'common' })}
+                  </div>
+                ) : (
+                  <>
+                    {roles.map((role) => (
+                      <SelectItem key={role.id} value={role} className="h-auto items-start py-2">
+                        <SelectItemText className="grid gap-0.5">
+                          <span className="truncate text-sm leading-5 text-text-secondary">
+                            {role.name}
+                          </span>
+                          <span className="line-clamp-2 text-xs leading-4.5 text-text-tertiary">
+                            {getRoleDescription(role)}
+                          </span>
+                        </SelectItemText>
+                        <SelectItemIndicator className="mt-0.5" />
+                      </SelectItem>
+                    ))}
+                    <div ref={setAnchorElement} className="h-0" />
+                  </>
+                )}
+              </SelectList>
+            </SelectPopup>
+          </SelectPositioner>
+        </SelectPortal>
       </Select>
       {hasServerError ? (
         <FieldError />
       ) : (
         <FieldError match="valueMissing">
-          {t(($) => $['members.selectRole'], { ns: 'common' })}
+          {t(($) => $['members.selectRole'], { ns: 'workspaceMembers' })}
         </FieldError>
       )}
     </Field>

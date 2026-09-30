@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import asyncio
+import json
 import shlex
 from dataclasses import dataclass
 from typing import ClassVar
@@ -49,6 +49,7 @@ _CONFIG_CLI_MUTATION_HELP_COMMANDS: dict[str, tuple[str, ...]] = {
 }
 _AGENT_FILE_CLI_HELP_COMMANDS: dict[str, tuple[str, ...]] = {
     "dify-agent file upload --help": ("file", "upload"),
+    "dify-agent file public-url --help": ("file", "public-url"),
     "dify-agent file download --help": ("file", "download"),
 }
 _CONFIG_CONTEXT_EXCLUDE = {"mentioned_skill_names": True, "mentioned_file_names": True}
@@ -194,71 +195,101 @@ class DifyConfigLayer(PlainLayer[DifyConfigDeps, DifyConfigLayerConfig, DifyConf
         if not self.config.mentioned_skill_names and not self.config.mentioned_file_names:
             return
 
-        tasks = [
-            *(self._pull_mentioned_skill(name) for name in self.config.mentioned_skill_names),
-            *(self._pull_mentioned_file(name) for name in self.config.mentioned_file_names),
-        ]
-        await asyncio.gather(*tasks)
+        if names := self.config.mentioned_skill_names:
+            output = await self._run_mentioned_pull(
+                script=self._build_shell_skill_pull_script(names),
+                target_kind="skill",
+            )
+            self.runtime_state.pulled_skill_outputs = _parse_skill_pull_outputs(output, names)
 
-    async def _pull_mentioned_skill(self, name: str) -> None:
+        if names := self.config.mentioned_file_names:
+            output = await self._run_mentioned_pull(
+                script=self._build_shell_file_pull_script(names),
+                target_kind="file",
+            )
+            self.runtime_state.pulled_file_outputs = _parse_file_pull_outputs(output, names)
+
+    async def _run_mentioned_pull(self, *, script: str, target_kind: str) -> str:
         result = await self.deps.shell.run_remote_script(
-            self._build_shell_skill_pull_script(name),
+            script,
             inject_agent_stub_env=True,
         )
         if result.exit_code != 0:
             raise DifyConfigLayerError(
-                "config mentioned skill pull failed in shell: "
+                f"config mentioned {target_kind} pull failed in shell: "
                 f"{result.status} exit_code={result.exit_code}\n{result.output}"
             )
         if not result.output_complete:
             reason = result.incomplete_reason or "unknown"
             raise DifyConfigLayerError(
-                f"config mentioned skill pull output was incomplete before the payload finished: {reason}"
+                f"config mentioned {target_kind} pull output was incomplete before the payload finished: {reason}"
             )
         output = result.output.strip()
         if not output:
+            raise DifyConfigLayerError(f"missing pull output for mentioned config {target_kind}s")
+        return output
+
+    def _build_shell_skill_pull_script(self, names: list[str]) -> str:
+        targets = " ".join(shlex.quote(name) for name in names)
+        return f"set -eu\ndify-agent config skills pull --json {targets}"
+
+    def _build_shell_file_pull_script(self, names: list[str]) -> str:
+        targets = " ".join(shlex.quote(name) for name in names)
+        return f"set -eu\ndify-agent config files pull --json {targets}"
+
+
+def _parse_skill_pull_outputs(output: str, expected_names: list[str]) -> dict[str, str]:
+    items = _parse_pull_items(output, target_kind="skill")
+    parsed: dict[str, str] = {}
+    for name in expected_names:
+        item = items.get(name)
+        if item is None:
             raise DifyConfigLayerError(f"missing pull output for mentioned config skill {name}")
-        self.runtime_state.pulled_skill_outputs = {
-            **self.runtime_state.pulled_skill_outputs,
-            name: output,
-        }
+        directory_path = item.get("directory_path")
+        skill_md = item.get("skill_md")
+        if not isinstance(directory_path, str) or not directory_path:
+            raise DifyConfigLayerError(f"invalid directory path in pull output for mentioned config skill {name}")
+        if not isinstance(skill_md, str):
+            raise DifyConfigLayerError(f"invalid skill content in pull output for mentioned config skill {name}")
+        parsed[name] = f"{directory_path}\n{skill_md}".strip()
+    return parsed
 
-    async def _pull_mentioned_file(self, name: str) -> None:
-        result = await self.deps.shell.run_remote_script(
-            self._build_shell_file_pull_script(name),
-            inject_agent_stub_env=True,
-        )
-        if result.exit_code != 0:
-            raise DifyConfigLayerError(
-                "config mentioned file pull failed in shell: "
-                f"{result.status} exit_code={result.exit_code}\n{result.output}"
-            )
-        if not result.output_complete:
-            reason = result.incomplete_reason or "unknown"
-            raise DifyConfigLayerError(
-                f"config mentioned file pull output was incomplete before the payload finished: {reason}"
-            )
-        output = result.output.strip()
-        if not output:
+
+def _parse_file_pull_outputs(output: str, expected_names: list[str]) -> dict[str, str]:
+    items = _parse_pull_items(output, target_kind="file")
+    parsed: dict[str, str] = {}
+    for name in expected_names:
+        item = items.get(name)
+        if item is None:
             raise DifyConfigLayerError(f"missing pull output for mentioned config file {name}")
-        self.runtime_state.pulled_file_outputs = {
-            **self.runtime_state.pulled_file_outputs,
-            name: output,
-        }
+        path = item.get("path")
+        if not isinstance(path, str) or not path:
+            raise DifyConfigLayerError(f"invalid path in pull output for mentioned config file {name}")
+        parsed[name] = path
+    return parsed
 
-    def _build_shell_skill_pull_script(self, name: str) -> str:
-        lines = [
-            "set -eu",
-            f"dify-agent config skills pull {shlex.quote(name)}",
-        ]
-        return "\n".join(lines)
 
-    def _build_shell_file_pull_script(self, name: str) -> str:
-        lines = [
-            "set -eu",
-            f"dify-agent config files pull {shlex.quote(name)}",
-        ]
-        return "\n".join(lines)
+def _parse_pull_items(output: str, *, target_kind: str) -> dict[str, dict[str, object]]:
+    try:
+        payload: object = json.loads(output)
+    except json.JSONDecodeError as exc:
+        raise DifyConfigLayerError(f"invalid JSON pull output for mentioned config {target_kind}s") from exc
+    if not isinstance(payload, dict):
+        raise DifyConfigLayerError(f"invalid pull output for mentioned config {target_kind}s")
+    raw_items = payload.get("items")
+    if not isinstance(raw_items, list):
+        raise DifyConfigLayerError(f"missing items in pull output for mentioned config {target_kind}s")
+
+    items: dict[str, dict[str, object]] = {}
+    for raw_item in raw_items:
+        if not isinstance(raw_item, dict):
+            raise DifyConfigLayerError(f"invalid item in pull output for mentioned config {target_kind}s")
+        item = {str(key): value for key, value in raw_item.items()}
+        name = item.get("name")
+        if not isinstance(name, str) or not name:
+            raise DifyConfigLayerError(f"missing item name in pull output for mentioned config {target_kind}s")
+        items[name] = item
+    return items
 
 
 def _format_command_output(command: str, output: str) -> str:

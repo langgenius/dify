@@ -1,17 +1,20 @@
 'use client'
 
-import type { AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
-import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type {
+  AgentPublishResponse,
+  AgentSoulConfig,
+} from '@dify/contracts/api/console/agent/types.gen'
 import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
-import { toast } from '@langgenius/dify-ui/toast'
 import { mutationOptions, useMutation, useQueryClient } from '@tanstack/react-query'
 import { debounce } from 'es-toolkit/compat'
 import isEqual from 'fast-deep-equal'
-import { useSetAtom, useStore } from 'jotai'
+import { useAtomValue, useSetAtom, useStore } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { useSerialAsyncCallback } from '@/app/components/workflow/hooks/use-serial-async-callback'
+import { toast } from '@/app/notifications'
+import { getAgentACLCapabilities } from '@/features/agent-v2/acl'
 import { formStateToAgentSoulConfig } from '@/features/agent-v2/agent-composer/conversions'
 import {
   useKnowledgeValidationMessage,
@@ -22,51 +25,82 @@ import {
   agentComposerSavedDraftAtom,
   isAgentComposerDirtyAtom,
 } from '@/features/agent-v2/agent-composer/store'
-import { consoleQuery } from '@/service/client'
+import { agentComposerToolPresentationIdentitiesAtom } from '@/features/agent-v2/agent-composer/store-modules/tools'
+import { useRefWithInit } from '@/hooks/use-ref-with-init'
+import { consoleQuery } from '@/service/console'
+import {
+  getAgentToolPublishIssue,
+  useAgentToolPresentation,
+  useAgentToolProviderCatalog,
+} from './tool-provider-catalog'
 
 const DRAFT_AUTOSAVE_WAIT = 5000
+
+export type AgentConfigurePublishResult = {
+  kind: AgentPublishResponse['publication_kind']
+  // Keep the submitted draft's identity so the bar can detect edits made during publication.
+  draft: AgentSoulConfigFormState
+}
 
 export function useAgentConfigureSync({
   agentId,
   agentName,
   baseConfig,
-  currentModel,
   enabled,
+  publishEnabled,
 }: {
   agentId: string
   agentName?: string | null
   baseConfig?: AgentSoulConfig
-  currentModel?: DefaultModel
   enabled: boolean
+  publishEnabled: boolean
 }) {
-  const { t: tCommon } = useTranslation('common')
+  const { t: tCommon } = useTranslation(['common', 'modelProvider'])
+  const { t: tWorkflow } = useTranslation(['workflow'])
   const getKnowledgeValidationMessage = useKnowledgeValidationMessage()
+  const toolPresentationIdentities = useAtomValue(agentComposerToolPresentationIdentitiesAtom)
+  const toolProviderCatalog = useAgentToolProviderCatalog()
+  const toolPresentation = useAgentToolPresentation(toolPresentationIdentities, toolProviderCatalog)
   const queryClient = useQueryClient()
   const store = useStore()
   const setSavedDraft = useSetAtom(agentComposerSavedDraftAtom)
   const baseConfigRef = useRef(baseConfig)
-  const currentModelRef = useRef(currentModel)
   const enabledRef = useRef(enabled)
+  const publishEnabledRef = useRef(publishEnabled)
   const lastAutosavedDraftKeyRef = useRef<string | undefined>(undefined)
   const latestAppliedSaveSequenceRef = useRef(0)
   const nextSaveSequenceRef = useRef(0)
   const pageCloseSavingDraftKeyRef = useRef<string | undefined>(undefined)
-  const explicitlySavingDraftKeysRef = useRef(new Set<string>())
+  const explicitlySavingDraftKeysRef = useRefWithInit(() => new Set<string>())
   const publishInFlightRef = useRef(false)
 
-  baseConfigRef.current = baseConfig
-  currentModelRef.current = currentModel
-  enabledRef.current = enabled
-
-  const getAgentSoulDraft = useCallback(
+  // The layout can unmount this hook before a revoked permission reaches its props.
+  const getCurrentPermissions = useCallback(
     () =>
-      formStateToAgentSoulConfig({
-        baseConfig: baseConfigRef.current,
-        formState: store.get(agentComposerDraftAtom),
-        currentModel: currentModelRef.current,
-      }),
-    [store],
+      getAgentACLCapabilities(
+        queryClient.getQueryData(
+          consoleQuery.agent.byAgentId.get.queryKey({
+            input: { params: { agent_id: agentId } },
+          }),
+        )?.permission_keys,
+      ),
+    [agentId, queryClient],
   )
+
+  useEffect(() => {
+    baseConfigRef.current = baseConfig
+    enabledRef.current = enabled
+    publishEnabledRef.current = publishEnabled
+  }, [baseConfig, enabled, publishEnabled])
+
+  const getAgentSoulDraft = useCallback(() => {
+    const draft = store.get(agentComposerDraftAtom)
+    return formStateToAgentSoulConfig({
+      baseConfig: baseConfigRef.current,
+      formState: draft,
+      currentModel: draft.model,
+    })
+  }, [store])
 
   const { mutateAsync: saveComposerDraft } = useMutation(
     consoleQuery.agent.byAgentId.composer.put.mutationOptions({
@@ -122,45 +156,69 @@ export function useAgentConfigureSync({
       publish?: boolean
       silent?: boolean
     }) => {
+      const permissions = getCurrentPermissions()
+      if (
+        publish
+          ? !publishEnabledRef.current || !permissions.canReleaseAndVersion
+          : !enabledRef.current || !permissions.canEdit
+      )
+        return false
       const savedDraftKey = JSON.stringify(configSnapshot)
       const saveSequence = ++nextSaveSequenceRef.current
-      try {
-        await saveComposerDraft({
-          params: {
-            agent_id: agentId,
-          },
-          body: {
-            variant: 'agent_app',
-            save_strategy: 'save_to_current_version',
-            agent_soul: configSnapshot,
-          },
-        })
-      } catch (error) {
-        // Autosave is silent and keeps the local draft intact; explicit commands must stop at this boundary.
-        if (!silent) {
-          if (publish) throw error
-          throw new Error('Failed to save agent composer draft.')
+      if (enabledRef.current && permissions.canEdit) {
+        try {
+          await saveComposerDraft({
+            params: {
+              agent_id: agentId,
+            },
+            body: {
+              variant: 'agent_app',
+              save_strategy: 'save_to_current_version',
+              agent_soul: configSnapshot,
+            },
+          })
+        } catch (error) {
+          // Autosave is silent and keeps the local draft intact; explicit commands must stop at this boundary.
+          if (!silent) {
+            if (publish) throw error
+            throw new Error('Failed to save agent composer draft.')
+          }
+
+          return false
         }
 
-        return false
+        applySavedDraft({
+          draftBaseline,
+          draftKey: savedDraftKey,
+          saveSequence,
+        })
       }
 
-      applySavedDraft({
-        draftBaseline,
-        draftKey: savedDraftKey,
-        saveSequence,
-      })
-
       if (publish) {
-        await publishAgent({
+        if (!publishEnabledRef.current || !getCurrentPermissions().canReleaseAndVersion)
+          return false
+        const result = await publishAgent({
           params: {
             agent_id: agentId,
           },
           body: {},
         })
-        await queryClient.invalidateQueries({
-          queryKey: consoleQuery.agent.byAgentId.versions.get.key(),
-        })
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: consoleQuery.agent.byAgentId.versions.get.key(),
+          }),
+          queryClient.invalidateQueries({
+            queryKey: consoleQuery.agent.byAgentId.get.queryKey({
+              input: { params: { agent_id: agentId } },
+            }),
+          }),
+          queryClient.invalidateQueries({
+            queryKey: consoleQuery.agent.byAgentId.apiAccess.get.queryKey({
+              input: { params: { agent_id: agentId } },
+            }),
+          }),
+        ])
+        return result
       }
 
       return true
@@ -177,6 +235,7 @@ export function useAgentConfigureSync({
       draftBaseline: AgentSoulConfigFormState
       draftKey: string
     }) => {
+      if (!enabledRef.current || !getCurrentPermissions().canEdit) return false
       const saveSequence = ++nextSaveSequenceRef.current
       try {
         await saveComposerDraftOnPageClose({
@@ -200,7 +259,7 @@ export function useAgentConfigureSync({
       })
       return true
     },
-    [agentId, applySavedDraft, saveComposerDraftOnPageClose],
+    [agentId, applySavedDraft, getCurrentPermissions, saveComposerDraftOnPageClose],
   )
 
   const { isPending: isPublishing, mutateAsync: runPublishTransaction } = useMutation(
@@ -213,7 +272,7 @@ export function useAgentConfigureSync({
         configSnapshot: AgentSoulConfig
         draftBaseline: AgentSoulConfigFormState
       }) => {
-        await saveComposer({
+        return saveComposer({
           configSnapshot,
           draftBaseline,
           publish: true,
@@ -224,19 +283,21 @@ export function useAgentConfigureSync({
   )
 
   const latestDraftSaveRef = useRef<() => void>(() => undefined)
-  latestDraftSaveRef.current = () => {
-    const draft = store.get(agentComposerDraftAtom)
+  useEffect(() => {
+    latestDraftSaveRef.current = () => {
+      const draft = store.get(agentComposerDraftAtom)
 
-    void saveComposer({
-      configSnapshot: getAgentSoulDraft(),
-      draftBaseline: draft,
-    })
-  }
+      void saveComposer({
+        configSnapshot: getAgentSoulDraft(),
+        draftBaseline: draft,
+      })
+    }
+  }, [getAgentSoulDraft, saveComposer, store])
 
   const debouncedSaveDraft = useMemo(
     () =>
       debounce(() => {
-        latestDraftSaveRef.current()
+        if (enabledRef.current) latestDraftSaveRef.current()
       }, DRAFT_AUTOSAVE_WAIT),
     [],
   )
@@ -264,7 +325,14 @@ export function useAgentConfigureSync({
     } finally {
       explicitlySavingDraftKeysRef.current.delete(draftKey)
     }
-  }, [debouncedSaveDraft, getAgentSoulDraft, saveComposer, store, tCommon])
+  }, [
+    debouncedSaveDraft,
+    getAgentSoulDraft,
+    saveComposer,
+    store,
+    tCommon,
+    explicitlySavingDraftKeysRef,
+  ])
 
   const saveDirtyDraftOnPageClose = useCallback(
     (allowInFlightDuplicate = false) => {
@@ -296,7 +364,13 @@ export function useAgentConfigureSync({
           pageCloseSavingDraftKeyRef.current = undefined
       })
     },
-    [debouncedSaveDraft, getAgentSoulDraft, saveComposerOnPageClose, store],
+    [
+      debouncedSaveDraft,
+      getAgentSoulDraft,
+      saveComposerOnPageClose,
+      store,
+      explicitlySavingDraftKeysRef,
+    ],
   )
 
   useEffect(() => {
@@ -341,18 +415,42 @@ export function useAgentConfigureSync({
     }
   }, [saveDirtyDraftOnPageClose])
 
-  const publishDraft = useCallback(async () => {
-    if (!enabledRef.current || publishInFlightRef.current) return
+  const publishDraft = useCallback(async (): Promise<AgentConfigurePublishResult | false> => {
+    if (
+      !publishEnabledRef.current ||
+      !getCurrentPermissions().canReleaseAndVersion ||
+      publishInFlightRef.current
+    )
+      return false
 
     const draft = store.get(agentComposerDraftAtom)
     const configSnapshot = formStateToAgentSoulConfig({
       baseConfig: baseConfigRef.current,
       formState: draft,
-      currentModel: currentModelRef.current,
+      currentModel: draft.model,
     })
     if (!configSnapshot.model?.model_provider || !configSnapshot.model.model) {
-      toast.error(tCommon(($) => $['modelProvider.selectModel']))
-      return
+      toast.error(tCommon(($) => $['modelProvider.selectModel'], { ns: 'modelProvider' }))
+      return false
+    }
+
+    const toolPublishIssue = getAgentToolPublishIssue(draft.tools, toolProviderCatalog)
+    if (toolPublishIssue) {
+      const toolName =
+        toolPresentation.toolDisplayNameById.get(toolPublishIssue.tool.id) ??
+        toolPublishIssue.tool.name
+      toast.error(
+        toolPublishIssue.type === 'uninstalled'
+          ? tWorkflow(($) => $['nodes.agent.toolNotInstallTooltip'], {
+              ns: 'workflow',
+              tool: toolName,
+            })
+          : tWorkflow(($) => $['nodes.agent.toolNotAuthorizedTooltip'], {
+              ns: 'workflow',
+              tool: toolName,
+            }),
+      )
+      return false
     }
 
     const knowledgeValidation = validateKnowledgeRetrievals(draft.knowledgeRetrievals)
@@ -361,23 +459,24 @@ export function useAgentConfigureSync({
         getKnowledgeValidationMessage(knowledgeValidation.firstIssue?.code) ??
           tCommon(($) => $['api.actionFailed']),
       )
-      return
+      return false
     }
 
     publishInFlightRef.current = true
     try {
       debouncedSaveDraft.cancel?.()
-      await runPublishTransaction({
+      const published = await runPublishTransaction({
         configSnapshot,
         draftBaseline: draft,
       })
+      if (!published || published === true) return false
       trackEvent('app_published_time', {
         action_mode: 'app',
         app_id: agentId,
         app_name: agentName,
         app_mode: 'agent-v2',
       })
-      toast.success(tCommon(($) => $['api.actionSuccess']))
+      return { kind: published.publication_kind, draft }
     } catch (error) {
       let errorData: unknown = error
       if (error instanceof Response) {
@@ -403,9 +502,13 @@ export function useAgentConfigureSync({
     agentName,
     debouncedSaveDraft,
     getKnowledgeValidationMessage,
+    getCurrentPermissions,
     runPublishTransaction,
     store,
     tCommon,
+    toolProviderCatalog,
+    toolPresentation.toolDisplayNameById,
+    tWorkflow,
   ])
 
   return {

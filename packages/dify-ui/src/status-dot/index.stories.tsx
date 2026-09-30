@@ -16,7 +16,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Status Dot primitive from the Dify Design Kit. Use it for compact visual status indicators; provide an accessible label only when the dot is the sole status representation.',
+          'Decorative Status Dot primitive from the Dify Design Kit. Pair it with visible status text owned by the surrounding component; the dot itself stays hidden from assistive technology.',
       },
     },
   },

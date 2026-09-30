@@ -16,9 +16,12 @@ metadata.
 
 import logging
 import time
-from collections.abc import Iterator, Mapping, Sequence
+from collections import OrderedDict
+from collections.abc import Generator, Mapping, Sequence
 from contextlib import contextmanager
+from hashlib import sha256
 from mimetypes import guess_type
+from threading import Lock
 from typing import Literal, Protocol
 
 import zstandard
@@ -48,6 +51,8 @@ from core.plugin.entities.plugin_daemon import (
     PluginInstallTaskStatus,
     PluginListResponse,
     PluginListWithoutTotalResponse,
+    PluginModelProviderBinding,
+    PluginModelProviderDeclaration,
     PluginModelProviderEntity,
     PluginVerification,
 )
@@ -56,26 +61,35 @@ from core.plugin.impl.debugging import PluginDebuggingClient
 from core.plugin.impl.endpoint import PluginEndpointClient
 from core.plugin.impl.model import PluginModelClient
 from core.plugin.impl.plugin import PluginInstaller
+from enums import DeploymentEdition
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from graphon.model_runtime.entities.provider_entities import ProviderEntity
 from models.provider import Provider, ProviderCredential, TenantPreferredModelProvider
 from models.provider_ids import GenericProviderID, ModelProviderID
 from services.enterprise.plugin_manager_service import (
     PluginManagerService,
     PreUninstallPluginRequest,
 )
+from services.entities.feature_entities import PluginInstallationPermissionModel, PluginInstallationScope
 from services.errors.plugin import PluginInstallationForbiddenError
-from services.feature_service import FeatureService, PluginInstallationPermissionModel, PluginInstallationScope
+from services.system_feature_service import SystemFeatureService
 
 logger = logging.getLogger(__name__)
-_provider_entities_adapter: TypeAdapter[list[ProviderEntity]] = TypeAdapter(list[ProviderEntity])
+_provider_entities_adapter: TypeAdapter[list[PluginModelProviderDeclaration]] = TypeAdapter(
+    list[PluginModelProviderDeclaration]
+)
 
 
 class _RedisLock(Protocol):
     def acquire(self, *, blocking: bool = True, blocking_timeout: float | None = None) -> bool: ...
 
     def release(self) -> None: ...
+
+
+class _ModelPluginIdentity(Protocol):
+    plugin_id: str
+    plugin_unique_identifier: str
+    source: PluginInstallationSource
 
 
 class PluginService:
@@ -98,6 +112,15 @@ class PluginService:
     PLUGIN_MODEL_PROVIDERS_LOCK_WAIT_INTERVAL = 0.05
     PLUGIN_MODEL_PROVIDERS_CACHE_COMPRESSION_PREFIX = b"\x00dify-plugin-model-providers-zstd-v1:"
     PLUGIN_MODEL_PROVIDERS_CACHE_COMPRESSION_MIN_BYTES = 64 * 1024
+    # Provider declarations are tenant-scoped but contain no tenant credentials. Cache the parsed tuple by payload
+    # content so unchanged Redis data does not pay the Pydantic validation cost on every retrieval request. The cached
+    # declarations are shared and consumers must treat them as read-only. A changed payload always has a different key,
+    # while the small LRU bounds per-process memory usage.
+    PLUGIN_MODEL_PROVIDERS_PARSED_CACHE_MAX_ENTRIES = 8
+    _parsed_plugin_model_providers_cache: OrderedDict[tuple[int, bytes], tuple[PluginModelProviderDeclaration, ...]] = (
+        OrderedDict()
+    )
+    _parsed_plugin_model_providers_cache_lock = Lock()
     PLUGIN_INSTALL_TASK_TERMINAL_STATUSES = (PluginInstallTaskStatus.Success, PluginInstallTaskStatus.Failed)
     # Mirror the detail-panel endpoint query size so list reconciliation and
     # the visible endpoint drawer exercise the same daemon pagination path.
@@ -146,11 +169,44 @@ class PluginService:
         return provider.provider
 
     @classmethod
-    def _to_provider_entity(cls, provider: PluginModelProviderEntity) -> ProviderEntity:
-        declaration = provider.declaration.model_copy(deep=True)
-        declaration.provider = f"{provider.plugin_id}/{provider.provider}"
-        declaration.provider_name = cls._get_provider_short_name_alias(provider)
-        return declaration
+    def _to_provider_entity(
+        cls,
+        provider: PluginModelProviderEntity,
+        installation_source: PluginInstallationSource | None,
+    ) -> PluginModelProviderDeclaration:
+        return PluginModelProviderDeclaration.model_validate(
+            {
+                **provider.declaration.model_dump(),
+                "provider": f"{provider.plugin_id}/{provider.provider}",
+                "provider_name": cls._get_provider_short_name_alias(provider),
+                "plugin_unique_identifier": provider.plugin_unique_identifier,
+                "installation_source": installation_source,
+            }
+        )
+
+    @classmethod
+    def _resolve_model_provider_installation_sources(
+        cls,
+        tenant_id: str,
+        providers: Sequence[PluginModelProviderEntity],
+    ) -> Mapping[str, PluginInstallationSource]:
+        unresolved_plugin_ids = list(
+            dict.fromkeys(provider.plugin_id for provider in providers if provider.installation_source is None)
+        )
+        if not unresolved_plugin_ids:
+            return {}
+
+        try:
+            installations = cls.list_installations_from_ids(tenant_id, unresolved_plugin_ids)
+        except Exception:
+            logger.warning(
+                "Failed to resolve model provider installation sources for tenant %s.",
+                tenant_id,
+                exc_info=True,
+            )
+            return {}
+
+        return {installation.plugin_unique_identifier: installation.source for installation in installations}
 
     @classmethod
     def _encode_plugin_model_providers_cache_payload(cls, payload: bytes) -> bytes:
@@ -172,6 +228,54 @@ class PluginService:
             return zstandard.decompress(payload[len(prefix) :])
         except zstandard.ZstdError as exc:
             raise ValueError("Invalid compressed plugin model providers cache payload.") from exc
+
+    @staticmethod
+    def _plugin_model_providers_payload_cache_key(payload: bytes | bytearray | str) -> tuple[int, bytes]:
+        payload_bytes = payload.encode("utf-8") if isinstance(payload, str) else bytes(payload)
+        return len(payload_bytes), sha256(payload_bytes).digest()
+
+    @classmethod
+    def _get_parsed_plugin_model_providers_from_local_cache(
+        cls, payload: bytes | bytearray | str
+    ) -> tuple[PluginModelProviderDeclaration, ...] | None:
+        cache_key = cls._plugin_model_providers_payload_cache_key(payload)
+        with cls._parsed_plugin_model_providers_cache_lock:
+            providers = cls._parsed_plugin_model_providers_cache.pop(cache_key, None)
+            if providers is not None:
+                cls._parsed_plugin_model_providers_cache[cache_key] = providers
+        return providers
+
+    @classmethod
+    def _store_parsed_plugin_model_providers_in_local_cache(
+        cls,
+        payload: bytes | bytearray | str,
+        providers: tuple[PluginModelProviderDeclaration, ...],
+    ) -> None:
+        cache_key = cls._plugin_model_providers_payload_cache_key(payload)
+        with cls._parsed_plugin_model_providers_cache_lock:
+            cls._parsed_plugin_model_providers_cache.pop(cache_key, None)
+            cls._parsed_plugin_model_providers_cache[cache_key] = providers
+            while len(cls._parsed_plugin_model_providers_cache) > cls.PLUGIN_MODEL_PROVIDERS_PARSED_CACHE_MAX_ENTRIES:
+                cls._parsed_plugin_model_providers_cache.popitem(last=False)
+
+    @classmethod
+    def _parse_plugin_model_providers_cache_payload(
+        cls, payload: bytes | bytearray | str
+    ) -> tuple[PluginModelProviderDeclaration, ...]:
+        decoded_payload = cls._decode_plugin_model_providers_cache_payload(payload)
+        return tuple(_provider_entities_adapter.validate_json(decoded_payload))
+
+    @classmethod
+    def _get_or_parse_plugin_model_providers_cache_payload(
+        cls, payload: bytes | bytearray | str
+    ) -> tuple[PluginModelProviderDeclaration, ...]:
+        providers = cls._get_parsed_plugin_model_providers_from_local_cache(payload)
+        if providers is not None:
+            return providers
+
+        providers = cls._parse_plugin_model_providers_cache_payload(payload)
+        cls._store_parsed_plugin_model_providers_in_local_cache(payload, providers)
+        return providers
 
     @classmethod
     def _load_plugin_model_providers_generation(cls, tenant_id: str) -> int | None:
@@ -206,7 +310,7 @@ class PluginService:
     @classmethod
     def _load_cached_plugin_model_providers_for_generation(
         cls, tenant_id: str, generation: int | None
-    ) -> tuple[tuple[ProviderEntity, ...] | None, bool]:
+    ) -> tuple[tuple[PluginModelProviderDeclaration, ...] | None, bool]:
         if generation is None:
             return None, False
 
@@ -230,8 +334,7 @@ class PluginService:
                 continue
 
             try:
-                payload = cls._decode_plugin_model_providers_cache_payload(cached_providers)
-                providers = tuple(_provider_entities_adapter.validate_json(payload))
+                providers = cls._get_or_parse_plugin_model_providers_cache_payload(cached_providers)
                 return providers, True
             except (TypeError, ValueError, ValidationError):
                 logger.warning(
@@ -253,7 +356,7 @@ class PluginService:
 
     @classmethod
     def _store_cached_plugin_model_providers(
-        cls, tenant_id: str, generation: int, providers: Sequence[ProviderEntity]
+        cls, tenant_id: str, generation: int, providers: Sequence[PluginModelProviderDeclaration]
     ) -> None:
         cache_key = cls._get_plugin_model_providers_cache_key(tenant_id, generation)
         try:
@@ -261,11 +364,12 @@ class PluginService:
                 _provider_entities_adapter.dump_json(list(providers))
             )
             redis_client.setex(cache_key, dify_config.PLUGIN_MODEL_PROVIDERS_CACHE_TTL, payload)
+            cls._store_parsed_plugin_model_providers_in_local_cache(payload, tuple(providers))
         except (RedisError, RuntimeError):
             logger.warning("Failed to cache plugin model providers for tenant %s.", tenant_id, exc_info=True)
 
     @classmethod
-    def _get_remote_model_plugin_cache_marker(cls, plugins: Sequence[PluginEntity]) -> str | None:
+    def _get_remote_model_plugin_cache_marker(cls, plugins: Sequence[_ModelPluginIdentity]) -> str | None:
         remote_model_plugins = sorted(
             f"{plugin.plugin_id}:{plugin.plugin_unique_identifier}"
             for plugin in plugins
@@ -350,7 +454,7 @@ class PluginService:
     def _should_invalidate_model_provider_cache_for_remote_model_plugins(
         cls,
         tenant_id: str,
-        plugins: Sequence[PluginEntity],
+        plugins: Sequence[_ModelPluginIdentity],
     ) -> bool:
         remote_model_plugin_marker = cls._get_remote_model_plugin_cache_marker(plugins)
         cached_remote_model_plugin_marker = cls._load_cached_remote_model_plugin_marker(tenant_id)
@@ -373,7 +477,7 @@ class PluginService:
     @contextmanager
     def _plugin_model_providers_refresh_lock(
         cls, tenant_id: str, generation: int, *, wait_timeout: float
-    ) -> Iterator[bool]:
+    ) -> Generator[bool]:
         lock_key = cls._get_plugin_model_providers_lock_key(tenant_id, generation)
         try:
             refresh_lock: _RedisLock = redis_client.lock(
@@ -437,14 +541,22 @@ class PluginService:
     @classmethod
     def _fetch_plugin_model_providers_uncached(
         cls, tenant_id: str, client: PluginModelClient | None
-    ) -> tuple[ProviderEntity, ...]:
+    ) -> tuple[PluginModelProviderDeclaration, ...]:
         model_client = client or PluginModelClient()
-        return tuple(cls._to_provider_entity(provider) for provider in model_client.fetch_model_providers(tenant_id))
+        providers = model_client.fetch_model_providers(tenant_id)
+        installation_sources = cls._resolve_model_provider_installation_sources(tenant_id, providers)
+        return tuple(
+            cls._to_provider_entity(
+                provider,
+                provider.installation_source or installation_sources.get(provider.plugin_unique_identifier),
+            )
+            for provider in providers
+        )
 
     @classmethod
     def _fetch_and_cache_plugin_model_providers(
         cls, tenant_id: str, client: PluginModelClient | None, *, refresh_generation: int | None
-    ) -> tuple[ProviderEntity, ...]:
+    ) -> tuple[PluginModelProviderDeclaration, ...]:
         providers = cls._fetch_plugin_model_providers_uncached(tenant_id, client)
         generation = cls._load_plugin_model_providers_generation(tenant_id)
         if generation is not None and generation == refresh_generation:
@@ -467,7 +579,7 @@ class PluginService:
     @classmethod
     def fetch_plugin_model_providers(
         cls, *, tenant_id: str, client: PluginModelClient | None = None
-    ) -> Sequence[ProviderEntity]:
+    ) -> Sequence[PluginModelProviderDeclaration]:
         """
         Fetch plugin model providers through the tenant-scoped plugin cache.
 
@@ -615,7 +727,7 @@ class PluginService:
     @staticmethod
     def _get_plugin_installation_permission() -> PluginInstallationPermissionModel:
         """Resolve the validated policy and reject deny-all before any installation side effect."""
-        permission = FeatureService.get_plugin_installation_permission()
+        permission = SystemFeatureService.get_plugin_installation_permission()
         if permission.plugin_installation_scope == PluginInstallationScope.NONE:
             raise PluginInstallationForbiddenError("Installing plugins is not allowed")
         return permission
@@ -672,6 +784,26 @@ class PluginService:
         return plugins
 
     @staticmethod
+    def list_installed_plugin_ids(tenant_id: str, category: PluginCategory) -> Sequence[str]:
+        """List all currently installed plugin IDs in one category through the daemon's lightweight query."""
+        manager = PluginInstaller()
+        return manager.list_installed_plugin_ids(tenant_id, category)
+
+    @staticmethod
+    def list_model_provider_bindings(
+        tenant_id: str, *, client: PluginModelClient | None = None
+    ) -> Sequence[PluginModelProviderBinding]:
+        """Return fresh model bindings and reconcile remote-debug provider metadata before it is read."""
+        model_client = client or PluginModelClient()
+        bindings = model_client.fetch_model_provider_bindings(tenant_id)
+        if PluginService._should_invalidate_model_provider_cache_for_remote_model_plugins(tenant_id, bindings):
+            PluginService.invalidate_plugin_model_providers_cache(tenant_id)
+
+        marker = PluginService._get_remote_model_plugin_cache_marker(bindings)
+        PluginService._store_cached_remote_model_plugin_marker(tenant_id, marker)
+        return bindings
+
+    @staticmethod
     def list_with_total(tenant_id: str, user_id: str, page: int, page_size: int) -> PluginListResponse:
         """List tenant plugins with endpoint counts reconciled from live records.
 
@@ -687,17 +819,33 @@ class PluginService:
 
     @staticmethod
     def list_by_category(
-        tenant_id: str, category: PluginCategory, page: int, page_size: int
+        tenant_id: str,
+        category: PluginCategory,
+        page: int,
+        page_size: int,
+        *,
+        query: str = "",
+        tags: Sequence[str] = (),
+        language: str = "en_US",
     ) -> PluginListWithoutTotalResponse:
         """
         List plugins in one category with a has-more cursor signal and without calculating total.
 
-        The daemon scans tenant installations in the existing list order and stops once it finds one extra match.
-        This keeps pagination usable before category is persisted on installation rows.
+        The daemon applies category, search, and tag filters before pagination, then stops once it finds one extra
+        match. Only a complete, unfiltered first page may reconcile the model-provider cache; the unpaginated model
+        binding read is the authoritative marker source for larger result sets.
         """
         manager = PluginInstaller()
-        plugins = manager.list_plugins_by_category(tenant_id, category, page, page_size)
-        if category == PluginCategory.Model:
+        plugins = manager.list_plugins_by_category(
+            tenant_id,
+            category,
+            page,
+            page_size,
+            query=query,
+            tags=tags,
+            language=language,
+        )
+        if category == PluginCategory.Model and page == 1 and not plugins.has_more and not query and not tags:
             should_invalidate_model_provider_cache = (
                 PluginService._should_invalidate_model_provider_cache_for_remote_model_plugins(
                     tenant_id,
@@ -919,10 +1067,8 @@ class PluginService:
 
         try:
             manager.fetch_plugin_manifest(tenant_id, new_plugin_unique_identifier)
-            # already downloaded, skip, and record install event
-            marketplace.record_install_plugin_event(new_plugin_unique_identifier)
         except Exception:
-            # plugin not installed, download and upload pkg
+            # plugin not downloaded yet, download and upload pkg
             pkg = download_plugin_pkg(new_plugin_unique_identifier)
             response = manager.upload_pkg(
                 tenant_id,
@@ -932,6 +1078,11 @@ class PluginService:
 
             # check if the plugin is available to install
             PluginService._check_plugin_installation_scope(response.verification)
+        else:
+            # already downloaded, the cached pkg still has to satisfy the installation scope
+            decode_response = manager.decode_plugin_from_identifier(tenant_id, new_plugin_unique_identifier)
+            PluginService._check_plugin_installation_scope(decode_response.verification)
+            marketplace.record_install_plugin_event(new_plugin_unique_identifier)
 
         result = manager.upgrade_plugin(
             tenant_id,
@@ -1122,14 +1273,8 @@ class PluginService:
         for plugin_unique_identifier in plugin_unique_identifiers:
             try:
                 manager.fetch_plugin_manifest(tenant_id, plugin_unique_identifier)
-                plugin_decode_response = manager.decode_plugin_from_identifier(tenant_id, plugin_unique_identifier)
-                # check if the plugin is available to install
-                PluginService._check_plugin_installation_scope(plugin_decode_response.verification)
-                # already downloaded, skip
-                actual_plugin_unique_identifiers.append(plugin_unique_identifier)
-                metas.append({"plugin_unique_identifier": plugin_unique_identifier})
             except Exception:
-                # plugin not installed, download and upload pkg
+                # plugin not downloaded yet, download and upload pkg
                 pkg = download_plugin_pkg(plugin_unique_identifier)
                 response = manager.upload_pkg(
                     tenant_id,
@@ -1141,6 +1286,12 @@ class PluginService:
                 # use response plugin_unique_identifier
                 actual_plugin_unique_identifiers.append(response.unique_identifier)
                 metas.append({"plugin_unique_identifier": response.unique_identifier})
+            else:
+                # already downloaded, the cached pkg still has to satisfy the installation scope
+                plugin_decode_response = manager.decode_plugin_from_identifier(tenant_id, plugin_unique_identifier)
+                PluginService._check_plugin_installation_scope(plugin_decode_response.verification)
+                actual_plugin_unique_identifiers.append(plugin_unique_identifier)
+                metas.append({"plugin_unique_identifier": plugin_unique_identifier})
 
         result = manager.install_from_identifiers(
             tenant_id,
@@ -1166,7 +1317,7 @@ class PluginService:
                 PluginService.invalidate_plugin_model_providers_cache(tenant_id)
             return result
 
-        if dify_config.ENTERPRISE_ENABLED:
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE:
             PluginManagerService.try_pre_uninstall_plugin(
                 PreUninstallPluginRequest(
                     tenant_id=tenant_id,

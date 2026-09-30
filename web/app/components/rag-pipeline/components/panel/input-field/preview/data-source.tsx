@@ -12,7 +12,7 @@ type DatasourceProps = {
 }
 
 const DataSource = ({ onSelect: setDatasource, dataSourceNodeId }: DatasourceProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetPipeline'])
   const pipelineId = useStore((state) => state.pipelineId)
   const { data: paramsConfig } = useDraftPipelinePreProcessingParams(
     {

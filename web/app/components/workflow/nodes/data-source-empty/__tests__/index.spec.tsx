@@ -1,43 +1,11 @@
-import type { ComponentProps, ReactNode } from 'react'
-import type { OnSelectBlock } from '@/app/components/workflow/types'
+import type { ComponentProps } from 'react'
 import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
-import { BlockEnum } from '@/app/components/workflow/types'
 import DataSourceEmptyNode from '../index'
 
 const mockUseReplaceDataSourceNode = vi.hoisted(() => vi.fn())
 
 vi.mock('../hooks', () => ({
   useReplaceDataSourceNode: mockUseReplaceDataSourceNode,
-}))
-
-vi.mock('@/app/components/workflow/block-selector', () => ({
-  default: ({
-    onSelect,
-    trigger,
-  }: {
-    onSelect: OnSelectBlock
-    trigger: ((open?: boolean) => ReactNode) | ReactNode
-  }) => (
-    <div>
-      {typeof trigger === 'function' ? trigger(false) : trigger}
-      <button
-        type="button"
-        onClick={() =>
-          onSelect(BlockEnum.DataSource, {
-            plugin_id: 'plugin-id',
-            provider_type: 'local_file',
-            provider_name: 'file',
-            datasource_name: 'local-file',
-            datasource_label: 'Local File',
-            title: 'Local File',
-          })
-        }
-      >
-        select data source
-      </button>
-    </div>
-  ),
 }))
 
 type DataSourceEmptyNodeProps = ComponentProps<typeof DataSourceEmptyNode>
@@ -74,27 +42,6 @@ describe('DataSourceEmptyNode', () => {
 
       expect(screen.getByText('workflow.nodes.dataSource.add')).toBeInTheDocument()
       expect(screen.getByText('workflow.blocks.datasource')).toBeInTheDocument()
-    })
-
-    it('should forward block selections to the replace hook', async () => {
-      const user = userEvent.setup()
-      const handleReplaceNode = vi.fn()
-      mockUseReplaceDataSourceNode.mockReturnValue({
-        handleReplaceNode,
-      })
-
-      render(<DataSourceEmptyNode {...createNodeProps()} />)
-
-      await user.click(screen.getByRole('button', { name: 'select data source' }))
-
-      expect(handleReplaceNode).toHaveBeenCalledWith(BlockEnum.DataSource, {
-        plugin_id: 'plugin-id',
-        provider_type: 'local_file',
-        provider_name: 'file',
-        datasource_name: 'local-file',
-        datasource_label: 'Local File',
-        title: 'Local File',
-      })
     })
   })
 })

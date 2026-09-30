@@ -15,7 +15,12 @@ from controllers.console.auth.error import (
     PasswordMismatchError,
 )
 from controllers.console.error import EmailSendIpLimitError
-from controllers.console.wraps import email_password_login_enabled, only_edition_enterprise, setup_required
+from controllers.console.wraps import (
+    email_password_login_enabled,
+    model_validate,
+    only_edition_enterprise,
+    setup_required,
+)
 from controllers.web import web_ns
 from extensions.ext_database import db
 from libs.helper import extract_remote_ip
@@ -54,9 +59,8 @@ class ForgotPasswordSendEmailApi(Resource):
         }
     )
     @web_ns.response(200, "Password reset email sent successfully", web_ns.models[SimpleResultDataResponse.__name__])
-    def post(self):
-        payload = ForgotPasswordSendPayload.model_validate(web_ns.payload or {})
-
+    @model_validate(ForgotPasswordSendPayload)
+    def post(self, payload: ForgotPasswordSendPayload):
         request_email = payload.email
         normalized_email = request_email.lower()
 
@@ -90,9 +94,8 @@ class ForgotPasswordCheckApi(Resource):
         responses={200: "Token is valid", 400: "Bad request - invalid token format", 401: "Invalid or expired token"}
     )
     @web_ns.response(200, "Token is valid", web_ns.models[VerificationTokenResponse.__name__])
-    def post(self):
-        payload = ForgotPasswordCheckPayload.model_validate(web_ns.payload or {})
-
+    @model_validate(ForgotPasswordCheckPayload)
+    def post(self, payload: ForgotPasswordCheckPayload):
         user_email = payload.email.lower()
 
         is_forgot_password_error_rate_limit = AccountService.is_forgot_password_error_rate_limit(user_email)
@@ -144,9 +147,8 @@ class ForgotPasswordResetApi(Resource):
         }
     )
     @web_ns.response(200, "Password reset successfully", web_ns.models[SimpleResultResponse.__name__])
-    def post(self):
-        payload = ForgotPasswordResetPayload.model_validate(web_ns.payload or {})
-
+    @model_validate(ForgotPasswordResetPayload)
+    def post(self, payload: ForgotPasswordResetPayload):
         # Validate passwords match
         if payload.new_password != payload.password_confirm:
             raise PasswordMismatchError()

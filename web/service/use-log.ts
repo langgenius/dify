@@ -9,8 +9,8 @@ import type {
   WorkflowPausedDetailsResponse,
 } from '@/models/log'
 import { useQuery } from '@tanstack/react-query'
+import { consoleClient } from '@/service/console'
 import { get } from './base'
-import { consoleClient } from './client'
 
 const NAME_SPACE = 'log'
 

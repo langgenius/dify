@@ -8,6 +8,7 @@ from enum import Enum
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, ValidationError
+from sqlalchemy.orm import Session
 
 from core.app.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY, WorkflowNodeRetryAttempt
 from libs.helper import to_timestamp
@@ -58,23 +59,27 @@ class WorkflowNodeExecutionTrace(BaseModel):
 def assemble_workflow_node_execution_traces(
     executions: Sequence[WorkflowNodeExecutionModel],
     repository: DifyAPIWorkflowNodeExecutionRepository,
+    *,
+    session: Session,
 ) -> list[WorkflowNodeExecutionTrace]:
     """Expand valid persisted retry attempts before each terminal execution."""
     traces: list[WorkflowNodeExecutionTrace] = []
     for execution in executions:
-        traces.extend(_expand_execution(execution, repository))
+        traces.extend(_expand_execution(execution, repository, session=session))
     return traces
 
 
 def _expand_execution(
     execution: WorkflowNodeExecutionModel,
     repository: DifyAPIWorkflowNodeExecutionRepository,
+    *,
+    session: Session,
 ) -> list[WorkflowNodeExecutionTrace]:
     full_process_data = _load_full_process_data(execution, repository)
     retry_attempts = _parse_retry_attempts(execution, full_process_data)
     terminal_metadata = execution.execution_metadata_dict
-    traces = [_retry_trace(execution, attempt, terminal_metadata) for attempt in retry_attempts]
-    traces.append(_terminal_trace(execution))
+    traces = [_retry_trace(execution, attempt, terminal_metadata, session=session) for attempt in retry_attempts]
+    traces.append(_terminal_trace(execution, session=session))
     return traces
 
 
@@ -133,6 +138,8 @@ def _retry_trace(
     execution: WorkflowNodeExecutionModel,
     attempt: WorkflowNodeRetryAttempt,
     terminal_metadata: Mapping[str, Any],
+    *,
+    session: Session,
 ) -> WorkflowNodeExecutionTrace:
     truncator = VariableTruncator.default()
     inputs, inputs_truncated = truncator.truncate_variable_mapping(attempt.inputs)
@@ -163,8 +170,8 @@ def _retry_trace(
         created_at=attempt.created_at,
         created_by_role=_enum_value(execution.created_by_role),
         created_by=execution.created_by,
-        created_by_account=execution.created_by_account,
-        created_by_end_user=execution.created_by_end_user,
+        created_by_account=execution.created_by_account(session),
+        created_by_end_user=execution.created_by_end_user(session),
         finished_at=attempt.finished_at,
         inputs_truncated=inputs_truncated,
         outputs_truncated=outputs_truncated,
@@ -173,7 +180,7 @@ def _retry_trace(
     )
 
 
-def _terminal_trace(execution: WorkflowNodeExecutionModel) -> WorkflowNodeExecutionTrace:
+def _terminal_trace(execution: WorkflowNodeExecutionModel, *, session: Session) -> WorkflowNodeExecutionTrace:
     process_data = execution.process_data_dict
     if process_data is not None and RETRY_HISTORY_PROCESS_DATA_KEY in process_data:
         process_data = dict(process_data)
@@ -202,8 +209,8 @@ def _terminal_trace(execution: WorkflowNodeExecutionModel) -> WorkflowNodeExecut
         created_at=to_timestamp(execution.created_at),
         created_by_role=_enum_value(execution.created_by_role),
         created_by=execution.created_by,
-        created_by_account=execution.created_by_account,
-        created_by_end_user=execution.created_by_end_user,
+        created_by_account=execution.created_by_account(session),
+        created_by_end_user=execution.created_by_end_user(session),
         finished_at=to_timestamp(execution.finished_at),
         inputs_truncated=execution.inputs_truncated,
         outputs_truncated=execution.outputs_truncated,

@@ -36,7 +36,7 @@ export const usePipelineRefreshDraft = () => {
             .filter((env) => env.value_type === 'secret')
             .reduce(
               (acc, env) => {
-                acc[env.id] = env.value
+                if (typeof env.value === 'string') acc[env.id] = env.value
                 return acc
               },
               {} as Record<string, string>,

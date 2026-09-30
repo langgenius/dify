@@ -19,14 +19,16 @@ import {
   ContextMenuTrigger,
 } from '.'
 
-const TriggerArea = ({ label = 'Right-click inside this area' }: { label?: string }) => (
-  <ContextMenuTrigger
-    aria-label="context menu trigger area"
-    className="flex h-44 w-80 items-center justify-center rounded-xl border border-divider-subtle bg-background-default-subtle px-6 text-center text-sm text-text-tertiary select-none"
-  >
-    {label}
-  </ContextMenuTrigger>
-)
+function TriggerArea({ label = 'Right-click inside this area' }: { label?: string }) {
+  return (
+    <ContextMenuTrigger
+      aria-label="context menu trigger area"
+      className="flex h-44 w-80 items-center justify-center rounded-xl border border-divider-subtle bg-background-default-subtle px-6 text-center text-sm text-text-tertiary select-none"
+    >
+      {label}
+    </ContextMenuTrigger>
+  )
+}
 
 const meta = {
   title: 'Base/UI/ContextMenu',
@@ -50,7 +52,7 @@ export const Default: Story = {
   render: () => (
     <ContextMenu>
       <TriggerArea />
-      <ContextMenuContent popupClassName="w-36">
+      <ContextMenuContent className="w-36">
         <ContextMenuItem>Edit</ContextMenuItem>
         <ContextMenuItem>Duplicate</ContextMenuItem>
         <ContextMenuItem>Archive</ContextMenuItem>
@@ -63,13 +65,13 @@ export const WithSubmenu: Story = {
   render: () => (
     <ContextMenu>
       <TriggerArea />
-      <ContextMenuContent popupClassName="w-36">
+      <ContextMenuContent className="w-36">
         <ContextMenuItem>Copy</ContextMenuItem>
         <ContextMenuItem>Paste</ContextMenuItem>
         <ContextMenuSeparator />
         <ContextMenuSub>
           <ContextMenuSubTrigger>Share</ContextMenuSubTrigger>
-          <ContextMenuSubContent popupClassName="w-36">
+          <ContextMenuSubContent className="w-36">
             <ContextMenuItem>Email</ContextMenuItem>
             <ContextMenuItem>Slack</ContextMenuItem>
             <ContextMenuItem>Copy link</ContextMenuItem>
@@ -84,7 +86,7 @@ export const WithGroupLabel: Story = {
   render: () => (
     <ContextMenu>
       <TriggerArea />
-      <ContextMenuContent popupClassName="w-44">
+      <ContextMenuContent className="w-44">
         <ContextMenuGroup>
           <ContextMenuLabel>Actions</ContextMenuLabel>
           <ContextMenuItem>Rename</ContextMenuItem>
@@ -102,13 +104,13 @@ export const WithGroupLabel: Story = {
 
 type Density = 'compact' | 'comfortable' | 'spacious'
 
-const WithRadioItemsDemo = () => {
+function WithRadioItemsDemo() {
   const [density, setDensity] = React.useState<Density>('comfortable')
 
   return (
     <ContextMenu>
       <TriggerArea label={`Right-click to set density: ${density}`} />
-      <ContextMenuContent popupClassName="w-44">
+      <ContextMenuContent className="w-44">
         <ContextMenuRadioGroup<Density> value={density} onValueChange={setDensity}>
           <ContextMenuRadioItem<Density> value="compact">
             Compact
@@ -132,7 +134,7 @@ export const WithRadioItems: Story = {
   render: () => <WithRadioItemsDemo />,
 }
 
-const WithCheckboxItemsDemo = () => {
+function WithCheckboxItemsDemo() {
   const [showToolbar, setShowToolbar] = React.useState(true)
   const [showSidebar, setShowSidebar] = React.useState(false)
   const [showStatusBar, setShowStatusBar] = React.useState(true)
@@ -140,7 +142,7 @@ const WithCheckboxItemsDemo = () => {
   return (
     <ContextMenu>
       <TriggerArea label="Right-click to configure panel visibility" />
-      <ContextMenuContent popupClassName="w-44">
+      <ContextMenuContent className="w-44">
         <ContextMenuCheckboxItem checked={showToolbar} onCheckedChange={setShowToolbar}>
           Toolbar
           <ContextMenuCheckboxItemIndicator />
@@ -166,7 +168,7 @@ export const WithLinkItems: Story = {
   render: () => (
     <ContextMenu>
       <TriggerArea label="Right-click to open links" />
-      <ContextMenuContent popupClassName="w-56">
+      <ContextMenuContent className="w-56">
         <ContextMenuLinkItem href="https://docs.dify.ai" rel="noopener noreferrer" target="_blank">
           Dify Docs
         </ContextMenuLinkItem>
@@ -195,7 +197,7 @@ export const Complex: Story = {
   render: () => (
     <ContextMenu>
       <TriggerArea label="Right-click to inspect all menu capabilities" />
-      <ContextMenuContent popupClassName="w-44">
+      <ContextMenuContent className="w-44">
         <ContextMenuItem>
           <span aria-hidden className="i-ri-pencil-line size-4 shrink-0 text-text-tertiary" />
           Rename
@@ -210,7 +212,7 @@ export const Complex: Story = {
             <span aria-hidden className="i-ri-share-line size-4 shrink-0 text-text-tertiary" />
             Share
           </ContextMenuSubTrigger>
-          <ContextMenuSubContent popupClassName="w-36">
+          <ContextMenuSubContent className="w-36">
             <ContextMenuItem>Email</ContextMenuItem>
             <ContextMenuItem>Slack</ContextMenuItem>
             <ContextMenuItem>Copy Link</ContextMenuItem>

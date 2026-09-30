@@ -10,16 +10,22 @@ import type { RAGRecommendedPlugins, ToolWithProvider } from '@/app/components/w
 import type { AppIconType } from '@/types/app'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { CollectionType } from '@/app/components/tools/types'
+import { consoleClient } from '@/service/console'
 import { del, get, post, put } from './base'
 import { useInvalid } from './use-base'
 
 const NAME_SPACE = 'tools'
 
 const useAllToolProvidersKey = [NAME_SPACE, 'allToolProviders']
-export const useAllToolProviders = (enabled = true) => {
+type ToolProviderListType = 'builtin' | 'model' | 'api' | 'workflow' | 'mcp'
+
+export const useAllToolProviders = (enabled = true, type?: ToolProviderListType) => {
   return useQuery<Collection[]>({
-    queryKey: useAllToolProvidersKey,
-    queryFn: () => get<Collection[]>('/workspaces/current/tool-providers'),
+    queryKey: type ? [...useAllToolProvidersKey, type] : useAllToolProvidersKey,
+    queryFn: () =>
+      type
+        ? get<Collection[]>('/workspaces/current/tool-providers', { params: { type } })
+        : get<Collection[]>('/workspaces/current/tool-providers'),
     enabled,
   })
 }
@@ -202,7 +208,7 @@ export const useMCPServerDetail = (appID: string, enabled = true) => {
 export const useInvalidateMCPServerDetail = () => {
   const queryClient = useQueryClient()
   return (appID: string) => {
-    queryClient.invalidateQueries({
+    return queryClient.invalidateQueries({
       queryKey: [NAME_SPACE, 'MCPServerDetail', appID],
     })
   }
@@ -250,7 +256,11 @@ export const useRefreshMCPServerCode = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'refresh-mcp-server-code'],
     mutationFn: (appID: string) => {
-      return get<MCPServerDetail>(`apps/${appID}/server/refresh`)
+      return consoleClient.apps.byAppId.server.refresh.post({
+        params: {
+          app_id: appID,
+        },
+      })
     },
   })
 }
@@ -314,25 +324,10 @@ export const useAppTriggers = (
 export const useInvalidateAppTriggers = () => {
   const queryClient = useQueryClient()
   return (appId: string) => {
-    queryClient.invalidateQueries({
+    return queryClient.invalidateQueries({
       queryKey: [NAME_SPACE, 'app-triggers', appId],
     })
   }
-}
-
-export const useUpdateTriggerStatus = () => {
-  return useMutation({
-    mutationKey: [NAME_SPACE, 'update-trigger-status'],
-    mutationFn: (payload: { appId: string; triggerId: string; enableTrigger: boolean }) => {
-      const { appId, triggerId, enableTrigger } = payload
-      return post<AppTrigger>(`/apps/${appId}/trigger-enable`, {
-        body: {
-          trigger_id: triggerId,
-          enable_trigger: enableTrigger,
-        },
-      })
-    },
-  })
 }
 
 const workflowToolDetailByAppIDKey = (appId: string) => [

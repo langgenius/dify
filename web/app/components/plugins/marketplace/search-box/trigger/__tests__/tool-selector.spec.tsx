@@ -3,7 +3,7 @@ import { Popover, PopoverContent } from '@langgenius/dify-ui/popover'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import ToolSelectorTrigger from '../tool-selector'
 
 const tagsMap: Record<string, Tag> = {
@@ -18,7 +18,6 @@ describe('ToolSelectorTrigger', () => {
       <Popover>
         <ToolSelectorTrigger
           selectedTagsLength={0}
-          open={false}
           tags={[]}
           tagsMap={tagsMap}
           onTagsChange={vi.fn()}
@@ -38,7 +37,6 @@ describe('ToolSelectorTrigger', () => {
       <Popover>
         <ToolSelectorTrigger
           selectedTagsLength={3}
-          open
           tags={['agent', 'rag', 'search']}
           tagsMap={tagsMap}
           onTagsChange={vi.fn()}
@@ -61,7 +59,6 @@ describe('ToolSelectorTrigger', () => {
       <Popover>
         <ToolSelectorTrigger
           selectedTagsLength={0}
-          open={false}
           tags={[]}
           tagsMap={tagsMap}
           onTagsChange={vi.fn()}
@@ -71,12 +68,14 @@ describe('ToolSelectorTrigger', () => {
     )
 
     const trigger = screen.getByRole('button', { name: 'pluginTags.allTags' })
+    expect(trigger).not.toHaveAttribute('data-popup-open')
     await user.tab()
     expect(trigger).toHaveFocus()
 
     await user.keyboard('{Enter}')
 
     expect(screen.getByText('Tag options')).toBeInTheDocument()
+    expect(trigger).toHaveAttribute('data-popup-open', '')
   })
 
   it('keeps clear as a separate action from the popover trigger', async () => {
@@ -87,7 +86,6 @@ describe('ToolSelectorTrigger', () => {
         <Popover>
           <ToolSelectorTrigger
             selectedTagsLength={tags.length}
-            open={false}
             tags={tags}
             tagsMap={tagsMap}
             onTagsChange={setTags}

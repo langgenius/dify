@@ -1,4 +1,5 @@
 import importlib
+import json
 import sys
 import types
 from types import SimpleNamespace
@@ -8,6 +9,7 @@ import pytest
 from pydantic import ValidationError
 
 from core.rag.models.document import Document
+from models.dataset import Dataset
 
 
 def _build_fake_mo_vector_modules():
@@ -206,30 +208,34 @@ def test_delete_and_metadata_methods(matrixone_module):
     assert vector.client.delete.call_count == 3
 
 
-def test_search_by_vector_builds_documents(matrixone_module):
+def test_search_by_vector_applies_score_threshold(matrixone_module):
     vector = matrixone_module.MatrixoneVector("collection_1", _valid_config(matrixone_module))
     vector.client = MagicMock()
     vector.client.query.return_value = [
-        SimpleNamespace(document="doc-a", metadata={"doc_id": "1"}),
-        SimpleNamespace(document="doc-b", metadata={"doc_id": "2"}),
+        SimpleNamespace(document="doc-a", metadata={"doc_id": "1"}, distance=0.25),
+        SimpleNamespace(document="doc-b", metadata={"doc_id": "2"}, distance=2.0),
     ]
 
-    docs = vector.search_by_vector([0.1, 0.2], top_k=2, document_ids_filter=["d-1"])
+    docs = vector.search_by_vector(
+        [0.1, 0.2],
+        top_k=2,
+        score_threshold=0.5,
+        document_ids_filter=["d-1"],
+    )
 
-    assert len(docs) == 2
+    assert len(docs) == 1
     assert docs[0].page_content == "doc-a"
-    assert docs[1].metadata["doc_id"] == "2"
+    assert docs[0].metadata["doc_id"] == "1"
+    assert docs[0].metadata["score"] == pytest.approx(0.8)
     assert vector.client.query.call_args.kwargs["filter"] == {"document_id": {"$in": ["d-1"]}}
 
 
 def test_matrixone_factory_uses_existing_or_generated_collection(matrixone_module, monkeypatch: pytest.MonkeyPatch):
     factory = matrixone_module.MatrixoneVectorFactory()
-    dataset_with_index = SimpleNamespace(
-        id="dataset-1",
-        index_struct_dict={"vector_store": {"class_prefix": "EXISTING_COLLECTION"}},
-        index_struct=None,
+    dataset_with_index = Dataset(
+        id="dataset-1", index_struct=json.dumps({"vector_store": {"class_prefix": "EXISTING_COLLECTION"}})
     )
-    dataset_without_index = SimpleNamespace(id="dataset-2", index_struct_dict=None, index_struct=None)
+    dataset_without_index = Dataset(id="dataset-2")
 
     monkeypatch.setattr(matrixone_module.Dataset, "gen_collection_name_by_id", lambda _id: "AUTO_COLLECTION")
     monkeypatch.setattr(matrixone_module.dify_config, "MATRIXONE_HOST", "127.0.0.1")

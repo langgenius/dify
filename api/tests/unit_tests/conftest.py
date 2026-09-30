@@ -1,7 +1,11 @@
+from __future__ import annotations
+
 import os
 import shutil
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from pathlib import Path
+from tempfile import TemporaryDirectory
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -41,6 +45,11 @@ import core.db.session_factory as session_factory_module
 from extensions import ext_redis
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.base import TypeBase
+from tests.unit_tests.config_override import apply_config_overrides
+
+if TYPE_CHECKING:
+    from extensions.application_services.app import AppServices
+    from services.tag_application_service import TagApplicationService
 
 
 def _patch_redis_clients_on_loaded_modules() -> None:
@@ -69,7 +78,7 @@ def _provide_app_context(app: Flask) -> Iterator[None]:
 
 @pytest.fixture(autouse=True)
 def _patch_redis_clients() -> Iterator[None]:
-    """Patch redis_client to MagicMock only for unit test executions."""
+    """Patch and rebind loaded Redis clients to the shared mock for each unit test."""
 
     with (
         patch.object(ext_redis, "redis_client", redis_mock),
@@ -80,8 +89,8 @@ def _patch_redis_clients() -> Iterator[None]:
 
 
 @pytest.fixture(autouse=True)
-def reset_redis_mock() -> None:
-    """reset the Redis mock before each test"""
+def reset_redis_mock(_patch_redis_clients: None) -> None:
+    """Reset the shared Redis mock after per-test client rebinding."""
     redis_mock.reset_mock()
     redis_mock.get.return_value = None
     redis_mock.setex.return_value = None
@@ -94,37 +103,45 @@ def reset_redis_mock() -> None:
     redis_mock.hdel.return_value = None
     redis_mock.incr.return_value = 1
 
-    # Keep any imported modules pointing at the mock between tests
-    _patch_redis_clients_on_loaded_modules()
-
 
 @pytest.fixture(autouse=True)
-def reset_secret_key() -> Iterator[None]:
+def reset_secret_key(monkeypatch: pytest.MonkeyPatch) -> None:
     """Ensure SECRET_KEY-dependent logic sees an empty config value by default."""
-
-    from configs import dify_config
-
-    original = dify_config.SECRET_KEY
-    dify_config.SECRET_KEY = ""
-    try:
-        yield
-    finally:
-        dify_config.SECRET_KEY = original
+    apply_config_overrides(monkeypatch, SECRET_KEY="")
 
 
 @pytest.fixture
-def _sqlite_engine(_sqlite_database_template: Path, tmp_path: Path) -> Iterator[Engine]:
-    """Create an engine over a pristine per-test copy of the SQLite schema."""
+def config_overrides(monkeypatch: pytest.MonkeyPatch) -> Callable[..., None]:
+    """Temporarily override fields on the shared typed application config.
 
-    database_path = tmp_path / "unit-tests.sqlite3"
-    shutil.copyfile(_sqlite_database_template, database_path)
-    engine = create_engine(URL.create("sqlite", database=str(database_path)))
+    Application modules import the same config instance, so mutating known
+    field names keeps tests scoped without replacing that instance with an
+    unconstrained mock. ``monkeypatch`` restores every value after the test.
+    """
 
-    try:
-        yield engine
-    finally:
-        engine.dispose()
-        database_path.unlink(missing_ok=True)
+    def apply(**values: object) -> None:
+        apply_config_overrides(monkeypatch, **values)
+
+    return apply
+
+
+@pytest.fixture
+def _sqlite_engine(_sqlite_database_template: Path) -> Iterator[Engine]:
+    """Copy the schema into an isolated directory without pytest's numbered scan.
+
+    ``tmp_path`` searches all preceding test directories for a free number. This
+    autouse dependency needs only a unique, disposable directory, including any
+    SQLite journal files, so keep it separate from test-owned ``tmp_path`` data.
+    """
+    with TemporaryDirectory(prefix="case-", dir=_sqlite_database_template.parent) as directory:
+        database_path = Path(directory) / "unit-tests.sqlite3"
+        shutil.copyfile(_sqlite_database_template, database_path)
+        engine = create_engine(URL.create("sqlite", database=str(database_path)))
+
+        try:
+            yield engine
+        finally:
+            engine.dispose()
 
 
 @pytest.fixture(scope="session")
@@ -236,18 +253,25 @@ def persist_service_api_dataset_owner(
     session.commit()
 
 
-def setup_mock_tenant_owner_execute_result(mock_db: MagicMock, mock_tenant: object, mock_owner: object) -> None:
-    """Stub the legacy owner query; SQLite-backed tests use ``persist_service_api_tenant_owner``."""
-    mock_db.session.execute.return_value.one_or_none.return_value = (mock_tenant, mock_owner)
+@pytest.fixture
+def app_services(sqlite_session_factory: sessionmaker[Session]) -> AppServices:
+    from unittest.mock import Mock
 
+    from extensions.application_services.app import build_app_services
+    from extensions.ext_application_services import _build_oauth_server_service
+    from extensions.ext_redis import redis_client
+    from services.recommended_app_package_service import RecommendedAppPackageService
 
-def setup_mock_dataset_owner_execute_result(
-    mock_db: MagicMock,
-    mock_tenant: object,
-    mock_tenant_account_join: object,
-) -> None:
-    """Stub the legacy dataset-owner query; SQLite tests use ``persist_service_api_dataset_owner``."""
-    mock_db.session.execute.return_value.one_or_none.return_value = (
-        mock_tenant,
-        mock_tenant_account_join,
+    return build_app_services(
+        database_client=sqlite_session_factory,
+        oauth=_build_oauth_server_service(database_client=sqlite_session_factory, redis=redis_client),
+        recommended_packages=RecommendedAppPackageService(sources=Mock(), exporter=Mock()),
     )
+
+
+@pytest.fixture
+def application_tags(sqlite_session_factory: sessionmaker[Session]) -> TagApplicationService:
+    from repositories.tag_repository import TagRepository
+    from services.tag_application_service import TagApplicationService
+
+    return TagApplicationService(tags=TagRepository(sqlite_session_factory))

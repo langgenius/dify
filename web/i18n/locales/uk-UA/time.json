@@ -1,0 +1,22 @@
+{
+  "dateFormats.compact": "DD.MM.YYYY HH:mm",
+  "dateFormats.withSeconds": "MM/DD/YYYY hh:mm:ss A",
+  "operation.cancel": "Скасувати",
+  "operation.now": "Тепер",
+  "operation.ok": "Добре",
+  "operation.pickDate": "Виберіть дату",
+  "picker.chooseMonthAndYear": "Виберіть місяць і рік",
+  "picker.endDate": "Дата завершення",
+  "picker.hour": "Година",
+  "picker.minute": "Хвилина",
+  "picker.month": "Місяць",
+  "picker.nextMonth": "Наступний місяць",
+  "picker.period": "До/після полудня",
+  "picker.previousMonth": "Попередній місяць",
+  "picker.required": "Виберіть значення.",
+  "picker.requiredLabel": "Обов’язкове поле",
+  "picker.startDate": "Дата початку",
+  "picker.unavailable": "Ця дата або час недоступні.",
+  "picker.year": "Рік",
+  "title.pickTime": "Виберіть час"
+}

@@ -3,6 +3,10 @@ import json
 from typing import cast
 from unittest.mock import MagicMock
 
+from sqlalchemy import select
+from sqlalchemy.orm import Session, sessionmaker
+
+from models.workflow import WorkflowRunArchiveBundle
 from services.retention.workflow_run.archive_bundle_index import (
     ARCHIVE_BUNDLE_ROOT_PREFIX,
     ArchiveBundleManifest,
@@ -90,12 +94,11 @@ def test_decode_and_calculate_archive_bundle_index_values() -> None:
     assert values.archived_at == datetime.datetime(2026, 6, 25, 8, 0)
 
 
-def test_upsert_archive_bundle_index_inserts_new_bundle() -> None:
-    session = MagicMock()
-    session.scalar.return_value = None
+def test_upsert_archive_bundle_index_inserts_new_bundle(sqlite_session: Session) -> None:
     data = _manifest_bytes()
 
-    bundle = upsert_archive_bundle_index_from_manifest(session, decode_archive_bundle_manifest(data), len(data))
+    bundle = upsert_archive_bundle_index_from_manifest(sqlite_session, decode_archive_bundle_manifest(data), len(data))
+    sqlite_session.flush()
 
     assert bundle.tenant_id == TENANT_ID
     assert bundle.year == 2025
@@ -103,34 +106,42 @@ def test_upsert_archive_bundle_index_inserts_new_bundle() -> None:
     assert bundle.workflow_run_count == 2
     assert bundle.row_count == 5
     assert bundle.archive_bytes == len(data) + 300
-    session.add.assert_called_once_with(bundle)
+    assert sqlite_session.get(WorkflowRunArchiveBundle, bundle.id) is bundle
 
 
-def test_upsert_archive_bundle_index_updates_existing_bundle() -> None:
-    existing = MagicMock()
-    session = MagicMock()
-    session.scalar.return_value = existing
+def test_upsert_archive_bundle_index_updates_existing_bundle(sqlite_session: Session) -> None:
+    existing = WorkflowRunArchiveBundle(
+        tenant_id=TENANT_ID,
+        year=2025,
+        month=3,
+        shard="00-of-01",
+        bundle_id=BUNDLE_ID,
+        workflow_run_count=1,
+        row_count=1,
+        archive_bytes=1,
+        archived_at=datetime.datetime(2025, 3, 1),
+    )
+    sqlite_session.add(existing)
+    sqlite_session.flush()
     data = _manifest_bytes()
 
-    bundle = upsert_archive_bundle_index_from_manifest(session, decode_archive_bundle_manifest(data), len(data))
+    bundle = upsert_archive_bundle_index_from_manifest(sqlite_session, decode_archive_bundle_manifest(data), len(data))
 
     assert bundle is existing
     assert existing.workflow_run_count == 2
     assert existing.row_count == 5
     assert existing.archive_bytes == len(data) + 300
     assert existing.archived_at == datetime.datetime(2026, 6, 25, 8, 0)
-    session.add.assert_not_called()
+    assert sqlite_session.query(WorkflowRunArchiveBundle).count() == 1
 
 
-def test_backfill_lists_tenant_month_prefix_and_upserts_bundle_index() -> None:
+def test_backfill_lists_tenant_month_prefix_and_upserts_bundle_index(
+    sqlite_session_factory: sessionmaker[Session], sqlite_session: Session
+) -> None:
     storage = FakeArchiveStorage({MANIFEST_KEY: _manifest_bytes()})
-    session = MagicMock()
-    session.scalar.return_value = None
-    session_factory = MagicMock()
-    session_factory.return_value.__enter__.return_value = session
     backfill = WorkflowRunArchiveBundleIndexBackfill(
         storage=cast(MagicMock, storage),
-        session_factory=cast(MagicMock, session_factory),
+        session_factory=sqlite_session_factory,
     )
 
     summary = backfill.run(tenant_ids=[TENANT_ID], year=2025, month=3)
@@ -142,11 +153,13 @@ def test_backfill_lists_tenant_month_prefix_and_upserts_bundle_index() -> None:
     assert summary.bundles_processed == 1
     assert summary.bundles_upserted == 1
     assert summary.bundles_failed == 0
-    session.add.assert_called_once()
-    session.commit.assert_called_once()
+    sqlite_session.expire_all()
+    assert sqlite_session.scalar(select(WorkflowRunArchiveBundle)) is not None
 
 
-def test_backfill_dry_run_filters_by_year_month_without_database_write() -> None:
+def test_backfill_dry_run_filters_by_year_month_without_database_write(
+    sqlite_session_factory: sessionmaker[Session], sqlite_session: Session
+) -> None:
     other_month_prefix = OBJECT_PREFIX.replace("month=03", "month=04")
     storage = FakeArchiveStorage(
         {
@@ -156,10 +169,9 @@ def test_backfill_dry_run_filters_by_year_month_without_database_write() -> None
             ),
         }
     )
-    session_factory = MagicMock()
     backfill = WorkflowRunArchiveBundleIndexBackfill(
         storage=cast(MagicMock, storage),
-        session_factory=cast(MagicMock, session_factory),
+        session_factory=sqlite_session_factory,
     )
 
     summary = backfill.run(tenant_prefixes=["1"], year=2025, month=3, dry_run=True)
@@ -169,4 +181,4 @@ def test_backfill_dry_run_filters_by_year_month_without_database_write() -> None
     assert summary.bundles_processed == 1
     assert summary.bundles_upserted == 0
     assert summary.archive_bytes > 0
-    session_factory.assert_not_called()
+    assert sqlite_session.scalar(select(WorkflowRunArchiveBundle)) is None

@@ -3,16 +3,18 @@ import type {
   AgentLogMessageItemResponse,
 } from '@dify/contracts/api/console/agent/types.gen'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
+import type { ChatConfig, OnFeedback } from '@/app/components/base/chat/types'
+import { DrawerTitle } from '@langgenius/dify-ui/drawer'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { skipToken, useQuery } from '@tanstack/react-query'
-import { noop } from 'es-toolkit/function'
+import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import Chat from '@/app/components/base/chat/chat'
 import CopyIcon from '@/app/components/base/copy-icon'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { toast } from '@/app/notifications'
 import useTimestamp from '@/hooks/use-timestamp'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 
 export function AgentLogDetailPanel({
   agentId,
@@ -23,9 +25,13 @@ export function AgentLogDetailPanel({
   log?: AgentLogConversationItemResponse
   onClose: () => void
 }) {
-  const { t } = useTranslation()
-  const { t: tAgentV2 } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2', 'appLog', 'common'])
+  const { t: tAgentV2 } = useTranslation(['agentV2', 'agentRoster'])
   const { formatTime } = useTimestamp()
+  const queryClient = useQueryClient()
+  const feedbackMutation = useMutation(
+    consoleQuery.agent.byAgentId.feedbacks.post.mutationOptions(),
+  )
   const messagesQuery = useQuery(
     consoleQuery.agent.byAgentId.logs.byConversationId.messages.get.queryOptions({
       input: log
@@ -51,11 +57,35 @@ export function AgentLogDetailPanel({
         formatLogTime: (value) =>
           formatTime(
             value,
-            tAgentV2(($) => $['roster.dateTimeFormat']),
+            tAgentV2(($) => $['roster.dateTimeFormat'], { ns: 'agentRoster' }),
           ),
         messages: messagesQuery.data?.data ?? [],
       })
     : []
+  const handleFeedback: OnFeedback = async (messageId, feedback) => {
+    try {
+      await feedbackMutation.mutateAsync({
+        params: { agent_id: agentId },
+        body: {
+          message_id: messageId,
+          rating: feedback.rating,
+          content: feedback.content,
+        },
+      })
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.agent.byAgentId.logs.get.key(),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.agent.byAgentId.logs.byConversationId.messages.get.key(),
+        }),
+      ])
+      toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
+    } catch (error) {
+      toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+      throw error
+    }
+  }
 
   return (
     <div className="flex h-full flex-col rounded-xl border-[0.5px] border-components-panel-border">
@@ -79,27 +109,23 @@ export function AgentLogDetailPanel({
           </div>
         </div>
         <div className="flex min-w-0 grow flex-wrap items-center justify-end gap-y-1">
-          <div className="min-w-0 truncate system-sm-medium text-text-secondary">
-            {log?.title || log?.conversation_id}
-          </div>
+          <DrawerTitle className="min-w-0 truncate system-sm-medium text-text-secondary">
+            {log?.title || log?.conversation_id || tAgentV2(($) => $['agentDetail.logs.title'])}
+          </DrawerTitle>
         </div>
-        <ActionButton
-          size="l"
+        <IconButton
+          size="lg"
           aria-label={t(($) => $['operation.close'], { ns: 'common' })}
           onClick={onClose}
         >
           <span aria-hidden className="i-ri-close-line size-4 text-text-tertiary" />
-        </ActionButton>
+        </IconButton>
       </div>
       <div className="shrink-0 px-1 pt-1">
         <div className="rounded-t-xl bg-background-section-burn p-3 pb-2" />
       </div>
       <div className="mx-1 mb-1 grow overflow-auto rounded-b-xl bg-background-section-burn">
-        {messagesQuery.isPending && (
-          <div className="flex h-full items-center justify-center">
-            <Loading />
-          </div>
-        )}
+        {messagesQuery.isPending && <LoadingPlaceholder className="h-full" />}
         {messagesQuery.isError && (
           <div className="flex h-full items-center justify-center text-center system-sm-regular text-text-tertiary">
             {t(($) => $['agentDetail.logs.loadFailed'], { ns: 'agentV2' })}
@@ -113,13 +139,17 @@ export function AgentLogDetailPanel({
         {messagesQuery.isSuccess && chatList.length > 0 && (
           <div className="mb-4 pt-4">
             <Chat
+              config={
+                {
+                  supportAnnotation: true,
+                  supportFeedback: log?.source?.type === 'webapp',
+                } as ChatConfig
+              }
               chatList={chatList}
               noChatInput
-              showPromptLog
               hideProcessDetail
-              hideLogModal
               chatContainerInnerClassName="px-3"
-              onFeedback={noop}
+              onFeedback={handleFeedback}
             />
           </div>
         )}
@@ -140,6 +170,8 @@ function formatAgentLogMessages({
   const chatList: IChatItem[] = []
 
   messages.forEach((message) => {
+    const userFeedback = message.feedbacks?.find((feedback) => feedback.from_source === 'user')
+    const adminFeedback = message.feedbacks?.find((feedback) => feedback.from_source === 'admin')
     chatList.push({
       id: `question-${message.id}`,
       content: message.query,
@@ -150,7 +182,9 @@ function formatAgentLogMessages({
       id: message.id,
       content: message.answer || message.error || '',
       conversationId,
-      feedbackDisabled: true,
+      feedback: userFeedback,
+      adminFeedback,
+      feedbackDisabled: !message.feedback_enabled,
       input: {
         inputs: {
           query: message.query,

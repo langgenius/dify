@@ -668,6 +668,7 @@ def checks_for_file(file_path: Path, repo_root: Path) -> list[ContractCheck]:
 
 def as_jsonable(check: ContractCheck) -> dict[str, Any]:
     data = asdict(check)
+    # pyrefly: ignore [bad-assignment]
     data["documented"] = {str(status): model for status, model in check.documented.items()}
     return data
 

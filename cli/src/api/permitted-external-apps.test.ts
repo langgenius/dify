@@ -1,5 +1,5 @@
 import type { HttpClient } from '@/http/types'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { PermittedExternalAppsClient } from './permitted-external-apps'
 
 function fakeHttp() {

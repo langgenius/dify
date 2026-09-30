@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import asyncio
+import json
 from typing import Literal
 
 import pytest
@@ -19,7 +19,7 @@ from dify_agent.layers.shell.layer import CompleteRemoteCommandResult, DifyShell
 
 def _shell_layer() -> DifyShellLayer:
     return DifyShellLayer.from_config_with_settings(
-        DifyShellLayerConfig(agent_stub_drive_ref="agent-1"),
+        DifyShellLayerConfig(),
     )
 
 
@@ -62,32 +62,40 @@ def _remote_result(
     )
 
 
-def _skill_pull_output(*, include_skill: bool = True) -> str:
-    if not include_skill:
-        return ""
-    return "/workspace/.dify_conf/skills/alpha\n# Alpha\nUse it.\n"
+def _skill_pull_output(*names: str, include_skill: bool = True) -> str:
+    items = []
+    if include_skill:
+        items = [
+            {
+                "name": name,
+                "archive_path": f"/workspace/.dify_conf/skills/{name}.zip",
+                "directory_path": f"/workspace/.dify_conf/skills/{name}",
+                "skill_md": "# Alpha\nUse it.\n",
+            }
+            for name in names or ("alpha",)
+        ]
+    return json.dumps({"items": items})
 
 
-def _file_pull_output(*, include_file: bool = True) -> str:
-    if not include_file:
-        return ""
-    return "/workspace/.dify_conf/files/guide.txt\n"
+def _file_pull_output(*names: str, include_file: bool = True) -> str:
+    items = []
+    if include_file:
+        items = [{"name": name, "path": f"/workspace/.dify_conf/files/{name}"} for name in names or ("guide.txt",)]
+    return json.dumps({"items": items})
 
 
 def test_build_shell_pull_scripts_include_targets() -> None:
     layer = _build_layer()
 
-    skill_script = layer._build_shell_skill_pull_script("alpha")
-    file_script = layer._build_shell_file_pull_script("guide.txt")
+    skill_script = layer._build_shell_skill_pull_script(["alpha", "skill with space"])
+    file_script = layer._build_shell_file_pull_script(["guide.txt", "file with space.txt"])
 
-    assert skill_script == "set -eu\ndify-agent config skills pull alpha"
-    assert "__DIFY_CONFIG_SKILLS_BEGIN__" not in skill_script
-    assert file_script == "set -eu\ndify-agent config files pull guide.txt"
-    assert "__DIFY_CONFIG_FILES_BEGIN__" not in file_script
+    assert skill_script == "set -eu\ndify-agent config skills pull --json alpha 'skill with space'"
+    assert file_script == "set -eu\ndify-agent config files pull --json guide.txt 'file with space.txt'"
 
 
 @pytest.mark.anyio
-async def test_on_context_create_computes_runtime_fields_and_pulls_mentioned_assets_in_parallel(
+async def test_on_context_create_computes_runtime_fields_and_pulls_mentioned_assets_in_batches(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     layer = _build_layer()
@@ -104,7 +112,6 @@ async def test_on_context_create_computes_runtime_fields_and_pulls_mentioned_ass
         captured_scripts.append(script)
         active_commands += 1
         max_active_commands = max(max_active_commands, active_commands)
-        await asyncio.sleep(0)
         active_commands -= 1
         if "skills pull" in script:
             return _remote_result(_skill_pull_output())
@@ -116,16 +123,17 @@ async def test_on_context_create_computes_runtime_fields_and_pulls_mentioned_ass
 
     await layer.on_context_create()
 
-    assert max_active_commands > 1
+    assert max_active_commands == 1
     assert len(captured_scripts) == 2
-    assert sorted(captured_scripts) == [
-        "set -eu\ndify-agent config files pull guide.txt",
-        "set -eu\ndify-agent config skills pull alpha",
+    assert captured_scripts == [
+        "set -eu\ndify-agent config skills pull --json alpha",
+        "set -eu\ndify-agent config files pull --json guide.txt",
     ]
     assert layer.runtime_state.pulled_skill_outputs == {"alpha": "/workspace/.dify_conf/skills/alpha\n# Alpha\nUse it."}
     assert layer.runtime_state.pulled_file_outputs == {"guide.txt": "/workspace/.dify_conf/files/guide.txt"}
     assert "dify-agent config note push --help" in layer.runtime_state.config_cli_help
     assert "dify-agent file upload --help" in layer.runtime_state.config_cli_help
+    assert "dify-agent file public-url --help" in layer.runtime_state.config_cli_help
     assert "dify-agent file download --help" in layer.runtime_state.config_cli_help
     assert layer.runtime_state.push_spec_json_schema == ""
     suffix_prompt = layer.build_suffix_prompt()
@@ -133,11 +141,48 @@ async def test_on_context_create_computes_runtime_fields_and_pulls_mentioned_ass
         "Agent file CLI reference for installed `dify-agent`:"
     )
     assert "$ dify-agent file upload --help" in suffix_prompt
+    assert "$ dify-agent file public-url --help" in suffix_prompt
     assert "$ dify-agent file download --help" in suffix_prompt
     assert suffix_prompt.index("$ dify-agent file upload --help") < suffix_prompt.index(
+        "$ dify-agent file public-url --help"
+    )
+    assert suffix_prompt.index("$ dify-agent file public-url --help") < suffix_prompt.index(
         "$ dify-agent file download --help"
     )
     assert _AGENT_FILE_UPLOAD_REPLY_HINT in suffix_prompt
+
+
+@pytest.mark.anyio
+async def test_on_context_create_batches_all_mentioned_assets_into_two_serial_jobs(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    layer = _build_layer()
+    layer.config = layer.config.model_copy(
+        update={
+            "mentioned_skill_names": [f"skill-{index}" for index in range(4)],
+            "mentioned_file_names": [f"file-{index}.txt" for index in range(4)],
+        }
+    )
+    captured_scripts: list[str] = []
+
+    async def fake_run_remote_script(self, script: str, *, inject_agent_stub_env: bool = False, timeout: float = 10.0):
+        del self, timeout
+        assert inject_agent_stub_env is True
+        captured_scripts.append(script)
+        if "skills pull" in script:
+            return _remote_result(_skill_pull_output(*(f"skill-{index}" for index in range(4))))
+        return _remote_result(_file_pull_output(*(f"file-{index}.txt" for index in range(4))))
+
+    monkeypatch.setattr(DifyShellLayer, "run_remote_script", fake_run_remote_script)
+
+    await layer.on_context_create()
+
+    assert captured_scripts == [
+        "set -eu\ndify-agent config skills pull --json skill-0 skill-1 skill-2 skill-3",
+        "set -eu\ndify-agent config files pull --json file-0.txt file-1.txt file-2.txt file-3.txt",
+    ]
+    assert set(layer.runtime_state.pulled_skill_outputs) == {f"skill-{index}" for index in range(4)}
+    assert set(layer.runtime_state.pulled_file_outputs) == {f"file-{index}.txt" for index in range(4)}
 
 
 @pytest.mark.anyio

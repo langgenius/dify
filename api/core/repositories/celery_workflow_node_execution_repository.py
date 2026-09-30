@@ -39,7 +39,7 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
 
     Key features:
     - Asynchronous save operations using Celery tasks
-    - In-memory cache for immediate reads
+    - In-memory cache for immediate reads with database backfill across Celery tasks
     - Support for multi-tenancy through tenant/app filtering
     - Automatic retry and error handling through Celery
     """
@@ -52,6 +52,7 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
     _creator_user_role: CreatorUserRole
     _execution_cache: dict[str, WorkflowNodeExecution]
     _workflow_execution_mapping: dict[str, list[str]]
+    _database_loaded_workflow_executions: set[str]
     _sql_repository: SQLAlchemyWorkflowNodeExecutionRepository
 
     def __init__(
@@ -102,8 +103,9 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
 
         # Cache for mapping workflow_execution_ids to execution IDs for efficient retrieval
         self._workflow_execution_mapping = {}
+        self._database_loaded_workflow_executions = set()
         self._sql_repository = SQLAlchemyWorkflowNodeExecutionRepository(
-            session_factory=session_factory,
+            session_factory=self._session_factory,
             tenant_id=tenant_id,
             user=user,
             app_id=app_id,
@@ -178,7 +180,7 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         order_config: OrderConfig | None = None,
     ) -> Sequence[WorkflowNodeExecution]:
         """
-        Retrieve all workflow node executions for a workflow execution from cache.
+        Retrieve workflow node executions from cache after loading persisted history once.
 
         Args:
             workflow_execution_id: The workflow execution identifier
@@ -188,6 +190,25 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             A sequence of WorkflowNodeExecution instances
         """
         try:
+            if workflow_execution_id not in self._database_loaded_workflow_executions:
+                try:
+                    persisted_executions = self._sql_repository.get_by_workflow_execution(
+                        workflow_execution_id,
+                        order_config,
+                    )
+                except Exception:
+                    logger.exception(
+                        "Failed to load persisted workflow node executions for execution %s",
+                        workflow_execution_id,
+                    )
+                else:
+                    execution_ids = self._workflow_execution_mapping.setdefault(workflow_execution_id, [])
+                    for execution in persisted_executions:
+                        self._execution_cache.setdefault(execution.id, execution)
+                        if execution.id not in execution_ids:
+                            execution_ids.append(execution.id)
+                    self._database_loaded_workflow_executions.add(workflow_execution_id)
+
             # Get execution IDs for this workflow execution from cache
             execution_ids = self._workflow_execution_mapping.get(workflow_execution_id, [])
 

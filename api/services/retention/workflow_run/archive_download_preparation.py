@@ -12,31 +12,30 @@ import io
 import logging
 import re
 import zipfile
-from collections.abc import Sequence
-from typing import cast
+from collections.abc import Callable, Sequence
 
 import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.csv as pa_csv
 import pyarrow.parquet as pq
-from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
 
 from core.helper.csv_sanitizer import CSVSanitizer
-from extensions.ext_database import db
-from libs.archive_storage import ArchiveStorage, get_archive_storage, get_export_storage
-from models.workflow import WorkflowRunArchiveBundle
+from libs.archive_storage import ArchiveStorage
 from services.retention.workflow_run.archive_bundle_index import (
     ARCHIVE_BUNDLE_ROOT_PREFIX,
     ArchiveBundleManifest,
     ArchiveBundleTableManifestEntry,
     decode_archive_bundle_manifest,
 )
-from services.retention.workflow_run.archive_download_task_cache import (
+from services.retention.workflow_run.archive_download_task import (
     WorkflowRunArchiveDownloadStatus,
     WorkflowRunArchiveDownloadTask,
-    WorkflowRunArchiveDownloadTaskCache,
     build_archive_download_id,
+)
+from services.retention.workflow_run.archive_log_service import (
+    WorkflowRunArchiveBundleQuery,
+    WorkflowRunArchiveBundleRecord,
+    WorkflowRunArchiveDownloadTaskStore,
 )
 from services.retention.workflow_run.constants import (
     ARCHIVE_BUNDLE_FORMAT,
@@ -47,7 +46,6 @@ from services.retention.workflow_run.constants import (
 logger = logging.getLogger(__name__)
 
 ARCHIVE_DOWNLOAD_ROOT_PREFIX = "workflow-runs/downloads/v1/"
-ARCHIVE_DOWNLOAD_MIME_TYPE = "application/zip"
 _CSV_FORMULA_PREFIX_PATTERN = f"^[{re.escape(''.join(CSVSanitizer.FORMULA_CHARS))}]"
 
 
@@ -61,24 +59,23 @@ class WorkflowRunArchiveDownloadPreparer:
     without touching long-lived archives.
     """
 
-    archive_storage: ArchiveStorage | None
-    download_storage: ArchiveStorage | None
-    cache: WorkflowRunArchiveDownloadTaskCache
-    session_factory: sessionmaker[Session]
+    _archive_storage_provider: Callable[[], ArchiveStorage]
+    _download_storage_provider: Callable[[], ArchiveStorage]
+    cache: WorkflowRunArchiveDownloadTaskStore
+    _bundles: WorkflowRunArchiveBundleQuery
 
     def __init__(
         self,
         *,
-        storage: ArchiveStorage | None = None,
-        archive_storage: ArchiveStorage | None = None,
-        download_storage: ArchiveStorage | None = None,
-        cache: WorkflowRunArchiveDownloadTaskCache | None = None,
-        session_factory: sessionmaker[Session] | None = None,
+        archive_storage_provider: Callable[[], ArchiveStorage],
+        download_storage_provider: Callable[[], ArchiveStorage],
+        bundles: WorkflowRunArchiveBundleQuery,
+        cache: WorkflowRunArchiveDownloadTaskStore,
     ) -> None:
-        self.archive_storage = archive_storage or storage
-        self.download_storage = download_storage or storage
-        self.cache = cache or WorkflowRunArchiveDownloadTaskCache()
-        self.session_factory = session_factory or sessionmaker(bind=db.engine, expire_on_commit=False)
+        self._archive_storage_provider = archive_storage_provider
+        self._download_storage_provider = download_storage_provider
+        self._bundles = bundles
+        self.cache = cache
 
     def prepare(self, *, tenant_id: str, download_id: str) -> WorkflowRunArchiveDownloadTask | None:
         """Prepare a ZIP for an existing Redis task and persist terminal task state."""
@@ -92,8 +89,8 @@ class WorkflowRunArchiveDownloadPreparer:
                 return task
             processing_task = self._mark_processing(task)
         try:
-            archive_storage = self.archive_storage or get_archive_storage()
-            download_storage = self.download_storage or get_export_storage()
+            archive_storage = self._archive_storage_provider()
+            download_storage = self._download_storage_provider()
             bundles = self._get_task_bundles(processing_task)
             payload = self._build_zip_payload(archive_storage, processing_task, bundles)
             storage_key = build_archive_download_storage_key(processing_task)
@@ -103,15 +100,19 @@ class WorkflowRunArchiveDownloadPreparer:
             logger.exception("Failed to prepare workflow run archive download %s", download_id)
             return self._mark_failed(processing_task, error=str(exc))
 
-    def _get_task_bundles(self, task: WorkflowRunArchiveDownloadTask) -> list[WorkflowRunArchiveBundle]:
-        with self.session_factory() as session:
-            return _list_task_bundles(session, task)
+    def _get_task_bundles(self, task: WorkflowRunArchiveDownloadTask) -> list[WorkflowRunArchiveBundleRecord]:
+        indexed_bundles = self._bundles.list_for_tenant_month(
+            task.tenant_id,
+            year=task.year,
+            month=task.month,
+        )
+        return _select_task_bundles(indexed_bundles, task)
 
     def _build_zip_payload(
         self,
         storage: ArchiveStorage,
         task: WorkflowRunArchiveDownloadTask,
-        bundles: Sequence[WorkflowRunArchiveBundle],
+        bundles: Sequence[WorkflowRunArchiveBundleRecord],
     ) -> bytes:
         zip_root = f"workflow-run-logs-{task.year:04d}-{task.month:02d}"
         csv_buffers: dict[str, io.BytesIO] = {}
@@ -219,17 +220,10 @@ def build_archive_download_storage_key(task: WorkflowRunArchiveDownloadTask) -> 
     )
 
 
-def _list_task_bundles(session: Session, task: WorkflowRunArchiveDownloadTask) -> list[WorkflowRunArchiveBundle]:
-    stmt = (
-        select(WorkflowRunArchiveBundle)
-        .where(
-            WorkflowRunArchiveBundle.tenant_id == task.tenant_id,
-            WorkflowRunArchiveBundle.year == task.year,
-            WorkflowRunArchiveBundle.month == task.month,
-        )
-        .order_by(WorkflowRunArchiveBundle.shard, WorkflowRunArchiveBundle.bundle_id)
-    )
-    indexed_bundles = list(session.scalars(stmt))
+def _select_task_bundles(
+    indexed_bundles: Sequence[WorkflowRunArchiveBundleRecord],
+    task: WorkflowRunArchiveDownloadTask,
+) -> list[WorkflowRunArchiveBundleRecord]:
     if task.bundle_refs:
         requested_refs = [(ref.shard, ref.bundle_id) for ref in task.bundle_refs]
     else:
@@ -261,7 +255,7 @@ def _list_task_bundles(session: Session, task: WorkflowRunArchiveDownloadTask) -
 
 def _build_archive_bundle_object_prefix(
     task: WorkflowRunArchiveDownloadTask,
-    bundle: WorkflowRunArchiveBundle,
+    bundle: WorkflowRunArchiveBundleRecord,
 ) -> str:
     return (
         f"{ARCHIVE_BUNDLE_ROOT_PREFIX}tenant_prefix={task.tenant_id[0].lower()}/tenant_id={task.tenant_id}/"
@@ -272,7 +266,7 @@ def _build_archive_bundle_object_prefix(
 def _load_and_validate_manifest(
     storage: ArchiveStorage,
     task: WorkflowRunArchiveDownloadTask,
-    bundle: WorkflowRunArchiveBundle,
+    bundle: WorkflowRunArchiveBundleRecord,
     object_prefix: str,
 ) -> tuple[bytes, ArchiveBundleManifest]:
     manifest_key = f"{object_prefix}/{ARCHIVE_BUNDLE_MANIFEST_NAME}"
@@ -285,7 +279,7 @@ def _load_and_validate_manifest(
 def _validate_manifest(
     *,
     task: WorkflowRunArchiveDownloadTask,
-    bundle: WorkflowRunArchiveBundle,
+    bundle: WorkflowRunArchiveBundleRecord,
     manifest: ArchiveBundleManifest,
     object_prefix: str,
 ) -> None:
@@ -310,7 +304,7 @@ def _validate_manifest(
     if not manifest["tables"]:
         raise ValueError("manifest tables must not be empty")
     for table_name, raw_entry in manifest["tables"].items():
-        entry = cast(ArchiveBundleTableManifestEntry, raw_entry)
+        entry = raw_entry
         expected_object_key = f"{object_prefix}/{table_name}.parquet"
         if entry["object_key"] != expected_object_key:
             raise ValueError(

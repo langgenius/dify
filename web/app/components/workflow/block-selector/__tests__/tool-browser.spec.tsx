@@ -10,7 +10,7 @@ import useTheme from '@/hooks/use-theme'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { Theme } from '@/types/app'
 import ToolBrowser from '../tool-browser'
-import { createToolProvider } from './factories'
+import { createPlugin, createToolProvider } from './factories'
 
 vi.mock('@/context/i18n', () => ({
   useGetLanguage: vi.fn(),
@@ -331,6 +331,128 @@ describe('ToolBrowser', () => {
 
     expect(await screen.findByText('Marketplace Tool')).toBeInTheDocument()
     expect(screen.queryByText('workflow.tabs.noPluginsFound')).not.toBeInTheDocument()
+  })
+
+  it('excludes an installed marketplace plugin even when its provider does not match the search', async () => {
+    const installedPlugin = createPlugin({
+      plugin_id: 'installed-search',
+      label: { en_US: 'Search Plugin', zh_Hans: 'Search Plugin' },
+    })
+    mockUseMarketplacePlugins.mockImplementation((params) =>
+      createMarketplacePluginsMock({
+        data: params ? createMarketplaceData([installedPlugin]) : undefined,
+      }),
+    )
+
+    render(
+      <ToolBrowser
+        searchText="search"
+        tags={[]}
+        onSelect={vi.fn()}
+        buildInTools={[
+          createToolProvider({
+            plugin_id: installedPlugin.plugin_id,
+            label: { en_US: 'Web Toolkit', zh_Hans: 'Web Toolkit' },
+          }),
+        ]}
+        customTools={[]}
+        workflowTools={[]}
+        mcpTools={[]}
+      />,
+      true,
+    )
+
+    expect(await screen.findByText('workflow.tabs.noPluginsFound')).toBeInTheDocument()
+    expect(screen.queryByText('Search Plugin')).not.toBeInTheDocument()
+    expect(screen.queryByText('Web Toolkit')).not.toBeInTheDocument()
+  })
+
+  it('excludes installed plugins across marketplace pages when filtering only by tag', async () => {
+    const installedPlugins = ['first', 'second'].map((page) =>
+      createPlugin({
+        plugin_id: `installed-${page}`,
+        label: { en_US: `Installed ${page}`, zh_Hans: `Installed ${page}` },
+      }),
+    )
+    const availablePlugin = createPlugin({
+      plugin_id: 'available-plugin',
+      label: { en_US: 'Available Plugin', zh_Hans: 'Available Plugin' },
+    })
+    mockUseMarketplacePlugins.mockImplementation((params) =>
+      createMarketplacePluginsMock({
+        data: params
+          ? {
+              pages: [
+                {
+                  plugins: [...installedPlugins.slice(0, 1), availablePlugin],
+                  total: 3,
+                  page: 1,
+                  page_size: 2,
+                },
+                { plugins: installedPlugins.slice(1), total: 3, page: 2, page_size: 2 },
+              ],
+              pageParams: [1, 2],
+            }
+          : undefined,
+      }),
+    )
+
+    render(
+      <ToolBrowser
+        searchText=""
+        tags={['search']}
+        onSelect={vi.fn()}
+        buildInTools={installedPlugins.map((plugin) =>
+          createToolProvider({ id: `${plugin.plugin_id}/provider`, plugin_id: plugin.plugin_id }),
+        )}
+        customTools={[]}
+        workflowTools={[]}
+        mcpTools={[]}
+      />,
+      true,
+    )
+
+    expect(await screen.findByText('Available Plugin')).toBeInTheDocument()
+    expect(screen.queryByText('Installed first')).not.toBeInTheDocument()
+    expect(screen.queryByText('Installed second')).not.toBeInTheDocument()
+  })
+
+  it('removes a newly installed marketplace result when the provider list refreshes', async () => {
+    const newlyInstalledPlugin = createPlugin({
+      plugin_id: 'new-plugin',
+      label: { en_US: 'New Plugin', zh_Hans: 'New Plugin' },
+    })
+    const availablePlugin = createPlugin({
+      plugin_id: 'available-plugin',
+      label: { en_US: 'Available Plugin', zh_Hans: 'Available Plugin' },
+    })
+    const data = createMarketplaceData([newlyInstalledPlugin, availablePlugin])
+    mockUseMarketplacePlugins.mockImplementation((params) =>
+      createMarketplacePluginsMock({ data: params ? data : undefined }),
+    )
+    const props = {
+      searchText: 'plugin',
+      tags: [],
+      onSelect: vi.fn(),
+      buildInTools: [],
+      customTools: [],
+      workflowTools: [],
+      mcpTools: [],
+    }
+    const { rerender } = render(<ToolBrowser {...props} />, true)
+
+    expect(await screen.findByText('New Plugin')).toBeInTheDocument()
+    expect(screen.getByText('Available Plugin')).toBeInTheDocument()
+
+    rerender(
+      <ToolBrowser
+        {...props}
+        buildInTools={[createToolProvider({ plugin_id: newlyInstalledPlugin.plugin_id })]}
+      />,
+    )
+
+    expect(screen.queryByText('New Plugin')).not.toBeInTheDocument()
+    expect(screen.getByText('Available Plugin')).toBeInTheDocument()
   })
 
   it('debounces marketplace requests across search and tag changes', async () => {

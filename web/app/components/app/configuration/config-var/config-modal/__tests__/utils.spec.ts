@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next'
 import type { InputVar } from '@/app/components/workflow/types'
 import { DEFAULT_FILE_UPLOAD_SETTING } from '@/app/components/workflow/constants'
 import { ChangeType, InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
@@ -14,7 +15,7 @@ import {
   validateConfigModalPayload,
 } from '../utils'
 
-const t = withSelectorKey((key: string) => key)
+const t = withSelectorKey((key: string) => key) as TFunction<['appDebug', 'workflow']>
 
 const createInputVar = (overrides: Partial<InputVar> = {}): InputVar => ({
   type: InputVarType.textInput,
@@ -146,14 +147,11 @@ describe('config-modal utils', () => {
     })
 
     it('should reject duplicate select options', () => {
-      const checkVariableName = vi.fn(() => true)
-
       const result = validateConfigModalPayload({
         tempPayload: createInputVar({
           type: InputVarType.select,
           options: ['alpha', 'alpha'],
         }),
-        checkVariableName,
         payload: createInputVar({
           variable: 'question',
         }),
@@ -161,7 +159,6 @@ describe('config-modal utils', () => {
       })
 
       expect(result.errorMessage).toBe('variableConfig.errorMsg.optionRepeat')
-      expect(checkVariableName).toHaveBeenCalledWith('question')
     })
 
     it('should require custom extensions when custom file types are enabled', () => {
@@ -171,7 +168,6 @@ describe('config-modal utils', () => {
           allowed_file_types: [SupportUploadFileTypes.custom],
           allowed_file_extensions: [],
         }),
-        checkVariableName: () => true,
         payload: createInputVar(),
         t,
       })
@@ -185,7 +181,6 @@ describe('config-modal utils', () => {
           type: InputVarType.select,
           options: [],
         }),
-        checkVariableName: () => true,
         payload: createInputVar(),
         t,
       })
@@ -195,7 +190,6 @@ describe('config-modal utils', () => {
           type: InputVarType.singleFile,
           allowed_file_types: [],
         }),
-        checkVariableName: () => true,
         payload: createInputVar(),
         t,
       })
@@ -211,7 +205,6 @@ describe('config-modal utils', () => {
           json_schema: '{',
         }),
         payload: createInputVar(),
-        checkVariableName: () => true,
         t,
       })
 
@@ -221,7 +214,6 @@ describe('config-modal utils', () => {
           json_schema: JSON.stringify({ type: 'string' }),
         }),
         payload: createInputVar(),
-        checkVariableName: () => true,
         t,
       })
 
@@ -239,7 +231,6 @@ describe('config-modal utils', () => {
         payload: createInputVar({
           variable: 'question_old',
         }),
-        checkVariableName: () => true,
         t,
       })
 
@@ -259,6 +250,39 @@ describe('config-modal utils', () => {
       })
     })
 
+    it.each([
+      [Number.NaN, 1],
+      [undefined, 1],
+      [0, 1],
+      [5, 3],
+      [2, 2],
+    ])('should normalize multi-file count %s to %s at submission', (count, expected) => {
+      const result = validateConfigModalPayload({
+        tempPayload: createInputVar({
+          type: InputVarType.multiFiles,
+          max_length: count,
+          allowed_file_types: [SupportUploadFileTypes.document],
+        }),
+        maxFileUploadLimit: 3,
+        t,
+      })
+
+      expect(result.payloadToSave?.max_length).toBe(expected)
+    })
+
+    it('should preserve an existing upload count while the server limit is unavailable', () => {
+      const result = validateConfigModalPayload({
+        tempPayload: createInputVar({
+          type: InputVarType.multiFiles,
+          max_length: 20,
+          allowed_file_types: [SupportUploadFileTypes.document],
+        }),
+        t,
+      })
+
+      expect(result.payloadToSave?.max_length).toBe(20)
+    })
+
     it('should force file inputs to stay visible when saving', () => {
       const result = validateConfigModalPayload({
         tempPayload: createInputVar({
@@ -268,7 +292,6 @@ describe('config-modal utils', () => {
           allowed_file_extensions: [],
         }),
         payload: createInputVar(),
-        checkVariableName: () => true,
         t,
       })
 
@@ -279,19 +302,20 @@ describe('config-modal utils', () => {
       )
     })
 
-    it('should stop validation when the variable name checker rejects the payload', () => {
+    it('should associate invalid variable names with the variable field', () => {
       const result = validateConfigModalPayload({
         tempPayload: createInputVar({
-          variable: 'invalid_name',
+          variable: 'invalid-name!',
         }),
         payload: createInputVar({
           variable: 'question',
         }),
-        checkVariableName: () => false,
         t,
       })
 
-      expect(result).toEqual({})
+      expect(result.errorField).toBe('variable')
+      expect(result.errorMessage).toBeTruthy()
+      expect(result.payloadToSave).toBeUndefined()
     })
   })
 })

@@ -3,18 +3,19 @@
 import logging
 import re
 import uuid
+from collections.abc import Callable
 from typing import Any, TypedDict, cast, override
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.app.file_access import DatabaseFileAccessController
-from core.app.llm import deduct_llm_quota
+from core.credit_usage import CreditUsageCreatedBy
 from core.db.session_factory import session_factory
 from core.entities.knowledge_entities import PreviewDetail
 from core.llm_generator.prompts import DEFAULT_GENERATOR_SUMMARY_PROMPT
-from core.model_manager import ModelInstance
-from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
+from core.model_context import with_credit_usage_created_by
+from core.model_manager import ModelManager
 from core.rag.cleaner.clean_processor import CleanProcessor
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.datasource.vdb.vector_factory import Vector
@@ -46,7 +47,7 @@ from models.account import Account
 from models.dataset import Dataset, DatasetProcessRule, DocumentSegment, SegmentAttachmentBinding
 from models.dataset import Document as DatasetDocument
 from services.account_service import AccountService
-from services.summary_index_service import SummaryIndexService
+from services.knowledge.summaries.adapters import SummaryIndexAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -113,7 +114,12 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                         document_node.metadata["doc_id"] = doc_id
                         document_node.metadata["doc_hash"] = hash
                     multimodal_documents = (
-                        self._get_content_files(document_node, current_user, session=session)
+                        self._get_content_files(
+                            document_node,
+                            current_user,
+                            tenant_id=kwargs["tenant_id"],
+                            session=session,
+                        )
                         if document_node.metadata
                         else None
                     )
@@ -172,10 +178,10 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                 ).all()
                 segment_ids = [segment.id for segment in segments]
                 if segment_ids:
-                    SummaryIndexService.delete_summaries_for_segments(dataset, segment_ids, session=session)
+                    SummaryIndexAdapter.delete_summaries_for_segments(dataset, segment_ids, session=session)
             else:
                 # Delete all summaries for the dataset
-                SummaryIndexService.delete_summaries_for_segments(dataset, None, session=session)
+                SummaryIndexAdapter.delete_summaries_for_segments(dataset, None, session=session)
 
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             vector = Vector(dataset, session=session)
@@ -204,7 +210,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                     "doc_hash": helper.generate_text_hash(content),
                 }
                 doc = Document(page_content=content, metadata=metadata)
-                attachments = self._get_content_files(doc, session=session)
+                attachments = self._get_content_files(doc, tenant_id=dataset.tenant_id, session=session)
                 if attachments:
                     doc.attachments = attachments
                     all_multimodal_documents.extend(attachments)
@@ -240,7 +246,12 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                         account = AccountService.load_user(document.created_by, account_session)
                     if not account:
                         raise ValueError("Invalid account")
-                    doc.attachments = self._get_content_files(doc, current_user=account, session=session)
+                    doc.attachments = self._get_content_files(
+                        doc,
+                        current_user=account,
+                        tenant_id=dataset.tenant_id,
+                        session=session,
+                    )
                     if doc.attachments:
                         all_multimodal_documents.extend(doc.attachments)
                 documents.append(doc)
@@ -388,7 +399,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         session: Session,
     ) -> tuple[str, LLMUsage]:
         """
-        Generate summary for the given text using ModelInstance.invoke_llm and the default or custom summary prompt,
+        Generate summary for the given text using the configured LLM and the default or custom summary prompt,
         and supports vision models by including images from the segment attachments or text content.
 
         Args:
@@ -403,6 +414,30 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         Returns:
             Tuple of (summary_content, llm_usage) where llm_usage is LLMUsage object
         """
+
+        def load_images() -> list[File]:
+            images = (
+                ParagraphIndexProcessor._extract_images_from_segment_attachments(tenant_id, segment_id, session)
+                if segment_id
+                else []
+            )
+            return images or ParagraphIndexProcessor._extract_images_from_text(tenant_id, text, session)
+
+        return ParagraphIndexProcessor.generate_summary_from_inputs(
+            tenant_id, text, summary_index_setting, document_language=document_language, image_loader=load_images
+        )
+
+    @staticmethod
+    @with_credit_usage_created_by(CreditUsageCreatedBy.KNOWLEDGE_INDEXING)
+    def generate_summary_from_inputs(
+        tenant_id: str,
+        text: str,
+        summary_index_setting: SummaryIndexSettingDict | None,
+        *,
+        document_language: str | None,
+        image_loader: Callable[[], list[File]],
+    ) -> tuple[str, LLMUsage]:
+        """Generate a summary after an explicit loader materializes any required images."""
         if not summary_index_setting or not summary_index_setting.get("enable"):
             raise ValueError("summary_index_setting is required and must be enabled to generate summary.")
 
@@ -431,11 +466,13 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                 # If default prompt doesn't have {language} placeholder, use it as-is
                 pass
 
-        provider_manager = create_plugin_provider_manager(tenant_id=tenant_id)
-        provider_model_bundle = provider_manager.get_provider_model_bundle(
-            tenant_id, model_provider_name, ModelType.LLM
+        model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
+        model_instance = model_manager.get_model_instance(
+            tenant_id=tenant_id,
+            provider=model_provider_name,
+            model_type=ModelType.LLM,
+            model=model_name,
         )
-        model_instance = ModelInstance(provider_model_bundle, model_name)
 
         # Get model schema to check if vision is supported
         model_schema = model_instance.model_type_instance.get_model_schema(model_name, model_instance.credentials)
@@ -444,15 +481,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         # Extract images if model supports vision
         image_files = []
         if supports_vision:
-            # First, try to get images from SegmentAttachmentBinding (preferred method)
-            if segment_id:
-                image_files = ParagraphIndexProcessor._extract_images_from_segment_attachments(
-                    tenant_id, segment_id, session
-                )
-
-            # If no images from attachments, fall back to extracting from text
-            if not image_files:
-                image_files = ParagraphIndexProcessor._extract_images_from_text(tenant_id, text, session)
+            image_files = image_loader()
 
         # Build prompt messages
         prompt_messages = []
@@ -468,8 +497,8 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                         file, image_detail_config=ImagePromptMessageContent.DETAIL.LOW
                     )
                     prompt_message_contents.append(file_content)
-                except Exception as e:
-                    logger.warning("Failed to convert image file to prompt message content: %s", str(e))
+                except Exception:
+                    logger.warning("Failed to convert image file to prompt message content", exc_info=True)
                     continue
 
             # Add text content
@@ -495,13 +524,6 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
 
         summary_content = result.message.get_text_content()
         usage = result.usage
-
-        # Deduct quota for summary generation (same as workflow nodes)
-        try:
-            deduct_llm_quota(tenant_id=tenant_id, model_instance=model_instance, usage=usage)
-        except Exception as e:
-            # Log but don't fail summary generation if quota deduction fails
-            logger.warning("Failed to deduct quota for summary generation: %s", str(e))
 
         return summary_content, usage
 
@@ -579,8 +601,8 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                     access_controller=_file_access_controller,
                 )
                 file_objects.append(file_obj)
-            except Exception as e:
-                logger.warning("Failed to create File object from UploadFile %s: %s", upload_file.id, str(e))
+            except Exception:
+                logger.warning("Failed to create File object from UploadFile %s", upload_file.id, exc_info=True)
                 continue
 
         return file_objects
@@ -607,6 +629,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             .where(
                 SegmentAttachmentBinding.segment_id == segment_id,
                 SegmentAttachmentBinding.tenant_id == tenant_id,
+                UploadFile.tenant_id == tenant_id,
             )
         ).all()
 
@@ -636,8 +659,8 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                     storage_key=upload_file.key,
                 )
                 file_objects.append(file_obj)
-            except Exception as e:
-                logger.warning("Failed to create File object from UploadFile %s: %s", upload_file.id, str(e))
+            except Exception:
+                logger.warning("Failed to create File object from UploadFile %s", upload_file.id, exc_info=True)
                 continue
 
         return file_objects

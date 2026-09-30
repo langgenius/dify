@@ -1,14 +1,20 @@
 import type { AgentAppPartial } from '@dify/contracts/api/console/agent/types.gen'
-import type { ComponentProps } from 'react'
-import { toast } from '@langgenius/dify-ui/toast'
+import type { AgentRosterListState } from '../agent-roster-list'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { toast } from '@/app/notifications'
+import { AgentPermission } from '@/features/agent-v2/acl'
 import { AgentRosterList } from '../agent-roster-list'
 
 const { duplicateAgentMutationFn } = vi.hoisted(() => ({
   duplicateAgentMutationFn: vi.fn(),
 }))
+const workspacePermissions = vi.hoisted(() => ({ canCreate: true }))
+vi.mock('@/features/agent-v2/permissions', () => ({
+  useCanCreateAgents: () => workspacePermissions.canCreate,
+}))
+
 const exportAppDslMock = vi.hoisted(() => vi.fn())
 const exportAppDslState = vi.hoisted(() => ({ isExporting: false }))
 
@@ -25,7 +31,7 @@ vi.mock('@/hooks/use-timestamp', () => ({
   }),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     agent: {
       byAgentId: {
@@ -58,6 +64,7 @@ vi.mock('@/service/client', () => ({
 }))
 
 const createAgent = (overrides: Partial<AgentAppPartial> = {}): AgentAppPartial => ({
+  permission_keys: Object.values(AgentPermission),
   active_config_is_published: false,
   app_id: 'app-1',
   description: 'Find and summarize market materials.',
@@ -74,26 +81,12 @@ const createAgent = (overrides: Partial<AgentAppPartial> = {}): AgentAppPartial 
   ...overrides,
 })
 
-const renderList = (
-  agents: AgentAppPartial[],
-  overrides: Partial<ComponentProps<typeof AgentRosterList>> = {},
-) => {
+const renderState = (state: AgentRosterListState) => {
   const queryClient = new QueryClient()
 
   const result = render(
     <QueryClientProvider client={queryClient}>
-      <AgentRosterList
-        agents={agents}
-        hasMore={false}
-        isEmptySearch={false}
-        isError={false}
-        isFetching={false}
-        isFetchingNextPage={false}
-        isPending={false}
-        label="Agent roster list"
-        onLoadMore={vi.fn()}
-        {...overrides}
-      />
+      <AgentRosterList label="Agent roster list" state={state} />
     </QueryClientProvider>,
   )
 
@@ -103,11 +96,25 @@ const renderList = (
   }
 }
 
+type ReadyState = Extract<AgentRosterListState, { status: 'ready' }>
+
+const renderList = (agents: AgentAppPartial[], overrides: Partial<ReadyState> = {}) =>
+  renderState({
+    status: 'ready',
+    agents,
+    emptyState: 'roster',
+    footer: { status: 'none' },
+    isFetching: false,
+    ...overrides,
+  })
+
 describe('AgentRosterList', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    workspacePermissions.canCreate = true
     vi.spyOn(toast, 'error').mockReturnValue('toast-id')
     vi.spyOn(toast, 'success').mockReturnValue('toast-id')
+    vi.spyOn(toast, 'warning').mockReturnValue('toast-id')
     duplicateAgentMutationFn.mockResolvedValue(
       createAgent({
         id: 'agent-copy',
@@ -129,10 +136,18 @@ describe('AgentRosterList', () => {
     expect(screen.queryByText('agent')).not.toBeInTheDocument()
   })
 
-  it('exposes each agent card with the agent name', () => {
+  it('exposes each agent card with its name, draft status, and description', () => {
     renderList([createAgent()])
 
-    expect(screen.getByRole('article', { name: 'Research Agent' })).toBeInTheDocument()
+    const list = screen.getByRole('list')
+    const card = within(list).getByRole('listitem', { name: 'Research Agent' })
+    const cardLink = within(card).getByRole('link', { name: 'Research Agent' })
+
+    expect(card.parentElement).toBe(list)
+    expect(cardLink).toHaveAttribute('href', '/agents/agent-1/configure')
+    expect(cardLink).toHaveAccessibleDescription(
+      'agentRoster.roster.usageStatus.draft Find and summarize market materials.',
+    )
   })
 
   it('uses the Figma-aligned card title and role typography', () => {
@@ -142,7 +157,7 @@ describe('AgentRosterList', () => {
       'system-md-semibold',
     )
     expect(screen.getByText('Research Assistant')).toHaveClass('system-xs-regular')
-    expect(screen.getByText('agentV2.roster.usageStatus.draft')).toHaveClass(
+    expect(screen.getByText('agentRoster.roster.usageStatus.draft')).toHaveClass(
       'system-2xs-medium-uppercase',
     )
   })
@@ -162,10 +177,10 @@ describe('AgentRosterList', () => {
       }),
     ])
 
-    expect(screen.getByText('agentV2.roster.usageStatus.draft')).toBeInTheDocument()
+    expect(screen.getByText('agentRoster.roster.usageStatus.draft')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Published Agent' })).toBeInTheDocument()
-    expect(screen.queryByText('agentV2.roster.usageStatus.inUse')).not.toBeInTheDocument()
-    expect(screen.queryByText('agentV2.roster.status.active')).not.toBeInTheDocument()
+    expect(screen.queryByText('agentRoster.roster.usageStatus.inUse')).not.toBeInTheDocument()
+    expect(screen.queryByText('agentRoster.roster.status.active')).not.toBeInTheDocument()
   })
 
   it('renders the Figma-aligned empty roster overlay', () => {
@@ -176,7 +191,7 @@ describe('AgentRosterList', () => {
 
     if (!placeholderGrid) throw new Error('Expected agent roster placeholder grid to render')
 
-    expect(screen.getByRole('heading', { name: 'agentV2.roster.empty' })).toHaveClass(
+    expect(screen.getByRole('heading', { name: 'agentRoster.roster.empty' })).toHaveClass(
       'system-sm-regular',
       'text-text-tertiary',
     )
@@ -186,36 +201,61 @@ describe('AgentRosterList', () => {
       'size-6',
       'text-text-tertiary',
     )
-    expect(placeholderGrid).toHaveClass(
-      'grid',
-      'grid-cols-[repeat(auto-fill,minmax(296px,1fr))]',
-      'grid-rows-4',
-    )
-    expect(placeholderGrid).not.toHaveClass(
-      'grid-cols-1',
-      'sm:grid-cols-2',
-      'lg:grid-cols-3',
-      'xl:grid-cols-4',
-    )
   })
 
   it('uses the same overlay treatment for empty search results', () => {
-    const { container } = renderList([], { isEmptySearch: true })
+    const { container } = renderList([], { emptyState: 'filtered' })
 
-    expect(screen.getByRole('heading', { name: 'agentV2.roster.emptySearch' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: 'agentRoster.roster.emptySearch' }),
+    ).toBeInTheDocument()
     expect(container.querySelectorAll('.bg-background-default-lighter')).toHaveLength(16)
-    expect(screen.queryByText('agentV2.roster.emptySearchDescription')).not.toBeInTheDocument()
+    expect(screen.queryByText('agentRoster.roster.emptySearchDescription')).not.toBeInTheDocument()
   })
 
-  it('uses the same overlay treatment for loading errors', () => {
-    const { container } = renderList([], { isError: true })
+  it('uses the same overlay treatment for loading errors and exposes a retry action', async () => {
+    const user = userEvent.setup()
+    const onRetry = vi.fn()
+    const { container } = renderState({ status: 'error', onRetry })
 
-    expect(screen.getByRole('heading', { name: 'agentV2.roster.loadingError' })).toHaveClass(
+    expect(
+      screen.getByRole('alert', { name: 'agentRoster.roster.loadingError' }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'agentRoster.roster.loadingError' })).toHaveClass(
       'system-sm-regular',
       'text-text-tertiary',
     )
     expect(container.querySelectorAll('.bg-background-default-lighter')).toHaveLength(16)
     expect(container.querySelector('.bg-linear-to-b')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    expect(onRetry).toHaveBeenCalledOnce()
+  })
+
+  it('preserves loaded cards and exposes a retry action when the next page fails', async () => {
+    const user = userEvent.setup()
+    const onLoadMore = vi.fn()
+    renderList([createAgent()], {
+      footer: { status: 'error', onRetry: onLoadMore },
+    })
+
+    expect(screen.getByRole('listitem', { name: 'Research Agent' })).toBeInTheDocument()
+    expect(screen.getByRole('alert')).toHaveTextContent('agentRoster.roster.loadingError')
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    expect(onLoadMore).toHaveBeenCalledOnce()
+  })
+
+  it('preserves loaded cards and refetches when a background refresh fails', async () => {
+    const user = userEvent.setup()
+    const onRetry = vi.fn()
+    renderList([createAgent()], { footer: { status: 'error', onRetry } })
+
+    expect(screen.getByRole('listitem', { name: 'Research Agent' })).toBeInTheDocument()
+    expect(screen.getByRole('alert')).toHaveTextContent('agentRoster.roster.loadingError')
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    expect(onRetry).toHaveBeenCalledOnce()
   })
 
   it('opens published workflow references from the card reference trigger', async () => {
@@ -235,36 +275,87 @@ describe('AgentRosterList', () => {
       }),
     ])
 
-    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.references\.trigger/ }))
+    await user.click(
+      screen.getByRole('button', { name: /agentRoster\.roster\.references\.trigger.*1/ }),
+    )
 
     const workflowLink = screen.getByRole('menuitem', { name: /RFP Review Flow/ })
     expect(workflowLink).toHaveAttribute('href', '/app/workflow-app-id/workflow')
     expect(workflowLink).toHaveAttribute('target', '_blank')
     expect(workflowLink).toHaveAttribute('rel', 'noopener noreferrer')
-    expect(screen.getByText(/agentV2\.roster\.references\.label/)).toBeInTheDocument()
+    expect(screen.getByText(/agentRoster\.roster\.references\.label/)).toBeInTheDocument()
+  })
+
+  it('announces zero workflow references without exposing an inactive button', () => {
+    renderList([createAgent()])
+
+    const card = screen.getByRole('listitem', { name: 'Research Agent' })
+    expect(within(card).getByText(/^agentRoster\.roster\.references\.trigger/)).toHaveClass(
+      'sr-only',
+    )
+    expect(
+      within(card).queryByRole('button', { name: /agentRoster\.roster\.references\.trigger/ }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('keeps card navigation and independent controls in visual reading order', async () => {
+    const user = userEvent.setup()
+    renderList([
+      createAgent({
+        published_reference_count: 1,
+        published_references: [
+          {
+            app_id: 'workflow-app-id',
+            app_icon: '🐍',
+            app_icon_background: '#E9F8D8',
+            app_icon_type: 'emoji',
+            app_name: 'RFP Review Flow',
+          },
+        ],
+      }),
+    ])
+
+    const card = screen.getByRole('listitem', { name: 'Research Agent' })
+    const cardLink = within(card).getByRole('link', { name: 'Research Agent' })
+    const references = within(card).getByRole('button', {
+      name: /agentRoster\.roster\.references\.trigger.*1/,
+    })
+    const moreActions = within(card).getByRole('button', {
+      name: /agentRoster\.roster\.moreActions/,
+    })
+
+    expect(cardLink).not.toContainElement(references)
+    expect(cardLink).not.toContainElement(moreActions)
+
+    await user.tab()
+    expect(cardLink).toHaveFocus()
+    await user.tab()
+    expect(moreActions).toHaveFocus()
+    await user.tab()
+    expect(references).toHaveFocus()
   })
 
   it('opens a duplicate dialog from the card action menu', async () => {
     const user = userEvent.setup()
     renderList([createAgent()])
 
-    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.moreActions/ }))
+    await user.click(screen.getByRole('button', { name: /agentRoster\.roster\.moreActions/ }))
     await user.click(screen.getByRole('menuitem', { name: /common\.operation\.duplicate/ }))
 
     const dialog = await screen.findByRole('dialog', {
-      name: 'agentV2.roster.duplicateDialog.title',
+      name: 'agentRoster.roster.duplicateDialog.title',
     })
     const nameInput = within(dialog).getByRole('textbox', {
-      name: /agentV2\.roster\.createForm\.nameLabel.*common\.label\.optional/,
+      name: 'agentRoster.roster.createForm.nameLabel',
     })
     const roleInput = within(dialog).getByRole('textbox', {
-      name: /agentV2\.roster\.createForm\.roleLabel.*common\.label\.optional/,
+      name: /agentRoster\.roster\.createForm\.roleLabel.*common\.label\.optional/,
     })
     const descriptionInput = within(dialog).getByRole('textbox', {
-      name: /agentV2\.roster\.createForm\.descriptionLabel.*common\.label\.optional/,
+      name: /agentRoster\.roster\.createForm\.descriptionLabel.*common\.label\.optional/,
     })
-    expect(nameInput).toHaveValue('')
-    expect(nameInput).toHaveAttribute('placeholder', 'Research Agent copy')
+    expect(nameInput).toHaveValue('Research Agent copy')
+    expect(nameInput).toBeRequired()
     expect(roleInput).toHaveValue('Research Assistant')
     expect(roleInput).not.toBeRequired()
     expect(descriptionInput).toHaveValue('Find and summarize market materials.')
@@ -272,27 +363,64 @@ describe('AgentRosterList', () => {
     expect(duplicateAgentMutationFn).not.toHaveBeenCalled()
   })
 
-  it('exports the Agent App DSL with the backing App id', async () => {
+  it('opens the same duplicate action from the card context menu', async () => {
     const user = userEvent.setup()
     renderList([createAgent()])
 
-    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.moreActions/ }))
-    await user.click(screen.getByRole('menuitem', { name: 'app.export' }))
+    const cardLink = screen.getByRole('link', { name: 'Research Agent' })
+    await user.pointer({ target: cardLink, keys: '[MouseRight]' })
+    await user.click(await screen.findByRole('menuitem', { name: /common\.operation\.duplicate/ }))
 
-    expect(exportAppDslMock).toHaveBeenCalledWith({
-      appId: 'app-1',
-      appName: 'Research Agent',
-    })
+    expect(
+      await screen.findByRole('dialog', { name: 'agentRoster.roster.duplicateDialog.title' }),
+    ).toBeInTheDocument()
   })
 
-  it('disables export while an Agent App DSL export is pending', async () => {
+  it('keeps the more button outside the card context menu trigger', async () => {
+    const user = userEvent.setup()
+    renderList([createAgent()])
+
+    await user.pointer({
+      target: screen.getByRole('button', { name: /agentRoster\.roster\.moreActions/ }),
+      keys: '[MouseRight]',
+    })
+
+    expect(
+      screen.queryByRole('menuitem', { name: /common\.operation\.duplicate/ }),
+    ).not.toBeInTheDocument()
+  })
+
+  it.each(['dropdown', 'context'])(
+    'exports the Agent App package from the %s menu with the backing App id',
+    async (menu) => {
+      const user = userEvent.setup()
+      renderList([createAgent()])
+
+      if (menu === 'context')
+        await user.pointer({
+          target: screen.getByRole('link', { name: 'Research Agent' }),
+          keys: '[MouseRight]',
+        })
+      else
+        await user.click(screen.getByRole('button', { name: /agentRoster\.roster\.moreActions/ }))
+      await user.click(screen.getByRole('menuitem', { name: 'app.exportApp' }))
+
+      expect(exportAppDslMock).toHaveBeenCalledWith({
+        format: 'ifpkg',
+        appId: 'app-1',
+        appName: 'Research Agent',
+      })
+    },
+  )
+
+  it('disables export while an Agent App package export is pending', async () => {
     const user = userEvent.setup()
     exportAppDslState.isExporting = true
     renderList([createAgent()])
 
-    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.moreActions/ }))
+    await user.click(screen.getByRole('button', { name: /agentRoster\.roster\.moreActions/ }))
 
-    expect(screen.getByRole('menuitem', { name: 'app.export' })).toHaveAttribute(
+    expect(screen.getByRole('menuitem', { name: 'app.exportApp' })).toHaveAttribute(
       'aria-disabled',
       'true',
     )
@@ -313,37 +441,34 @@ describe('AgentRosterList', () => {
       }),
     )
 
-    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.moreActions/ }))
+    await user.click(screen.getByRole('button', { name: /agentRoster\.roster\.moreActions/ }))
     await user.click(screen.getByRole('menuitem', { name: /common\.operation\.duplicate/ }))
 
     const dialog = await screen.findByRole('dialog', {
-      name: 'agentV2.roster.duplicateDialog.title',
+      name: 'agentRoster.roster.duplicateDialog.title',
     })
     expect(
-      within(dialog).getByRole('textbox', { name: /agentV2\.roster\.createForm\.nameLabel/ }),
-    ).toHaveValue('')
-    expect(
-      within(dialog).getByRole('textbox', { name: /agentV2\.roster\.createForm\.nameLabel/ }),
-    ).toHaveAttribute('placeholder', 'Research Agent copy')
+      within(dialog).getByRole('textbox', { name: /agentRoster\.roster\.createForm\.nameLabel/ }),
+    ).toHaveValue('Research Agent copy')
     expect(
       within(dialog).getByRole('textbox', {
-        name: /agentV2\.roster\.createForm\.descriptionLabel/,
+        name: /agentRoster\.roster\.createForm\.descriptionLabel/,
       }),
     ).toHaveValue('Summarize new market updates.')
     expect(
-      within(dialog).getByRole('textbox', { name: /agentV2\.roster\.createForm\.roleLabel/ }),
+      within(dialog).getByRole('textbox', { name: /agentRoster\.roster\.createForm\.roleLabel/ }),
     ).toHaveValue('Market Researcher')
   })
 
-  it('duplicates an agent with backend-generated naming when the dialog name is empty', async () => {
+  it('duplicates an agent with the generated copy name by default', async () => {
     const user = userEvent.setup()
     renderList([createAgent()])
 
-    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.moreActions/ }))
+    await user.click(screen.getByRole('button', { name: /agentRoster\.roster\.moreActions/ }))
     await user.click(screen.getByRole('menuitem', { name: /common\.operation\.duplicate/ }))
 
     const dialog = await screen.findByRole('dialog', {
-      name: 'agentV2.roster.duplicateDialog.title',
+      name: 'agentRoster.roster.duplicateDialog.title',
     })
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.duplicate' }))
 
@@ -353,6 +478,7 @@ describe('AgentRosterList', () => {
           agent_id: 'agent-1',
         },
         body: {
+          name: 'Research Agent copy',
           description: 'Find and summarize market materials.',
           role: 'Research Assistant',
           icon: '🧸',
@@ -364,9 +490,8 @@ describe('AgentRosterList', () => {
         client: expect.any(QueryClient),
       }),
     )
-    expect(duplicateAgentMutationFn.mock.calls[0]?.[0].body).not.toHaveProperty('name')
     await waitFor(() => {
-      expect(toast.success).toHaveBeenCalledWith('agentV2.roster.duplicateSuccess')
+      expect(toast.success).toHaveBeenCalledWith('agentRoster.roster.duplicateSuccess')
     })
   })
 
@@ -374,20 +499,20 @@ describe('AgentRosterList', () => {
     const user = userEvent.setup()
     renderList([createAgent()])
 
-    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.moreActions/ }))
+    await user.click(screen.getByRole('button', { name: /agentRoster\.roster\.moreActions/ }))
     await user.click(screen.getByRole('menuitem', { name: /common\.operation\.duplicate/ }))
 
     const dialog = await screen.findByRole('dialog', {
-      name: 'agentV2.roster.duplicateDialog.title',
+      name: 'agentRoster.roster.duplicateDialog.title',
     })
     const nameInput = within(dialog).getByRole('textbox', {
-      name: /agentV2\.roster\.createForm\.nameLabel/,
+      name: /agentRoster\.roster\.createForm\.nameLabel/,
     })
     const roleInput = within(dialog).getByRole('textbox', {
-      name: /agentV2\.roster\.createForm\.roleLabel/,
+      name: /agentRoster\.roster\.createForm\.roleLabel/,
     })
     const descriptionInput = within(dialog).getByRole('textbox', {
-      name: /agentV2\.roster\.createForm\.descriptionLabel/,
+      name: /agentRoster\.roster\.createForm\.descriptionLabel/,
     })
     await user.clear(nameInput)
     await user.type(nameInput, ' Market Agent ')
@@ -416,7 +541,7 @@ describe('AgentRosterList', () => {
       }),
     )
     await waitFor(() => {
-      expect(toast.success).toHaveBeenCalledWith('agentV2.roster.duplicateSuccess')
+      expect(toast.success).toHaveBeenCalledWith('agentRoster.roster.duplicateSuccess')
     })
   })
 
@@ -424,14 +549,14 @@ describe('AgentRosterList', () => {
     const user = userEvent.setup()
     renderList([createAgent()])
 
-    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.moreActions/ }))
+    await user.click(screen.getByRole('button', { name: /agentRoster\.roster\.moreActions/ }))
     await user.click(screen.getByRole('menuitem', { name: /common\.operation\.duplicate/ }))
 
     const dialog = await screen.findByRole('dialog', {
-      name: 'agentV2.roster.duplicateDialog.title',
+      name: 'agentRoster.roster.duplicateDialog.title',
     })
     await user.clear(
-      within(dialog).getByRole('textbox', { name: /agentV2\.roster\.createForm\.roleLabel/ }),
+      within(dialog).getByRole('textbox', { name: /agentRoster\.roster\.createForm\.roleLabel/ }),
     )
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.duplicate' }))
 
@@ -441,6 +566,7 @@ describe('AgentRosterList', () => {
           agent_id: 'agent-1',
         },
         body: {
+          name: 'Research Agent copy',
           description: 'Find and summarize market materials.',
           role: '',
           icon: '🧸',
@@ -458,12 +584,14 @@ describe('AgentRosterList', () => {
     const user = userEvent.setup()
     renderList([createAgent()])
 
-    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.moreActions/ }))
-    await user.click(screen.getByRole('menuitem', { name: /agentV2\.roster\.editInfo/ }))
+    await user.click(screen.getByRole('button', { name: /agentRoster\.roster\.moreActions/ }))
+    await user.click(screen.getByRole('menuitem', { name: /agentRoster\.roster\.editInfo/ }))
 
-    const dialog = await screen.findByRole('dialog', { name: 'agentV2.roster.editDialog.title' })
+    const dialog = await screen.findByRole('dialog', {
+      name: 'agentRoster.roster.editDialog.title',
+    })
     const nameInput = within(dialog).getByRole('textbox', {
-      name: 'agentV2.roster.createForm.nameLabel',
+      name: 'agentRoster.roster.createForm.nameLabel',
     })
     await user.clear(nameInput)
     await user.type(nameInput, 'Draft Name')
@@ -471,26 +599,72 @@ describe('AgentRosterList', () => {
 
     await waitFor(() => {
       expect(
-        screen.queryByRole('dialog', { name: 'agentV2.roster.editDialog.title' }),
+        screen.queryByRole('dialog', { name: 'agentRoster.roster.editDialog.title' }),
       ).not.toBeInTheDocument()
     })
+    expect(screen.getByRole('button', { name: /agentRoster\.roster\.moreActions/ })).toHaveFocus()
 
-    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.moreActions/ }))
-    await user.click(screen.getByRole('menuitem', { name: /agentV2\.roster\.editInfo/ }))
+    await user.click(screen.getByRole('button', { name: /agentRoster\.roster\.moreActions/ }))
+    await user.click(screen.getByRole('menuitem', { name: /agentRoster\.roster\.editInfo/ }))
 
     const reopenedDialog = await screen.findByRole('dialog', {
-      name: 'agentV2.roster.editDialog.title',
+      name: 'agentRoster.roster.editDialog.title',
     })
     expect(
-      within(reopenedDialog).getByRole('textbox', { name: 'agentV2.roster.createForm.nameLabel' }),
+      within(reopenedDialog).getByRole('textbox', {
+        name: 'agentRoster.roster.createForm.nameLabel',
+      }),
     ).toHaveValue('Research Agent')
     expect(
       within(reopenedDialog).getByRole('textbox', {
-        name: /agentV2\.roster\.createForm\.roleLabel/,
+        name: /agentRoster\.roster\.createForm\.roleLabel/,
       }),
     ).toHaveValue('Research Assistant')
     expect(
       within(reopenedDialog).getByRole('button', { name: 'common.operation.save' }),
     ).toBeDisabled()
+  })
+
+  it('explains preview-only access through the card without navigating', async () => {
+    const user = userEvent.setup()
+    workspacePermissions.canCreate = false
+    renderList([createAgent({ permission_keys: [AgentPermission.Preview] })])
+
+    const card = screen.getByRole('listitem', { name: 'Research Agent' })
+    const entry = within(card).getByRole('button', { name: 'Research Agent' })
+    expect(within(card).queryByRole('link', { name: 'Research Agent' })).not.toBeInTheDocument()
+    expect(entry).toHaveAccessibleDescription(
+      'agentRoster.roster.usageStatus.draft Find and summarize market materials.',
+    )
+
+    await user.tab()
+    expect(entry).toHaveFocus()
+    await user.keyboard('{Enter}')
+    expect(toast.warning).toHaveBeenCalledWith('app.noAccessResourcePermission')
+
+    await user.click(entry)
+    expect(toast.warning).toHaveBeenCalledTimes(2)
+  })
+
+  it('links viewers to access points and hides mutation menus including the context menu', async () => {
+    workspacePermissions.canCreate = false
+    renderList([
+      createAgent({ permission_keys: [AgentPermission.Preview, AgentPermission.AccessPointView] }),
+    ])
+    const link = screen.getByRole('link', { name: 'Research Agent' })
+    expect(link).toHaveAttribute('href', '/agents/agent-1/access')
+    expect(screen.queryByRole('button', { name: /roster.moreActions/ })).not.toBeInTheDocument()
+    await userEvent.pointer({ target: link, keys: '[MouseRight]' })
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+  })
+
+  it('allows duplication with workspace create permission without granting resource edits', async () => {
+    renderList([
+      createAgent({ permission_keys: [AgentPermission.Preview, AgentPermission.AccessPointView] }),
+    ])
+    await userEvent.click(screen.getByRole('button', { name: /roster.moreActions/ }))
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
+      'common.operation.duplicate',
+    ])
   })
 })

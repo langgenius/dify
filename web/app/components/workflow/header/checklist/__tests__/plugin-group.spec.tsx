@@ -1,7 +1,7 @@
 import type { ChecklistItem } from '../../../hooks/use-checklist'
 import { Popover, PopoverContent } from '@langgenius/dify-ui/popover'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vite-plus/test'
 import { useStore as usePluginDependencyStore } from '../../../plugin-dependency/store'
 import { BlockEnum } from '../../../types'
 import { ChecklistPluginGroup } from '../plugin-group'
@@ -20,7 +20,7 @@ const createChecklistItem = (overrides: Partial<ChecklistItem> = {}): ChecklistI
 describe('ChecklistPluginGroup', () => {
   const getInstallButton = () => {
     return screen
-      .getByText('workflow.nodes.agent.pluginInstaller.install')
+      .getByText('workflowAgent.nodes.agent.pluginInstaller.install')
       .closest('button') as HTMLButtonElement
   }
 

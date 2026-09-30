@@ -2,86 +2,64 @@
 
 import type { AutocompleteChangeEventDetails } from '@langgenius/dify-ui/autocomplete'
 import type { Plugin } from '../plugins/types'
-import type { ActionItem, RecentSearchResult, SearchResult } from './actions/types'
+import type { ActionItem, SearchResult } from './actions/types'
+import type { GotoAnythingOption } from './command-options'
 import {
   Autocomplete,
-  AutocompleteCollection,
-  AutocompleteGroup,
-  AutocompleteGroupLabel,
   AutocompleteInput,
   AutocompleteInputGroup,
-  AutocompleteItem,
-  AutocompleteList,
   AutocompleteStatus,
 } from '@langgenius/dify-ui/autocomplete'
 import {
   Dialog,
   DialogBackdrop,
-  DialogCloseButton,
+  DialogClose,
   DialogPopup,
   DialogPortal,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import {
+  ScrollArea,
   ScrollAreaContent,
-  ScrollAreaRoot,
   ScrollAreaScrollbar,
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
-import { useQuery } from '@tanstack/react-query'
-import { useDebounce } from 'ahooks'
-import { useMemo, useRef, useState } from 'react'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
+import { useDebouncedValue } from 'foxact/use-debounced-value'
+import { useAtomValue } from 'jotai'
+import { useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { selectWorkflowNode } from '@/app/components/workflow/utils/node-navigation'
 import { useGetLanguage } from '@/context/i18n'
+import { isCurrentWorkspaceDatasetOperatorAtom } from '@/context/workspace-state'
+import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
 import { usePathname, useRouter } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
 import { PluginInstallPermissionProvider } from '../plugins/install-plugin/components/plugin-install-permission-provider'
 import useWorkspacePluginInstallPermission from '../plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import InstallFromMarketplace from '../plugins/install-plugin/install-from-marketplace'
 import { createActions, getActionSearchTerm, matchAction } from './actions'
+import { agentSearchQueryOptions } from './actions/agent'
 import { appSearchQueryOptions } from './actions/app'
-import { slashCommandRegistry } from './actions/commands/registry'
-import { SlashCommandProvider } from './actions/commands/slash-provider'
+import { slashCommandRegistry } from './actions/commands/catalog'
+import { createSlashAction } from './actions/commands/slash'
+import { useCommandContext } from './actions/commands/use-command-context'
 import { knowledgeSearchQueryOptions } from './actions/knowledge'
 import { pluginSearchQueryOptions } from './actions/plugin'
-import { addRecentItem, getRecentItems } from './actions/recent-store'
+import { skillSearchQueryOptions } from './actions/skill'
+import { isCommandOption, useCommandOptions } from './command-options'
 import { EmptyState } from './components/empty-state'
 import { Footer } from './components/footer'
 import { gotoAnythingDialogHandle } from './dialog-handle'
 import { GOTO_ANYTHING_HOTKEY } from './hotkeys'
+import { CommandGrid, ResultList } from './results'
 
 const appWorkflowPathPattern = /^\/app\/[^/]+\/workflow$/
 const sharedWorkflowPathPattern = /^\/workflow\/[^/]+$/
 const ragPipelinePathPattern = /^\/datasets\/[^/]+\/pipeline$/
-
-type CommandOption = {
-  kind: 'command-option'
-  shortcut: string
-  description: string
-}
-
-type GotoAnythingOption = CommandOption | SearchResult
-
-const slashCommandDescriptionKeys = {
-  '/create': 'gotoAnything.actions.createCategoryDesc',
-  '/refine': 'gotoAnything.actions.refineCategoryDesc',
-  '/theme': 'gotoAnything.actions.themeCategoryDesc',
-  '/language': 'gotoAnything.actions.languageChangeDesc',
-  '/account': 'gotoAnything.actions.accountDesc',
-  '/feedback': 'gotoAnything.actions.feedbackDesc',
-  '/docs': 'gotoAnything.actions.docDesc',
-  '/community': 'gotoAnything.actions.communityDesc',
-} as const
-
-const actionDescriptionKeys = {
-  '@app': 'gotoAnything.actions.searchApplicationsDesc',
-  '@plugin': 'gotoAnything.actions.searchPluginsDesc',
-  '@knowledge': 'gotoAnything.actions.searchKnowledgeBasesDesc',
-  '@node': 'gotoAnything.actions.searchWorkflowNodesDesc',
-} as const
 
 const groupLabelKeys = {
   app: 'gotoAnything.groups.apps',
@@ -89,37 +67,7 @@ const groupLabelKeys = {
   knowledge: 'gotoAnything.groups.knowledgeBases',
   'workflow-node': 'gotoAnything.groups.workflowNodes',
   command: 'gotoAnything.groups.commands',
-  recent: 'gotoAnything.groups.recent',
 } as const
-
-function getCommandOptions(actions: Record<string, ActionItem>, query: string): CommandOption[] {
-  const trimmedQuery = query.trim()
-  const filter = trimmedQuery.slice(1).toLowerCase()
-
-  if (trimmedQuery.startsWith('/')) {
-    return slashCommandRegistry
-      .getAvailableCommands()
-      .filter((command) => !filter || command.name.toLowerCase().includes(filter))
-      .map((command) => ({
-        kind: 'command-option',
-        shortcut: `/${command.name}`,
-        description: command.description,
-      }))
-  }
-
-  return Object.values(actions)
-    .filter((action) => action.key !== '/')
-    .filter((action) => !filter || action.shortcut.toLowerCase().includes(filter))
-    .map((action) => ({
-      kind: 'command-option',
-      shortcut: action.shortcut,
-      description: action.description,
-    }))
-}
-
-function isCommandOption(option: GotoAnythingOption): option is CommandOption {
-  return 'kind' in option && option.kind === 'command-option'
-}
 
 function optionToInputValue(option: GotoAnythingOption) {
   return isCommandOption(option) ? `${option.shortcut} ` : option.title
@@ -131,20 +79,14 @@ function isEditableShortcutTarget(target: EventTarget | null) {
   return target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)
 }
 
-function getSearchModeLabel(searchMode: string) {
-  if (searchMode === 'scopes') return 'SCOPES'
-  if (searchMode === 'commands') return 'COMMANDS'
-  return searchMode.replace('@', '').toUpperCase()
-}
-
 function getSearchMode(
   searchQuery: string,
   isCommandsMode: boolean,
   actions: Record<string, ActionItem>,
 ) {
-  if (isCommandsMode) return searchQuery.trim().startsWith('@') ? 'scopes' : 'commands'
+  if (isCommandsMode) return searchQuery.trim().startsWith('/') ? 'commands' : 'scopes'
 
-  const action = matchAction(searchQuery.trim().toLowerCase(), actions)
+  const action = matchAction(searchQuery.trimStart().toLowerCase(), actions)
   if (!action) return 'general'
 
   return action.key === '/' ? '@command' : action.key
@@ -152,29 +94,31 @@ function getSearchMode(
 
 function isCommandSelectionQuery(query: string, actions: Record<string, ActionItem>) {
   const trimmedQuery = query.trim()
-  if (trimmedQuery === '@' || trimmedQuery === '/') return true
+  if (!trimmedQuery || trimmedQuery === '@' || trimmedQuery === '/') return true
 
   return (
     (trimmedQuery.startsWith('@') || trimmedQuery.startsWith('/')) &&
-    !matchAction(trimmedQuery, actions)
+    !matchAction(query.trimStart().toLowerCase(), actions)
   )
 }
 
-function getRecentSearchResults(): RecentSearchResult[] {
-  return getRecentItems().map((item) => ({
-    id: `recent-${item.id}`,
-    title: item.title,
-    description: item.description,
-    type: 'recent',
-    originalType: item.originalType,
-    path: item.path,
-    icon: (
-      <div className="flex h-6 w-6 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-components-panel-bg">
-        <span aria-hidden className="i-ri-time-line size-4 text-text-tertiary" />
-      </div>
-    ),
-    data: { path: item.path },
-  }))
+function getActionIdentity(query: string, action: ActionItem) {
+  if (action.key !== '/') return action.key
+  return query.split(/\s/, 1)[0]
+}
+
+function getActionBaseQuery(query: string, action: ActionItem) {
+  if (action.key === '/') return `${getActionIdentity(query, action)} `
+  return `${query.split(/\s/, 1)[0] ?? action.shortcut} `
+}
+
+function getRemoteSearchIdentity(
+  query: string,
+  isCommandsMode: boolean,
+  action: ActionItem | undefined,
+) {
+  if (!query.trim() || isCommandsMode || action?.source === 'local') return null
+  return action?.key ?? 'general'
 }
 
 function dedupeSearchResults(results: SearchResult[]) {
@@ -197,11 +141,19 @@ function groupSearchResults(results: SearchResult[]) {
   }, {})
 }
 
-function GotoAnythingDialog() {
-  const { t } = useTranslation()
+export function GotoAnything() {
+  const { t } = useTranslation(['app', 'common', 'skill', 'modelProvider', 'agentRoster'])
   const pathname = usePathname()
   const router = useRouter()
   const defaultLocale = useGetLanguage()
+  const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)
+  const { data: enableSkill } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      select: (features) => features.enable_skill,
+    }),
+  )
+  const agentsAvailable = isAgentV2Enabled()
+  const skillsAvailable = enableSkill === true && !isCurrentWorkspaceDatasetOperator
   const isWorkflowPage =
     appWorkflowPathPattern.test(pathname) || sharedWorkflowPathPattern.test(pathname)
   const isRagPipelinePage = ragPipelinePathPattern.test(pathname)
@@ -209,48 +161,99 @@ function GotoAnythingDialog() {
   const [searchQuery, setSearchQuery] = useState('')
   const [activePlugin, setActivePlugin] = useState<Plugin>()
   const inputRef = useRef<HTMLInputElement>(null)
+  const searchHintId = useId()
+  const commandContext = useCommandContext(agentsAvailable, skillsAvailable, isWorkflowPage)
   const actions = useMemo(
-    () => createActions(isWorkflowPage, isRagPipelinePage),
-    [isWorkflowPage, isRagPipelinePage],
+    () =>
+      createActions(createSlashAction(commandContext), isWorkflowPage, isRagPipelinePage, {
+        agents: agentsAvailable,
+        skills: skillsAvailable,
+      }),
+    [agentsAvailable, commandContext, isWorkflowPage, isRagPipelinePage, skillsAvailable],
   )
+  const { commandOptions, scopeOptions } = useCommandOptions(actions, searchQuery, commandContext)
   const trimmedSearchQuery = searchQuery.trim()
+  const normalizedSearchQuery = searchQuery.trimStart().toLowerCase()
   const isCommandsMode = isCommandSelectionQuery(searchQuery, actions)
   const searchMode = getSearchMode(searchQuery, isCommandsMode, actions)
-  const debouncedSearchQuery = useDebounce(searchQuery, { wait: 300 })
-  const normalizedDebouncedQuery = debouncedSearchQuery.trim().toLowerCase()
+  const currentAction = matchAction(normalizedSearchQuery, actions)
+  const debouncedSearchQuery = useDebouncedValue(searchQuery, 300)
+  const normalizedDebouncedQuery = debouncedSearchQuery.trimStart().toLowerCase()
   const isDebouncedCommandsMode = isCommandSelectionQuery(debouncedSearchQuery, actions)
   const debouncedAction = matchAction(normalizedDebouncedQuery, actions)
   const debouncedSearchTerm = debouncedAction
     ? getActionSearchTerm(normalizedDebouncedQuery, debouncedAction)
-    : normalizedDebouncedQuery
-  const remoteSearchEnabled = Boolean(normalizedDebouncedQuery) && !isDebouncedCommandsMode
+    : normalizedDebouncedQuery.trimEnd()
+  const remoteSearchEnabled = Boolean(normalizedDebouncedQuery.trim()) && !isDebouncedCommandsMode
   const appSearchEnabled =
     remoteSearchEnabled && (!debouncedAction || debouncedAction.key === '@app')
   const knowledgeSearchEnabled =
     remoteSearchEnabled && (!debouncedAction || debouncedAction.key === '@knowledge')
   const pluginSearchEnabled =
     remoteSearchEnabled && (!debouncedAction || debouncedAction.key === '@plugin')
-  const appSearchQuery = useQuery({
-    ...appSearchQueryOptions(debouncedSearchTerm, debouncedAction?.key === '@app'),
-    enabled: appSearchEnabled,
-  })
-  const knowledgeSearchQuery = useQuery({
-    ...knowledgeSearchQueryOptions(debouncedSearchTerm),
-    enabled: knowledgeSearchEnabled,
-  })
-  const pluginSearchQuery = useQuery({
-    ...pluginSearchQueryOptions(debouncedSearchTerm, defaultLocale),
-    enabled: pluginSearchEnabled,
-  })
+  const skillSearchEnabled =
+    remoteSearchEnabled && skillsAvailable && (!debouncedAction || debouncedAction.key === '@skill')
+  const agentSearchEnabled =
+    remoteSearchEnabled &&
+    agentsAvailable &&
+    (!debouncedAction || debouncedAction.key === '@agents')
+  const appSearchQuery = useQuery(
+    appSearchQueryOptions(debouncedSearchTerm, debouncedAction?.key === '@app', {
+      enabled: appSearchEnabled,
+      placeholderData: keepPreviousData,
+    }),
+  )
+  const knowledgeSearchQuery = useQuery(
+    knowledgeSearchQueryOptions(debouncedSearchTerm, {
+      enabled: knowledgeSearchEnabled,
+      placeholderData: keepPreviousData,
+    }),
+  )
+  const pluginSearchQuery = useQuery(
+    pluginSearchQueryOptions(debouncedSearchTerm, defaultLocale, {
+      enabled: pluginSearchEnabled,
+      placeholderData: keepPreviousData,
+    }),
+  )
+  const skillSearchQuery = useQuery(
+    skillSearchQueryOptions(debouncedSearchTerm, {
+      enabled: skillSearchEnabled,
+      placeholderData: keepPreviousData,
+    }),
+  )
+  const agentSearchQuery = useQuery(
+    agentSearchQueryOptions(debouncedSearchTerm, {
+      enabled: agentSearchEnabled,
+      placeholderData: keepPreviousData,
+    }),
+  )
+  const isSameLocalAction =
+    currentAction?.source === 'local' &&
+    debouncedAction?.source === 'local' &&
+    getActionIdentity(normalizedSearchQuery, currentAction) ===
+      getActionIdentity(normalizedDebouncedQuery, debouncedAction)
+  const isLocalSearchDebouncing =
+    currentAction?.source === 'local' && normalizedSearchQuery !== normalizedDebouncedQuery
+  const isSameGeneralSearch =
+    currentAction === undefined &&
+    debouncedAction === undefined &&
+    !isCommandsMode &&
+    !isDebouncedCommandsMode &&
+    Boolean(normalizedSearchQuery.trim()) &&
+    Boolean(normalizedDebouncedQuery.trim())
+  let localSearchQuery = normalizedSearchQuery
+  if (isSameLocalAction || isSameGeneralSearch) localSearchQuery = normalizedDebouncedQuery
+  else if (isLocalSearchDebouncing)
+    localSearchQuery = getActionBaseQuery(normalizedSearchQuery, currentAction)
+  const localSearchEnabled = Boolean(trimmedSearchQuery) && !isCommandsMode
   const localSearchResults = useMemo(() => {
-    if (!trimmedSearchQuery || isCommandsMode) return []
+    if (!localSearchEnabled) return []
 
-    const normalizedQuery = trimmedSearchQuery.toLowerCase()
-    const action = matchAction(normalizedQuery, actions)
+    const action = matchAction(localSearchQuery, actions)
     if (action?.source === 'local') {
       return action.search(
-        normalizedQuery,
-        getActionSearchTerm(normalizedQuery, action),
+        localSearchQuery,
+        getActionSearchTerm(localSearchQuery, action),
         defaultLocale,
       )
     }
@@ -258,32 +261,49 @@ function GotoAnythingDialog() {
 
     return Object.values(actions).flatMap((candidate) => {
       if (candidate.source !== 'local' || candidate.key === '/') return []
-      return candidate.search(normalizedQuery, normalizedQuery, defaultLocale)
+      const generalSearchTerm = localSearchQuery.trimEnd()
+      return candidate.search(generalSearchTerm, generalSearchTerm, defaultLocale)
     })
-  }, [actions, defaultLocale, isCommandsMode, trimmedSearchQuery])
-  const activeRemoteQueries = [
+  }, [actions, defaultLocale, localSearchEnabled, localSearchQuery])
+  const debouncedRemoteQueries = [
     appSearchEnabled ? appSearchQuery : undefined,
     knowledgeSearchEnabled ? knowledgeSearchQuery : undefined,
     pluginSearchEnabled ? pluginSearchQuery : undefined,
+    skillSearchEnabled ? skillSearchQuery : undefined,
+    agentSearchEnabled ? agentSearchQuery : undefined,
   ].filter((query) => query !== undefined)
-  const isDebouncing = remoteSearchEnabled && searchQuery.trim() !== debouncedSearchQuery.trim()
-  const isLoading = isDebouncing || activeRemoteQueries.some((query) => query.isLoading)
-  const failedRemoteQueries = activeRemoteQueries.filter((query) => query.isError)
-  const isError =
-    activeRemoteQueries.length > 0 && failedRemoteQueries.length === activeRemoteQueries.length
+  const currentRemoteSearchIdentity = getRemoteSearchIdentity(
+    normalizedSearchQuery,
+    isCommandsMode,
+    currentAction,
+  )
+  const debouncedRemoteSearchIdentity = getRemoteSearchIdentity(
+    normalizedDebouncedQuery,
+    isDebouncedCommandsMode,
+    debouncedAction,
+  )
+  const isSameRemoteSearch =
+    currentRemoteSearchIdentity !== null &&
+    currentRemoteSearchIdentity === debouncedRemoteSearchIdentity
+  const currentRemoteQueries = isSameRemoteSearch ? debouncedRemoteQueries : []
+  const isRemoteSearchDebouncing =
+    currentRemoteSearchIdentity !== null && normalizedSearchQuery !== normalizedDebouncedQuery
+  const isDebouncing = isRemoteSearchDebouncing || isLocalSearchDebouncing
+  const isLoading =
+    isDebouncing || currentRemoteQueries.some((query) => query.isLoading || query.isFetching)
+  const failedRemoteQueries = currentRemoteQueries.filter((query) => query.isError)
+  const allRemoteSearchesFailed =
+    currentRemoteQueries.length > 0 && failedRemoteQueries.length === currentRemoteQueries.length
   const hasUnavailableServices = failedRemoteQueries.length > 0
   const queryError = failedRemoteQueries[0]?.error
   const error = queryError instanceof Error ? queryError : null
-  const remoteSearchResults = isDebouncing
-    ? []
-    : activeRemoteQueries.flatMap((query) => query.data ?? [])
+  const remoteSearchResults = currentRemoteQueries.flatMap((query) => query.data ?? [])
   const searchResults = [...localSearchResults, ...remoteSearchResults]
-  const recentResults = trimmedSearchQuery || isCommandsMode ? [] : getRecentSearchResults()
-  const dedupedResults = dedupeSearchResults(recentResults.length ? recentResults : searchResults)
+  const dedupedResults = dedupeSearchResults(searchResults)
   const groupedResults = groupSearchResults(dedupedResults)
 
-  function resetSearch() {
-    setSearchQuery('')
+  function handleDialogOpenChangeComplete(open: boolean) {
+    if (!open) setSearchQuery('')
   }
 
   useHotkey(
@@ -307,14 +327,21 @@ function GotoAnythingDialog() {
   function handleCommandSelect(commandKey: string) {
     if (commandKey.startsWith('/')) {
       const handler = slashCommandRegistry.findCommand(commandKey.slice(1))
-      if (handler?.mode === 'direct' && handler.execute) {
-        handler.execute()
+      if (handler?.isAvailable?.(commandContext) === false) return
+      if (handler?.mode === 'direct') {
+        void slashCommandRegistry.execute(handler.name, {}, commandContext)
         gotoAnythingDialogHandle.close()
         return
       }
     }
 
-    setSearchQuery(`${commandKey} `)
+    changeSearchQuery(commandKey === '/' ? '/' : `${commandKey} `)
+  }
+
+  function changeSearchQuery(query: string) {
+    setSearchQuery(query)
+    // Autocomplete finishes activating the old option before focus returns to the input.
+    queueMicrotask(() => inputRef.current?.focus())
   }
 
   function handleNavigate(result: SearchResult) {
@@ -330,28 +357,9 @@ function GotoAnythingDialog() {
       case 'workflow-node':
         if (result.metadata?.nodeId) selectWorkflowNode(result.metadata.nodeId, true)
         break
-      case 'recent':
-        if (result.path) router.push(result.path)
-        break
       default:
-        if ((result.type === 'app' || result.type === 'knowledge') && result.path) {
-          addRecentItem({
-            id: result.id,
-            title: result.title,
-            description: result.description,
-            path: result.path,
-            originalType: result.type,
-          })
-        }
         if (result.path) router.push(result.path)
     }
-  }
-
-  function handleAutocompleteOpenChange(
-    nextOpen: boolean,
-    eventDetails: AutocompleteChangeEventDetails,
-  ) {
-    if (!nextOpen && eventDetails.reason === 'escape-key') gotoAnythingDialogHandle.close()
   }
 
   function handleAutocompleteValueChange(
@@ -362,15 +370,50 @@ function GotoAnythingDialog() {
   }
 
   function selectOption(option: GotoAnythingOption) {
-    if (isCommandOption(option)) handleCommandSelect(option.shortcut)
-    else handleNavigate(option)
+    if (!isCommandOption(option)) handleNavigate(option)
+    else if (option.result) handleNavigate(option.result)
+    else handleCommandSelect(option.shortcut)
   }
 
-  const commandOptions = getCommandOptions(actions, searchQuery)
-  const autocompleteOptions: GotoAnythingOption[] = isCommandsMode ? commandOptions : dedupedResults
-  const visibleOptions = isLoading || isError ? [] : autocompleteOptions
+  function getGroupLabel(type: string) {
+    if (type === 'skill') return t(($) => $['skillManagement.title'], { ns: 'skill' })
+    if (type === 'agent') return t(($) => $['roster.title'], { ns: 'agentRoster' })
+
+    return t(($) => $[groupLabelKeys[type as keyof typeof groupLabelKeys] || `${type}s`], {
+      ns: 'app',
+    })
+  }
+
+  const isHome = !trimmedSearchQuery
+  const isScopeSelection = isCommandsMode && trimmedSearchQuery.startsWith('@')
+  const showCommands =
+    isHome || (isCommandsMode && !isScopeSelection) || (!currentAction && !isCommandsMode)
+  const optionSuggestions = isScopeSelection ? scopeOptions : showCommands ? commandOptions : []
+  const visibleOptions: GotoAnythingOption[] = [
+    ...optionSuggestions,
+    ...(isHome ? scopeOptions : []),
+    ...(!isCommandsMode ? dedupedResults : []),
+  ]
+  const optionGroups = [
+    {
+      id: isScopeSelection ? 'scopes' : 'commands',
+      label: isScopeSelection
+        ? t(($) => $['gotoAnything.selectSearchType'], { ns: 'app' })
+        : t(($) => $['gotoAnything.groups.commands'], { ns: 'app' }),
+      items: optionSuggestions,
+    },
+    ...(isHome
+      ? [
+          {
+            id: 'scopes',
+            label: t(($) => $['gotoAnything.selectSearchType'], { ns: 'app' }),
+            items: scopeOptions,
+          },
+        ]
+      : []),
+  ]
   const autocompleteResultCount = visibleOptions.length
-  const isSlashMode = searchQuery.trim().startsWith('/')
+  const isError = allRemoteSearchesFailed && autocompleteResultCount === 0
 
   let autocompleteStatus: string | null = null
   if (isLoading) autocompleteStatus = t(($) => $['gotoAnything.searching'], { ns: 'app' })
@@ -383,22 +426,31 @@ function GotoAnythingDialog() {
       count: autocompleteResultCount,
     })
 
-  let emptyStateVariant: 'loading' | 'error' | 'default' | 'no-results' | null = null
-  if (isLoading) emptyStateVariant = 'loading'
+  let emptyStateVariant: 'loading' | 'error' | 'no-results' | null = null
+  if (isLoading && autocompleteResultCount === 0) emptyStateVariant = 'loading'
   else if (isError) emptyStateVariant = 'error'
-  else if (!trimmedSearchQuery && autocompleteResultCount === 0) emptyStateVariant = 'default'
-  else if (autocompleteResultCount === 0 && !isCommandsMode) emptyStateVariant = 'no-results'
+  else if (autocompleteResultCount === 0) emptyStateVariant = 'no-results'
 
   return (
     <>
-      <SlashCommandProvider />
-      <Dialog handle={gotoAnythingDialogHandle} onOpenChange={resetSearch}>
+      <Dialog
+        handle={gotoAnythingDialogHandle}
+        onOpenChangeComplete={handleDialogOpenChangeComplete}
+      >
         <DialogPortal>
           <DialogBackdrop />
           <DialogPopup
             initialFocus={inputRef}
-            className="fixed top-1/2 left-1/2 max-h-[80dvh] w-120! max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-hidden p-0!"
+            className="fixed top-1/2 left-1/2 isolate flex max-h-[calc(100dvh-2rem)] w-160 max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden p-0"
           >
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[url('/marketplace/hero-gradient-noise.svg')] bg-cover bg-center opacity-18 dark:opacity-28"
+            />
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-linear-to-b from-components-panel-bg/20 via-components-panel-bg/70 to-components-panel-bg"
+            />
             <DialogTitle className="sr-only">
               {t(($) => $['gotoAnything.searchTitle'], { ns: 'app' })}
             </DialogTitle>
@@ -406,9 +458,9 @@ function GotoAnythingDialog() {
               items={visibleOptions}
               value={searchQuery}
               onValueChange={handleAutocompleteValueChange}
-              onOpenChange={handleAutocompleteOpenChange}
               itemToStringValue={optionToInputValue}
               filter={null}
+              grid={isCommandsMode}
               open
               inline
               autoHighlight="always"
@@ -417,7 +469,7 @@ function GotoAnythingDialog() {
             >
               <AutocompleteInputGroup
                 size="medium"
-                className="h-auto gap-3 rounded-none border-0 border-b border-divider-subtle bg-components-panel-bg-blur px-4 py-3 shadow-none focus-within:border-divider-subtle focus-within:bg-components-panel-bg-blur focus-within:shadow-none hover:border-divider-subtle hover:bg-components-panel-bg-blur data-focused:border-divider-subtle data-focused:bg-components-panel-bg-blur data-focused:shadow-none"
+                className="h-auto shrink-0 gap-3 rounded-none border-0 border-b border-divider-subtle bg-components-panel-bg-blur px-4 py-3 shadow-none focus-within:border-state-accent-solid data-focused:border-state-accent-solid"
               >
                 <span aria-hidden className="i-ri-search-line size-4 text-text-quaternary" />
                 <div className="flex min-w-0 flex-1 items-center gap-2">
@@ -426,28 +478,28 @@ function GotoAnythingDialog() {
                     size="medium"
                     aria-label={t(($) => $['gotoAnything.searchTitle'], { ns: 'app' })}
                     placeholder={t(($) => $['gotoAnything.searchPlaceholder'], { ns: 'app' })}
+                    aria-describedby={searchHintId}
                     className="px-0"
                   />
-                  {searchMode !== 'general' && (
-                    <div className="flex items-center gap-1 rounded-sm bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300">
-                      <span>{getSearchModeLabel(searchMode)}</span>
-                    </div>
-                  )}
                 </div>
-                <KbdGroup>
-                  {GOTO_ANYTHING_HOTKEY.split('+').map((key) => (
-                    <Kbd key={key}>{formatForDisplay(key)}</Kbd>
+                <KbdGroup className="hidden sm:flex">
+                  {formatForDisplay(GOTO_ANYTHING_HOTKEY, { parts: true }).map((key) => (
+                    <Kbd key={key}>{key}</Kbd>
                   ))}
                 </KbdGroup>
               </AutocompleteInputGroup>
+              <p id={searchHintId} className="sr-only">
+                {t(($) => $['gotoAnything.searchHint'], { ns: 'app' })}
+              </p>
 
               <AutocompleteStatus className="sr-only">{autocompleteStatus}</AutocompleteStatus>
 
-              <ScrollAreaRoot
-                aria-busy={isLoading || undefined}
-                className="relative h-60 min-h-0 overflow-hidden"
-              >
-                <ScrollAreaViewport className="scroll-py-1 overscroll-contain">
+              <ScrollArea className="h-120 min-h-0 shrink overflow-hidden">
+                <ScrollAreaViewport
+                  tabIndex={-1}
+                  aria-busy={isLoading || undefined}
+                  className="scroll-pt-10 scroll-pb-1 overscroll-contain"
+                >
                   <ScrollAreaContent
                     className="min-h-full w-full max-w-full"
                     style={{ minWidth: '100%' }}
@@ -456,7 +508,7 @@ function GotoAnythingDialog() {
 
                     {emptyStateVariant === 'error' && <EmptyState variant="error" error={error} />}
 
-                    {!isLoading && !isError && isCommandsMode && autocompleteResultCount === 0 && (
+                    {emptyStateVariant === 'no-results' && isCommandsMode && (
                       <div className="flex items-center justify-center py-8 text-center text-text-tertiary">
                         <div>
                           <div className="text-sm font-medium text-text-tertiary">
@@ -469,54 +521,7 @@ function GotoAnythingDialog() {
                       </div>
                     )}
 
-                    {!isLoading && !isError && isCommandsMode && autocompleteResultCount > 0 && (
-                      <AutocompleteList className="max-h-none overflow-visible p-0">
-                        <AutocompleteGroup items={commandOptions}>
-                          <AutocompleteGroupLabel className="px-4 pt-3 pb-2 text-left text-sm font-medium text-text-secondary">
-                            {isSlashMode
-                              ? t(($) => $['gotoAnything.groups.commands'], { ns: 'app' })
-                              : t(($) => $['gotoAnything.selectSearchType'], { ns: 'app' })}
-                          </AutocompleteGroupLabel>
-                          <AutocompleteCollection<CommandOption>>
-                            {(option) => (
-                              <AutocompleteItem
-                                key={option.shortcut}
-                                value={option}
-                                className="mx-4 p-2"
-                                onClick={() => selectOption(option)}
-                              >
-                                <span className="min-w-18 text-left font-mono text-xs text-text-tertiary">
-                                  {option.shortcut}
-                                </span>
-                                <span className="ml-3 text-sm text-text-secondary">
-                                  {isSlashMode
-                                    ? t(
-                                        ($) =>
-                                          $[
-                                            slashCommandDescriptionKeys[
-                                              option.shortcut as keyof typeof slashCommandDescriptionKeys
-                                            ] || option.description
-                                          ],
-                                        { ns: 'app' },
-                                      )
-                                    : t(
-                                        ($) =>
-                                          $[
-                                            actionDescriptionKeys[
-                                              option.shortcut as keyof typeof actionDescriptionKeys
-                                            ]
-                                          ],
-                                        { ns: 'app' },
-                                      )}
-                                </span>
-                              </AutocompleteItem>
-                            )}
-                          </AutocompleteCollection>
-                        </AutocompleteGroup>
-                      </AutocompleteList>
-                    )}
-
-                    {!isLoading && !isError && !isCommandsMode && emptyStateVariant && (
+                    {emptyStateVariant === 'no-results' && !isCommandsMode && (
                       <EmptyState
                         variant={emptyStateVariant}
                         searchMode={searchMode}
@@ -524,73 +529,51 @@ function GotoAnythingDialog() {
                       />
                     )}
 
-                    {!isLoading &&
-                      !isError &&
-                      !isCommandsMode &&
-                      !emptyStateVariant &&
-                      autocompleteResultCount > 0 && (
-                        <AutocompleteList className="max-h-none overflow-visible p-0">
-                          {Object.entries(groupedResults).map(([type, results]) => (
-                            <AutocompleteGroup key={type} items={results}>
-                              <AutocompleteGroupLabel className="px-4 pt-3 pb-2 text-text-secondary capitalize">
-                                {t(
-                                  ($) =>
-                                    $[
-                                      groupLabelKeys[type as keyof typeof groupLabelKeys] ||
-                                        `${type}s`
-                                    ],
-                                  { ns: 'app' },
-                                )}
-                              </AutocompleteGroupLabel>
-                              <AutocompleteCollection<SearchResult>>
-                                {(result) => (
-                                  <AutocompleteItem
-                                    key={`${result.type}-${result.id}`}
-                                    value={result}
-                                    className="mx-2 gap-3 p-3"
-                                    onClick={() => selectOption(result)}
-                                  >
-                                    {result.icon}
-                                    <div className="min-w-0 flex-1">
-                                      <div className="truncate font-medium text-text-secondary">
-                                        {result.title}
-                                      </div>
-                                      {result.description && (
-                                        <div className="mt-0.5 truncate text-xs text-text-quaternary">
-                                          {result.description}
-                                        </div>
-                                      )}
-                                    </div>
-                                    <div className="text-xs text-text-quaternary capitalize">
-                                      {result.type}
-                                    </div>
-                                  </AutocompleteItem>
-                                )}
-                              </AutocompleteCollection>
-                            </AutocompleteGroup>
-                          ))}
-                        </AutocompleteList>
-                      )}
+                    {isCommandsMode ? (
+                      <CommandGrid
+                        groups={optionGroups}
+                        label={
+                          isHome
+                            ? t(($) => $['gotoAnything.searchTitle'], { ns: 'app' })
+                            : optionGroups[0]!.label
+                        }
+                        onSelect={selectOption}
+                      />
+                    ) : (
+                      <ResultList
+                        groups={[
+                          {
+                            id: 'commands',
+                            label: getGroupLabel('command'),
+                            items: optionSuggestions,
+                          },
+                          ...Object.entries(groupedResults).map(([type, items]) => ({
+                            id: type,
+                            label: getGroupLabel(type),
+                            items,
+                          })),
+                        ]}
+                        label={t(($) => $['gotoAnything.searchTitle'], { ns: 'app' })}
+                        onSelect={selectOption}
+                      />
+                    )}
                   </ScrollAreaContent>
                 </ScrollAreaViewport>
                 <ScrollAreaScrollbar>
                   <ScrollAreaThumb />
                 </ScrollAreaScrollbar>
-              </ScrollAreaRoot>
+              </ScrollArea>
 
               <Footer
-                resultCount={autocompleteResultCount}
-                searchMode={searchMode}
+                onSelectMode={changeSearchQuery}
+                resultCount={trimmedSearchQuery ? autocompleteResultCount : null}
                 isLoading={isLoading}
-                hasUnavailableServices={hasUnavailableServices}
-                isCommandsMode={isCommandsMode}
-                hasQuery={!!searchQuery.trim()}
+                hasPartialFailure={hasUnavailableServices && !isError}
               />
             </Autocomplete>
-            <DialogCloseButton
-              className="sr-only"
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-            />
+            <DialogClose tabIndex={-1} className="sr-only">
+              {t(($) => $['operation.close'], { ns: 'common' })}
+            </DialogClose>
           </DialogPopup>
         </DialogPortal>
       </Dialog>
@@ -610,8 +593,4 @@ function GotoAnythingDialog() {
       )}
     </>
   )
-}
-
-export function GotoAnything() {
-  return <GotoAnythingDialog />
 }

@@ -1,7 +1,7 @@
 import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
-import type { ModelProvider } from './declarations'
+import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 
-type CreditAwareProvider = Pick<ModelProvider, 'provider' | 'system_configuration'>
+type CreditAwareProvider = Pick<ModelProviderSummaryResponse, 'provider' | 'system_configuration'>
 
 export const providerSupportsCredits = (
   provider: CreditAwareProvider | undefined,

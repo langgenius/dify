@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react'
 import type { Edge, Node } from '@/app/components/workflow/types'
 import { screen } from '@testing-library/react'
 import { createEdge, createNode } from '@/app/components/workflow/__tests__/fixtures'
@@ -10,16 +9,6 @@ import { useNodesInteractions } from '../../../../../hooks/use-nodes-interaction
 import { useToolIcon } from '../../../../../hooks/use-tool-icon'
 import { useNodesReadOnly } from '../../../../../hooks/use-workflow'
 import NextStep from '../index'
-
-vi.mock('@/app/components/workflow/block-selector', () => ({
-  default: ({ trigger }: { trigger: ((open: boolean) => ReactNode) | ReactNode }) => {
-    return (
-      <div data-testid="next-step-block-selector">
-        {typeof trigger === 'function' ? trigger(false) : trigger}
-      </div>
-    )
-  },
-}))
 
 vi.mock('../../../../../hooks/use-available-blocks', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../../../../hooks/use-available-blocks')>()

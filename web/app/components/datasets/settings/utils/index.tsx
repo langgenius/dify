@@ -1,7 +1,5 @@
-import type {
-  DefaultModel,
-  Model,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { ProviderWithModelsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { IndexingType } from '../../create/step-two'
 
@@ -13,8 +11,8 @@ type ShowMultiModalTipProps = {
     rerankingModelName: string
   }
   indexMethod: IndexingType | undefined
-  embeddingModelList: Model[]
-  rerankModelList: Model[]
+  embeddingModelList: ProviderWithModelsResponse[]
+  rerankModelList: ProviderWithModelsResponse[]
 }
 
 export const checkShowMultiModalTip = ({

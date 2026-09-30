@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { Registry } from '@/auth/hosts'
 import { stringifyOutput, table } from '@/framework/output'
 import { runAuthList } from './list'

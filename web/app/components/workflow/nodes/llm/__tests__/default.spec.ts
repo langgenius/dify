@@ -53,6 +53,78 @@ describe('llm default node validation', () => {
     expect(result.errorMessage).toBe('')
   })
 
+  it('should validate a configured LLM environment model reference', () => {
+    const result = nodeDefault.checkValid(
+      createPayload({ model_selector: ['env', 'for_summarize'] }),
+      t,
+      {
+        environmentVariables: [
+          {
+            id: 'env-1',
+            name: 'for_summarize',
+            value_type: 'llm',
+            value: {
+              provider: 'langgenius/anthropic/anthropic',
+              name: 'claude-sonnet',
+              mode: AppModeEnum.CHAT,
+            },
+            description: '',
+          },
+        ],
+      },
+    )
+
+    expect(result.isValid).toBe(true)
+    expect(result.errorMessage).toBe('')
+  })
+
+  it('should reject a missing LLM environment model reference', () => {
+    const result = nodeDefault.checkValid(
+      createPayload({ model_selector: ['env', 'missing'] }),
+      t,
+      { environmentVariables: [] },
+    )
+
+    expect(result.isValid).toBe(false)
+    expect(result.errorMessage).toBe('errorMsg.fieldRequired')
+  })
+
+  it('should preserve legacy non-environment model selectors as static models', () => {
+    const result = nodeDefault.checkValid(
+      createPayload({ model_selector: ['start', 'MODEL_NAME'] }),
+      t,
+      { environmentVariables: [] },
+    )
+
+    expect(result.isValid).toBe(true)
+    expect(result.errorMessage).toBe('')
+  })
+
+  it('should reject an LLM environment model whose mode differs from the node mode', () => {
+    const result = nodeDefault.checkValid(
+      createPayload({ model_selector: ['env', 'for_summarize'] }),
+      t,
+      {
+        environmentVariables: [
+          {
+            id: 'env-1',
+            name: 'for_summarize',
+            value_type: 'llm',
+            value: {
+              provider: 'langgenius/anthropic/anthropic',
+              name: 'claude-sonnet',
+              mode: AppModeEnum.COMPLETION,
+            },
+            description: '',
+          },
+        ],
+      },
+    )
+
+    expect(result.isValid).toBe(false)
+    expect(result.errorMessage).toBe('errorMsg.fieldRequired')
+  })
+
   it('should require sys.query in memory user prompt outside snippet flows', () => {
     const result = nodeDefault.checkValid(
       createPayload({

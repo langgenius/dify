@@ -1,7 +1,9 @@
 import type { NotionPage } from '@/models/common'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import PreviewPanel from '../preview-panel'
 
 vi.mock('../../../file-preview', () => ({
@@ -87,3 +89,14 @@ describe('PreviewPanel', () => {
     expect(defaultProps.hidePlanUpgradeModal).toHaveBeenCalledOnce()
   })
 })
+
+function render(ui: React.ReactElement) {
+  const { wrapper: QueryWrapper } = createConsoleQueryWrapper()
+  return renderWithConsoleState(ui, {
+    wrapper: ({ children }) => (
+      <NuqsTestingAdapter>
+        <QueryWrapper>{children}</QueryWrapper>
+      </NuqsTestingAdapter>
+    ),
+  })
+}

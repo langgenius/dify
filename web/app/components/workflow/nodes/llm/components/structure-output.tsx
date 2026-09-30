@@ -15,7 +15,7 @@ type Props = Readonly<{
 }>
 
 export function StructureOutput({ className, value, onChange }: Props) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
   const [showConfig, setShowConfig] = useState(false)
 
   function handleChange(value: SchemaRoot) {
@@ -37,7 +37,7 @@ export function StructureOutput({ className, value, onChange }: Props) {
           className="flex"
           onClick={() => setShowConfig(true)}
         >
-          <i className="mr-1 i-ri-edit-line size-3.5" aria-hidden="true" />
+          <i className="i-ri-edit-line size-3.5" aria-hidden="true" />
           <div className="system-xs-medium text-components-button-secondary-text">
             {t(($) => $['structOutput.configure'], { ns: 'app' })}
           </div>

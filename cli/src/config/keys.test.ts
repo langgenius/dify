@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { isBaseError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 import { getKey, knownKeyNames, knownKeys, lookupKey, setKey, unsetKey } from './keys'

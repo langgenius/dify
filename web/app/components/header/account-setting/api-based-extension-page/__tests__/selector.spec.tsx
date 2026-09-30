@@ -22,7 +22,7 @@ vi.mock('@/context/i18n', () => ({
       `https://docs.dify.ai${path}`,
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     apiBasedExtension: {
       get: {
@@ -49,8 +49,6 @@ vi.mock('@tanstack/react-query', () => ({
     },
   })),
 }))
-
-vi.mock('@langgenius/dify-ui/popover', async () => await import('@/__mocks__/base-ui-popover'))
 
 describe('ApiBasedExtensionSelector', () => {
   const mockOnChange = vi.fn()
@@ -94,6 +92,7 @@ describe('ApiBasedExtensionSelector', () => {
       // Act
       render(<ApiBasedExtensionSelector value="" onChange={mockOnChange} />)
       const trigger = screen.getByText('common.apiBasedExtension.selector.placeholder')
+
       fireEvent.click(trigger)
 
       // Assert

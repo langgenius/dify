@@ -1,30 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import ModifyExternalRetrievalModal from '../modify-external-retrieval-modal'
-
-vi.mock('@/app/components/base/action-button', () => ({
-  default: ({ children, onClick }: { children: React.ReactNode; onClick: () => void }) => (
-    <button data-testid="action-button" onClick={onClick}>
-      {children}
-    </button>
-  ),
-}))
-
-vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({
-    children,
-    onClick,
-    variant,
-  }: {
-    children: React.ReactNode
-    onClick: () => void
-    variant?: string
-  }) => (
-    <button data-testid={variant === 'primary' ? 'save-button' : 'cancel-button'} onClick={onClick}>
-      {children}
-    </button>
-  ),
-}))
 
 vi.mock('../../external-knowledge-base/create/RetrievalSettings', () => ({
   default: ({
@@ -83,19 +59,19 @@ describe('ModifyExternalRetrievalModal', () => {
 
   it('should call onClose when close button clicked', () => {
     render(<ModifyExternalRetrievalModal {...defaultProps} />)
-    fireEvent.click(screen.getByTestId('action-button'))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
     expect(defaultProps.onClose).toHaveBeenCalled()
   })
 
   it('should call onClose when cancel button clicked', () => {
     render(<ModifyExternalRetrievalModal {...defaultProps} />)
-    fireEvent.click(screen.getByTestId('cancel-button'))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
     expect(defaultProps.onClose).toHaveBeenCalled()
   })
 
   it('should call onSave with current values and close when save clicked', () => {
     render(<ModifyExternalRetrievalModal {...defaultProps} />)
-    fireEvent.click(screen.getByTestId('save-button'))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
     expect(defaultProps.onSave).toHaveBeenCalledWith({
       top_k: 4,
       score_threshold: 0.5,
@@ -107,14 +83,14 @@ describe('ModifyExternalRetrievalModal', () => {
   it('should save updated values after settings change', () => {
     render(<ModifyExternalRetrievalModal {...defaultProps} />)
     fireEvent.click(screen.getByTestId('change-top-k'))
-    fireEvent.click(screen.getByTestId('save-button'))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
     expect(defaultProps.onSave).toHaveBeenCalledWith(expect.objectContaining({ top_k: 10 }))
   })
 
   it('should save updated score threshold', () => {
     render(<ModifyExternalRetrievalModal {...defaultProps} />)
     fireEvent.click(screen.getByTestId('change-score'))
-    fireEvent.click(screen.getByTestId('save-button'))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
     expect(defaultProps.onSave).toHaveBeenCalledWith(
       expect.objectContaining({ score_threshold: 0.9 }),
     )
@@ -123,7 +99,7 @@ describe('ModifyExternalRetrievalModal', () => {
   it('should save updated score threshold enabled', () => {
     render(<ModifyExternalRetrievalModal {...defaultProps} />)
     fireEvent.click(screen.getByTestId('change-enabled'))
-    fireEvent.click(screen.getByTestId('save-button'))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
     expect(defaultProps.onSave).toHaveBeenCalledWith(
       expect.objectContaining({ score_threshold_enabled: true }),
     )
@@ -133,7 +109,7 @@ describe('ModifyExternalRetrievalModal', () => {
     render(<ModifyExternalRetrievalModal {...defaultProps} />)
     fireEvent.click(screen.getByTestId('change-top-k'))
     fireEvent.click(screen.getByTestId('change-score'))
-    fireEvent.click(screen.getByTestId('save-button'))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
     expect(defaultProps.onSave).toHaveBeenCalledWith(
       expect.objectContaining({ top_k: 10, score_threshold: 0.9 }),
     )

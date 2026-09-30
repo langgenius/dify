@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import NormalForm from '../normal-form'
@@ -85,6 +86,17 @@ describe('NormalForm', () => {
     vi.clearAllMocks()
     mockUseRouter.mockReturnValue({ replace: mockReplace })
     mockUseSearchParams.mockReturnValue(new URLSearchParams())
+  })
+
+  it('exposes the page title as the main heading', () => {
+    mockQueryResults(
+      nonInviteQueryResult as unknown as ReturnType<typeof useQuery>,
+      nonInviteQueryResult as unknown as ReturnType<typeof useQuery>,
+    )
+
+    render(<NormalForm />)
+
+    expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument()
   })
 
   describe('Default Redirects', () => {
@@ -204,5 +216,85 @@ describe('NormalForm', () => {
         '/signup?redirect_url=%2Fapps%3Ftag%3Dworkflow&source=pricing',
       )
     })
+  })
+
+  it('should describe password visibility through its changing action name', async () => {
+    const user = userEvent.setup()
+    mockQueryResults(
+      nonInviteQueryResult as unknown as ReturnType<typeof useQuery>,
+      nonInviteQueryResult as unknown as ReturnType<typeof useQuery>,
+    )
+
+    render(<NormalForm />)
+
+    const showPasswordButton = screen.getByRole('button', { name: 'login.showPassword' })
+    expect(showPasswordButton).not.toHaveAttribute('aria-pressed')
+
+    await user.click(showPasswordButton)
+
+    expect(screen.getByRole('button', { name: 'login.hidePassword' })).not.toHaveAttribute(
+      'aria-pressed',
+    )
+    expect(screen.getByLabelText('login.password')).toHaveAttribute('type', 'text')
+  })
+
+  it('keeps credential inputs together before secondary password actions in the tab order', async () => {
+    const user = userEvent.setup()
+    mockQueryResults(
+      nonInviteQueryResult as unknown as ReturnType<typeof useQuery>,
+      nonInviteQueryResult as unknown as ReturnType<typeof useQuery>,
+    )
+
+    render(<NormalForm />, {
+      systemFeatures: { is_email_setup: true },
+    })
+
+    const emailInput = screen.getByLabelText('login.email')
+    await user.click(emailInput)
+
+    await user.tab()
+    expect(screen.getByLabelText('login.password')).toHaveFocus()
+
+    await user.tab()
+    expect(screen.getByRole('button', { name: 'login.showPassword' })).toHaveFocus()
+
+    await user.tab()
+    expect(screen.getByRole('link', { name: 'login.forget' })).toHaveFocus()
+  })
+
+  it('associates input validation errors with the invalid credential field', async () => {
+    const user = userEvent.setup()
+    mockQueryResults(
+      nonInviteQueryResult as unknown as ReturnType<typeof useQuery>,
+      nonInviteQueryResult as unknown as ReturnType<typeof useQuery>,
+    )
+
+    render(<NormalForm />)
+
+    const emailInput = screen.getByLabelText('login.email')
+    await user.type(emailInput, 'invalid-email')
+    await user.type(screen.getByLabelText('login.password'), 'password')
+    await user.click(screen.getByRole('button', { name: 'login.signBtn' }))
+
+    const error = await screen.findByText('login.error.emailInValid')
+    expect(emailInput).toHaveAttribute('aria-invalid', 'true')
+    expect(emailInput).toHaveAccessibleDescription(error.textContent ?? '')
+    expect(emailInput).toHaveFocus()
+  })
+
+  it('should not expose SSO when it is enforced without a configured protocol', () => {
+    mockQueryResults(
+      nonInviteQueryResult as unknown as ReturnType<typeof useQuery>,
+      nonInviteQueryResult as unknown as ReturnType<typeof useQuery>,
+    )
+
+    render(<NormalForm />, {
+      systemFeatures: {
+        sso_enforced_for_signin: true,
+        sso_enforced_for_signin_protocol: null,
+      },
+    })
+
+    expect(screen.queryByRole('button', { name: 'login.withSSO' })).not.toBeInTheDocument()
   })
 })

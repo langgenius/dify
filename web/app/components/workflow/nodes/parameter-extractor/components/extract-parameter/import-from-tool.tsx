@@ -8,13 +8,12 @@ import type {
 } from '@/app/components/workflow/block-selector/types'
 import type { BlockEnum } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
 import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { CollectionType } from '@/app/components/tools/types'
 import { useAllBuiltInTools, useAllCustomTools, useAllWorkflowTools } from '@/service/use-tools'
-import { canFindTool } from '@/utils'
+import { matchesProviderReference } from '@/utils/provider-reference'
 import BlockSelector from '../../../../block-selector'
 import { TabType } from '../../../../block-selector/types'
 
@@ -36,7 +35,7 @@ function toParmExactParams(toolParams: ToolParameter[], lan: string): Param[] {
   })
 }
 const ImportFromTool: FC<Props> = ({ onImport }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflowModels'])
   const language = useLanguage()
 
   const { data: buildInTools } = useAllBuiltInTools()
@@ -60,7 +59,9 @@ const ImportFromTool: FC<Props> = ({ onImport }) => {
             return []
         }
       })()
-      const currCollection = currentTools.find((item) => canFindTool(item.id, provider_id))
+      const currCollection = currentTools.find((item) =>
+        matchesProviderReference(item, provider_id),
+      )
       const currTool = currCollection?.tools.find((tool) => tool.name === tool_name)
       const toExactParams = (currTool?.parameters || []).filter((item) => item.form === 'llm')
       const formattedParams = toParmExactParams(toExactParams, language)
@@ -69,19 +70,14 @@ const ImportFromTool: FC<Props> = ({ onImport }) => {
     [buildInTools, customTools, language, onImport, workflowTools],
   )
 
-  const renderTrigger = useCallback(
-    (open: boolean) => {
-      return (
-        <Button
-          variant="ghost"
-          size="small"
-          className={cn('text-text-tertiary', open && 'bg-state-base-hover')}
-        >
-          {t(($) => $[`${i18nPrefix}.importFromTool`], { ns: 'workflow' })}
-        </Button>
-      )
-    },
-    [t],
+  const triggerElement = (
+    <Button
+      variant="ghost"
+      size="small"
+      className="text-text-tertiary data-popup-open:bg-state-base-hover data-popup-open:hover:bg-components-button-ghost-bg-hover"
+    >
+      {t(($) => $[`${i18nPrefix}.importFromTool`], { ns: 'workflowModels' })}
+    </Button>
   )
 
   return (
@@ -89,7 +85,7 @@ const ImportFromTool: FC<Props> = ({ onImport }) => {
       placement="bottom-end"
       sideOffset={4}
       alignOffset={52}
-      trigger={renderTrigger}
+      trigger={triggerElement}
       onSelect={handleSelectTool}
       standalonePanel={TabType.Tools}
     />

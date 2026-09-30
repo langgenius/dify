@@ -2,7 +2,7 @@ import type { ILanguageSelectProps } from '../index'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { languages } from '@/i18n-config/language'
+import { languages } from '@/i18n/language'
 import LanguageSelect from '../index'
 
 const supportedLanguages = languages.filter((language) => language.supported)
@@ -110,30 +110,6 @@ describe('LanguageSelect', () => {
 
     it('should ignore null values emitted by the select control', async () => {
       vi.resetModules()
-      vi.doMock('@langgenius/dify-ui/select', () => ({
-        Select: ({
-          onValueChange,
-          children,
-        }: {
-          onValueChange?: (value: string | null) => void
-          children: React.ReactNode
-        }) => {
-          React.useEffect(() => {
-            onValueChange?.(null)
-          }, [onValueChange])
-          return <div>{children}</div>
-        },
-        SelectTrigger: ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
-          <button type="button" {...props}>
-            {children}
-          </button>
-        ),
-        SelectValue: ({ placeholder }: { placeholder?: React.ReactNode }) => <>{placeholder}</>,
-        SelectContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-        SelectItem: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-        SelectItemText: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
-        SelectItemIndicator: () => null,
-      }))
 
       const { default: IsolatedLanguageSelect } = await import('../index')
       const onSelect = vi.fn()
@@ -155,7 +131,7 @@ describe('LanguageSelect', () => {
 
       const trigger = screen.getByRole('combobox', { name: 'language' })
       expect(trigger).toBeDisabled()
-      expect(trigger).toHaveClass('cursor-not-allowed')
+      expect(trigger).toHaveAttribute('data-disabled')
     })
 
     it('should not open the listbox when disabled', () => {

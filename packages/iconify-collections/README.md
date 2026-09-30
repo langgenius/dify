@@ -1,6 +1,6 @@
 # @dify/iconify-collections
 
-Pre-generated Iconify collections for Dify custom SVG icons. The web app imports these collections from this package so Tailwind does not need to scan and build custom SVG icon data from the old `web/app/components/base/icons/src` tree during dev startup.
+Pre-generated Iconify collections for Dify custom SVG icons. The web app imports these collections from this package and renders icons with Tailwind CSS classes.
 
 ## Adding Custom SVG Icons
 
@@ -38,6 +38,6 @@ becomes:
 <span aria-hidden className="i-custom-vender-integrations-mcp size-4" />
 ```
 
-Do not add new generated React icon components or JSON files under `web/app/components/base/icons/src/...` for new custom SVG icons. That path is legacy; new custom icons should flow through this package and be consumed as `i-custom-*` classes.
+Custom vector icons flow through this package and are consumed as `i-custom-*` classes. Keep bitmap images (including SVGs embedding raster images) in their owning feature asset directory and render them as images.
 
 When reviewing generated `icons.json` diffs, check that unrelated existing icon groups did not lose or change their intrinsic `width` and `height`. If a group is layout-sensitive, add it to `scripts/check-icon-dimensions.ts`.

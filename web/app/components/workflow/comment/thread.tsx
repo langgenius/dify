@@ -12,6 +12,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
   RiArrowDownSLine,
@@ -22,14 +23,13 @@ import {
   RiDeleteBinLine,
   RiMoreFill,
 } from '@remixicon/react'
-import { useAtomValue } from 'jotai'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useReactFlow, useViewport } from 'reactflow'
-import Divider from '@/app/components/base/divider'
 import InlineDeleteConfirm from '@/app/components/base/inline-delete-confirm'
 import { getUserColor } from '@/app/components/workflow/collaboration/utils/user-color'
-import { userProfileAtom, userProfileIdAtom } from '@/context/account-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { useParams } from '@/next/navigation'
 import { useStore } from '../store'
@@ -68,7 +68,10 @@ const ThreadMessage: FC<{
   className?: string
 }> = ({ authorId, authorName, avatarUrl, createdAt, content, mentionableNames, className }) => {
   const { formatTimeFromNow } = useFormatTimeFromNow()
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const isCurrentUser = authorId === currentUserId
   const userColor = isCurrentUser ? undefined : getUserColor(authorId)
 
@@ -179,9 +182,12 @@ export const CommentThread: FC<CommentThreadProps> = memo(
     const appId = params.appId as string
     const { flowToScreenPosition } = useReactFlow()
     const viewport = useViewport()
-    const userProfile = useAtomValue(userProfileAtom)
+    const { data: userProfile } = useSuspenseQuery({
+      ...userProfileQueryOptions(),
+      select: (data) => data.profile,
+    })
     const currentUserId = userProfile.id
-    const { t } = useTranslation()
+    const { t } = useTranslation(['common', 'workflowComments'])
     const [replyContent, setReplyContent] = useState('')
     const [editingCommentContent, setEditingCommentContent] = useState('')
     const [activeReplyMenuId, setActiveReplyMenuId] = useState<string | null>(null)
@@ -195,7 +201,6 @@ export const CommentThread: FC<CommentThreadProps> = memo(
 
     // Focus management refs
     const replyInputRef = useRef<HTMLTextAreaElement>(null)
-    const threadRef = useRef<HTMLDivElement>(null)
 
     // Get mentionable users from store
     const mentionUsersFromStore = useStore((state) =>
@@ -230,35 +235,17 @@ export const CommentThread: FC<CommentThreadProps> = memo(
       [setCommentPreviewHovering],
     )
 
-    // P0: Auto-focus reply input when thread opens or comment changes
+    const canReply = Boolean(onReply)
+
+    // Focus on thread transitions, not callback changes after position updates.
     useEffect(() => {
       const timer = setTimeout(() => {
-        if (replyInputRef.current && !editingReply.id && !isCommentEditing && onReply)
+        if (replyInputRef.current && !editingReply.id && !isCommentEditing && canReply)
           replyInputRef.current.focus()
       }, 100)
 
       return () => clearTimeout(timer)
-    }, [comment.id, editingReply.id, isCommentEditing, onReply])
-
-    // P2: Handle Esc key to close thread
-    useEffect(() => {
-      const handleKeyDown = (e: KeyboardEvent) => {
-        // Don't intercept if actively editing a reply
-        if (editingReply.id || isCommentEditing) return
-
-        // Don't intercept if mention dropdown is open (let MentionInput handle it)
-        if (document.querySelector('[data-mention-dropdown]')) return
-
-        if (e.key === 'Escape') {
-          e.preventDefault()
-          e.stopPropagation()
-          onClose()
-        }
-      }
-
-      document.addEventListener('keydown', handleKeyDown, true)
-      return () => document.removeEventListener('keydown', handleKeyDown, true)
-    }, [onClose, editingReply.id, isCommentEditing])
+    }, [comment.id, editingReply.id, isCommentEditing, canReply])
 
     const handleReplySubmit = useCallback(
       async (content: string, mentionedUserIds: string[]) => {
@@ -440,16 +427,23 @@ export const CommentThread: FC<CommentThreadProps> = memo(
         onMouseEnter={() => setCommentPreviewHovering(true)}
         onMouseLeave={() => setCommentPreviewHovering(false)}
       >
+        {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- The thread handles bubbling Escape after its child editor and menus have handled it. */}
         <div
-          ref={threadRef}
+          onKeyDown={(event) => {
+            if (event.defaultPrevented || event.nativeEvent.isComposing || event.key !== 'Escape')
+              return
+            if (editingReply.id || isCommentEditing) return
+            event.preventDefault()
+            event.stopPropagation()
+            onClose()
+          }}
           className="relative flex h-90 flex-col overflow-hidden rounded-2xl border border-components-panel-border bg-components-panel-bg shadow-xl"
           role="dialog"
-          aria-modal="true"
           aria-labelledby="comment-thread-title"
         >
           <div className="flex items-center justify-between rounded-t-2xl border-b border-components-panel-border bg-components-panel-bg-blur px-4 py-3">
             <div id="comment-thread-title" className="font-semibold text-text-primary uppercase">
-              {t(($) => $['comments.panelTitle'], { ns: 'workflow' })}
+              {t(($) => $['comments.panelTitle'], { ns: 'workflowComments' })}
             </div>
             <div className="flex items-center gap-1">
               <Tooltip>
@@ -462,14 +456,16 @@ export const CommentThread: FC<CommentThreadProps> = memo(
                         'flex size-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled',
                       )}
                       onClick={onDelete}
-                      aria-label={t(($) => $['comments.aria.deleteComment'], { ns: 'workflow' })}
+                      aria-label={t(($) => $['comments.aria.deleteComment'], {
+                        ns: 'workflowComments',
+                      })}
                     >
                       <RiDeleteBinLine className="size-4" />
                     </button>
                   }
                 />
-                <TooltipContent placement="top" className="px-2! py-1.5!">
-                  {t(($) => $['comments.aria.deleteComment'], { ns: 'workflow' })}
+                <TooltipContent placement="top">
+                  {t(($) => $['comments.aria.deleteComment'], { ns: 'workflowComments' })}
                 </TooltipContent>
               </Tooltip>
               <Tooltip>
@@ -482,7 +478,9 @@ export const CommentThread: FC<CommentThreadProps> = memo(
                         'flex size-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled',
                       )}
                       onClick={onResolve}
-                      aria-label={t(($) => $['comments.aria.resolveComment'], { ns: 'workflow' })}
+                      aria-label={t(($) => $['comments.aria.resolveComment'], {
+                        ns: 'workflowComments',
+                      })}
                     >
                       {comment.resolved ? (
                         <RiCheckboxCircleFill className="size-4" />
@@ -492,11 +490,11 @@ export const CommentThread: FC<CommentThreadProps> = memo(
                     </button>
                   }
                 />
-                <TooltipContent placement="top" className="px-2! py-1.5!">
-                  {t(($) => $['comments.aria.resolveComment'], { ns: 'workflow' })}
+                <TooltipContent placement="top">
+                  {t(($) => $['comments.aria.resolveComment'], { ns: 'workflowComments' })}
                 </TooltipContent>
               </Tooltip>
-              <Divider type="vertical" className="h-3.5" />
+              <Separator orientation="vertical" className="mx-2 h-3.5" />
               <Tooltip>
                 <TooltipTrigger
                   render={
@@ -507,14 +505,16 @@ export const CommentThread: FC<CommentThreadProps> = memo(
                         'flex size-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled',
                       )}
                       onClick={onPrev}
-                      aria-label={t(($) => $['comments.aria.previousComment'], { ns: 'workflow' })}
+                      aria-label={t(($) => $['comments.aria.previousComment'], {
+                        ns: 'workflowComments',
+                      })}
                     >
                       <RiArrowUpSLine className="size-4" />
                     </button>
                   }
                 />
-                <TooltipContent placement="top" className="px-2! py-1.5!">
-                  {t(($) => $['comments.aria.previousComment'], { ns: 'workflow' })}
+                <TooltipContent placement="top">
+                  {t(($) => $['comments.aria.previousComment'], { ns: 'workflowComments' })}
                 </TooltipContent>
               </Tooltip>
               <Tooltip>
@@ -527,21 +527,23 @@ export const CommentThread: FC<CommentThreadProps> = memo(
                         'flex size-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled',
                       )}
                       onClick={onNext}
-                      aria-label={t(($) => $['comments.aria.nextComment'], { ns: 'workflow' })}
+                      aria-label={t(($) => $['comments.aria.nextComment'], {
+                        ns: 'workflowComments',
+                      })}
                     >
                       <RiArrowDownSLine className="size-4" />
                     </button>
                   }
                 />
-                <TooltipContent placement="top" className="px-2! py-1.5!">
-                  {t(($) => $['comments.aria.nextComment'], { ns: 'workflow' })}
+                <TooltipContent placement="top">
+                  {t(($) => $['comments.aria.nextComment'], { ns: 'workflowComments' })}
                 </TooltipContent>
               </Tooltip>
               <button
                 type="button"
                 className="flex size-6 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
                 onClick={onClose}
-                aria-label={t(($) => $['comments.aria.closeComment'], { ns: 'workflow' })}
+                aria-label={t(($) => $['comments.aria.closeComment'], { ns: 'workflowComments' })}
               >
                 <RiCloseLine className="size-4" />
               </button>
@@ -562,14 +564,16 @@ export const CommentThread: FC<CommentThreadProps> = memo(
                   >
                     <DropdownMenuTrigger
                       className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
-                      aria-label={t(($) => $['comments.aria.commentActions'], { ns: 'workflow' })}
+                      aria-label={t(($) => $['comments.aria.commentActions'], {
+                        ns: 'workflowComments',
+                      })}
                     >
                       <RiMoreFill className="size-4" />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent
                       placement="bottom-end"
                       sideOffset={4}
-                      popupClassName="w-36 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[10px]"
+                      className="w-36 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[10px]"
                     >
                       <button
                         className="flex w-full items-center justify-start rounded-xl px-3 py-2 text-left text-sm text-text-secondary hover:bg-state-base-hover"
@@ -578,7 +582,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(
                           handleStartCommentEdit()
                         }}
                       >
-                        {t(($) => $['comments.actions.editComment'], { ns: 'workflow' })}
+                        {t(($) => $['comments.actions.editComment'], { ns: 'workflowComments' })}
                       </button>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -590,7 +594,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(
                     <Avatar
                       name={
                         comment.created_by_account?.name ||
-                        t(($) => $['comments.fallback.user'], { ns: 'workflow' })
+                        t(($) => $['comments.fallback.user'], { ns: 'workflowComments' })
                       }
                       avatar={comment.created_by_account?.avatar_url || null}
                       size="sm"
@@ -605,7 +609,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(
                         onSubmit={handleCommentEditSubmit}
                         onCancel={handleCancelCommentEdit}
                         placeholder={t(($) => $['comments.placeholder.editComment'], {
-                          ns: 'workflow',
+                          ns: 'workflowComments',
                         })}
                         disabled={loading}
                         loading={isSubmittingEdit}
@@ -621,7 +625,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(
                   authorId={comment.created_by_account?.id || ''}
                   authorName={
                     comment.created_by_account?.name ||
-                    t(($) => $['comments.fallback.user'], { ns: 'workflow' })
+                    t(($) => $['comments.fallback.user'], { ns: 'workflowComments' })
                   }
                   avatarUrl={comment.created_by_account?.avatar_url || null}
                   createdAt={comment.created_at ?? comment.updated_at ?? 0}
@@ -658,7 +662,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(
                             <DropdownMenuTrigger
                               className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
                               aria-label={t(($) => $['comments.aria.replyActions'], {
-                                ns: 'workflow',
+                                ns: 'workflowComments',
                               })}
                             >
                               <RiMoreFill className="size-4" />
@@ -666,7 +670,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(
                             <DropdownMenuContent
                               placement="bottom-end"
                               sideOffset={4}
-                              popupClassName="w-36 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[10px]"
+                              className="w-36 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[10px]"
                               data-reply-menu
                             >
                               <div
@@ -679,7 +683,9 @@ export const CommentThread: FC<CommentThreadProps> = memo(
                                     handleStartEdit(reply)
                                   }}
                                 >
-                                  {t(($) => $['comments.actions.editReply'], { ns: 'workflow' })}
+                                  {t(($) => $['comments.actions.editReply'], {
+                                    ns: 'workflowComments',
+                                  })}
                                 </button>
                                 <button
                                   className="text-negative flex w-full items-center justify-start rounded-b-xl px-3 py-2 text-left text-sm text-text-secondary hover:bg-state-base-hover"
@@ -694,7 +700,9 @@ export const CommentThread: FC<CommentThreadProps> = memo(
                                     }
                                   }}
                                 >
-                                  {t(($) => $['comments.actions.deleteReply'], { ns: 'workflow' })}
+                                  {t(($) => $['comments.actions.deleteReply'], {
+                                    ns: 'workflowComments',
+                                  })}
                                 </button>
                               </div>
 
@@ -703,7 +711,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(
                               >
                                 <InlineDeleteConfirm
                                   title={t(($) => $['comments.actions.deleteReply'], {
-                                    ns: 'workflow',
+                                    ns: 'workflowComments',
                                   })}
                                   onConfirm={() => {
                                     setDeletingReplyId(null)
@@ -726,7 +734,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(
                             <Avatar
                               name={
                                 reply.created_by_account?.name ||
-                                t(($) => $['comments.fallback.user'], { ns: 'workflow' })
+                                t(($) => $['comments.fallback.user'], { ns: 'workflowComments' })
                               }
                               avatar={reply.created_by_account?.avatar_url || null}
                               size="sm"
@@ -745,7 +753,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(
                                 onSubmit={handleEditSubmit}
                                 onCancel={handleCancelEdit}
                                 placeholder={t(($) => $['comments.placeholder.editReply'], {
-                                  ns: 'workflow',
+                                  ns: 'workflowComments',
                                 })}
                                 disabled={loading}
                                 loading={replyUpdating || isSubmittingEdit}
@@ -761,7 +769,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(
                           authorId={reply.created_by_account?.id || ''}
                           authorName={
                             reply.created_by_account?.name ||
-                            t(($) => $['comments.fallback.user'], { ns: 'workflow' })
+                            t(($) => $['comments.fallback.user'], { ns: 'workflowComments' })
                           }
                           avatarUrl={reply.created_by_account?.avatar_url || null}
                           createdAt={reply.created_at ?? 0}
@@ -777,7 +785,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(
           </div>
           {loading && (
             <div className="absolute inset-0 z-30 flex items-center justify-center bg-components-panel-bg/70 text-sm text-text-tertiary">
-              {t(($) => $['comments.loading'], { ns: 'workflow' })}
+              {t(($) => $['comments.loading'], { ns: 'workflowComments' })}
             </div>
           )}
           {onReply && (
@@ -795,7 +803,9 @@ export const CommentThread: FC<CommentThreadProps> = memo(
                     value={replyContent}
                     onChange={setReplyContent}
                     onSubmit={handleReplySubmit}
-                    placeholder={t(($) => $['comments.placeholder.reply'], { ns: 'workflow' })}
+                    placeholder={t(($) => $['comments.placeholder.reply'], {
+                      ns: 'workflowComments',
+                    })}
                     disabled={loading}
                     loading={replySubmitting}
                   />

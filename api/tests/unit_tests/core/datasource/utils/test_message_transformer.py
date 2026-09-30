@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -40,9 +40,14 @@ class TestDatasourceFileMessageTransformer:
     def test_transform_image_message_success(self, mock_guess_ext, mock_tool_file_manager_cls):
         # Setup
         mock_manager = mock_tool_file_manager_cls.return_value
-        mock_tool_file = MagicMock(spec=ToolFile)
+        mock_tool_file = ToolFile(
+            user_id="user-id",
+            tenant_id="tenant-id",
+            conversation_id="conversation-id",
+            file_key="test-key",
+            mimetype="image/png",
+        )
         mock_tool_file.id = "file_id_123"
-        mock_tool_file.mimetype = "image/png"
         mock_manager.create_file_by_url.return_value = mock_tool_file
         mock_guess_ext.return_value = ".png"
 
@@ -101,9 +106,14 @@ class TestDatasourceFileMessageTransformer:
     def test_transform_blob_message_image(self, mock_guess_ext, mock_tool_file_manager_cls):
         # Setup
         mock_manager = mock_tool_file_manager_cls.return_value
-        mock_tool_file = MagicMock(spec=ToolFile)
+        mock_tool_file = ToolFile(
+            user_id="user-id",
+            tenant_id="tenant-id",
+            conversation_id="conversation-id",
+            file_key="test-key",
+            mimetype="image/jpeg",
+        )
         mock_tool_file.id = "blob_id_456"
-        mock_tool_file.mimetype = "image/jpeg"
         mock_manager.create_file_by_raw.return_value = mock_tool_file
         mock_guess_ext.return_value = ".jpg"
 
@@ -137,9 +147,14 @@ class TestDatasourceFileMessageTransformer:
     ):
         # Setup
         mock_manager = mock_tool_file_manager_cls.return_value
-        mock_tool_file = MagicMock(spec=ToolFile)
+        mock_tool_file = ToolFile(
+            user_id="user-id",
+            tenant_id="tenant-id",
+            conversation_id="conversation-id",
+            file_key="test-key",
+            mimetype="application/pdf",
+        )
         mock_tool_file.id = "blob_id_789"
-        mock_tool_file.mimetype = "application/pdf"
         mock_manager.create_file_by_raw.return_value = mock_tool_file
         mock_guess_type.return_value = ("application/pdf", None)
         mock_guess_ext.return_value = ".pdf"
@@ -183,17 +198,18 @@ class TestDatasourceFileMessageTransformer:
 
     def test_transform_file_tool_file_image(self):
         # Setup
-        mock_file = MagicMock(spec=File)
-        mock_file.transfer_method = FileTransferMethod.TOOL_FILE
-        mock_file.related_id = "related_123"
-        mock_file.extension = ".png"
-        mock_file.type = FileType.IMAGE
+        file = File(
+            transfer_method=FileTransferMethod.TOOL_FILE,
+            reference="related_123",
+            extension=".png",
+            file_type=FileType.IMAGE,
+        )
 
         messages = [
             DatasourceMessage(
                 type=DatasourceMessage.MessageType.FILE,
                 message=DatasourceMessage.TextMessage(text="ignored"),
-                meta={"file": mock_file},
+                meta={"file": file},
             )
         ]
 
@@ -211,17 +227,18 @@ class TestDatasourceFileMessageTransformer:
 
     def test_transform_file_tool_file_binary(self):
         # Setup
-        mock_file = MagicMock(spec=File)
-        mock_file.transfer_method = FileTransferMethod.TOOL_FILE
-        mock_file.related_id = "related_456"
-        mock_file.extension = ".txt"
-        mock_file.type = FileType.DOCUMENT
+        file = File(
+            transfer_method=FileTransferMethod.TOOL_FILE,
+            reference="related_456",
+            extension=".txt",
+            file_type=FileType.DOCUMENT,
+        )
 
         messages = [
             DatasourceMessage(
                 type=DatasourceMessage.MessageType.FILE,
                 message=DatasourceMessage.TextMessage(text="ignored"),
-                meta={"file": mock_file},
+                meta={"file": file},
             )
         ]
 
@@ -239,13 +256,16 @@ class TestDatasourceFileMessageTransformer:
 
     def test_transform_file_other_transfer_method(self):
         # Setup
-        mock_file = MagicMock(spec=File)
-        mock_file.transfer_method = FileTransferMethod.REMOTE_URL
+        file = File(
+            transfer_method=FileTransferMethod.REMOTE_URL,
+            remote_url="https://example.com/image.png",
+            file_type=FileType.IMAGE,
+        )
 
         msg = DatasourceMessage(
             type=DatasourceMessage.MessageType.FILE,
             message=DatasourceMessage.TextMessage(text="remote image"),
-            meta={"file": mock_file},
+            meta={"file": file},
         )
         messages = [msg]
 
@@ -291,7 +311,13 @@ class TestDatasourceFileMessageTransformer:
         # This tests line 70 where filename might be None
         with patch("core.datasource.utils.message_transformer.ToolFileManager") as mock_tool_file_manager_cls:
             mock_manager = mock_tool_file_manager_cls.return_value
-            mock_tool_file = MagicMock(spec=ToolFile)
+            mock_tool_file = ToolFile(
+                user_id="user-id",
+                tenant_id="tenant-id",
+                conversation_id="conversation-id",
+                file_key="test-key",
+                mimetype="text/plain",
+            )
             mock_tool_file.id = "blob_id_no_name"
             mock_tool_file.mimetype = "application/octet-stream"
             mock_manager.create_file_by_raw.return_value = mock_tool_file

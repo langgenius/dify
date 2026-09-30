@@ -40,7 +40,7 @@ export const usePipelineInit = () => {
           .filter((env) => env.value_type === 'secret')
           .reduce(
             (acc, env) => {
-              acc[env.id] = env.value
+              if (typeof env.value === 'string') acc[env.id] = env.value
               return acc
             },
             {} as Record<string, string>,
@@ -53,6 +53,7 @@ export const usePipelineInit = () => {
       )
       setSyncWorkflowDraftHash(res.hash)
       setRagPipelineVariables?.(res.rag_pipeline_variables || [])
+      workflowStore.setState({ isWorkflowDataLoaded: true })
       setIsLoading(false)
     } catch (error: any) {
       if (error && error.json && !error.bodyUsed && datasetId) {

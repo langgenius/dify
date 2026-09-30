@@ -1,4 +1,5 @@
 'use client'
+
 import type { FC } from 'react'
 import type {
   HandleAddCondition,
@@ -9,6 +10,7 @@ import type {
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import type { DataSet } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { intersectionBy } from 'es-toolkit/compat'
 import { produce } from 'immer'
 import { useAtomValue } from 'jotai'
@@ -29,9 +31,9 @@ import {
   getMultipleRetrievalConfig,
   getSelectedDatasetsMode,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/utils'
-import { userProfileIdAtom } from '@/context/account-state'
 import ConfigContext from '@/context/debug-configuration'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { AppModeEnum } from '@/types/app'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import FeaturePanel from '../base/feature-panel'
@@ -46,8 +48,11 @@ type Props = Readonly<{
   hideMetadataFilter?: boolean
 }>
 const DatasetConfig: FC<Props> = ({ readonly, hideMetadataFilter }) => {
-  const { t } = useTranslation()
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { t } = useTranslation(['appDebug'])
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const {
     mode,
@@ -289,7 +294,7 @@ const DatasetConfig: FC<Props> = ({ readonly, hideMetadataFilter }) => {
   return (
     <FeaturePanel
       className="mt-2"
-      title={t(($) => $['feature.dataSet.title'], { ns: 'appDebug' })}
+      title={<h2>{t(($) => $['feature.dataSet.title'], { ns: 'appDebug' })}</h2>}
       headerRight={
         !readonly && (
           <div className="flex items-center gap-1">

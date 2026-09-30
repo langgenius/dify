@@ -140,7 +140,7 @@ class TestGetDynamicSelectOptionsTrigger:
         result = PluginParameterService.get_dynamic_select_options(
             tenant_id="t1",
             user_id="u1",
-            plugin_id="p1",
+            plugin_id="org/plugin",
             provider="github",
             action="on_push",
             parameter="branch",
@@ -149,6 +149,11 @@ class TestGetDynamicSelectOptionsTrigger:
         )
 
         assert result == ["opt"]
+        builder_call = mock_builder_svc.get_subscription_builder.call_args.kwargs
+        assert builder_call["tenant_id"] == "t1"
+        assert builder_call["user_id"] == "u1"
+        assert str(builder_call["provider_id"]) == "org/plugin/github"
+        assert builder_call["subscription_builder_id"] == "builder-1"
 
     @patch("services.plugin.plugin_parameter_service.DynamicSelectClient")
     @patch("services.plugin.plugin_parameter_service.TriggerProviderService")
@@ -166,7 +171,7 @@ class TestGetDynamicSelectOptionsTrigger:
         result = PluginParameterService.get_dynamic_select_options(
             tenant_id="t1",
             user_id="u1",
-            plugin_id="p1",
+            plugin_id="org/plugin",
             provider="github",
             action="on_push",
             parameter="branch",
@@ -186,7 +191,7 @@ class TestGetDynamicSelectOptionsTrigger:
             PluginParameterService.get_dynamic_select_options(
                 tenant_id="t1",
                 user_id="u1",
-                plugin_id="p1",
+                plugin_id="org/plugin",
                 provider="github",
                 action="on_push",
                 parameter="branch",

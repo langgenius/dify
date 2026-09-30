@@ -1,11 +1,10 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { InputField } from '@/app/components/base/icons/src/vender/pipeline'
 import { useStore } from '@/app/components/workflow/store'
 
 const InputFieldButton = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetPipeline'])
   const setShowInputFieldPanel = useStore((state) => state.setShowInputFieldPanel)
   const setShowEnvPanel = useStore((state) => state.setShowEnvPanel)
   const handleClick = useCallback(() => {
@@ -14,9 +13,9 @@ const InputFieldButton = () => {
   }, [setShowInputFieldPanel, setShowEnvPanel])
 
   return (
-    <Button variant="secondary" className="flex gap-x-0.5" onClick={handleClick}>
-      <InputField className="size-4" />
-      <span className="px-0.5">{t(($) => $.inputField, { ns: 'datasetPipeline' })}</span>
+    <Button variant="secondary" className="flex" onClick={handleClick}>
+      <span aria-hidden className="i-custom-vender-pipeline-input-field size-4" />
+      <span>{t(($) => $.inputField, { ns: 'datasetPipeline' })}</span>
     </Button>
   )
 }

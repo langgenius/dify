@@ -2,7 +2,7 @@ import type { ChatWithHistoryContextValue } from '../../context'
 import type { AppData, ConversationItem } from '@/models/share'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useChatWithHistoryContext } from '../../context'
 import Header from '../index'
 
@@ -14,23 +14,6 @@ vi.mock('../../context', () => ({
 // Mock InputsFormContent
 vi.mock('@/app/components/base/chat/chat-with-history/inputs-form/content', () => ({
   default: () => <div data-testid="inputs-form-content">InputsFormContent</div>,
-}))
-
-vi.mock('@langgenius/dify-ui/dropdown-menu', () => import('@/__mocks__/base-ui-dropdown-menu'))
-vi.mock('@langgenius/dify-ui/tooltip', () => import('@/__mocks__/base-ui-tooltip'))
-
-// Mock Dialog to avoid Base UI focus/portal behavior in tests
-vi.mock('@langgenius/dify-ui/dialog', () => ({
-  Dialog: ({ children, open }: { children: React.ReactNode; open?: boolean }) => {
-    if (!open) return null
-    return <div data-testid="modal">{children}</div>
-  },
-  DialogContent: ({ children }: { children: React.ReactNode }) => (
-    <div role="dialog" data-testid="modal-content">
-      {children}
-    </div>
-  ),
-  DialogTitle: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
 const mockAppData: AppData = {
@@ -108,10 +91,8 @@ describe('Header Component', () => {
       const handleNewConversation = vi.fn()
       setup({ handleNewConversation, sidebarCollapseState: true, currentConversationId: 'conv-1' })
 
-      const buttons = screen.getAllByRole('button')
-      // Sidebar, NewChat, ResetChat (3)
-      const resetChatBtn = buttons[buttons.length - 1]
-      await userEvent.click(resetChatBtn!)
+      const resetChatBtn = screen.getByRole('button', { name: 'share.chat.resetChat' })
+      await userEvent.click(resetChatBtn)
 
       expect(handleNewConversation).toHaveBeenCalled()
     })
@@ -120,9 +101,8 @@ describe('Header Component', () => {
       const handleSidebarCollapse = vi.fn()
       setup({ handleSidebarCollapse, sidebarCollapseState: true })
 
-      const buttons = screen.getAllByRole('button')
-      const sidebarBtn = buttons[0]
-      await userEvent.click(sidebarBtn!)
+      const sidebarBtn = screen.getByRole('button', { name: 'layout.sidebar.expandSidebar' })
+      await userEvent.click(sidebarBtn)
 
       expect(handleSidebarCollapse).toHaveBeenCalledWith(false)
     })
@@ -357,10 +337,8 @@ describe('Header Component', () => {
         currentConversationId: 'conv-1',
       })
 
-      const buttons = screen.getAllByRole('button')
-      // Sidebar, NewChat, ResetChat (3)
-      const newChatBtn = buttons[1]
-      expect(newChatBtn)!.toBeDisabled()
+      const newChatBtn = screen.getByRole('button', { name: 'share.chat.newChatTip' })
+      expect(newChatBtn).toBeDisabled()
     })
 
     it('should handle New Chat button state when currentConversationId is missing and isResponding is false', () => {
@@ -370,10 +348,8 @@ describe('Header Component', () => {
         currentConversationId: '',
       })
 
-      const buttons = screen.getAllByRole('button')
-      // Sidebar, NewChat (2)
-      const newChatBtn = buttons[1]
-      expect(newChatBtn)!.toBeDisabled()
+      const newChatBtn = screen.getByRole('button', { name: 'share.chat.newChatTip' })
+      expect(newChatBtn).toBeDisabled()
     })
 
     it('should not render operation menu if conversation id is missing', () => {

@@ -37,7 +37,11 @@ const createFileConfig = (overrides: Partial<FileUpload> = {}): FileUpload =>
 function renderAndOpen(props: Partial<React.ComponentProps<typeof FileFromLinkOrLocal>> = {}) {
   const trigger =
     props.trigger ??
-    ((open: boolean) => <button data-testid="trigger">{open ? 'Close' : 'Open'}</button>)
+    ((triggerProps, state) => (
+      <button {...triggerProps} data-testid="trigger">
+        {state.open ? 'Close' : 'Open'}
+      </button>
+    ))
   const result = render(
     <FileContextProvider value={mockFiles}>
       <FileFromLinkOrLocal
@@ -58,10 +62,13 @@ describe('FileFromLinkOrLocal', () => {
   })
 
   it('should render trigger element', () => {
-    const trigger = (open: boolean) => (
-      <button data-testid="trigger">
+    const trigger: NonNullable<React.ComponentProps<typeof FileFromLinkOrLocal>['trigger']> = (
+      triggerProps,
+      state,
+    ) => (
+      <button {...triggerProps} data-testid="trigger">
         Open
-        {open ? 'close' : 'open'}
+        {state.open ? 'close' : 'open'}
       </button>
     )
     render(
@@ -173,8 +180,13 @@ describe('FileFromLinkOrLocal', () => {
   })
 
   it('should toggle open state when trigger is clicked', () => {
-    const trigger = (open: boolean) => (
-      <button data-testid="trigger">{open ? 'Close' : 'Open'}</button>
+    const trigger: NonNullable<React.ComponentProps<typeof FileFromLinkOrLocal>['trigger']> = (
+      triggerProps,
+      state,
+    ) => (
+      <button {...triggerProps} data-testid="trigger">
+        {state.open ? 'Close' : 'Open'}
+      </button>
     )
     render(
       <FileContextProvider value={mockFiles}>

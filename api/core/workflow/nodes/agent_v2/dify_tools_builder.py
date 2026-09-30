@@ -18,6 +18,7 @@ from sqlalchemy import select
 
 from core.agent.entities import AgentToolEntity
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.plugin.provider_identity import normalize_plugin_daemon_provider_identity
 from core.tools.__base.tool import Tool
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.errors import ToolProviderCredentialValidationError, ToolProviderNotFoundError
@@ -137,15 +138,14 @@ def _list_provider_tool_names(
 
 
 def _resolve_mcp_provider_id(*, tenant_id: str, provider_id: str) -> str:
-    """Normalize MCP provider ids to the runtime-facing server identifier."""
+    """Normalize a persisted MCP provider reference to the runtime-facing server identifier."""
     service = MCPToolManageService(session=db.session())
     try:
-        return service.get_provider_entity(provider_id, tenant_id, by_server_id=True).provider_id
-    except ValueError:
-        try:
-            return service.get_provider_entity(provider_id, tenant_id, by_server_id=False).provider_id
-        except ValueError as exc:
-            raise ToolProviderNotFoundError(f"mcp provider {provider_id} not found") from exc
+        return service.get_provider_entity_by_persisted_reference(
+            id_or_server_identifier=provider_id, tenant_id=tenant_id
+        ).server_identifier
+    except ValueError as exc:
+        raise ToolProviderNotFoundError(f"mcp provider {provider_id} not found") from exc
 
 
 class WorkflowAgentDifyToolsBuilder:
@@ -389,8 +389,8 @@ class WorkflowAgentDifyToolsBuilder:
                 f"Dify Tool {tool_config.tool_name!r} has no runtime.",
             )
 
-        provider_id = self._provider_id(tool_config)
-        plugin_id, provider = self._plugin_provider(tool_config, provider_id)
+        provider_id = ToolProviderID(self._provider_id(tool_config))
+        plugin_id, provider = normalize_plugin_daemon_provider_identity(provider_id, tool_config.plugin_id)
         parameters = self._prepared_parameters(tool_runtime)
         runtime_parameters = self._runtime_parameters(tool_runtime, parameters)
         description = self._description(tool_config, tool_runtime)
@@ -426,13 +426,6 @@ class WorkflowAgentDifyToolsBuilder:
             parameters=parameters,
             parameters_json_schema=tool_runtime.get_llm_parameters_json_schema(),
         )
-
-    @staticmethod
-    def _plugin_provider(tool_config: AgentSoulDifyToolConfig, provider_id: str) -> tuple[str, str]:
-        if tool_config.plugin_id and tool_config.provider:
-            return tool_config.plugin_id, tool_config.provider
-        provider_id_entity = ToolProviderID(provider_id)
-        return provider_id_entity.plugin_id, provider_id_entity.provider_name
 
     @staticmethod
     def _credential_type(

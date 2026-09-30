@@ -3,6 +3,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { memo } from 'react'
 
 type BadgeProps = {
+  as?: 'div' | 'span'
   className?: string
   text?: ReactNode
   children?: ReactNode
@@ -13,6 +14,7 @@ type BadgeProps = {
 }
 
 const Badge = ({
+  as: Component = 'div',
   className,
   text,
   children,
@@ -22,7 +24,7 @@ const Badge = ({
   hasRedCornerMark,
 }: BadgeProps) => {
   return (
-    <div
+    <Component
       className={cn(
         'relative inline-flex items-center rounded-[5px] border border-divider-deep leading-3 whitespace-nowrap text-text-tertiary',
         size === 'xs' ? 'min-w-4 justify-center px-1 py-0.5' : 'h-5 px-1.25',
@@ -32,10 +34,10 @@ const Badge = ({
       )}
     >
       {hasRedCornerMark && (
-        <div className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-xs border border-components-badge-status-light-error-border-inner bg-components-badge-status-light-error-bg shadow-sm"></div>
+        <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-xs border border-components-badge-status-light-error-border-inner bg-components-badge-status-light-error-bg shadow-sm"></span>
       )}
       {children || text}
-    </div>
+    </Component>
   )
 }
 

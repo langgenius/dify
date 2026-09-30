@@ -1,5 +1,5 @@
 import type { ComponentProps } from 'react'
-import type { ConfigurationViewModel } from '../hooks/use-configuration'
+import type { ConfigurationViewModel } from '../hooks/configuration-view-model'
 import type AppPublisher from '@/app/components/app/app-publisher/features-wrapper'
 import type { InstallBundleCompleteCallback } from '@/app/components/plugins/install-plugin/install-bundle'
 import type { Plugin } from '@/app/components/plugins/types'
@@ -98,7 +98,7 @@ const createDeletedAgentTool = (providerId: string): AgentTool => ({
 
 const createContextValue = (): ComponentProps<typeof ConfigContext.Provider>['value'] => ({
   appId: 'app-1',
-  isAPIKeySet: true,
+  onOpenFeatures: vi.fn(),
   isTrailFinished: false,
   mode: AppModeEnum.CHAT,
   modelModeType: ModelModeType.chat,
@@ -198,13 +198,6 @@ const createContextValue = (): ComponentProps<typeof ConfigContext.Provider>['va
     sensitive_word_avoidance: null,
     annotation_reply: null,
     external_data_tools: [],
-    system_parameters: {
-      audio_file_size_limit: 1,
-      file_size_limit: 1,
-      image_file_size_limit: 1,
-      video_file_size_limit: 1,
-      workflow_file_upload_limit: 1,
-    },
     dataSets: [],
     agentConfig: {
       enabled: false,
@@ -258,6 +251,11 @@ const createViewModel = (
     publishedConfig: {
       modelConfig: createContextValue().modelConfig,
       completionParams: {},
+      promptMode: createContextValue().promptMode,
+      chatPromptConfig: createContextValue().chatPromptConfig,
+      completionPromptConfig: createContextValue().completionPromptConfig,
+      datasetConfigs: createContextValue().datasetConfigs,
+      externalDataToolsConfig: createContextValue().externalDataToolsConfig,
     },
     resetAppConfig: vi.fn(),
   } as ComponentProps<typeof AppPublisher>,
@@ -319,8 +317,16 @@ describe('ConfigurationView', () => {
   it('should render a loading state before configuration data is ready', () => {
     render(<ConfigurationView {...createViewModel({ showLoading: true })} />)
 
-    expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
     expect(screen.queryByTestId('app-publisher')).not.toBeInTheDocument()
+  })
+
+  it('provides the page heading inside the parent-owned main landmark', () => {
+    render(<ConfigurationView {...createViewModel()} />)
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'appDebug.orchestrate' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('main')).not.toBeInTheDocument()
   })
 
   it('should open the mobile debug panel from the header button', () => {
@@ -352,8 +358,9 @@ describe('ConfigurationView', () => {
 
     render(<ConfigurationView {...createViewModel({ contextValue })} />)
 
-    const badge = screen.getByRole('button', { name: 'appDebug.legacyAgentBadge.description' })
+    const badge = screen.getByRole('button', { name: 'appDebug.legacyAgentBadge.label' })
     expect(badge).toHaveTextContent('appDebug.legacyAgentBadge.label')
+    expect(badge).not.toHaveAttribute('aria-label')
 
     fireEvent.click(badge)
 

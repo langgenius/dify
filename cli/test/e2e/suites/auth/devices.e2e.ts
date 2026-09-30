@@ -4,7 +4,7 @@
  * Test cases sourced from: Dify CLI Enhanced spec — Dify CLI/Auth/Multi-device Session Management (21 wiki cases → 18 automated)
  */
 
-import { afterEach, beforeEach, describe, expect, inject, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, inject, it } from 'vite-plus/test'
 import { assertExitCode, assertJson } from '../../helpers/assert.js'
 import { injectAuth, mintFreshToken, run, withTempConfig } from '../../helpers/cli.js'
 import { optionalIt } from '../../helpers/skip.js'

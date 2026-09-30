@@ -1,7 +1,11 @@
 import type { CommonNodeType } from '../../types'
 import type { CollectionProviderType } from '@/app/components/tools/types'
+import { QueryClient } from '@tanstack/react-query'
 import { act } from '@testing-library/react'
+import { createDatasourceProvider } from '@/app/components/rag-pipeline/__tests__/datasource-fixtures'
 import { CollectionType } from '@/app/components/tools/types'
+import { consoleQuery } from '@/service/console'
+import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
 import { BlockEnum } from '../../types'
 import { useNodePluginInstallation } from '../use-node-plugin-installation'
@@ -13,7 +17,6 @@ const mockMcpTools = vi.fn()
 const mockInvalidToolsByType = vi.fn()
 const mockTriggerPlugins = vi.fn()
 const mockInvalidateTriggers = vi.fn()
-const mockInvalidDataSourceList = vi.fn()
 let mockWorkspacePermissionKeys = ['plugin.install']
 
 vi.mock('@/context/permission-state', async () => {
@@ -35,10 +38,6 @@ vi.mock('@/service/use-tools', () => ({
 vi.mock('@/service/use-triggers', () => ({
   useAllTriggerPlugins: (enabled: boolean) => mockTriggerPlugins(enabled),
   useInvalidateAllTriggerPlugins: () => mockInvalidateTriggers,
-}))
-
-vi.mock('@/service/use-pipeline', () => ({
-  useInvalidDataSourceList: () => mockInvalidDataSourceList,
 }))
 
 const makeToolNode = (overrides: Partial<CommonNodeType> = {}) =>
@@ -90,11 +89,11 @@ const matchedTriggerProvider = {
   plugin_id: 'trigger-plugin',
 }
 
-const matchedDataSource = {
+const matchedDataSource = createDatasourceProvider({
   provider: 'knowledge-provider',
   plugin_id: 'knowledge-plugin',
   plugin_unique_identifier: 'knowledge-plugin@1.0.0',
-}
+})
 
 describe('useNodePluginInstallation', () => {
   beforeEach(() => {
@@ -107,7 +106,6 @@ describe('useNodePluginInstallation', () => {
     mockInvalidToolsByType.mockReturnValue(undefined)
     mockTriggerPlugins.mockReturnValue({ data: undefined, isLoading: false })
     mockInvalidateTriggers.mockReset()
-    mockInvalidDataSourceList.mockReset()
   })
 
   it('should return the noop installation state for non plugin-dependent nodes', () => {
@@ -249,7 +247,7 @@ describe('useNodePluginInstallation', () => {
         ),
       {
         initialStoreState: {
-          dataSourceList: [matchedDataSource] as never,
+          dataSourceList: [matchedDataSource],
         },
       },
     )
@@ -258,11 +256,18 @@ describe('useNodePluginInstallation', () => {
     expect(missingRender.result.current.isMissing).toBe(true)
     expect(missingRender.result.current.shouldDim).toBe(true)
 
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { staleTime: Infinity, retry: false } },
+    })
+    seedAccountProfileQuery(queryClient)
+    const catalogKey = consoleQuery.rag.pipelines.datasourcePlugins.get.queryKey()
+    queryClient.setQueryData(catalogKey, [matchedDataSource])
     const matchedRender = renderWorkflowHook(
       () => useNodePluginInstallation(makeDataSourceNode()),
       {
+        queryClient,
         initialStoreState: {
-          dataSourceList: [matchedDataSource] as never,
+          dataSourceList: [matchedDataSource],
         },
       },
     )
@@ -274,7 +279,8 @@ describe('useNodePluginInstallation', () => {
       matchedRender.result.current.onInstallSuccess()
     })
 
-    expect(mockInvalidDataSourceList).toHaveBeenCalled()
+    expect(queryClient.getQueryState(catalogKey)?.isInvalidated).toBe(true)
+    queryClient.clear()
   })
 
   it('should keep data sources in checking state before the list is loaded', () => {

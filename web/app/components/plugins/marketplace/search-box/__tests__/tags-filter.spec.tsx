@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import TagsFilter from '../tags-filter'
 
 const { mockTranslate } = vi.hoisted(() => ({
@@ -32,8 +32,6 @@ vi.mock('@/app/components/plugins/hooks', () => ({
     },
   }),
 }))
-
-vi.mock('@langgenius/dify-ui/popover', () => import('@/__mocks__/base-ui-popover'))
 
 describe('TagsFilter', () => {
   const ensurePopoverOpen = async (user: ReturnType<typeof userEvent.setup>) => {

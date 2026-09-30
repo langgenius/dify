@@ -2,7 +2,7 @@ import type { Role } from '@/models/access-control'
 import type { Member } from '@/models/common'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { vi } from 'vitest'
+import { vi } from 'vite-plus/test'
 import { useRolesOfMember } from '@/service/access-control/use-member-roles'
 import { useWorkspaceRoleList } from '@/service/access-control/use-workspace-roles'
 import MemberDetailsModal from '../index'
@@ -105,9 +105,11 @@ describe('MemberDetailsModal', () => {
         />,
       )
 
-      expect(screen.getByText(/common\.members\.memberDetails\.assignedRole:/i)).toBeInTheDocument()
       expect(
-        screen.queryByText(/common\.members\.memberDetails\.assignedRoles/i),
+        screen.getByText(/workspaceMembers\.members\.memberDetails\.assignedRole:/i),
+      ).toBeInTheDocument()
+      expect(
+        screen.queryByText(/workspaceMembers\.members\.memberDetails\.assignedRoles/i),
       ).not.toBeInTheDocument()
     })
 
@@ -126,7 +128,7 @@ describe('MemberDetailsModal', () => {
         />,
       )
 
-      expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
+      expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
       expect(
         screen.getByRole('button', { name: /members\.memberDetails\.assign/i }),
       ).toBeInTheDocument()

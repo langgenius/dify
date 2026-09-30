@@ -1,12 +1,13 @@
+import type { AppModelSelectionResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { SuggestedQuestionsAfterAnswer } from '@/app/components/base/features/types'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { CompletionParams, Model, ModelModeType } from '@/types/app'
+import type { CompletionParams, ModelModeType } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Field, FieldItem } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
-import { RadioControl, RadioGroup, RadioItem } from '@langgenius/dify-ui/radio'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { RadioControl, RadioGroup, RadioItem } from '@langgenius/dify-ui/radio-group'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { produce } from 'immer'
 import { useCallback, useMemo, useState } from 'react'
@@ -35,7 +36,7 @@ const DEFAULT_COMPLETION_PARAMS: CompletionParams = {
 const DEFAULT_FOLLOW_UP_PROMPT = `Please predict the three most likely follow-up questions a user would ask, keep each question under 20 characters, use the same language as the assistant's latest response, and output a JSON array like ["question1", "question2", "question3"].`
 const CUSTOM_FOLLOW_UP_PROMPT_MAX_LENGTH = 1000
 
-const getInitialModel = (model?: Model): Model => ({
+const getInitialModel = (model?: AppModelSelectionResponse) => ({
   provider: model?.provider || '',
   name: model?.name || '',
   mode: model?.mode || ModelModeTypeEnum.chat,
@@ -52,8 +53,8 @@ const PROMPT_MODE = {
 type PromptMode = (typeof PROMPT_MODE)[keyof typeof PROMPT_MODE]
 
 const FollowUpSettingModal = ({ data, onSave, onCancel }: FollowUpSettingModalProps) => {
-  const { t } = useTranslation()
-  const [model, setModel] = useState<Model>(() => getInitialModel(data.model))
+  const { t } = useTranslation(['appDebug', 'common'])
+  const [model, setModel] = useState(() => getInitialModel(data.model))
   const [prompt, setPrompt] = useState(data.prompt || '')
   const [promptMode, setPromptMode] = useState<PromptMode>(
     data.prompt ? PROMPT_MODE.custom : PROMPT_MODE.default,
@@ -61,7 +62,7 @@ const FollowUpSettingModal = ({ data, onSave, onCancel }: FollowUpSettingModalPr
   const { defaultModel } = useModelListAndDefaultModelAndCurrentProviderAndModel(
     ModelTypeEnum.textGeneration,
   )
-  const selectedModel = useMemo<Model>(() => {
+  const selectedModel = useMemo(() => {
     if (model.provider && model.name) return model
 
     if (!defaultModel) return model
@@ -89,7 +90,7 @@ const FollowUpSettingModal = ({ data, onSave, onCancel }: FollowUpSettingModalPr
     (newParams: FormValue) => {
       setModel({
         ...selectedModel,
-        completion_params: newParams as CompletionParams,
+        completion_params: newParams,
       })
     },
     [selectedModel],
@@ -116,7 +117,17 @@ const FollowUpSettingModal = ({ data, onSave, onCancel }: FollowUpSettingModalPr
       }}
     >
       <DialogContent className="w-160! max-w-none! p-8! pb-6!">
-        <DialogCloseButton className="top-8 right-8" />
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              size="lg"
+              className="absolute top-8 right-8"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
         <DialogTitle className="pr-8 text-xl font-semibold text-text-primary">
           {t(($) => $['feature.suggestedQuestionsAfterAnswer.modal.title'], { ns: 'appDebug' })}
         </DialogTitle>
@@ -158,12 +169,7 @@ const FollowUpSettingModal = ({ data, onSave, onCancel }: FollowUpSettingModalPr
                   value={PROMPT_MODE.default}
                   nativeButton
                   render={<button type="button" />}
-                  className={cn(
-                    'w-full rounded-xl border p-4 text-left transition-colors',
-                    promptMode === PROMPT_MODE.default
-                      ? 'border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg'
-                      : 'border-components-option-card-option-border bg-components-option-card-option-bg hover:bg-state-base-hover',
-                  )}
+                  className="w-full rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg p-4 text-left transition-colors hover:bg-state-base-hover data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg data-checked:hover:bg-components-option-card-option-selected-bg"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
@@ -200,12 +206,7 @@ const FollowUpSettingModal = ({ data, onSave, onCancel }: FollowUpSettingModalPr
                   value={PROMPT_MODE.custom}
                   nativeButton
                   render={<button type="button" />}
-                  className={cn(
-                    'w-full rounded-xl border p-4 text-left transition-colors',
-                    promptMode === PROMPT_MODE.custom
-                      ? 'border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg'
-                      : 'border-components-option-card-option-border bg-components-option-card-option-bg hover:bg-state-base-hover',
-                  )}
+                  className="w-full rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg p-4 text-left transition-colors hover:bg-state-base-hover data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg data-checked:hover:bg-components-option-card-option-selected-bg"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>

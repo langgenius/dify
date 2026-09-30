@@ -1,45 +1,56 @@
-from dataclasses import dataclass
+from __future__ import annotations
+
 from datetime import datetime
-from typing import Any
+from typing import Any, Never
 from uuid import UUID
 
-from flask import request
 from flask_restx import Resource
 from pydantic import AliasChoices, BaseModel, Field, field_validator
-from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
-import services
 from controllers.common.fields import UsageCountResponse
+from controllers.common.rbac import DatasetId, RBACCheck, Workspace
 from controllers.common.schema import (
     query_params_from_model,
     register_response_schema_models,
     register_schema_models,
 )
-from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.datasets.error import DatasetNameDuplicateError
+from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
-    account_initialization_required,
-    edit_permission_required,
-    rbac_permission_required,
-    setup_required,
-    with_current_tenant_id,
-    with_current_user,
+    model_validate,
 )
+from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
-from fields.dataset_fields import DatasetDetailResponse, dataset_detail_response_source
+from fields.dataset_fields import (
+    DatasetDetailResponse,
+)
 from libs.helper import dump_response
-from libs.login import login_required
-from models import Account
-from models.dataset import ExternalKnowledgeApis
-from services.dataset_service import DatasetService
-from services.enterprise import rbac_service as enterprise_rbac_service
-from services.external_knowledge_service import ExternalDatasetService
-from services.hit_testing_service import HitTestingService
-from services.knowledge_service import BedrockRetrievalSetting, ExternalDatasetTestService
+from machinery.context import RequestContext
+from models.account import TenantAccountRole
+from services.entities.external_knowledge_entities.external_knowledge_entities import ExternalDatasetCreatePayload
+from services.errors.dataset import DatasetNameDuplicateError as DatasetNameDuplicateFailure
+from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
+from services.knowledge.external.application import ExternalHitTestingError, ExternalTemplateNotFoundError
+
+_DATASET_EDIT_ROLES = frozenset(
+    {TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR, TenantAccountRole.DATASET_OPERATOR}
+)
+_EXTERNAL_CONNECT_ROLES = frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR})
+
+
+def _raise_external_error(error: Exception) -> Never:
+    if isinstance(error, (DatasetNotFoundError, ExternalTemplateNotFoundError)):
+        raise NotFound(str(error)) from error
+    if isinstance(error, DatasetAccessDeniedError):
+        raise Forbidden(str(error)) from error
+    if isinstance(error, DatasetNameDuplicateFailure):
+        raise DatasetNameDuplicateError() from error
+    if isinstance(error, ExternalHitTestingError):
+        raise InternalServerError(str(error)) from error
+    raise error
 
 
 class ExternalKnowledgeApiPayload(BaseModel):
@@ -47,24 +58,10 @@ class ExternalKnowledgeApiPayload(BaseModel):
     settings: dict[str, Any]
 
 
-class ExternalDatasetCreatePayload(BaseModel):
-    external_knowledge_api_id: str
-    external_knowledge_id: str
-    name: str = Field(..., min_length=1, max_length=100)
-    description: str | None = Field(None, max_length=400)
-    external_retrieval_model: dict[str, Any] | None = None
-
-
 class ExternalHitTestingPayload(BaseModel):
     query: str
     external_retrieval_model: dict[str, Any] | None = None
     metadata_filtering_conditions: dict[str, Any] | None = None
-
-
-class BedrockRetrievalPayload(BaseModel):
-    retrieval_setting: "BedrockRetrievalSetting"
-    query: str
-    knowledge_id: str
 
 
 class ExternalApiTemplateListQuery(BaseModel):
@@ -96,28 +93,6 @@ class ExternalKnowledgeApiResponse(ResponseModel):
         return value
 
 
-@dataclass(frozen=True)
-class ExternalKnowledgeApiResponseSource:
-    external_knowledge_api: ExternalKnowledgeApis
-    session: Session
-
-    @property
-    def dataset_bindings(self) -> Any:
-        return self.external_knowledge_api.get_dataset_bindings(session=self.session)
-
-    def __getattr__(self, name: str) -> Any:
-        return getattr(self.external_knowledge_api, name)  # guard-ignore: no-new-getattr -- delegates model fields
-
-
-def external_knowledge_api_response(
-    external_knowledge_api: ExternalKnowledgeApis, *, session: Session
-) -> ExternalKnowledgeApiResponse:
-    return ExternalKnowledgeApiResponse.model_validate(
-        ExternalKnowledgeApiResponseSource(external_knowledge_api=external_knowledge_api, session=session),
-        from_attributes=True,
-    )
-
-
 class ExternalKnowledgeApiListResponse(ResponseModel):
     data: list[ExternalKnowledgeApiResponse]
     has_more: bool
@@ -142,23 +117,11 @@ class ExternalHitTestingResponse(ResponseModel):
     records: list[ExternalHitTestingRecordResponse]
 
 
-class BedrockRetrievalRecordResponse(ResponseModel):
-    metadata: dict[str, Any] | None = None
-    score: float
-    title: str | None = None
-    content: str | None = None
-
-
-class BedrockRetrievalResponse(ResponseModel):
-    records: list[BedrockRetrievalRecordResponse]
-
-
 register_schema_models(
     console_ns,
     ExternalKnowledgeApiPayload,
     ExternalDatasetCreatePayload,
     ExternalHitTestingPayload,
-    BedrockRetrievalPayload,
     ExternalApiTemplateListQuery,
 )
 register_response_schema_models(
@@ -171,8 +134,6 @@ register_response_schema_models(
     ExternalHitTestingQueryResponse,
     ExternalHitTestingRecordResponse,
     ExternalHitTestingResponse,
-    BedrockRetrievalRecordResponse,
-    BedrockRetrievalResponse,
 )
 
 
@@ -186,24 +147,13 @@ class ExternalApiTemplateListApi(Resource):
         "External API templates retrieved successfully",
         console_ns.models[ExternalKnowledgeApiListResponse.__name__],
     )
-    @setup_required
-    @login_required
-    @with_current_tenant_id
-    @account_initialization_required
-    @with_session(write=False)
-    def get(self, session: Session, current_tenant_id: str):
-        query = ExternalApiTemplateListQuery.model_validate(request.args.to_dict())
-
-        external_knowledge_apis, total = ExternalDatasetService.get_external_knowledge_apis(
-            query.page, query.limit, current_tenant_id, query.keyword, session=session
+    @console_account_admission()
+    @model_validate(ExternalApiTemplateListQuery)
+    def get(self, req_data: ExternalApiTemplateListQuery, request_context: RequestContext):
+        result = application_services().knowledge.external.list_templates(
+            request_context, page=req_data.page, limit=req_data.limit, keyword=req_data.keyword
         )
-        return ExternalKnowledgeApiListResponse(
-            data=[external_knowledge_api_response(item, session=session) for item in external_knowledge_apis],
-            has_more=len(external_knowledge_apis) == query.limit,
-            limit=query.limit,
-            total=total,
-            page=query.page,
-        ).model_dump(mode="json"), 200
+        return dump_response(ExternalKnowledgeApiListResponse, result), 200
 
     @console_ns.doc("create_external_api_template")
     @console_ns.doc(description="Create external knowledge API template")
@@ -214,32 +164,16 @@ class ExternalApiTemplateListApi(Resource):
         console_ns.models[ExternalKnowledgeApiResponse.__name__],
     )
     @console_ns.response(403, "Permission denied")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @with_current_user
-    @with_current_tenant_id
-    @with_session
-    def post(self, session: Session, current_tenant_id: str, current_user: Account):
-        payload = ExternalKnowledgeApiPayload.model_validate(console_ns.payload or {})
-
-        ExternalDatasetService.validate_api_list(payload.settings)
-
-        # The role of the current user in the ta table must be admin, owner, or editor, or dataset_operator
-        if not current_user.is_dataset_editor:
-            raise Forbidden()
-
+    @console_account_admission(allowed_roles=_DATASET_EDIT_ROLES)
+    @model_validate(ExternalKnowledgeApiPayload)
+    def post(self, req_data: ExternalKnowledgeApiPayload, request_context: RequestContext):
         try:
-            external_knowledge_api = ExternalDatasetService.create_external_knowledge_api(
-                tenant_id=current_tenant_id,
-                user_id=current_user.id,
-                args=payload.model_dump(),
-                session=session,
+            result = application_services().knowledge.external.create_template(
+                request_context, name=req_data.name, settings=req_data.settings
             )
-        except services.errors.dataset.DatasetNameDuplicateError:
-            raise DatasetNameDuplicateError()
-
-        return external_knowledge_api_response(external_knowledge_api, session=session).model_dump(mode="json"), 201
+        except Exception as error:
+            _raise_external_error(error)
+        return dump_response(ExternalKnowledgeApiResponse, result), 201
 
 
 @console_ns.route("/datasets/external-knowledge-api/<uuid:external_knowledge_api_id>")
@@ -253,20 +187,15 @@ class ExternalApiTemplateApi(Resource):
         console_ns.models[ExternalKnowledgeApiResponse.__name__],
     )
     @console_ns.response(404, "Template not found")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @with_current_tenant_id
-    @with_session
-    def get(self, session: Session, current_tenant_id: str, external_knowledge_api_id: UUID):
-        external_knowledge_api_id_str = str(external_knowledge_api_id)
-        external_knowledge_api = ExternalDatasetService.get_external_knowledge_api(
-            external_knowledge_api_id=external_knowledge_api_id_str, tenant_id=current_tenant_id, session=session
-        )
-        if external_knowledge_api is None:
-            raise NotFound("API template not found.")
-
-        return external_knowledge_api_response(external_knowledge_api, session=session).model_dump(mode="json"), 200
+    @console_account_admission()
+    def get(self, request_context: RequestContext, external_knowledge_api_id: UUID):
+        try:
+            result = application_services().knowledge.external.get_template(
+                request_context, template_id=str(external_knowledge_api_id)
+            )
+        except Exception as error:
+            _raise_external_error(error)
+        return dump_response(ExternalKnowledgeApiResponse, result), 200
 
     @console_ns.doc("update_external_api_template")
     @console_ns.doc(description="Update external knowledge API template")
@@ -278,44 +207,31 @@ class ExternalApiTemplateApi(Resource):
         console_ns.models[ExternalKnowledgeApiResponse.__name__],
     )
     @console_ns.response(404, "Template not found")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @with_current_user
-    @with_current_tenant_id
-    @with_session
-    def patch(self, session: Session, current_tenant_id: str, current_user: Account, external_knowledge_api_id: UUID):
-        external_knowledge_api_id_str = str(external_knowledge_api_id)
+    @console_account_admission()
+    @model_validate(ExternalKnowledgeApiPayload)
+    def patch(
+        self, req_data: ExternalKnowledgeApiPayload, request_context: RequestContext, external_knowledge_api_id: UUID
+    ):
+        try:
+            result = application_services().knowledge.external.update_template(
+                request_context,
+                template_id=str(external_knowledge_api_id),
+                name=req_data.name,
+                settings=req_data.settings,
+            )
+        except Exception as error:
+            _raise_external_error(error)
+        return dump_response(ExternalKnowledgeApiResponse, result), 200
 
-        payload = ExternalKnowledgeApiPayload.model_validate(console_ns.payload or {})
-        ExternalDatasetService.validate_api_list(payload.settings)
-
-        external_knowledge_api = ExternalDatasetService.update_external_knowledge_api(
-            tenant_id=current_tenant_id,
-            user_id=current_user.id,
-            external_knowledge_api_id=external_knowledge_api_id_str,
-            args=payload.model_dump(),
-            session=session,
-        )
-
-        return external_knowledge_api_response(external_knowledge_api, session=session).model_dump(mode="json"), 200
-
-    @setup_required
-    @login_required
-    @account_initialization_required
     @console_ns.response(204, "External knowledge API deleted successfully")
-    @with_current_user
-    @with_current_tenant_id
-    @with_session
-    def delete(self, session: Session, current_tenant_id: str, current_user: Account, external_knowledge_api_id: UUID):
-        external_knowledge_api_id_str = str(external_knowledge_api_id)
-
-        if not (current_user.has_edit_permission or current_user.is_dataset_operator):
-            raise Forbidden()
-
-        ExternalDatasetService.delete_external_knowledge_api(
-            current_tenant_id, external_knowledge_api_id_str, session=session
-        )
+    @console_account_admission(allowed_roles=_DATASET_EDIT_ROLES)
+    def delete(self, request_context: RequestContext, external_knowledge_api_id: UUID):
+        try:
+            application_services().knowledge.external.delete_template(
+                request_context, template_id=str(external_knowledge_api_id)
+            )
+        except Exception as error:
+            _raise_external_error(error)
         return "", 204
 
 
@@ -325,18 +241,12 @@ class ExternalApiUseCheckApi(Resource):
     @console_ns.doc(description="Check if external knowledge API is being used")
     @console_ns.doc(params={"external_knowledge_api_id": "External knowledge API ID"})
     @console_ns.response(200, "Usage check completed successfully", console_ns.models[UsageCountResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @with_current_tenant_id
-    @with_session
-    def get(self, session: Session, current_tenant_id: str, external_knowledge_api_id: UUID):
-        external_knowledge_api_id_str = str(external_knowledge_api_id)
-
-        external_knowledge_api_is_using, count = ExternalDatasetService.external_knowledge_api_use_check(
-            external_knowledge_api_id_str, current_tenant_id, session=session
+    @console_account_admission()
+    def get(self, request_context: RequestContext, external_knowledge_api_id: UUID):
+        is_using, count = application_services().knowledge.external.template_usage(
+            request_context, template_id=str(external_knowledge_api_id)
         )
-        return UsageCountResponse(is_using=external_knowledge_api_is_using, count=count).model_dump(mode="json"), 200
+        return dump_response(UsageCountResponse, {"is_using": is_using, "count": count}), 200
 
 
 @console_ns.route("/datasets/external")
@@ -349,45 +259,17 @@ class ExternalDatasetCreateApi(Resource):
     )
     @console_ns.response(400, "Invalid parameters")
     @console_ns.response(403, "Permission denied")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EXTERNAL_CONNECT)
-    @with_current_user
-    @with_current_tenant_id
-    @with_session
-    def post(self, session: Session, current_tenant_id: str, current_user: Account):
-        # The role of the current user in the ta table must be admin, owner, or editor
-        payload = ExternalDatasetCreatePayload.model_validate(console_ns.payload or {})
-        args = payload.model_dump(exclude_none=True)
-
-        # The role of the current user in the ta table must be admin, owner, or editor, or dataset_operator
-        if not current_user.is_dataset_editor:
-            raise Forbidden()
-
+    @console_account_admission(
+        allowed_roles=_EXTERNAL_CONNECT_ROLES,
+        rbac_checks=(RBACCheck(RBACPermission.DATASET_EXTERNAL_CONNECT, Workspace()),),
+    )
+    @model_validate(ExternalDatasetCreatePayload)
+    def post(self, req_data: ExternalDatasetCreatePayload, request_context: RequestContext):
         try:
-            dataset = ExternalDatasetService.create_external_dataset(
-                tenant_id=current_tenant_id,
-                user_id=current_user.id,
-                args=args,
-                session=session,
-            )
-        except services.errors.dataset.DatasetNameDuplicateError:
-            raise DatasetNameDuplicateError()
-
-        dataset_id_str = str(dataset.id)
-        permission_keys_map = enterprise_rbac_service.RBACService.DatasetPermissions.batch_get(
-            str(current_tenant_id),
-            current_user.id,
-            [dataset_id_str],
-            session=session,
-        )
-        data = DatasetDetailResponse.model_validate(
-            dataset_detail_response_source(dataset, session=session)
-        ).model_dump(mode="json")
-        data["permission_keys"] = permission_keys_map.get(dataset_id_str, [])
-        return data, 201
+            result = application_services().knowledge.external.create_dataset(request_context, payload=req_data)
+        except Exception as error:
+            _raise_external_error(error)
+        return dump_response(DatasetDetailResponse, result), 201
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/external-hit-testing")
@@ -403,53 +285,17 @@ class ExternalKnowledgeHitTestingApi(Resource):
     )
     @console_ns.response(404, "Dataset not found")
     @console_ns.response(400, "Invalid parameters")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @with_current_user
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_PIPELINE_TEST)
-    @with_session
-    def post(self, session: Session, current_user: Account, dataset_id: UUID):
-        dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str, session)
-        if dataset is None:
-            raise NotFound("Dataset not found.")
-
+    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.DATASET_PIPELINE_TEST, DatasetId()),))
+    @model_validate(ExternalHitTestingPayload)
+    def post(self, req_data: ExternalHitTestingPayload, request_context: RequestContext, dataset_id: UUID):
         try:
-            DatasetService.check_dataset_permission(dataset, current_user, session)
-        except services.errors.account.NoPermissionError as e:
-            raise Forbidden(str(e))
-
-        payload = ExternalHitTestingPayload.model_validate(console_ns.payload or {})
-        HitTestingService.hit_testing_args_check(payload.model_dump())
-
-        try:
-            response = HitTestingService.external_retrieve(
-                session=session,
-                dataset=dataset,
-                query=payload.query,
-                account=current_user,
-                external_retrieval_model=payload.external_retrieval_model,
-                metadata_filtering_conditions=payload.metadata_filtering_conditions,
+            result = application_services().knowledge.external.hit_testing(
+                request_context,
+                dataset_id=str(dataset_id),
+                query=req_data.query,
+                retrieval_model=req_data.external_retrieval_model,
+                metadata_filters=req_data.metadata_filtering_conditions,
             )
-
-            return dump_response(ExternalHitTestingResponse, response)
-        except Exception as e:
-            raise InternalServerError(str(e))
-
-
-@console_ns.route("/test/retrieval")
-class BedrockRetrievalApi(Resource):
-    # this api is only for internal testing
-    @console_ns.doc("bedrock_retrieval_test")
-    @console_ns.doc(description="Bedrock retrieval test (internal use only)")
-    @console_ns.expect(console_ns.models[BedrockRetrievalPayload.__name__])
-    @console_ns.response(200, "Bedrock retrieval test completed", console_ns.models[BedrockRetrievalResponse.__name__])
-    def post(self):
-        payload = BedrockRetrievalPayload.model_validate(console_ns.payload or {})
-
-        # Call the knowledge retrieval service
-        result = ExternalDatasetTestService.knowledge_retrieval(
-            payload.retrieval_setting, payload.query, payload.knowledge_id
-        )
-        return dump_response(BedrockRetrievalResponse, result), 200
+        except Exception as error:
+            _raise_external_error(error)
+        return dump_response(ExternalHitTestingResponse, result)

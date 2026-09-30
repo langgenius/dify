@@ -1,41 +1,32 @@
 import { waitFor } from '@testing-library/react'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import CreateFromPipeline from '../index'
 
 const mockPlan = {
   usage: { vectorSpace: 50 },
   total: { vectorSpace: 100 },
-  type: 'professional',
+  type: 'professional' as 'professional' | 'sandbox',
 }
 
-const render = (ui: React.ReactElement) => {
+const render = (ui: React.ReactElement, vectorSpaceUsageUnknown = false) => {
   const queryClient = createConsoleQueryClient()
   queryClient.setQueryData(consoleQuery.features.vectorSpace.get.queryOptions().queryKey, {
     size: mockPlan.usage.vectorSpace,
     limit: mockPlan.total.vectorSpace,
+    usage_unknown: vectorSpaceUsageUnknown,
   })
-  return renderWithConsoleQuery(ui, { queryClient })
+  return renderWithConsoleQuery(ui, {
+    queryClient,
+    systemFeatures: { deployment_edition: 'CLOUD' },
+    features: { billing: { subscription: { plan: mockPlan.type } } },
+  })
 }
 
 let mockDatasetPermissionKeys = ['dataset.acl.use']
+let mockAllFileLoaded = false
 const mockRouterReplace = vi.fn()
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContextSelector: (
-    selector: (state: { plan: typeof mockPlan; enableBilling: boolean }) => unknown,
-  ) => selector({ plan: mockPlan, enableBilling: true }),
-}))
-
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-
-  return createAccountStateModuleMock(() => ({
-    userProfile: { id: 'user-1' },
-    workspacePermissionKeys: ['dataset.create_and_management'],
-    isLoadingWorkspacePermissionKeys: false,
-  }))
-})
+const mockStepOneContent = vi.fn()
 
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
@@ -44,6 +35,7 @@ vi.mock('@/context/workspace-state', async () => {
     userProfile: { id: 'user-1' },
     workspacePermissionKeys: ['dataset.create_and_management'],
     isLoadingWorkspacePermissionKeys: false,
+    deploymentEdition: 'CLOUD',
   }))
 })
 
@@ -54,16 +46,18 @@ vi.mock('@/context/permission-state', async () => {
     userProfile: { id: 'user-1' },
     workspacePermissionKeys: ['dataset.create_and_management'],
     isLoadingWorkspacePermissionKeys: false,
+    deploymentEdition: 'CLOUD',
   }))
 })
 
-vi.mock('@/context/system-features-state', async () => {
+vi.mock('@/features/system-features/state', async () => {
   const { createSystemFeaturesStateModuleMock } = await import('@/test/console/state-fixture')
 
   return createSystemFeaturesStateModuleMock(() => ({
     userProfile: { id: 'user-1' },
     workspacePermissionKeys: ['dataset.create_and_management'],
     isLoadingWorkspacePermissionKeys: false,
+    deploymentEdition: 'CLOUD',
   }))
 })
 
@@ -87,6 +81,7 @@ vi.mock('@/context/dataset-detail', () => ({
 }))
 
 vi.mock('@/next/navigation', () => ({
+  useParams: () => ({ datasetId: 'test-dataset-id' }),
   useRouter: () => ({
     push: vi.fn(),
     replace: mockRouterReplace,
@@ -115,6 +110,15 @@ vi.mock('../data-source/store/provider', () => ({
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }))
 
+vi.mock('../steps', () => ({
+  StepOneContent: (props: object) => {
+    mockStepOneContent(props)
+    return null
+  },
+  StepTwoContent: () => null,
+  StepThreeContent: () => null,
+}))
+
 vi.mock('../hooks', () => ({
   useAddDocumentsSteps: () => ({
     steps: [],
@@ -124,7 +128,7 @@ vi.mock('../hooks', () => ({
   }),
   useLocalFile: () => ({
     localFileList: [],
-    allFileLoaded: false,
+    allFileLoaded: mockAllFileLoaded,
     currentLocalFile: undefined,
     hidePreviewLocalFile: vi.fn(),
   }),
@@ -178,7 +182,10 @@ vi.mock('../hooks', () => ({
 describe('CreateFromPipeline permission guard', () => {
   beforeEach(() => {
     mockRouterReplace.mockClear()
+    mockStepOneContent.mockClear()
     mockDatasetPermissionKeys = ['dataset.acl.use']
+    mockAllFileLoaded = false
+    mockPlan.type = 'professional'
   })
 
   it('redirects users who cannot add documents to the dataset', async () => {
@@ -189,5 +196,26 @@ describe('CreateFromPipeline permission guard', () => {
     await waitFor(() => {
       expect(mockRouterReplace).toHaveBeenCalledWith('/datasets/test-dataset-id/documents')
     })
+  })
+
+  it('requires sandbox users to retry when vector space usage is unknown', () => {
+    mockAllFileLoaded = true
+    mockPlan.type = 'sandbox'
+
+    render(<CreateFromPipeline />, true)
+
+    expect(mockStepOneContent).toHaveBeenCalledWith(
+      expect.objectContaining({ isShowVectorSpaceUnavailable: true }),
+    )
+  })
+
+  it('allows paid users to continue when vector space usage is unknown', () => {
+    mockAllFileLoaded = true
+
+    render(<CreateFromPipeline />, true)
+
+    expect(mockStepOneContent).toHaveBeenCalledWith(
+      expect.objectContaining({ isShowVectorSpaceUnavailable: false }),
+    )
   })
 })

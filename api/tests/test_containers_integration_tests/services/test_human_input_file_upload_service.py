@@ -16,6 +16,7 @@ from models.human_input import (
     HumanInputFormUploadToken,
     StandaloneWebAppRecipientPayload,
 )
+from repositories.human_input_file_upload_repository import SQLAlchemyHumanInputFileUploadRepository
 from services.human_input_file_upload_service import HITL_UPLOAD_TOKEN_PREFIX, HumanInputFileUploadService
 
 
@@ -61,8 +62,10 @@ def test_issue_upload_token_returns_expiration_with_default_session_expiry(
     monkeypatch.setattr(service_module.secrets, "token_urlsafe", lambda _bytes: "random-value")
 
     service = HumanInputFileUploadService(
-        session_factory=sessionmaker(bind=db.engine),
+        uploads=SQLAlchemyHumanInputFileUploadRepository(session_factory=sessionmaker(bind=db.engine)),
         workflow_run_repository=MagicMock(),
+        files=MagicMock(),
+        remote_files=MagicMock(),
     )
 
     token = service.issue_upload_token("form-token-1")

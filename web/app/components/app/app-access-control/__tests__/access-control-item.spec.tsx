@@ -1,4 +1,4 @@
-import { RadioGroup } from '@langgenius/dify-ui/radio'
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
@@ -61,7 +61,7 @@ describe('AccessControlItem', () => {
 
     const organization = screen.getByRole('radio', { name: 'Organization Only' })
     expect(organization).toHaveAttribute('aria-disabled', 'true')
-    expect(organization).toHaveClass('cursor-not-allowed')
+    expect(organization).toHaveAttribute('data-disabled')
 
     await user.click(organization)
 

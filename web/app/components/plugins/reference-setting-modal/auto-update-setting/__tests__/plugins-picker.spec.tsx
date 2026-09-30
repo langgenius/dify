@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import PluginsPicker from '../plugins-picker'
 import { AUTO_UPDATE_MODE } from '../types'
@@ -26,10 +26,6 @@ const mockInstalledPluginList = vi.hoisted(() => ({
 
 vi.mock('@/service/use-plugins', () => ({
   useInstalledPluginList: () => mockInstalledPluginList,
-}))
-
-vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({ children }: { children: React.ReactNode }) => <button>{children}</button>,
 }))
 
 vi.mock('../no-plugin-selected', () => ({

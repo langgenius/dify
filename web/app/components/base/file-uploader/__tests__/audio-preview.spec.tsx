@@ -14,6 +14,7 @@ describe('AudioPreview', () => {
     const audio = document.querySelector('audio')
     expect(audio).toBeInTheDocument()
     expect(audio).toHaveAttribute('title', 'Test Audio')
+    expect(audio?.parentElement).not.toHaveAttribute('aria-label')
   })
 
   it('should render source element with correct src and type', () => {
@@ -45,14 +46,15 @@ describe('AudioPreview', () => {
     expect(onCancel).toHaveBeenCalled()
   })
 
-  it('should not close when backdrop is clicked', () => {
+  it('should not close when audio content is clicked', () => {
     const onCancel = vi.fn()
     render(
       <AudioPreview url="https://example.com/audio.mp3" title="Test Audio" onCancel={onCancel} />,
     )
 
-    const dialog = screen.getByRole('dialog')
-    fireEvent.click(dialog)
+    const audio = document.querySelector('audio')
+    expect(audio).toBeInTheDocument()
+    fireEvent.click(audio!)
 
     expect(onCancel).not.toHaveBeenCalled()
   })

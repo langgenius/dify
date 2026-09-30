@@ -9,12 +9,22 @@ vi.mock('../card', () => ({
 }))
 
 describe('ApiAccess', () => {
-  it('opens the API access details', async () => {
-    const user = userEvent.setup()
-    render(<ApiAccess expand apiEnabled />)
+  it.each([true, false])(
+    'opens named API access details by keyboard when expanded=%s',
+    async (expand) => {
+      const user = userEvent.setup()
+      render(<ApiAccess expand={expand} apiEnabled />)
 
-    await user.click(screen.getByRole('button', { name: 'common.appMenus.apiAccess' }))
+      const trigger = screen.getByRole('button', { name: 'common.appMenus.apiAccess' })
+      expect(trigger).not.toHaveAttribute('data-popup-open')
 
-    expect(screen.getByText('API enabled')).toBeInTheDocument()
-  })
+      await user.tab()
+      expect(trigger).toHaveFocus()
+      await user.keyboard('{Enter}')
+
+      expect(trigger).toHaveAttribute('data-popup-open', '')
+
+      expect(screen.getByText('API enabled')).toBeInTheDocument()
+    },
+  )
 })

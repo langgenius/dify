@@ -12,7 +12,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getOperationItems, isOperationItem } from '../utils'
 
@@ -40,8 +39,7 @@ const OperationSelector: FC<OperationSelectorProps> = ({
   writeModeTypesArr,
   writeModeTypesNum,
 }) => {
-  const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
+  const { t } = useTranslation(['workflowLogic'])
 
   const items = getOperationItems(
     assignedVarType,
@@ -53,14 +51,12 @@ const OperationSelector: FC<OperationSelectorProps> = ({
   const selectedItem = items.find((item) => item.value === value)
 
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
+    <DropdownMenu>
       <DropdownMenuTrigger
         disabled={disabled}
         className={cn(
           'group flex items-center gap-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1 data-popup-open:bg-state-base-hover-alt',
-          disabled
-            ? 'cursor-not-allowed bg-components-input-bg-disabled!'
-            : 'cursor-pointer hover:bg-state-base-hover-alt',
+          'cursor-pointer hover:bg-state-base-hover-alt data-disabled:cursor-not-allowed data-disabled:bg-components-input-bg-disabled! data-disabled:hover:bg-components-input-bg-disabled!',
           className,
         )}
       >
@@ -69,8 +65,10 @@ const OperationSelector: FC<OperationSelectorProps> = ({
             className={`truncate overflow-hidden system-sm-regular text-ellipsis ${selectedItem ? 'text-components-input-text-filled' : 'text-components-input-text-disabled'}`}
           >
             {selectedItem && isOperationItem(selectedItem)
-              ? t(($) => $[`nodes.assigner.operations.${selectedItem.name}`], { ns: 'workflow' })
-              : t(($) => $['nodes.assigner.operations.title'], { ns: 'workflow' })}
+              ? t(($) => $[`nodes.assigner.operations.${selectedItem.name}`], {
+                  ns: 'workflowLogic',
+                })
+              : t(($) => $['nodes.assigner.operations.title'], { ns: 'workflowLogic' })}
           </span>
         </div>
         <span
@@ -85,11 +83,11 @@ const OperationSelector: FC<OperationSelectorProps> = ({
       <DropdownMenuContent
         placement="bottom-start"
         sideOffset={4}
-        popupClassName={cn('w-35', popupClassName)}
+        className={cn('w-35', popupClassName)}
       >
         <DropdownMenuGroup>
           <DropdownMenuLabel>
-            {t(($) => $['nodes.assigner.operations.title'], { ns: 'workflow' })}
+            {t(($) => $['nodes.assigner.operations.title'], { ns: 'workflowLogic' })}
           </DropdownMenuLabel>
           {items.map((item) =>
             !isOperationItem(item) ? (
@@ -102,7 +100,7 @@ const OperationSelector: FC<OperationSelectorProps> = ({
               >
                 <div className="flex min-h-5 grow items-center gap-1 px-1">
                   <span className="flex grow system-sm-medium text-text-secondary">
-                    {t(($) => $[`nodes.assigner.operations.${item.name}`], { ns: 'workflow' })}
+                    {t(($) => $[`nodes.assigner.operations.${item.name}`], { ns: 'workflowLogic' })}
                   </span>
                 </div>
                 {item.value === value && (

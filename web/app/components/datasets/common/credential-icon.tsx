@@ -36,6 +36,7 @@ export const CredentialIcon: React.FC<CredentialIconProps> = ({
   if (avatarUrl && avatarUrl !== 'default' && showAvatar) {
     return (
       <div
+        aria-hidden="true"
         className={cn(
           'flex shrink-0 items-center justify-center overflow-hidden rounded-md border border-divider-regular',
           className,
@@ -43,6 +44,7 @@ export const CredentialIcon: React.FC<CredentialIconProps> = ({
         style={{ width: `${size}px`, height: `${size}px` }}
       >
         <img
+          alt=""
           src={avatarUrl}
           width={size}
           height={size}
@@ -55,6 +57,7 @@ export const CredentialIcon: React.FC<CredentialIconProps> = ({
 
   return (
     <div
+      aria-hidden="true"
       className={cn(
         'flex shrink-0 items-center justify-center rounded-md border border-divider-regular',
         bgColor,

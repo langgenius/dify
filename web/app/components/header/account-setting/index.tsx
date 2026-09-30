@@ -1,9 +1,15 @@
 'use client'
+
 import type { AccountSettingTab } from '@/app/components/header/account-setting/constants'
-import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import {
+  ScrollArea,
+  ScrollAreaContent,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+} from '@langgenius/dify-ui/scroll-area'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -12,13 +18,13 @@ import CustomPage from '@/app/components/custom/custom-page'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import MenuDialog from '@/app/components/header/account-setting/menu-dialog'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { useProviderContext } from '@/context/provider-context'
 import {
   isCurrentWorkspaceDatasetOperatorAtom,
   isCurrentWorkspaceManagerAtom,
 } from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { consoleQuery } from '@/service/console'
 import { hasPermission } from '@/utils/permission'
 import AccessRulesPage from './access-rules-page'
 import MembersPage from './members-page'
@@ -50,8 +56,12 @@ export default function AccountSetting({
   activeTab,
   onTabChangeAction,
 }: IAccountSettingProps) {
-  const { t } = useTranslation()
-  const { enableBilling, enableReplaceWebAppLogo } = useProviderContext()
+  const { t } = useTranslation(['appLog', 'billing', 'custom', 'navigation', 'accountSettings'])
+  const { data: enableReplaceWebAppLogo } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      select: (features) => features.can_replace_logo,
+    }),
+  )
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
@@ -59,7 +69,8 @@ export default function AccountSetting({
   const isRbacEnabled = systemFeatures.rbac_enabled
   const canManageWorkspaceRoles =
     isRbacEnabled && hasPermission(workspacePermissionKeys, 'workspace.role.manage')
-  const canViewBilling = enableBilling && !isCurrentWorkspaceDatasetOperator
+  const canViewBilling =
+    systemFeatures.deployment_edition === 'CLOUD' && !isCurrentWorkspaceDatasetOperator
   const canViewWorkflowLogArchives =
     systemFeatures.deployment_edition === 'CLOUD' && isCurrentWorkspaceManager
   const activeMenu = (() => {
@@ -80,26 +91,26 @@ export default function AccountSetting({
   const settingItems: GroupItem[] = [
     {
       key: ACCOUNT_SETTING_TAB.MEMBERS,
-      name: t(($) => $['settings.members'], { ns: 'common' }),
+      name: t(($) => $['settings.members'], { ns: 'navigation' }),
       icon: <span className={cn('i-ri-group-2-line', iconClassName)} />,
       activeIcon: <span className={cn('i-ri-group-2-fill', iconClassName)} />,
     },
     {
       key: ACCOUNT_SETTING_TAB.ROLES_AND_PERMISSIONS,
-      name: t(($) => $['settings.rolesAndPermissions'], { ns: 'common' }),
+      name: t(($) => $['settings.rolesAndPermissions'], { ns: 'navigation' }),
       icon: <span className={cn('i-ri-shield-user-line', iconClassName)} />,
       activeIcon: <span className={cn('i-ri-shield-user-fill', iconClassName)} />,
     },
     {
       key: ACCOUNT_SETTING_TAB.PERMISSION_SET,
-      name: t(($) => $['settings.permissionSet'], { ns: 'common' }),
-      description: t(($) => $['settings.permissionSetDescription'], { ns: 'common' }),
+      name: t(($) => $['settings.permissionSet'], { ns: 'navigation' }),
+      description: t(($) => $['settings.permissionSetDescription'], { ns: 'navigation' }),
       icon: <span className={cn('i-ri-lock-2-line', iconClassName)} />,
       activeIcon: <span className={cn('i-ri-lock-2-fill', iconClassName)} />,
     },
     {
       key: ACCOUNT_SETTING_TAB.BILLING,
-      name: t(($) => $['settings.billing'], { ns: 'common' }),
+      name: t(($) => $['settings.billing'], { ns: 'navigation' }),
       description: t(($) => $['plansCommon.receiptInfo'], { ns: 'billing' }),
       icon: <span className={cn('i-ri-money-dollar-circle-line', iconClassName)} />,
       activeIcon: <span className={cn('i-ri-money-dollar-circle-fill', iconClassName)} />,
@@ -119,8 +130,8 @@ export default function AccountSetting({
     },
     {
       key: ACCOUNT_SETTING_TAB.PREFERENCES,
-      name: t(($) => $['settings.preferences'], { ns: 'common' }),
-      title: t(($) => $['account.general'], { ns: 'common' }),
+      name: t(($) => $['settings.preferences'], { ns: 'navigation' }),
+      title: t(($) => $['account.general'], { ns: 'accountSettings' }),
       icon: <span className={cn('i-ri-equalizer-2-line', iconClassName)} />,
       activeIcon: <span className={cn('i-ri-equalizer-2-fill', iconClassName)} />,
     },
@@ -139,7 +150,8 @@ export default function AccountSetting({
 
     if (canViewBilling) visibleTabs.push(ACCOUNT_SETTING_TAB.BILLING)
 
-    if (enableReplaceWebAppLogo || enableBilling) visibleTabs.push(ACCOUNT_SETTING_TAB.CUSTOM)
+    if (enableReplaceWebAppLogo || systemFeatures.deployment_edition === 'CLOUD')
+      visibleTabs.push(ACCOUNT_SETTING_TAB.CUSTOM)
 
     if (canViewWorkflowLogArchives) visibleTabs.push(ACCOUNT_SETTING_TAB.WORKFLOW_LOG_ARCHIVES)
 
@@ -155,7 +167,7 @@ export default function AccountSetting({
   const menuItems = [
     {
       key: 'workspace-group',
-      name: t(($) => $['settings.workspace'], { ns: 'common' }),
+      name: t(($) => $['settings.workspace'], { ns: 'navigation' }),
       items: visibleSettingItems,
     },
     {
@@ -165,23 +177,14 @@ export default function AccountSetting({
   ]
 
   return (
-    <MenuDialog show onClose={onCancelAction}>
-      <div className="fixed top-6 right-6 z-20 flex shrink-0 flex-col items-center">
-        <Button
-          variant="tertiary"
-          size="large"
-          className="px-2"
-          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-          onClick={onCancelAction}
-        >
-          <span className="i-ri-close-line size-5" />
-        </Button>
-        <div className="mt-1 system-2xs-medium-uppercase text-text-tertiary">ESC</div>
-      </div>
-      <div className="flex h-screen w-full max-w-full pl-0 sm:pl-58">
+    <MenuDialog
+      title={t(($) => $['settings.settings'], { ns: 'navigation' })}
+      onClose={onCancelAction}
+    >
+      <div className="mx-auto flex h-screen w-full max-w-270 px-4">
         <div className="flex w-11 shrink-0 flex-col pr-6 pl-4 sm:w-56">
           <div className="mt-6 mb-8 flex h-9.5 items-center px-3 title-2xl-semi-bold whitespace-nowrap text-text-primary">
-            {t(($) => $['settings.settings'], { ns: 'common' })}
+            {t(($) => $['settings.settings'], { ns: 'navigation' })}
           </div>
           <div className="w-full">
             {menuItems.map((menuItem) => (
@@ -204,7 +207,7 @@ export default function AccountSetting({
                       type="button"
                       key={item.key}
                       className={cn(
-                        'mb-0.5 flex h-8 w-full items-center rounded-lg px-3 text-left text-sm',
+                        'mb-0.5 flex h-8 w-full items-center rounded-lg px-3 text-left text-sm focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
                         activeMenu === item.key
                           ? 'bg-state-base-active system-sm-semibold text-components-menu-item-text-active'
                           : 'system-sm-medium text-components-menu-item-text',
@@ -224,38 +227,49 @@ export default function AccountSetting({
             ))}
           </div>
         </div>
-        <div className="relative flex min-h-0 w-206 min-w-0">
-          <ScrollArea
-            ref={scrollContainerRef}
-            className="h-full min-h-0 min-w-0 flex-1 bg-components-panel-bg"
-            slotClassNames={{
-              viewport: 'overscroll-contain overflow-x-hidden',
-              content: 'min-h-full min-w-0 w-full max-w-full pb-4',
-            }}
-          >
-            <div className="sticky top-0 z-20 mx-8 flex min-h-15 items-end bg-components-panel-bg pt-8 pb-2">
-              <div className="min-w-0 flex-1 title-2xl-semi-bold text-text-primary">
-                {activeItem?.title ?? activeItem?.name}
-                {activeItem?.description && (
-                  <div className="mt-1 system-sm-regular wrap-break-word whitespace-normal text-text-tertiary">
-                    {activeItem?.description}
+        <div className="relative flex min-h-0 min-w-0 flex-1">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-y-0 left-full w-screen bg-components-panel-bg"
+          />
+          <ScrollArea className="h-full min-h-0 min-w-0 flex-1 bg-components-panel-bg">
+            <ScrollAreaViewport
+              ref={scrollContainerRef}
+              style={{ overflowX: 'hidden' }}
+              className="overscroll-contain"
+            >
+              <ScrollAreaContent
+                style={{ minWidth: 0 }}
+                className="min-h-full w-full max-w-full pb-4"
+              >
+                <div className="sticky top-0 z-20 mx-8 flex min-h-15 items-end bg-components-panel-bg pt-8 pb-2">
+                  <div className="min-w-0 flex-1 title-2xl-semi-bold text-text-primary">
+                    {activeItem?.title ?? activeItem?.name}
+                    {activeItem?.description && (
+                      <div className="mt-1 system-sm-regular wrap-break-word whitespace-normal text-text-tertiary">
+                        {activeItem?.description}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            </div>
-            <div className="max-w-full min-w-0 px-4 pt-6 sm:px-8">
-              {activeMenu === ACCOUNT_SETTING_TAB.MEMBERS && <MembersPage />}
-              {activeMenu === ACCOUNT_SETTING_TAB.ROLES_AND_PERMISSIONS && (
-                <PermissionsPage containerRef={scrollContainerRef} />
-              )}
-              {activeMenu === ACCOUNT_SETTING_TAB.PERMISSION_SET && <AccessRulesPage />}
-              {activeMenu === ACCOUNT_SETTING_TAB.BILLING && <BillingPage />}
-              {activeMenu === ACCOUNT_SETTING_TAB.WORKFLOW_LOG_ARCHIVES && (
-                <WorkflowLogArchivesPage />
-              )}
-              {activeMenu === ACCOUNT_SETTING_TAB.CUSTOM && <CustomPage />}
-              {activeMenu === ACCOUNT_SETTING_TAB.PREFERENCES && <PreferencePage />}
-            </div>
+                </div>
+                <div className="max-w-full min-w-0 px-4 pt-6 sm:px-8">
+                  {activeMenu === ACCOUNT_SETTING_TAB.MEMBERS && <MembersPage />}
+                  {activeMenu === ACCOUNT_SETTING_TAB.ROLES_AND_PERMISSIONS && (
+                    <PermissionsPage containerRef={scrollContainerRef} />
+                  )}
+                  {activeMenu === ACCOUNT_SETTING_TAB.PERMISSION_SET && <AccessRulesPage />}
+                  {activeMenu === ACCOUNT_SETTING_TAB.BILLING && <BillingPage />}
+                  {activeMenu === ACCOUNT_SETTING_TAB.WORKFLOW_LOG_ARCHIVES && (
+                    <WorkflowLogArchivesPage />
+                  )}
+                  {activeMenu === ACCOUNT_SETTING_TAB.CUSTOM && <CustomPage />}
+                  {activeMenu === ACCOUNT_SETTING_TAB.PREFERENCES && <PreferencePage />}
+                </div>
+              </ScrollAreaContent>
+            </ScrollAreaViewport>
+            <ScrollAreaScrollbar>
+              <ScrollAreaThumb />
+            </ScrollAreaScrollbar>
           </ScrollArea>
         </div>
       </div>

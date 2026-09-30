@@ -5,9 +5,11 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
-from sqlalchemy import Engine, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.app.file_access import FileAccessScope, bind_file_access_scope, get_current_file_access_scope
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.models.document import Document
 from core.rag.retrieval import dataset_retrieval as retrieval_module
@@ -25,15 +27,12 @@ class RetrievalDatabase:
 
 
 @pytest.fixture
-def retrieval_database(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> RetrievalDatabase:
+def retrieval_database(
+    sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+) -> RetrievalDatabase:
     """Bind every retrieval-owned session to a disposable SQLite database."""
-    Dataset.metadata.create_all(
-        sqlite_engine,
-        tables=[Dataset.__table__, DatasetDocument.__table__, DocumentSegment.__table__, RateLimitLog.__table__],
-    )
-    session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
-    monkeypatch.setattr(retrieval_module.session_factory, "create_session", session_maker)
-    return RetrievalDatabase(session_maker=session_maker)
+    monkeypatch.setattr(retrieval_module.session_factory, "create_session", sqlite_session_factory)
+    return RetrievalDatabase(session_maker=sqlite_session_factory)
 
 
 def _persist_dataset(
@@ -325,17 +324,22 @@ class TestDatasetRetrievalKnowledgeRetrieval:
             "format_retrieval_documents",
             MagicMock(return_value=[record]),
         )
-        grant_access = MagicMock()
-        monkeypatch.setattr(retrieval_module, "grant_retriever_segment_access", grant_access)
-
-        with retrieval_database.session_maker() as caller_session:
+        scope = FileAccessScope(
+            tenant_id=dataset.tenant_id,
+            user_id="visitor",
+            user_from=UserFrom.END_USER,
+            invoke_from=InvokeFrom.WEB_APP,
+        )
+        with bind_file_access_scope(scope), retrieval_database.session_maker() as caller_session:
             result = retrieval.knowledge_retrieval(caller_session, _request(dataset_ids=[dataset.id]))
+            granted_scope = get_current_file_access_scope()
 
         assert len(result) == 1
         assert result[0].metadata.dataset_id == dataset.id
         assert result[0].metadata.document_id == document.id
         assert result[0].title == document.name
-        grant_access.assert_called_once_with([segment.id])
+        assert granted_scope is not None
+        assert granted_scope.granted_retriever_segment_ids == frozenset([segment.id])
 
     def test_metadata_filtering_disabled_skips_filter_builder(
         self,

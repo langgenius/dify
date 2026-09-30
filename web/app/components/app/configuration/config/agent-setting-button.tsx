@@ -22,7 +22,7 @@ const AgentSettingButton: FC<Props> = ({
   agentConfig,
   disabled = false,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   const [isShowAgentSetting, setIsShowAgentSetting] = useState(false)
 
   return (
@@ -32,7 +32,7 @@ const AgentSettingButton: FC<Props> = ({
         className="mr-2 shrink-0"
         disabled={disabled}
       >
-        <span className="mr-1 i-ri-settings-2-line size-4 text-text-tertiary" />
+        <span className="i-ri-settings-2-line size-4 text-text-tertiary" />
         {t(($) => $['agent.setting.name'], { ns: 'appDebug' })}
       </Button>
       {isShowAgentSetting && (
