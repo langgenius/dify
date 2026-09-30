@@ -1443,6 +1443,7 @@ export default interface Resources {
       'Priority Email & Chat Support',
     ]
     'plans.premium.includesTitle': 'Everything from Community, plus:'
+    'plans.premium.marketplaceName': 'AWS Marketplace'
     'plans.premium.name': 'Premium'
     'plans.premium.price': 'Scalable'
     'plans.premium.priceTip': 'Based on Cloud Marketplace'
@@ -1466,6 +1467,7 @@ export default interface Resources {
     'plansCommon.comparePlanAndFeatures': 'Compare plans & features'
     'plansCommon.currentPlan': 'Current Plan'
     'plansCommon.days': 'Days'
+    'plansCommon.discountedAnnualPrice': 'Discounted annual price: '
     'plansCommon.documentProcessingPriority': ' Document Processing'
     'plansCommon.documentProcessingPriorityTip': 'For higher document processing priority, please upgrade your plan.'
     'plansCommon.documentProcessingPriorityUpgrade': 'Process more data with higher accuracy at faster speeds.'
@@ -1484,6 +1486,7 @@ export default interface Resources {
     'plansCommon.modelProviders': 'Support OpenAI/Anthropic/Llama2/Azure OpenAI/Hugging Face/Replicate'
     'plansCommon.month': 'month'
     'plansCommon.mostPopular': 'Popular'
+    'plansCommon.originalAnnualPrice': 'Original annual price: '
     'plansCommon.priceTip': 'per workspace/'
     'plansCommon.priority.priority': 'Priority'
     'plansCommon.priority.standard': 'Standard'
