@@ -99,7 +99,7 @@ const AppInfoModals = ({
   return (
     <>
       {activeModal === 'switch' && (
-        <SwitchAppModal inAppDetail show appDetail={appDetail} onClose={closeModal} />
+        <SwitchAppModal show sourceApp={appDetail} onClose={closeModal} />
       )}
       {activeModal === 'edit' && (
         <CreateAppModal
@@ -197,7 +197,12 @@ const AppInfoModals = ({
         </AlertDialogContent>
       </AlertDialog>
       {activeModal === 'importDSL' && (
-        <UpdateDSLModal onCancel={closeModal} onBackup={exportCheck} />
+        <UpdateDSLModal
+          appId={appDetail.id}
+          appMode={appDetail.mode}
+          onCancel={closeModal}
+          onBackup={exportCheck}
+        />
       )}
       <AlertDialog open={isExportDialogOpen} onOpenChange={handleExportDialogOpenChange}>
         {exportDialogMode === 'secret' ? (
