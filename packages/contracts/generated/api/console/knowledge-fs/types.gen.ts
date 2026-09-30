@@ -841,6 +841,8 @@ export type KnowledgeFsSourceWorkflowResponse = {
     | 'DOCUMENT_COMPILATION_LEASE_LOST'
     | 'DOCUMENT_COMPILATION_PROFILE_CHANGED'
     | 'DOCUMENT_COMPILATION_RETRYABLE'
+    | 'DOCUMENT_COUNT_QUOTA_EXCEEDED'
+    | 'DOCUMENT_COUNT_QUOTA_UNAVAILABLE'
     | 'DOCUMENT_DISABLED'
     | 'DOCUMENT_PARSER_INPUT_INVALID'
     | 'DOCUMENT_PARSER_NOT_CONFIGURED'
@@ -934,6 +936,8 @@ export type KnowledgeFsSourceWorkflowResponse = {
     | 'SOURCE_WORKFLOW_FAILED'
     | 'UPLOAD_INITIALIZATION_FAILED'
     | 'UPLOAD_INTEGRITY_MISMATCH'
+    | 'VECTOR_SPACE_QUOTA_EXCEEDED'
+    | 'VECTOR_SPACE_QUOTA_UNAVAILABLE'
     | null
   max_execution_attempts: number
   progress_completed: number
@@ -1102,6 +1106,8 @@ export type KnowledgeFsSourceCredentialTestResponse = {
     | 'DOCUMENT_COMPILATION_LEASE_LOST'
     | 'DOCUMENT_COMPILATION_PROFILE_CHANGED'
     | 'DOCUMENT_COMPILATION_RETRYABLE'
+    | 'DOCUMENT_COUNT_QUOTA_EXCEEDED'
+    | 'DOCUMENT_COUNT_QUOTA_UNAVAILABLE'
     | 'DOCUMENT_DISABLED'
     | 'DOCUMENT_PARSER_INPUT_INVALID'
     | 'DOCUMENT_PARSER_NOT_CONFIGURED'
@@ -1195,6 +1201,8 @@ export type KnowledgeFsSourceCredentialTestResponse = {
     | 'SOURCE_WORKFLOW_FAILED'
     | 'UPLOAD_INITIALIZATION_FAILED'
     | 'UPLOAD_INTEGRITY_MISMATCH'
+    | 'VECTOR_SPACE_QUOTA_EXCEEDED'
+    | 'VECTOR_SPACE_QUOTA_UNAVAILABLE'
     | null
   error?: string | null
   failure?: KnowledgeFsPublicFailureResponse | null
@@ -1497,6 +1505,8 @@ export type KnowledgeFsPublicFailureResponse = {
     | 'DOCUMENT_COMPILATION_LEASE_LOST'
     | 'DOCUMENT_COMPILATION_PROFILE_CHANGED'
     | 'DOCUMENT_COMPILATION_RETRYABLE'
+    | 'DOCUMENT_COUNT_QUOTA_EXCEEDED'
+    | 'DOCUMENT_COUNT_QUOTA_UNAVAILABLE'
     | 'DOCUMENT_DISABLED'
     | 'DOCUMENT_PARSER_INPUT_INVALID'
     | 'DOCUMENT_PARSER_NOT_CONFIGURED'
@@ -1590,6 +1600,8 @@ export type KnowledgeFsPublicFailureResponse = {
     | 'SOURCE_WORKFLOW_FAILED'
     | 'UPLOAD_INITIALIZATION_FAILED'
     | 'UPLOAD_INTEGRITY_MISMATCH'
+    | 'VECTOR_SPACE_QUOTA_EXCEEDED'
+    | 'VECTOR_SPACE_QUOTA_UNAVAILABLE'
   message: string
   parameters?: {
     [key: string]: string | number | number | boolean
@@ -2140,6 +2152,8 @@ export type KnowledgeFsSourceImportFailureResponse = {
     | 'DOCUMENT_COMPILATION_LEASE_LOST'
     | 'DOCUMENT_COMPILATION_PROFILE_CHANGED'
     | 'DOCUMENT_COMPILATION_RETRYABLE'
+    | 'DOCUMENT_COUNT_QUOTA_EXCEEDED'
+    | 'DOCUMENT_COUNT_QUOTA_UNAVAILABLE'
     | 'DOCUMENT_DISABLED'
     | 'DOCUMENT_PARSER_INPUT_INVALID'
     | 'DOCUMENT_PARSER_NOT_CONFIGURED'
@@ -2233,6 +2247,8 @@ export type KnowledgeFsSourceImportFailureResponse = {
     | 'SOURCE_WORKFLOW_FAILED'
     | 'UPLOAD_INITIALIZATION_FAILED'
     | 'UPLOAD_INTEGRITY_MISMATCH'
+    | 'VECTOR_SPACE_QUOTA_EXCEEDED'
+    | 'VECTOR_SPACE_QUOTA_UNAVAILABLE'
   error: string
   failure?: KnowledgeFsPublicFailureResponse | null
   filename: string

@@ -1269,6 +1269,47 @@ def test_json_remote_preserves_safe_failure_for_upstream_unavailability(
     assert response.is_closed
 
 
+@pytest.mark.parametrize(
+    ("code", "status", "category", "retry_policy"),
+    [
+        ("DOCUMENT_COUNT_QUOTA_EXCEEDED", 413, "configuration", "after_configuration"),
+        ("DOCUMENT_COUNT_QUOTA_UNAVAILABLE", 503, "dependency", "manual"),
+        ("VECTOR_SPACE_QUOTA_EXCEEDED", 413, "configuration", "after_configuration"),
+        ("VECTOR_SPACE_QUOTA_UNAVAILABLE", 503, "dependency", "manual"),
+    ],
+)
+def test_json_remote_preserves_quota_failures(
+    monkeypatch: pytest.MonkeyPatch, code: str, status: int, category: str, retry_policy: str
+) -> None:
+    response = httpx.Response(
+        status,
+        json={
+            "failure": {
+                "category": category,
+                "code": code,
+                "message": "Authorization: Bearer billing-secret",
+                "retryPolicy": retry_policy,
+                "traceId": "trace-quota",
+            }
+        },
+        headers={"Content-Type": "application/json"},
+    )
+    monkeypatch.setattr(ssrf_proxy, "make_request", lambda **_: response)
+    monkeypatch.setattr(ssrf_proxy, "buffer_response", lambda buffered, **_: buffered)
+    client = HTTPKnowledgeFSProductRemoteClient(base_url="https://knowledge-fs.test", timeout_seconds=3)
+
+    with pytest.raises(KnowledgeFSProductRequestRejectedError) as raised:
+        client.execute_json(_json_request())
+
+    assert raised.value.status_code == status
+    assert raised.value.failure is not None
+    assert raised.value.failure.code == code
+    assert raised.value.failure.retry_policy == retry_policy
+    assert raised.value.failure.trace_id == "trace-quota"
+    assert "billing-secret" not in raised.value.failure.model_dump_json()
+    assert response.is_closed
+
+
 def test_json_remote_masks_unregistered_upstream_failure_metadata(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

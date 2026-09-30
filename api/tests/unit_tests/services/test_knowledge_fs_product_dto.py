@@ -264,6 +264,75 @@ def test_settings_failures_keep_specific_safe_messages(code: str) -> None:
     assert "conflicts with the current resource state" not in failure.message
 
 
+@pytest.mark.parametrize(
+    ("code", "category", "retry_policy", "expected_message"),
+    [
+        (
+            "DOCUMENT_COUNT_QUOTA_EXCEEDED",
+            "configuration",
+            "after_configuration",
+            "The workspace document limit has been reached. Delete documents or upgrade the plan before adding more.",
+        ),
+        (
+            "DOCUMENT_COUNT_QUOTA_UNAVAILABLE",
+            "dependency",
+            "manual",
+            "The workspace document quota could not be verified. Try again later.",
+        ),
+        (
+            "VECTOR_SPACE_QUOTA_EXCEEDED",
+            "configuration",
+            "after_configuration",
+            "The workspace vector storage limit has been reached. "
+            "Delete documents or upgrade the plan before indexing more.",
+        ),
+        (
+            "VECTOR_SPACE_QUOTA_UNAVAILABLE",
+            "dependency",
+            "manual",
+            "The workspace vector storage quota could not be verified. Try again later.",
+        ),
+    ],
+)
+def test_quota_failure_is_preserved_in_source_workflow_response_with_safe_message(
+    code: str, category: str, retry_policy: str, expected_message: str
+) -> None:
+    response = KnowledgeFSSourceWorkflowResponse.model_validate(
+        {
+            "checkpoint": "selection-frozen",
+            "createdAt": "2030-01-01T00:00:00Z",
+            "executionAttempts": 1,
+            "id": "workflow-1",
+            "knowledgeSpaceId": "space-1",
+            "kind": "sync",
+            "lastErrorCode": code,
+            "maxExecutionAttempts": 3,
+            "progressCompleted": 0,
+            "progressFailed": 1,
+            "progressSkipped": 0,
+            "state": "failed",
+            "updatedAt": "2030-01-01T00:01:00Z",
+            "failure": {
+                "category": category,
+                "code": code,
+                "message": "Authorization: Bearer billing-secret",
+                "retryPolicy": retry_policy,
+            },
+        }
+    )
+
+    assert response.last_error_code == code
+    assert response.failure is not None
+    assert response.failure.code == code
+    assert response.failure.message == expected_message
+    assert response.failure.category == category
+    assert response.failure.retry_policy == retry_policy
+    serialized = response.model_dump(mode="json", by_alias=True)
+    assert serialized["failure"]["code"] == code
+    assert serialized["failure"]["retryPolicy"] == retry_policy
+    assert "billing-secret" not in response.model_dump_json()
+
+
 def test_public_failure_accepts_only_allowlisted_bounded_parameters() -> None:
     failure = KnowledgeFSPublicFailureResponse.model_validate(
         {

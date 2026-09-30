@@ -53,6 +53,8 @@ KnowledgeFSPublicErrorCode = Literal[
     "DOCUMENT_COMPILATION_FAILED",
     "DOCUMENT_COMPILATION_RETRYABLE",
     "DOCUMENT_COMPILATION_LEASE_LOST",
+    "DOCUMENT_COUNT_QUOTA_EXCEEDED",
+    "DOCUMENT_COUNT_QUOTA_UNAVAILABLE",
     "DOCUMENT_DISABLED",
     "DOCUMENT_PARSER_INPUT_INVALID",
     "DOCUMENT_PARSER_NOT_CONFIGURED",
@@ -143,6 +145,8 @@ KnowledgeFSPublicErrorCode = Literal[
     "SOURCE_WORKFLOW_EXTERNAL_TIMEOUT",
     "UPLOAD_INITIALIZATION_FAILED",
     "UPLOAD_INTEGRITY_MISMATCH",
+    "VECTOR_SPACE_QUOTA_EXCEEDED",
+    "VECTOR_SPACE_QUOTA_UNAVAILABLE",
 ]
 
 
@@ -177,11 +181,22 @@ class KnowledgeFSPublicFailureResponse(ResponseModel):
             "The model configuration changed or is unavailable. "
             "Check the knowledge space models before retrying document processing."
         ),
+        "DOCUMENT_COUNT_QUOTA_EXCEEDED": (
+            "The workspace document limit has been reached. Delete documents or upgrade the plan before adding more."
+        ),
+        "DOCUMENT_COUNT_QUOTA_UNAVAILABLE": ("The workspace document quota could not be verified. Try again later."),
         "RETRIEVAL_DELETION_IN_PROGRESS": "This Agent Knowledge Base is being deleted and cannot be searched.",
         "RETRIEVAL_EXECUTION_LEASE_LOST": (
             "The retrieval execution expired before it could finish. Run the query again."
         ),
         "SOURCE_SYNC_SELECTION_MISMATCH": ("The source document inventory does not match the configured selection."),
+        "VECTOR_SPACE_QUOTA_EXCEEDED": (
+            "The workspace vector storage limit has been reached. "
+            "Delete documents or upgrade the plan before indexing more."
+        ),
+        "VECTOR_SPACE_QUOTA_UNAVAILABLE": (
+            "The workspace vector storage quota could not be verified. Try again later."
+        ),
     }
     _SAFE_PARAMETER_KEYS: ClassVar[frozenset[str]] = frozenset(
         {
