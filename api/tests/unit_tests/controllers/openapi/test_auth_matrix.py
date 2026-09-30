@@ -93,6 +93,7 @@ from controllers.openapi.auth.spec import EndpointSpec
 from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject
 from controllers.openapi.human_input_form import CheckFormSurface
 from enums import DeploymentEdition, WebAppAccessMode
+from extensions.application_services.app import AppServices
 from libs.oauth_bearer import BearerAuthenticator, ResolvedRow, sha256_hex
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import EndUserType
@@ -846,9 +847,16 @@ def _matrix_app() -> Flask:
     return app
 
 
+@dataclass(frozen=True)
+class MatrixServices:
+    apps: AppServices
+
+
 @pytest.fixture
-def matrix_app(_matrix_app: Flask, monkeypatch: pytest.MonkeyPatch) -> Iterator[Flask]:
+def matrix_app(_matrix_app: Flask, monkeypatch: pytest.MonkeyPatch, app_services: AppServices) -> Iterator[Flask]:
     """Keep rate-limit overrides and the admission probe scoped to each case."""
+
+    monkeypatch.setitem(_matrix_app.extensions, "application_services", MatrixServices(app_services))
 
     monkeypatch.setattr(
         rate_limit_module,

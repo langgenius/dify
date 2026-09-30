@@ -1,5 +1,6 @@
 """Database repository for the workspace-list read model."""
 
+from collections.abc import Sequence
 from typing import override
 
 from sqlalchemy import select
@@ -8,6 +9,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from models.account import Tenant, TenantAccountJoin, TenantStatus
 from services.account_login_service import ConsoleAuthWorkspaceQuery
 from services.account_ports import AccountWorkspaceMembershipQuery, AccountWorkspaceSnapshotQuery
+from services.app.query_service import DiscoveryWorkspaces
 from services.entities.account_access_entities import AccountWorkspaceSnapshot
 from services.oauth_device_application_service import DeviceWorkspaceQuery
 from services.oauth_device_contracts import DeviceWorkspace
@@ -20,9 +22,18 @@ class WorkspaceQueryRepository(
     AccountWorkspaceSnapshotQuery,
     ConsoleAuthWorkspaceQuery,
     DeviceWorkspaceQuery,
+    DiscoveryWorkspaces,
 ):
     def __init__(self, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
+
+    @override
+    def names_by_ids(self, workspace_ids: Sequence[str]) -> dict[str, str]:
+        if not workspace_ids:
+            return {}
+        with self._session_factory() as session:
+            rows = session.execute(select(Tenant.id, Tenant.name).where(Tenant.id.in_(workspace_ids)))
+            return dict(rows.tuples().all())
 
     def get_account_role(self, *, account_id: str, tenant_id: str) -> str | None:
         """Read the current membership role without loading or mutating an Account."""

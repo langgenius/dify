@@ -4,11 +4,11 @@ openapi `app` face (`get app`) exposes and the CLI `--mode` whitelist derives fr
 
 from __future__ import annotations
 
-from controllers.openapi._models import SUPPORTED_APP_TYPES, SupportedAppType
 from models.model import AppMode
+from services.entities.app_entities import SUPPORTED_APP_TYPES, SupportedAppType
 
 
-def test_supported_app_type_is_the_listable_subset_of_app_mode():
+def test_supported_app_type_is_the_listable_subset_of_app_mode() -> None:
     """SupportedAppType (and the derived SUPPORTED_APP_TYPES tuple) is exactly the
     curated, listable subset of AppMode; non-app/runtime modes stay out."""
     assert {t.value for t in SupportedAppType} == {

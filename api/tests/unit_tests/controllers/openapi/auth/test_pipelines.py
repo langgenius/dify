@@ -29,11 +29,11 @@ from controllers.openapi.auth.requirements import (
     Rank,
     Requirement,
 )
-from controllers.openapi.auth.spec import CatalogMeta, EndpointSpec, Kind
+from controllers.openapi.auth.spec import AdmissionContext, CatalogMeta, EndpointSpec, Kind
 from controllers.openapi.auth.subjects import _SUBJECT_CLASSES, AccountSubject, Subject
 from enums import DeploymentEdition
 from libs.oauth_bearer import AuthContext, try_get_auth_ctx
-from machinery.context import RequestContext
+from machinery.context import AppRequestContext, RequestContext
 from services.account_service import AccountService, TenantService
 from services.app_service import AppService
 from services.enterprise.enterprise_service import WebAppAccessMode
@@ -257,12 +257,14 @@ def test_every_registrable_subject_has_a_pipeline() -> None:
 
 
 @pytest.mark.parametrize("handler_raises", [False, True])
-def test_account_context_releases_admission_connection_before_handler(
+@pytest.mark.parametrize("context_kind", ["orm", "workspace", "app", None])
+def test_context_injection_and_admission_session_lifetime(
     app: Flask,
     sqlite_session: Session,
     sqlite_engine: Engine,
     monkeypatch: pytest.MonkeyPatch,
     handler_raises: bool,
+    context_kind: AdmissionContext | None,
 ) -> None:
     persist(sqlite_session, make_app(), make_tenant(), make_account(), make_membership())
     monkeypatch.setattr(MOUNT, lambda _user: None)
@@ -277,12 +279,22 @@ def test_account_context_releases_admission_connection_before_handler(
     def checkin(connection: object, *_args: object) -> None:
         connections.discard(connection)
 
-    def call(*, ctx: RequestContext) -> str:
-        assert isinstance(ctx, RequestContext)
-        assert (ctx.account_id, ctx.active_workspace_id) == (ACCOUNT_ID, TENANT_ID)
+    def call(**kwargs: object) -> str:
+        ctx = kwargs.get("ctx")
+        if context_kind == "orm":
+            assert isinstance(ctx, Context)
+            assert ctx.app.id == APP_ID
+        elif context_kind == "workspace":
+            assert isinstance(ctx, RequestContext)
+            assert (ctx.account_id, ctx.active_workspace_id) == (ACCOUNT_ID, TENANT_ID)
+        elif context_kind == "app":
+            assert isinstance(ctx, AppRequestContext)
+            assert (ctx.app_id, ctx.tenant_id) == (APP_ID, TENANT_ID)
+        else:
+            assert kwargs == {}
         assert checkouts
-        assert not connections
-        assert not sqlite_session.in_transaction()
+        assert bool(connections) is (context_kind == "orm")
+        assert sqlite_session.in_transaction() is (context_kind == "orm")
         assert try_get_auth_ctx() == subject.auth
         if handler_raises:
             raise RuntimeError("import failed")
@@ -296,9 +308,9 @@ def test_account_context_releases_admission_connection_before_handler(
             subject=subject,
             auth=subject.auth,
             spec=EndpointSpec(
-                account_context=True,
+                context=context_kind,
                 requirements=(CheckAppApiEnabled(), CheckWorkspaceMember()),
-                catalog=CatalogMeta(op="test.account_context", kind=Kind.OBJECT, summary="test"),
+                catalog=CatalogMeta(op="test.context_injection", kind=Kind.OBJECT, summary="test"),
             ),
             ctx=make_ctx(sqlite_session, subject, app_id=APP_ID),
             session=sqlite_session,
@@ -312,6 +324,7 @@ def test_account_context_releases_admission_connection_before_handler(
                     run()
             else:
                 assert run() == "imported"
+        sqlite_session.close()
         assert not connections
         assert try_get_auth_ctx() is None
     finally:

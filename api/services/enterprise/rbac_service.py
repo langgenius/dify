@@ -2283,6 +2283,20 @@ class RBACService:
             if not dify_config.RBAC_ENABLED:
                 return _legacy_my_permissions(tenant_id, account_id, session=session)
 
+            return RBACService.MyPermissions.fetch(
+                tenant_id, account_id, app_id=app_id, dataset_id=dataset_id, agent_id=agent_id
+            )
+
+        @staticmethod
+        def fetch(
+            tenant_id: str,
+            account_id: str | None,
+            *,
+            app_id: str | None = None,
+            dataset_id: str | None = None,
+            agent_id: str | None = None,
+        ) -> MyPermissionsResponse:
+            """Fetch the enterprise snapshot over HTTP; callers must have RBAC enabled."""
             data = _inner_call(
                 "GET",
                 f"{_INNER_PREFIX}/my-permissions",

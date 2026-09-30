@@ -11,7 +11,6 @@ from controllers.console.datasets.datasets import (
     DatasetQueryListResponse,
     RelatedAppListResponse,
 )
-from extensions.application_services.app import AppServices
 from machinery.context import RequestContext
 from models import Account, App, Dataset, Document
 from models.account import Tenant, TenantAccountJoin, TenantAccountRole
@@ -23,6 +22,7 @@ from models.dataset import (
     DocumentSegment,
 )
 from models.enums import CreatorUserRole, DatasetQuerySource, IndexingStatus, SegmentStatus
+from repositories.app.console_repository import ConsoleAppRepository
 from services.enterprise import rbac_service
 from services.knowledge.dataset_access import DatasetNotFoundError
 from services.knowledge.datasets.adapters import SQLAlchemyDatasetOperations
@@ -76,7 +76,6 @@ def operations(
     sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
     application_tags: TagApplicationService,
-    app_services: AppServices,
 ) -> Iterator[SQLAlchemyDatasetOperations]:
     apply_config_overrides(monkeypatch, RBAC_ENABLED=False)
     with sqlite_session_factory.begin() as session:
@@ -101,7 +100,9 @@ def operations(
         patch.object(rbac_service, "try_sync_creator_access_policy_member_bindings"),
     ):
         yield SQLAlchemyDatasetOperations(
-            session_factory=sqlite_session_factory, tags=application_tags, app_queries=app_services.queries
+            session_factory=sqlite_session_factory,
+            tags=application_tags,
+            app_queries=ConsoleAppRepository(session_factory=sqlite_session_factory),
         )
 
 

@@ -16,7 +16,6 @@ from models import Account, Dataset, Document
 from models.dataset import DatasetPermission, DatasetPermissionEnum
 from models.provider_ids import ModelProviderID
 from repositories.knowledge.dataset_repository import _get_dataset
-from services.app.query_service import AppQueryService
 from services.enterprise import rbac_service
 from services.errors.account import NoPermissionError
 from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
@@ -25,6 +24,7 @@ from services.knowledge.dataset_service import DatasetPermissionService, Dataset
 from services.knowledge.datasets.application import (
     DatasetListFilter,
     DatasetVisibility,
+    RelatedApps,
 )
 from services.knowledge.entities.datasets import DatasetDetailRecord, DatasetPage
 from services.knowledge.resource_scope import DatasetRef
@@ -80,7 +80,7 @@ def _status(document: Document, counts: tuple[int, int] | None = None) -> dict[s
 
 class SQLAlchemyDatasetOperations:
     def __init__(
-        self, *, session_factory: sessionmaker[Session], tags: TagTargetQuery, app_queries: AppQueryService
+        self, *, session_factory: sessionmaker[Session], tags: TagTargetQuery, app_queries: RelatedApps
     ) -> None:
         self._sessions = session_factory
         self._tags = tags

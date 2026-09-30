@@ -2950,33 +2950,6 @@ class TestSessionInjectedGetters:
     def test_get_tenant_by_id_returns_none_when_missing(self, sqlite_session: Session) -> None:
         assert TenantService.get_tenant_by_id("missing", session=sqlite_session) is None
 
-    def test_get_tenants_by_ids_short_circuits_on_empty_input(self, unbound_session: Session) -> None:
-        """Empty id list must return before touching tenant storage."""
-        assert TenantService.get_tenants_by_ids([], session=unbound_session) == []
-
-    def test_get_tenants_by_ids_returns_scalars(self, sqlite_session: Session) -> None:
-        tenant_1 = Tenant(name="Workspace 1")
-        tenant_2 = Tenant(name="Workspace 2")
-        tenant_3 = Tenant(name="Workspace 3")
-        sqlite_session.add_all([tenant_1, tenant_2, tenant_3])
-        sqlite_session.commit()
-
-        tenants = TenantService.get_tenants_by_ids([tenant_1.id, tenant_3.id], session=sqlite_session)
-
-        assert {tenant.id for tenant in tenants} == {tenant_1.id, tenant_3.id}
-
-    def test_get_tenant_name_returns_scalar_or_none(self, sqlite_session: Session) -> None:
-        """Single-column lookup: ``session.execute(...).scalar_one_or_none()``
-        — used by openapi list endpoints to denormalise
-        ``workspace_name`` onto each row.
-        """
-        tenant = Tenant(name="Acme Inc.")
-        sqlite_session.add(tenant)
-        sqlite_session.commit()
-
-        assert TenantService.get_tenant_name(tenant.id, session=sqlite_session) == "Acme Inc."
-        assert TenantService.get_tenant_name("missing", session=sqlite_session) is None
-
     def test_find_workspace_for_account_returns_first_row_or_none(self, sqlite_session: Session) -> None:
         """Per-id read returns ``session.execute(...).first()`` directly;
         callers map ``None`` → 404 to avoid leaking workspace IDs across

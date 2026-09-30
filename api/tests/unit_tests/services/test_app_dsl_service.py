@@ -929,12 +929,9 @@ def test_import_app_reraises_permission_denial_instead_of_failed_result(
 
 
 def test_append_workflow_export_data_reports_missing_selected_workflow(
-    monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+    sqlite_session: Session,
 ) -> None:
     workflow_id = "11111111-1111-4111-8111-111111111111"
-    workflow_service = Mock()
-    workflow_service.get_draft_workflow.return_value = None
-    monkeypatch.setattr("services.app_dsl_service.WorkflowService", Mock(return_value=workflow_service))
     app = _app(app_id="app-1", tenant_id="tenant-1")
 
     with pytest.raises(WorkflowNotFoundError, match=f"Workflow version not found. Workflow ID: {workflow_id}"):
@@ -942,7 +939,7 @@ def test_append_workflow_export_data_reports_missing_selected_workflow(
             export_data={},
             app_model=app,
             include_secret=False,
-            session=unbound_session,
+            session=sqlite_session,
             workflow_id=workflow_id,
         )
 

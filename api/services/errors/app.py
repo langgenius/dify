@@ -1,3 +1,11 @@
+class AppDiscoveryNotFoundError(Exception):
+    pass
+
+
+class PermittedAppsUnavailableError(Exception):
+    pass
+
+
 class MoreLikeThisDisabledError(Exception):
     pass
 

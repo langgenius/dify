@@ -51,6 +51,7 @@ from repositories.account_oauth_repository import (
     RegisterServiceOAuthInvitationGateway,
 )
 from repositories.account_repository import SQLAlchemyAccountRepository
+from repositories.app.console_repository import ConsoleAppRepository
 from repositories.app.site_command_repository import AppSiteCommandRepository
 from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfigRepository
 from repositories.app_scoped_end_user_repository import AppScopedEndUserRepo
@@ -114,6 +115,7 @@ from services.installed_app_generation_adapters import AppGenerateServiceRuntime
 from services.installed_app_generation_service import InstalledAppGenerationService
 from services.knowledge.api_key_service import DatasetApiKeyService
 from services.knowledge.dataset_access import DatasetAccessService
+from services.knowledge.datasets.adapters import SQLAlchemyDatasetOperations
 from services.knowledge.datasets.application import DatasetApplicationService
 from services.knowledge.document_sync import DocumentSyncApplicationService
 from services.knowledge.documents.application import DatasetDocumentApplicationService
@@ -232,7 +234,11 @@ def test_init_app_registers_services_for_the_current_app(
         assert repository._session_factory is sqlite_session_factory
         assert isinstance(services.workflow_statistics, WorkflowStatisticQueryService)
         assert isinstance(services.apps, AppServices)
-        assert services.apps.console._apps is services.apps.queries._apps
+        assert services.apps.console._apps is services.apps.discovery._apps
+        dataset_operations = services.knowledge.datasets._operations
+        assert isinstance(dataset_operations, SQLAlchemyDatasetOperations)
+        assert isinstance(dataset_operations._app_queries, ConsoleAppRepository)
+        assert dataset_operations._app_queries._session_factory is sqlite_session_factory
         creators = services.apps.console._creators
         assert isinstance(creators, CreatorsPlatformGateway)
         assert creators._oauth is services.oauth_server

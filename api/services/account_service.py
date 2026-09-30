@@ -1273,27 +1273,6 @@ class TenantService:
         return session.get(Tenant, tenant_id)
 
     @staticmethod
-    def get_tenants_by_ids(tenant_ids: list[str], *, session: Session) -> list[Tenant]:
-        """Bulk ``Tenant`` fetch by primary-key list. Order is unspecified
-        — callers index by ``tenant.id`` (e.g. for cross-tenant denorm
-        in ``/openapi/v1/permitted-external-apps``).
-
-        Empty input short-circuits to ``[]`` to avoid emitting an
-        ``IN ()`` SQL fragment.
-        """
-        if not tenant_ids:
-            return []
-        return list(session.execute(select(Tenant).where(Tenant.id.in_(tenant_ids))).scalars().all())
-
-    @staticmethod
-    def get_tenant_name(tenant_id: str, *, session: Session) -> str | None:
-        """Single-column tenant name read. Used by openapi list endpoints
-        to denormalize ``workspace_name`` onto each row without dragging
-        the full ``Tenant`` ORM entity through.
-        """
-        return session.execute(select(Tenant.name).where(Tenant.id == tenant_id)).scalar_one_or_none()
-
-    @staticmethod
     def find_workspace_for_account(
         account_id: str, workspace_id: str, *, session: Session
     ) -> Row[tuple[Tenant, TenantAccountJoin]] | None:

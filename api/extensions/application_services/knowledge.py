@@ -9,6 +9,7 @@ from configs import dify_config
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from libs.helper import generate_text_hash
+from repositories.app.console_repository import ConsoleAppRepository
 from repositories.knowledge.dataset_api_key_repository import DatasetApiKeyRepository
 from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepository
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
@@ -16,7 +17,6 @@ from repositories.knowledge.metadata_repository import SQLAlchemyMetadataReposit
 from repositories.knowledge.segment_repository import SQLAlchemySegmentRepository
 from repositories.knowledge.upload_file_repository import SQLAlchemyKnowledgeUploadRepository
 from services.api_token_service import ApiTokenCache
-from services.app.query_service import AppQueryService
 from services.data_source.credential_gateway import (
     ActorAwareDatasourceCredentialGateway,
     TrustedStoredDatasourceCredentialGateway,
@@ -92,7 +92,6 @@ def build_knowledge_services(
     providers: DatasourceProviderService,
     redis: RedisSegmentClient,
     tags: TagTargetQuery,
-    app_queries: AppQueryService,
 ) -> KnowledgeServices:
     """Build the dataset-controller knowledge use cases."""
 
@@ -126,7 +125,11 @@ def build_knowledge_services(
         ),
         datasets=DatasetApplicationService(
             dataset_access=dataset_access,
-            operations=SQLAlchemyDatasetOperations(session_factory=database_client, tags=tags, app_queries=app_queries),
+            operations=SQLAlchemyDatasetOperations(
+                session_factory=database_client,
+                tags=tags,
+                app_queries=ConsoleAppRepository(session_factory=database_client),
+            ),
             rbac_enabled=dify_config.RBAC_ENABLED,
             service_api_url=dify_config.SERVICE_API_URL,
             vector_store=dify_config.VECTOR_STORE,
