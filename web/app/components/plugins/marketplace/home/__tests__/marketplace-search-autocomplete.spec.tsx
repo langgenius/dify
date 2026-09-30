@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
@@ -139,9 +139,7 @@ describe('MarketplaceSearchAutocomplete', () => {
     expect(screen.getByText('Research legal questions with cited sources.')).toBeInTheDocument()
 
     await user.click(screen.getByText('Legal Research Agent'))
-    expect(mockAssign).toHaveBeenCalledWith(
-      '/template/dify/Legal%20Research%20Agent?templateId=template-1',
-    )
+    expect(mockAssign).toHaveBeenCalledWith('/template/dify/template-1')
 
     expect(container.querySelector('form')).toHaveAttribute('action', '/templates/knowledge')
     expect(container.querySelector('input[role="combobox"]')).toHaveAttribute('name', 'q')
@@ -321,6 +319,8 @@ describe('MarketplaceSearchAutocomplete', () => {
 
     await user.type(screen.getByRole('combobox'), 'search')
     await user.hover(await screen.findByRole('option', { name: /Legal Research Agent/ }))
+    fireEvent.keyDown(screen.getByRole('combobox'), { key: 'Enter', isComposing: true })
+    expect(handleSubmit).not.toHaveBeenCalled()
     await user.keyboard('{Enter}')
 
     expect(handleSubmit).toHaveBeenCalledOnce()

@@ -5,6 +5,7 @@ from unittest.mock import Mock, patch
 
 import pandas as pd
 import pytest
+from flask import Flask
 from sqlalchemy import event
 from sqlalchemy.orm import Session
 from werkzeug.datastructures import FileStorage
@@ -95,7 +96,9 @@ class TestQAIndexProcessor:
         splitter = Mock()
         splitter.split_documents.return_value = [split_node]
 
-        def _append_document(flask_app, tenant_id, document_node, all_qa_documents, document_language):
+        def _append_document(
+            flask_app: Flask, tenant_id, document_node, all_qa_documents: list[Document], document_language
+        ):
             all_qa_documents.append(Document(page_content="Q1", metadata={"answer": "A1"}))
 
         with (
@@ -142,7 +145,7 @@ class TestQAIndexProcessor:
         splitter = Mock()
         splitter.split_documents.return_value = [split_node]
 
-        def _append_document(flask_app, tenant_id, document_node, all_qa_documents, document_language):
+        def _append_document(flask_app: Flask, tenant_id, document_node, all_qa_documents, document_language):
             all_qa_documents.append(Document(page_content=f"Q-{document_node.page_content}", metadata={"answer": "A"}))
 
         with (
@@ -286,7 +289,7 @@ class TestQAIndexProcessor:
 
         with (
             patch(
-                "core.rag.index_processor.processor.qa_index_processor.SummaryIndexService.delete_summaries_for_segments"
+                "core.rag.index_processor.processor.qa_index_processor.SummaryIndexAdapter.delete_summaries_for_segments"
             ) as mock_summary,
             patch("core.rag.index_processor.processor.qa_index_processor.Vector") as mock_vector_cls,
         ):
@@ -302,7 +305,7 @@ class TestQAIndexProcessor:
         session = sqlite_session
         with (
             patch(
-                "core.rag.index_processor.processor.qa_index_processor.SummaryIndexService.delete_summaries_for_segments"
+                "core.rag.index_processor.processor.qa_index_processor.SummaryIndexAdapter.delete_summaries_for_segments"
             ) as mock_summary,
             patch("core.rag.index_processor.processor.qa_index_processor.Vector") as mock_vector_cls,
         ):

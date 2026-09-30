@@ -6,6 +6,7 @@ from flask import g
 from werkzeug.exceptions import NotFound
 
 from core.rbac import RBACResourceScope
+from extensions.ext_database import db
 from services.rbac_resource_service import RBACResourceService
 
 if TYPE_CHECKING:
@@ -14,6 +15,7 @@ if TYPE_CHECKING:
 __all__ = [
     "AgentBehindApp",
     "AgentId",
+    "DatasetByDocument",
     "DatasetByPipeline",
     "DatasetId",
     "PlainApp",
@@ -52,7 +54,7 @@ def agent_binding(tenant_id: str, app_id: str) -> "Agent | None":
     cache: dict[tuple[str, str], Agent | None] = g.setdefault(_AGENT_BINDING_CACHE_KEY, {})
     key = (tenant_id, app_id)
     if key not in cache:
-        cache[key] = RBACResourceService.get_app_agent_binding(tenant_id, app_id)
+        cache[key] = RBACResourceService.get_app_agent_binding(db.session, tenant_id, app_id)
     return cache[key]
 
 
@@ -102,7 +104,7 @@ class PlainApp(_ParamLocator):
         return ResourceIdentity(self.scope, app_id)
 
     def owner_id(self, tenant_id: str, identity: ResourceIdentity) -> str | None:
-        return RBACResourceService.get_app_maintainer(tenant_id, identity.id)
+        return RBACResourceService.get_app_maintainer(db.session, tenant_id, identity.id)
 
 
 class AgentBehindApp(_ParamLocator):
@@ -115,7 +117,7 @@ class AgentBehindApp(_ParamLocator):
         binding = agent_binding(tenant_id, _required(path_args, self.param))
         if binding is None or binding.scope == AgentScope.WORKFLOW_ONLY:
             return None
-        return ResourceIdentity(self.scope, str(binding.id))
+        return ResourceIdentity(self.scope, binding.id)
 
     def owner_id(self, tenant_id: str, identity: ResourceIdentity) -> str | None:
         return None
@@ -129,7 +131,19 @@ class DatasetId(_ParamLocator):
         return ResourceIdentity(self.scope, _required(path_args, self.param))
 
     def owner_id(self, tenant_id: str, identity: ResourceIdentity) -> str | None:
-        return RBACResourceService.get_dataset_maintainer(tenant_id, identity.id)
+        return RBACResourceService.get_dataset_maintainer(db.session, tenant_id, identity.id)
+
+
+class DatasetByDocument(DatasetId):
+    default_param = "document_id"
+
+    @override
+    def locate(self, tenant_id: str, path_args: Mapping[str, object]) -> ResourceIdentity | None:
+        document_id = _required(path_args, self.param)
+        dataset_id = RBACResourceService.get_dataset_id_by_document(db.session, tenant_id, document_id)
+        if dataset_id is None:
+            raise NotFound("Document not found")
+        return ResourceIdentity(self.scope, dataset_id)
 
 
 class DatasetByPipeline(DatasetId):
@@ -138,7 +152,7 @@ class DatasetByPipeline(DatasetId):
     @override
     def locate(self, tenant_id: str, path_args: Mapping[str, object]) -> ResourceIdentity | None:
         pipeline_id = _required(path_args, self.param)
-        dataset_id = RBACResourceService.get_dataset_id_by_pipeline(tenant_id, pipeline_id)
+        dataset_id = RBACResourceService.get_dataset_id_by_pipeline(db.session, tenant_id, pipeline_id)
         if dataset_id is None:
             raise NotFound("Dataset not found for pipeline")
         return ResourceIdentity(self.scope, dataset_id)

@@ -4,7 +4,6 @@ import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ApiAggregate } from '@/app/components/base/icons/src/vender/knowledge'
 import Card from './card'
 
 type ApiAccessProps = {
@@ -13,7 +12,7 @@ type ApiAccessProps = {
 }
 
 const ApiAccess = ({ expand, apiEnabled }: ApiAccessProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [open, setOpen] = useState(false)
 
   return (
@@ -24,7 +23,11 @@ const ApiAccess = ({ expand, apiEnabled }: ApiAccessProps) => {
             <button
               {...props}
               type="button"
-              className={cn('w-full border-none bg-transparent p-0 text-left', props.className)}
+              aria-label={!expand ? t(($) => $['appMenus.apiAccess'], { ns: 'common' }) : undefined}
+              className={cn(
+                'nokey w-full rounded-lg border-none bg-transparent p-0 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-state-accent-solid',
+                props.className,
+              )}
             >
               <div
                 className={cn(
@@ -33,7 +36,10 @@ const ApiAccess = ({ expand, apiEnabled }: ApiAccessProps) => {
                   state.open ? 'bg-state-base-hover' : 'hover:bg-state-base-hover',
                 )}
               >
-                <ApiAggregate className="size-4 shrink-0 text-text-secondary" />
+                <span
+                  aria-hidden
+                  className="i-custom-vender-knowledge-api-aggregate size-4 shrink-0 text-text-secondary"
+                />
                 {expand && (
                   <div className="min-w-0 grow truncate system-sm-regular text-text-secondary">
                     {t(($) => $['appMenus.apiAccess'], { ns: 'common' })}

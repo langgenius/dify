@@ -2,10 +2,10 @@
 import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import { CreateSubscriptionButton } from './create'
 import { CreateButtonType } from './create/types'
 import { DeleteConfirm } from './delete-confirm'
@@ -20,7 +20,9 @@ export const SubscriptionSelectorView: React.FC<SubscriptionSelectorProps> = ({
   selectedId,
   onSelect,
 }) => {
-  const { t } = useTranslation()
+  const titleId = React.useId()
+
+  const { t } = useTranslation(['common', 'pluginTrigger'])
   const { subscriptions } = useSubscriptionList()
   const [deletedSubscription, setDeletedSubscription] = useState<TriggerSubscription | null>(null)
   const subscriptionCount = subscriptions?.length || 0
@@ -30,14 +32,14 @@ export const SubscriptionSelectorView: React.FC<SubscriptionSelectorProps> = ({
       {subscriptionCount > 0 && (
         <div className="mr-1.5 ml-7 flex h-8 items-center justify-between">
           <div className="flex shrink-0 items-center gap-1">
-            <span className="system-sm-semibold-uppercase text-text-secondary">
+            <span id={titleId} className="system-sm-semibold-uppercase text-text-secondary">
               {t(($) => $['subscription.listNum'], { ns: 'pluginTrigger', num: subscriptionCount })}
             </span>
-            <Infotip
-              aria-label={t(($) => $['subscription.list.tip'], { ns: 'pluginTrigger' })}
-              className="size-3.5"
-            >
-              {t(($) => $['subscription.list.tip'], { ns: 'pluginTrigger' })}
+            <Infotip>
+              <InfotipTrigger aria-labelledby={titleId} className="size-3.5" />
+              <InfotipContent aria-labelledby={titleId}>
+                {t(($) => $['subscription.list.tip'], { ns: 'pluginTrigger' })}
+              </InfotipContent>
             </Infotip>
           </div>
           <CreateSubscriptionButton buttonType={CreateButtonType.ICON_BUTTON} shape="circle" />

@@ -53,6 +53,7 @@ from core.plugin.provider_identity import normalize_plugin_daemon_provider_ident
 from core.workflow.system_variables import SystemVariableKey, get_system_text, get_system_value
 from graphon.file import File, FileTransferMethod
 from graphon.variables.segments import Segment
+from graphon.variables.template_resolution import convert_template
 from models.agent import Agent, AgentConfigSnapshot, WorkflowAgentNodeBinding
 from models.agent_config_entities import (
     AgentKnowledgeMetadataFilteringConfig,
@@ -65,6 +66,7 @@ from models.agent_config_entities import (
     DeclaredOutputConfig,
     DeclaredOutputType,
     WorkflowNodeJobConfig,
+    WorkflowOutputRoutes,
     WorkflowPreviousNodeOutputRef,
 )
 from models.provider_ids import ModelProviderID
@@ -169,6 +171,7 @@ class WorkflowAgentRuntimeRequestBuilder:
     def build(self, context: WorkflowAgentRuntimeBuildContext) -> WorkflowAgentRuntimeRequest:
         agent_soul = AgentSoulConfig.model_validate(context.snapshot.config_snapshot_dict)
         node_job = WorkflowNodeJobConfig.model_validate(context.binding.node_job_config_dict)
+        node_job.output_routes.validate_for_execution()
         if agent_soul.model is None:
             raise WorkflowAgentRuntimeRequestBuildError(
                 "agent_model_not_configured",
@@ -263,7 +266,9 @@ class WorkflowAgentRuntimeRequestBuilder:
                 agent_soul_prompt=soul_prompt or None,
                 workflow_node_job_prompt=workflow_job_prompt,
                 user_prompt=user_prompt,
-                output=self._build_output_config(node_job.declared_outputs),
+                output=self._build_output_config(
+                    node_job.declared_outputs, node_job.output_routes, context.variable_pool
+                ),
                 tools=tool_layers.plugin_tools,
                 core_tools=tool_layers.core_tools,
                 knowledge=knowledge_config,
@@ -516,17 +521,35 @@ class WorkflowAgentRuntimeRequestBuilder:
         return None
 
     @staticmethod
-    def _build_output_config(declared_outputs: Sequence[DeclaredOutputConfig]) -> AgentBackendOutputConfig | None:
+    def _build_output_config(
+        declared_outputs: Sequence[DeclaredOutputConfig],
+        output_routes: WorkflowOutputRoutes | None = None,
+        variable_pool: VariablePoolReader | None = None,
+    ) -> AgentBackendOutputConfig | None:
         """Build the structured-output layer config sent to Agent backend.
 
-        Plain-output jobs omit this layer. Structured jobs prepend the optional,
-        system-owned ``text`` field to the persisted custom declarations.
+        Enabled routing adds a required system ``switch``
+        in the same Agent call. Omit the structured-output layer only when there
+        are no custom outputs and routing is disabled.
         """
-        if not declared_outputs:
+        if not declared_outputs and (output_routes is None or not output_routes.enabled):
             return None
 
         properties: dict[str, Any] = {"text": {"type": "string"}}
         required: list[str] = []
+        if output_routes is not None and output_routes.enabled:
+            if variable_pool is None:
+                raise ValueError("Output route selection requires a workflow variable pool.")
+            descriptions = [
+                f"{route.id} ({route.label or route.id}): {convert_template(variable_pool, route.name).text}"
+                for route in output_routes.routes
+            ]
+            properties["switch"] = {
+                "type": "string",
+                "enum": [route.id for route in output_routes.routes],
+                "description": "Select exactly one route ID based on the task result:\n" + "\n".join(descriptions),
+            }
+            required.append("switch")
         for output in declared_outputs:
             properties[output.name] = WorkflowAgentRuntimeRequestBuilder._schema_for_declared_output(output)
             if output.required:

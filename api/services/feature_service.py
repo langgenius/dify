@@ -1,11 +1,19 @@
 from configs import dify_config
 from enums import CloudPlan, DeploymentEdition, HostedTrialProvider
+from services.account_education_service import EDUCATION_EDITIONS
 from services.billing_service import BillingInfo, BillingService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities import feature_entities
 
 
 class FeatureService:
+    @classmethod
+    def can_import_premium_site_settings(cls, tenant_id: str) -> bool:
+        """Keep Cloud-only Web app customization out of free workspace imports."""
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+            return True
+        return cls.get_workspace_plan(tenant_id).is_paid
+
     @classmethod
     def get_workspace_plan(cls, tenant_id: str) -> CloudPlan:
         if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
@@ -112,7 +120,9 @@ class FeatureService:
     def _fulfill_params_from_env(cls, features: feature_entities.FeatureModel):
         features.can_replace_logo = dify_config.CAN_REPLACE_LOGO
         features.model_load_balancing_enabled = dify_config.MODEL_LB_ENABLED
-        features.education.enabled = dify_config.EDUCATION_ENABLED
+        features.education.enabled = (
+            dify_config.EDUCATION_ENABLED and dify_config.DEPLOYMENT_EDITION in EDUCATION_EDITIONS
+        )
         features.enable_skill = dify_config.ENABLE_SKILL
 
     @classmethod

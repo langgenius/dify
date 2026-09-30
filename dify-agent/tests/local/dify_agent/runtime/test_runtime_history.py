@@ -1,7 +1,14 @@
 import asyncio
 
 import pytest
-from pydantic_ai.messages import ModelRequest, ModelResponse, SystemPromptPart, TextPart, UserPromptPart
+from pydantic_ai.messages import (
+    ModelRequest,
+    ModelResponse,
+    SystemPromptPart,
+    TextPart,
+    ToolCallPart,
+    UserPromptPart,
+)
 
 from agenton.compositor import Compositor, LayerNode
 from agenton_collections.layers.pydantic_ai import (
@@ -112,3 +119,51 @@ def test_replace_run_history_persists_full_history_without_instructions() -> Non
     source_request = messages[0]
     assert isinstance(source_request, ModelRequest)
     assert source_request.instructions == "current instructions"
+
+
+def test_replace_run_history_marks_unexecuted_tool_calls_of_an_interrupted_run() -> None:
+    history_layer = PydanticAIHistoryLayer()
+    messages = [
+        ModelRequest(parts=[UserPromptPart(content="run a search")]),
+        ModelResponse(parts=[ToolCallPart(tool_name="search", args={}, tool_call_id="call-1")]),
+    ]
+
+    replace_run_history(history_layer, messages, interrupted=True)
+
+    persisted = history_layer.message_history
+    assert len(persisted) == 2
+    persisted_response = persisted[-1]
+    assert isinstance(persisted_response, ModelResponse)
+    assert persisted_response.state == "interrupted"
+    assert persisted_response.parts == messages[1].parts
+    source_response = messages[1]
+    assert isinstance(source_response, ModelResponse)
+    assert source_response.state == "complete"
+
+
+def test_replace_run_history_keeps_open_tool_calls_of_a_finished_run() -> None:
+    history_layer = PydanticAIHistoryLayer()
+    messages = [
+        ModelRequest(parts=[UserPromptPart(content="ask me something")]),
+        ModelResponse(parts=[ToolCallPart(tool_name="ask_human", args={}, tool_call_id="call-1")]),
+    ]
+
+    replace_run_history(history_layer, messages)
+
+    persisted_response = history_layer.message_history[-1]
+    assert isinstance(persisted_response, ModelResponse)
+    assert persisted_response.state == "complete"
+
+
+def test_replace_run_history_leaves_an_interrupted_run_without_tool_calls_alone() -> None:
+    history_layer = PydanticAIHistoryLayer()
+    messages = [
+        ModelRequest(parts=[UserPromptPart(content="hello")]),
+        ModelResponse(parts=[TextPart(content="partial")]),
+    ]
+
+    replace_run_history(history_layer, messages, interrupted=True)
+
+    persisted_response = history_layer.message_history[-1]
+    assert isinstance(persisted_response, ModelResponse)
+    assert persisted_response.state == "complete"

@@ -100,6 +100,38 @@ def test_non_whitelisted_path_requires_csrf():
         token.check_csrf_token(request, "account-1")
 
 
+def test_exact_workflow_draft_path_bypasses_csrf():
+    request = cast(
+        Request,
+        MockRequest(
+            headers={},
+            cookies={},
+            args={},
+            path="/console/api/apps/5923ce20-2914-44af-45f0-580fb49f1cc9/workflows/draft",
+        ),
+    )
+
+    token.check_csrf_token(request, "account-1")
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/console/api/apps/5923ce20-2914-44af-45f0-580fb49f1cc9/workflows/draft/variables",
+        "/console/api/apps/5923ce20-2914-44af-45f0-580fb49f1cc9/workflows/draft/nodes/node-1/variables",
+        "/console/api/apps/5923ce20-2914-44af-45f0-580fb49f1cc9/workflows/draft/conversation-variables",
+        "/console/api/apps/5923ce20-2914-44af-45f0-580fb49f1cc9/workflows/draft/iteration/nodes/node-1/run",
+        "/console/api/apps/5923ce20-2914-44af-45f0-580fb49f1cc9/workflows/draft/loop/nodes/node-1/run",
+        "/console/api/workflow-run-archives/downloads/5923ce20291444af45f0580fb49f1cc9/file/extra",
+    ],
+)
+def test_whitelist_prefix_paths_still_require_csrf(path: str):
+    request = cast(Request, MockRequest(headers={}, cookies={}, args={}, path=path))
+
+    with pytest.raises(Unauthorized):
+        token.check_csrf_token(request, "account-1")
+
+
 def test_admin_api_key_header_bypasses_csrf_when_console_cookie_is_present(config_overrides):
     config_overrides(
         ADMIN_API_KEY_ENABLE=True,

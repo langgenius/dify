@@ -1,10 +1,10 @@
 import type { FC } from 'react'
 import type { IndexingType } from '../../../create/step-two'
 import type { RETRIEVE_METHOD } from '@/types/app'
-import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { useProcessRule } from '@/service/knowledge/use-dataset'
 import { useDocumentContext } from '../context'
 import { ProgressBar, RuleDetail, SegmentProgress, StatusHeader } from './components'
@@ -25,7 +25,7 @@ const EmbeddingDetail: FC<EmbeddingDetailProps> = ({
   indexingType,
   retrievalMethod,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const contextDatasetId = useDocumentContext((s) => s.datasetId)
   const contextDocumentId = useDocumentContext((s) => s.documentId)
   const datasetId = dstId ?? contextDatasetId

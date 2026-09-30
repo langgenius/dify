@@ -19,6 +19,7 @@ from factories import variable_factory
 from models.dataset import Dataset, Document, DocumentPipelineExecutionLog, Pipeline
 from models.enums import DatasetRuntimeMode, DataSourceType
 from models.workflow import Workflow, WorkflowType
+from repositories.knowledge.dataset_read_repository import get_dataset_doc_form
 from services.entities.knowledge_entities.rag_pipeline_entities import KnowledgeConfiguration, RetrievalSetting
 from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
 from services.file_service import FileService
@@ -56,7 +57,7 @@ class RagPipelineTransformService:
         if not datasource_type and not indexing_technique:
             return self._transform_to_empty_pipeline(dataset, account_id=account_id, session=session)
 
-        doc_form = dataset.get_doc_form(session=session)
+        doc_form = get_dataset_doc_form(dataset, session=session)
         if not doc_form:
             return self._transform_to_empty_pipeline(dataset, account_id=account_id, session=session)
         retrieval_model = RetrievalSetting.model_validate(dataset.retrieval_model) if dataset.retrieval_model else None
@@ -123,29 +124,40 @@ class RagPipelineTransformService:
                 case DataSourceType.UPLOAD_FILE:
                     if indexing_technique == IndexTechniqueType.HIGH_QUALITY:
                         # get graph from transform.file-general-high-quality.yml
-                        with open(f"{Path(__file__).parent}/transform/file-general-high-quality.yml") as f:
+                        with open(
+                            f"{Path(__file__).parent}/transform/file-general-high-quality.yml", encoding="utf-8"
+                        ) as f:
                             pipeline_yaml = yaml.safe_load(f)
                     if indexing_technique == IndexTechniqueType.ECONOMY:
                         # get graph from transform.file-general-economy.yml
-                        with open(f"{Path(__file__).parent}/transform/file-general-economy.yml") as f:
+                        with open(f"{Path(__file__).parent}/transform/file-general-economy.yml", encoding="utf-8") as f:
                             pipeline_yaml = yaml.safe_load(f)
                 case DataSourceType.NOTION_IMPORT:
                     if indexing_technique == IndexTechniqueType.HIGH_QUALITY:
                         # get graph from transform.notion-general-high-quality.yml
-                        with open(f"{Path(__file__).parent}/transform/notion-general-high-quality.yml") as f:
+                        with open(
+                            f"{Path(__file__).parent}/transform/notion-general-high-quality.yml", encoding="utf-8"
+                        ) as f:
                             pipeline_yaml = yaml.safe_load(f)
                     if indexing_technique == IndexTechniqueType.ECONOMY:
                         # get graph from transform.notion-general-economy.yml
-                        with open(f"{Path(__file__).parent}/transform/notion-general-economy.yml") as f:
+                        with open(
+                            f"{Path(__file__).parent}/transform/notion-general-economy.yml", encoding="utf-8"
+                        ) as f:
                             pipeline_yaml = yaml.safe_load(f)
                 case DataSourceType.WEBSITE_CRAWL:
                     if indexing_technique == IndexTechniqueType.HIGH_QUALITY:
                         # get graph from transform.website-crawl-general-high-quality.yml
-                        with open(f"{Path(__file__).parent}/transform/website-crawl-general-high-quality.yml") as f:
+                        with open(
+                            f"{Path(__file__).parent}/transform/website-crawl-general-high-quality.yml",
+                            encoding="utf-8",
+                        ) as f:
                             pipeline_yaml = yaml.safe_load(f)
                     if indexing_technique == IndexTechniqueType.ECONOMY:
                         # get graph from transform.website-crawl-general-economy.yml
-                        with open(f"{Path(__file__).parent}/transform/website-crawl-general-economy.yml") as f:
+                        with open(
+                            f"{Path(__file__).parent}/transform/website-crawl-general-economy.yml", encoding="utf-8"
+                        ) as f:
                             pipeline_yaml = yaml.safe_load(f)
                 case _:
                     raise ValueError("Unsupported datasource type")
@@ -153,15 +165,17 @@ class RagPipelineTransformService:
             match datasource_type:
                 case DataSourceType.UPLOAD_FILE:
                     # get graph from transform.file-parentchild.yml
-                    with open(f"{Path(__file__).parent}/transform/file-parentchild.yml") as f:
+                    with open(f"{Path(__file__).parent}/transform/file-parentchild.yml", encoding="utf-8") as f:
                         pipeline_yaml = yaml.safe_load(f)
                 case DataSourceType.NOTION_IMPORT:
                     # get graph from transform.notion-parentchild.yml
-                    with open(f"{Path(__file__).parent}/transform/notion-parentchild.yml") as f:
+                    with open(f"{Path(__file__).parent}/transform/notion-parentchild.yml", encoding="utf-8") as f:
                         pipeline_yaml = yaml.safe_load(f)
                 case DataSourceType.WEBSITE_CRAWL:
                     # get graph from transform.website-crawl-parentchild.yml
-                    with open(f"{Path(__file__).parent}/transform/website-crawl-parentchild.yml") as f:
+                    with open(
+                        f"{Path(__file__).parent}/transform/website-crawl-parentchild.yml", encoding="utf-8"
+                    ) as f:
                         pipeline_yaml = yaml.safe_load(f)
                 case _:
                     raise ValueError("Unsupported datasource type")

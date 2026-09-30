@@ -13,6 +13,7 @@ const createBanner = (id: string, title: string, sort: number): PluginBanner => 
     blog_title: title,
     subtitle: `${title} subtitle`,
     description: `${title} description`,
+    cover_image: '/api/v1/banners/images/banners/blog-cover.png',
     link: `https://example.com/${id}`,
     link_target_type: 'blog',
   },

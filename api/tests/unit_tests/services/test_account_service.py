@@ -20,6 +20,7 @@ from models.account import (
     TenantStatus,
 )
 from models.model import DifySetup
+from services.account_email import normalize_email
 from services.account_service import (
     AccountService,
     EnterpriseWorkspaceMemberAccountNotFoundError,
@@ -37,6 +38,7 @@ from services.errors.account import (
     NoPermissionError,
 )
 from tests.unit_tests.config_override import config_overrides_context
+from tests.unit_tests.model_factories import make_tenant
 
 type _MockDependencies = dict[str, MagicMock]
 
@@ -75,7 +77,7 @@ class TestAccountAssociatedDataFactory:
 
 
 def _tenant(session: Session | None = None) -> Tenant:
-    tenant = Tenant(name="Test Workspace")
+    tenant = make_tenant(tenant_id=None, name="Test Workspace")
     if session is not None:
         session.add(tenant)
     return tenant
@@ -173,8 +175,20 @@ class TestAccountService:
             assert persisted_account.timezone == "America/New_York"
             assert persisted_account.last_login_ip == "203.0.113.10"
 
+    @pytest.mark.parametrize(
+        ("existing_email", "new_email", "normalized_email"),
+        [
+            ("u.ser+existing@gmail.com", "user@googlemail.com", "user@gmail.com"),
+            ("u.ser+existing@outlook.com", "u.ser+new@outlook.com", "u.ser@outlook.com"),
+            ("u.ser+existing@me.com", "u.ser+new@icloud.com", "u.ser@icloud.com"),
+            ("u.ser_name-existing@proton.me", "usernameexisting+new@proton.me", "usernameexisting@proton.me"),
+        ],
+    )
     def test_create_account_rejects_normalized_email_only_when_requested(
         self,
+        existing_email: str,
+        new_email: str,
+        normalized_email: str,
         sqlite_session: Session,
         mock_external_service_dependencies: _MockDependencies,
     ) -> None:
@@ -184,15 +198,15 @@ class TestAccountService:
         sqlite_session.add(
             Account(
                 name="Existing User",
-                email="u.ser+existing@gmail.com",
-                normalized_email="user@gmail.com",
+                email=existing_email,
+                normalized_email=normalized_email,
             )
         )
         sqlite_session.commit()
 
         with pytest.raises(AccountEmailAlreadyInUseError):
             AccountService.create_account(
-                email="user@googlemail.com",
+                email=new_email,
                 name="New User",
                 interface_language="en-US",
                 check_normalized_email=True,
@@ -200,12 +214,12 @@ class TestAccountService:
             )
 
         duplicate = AccountService.create_account(
-            email="user@googlemail.com",
+            email=new_email,
             name="New User",
             interface_language="en-US",
             session=sqlite_session,
         )
-        assert duplicate.normalized_email == "user@gmail.com"
+        assert duplicate.normalized_email == normalized_email
 
     def test_create_account_uses_explicit_timezone(
         self,
@@ -2872,10 +2886,7 @@ class TestSessionInjectedGetters:
         assert AccountService.get_account_by_id("missing", session=sqlite_session) is None
 
     def test_get_account_by_email_returns_scalar_or_none(self, sqlite_session: Session) -> None:
-        """Plain getter — case-sensitive equality (callers needing the
-        case-insensitive existence check use
-        :meth:`has_active_account_with_email`).
-        """
+        """Plain getter uses case-sensitive equality."""
         account = Account(name="Alice", email="alice@example.com")
         sqlite_session.add(account)
         sqlite_session.commit()
@@ -2988,13 +2999,47 @@ class TestSessionInjectedGetters:
 
 
 def test_get_account_by_email_with_case_fallback_uses_lowercase(sqlite_session: Session) -> None:
-    account = Account(name="Case User", email="case@test.com")
+    account = Account(name="Case User", email="case@test.com", normalized_email=normalize_email("case@test.com"))
     sqlite_session.add(account)
     sqlite_session.commit()
 
     result = AccountService.get_account_by_email_with_case_fallback("Case@Test.com", session=sqlite_session)
 
     assert result is account
+
+
+def test_get_account_by_email_with_case_fallback_finds_uppercase_row_from_lowercase_input(
+    sqlite_session: Session,
+) -> None:
+    """Regression test for CUS-1658: an SSO-provisioned account keeps the IdP's original casing
+    (e.g. `User@Example.com`), but the workspace invite flow always looks it up with an
+    already-lowercased email. The lookup must still find that account.
+    """
+    account = Account(name="SSO User", email="User@Example.com", normalized_email=normalize_email("User@Example.com"))
+    sqlite_session.add(account)
+    sqlite_session.commit()
+
+    result = AccountService.get_account_by_email_with_case_fallback("user@example.com", session=sqlite_session)
+
+    assert result is account
+
+
+def test_get_account_by_email_with_case_fallback_returns_oldest_when_normalized_email_is_duplicated(
+    sqlite_session: Session,
+) -> None:
+    """normalized_email is indexed but not unique, so installations can already hold equivalent
+    accounts. The fallback must not raise and must resolve to the same (oldest) account every time.
+    """
+    newer = Account(name="Newer", email="user@example.com", normalized_email=normalize_email("user@example.com"))
+    newer.created_at = datetime(2026, 9, 2)
+    older = Account(name="Older", email="User@Example.com", normalized_email=normalize_email("User@Example.com"))
+    older.created_at = datetime(2026, 9, 1)
+    sqlite_session.add_all([newer, older])
+    sqlite_session.commit()
+
+    result = AccountService.get_account_by_email_with_case_fallback("USER@EXAMPLE.COM", session=sqlite_session)
+
+    assert result is older
 
 
 class TestIsEmailSendIpLimit:

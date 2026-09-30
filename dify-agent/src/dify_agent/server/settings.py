@@ -14,8 +14,9 @@ import httpx
 
 from typing import ClassVar, Literal, cast
 
-from pydantic import AliasChoices, AnyHttpUrl, Field, TypeAdapter, field_validator, model_validator
+from pydantic import AliasChoices, AnyHttpUrl, Field, SecretStr, TypeAdapter, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings.sources import DotEnvSettingsSource, InitSettingsSource, PydanticBaseSettingsSource
 
 from dify_agent.agent_stub.protocol.agent_stub import normalize_agent_stub_api_base_url
 from dify_agent.agent_stub.server.agent_stub_config import DifyApiAgentStubConfigRequestHandler
@@ -28,6 +29,10 @@ from dify_agent.runtime.event_coalescer import (
 from dify_agent.runtime.runner import DEFAULT_AGENT_RUN_TIMEOUT_SECONDS
 from dify_agent.runtime_backend import RuntimeBackendProfile
 from dify_agent.runtime_backend.e2b import E2B_MAX_ACTIVE_TIMEOUT_SECONDS
+from dify_agent.runtime_backend.openshell import (
+    DEFAULT_OPENSHELL_SANDBOX_IMAGE,
+    DEFAULT_OPENSHELL_SHARED_MOUNT_PATH,
+)
 from dify_agent.runtime_backend.profile import (
     DEFAULT_LOCAL_HOME_SNAPSHOT_ROOT,
     DEFAULT_LOCAL_MATERIALIZED_HOME_ROOT,
@@ -41,7 +46,12 @@ DEFAULT_RUN_EVENT_STREAM_MAX_LENGTH = 5000
 
 
 class ServerSettings(BaseSettings):
-    """Environment settings for scheduling, outbound HTTP, and runtime resources."""
+    """Environment settings for scheduling, outbound HTTP, and runtime resources.
+
+    ``observability_dotenv`` is a construction-time snapshot of the effective
+    dotenv source restricted to ``OTEL_*``/``LOGFIRE_*`` keys; it is excluded
+    from serialization and repr, and is consumed only by observability setup.
+    """
 
     redis_url: str = "redis://localhost:6379/0"
     redis_prefix: str = "dify-agent"
@@ -59,7 +69,7 @@ class ServerSettings(BaseSettings):
     plugin_daemon_api_key: str = ""
     inner_api_url: str = "http://localhost:5001"
     inner_api_key: str | None = None
-    runtime_backend: Literal["local", "enterprise", "e2b"] = "local"
+    runtime_backend: Literal["local", "enterprise", "e2b", "openshell"] = "local"
     local_sandbox_endpoint: str | None = Field(
         default=None,
         validation_alias=AliasChoices("DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT", "DIFY_AGENT_SHELLCTL_ENTRYPOINT"),
@@ -84,6 +94,28 @@ class ServerSettings(BaseSettings):
         le=E2B_MAX_ACTIVE_TIMEOUT_SECONDS,
     )
     e2b_shellctl_port: int = Field(default=5004, ge=1, le=65535)
+    sandbox_metering_enabled: bool = False
+    e2b_project_id: str = ""
+    # Optional accounting validates its numeric configuration at invocation,
+    # so a bad metering value cannot prevent ordinary runtime startup.
+    sandbox_metering_overlap_seconds: int | str = 900
+    sandbox_metering_full_scan_interval_seconds: int | str = 3600
+    sandbox_metering_max_pages: int | str = 1000
+    openshell_gateway_endpoint: str | None = None
+    openshell_workspace: str = "default"
+    openshell_bearer_token: str | None = None
+    openshell_tls_ca_path: str | None = None
+    openshell_tls_client_cert_path: str | None = None
+    openshell_tls_client_key_path: str | None = None
+    openshell_insecure: bool = False
+    openshell_sandbox_image: str = DEFAULT_OPENSHELL_SANDBOX_IMAGE
+    openshell_driver_config: str | None = None
+    openshell_shared_mount_path: str = DEFAULT_OPENSHELL_SHARED_MOUNT_PATH
+    openshell_egress_allow: str = ""
+    openshell_shellctl_auth_token: str = ""
+    openshell_shellctl_port: int = Field(default=5004, ge=1, le=65535)
+    openshell_ready_timeout_seconds: float = Field(default=300.0, gt=0)
+    openshell_exec_timeout_seconds: int = Field(default=120, ge=1)
     agent_stub_api_base_url: str | None = Field(default=None, validation_alias="DIFY_AGENT_STUB_API_BASE_URL")
     sandbox_files_base_url: str | None = Field(
         default=None,
@@ -98,6 +130,16 @@ class ServerSettings(BaseSettings):
     binding_file_download_command_timeout_seconds: float = Field(default=210.0, gt=0)
     server_secret_key: str | None = None
     api_token: str | None = None
+    trajectory_enabled: bool = False
+    trajectory_otlp_traces_endpoint: AnyHttpUrl | None = None
+    trajectory_otlp_headers: dict[str, SecretStr] = Field(default_factory=dict, repr=False)
+    trajectory_service_name: str = Field(default="dify-agent-trajectory", min_length=1)
+    trajectory_include_content: bool = False
+    trajectory_trace_context_mode: Literal["isolated", "shared"] = "isolated"
+    trajectory_max_queue_size: int = Field(default=2048, gt=0)
+    trajectory_max_export_batch_size: int = Field(default=512, gt=0)
+    trajectory_schedule_delay_ms: int = Field(default=5000, gt=0)
+    trajectory_export_timeout_ms: int = Field(default=5000, gt=0)
     shell_redact_patterns: str = ""
     outbound_http_connect_timeout: float = Field(default=10.0, ge=0)
     outbound_http_read_timeout: float = Field(default=600.0, ge=0)
@@ -106,6 +148,7 @@ class ServerSettings(BaseSettings):
     outbound_http_max_connections: int = Field(default=100, ge=1)
     outbound_http_max_keepalive_connections: int = Field(default=20, ge=0)
     outbound_http_keepalive_expiry: float = Field(default=30.0, ge=0)
+    observability_dotenv: dict[str, SecretStr] = Field(default_factory=dict, exclude=True, repr=False)
 
     model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
         env_prefix="DIFY_AGENT_",
@@ -113,6 +156,29 @@ class ServerSettings(BaseSettings):
         extra="ignore",
         populate_by_name=True,
     )
+
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        variables: dict[str, str] = {}
+        if isinstance(dotenv_settings, DotEnvSettingsSource):
+            for key, value in dotenv_settings.env_vars.items():
+                name = key if dotenv_settings.case_sensitive else key.upper()
+                if value is not None and name.startswith(("OTEL_", "LOGFIRE_")):
+                    variables[name] = value
+        return (
+            InitSettingsSource(settings_cls, {"observability_dotenv": variables}),
+            init_settings,
+            env_settings,
+            dotenv_settings,
+            file_secret_settings,
+        )
 
     @field_validator("agent_stub_api_base_url")
     @classmethod
@@ -169,6 +235,16 @@ class ServerSettings(BaseSettings):
             raise ValueError("DIFY_AGENT_INNER_API_URL must not include a query string or fragment")
         return parsed
 
+    @field_validator("trajectory_otlp_traces_endpoint")
+    @classmethod
+    def validate_trajectory_otlp_traces_endpoint(cls, value: AnyHttpUrl | None) -> AnyHttpUrl | None:
+        """Reject embedded credentials or fragments in the Agent OTLP endpoint."""
+        if value is None:
+            return None
+        if value.username is not None or value.password is not None or value.fragment is not None:
+            raise ValueError("DIFY_AGENT_TRAJECTORY_OTLP_TRACES_ENDPOINT must not include credentials or a fragment")
+        return value
+
     @field_validator("inner_api_key", "api_token")
     @classmethod
     def normalize_optional_api_token(cls, value: str | None) -> str | None:
@@ -204,6 +280,15 @@ class ServerSettings(BaseSettings):
             )
         return self
 
+    @model_validator(mode="after")
+    def validate_trajectory_requirements(self) -> "ServerSettings":
+        """Validate the Agent endpoint and batch processor limits."""
+        if self.trajectory_enabled and self.trajectory_otlp_traces_endpoint is None:
+            raise ValueError("trajectory_otlp_traces_endpoint is required when trajectory_enabled is true")
+        if self.trajectory_max_export_batch_size > self.trajectory_max_queue_size:
+            raise ValueError("trajectory_max_export_batch_size must not exceed trajectory_max_queue_size")
+        return self
+
     def build_runtime_backend_profile(self) -> RuntimeBackendProfile | None:
         """Build the deployment-selected resource backend without adding service state."""
         if self.runtime_backend == "local" and not self.local_sandbox_endpoint:
@@ -225,6 +310,21 @@ class ServerSettings(BaseSettings):
                 e2b_template=self.e2b_template,
                 e2b_active_timeout_seconds=self.e2b_active_timeout_seconds,
                 e2b_shellctl_port=self.e2b_shellctl_port,
+                openshell_gateway_endpoint=self.openshell_gateway_endpoint,
+                openshell_workspace=self.openshell_workspace,
+                openshell_bearer_token=self.openshell_bearer_token,
+                openshell_tls_ca_path=self.openshell_tls_ca_path,
+                openshell_tls_client_cert_path=self.openshell_tls_client_cert_path,
+                openshell_tls_client_key_path=self.openshell_tls_client_key_path,
+                openshell_insecure=self.openshell_insecure,
+                openshell_sandbox_image=self.openshell_sandbox_image,
+                openshell_driver_config=self.openshell_driver_config,
+                openshell_shared_mount_path=self.openshell_shared_mount_path,
+                openshell_egress_allow=self.openshell_egress_allow,
+                openshell_shellctl_auth_token=self.openshell_shellctl_auth_token,
+                openshell_shellctl_port=self.openshell_shellctl_port,
+                openshell_ready_timeout_seconds=self.openshell_ready_timeout_seconds,
+                openshell_exec_timeout_seconds=self.openshell_exec_timeout_seconds,
             )
         )
 

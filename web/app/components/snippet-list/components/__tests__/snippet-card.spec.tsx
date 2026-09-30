@@ -91,7 +91,7 @@ vi.mock('@/utils/download', () => ({
   downloadBlob: mockDownloadBlob,
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: mockToastSuccess,
     error: mockToastError,

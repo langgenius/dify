@@ -3,7 +3,7 @@ import json
 import sys
 import types
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 import pytest
 from pydantic import ValidationError
@@ -197,6 +197,8 @@ def test_init_sets_cluster_handles(couchbase_module):
 
 
 def test_create_and_create_collection_branches(couchbase_module, monkeypatch: pytest.MonkeyPatch):
+    sleep = MagicMock()
+    monkeypatch.setattr(couchbase_module, "time", SimpleNamespace(sleep=sleep))
     vector = couchbase_module.CouchbaseVector.__new__(couchbase_module.CouchbaseVector)
     vector._collection_name = "collection_1"
     vector._client_config = _config(couchbase_module)
@@ -243,6 +245,7 @@ def test_create_and_create_collection_branches(couchbase_module, monkeypatch: py
         == 3
     )
     couchbase_module.redis_client.set.assert_called_once()
+    assert sleep.call_args_list == [call(2), call(1)]
 
 
 def test_collection_exists_get_type_and_add_texts(couchbase_module):

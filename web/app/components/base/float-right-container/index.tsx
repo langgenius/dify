@@ -1,4 +1,5 @@
 'use client'
+import type { ComponentProps } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Drawer,
@@ -21,6 +22,7 @@ type IFloatRightContainerProps = {
   panelClassName?: string
   title?: string
   mask?: boolean
+  finalFocus?: ComponentProps<typeof DrawerPopup>['finalFocus']
 }
 
 const FloatRightContainer = ({
@@ -32,8 +34,9 @@ const FloatRightContainer = ({
   panelClassName,
   title,
   mask = true,
+  finalFocus,
 }: IFloatRightContainerProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
     <>
@@ -50,6 +53,7 @@ const FloatRightContainer = ({
             <DrawerBackdrop className={cn(!mask && 'bg-transparent')} />
             <DrawerViewport>
               <DrawerPopup
+                finalFocus={finalFocus}
                 className={cn(
                   'data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-sm',
                   panelClassName,

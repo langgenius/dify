@@ -23,12 +23,12 @@ from controllers.console.human_input_form import (
 from core.workflow.human_input_policy import HumanInputSurface
 from graphon.enums import WorkflowExecutionStatus, WorkflowType
 from models import Account
-from models.account import AccountStatus
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.human_input import RecipientType
 from models.model import App, AppMode
 from models.workflow import WorkflowRun
 from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.model_factories import make_account, make_app
 
 
 @pytest.fixture(autouse=True)
@@ -38,20 +38,15 @@ def bind_console_human_input_database(sqlite_engine: Engine, monkeypatch: pytest
 
 
 def _account(*, account_id: str = "user-1") -> Account:
-    account = Account(name="Console User", email=f"{account_id}@example.com", status=AccountStatus.ACTIVE)
-    account.id = account_id
-    return account
+    return make_account(account_id=account_id, name="Console User", email=f"{account_id}@example.com")
 
 
 def _app() -> App:
-    return App(
-        id="app-1",
+    return make_app(
         tenant_id="t1",
         name="Human Input App",
-        description="",
         mode=AppMode.WORKFLOW,
-        enable_site=True,
-        enable_api=True,
+        icon_type=None,
         max_active_requests=0,
     )
 

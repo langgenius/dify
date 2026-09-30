@@ -9,12 +9,13 @@
  */
 import type { GetBillingSubscriptionData } from '@dify/contracts/api/console/billing/types.gen'
 import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
-import { toast, ToastHost } from '@langgenius/dify-ui/toast'
 import { cleanup, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { ALL_PLANS } from '@/app/components/billing/config'
 import { CloudPlanItem } from '@/app/components/billing/pricing/plans/cloud-plan-item'
+import { toast } from '@/app/notifications'
+import { AppToastHost } from '@/app/notifications/host'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
 
@@ -86,7 +87,7 @@ const renderCloudPlanItem = ({
   const { wrapper } = createConsoleQueryWrapper()
   return render(
     <>
-      <ToastHost timeout={0} />
+      <AppToastHost timeout={0} />
       <CloudPlanItem
         plan={plan}
         billingInterval={billingInterval}

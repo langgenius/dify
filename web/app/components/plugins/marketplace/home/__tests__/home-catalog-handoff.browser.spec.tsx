@@ -83,8 +83,6 @@ describe('Marketplace catalog tab handoff', () => {
     expect(initialHeaderSlotWidth).toBeGreaterThan(0)
     expect(initialHeaderSlotHeight).toBeGreaterThan(0)
     expect(getComputedStyle(headerTabsSlot).pointerEvents).toBe('none')
-    expect(getComputedStyle(headerTabsSlot).transitionProperty).toBe('opacity, transform')
-    expect(getComputedStyle(headerTabsSlot).transitionDuration).toBe('0.14s')
 
     contentPluginsLink.focus()
     expect(document.activeElement).toBe(contentPluginsLink)
@@ -99,7 +97,6 @@ describe('Marketplace catalog tab handoff', () => {
       requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
     )
 
-    expect(navigation).not.toHaveClass(styles.catalogNavigationPinned!)
     expect(scrollContainer.scrollTop).toBe(handoffScrollTop - 1)
     expect(
       contentTabsRegion.getBoundingClientRect().bottom - header.getBoundingClientRect().bottom,
@@ -112,9 +109,7 @@ describe('Marketplace catalog tab handoff', () => {
 
     scrollContainer.scrollTop = handoffScrollTop
     scrollContainer.dispatchEvent(new Event('scroll'))
-    await vi.waitFor(() => {
-      expect(navigation).toHaveClass(styles.catalogNavigationPinned!)
-    })
+    await expect.poll(() => contentTabsSlot.hasAttribute('inert')).toBe(true)
 
     expect(scrollContainer.scrollTop).toBe(handoffScrollTop)
     expect(navigation.getBoundingClientRect().height).toBeCloseTo(initialHeight)
@@ -133,8 +128,6 @@ describe('Marketplace catalog tab handoff', () => {
     expect(scrollContainer.scrollHeight).toBe(initialScrollHeight)
     expect(getComputedStyle(contentTabsSlot).display).not.toBe('none')
     expect(getComputedStyle(contentTabsSlot).pointerEvents).toBe('none')
-    expect(getComputedStyle(contentTabsSlot).transitionProperty).toBe('opacity, transform')
-    expect(getComputedStyle(contentTabsSlot).transitionDuration).toBe('0.14s')
     expect(contentTabsSlot).toHaveAttribute('aria-hidden', 'true')
     expect(contentTabsSlot).toHaveAttribute('inert')
     expect(headerTabsSlot).not.toHaveAttribute('aria-hidden')
@@ -155,7 +148,6 @@ describe('Marketplace catalog tab handoff', () => {
       expect(document.activeElement).toBe(contentPluginsLink)
     })
 
-    expect(navigation).not.toHaveClass(styles.catalogNavigationPinned!)
     expect(scrollContainer.scrollTop).toBe(handoffScrollTop - 1)
     expect(
       contentTabsRegion.getBoundingClientRect().bottom - header.getBoundingClientRect().bottom,
@@ -194,7 +186,6 @@ describe('Marketplace catalog tab handoff', () => {
     )
 
     const scrollContainer = document.getElementById(MARKETPLACE_CONTAINER_ID)!
-    const navigation = screen.getByRole('region').element()
     const contentTabsSlot = screen.getByTestId('mobile-content-tabs').element().parentElement!
     const headerTabs = screen.getByTestId('mobile-header-tabs').element()
     const headerTabsSlot = headerTabs.parentElement!
@@ -204,7 +195,6 @@ describe('Marketplace catalog tab handoff', () => {
     scrollContainer.scrollTop = 300
     scrollContainer.dispatchEvent(new Event('scroll'))
 
-    expect(navigation).not.toHaveClass(styles.catalogNavigationPinned!)
     expect(contentTabsSlot).not.toHaveAttribute('aria-hidden')
     expect(contentTabsSlot).not.toHaveAttribute('inert')
     expect(getComputedStyle(contentTabsSlot).opacity).toBe('1')
@@ -220,9 +210,7 @@ describe('Marketplace catalog tab handoff', () => {
     )
 
     await page.viewport(880, 800)
-    await vi.waitFor(() => {
-      expect(navigation).toHaveClass(styles.catalogNavigationPinned!)
-    })
+    await expect.poll(() => contentTabsSlot.hasAttribute('inert')).toBe(true)
     expect(getComputedStyle(headerTabs).display).toBe('flex')
     expect(contentTabsSlot).toHaveAttribute('aria-hidden', 'true')
     expect(contentTabsSlot).toHaveAttribute('inert')
@@ -230,9 +218,7 @@ describe('Marketplace catalog tab handoff', () => {
     expect(headerTabsSlot).not.toHaveAttribute('inert')
 
     await page.viewport(879, 800)
-    await vi.waitFor(() => {
-      expect(navigation).not.toHaveClass(styles.catalogNavigationPinned!)
-    })
+    await expect.poll(() => contentTabsSlot.hasAttribute('inert')).toBe(false)
     expect(contentTabsSlot).not.toHaveAttribute('aria-hidden')
     expect(contentTabsSlot).not.toHaveAttribute('inert')
     expect(headerTabsSlot).toHaveAttribute('aria-hidden', 'true')

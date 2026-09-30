@@ -24,18 +24,6 @@ vi.mock('@/config', async (importOriginal) => {
 const render = (ui: ReactElement) =>
   renderWithConsoleQuery(ui, { systemFeatures: mockSystemFeatures })
 
-vi.mock('@/app/components/base/icons/src/vender/solid/files', () => ({
-  FileZip: () => <span data-testid="file-zip-icon">file</span>,
-}))
-
-vi.mock('@/app/components/base/icons/src/vender/solid/general', () => ({
-  Github: () => <span data-testid="github-icon">github</span>,
-}))
-
-vi.mock('@/app/components/base/icons/src/vender/solid/mediaAndDevices', () => ({
-  MagicBox: () => <span data-testid="magic-box-icon">magic</span>,
-}))
-
 vi.mock('@remixicon/react', () => ({
   RiAddCircleFill: ({ className }: { className?: string }) => (
     <span data-testid="add-circle-fill-icon" className={className} />

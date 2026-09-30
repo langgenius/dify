@@ -41,7 +41,7 @@ import { useMultipleModelDebug } from './configuration-lifecycle/use-multiple-mo
 import { usePublishedConfigSync } from './configuration-lifecycle/use-published-config-sync'
 
 export const useConfiguration = (): ConfigurationViewModel => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common', 'modelProvider'])
   const [_settingsDestination, setSettingsDestination] = useQueryState(
     settingsQueryParamName,
     settingsQueryParser,
@@ -53,11 +53,10 @@ export const useConfiguration = (): ConfigurationViewModel => {
     currentWorkspace,
     isLoadingCurrentWorkspace,
     serverLatestPublishedAt,
-    setShowAppConfigureFeaturesModal,
-    showAppConfigureFeaturesModal,
     updateModelConfig,
   } = useConfigurationAppContext()
   const { data: fileUploadConfigResponse } = useFileUploadConfig()
+  const [showAppConfigureFeaturesModal, setShowAppConfigureFeaturesModal] = useState(false)
   const [formattingChanged, setFormattingChanged] = useState(false)
   const [hasFetchedDetail, setHasFetchedDetail] = useState(false)
   // oxlint-disable-next-line eslint-react/use-state -- This custom hook returns a state object.
@@ -144,7 +143,7 @@ export const useConfiguration = (): ConfigurationViewModel => {
     modelModeTypeRef.current = resolvedModelModeType
   }, [modelModeTypeRef, resolvedModelModeType])
 
-  const [promptMode, setPromptMode] = useState(PromptMode.simple)
+  const [promptMode, setPromptMode] = useState<PromptMode>(PromptMode.simple)
   const isAdvancedMode = promptMode === PromptMode.advanced
   const [canReturnToSimpleMode, setCanReturnToSimpleMode] = useState(true)
 
@@ -354,6 +353,7 @@ export const useConfiguration = (): ConfigurationViewModel => {
     model: modelConfiguration,
     base: {
       appId,
+      onOpenFeatures: () => setShowAppConfigureFeaturesModal(true),
       canReturnToSimpleMode,
       canTestAndRun: appACLCapabilities.canTestAndRun,
       collectionList,

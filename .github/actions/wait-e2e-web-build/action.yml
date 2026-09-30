@@ -1,0 +1,21 @@
+name: Wait for Core E2E Web Build
+description: Wait for the current workflow run's Web build artifact while the producer finishes independently
+
+outputs:
+  artifact-id:
+    description: ID of the ready Web build artifact
+    value: ${{ steps.wait.outputs.result }}
+
+runs:
+  using: composite
+  steps:
+    - name: Wait for build artifact
+      id: wait
+      uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+      env:
+        E2E_WAIT_ACTION_PATH: ${{ github.action_path }}
+      with:
+        result-encoding: string
+        script: |
+          const waitForBuild = require(`${process.env.E2E_WAIT_ACTION_PATH}/wait.cjs`)
+          return await waitForBuild({ github, context, core, runAttempt: Number(process.env.GITHUB_RUN_ATTEMPT) })

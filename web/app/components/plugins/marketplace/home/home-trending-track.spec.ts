@@ -1,5 +1,5 @@
 import type { PluginBanner } from '@dify/contracts/marketplace'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { buildMarketplaceBannerClickProperties } from './home-trending-track'
 
 const recommendBanner: PluginBanner = {

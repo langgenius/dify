@@ -392,3 +392,18 @@ def test_provider_classes_and_builtin_sort(monkeypatch: pytest.MonkeyPatch):
     )
     sorted_providers = BuiltinToolProviderSort.sort(providers)
     assert [p.name for p in sorted_providers] == ["a", "b"]
+
+
+def test_localtime_to_timestamp_tool_epoch_zero(sqlite_session: Session):
+    localtime_tool = _build_builtin_tool(LocaltimeToTimestampTool)
+    # 1970-01-01 08:00:00 in Asia/Shanghai is exactly Unix epoch 0. A valid
+    # conversion to timestamp 0 must not be reported as "Invalid localtime"
+    # just because 0 is falsy.
+    epoch_message = list(
+        localtime_tool.invoke(
+            session=sqlite_session,
+            user_id="u",
+            tool_parameters={"localtime": "1970-01-01 08:00:00", "timezone": "Asia/Shanghai"},
+        )
+    )[0].message.text
+    assert epoch_message.strip() == "0"

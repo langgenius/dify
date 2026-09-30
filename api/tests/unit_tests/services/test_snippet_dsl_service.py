@@ -8,9 +8,9 @@ from sqlalchemy import event
 from sqlalchemy.orm import Session
 
 from graphon.nodes import BuiltinNodeTypes
-from models import Account, Tenant
+from models import Account
 from models.snippet import CustomizedSnippet, SnippetType
-from models.workflow import Workflow, WorkflowType
+from models.workflow import Workflow
 from services.snippet_dsl_service import (
     ImportMode,
     ImportStatus,
@@ -18,6 +18,7 @@ from services.snippet_dsl_service import (
     SnippetPendingData,
     _check_version_compatibility,
 )
+from tests.unit_tests.model_factories import make_account, make_tenant, make_workflow
 
 SQLITE_MODELS = (CustomizedSnippet,)
 pytestmark = [
@@ -33,12 +34,12 @@ def service(sqlite_session: Session) -> SnippetDslService:
 
 
 def _account(*, account_id: str = "account-1", tenant_id: str = "tenant-1") -> Account:
-    account = Account(name="Snippet author", email=f"{account_id}@example.com")
-    account.id = account_id
-    tenant = Tenant(name="Snippet workspace")
-    tenant.id = tenant_id
-    account._current_tenant = tenant
-    return account
+    return make_account(
+        account_id=account_id,
+        name="Snippet author",
+        email=f"{account_id}@example.com",
+        tenant=make_tenant(tenant_id=tenant_id, name="Snippet workspace"),
+    )
 
 
 def _snippet(
@@ -64,16 +65,7 @@ def _snippet(
 
 
 def _workflow(*, graph: dict | None = None) -> Workflow:
-    return Workflow(
-        id="workflow-1",
-        tenant_id="tenant-1",
-        app_id="snippet-1",
-        type=WorkflowType.WORKFLOW,
-        version="draft",
-        graph=json.dumps(graph or {"nodes": [], "edges": []}),
-        _features="{}",
-        created_by="account-1",
-    )
+    return make_workflow(workflow_id="workflow-1", app_id="snippet-1", graph=graph)
 
 
 @pytest.mark.parametrize(
@@ -743,6 +735,81 @@ def test_export_snippet_dsl_uses_requested_published_workflow(
 
     get_published_workflow_by_id.assert_called_once_with(snippet=snippet, workflow_id="workflow-1")
     get_draft_workflow.assert_not_called()
+
+
+def test_extract_dependencies_from_workflow_graph_covers_plugin_and_model_nodes(service: SnippetDslService) -> None:
+    graph = {
+        "nodes": [
+            {"data": {"type": BuiltinNodeTypes.TOOL, "provider_type": "builtin", "provider_id": "acme/search/search"}},
+            {
+                "data": {
+                    "type": BuiltinNodeTypes.TOOL,
+                    "tool_configurations": {"provider_type": "builtin", "provider": "acme/legacy"},
+                }
+            },
+            {"data": {"type": BuiltinNodeTypes.TOOL, "provider_type": "api", "provider_id": "custom-api"}},
+            {"data": {"type": BuiltinNodeTypes.LLM, "model": {"provider": "acme/llm/llm"}}},
+            {"data": {"type": "trigger-plugin", "plugin_id": "acme/trigger"}},
+            {"data": {"type": BuiltinNodeTypes.AGENT, "agent_strategy_provider_name": "acme/agent/agent"}},
+        ]
+    }
+
+    assert service._extract_dependencies_from_workflow_graph(graph) == [
+        "acme/search",
+        "acme/legacy",
+        "acme/llm",
+        "acme/trigger",
+        "acme/agent",
+    ]
+
+
+def test_extract_dependencies_from_workflow_graph_covers_model_variants(service: SnippetDslService) -> None:
+    graph = {
+        "nodes": [
+            {
+                "data": {
+                    "type": BuiltinNodeTypes.QUESTION_CLASSIFIER,
+                    "model": {"provider": "acme/classifier/classifier"},
+                }
+            },
+            {"data": {"type": BuiltinNodeTypes.PARAMETER_EXTRACTOR, "model": {"provider": "acme/extractor/extractor"}}},
+            {
+                "data": {
+                    "type": BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL,
+                    "retrieval_mode": "single",
+                    "single_retrieval_config": {"model": {"provider": "acme/single/single"}},
+                }
+            },
+            {
+                "data": {
+                    "type": BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL,
+                    "retrieval_mode": "multiple",
+                    "multiple_retrieval_config": {
+                        "reranking_mode": "reranking_model",
+                        "reranking_model": {"provider": "acme/reranker/reranker"},
+                    },
+                }
+            },
+            {
+                "data": {
+                    "type": BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL,
+                    "retrieval_mode": "multiple",
+                    "multiple_retrieval_config": {
+                        "reranking_mode": "weighted_score",
+                        "weights": {"vector_setting": {"embedding_provider_name": "acme/embedding/embedding"}},
+                    },
+                }
+            },
+        ]
+    }
+
+    assert service._extract_dependencies_from_workflow_graph(graph) == [
+        "acme/classifier",
+        "acme/extractor",
+        "acme/single",
+        "acme/reranker",
+        "acme/embedding",
+    ]
 
 
 def test_append_workflow_export_data_filters_credentials_and_extracts_dependencies(

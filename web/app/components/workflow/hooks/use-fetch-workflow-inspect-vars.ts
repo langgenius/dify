@@ -1,4 +1,4 @@
-import type { Node, ToolWithProvider } from '@/app/components/workflow/types'
+import type { Node, WorkflowPluginCatalogs } from '@/app/components/workflow/types'
 import type { SchemaTypeDefinition } from '@/service/use-common'
 import type { FlowType } from '@/types/common'
 import type { NodeWithVar, VarInInspect } from '@/types/workflow'
@@ -51,7 +51,7 @@ export const useSetWorkflowVarsWithValue = ({ flowType, flowId }: Params) => {
   const setInspectVarsToStore = useCallback(
     (
       inspectVars: VarInInspect[],
-      passedInAllPluginInfoList?: Record<string, ToolWithProvider[]>,
+      passedInAllPluginInfoList?: WorkflowPluginCatalogs,
       passedInSchemaTypeDefinitions?: SchemaTypeDefinition[],
     ) => {
       const { setNodesWithInspectVars } = workflowStore.getState()
@@ -121,7 +121,7 @@ export const useSetWorkflowVarsWithValue = ({ flowType, flowId }: Params) => {
     async (params: {
       passInVars?: boolean
       vars?: VarInInspect[]
-      passedInAllPluginInfoList?: Record<string, ToolWithProvider[]>
+      passedInAllPluginInfoList?: WorkflowPluginCatalogs
       passedInSchemaTypeDefinitions?: SchemaTypeDefinition[]
     }) => {
       const { passInVars, vars, passedInAllPluginInfoList, passedInSchemaTypeDefinitions } = params

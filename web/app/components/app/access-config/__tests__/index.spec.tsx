@@ -169,7 +169,7 @@ describe('AppAccessConfigPage', () => {
     render(<AppAccessConfigPage appId="app-1" />)
 
     expect(
-      screen.getByRole('heading', { name: 'common.settings.resourceAccess' }),
+      screen.getByRole('heading', { name: 'navigation.settings.resourceAccess' }),
     ).toBeInTheDocument()
     expect(screen.getByTestId('access-rules-editor')).toBeInTheDocument()
     expect(useAppUserAccessSettings).toHaveBeenCalledWith('app-1', expect.any(String), 1, 10)

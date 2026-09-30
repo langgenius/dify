@@ -1,4 +1,3 @@
-/* oxlint-disable typescript/no-explicit-any */
 import type { DataSet } from '@/models/datasets'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
@@ -9,16 +8,6 @@ import { render } from '@/test/console/render'
 import { RETRIEVE_METHOD } from '@/types/app'
 import SelectDataSet from '../index'
 
-vi.mock('@/i18n-config/i18next-config', () => ({
-  default: {
-    changeLanguage: vi.fn(),
-    addResourceBundle: vi.fn(),
-    use: vi.fn().mockReturnThis(),
-    init: vi.fn(),
-    addResource: vi.fn(),
-    hasResourceBundle: vi.fn().mockReturnValue(true),
-  },
-}))
 const mockUseInfiniteScroll = vi.fn()
 vi.mock('ahooks', async (importOriginal) => {
   const actual = await importOriginal()

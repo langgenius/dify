@@ -401,6 +401,9 @@ class _AccessPolicyUpdateRequest(BaseModel):
     permission_keys: list[str] = []
 
 
+register_schema_models(console_ns, _AccessPolicyCreateRequest, _AccessPolicyUpdateRequest)
+
+
 @console_ns.route("/workspaces/current/rbac/access-policies")
 class RBACAccessPoliciesApi(Resource):
     @login_required
@@ -420,9 +423,10 @@ class RBACAccessPoliciesApi(Resource):
             )
         )
 
+    @console_ns.expect(console_ns.models[_AccessPolicyCreateRequest.__name__])
+    @console_ns.response(201, "Policy created", console_ns.models[svc.AccessPolicy.__name__])
     @login_required
     @rbac_permission_required(RBACCheck(RBACPermission.WORKSPACE_ROLE_MANAGE, Workspace()))
-    @console_ns.response(201, "Policy created", console_ns.models[svc.AccessPolicy.__name__])
     def post(self):
         tenant_id, account_id = _current_ids()
         request = _payload(_AccessPolicyCreateRequest)
@@ -448,9 +452,10 @@ class RBACAccessPolicyItemApi(Resource):
         tenant_id, account_id = _current_ids()
         return _dump(svc.RBACService.AccessPolicies.get(tenant_id, account_id, str(policy_id)))
 
+    @console_ns.expect(console_ns.models[_AccessPolicyUpdateRequest.__name__])
+    @console_ns.response(200, "Success", console_ns.models[svc.AccessPolicy.__name__])
     @login_required
     @rbac_permission_required(RBACCheck(RBACPermission.WORKSPACE_ROLE_MANAGE, Workspace()))
-    @console_ns.response(200, "Success", console_ns.models[svc.AccessPolicy.__name__])
     def put(self, policy_id):
         tenant_id, account_id = _current_ids()
         request = _payload(_AccessPolicyUpdateRequest)

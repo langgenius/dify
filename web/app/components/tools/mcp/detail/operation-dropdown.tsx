@@ -19,7 +19,7 @@ type Props = Readonly<{
 }>
 
 const OperationDropdown: FC<Props> = ({ inCard, onOpenChange, onEdit, onRemove }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'tools'])
 
   return (
     <DropdownMenu onOpenChange={onOpenChange}>

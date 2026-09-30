@@ -1,0 +1,22 @@
+{
+  "dateFormats.compact": "MM/DD/YYYY HH:mm",
+  "dateFormats.withSeconds": "DD.MM.YYYY HH:mm:ss",
+  "operation.cancel": "Отмена",
+  "operation.now": "Теперь",
+  "operation.ok": "Хорошо",
+  "operation.pickDate": "Выберите дату",
+  "picker.chooseMonthAndYear": "Выберите месяц и год",
+  "picker.endDate": "Дата окончания",
+  "picker.hour": "Час",
+  "picker.minute": "Минута",
+  "picker.month": "Месяц",
+  "picker.nextMonth": "Следующий месяц",
+  "picker.period": "До/после полудня",
+  "picker.previousMonth": "Предыдущий месяц",
+  "picker.required": "Выберите значение.",
+  "picker.requiredLabel": "Обязательное поле",
+  "picker.startDate": "Дата начала",
+  "picker.unavailable": "Эта дата или время недоступны.",
+  "picker.year": "Год",
+  "title.pickTime": "Выберите время"
+}

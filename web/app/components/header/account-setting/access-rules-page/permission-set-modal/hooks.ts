@@ -6,15 +6,11 @@ import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
 
 export const usePermissionsGroups = (resourceType: AccessPolicyResourceType) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['permission', 'permissionKeys'])
   const permissionCatalogQueryOptions =
-    resourceType === 'app'
-      ? consoleQuery.workspaces.current.rbac.rolePermissions.catalog.app.get.queryOptions({
-          input: {},
-        })
-      : consoleQuery.workspaces.current.rbac.rolePermissions.catalog.dataset.get.queryOptions({
-          input: {},
-        })
+    consoleQuery.workspaces.current.rbac.rolePermissions.catalog[resourceType].get.queryOptions({
+      input: {},
+    })
   const { data: permissionCatalog } = useQuery(permissionCatalogQueryOptions)
 
   const groups = useMemo(() => {
