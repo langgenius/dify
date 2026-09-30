@@ -18,10 +18,10 @@ from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.apps.message_generator import MessageGenerator
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
+from extensions.application_services import workflow_storage
 from extensions.ext_database import db
 from models.enums import CreatorUserRole
 from models.model import App, AppMode, EndUser
-from repositories.factory import DifyAPIRepositoryFactory
 from services.workflow_event_snapshot_service import build_workflow_event_stream
 
 register_response_schema_model(web_ns, EventStreamResponse)
@@ -41,7 +41,7 @@ class WorkflowEventsApi(WebApiResource):
         """
         workflow_run_id = task_id
         session_maker = sessionmaker(db.engine)
-        repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
+        repo = workflow_storage.create_api_workflow_run_repository(session_maker)
         workflow_run = repo.get_workflow_run_by_id_and_tenant_id(
             tenant_id=app_model.tenant_id,
             run_id=workflow_run_id,

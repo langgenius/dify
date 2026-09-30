@@ -891,6 +891,7 @@ class TestGetWorkflow(_RealSessionTest):
     def test_specific_workflow_id_valid_uuid(self, mocker: MockerFixture):
         valid_uuid = str(uuid.uuid4())
         specific_wf = _make_workflow(workflow_id=valid_uuid)
+        specific_wf.version = "published"
         ws = MagicMock()
         ws.get_published_workflow_by_id.return_value = specific_wf
         mocker.patch("services.app_generate_service.WorkflowService", return_value=ws)

@@ -27,12 +27,10 @@ from graphon.file import helpers as file_helpers
 from libs.helper import generate_string  # type: ignore[import-not-found]
 from libs.url_utils import normalize_api_base_url
 from libs.uuid_utils import uuidv7
-from models.utils.file_input_compat import build_file_from_input_mapping
-
-from .account import Account, Tenant
-from .base import Base, TypeBase, gen_uuidv4_string
-from .engine import db
-from .enums import (
+from models.account import Account, Tenant
+from models.base import Base, TypeBase, gen_uuidv4_string
+from models.engine import db
+from models.enums import (
     ApiTokenType,
     AppStatus,
     BannerStatus,
@@ -51,13 +49,14 @@ from .enums import (
     ProviderQuotaType,
     TagType,
 )
-from .provider_ids import GenericProviderID
-from .types import EnumText, LongText, StringUUID
+from models.provider_ids import GenericProviderID
+from models.types import EnumText, LongText, StringUUID
+from models.utils.file_input_compat import build_file_from_input_mapping
 
 if TYPE_CHECKING:
-    from .agent import Agent
-    from .dataset import DatasetCollectionBinding
-    from .workflow import Workflow
+    from models.agent import Agent
+    from models.dataset import DatasetCollectionBinding
+    from models.workflow import Workflow
 
 
 # --- TypedDict definitions for structured dict return types ---
@@ -485,7 +484,7 @@ class App(Base):
 
     def workflow_with_session(self, *, session: Session) -> Workflow | None:
         if self.workflow_id:
-            from .workflow import Workflow
+            from models.workflow import Workflow
 
             return session.scalar(select(Workflow).where(Workflow.id == self.workflow_id))
 
@@ -515,7 +514,7 @@ class App(Base):
         """
         if self.mode != AppMode.AGENT:
             return None
-        from .agent import APP_BACKED_AGENT_SOURCES, Agent, AgentScope, AgentStatus
+        from models.agent import APP_BACKED_AGENT_SOURCES, Agent, AgentScope, AgentStatus
 
         conditions = [
             Agent.tenant_id == self.tenant_id,
@@ -1769,19 +1768,6 @@ class Message(Base):
     def extra_contents(self) -> list[ExtraContentDict]:
         return getattr(self, "_extra_contents", [])
 
-    @property
-    def workflow_run(self):
-        if self.workflow_run_id:
-            from sqlalchemy.orm import sessionmaker
-
-            from repositories.factory import DifyAPIRepositoryFactory
-
-            session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
-            repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
-            return repo.get_workflow_run_by_id_without_tenant(run_id=self.workflow_run_id)
-
-        return None
-
     def to_dict(self, *, session: Session) -> MessageDict:
         return {
             "id": self.id,
@@ -2017,7 +2003,7 @@ class AppAnnotationSetting(TypeBase):
     )
 
     def collection_binding_detail(self, session: Session) -> DatasetCollectionBinding | None:
-        from .dataset import DatasetCollectionBinding
+        from models.dataset import DatasetCollectionBinding
 
         return session.scalar(
             select(DatasetCollectionBinding).where(DatasetCollectionBinding.id == self.collection_binding_id)
@@ -2029,7 +2015,7 @@ def load_annotation_reply_config(session: Session, app_id: str) -> AnnotationRep
     if annotation_setting is None:
         return {"enabled": False}
 
-    from .dataset import DatasetCollectionBinding
+    from models.dataset import DatasetCollectionBinding
 
     collection_binding_detail = session.scalar(
         select(DatasetCollectionBinding).where(DatasetCollectionBinding.id == annotation_setting.collection_binding_id)

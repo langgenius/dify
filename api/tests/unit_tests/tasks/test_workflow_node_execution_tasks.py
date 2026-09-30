@@ -136,7 +136,8 @@ def test_create_helper_builds_real_mapped_model_with_serialized_runtime_values()
     assert model.inputs_dict == {"question": "hello"}
     assert model.process_data_dict == {"attempt": 1}
     assert model.outputs_dict == {"answer": "world"}
-    assert json.loads(model.execution_metadata or "{}") == {"total_tokens": 12, "total_price": 0.01}
+    assert model.execution_metadata_dict == {"total_tokens": 12, "total_price": 0.01}
+    assert model.execution_attempt_version == "2026-08-12T01:00:00.000000"
 
 
 def test_update_helper_preserves_binding_identity_and_immutable_ownership() -> None:
@@ -203,7 +204,7 @@ def test_task_updates_only_mutable_execution_state(
         outputs={"partial": True},
         error="provider failed",
         elapsed_time=2.5,
-        created_at=datetime(2026, 8, 12, 2, tzinfo=UTC),
+        created_at=datetime(2026, 8, 12, 1, tzinfo=UTC),
         finished_at=finished_at,
     )
 
@@ -317,7 +318,7 @@ def test_task_repeated_delivery_updates_one_row(
     created_at = datetime(2026, 8, 12, 1, tzinfo=UTC)
     first = _execution(created_at=created_at, outputs={"delivery": 1})
     second = _execution(
-        created_at=created_at + timedelta(minutes=1),
+        created_at=created_at,
         status=WorkflowNodeExecutionStatus.SUCCEEDED,
         outputs={"delivery": 2},
         finished_at=created_at + timedelta(seconds=5),
@@ -331,6 +332,7 @@ def test_task_repeated_delivery_updates_one_row(
     }
 
     assert save_workflow_node_execution_task.run(execution_data=first.model_dump(), **task_kwargs)
+    assert save_workflow_node_execution_task.run(execution_data=second.model_dump(), **task_kwargs)
     assert save_workflow_node_execution_task.run(execution_data=second.model_dump(), **task_kwargs)
 
     with sqlite_session_factory() as observer:

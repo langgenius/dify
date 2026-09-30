@@ -16,7 +16,7 @@ from pydantic import (
 )
 from pydantic_settings import BaseSettings
 
-from .hosted_service import HostedServiceConfig
+from configs.feature.hosted_service import HostedServiceConfig
 
 
 class SecurityConfig(BaseSettings):
@@ -981,42 +981,17 @@ class WorkflowNodeExecutionConfig(BaseSettings):
         default=100,
     )
 
-    WORKFLOW_NODE_EXECUTION_STORAGE: str = Field(
+
+class WorkflowStorageConfig(BaseSettings):
+    """Supported workflow log storage modes; implementations are wired in code."""
+
+    WORKFLOW_RUN_STORAGE_BACKEND: Literal["rdbms", "celery", "logstore"] = Field(
         default="rdbms",
-        description="Storage backend for WorkflowNodeExecution. Options: 'rdbms', 'hybrid'",
+        description="Workflow run storage: relational database, queued database writes, or LogStore.",
     )
-
-
-class RepositoryConfig(BaseSettings):
-    """
-    Configuration for repository implementations
-    """
-
-    CORE_WORKFLOW_EXECUTION_REPOSITORY: str = Field(
-        description="Repository implementation for WorkflowExecution. Options: "
-        "'core.repositories.sqlalchemy_workflow_execution_repository.SQLAlchemyWorkflowExecutionRepository' (default), "
-        "'core.repositories.celery_workflow_execution_repository.CeleryWorkflowExecutionRepository'",
-        default="core.repositories.sqlalchemy_workflow_execution_repository.SQLAlchemyWorkflowExecutionRepository",
-    )
-
-    CORE_WORKFLOW_NODE_EXECUTION_REPOSITORY: str = Field(
-        description="Repository implementation for WorkflowNodeExecution. Options: "
-        "'core.repositories.sqlalchemy_workflow_node_execution_repository."
-        "SQLAlchemyWorkflowNodeExecutionRepository' (default), "
-        "'core.repositories.celery_workflow_node_execution_repository."
-        "CeleryWorkflowNodeExecutionRepository'",
-        default="core.repositories.sqlalchemy_workflow_node_execution_repository.SQLAlchemyWorkflowNodeExecutionRepository",
-    )
-
-    API_WORKFLOW_NODE_EXECUTION_REPOSITORY: str = Field(
-        description="Service-layer repository implementation for WorkflowNodeExecutionModel operations. "
-        "Specify as a module path",
-        default="repositories.sqlalchemy_api_workflow_node_execution_repository.DifyAPISQLAlchemyWorkflowNodeExecutionRepository",
-    )
-
-    API_WORKFLOW_RUN_REPOSITORY: str = Field(
-        description="Service-layer repository implementation for WorkflowRun operations. Specify as a module path",
-        default="repositories.sqlalchemy_api_workflow_run_repository.DifyAPISQLAlchemyWorkflowRunRepository",
+    WORKFLOW_NODE_EXECUTION_STORAGE_BACKEND: Literal["rdbms", "celery", "logstore"] = Field(
+        default="rdbms",
+        description="Workflow node execution storage: relational database, queued database writes, or LogStore.",
     )
 
 
@@ -1729,7 +1704,7 @@ class FeatureConfig(
     OpsTraceConfig,
     PositionConfig,
     RagEtlConfig,
-    RepositoryConfig,
+    WorkflowStorageConfig,
     SandboxExpiredRecordsCleanConfig,
     SecurityConfig,
     SkillConfig,

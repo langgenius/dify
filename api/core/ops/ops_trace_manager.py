@@ -43,6 +43,8 @@ from core.ops.entities.trace_entity import (
 from core.ops.exceptions import TraceProviderNotInstalledError
 from core.ops.unified_trace.registry import UnifiedProviderConfigEntry, unified_provider_config_map
 from core.ops.utils import JSON_DICT_ADAPTER, get_message_data
+from core.telemetry.gateway import is_enterprise_telemetry_enabled
+from extensions.application_services import workflow_storage
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.account import Tenant
@@ -50,7 +52,7 @@ from models.dataset import Dataset
 from models.model import App, AppModelConfig, Conversation, Message, MessageFile, TraceAppConfig
 from models.provider import Provider, ProviderCredential, ProviderModel, ProviderModelCredential, ProviderType
 from models.tools import ApiToolProvider, BuiltinToolProvider, MCPToolProvider, WorkflowToolProvider
-from models.workflow import WorkflowAppLog
+from models.workflow import WorkflowAppLog, WorkflowNodeExecutionModel
 from tasks.ops_trace_task import process_trace_tasks
 
 if TYPE_CHECKING:
@@ -637,11 +639,8 @@ class TraceTask:
         if cls._workflow_run_repo is None:
             with cls._repo_lock:
                 if cls._workflow_run_repo is None:
-                    # Lazy import to avoid circular import during module initialization
-                    from repositories.factory import DifyAPIRepositoryFactory
-
                     session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
-                    cls._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
+                    cls._workflow_run_repo = workflow_storage.create_api_workflow_run_repository(session_maker)
         return cls._workflow_run_repo
 
     @classmethod
@@ -655,8 +654,6 @@ class TraceTask:
         carries ``total_tokens``.  Projects only the ``outputs`` column to avoid loading
         large JSON blobs unnecessarily.
         """
-
-        from models.workflow import WorkflowNodeExecutionModel
 
         rows = (
             session.execute(
@@ -833,8 +830,6 @@ class TraceTask:
                 session, workflow_run_id=workflow_run_id, tenant_id=tenant_id
             )
 
-        from core.telemetry.gateway import is_enterprise_telemetry_enabled
-
         if is_enterprise_telemetry_enabled():
             app_name, workspace_name = _lookup_app_and_workspace_names(workflow_run.app_id, tenant_id)
         else:
@@ -921,8 +916,6 @@ class TraceTask:
             tid = session.scalar(select(App.tenant_id).where(App.id == message_data.app_id))
             if tid:
                 tenant_id = str(tid)
-
-        from core.telemetry.gateway import is_enterprise_telemetry_enabled
 
         if is_enterprise_telemetry_enabled():
             app_name, workspace_name = _lookup_app_and_workspace_names(message_data.app_id, tenant_id)
@@ -1084,8 +1077,6 @@ class TraceTask:
             tid = session.scalar(select(App.tenant_id).where(App.id == message_data.app_id))
             if tid:
                 tenant_id = str(tid)
-
-        from core.telemetry.gateway import is_enterprise_telemetry_enabled
 
         if is_enterprise_telemetry_enabled():
             app_name, workspace_name = _lookup_app_and_workspace_names(message_data.app_id, tenant_id)
@@ -1341,8 +1332,6 @@ class TraceTask:
         if not node_data:
             return {}
 
-        from core.telemetry.gateway import is_enterprise_telemetry_enabled
-
         if is_enterprise_telemetry_enabled():
             app_name, workspace_name = _lookup_app_and_workspace_names(
                 node_data.get("app_id"), node_data.get("tenant_id")
@@ -1479,8 +1468,6 @@ class TraceQueueManager:
         self.user_id = user_id
         self.trace_instance = OpsTraceManager.get_ops_trace_instance(app_id)
         self.flask_app = current_app._get_current_object()  # type: ignore
-
-        from core.telemetry.gateway import is_enterprise_telemetry_enabled
 
         self._enterprise_telemetry_enabled = is_enterprise_telemetry_enabled()
         if trace_manager_timer is None:

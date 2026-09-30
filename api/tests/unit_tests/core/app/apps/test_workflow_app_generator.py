@@ -15,13 +15,15 @@ from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, PauseStatePersistenceLayer
 from core.ops.ops_trace_manager import TraceQueueManager
-from core.repositories import SQLAlchemyWorkflowExecutionRepository, SQLAlchemyWorkflowNodeExecutionRepository
+from extensions.application_services.workflow_writers import build_workflow_offload_uploader
 from graphon.enums import WorkflowExecutionStatus
 from graphon.runtime import GraphRuntimeState, VariablePool
 from models.enums import CreatorUserRole, EndUserType, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, EndUser
 from models.snippet import CustomizedSnippet
 from models.workflow import Workflow, WorkflowKind, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
+from repositories.workflow.execution_writer import SQLAlchemyWorkflowExecutionRepository
+from repositories.workflow.node_execution_writer import SQLAlchemyWorkflowNodeExecutionRepository
 from tests.unit_tests.model_factories import make_workflow
 
 
@@ -120,6 +122,9 @@ def _repositories(
             user=end_user,
             app_id=app.id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+            upload_file=build_workflow_offload_uploader(
+                session_factory=sqlite_session_factory, tenant_id=app.tenant_id, user=end_user
+            ),
         ),
     )
 
@@ -202,10 +207,8 @@ def test_generate_includes_parent_trace_context_in_extras(
         MagicMock(return_value=MagicMock(spec=TraceQueueManager)),
     )
     repository_tenant_ids: dict[str, str] = {}
-    workflow_execution_factory = app_generator_module.DifyCoreRepositoryFactory.create_workflow_execution_repository
-    workflow_node_execution_factory = (
-        app_generator_module.DifyCoreRepositoryFactory.create_workflow_node_execution_repository
-    )
+    workflow_execution_factory = app_generator_module.workflow_writers.create_workflow_execution_repository
+    workflow_node_execution_factory = app_generator_module.workflow_writers.create_workflow_node_execution_repository
 
     def create_workflow_execution_repository(**kwargs):
         repository_tenant_ids["workflow"] = kwargs["tenant_id"]
@@ -216,11 +219,11 @@ def test_generate_includes_parent_trace_context_in_extras(
         return workflow_node_execution_factory(**kwargs)
 
     monkeypatch.setattr(
-        "core.app.apps.workflow.app_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
+        "core.app.apps.workflow.app_generator.workflow_writers.create_workflow_execution_repository",
         create_workflow_execution_repository,
     )
     monkeypatch.setattr(
-        "core.app.apps.workflow.app_generator.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+        "core.app.apps.workflow.app_generator.workflow_writers.create_workflow_node_execution_repository",
         create_workflow_node_execution_repository,
     )
     monkeypatch.setattr("core.app.apps.workflow.app_generator.db", SimpleNamespace(engine=sqlite_session.get_bind()))

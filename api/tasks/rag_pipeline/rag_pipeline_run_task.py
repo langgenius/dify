@@ -20,7 +20,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerat
 from core.app.entities.rag_pipeline_invoke_entities import RagPipelineInvokeEntity
 from core.db.session_factory import get_session_maker
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
-from core.repositories.factory import DifyCoreRepositoryFactory
+from extensions.application_services import workflow_writers
 from extensions.application_services.data_sources import build_data_source_credentials
 from extensions.ext_database import db
 from models import Account, Tenant
@@ -162,7 +162,7 @@ def run_single_rag_pipeline_task(rag_pipeline_invoke_entity: Mapping[str, Any], 
 
                 # Create workflow repositories
                 session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
-                workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
+                workflow_execution_repository = workflow_writers.create_workflow_execution_repository(
                     session_factory=session_factory,
                     tenant_id=pipeline.tenant_id,
                     user=account,
@@ -170,14 +170,12 @@ def run_single_rag_pipeline_task(rag_pipeline_invoke_entity: Mapping[str, Any], 
                     triggered_from=WorkflowRunTriggeredFrom.RAG_PIPELINE_RUN,
                 )
 
-                workflow_node_execution_repository = (
-                    DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
-                        session_factory=session_factory,
-                        tenant_id=pipeline.tenant_id,
-                        user=account,
-                        app_id=entity.app_config.app_id,
-                        triggered_from=WorkflowNodeExecutionTriggeredFrom.RAG_PIPELINE_RUN,
-                    )
+                workflow_node_execution_repository = workflow_writers.create_workflow_node_execution_repository(
+                    session_factory=session_factory,
+                    tenant_id=pipeline.tenant_id,
+                    user=account,
+                    app_id=entity.app_config.app_id,
+                    triggered_from=WorkflowNodeExecutionTriggeredFrom.RAG_PIPELINE_RUN,
                 )
 
                 # Set the user directly in g for preserve_flask_contexts

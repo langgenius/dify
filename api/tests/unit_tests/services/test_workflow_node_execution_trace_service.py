@@ -15,7 +15,7 @@ from graphon.enums import WorkflowNodeExecutionStatus
 from models.account import Account
 from models.enums import CreatorUserRole
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
-from repositories.api_workflow_node_execution_repository import DifyAPIWorkflowNodeExecutionRepository
+from services.workflow.node_execution_queries import DifyAPIWorkflowNodeExecutionRepository
 from services.workflow_node_execution_trace_service import assemble_workflow_node_execution_traces
 
 pytestmark = pytest.mark.parametrize("sqlite_session", [(Account,)], indirect=True)

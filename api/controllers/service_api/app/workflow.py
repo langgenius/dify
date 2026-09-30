@@ -48,6 +48,7 @@ from core.errors.error import (
 )
 from core.helper.trace_id_helper import get_external_trace_id, get_trace_session_id, omit_trace_session_id_from_payload
 from enums import CloudPlan, DeploymentEdition
+from extensions.application_services import workflow_storage
 from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -60,7 +61,6 @@ from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.helper import dump_response, to_timestamp
 from models.model import App, AppMode, EndUser
-from repositories.factory import DifyAPIRepositoryFactory
 from services.app_generate_service import AppGenerateService
 from services.billing_service import BillingService
 from services.errors.app import (
@@ -272,7 +272,7 @@ class WorkflowRunDetailApi(Resource):
 
         # Use repository to get workflow run
         session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
-        workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
+        workflow_run_repo = workflow_storage.create_api_workflow_run_repository(session_maker)
 
         workflow_run = workflow_run_repo.get_workflow_run_by_id(
             tenant_id=app_model.tenant_id,

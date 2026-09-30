@@ -1,0 +1,1216 @@
+"""
+SQLAlchemy API WorkflowRun Repository Implementation
+
+This module provides the SQLAlchemy-based implementation of the APIWorkflowRunRepository
+protocol. It handles service-layer WorkflowRun database operations using SQLAlchemy 2.0
+style queries with proper session management and multi-tenant data isolation.
+
+Key Features:
+- SQLAlchemy 2.0 style queries for modern database operations
+- Cursor-based pagination for efficient large dataset handling
+- Bulk operations with batch processing for performance
+- Multi-tenant data isolation and security
+- Proper session management with dependency injection
+
+Implementation Notes:
+- Uses sessionmaker for consistent session management
+- Implements cursor-based pagination using created_at timestamps
+- Provides efficient bulk deletion with batch processing
+- Maintains data consistency with proper transaction handling
+"""
+
+import logging
+from collections.abc import Callable, Sequence
+from datetime import datetime
+from decimal import Decimal
+from typing import Any, cast, override
+
+import sqlalchemy as sa
+from sqlalchemy import delete, func, select, tuple_
+from sqlalchemy.engine import CursorResult
+from sqlalchemy.orm import Session, sessionmaker
+
+from core.workflow.nodes.human_input.pause_reason import (
+    PauseReason as DifyPauseReason,
+)
+from graphon.entities.pause_reason import (
+    PauseReason as GraphonPauseReason,
+)
+from graphon.enums import WorkflowExecutionStatus, WorkflowType
+from libs.helper import convert_datetime_to_date
+from libs.infinite_scroll_pagination import InfiniteScrollPagination
+from libs.time_parser import get_time_threshold
+from models import Message
+from models.enums import WorkflowRunTriggeredFrom
+from models.workflow import WorkflowAppLog, WorkflowArchiveLog, WorkflowPause, WorkflowPauseReason, WorkflowRun
+from repositories.workflow.pause_repository import WorkflowPauseRepository
+from services.retention.workflow_run.tenant_prefix import tenant_prefix_condition
+from services.workflow.run_entities import (
+    AverageInteractionStats,
+    DailyRunsStats,
+    DailyTerminalsStats,
+    DailyTokenCostStats,
+    RunsWithRelatedCountsDict,
+    WorkflowPauseEntity,
+    WorkflowRunCleanupRef,
+    WorkflowRunMessageRef,
+    WorkflowRunPauseRecord,
+)
+from services.workflow.run_repository import APIWorkflowRunRepository
+
+logger = logging.getLogger(__name__)
+
+
+_HEX_SHARD_VALUES = {
+    "0": 0,
+    "1": 1,
+    "2": 2,
+    "3": 3,
+    "4": 4,
+    "5": 5,
+    "6": 6,
+    "7": 7,
+    "8": 8,
+    "9": 9,
+    "a": 10,
+    "b": 11,
+    "c": 12,
+    "d": 13,
+    "e": 14,
+    "f": 15,
+}
+
+
+def _tenant_prefix_condition(prefixes: Sequence[str]) -> sa.ColumnElement[bool]:
+    conditions = [tenant_prefix_condition(WorkflowRun.tenant_id, prefix) for prefix in prefixes]
+    return sa.or_(*conditions)
+
+
+def _workflow_run_id_shard_expr() -> sa.ColumnElement[int]:
+    normalized_id = func.lower(func.replace(sa.cast(WorkflowRun.id, sa.String()), "-", ""))
+    last_hex = func.substr(normalized_id, func.length(normalized_id), 1)
+    return sa.case(
+        *[(last_hex == hex_digit, shard_value) for hex_digit, shard_value in _HEX_SHARD_VALUES.items()],
+        else_=0,
+    )
+
+
+class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
+    """
+    SQLAlchemy implementation of APIWorkflowRunRepository.
+
+    Provides service-layer WorkflowRun database operations using SQLAlchemy 2.0
+    style queries. Supports dependency injection through sessionmaker and
+    maintains proper multi-tenant data isolation.
+
+    Args:
+        session_maker: SQLAlchemy sessionmaker instance for database connections
+    """
+
+    def __init__(self, session_maker: sessionmaker[Session]):
+        """
+        Initialize the repository with a sessionmaker.
+
+        Args:
+            session_maker: SQLAlchemy sessionmaker for database connections
+        """
+        self._session_maker = session_maker
+        self._pauses = WorkflowPauseRepository(session_maker)
+
+    def get_message_refs(
+        self,
+        *,
+        app_id: str,
+        workflow_run_ids: Sequence[str],
+    ) -> dict[str, WorkflowRunMessageRef]:
+        if not workflow_run_ids:
+            return {}
+
+        stmt = select(Message.workflow_run_id, Message.id, Message.conversation_id).where(
+            Message.app_id == app_id,
+            Message.workflow_run_id.in_(workflow_run_ids),
+        )
+        with self._session_maker() as session:
+            rows = session.execute(stmt).all()
+
+        messages_by_run_id: dict[str, WorkflowRunMessageRef] = {}
+        for workflow_run_id, message_id, conversation_id in rows:
+            if workflow_run_id is not None:
+                messages_by_run_id.setdefault(
+                    workflow_run_id,
+                    WorkflowRunMessageRef(message_id=message_id, conversation_id=conversation_id),
+                )
+        return messages_by_run_id
+
+    @override
+    def get_paginated_workflow_runs(
+        self,
+        tenant_id: str,
+        app_id: str,
+        triggered_from: WorkflowRunTriggeredFrom | Sequence[WorkflowRunTriggeredFrom],
+        limit: int = 20,
+        last_id: str | None = None,
+        status: str | None = None,
+    ) -> InfiniteScrollPagination:
+        """
+        Get paginated workflow runs with filtering.
+
+        Implements cursor-based pagination using created_at timestamps for
+        efficient handling of large datasets. Filters by tenant, app, and
+        trigger source for proper data isolation.
+        """
+        with self._session_maker() as session:
+            # Build base query with filters
+            base_stmt = select(WorkflowRun).where(
+                WorkflowRun.tenant_id == tenant_id,
+                WorkflowRun.app_id == app_id,
+            )
+
+            # Handle triggered_from values
+            if isinstance(triggered_from, WorkflowRunTriggeredFrom):
+                triggered_from = [triggered_from]
+            if triggered_from:
+                base_stmt = base_stmt.where(WorkflowRun.triggered_from.in_(triggered_from))
+
+            # Add optional status filter
+            if status:
+                base_stmt = base_stmt.where(WorkflowRun.status == status)
+
+            if last_id:
+                # Get the last workflow run for cursor-based pagination
+                last_run_stmt = base_stmt.where(WorkflowRun.id == last_id)
+                last_workflow_run = session.scalar(last_run_stmt)
+
+                if not last_workflow_run:
+                    raise ValueError("Last workflow run not exists")
+
+                # Get records created before the last run's timestamp
+                base_stmt = base_stmt.where(
+                    sa.or_(
+                        WorkflowRun.created_at < last_workflow_run.created_at,
+                        sa.and_(
+                            WorkflowRun.created_at == last_workflow_run.created_at,
+                            WorkflowRun.id < last_workflow_run.id,
+                        ),
+                    )
+                )
+
+            # First page - get most recent records
+            workflow_runs = session.scalars(
+                base_stmt.order_by(WorkflowRun.created_at.desc(), WorkflowRun.id.desc()).limit(limit + 1)
+            ).all()
+
+            # Check if there are more records for pagination
+            has_more = len(workflow_runs) > limit
+            if has_more:
+                workflow_runs = workflow_runs[:-1]
+
+            return InfiniteScrollPagination(data=workflow_runs, limit=limit, has_more=has_more)
+
+    @override
+    def get_workflow_run_by_id(
+        self,
+        tenant_id: str,
+        app_id: str,
+        run_id: str,
+    ) -> WorkflowRun | None:
+        """
+        Get a specific workflow run by ID with tenant and app isolation.
+        """
+        with self._session_maker() as session:
+            stmt = select(WorkflowRun).where(
+                WorkflowRun.tenant_id == tenant_id,
+                WorkflowRun.app_id == app_id,
+                WorkflowRun.id == run_id,
+            )
+            return session.scalar(stmt)
+
+    @override
+    def get_workflow_run_by_id_without_tenant(
+        self,
+        run_id: str,
+    ) -> WorkflowRun | None:
+        """
+        Get a specific workflow run by ID without tenant/app context.
+        """
+        with self._session_maker() as session:
+            stmt = select(WorkflowRun).where(WorkflowRun.id == run_id)
+            return session.scalar(stmt)
+
+    @override
+    def get_workflow_runs_count(
+        self,
+        tenant_id: str,
+        app_id: str,
+        triggered_from: str,
+        status: str | None = None,
+        time_range: str | None = None,
+    ) -> dict[str, int]:
+        """
+        Get workflow runs count statistics grouped by status.
+        """
+        _initial_status_counts = {
+            "running": 0,
+            "succeeded": 0,
+            "failed": 0,
+            "stopped": 0,
+            "partial-succeeded": 0,
+        }
+
+        with self._session_maker() as session:
+            # Build base where conditions
+            base_conditions = [
+                WorkflowRun.tenant_id == tenant_id,
+                WorkflowRun.app_id == app_id,
+                WorkflowRun.triggered_from == triggered_from,
+            ]
+
+            # Add time range filter if provided
+            if time_range:
+                time_threshold = get_time_threshold(time_range)
+                if time_threshold:
+                    base_conditions.append(WorkflowRun.created_at >= time_threshold)
+
+            # If status filter is provided, return simple count
+            if status:
+                count_stmt = select(func.count(WorkflowRun.id)).where(*base_conditions, WorkflowRun.status == status)
+                total = session.scalar(count_stmt) or 0
+
+                result = {"total": total} | _initial_status_counts
+
+                # Set the count for the filtered status
+                if status in result:
+                    result[status] = total
+
+                return result
+
+            # No status filter - get counts grouped by status
+            base_stmt = (
+                select(WorkflowRun.status, func.count(WorkflowRun.id).label("count"))
+                .where(*base_conditions)
+                .group_by(WorkflowRun.status)
+            )
+
+            # Execute query
+            results = session.execute(base_stmt).all()
+
+            # Build response dictionary
+            status_counts = _initial_status_counts.copy()
+
+            total = 0
+            for status_val, count in results:
+                total += count
+                if status_val in status_counts:
+                    status_counts[status_val] = count
+
+            return {"total": total} | status_counts
+
+    @override
+    def get_expired_runs_batch(
+        self,
+        tenant_id: str,
+        before_date: datetime,
+        batch_size: int = 1000,
+    ) -> Sequence[WorkflowRun]:
+        """
+        Get a batch of expired workflow runs for cleanup operations.
+        """
+        with self._session_maker() as session:
+            stmt = (
+                select(WorkflowRun)
+                .where(
+                    WorkflowRun.tenant_id == tenant_id,
+                    WorkflowRun.created_at < before_date,
+                )
+                .limit(batch_size)
+            )
+            return session.scalars(stmt).all()
+
+    @override
+    def delete_runs_by_ids(
+        self,
+        run_ids: Sequence[str],
+    ) -> int:
+        """
+        Delete workflow runs by their IDs using bulk deletion.
+        """
+        if not run_ids:
+            return 0
+
+        with self._session_maker() as session:
+            stmt = delete(WorkflowRun).where(WorkflowRun.id.in_(run_ids))
+            result = cast(CursorResult, session.execute(stmt))
+            session.commit()
+
+            deleted_count = result.rowcount
+            logger.info("Deleted %s workflow runs by IDs", deleted_count)
+            return deleted_count
+
+    @override
+    def delete_runs_by_app(
+        self,
+        tenant_id: str,
+        app_id: str,
+        batch_size: int = 1000,
+    ) -> int:
+        """
+        Delete all workflow runs for a specific app in batches.
+        """
+        total_deleted = 0
+
+        while True:
+            with self._session_maker() as session:
+                # Get a batch of run IDs to delete
+                stmt = (
+                    select(WorkflowRun.id)
+                    .where(
+                        WorkflowRun.tenant_id == tenant_id,
+                        WorkflowRun.app_id == app_id,
+                    )
+                    .limit(batch_size)
+                )
+                run_ids = session.scalars(stmt).all()
+
+                if not run_ids:
+                    break
+
+                # Delete the batch
+                delete_stmt = delete(WorkflowRun).where(WorkflowRun.id.in_(run_ids))
+                result = cast(CursorResult, session.execute(delete_stmt))
+                session.commit()
+
+                batch_deleted = result.rowcount
+                total_deleted += batch_deleted
+
+                logger.info("Deleted batch of %s workflow runs for app %s", batch_deleted, app_id)
+
+                # If we deleted fewer records than the batch size, we're done
+                if batch_deleted < batch_size:
+                    break
+
+        logger.info("Total deleted %s workflow runs for app %s", total_deleted, app_id)
+        return total_deleted
+
+    @override
+    def get_runs_batch_by_time_range(
+        self,
+        start_from: datetime | None,
+        end_before: datetime,
+        last_seen: tuple[datetime, str] | None,
+        batch_size: int,
+        run_types: Sequence[WorkflowType] | None = None,
+        tenant_ids: Sequence[str] | None = None,
+        tenant_prefixes: Sequence[str] | None = None,
+        workflow_ids: Sequence[str] | None = None,
+        run_shard_index: int | None = None,
+        run_shard_total: int | None = None,
+    ) -> Sequence[WorkflowRun]:
+        """
+        Fetch ended workflow runs in a time window for archival and clean batching.
+
+        Query scope:
+        - created_at in [start_from, end_before)
+        - type in run_types (when provided)
+        - status is an ended state
+        - optional tenant_id, tenant_prefix, workflow_id filters and cursor (last_seen) for pagination
+        - optional deterministic shard by the last hexadecimal digit of workflow_run_id
+        """
+        with self._session_maker() as session:
+            stmt = (
+                select(WorkflowRun)
+                .where(
+                    WorkflowRun.created_at < end_before,
+                    WorkflowRun.status.in_(WorkflowExecutionStatus.ended_values()),
+                )
+                .order_by(WorkflowRun.created_at.asc(), WorkflowRun.id.asc())
+                .limit(batch_size)
+            )
+            if run_types is not None:
+                if not run_types:
+                    return []
+                stmt = stmt.where(WorkflowRun.type.in_(run_types))
+
+            if start_from:
+                stmt = stmt.where(WorkflowRun.created_at >= start_from)
+
+            if tenant_ids:
+                stmt = stmt.where(WorkflowRun.tenant_id.in_(tenant_ids))
+
+            if tenant_prefixes:
+                stmt = stmt.where(_tenant_prefix_condition(tenant_prefixes))
+
+            if workflow_ids:
+                stmt = stmt.where(WorkflowRun.workflow_id.in_(workflow_ids))
+
+            if run_shard_index is not None and run_shard_total is not None:
+                stmt = stmt.where((_workflow_run_id_shard_expr() % run_shard_total) == run_shard_index)
+
+            if last_seen:
+                stmt = stmt.where(
+                    tuple_(WorkflowRun.created_at, WorkflowRun.id)
+                    > tuple_(
+                        sa.literal(last_seen[0], type_=sa.DateTime()),
+                        sa.literal(last_seen[1], type_=WorkflowRun.id.type),
+                    )
+                )
+
+            return session.scalars(stmt).all()
+
+    @override
+    def get_cleanup_refs_batch_by_time_range(
+        self,
+        start_from: datetime | None,
+        end_before: datetime,
+        last_seen: tuple[datetime, str] | None,
+        batch_size: int,
+        run_types: Sequence[WorkflowType] | None = None,
+        tenant_ids: Sequence[str] | None = None,
+        workflow_ids: Sequence[str] | None = None,
+        upper_bound: tuple[datetime, str] | None = None,
+    ) -> Sequence[WorkflowRunCleanupRef]:
+        """
+        Fetch lightweight ended workflow run refs in a time window for cleanup batching.
+
+        The optional upper_bound is inclusive and is paired with last_seen by free-plan cleanup so a second,
+        tenant-filtered target query stays within the candidate page already checked against billing.
+        """
+        with self._session_maker() as session:
+            stmt = (
+                select(WorkflowRun.id, WorkflowRun.tenant_id, WorkflowRun.created_at)
+                .where(
+                    WorkflowRun.created_at < end_before,
+                    WorkflowRun.status.in_(WorkflowExecutionStatus.ended_values()),
+                )
+                .order_by(WorkflowRun.created_at.asc(), WorkflowRun.id.asc())
+                .limit(batch_size)
+            )
+            if run_types is not None:
+                if not run_types:
+                    return []
+                stmt = stmt.where(WorkflowRun.type.in_(run_types))
+
+            if start_from:
+                stmt = stmt.where(WorkflowRun.created_at >= start_from)
+
+            if tenant_ids:
+                stmt = stmt.where(WorkflowRun.tenant_id.in_(tenant_ids))
+
+            if workflow_ids:
+                stmt = stmt.where(WorkflowRun.workflow_id.in_(workflow_ids))
+
+            if last_seen:
+                stmt = stmt.where(
+                    tuple_(WorkflowRun.created_at, WorkflowRun.id)
+                    > tuple_(
+                        sa.literal(last_seen[0], type_=sa.DateTime()),
+                        sa.literal(last_seen[1], type_=WorkflowRun.id.type),
+                    )
+                )
+
+            if upper_bound:
+                stmt = stmt.where(
+                    tuple_(WorkflowRun.created_at, WorkflowRun.id)
+                    <= tuple_(
+                        sa.literal(upper_bound[0], type_=sa.DateTime()),
+                        sa.literal(upper_bound[1], type_=WorkflowRun.id.type),
+                    )
+                )
+
+            return [
+                WorkflowRunCleanupRef(id=run_id, tenant_id=tenant_id, created_at=created_at)
+                for run_id, tenant_id, created_at in session.execute(stmt).all()
+            ]
+
+    @override
+    def get_archived_run_ids(
+        self,
+        session: Session,
+        run_ids: Sequence[str],
+    ) -> set[str]:
+        if not run_ids:
+            return set()
+
+        stmt = select(WorkflowArchiveLog.workflow_run_id).where(WorkflowArchiveLog.workflow_run_id.in_(run_ids))
+        return set(session.scalars(stmt).all())
+
+    @override
+    def get_archived_log_by_run_id(
+        self,
+        run_id: str,
+    ) -> WorkflowArchiveLog | None:
+        with self._session_maker() as session:
+            stmt = select(WorkflowArchiveLog).where(WorkflowArchiveLog.workflow_run_id == run_id).limit(1)
+            return session.scalar(stmt)
+
+    @override
+    def delete_archive_log_by_run_id(
+        self,
+        session: Session,
+        run_id: str,
+    ) -> int:
+        stmt = delete(WorkflowArchiveLog).where(WorkflowArchiveLog.workflow_run_id == run_id)
+        result = session.execute(stmt)
+        return cast(CursorResult, result).rowcount or 0
+
+    @override
+    def get_pause_records_by_run_id(
+        self,
+        session: Session,
+        run_id: str,
+    ) -> Sequence[WorkflowPause]:
+        stmt = select(WorkflowPause).where(WorkflowPause.workflow_run_id == run_id)
+        return list(session.scalars(stmt))
+
+    @override
+    def get_pause_reason_records_by_run_id(
+        self,
+        session: Session,
+        pause_ids: Sequence[str],
+    ) -> Sequence[WorkflowPauseReason]:
+        if not pause_ids:
+            return []
+
+        stmt = select(WorkflowPauseReason).where(WorkflowPauseReason.pause_id.in_(pause_ids))
+        return list(session.scalars(stmt))
+
+    @override
+    def delete_runs_with_related(
+        self,
+        runs: Sequence[WorkflowRun],
+        delete_node_executions: Callable[[Session, Sequence[WorkflowRun]], tuple[int, int]] | None = None,
+        delete_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
+    ) -> RunsWithRelatedCountsDict:
+        if not runs:
+            return {
+                "runs": 0,
+                "node_executions": 0,
+                "offloads": 0,
+                "app_logs": 0,
+                "trigger_logs": 0,
+                "pauses": 0,
+                "pause_reasons": 0,
+            }
+
+        with self._session_maker() as session:
+            run_ids = [run.id for run in runs]
+            if delete_node_executions:
+                node_executions_deleted, offloads_deleted = delete_node_executions(session, runs)
+            else:
+                node_executions_deleted, offloads_deleted = 0, 0
+
+            app_logs_result = session.execute(delete(WorkflowAppLog).where(WorkflowAppLog.workflow_run_id.in_(run_ids)))
+            app_logs_deleted = cast(CursorResult, app_logs_result).rowcount or 0
+
+            pause_stmt = select(WorkflowPause.id).where(WorkflowPause.workflow_run_id.in_(run_ids))
+            pause_ids = session.scalars(pause_stmt).all()
+            pause_reasons_deleted = 0
+            pauses_deleted = 0
+
+            if pause_ids:
+                pause_reasons_result = session.execute(
+                    delete(WorkflowPauseReason).where(WorkflowPauseReason.pause_id.in_(pause_ids))
+                )
+                pause_reasons_deleted = cast(CursorResult, pause_reasons_result).rowcount or 0
+                pauses_result = session.execute(delete(WorkflowPause).where(WorkflowPause.id.in_(pause_ids)))
+                pauses_deleted = cast(CursorResult, pauses_result).rowcount or 0
+
+            trigger_logs_deleted = delete_trigger_logs(session, run_ids) if delete_trigger_logs else 0
+
+            runs_result = session.execute(delete(WorkflowRun).where(WorkflowRun.id.in_(run_ids)))
+            runs_deleted = cast(CursorResult, runs_result).rowcount or 0
+
+            session.commit()
+
+            return {
+                "runs": runs_deleted,
+                "node_executions": node_executions_deleted,
+                "offloads": offloads_deleted,
+                "app_logs": app_logs_deleted,
+                "trigger_logs": trigger_logs_deleted,
+                "pauses": pauses_deleted,
+                "pause_reasons": pause_reasons_deleted,
+            }
+
+    @override
+    def delete_runs_with_related_by_ids(
+        self,
+        run_ids: Sequence[str],
+        delete_node_executions: Callable[[Session, Sequence[str]], tuple[int, int]] | None = None,
+        delete_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
+    ) -> RunsWithRelatedCountsDict:
+        if not run_ids:
+            return self._empty_runs_with_related_counts()
+
+        run_ids = list(run_ids)
+        with self._session_maker() as session:
+            if delete_node_executions:
+                node_executions_deleted, offloads_deleted = delete_node_executions(session, run_ids)
+            else:
+                node_executions_deleted, offloads_deleted = 0, 0
+
+            app_logs_result = session.execute(delete(WorkflowAppLog).where(WorkflowAppLog.workflow_run_id.in_(run_ids)))
+            app_logs_deleted = cast(CursorResult, app_logs_result).rowcount or 0
+
+            pause_stmt = select(WorkflowPause.id).where(WorkflowPause.workflow_run_id.in_(run_ids))
+            pause_ids = session.scalars(pause_stmt).all()
+            pause_reasons_deleted = 0
+            pauses_deleted = 0
+
+            if pause_ids:
+                pause_reasons_result = session.execute(
+                    delete(WorkflowPauseReason).where(WorkflowPauseReason.pause_id.in_(pause_ids))
+                )
+                pause_reasons_deleted = cast(CursorResult, pause_reasons_result).rowcount or 0
+                pauses_result = session.execute(delete(WorkflowPause).where(WorkflowPause.id.in_(pause_ids)))
+                pauses_deleted = cast(CursorResult, pauses_result).rowcount or 0
+
+            trigger_logs_deleted = delete_trigger_logs(session, run_ids) if delete_trigger_logs else 0
+
+            runs_result = session.execute(delete(WorkflowRun).where(WorkflowRun.id.in_(run_ids)))
+            runs_deleted = cast(CursorResult, runs_result).rowcount or 0
+
+            session.commit()
+
+            return {
+                "runs": runs_deleted,
+                "node_executions": node_executions_deleted,
+                "offloads": offloads_deleted,
+                "app_logs": app_logs_deleted,
+                "trigger_logs": trigger_logs_deleted,
+                "pauses": pauses_deleted,
+                "pause_reasons": pause_reasons_deleted,
+            }
+
+    @override
+    def get_app_logs_by_run_id(
+        self,
+        session: Session,
+        run_id: str,
+    ) -> Sequence[WorkflowAppLog]:
+        stmt = select(WorkflowAppLog).where(WorkflowAppLog.workflow_run_id == run_id)
+        return list(session.scalars(stmt))
+
+    @override
+    def create_archive_logs(
+        self,
+        session: Session,
+        run: WorkflowRun,
+        app_logs: Sequence[WorkflowAppLog],
+        trigger_metadata: str | None,
+    ) -> int:
+        if not app_logs:
+            archive_log = WorkflowArchiveLog(
+                log_id=None,
+                log_created_at=None,
+                log_created_from=None,
+                tenant_id=run.tenant_id,
+                app_id=run.app_id,
+                workflow_id=run.workflow_id,
+                workflow_run_id=run.id,
+                created_by_role=run.created_by_role,
+                created_by=run.created_by,
+                run_version=run.version,
+                run_status=run.status,
+                run_triggered_from=run.triggered_from,
+                run_error=run.error,
+                run_elapsed_time=run.elapsed_time,
+                run_total_tokens=run.total_tokens,
+                run_total_steps=run.total_steps,
+                run_created_at=run.created_at,
+                run_finished_at=run.finished_at,
+                run_exceptions_count=run.exceptions_count,
+                trigger_metadata=trigger_metadata,
+            )
+            session.add(archive_log)
+            return 1
+
+        archive_logs = [
+            WorkflowArchiveLog(
+                log_id=app_log.id,
+                log_created_at=app_log.created_at,
+                log_created_from=app_log.created_from,
+                tenant_id=run.tenant_id,
+                app_id=run.app_id,
+                workflow_id=run.workflow_id,
+                workflow_run_id=run.id,
+                created_by_role=run.created_by_role,
+                created_by=run.created_by,
+                run_version=run.version,
+                run_status=run.status,
+                run_triggered_from=run.triggered_from,
+                run_error=run.error,
+                run_elapsed_time=run.elapsed_time,
+                run_total_tokens=run.total_tokens,
+                run_total_steps=run.total_steps,
+                run_created_at=run.created_at,
+                run_finished_at=run.finished_at,
+                run_exceptions_count=run.exceptions_count,
+                trigger_metadata=trigger_metadata,
+            )
+            for app_log in app_logs
+        ]
+        session.add_all(archive_logs)
+        return len(archive_logs)
+
+    @override
+    def get_archived_runs_by_time_range(
+        self,
+        session: Session,
+        tenant_ids: Sequence[str] | None,
+        start_date: datetime,
+        end_date: datetime,
+        limit: int,
+    ) -> Sequence[WorkflowRun]:
+        """
+        Retrieves WorkflowRun records by joining workflow_archive_logs.
+
+        Used to identify runs that are already archived and ready for deletion.
+        """
+        stmt = (
+            select(WorkflowRun)
+            .join(WorkflowArchiveLog, WorkflowArchiveLog.workflow_run_id == WorkflowRun.id)
+            .where(
+                WorkflowArchiveLog.run_created_at >= start_date,
+                WorkflowArchiveLog.run_created_at < end_date,
+            )
+            .order_by(WorkflowArchiveLog.run_created_at.asc(), WorkflowArchiveLog.workflow_run_id.asc())
+            .limit(limit)
+        )
+        if tenant_ids:
+            stmt = stmt.where(WorkflowArchiveLog.tenant_id.in_(tenant_ids))
+        return list(session.scalars(stmt))
+
+    @override
+    def get_archived_logs_by_time_range(
+        self,
+        session: Session,
+        tenant_ids: Sequence[str] | None,
+        start_date: datetime,
+        end_date: datetime,
+        limit: int,
+    ) -> Sequence[WorkflowArchiveLog]:
+        # Returns WorkflowArchiveLog rows directly; use this when workflow_runs may be deleted.
+        stmt = (
+            select(WorkflowArchiveLog)
+            .where(
+                WorkflowArchiveLog.run_created_at >= start_date,
+                WorkflowArchiveLog.run_created_at < end_date,
+            )
+            .order_by(WorkflowArchiveLog.run_created_at.asc(), WorkflowArchiveLog.workflow_run_id.asc())
+            .limit(limit)
+        )
+        if tenant_ids:
+            stmt = stmt.where(WorkflowArchiveLog.tenant_id.in_(tenant_ids))
+        return list(session.scalars(stmt))
+
+    @override
+    def count_runs_with_related(
+        self,
+        runs: Sequence[WorkflowRun],
+        count_node_executions: Callable[[Session, Sequence[WorkflowRun]], tuple[int, int]] | None = None,
+        count_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
+    ) -> RunsWithRelatedCountsDict:
+        if not runs:
+            return {
+                "runs": 0,
+                "node_executions": 0,
+                "offloads": 0,
+                "app_logs": 0,
+                "trigger_logs": 0,
+                "pauses": 0,
+                "pause_reasons": 0,
+            }
+
+        with self._session_maker() as session:
+            run_ids = [run.id for run in runs]
+            if count_node_executions:
+                node_executions_count, offloads_count = count_node_executions(session, runs)
+            else:
+                node_executions_count, offloads_count = 0, 0
+
+            app_logs_count = (
+                session.scalar(
+                    select(func.count()).select_from(WorkflowAppLog).where(WorkflowAppLog.workflow_run_id.in_(run_ids))
+                )
+                or 0
+            )
+
+            pause_ids = session.scalars(
+                select(WorkflowPause.id).where(WorkflowPause.workflow_run_id.in_(run_ids))
+            ).all()
+            pauses_count = len(pause_ids)
+            pause_reasons_count = 0
+            if pause_ids:
+                pause_reasons_count = (
+                    session.scalar(
+                        select(func.count())
+                        .select_from(WorkflowPauseReason)
+                        .where(WorkflowPauseReason.pause_id.in_(pause_ids))
+                    )
+                    or 0
+                )
+
+            trigger_logs_count = count_trigger_logs(session, run_ids) if count_trigger_logs else 0
+
+            return {
+                "runs": len(runs),
+                "node_executions": node_executions_count,
+                "offloads": offloads_count,
+                "app_logs": int(app_logs_count),
+                "trigger_logs": trigger_logs_count,
+                "pauses": pauses_count,
+                "pause_reasons": int(pause_reasons_count),
+            }
+
+    @override
+    def count_runs_with_related_by_ids(
+        self,
+        run_ids: Sequence[str],
+        count_node_executions: Callable[[Session, Sequence[str]], tuple[int, int]] | None = None,
+        count_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
+    ) -> RunsWithRelatedCountsDict:
+        if not run_ids:
+            return self._empty_runs_with_related_counts()
+
+        run_ids = list(run_ids)
+        with self._session_maker() as session:
+            if count_node_executions:
+                node_executions_count, offloads_count = count_node_executions(session, run_ids)
+            else:
+                node_executions_count, offloads_count = 0, 0
+
+            runs_count = (
+                session.scalar(select(func.count()).select_from(WorkflowRun).where(WorkflowRun.id.in_(run_ids))) or 0
+            )
+            app_logs_count = (
+                session.scalar(
+                    select(func.count()).select_from(WorkflowAppLog).where(WorkflowAppLog.workflow_run_id.in_(run_ids))
+                )
+                or 0
+            )
+
+            pause_ids = session.scalars(
+                select(WorkflowPause.id).where(WorkflowPause.workflow_run_id.in_(run_ids))
+            ).all()
+            pauses_count = len(pause_ids)
+            pause_reasons_count = 0
+            if pause_ids:
+                pause_reasons_count = (
+                    session.scalar(
+                        select(func.count())
+                        .select_from(WorkflowPauseReason)
+                        .where(WorkflowPauseReason.pause_id.in_(pause_ids))
+                    )
+                    or 0
+                )
+
+            trigger_logs_count = count_trigger_logs(session, run_ids) if count_trigger_logs else 0
+
+            return {
+                "runs": int(runs_count),
+                "node_executions": node_executions_count,
+                "offloads": offloads_count,
+                "app_logs": int(app_logs_count),
+                "trigger_logs": trigger_logs_count,
+                "pauses": pauses_count,
+                "pause_reasons": int(pause_reasons_count),
+            }
+
+    @staticmethod
+    def _empty_runs_with_related_counts() -> RunsWithRelatedCountsDict:
+        return {
+            "runs": 0,
+            "node_executions": 0,
+            "offloads": 0,
+            "app_logs": 0,
+            "trigger_logs": 0,
+            "pauses": 0,
+            "pause_reasons": 0,
+        }
+
+    @override
+    def create_workflow_pause(
+        self,
+        workflow_run_id: str,
+        state_owner_user_id: str,
+        state: str,
+        pause_reasons: Sequence[GraphonPauseReason | DifyPauseReason],
+    ) -> WorkflowPauseEntity:
+        return self._pauses.create_workflow_pause(
+            workflow_run_id=workflow_run_id,
+            state_owner_user_id=state_owner_user_id,
+            state=state,
+            pause_reasons=pause_reasons,
+        )
+
+    @override
+    def get_workflow_pause(
+        self,
+        workflow_run_id: str,
+    ) -> WorkflowPauseEntity | None:
+        return self._pauses.get_workflow_pause(workflow_run_id=workflow_run_id)
+
+    def get_pause_record(
+        self,
+        *,
+        workspace_id: str,
+        workflow_run_id: str,
+    ) -> WorkflowRunPauseRecord | None:
+        return self._pauses.get_pause_record(workspace_id=workspace_id, workflow_run_id=workflow_run_id)
+
+    @override
+    def resume_workflow_pause(
+        self,
+        workflow_run_id: str,
+        pause_entity: WorkflowPauseEntity,
+    ) -> WorkflowPauseEntity:
+        return self._pauses.resume_workflow_pause(workflow_run_id=workflow_run_id, pause_entity=pause_entity)
+
+    @override
+    def delete_workflow_pause(
+        self,
+        pause_entity: WorkflowPauseEntity,
+    ) -> None:
+        return self._pauses.delete_workflow_pause(pause_entity=pause_entity)
+
+    @override
+    def prune_pauses(
+        self,
+        expiration: datetime,
+        resumption_expiration: datetime,
+        limit: int | None = None,
+    ) -> Sequence[str]:
+        return self._pauses.prune_pauses(
+            expiration=expiration, resumption_expiration=resumption_expiration, limit=limit
+        )
+
+    @override
+    def get_daily_runs_statistics(
+        self,
+        tenant_id: str,
+        app_id: str,
+        triggered_from: str,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
+        timezone: str = "UTC",
+    ) -> list[DailyRunsStats]:
+        """
+        Get daily runs statistics using raw SQL for optimal performance.
+        """
+        converted_created_at = convert_datetime_to_date("created_at")
+        sql_query = f"""SELECT
+    {converted_created_at} AS date,
+    COUNT(id) AS runs
+FROM
+    workflow_runs
+WHERE
+    tenant_id = :tenant_id
+    AND app_id = :app_id
+    AND triggered_from = :triggered_from"""
+
+        arg_dict: dict[str, Any] = {
+            "tz": timezone,
+            "tenant_id": tenant_id,
+            "app_id": app_id,
+            "triggered_from": triggered_from,
+        }
+
+        if start_date:
+            sql_query += " AND created_at >= :start_date"
+            arg_dict["start_date"] = start_date
+
+        if end_date:
+            sql_query += " AND created_at < :end_date"
+            arg_dict["end_date"] = end_date
+
+        sql_query += " GROUP BY date ORDER BY date"
+
+        response_data = []
+        with self._session_maker() as session:
+            rs = session.execute(sa.text(sql_query), arg_dict)
+            for row in rs:
+                response_data.append({"date": str(row.date), "runs": row.runs})
+
+        return cast(list[DailyRunsStats], response_data)
+
+    @override
+    def get_daily_terminals_statistics(
+        self,
+        tenant_id: str,
+        app_id: str,
+        triggered_from: str,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
+        timezone: str = "UTC",
+    ) -> list[DailyTerminalsStats]:
+        """
+        Get daily terminals statistics using raw SQL for optimal performance.
+        """
+        converted_created_at = convert_datetime_to_date("created_at")
+        sql_query = f"""SELECT
+    {converted_created_at} AS date,
+    COUNT(DISTINCT created_by) AS terminal_count
+FROM
+    workflow_runs
+WHERE
+    tenant_id = :tenant_id
+    AND app_id = :app_id
+    AND triggered_from = :triggered_from"""
+
+        arg_dict: dict[str, Any] = {
+            "tz": timezone,
+            "tenant_id": tenant_id,
+            "app_id": app_id,
+            "triggered_from": triggered_from,
+        }
+
+        if start_date:
+            sql_query += " AND created_at >= :start_date"
+            arg_dict["start_date"] = start_date
+
+        if end_date:
+            sql_query += " AND created_at < :end_date"
+            arg_dict["end_date"] = end_date
+
+        sql_query += " GROUP BY date ORDER BY date"
+
+        response_data = []
+        with self._session_maker() as session:
+            rs = session.execute(sa.text(sql_query), arg_dict)
+            for row in rs:
+                response_data.append({"date": str(row.date), "terminal_count": row.terminal_count})
+
+        return cast(list[DailyTerminalsStats], response_data)
+
+    @override
+    def get_daily_token_cost_statistics(
+        self,
+        tenant_id: str,
+        app_id: str,
+        triggered_from: str,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
+        timezone: str = "UTC",
+    ) -> list[DailyTokenCostStats]:
+        """
+        Get daily token cost statistics using raw SQL for optimal performance.
+        """
+        converted_created_at = convert_datetime_to_date("created_at")
+        sql_query = f"""SELECT
+    {converted_created_at} AS date,
+    SUM(total_tokens) AS token_count
+FROM
+    workflow_runs
+WHERE
+    tenant_id = :tenant_id
+    AND app_id = :app_id
+    AND triggered_from = :triggered_from"""
+
+        arg_dict: dict[str, Any] = {
+            "tz": timezone,
+            "tenant_id": tenant_id,
+            "app_id": app_id,
+            "triggered_from": triggered_from,
+        }
+
+        if start_date:
+            sql_query += " AND created_at >= :start_date"
+            arg_dict["start_date"] = start_date
+
+        if end_date:
+            sql_query += " AND created_at < :end_date"
+            arg_dict["end_date"] = end_date
+
+        sql_query += " GROUP BY date ORDER BY date"
+
+        response_data = []
+        with self._session_maker() as session:
+            rs = session.execute(sa.text(sql_query), arg_dict)
+            for row in rs:
+                response_data.append(
+                    {
+                        "date": str(row.date),
+                        "token_count": row.token_count,
+                    }
+                )
+
+        return cast(list[DailyTokenCostStats], response_data)
+
+    @override
+    def get_average_app_interaction_statistics(
+        self,
+        tenant_id: str,
+        app_id: str,
+        triggered_from: str,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
+        timezone: str = "UTC",
+    ) -> list[AverageInteractionStats]:
+        """
+        Get average app interaction statistics using raw SQL for optimal performance.
+        """
+        converted_created_at = convert_datetime_to_date("c.created_at")
+        sql_query = f"""SELECT
+    AVG(sub.interactions) AS interactions,
+    sub.date
+FROM
+    (
+        SELECT
+            {converted_created_at} AS date,
+            c.created_by,
+            COUNT(c.id) AS interactions
+        FROM
+            workflow_runs c
+        WHERE
+            c.tenant_id = :tenant_id
+            AND c.app_id = :app_id
+            AND c.triggered_from = :triggered_from
+            {{{{start}}}}
+            {{{{end}}}}
+        GROUP BY
+            date, c.created_by
+    ) sub
+GROUP BY
+    sub.date"""
+
+        arg_dict: dict[str, Any] = {
+            "tz": timezone,
+            "tenant_id": tenant_id,
+            "app_id": app_id,
+            "triggered_from": triggered_from,
+        }
+
+        if start_date:
+            sql_query = sql_query.replace("{{start}}", " AND c.created_at >= :start_date")
+            arg_dict["start_date"] = start_date
+        else:
+            sql_query = sql_query.replace("{{start}}", "")
+
+        if end_date:
+            sql_query = sql_query.replace("{{end}}", " AND c.created_at < :end_date")
+            arg_dict["end_date"] = end_date
+        else:
+            sql_query = sql_query.replace("{{end}}", "")
+
+        response_data = []
+        with self._session_maker() as session:
+            rs = session.execute(sa.text(sql_query), arg_dict)
+            for row in rs:
+                response_data.append(
+                    {
+                        "date": str(row.date),
+                        "interactions": float(Decimal(str(row.interactions)).quantize(Decimal("0.01"))),
+                    }
+                )
+
+        return cast(list[AverageInteractionStats], response_data)
+
+    @override
+    def get_workflow_run_by_id_and_tenant_id(self, tenant_id: str, run_id: str) -> WorkflowRun | None:
+        """Get a specific workflow run by its id and the associated tenant id."""
+        with self._session_maker() as session:
+            stmt = select(WorkflowRun).where(
+                WorkflowRun.tenant_id == tenant_id,
+                WorkflowRun.id == run_id,
+            )
+            return session.scalar(stmt)

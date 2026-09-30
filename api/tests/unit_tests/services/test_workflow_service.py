@@ -3278,7 +3278,7 @@ class TestWorkflowServiceDraftExecution:
             patch("services.workflow_service._setup_variable_pool"),
             patch("services.workflow_service.DraftVarLoader"),
             patch("services.workflow_service.WorkflowEntry.single_step_run") as mock_run,
-            patch("services.workflow_service.DifyCoreRepositoryFactory") as mock_repo_factory,
+            patch("services.workflow_service.workflow_writers") as mock_repo_factory,
             patch("services.workflow_service.DraftVariableSaver") as mock_saver_cls,
             patch("services.workflow_service.storage"),
         ):
@@ -3359,7 +3359,7 @@ class TestWorkflowServiceDraftExecution:
             patch("services.workflow_service.add_variables_to_pool") as mock_add_variables_to_pool,
             patch("services.workflow_service.DraftVarLoader"),
             patch("services.workflow_service.WorkflowEntry.single_step_run") as mock_run,
-            patch("services.workflow_service.DifyCoreRepositoryFactory"),
+            patch("services.workflow_service.workflow_writers"),
             patch("services.workflow_service.DraftVariableSaver"),
             patch("services.workflow_service.storage"),
         ):

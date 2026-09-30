@@ -800,7 +800,7 @@ def test_trace_exception(trace_instance):
             trace_instance.trace(_make_workflow_info())
 
 
-@patch("dify_trace_arize_phoenix.arize_phoenix_trace.DifyCoreRepositoryFactory")
+@patch("dify_trace_arize_phoenix.arize_phoenix_trace.workflow_writers")
 def test_workflow_trace_full(mock_repo_factory, trace_instance):
     info = _make_workflow_info()
     repo = MagicMock()
@@ -862,7 +862,7 @@ def test_workflow_trace_queries_real_repository_with_sqlite_session_factory(
     assert workflow_span_call.kwargs["attributes"][SpanAttributes.SESSION_ID] == info.workflow_run_id
 
 
-@patch("dify_trace_arize_phoenix.arize_phoenix_trace.DifyCoreRepositoryFactory")
+@patch("dify_trace_arize_phoenix.arize_phoenix_trace.workflow_writers")
 def test_workflow_trace_uses_canonical_root_context_for_top_level_workflow(mock_repo_factory, trace_instance):
     info = _make_workflow_info(
         message_id="message-1",
@@ -899,7 +899,7 @@ def test_workflow_trace_uses_canonical_root_context_for_top_level_workflow(mock_
     assert workflow_span_call.kwargs["context"] is root_context
 
 
-@patch("dify_trace_arize_phoenix.arize_phoenix_trace.DifyCoreRepositoryFactory")
+@patch("dify_trace_arize_phoenix.arize_phoenix_trace.workflow_writers")
 def test_workflow_trace_uses_workflow_run_id_for_root_span_and_populates_root_inputs_outputs(
     mock_repo_factory,
     trace_instance,
@@ -929,7 +929,7 @@ def test_workflow_trace_uses_workflow_run_id_for_root_span_and_populates_root_in
     assert root_span_call.kwargs["attributes"][SpanAttributes.OUTPUT_MIME_TYPE] == "application/json"
 
 
-@patch("dify_trace_arize_phoenix.arize_phoenix_trace.DifyCoreRepositoryFactory")
+@patch("dify_trace_arize_phoenix.arize_phoenix_trace.workflow_writers")
 def test_workflow_trace_propagates_workflow_error_to_root_span(
     mock_repo_factory,
     trace_instance,
@@ -952,7 +952,7 @@ def test_workflow_trace_propagates_workflow_error_to_root_span(
     assert mock_ensure_root_span.call_args.kwargs["root_span_error"] == info.error
 
 
-@patch("dify_trace_arize_phoenix.arize_phoenix_trace.DifyCoreRepositoryFactory")
+@patch("dify_trace_arize_phoenix.arize_phoenix_trace.workflow_writers")
 def test_workflow_trace_falls_back_to_dify_name_when_workflow_run_id_is_blank(
     mock_repo_factory,
     trace_instance,
@@ -975,7 +975,7 @@ def test_workflow_trace_falls_back_to_dify_name_when_workflow_run_id_is_blank(
     assert root_span_call.kwargs["attributes"]["dify_trace_id"] == ""
 
 
-@patch("dify_trace_arize_phoenix.arize_phoenix_trace.DifyCoreRepositoryFactory")
+@patch("dify_trace_arize_phoenix.arize_phoenix_trace.workflow_writers")
 def test_workflow_trace_reuses_upstream_parent_workflow_context_when_no_parent_node_execution_id_is_available(
     mock_repo_factory, trace_instance
 ):
@@ -1019,7 +1019,7 @@ def test_workflow_trace_reuses_upstream_parent_workflow_context_when_no_parent_n
     assert workflow_span_call.kwargs["context"] is parent_context
 
 
-@patch("dify_trace_arize_phoenix.arize_phoenix_trace.DifyCoreRepositoryFactory")
+@patch("dify_trace_arize_phoenix.arize_phoenix_trace.workflow_writers")
 def test_workflow_trace_uses_published_parent_node_context_for_nested_workflow(
     mock_repo_factory,
     trace_instance,
@@ -1060,7 +1060,7 @@ def test_workflow_trace_uses_published_parent_node_context_for_nested_workflow(
     assert workflow_span_call.kwargs["context"] is parent_context
 
 
-@patch("dify_trace_arize_phoenix.arize_phoenix_trace.DifyCoreRepositoryFactory")
+@patch("dify_trace_arize_phoenix.arize_phoenix_trace.workflow_writers")
 def test_workflow_trace_raises_pending_parent_error_when_parent_node_context_is_missing(
     mock_repo_factory,
     trace_instance,
@@ -1099,7 +1099,7 @@ def test_workflow_trace_raises_pending_parent_error_when_parent_node_context_is_
     mock_ensure_root_span.assert_not_called()
 
 
-@patch("dify_trace_arize_phoenix.arize_phoenix_trace.DifyCoreRepositoryFactory")
+@patch("dify_trace_arize_phoenix.arize_phoenix_trace.workflow_writers")
 def test_workflow_trace_falls_back_when_parent_app_tracing_cannot_publish_parent_context(
     mock_repo_factory,
     trace_instance,
@@ -1150,7 +1150,7 @@ def test_workflow_trace_falls_back_when_parent_app_tracing_cannot_publish_parent
     assert workflow_span_call.kwargs["context"] is parent_context
 
 
-@patch("dify_trace_arize_phoenix.arize_phoenix_trace.DifyCoreRepositoryFactory")
+@patch("dify_trace_arize_phoenix.arize_phoenix_trace.workflow_writers")
 def test_workflow_trace_still_retries_when_parent_app_can_publish_parent_context(
     mock_repo_factory,
     trace_instance,
@@ -1186,7 +1186,7 @@ def test_workflow_trace_still_retries_when_parent_app_can_publish_parent_context
     mock_ensure_root_span.assert_not_called()
 
 
-@patch("dify_trace_arize_phoenix.arize_phoenix_trace.DifyCoreRepositoryFactory")
+@patch("dify_trace_arize_phoenix.arize_phoenix_trace.workflow_writers")
 def test_workflow_trace_uses_parent_workflow_run_id_for_workflow_and_nodes_when_nested_context_is_present(
     mock_repo_factory, trace_instance
 ):
@@ -1225,7 +1225,7 @@ def test_workflow_trace_uses_parent_workflow_run_id_for_workflow_and_nodes_when_
     assert node_span_call.kwargs["attributes"][SpanAttributes.SESSION_ID] == "outer-workflow-run-1"
 
 
-@patch("dify_trace_arize_phoenix.arize_phoenix_trace.DifyCoreRepositoryFactory")
+@patch("dify_trace_arize_phoenix.arize_phoenix_trace.workflow_writers")
 def test_workflow_trace_falls_back_to_node_type_when_node_title_is_blank(mock_repo_factory, trace_instance):
     info = _make_workflow_info()
     repo = MagicMock()
@@ -1246,7 +1246,7 @@ def test_workflow_trace_falls_back_to_node_type_when_node_title_is_blank(mock_re
     assert node_span_call.kwargs["attributes"][SpanAttributes.SESSION_ID] == "r1"
 
 
-@patch("dify_trace_arize_phoenix.arize_phoenix_trace.DifyCoreRepositoryFactory")
+@patch("dify_trace_arize_phoenix.arize_phoenix_trace.workflow_writers")
 def test_workflow_trace_prefers_workflow_graph_node_title_over_execution_title(mock_repo_factory, trace_instance):
     info = _make_workflow_info(
         workflow_data={
@@ -1281,7 +1281,7 @@ def test_workflow_trace_prefers_workflow_graph_node_title_over_execution_title(m
     assert node_span_call.kwargs["attributes"][SpanAttributes.SESSION_ID] == "r1"
 
 
-@patch("dify_trace_arize_phoenix.arize_phoenix_trace.DifyCoreRepositoryFactory")
+@patch("dify_trace_arize_phoenix.arize_phoenix_trace.workflow_writers")
 def test_workflow_trace_keeps_nested_conversation_session_while_reusing_parent_root_context(
     mock_repo_factory, trace_instance
 ):
@@ -1335,7 +1335,7 @@ def test_workflow_trace_keeps_nested_conversation_session_while_reusing_parent_r
     assert node_span_call.kwargs["attributes"][SpanAttributes.SESSION_ID] == "conversation-1"
 
 
-@patch("dify_trace_arize_phoenix.arize_phoenix_trace.DifyCoreRepositoryFactory")
+@patch("dify_trace_arize_phoenix.arize_phoenix_trace.workflow_writers")
 def test_workflow_trace_publishes_tool_node_parent_span_context_to_redis(
     mock_repo_factory,
     trace_instance,
@@ -1387,7 +1387,7 @@ def test_workflow_trace_publishes_tool_node_parent_span_context_to_redis(
         ("publish", "publish failed"),
     ],
 )
-@patch("dify_trace_arize_phoenix.arize_phoenix_trace.DifyCoreRepositoryFactory")
+@patch("dify_trace_arize_phoenix.arize_phoenix_trace.workflow_writers")
 def test_workflow_trace_cleans_up_tool_span_when_parent_context_publish_fails(
     mock_repo_factory,
     trace_instance,
@@ -1437,7 +1437,7 @@ def test_workflow_trace_cleans_up_tool_span_when_parent_context_publish_fails(
     workflow_span.end.assert_called_once()
 
 
-@patch("dify_trace_arize_phoenix.arize_phoenix_trace.DifyCoreRepositoryFactory")
+@patch("dify_trace_arize_phoenix.arize_phoenix_trace.workflow_writers")
 def test_workflow_trace_parents_serial_nodes_to_resolved_predecessor_span(mock_repo_factory, trace_instance):
     info = _make_workflow_info()
     repo = MagicMock()
@@ -1494,7 +1494,7 @@ def test_workflow_trace_parents_serial_nodes_to_resolved_predecessor_span(mock_r
         ("iteration", "iteration_id"),
     ],
 )
-@patch("dify_trace_arize_phoenix.arize_phoenix_trace.DifyCoreRepositoryFactory")
+@patch("dify_trace_arize_phoenix.arize_phoenix_trace.workflow_writers")
 def test_workflow_trace_parents_structured_start_nodes_to_enclosing_structure_span(
     mock_repo_factory,
     trace_instance,
@@ -1550,7 +1550,7 @@ def test_workflow_trace_parents_structured_start_nodes_to_enclosing_structure_sp
         ("iteration", "iteration_id"),
     ],
 )
-@patch("dify_trace_arize_phoenix.arize_phoenix_trace.DifyCoreRepositoryFactory")
+@patch("dify_trace_arize_phoenix.arize_phoenix_trace.workflow_writers")
 def test_workflow_trace_keeps_duplicate_body_node_children_under_enclosing_structure(
     mock_repo_factory,
     trace_instance,
@@ -1634,7 +1634,7 @@ def test_workflow_trace_keeps_duplicate_body_node_children_under_enclosing_struc
     assert child_node_call.kwargs["context"] == f"context:{enclosing_node_type}"
 
 
-@patch("dify_trace_arize_phoenix.arize_phoenix_trace.DifyCoreRepositoryFactory")
+@patch("dify_trace_arize_phoenix.arize_phoenix_trace.workflow_writers")
 def test_workflow_trace_records_exception_node_event_without_failing_root_span(mock_repo_factory, trace_instance):
     info = _make_workflow_info(workflow_run_status="succeeded", error=None)
     repo = MagicMock()
@@ -1675,7 +1675,7 @@ def test_workflow_trace_records_exception_node_event_without_failing_root_span(m
     )
 
 
-@patch("dify_trace_arize_phoenix.arize_phoenix_trace.DifyCoreRepositoryFactory")
+@patch("dify_trace_arize_phoenix.arize_phoenix_trace.workflow_writers")
 def test_workflow_trace_groups_loop_iteration_children_under_wrapper_spans(mock_repo_factory, trace_instance):
     info = _make_workflow_info(conversation_id="conversation-1")
     repo = MagicMock()
@@ -1753,7 +1753,7 @@ def test_workflow_trace_groups_loop_iteration_children_under_wrapper_spans(mock_
     assert first_body_call.kwargs["attributes"]["dify.node.loop_index"] == 0
 
 
-@patch("dify_trace_arize_phoenix.arize_phoenix_trace.DifyCoreRepositoryFactory")
+@patch("dify_trace_arize_phoenix.arize_phoenix_trace.workflow_writers")
 def test_workflow_trace_finalizes_loop_wrapper_with_child_time_bounds_and_error_status(
     mock_repo_factory, trace_instance
 ):
@@ -1828,7 +1828,7 @@ def test_workflow_trace_finalizes_loop_wrapper_with_child_time_bounds_and_error_
     assert wrapper_span.set_status.call_args.args[0].status_code == StatusCode.ERROR
 
 
-@patch("dify_trace_arize_phoenix.arize_phoenix_trace.DifyCoreRepositoryFactory")
+@patch("dify_trace_arize_phoenix.arize_phoenix_trace.workflow_writers")
 def test_workflow_trace_falls_back_to_workflow_span_for_parallel_like_ambiguous_predecessors(
     mock_repo_factory, trace_instance
 ):

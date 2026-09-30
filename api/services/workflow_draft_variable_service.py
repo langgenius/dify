@@ -8,6 +8,7 @@ from enum import StrEnum
 from typing import Any, ClassVar, NotRequired, TypedDict, cast, override
 
 from sqlalchemy import Engine, delete, orm, select
+from sqlalchemy import func as sa_func
 from sqlalchemy.dialects.mysql import insert as mysql_insert
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session, sessionmaker
@@ -24,6 +25,7 @@ from core.workflow.variable_prefixes import (
     RAG_PIPELINE_VARIABLE_NODE_ID,
     SYSTEM_VARIABLE_NODE_ID,
 )
+from extensions.application_services import workflow_storage
 from extensions.ext_storage import storage
 from factories.file_factory import StorageKeyLoader
 from factories.variable_factory import build_segment, segment_to_variable
@@ -46,7 +48,6 @@ from models import Account, App, Conversation
 from models.enums import ConversationFromSource, DraftVariableType
 from models.utils.file_input_compat import build_file_from_stored_mapping
 from models.workflow import Workflow, WorkflowDraftVariable, WorkflowDraftVariableFile, is_system_variable_editable
-from repositories.factory import DifyAPIRepositoryFactory
 from services.file_service import FileService
 from services.variable_truncator import VariableTruncator
 
@@ -220,9 +221,7 @@ class WorkflowDraftVariableService:
         # Ensure the session is bound to a engine.
         assert isinstance(engine, Engine)
         session_maker = sessionmaker(bind=engine, expire_on_commit=False)
-        self._api_node_execution_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
-            session_maker
-        )
+        self._api_node_execution_repo = workflow_storage.create_api_workflow_node_execution_repository(session_maker)
 
     def get_variable(self, variable_id: str) -> WorkflowDraftVariable | None:
         return self._session.scalar(
@@ -290,8 +289,6 @@ class WorkflowDraftVariableService:
         total = None
         base_stmt = select(WorkflowDraftVariable).where(*criteria)
         if page == 1:
-            from sqlalchemy import func as sa_func
-
             total = self._session.scalar(select(sa_func.count()).select_from(base_stmt.subquery()))
         variables = list(
             self._session.scalars(

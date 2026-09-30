@@ -32,6 +32,7 @@ from core.app.layers.pause_state_persist_layer import (
     WorkflowResumptionContext,
 )
 from core.workflow.system_variables import build_system_variables
+from extensions.application_services import workflow_storage
 from extensions.ext_storage import storage
 from graphon.entities.pause_reason import SchedulingPause
 from graphon.enums import WorkflowExecutionStatus
@@ -46,8 +47,7 @@ from models import Account
 from models import WorkflowPause as WorkflowPauseModel
 from models.model import AppMode, UploadFile
 from models.workflow import Workflow, WorkflowRun
-from repositories.factory import DifyAPIRepositoryFactory
-from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
+from repositories.workflow.run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from services.file_service import FileService
 from services.workflow_run_service import WorkflowRunService
 
@@ -105,7 +105,7 @@ class TestPauseStatePersistenceLayerTestContainers:
         workflow_runs = DifyAPISQLAlchemyWorkflowRunRepository(session_maker=session_factory)
         return WorkflowRunService(
             workflow_runs=workflow_runs,
-            node_executions=DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
+            node_executions=workflow_storage.create_api_workflow_node_execution_repository(
                 session_maker=session_factory
             ),
         )

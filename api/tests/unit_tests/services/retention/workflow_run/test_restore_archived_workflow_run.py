@@ -288,7 +288,7 @@ class TestWorkflowRunRestoreInit:
 class TestGetWorkflowRunRepo:
     """Tests for WorkflowRunRestore._get_workflow_run_repo method."""
 
-    @patch("services.retention.workflow_run.restore_archived_workflow_run.DifyAPIRepositoryFactory")
+    @patch("services.retention.workflow_run.restore_archived_workflow_run.workflow_storage")
     def test_first_call_creates_repo(self, mock_factory, database: Database):
         """First call should create and cache repository."""
         restore = WorkflowRunRestore()

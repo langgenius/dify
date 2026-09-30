@@ -31,7 +31,7 @@ from core.ops.unified_trace.hierarchy import (
     execution_id,
     execution_metadata,
 )
-from core.repositories import DifyCoreRepositoryFactory
+from extensions.application_services import workflow_writers
 from extensions.ext_database import db
 from models import Account
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
@@ -50,7 +50,7 @@ class RepositoryWorkflowExecutionLoader:
         app_id = trace_info.metadata.get("app_id")
         if not isinstance(app_id, str) or not app_id:
             raise ValueError("No app_id found in workflow trace metadata")
-        repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+        repository = workflow_writers.create_workflow_node_execution_repository(
             session_factory=sessionmaker(bind=db.engine),
             tenant_id=trace_info.tenant_id,
             user=self._get_service_account(app_id),

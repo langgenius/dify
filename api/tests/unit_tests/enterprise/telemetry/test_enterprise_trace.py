@@ -616,11 +616,11 @@ class TestWorkflowTrace:
         mock_repo.get_executions_by_workflow_run.return_value = []
         with (
             patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log"),
-            # db.engine requires a Flask app context that unit tests don't set up; patch the db
-            # object so the repository factory is reachable (the mocked repo never opens a session).
-            patch("extensions.ext_database.db", MagicMock()),
+            # Patch the consumer's db binding: the test app does not initialize Flask-SQLAlchemy,
+            # and the repository double never opens a session.
+            patch("enterprise.telemetry.enterprise_trace.db", MagicMock()),
             patch(
-                "repositories.factory.DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository",
+                "extensions.application_services.workflow_storage.create_api_workflow_node_execution_repository",
                 return_value=mock_repo,
             ) as mock_create,
         ):

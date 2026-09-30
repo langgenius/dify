@@ -114,7 +114,7 @@ class TestOpenApiWorkflowEventsApi:
         repo_mock.get_workflow_run_by_id_and_tenant_id.return_value = workflow_run
         factory_mock = Mock()
         factory_mock.create_api_workflow_run_repository.return_value = repo_mock
-        monkeypatch.setattr(module, "DifyAPIRepositoryFactory", factory_mock)
+        monkeypatch.setattr(module, "workflow_storage", factory_mock)
         return factory_mock
 
     def _bind_generators(self, monkeypatch: pytest.MonkeyPatch) -> None:

@@ -9,8 +9,8 @@ from graphon.enums import WorkflowExecutionStatus
 from machinery.context import RequestContext
 from models import WorkflowRun, WorkflowRunTriggeredFrom, WorkflowType
 from models.enums import CreatorUserRole
-from repositories.sqlalchemy_api_workflow_run_repository import WorkflowRunMessageRef
 from services import workflow_run_service as service_module
+from services.workflow.run_entities import WorkflowRunMessageRef
 from services.workflow_run_service import WorkflowRunService
 
 

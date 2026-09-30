@@ -30,8 +30,6 @@ from core.datasource.online_drive.online_drive_plugin import OnlineDriveDatasour
 from core.datasource.website_crawl.website_crawl_plugin import WebsiteCrawlDatasourcePlugin
 from core.helper import marketplace
 from core.rag.entities import DatasourceCompletedEvent, DatasourceErrorEvent, DatasourceProcessingEvent
-from core.repositories.factory import DifyCoreRepositoryFactory
-from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.llm_environment_variable import validate_llm_environment_model_references
 from core.workflow.node_factory import LATEST_VERSION, get_node_type_classes_mapping
 from core.workflow.system_variables import (
@@ -44,6 +42,8 @@ from core.workflow.system_variables import (
 from core.workflow.variable_pool_initializer import add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
 from enterprise.telemetry.draft_trace import enqueue_draft_node_execution_trace
+from extensions.application_services import workflow_storage, workflow_writers
+from extensions.application_services.workflow_writers import create_workflow_node_execution_repository
 from extensions.ext_database import db
 from graphon.entities import WorkflowNodeExecution
 from graphon.enums import BuiltinNodeTypes, ErrorStrategy, NodeType, WorkflowNodeExecutionStatus
@@ -55,6 +55,7 @@ from graphon.nodes.container_effects import ContainerAwaitRequest
 from graphon.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, build_http_request_config
 from graphon.runtime import VariablePool
 from graphon.variables.variables import Variable, VariableBase
+from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from libs.login import resolve_account_fallback, resolve_tenant_id_fallback
 from models import Account
@@ -66,7 +67,7 @@ from models.dataset import (  # type: ignore
     PipelineCustomizedTemplate,
     PipelineRecommendedPlugin,
 )
-from models.enums import IndexingStatus, WorkflowRunTriggeredFrom
+from models.enums import CreatorUserRole, IndexingStatus, WorkflowRunTriggeredFrom
 from models.model import EndUser
 from models.workflow import (
     Workflow,
@@ -75,7 +76,6 @@ from models.workflow import (
     WorkflowRun,
     WorkflowType,
 )
-from repositories.factory import DifyAPIRepositoryFactory
 from repositories.knowledge.dataset_read_repository import get_pipeline_dataset
 from services.credentials.query import CredentialQuery
 from services.data_source.provider_service import DatasourceProviderService
@@ -106,6 +106,44 @@ def _build_seeded_variable_pool(variables: Sequence[Variable]) -> VariablePool:
     return variable_pool
 
 
+def _datasource_execution_response(
+    execution: WorkflowNodeExecution, *, pipeline: Pipeline, user: Account
+) -> WorkflowNodeExecutionModel:
+    """Build the immediate debug response even when persistence is asynchronous."""
+    converter = WorkflowRuntimeTypeConverter()
+    return WorkflowNodeExecutionModel(
+        id=execution.id,
+        tenant_id=pipeline.tenant_id,
+        app_id=pipeline.id,
+        workflow_id=execution.workflow_id,
+        triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
+        workflow_run_id=execution.workflow_execution_id,
+        index=execution.index,
+        predecessor_node_id=execution.predecessor_node_id,
+        node_execution_id=execution.node_execution_id,
+        node_id=execution.node_id,
+        node_type=execution.node_type,
+        title=execution.title,
+        inputs=json.dumps(converter.to_json_encodable(execution.inputs)) if execution.inputs is not None else None,
+        process_data=json.dumps(converter.to_json_encodable(execution.process_data))
+        if execution.process_data is not None
+        else None,
+        outputs=json.dumps(converter.to_json_encodable(execution.outputs)) if execution.outputs is not None else None,
+        status=execution.status,
+        error=execution.error,
+        elapsed_time=execution.elapsed_time,
+        execution_metadata=json.dumps(
+            converter.to_json_encodable({key.value: value for key, value in execution.metadata.items()})
+        )
+        if execution.metadata
+        else None,
+        created_at=execution.created_at,
+        finished_at=execution.finished_at,
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by=user.id,
+    )
+
+
 class RagPipelineService:
     _session: Session
 
@@ -114,10 +152,10 @@ class RagPipelineService:
         self._session = session
         if session_maker is None:
             session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
-        self._node_execution_service_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
+        self._node_execution_service_repo = workflow_storage.create_api_workflow_node_execution_repository(
             session_maker
         )
-        self._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
+        self._workflow_run_repo = workflow_storage.create_api_workflow_run_repository(session_maker)
 
     @staticmethod
     def get_pipeline_by_id(pipeline_id: str, tenant_id: str, *, session: Session) -> Pipeline | None:
@@ -625,7 +663,7 @@ class RagPipelineService:
 
         # Create repository and save the node execution
 
-        repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+        repository = workflow_writers.create_workflow_node_execution_repository(
             session_factory=db.engine,
             tenant_id=pipeline.tenant_id,
             user=account,
@@ -1426,7 +1464,7 @@ class RagPipelineService:
         workflow_node_execution.workflow_id = draft_workflow.id
 
         # Create repository and save the node execution
-        repository = SQLAlchemyWorkflowNodeExecutionRepository(
+        repository = create_workflow_node_execution_repository(
             session_factory=db.engine,
             tenant_id=pipeline.tenant_id,
             user=current_user,
@@ -1435,8 +1473,9 @@ class RagPipelineService:
         )
         repository.save(workflow_node_execution)
 
-        # Convert node_execution to WorkflowNodeExecution after save
-        workflow_node_execution_db_model = repository._to_db_model(workflow_node_execution)  # type: ignore
+        workflow_node_execution_db_model = _datasource_execution_response(
+            workflow_node_execution, pipeline=pipeline, user=current_user
+        )
 
         with sessionmaker(bind=db.engine).begin() as session:
             draft_var_saver = DraftVariableSaver(

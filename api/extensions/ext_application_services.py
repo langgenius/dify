@@ -22,6 +22,7 @@ from core.db.session_factory import get_session_maker
 from core.schemas.schema_manager import SchemaManager
 from core.tools.tool_file_manager import ToolFileManager
 from enums import DeploymentEdition, WebAppAccessMode
+from extensions.application_services import workflow_storage
 from extensions.application_services.agent import AgentAppServices, build_agent_app_services
 from extensions.application_services.app import AppServices, build_app_api_key_service, build_app_services
 from extensions.application_services.data_sources import (
@@ -63,7 +64,6 @@ from repositories.app_scoped_end_user_repository import AppScopedEndUserRepo
 from repositories.app_statistic_query_repository import AppStatisticQueryRepository
 from repositories.credentials.query_repository import CredentialQueryRepository
 from repositories.explore_banner_query_repository import ExploreBannerQueryRepository
-from repositories.factory import DifyAPIRepositoryFactory
 from repositories.file_grant_repository import FileGrantRepository
 from repositories.human_input_file_upload_repository import SQLAlchemyHumanInputFileUploadRepository
 from repositories.installation_state_repository import InstallationStateRepository
@@ -74,7 +74,6 @@ from repositories.oauth_server_repository import RedisOAuthServerTokenRepository
 from repositories.plugin_file_upload_repository import SQLAlchemyPluginFileUploadOwnerRepository
 from repositories.recommended_app_catalog_repository import DatabaseRecommendedAppCatalogRepository
 from repositories.saved_message_repository import SQLAlchemySavedMessageRepository
-from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from repositories.step_by_step_tour_repository import SQLAlchemyStepByStepTourStateRepository
 from repositories.tag_repository import TagRepository
 from repositories.trial_app_repository import TrialAppRepository
@@ -576,9 +575,11 @@ def build_application_services(
         providers=datasource_credentials.providers,
     )
     oauth_server = _build_oauth_server_service(database_client=database_client, redis=redis)
+    app_tasks = AppTaskControlService(redis_client=redis)
     apps = build_app_services(
         database_client=database_client,
         oauth=oauth_server,
+        tasks=app_tasks,
         recommended_packages=recommended_app_packages,
     )
     tags = TagApplicationService(tags=TagRepository(session_factory=database_client))
@@ -601,8 +602,8 @@ def build_application_services(
     invitation_tokens = RedisInvitationTokenStore(redis=redis)
     activation_accounts = SQLAlchemyAccountActivationRepository(session_factory=database_client)
     account_provisioning = SQLAlchemyConsoleAuthProvisioningGateway(session_factory=database_client)
-    workflow_run_repository = DifyAPISQLAlchemyWorkflowRunRepository(session_maker=database_client)
-    workflow_node_execution_repository = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
+    workflow_run_repository = workflow_storage.create_api_workflow_run_repository(session_maker=database_client)
+    workflow_node_execution_repository = workflow_storage.create_api_workflow_node_execution_repository(
         session_maker=database_client
     )
     return ApplicationServices(
@@ -839,7 +840,7 @@ def build_application_services(
         files=file_service,
         human_input_file_uploads=HumanInputFileUploadService(
             uploads=SQLAlchemyHumanInputFileUploadRepository(session_factory=database_client),
-            workflow_run_repository=DifyAPIRepositoryFactory.create_api_workflow_run_repository(
+            workflow_run_repository=workflow_storage.create_api_workflow_run_repository(
                 session_maker=database_client,
             ),
             files=file_service,
@@ -889,7 +890,7 @@ def build_application_services(
         saved_messages=SavedMessageService(
             saved_messages=SQLAlchemySavedMessageRepository(session_factory=database_client),
         ),
-        app_tasks=AppTaskControlService(redis_client=redis),
+        app_tasks=app_tasks,
         app_audio=AppAudioRuntime(session_factory=database_client),
         trial_apps=build_trial_app_services(database_client=database_client, trial_apps=trial_apps),
         workflow_run_archives=WorkflowRunArchiveService(
@@ -929,7 +930,7 @@ def build_application_services(
         ),
         tags=tags,
         workflow_statistics=WorkflowStatisticQueryService(
-            workflow_runs=DifyAPIRepositoryFactory.create_api_workflow_run_repository(
+            workflow_runs=workflow_storage.create_api_workflow_run_repository(
                 session_maker=database_client,
             ),
         ),

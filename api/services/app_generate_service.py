@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import threading
 import uuid
-from collections.abc import Callable, Generator, Mapping
+from collections.abc import Callable, Generator, Iterator, Mapping
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy.orm import Session
@@ -27,6 +27,7 @@ from extensions.otel import AppGenerateHandler, trace_span
 from models.model import Account, App, AppMode, EndUser
 from models.workflow import Workflow, WorkflowRun
 from services.errors.app import (
+    IsDraftWorkflowError,
     QuotaExceededError,
     TriggerWorkflowServiceModeUnavailableError,
     WorkflowIdFormatError,
@@ -129,6 +130,38 @@ class AppGenerateService:
                 streaming=streaming,
                 root_node_id=root_node_id,
                 session=session,
+                rate_limit=rate_limit,
+                request_id=request_id,
+            ),
+        )
+
+    @classmethod
+    @trace_span(AppGenerateHandler)
+    def generate_web_workflow(
+        cls,
+        *,
+        app_model: App,
+        user: EndUser,
+        args: Mapping[str, Any],
+        load_workflow: Callable[[str | None], Workflow | None],
+    ) -> Iterator[str]:
+        """Stream a WebApp workflow without carrying a database session into dispatch.
+
+        The caller supplies detached app/actor models and a short-lived query.
+        Preserve quota and rate-limit admission before resolving the workflow,
+        including the existing refund and release behavior on lookup failures.
+        """
+        return cls._run_with_guardrails(
+            app_model=app_model,
+            streaming=True,
+            action=lambda rate_limit, request_id: cls._generate_workflow_response(
+                app_model=app_model,
+                workflow=cls._load_published_workflow(args.get("workflow_id"), load_workflow),
+                user=user,
+                args=args,
+                invoke_from=InvokeFrom.WEB_APP,
+                streaming=True,
+                root_node_id=None,
                 rate_limit=rate_limit,
                 request_id=request_id,
             ),
@@ -303,59 +336,85 @@ class AppGenerateService:
             case AppMode.WORKFLOW:
                 workflow_id = args.get("workflow_id")
                 workflow = cls._get_workflow(app_model, invoke_from, workflow_id, session=session)
-                cls._ensure_workflow_service_mode_available(workflow=workflow, invoke_from=invoke_from)
-                if streaming:
-                    with rate_limit_context(rate_limit, request_id):
-                        payload = AppExecutionParams.new(
-                            app_model=app_model,
-                            workflow=workflow,
-                            user=user,
-                            args=args,
-                            invoke_from=invoke_from,
-                            streaming=True,
-                            call_depth=0,
-                            root_node_id=root_node_id,
-                            workflow_run_id=str(uuid.uuid4()),
-                        )
-                        payload_json = payload.model_dump_json()
-
-                    def on_subscribe():
-                        workflow_based_app_execution_task.delay(payload_json)
-
-                    on_subscribe = cls._build_streaming_task_on_subscribe(on_subscribe)
-                    return rate_limit.generate(
-                        WorkflowAppGenerator.convert_to_event_stream(
-                            MessageBasedAppGenerator.retrieve_events(
-                                AppMode.WORKFLOW,
-                                payload.workflow_run_id,
-                                on_subscribe=on_subscribe,
-                            ),
-                        ),
-                        request_id,
-                    )
-
-                pause_config = PauseStateLayerConfig(
-                    session_factory=session_factory.get_session_maker(),
-                    state_owner_user_id=workflow.created_by,
-                )
-                return rate_limit.generate(
-                    WorkflowAppGenerator.convert_to_event_stream(
-                        WorkflowAppGenerator().generate(
-                            app_model=app_model,
-                            workflow=workflow,
-                            user=user,
-                            args=args,
-                            invoke_from=invoke_from,
-                            streaming=False,
-                            root_node_id=root_node_id,
-                            call_depth=0,
-                            pause_state_config=pause_config,
-                        ),
-                    ),
-                    request_id,
+                return cls._generate_workflow_response(
+                    app_model=app_model,
+                    workflow=workflow,
+                    user=user,
+                    args=args,
+                    invoke_from=invoke_from,
+                    streaming=streaming,
+                    root_node_id=root_node_id,
+                    rate_limit=rate_limit,
+                    request_id=request_id,
                 )
             case _:
                 raise ValueError(f"Invalid app mode {app_model.mode}")
+
+    @classmethod
+    def _generate_workflow_response(
+        cls,
+        *,
+        app_model: App,
+        workflow: Workflow,
+        user: Account | EndUser,
+        args: Mapping[str, Any],
+        invoke_from: InvokeFrom,
+        streaming: bool,
+        root_node_id: str | None,
+        rate_limit: RateLimit,
+        request_id: str,
+    ):
+        cls._ensure_workflow_service_mode_available(workflow=workflow, invoke_from=invoke_from)
+        if streaming:
+            with rate_limit_context(rate_limit, request_id):
+                payload = AppExecutionParams.new(
+                    app_model=app_model,
+                    workflow=workflow,
+                    user=user,
+                    args=args,
+                    invoke_from=invoke_from,
+                    streaming=True,
+                    call_depth=0,
+                    root_node_id=root_node_id,
+                    workflow_run_id=str(uuid.uuid4()),
+                )
+                payload_json = payload.model_dump_json()
+
+            def on_subscribe():
+                workflow_based_app_execution_task.delay(payload_json)
+
+            on_subscribe = cls._build_streaming_task_on_subscribe(on_subscribe)
+            return rate_limit.generate(
+                WorkflowAppGenerator.convert_to_event_stream(
+                    MessageBasedAppGenerator.retrieve_events(
+                        AppMode.WORKFLOW,
+                        payload.workflow_run_id,
+                        on_subscribe=on_subscribe,
+                    ),
+                ),
+                request_id,
+            )
+
+        pause_config = PauseStateLayerConfig(
+            session_factory=session_factory.get_session_maker(),
+            state_owner_user_id=workflow.created_by,
+        )
+        return rate_limit.generate(
+            WorkflowAppGenerator.convert_to_event_stream(
+                WorkflowAppGenerator().generate(
+                    app_model=app_model,
+                    workflow=workflow,
+                    user=user,
+                    args=args,
+                    invoke_from=invoke_from,
+                    streaming=False,
+                    root_node_id=root_node_id,
+                    call_depth=0,
+                    pause_state_config=pause_config,
+                ),
+            ),
+            request_id,
+        )
 
     @staticmethod
     def _ensure_workflow_service_mode_available(*, workflow: Workflow, invoke_from: InvokeFrom) -> None:
@@ -525,32 +584,40 @@ class AppGenerateService:
         """
         workflow_service = WorkflowService()
 
-        # If workflow_id is specified, get the specific workflow version
-        if workflow_id:
-            try:
-                _ = uuid.UUID(workflow_id)
-            except ValueError:
-                raise WorkflowIdFormatError(f"Invalid workflow_id format: '{workflow_id}'. ")
-            workflow = workflow_service.get_published_workflow_by_id(
-                app_model=app_model, workflow_id=workflow_id, session=session
-            )
-            if not workflow:
-                raise WorkflowNotFoundError(f"Workflow not found with id: {workflow_id}")
+        if invoke_from == InvokeFrom.DEBUGGER and not workflow_id:
+            workflow = workflow_service.get_draft_workflow(app_model=app_model, session=session)
+            if workflow is None:
+                raise ValueError("Workflow not initialized")
             return workflow
 
-        if invoke_from == InvokeFrom.DEBUGGER:
-            # fetch draft workflow by app_model
-            workflow = workflow_service.get_draft_workflow(app_model=app_model, session=session)
+        def load_workflow(selected_id: str | None) -> Workflow | None:
+            if selected_id:
+                return workflow_service.get_published_workflow_by_id(
+                    app_model=app_model, workflow_id=selected_id, session=session
+                )
+            return workflow_service.get_published_workflow(app_model=app_model, session=session)
 
-            if not workflow:
-                raise ValueError("Workflow not initialized")
-        else:
-            # fetch published workflow by app_model
-            workflow = workflow_service.get_published_workflow(app_model=app_model, session=session)
+        return cls._load_published_workflow(workflow_id, load_workflow)
 
-            if not workflow:
-                raise ValueError("Workflow not published")
-
+    @staticmethod
+    def _load_published_workflow(
+        workflow_id: str | None, load_workflow: Callable[[str | None], Workflow | None]
+    ) -> Workflow:
+        if workflow_id:
+            try:
+                uuid.UUID(workflow_id)
+            except ValueError:
+                raise WorkflowIdFormatError(f"Invalid workflow_id format: '{workflow_id}'. ") from None
+        workflow = load_workflow(workflow_id)
+        if workflow is None:
+            if workflow_id:
+                raise WorkflowNotFoundError(f"Workflow not found with id: {workflow_id}")
+            raise ValueError("Workflow not published")
+        if workflow_id and workflow.version == Workflow.VERSION_DRAFT:
+            raise IsDraftWorkflowError(
+                f"Cannot use draft workflow version. Workflow ID: {workflow_id}. "
+                "Please use a published workflow version or leave workflow_id empty."
+            )
         return workflow
 
     @classmethod

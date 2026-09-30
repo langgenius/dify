@@ -7,17 +7,21 @@ improving performance by offloading storage operations to background workers.
 
 import json
 import logging
+from datetime import timedelta
 from typing import Any
 
 from celery import shared_task
 from sqlalchemy import select
 
+from core.app.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY
 from core.db.session_factory import session_factory
 from core.workflow.node_execution_process_data import preserve_workflow_agent_binding_id
 from graphon.entities.workflow_node_execution import (
     WorkflowNodeExecution,
 )
+from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
+from libs.datetime_utils import ensure_naive_utc
 from models import CreatorUserRole, WorkflowNodeExecutionModel
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
 
@@ -55,16 +59,23 @@ def save_workflow_node_execution_task(
 
             # Check if node execution already exists
             existing_execution = session.scalar(
-                select(WorkflowNodeExecutionModel).where(
-                    WorkflowNodeExecutionModel.id == execution.id,
-                    WorkflowNodeExecutionModel.tenant_id == tenant_id,
-                    WorkflowNodeExecutionModel.app_id == app_id,
-                    WorkflowNodeExecutionModel.workflow_id == execution.workflow_id,
-                )
+                WorkflowNodeExecutionModel.preload_offload_data(select(WorkflowNodeExecutionModel))
+                .where(WorkflowNodeExecutionModel.id == execution.id)
+                .with_for_update()
             )
 
             if existing_execution:
+                if (
+                    existing_execution.tenant_id != tenant_id
+                    or existing_execution.app_id != app_id
+                    or existing_execution.workflow_id != execution.workflow_id
+                    or existing_execution.workflow_run_id != execution.workflow_execution_id
+                ):
+                    raise ValueError("Unauthorized access to workflow node execution")
+                if not _advances_execution(existing_execution, execution):
+                    return True
                 # Update existing node execution
+                existing_execution.created_at = execution.created_at
                 _update_node_execution_from_domain(existing_execution, execution)
                 logger.debug("Updated existing workflow node execution: %s", execution.id)
             else:
@@ -87,6 +98,52 @@ def save_workflow_node_execution_task(
         logger.exception("Failed to save workflow node execution %s", execution_data.get("id", "unknown"))
         # Retry the task with exponential backoff
         raise self.retry(exc=e, countdown=60 * (2**self.request.retries))
+
+
+def _advances_execution(stored: WorkflowNodeExecutionModel, incoming: WorkflowNodeExecution) -> bool:
+    """Apply lifecycle progress once, even when the broker reorders snapshots.
+
+    Paused nodes retain their ID on resume, with a new attempt version. Completed
+    attempts cannot be restarted by delayed messages. Data corrections and
+    offloading are owned by the synchronous `save_execution_data` operation.
+    The version is the engine's lossless start time stored in JSON metadata;
+    database DATETIME columns can round or truncate fractional seconds.
+    """
+    pending = WorkflowNodeExecutionStatus.PENDING
+    running = WorkflowNodeExecutionStatus.RUNNING
+    retrying = WorkflowNodeExecutionStatus.RETRY
+    paused = WorkflowNodeExecutionStatus.PAUSED
+    if stored.status not in (pending, running, retrying, paused):
+        return False
+    incoming_start = ensure_naive_utc(incoming.created_at)
+    incoming_version = incoming_start.isoformat(timespec="microseconds")
+    stored_version = stored.execution_attempt_version
+    if stored_version is not None and incoming_version != stored_version:
+        # Resume can arrive before its preceding pause snapshot.
+        return incoming_version > stored_version
+    if stored_version is None:
+        # Legacy rows have no lossless version. Within their one-second precision
+        # window, only state progression is safe; do not mistake rounding for resume.
+        stored_start = ensure_naive_utc(stored.created_at)
+        if incoming_start <= stored_start - timedelta(seconds=1):
+            return False
+        if incoming_start >= stored_start + timedelta(seconds=1):
+            return True
+    if stored.status == pending:
+        return incoming.status != pending
+    if stored.status == running:
+        return incoming.status not in (pending, running)
+    if stored.status != retrying or incoming.status in (pending, running):
+        return False
+    if incoming.status != retrying:
+        return True
+    # An offloaded retry history is only a preview. Its synchronous writer owns
+    # subsequent retry data; queued snapshots must not replace that preview.
+    if stored.process_data_truncated:
+        return False
+    stored_history = (stored.process_data_dict or {}).get(RETRY_HISTORY_PROCESS_DATA_KEY, [])
+    incoming_history = (incoming.process_data or {}).get(RETRY_HISTORY_PROCESS_DATA_KEY, [])
+    return len(incoming_history) > len(stored_history)
 
 
 def _create_node_execution_from_domain(
@@ -131,6 +188,7 @@ def _create_node_execution_from_domain(
         node_execution.execution_metadata = json.dumps(json_converter.to_json_encodable(metadata_for_json))
     else:
         node_execution.execution_metadata = "{}"
+    node_execution.set_execution_attempt(execution.created_at)
 
     node_execution.status = execution.status
     node_execution.error = execution.error
@@ -165,6 +223,7 @@ def _update_node_execution_from_domain(node_execution: WorkflowNodeExecutionMode
         node_execution.execution_metadata = json.dumps(json_converter.to_json_encodable(metadata_for_json))
     else:
         node_execution.execution_metadata = "{}"
+    node_execution.set_execution_attempt(execution.created_at)
 
     # Update other fields
     node_execution.status = execution.status

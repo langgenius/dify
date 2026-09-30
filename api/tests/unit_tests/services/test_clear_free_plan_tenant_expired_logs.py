@@ -482,12 +482,12 @@ def test_process_tenant_processes_and_persists_all_batches(
     ]
     run_repo.delete_runs_by_ids.return_value = 1
     monkeypatch.setattr(
-        service_module.DifyAPIRepositoryFactory,
+        service_module.workflow_storage,
         "create_api_workflow_node_execution_repository",
         lambda _session_maker: node_repo,
     )
     monkeypatch.setattr(
-        service_module.DifyAPIRepositoryFactory,
+        service_module.workflow_storage,
         "create_api_workflow_run_repository",
         lambda _session_maker: run_repo,
     )
@@ -737,12 +737,12 @@ def test_process_tenant_repo_loops_break_on_empty_second_batch(
         return run_repo
 
     monkeypatch.setattr(
-        service_module.DifyAPIRepositoryFactory,
+        service_module.workflow_storage,
         "create_api_workflow_node_execution_repository",
         create_node_repo,
     )
     monkeypatch.setattr(
-        service_module.DifyAPIRepositoryFactory,
+        service_module.workflow_storage,
         "create_api_workflow_run_repository",
         create_run_repo,
     )

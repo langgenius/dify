@@ -22,7 +22,7 @@ from core.app.entities.app_invoke_entities import (
 )
 from core.app.entities.task_entities import WorkflowFinishStreamResponse, WorkflowStartStreamResponse
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, WorkflowResumptionContext
-from core.repositories import DifyCoreRepositoryFactory
+from extensions.application_services import workflow_storage, workflow_writers
 from extensions.ext_database import db
 from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowExecutionStatus
@@ -35,7 +35,6 @@ from models.account import Account
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, Conversation, EndUser, Message
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
-from repositories.factory import DifyAPIRepositoryFactory
 
 logger = logging.getLogger(__name__)
 
@@ -485,7 +484,7 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
     workflow_run_id = payload["workflow_run_id"]
 
     session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
-    workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker=session_factory)
+    workflow_run_repo = workflow_storage.create_api_workflow_run_repository(session_maker=session_factory)
 
     pause_entity = workflow_run_repo.get_workflow_pause(workflow_run_id)
     if pause_entity is None:
@@ -632,14 +631,14 @@ def _resume_advanced_chat(
     except ValueError:
         triggered_from = WorkflowRunTriggeredFrom.APP_RUN
 
-    workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
+    workflow_execution_repository = workflow_writers.create_workflow_execution_repository(
         session_factory=session_factory,
         tenant_id=app_model.tenant_id,
         user=user,
         app_id=app_model.id,
         triggered_from=triggered_from,
     )
-    workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+    workflow_node_execution_repository = workflow_writers.create_workflow_node_execution_repository(
         session_factory=session_factory,
         tenant_id=app_model.tenant_id,
         user=user,
@@ -701,14 +700,14 @@ def _resume_workflow(
     except ValueError:
         triggered_from = WorkflowRunTriggeredFrom.APP_RUN
 
-    workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
+    workflow_execution_repository = workflow_writers.create_workflow_execution_repository(
         session_factory=session_factory,
         tenant_id=app_model.tenant_id,
         user=user,
         app_id=app_model.id,
         triggered_from=triggered_from,
     )
-    workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+    workflow_node_execution_repository = workflow_writers.create_workflow_node_execution_repository(
         session_factory=session_factory,
         tenant_id=app_model.tenant_id,
         user=user,

@@ -18,6 +18,7 @@ from core.app.layers.pause_state_persist_layer import (
 )
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.system_variables import SystemVariableKey
+from extensions.application_services import workflow_storage
 from graphon.entities.pause_reason import HitlRequired, SchedulingPause
 from graphon.filters import GraphEventFilterContext, ResponseStreamFilter
 from graphon.graph_engine.entities.commands import GraphEngineCommand
@@ -31,7 +32,6 @@ from graphon.graph_events import (
 from graphon.runtime import ReadOnlyVariablePool
 from graphon.variables.segments import Segment
 from models.model import AppMode
-from repositories.factory import DifyAPIRepositoryFactory
 
 
 @pytest.fixture
@@ -265,7 +265,7 @@ class TestPauseStatePersistenceLayer:
 
         mock_repo = Mock()
         mock_factory = Mock(return_value=mock_repo)
-        monkeypatch.setattr(DifyAPIRepositoryFactory, "create_api_workflow_run_repository", mock_factory)
+        monkeypatch.setattr(workflow_storage, "create_api_workflow_run_repository", mock_factory)
 
         graph_runtime_state = MockReadOnlyGraphRuntimeState(
             outputs={"result": "test_output"},
@@ -316,7 +316,7 @@ class TestPauseStatePersistenceLayer:
             node_title="Ask for approval",
         )
         enrich_mock = Mock(return_value=[enriched_reason])
-        monkeypatch.setattr(DifyAPIRepositoryFactory, "create_api_workflow_run_repository", mock_factory)
+        monkeypatch.setattr(workflow_storage, "create_api_workflow_run_repository", mock_factory)
         monkeypatch.setattr(
             pause_layer_module,
             "HumanInputFormSubmissionRepository",
@@ -364,7 +364,7 @@ class TestPauseStatePersistenceLayer:
 
         mock_repo = Mock()
         mock_factory = Mock(return_value=mock_repo)
-        monkeypatch.setattr(DifyAPIRepositoryFactory, "create_api_workflow_run_repository", mock_factory)
+        monkeypatch.setattr(workflow_storage, "create_api_workflow_run_repository", mock_factory)
 
         graph_runtime_state = MockReadOnlyGraphRuntimeState()
         command_channel = MockCommandChannel()
@@ -409,7 +409,7 @@ class TestPauseStatePersistenceLayer:
 
         mock_repo = Mock()
         mock_factory = Mock(return_value=mock_repo)
-        monkeypatch.setattr(DifyAPIRepositoryFactory, "create_api_workflow_run_repository", mock_factory)
+        monkeypatch.setattr(workflow_storage, "create_api_workflow_run_repository", mock_factory)
 
         graph_runtime_state = MockReadOnlyGraphRuntimeState(workflow_execution_id=None)
         command_channel = MockCommandChannel()
@@ -520,7 +520,7 @@ def test_on_event_persists_response_stream_filter_dump(
 
     mock_repo = Mock()
     mock_factory = Mock(return_value=mock_repo)
-    monkeypatch.setattr(DifyAPIRepositoryFactory, "create_api_workflow_run_repository", mock_factory)
+    monkeypatch.setattr(workflow_storage, "create_api_workflow_run_repository", mock_factory)
 
     graph_runtime_state = MockReadOnlyGraphRuntimeState(workflow_execution_id="run-123")
     layer.initialize(graph_runtime_state, MockCommandChannel())

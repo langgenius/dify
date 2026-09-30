@@ -38,6 +38,7 @@ from core.workflow.nodes.human_input.pause_reason import (
     DifyHITLEventType,
     HumanInputRequired,
 )
+from extensions.application_services import workflow_storage
 from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.runtime import GraphRuntimeState
@@ -47,9 +48,8 @@ from libs.datetime_utils import to_utc_timestamp
 from models.human_input import HumanInputForm
 from models.model import AppMode, Message
 from models.workflow import WorkflowNodeExecutionTriggeredFrom, WorkflowRun
-from repositories.api_workflow_node_execution_repository import WorkflowNodeExecutionSnapshot
-from repositories.entities.workflow_pause import WorkflowPauseEntity
-from repositories.factory import DifyAPIRepositoryFactory
+from services.workflow.node_execution_queries import WorkflowNodeExecutionSnapshot
+from services.workflow.run_entities import WorkflowPauseEntity
 
 logger = logging.getLogger(__name__)
 
@@ -84,8 +84,8 @@ def build_workflow_event_stream(
     close_on_pause: bool = True,
 ) -> Generator[Mapping[str, Any] | str, None, None]:
     topic = MessageGenerator.get_response_topic(app_mode, workflow_run.id)
-    workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
-    node_execution_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(session_maker)
+    workflow_run_repo = workflow_storage.create_api_workflow_run_repository(session_maker)
+    node_execution_repo = workflow_storage.create_api_workflow_node_execution_repository(session_maker)
 
     pause_entity: WorkflowPauseEntity | None = None
     if workflow_run.status == WorkflowExecutionStatus.PAUSED:

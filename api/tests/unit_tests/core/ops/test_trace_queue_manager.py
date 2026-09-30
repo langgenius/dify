@@ -1,194 +1,44 @@
-"""Unit tests for TraceQueueManager telemetry guard.
-
-Verifies that TraceQueueManager.add_trace_task() only enqueues tasks when at
-least one consumer is active:
-- Enterprise telemetry is enabled (_enterprise_telemetry_enabled=True), OR
-- A third-party trace instance (Langfuse, etc.) is configured
-
-When neither is active, tasks are silently dropped to avoid unnecessary work.
-
-When BOTH are false, tasks are silently dropped (correct behavior).
-"""
+"""Exercise the real trace queue's telemetry guard without scheduling background work."""
 
 import queue
-import sys
-import types
-from unittest.mock import MagicMock, patch
 
 import pytest
+from flask import Flask
+
+from core.ops import ops_trace_manager
+from core.ops.entities.trace_entity import TraceTaskName
+from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 
 
-@pytest.fixture
-def trace_queue_manager_and_task(monkeypatch: pytest.MonkeyPatch):
-    """Fixture to provide TraceQueueManager and TraceTask with delayed imports."""
-    module_name = "core.ops.ops_trace_manager"
-    if module_name not in sys.modules:
-        ops_stub = types.ModuleType(module_name)
+@pytest.mark.parametrize(
+    ("telemetry_enabled", "trace_configured", "should_enqueue"),
+    [
+        pytest.param(False, False, False, id="no-consumer"),
+        pytest.param(True, False, True, id="telemetry-only"),
+        pytest.param(False, True, True, id="provider-only"),
+        pytest.param(True, True, True, id="both-consumers"),
+    ],
+)
+def test_trace_task_is_enqueued_only_for_active_consumers(
+    monkeypatch: pytest.MonkeyPatch,
+    telemetry_enabled: bool,
+    trace_configured: bool,
+    should_enqueue: bool,
+) -> None:
+    tasks: queue.Queue[TraceTask] = queue.Queue()
+    trace_instance = object() if trace_configured else None
+    monkeypatch.setattr(ops_trace_manager, "trace_manager_queue", tasks)
+    monkeypatch.setattr(ops_trace_manager, "is_enterprise_telemetry_enabled", lambda: telemetry_enabled)
+    monkeypatch.setattr(ops_trace_manager.OpsTraceManager, "get_ops_trace_instance", lambda _app_id: trace_instance)
+    monkeypatch.setattr(TraceQueueManager, "start_timer", lambda _self: None)
+    task = TraceTask(trace_type=TraceTaskName.WORKFLOW_TRACE)
 
-        class StubTraceTask:
-            def __init__(self, trace_type):
-                self.trace_type = trace_type
-                self.app_id = None
+    with Flask(__name__).app_context():
+        manager = TraceQueueManager(app_id="test-app-id")
+        manager.add_trace_task(task)
 
-        class StubTraceQueueManager:
-            def __init__(self, app_id=None):
-                self.app_id = app_id
-                from core.telemetry.gateway import is_enterprise_telemetry_enabled
-
-                self._enterprise_telemetry_enabled = is_enterprise_telemetry_enabled()
-                self.trace_instance = StubOpsTraceManager.get_ops_trace_instance(app_id)
-
-            def add_trace_task(self, trace_task):
-                if self._enterprise_telemetry_enabled or self.trace_instance:
-                    trace_task.app_id = self.app_id
-                    from core.ops.ops_trace_manager import trace_manager_queue
-
-                    trace_manager_queue.put(trace_task)
-
-        class StubOpsTraceManager:
-            @staticmethod
-            def get_ops_trace_instance(app_id):
-                return None
-
-        ops_stub.TraceQueueManager = StubTraceQueueManager
-        ops_stub.TraceTask = StubTraceTask
-        ops_stub.OpsTraceManager = StubOpsTraceManager
-        ops_stub.trace_manager_queue = MagicMock(spec=queue.Queue)
-        monkeypatch.setitem(sys.modules, module_name, ops_stub)
-
-    from core.ops.entities.trace_entity import TraceTaskName
-
-    ops_module = __import__(module_name, fromlist=["TraceQueueManager", "TraceTask"])
-    TraceQueueManager = ops_module.TraceQueueManager
-    TraceTask = ops_module.TraceTask
-
-    return TraceQueueManager, TraceTask, TraceTaskName
-
-
-class TestTraceQueueManagerTelemetryGuard:
-    """Test TraceQueueManager's telemetry guard in add_trace_task()."""
-
-    def test_task_not_enqueued_when_telemetry_disabled_and_no_trace_instance(self, trace_queue_manager_and_task):
-        """Verify task is NOT enqueued when telemetry disabled and no trace instance.
-
-        This is the core guard: when _enterprise_telemetry_enabled=False AND
-        trace_instance=None, the task should be silently dropped.
-        """
-        TraceQueueManager, TraceTask, TraceTaskName = trace_queue_manager_and_task
-
-        mock_queue = MagicMock(spec=queue.Queue)
-
-        trace_task = TraceTask(trace_type=TraceTaskName.WORKFLOW_TRACE)
-
-        with (
-            patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=False),
-            patch("core.ops.ops_trace_manager.OpsTraceManager.get_ops_trace_instance", return_value=None),
-            patch("core.ops.ops_trace_manager.trace_manager_queue", mock_queue),
-        ):
-            manager = TraceQueueManager(app_id="test-app-id")
-            manager.add_trace_task(trace_task)
-
-            mock_queue.put.assert_not_called()
-
-    def test_task_enqueued_when_telemetry_enabled(self, trace_queue_manager_and_task):
-        """Verify task IS enqueued when enterprise telemetry is enabled.
-
-        When _enterprise_telemetry_enabled=True, the task should be enqueued
-        regardless of trace_instance state.
-        """
-        TraceQueueManager, TraceTask, TraceTaskName = trace_queue_manager_and_task
-
-        mock_queue = MagicMock(spec=queue.Queue)
-
-        trace_task = TraceTask(trace_type=TraceTaskName.WORKFLOW_TRACE)
-
-        with (
-            patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=True),
-            patch("core.ops.ops_trace_manager.OpsTraceManager.get_ops_trace_instance", return_value=None),
-            patch("core.ops.ops_trace_manager.trace_manager_queue", mock_queue),
-        ):
-            manager = TraceQueueManager(app_id="test-app-id")
-            manager.add_trace_task(trace_task)
-
-            mock_queue.put.assert_called_once()
-            called_task = mock_queue.put.call_args[0][0]
-            assert called_task.app_id == "test-app-id"
-
-    def test_task_enqueued_when_trace_instance_configured(self, trace_queue_manager_and_task):
-        """Verify task IS enqueued when third-party trace instance is configured.
-
-        When trace_instance is not None (e.g., Langfuse configured), the task
-        should be enqueued even if enterprise telemetry is disabled.
-        """
-        TraceQueueManager, TraceTask, TraceTaskName = trace_queue_manager_and_task
-
-        mock_queue = MagicMock(spec=queue.Queue)
-
-        mock_trace_instance = MagicMock()
-
-        trace_task = TraceTask(trace_type=TraceTaskName.WORKFLOW_TRACE)
-
-        with (
-            patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=False),
-            patch(
-                "core.ops.ops_trace_manager.OpsTraceManager.get_ops_trace_instance", return_value=mock_trace_instance
-            ),
-            patch("core.ops.ops_trace_manager.trace_manager_queue", mock_queue),
-        ):
-            manager = TraceQueueManager(app_id="test-app-id")
-            manager.add_trace_task(trace_task)
-
-            mock_queue.put.assert_called_once()
-            called_task = mock_queue.put.call_args[0][0]
-            assert called_task.app_id == "test-app-id"
-
-    def test_task_enqueued_when_both_telemetry_and_trace_instance_enabled(self, trace_queue_manager_and_task):
-        """Verify task IS enqueued when both telemetry and trace instance are enabled.
-
-        When both _enterprise_telemetry_enabled=True AND trace_instance is set,
-        the task should definitely be enqueued.
-        """
-        TraceQueueManager, TraceTask, TraceTaskName = trace_queue_manager_and_task
-
-        mock_queue = MagicMock(spec=queue.Queue)
-
-        mock_trace_instance = MagicMock()
-
-        trace_task = TraceTask(trace_type=TraceTaskName.WORKFLOW_TRACE)
-
-        with (
-            patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=True),
-            patch(
-                "core.ops.ops_trace_manager.OpsTraceManager.get_ops_trace_instance", return_value=mock_trace_instance
-            ),
-            patch("core.ops.ops_trace_manager.trace_manager_queue", mock_queue),
-        ):
-            manager = TraceQueueManager(app_id="test-app-id")
-            manager.add_trace_task(trace_task)
-
-            mock_queue.put.assert_called_once()
-            called_task = mock_queue.put.call_args[0][0]
-            assert called_task.app_id == "test-app-id"
-
-    def test_app_id_set_before_enqueue(self, trace_queue_manager_and_task):
-        """Verify app_id is set on the task before enqueuing.
-
-        The guard logic sets trace_task.app_id = self.app_id before calling
-        trace_manager_queue.put(trace_task). This test verifies that behavior.
-        """
-        TraceQueueManager, TraceTask, TraceTaskName = trace_queue_manager_and_task
-
-        mock_queue = MagicMock(spec=queue.Queue)
-
-        trace_task = TraceTask(trace_type=TraceTaskName.WORKFLOW_TRACE)
-
-        with (
-            patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=True),
-            patch("core.ops.ops_trace_manager.OpsTraceManager.get_ops_trace_instance", return_value=None),
-            patch("core.ops.ops_trace_manager.trace_manager_queue", mock_queue),
-        ):
-            manager = TraceQueueManager(app_id="expected-app-id")
-            manager.add_trace_task(trace_task)
-
-            called_task = mock_queue.put.call_args[0][0]
-            assert called_task.app_id == "expected-app-id"
+    if should_enqueue:
+        queued_task = tasks.get_nowait()
+        assert queued_task is task
+        assert queued_task.app_id == "test-app-id"
+    assert tasks.empty()

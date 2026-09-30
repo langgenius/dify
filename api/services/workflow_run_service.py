@@ -13,8 +13,8 @@ from models import (
     WorkflowRun,
     WorkflowRunTriggeredFrom,
 )
-from repositories.api_workflow_node_execution_repository import DifyAPIWorkflowNodeExecutionRepository
-from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
+from services.workflow.node_execution_queries import DifyAPIWorkflowNodeExecutionRepository
+from services.workflow.run_repository import APIWorkflowRunRepository
 from services.workflow_node_execution_trace_service import (
     WorkflowNodeExecutionTrace,
     assemble_workflow_node_execution_traces,
@@ -47,7 +47,7 @@ class WorkflowRunService:
     def __init__(
         self,
         *,
-        workflow_runs: DifyAPISQLAlchemyWorkflowRunRepository,
+        workflow_runs: APIWorkflowRunRepository,
         node_executions: DifyAPIWorkflowNodeExecutionRepository,
     ) -> None:
         self._workflow_runs = workflow_runs

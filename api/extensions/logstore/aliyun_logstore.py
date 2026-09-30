@@ -1,14 +1,12 @@
 from __future__ import annotations
 
 import logging
-import os
 import socket
 import threading
 import time
-from collections.abc import Sequence
-from typing import Any
+from collections.abc import Mapping, Sequence
+from urllib.parse import urlparse
 
-import sqlalchemy as sa
 from aliyun.log import (  # type: ignore[import-untyped]
     GetLogsRequest,
     IndexConfig,
@@ -20,8 +18,6 @@ from aliyun.log import (  # type: ignore[import-untyped]
 )
 from aliyun.log.auth import AUTH_VERSION_4  # type: ignore[import-untyped]
 from aliyun.log.logexception import LogException  # type: ignore[import-untyped]
-from dotenv import load_dotenv
-from sqlalchemy.orm import DeclarativeBase
 
 from configs import dify_config
 from extensions.logstore.aliyun_logstore_pg import AliyunLogStorePG
@@ -77,117 +73,22 @@ class AliyunLogStore:
 
     project_des = "dify"
 
-    workflow_execution_logstore = "workflow_execution"
-
-    workflow_node_execution_logstore = "workflow_node_execution"
-
-    @staticmethod
-    def _sqlalchemy_type_to_logstore_type(column: Any) -> str:
-        """
-        Map SQLAlchemy column type to Aliyun LogStore index type.
-
-        Args:
-            column: SQLAlchemy column object
-
-        Returns:
-            LogStore index type: 'text', 'long', 'double', or 'json'
-        """
-        column_type = column.type
-
-        # Integer types -> long
-        if isinstance(column_type, (sa.Integer, sa.BigInteger, sa.SmallInteger)):
-            return "long"
-
-        # Float types -> double
-        if isinstance(column_type, (sa.Float, sa.Numeric)):
-            return "double"
-
-        # String and Text types -> text
-        if isinstance(column_type, (sa.String, sa.Text)):
-            return "text"
-
-        # DateTime -> text (stored as ISO format string in logstore)
-        if isinstance(column_type, sa.DateTime):
-            return "text"
-
-        # Boolean -> long (stored as 0/1)
-        if isinstance(column_type, sa.Boolean):
-            return "long"
-
-        # JSON -> json
-        if isinstance(column_type, sa.JSON):
-            return "json"
-
-        # Default to text for unknown types
-        return "text"
-
-    @staticmethod
-    def _generate_index_keys_from_model(model_class: type[DeclarativeBase]) -> dict[str, IndexKeyConfig]:
-        """
-        Automatically generate LogStore field index configuration from SQLAlchemy model.
-
-        This method introspects the SQLAlchemy model's column definitions and creates
-        corresponding LogStore index configurations. When the PG schema is updated via
-        Flask-Migrate, this method will automatically pick up the new fields on next startup.
-
-        Args:
-            model_class: SQLAlchemy model class (e.g., WorkflowRun, WorkflowNodeExecutionModel)
-
-        Returns:
-            Dictionary mapping field names to IndexKeyConfig objects
-        """
-        index_keys = {}
-
-        # Iterate over all mapped columns in the model
-        if hasattr(model_class, "__mapper__"):
-            for column_name, column_property in model_class.__mapper__.columns.items():
-                # Skip relationship properties and other non-column attributes
-                if not hasattr(column_property, "type"):
-                    continue
-
-                # Map SQLAlchemy type to LogStore type
-                logstore_type = AliyunLogStore._sqlalchemy_type_to_logstore_type(column_property)
-
-                # Create index configuration
-                # - text fields: case_insensitive for better search, with tokenizer and Chinese support
-                # - all fields: doc_value=True for analytics
-                if logstore_type == "text":
-                    index_keys[column_name] = IndexKeyConfig(
-                        index_type="text",
-                        case_sensitive=False,
-                        doc_value=True,
-                        token_list=AliyunLogStore.DEFAULT_TOKEN_LIST,
-                        chinese=True,
-                    )
-                else:
-                    index_keys[column_name] = IndexKeyConfig(index_type=logstore_type, doc_value=True)
-
-        # Add log_version field (not in PG model, but used in logstore for versioning)
-        index_keys["log_version"] = IndexKeyConfig(index_type="long", doc_value=True)
-
-        return index_keys
-
     def __init__(self) -> None:
         # Skip initialization if already initialized (singleton pattern)
         if self.__class__._initialized:
             return
 
-        load_dotenv()
-
-        self.access_key_id: str = os.environ.get("ALIYUN_SLS_ACCESS_KEY_ID", "")
-        self.access_key_secret: str = os.environ.get("ALIYUN_SLS_ACCESS_KEY_SECRET", "")
-        self.endpoint: str = os.environ.get("ALIYUN_SLS_ENDPOINT", "")
-        self.region: str = os.environ.get("ALIYUN_SLS_REGION", "")
-        self.project_name: str = os.environ.get("ALIYUN_SLS_PROJECT_NAME", "")
-        self.logstore_ttl: int = int(os.environ.get("ALIYUN_SLS_LOGSTORE_TTL", 365))
-        self.log_enabled: bool = (
-            os.environ.get("SQLALCHEMY_ECHO", "false").lower() == "true"
-            or os.environ.get("LOGSTORE_SQL_ECHO", "false").lower() == "true"
-        )
-        self.pg_mode_enabled: bool = os.environ.get("LOGSTORE_PG_MODE_ENABLED", "true").lower() == "true"
+        self.access_key_id = dify_config.ALIYUN_SLS_ACCESS_KEY_ID
+        self.access_key_secret = dify_config.ALIYUN_SLS_ACCESS_KEY_SECRET
+        self.endpoint = dify_config.ALIYUN_SLS_ENDPOINT
+        self.region = dify_config.ALIYUN_SLS_REGION
+        self.project_name = dify_config.ALIYUN_SLS_PROJECT_NAME
+        self.logstore_ttl = dify_config.ALIYUN_SLS_LOGSTORE_TTL
+        self.log_enabled: bool = str(dify_config.SQLALCHEMY_ECHO).lower() == "true" or dify_config.LOGSTORE_SQL_ECHO
+        self.pg_mode_enabled = dify_config.LOGSTORE_PG_MODE_ENABLED
 
         # Get timeout configuration
-        check_timeout = int(os.environ.get("ALIYUN_SLS_CHECK_CONNECTIVITY_TIMEOUT", 30))
+        check_timeout = dify_config.ALIYUN_SLS_CHECK_CONNECTIVITY_TIMEOUT
 
         # Pre-check endpoint connectivity to prevent indefinite hangs
         self._check_endpoint_connectivity(self.endpoint, check_timeout)
@@ -206,6 +107,7 @@ class AliyunLogStore:
         # PG client will be initialized in init_project_logstore
         self._pg_client: AliyunLogStorePG | None = None
         self._use_pg_protocol: bool = False
+        self._logstore_names: tuple[str, ...] = ()
 
         self.__class__._initialized = True
 
@@ -223,7 +125,6 @@ class AliyunLogStore:
             ConnectionError: If endpoint is not reachable
         """
         # Parse endpoint URL to extract hostname and port
-        from urllib.parse import urlparse
 
         parsed_url = urlparse(endpoint if "://" in endpoint else f"http://{endpoint}")
         hostname = parsed_url.hostname
@@ -251,11 +152,6 @@ class AliyunLogStore:
                     sock.close()
                 except Exception:  # noqa: S110
                     pass  # Ignore errors during cleanup
-
-    @property
-    def supports_pg_protocol(self) -> bool:
-        """Check if PG protocol is supported and enabled."""
-        return self._use_pg_protocol
 
     def _attempt_pg_connection_init(self) -> bool:
         """
@@ -299,20 +195,21 @@ class AliyunLogStore:
         self._attempt_pg_connection_init()
         self.__class__._pg_connection_timer = None
 
-    def init_project_logstore(self):
+    def init_project_logstore(self, indexes: Mapping[str, IndexConfig]) -> None:
         """
         Initialize project, logstore, index, and PG connection.
 
         This method should be called once during application startup to ensure
         all required resources exist and connections are established.
         """
+        self._logstore_names = tuple(indexes)
         # Step 1: Ensure project and logstore exist
         project_is_new = False
         if not self.is_project_exist():
             self.create_project()
             project_is_new = True
 
-        self.create_logstore_if_not_exist()
+        self.create_logstore_if_not_exist(indexes)
 
         # Step 2: Initialize PG client and connection (if enabled)
         if not self.pg_mode_enabled:
@@ -350,12 +247,7 @@ class AliyunLogStore:
 
         This is necessary because PG protocol requires scan_index to be enabled.
         """
-        logstore_name_list = [
-            AliyunLogStore.workflow_execution_logstore,
-            AliyunLogStore.workflow_node_execution_logstore,
-        ]
-
-        for logstore_name in logstore_name_list:
+        for logstore_name in self._logstore_names:
             existing_config = self.get_existing_index_config(logstore_name)
             if existing_config and not existing_config.scan_index:
                 logger.info(
@@ -404,13 +296,8 @@ class AliyunLogStore:
             else:
                 raise e
 
-    def create_logstore_if_not_exist(self) -> None:
-        logstore_name_list = [
-            AliyunLogStore.workflow_execution_logstore,
-            AliyunLogStore.workflow_node_execution_logstore,
-        ]
-
-        for logstore_name in logstore_name_list:
+    def create_logstore_if_not_exist(self, indexes: Mapping[str, IndexConfig]) -> None:
+        for logstore_name, index_config in indexes.items():
             if not self.is_logstore_exist(logstore_name):
                 try:
                     self.client.create_logstore(
@@ -429,17 +316,7 @@ class AliyunLogStore:
 
             # Ensure index contains all Dify-required fields
             # This intelligently merges with existing config, preserving custom indexes
-            self.ensure_index_config(logstore_name)
-
-    def is_index_exist(self, logstore_name: str) -> bool:
-        try:
-            _ = self.client.get_index_config(self.project_name, logstore_name)
-            return True
-        except Exception as e:
-            if e.args[0] == "IndexConfigNotExist":
-                return False
-            else:
-                raise e
+            self.ensure_index_config(logstore_name, index_config)
 
     def get_existing_index_config(self, logstore_name: str) -> IndexConfig | None:
         """
@@ -461,86 +338,8 @@ class AliyunLogStore:
                 logger.exception("Failed to get index config for logstore %s", logstore_name)
                 raise e
 
-    def _get_workflow_execution_index_keys(self) -> dict[str, IndexKeyConfig]:
-        """
-        Get field index configuration for workflow_execution logstore.
-
-        This method automatically generates index configuration from the WorkflowRun SQLAlchemy model.
-        When the PG schema is updated via Flask-Migrate, the index configuration will be automatically
-        updated on next application startup.
-        """
-        from models.workflow import WorkflowRun
-
-        index_keys = self._generate_index_keys_from_model(WorkflowRun)
-
-        # Add custom fields that are in logstore but not in PG model
-        # These fields are added by the repository layer
-        index_keys["error_message"] = IndexKeyConfig(
-            index_type="text",
-            case_sensitive=False,
-            doc_value=True,
-            token_list=self.DEFAULT_TOKEN_LIST,
-            chinese=True,
-        )  # Maps to 'error' in PG
-        index_keys["started_at"] = IndexKeyConfig(
-            index_type="text",
-            case_sensitive=False,
-            doc_value=True,
-            token_list=self.DEFAULT_TOKEN_LIST,
-            chinese=True,
-        )  # Maps to 'created_at' in PG
-
-        logger.info("Generated %d index keys for workflow_execution from WorkflowRun model", len(index_keys))
-        return index_keys
-
-    def _get_workflow_node_execution_index_keys(self) -> dict[str, IndexKeyConfig]:
-        """
-        Get field index configuration for workflow_node_execution logstore.
-
-        This method automatically generates index configuration from the WorkflowNodeExecutionModel.
-        When the PG schema is updated via Flask-Migrate, the index configuration will be automatically
-        updated on next application startup.
-        """
-        from models.workflow import WorkflowNodeExecutionModel
-
-        index_keys = self._generate_index_keys_from_model(WorkflowNodeExecutionModel)
-
-        logger.debug(
-            "Generated %d index keys for workflow_node_execution from WorkflowNodeExecutionModel", len(index_keys)
-        )
-        return index_keys
-
-    def _get_index_config(self, logstore_name: str) -> IndexConfig:
-        """
-        Get index configuration for the specified logstore.
-
-        Args:
-            logstore_name: Name of the logstore
-
-        Returns:
-            IndexConfig object with line and field indexes
-        """
-        # Create full-text index (line config) with tokenizer
-        line_config = IndexLineConfig(token_list=self.DEFAULT_TOKEN_LIST, case_sensitive=False, chinese=True)
-
-        # Get field index configuration based on logstore name
-        field_keys = {}
-        if logstore_name == AliyunLogStore.workflow_execution_logstore:
-            field_keys = self._get_workflow_execution_index_keys()
-        elif logstore_name == AliyunLogStore.workflow_node_execution_logstore:
-            field_keys = self._get_workflow_node_execution_index_keys()
-
-        # key_config_list should be a dict, not a list
-        # Create index config with both line and field indexes
-        return IndexConfig(line_config=line_config, key_config_list=field_keys, scan_index=True)
-
-    def create_index(self, logstore_name: str) -> None:
-        """
-        Create index for the specified logstore with both full-text and field indexes.
-        Field indexes are automatically generated from the corresponding SQLAlchemy model.
-        """
-        index_config = self._get_index_config(logstore_name)
-
+    def create_index(self, logstore_name: str, index_config: IndexConfig) -> None:
+        """Create the field and full-text indexes supplied by the persistence owner."""
         try:
             self.client.create_index(self.project_name, logstore_name, index_config)
             logger.info(
@@ -677,7 +476,7 @@ class AliyunLogStore:
 
         return merged_config, needs_update
 
-    def ensure_index_config(self, logstore_name: str) -> None:
+    def ensure_index_config(self, logstore_name: str, index_config: IndexConfig) -> None:
         """
         Ensure index configuration includes all Dify-required fields.
 
@@ -691,12 +490,7 @@ class AliyunLogStore:
 
         This approach allows users to add their own custom indexes without being overwritten.
         """
-        # Get Dify's required field indexes
-        required_keys = {}
-        if logstore_name == AliyunLogStore.workflow_execution_logstore:
-            required_keys = self._get_workflow_execution_index_keys()
-        elif logstore_name == AliyunLogStore.workflow_node_execution_logstore:
-            required_keys = self._get_workflow_node_execution_index_keys()
+        required_keys = index_config.key_config_list or {}
 
         # Check if index exists
         existing_config = self.get_existing_index_config(logstore_name)
@@ -708,7 +502,7 @@ class AliyunLogStore:
                 logstore_name,
                 len(required_keys),
             )
-            self.create_index(logstore_name)
+            self.create_index(logstore_name, index_config)
         else:
             merged_config, needs_update = self._merge_index_configs(existing_config, required_keys, logstore_name)
 
@@ -765,69 +559,6 @@ class AliyunLogStore:
                     e.get_request_id(),
                 )
                 raise
-
-    def get_logs(
-        self,
-        logstore: str,
-        from_time: int,
-        to_time: int,
-        topic: str = "",
-        query: str = "",
-        line: int = 100,
-        offset: int = 0,
-        reverse: bool = True,
-    ) -> list[dict]:
-        request = GetLogsRequest(
-            project=self.project_name,
-            logstore=logstore,
-            fromTime=from_time,
-            toTime=to_time,
-            topic=topic,
-            query=query,
-            line=line,
-            offset=offset,
-            reverse=reverse,
-        )
-
-        if self.log_enabled:
-            logger.info(
-                "[LogStore] GET_LOGS | logstore=%s | project=%s | query=%s | "
-                "from_time=%d | to_time=%d | line=%d | offset=%d | reverse=%s",
-                logstore,
-                self.project_name,
-                query,
-                from_time,
-                to_time,
-                line,
-                offset,
-                reverse,
-            )
-
-        try:
-            response = self.client.get_logs(request)
-            result = []
-            logs = response.get_logs() if response else []
-            for log in logs:
-                result.append(log.get_contents())
-
-            if self.log_enabled:
-                logger.info(
-                    "[LogStore] GET_LOGS RESULT | logstore=%s | returned_count=%d",
-                    logstore,
-                    len(result),
-                )
-
-            return result
-        except LogException as e:
-            logger.exception(
-                "Failed to get logs from logstore %s with query '%s': errorCode=%s, errorMessage=%s, requestId=%s",
-                logstore,
-                query,
-                e.get_error_code(),
-                e.get_error_message(),
-                e.get_request_id(),
-            )
-            raise
 
     def execute_sql(
         self,
@@ -920,9 +651,3 @@ class AliyunLogStore:
                     full_query,
                 )
                 raise
-
-
-if __name__ == "__main__":
-    aliyun_logstore = AliyunLogStore()
-    # aliyun_logstore.init_project_logstore()
-    aliyun_logstore.put_log(AliyunLogStore.workflow_execution_logstore, [("key1", "value1")])

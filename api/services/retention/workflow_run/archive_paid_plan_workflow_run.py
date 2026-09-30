@@ -32,6 +32,7 @@ import hashlib
 import json
 import logging
 import time
+from collections import Counter
 from collections.abc import Callable, Sequence
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
@@ -46,14 +47,18 @@ from sqlalchemy import inspect, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
+from core.app.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY, WorkflowNodeRetryAttempt
 from enums import CloudPlan, DeploymentEdition
+from extensions.application_services import workflow_storage
 from extensions.ext_database import db
+from extensions.ext_storage import storage as workflow_storage_files
 from graphon.enums import WorkflowType
 from libs.archive_storage import (
     ArchiveStorage,
     ArchiveStorageNotConfiguredError,
     get_archive_storage,
 )
+from models.enums import ExecutionOffLoadType
 from models.trigger import WorkflowTriggerLog
 from models.workflow import (
     WorkflowAppLog,
@@ -63,8 +68,6 @@ from models.workflow import (
     WorkflowPauseReason,
     WorkflowRun,
 )
-from repositories.api_workflow_node_execution_repository import DifyAPIWorkflowNodeExecutionRepository
-from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
 from services.billing_service import BillingService
 from services.retention.workflow_run.archive_bundle_index import (
@@ -79,6 +82,8 @@ from services.retention.workflow_run.constants import (
     ARCHIVE_BUNDLE_SCHEMA_VERSION,
 )
 from services.retention.workflow_run.db_retry import is_retryable_db_disconnect, run_with_db_retry
+from services.workflow.node_execution_queries import DifyAPIWorkflowNodeExecutionRepository
+from services.workflow.run_repository import APIWorkflowRunRepository
 
 logger = logging.getLogger(__name__)
 T = TypeVar("T")
@@ -638,6 +643,21 @@ class WorkflowRunArchiver:
         )
 
         try:
+            # This archiver extracts SQL rows only. LogStore dual writes are best-effort,
+            # so even an enabled SQL copy cannot establish that either log is complete.
+            if "logstore" in (
+                dify_config.WORKFLOW_RUN_STORAGE_BACKEND,
+                dify_config.WORKFLOW_NODE_EXECUTION_STORAGE_BACKEND,
+            ):
+                raise ValueError(
+                    "SQL-only workflow archiving does not support LogStore run or node storage, "
+                    "even with dual write enabled"
+                )
+            for run in runs:
+                # A control record may outlive a backend switch or await Celery's
+                # payload write. Reject it before creating even an empty shard index.
+                if run.graph is None:
+                    raise ValueError(f"Workflow run {run.id} has no SQL graph payload; refusing an incomplete archive")
             if not self.dry_run:
                 if storage is None:
                     raise ArchiveStorageNotConfiguredError("Archive storage not configured")
@@ -684,6 +704,12 @@ class WorkflowRunArchiver:
                 runs = locked_runs
 
             table_data = self._extract_bundle_data(session, runs)
+            self._require_sql_node_logs(
+                session,
+                runs,
+                table_data.get("workflow_node_executions", []),
+                table_data.get("workflow_node_execution_offload", []),
+            )
             table_stats, table_payloads, manifest_data = self._build_archive_payload(identity, runs, table_data)
             object_size = len(manifest_data) + sum(len(payload) for payload in table_payloads.values())
 
@@ -695,6 +721,8 @@ class WorkflowRunArchiver:
                 if storage is None:
                     raise ArchiveStorageNotConfiguredError("Archive storage not configured")
 
+                if not storage.object_exists(self._get_index_object_key(identity)):
+                    self._write_bundle_index(storage, identity)
                 for table_name, payload in table_payloads.items():
                     storage.put_object(self._get_table_object_key(identity, table_name), payload)
                 storage.put_object(self._get_manifest_object_key(identity), manifest_data)
@@ -726,6 +754,73 @@ class WorkflowRunArchiver:
 
         result.elapsed_time = time.time() - start_time
         return result
+
+    @staticmethod
+    def _require_sql_node_logs(
+        session: Session,
+        runs: Sequence[WorkflowRun],
+        node_records: Sequence[dict[str, Any]],
+        offload_records: Sequence[dict[str, Any]],
+    ) -> None:
+        """Require persisted attempts, including retry history, to cover execution steps."""
+        for run in runs:
+            if run.total_steps is None:
+                raise ValueError(f"Workflow run {run.id} has no execution step count; refusing an incomplete archive")
+        expected_runs = [run for run in runs if run.total_steps > 0]
+        if not expected_runs:
+            return
+        node_counts = Counter(
+            (record["workflow_run_id"], record["tenant_id"], record["app_id"], record["workflow_id"])
+            for record in node_records
+        )
+        retry_counts: Counter[tuple[str, str, str, str]] = Counter()
+        runs_needing_retries = {
+            (run.id, run.tenant_id, run.app_id, run.workflow_id)
+            for run in expected_runs
+            if node_counts[run.id, run.tenant_id, run.app_id, run.workflow_id] < run.total_steps
+        }
+        process_data_offloads = {
+            (record["node_execution_id"], record["tenant_id"], record["app_id"]): record
+            for record in offload_records
+            if record["type"] == ExecutionOffLoadType.PROCESS_DATA
+        }
+        for record in node_records:
+            owner = (record["workflow_run_id"], record["tenant_id"], record["app_id"], record["workflow_id"])
+            if owner not in runs_needing_retries:
+                continue
+            # Resolve full Process Data with the existing loader, using the same
+            # node snapshot and offload reference that will be written to the archive.
+            execution = WorkflowNodeExecutionModel(**record)
+            offload = process_data_offloads.get((record["id"], record["tenant_id"], record["app_id"]))
+            execution.offload_data = (
+                [
+                    WorkflowNodeExecutionOffload(
+                        tenant_id=offload["tenant_id"],
+                        app_id=offload["app_id"],
+                        node_execution_id=offload["node_execution_id"],
+                        type_=ExecutionOffLoadType.PROCESS_DATA,
+                        file_id=offload["file_id"],
+                    )
+                ]
+                if offload is not None
+                else []
+            )
+            process_data = execution.load_full_process_data(session, workflow_storage_files) or {}
+            history = process_data.get(RETRY_HISTORY_PROCESS_DATA_KEY, [])
+            if not isinstance(history, list):
+                raise ValueError(f"Invalid retry history for workflow node execution {execution.id}")
+            # A redelivered retry must not count twice and mask a missing attempt.
+            retry_counts[owner] += len({WorkflowNodeRetryAttempt.model_validate(item).retry_index for item in history})
+
+        for run in expected_runs:
+            count = node_counts[run.id, run.tenant_id, run.app_id, run.workflow_id]
+            retries = retry_counts[run.id, run.tenant_id, run.app_id, run.workflow_id]
+            if count + retries < run.total_steps:
+                raise ValueError(
+                    f"Workflow run {run.id} has insufficient SQL node logs "
+                    f"({count} rows with {retries} retries for {run.total_steps} execution steps); "
+                    "refusing an incomplete archive"
+                )
 
     def _sync_existing_bundle_index(
         self,
@@ -992,7 +1087,9 @@ class WorkflowRunArchiver:
         if storage.object_exists(index_key):
             index = self._load_bundle_index(storage, identity)
         else:
-            index = self._write_bundle_index(storage, identity)
+            # Bootstrap in memory. Publish the index only after source-data checks
+            # pass, while keeping existing manifests available for reconciliation.
+            index = self._build_bundle_index(storage, identity)
         run_ids = set(index["run_ids"])
         with self._archive_index_cache_lock:
             self._archive_index_cache[index_key] = set(run_ids)
@@ -1160,17 +1257,14 @@ class WorkflowRunArchiver:
         self,
         session: Session,
     ) -> DifyAPIWorkflowNodeExecutionRepository:
-        from repositories.factory import DifyAPIRepositoryFactory
 
         session_maker = sessionmaker(bind=session.get_bind(), expire_on_commit=False)
-        return DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(session_maker)
+        return workflow_storage.create_api_workflow_node_execution_repository(session_maker)
 
     def _get_workflow_run_repo(self) -> APIWorkflowRunRepository:
         if self.workflow_run_repo is not None:
             return self.workflow_run_repo
 
-        from repositories.factory import DifyAPIRepositoryFactory
-
         session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
-        self.workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
+        self.workflow_run_repo = workflow_storage.create_api_workflow_run_repository(session_maker)
         return self.workflow_run_repo

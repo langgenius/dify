@@ -120,7 +120,7 @@ class TestLangFuseDataTraceCompletionStartTime:
             patch.object(trace, "get_service_account_with_tenant", return_value=MagicMock()),
             patch("dify_trace_langfuse.langfuse_trace.db", MagicMock()),
             patch(
-                "dify_trace_langfuse.langfuse_trace.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+                "dify_trace_langfuse.langfuse_trace.workflow_writers.create_workflow_node_execution_repository",
                 return_value=repository,
             ),
         ):
