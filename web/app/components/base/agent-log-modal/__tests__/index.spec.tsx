@@ -245,4 +245,42 @@ describe('AgentLogModal', () => {
     expect(screen.getByText('New executor')).toBeInTheDocument()
     expect(screen.queryByText('Old executor')).not.toBeInTheDocument()
   })
+  it('preserves the selected tab when another message replaces the open record', async () => {
+    const { rerender } = render(<AgentLogModal appId="app-id" {...mockProps} />)
+    await screen.findByText('User')
+    fireEvent.click(screen.getByRole('button', { name: 'runLog.tracing' }))
+    rerender(
+      <AgentLogModal
+        appId="app-id"
+        {...mockProps}
+        currentLogItem={{ ...mockLog, id: 'next-message' }}
+      />,
+    )
+    expect(screen.getByRole('button', { name: 'runLog.tracing' })).toHaveAttribute(
+      'data-active',
+      'true',
+    )
+    expect(screen.getByRole('progressbar')).toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByRole('progressbar')).not.toBeInTheDocument())
+    expect(fetchAgentLogDetail).toHaveBeenLastCalledWith({
+      appID: 'app-id',
+      params: { conversation_id: mockLog.conversationId, message_id: 'next-message' },
+    })
+  })
+
+  it('ignores a failed request after its record has been replaced', async () => {
+    let rejectOldResponse: (error: Error) => void = () => {}
+    const pending = new Promise<Awaited<ReturnType<typeof fetchAgentLogDetail>>>((_, reject) => {
+      rejectOldResponse = reject
+    })
+    vi.mocked(fetchAgentLogDetail).mockReturnValueOnce(pending)
+    const { rerender } = render(<AgentLogModal appId="old-app" {...mockProps} />)
+    rerender(<AgentLogModal appId="new-app" {...mockProps} />)
+    await screen.findByText('User')
+    await act(async () => {
+      rejectOldResponse(new Error('Old request failed'))
+    })
+    expect(mockToast.error).not.toHaveBeenCalled()
+    expect(screen.getByText('User')).toBeInTheDocument()
+  })
 })

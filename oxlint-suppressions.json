@@ -593,11 +593,6 @@
       "count": 2
     }
   },
-  "web/app/components/base/agent-log-modal/detail.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/components/base/agent-log-modal/index.stories.tsx": {
     "no-console": {
       "count": 1

@@ -39,7 +39,6 @@ const AgentLogModal: FC<AgentLogModalProps> = ({
   const detailContent = (
     <>
       <AgentLogDetail
-        key={`${appId}:${currentLogItem.conversationId}:${currentLogItem.id}`}
         appId={appId}
         conversationID={currentLogItem.conversationId}
         messageID={currentLogItem.id}
