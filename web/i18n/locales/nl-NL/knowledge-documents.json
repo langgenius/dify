@@ -26,6 +26,7 @@
   "documentRevisionsLoadError": "De revisiegeschiedenis kon niet worden geladen. De huidige revisie blijft beschikbaar.",
   "documentSummary": "Samenvatting",
   "documentUploadExclusion.more": "en nog {{count}}",
+  "documentUploadIncomplete": "{{completed}} bestanden toegevoegd; {{remaining}} niet toegevoegd. {{reason}}",
   "documentUploadPartial": "Verwerking van {{accepted}} documenten gestart; {{excluded}} konden niet worden toegevoegd: {{details}}",
   "documentUploadRejected": "Er zijn geen documenten geaccepteerd: {{details}}",
   "documentUploadStarted": "Documentverwerking gestart.",

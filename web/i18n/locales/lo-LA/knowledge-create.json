@@ -9,10 +9,12 @@
   "illustrationHeadline": "ເຊື່ອມຕໍ່ເນື້ອຫາຂອງທ່ານພຽງຄັ້ງດຽວ — ທຸກແອັບຈະຕອບດ້ວຍຄວາມຮູ້ທີ່ໃໝ່ທີ່ສຸດ.",
   "namePlaceholder": "ຕົວຢ່າງ: ຄູ່ມືການສະໜັບສະໜູນລູກຄ້າ",
   "nameRequired": "ກະລຸນາປ້ອນຊື່ຖານຄວາມຮູ້ Agent.",
+  "retryRemainingFiles": "ລອງໄຟລ໌ທີ່ເຫຼືອໃໝ່",
   "selectedFiles": "ໄຟລ໌ທີ່ເລືອກ (ໃຊ້ໄດ້ {{valid}} ຈາກ {{total}})",
   "startWith": "ເລີ່ມຕົ້ນດ້ວຍ",
   "startWithHelp": "ທ່ານສາມາດເພີ່ມແຫຼ່ງຂໍ້ມູນ ຫຼື ເອກະສານໄດ້ທຸກເວລາ.",
   "uploadCharactersUnavailable": "ລັກ​ສະ​ນະ​: —",
+  "uploadCompleted": "ເພີ່ມແລ້ວ",
   "uploadDocuments": "ອັບໂຫລດເອກະສານ",
   "uploadDropZoneTitle": "ລາກແລະວາງໄຟລ໌ ຫຼື ເລືອກໄຟລ໌",
   "uploadingFiles": "ກຳລັງອັບໂຫລດ..."

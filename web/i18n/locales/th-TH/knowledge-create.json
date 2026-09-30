@@ -9,10 +9,12 @@
   "illustrationHeadline": "เชื่อมต่อเนื้อหาครั้งเดียว ทุกแอปจะตอบด้วยความรู้ล่าสุด",
   "namePlaceholder": "เช่น คู่มือการสนับสนุนลูกค้า",
   "nameRequired": "ป้อนชื่อฐานความรู้ Agent",
+  "retryRemainingFiles": "ลองไฟล์ที่เหลืออีกครั้ง",
   "selectedFiles": "ไฟล์ที่เลือก (ใช้ได้ {{valid}} จาก {{total}} ไฟล์)",
   "startWith": "เริ่มต้นด้วย",
   "startWithHelp": "คุณสามารถเพิ่มแหล่งที่มาหรือเอกสารเพิ่มเติมได้ตลอดเวลา",
   "uploadCharactersUnavailable": "อักขระ: —",
+  "uploadCompleted": "เพิ่มแล้ว",
   "uploadDocuments": "อัพโหลดเอกสาร",
   "uploadDropZoneTitle": "ลากและวางไฟล์ หรือเรียกดู",
   "uploadingFiles": "กำลังอัปโหลด…"

@@ -6,6 +6,8 @@
   "taskFailure.attemptsExhausted": "文件處理多次重試後仍未完成。請重試；若持續失敗，請附上下方錯誤參考聯絡管理員。",
   "taskFailure.configuration": "此任務需要先修改設定才能繼續，請檢查相關設定或聯絡管理員。",
   "taskFailure.conflict": "任務執行期間內容已發生變更，請檢查最新狀態後重試。",
+  "taskFailure.documentCountQuotaExceeded": "工作區文件數量已達上限。請刪除文件或升級方案後再新增。",
+  "taskFailure.documentCountQuotaUnavailable": "暫時無法查詢工作區文件數量配額，請稍後重試。",
   "taskFailure.documentProcessing": "文件處理過程中發生錯誤，未能產生可用版本。請重試；若仍失敗，請聯絡管理員。",
   "taskFailure.embeddingDimension": "Embedding 模型的向量維度與目前 Agent 知識庫索引不一致。請恢復原本的 Embedding 模型，或為新模型重建索引。",
   "taskFailure.failedAtStage": "失敗階段：{{stage}}",
@@ -56,5 +58,7 @@
   "taskFailure.stage.upload": "上傳",
   "taskFailure.storageTemporary": "檔案儲存或其他相依服務暫時無法使用，系統會自動重試。",
   "taskFailure.temporary": "任務依賴的服務暫時無法使用，請稍後重試。",
-  "taskFailure.upload": "檔案上傳未能完成或未通過驗證，請重新上傳檔案。"
+  "taskFailure.upload": "檔案上傳未能完成或未通過驗證，請重新上傳檔案。",
+  "taskFailure.vectorSpaceQuotaExceeded": "工作區向量儲存空間已達上限。請刪除文件或升級方案後再建立索引。",
+  "taskFailure.vectorSpaceQuotaUnavailable": "暫時無法查詢工作區向量儲存空間配額，請稍後重試。"
 }

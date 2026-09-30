@@ -26,6 +26,7 @@
   "documentRevisionsLoadError": "Не удалось загрузить историю редакций. Текущая редакция остаётся доступной.",
   "documentSummary": "Сводка",
   "documentUploadExclusion.more": "и ещё {{count}}",
+  "documentUploadIncomplete": "Добавлено файлов: {{completed}}; не добавлено: {{remaining}}. {{reason}}",
   "documentUploadPartial": "Начата обработка {{accepted}} документов; не удалось добавить {{excluded}}: {{details}}",
   "documentUploadRejected": "Ни один документ не принят: {{details}}",
   "documentUploadStarted": "Началась обработка документов.",

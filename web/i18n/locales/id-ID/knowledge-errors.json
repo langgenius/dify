@@ -6,6 +6,8 @@
   "taskFailure.attemptsExhausted": "Pemrosesan sudah dicoba ulang beberapa kali dan masih belum selesai. Coba lagi; jika tetap gagal, hubungi administrator dengan menyertakan referensi di bawah.",
   "taskFailure.configuration": "Tugas ini memerlukan perubahan konfigurasi sebelum dapat dilanjutkan. Tinjau pengaturan terkait atau hubungi administrator.",
   "taskFailure.conflict": "Konten berubah saat tugas berjalan. Tinjau status terbaru lalu coba lagi.",
+  "taskFailure.documentCountQuotaExceeded": "Batas jumlah dokumen ruang kerja telah tercapai. Hapus dokumen atau tingkatkan paket sebelum menambahkan dokumen lagi.",
+  "taskFailure.documentCountQuotaUnavailable": "Kuota dokumen ruang kerja tidak dapat diverifikasi. Coba lagi nanti.",
   "taskFailure.documentProcessing": "Pemrosesan dokumen gagal sebelum revisi yang dapat digunakan dibuat. Coba ulang tugas; jika masih gagal, hubungi administrator.",
   "taskFailure.embeddingDimension": "Ukuran vektor model embedding tidak lagi cocok dengan indeks basis pengetahuan Agent ini. Kembalikan model embedding sebelumnya, atau bangun ulang indeks untuk model baru.",
   "taskFailure.failedAtStage": "Gagal pada tahap: {{stage}}",
@@ -56,5 +58,7 @@
   "taskFailure.stage.upload": "mengunggah",
   "taskFailure.storageTemporary": "Penyimpanan berkas atau layanan lain yang diperlukan sedang tidak tersedia untuk sementara. Akan dicoba ulang secara otomatis.",
   "taskFailure.temporary": "Layanan yang diperlukan sementara tidak tersedia. Coba lagi nanti.",
-  "taskFailure.upload": "Unggahan file tidak dapat diselesaikan atau diverifikasi. Unggah file kembali."
+  "taskFailure.upload": "Unggahan file tidak dapat diselesaikan atau diverifikasi. Unggah file kembali.",
+  "taskFailure.vectorSpaceQuotaExceeded": "Batas penyimpanan vektor ruang kerja telah tercapai. Hapus dokumen atau tingkatkan paket sebelum mengindeks dokumen lagi.",
+  "taskFailure.vectorSpaceQuotaUnavailable": "Kuota penyimpanan vektor ruang kerja tidak dapat diverifikasi. Coba lagi nanti."
 }

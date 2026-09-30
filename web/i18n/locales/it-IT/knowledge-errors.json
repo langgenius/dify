@@ -6,6 +6,8 @@
   "taskFailure.attemptsExhausted": "L'elaborazione è stata ritentata più volte senza completarsi. Riprova; se continua a fallire, contatta un amministratore indicando il riferimento qui sotto.",
   "taskFailure.configuration": "Questa attività richiede modifiche alla configurazione prima di continuare. Controlla le impostazioni correlate o contatta un amministratore.",
   "taskFailure.conflict": "Il contenuto è cambiato durante l'esecuzione. Controlla lo stato più recente e riprova.",
+  "taskFailure.documentCountQuotaExceeded": "È stato raggiunto il limite di documenti dello spazio di lavoro. Elimina dei documenti o passa a un piano superiore prima di aggiungerne altri.",
+  "taskFailure.documentCountQuotaUnavailable": "Non è stato possibile verificare la quota di documenti dello spazio di lavoro. Riprova più tardi.",
   "taskFailure.documentProcessing": "L’elaborazione del documento non è riuscita prima della creazione di una revisione utilizzabile. Riprova l’attività; se il problema persiste, contatta un amministratore.",
   "taskFailure.embeddingDimension": "La dimensione dei vettori del modello di embedding non corrisponde più all'indice di questa base di conoscenza Agent. Ripristina il modello di embedding precedente o ricostruisci l'indice per il nuovo modello.",
   "taskFailure.failedAtStage": "Errore nella fase: {{stage}}",
@@ -56,5 +58,7 @@
   "taskFailure.stage.upload": "caricamento",
   "taskFailure.storageTemporary": "L'archiviazione dei file o un altro servizio necessario è temporaneamente non disponibile. Verrà ritentato automaticamente.",
   "taskFailure.temporary": "Un servizio richiesto è temporaneamente non disponibile. Riprova più tardi.",
-  "taskFailure.upload": "Non è stato possibile completare o verificare il caricamento del file. Caricalo di nuovo."
+  "taskFailure.upload": "Non è stato possibile completare o verificare il caricamento del file. Caricalo di nuovo.",
+  "taskFailure.vectorSpaceQuotaExceeded": "È stato raggiunto il limite di archiviazione vettoriale dello spazio di lavoro. Elimina dei documenti o passa a un piano superiore prima di indicizzarne altri.",
+  "taskFailure.vectorSpaceQuotaUnavailable": "Non è stato possibile verificare la quota di archiviazione vettoriale dello spazio di lavoro. Riprova più tardi."
 }

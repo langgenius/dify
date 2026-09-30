@@ -26,6 +26,7 @@
   "documentRevisionsLoadError": "Không thể tải lịch sử sửa đổi. Bản sửa đổi hiện tại vẫn khả dụng.",
   "documentSummary": "Tóm tắt",
   "documentUploadExclusion.more": "và {{count}} mục khác",
+  "documentUploadIncomplete": "Đã thêm {{completed}} tệp; {{remaining}} tệp chưa được thêm. {{reason}}",
   "documentUploadPartial": "Đã bắt đầu xử lý {{accepted}} tài liệu; không thể thêm {{excluded}} tài liệu: {{details}}",
   "documentUploadRejected": "Không có tài liệu nào được chấp nhận: {{details}}",
   "documentUploadStarted": "Quá trình xử lý tài liệu bắt đầu.",

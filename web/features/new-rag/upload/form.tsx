@@ -53,6 +53,8 @@ export function DocumentUploadForm({
     () => files.filter((file) => !documentUploadIssue(file, fileSizeLimitMb)),
     [fileSizeLimitMb, files],
   )
+  const remainingFiles = validFiles.filter((file) => uploadProgress.get(file) !== 'completed')
+  const canRetryRemainingFiles = !uploading && remainingFiles.length < validFiles.length
   const effectiveUploadProgress = useMemo(() => {
     const progress = new Map(uploadProgress)
     for (const file of stagingFiles) progress.set(file, 'pending')
@@ -115,7 +117,7 @@ export function DocumentUploadForm({
       className="flex w-full max-w-160 flex-1 flex-col"
       onSubmit={(event) => {
         event.preventDefault()
-        if (!validFiles.length || uploading) return
+        if (!remainingFiles.length || uploading) return
         void onSubmit(validFiles)
       }}
     >
@@ -197,13 +199,19 @@ export function DocumentUploadForm({
           {tCommon(($) => $['operation.cancel'])}
         </Button>
         <Button
-          aria-label={t(($) => $.addDocument)}
-          disabled={!validFiles.length}
+          aria-label={
+            canRetryRemainingFiles
+              ? t(($) => $.retryRemainingFiles, { ns: 'knowledgeCreate' })
+              : t(($) => $.addDocument)
+          }
+          disabled={!remainingFiles.length}
           loading={uploading}
           type="submit"
           variant="primary"
         >
-          {t(($) => $.addAndProcess, { ns: 'knowledgeCreate' })}
+          {t(($) => (canRetryRemainingFiles ? $.retryRemainingFiles : $.addAndProcess), {
+            ns: 'knowledgeCreate',
+          })}
         </Button>
       </div>
     </form>

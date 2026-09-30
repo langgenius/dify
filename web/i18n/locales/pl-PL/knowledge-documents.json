@@ -26,6 +26,7 @@
   "documentRevisionsLoadError": "Nie udało się wczytać historii wersji. Bieżąca wersja pozostaje dostępna.",
   "documentSummary": "Podsumowanie",
   "documentUploadExclusion.more": "i jeszcze {{count}}",
+  "documentUploadIncomplete": "Dodano {{completed}} plików; nie dodano {{remaining}}. {{reason}}",
   "documentUploadPartial": "Rozpoczęto przetwarzanie {{accepted}} dokumentów; nie udało się dodać {{excluded}}: {{details}}",
   "documentUploadRejected": "Nie zaakceptowano żadnych dokumentów: {{details}}",
   "documentUploadStarted": "Rozpoczęto przetwarzanie dokumentu.",

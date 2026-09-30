@@ -9,10 +9,12 @@
   "illustrationHeadline": "Połącz treści raz — każda aplikacja odpowie, korzystając z najnowszej wiedzy.",
   "namePlaceholder": "np. Podręcznik obsługi klienta",
   "nameRequired": "Wprowadź nazwę bazy wiedzy Agent.",
+  "retryRemainingFiles": "Ponów próbę dla pozostałych plików",
   "selectedFiles": "Wybrane pliki ({{valid}} z {{total}} prawidłowych)",
   "startWith": "Zacznij od",
   "startWithHelp": "W dowolnym momencie możesz dodać więcej źródeł lub dokumentów.",
   "uploadCharactersUnavailable": "Znaki: —",
+  "uploadCompleted": "Dodano",
   "uploadDocuments": "Prześlij dokumenty",
   "uploadDropZoneTitle": "Przeciągnij i upuść pliki lub przeglądaj",
   "uploadingFiles": "Przesyłanie…"

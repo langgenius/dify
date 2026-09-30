@@ -75,13 +75,15 @@ export function DocumentUploadFileList({
           const fileUploading = uploadProgress.get(item.file) === 'pending'
           const status = fileUploading
             ? t(($) => $.uploadingFiles, { ns: 'knowledgeCreate' })
-            : issue
-              ? issue === 'fileSize'
-                ? t(($) => $['documentUploadExclusion.fileSize'], {
-                    size: fileSizeLimitMb,
-                  })
-                : t(($) => $[`documentUploadExclusion.${issue}`])
-              : idleStatus
+            : uploadProgress.get(item.file) === 'completed'
+              ? t(($) => $.uploadCompleted, { ns: 'knowledgeCreate' })
+              : issue
+                ? issue === 'fileSize'
+                  ? t(($) => $['documentUploadExclusion.fileSize'], {
+                      size: fileSizeLimitMb,
+                    })
+                  : t(($) => $[`documentUploadExclusion.${issue}`])
+                : idleStatus
           return (
             <li
               key={item.id}

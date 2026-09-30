@@ -6,6 +6,8 @@
   "taskFailure.attemptsExhausted": "Le traitement a été relancé plusieurs fois sans aboutir. Réessayez ; si l'échec persiste, contactez un administrateur avec la référence ci-dessous.",
   "taskFailure.configuration": "Cette tâche nécessite des modifications de configuration avant de continuer. Vérifiez les paramètres concernés ou contactez un administrateur.",
   "taskFailure.conflict": "Le contenu a changé pendant l’exécution de la tâche. Vérifiez l’état actuel et réessayez.",
+  "taskFailure.documentCountQuotaExceeded": "La limite de documents de cet espace de travail est atteinte. Supprimez des documents ou passez à une offre supérieure avant d’en ajouter.",
+  "taskFailure.documentCountQuotaUnavailable": "Le quota de documents de cet espace de travail n’a pas pu être vérifié. Réessayez plus tard.",
   "taskFailure.documentProcessing": "Le traitement du document a échoué avant la création d’une révision utilisable. Relancez la tâche ; si elle échoue encore, contactez un administrateur.",
   "taskFailure.embeddingDimension": "La taille des vecteurs du modèle d'embedding ne correspond plus à l'index de cette base de connaissances Agent. Rétablissez le modèle d'embedding précédent ou reconstruisez l'index pour le nouveau modèle.",
   "taskFailure.failedAtStage": "Échec à l'étape : {{stage}}",
@@ -56,5 +58,7 @@
   "taskFailure.stage.upload": "téléversement",
   "taskFailure.storageTemporary": "Le stockage de fichiers ou un autre service requis est temporairement indisponible. Une nouvelle tentative sera faite automatiquement.",
   "taskFailure.temporary": "Un service requis est temporairement indisponible. Réessayez plus tard.",
-  "taskFailure.upload": "Le téléversement du fichier n’a pas pu être terminé ou vérifié. Téléversez-le à nouveau."
+  "taskFailure.upload": "Le téléversement du fichier n’a pas pu être terminé ou vérifié. Téléversez-le à nouveau.",
+  "taskFailure.vectorSpaceQuotaExceeded": "La limite de stockage vectoriel de cet espace de travail est atteinte. Supprimez des documents ou passez à une offre supérieure avant d’en indexer davantage.",
+  "taskFailure.vectorSpaceQuotaUnavailable": "Le quota de stockage vectoriel de cet espace de travail n’a pas pu être vérifié. Réessayez plus tard."
 }

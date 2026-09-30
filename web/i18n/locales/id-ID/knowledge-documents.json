@@ -26,6 +26,7 @@
   "documentRevisionsLoadError": "Riwayat revisi tidak dapat dimuat. Revisi saat ini tetap tersedia.",
   "documentSummary": "Ringkasan",
   "documentUploadExclusion.more": "dan {{count}} lainnya",
+  "documentUploadIncomplete": "{{completed}} file ditambahkan; {{remaining}} belum ditambahkan. {{reason}}",
   "documentUploadPartial": "Pemrosesan {{accepted}} dokumen dimulai; {{excluded}} tidak dapat ditambahkan: {{details}}",
   "documentUploadRejected": "Tidak ada dokumen yang diterima: {{details}}",
   "documentUploadStarted": "Pemrosesan dokumen dimulai.",

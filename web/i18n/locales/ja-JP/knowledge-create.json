@@ -9,10 +9,12 @@
   "illustrationHeadline": "コンテンツを一度接続すれば、すべてのアプリが最新のナレッジで回答します。",
   "namePlaceholder": "例:カスタマーサポートハンドブック",
   "nameRequired": "Agent ナレッジベース名を入力してください。",
+  "retryRemainingFiles": "残りのファイルを再試行",
   "selectedFiles": "選択したファイル（{{total}}件中{{valid}}件が有効）",
   "startWith": "作成方法",
   "startWithHelp": "いつでもソースやドキュメントを追加できます。",
   "uploadCharactersUnavailable": "文字数：—",
+  "uploadCompleted": "追加済み",
   "uploadDocuments": "ドキュメントのアップロード",
   "uploadDropZoneTitle": "ファイルをドラッグ＆ドロップするか、参照",
   "uploadingFiles": "アップロード中…"

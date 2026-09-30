@@ -8,6 +8,10 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { downloadBlob } from '@/utils/download'
+import {
+  knowledgeFsRequestFailureMessageKey,
+  knowledgeFsTaskFailureMessageKey,
+} from '../../knowledge-fs-task-error'
 import { createRequestId } from '../../request-id'
 import { responseStatus } from '../request-error'
 import {
@@ -85,6 +89,7 @@ function useDocumentInvalidation() {
 
 export function useBulkReindexAction() {
   const { t } = useTranslation(['knowledgeSpace', 'knowledgeDocuments'])
+  const { t: tError } = useTranslation(['knowledgeErrors'])
   const canWrite = useAtomValue(documentCanWriteAtom)
   const selectionDisabled = useAtomValue(selectedDocumentResultsUnavailableAtom)
   const selectedDocumentIds = useAtomValue(validSelectedDocumentIdsAtom)
@@ -95,7 +100,9 @@ export function useBulkReindexAction() {
   const { begin, busy, finish, pending } = useBulkActionLock('reindex')
   const { invalidateDocumentsAndTasks, knowledgeSpaceId } = useDocumentInvalidation()
   const { mutateAsync: reindexDocuments } = useMutation(
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.reindex.post.mutationOptions(),
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.reindex.post.mutationOptions({
+      context: { silent: true },
+    }),
   )
 
   const run = useCallback(async () => {
@@ -115,18 +122,24 @@ export function useBulkReindexAction() {
         .filter((item) => item.status === 'disabled' || item.status === 'failed')
         .flatMap((item) => (item.document_id ? [item.document_id] : []))
       const queuedCount = result.items.filter((item) => item.status === 'queued').length
+      const failureMessageKey = result.items
+        .filter((item) => item.status === 'failed')
+        .map((item) => knowledgeFsTaskFailureMessageKey(undefined, item.code ?? undefined))
+        .find((messageKey) => messageKey !== undefined)
+      const failureMessage = failureMessageKey
+        ? tError(($) => $[failureMessageKey])
+        : t(($) => $.documentsReindexFailed, { ns: 'knowledgeDocuments' })
       replaceSelection(queuedCount ? [...missingIds, ...failedIds] : failedIds)
       if (!queuedCount)
         toast.error(
           failedIds.length
-            ? t(($) => $.documentsReindexFailed, { ns: 'knowledgeDocuments' })
+            ? failureMessage
             : t(($) => $.documentsReindexPartial, {
                 missing: missingIds.length,
                 queued: 0,
               }),
         )
-      else if (failedIds.length)
-        toast.warning(t(($) => $.documentsReindexFailed, { ns: 'knowledgeDocuments' }))
+      else if (failedIds.length) toast.warning(failureMessage)
       else if (missingIds.length)
         toast.warning(
           t(($) => $.documentsReindexPartial, {
@@ -138,7 +151,14 @@ export function useBulkReindexAction() {
       invalidateDocumentsAndTasks()
     } catch (error) {
       if (responseStatus(error) === 403) onWriteDenied()
-      else toast.error(t(($) => $.documentsReindexFailed, { ns: 'knowledgeDocuments' }))
+      else {
+        const messageKey = await knowledgeFsRequestFailureMessageKey(error)
+        toast.error(
+          messageKey
+            ? tError(($) => $[messageKey])
+            : t(($) => $.documentsReindexFailed, { ns: 'knowledgeDocuments' }),
+        )
+      }
     } finally {
       finish()
     }
@@ -156,6 +176,7 @@ export function useBulkReindexAction() {
     selectedDocumentIds,
     selectionDisabled,
     t,
+    tError,
   ])
 
   return { busy, pending, run }

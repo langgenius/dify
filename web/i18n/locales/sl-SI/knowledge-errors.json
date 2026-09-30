@@ -6,6 +6,8 @@
   "taskFailure.attemptsExhausted": "Obdelava je bila večkrat ponovljena, a se še vedno ni zaključila. Poskusite znova; če še naprej ne uspe, se obrnite na skrbnika s spodnjo referenco.",
   "taskFailure.configuration": "Pred nadaljevanjem je treba spremeniti nastavitve tega opravila. Preveri povezane nastavitve ali se obrni na skrbnika.",
   "taskFailure.conflict": "Vsebina se je med izvajanjem opravila spremenila. Preveri najnovejše stanje in poskusi znova.",
+  "taskFailure.documentCountQuotaExceeded": "Dosežena je omejitev števila dokumentov v delovnem prostoru. Pred dodajanjem novih izbrišite dokumente ali nadgradite paket.",
+  "taskFailure.documentCountQuotaUnavailable": "Kvote dokumentov v delovnem prostoru ni bilo mogoče preveriti. Poskusite znova pozneje.",
   "taskFailure.documentProcessing": "Obdelava dokumenta ni uspela, preden je bila ustvarjena uporabna različica. Ponovite opravilo; če znova ne uspe, se obrnite na skrbnika.",
   "taskFailure.embeddingDimension": "Velikost vektorja modela za vdelave se ne ujema več z indeksom te zbirke znanja Agent. Obnovite prejšnji model za vdelave ali ponovno zgradite indeks za novi model.",
   "taskFailure.failedAtStage": "Neuspešno v fazi: {{stage}}",
@@ -56,5 +58,7 @@
   "taskFailure.stage.upload": "nalaganje",
   "taskFailure.storageTemporary": "Shramba datotek ali druga potrebna storitev trenutno ni na voljo. Samodejno bo ponovno poskušeno.",
   "taskFailure.temporary": "Zahtevana storitev trenutno ni na voljo. Poskusi znova pozneje.",
-  "taskFailure.upload": "Nalaganja datoteke ni bilo mogoče dokončati ali preveriti. Znova naložite datoteko."
+  "taskFailure.upload": "Nalaganja datoteke ni bilo mogoče dokončati ali preveriti. Znova naložite datoteko.",
+  "taskFailure.vectorSpaceQuotaExceeded": "Dosežena je omejitev vektorske shrambe v delovnem prostoru. Pred indeksiranjem dodatnih dokumentov izbrišite dokumente ali nadgradite paket.",
+  "taskFailure.vectorSpaceQuotaUnavailable": "Kvote vektorske shrambe v delovnem prostoru ni bilo mogoče preveriti. Poskusite znova pozneje."
 }

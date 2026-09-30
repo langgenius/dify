@@ -26,6 +26,7 @@
   "documentRevisionsLoadError": "無法載入修訂歷程，目前的修訂版本仍然可用。",
   "documentSummary": "摘要",
   "documentUploadExclusion.more": "以及另外 {{count}} 個",
+  "documentUploadIncomplete": "已新增 {{completed}} 個檔案，{{remaining}} 個尚未新增。{{reason}}",
   "documentUploadPartial": "已開始處理 {{accepted}} 個文件；{{excluded}} 個無法新增：{{details}}",
   "documentUploadRejected": "未接受任何文件：{{details}}",
   "documentUploadStarted": "文件處理已開始。",

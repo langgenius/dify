@@ -9,10 +9,12 @@
   "illustrationHeadline": "Hubungkan konten Anda sekali — setiap aplikasi menjawab dengan pengetahuan terbaru.",
   "namePlaceholder": "misalnya Buku Pegangan Dukungan Pelanggan",
   "nameRequired": "Masukkan nama basis pengetahuan Agent.",
+  "retryRemainingFiles": "Coba lagi file yang tersisa",
   "selectedFiles": "File terpilih ({{valid}} dari {{total}} valid)",
   "startWith": "Mulailah dengan",
   "startWithHelp": "Anda dapat menambahkan lebih banyak Sumber atau Dokumen kapan saja.",
   "uploadCharactersUnavailable": "Karakter: —",
+  "uploadCompleted": "Ditambahkan",
   "uploadDocuments": "Unggah dokumen",
   "uploadDropZoneTitle": "Seret dan lepas file, atau pilih",
   "uploadingFiles": "Mengunggah…"

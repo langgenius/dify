@@ -26,6 +26,7 @@
   "documentRevisionsLoadError": "Der Revisionsverlauf konnte nicht geladen werden. Die aktuelle Revision bleibt verfügbar.",
   "documentSummary": "Zusammenfassung",
   "documentUploadExclusion.more": "und {{count}} weitere",
+  "documentUploadIncomplete": "{{completed}} Dateien hinzugefügt; {{remaining}} nicht hinzugefügt. {{reason}}",
   "documentUploadPartial": "{{accepted}} Dokumente wurden gestartet; {{excluded}} konnten nicht hinzugefügt werden: {{details}}",
   "documentUploadRejected": "Keine Dokumente wurden akzeptiert: {{details}}",
   "documentUploadStarted": "Die Dokumentenverarbeitung wurde gestartet.",

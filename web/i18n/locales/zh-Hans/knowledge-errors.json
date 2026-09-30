@@ -6,6 +6,8 @@
   "taskFailure.attemptsExhausted": "文档处理多次重试后仍未完成。请重试；若持续失败，请携带下方错误参考联系管理员。",
   "taskFailure.configuration": "此任务需要先修改配置才能继续，请检查相关设置或联系管理员。",
   "taskFailure.conflict": "任务执行期间内容已发生变化，请检查最新状态后重试。",
+  "taskFailure.documentCountQuotaExceeded": "工作区文档数量已达上限。请删除文档或升级套餐后再添加。",
+  "taskFailure.documentCountQuotaUnavailable": "暂时无法查询工作区文档数量额度，请稍后重试。",
   "taskFailure.documentProcessing": "文档处理过程中发生错误，未能生成可用版本。请重试；若仍失败，请联系管理员。",
   "taskFailure.embeddingDimension": "Embedding 模型的向量维度与当前 Agent 知识库索引不一致。请恢复原来的 Embedding 模型，或为新模型重建索引。",
   "taskFailure.failedAtStage": "失败阶段：{{stage}}",
@@ -56,5 +58,7 @@
   "taskFailure.stage.upload": "上传",
   "taskFailure.storageTemporary": "文件存储或其他依赖服务暂时不可用，系统会自动重试。",
   "taskFailure.temporary": "任务依赖的服务暂时不可用，请稍后重试。",
-  "taskFailure.upload": "文件上传未能完成或未通过校验，请重新上传文件。"
+  "taskFailure.upload": "文件上传未能完成或未通过校验，请重新上传文件。",
+  "taskFailure.vectorSpaceQuotaExceeded": "工作区向量存储空间已达上限。请删除文档或升级套餐后再建立索引。",
+  "taskFailure.vectorSpaceQuotaUnavailable": "暂时无法查询工作区向量存储空间额度，请稍后重试。"
 }

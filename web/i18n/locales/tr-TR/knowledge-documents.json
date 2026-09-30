@@ -26,6 +26,7 @@
   "documentRevisionsLoadError": "Revizyon geçmişi yüklenemedi. Geçerli revizyon kullanılabilir durumda.",
   "documentSummary": "Özet",
   "documentUploadExclusion.more": "ve {{count}} tane daha",
+  "documentUploadIncomplete": "{{completed}} dosya eklendi; {{remaining}} dosya eklenmedi. {{reason}}",
   "documentUploadPartial": "{{accepted}} belgenin işlenmesi başladı; {{excluded}} belge eklenemedi: {{details}}",
   "documentUploadRejected": "Hiçbir belge kabul edilmedi: {{details}}",
   "documentUploadStarted": "Evrak işlemleri başlatıldı.",

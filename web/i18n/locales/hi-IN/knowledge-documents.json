@@ -26,6 +26,7 @@
   "documentRevisionsLoadError": "संशोधन इतिहास लोड नहीं हुआ। वर्तमान संशोधन उपलब्ध रहेगा।",
   "documentSummary": "सारांश",
   "documentUploadExclusion.more": "और {{count}} अन्य",
+  "documentUploadIncomplete": "{{completed}} फ़ाइलें जोड़ी गईं; {{remaining}} नहीं जोड़ी गईं। {{reason}}",
   "documentUploadPartial": "{{accepted}} दस्तावेज़ों की प्रोसेसिंग शुरू हुई; {{excluded}} जोड़े नहीं जा सके: {{details}}",
   "documentUploadRejected": "कोई दस्तावेज़ स्वीकार नहीं किया गया: {{details}}",
   "documentUploadStarted": "दस्तावेज़ प्रसंस्करण शुरू हुआ.",

@@ -1,5 +1,6 @@
 'use client'
 
+import type { KnowledgeFsTaskFailureMessageKey } from '../../../knowledge-fs-task-error'
 import type { BackgroundTask } from '../../models'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { useMutation } from '@tanstack/react-query'
@@ -11,6 +12,7 @@ import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import { consoleClient } from '@/service/console'
 import {
+  knowledgeFsRequestFailureMessageKey,
   knowledgeFsTaskFailureMessageKey,
   knowledgeFsTaskRecoveryPath,
 } from '../../../knowledge-fs-task-error'
@@ -64,6 +66,7 @@ export function DocumentTaskRow({
 }) {
   const { t } = useTranslation(['knowledgeSpace', 'knowledgeTasks'])
   const { t: tCommon } = useTranslation(['common'])
+  const { t: tError } = useTranslation(['knowledgeErrors'])
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const knowledgeSpaceId = useAtomValueRawSync(documentDetailKnowledgeSpaceIdAtom)
   const canEdit = useAtomValueRawSync(documentCanEditAtom)
@@ -73,7 +76,10 @@ export function DocumentTaskRow({
   const currentLifecycle = taskLifecycle(task)
   const currentLifecycleRef = useRef(currentLifecycle)
   currentLifecycleRef.current = currentLifecycle
-  const [failedLifecycle, setFailedLifecycle] = useState<string>()
+  const [actionFailure, setActionFailure] = useState<{
+    lifecycle: string
+    messageKey?: KnowledgeFsTaskFailureMessageKey
+  }>()
   const cancelTask = useMutation({
     mutationFn: async () =>
       backgroundTaskFromApi(
@@ -99,6 +105,7 @@ export function DocumentTaskRow({
               task_kind: task.taskKind,
             },
           },
+          { context: { silent: true } },
         ),
       ),
   })
@@ -179,7 +186,7 @@ export function DocumentTaskRow({
     if (!canEdit || pending) return
     const actionLifecycle = currentLifecycle
     const actionFocusTarget = document.activeElement
-    setFailedLifecycle(undefined)
+    setActionFailure(undefined)
     try {
       if (action === 'cancel') await cancelTask.mutateAsync()
       else await retryTask.mutateAsync()
@@ -188,11 +195,17 @@ export function DocumentTaskRow({
     } catch (error) {
       const permissionDenied = responseStatus(error) === 403
       if (permissionDenied) void retryWritePermission(refreshWritePermission)
-      else if (currentLifecycleRef.current === actionLifecycle) setFailedLifecycle(actionLifecycle)
+      else {
+        const messageKey = await knowledgeFsRequestFailureMessageKey(error)
+        if (currentLifecycleRef.current === actionLifecycle)
+          setActionFailure({ lifecycle: actionLifecycle, messageKey })
+      }
     } finally {
       void onSettled()
     }
   }
+
+  const actionFailureMessageKey = actionFailure?.messageKey
 
   return (
     <li className="flex min-h-15.5 items-center gap-2.5 py-3.5">
@@ -224,9 +237,11 @@ export function DocumentTaskRow({
         {taskFailureMessageKey && (
           <KnowledgeTaskFailure messageKey={taskFailureMessageKey} failure={task.failure} />
         )}
-        {failedLifecycle === currentLifecycle && (
+        {actionFailure?.lifecycle === currentLifecycle && (
           <p className="mt-1 system-2xs-regular text-text-destructive" role="alert">
-            {t(($) => $.taskActionFailed)}
+            {actionFailureMessageKey
+              ? tError(($) => $[actionFailureMessageKey])
+              : t(($) => $.taskActionFailed)}
           </p>
         )}
       </div>

@@ -2918,10 +2918,12 @@ export default interface Resources {
     illustrationHeadline: 'Connect your content once — every app answers with the freshest knowledge.'
     namePlaceholder: 'e.g. Customer Support Handbook'
     nameRequired: 'Enter an Agent Knowledge Base name.'
+    retryRemainingFiles: 'Retry remaining files'
     selectedFiles: 'Selected files ({{valid}} of {{total}} valid)'
     startWith: 'Start with'
     startWithHelp: 'You can add more Sources or Documents anytime.'
     uploadCharactersUnavailable: 'Characters: —'
+    uploadCompleted: 'Added'
     uploadDocuments: 'Upload documents'
     uploadDropZoneTitle: 'Drag and drop files, or browse'
     uploadingFiles: 'Uploading…'
@@ -2954,6 +2956,7 @@ export default interface Resources {
     documentRevisionsLoadError: "We couldn't load revision history. The current revision remains available."
     documentSummary: 'Summary'
     'documentUploadExclusion.more': 'and {{count}} more'
+    documentUploadIncomplete: '{{completed}} files added; {{remaining}} not added. {{reason}}'
     documentUploadPartial: '{{accepted}} documents started; {{excluded}} could not be added: {{details}}'
     documentUploadRejected: 'No documents were accepted: {{details}}'
     documentUploadStarted: 'Document processing started.'
@@ -2995,6 +2998,8 @@ export default interface Resources {
     'taskFailure.attemptsExhausted': 'Processing was retried several times and still did not finish. Retry it; if it keeps failing, contact an administrator with the reference below.'
     'taskFailure.configuration': 'This task needs configuration changes before it can continue. Review the related settings or ask an administrator.'
     'taskFailure.conflict': 'The content changed while this task was running. Review the latest state and try again.'
+    'taskFailure.documentCountQuotaExceeded': 'The workspace document limit has been reached. Delete documents or upgrade the plan before adding more.'
+    'taskFailure.documentCountQuotaUnavailable': 'The workspace document quota could not be verified. Try again later.'
     'taskFailure.documentProcessing': 'Document processing failed before a usable revision was created. Retry the task; if it still fails, contact an administrator.'
     'taskFailure.embeddingDimension': "The embedding model's vector size no longer matches this Agent Knowledge Base's index. Restore the previous embedding model, or rebuild the index for the new one."
     'taskFailure.failedAtStage': 'Failed while {{stage}}'
@@ -3046,6 +3051,8 @@ export default interface Resources {
     'taskFailure.storageTemporary': 'File storage or another required service is temporarily unavailable. It will be retried automatically.'
     'taskFailure.temporary': 'A required service is temporarily unavailable. Try again later.'
     'taskFailure.upload': 'The file upload could not be completed or verified. Upload the file again.'
+    'taskFailure.vectorSpaceQuotaExceeded': 'The workspace vector storage limit has been reached. Delete documents or upgrade the plan before indexing more.'
+    'taskFailure.vectorSpaceQuotaUnavailable': 'The workspace vector storage quota could not be verified. Try again later.'
   }
   knowledgeOverview: {
     'overview.activity': 'Activity'

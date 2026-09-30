@@ -9,10 +9,12 @@
   "illustrationHeadline": "Collega i tuoi contenuti una sola volta: ogni app risponderà con le conoscenze più aggiornate.",
   "namePlaceholder": "ad es. Manuale dell'assistenza clienti",
   "nameRequired": "Inserisci un nome per la base di conoscenza Agent.",
+  "retryRemainingFiles": "Riprova con i file rimanenti",
   "selectedFiles": "File selezionati ({{valid}} di {{total}} validi)",
   "startWith": "Inizia con",
   "startWithHelp": "Puoi aggiungere più fonti o documenti in qualsiasi momento.",
   "uploadCharactersUnavailable": "Caratteri: —",
+  "uploadCompleted": "Aggiunto",
   "uploadDocuments": "Carica documenti",
   "uploadDropZoneTitle": "Trascina e rilascia i file oppure sfoglia",
   "uploadingFiles": "Caricamento…"

@@ -1,5 +1,6 @@
 import type { KnowledgeFsPublicFailureResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { TFunction } from 'i18next'
+import { zKnowledgeFsPublicFailureResponse } from '@dify/contracts/api/console/knowledge-fs/zod.gen'
 
 export type KnowledgeFsTaskFailureMessageKey =
   | 'settings.compilationInProgress'
@@ -10,6 +11,8 @@ export type KnowledgeFsTaskFailureMessageKey =
   | 'taskFailure.configuration'
   | 'taskFailure.conflict'
   | 'taskFailure.documentProcessing'
+  | 'taskFailure.documentCountQuotaExceeded'
+  | 'taskFailure.documentCountQuotaUnavailable'
   | 'taskFailure.embeddingDimension'
   | 'taskFailure.internal'
   | 'taskFailure.invalid'
@@ -50,6 +53,8 @@ export type KnowledgeFsTaskFailureMessageKey =
   | 'taskFailure.storageTemporary'
   | 'taskFailure.temporary'
   | 'taskFailure.upload'
+  | 'taskFailure.vectorSpaceQuotaExceeded'
+  | 'taskFailure.vectorSpaceQuotaUnavailable'
 
 type KnowledgeFsTaskFailureStageKey =
   | 'taskFailure.stage.chunking_indexing'
@@ -66,6 +71,8 @@ const failureMessageKeyByCode = {
   DOCUMENT_COMPILATION_FAILED: 'taskFailure.documentProcessing',
   DOCUMENT_COMPILATION_LEASE_LOST: 'taskFailure.leaseLost',
   DOCUMENT_COMPILATION_RETRYABLE: 'taskFailure.storageTemporary',
+  DOCUMENT_COUNT_QUOTA_EXCEEDED: 'taskFailure.documentCountQuotaExceeded',
+  DOCUMENT_COUNT_QUOTA_UNAVAILABLE: 'taskFailure.documentCountQuotaUnavailable',
   DOCUMENT_DISABLED: 'taskFailure.conflict',
   DOCUMENT_PARSER_INPUT_INVALID: 'taskFailure.parserInputInvalid',
   DOCUMENT_PARSER_NOT_CONFIGURED: 'taskFailure.parserNotConfigured',
@@ -159,6 +166,8 @@ const failureMessageKeyByCode = {
   SOURCE_WORKFLOW_FAILED: 'taskFailure.source',
   UPLOAD_INITIALIZATION_FAILED: 'taskFailure.upload',
   UPLOAD_INTEGRITY_MISMATCH: 'taskFailure.upload',
+  VECTOR_SPACE_QUOTA_EXCEEDED: 'taskFailure.vectorSpaceQuotaExceeded',
+  VECTOR_SPACE_QUOTA_UNAVAILABLE: 'taskFailure.vectorSpaceQuotaUnavailable',
 } satisfies Record<KnowledgeFsPublicFailureResponse['code'], KnowledgeFsTaskFailureMessageKey>
 
 export function knowledgeFsTaskFailureMessageKey(
@@ -206,6 +215,19 @@ export function knowledgeFsTaskFailureMessageKey(
   if (/TIMEOUT|RATE_LIMIT|UNAVAILABLE|PROVIDER|PARSER|SOURCE/u.test(code))
     return 'taskFailure.temporary'
   return 'taskFailure.internal'
+}
+
+export async function knowledgeFsRequestFailureMessageKey(error: unknown) {
+  if (!(error instanceof Response)) return
+  try {
+    const body: unknown = await error.clone().json()
+    if (typeof body === 'object' && body !== null && 'failure' in body) {
+      const failure = zKnowledgeFsPublicFailureResponse.safeParse(body.failure)
+      if (failure.success) return knowledgeFsTaskFailureMessageKey(failure.data)
+    }
+  } catch {
+    // Malformed responses must not hide the original error or expose provider diagnostics.
+  }
 }
 
 export function knowledgeFsTaskRecoveryPath(

@@ -9,10 +9,12 @@
   "illustrationHeadline": "只需连接一次内容——每个应用都能用最新知识作答。",
   "namePlaceholder": "例如：客户支持手册",
   "nameRequired": "请输入 Agent 知识库名称。",
+  "retryRemainingFiles": "重试剩余文件",
   "selectedFiles": "已选文件（{{total}} 个中 {{valid}} 个有效）",
   "startWith": "创建方式",
   "startWithHelp": "你可以随时添加更多数据源或文档。",
   "uploadCharactersUnavailable": "字符数：—",
+  "uploadCompleted": "已添加",
   "uploadDocuments": "上传文档",
   "uploadDropZoneTitle": "拖放文件，或点击选择文件",
   "uploadingFiles": "正在上传…"

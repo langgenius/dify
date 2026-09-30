@@ -10,6 +10,10 @@ import {
 } from 'jotai-tanstack-query'
 import { selectAtom } from 'jotai/utils'
 import { consoleQuery } from '@/service/console'
+import {
+  knowledgeFsRequestFailureMessageKey,
+  knowledgeFsTaskFailureMessageKey,
+} from '../../../knowledge-fs-task-error'
 import { taskGraphIsActive } from '../../model'
 import {
   backgroundTaskFromApi,
@@ -290,7 +294,9 @@ export const documentSubmissionPendingAtom = atom((get) => {
 })
 
 const reindexDocumentMutationAtom = atomWithMutation(() =>
-  consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.reindex.post.mutationOptions(),
+  consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.reindex.post.mutationOptions({
+    context: { silent: true },
+  }),
 )
 const cancelTaskMutationAtom = atomWithMutation(() =>
   consoleQuery.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.byTaskKind.byTaskId.cancel.post.mutationOptions(),
@@ -454,7 +460,7 @@ export const reindexDocumentAtom = atom(
   null,
   async (get, set, refreshWritePermission: RefreshDocumentWritePermission) => {
     const state = workflowState(get)
-    if (state.reindexBusy) return 'unavailable' as const
+    if (state.reindexBusy) return { status: 'unavailable' } as const
     updateWorkflowState(get, set, (current) => ({ ...current, reindexBusy: true }))
     try {
       const result = await get(reindexDocumentMutationAtom).mutateAsync({
@@ -468,11 +474,14 @@ export const reindexDocumentAtom = atom(
         const documentQueryKey = workflowQueryKeys(get).document
         queryClient.removeQueries({ queryKey: documentQueryKey })
         await queryClient.invalidateQueries({ queryKey: documentQueryKey })
-        return 'document-missing' as const
+        return { status: 'document-missing' } as const
       }
       if (item.status === 'failed' || item.status === 'disabled') {
         await invalidateDocumentWorkflow(get)
-        return 'failed' as const
+        return {
+          status: 'failed',
+          messageKey: knowledgeFsTaskFailureMessageKey(undefined, item.code ?? undefined),
+        } as const
       }
       const taskId =
         typeof item.compilation_job?.id === 'string' ? item.compilation_job.id : undefined
@@ -482,13 +491,16 @@ export const reindexDocumentAtom = atom(
         submittedReindex: { taskId },
       }))
       await invalidateDocumentWorkflow(get)
-      return 'started' as const
+      return { status: 'started' } as const
     } catch (error) {
       if (responseStatus(error) === 403) {
         updateWorkflowState(get, set, (current) => ({ ...current, writePermissionRevoked: true }))
         await retryWritePermission(get, set, refreshWritePermission)
       }
-      return 'failed' as const
+      return {
+        status: 'failed',
+        messageKey: await knowledgeFsRequestFailureMessageKey(error),
+      } as const
     } finally {
       updateWorkflowState(get, set, (current) => ({ ...current, reindexBusy: false }))
     }

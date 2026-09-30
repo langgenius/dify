@@ -6,6 +6,8 @@
   "taskFailure.attemptsExhausted": "Quá trình xử lý đã được thử lại nhiều lần nhưng vẫn chưa hoàn tất. Hãy thử lại; nếu vẫn thất bại, hãy liên hệ quản trị viên kèm mã tham chiếu bên dưới.",
   "taskFailure.configuration": "Tác vụ này cần thay đổi cấu hình trước khi tiếp tục. Hãy kiểm tra cài đặt liên quan hoặc liên hệ quản trị viên.",
   "taskFailure.conflict": "Nội dung đã thay đổi khi tác vụ đang chạy. Hãy kiểm tra trạng thái mới nhất và thử lại.",
+  "taskFailure.documentCountQuotaExceeded": "Đã đạt giới hạn số tài liệu của không gian làm việc. Hãy xóa tài liệu hoặc nâng cấp gói trước khi thêm tài liệu mới.",
+  "taskFailure.documentCountQuotaUnavailable": "Không thể xác minh hạn mức tài liệu của không gian làm việc. Vui lòng thử lại sau.",
   "taskFailure.documentProcessing": "Quá trình xử lý tài liệu đã thất bại trước khi tạo được phiên bản sử dụng được. Hãy thử lại tác vụ; nếu vẫn thất bại, hãy liên hệ quản trị viên.",
   "taskFailure.embeddingDimension": "Kích thước vector của mô hình embedding không còn khớp với chỉ mục của cơ sở tri thức Agent này. Hãy khôi phục mô hình embedding trước đó hoặc xây dựng lại chỉ mục cho mô hình mới.",
   "taskFailure.failedAtStage": "Thất bại ở giai đoạn: {{stage}}",
@@ -56,5 +58,7 @@
   "taskFailure.stage.upload": "tải lên",
   "taskFailure.storageTemporary": "Bộ lưu trữ tệp hoặc một dịch vụ cần thiết khác tạm thời không khả dụng. Hệ thống sẽ tự động thử lại.",
   "taskFailure.temporary": "Một dịch vụ cần thiết tạm thời không khả dụng. Hãy thử lại sau.",
-  "taskFailure.upload": "Không thể hoàn tất hoặc xác minh việc tải tệp lên. Hãy tải lại tệp."
+  "taskFailure.upload": "Không thể hoàn tất hoặc xác minh việc tải tệp lên. Hãy tải lại tệp.",
+  "taskFailure.vectorSpaceQuotaExceeded": "Đã đạt giới hạn lưu trữ vectơ của không gian làm việc. Hãy xóa tài liệu hoặc nâng cấp gói trước khi lập chỉ mục thêm tài liệu.",
+  "taskFailure.vectorSpaceQuotaUnavailable": "Không thể xác minh hạn mức lưu trữ vectơ của không gian làm việc. Vui lòng thử lại sau."
 }

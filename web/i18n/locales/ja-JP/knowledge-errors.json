@@ -6,6 +6,8 @@
   "taskFailure.attemptsExhausted": "処理を何度か再試行しましたが、完了しませんでした。再試行し、それでも失敗する場合は下記の参照 ID を添えて管理者に連絡してください。",
   "taskFailure.configuration": "このタスクを続行するには設定の変更が必要です。関連する設定を確認するか、管理者に連絡してください。",
   "taskFailure.conflict": "タスクの実行中に内容が変更されました。最新の状態を確認して、もう一度お試しください。",
+  "taskFailure.documentCountQuotaExceeded": "ワークスペースのドキュメント数が上限に達しました。追加する前にドキュメントを削除するか、プランをアップグレードしてください。",
+  "taskFailure.documentCountQuotaUnavailable": "ワークスペースのドキュメント数の割り当てを確認できませんでした。しばらくしてからもう一度お試しください。",
   "taskFailure.documentProcessing": "使用可能なリビジョンが作成される前にドキュメント処理に失敗しました。タスクを再試行し、再び失敗する場合は管理者に連絡してください。",
   "taskFailure.embeddingDimension": "埋め込みモデルのベクトル次元がこの Agent ナレッジベースのインデックスと一致しません。以前の埋め込みモデルに戻すか、新しいモデルでインデックスを再構築してください。",
   "taskFailure.failedAtStage": "失敗した段階：{{stage}}",
@@ -56,5 +58,7 @@
   "taskFailure.stage.upload": "アップロード",
   "taskFailure.storageTemporary": "ファイルストレージまたは他の必要なサービスが一時的に利用できません。自動的に再試行されます。",
   "taskFailure.temporary": "必要なサービスが一時的に利用できません。しばらくしてから再試行してください。",
-  "taskFailure.upload": "ファイルのアップロードを完了または確認できませんでした。ファイルをもう一度アップロードしてください。"
+  "taskFailure.upload": "ファイルのアップロードを完了または確認できませんでした。ファイルをもう一度アップロードしてください。",
+  "taskFailure.vectorSpaceQuotaExceeded": "ワークスペースのベクトルストレージが上限に達しました。追加のインデックスを作成する前にドキュメントを削除するか、プランをアップグレードしてください。",
+  "taskFailure.vectorSpaceQuotaUnavailable": "ワークスペースのベクトルストレージの割り当てを確認できませんでした。しばらくしてからもう一度お試しください。"
 }

@@ -9,10 +9,12 @@
   "illustrationHeadline": "Connect your content once — every app answers with the freshest knowledge.",
   "namePlaceholder": "e.g. Customer Support Handbook",
   "nameRequired": "Enter an Agent Knowledge Base name.",
+  "retryRemainingFiles": "Retry remaining files",
   "selectedFiles": "Selected files ({{valid}} of {{total}} valid)",
   "startWith": "Start with",
   "startWithHelp": "You can add more Sources or Documents anytime.",
   "uploadCharactersUnavailable": "Characters: —",
+  "uploadCompleted": "Added",
   "uploadDocuments": "Upload documents",
   "uploadDropZoneTitle": "Drag and drop files, or browse",
   "uploadingFiles": "Uploading…"

@@ -36,6 +36,7 @@ import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { DatasetACLPermission, hasPermission } from '@/utils/permission'
 import { KnowledgeModelSetupDialog } from '../components/knowledge-model-setup-dialog'
+import { knowledgeFsRequestFailureMessageKey } from '../knowledge-fs-task-error'
 import { createRequestId } from '../request-id'
 import {
   newKnowledgeDetailPath,
@@ -84,6 +85,8 @@ function CreateKnowledgeSession() {
   const { t: tCommon } = useTranslation(['common'])
   const { t: tDatasetCreation } = useTranslation(['datasetCreation'])
   const { t: tWorkflow } = useTranslation(['workflow'])
+  const { t: tError } = useTranslation(['knowledgeErrors'])
+  const { t: tDocuments } = useTranslation(['knowledgeDocuments'])
   const fileSizeLimitMb = useKnowledgeFileSizeLimit()
   useDocumentTitle(t(($) => $.createTitle, { ns: 'knowledgeCreate' }))
   const router = useRouter()
@@ -120,7 +123,7 @@ function CreateKnowledgeSession() {
   const [uploadPhases, setUploadPhases] = useState<ReadonlyMap<File, KnowledgeFsUploadPhase>>(
     () => new Map(),
   )
-  const [uploadError, setUploadError] = useState(false)
+  const [uploadError, setUploadError] = useState<string>()
   const idempotencyKeyRef = useRef<string | undefined>(undefined)
   const uploadsRef = useRef<QueuedUpload[]>([])
   const uploadProgressRef = useRef<KnowledgeFsUploadProgress>(new Map())
@@ -143,7 +146,7 @@ function CreateKnowledgeSession() {
 
   const resetUnsubmittedError = () => {
     if (!submissionLocked) createMutation.reset()
-    setUploadError(false)
+    setUploadError(undefined)
   }
 
   const updateUploads = (update: (current: QueuedUpload[]) => QueuedUpload[]) => {
@@ -183,9 +186,13 @@ function CreateKnowledgeSession() {
               upload.id === added.id ? { ...upload, stagedUploadId, stagingFailed: false } : upload,
             ),
           )
-          setUploadPhases((current) => new Map(current).set(added.file, 'completed'))
+          setUploadPhases((current) => {
+            const next = new Map(current)
+            next.delete(added.file)
+            return next
+          })
         })
-        .catch(() => {
+        .catch(async (error: unknown) => {
           updateUploads((current) =>
             current.map((upload) =>
               upload.id === added.id ? { ...upload, stagingFailed: true } : upload,
@@ -196,7 +203,10 @@ function CreateKnowledgeSession() {
             next.delete(added.file)
             return next
           })
-          setUploadError(true)
+          const messageKey = await knowledgeFsRequestFailureMessageKey(error)
+          setUploadError(
+            messageKey ? tError(($) => $[messageKey]) : t(($) => $.documentUploadFailed),
+          )
         })
         .finally(() => setStagingCount((count) => Math.max(0, count - 1)))
     }
@@ -250,7 +260,7 @@ function CreateKnowledgeSession() {
           return
         }
         setUploading(true)
-        setUploadError(false)
+        setUploadError(undefined)
         try {
           await waitForKnowledgeSpaceReady(created.control_space_id)
           await uploadKnowledgeFsDocuments(
@@ -269,11 +279,29 @@ function CreateKnowledgeSession() {
               })
             },
           )
-        } catch {
-          setUploadError(true)
+        } catch (error) {
+          const messageKey = await knowledgeFsRequestFailureMessageKey(error)
+          const reason = messageKey
+            ? tError(($) => $[messageKey])
+            : t(($) => $.documentUploadFailed)
+          const completed = validUploads.filter(
+            ({ id }) => uploadProgressRef.current.get(id)?.phase === 'completed',
+          ).length
+          setUploadError(
+            completed
+              ? tDocuments(($) => $.documentUploadIncomplete, {
+                  completed,
+                  remaining: validUploads.length - completed,
+                  reason,
+                })
+              : reason,
+          )
           return
         } finally {
           setUploading(false)
+          setUploadPhases(
+            (current) => new Map([...current].filter(([, phase]) => phase === 'completed')),
+          )
         }
       }
 
@@ -509,7 +537,7 @@ function CreateKnowledgeSession() {
                       className="rounded-lg bg-state-destructive-hover px-3 py-2 system-sm-regular text-text-destructive"
                       role="alert"
                     >
-                      {t(($) => $.documentUploadFailed)}
+                      {uploadError}
                     </div>
                   )}
                 </div>

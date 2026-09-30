@@ -1,5 +1,6 @@
 'use client'
 
+import type { KnowledgeFsTaskFailureMessageKey } from '../../knowledge-fs-task-error'
 import type { BackgroundTask, DocumentProcessingTask } from '../models'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import {
@@ -25,6 +26,7 @@ import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import { consoleClient, consoleQuery } from '@/service/console'
 import {
+  knowledgeFsRequestFailureMessageKey,
   knowledgeFsTaskFailureMessageKey,
   knowledgeFsTaskRecoveryPath,
 } from '../../knowledge-fs-task-error'
@@ -298,6 +300,7 @@ function DocumentsTaskDetails({ task }: { task: BackgroundTask }) {
 
 function DocumentsTaskAction({ task }: { task: BackgroundTask }) {
   const { t } = useTranslation(['knowledgeSpace', 'knowledgeTasks'])
+  const { t: tError } = useTranslation(['knowledgeErrors'])
   const { t: tCommon } = useTranslation(['common'])
   const queryClient = useQueryClient()
   const title = useDocumentsTaskRowTitle(task)
@@ -308,7 +311,10 @@ function DocumentsTaskAction({ task }: { task: BackgroundTask }) {
   const dismissTask = useSetAtom(dismissBackgroundTaskAtom)
   const restoreTask = useSetAtom(restoreBackgroundTaskAtom)
   const [pending, setPending] = useState(false)
-  const [failedLifecycle, setFailedLifecycle] = useState<string>()
+  const [actionFailure, setActionFailure] = useState<{
+    lifecycle: string
+    messageKey?: KnowledgeFsTaskFailureMessageKey
+  }>()
   const mountedRef = useRef(true)
   const pendingActionRef = useRef(false)
   const canReadRef = useRef(canRead)
@@ -348,6 +354,7 @@ function DocumentsTaskAction({ task }: { task: BackgroundTask }) {
               task_kind: task.taskKind,
             },
           },
+          { context: { silent: true } },
         ),
       ),
   })
@@ -370,7 +377,7 @@ function DocumentsTaskAction({ task }: { task: BackgroundTask }) {
     const focusTarget = document.activeElement
     const closeButton = taskDrawerCloseButton(focusTarget)
     setPending(true)
-    setFailedLifecycle(undefined)
+    setActionFailure(undefined)
     try {
       const updated =
         action === 'cancel' ? await cancelTask.mutateAsync() : await retryTask.mutateAsync()
@@ -384,6 +391,7 @@ function DocumentsTaskAction({ task }: { task: BackgroundTask }) {
         onTaskUpdated(updated as DocumentProcessingTask)
       if (document.activeElement === focusTarget) closeButton?.focus()
     } catch (error) {
+      const messageKey = await knowledgeFsRequestFailureMessageKey(error)
       if (responseStatus(error) === 403) {
         closeButton?.focus()
         denyWrite()
@@ -392,7 +400,7 @@ function DocumentsTaskAction({ task }: { task: BackgroundTask }) {
         canReadRef.current &&
         taskLifecycleRef.current === actionLifecycle
       ) {
-        setFailedLifecycle(actionLifecycle)
+        setActionFailure({ lifecycle: actionLifecycle, messageKey })
       }
     } finally {
       pendingActionRef.current = false
@@ -431,12 +439,15 @@ function DocumentsTaskAction({ task }: { task: BackgroundTask }) {
   if (!action && !showRecovery && !canDismiss) return null
 
   const dismissLabel = t(($) => $.dismissTask, { ns: 'knowledgeTasks' })
+  const actionFailureMessageKey = actionFailure?.messageKey
 
   return (
     <div className="flex shrink-0 flex-col items-end">
-      {failedLifecycle === taskLifecycle(task) && (
+      {actionFailure?.lifecycle === taskLifecycle(task) && (
         <p className="mt-1 system-2xs-regular text-text-destructive" role="alert">
-          {t(($) => $.taskActionFailed)}
+          {actionFailureMessageKey
+            ? tError(($) => $[actionFailureMessageKey])
+            : t(($) => $.taskActionFailed)}
         </p>
       )}
       <div className="flex items-center gap-1">

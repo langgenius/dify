@@ -566,6 +566,7 @@ vi.mock('@/service/console', () => ({
             },
           },
           documents: {
+            post: (input: unknown) => uploadMutation.mutateAsync(input),
             byDocumentId: {
               patch: renameDocumentMutation,
             },
@@ -665,26 +666,12 @@ vi.mock('@/service/console', () => ({
 }))
 
 vi.mock('../tasks/events', () => ({ streamProcessingTaskEvents }))
-vi.mock('../../upload/knowledge-fs-upload', () => ({
+vi.mock('../../upload/knowledge-fs-upload', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../upload/knowledge-fs-upload')>()),
   discardKnowledgeFsStagedUpload: discardStagedUploadMutation,
   stageKnowledgeFsDocument: async (file: File, signal?: AbortSignal) => {
     const result = await stageUploadMutation({ body: { file } }, { signal })
     return result.id
-  },
-  uploadKnowledgeFsDocuments: async (
-    knowledgeSpaceId: string,
-    uploads: Array<{ file: File; id: string; uploadId: string }>,
-    _progress: Map<string, { phase: 'completed' | 'pending' }>,
-    onProgress?: (file: File, phase: 'completed' | 'pending') => void,
-  ) => {
-    for (const { file, uploadId } of uploads) {
-      onProgress?.(file, 'pending')
-      await uploadMutation.mutateAsync({
-        body: { upload_id: uploadId },
-        params: { control_space_id: knowledgeSpaceId },
-      })
-      onProgress?.(file, 'completed')
-    }
   },
 }))
 
@@ -1660,6 +1647,49 @@ describe('DocumentsPage', () => {
     )
   })
 
+  it.each(['response', 'item'] as const)(
+    'shows the vector quota failure returned by a row re-index %s',
+    async (failureSource) => {
+      const user = userEvent.setup()
+      documentsQuery.data = { pages: [{ items: [document({ id: 'one', title: 'One.pdf' })] }] }
+      if (failureSource === 'response') {
+        reindexMutation.mutateAsync.mockRejectedValueOnce(
+          Response.json(
+            {
+              failure: {
+                action: 'retry',
+                category: 'configuration',
+                code: 'VECTOR_SPACE_QUOTA_EXCEEDED',
+                message: 'Upstream quota details',
+                retryPolicy: 'manual',
+              },
+            },
+            { status: 413 },
+          ),
+        )
+      } else {
+        reindexMutation.mutateAsync.mockResolvedValueOnce({
+          bulkJobId: 'quota-reindex',
+          items: [{ documentId: 'one', status: 'failed', code: 'VECTOR_SPACE_QUOTA_EXCEEDED' }],
+          total: 1,
+        })
+      }
+
+      render(<DocumentsPage knowledgeSpaceId="space-1" />)
+      await user.click(screen.getByRole('button', { name: /knowledgeDocuments\.documentActions/ }))
+      await user.click(
+        await screen.findByRole('menuitem', { name: 'knowledgeDocuments.reindexDocument' }),
+      )
+
+      await waitFor(() =>
+        expect(toastMock.error).toHaveBeenCalledWith(
+          'knowledgeErrors.taskFailure.vectorSpaceQuotaExceeded',
+        ),
+      )
+      expect(toastMock.success).not.toHaveBeenCalled()
+    },
+  )
+
   it.each([
     ['queued', 'queued'],
     ['processing', 'running'],
@@ -1794,6 +1824,42 @@ describe('DocumentsPage', () => {
       }),
     )
     expect(await screen.findByText('knowledgeSpace.documentStatus.queued')).toBeInTheDocument()
+  })
+
+  it('shows the quota verification error when retrying a document row', async () => {
+    const user = userEvent.setup()
+    const failedTask = task({ documentId: 'one', id: 'failed-task', state: 'failed' })
+    documentsQuery.data = {
+      pages: [{ items: [document({ id: 'one', status: 'failed', latestTask: failedTask })] }],
+    }
+    tasksQuery.data = { pages: [{ items: [failedTask] }] }
+    retryMutation.mutateAsync.mockRejectedValueOnce(
+      Response.json(
+        {
+          failure: {
+            action: 'retry',
+            category: 'dependency',
+            code: 'VECTOR_SPACE_QUOTA_UNAVAILABLE',
+            message: 'Upstream billing diagnostics',
+            retryPolicy: 'manual',
+          },
+        },
+        { status: 503 },
+      ),
+    )
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('button', { name: /knowledgeDocuments\.documentActions/ }))
+    await user.click(await screen.findByRole('menuitem', { name: 'knowledgeSpace.retryTask' }))
+
+    await waitFor(() =>
+      expect(toastMock.error).toHaveBeenCalledWith(
+        'knowledgeErrors.taskFailure.vectorSpaceQuotaUnavailable',
+      ),
+    )
+    expect(
+      screen.getByRole('button', { name: /knowledgeDocuments\.documentActions/ }),
+    ).toBeEnabled()
   })
 
   it.each(['document', 'document_bulk'] as const)(
@@ -2858,6 +2924,96 @@ describe('DocumentsPage', () => {
     expect(uploadMutation.mutateAsync).not.toHaveBeenCalled()
     expect(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' })).toBeDisabled()
     expect(screen.getByText('knowledgeSpace.documentUploadExclusion.fileEmpty')).toBeVisible()
+  })
+
+  it.each([
+    ['DOCUMENT_COUNT_QUOTA_EXCEEDED', 'configuration', 413, 'documentCountQuotaExceeded'],
+    ['VECTOR_SPACE_QUOTA_UNAVAILABLE', 'dependency', 503, 'vectorSpaceQuotaUnavailable'],
+  ])(
+    'shows %s without losing the staged file or write access',
+    async (code, category, status, key) => {
+      const user = userEvent.setup()
+      uploadMutation.mutateAsync.mockRejectedValueOnce(
+        new Response(
+          JSON.stringify({
+            failure: {
+              action: 'retry',
+              category,
+              code,
+              message: 'private billing diagnostic',
+              retryPolicy: 'manual',
+            },
+          }),
+          { status },
+        ),
+      )
+      render(<DocumentsPage knowledgeSpaceId="space-1" />, { searchParams: '?upload=1' })
+      await user.upload(
+        screen.getByLabelText('knowledgeCreate.uploadDocuments'),
+        new File(['one'], 'one.md', { type: 'text/markdown' }),
+      )
+      await waitForDocumentFilesStaged()
+      await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
+
+      await waitFor(() =>
+        expect(toastMock.error).toHaveBeenCalledWith(`knowledgeErrors.taskFailure.${key}`),
+      )
+      expect(screen.getByText('one.md')).toBeVisible()
+      expect(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' })).toBeEnabled()
+      expect(permissionStateMock.refreshAfterDenial).not.toHaveBeenCalled()
+      expect(queryClient.invalidateQueries).not.toHaveBeenCalled()
+    },
+  )
+
+  it('reports a partial quota failure and only retries files that were not added', async () => {
+    const user = userEvent.setup()
+    uploadMutation.mutateAsync.mockResolvedValueOnce({}).mockRejectedValueOnce(
+      new Response(
+        JSON.stringify({
+          failure: {
+            action: 'retry',
+            category: 'configuration',
+            code: 'DOCUMENT_COUNT_QUOTA_EXCEEDED',
+            message: 'private billing diagnostic',
+            retryPolicy: 'manual',
+          },
+        }),
+        { status: 413 },
+      ),
+    )
+    render(<DocumentsPage knowledgeSpaceId="space-1" />, { searchParams: '?upload=1' })
+    await user.upload(screen.getByLabelText('knowledgeCreate.uploadDocuments'), [
+      new File(['one'], 'one.md', { type: 'text/markdown' }),
+      new File(['two'], 'two.md', { type: 'text/markdown' }),
+      new File(['three'], 'three.md', { type: 'text/markdown' }),
+    ])
+    await waitForDocumentFilesStaged()
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
+
+    await waitFor(() =>
+      expect(toastMock.error).toHaveBeenCalledWith(
+        'knowledgeDocuments.documentUploadIncomplete:{"completed":1,"remaining":2,"reason":"knowledgeErrors.taskFailure.documentCountQuotaExceeded"}',
+      ),
+    )
+    const uploadRegion = screen.getByRole('region', { name: 'knowledgeCreate.uploadDocuments' })
+    expect(within(uploadRegion).getByText('knowledgeCreate.uploadCompleted')).toBeVisible()
+    expect(
+      within(uploadRegion).queryByText('knowledgeCreate.uploadingFiles'),
+    ).not.toBeInTheDocument()
+    expect(queryClient.invalidateQueries).toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.retryRemainingFiles' }))
+
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: 'knowledgeSpace.documents' })).toBeVisible(),
+    )
+    expect(uploadMutation.mutateAsync.mock.calls.map(([input]) => input.body.upload_id)).toEqual([
+      'staged-one.md',
+      'staged-two.md',
+      'staged-two.md',
+      'staged-three.md',
+    ])
+    expect(stageUploadMutation).toHaveBeenCalledTimes(3)
   })
 
   it('reports local exclusions and API upload failures', async () => {
@@ -4209,6 +4365,40 @@ describe('DocumentsPage', () => {
     },
   )
 
+  it('keeps quota-blocked documents selected after a partial bulk re-index', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = {
+      pages: [
+        {
+          items: [
+            document({ id: 'one', title: 'One.pdf' }),
+            document({ id: 'blocked', title: 'Blocked.pdf' }),
+          ],
+        },
+      ],
+    }
+    reindexMutation.mutateAsync.mockResolvedValueOnce({
+      bulkJobId: 'quota-partial',
+      items: [
+        { documentId: 'one', status: 'queued' },
+        { documentId: 'blocked', status: 'failed', code: 'VECTOR_SPACE_QUOTA_EXCEEDED' },
+      ],
+      total: 2,
+    })
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('checkbox', { name: 'One.pdf' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Blocked.pdf' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.reindexDocuments' }))
+
+    expect(screen.getByRole('checkbox', { name: 'One.pdf' })).not.toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Blocked.pdf' })).toBeChecked()
+    expect(toastMock.warning).toHaveBeenCalledWith(
+      'knowledgeErrors.taskFailure.vectorSpaceQuotaExceeded',
+    )
+    expect(toastMock.success).not.toHaveBeenCalled()
+  })
+
   it('clears stale selection and refreshes after every re-index target is missing', async () => {
     const user = userEvent.setup()
     documentsQuery.data = { pages: [{ items: [document({ id: 'missing' })] }] }
@@ -4655,6 +4845,39 @@ describe('DocumentsPage', () => {
     }
     rendered.rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
     expect(screen.queryByText('knowledgeSpace.taskActionFailed')).not.toBeInTheDocument()
+  })
+
+  it('shows a retry quota error in the task panel without treating it as a permission denial', async () => {
+    const user = userEvent.setup()
+    const failedTask = task({ id: 'failed', state: 'failed' })
+    documentsQuery.data = { pages: [{ items: [document({ latestTask: failedTask })] }] }
+    tasksQuery.data = { pages: [{ items: [failedTask] }] }
+    retryMutation.mutateAsync.mockRejectedValueOnce(
+      Response.json(
+        {
+          failure: {
+            action: 'retry',
+            category: 'configuration',
+            code: 'DOCUMENT_COUNT_QUOTA_EXCEEDED',
+            message: 'Upstream quota details',
+            retryPolicy: 'manual',
+          },
+        },
+        { status: 413 },
+      ),
+    )
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', { name: 'knowledgeDocuments.tasksWithAttention:{"count":1}' }),
+    )
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.retryTask' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'knowledgeErrors.taskFailure.documentCountQuotaExceeded',
+    )
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.retryTask' })).toBeEnabled()
+    expect(toastMock.error).not.toHaveBeenCalled()
   })
 
   it('does not restore an action failure after its drawer cycle closes', async () => {

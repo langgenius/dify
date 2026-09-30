@@ -26,6 +26,7 @@
   "documentRevisionsLoadError": "리비전 기록을 불러오지 못했습니다. 현재 리비전은 계속 사용할 수 있습니다.",
   "documentSummary": "요약",
   "documentUploadExclusion.more": "외 {{count}}개",
+  "documentUploadIncomplete": "파일 {{completed}}개가 추가되었으며 {{remaining}}개는 추가되지 않았습니다. {{reason}}",
   "documentUploadPartial": "문서 {{accepted}}개의 처리를 시작했습니다. {{excluded}}개는 추가하지 못했습니다: {{details}}",
   "documentUploadRejected": "수락된 문서가 없습니다: {{details}}",
   "documentUploadStarted": "문서 처리가 시작되었습니다.",

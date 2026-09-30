@@ -9,10 +9,12 @@
   "illustrationHeadline": "اربط محتواك مرة واحدة — ليجيب كل تطبيق بأحدث معرفة.",
   "namePlaceholder": "على سبيل المثال دليل دعم العملاء",
   "nameRequired": "أدخل اسم قاعدة معرفة Agent.",
+  "retryRemainingFiles": "إعادة محاولة إضافة الملفات المتبقية",
   "selectedFiles": "الملفات المحددة ({{valid}} من {{total}} صالحة)",
   "startWith": "ابدأ ب",
   "startWithHelp": "يمكنك إضافة المزيد من المصادر أو المستندات في أي وقت.",
   "uploadCharactersUnavailable": "الأحرف: —",
+  "uploadCompleted": "تمت الإضافة",
   "uploadDocuments": "تحميل المستندات",
   "uploadDropZoneTitle": "اسحب الملفات وأفلتها، أو تصفّح",
   "uploadingFiles": "جارٍ الرفع…"

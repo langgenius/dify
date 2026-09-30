@@ -26,6 +26,7 @@
   "documentRevisionsLoadError": "ພວກເຮົາບໍ່ສາມາດໂຫຼດປະຫວັດການແກ້ໄຂໄດ້. ການແກ້ໄຂປະຈຸບັນຍັງມີຢູ່.",
   "documentSummary": "ສະຫຼຸບ",
   "documentUploadExclusion.more": "ແລະອີກ {{count}} ອັນ",
+  "documentUploadIncomplete": "ເພີ່ມແລ້ວ {{completed}} ໄຟລ໌; ຍັງບໍ່ໄດ້ເພີ່ມ {{remaining}} ໄຟລ໌. {{reason}}",
   "documentUploadPartial": "ເອກະສານ {{accepted}} ລາຍການເລີ່ມແລ້ວ; ບໍ່ສາມາດເພີ່ມ {{excluded}} ລາຍການໄດ້: {{details}}",
   "documentUploadRejected": "ບໍ່ມີເອກະສານໄດ້ຮັບການຍອມຮັບ: {{details}}",
   "documentUploadStarted": "ການປະມວນຜົນເອກະສານໄດ້ເລີ່ມຕົ້ນ.",

@@ -6,6 +6,8 @@
   "taskFailure.attemptsExhausted": "Procesarea a fost reîncercată de mai multe ori și tot nu s-a finalizat. Reîncercați; dacă eșuează în continuare, contactați un administrator cu referința de mai jos.",
   "taskFailure.configuration": "Această sarcină necesită modificări de configurare înainte de a continua. Verifică setările asociate sau contactează un administrator.",
   "taskFailure.conflict": "Conținutul s-a modificat în timpul executării sarcinii. Verifică starea actuală și încearcă din nou.",
+  "taskFailure.documentCountQuotaExceeded": "Limita de documente a spațiului de lucru a fost atinsă. Ștergeți documente sau treceți la un plan superior înainte de a adăuga altele.",
+  "taskFailure.documentCountQuotaUnavailable": "Cota de documente a spațiului de lucru nu a putut fi verificată. Încercați din nou mai târziu.",
   "taskFailure.documentProcessing": "Procesarea documentului a eșuat înainte de crearea unei revizii utilizabile. Reîncearcă sarcina; dacă eșuează din nou, contactează un administrator.",
   "taskFailure.embeddingDimension": "Dimensiunea vectorului modelului de embedding nu mai corespunde indexului acestei baze de cunoștințe Agent. Restaurați modelul de embedding anterior sau reconstruiți indexul pentru noul model.",
   "taskFailure.failedAtStage": "A eșuat în etapa: {{stage}}",
@@ -56,5 +58,7 @@
   "taskFailure.stage.upload": "încărcare",
   "taskFailure.storageTemporary": "Stocarea fișierelor sau un alt serviciu necesar este temporar indisponibil. Se va reîncerca automat.",
   "taskFailure.temporary": "Un serviciu necesar este temporar indisponibil. Încearcă din nou mai târziu.",
-  "taskFailure.upload": "Încărcarea fișierului nu a putut fi finalizată sau verificată. Încarcă fișierul din nou."
+  "taskFailure.upload": "Încărcarea fișierului nu a putut fi finalizată sau verificată. Încarcă fișierul din nou.",
+  "taskFailure.vectorSpaceQuotaExceeded": "Limita de stocare vectorială a spațiului de lucru a fost atinsă. Ștergeți documente sau treceți la un plan superior înainte de a indexa altele.",
+  "taskFailure.vectorSpaceQuotaUnavailable": "Cota de stocare vectorială a spațiului de lucru nu a putut fi verificată. Încercați din nou mai târziu."
 }

@@ -6,6 +6,8 @@
   "taskFailure.attemptsExhausted": "El procesamiento se reintentó varias veces y aun así no terminó. Reinténtalo; si sigue fallando, contacta con un administrador con la referencia de abajo.",
   "taskFailure.configuration": "Esta tarea necesita cambios de configuración para continuar. Revisa los ajustes relacionados o consulta a un administrador.",
   "taskFailure.conflict": "El contenido cambió mientras se ejecutaba la tarea. Revisa el estado más reciente e inténtalo de nuevo.",
+  "taskFailure.documentCountQuotaExceeded": "Se ha alcanzado el límite de documentos del espacio de trabajo. Elimina documentos o mejora el plan antes de añadir más.",
+  "taskFailure.documentCountQuotaUnavailable": "No se ha podido verificar la cuota de documentos del espacio de trabajo. Inténtalo de nuevo más tarde.",
   "taskFailure.documentProcessing": "El procesamiento del documento falló antes de crear una revisión utilizable. Reintenta la tarea; si vuelve a fallar, contacta con un administrador.",
   "taskFailure.embeddingDimension": "El tamaño de vector del modelo de embedding ya no coincide con el índice de esta base de conocimiento Agent. Restaura el modelo de embedding anterior o reconstruye el índice para el nuevo.",
   "taskFailure.failedAtStage": "Falló en la etapa: {{stage}}",
@@ -56,5 +58,7 @@
   "taskFailure.stage.upload": "subida",
   "taskFailure.storageTemporary": "El almacenamiento de archivos u otro servicio necesario no está disponible temporalmente. Se reintentará automáticamente.",
   "taskFailure.temporary": "Un servicio necesario no está disponible temporalmente. Inténtalo de nuevo más tarde.",
-  "taskFailure.upload": "No se pudo completar ni verificar la carga del archivo. Vuelve a subirlo."
+  "taskFailure.upload": "No se pudo completar ni verificar la carga del archivo. Vuelve a subirlo.",
+  "taskFailure.vectorSpaceQuotaExceeded": "Se ha alcanzado el límite de almacenamiento vectorial del espacio de trabajo. Elimina documentos o mejora el plan antes de indexar más.",
+  "taskFailure.vectorSpaceQuotaUnavailable": "No se ha podido verificar la cuota de almacenamiento vectorial del espacio de trabajo. Inténtalo de nuevo más tarde."
 }

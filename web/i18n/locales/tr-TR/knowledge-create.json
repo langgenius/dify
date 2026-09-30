@@ -9,10 +9,12 @@
   "illustrationHeadline": "İçeriğinizi bir kez bağlayın — her uygulama en güncel bilgilerle yanıt versin.",
   "namePlaceholder": "örneğin Müşteri Desteği El Kitabı",
   "nameRequired": "Bir Agent bilgi tabanı adı girin.",
+  "retryRemainingFiles": "Kalan dosyaları yeniden dene",
   "selectedFiles": "Seçilen dosyalar ({{total}} dosyadan {{valid}} tanesi geçerli)",
   "startWith": "Şununla başla:",
   "startWithHelp": "İstediğiniz zaman daha fazla Kaynak veya Belge ekleyebilirsiniz.",
   "uploadCharactersUnavailable": "Karakterler: —",
+  "uploadCompleted": "Eklendi",
   "uploadDocuments": "Belgeleri yükleyin",
   "uploadDropZoneTitle": "Dosyaları sürükleyip bırakın veya göz atın",
   "uploadingFiles": "Yükleniyor…"

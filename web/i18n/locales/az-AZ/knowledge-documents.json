@@ -26,6 +26,7 @@
   "documentRevisionsLoadError": "Versiya tarixçəsini yükləyə bilmədik. Cari versiya əlçatan olaraq qalır.",
   "documentSummary": "Summary",
   "documentUploadExclusion.more": "və daha {{count}} sənəd",
+  "documentUploadIncomplete": "{{completed}} fayl əlavə edildi; {{remaining}} fayl əlavə edilmədi. {{reason}}",
   "documentUploadPartial": "{{accepted}} sənədin emalına başlanıldı; {{excluded}} sənəd əlavə edilə bilmədi: {{details}}",
   "documentUploadRejected": "Heç bir sənəd qəbul edilmədi: {{details}}",
   "documentUploadStarted": "Sənədin emalına başlanıldı.",

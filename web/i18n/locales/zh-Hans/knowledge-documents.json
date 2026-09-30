@@ -26,6 +26,7 @@
   "documentRevisionsLoadError": "无法加载修订历史，当前修订版本仍然可用。",
   "documentSummary": "摘要",
   "documentUploadExclusion.more": "另有 {{count}} 个",
+  "documentUploadIncomplete": "已添加 {{completed}} 个文件，{{remaining}} 个尚未添加。{{reason}}",
   "documentUploadPartial": "已开始处理 {{accepted}} 个文档；{{excluded}} 个无法添加：{{details}}",
   "documentUploadRejected": "所有文档均未能添加：{{details}}",
   "documentUploadStarted": "文档处理已开始。",

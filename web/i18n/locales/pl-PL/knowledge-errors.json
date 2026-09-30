@@ -6,6 +6,8 @@
   "taskFailure.attemptsExhausted": "Przetwarzanie było ponawiane kilka razy i nadal się nie zakończyło. Spróbuj ponownie; jeśli błąd się powtarza, skontaktuj się z administratorem, podając poniższe odwołanie.",
   "taskFailure.configuration": "To zadanie wymaga zmian konfiguracji przed kontynuowaniem. Sprawdź powiązane ustawienia lub skontaktuj się z administratorem.",
   "taskFailure.conflict": "Treść zmieniła się podczas wykonywania zadania. Sprawdź najnowszy stan i spróbuj ponownie.",
+  "taskFailure.documentCountQuotaExceeded": "Osiągnięto limit dokumentów w obszarze roboczym. Usuń dokumenty lub przejdź na wyższy plan, zanim dodasz kolejne.",
+  "taskFailure.documentCountQuotaUnavailable": "Nie udało się sprawdzić limitu dokumentów w obszarze roboczym. Spróbuj ponownie później.",
   "taskFailure.documentProcessing": "Przetwarzanie dokumentu nie powiodło się przed utworzeniem użytecznej wersji. Ponów zadanie; jeśli znów się nie powiedzie, skontaktuj się z administratorem.",
   "taskFailure.embeddingDimension": "Rozmiar wektora modelu embeddingów nie pasuje już do indeksu tej bazy wiedzy Agent. Przywróć poprzedni model embeddingów lub przebuduj indeks dla nowego modelu.",
   "taskFailure.failedAtStage": "Niepowodzenie na etapie: {{stage}}",
@@ -56,5 +58,7 @@
   "taskFailure.stage.upload": "przesyłanie",
   "taskFailure.storageTemporary": "Magazyn plików lub inna wymagana usługa jest tymczasowo niedostępna. Próba zostanie ponowiona automatycznie.",
   "taskFailure.temporary": "Wymagana usługa jest tymczasowo niedostępna. Spróbuj ponownie później.",
-  "taskFailure.upload": "Nie udało się ukończyć ani zweryfikować przesyłania pliku. Prześlij plik ponownie."
+  "taskFailure.upload": "Nie udało się ukończyć ani zweryfikować przesyłania pliku. Prześlij plik ponownie.",
+  "taskFailure.vectorSpaceQuotaExceeded": "Osiągnięto limit przestrzeni na wektory w obszarze roboczym. Usuń dokumenty lub przejdź na wyższy plan, zanim zindeksujesz kolejne.",
+  "taskFailure.vectorSpaceQuotaUnavailable": "Nie udało się sprawdzić limitu przestrzeni na wektory w obszarze roboczym. Spróbuj ponownie później."
 }

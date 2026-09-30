@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { knowledgeFsUploadEnabledAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
+import { knowledgeFsRequestFailureMessageKey } from '../../knowledge-fs-task-error'
 import { DocumentUploadForm } from '../../upload/form'
 import { documentUploadIssue } from '../../upload/policy'
 import { useKnowledgeFileSizeLimit } from '../../upload/use-file-size-limit'
@@ -66,6 +67,7 @@ function DocumentUploadHeader() {
 
 export function DocumentUploadSurface({ children }: { children: ReactNode }) {
   const { t } = useTranslation(['knowledgeSpace', 'dataset', 'knowledgeDocuments'])
+  const { t: tError } = useTranslation(['knowledgeErrors'])
   const queryClient = useQueryClient()
   const knowledgeSpaceId = useAtomValueRawSync(documentsKnowledgeSpaceIdAtom)
   const canWrite = useAtomValueRawSync(documentCanWriteAtom)
@@ -81,6 +83,7 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
   const formRef = useRef<DocumentUploadFormHandle>(null)
   const fileDragDepthRef = useRef(0)
   const {
+    completedUploadCount,
     discardAllStagedFiles,
     discardStagedFile,
     progress: stagedUploadProgress,
@@ -91,6 +94,19 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
   } = useDocumentUploadSession()
   const { canUpload } = documentUploadAvailability(canWrite, uploadAvailable)
   const formOpen = canUpload && uploadRequest === '1'
+
+  const refreshDocuments = useCallback(() => {
+    void Promise.allSettled([
+      queryClient.invalidateQueries({
+        predicate: (query) => queryKeyMatchesKnowledgeSpace(query.queryKey, knowledgeSpaceId),
+        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.get.key(),
+      }),
+      queryClient.invalidateQueries({
+        predicate: (query) => queryKeyMatchesKnowledgeSpace(query.queryKey, knowledgeSpaceId),
+        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.get.key(),
+      }),
+    ])
+  }, [knowledgeSpaceId, queryClient])
 
   const close = useCallback(() => {
     resetProgress()
@@ -186,36 +202,45 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
             }),
           )
         else toast.success(t(($) => $.documentUploadStarted, { ns: 'knowledgeDocuments' }))
-        void Promise.allSettled([
-          queryClient.invalidateQueries({
-            predicate: (query) => queryKeyMatchesKnowledgeSpace(query.queryKey, knowledgeSpaceId),
-            queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.get.key(),
-          }),
-          queryClient.invalidateQueries({
-            predicate: (query) => queryKeyMatchesKnowledgeSpace(query.queryKey, knowledgeSpaceId),
-            queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.get.key(),
-          }),
-        ])
+        refreshDocuments()
         return true
       } catch (error) {
+        const completed = completedUploadCount(uploadableFiles)
+        if (completed) refreshDocuments()
         if (responseStatus(error) === 403) {
           cancel()
           denyWrite()
-        } else toast.error(t(($) => $.documentUploadFailed))
+        } else {
+          const failureKey = await knowledgeFsRequestFailureMessageKey(error)
+          const reason = failureKey
+            ? tError(($) => $[failureKey])
+            : t(($) => $.documentUploadFailed)
+          toast.error(
+            completed
+              ? t(($) => $.documentUploadIncomplete, {
+                  ns: 'knowledgeDocuments',
+                  completed,
+                  remaining: uploadableFiles.length - completed,
+                  reason,
+                })
+              : reason,
+          )
+        }
         return false
       }
     },
     [
       canUpload,
       cancel,
+      completedUploadCount,
       ensureModelReady,
       fileSizeLimitMb,
       formatExclusionDetails,
-      knowledgeSpaceId,
       denyWrite,
-      queryClient,
+      refreshDocuments,
       stageFiles,
       t,
+      tError,
       uploadStagedFiles,
     ],
   )
@@ -226,11 +251,12 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
         await stageFiles(files)
       } catch (error) {
         if (error instanceof DocumentStagingCanceledError) return
-        toast.error(t(($) => $.documentUploadFailed))
+        const failureKey = await knowledgeFsRequestFailureMessageKey(error)
+        toast.error(failureKey ? tError(($) => $[failureKey]) : t(($) => $.documentUploadFailed))
         throw error
       }
     },
-    [stageFiles, t],
+    [stageFiles, t, tError],
   )
 
   const onSubmit = useCallback(

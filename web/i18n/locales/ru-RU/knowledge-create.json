@@ -9,10 +9,12 @@
   "illustrationHeadline": "Подключите контент один раз — и каждое приложение будет отвечать на основе самых свежих знаний.",
   "namePlaceholder": "например Руководство по поддержке клиентов",
   "nameRequired": "Введите название базы знаний Agent.",
+  "retryRemainingFiles": "Повторить для оставшихся файлов",
   "selectedFiles": "Выбранные файлы ({{valid}} из {{total}} допустимы)",
   "startWith": "Начните с",
   "startWithHelp": "Вы можете добавить больше источников или документов в любое время.",
   "uploadCharactersUnavailable": "Символы: —",
+  "uploadCompleted": "Добавлено",
   "uploadDocuments": "Загрузить документы",
   "uploadDropZoneTitle": "Перетащите файлы или выберите их",
   "uploadingFiles": "Загрузка…"

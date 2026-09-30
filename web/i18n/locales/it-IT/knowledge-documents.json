@@ -26,6 +26,7 @@
   "documentRevisionsLoadError": "Impossibile caricare la cronologia delle revisioni. La revisione corrente resta disponibile.",
   "documentSummary": "Riepilogo",
   "documentUploadExclusion.more": "e altri {{count}}",
+  "documentUploadIncomplete": "{{completed}} file aggiunti; {{remaining}} non aggiunti. {{reason}}",
   "documentUploadPartial": "Elaborazione avviata per {{accepted}} documenti; impossibile aggiungerne {{excluded}}: {{details}}",
   "documentUploadRejected": "Nessun documento è stato accettato: {{details}}",
   "documentUploadStarted": "È iniziata l'elaborazione del documento.",

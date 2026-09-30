@@ -6,6 +6,8 @@
   "taskFailure.attemptsExhausted": "De verwerking is meerdere keren opnieuw geprobeerd en is nog steeds niet voltooid. Probeer het opnieuw; blijft het mislukken, neem dan contact op met een beheerder en vermeld de onderstaande referentie.",
   "taskFailure.configuration": "Deze taak vereist configuratiewijzigingen voordat deze kan doorgaan. Controleer de relevante instellingen of neem contact op met een beheerder.",
   "taskFailure.conflict": "De inhoud is gewijzigd terwijl de taak werd uitgevoerd. Controleer de nieuwste status en probeer opnieuw.",
+  "taskFailure.documentCountQuotaExceeded": "De documentlimiet van de werkruimte is bereikt. Verwijder documenten of upgrade je abonnement voordat je meer documenten toevoegt.",
+  "taskFailure.documentCountQuotaUnavailable": "Het documentquotum van de werkruimte kon niet worden gecontroleerd. Probeer het later opnieuw.",
   "taskFailure.documentProcessing": "De documentverwerking is mislukt voordat een bruikbare revisie was gemaakt. Probeer de taak opnieuw; neem contact op met een beheerder als deze weer mislukt.",
   "taskFailure.embeddingDimension": "De vectorgrootte van het embedding-model komt niet meer overeen met de index van deze Agent-kennisbank. Herstel het vorige embedding-model of bouw de index opnieuw op voor het nieuwe model.",
   "taskFailure.failedAtStage": "Mislukt tijdens: {{stage}}",
@@ -56,5 +58,7 @@
   "taskFailure.stage.upload": "uploaden",
   "taskFailure.storageTemporary": "De bestandsopslag of een andere vereiste service is tijdelijk niet beschikbaar. Er wordt automatisch opnieuw geprobeerd.",
   "taskFailure.temporary": "Een vereiste service is tijdelijk niet beschikbaar. Probeer het later opnieuw.",
-  "taskFailure.upload": "De bestandsupload kon niet worden voltooid of geverifieerd. Upload het bestand opnieuw."
+  "taskFailure.upload": "De bestandsupload kon niet worden voltooid of geverifieerd. Upload het bestand opnieuw.",
+  "taskFailure.vectorSpaceQuotaExceeded": "De limiet voor vectoropslag van de werkruimte is bereikt. Verwijder documenten of upgrade je abonnement voordat je meer documenten indexeert.",
+  "taskFailure.vectorSpaceQuotaUnavailable": "Het quotum voor vectoropslag van de werkruimte kon niet worden gecontroleerd. Probeer het later opnieuw."
 }

@@ -24,6 +24,7 @@ import { useRefreshDocumentWritePermission } from './write-permission'
 
 export function DocumentReindexAction() {
   const { t } = useTranslation(['knowledgeSpace', 'knowledgeDocuments'])
+  const { t: tError } = useTranslation(['knowledgeErrors'])
   const knowledgeSpaceId = useAtomValueRawSync(documentDetailKnowledgeSpaceIdAtom)
   const canCancel = useAtomValueRawSync(documentCanCancelReindexAtom)
   const cancelBusy = useAtomValueRawSync(documentReindexCancelBusyAtom)
@@ -50,12 +51,18 @@ export function DocumentReindexAction() {
       return readiness.status === 'ready' ? reindexDocument(refreshWritePermission) : undefined
     },
     onSuccess: (result) => {
-      if (result === 'started')
+      if (result?.status === 'started')
         toast.success(t(($) => $.documentsReindexStarted, { ns: 'knowledgeDocuments' }))
-      else if (result === 'document-missing')
+      else if (result?.status === 'document-missing')
         toast.error(t(($) => $.documentNotFoundTitle, { ns: 'knowledgeDocuments' }))
-      else if (result === 'failed')
-        toast.error(t(($) => $.documentsReindexFailed, { ns: 'knowledgeDocuments' }))
+      else if (result?.status === 'failed') {
+        const messageKey = result.messageKey
+        toast.error(
+          messageKey
+            ? tError(($) => $[messageKey])
+            : t(($) => $.documentsReindexFailed, { ns: 'knowledgeDocuments' }),
+        )
+      }
     },
   })
   const guardBusy = startReindexMutation.isPending

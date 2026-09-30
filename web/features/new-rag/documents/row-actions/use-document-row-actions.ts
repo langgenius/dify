@@ -10,6 +10,10 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { downloadBlob } from '@/utils/download'
+import {
+  knowledgeFsRequestFailureMessageKey,
+  knowledgeFsTaskFailureMessageKey,
+} from '../../knowledge-fs-task-error'
 import { createRequestId } from '../../request-id'
 import {
   documentCanDownload,
@@ -274,6 +278,7 @@ export function useRetryDocumentTaskAction(
   task: DocumentProcessingTask | undefined,
 ) {
   const { t } = useTranslation(['knowledgeSpace'])
+  const { t: tError } = useTranslation(['knowledgeErrors'])
   const canEdit = useDocumentCanEdit(documentId)
   const onTaskUpdated = useSetAtom(acceptDocumentTaskSnapshotAtom)
   const onWriteDenied = useSetAtom(denyDocumentWriteAtom)
@@ -290,6 +295,7 @@ export function useRetryDocumentTaskAction(
               task_kind: currentTask.taskKind,
             },
           },
+          { context: { silent: true } },
         ),
       ),
   })
@@ -304,7 +310,10 @@ export function useRetryDocumentTaskAction(
       return true
     } catch (error) {
       if (responseStatus(error) === 403) onWriteDenied()
-      else toast.error(t(($) => $.taskActionFailed))
+      else {
+        const messageKey = await knowledgeFsRequestFailureMessageKey(error)
+        toast.error(messageKey ? tError(($) => $[messageKey]) : t(($) => $.taskActionFailed))
+      }
       return false
     } finally {
       finish()
@@ -318,6 +327,7 @@ export function useRetryDocumentTaskAction(
     onWriteDenied,
     retryTask,
     t,
+    tError,
     task,
   ])
 
@@ -326,13 +336,16 @@ export function useRetryDocumentTaskAction(
 
 export function useReindexDocumentAction(document: LogicalDocument, status: DocumentDisplayStatus) {
   const { t } = useTranslation(['knowledgeSpace', 'knowledgeDocuments'])
+  const { t: tError } = useTranslation(['knowledgeErrors'])
   const canEdit = useDocumentCanEdit(document.id)
   const ensureModelReady = useSetAtom(ensureDocumentModelReadyAtom)
   const onWriteDenied = useSetAtom(denyDocumentWriteAtom)
   const { begin, busy, finish, pending } = useDocumentActionLock(document.id, 'reindex')
   const { invalidateDocumentsAndTasks, knowledgeSpaceId } = useDocumentInvalidation()
   const { mutateAsync: reindexDocument } = useMutation(
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.reindex.post.mutationOptions(),
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.reindex.post.mutationOptions({
+      context: { silent: true },
+    }),
   )
 
   const run = useCallback(async () => {
@@ -347,14 +360,26 @@ export function useReindexDocumentAction(document: LogicalDocument, status: Docu
       const item = result.items[0]
       if (!item || item.status === 'not_found')
         toast.error(t(($) => $.documentsReindexPartial, { missing: 1, queued: 0 }))
-      else if (item.status === 'disabled' || item.status === 'failed')
-        toast.error(t(($) => $.documentsReindexFailed, { ns: 'knowledgeDocuments' }))
-      else toast.success(t(($) => $.documentsReindexStarted, { ns: 'knowledgeDocuments' }))
+      else if (item.status === 'disabled' || item.status === 'failed') {
+        const messageKey = knowledgeFsTaskFailureMessageKey(undefined, item.code ?? undefined)
+        toast.error(
+          messageKey
+            ? tError(($) => $[messageKey])
+            : t(($) => $.documentsReindexFailed, { ns: 'knowledgeDocuments' }),
+        )
+      } else toast.success(t(($) => $.documentsReindexStarted, { ns: 'knowledgeDocuments' }))
       invalidateDocumentsAndTasks()
       return true
     } catch (error) {
       if (responseStatus(error) === 403) onWriteDenied()
-      else toast.error(t(($) => $.documentsReindexFailed, { ns: 'knowledgeDocuments' }))
+      else {
+        const messageKey = await knowledgeFsRequestFailureMessageKey(error)
+        toast.error(
+          messageKey
+            ? tError(($) => $[messageKey])
+            : t(($) => $.documentsReindexFailed, { ns: 'knowledgeDocuments' }),
+        )
+      }
       return false
     } finally {
       finish()
@@ -371,6 +396,7 @@ export function useReindexDocumentAction(document: LogicalDocument, status: Docu
     reindexDocument,
     status,
     t,
+    tError,
   ])
 
   return { busy, pending, run }

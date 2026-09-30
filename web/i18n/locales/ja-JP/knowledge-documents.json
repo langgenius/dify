@@ -26,6 +26,7 @@
   "documentRevisionsLoadError": "リビジョン履歴を読み込めませんでした。現在のリビジョンは引き続き利用できます。",
   "documentSummary": "概要",
   "documentUploadExclusion.more": "ほか {{count}} 件",
+  "documentUploadIncomplete": "{{completed}} 件のファイルを追加しました。{{remaining}} 件は未追加です。{{reason}}",
   "documentUploadPartial": "{{accepted}} 件のドキュメントの処理を開始しました。{{excluded}} 件は追加できませんでした：{{details}}",
   "documentUploadRejected": "ドキュメントを受け付けられませんでした：{{details}}",
   "documentUploadStarted": "ドキュメント処理が開始されました。",

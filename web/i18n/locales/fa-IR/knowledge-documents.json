@@ -26,6 +26,7 @@
   "documentRevisionsLoadError": "تاریخچه بازبینی بارگیری نشد. بازبینی فعلی همچنان در دسترس است.",
   "documentSummary": "خلاصه",
   "documentUploadExclusion.more": "و {{count}} مورد دیگر",
+  "documentUploadIncomplete": "{{completed}} فایل اضافه شد؛ {{remaining}} فایل اضافه نشد. {{reason}}",
   "documentUploadPartial": "پردازش {{accepted}} سند آغاز شد؛ {{excluded}} سند افزوده نشد: {{details}}",
   "documentUploadRejected": "هیچ سندی پذیرفته نشد: {{details}}",
   "documentUploadStarted": "پردازش اسناد آغاز شد.",

@@ -9,10 +9,12 @@
   "illustrationHeadline": "Підключіть вміст один раз — і кожна програма відповідатиме на основі найсвіжіших знань.",
   "namePlaceholder": "напр. Посібник із підтримки клієнтів",
   "nameRequired": "Введіть назву бази знань Agent.",
+  "retryRemainingFiles": "Повторити для решти файлів",
   "selectedFiles": "Вибрані файли ({{valid}} з {{total}} дійсні)",
   "startWith": "Почніть з",
   "startWithHelp": "Ви можете будь-коли додати більше джерел або документів.",
   "uploadCharactersUnavailable": "Символи: —",
+  "uploadCompleted": "Додано",
   "uploadDocuments": "Завантажити документи",
   "uploadDropZoneTitle": "Перетягніть файли або виберіть їх",
   "uploadingFiles": "Завантаження…"

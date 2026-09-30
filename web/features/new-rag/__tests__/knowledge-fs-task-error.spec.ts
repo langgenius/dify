@@ -1,5 +1,6 @@
 import type { KnowledgeFsPublicFailureResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import {
+  knowledgeFsRequestFailureMessageKey,
   knowledgeFsTaskFailureDetail,
   knowledgeFsTaskFailureMessageKey,
   knowledgeFsTaskRecoveryPath,
@@ -16,6 +17,18 @@ const failure = (
 })
 
 describe('KnowledgeFS task error presentation', () => {
+  it.each([
+    ['DOCUMENT_COUNT_QUOTA_EXCEEDED', 'taskFailure.documentCountQuotaExceeded'],
+    ['DOCUMENT_COUNT_QUOTA_UNAVAILABLE', 'taskFailure.documentCountQuotaUnavailable'],
+    ['VECTOR_SPACE_QUOTA_EXCEEDED', 'taskFailure.vectorSpaceQuotaExceeded'],
+    ['VECTOR_SPACE_QUOTA_UNAVAILABLE', 'taskFailure.vectorSpaceQuotaUnavailable'],
+  ] as const)('presents %s for task failures and legacy error codes', (code, key) => {
+    const quotaFailure = failure({ code })
+    expect(knowledgeFsTaskFailureMessageKey(quotaFailure)).toBe(key)
+    expect(knowledgeFsTaskFailureMessageKey(undefined, code)).toBe(key)
+    expect(knowledgeFsTaskRecoveryPath(quotaFailure, 'space-1')).toBeUndefined()
+  })
+
   it('distinguishes exhausted token recovery from invalid model output', () => {
     expect(
       knowledgeFsTaskFailureMessageKey(
@@ -181,5 +194,48 @@ describe('KnowledgeFS task error presentation', () => {
         'space-1',
       ),
     ).toBe('/datasets/new/space-1/sources')
+  })
+})
+
+describe('KnowledgeFS request failure presentation', () => {
+  it.each([
+    [413, 'DOCUMENT_COUNT_QUOTA_EXCEEDED', 'taskFailure.documentCountQuotaExceeded'],
+    [503, 'DOCUMENT_COUNT_QUOTA_UNAVAILABLE', 'taskFailure.documentCountQuotaUnavailable'],
+    [413, 'VECTOR_SPACE_QUOTA_EXCEEDED', 'taskFailure.vectorSpaceQuotaExceeded'],
+    [503, 'VECTOR_SPACE_QUOTA_UNAVAILABLE', 'taskFailure.vectorSpaceQuotaUnavailable'],
+  ] as const)('localizes HTTP %s %s without consuming the response', async (status, code, key) => {
+    const response = Response.json(
+      {
+        failure: {
+          category: status === 413 ? 'configuration' : 'dependency',
+          code,
+          message: 'Private billing service diagnostic',
+          retryPolicy: status === 413 ? 'after_configuration' : 'manual',
+        },
+      },
+      { status },
+    )
+    expect(await knowledgeFsRequestFailureMessageKey(response)).toBe(key)
+    expect(response.bodyUsed).toBe(false)
+  })
+
+  it.each([
+    new Error('Private diagnostic'),
+    new Response('invalid JSON', { status: 503 }),
+    Response.json({ message: 'Private diagnostic' }, { status: 413 }),
+    Response.json({ failure: { code: 'DOCUMENT_COUNT_QUOTA_EXCEEDED' } }, { status: 413 }),
+    Response.json(
+      {
+        failure: {
+          code: 'UNKNOWN',
+          category: 'dependency',
+          retryPolicy: 'manual',
+          message: 'Private',
+        },
+      },
+      { status: 503 },
+    ),
+  ])('lets the caller use its existing fallback for malformed failures', async (error) => {
+    expect(await knowledgeFsRequestFailureMessageKey(error)).toBeUndefined()
   })
 })

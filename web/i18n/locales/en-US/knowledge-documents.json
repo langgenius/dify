@@ -26,6 +26,7 @@
   "documentRevisionsLoadError": "We couldn't load revision history. The current revision remains available.",
   "documentSummary": "Summary",
   "documentUploadExclusion.more": "and {{count}} more",
+  "documentUploadIncomplete": "{{completed}} files added; {{remaining}} not added. {{reason}}",
   "documentUploadPartial": "{{accepted}} documents started; {{excluded}} could not be added: {{details}}",
   "documentUploadRejected": "No documents were accepted: {{details}}",
   "documentUploadStarted": "Document processing started.",

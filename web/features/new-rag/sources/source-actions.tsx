@@ -27,6 +27,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { knowledgeFsRequestFailureMessageKey } from '../knowledge-fs-task-error'
 import { useKnowledgeSpacePermission } from '../space/context'
 import { SourceEditDialog } from './source-edit-dialog'
 import { createIdempotencyKey, getOpenableSourceUri } from './source-list-model'
@@ -54,6 +55,7 @@ export function SourceActions({
 }) {
   const { t } = useTranslation(['knowledgeSpace', 'dataset', 'knowledgeSources'])
   const { t: tCommon } = useTranslation(['common'])
+  const { t: tError } = useTranslation(['knowledgeErrors'])
   const queryClient = useQueryClient()
   const knowledgeSpaceId = useAtomValue(sourcesKnowledgeSpaceIdAtom)
   const acceptSourceSnapshot = useSetAtom(acceptSourceSnapshotAtom)
@@ -88,8 +90,9 @@ export function SourceActions({
       let result: Result
       try {
         result = await mutation()
-      } catch {
-        toast.error(t(($) => $.sourcesErrorDescription))
+      } catch (error) {
+        const messageKey = await knowledgeFsRequestFailureMessageKey(error)
+        toast.error(messageKey ? tError(($) => $[messageKey]) : t(($) => $.sourcesErrorDescription))
         try {
           await queryClient.invalidateQueries({
             queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.sources.get.key(),
@@ -130,10 +133,13 @@ export function SourceActions({
     runAction(
       'sync',
       () =>
-        consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.sync.post({
-          headers: { 'Idempotency-Key': createIdempotencyKey() },
-          params: { control_space_id: knowledgeSpaceId, source_id: source.id },
-        }),
+        consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.sync.post(
+          {
+            headers: { 'Idempotency-Key': createIdempotencyKey() },
+            params: { control_space_id: knowledgeSpaceId, source_id: source.id },
+          },
+          { context: { silent: true } },
+        ),
       applyAcceptedWorkflow,
       ensureModelSetupReady,
     )
@@ -146,9 +152,10 @@ export function SourceActions({
     return runAction(
       'sync',
       () =>
-        consoleClient.knowledgeFs.spaces.byControlSpaceId.sourceWorkflows.byRunId.retry.post({
-          params: { control_space_id: knowledgeSpaceId, run_id: retryWorkflowId },
-        }),
+        consoleClient.knowledgeFs.spaces.byControlSpaceId.sourceWorkflows.byRunId.retry.post(
+          { params: { control_space_id: knowledgeSpaceId, run_id: retryWorkflowId } },
+          { context: { silent: true } },
+        ),
       applyAcceptedWorkflow,
       ensureModelSetupReady,
     )

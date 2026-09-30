@@ -9,10 +9,12 @@
   "illustrationHeadline": "Vsebino povežite enkrat — vsaka aplikacija bo odgovarjala z najnovejšim znanjem.",
   "namePlaceholder": "npr. Priročnik za podporo strankam",
   "nameRequired": "Vnesite ime zbirke znanja Agent.",
+  "retryRemainingFiles": "Znova poskusi s preostalimi datotekami",
   "selectedFiles": "Izbrane datoteke ({{valid}} od {{total}} veljavnih)",
   "startWith": "Začni z",
   "startWithHelp": "Kadar koli lahko dodate več virov ali dokumentov.",
   "uploadCharactersUnavailable": "Znaki: —",
+  "uploadCompleted": "Dodano",
   "uploadDocuments": "Nalaganje dokumentov",
   "uploadDropZoneTitle": "Povlecite in spustite datoteke ali prebrskajte",
   "uploadingFiles": "Nalaganje…"

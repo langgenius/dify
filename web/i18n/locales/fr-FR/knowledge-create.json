@@ -9,10 +9,12 @@
   "illustrationHeadline": "Connectez votre contenu une fois : chaque application répond avec les connaissances les plus récentes.",
   "namePlaceholder": "par ex. Manuel de support client",
   "nameRequired": "Entrez un nom de base de connaissances Agent.",
+  "retryRemainingFiles": "Réessayer les fichiers restants",
   "selectedFiles": "Fichiers sélectionnés ({{valid}} sur {{total}} valides)",
   "startWith": "Commencez par",
   "startWithHelp": "Vous pouvez ajouter plus de sources ou de documents à tout moment.",
   "uploadCharactersUnavailable": "Caractères : —",
+  "uploadCompleted": "Ajouté",
   "uploadDocuments": "Télécharger des documents",
   "uploadDropZoneTitle": "Glissez-déposez des fichiers ou parcourez",
   "uploadingFiles": "Téléversement…"

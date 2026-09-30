@@ -26,6 +26,7 @@
   "documentRevisionsLoadError": "تعذّر تحميل سجل المراجعات. تظل المراجعة الحالية متاحة.",
   "documentSummary": "الملخص",
   "documentUploadExclusion.more": "و{{count}} أخرى",
+  "documentUploadIncomplete": "تمت إضافة {{completed}} من الملفات؛ ولم تتم إضافة {{remaining}}. {{reason}}",
   "documentUploadPartial": "بدأت معالجة {{accepted}} مستندًا؛ تعذرت إضافة {{excluded}}: {{details}}",
   "documentUploadRejected": "لم يتم قبول أي مستند: {{details}}",
   "documentUploadStarted": "بدأت معالجة المستندات.",

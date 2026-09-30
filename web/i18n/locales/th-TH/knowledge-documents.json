@@ -26,6 +26,7 @@
   "documentRevisionsLoadError": "ไม่สามารถโหลดประวัติรุ่นแก้ไขได้ รุ่นปัจจุบันยังคงใช้งานได้",
   "documentSummary": "สรุป",
   "documentUploadExclusion.more": "และอีก {{count}} รายการ",
+  "documentUploadIncomplete": "เพิ่มไฟล์แล้ว {{completed}} ไฟล์ ยังไม่ได้เพิ่ม {{remaining}} ไฟล์ {{reason}}",
   "documentUploadPartial": "เริ่มประมวลผลเอกสาร {{accepted}} รายการแล้ว; เพิ่มไม่ได้ {{excluded}} รายการ: {{details}}",
   "documentUploadRejected": "ไม่มีเอกสารที่ได้รับการยอมรับ: {{details}}",
   "documentUploadStarted": "การประมวลผลเอกสารเริ่มต้นขึ้น",

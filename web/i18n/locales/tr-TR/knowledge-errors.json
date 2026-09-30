@@ -6,6 +6,8 @@
   "taskFailure.attemptsExhausted": "İşleme birkaç kez yeniden denendi ancak hâlâ tamamlanmadı. Yeniden deneyin; başarısız olmaya devam ederse aşağıdaki referansla bir yöneticiye başvurun.",
   "taskFailure.configuration": "Bu görevin devam edebilmesi için yapılandırma değişiklikleri gerekiyor. İlgili ayarları gözden geçirin veya bir yöneticiyle iletişime geçin.",
   "taskFailure.conflict": "Görev çalışırken içerik değişti. En son durumu gözden geçirip yeniden deneyin.",
+  "taskFailure.documentCountQuotaExceeded": "Çalışma alanının belge sınırına ulaşıldı. Yeni belgeler eklemeden önce belgeleri silin veya planınızı yükseltin.",
+  "taskFailure.documentCountQuotaUnavailable": "Çalışma alanının belge kotası doğrulanamadı. Daha sonra tekrar deneyin.",
   "taskFailure.documentProcessing": "Kullanılabilir bir revizyon oluşturulmadan önce belge işleme başarısız oldu. Görevi yeniden deneyin; yine başarısız olursa bir yöneticiyle iletişime geçin.",
   "taskFailure.embeddingDimension": "Gömme modelinin vektör boyutu artık bu Agent bilgi tabanının diziniyle eşleşmiyor. Önceki gömme modelini geri yükleyin veya yeni model için dizini yeniden oluşturun.",
   "taskFailure.failedAtStage": "Şu aşamada başarısız oldu: {{stage}}",
@@ -56,5 +58,7 @@
   "taskFailure.stage.upload": "yükleme",
   "taskFailure.storageTemporary": "Dosya depolama veya gerekli başka bir hizmet geçici olarak kullanılamıyor. Otomatik olarak yeniden denenecek.",
   "taskFailure.temporary": "Gerekli bir hizmet geçici olarak kullanılamıyor. Daha sonra yeniden deneyin.",
-  "taskFailure.upload": "Dosya yükleme tamamlanamadı veya doğrulanamadı. Dosyayı yeniden yükleyin."
+  "taskFailure.upload": "Dosya yükleme tamamlanamadı veya doğrulanamadı. Dosyayı yeniden yükleyin.",
+  "taskFailure.vectorSpaceQuotaExceeded": "Çalışma alanının vektör depolama sınırına ulaşıldı. Daha fazla belgeyi dizine eklemeden önce belgeleri silin veya planınızı yükseltin.",
+  "taskFailure.vectorSpaceQuotaUnavailable": "Çalışma alanının vektör depolama kotası doğrulanamadı. Daha sonra tekrar deneyin."
 }

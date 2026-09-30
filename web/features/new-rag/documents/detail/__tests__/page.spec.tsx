@@ -167,6 +167,7 @@ const permissionState = vi.hoisted(() => ({
   refresh: vi.fn(),
 }))
 const reindexMutation = vi.hoisted(() => ({ mutateAsync: vi.fn() }))
+const retryTaskRequest = vi.hoisted(() => vi.fn())
 const cancelMutation = vi.hoisted(() => ({ mutateAsync: vi.fn() }))
 const patchDocumentMetadata = vi.hoisted(() => vi.fn())
 const listLogicalDocuments = vi.hoisted(() => vi.fn())
@@ -643,6 +644,13 @@ vi.mock('@/service/console', () => ({
     knowledgeFs: {
       spaces: {
         byControlSpaceId: {
+          backgroundTasks: {
+            byTaskKind: {
+              byTaskId: {
+                retry: { post: retryTaskRequest },
+              },
+            },
+          },
           documents: {
             byDocumentId: {
               patch: patchDocumentMetadata,
@@ -961,6 +969,7 @@ describe('DocumentDetailPage', () => {
       isError: false,
     }))
     reindexMutation.mutateAsync.mockResolvedValue(queuedReindexResult())
+    retryTaskRequest.mockResolvedValue(taskApiResponse(task({ state: 'queued' })))
     cancelMutation.mutateAsync.mockResolvedValue(taskApiResponse(task({ state: 'canceled' })))
     patchDocumentMetadata.mockImplementation(async () =>
       logicalDocumentApiResponse(logicalDocument({ rowVersion: 3 })),
@@ -2769,6 +2778,84 @@ describe('DocumentDetailPage', () => {
       'knowledgeSpace.documentPermissionRestricted',
     )
     expect(screen.getByText('knowledgeSpace.documentPermissionRestricted')).toBeVisible()
+  })
+
+  it.each(['response', 'item'] as const)(
+    'shows the quota failure returned by a detail re-index %s',
+    async (failureSource) => {
+      const user = userEvent.setup()
+      if (failureSource === 'response') {
+        reindexMutation.mutateAsync.mockRejectedValueOnce(
+          Response.json(
+            {
+              failure: {
+                action: 'retry',
+                category: 'configuration',
+                code: 'VECTOR_SPACE_QUOTA_EXCEEDED',
+                message: 'Upstream quota details',
+                retryPolicy: 'manual',
+              },
+            },
+            { status: 413 },
+          ),
+        )
+      } else {
+        reindexMutation.mutateAsync.mockResolvedValueOnce({
+          bulkJobId: 'quota-reindex',
+          items: [
+            { document_id: 'document-1', status: 'failed', code: 'VECTOR_SPACE_QUOTA_EXCEEDED' },
+          ],
+          total: 1,
+        })
+      }
+
+      render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+      await user.click(screen.getByRole('button', { name: 'knowledgeDocuments.reindexDocument' }))
+
+      await waitFor(() =>
+        expect(toastState.error).toHaveBeenCalledWith(
+          'knowledgeErrors.taskFailure.vectorSpaceQuotaExceeded',
+        ),
+      )
+      expect(toastState.success).not.toHaveBeenCalled()
+      expect(
+        screen.getByRole('button', { name: 'knowledgeDocuments.reindexDocument' }),
+      ).toBeEnabled()
+    },
+  )
+
+  it('shows a quota verification failure in the detail task drawer', async () => {
+    const user = userEvent.setup()
+    const failedTask = task({ state: 'failed' })
+    taskSnapshotQuery.data = failedTask
+    documentQuery.data = logicalDocument({ latestTask: failedTask })
+    tasksQuery.data = { pages: [{ items: [failedTask] }] }
+    retryTaskRequest.mockRejectedValueOnce(
+      Response.json(
+        {
+          failure: {
+            action: 'retry',
+            category: 'dependency',
+            code: 'VECTOR_SPACE_QUOTA_UNAVAILABLE',
+            message: 'Upstream billing diagnostics',
+            retryPolicy: 'manual',
+          },
+        },
+        { status: 503 },
+      ),
+    )
+
+    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('button', { name: 'knowledgeDocuments.viewTask' }))
+    const drawer = screen.getByRole('dialog', { name: 'knowledgeSpace.backgroundTasks' })
+    await user.click(within(drawer).getByRole('button', { name: 'knowledgeSpace.retryTask' }))
+
+    expect(await within(drawer).findByRole('alert')).toHaveTextContent(
+      'knowledgeErrors.taskFailure.vectorSpaceQuotaUnavailable',
+    )
+    expect(within(drawer).getByRole('button', { name: 'knowledgeSpace.retryTask' })).toBeEnabled()
+    expect(retryTaskRequest).toHaveBeenCalledWith(expect.anything(), { context: { silent: true } })
+    expect(permissionState.refresh).not.toHaveBeenCalled()
   })
 
   it('prompts for model setup before re-indexing a document', async () => {

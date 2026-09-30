@@ -6,6 +6,8 @@
   "taskFailure.attemptsExhausted": "O processamento foi repetido várias vezes e ainda não terminou. Tente novamente; se continuar falhando, contate um administrador com a referência abaixo.",
   "taskFailure.configuration": "Esta tarefa precisa de alterações de configuração para continuar. Revise as configurações relacionadas ou contate um administrador.",
   "taskFailure.conflict": "O conteúdo mudou durante a execução da tarefa. Revise o estado mais recente e tente novamente.",
+  "taskFailure.documentCountQuotaExceeded": "O limite de documentos do espaço de trabalho foi atingido. Exclua documentos ou faça upgrade do plano antes de adicionar mais.",
+  "taskFailure.documentCountQuotaUnavailable": "Não foi possível verificar a cota de documentos do espaço de trabalho. Tente novamente mais tarde.",
   "taskFailure.documentProcessing": "O processamento do documento falhou antes de uma revisão utilizável ser criada. Tente a tarefa novamente; se ela voltar a falhar, entre em contato com um administrador.",
   "taskFailure.embeddingDimension": "O tamanho do vetor do modelo de embedding não corresponde mais ao índice desta base de conhecimento Agent. Restaure o modelo de embedding anterior ou reconstrua o índice para o novo modelo.",
   "taskFailure.failedAtStage": "Falhou na etapa: {{stage}}",
@@ -56,5 +58,7 @@
   "taskFailure.stage.upload": "envio",
   "taskFailure.storageTemporary": "O armazenamento de arquivos ou outro serviço necessário está temporariamente indisponível. Uma nova tentativa será feita automaticamente.",
   "taskFailure.temporary": "Um serviço necessário está temporariamente indisponível. Tente novamente mais tarde.",
-  "taskFailure.upload": "Não foi possível concluir nem verificar o upload do arquivo. Envie o arquivo novamente."
+  "taskFailure.upload": "Não foi possível concluir nem verificar o upload do arquivo. Envie o arquivo novamente.",
+  "taskFailure.vectorSpaceQuotaExceeded": "O limite de armazenamento vetorial do espaço de trabalho foi atingido. Exclua documentos ou faça upgrade do plano antes de indexar mais.",
+  "taskFailure.vectorSpaceQuotaUnavailable": "Não foi possível verificar a cota de armazenamento vetorial do espaço de trabalho. Tente novamente mais tarde."
 }

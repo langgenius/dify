@@ -9,10 +9,12 @@
   "illustrationHeadline": "Conecta tu contenido una vez: cada aplicación responderá con el conocimiento más reciente.",
   "namePlaceholder": "P. ej., manual de atención al cliente",
   "nameRequired": "Introduce un nombre para la base de conocimientos Agent.",
+  "retryRemainingFiles": "Reintentar los archivos restantes",
   "selectedFiles": "Archivos seleccionados ({{valid}} de {{total}} válidos)",
   "startWith": "Empezar con",
   "startWithHelp": "Puedes añadir más fuentes o documentos en cualquier momento.",
   "uploadCharactersUnavailable": "Caracteres: —",
+  "uploadCompleted": "Añadido",
   "uploadDocuments": "Subir documentos",
   "uploadDropZoneTitle": "Arrastra y suelta archivos o selecciónalos en tu equipo",
   "uploadingFiles": "Subiendo…"

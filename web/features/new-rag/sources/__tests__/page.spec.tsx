@@ -1184,9 +1184,10 @@ describe('SourcesPage', () => {
     expect(
       within(sourceRow).queryByRole('button', { name: 'common.operation.retry' }),
     ).not.toBeInTheDocument()
-    expect(clientMock.retrySourceWorkflow).toHaveBeenCalledWith({
-      params: { control_space_id: 'space-1', run_id: 'initial-workflow' },
-    })
+    expect(clientMock.retrySourceWorkflow).toHaveBeenCalledWith(
+      { params: { control_space_id: 'space-1', run_id: 'initial-workflow' } },
+      { context: { silent: true } },
+    )
     expect(clientMock.syncSource).not.toHaveBeenCalled()
 
     await user.click(
@@ -1241,9 +1242,10 @@ describe('SourcesPage', () => {
     await user.click(screen.getByRole('menuitem', { name: 'common.operation.retry' }))
 
     await waitFor(() => expect(clientMock.retrySourceWorkflow).toHaveBeenCalledOnce())
-    expect(clientMock.retrySourceWorkflow).toHaveBeenCalledWith({
-      params: { control_space_id: 'space-1', run_id: 'import-workflow' },
-    })
+    expect(clientMock.retrySourceWorkflow).toHaveBeenCalledWith(
+      { params: { control_space_id: 'space-1', run_id: 'import-workflow' } },
+      { context: { silent: true } },
+    )
     expect(clientMock.syncSource).not.toHaveBeenCalled()
     expect(within(sourceRow).getByRole('status')).toHaveTextContent(
       'knowledgeSpace.sourceStatus.syncing',
@@ -2241,10 +2243,13 @@ describe('SourcesPage', () => {
     await user.click(screen.getByRole('menuitem', { name: 'knowledgeSources.syncNow' }))
 
     await waitFor(() =>
-      expect(clientMock.syncSource).toHaveBeenCalledWith({
-        headers: { 'Idempotency-Key': expect.any(String) },
-        params: { control_space_id: 'space-1', source_id: 'source-1' },
-      }),
+      expect(clientMock.syncSource).toHaveBeenCalledWith(
+        {
+          headers: { 'Idempotency-Key': expect.any(String) },
+          params: { control_space_id: 'space-1', source_id: 'source-1' },
+        },
+        { context: { silent: true } },
+      ),
     )
     expect(
       within(screen.getByRole('row', { name: /Product documentation/ })).getByText(
@@ -2996,6 +3001,68 @@ describe('SourcesPage', () => {
     ).toBeInTheDocument()
     expect(invalidateQueriesMock).toHaveBeenCalledWith({ queryKey: ['sources'] })
   })
+
+  it.each([
+    ['sync', 'DOCUMENT_COUNT_QUOTA_EXCEEDED', 'configuration', 413, 'documentCountQuotaExceeded'],
+    [
+      'retry',
+      'DOCUMENT_COUNT_QUOTA_UNAVAILABLE',
+      'dependency',
+      503,
+      'documentCountQuotaUnavailable',
+    ],
+  ] as const)(
+    'shows the quota error when a source %s is rejected',
+    async (action, code, category, status, messageKey) => {
+      const user = userEvent.setup()
+      sourcesQuery.data = {
+        pages: [
+          {
+            items: [
+              source({
+                status: action === 'retry' ? 'error' : 'active',
+                syncWorkflow: action === 'retry' ? sourceWorkflow('failed') : undefined,
+              }),
+            ],
+          },
+        ],
+      }
+      const mutation = action === 'retry' ? clientMock.retrySourceWorkflow : clientMock.syncSource
+      mutation.mockRejectedValueOnce(
+        Response.json(
+          {
+            failure: {
+              action: 'retry',
+              category,
+              code,
+              message: 'Upstream quota details',
+              retryPolicy: 'manual',
+            },
+          },
+          { status },
+        ),
+      )
+
+      render(<SourcesPage knowledgeSpaceId="space-1" />)
+      if (action === 'retry') {
+        await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+      } else {
+        await user.click(
+          screen.getByRole('button', {
+            name: 'knowledgeSources.sourceActions:{"name":"Product documentation"}',
+          }),
+        )
+        await user.click(screen.getByRole('menuitem', { name: 'knowledgeSources.syncNow' }))
+      }
+
+      await waitFor(() =>
+        expect(toastErrorMock).toHaveBeenCalledWith(`knowledgeErrors.taskFailure.${messageKey}`),
+      )
+      expect(toastErrorMock).toHaveBeenCalledOnce()
+      expect(screen.queryByText('knowledgeSpace.sourceStatus.syncing')).not.toBeInTheDocument()
+      expect(mutation).toHaveBeenCalledWith(expect.anything(), { context: { silent: true } })
+    },
+  )
 
   it('retries an errored source and shows its queued state', async () => {
     const user = userEvent.setup()

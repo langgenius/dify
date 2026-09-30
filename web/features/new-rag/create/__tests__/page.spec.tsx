@@ -179,6 +179,9 @@ vi.mock('@/service/console', () => ({
       spaces: {
         byControlSpaceId: {
           get: serviceMock.getSpace,
+          documents: {
+            post: (input: unknown) => serviceMock.upload(input),
+          },
           sourceConnections: {
             get: serviceMock.listConnections,
           },
@@ -637,26 +640,12 @@ const workflowResponse = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 })
 
-vi.mock('../../upload/knowledge-fs-upload', () => ({
+vi.mock('../../upload/knowledge-fs-upload', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../upload/knowledge-fs-upload')>()),
   discardKnowledgeFsStagedUpload: serviceMock.discardUpload,
   stageKnowledgeFsDocument: async (file: File) => {
     const result = await serviceMock.stageUpload({ body: { file } })
     return result.id
-  },
-  uploadKnowledgeFsDocuments: async (
-    knowledgeSpaceId: string,
-    uploads: Array<{ file: File; id: string; uploadId: string }>,
-    _progress: Map<string, { phase: 'completed' | 'pending' }>,
-    onProgress?: (file: File, phase: 'completed' | 'pending') => void,
-  ) => {
-    for (const { file, uploadId } of uploads) {
-      onProgress?.(file, 'pending')
-      await serviceMock.upload({
-        body: { upload_id: uploadId },
-        params: { control_space_id: knowledgeSpaceId },
-      })
-      onProgress?.(file, 'completed')
-    }
   },
 }))
 
@@ -1316,6 +1305,54 @@ describe('CreateKnowledgePage', () => {
     expect(routerMock.replace).toHaveBeenCalledWith(
       '/datasets/new/e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084/documents',
     )
+  })
+
+  it('shows a quota failure after a partial upload and retries only the remaining file', async () => {
+    const user = userEvent.setup()
+    navigationMock.startMode = 'upload'
+    vi.mocked(crypto.randomUUID)
+      .mockReturnValueOnce('00000000-0000-4000-8000-000000000001')
+      .mockReturnValueOnce('00000000-0000-4000-8000-000000000002')
+    serviceMock.upload.mockResolvedValueOnce({}).mockRejectedValueOnce(
+      Response.json(
+        {
+          failure: {
+            code: 'DOCUMENT_COUNT_QUOTA_EXCEEDED',
+            category: 'configuration',
+            retryPolicy: 'after_configuration',
+            message: 'Private billing diagnostic',
+          },
+        },
+        { status: 413 },
+      ),
+    )
+    renderPage()
+    await user.upload(
+      screen.getByLabelText('knowledgeSpace.uploadFiles', { selector: 'input[type="file"]' }),
+      [new File(['first'], 'first.md'), new File(['second'], 'second.md')],
+    )
+    await waitFor(() => expect(serviceMock.stageUpload).toHaveBeenCalledTimes(2))
+    expect(screen.queryByText('knowledgeCreate.uploadCompleted')).not.toBeInTheDocument()
+    await fillRequiredFields(user)
+
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('knowledgeDocuments.documentUploadIncomplete')
+    expect(alert).toHaveTextContent('knowledgeErrors.taskFailure.documentCountQuotaExceeded')
+    expect(alert).toHaveTextContent('"completed":1')
+    expect(alert).toHaveTextContent('"remaining":1')
+    expect(alert).not.toHaveTextContent('Private billing diagnostic')
+    expect(screen.getAllByText('knowledgeCreate.uploadCompleted')).toHaveLength(1)
+    expect(routerMock.replace).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
+    await waitFor(() => expect(routerMock.replace).toHaveBeenCalled())
+    expect(serviceMock.create).toHaveBeenCalledOnce()
+    expect(serviceMock.upload.mock.calls.map(([input]) => input.body.upload_id)).toEqual([
+      'staged-first.md',
+      'staged-second.md',
+      'staged-second.md',
+    ])
   })
 
   it('converges after an atomic creation response is lost', async () => {

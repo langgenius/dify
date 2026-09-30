@@ -26,6 +26,7 @@
   "documentRevisionsLoadError": "Не вдалося завантажити історію редакцій. Поточна редакція залишається доступною.",
   "documentSummary": "Підсумок",
   "documentUploadExclusion.more": "і ще {{count}}",
+  "documentUploadIncomplete": "Додано файлів: {{completed}}; не додано: {{remaining}}. {{reason}}",
   "documentUploadPartial": "Розпочато обробку {{accepted}} документів; не вдалося додати {{excluded}}: {{details}}",
   "documentUploadRejected": "Жодного документа не прийнято: {{details}}",
   "documentUploadStarted": "Розпочато обробку документів.",

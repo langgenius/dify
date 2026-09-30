@@ -6,6 +6,8 @@
   "taskFailure.attemptsExhausted": "문서 처리를 여러 번 재시도했지만 완료되지 않았습니다. 다시 시도하고, 계속 실패하면 아래 참조 번호와 함께 관리자에게 문의하세요.",
   "taskFailure.configuration": "이 작업을 계속하려면 구성을 변경해야 합니다. 관련 설정을 확인하거나 관리자에게 문의하세요.",
   "taskFailure.conflict": "작업 실행 중 콘텐츠가 변경되었습니다. 최신 상태를 확인한 후 다시 시도하세요.",
+  "taskFailure.documentCountQuotaExceeded": "워크스페이스의 문서 수 한도에 도달했습니다. 문서를 더 추가하려면 기존 문서를 삭제하거나 요금제를 업그레이드하세요.",
+  "taskFailure.documentCountQuotaUnavailable": "워크스페이스의 문서 할당량을 확인할 수 없습니다. 나중에 다시 시도하세요.",
   "taskFailure.documentProcessing": "사용 가능한 리비전이 생성되기 전에 문서 처리에 실패했습니다. 작업을 다시 시도하고 계속 실패하면 관리자에게 문의하세요.",
   "taskFailure.embeddingDimension": "임베딩 모델의 벡터 차원이 이 Agent 지식 베이스의 인덱스와 일치하지 않습니다. 이전 임베딩 모델로 되돌리거나 새 모델로 인덱스를 다시 구축하세요.",
   "taskFailure.failedAtStage": "실패 단계: {{stage}}",
@@ -56,5 +58,7 @@
   "taskFailure.stage.upload": "업로드",
   "taskFailure.storageTemporary": "파일 저장소 또는 다른 필수 서비스를 일시적으로 사용할 수 없습니다. 자동으로 재시도됩니다.",
   "taskFailure.temporary": "필요한 서비스를 일시적으로 사용할 수 없습니다. 나중에 다시 시도하세요.",
-  "taskFailure.upload": "파일 업로드를 완료하거나 확인할 수 없습니다. 파일을 다시 업로드하세요."
+  "taskFailure.upload": "파일 업로드를 완료하거나 확인할 수 없습니다. 파일을 다시 업로드하세요.",
+  "taskFailure.vectorSpaceQuotaExceeded": "워크스페이스의 벡터 저장 공간 한도에 도달했습니다. 문서를 더 인덱싱하려면 기존 문서를 삭제하거나 요금제를 업그레이드하세요.",
+  "taskFailure.vectorSpaceQuotaUnavailable": "워크스페이스의 벡터 저장 공간 할당량을 확인할 수 없습니다. 나중에 다시 시도하세요."
 }

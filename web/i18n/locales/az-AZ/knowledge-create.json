@@ -9,10 +9,12 @@
   "illustrationHeadline": "Məzmununuzu bir dəfə qoşun, hər tətbiq ən yeni biliklərlə cavab versin.",
   "namePlaceholder": "Məsələn, müştəri dəstəyi təlimatı",
   "nameRequired": "Bilik bazasının adını daxil edin.",
+  "retryRemainingFiles": "Qalan faylları yenidən sınayın",
   "selectedFiles": "Selected files ({{valid}} of {{total}} valid)",
   "startWith": "Başlanğıc seçimi",
   "startWithHelp": "İstənilən vaxt daha çox mənbə və ya sənəd əlavə edə bilərsiniz.",
   "uploadCharactersUnavailable": "Simvol sayı: məlum deyil",
+  "uploadCompleted": "Əlavə edildi",
   "uploadDocuments": "Sənədləri yüklə",
   "uploadDropZoneTitle": "Drag and drop files, or browse",
   "uploadingFiles": "Yüklənir…"

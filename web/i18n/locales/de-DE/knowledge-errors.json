@@ -6,6 +6,8 @@
   "taskFailure.attemptsExhausted": "Die Verarbeitung wurde mehrfach wiederholt und ist trotzdem nicht abgeschlossen. Versuchen Sie es erneut; schlägt es weiterhin fehl, wenden Sie sich mit der unten stehenden Referenz an einen Administrator.",
   "taskFailure.configuration": "Diese Aufgabe benötigt Konfigurationsänderungen, bevor sie fortgesetzt werden kann. Prüfe die zugehörigen Einstellungen oder wende dich an einen Administrator.",
   "taskFailure.conflict": "Der Inhalt wurde während der Ausführung geändert. Prüfe den aktuellen Stand und versuche es erneut.",
+  "taskFailure.documentCountQuotaExceeded": "Das Dokumentlimit des Arbeitsbereichs wurde erreicht. Lösche Dokumente oder wechsle zu einem höheren Tarif, bevor du weitere hinzufügst.",
+  "taskFailure.documentCountQuotaUnavailable": "Das Dokumentkontingent des Arbeitsbereichs konnte nicht überprüft werden. Versuche es später erneut.",
   "taskFailure.documentProcessing": "Die Dokumentverarbeitung ist fehlgeschlagen, bevor eine nutzbare Revision erstellt wurde. Wiederhole die Aufgabe. Falls sie erneut fehlschlägt, wende dich an die Administration.",
   "taskFailure.embeddingDimension": "Die Vektorgröße des Embedding-Modells passt nicht mehr zum Index dieser Agent-Wissensdatenbank. Stellen Sie das vorherige Embedding-Modell wieder her oder bauen Sie den Index für das neue Modell neu auf.",
   "taskFailure.failedAtStage": "Fehlgeschlagen bei: {{stage}}",
@@ -56,5 +58,7 @@
   "taskFailure.stage.upload": "Hochladen",
   "taskFailure.storageTemporary": "Der Dateispeicher oder ein anderer erforderlicher Dienst ist vorübergehend nicht verfügbar. Es wird automatisch erneut versucht.",
   "taskFailure.temporary": "Ein erforderlicher Dienst ist vorübergehend nicht verfügbar. Versuche es später erneut.",
-  "taskFailure.upload": "Der Datei-Upload konnte nicht abgeschlossen oder überprüft werden. Lade die Datei erneut hoch."
+  "taskFailure.upload": "Der Datei-Upload konnte nicht abgeschlossen oder überprüft werden. Lade die Datei erneut hoch.",
+  "taskFailure.vectorSpaceQuotaExceeded": "Das Limit für den Vektorspeicher des Arbeitsbereichs wurde erreicht. Lösche Dokumente oder wechsle zu einem höheren Tarif, bevor du weitere indexierst.",
+  "taskFailure.vectorSpaceQuotaUnavailable": "Das Vektorspeicherkontingent des Arbeitsbereichs konnte nicht überprüft werden. Versuche es später erneut."
 }

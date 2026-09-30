@@ -9,10 +9,12 @@
   "illustrationHeadline": "Conectează conținutul o singură dată — fiecare aplicație răspunde cu cele mai noi informații.",
   "namePlaceholder": "de ex. Manual de asistență pentru clienți",
   "nameRequired": "Introduceți un nume de bază de cunoștințe Agent.",
+  "retryRemainingFiles": "Reîncercați fișierele rămase",
   "selectedFiles": "Fișiere selectate ({{valid}} din {{total}} valide)",
   "startWith": "Începe cu",
   "startWithHelp": "Puteți adăuga oricând mai multe surse sau documente.",
   "uploadCharactersUnavailable": "Caractere: —",
+  "uploadCompleted": "Adăugat",
   "uploadDocuments": "Încărcați documente",
   "uploadDropZoneTitle": "Trage și plasează fișiere sau răsfoiește",
   "uploadingFiles": "Se încarcă…"

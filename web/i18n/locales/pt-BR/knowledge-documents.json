@@ -26,6 +26,7 @@
   "documentRevisionsLoadError": "Não foi possível carregar o histórico de revisões. A revisão atual continua disponível.",
   "documentSummary": "Resumo",
   "documentUploadExclusion.more": "e mais {{count}}",
+  "documentUploadIncomplete": "{{completed}} arquivos adicionados; {{remaining}} não adicionados. {{reason}}",
   "documentUploadPartial": "O processamento de {{accepted}} documentos foi iniciado; não foi possível adicionar {{excluded}}: {{details}}",
   "documentUploadRejected": "Nenhum documento foi aceito: {{details}}",
   "documentUploadStarted": "O processamento do documento foi iniciado.",

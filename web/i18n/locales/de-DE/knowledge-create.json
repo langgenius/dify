@@ -9,10 +9,12 @@
   "illustrationHeadline": "Verbinde deine Inhalte einmal – und jede App antwortet mit dem neuesten Wissen.",
   "namePlaceholder": "z.B. Kundendiensthandbuch",
   "nameRequired": "Geben Sie einen Namen für die Agent-Wissensdatenbank ein.",
+  "retryRemainingFiles": "Verbleibende Dateien erneut versuchen",
   "selectedFiles": "Ausgewählte Dateien ({{valid}} von {{total}} gültig)",
   "startWith": "Beginnen Sie mit",
   "startWithHelp": "Sie können jederzeit weitere Quellen oder Dokumente hinzufügen.",
   "uploadCharactersUnavailable": "Zeichen: —",
+  "uploadCompleted": "Hinzugefügt",
   "uploadDocuments": "Dokumente hochladen",
   "uploadDropZoneTitle": "Dateien ziehen und ablegen oder durchsuchen",
   "uploadingFiles": "Wird hochgeladen…"

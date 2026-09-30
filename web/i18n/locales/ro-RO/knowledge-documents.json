@@ -26,6 +26,7 @@
   "documentRevisionsLoadError": "Nu am putut încărca istoricul reviziilor. Revizia curentă rămâne disponibilă.",
   "documentSummary": "Rezumat",
   "documentUploadExclusion.more": "și încă {{count}}",
+  "documentUploadIncomplete": "{{completed}} fișiere adăugate; {{remaining}} neadăugate. {{reason}}",
   "documentUploadPartial": "Procesarea a {{accepted}} documente a început; {{excluded}} nu au putut fi adăugate: {{details}}",
   "documentUploadRejected": "Nu a fost acceptat niciun document: {{details}}",
   "documentUploadStarted": "Procesarea documentelor a început.",

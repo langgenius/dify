@@ -12,6 +12,7 @@ import {
   stageKnowledgeFsDocument,
   uploadKnowledgeFsDocuments,
 } from '../../upload/knowledge-fs-upload'
+import { documentUploadFingerprint } from '../../upload/policy'
 import { documentsKnowledgeSpaceIdAtom } from '../state/inputs'
 import { documentUploadingAtom } from '../state/upload'
 import {
@@ -138,7 +139,7 @@ export function useDocumentUploadSession() {
       try {
         if (!(await prepare())) return false
         const uploads = files.map((file) => {
-          const fingerprint = `${knowledgeSpaceId}:${file.name}:${file.size}:${file.lastModified}`
+          const fingerprint = `${knowledgeSpaceId}:${documentUploadFingerprint(file)}`
           const id = uploadRequestIdsRef.current.get(fingerprint) ?? createRequestId()
           uploadRequestIdsRef.current.set(fingerprint, id)
           const uploadId = stagedUploadIdsRef.current.get(file)
@@ -160,19 +161,30 @@ export function useDocumentUploadSession() {
         uploadProgress.clear()
         uploadRequestIdsRef.current.clear()
         stagedUploadIdsRef.current.clear()
+        setProgress(new Map())
         return true
       } finally {
         uploadPendingRef.current = false
         setUploading(false)
-        setProgress(new Map())
+        setProgress((current) => new Map([...current].filter(([, phase]) => phase === 'completed')))
       }
     },
     [knowledgeSpaceId, setUploading, uploadProgress],
   )
 
   const resetProgress = useCallback(() => setProgress(new Map()), [])
+  const completedUploadCount = useCallback(
+    (files: File[]) =>
+      files.filter((file) => {
+        const fingerprint = `${knowledgeSpaceId}:${documentUploadFingerprint(file)}`
+        const id = uploadRequestIdsRef.current.get(fingerprint)
+        return id !== undefined && uploadProgress.get(id)?.phase === 'completed'
+      }).length,
+    [knowledgeSpaceId, uploadProgress],
+  )
 
   return {
+    completedUploadCount,
     discardAllStagedFiles,
     discardStagedFile,
     progress,
