@@ -62,7 +62,7 @@ const updateCachedAppMetadata = (cachedApp: AppDetailWithSite | undefined, app: 
   }
 }
 
-export function useAppInfoActions(appDetail: AppDetailWithSite) {
+export function useAppInfoActions(appDetail: Pick<AppDetailWithSite, 'id' | 'name' | 'mode'>) {
   const { t } = useTranslation(['app'])
   const { replace } = useRouter()
   const queryClient = useQueryClient()

@@ -7,8 +7,8 @@ import { consoleQuery } from '@/service/console'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppACLPermission } from '@/utils/permission'
-import { AppDetailPrefetch } from '../prefetch'
-import { getAppIdFromPathname } from '../routes'
+import { AppDetailPrefetch } from '../app-detail-prefetch'
+import { getAppIdFromPathname } from '../app-detail-route'
 
 function deferredResponse() {
   let resolve!: (response: Response) => void
