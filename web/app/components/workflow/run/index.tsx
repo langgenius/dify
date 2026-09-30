@@ -24,7 +24,13 @@ type RunProps = {
 }
 
 type RunTab = NonNullable<RunProps['activeTab']>
-type RequestLifetime = { active: boolean }
+type RequestLifetime = {
+  active: boolean
+  detailRequest: number
+  tracingRequest: number
+  detailSettled: boolean
+  tracingSettled: boolean
+}
 
 const RunPanel: FC<RunProps> = ({
   activeTab = 'RESULT',
@@ -73,7 +79,7 @@ function RunSession({
   const [loading, setLoading] = useState(true)
   const [runDetail, setRunDetail] = useState<WorkflowRunDetailResponse>()
   const [list, setList] = useState<NodeTracing[]>([])
-  const requestLifetimeRef = useRef<RequestLifetime>({ active: false })
+  const requestLifetimeRef = useRef<RequestLifetime | null>(null)
 
   const executor = useMemo(() => {
     if (runDetail?.created_by_role === 'account') return runDetail.created_by_account?.name || ''
@@ -84,13 +90,19 @@ function RunSession({
 
   const getResult = useCallback(
     async (lifetime: RequestLifetime) => {
+      const request = ++lifetime.detailRequest
       try {
         const res = await fetchRunDetail(runDetailUrl)
-        if (!lifetime.active) return
+        if (!lifetime.active || request !== lifetime.detailRequest) return
         setRunDetail(res)
         if (getResultCallback) getResultCallback(res)
       } catch (err) {
-        if (lifetime.active) toast.error(`${err}`)
+        if (lifetime.active && request === lifetime.detailRequest) toast.error(`${err}`)
+      } finally {
+        if (lifetime.active && request === lifetime.detailRequest) {
+          lifetime.detailSettled = true
+          if (lifetime.tracingSettled) setLoading(false)
+        }
       }
     },
     [getResultCallback, runDetailUrl],
@@ -98,42 +110,47 @@ function RunSession({
 
   const getTracingList = useCallback(
     async (lifetime: RequestLifetime) => {
+      const request = ++lifetime.tracingRequest
       try {
         const { data: nodeList } = await fetchTracingList({
           url: tracingListUrl,
         })
-        if (lifetime.active) setList(nodeList)
+        if (lifetime.active && request === lifetime.tracingRequest) setList(nodeList)
       } catch (err) {
-        if (lifetime.active) toast.error(`${err}`)
+        if (lifetime.active && request === lifetime.tracingRequest) toast.error(`${err}`)
+      } finally {
+        if (lifetime.active && request === lifetime.tracingRequest) {
+          lifetime.tracingSettled = true
+          if (lifetime.detailSettled) setLoading(false)
+        }
       }
     },
     [tracingListUrl],
   )
 
-  const getData = useCallback(
-    async (lifetime: RequestLifetime) => {
-      setLoading(true)
-      await getResult(lifetime)
-      if (!lifetime.active) return
-      await getTracingList(lifetime)
-      if (lifetime.active) setLoading(false)
-    },
-    [getResult, getTracingList],
-  )
-
-  const switchTab = async (tab: RunTab) => {
+  const switchTab = (tab: RunTab) => {
     onTabChange(tab)
     const lifetime = requestLifetimeRef.current
-    if (tab === 'RESULT' && runDetailUrl) await getResult(lifetime)
-    if (lifetime.active && tracingListUrl) await getTracingList(lifetime)
+    if (!lifetime?.active) return
+    if (tab === 'RESULT' && runDetailUrl) void getResult(lifetime)
+    if (tracingListUrl) void getTracingList(lifetime)
   }
 
-  const loadRecord = useEffectEvent(getData)
+  const loadRecord = useEffectEvent((lifetime: RequestLifetime) => {
+    void getResult(lifetime)
+    void getTracingList(lifetime)
+  })
 
   useEffect(() => {
-    const lifetime = { active: true }
+    const lifetime: RequestLifetime = {
+      active: true,
+      detailRequest: 0,
+      tracingRequest: 0,
+      detailSettled: false,
+      tracingSettled: false,
+    }
     requestLifetimeRef.current = lifetime
-    if (runDetailUrl && tracingListUrl) void loadRecord(lifetime)
+    if (runDetailUrl && tracingListUrl) loadRecord(lifetime)
     return () => {
       lifetime.active = false
     }

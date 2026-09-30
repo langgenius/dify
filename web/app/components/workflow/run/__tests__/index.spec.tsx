@@ -363,4 +363,81 @@ describe('RunPanel', () => {
     await waitFor(() => expect(nextCallback).toHaveBeenCalledTimes(1))
     expect(firstCallback).toHaveBeenCalledTimes(1)
   })
+  it('keeps the latest refresh when requests for the same record resolve out of order', async () => {
+    const user = userEvent.setup()
+    renderWorkflowComponent(
+      <RunPanel runDetailUrl="/runs/current" tracingListUrl="/runs/current/tracing" />,
+    )
+    await screen.findByTestId('monaco-editor')
+    let resolveEarlierRefresh: (detail: WorkflowRunDetailResponse) => void = () => {}
+    mockFetchRunDetail
+      .mockReturnValueOnce(
+        new Promise<WorkflowRunDetailResponse>((resolve) => {
+          resolveEarlierRefresh = resolve
+        }),
+      )
+      .mockResolvedValue(createRunDetail({ outputs: 'Latest result' }))
+    await user.click(screen.getByRole('tab', { name: 'runLog.result' }))
+    await user.click(screen.getByRole('tab', { name: 'runLog.result' }))
+    await waitFor(() =>
+      expect((screen.getByTestId('monaco-editor') as HTMLTextAreaElement).value).toContain(
+        'Latest result',
+      ),
+    )
+    await act(async () => {
+      resolveEarlierRefresh(createRunDetail({ outputs: 'Outdated result' }))
+    })
+    expect((screen.getByTestId('monaco-editor') as HTMLTextAreaElement).value).toContain(
+      'Latest result',
+    )
+  })
+  it('keeps the latest tracing refresh and suppresses an older failed detail refresh', async () => {
+    const user = userEvent.setup()
+    renderWorkflowComponent(
+      <RunPanel runDetailUrl="/runs/current" tracingListUrl="/runs/current/tracing" />,
+    )
+    await screen.findByTestId('monaco-editor')
+    let rejectEarlierDetail: (error: Error) => void = () => {}
+    let resolveEarlierTrace: (value: NodeTracingListResponse) => void = () => {}
+    mockFetchRunDetail.mockReturnValueOnce(
+      new Promise<WorkflowRunDetailResponse>((_, reject) => {
+        rejectEarlierDetail = reject
+      }),
+    )
+    mockFetchTracingList
+      .mockReturnValueOnce(
+        new Promise<NodeTracingListResponse>((resolve) => {
+          resolveEarlierTrace = resolve
+        }),
+      )
+      .mockResolvedValue({ data: [createTracingNode({ title: 'Latest trace' })] })
+    await user.click(screen.getByRole('tab', { name: 'runLog.result' }))
+    await user.click(screen.getByRole('tab', { name: 'runLog.result' }))
+    await waitFor(() => expect(mockFetchRunDetail).toHaveBeenCalledTimes(3))
+    await act(async () => {
+      rejectEarlierDetail(new Error('Outdated failure'))
+      resolveEarlierTrace({ data: [createTracingNode({ title: 'Outdated trace' })] })
+    })
+    mockFetchTracingList.mockReturnValue(new Promise(() => {}))
+    await user.click(screen.getByRole('tab', { name: 'runLog.tracing' }))
+    expect(screen.getByText('Latest trace')).toBeInTheDocument()
+    expect(screen.queryByText('Outdated trace')).not.toBeInTheDocument()
+    expect(mockToastError).not.toHaveBeenCalled()
+  })
+
+  it('finishes loading from a newer refresh without waiting for the initial request', async () => {
+    const user = userEvent.setup()
+    mockFetchRunDetail
+      .mockReturnValueOnce(new Promise(() => {}))
+      .mockResolvedValue(createRunDetail({ outputs: 'Refreshed result' }))
+    renderWorkflowComponent(
+      <RunPanel runDetailUrl="/runs/current" tracingListUrl="/runs/current/tracing" />,
+    )
+    expect(screen.getByRole('progressbar')).toBeInTheDocument()
+    await user.click(screen.getByRole('tab', { name: 'runLog.result' }))
+    expect(((await screen.findByTestId('monaco-editor')) as HTMLTextAreaElement).value).toContain(
+      'Refreshed result',
+    )
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
+  })
 })
