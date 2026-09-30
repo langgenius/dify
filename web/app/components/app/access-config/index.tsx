@@ -1,7 +1,8 @@
 'use client'
 
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { AccessPolicyMemberBindingRemoval } from '@/app/components/access-rules-editor'
-import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useSuspenseQueries } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -31,7 +32,7 @@ type AppAccessConfigPageProps = {
 
 type AppAccessConfigContentProps = {
   appId: string
-  maintainerId?: string | null
+  maintainerId: AppDetailWithSite['maintainer']
 }
 
 const AppAccessConfigContent = ({ appId, maintainerId }: AppAccessConfigContentProps) => {
@@ -233,44 +234,40 @@ const AppAccessConfigContent = ({ appId, maintainerId }: AppAccessConfigContentP
 }
 
 const AppAccessConfigPage = ({ appId }: AppAccessConfigPageProps) => {
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const { data: currentUserId } = useSuspenseQuery({
-    ...userProfileQueryOptions(),
-    select: (data) => data.profile.id,
-  })
+  const [{ data: systemFeatures }, { data: userProfile }, { data: appDetail }] = useSuspenseQueries(
+    {
+      queries: [
+        systemFeaturesQueryOptions(),
+        userProfileQueryOptions(),
+        consoleQuery.apps.byAppId.get.queryOptions({
+          input: { params: { app_id: appId } },
+        }),
+      ],
+    },
+  )
+  const currentUserId = userProfile.profile.id
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isRbacEnabled = systemFeatures.rbac_enabled
-  const { data: appDetail } = useQuery(
-    consoleQuery.apps.byAppId.get.queryOptions({
-      input: { params: { app_id: appId } },
-    }),
-  )
   const appACLCapabilities = useMemo(
     () =>
-      getAppACLCapabilities(appDetail?.permission_keys, {
+      getAppACLCapabilities(appDetail.permission_keys, {
         currentUserId,
-        resourceMaintainer: appDetail?.maintainer,
+        resourceMaintainer: appDetail.maintainer,
         workspacePermissionKeys,
         isRbacEnabled,
       }),
     [
-      appDetail?.maintainer,
-      appDetail?.permission_keys,
+      appDetail.maintainer,
+      appDetail.permission_keys,
       currentUserId,
       isRbacEnabled,
       workspacePermissionKeys,
     ],
   )
 
-  if (
-    !appDetail ||
-    appDetail.id !== appId ||
-    appDetail.mode === AppModeEnum.AGENT ||
-    !appACLCapabilities.canAccessConfig
-  )
-    return null
+  if (appDetail.mode === AppModeEnum.AGENT || !appACLCapabilities.canAccessConfig) return null
 
-  return <AppAccessConfigContent key={appId} appId={appId} maintainerId={appDetail.maintainer} />
+  return <AppAccessConfigContent appId={appId} maintainerId={appDetail.maintainer} />
 }
 
 export default AppAccessConfigPage

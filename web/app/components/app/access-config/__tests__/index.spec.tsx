@@ -1,5 +1,6 @@
 import type { AccessRulesEditorProps } from '@/app/components/access-rules-editor'
-import { act, screen } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
+import ErrorBoundary from '@/app/components/base/error-boundary'
 import {
   useAppAccessRules,
   useAppResourceWhitelist,
@@ -400,29 +401,48 @@ describe('AppAccessConfigPage', () => {
     expect(screen.getByTestId('access-rules-editor')).toBeInTheDocument()
   })
 
-  it('does not reuse another app permissions or member-page state after navigation', async () => {
+  it('keeps the current member page on metadata refresh and stops rendering after permission revocation', async () => {
     appDetail = createAppDetailFixture({ permission_keys: [AppACLPermission.AccessConfig] })
-    const { queryClient, rerender } = render(<AppAccessConfigPage appId="app-1" />)
+    const { queryClient } = render(<AppAccessConfigPage appId="app-1" />)
+    const queryKey = consoleQuery.apps.byAppId.get.queryKey({
+      input: { params: { app_id: 'app-1' } },
+    })
     act(() => mockAccessRulesEditor.props?.onPageChange?.(3))
     expect(useAppUserAccessSettings).toHaveBeenLastCalledWith('app-1', expect.any(String), 3, 10)
-    queryClient.setQueryData(
-      consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-2' } } }),
-      createAppDetailFixture({ id: 'app-2', permission_keys: [] }),
-    )
-    rerender(<AppAccessConfigPage appId="app-2" />)
-    expect(screen.queryByTestId('access-rules-editor')).not.toBeInTheDocument()
     act(() => {
-      queryClient.setQueryData(
-        consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-2' } } }),
-        createAppDetailFixture({
-          id: 'app-2',
-          maintainer: 'maintainer-2',
-          permission_keys: [AppACLPermission.AccessConfig],
-        }),
-      )
+      queryClient.setQueryData(queryKey, { ...appDetail, maintainer: 'new-maintainer' })
     })
-    await screen.findByTestId('access-rules-editor')
-    expect(useAppUserAccessSettings).toHaveBeenLastCalledWith('app-2', expect.any(String), 1, 10)
-    expect(mockAccessRulesEditor.props?.maintainerId).toBe('maintainer-2')
+    await waitFor(() => expect(mockAccessRulesEditor.props?.maintainerId).toBe('new-maintainer'))
+    expect(useAppUserAccessSettings).toHaveBeenLastCalledWith('app-1', expect.any(String), 3, 10)
+    act(() => {
+      queryClient.setQueryData(queryKey, { ...appDetail, permission_keys: [] })
+    })
+    await waitFor(() => expect(screen.queryByTestId('access-rules-editor')).not.toBeInTheDocument())
+  })
+
+  it('surfaces an initial detail failure without mounting member queries', async () => {
+    const queryClient = createConsoleQueryClient()
+    const queryKey = consoleQuery.apps.byAppId.get.queryKey({
+      input: { params: { app_id: 'unavailable-app' } },
+    })
+    queryClient.setQueryDefaults(queryKey, { retryOnMount: false })
+    await queryClient
+      .query({ queryKey, queryFn: () => Promise.reject(new Error('Detail unavailable')) })
+      .catch(() => {})
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      renderWithConsoleQuery(
+        <ErrorBoundary>
+          <AppAccessConfigPage appId="unavailable-app" />
+        </ErrorBoundary>,
+        { queryClient },
+      )
+      expect(
+        await screen.findByRole('button', { name: 'common.errorBoundary.tryAgain' }),
+      ).toBeInTheDocument()
+      expect(useAppAccessRules).not.toHaveBeenCalled()
+    } finally {
+      consoleError.mockRestore()
+    }
   })
 })
