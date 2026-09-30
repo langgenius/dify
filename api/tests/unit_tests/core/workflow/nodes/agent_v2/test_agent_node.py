@@ -23,6 +23,7 @@ from dify_agent.protocol import (
     RunSucceededEventData,
 )
 from pydantic_ai.messages import PartDeltaEvent, TextPartDelta
+from sqlalchemy.orm import Session
 
 from clients.agent_backend import (
     AgentBackendInternalEventType,
@@ -63,7 +64,15 @@ from graphon.file import File, FileTransferMethod, FileType
 from graphon.node_events import StreamCompletedEvent
 from graphon.runtime import InitParams, RuntimeState
 from graphon.variables.segments import ArrayFileSegment, FileSegment, StringSegment
-from models.agent import Agent, AgentConfigSnapshot, AgentWorkspaceOwnerType, WorkflowAgentNodeBinding
+from models.agent import (
+    Agent,
+    AgentConfigSnapshot,
+    AgentScope,
+    AgentSource,
+    AgentWorkspaceOwnerType,
+    WorkflowAgentBindingType,
+    WorkflowAgentNodeBinding,
+)
 from models.agent_config_entities import (
     AgentSoulConfig,
     AgentSoulModelConfig,
@@ -601,27 +610,28 @@ def test_agent_node_resume_resolves_the_generation_from_the_persisted_execution(
     assert binding_resolver.calls[0]["conversation_id"] == "conversation-1"
 
 
-def test_agent_node_workflow_tool_does_not_resolve_outer_conversation_participant() -> None:
+def test_agent_node_workflow_tool_does_not_resolve_outer_conversation_participant(sqlite_session: Session) -> None:
     binding_resolver = FakeBindingResolver()
+    binding_resolver.agent.scope = AgentScope.WORKFLOW_ONLY
+    binding_resolver.agent.source = AgentSource.WORKFLOW
+    binding_resolver.binding.binding_type = WorkflowAgentBindingType.INLINE_AGENT
+    binding_resolver.binding.workflow_version = "draft"
+    sqlite_session.add_all([binding_resolver.binding, binding_resolver.agent, binding_resolver.snapshot])
+    sqlite_session.commit()
     store = FakeSessionStore()
     node = _node(
         binding_resolver=binding_resolver,
         session_store=store,
         workflow_tool_invocation_id="tool-call-1",
     )
-    session = MagicMock()
-    session.scalar.side_effect = [binding_resolver.binding, binding_resolver.agent, binding_resolver.snapshot]
-
     with (
         patch.object(binding_resolver, "resolve", wraps=WorkflowAgentBindingResolver().resolve),
-        patch("core.workflow.nodes.agent_v2.binding_resolver.session_factory.create_session") as create_session,
         patch.object(
             WorkflowAgentWorkspaceStore,
             "load_active_participant",
             side_effect=AssertionError("Workflow Tool must not select an outer Chatflow participant"),
         ) as load_participant,
     ):
-        create_session.return_value.__enter__.return_value = session
         events = list(node._run())
 
     assert cast(StreamCompletedEvent, events[0]).node_run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED
