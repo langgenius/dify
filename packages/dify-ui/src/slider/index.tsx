@@ -5,10 +5,10 @@ import { cn } from '../cn'
 import { formLabelClassName } from '../form-control-shared'
 import { resolveClassName } from '../internals/resolve-class-name'
 
-type SliderValueModel = NonNullable<BaseSlider.Root.Props['value']>
-type SliderProps<Value extends SliderValueModel = SliderValueModel> = BaseSlider.Root.Props<Value>
+type SliderRootValue = NonNullable<BaseSlider.Root.Props['value']>
+type SliderProps<Value extends SliderRootValue = SliderRootValue> = BaseSlider.Root.Props<Value>
 
-function Slider<Value extends SliderValueModel = SliderValueModel>({
+function Slider<Value extends SliderRootValue = SliderRootValue>({
   className,
   ...props
 }: SliderProps<Value>) {
