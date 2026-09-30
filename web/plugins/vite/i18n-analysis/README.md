@@ -170,8 +170,8 @@ Call-signature resolution is limited to overloaded or generic calls whose
 parameters can expose a `SelectorParam` type. Ordinary object/function parameter
 shapes do not require argument inference; deferred types (including type parameters,
 conditional, indexed-access, union/intersection and mapped types) retain resolution.
-Calls without arguments skip translation-function inference while explicit namespace
-loading and traversal of their children remain unchanged.
+Calls without arguments skip translation API recognition and translation-function
+inference. Their children remain traversed, preserving nested namespace loads and key usage.
 
 Each environment's semantic analysis runs in a separate Node worker. Environments
 run sequentially, and analysis waits for the worker to exit before starting the next
