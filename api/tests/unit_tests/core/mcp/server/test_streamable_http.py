@@ -7,6 +7,7 @@ import pytest
 from core.app.features.rate_limiting.rate_limit import RateLimitGenerator
 from core.mcp import types
 from core.mcp.server.streamable_http import (
+    AppStreamError,
     build_parameter_schema,
     convert_input_form_to_parameters,
     extract_answer_from_response,
@@ -434,6 +435,149 @@ class TestIndividualHandlers:
             handle_call_tool(Mock(), app, mock_request, user_input_form, None)
 
 
+def _sse(event: dict[str, object]) -> str:
+    """Render one JSON payload as the SSE line the app generator emits."""
+    return f"data: {json.dumps(event)}"
+
+
+def _stream_response(*lines: str) -> RateLimitGenerator:
+    """Wrap raw SSE lines in the rate-limited stream the MCP layer consumes."""
+    return RateLimitGenerator(
+        rate_limit=Mock(),
+        generator=(line for line in lines),
+        request_id="request-id",
+    )
+
+
+class TestAgentAppCallTool:
+    """Agent Apps (AppMode.AGENT) registered as MCP servers must work through tools/call.
+
+    Agent Apps only run in streaming mode, and their answer rides the chat `message`
+    channel — the same chunks the pipeline persists as ``Message.answer``. Their
+    `agent_thought` rows hold reasoning and their `agent_message` events hold
+    in-progress stream text that may differ from the terminal answer.
+    """
+
+    @staticmethod
+    def _agent_app() -> App:
+        return App(mode=AppMode.AGENT)
+
+    @staticmethod
+    def _call_request() -> Mock:
+        mock_request = Mock()
+        mock_call_request = Mock(spec=types.CallToolRequest)
+        mock_call_request.params = Mock()
+        mock_call_request.params.arguments = {"query": "test question"}
+        mock_request.root = mock_call_request
+        return mock_request
+
+    @patch("core.mcp.server.streamable_http.AppGenerateService")
+    def test_agent_app_generates_in_streaming_mode(self, mock_app_generate):
+        """Agent Apps reject blocking generation, so tools/call must request streaming."""
+        mock_app_generate.generate.return_value = _stream_response(_sse({"event": "message", "answer": "answer"}))
+
+        handle_call_tool(Mock(), self._agent_app(), self._call_request(), [], EndUser())
+
+        assert mock_app_generate.generate.call_args.kwargs["streaming"] is True
+
+    @patch("core.mcp.server.streamable_http.AppGenerateService")
+    def test_agent_app_answer_accumulates_message_events(self, mock_app_generate):
+        """The answer comes from the `message` channel — never silently ""."""
+        mock_app_generate.generate.return_value = _stream_response(
+            _sse({"event": "message", "answer": "Hello, "}),
+            _sse({"event": "message", "answer": "world"}),
+            _sse({"event": "message_end", "metadata": {}}),
+        )
+
+        result = handle_call_tool(Mock(), self._agent_app(), self._call_request(), [], EndUser())
+
+        assert isinstance(result, types.CallToolResult)
+        assert result.content[0].text == "Hello, world"
+
+    @patch("core.mcp.server.streamable_http.AppGenerateService")
+    def test_agent_app_answer_excludes_reasoning_and_stream_text(self, mock_app_generate):
+        """Reasoning thoughts and in-progress `agent_message` text must not leak in.
+
+        AgentAppRunner streams `agent_message` deltas that can differ from the
+        terminal answer, and records reasoning as `agent_thought` rows; only the
+        terminal `message` chunk is the answer.
+        """
+        mock_app_generate.generate.return_value = _stream_response(
+            _sse({"event": "agent_thought", "thought": "let me think about this"}),
+            _sse({"event": "agent_message", "answer": "hello "}),
+            _sse({"event": "agent_message", "answer": "agent"}),
+            _sse({"event": "message", "answer": "hello agent"}),
+            _sse({"event": "message_end", "metadata": {}}),
+            "not data format",
+        )
+
+        result = handle_call_tool(Mock(), self._agent_app(), self._call_request(), [], EndUser())
+
+        assert result.content[0].text == "hello agent"
+
+    @patch("core.mcp.server.streamable_http.AppGenerateService")
+    def test_legacy_agent_chat_answer_is_not_duplicated(self, mock_app_generate):
+        """Agent chat streams the same text as both `agent_thought` and `agent_message`."""
+        mock_app_generate.generate.return_value = _stream_response(
+            _sse({"event": "agent_thought", "thought": "Hello"}),
+            _sse({"event": "agent_message", "answer": "Hello"}),
+        )
+
+        result = handle_call_tool(Mock(), App(mode=AppMode.AGENT_CHAT), self._call_request(), [], EndUser())
+
+        assert result.content[0].text == "Hello"
+
+    @patch("core.mcp.server.streamable_http.AppGenerateService")
+    def test_agent_app_message_replace_overrides_streamed_answer(self, mock_app_generate):
+        """Output moderation replaces the answer the pipeline persists."""
+        mock_app_generate.generate.return_value = _stream_response(
+            _sse({"event": "message", "answer": "unmoderated text"}),
+            _sse({"event": "message_replace", "answer": "[content blocked]"}),
+            _sse({"event": "message_end", "metadata": {}}),
+        )
+
+        result = handle_call_tool(Mock(), self._agent_app(), self._call_request(), [], EndUser())
+
+        assert result.content[0].text == "[content blocked]"
+
+    @patch("core.mcp.server.streamable_http.AppGenerateService")
+    def test_agent_app_failed_run_returns_error_result(self, mock_app_generate):
+        """A failed run ends the stream normally, so the error event must surface."""
+        mock_app_generate.generate.return_value = _stream_response(
+            _sse({"event": "message", "answer": "partial"}),
+            _sse({"event": "error", "code": "completion_request_error", "message": "agent backend is down"}),
+        )
+
+        result = handle_call_tool(Mock(), self._agent_app(), self._call_request(), [], EndUser())
+
+        assert result.isError is True
+        assert result.content[0].text == "agent backend is down"
+        assert result.structuredContent is None
+
+    @patch("core.mcp.server.streamable_http.AppGenerateService")
+    def test_agent_app_mapping_response_extracts_answer(self, mock_app_generate):
+        """Defensive: a blocking-style Mapping response must not raise Invalid app mode.
+
+        Agent Apps always generate through a stream, so this path is not reachable
+        today; the arm exists so the answer modes stay consistent across the module.
+        """
+        mock_app_generate.generate.return_value = {"answer": "test answer"}
+
+        result = handle_call_tool(Mock(), self._agent_app(), self._call_request(), [], EndUser())
+
+        assert result.content[0].text == "test answer"
+
+    @patch("core.mcp.server.streamable_http.AppGenerateService")
+    def test_agent_app_structured_output_modern_client(self, mock_app_generate):
+        """>= 2025-06-18 clients get structuredContent for Agent Apps too."""
+        mock_app_generate.generate.return_value = _stream_response(_sse({"event": "message", "answer": "final answer"}))
+
+        result = handle_call_tool(Mock(), self._agent_app(), self._call_request(), [], EndUser(), "2025-06-18")
+
+        assert result.structuredContent == {"answer": "final answer"}
+        assert result.content[0].text == "final answer"
+
+
 class TestUtilityFunctions:
     """Test utility functions"""
 
@@ -552,18 +696,61 @@ class TestUtilityFunctions:
         """Test extracting answer from streaming response"""
         app = App()
 
-        # Mock RateLimitGenerator
-        mock_generator = Mock(spec=RateLimitGenerator)
-        mock_generator.generator = [
+        response = _stream_response(
             'data: {"event": "agent_thought", "thought": "thinking..."}',
             'data: {"event": "agent_thought", "thought": "more thinking"}',
             'data: {"event": "other", "content": "ignore this"}',
             "not data format",
-        ]
+        )
 
-        result = extract_answer_from_response(app, mock_generator)
+        assert extract_answer_from_response(app, response) == "thinking...more thinking"
 
-        assert result == "thinking...more thinking"
+    def test_extract_answer_from_streaming_response_releases_rate_limit(self):
+        """Exhausting the stream must release the app-level rate-limit permit."""
+        rate_limit = Mock()
+        response = RateLimitGenerator(
+            rate_limit=rate_limit,
+            generator=(line for line in [_sse({"event": "message", "answer": "hi"})]),
+            request_id="request-id",
+        )
+
+        assert extract_answer_from_response(App(mode=AppMode.AGENT), response) == "hi"
+
+        rate_limit.exit.assert_called_once_with("request-id")
+
+    @pytest.mark.parametrize("mode", [AppMode.AGENT, AppMode.AGENT_CHAT])
+    def test_extract_answer_from_streaming_response_error_event(self, mode):
+        """An error event ends the stream without raising, so extraction raises."""
+        rate_limit = Mock()
+        response = RateLimitGenerator(
+            rate_limit=rate_limit,
+            generator=(
+                line
+                for line in [
+                    _sse({"event": "message", "answer": "partial"}),
+                    _sse({"event": "error", "code": "completion_request_error", "message": "backend is down"}),
+                ]
+            ),
+            request_id="request-id",
+        )
+
+        with pytest.raises(AppStreamError, match="backend is down"):
+            extract_answer_from_response(App(mode=mode), response)
+
+        rate_limit.exit.assert_called_once_with("request-id")
+
+    def test_extract_answer_from_streaming_response_message_events(self):
+        """Agent App answers ride the `message` channel, not `agent_message`."""
+        app = App(mode=AppMode.AGENT)
+
+        response = _stream_response(
+            _sse({"event": "agent_message", "answer": "in-progress"}),
+            _sse({"event": "message", "answer": "Hello, "}),
+            _sse({"event": "message", "answer": "world"}),
+            _sse({"event": "message_end", "metadata": {}}),
+        )
+
+        assert extract_answer_from_response(app, response) == "Hello, world"
 
     def test_extract_structured_output_workflow(self):
         """Workflow mode exposes the raw outputs mapping as structured content."""
@@ -615,7 +802,7 @@ class TestUtilityFunctions:
 
         assert extract_structured_output(app, {"data": {"outputs": ["not", "a", "mapping"]}}, "ignored") is None
 
-    @pytest.mark.parametrize("mode", [AppMode.ADVANCED_CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION])
+    @pytest.mark.parametrize("mode", [AppMode.ADVANCED_CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION, AppMode.AGENT])
     def test_extract_structured_output_other_answer_modes(self, mode):
         """Every chat-style mode wraps the answer string under an 'answer' key."""
         app = App(
@@ -631,6 +818,12 @@ class TestUtilityFunctions:
         )
 
         assert extract_structured_output(app, {"answer": "hi"}, "hi") is None
+
+    def test_process_mapping_response_agent_mode(self):
+        """Agent App mapping responses read the answer like other chat modes."""
+        app = App(mode=AppMode.AGENT)
+
+        assert process_mapping_response(app, {"answer": "test answer"}) == "test answer"
 
     def test_process_mapping_response_invalid_mode(self):
         """Test processing mapping response with invalid app mode"""
