@@ -491,7 +491,15 @@ type IndexingProbe = tuple[DatasetSegmentApplicationService, SQLAlchemySegmentRe
 def indexing_probe(
     sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
 ) -> Iterator[IndexingProbe]:
+    from core.rag.datasource.keyword.jieba import jieba as jieba_module
     from services.knowledge.segments import indexing as indexing_module
+
+    class KeywordExtractor:
+        def extract_keywords(self, text: str, _keyword_number: int = 10) -> set[str]:
+            return set(text.split())
+
+    # Segment tests exercise index lifecycle, not Jieba's global TF-IDF initialization.
+    monkeypatch.setattr(jieba_module, "JiebaKeywordTableHandler", KeywordExtractor)
 
     with sqlite_session_factory.begin() as session:
         dataset = _dataset("dataset-1", "workspace-1")
