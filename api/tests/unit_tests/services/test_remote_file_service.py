@@ -209,7 +209,7 @@ def test_upload_reuses_get_fallback_content_and_returns_signed_result(
         call("HEAD", url=REMOTE_URL),
         call("GET", url=REMOTE_URL, timeout=3, follow_redirects=True),
     ]
-    file_service.is_file_size_within_limit.assert_called_once_with(extension=".pdf", file_size=14)
+    file_service.is_file_size_within_limit.assert_called_once_with(extension="pdf", file_size=14)
     file_service.upload_file.assert_called_once_with(
         filename="report.pdf",
         content=b"remote content",
@@ -353,5 +353,23 @@ def test_upload_rejects_file_that_exceeds_size_limit(
         with pytest.raises(FileTooLargeError):
             remote_file_service.upload_from_url(url=REMOTE_URL, user=_account())
 
-    file_service.is_file_size_within_limit.assert_called_once_with(extension=".pdf", file_size=1024)
+    file_service.is_file_size_within_limit.assert_called_once_with(extension="pdf", file_size=1024)
     file_service.upload_file.assert_not_called()
+
+
+def test_upload_checks_size_limit_with_bare_lowercase_extension(
+    remote_file_service: RemoteFileService,
+    file_service: MagicMock,
+) -> None:
+    response = _response("GET", httpx.codes.OK, content=b"remote content")
+    file_info = FileInfo(filename="clip.MP4", extension=".MP4", mimetype="video/mp4", size=40 * 1024 * 1024)
+    file_service.is_file_size_within_limit.return_value = False
+
+    with (
+        patch("services.remote_file_service.remote_fetcher.make_request", return_value=response),
+        patch("services.remote_file_service.guess_file_info_from_response", return_value=file_info),
+    ):
+        with pytest.raises(FileTooLargeError):
+            remote_file_service.upload_from_url(url=REMOTE_URL, user=_account())
+
+    file_service.is_file_size_within_limit.assert_called_once_with(extension="mp4", file_size=40 * 1024 * 1024)
