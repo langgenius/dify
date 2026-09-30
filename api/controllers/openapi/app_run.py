@@ -32,6 +32,7 @@ from controllers.openapi._models import (
     AdvancedChatRunPayload,
     ChatRunPayload,
     CompletionRunPayload,
+    DraftWorkflowRunPayload,
     Hint,
     RunPayloadBase,
     TaskStopResponse,
@@ -45,6 +46,8 @@ from controllers.openapi.auth.requirements import (
     CheckScope,
     CheckSubject,
     CheckWorkspaceMember,
+    Requirement,
+    account_app_guards,
 )
 from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject
 from controllers.openapi.human_input_form import with_form_hints
@@ -140,16 +143,19 @@ _RUN_GUARDS: Final = (
     CheckRBACPermission(RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp())),
     CheckAppAccess(),
 )
+_DRAFT_RUN_GUARDS: Final = account_app_guards(RBACPermission.APP_TEST_AND_RUN, scope=Scope.APPS_RUN, editor=True)
+# Draft runs raise debugger forms, which the form submit op does not accept.
+_DRAFT_FORM_NOTE: Final = "A human-input pause in a draft run cannot be resumed over openapi."
 _STREAM_RESULT: Final = (200, EventStreamResponse, "Run result (SSE stream)")
 
 
-def _generate(app: App, caller: Any, args: dict[str, Any], session: Session):
+def _generate(app: App, caller: Any, args: dict[str, Any], session: Session, invoke_from: InvokeFrom):
     return AppGenerateService.generate(
         session=session,
         app_model=app,
         user=caller,
         args=args,
-        invoke_from=InvokeFrom.OPENAPI,
+        invoke_from=invoke_from,
         streaming=True,
     )
 
@@ -164,12 +170,12 @@ def _generate_args(ctx: Context, payload: RunPayloadBase, *, exclude: Collection
     return args
 
 
-def _stream(ctx: Context, args: dict[str, Any]):
+def _stream(ctx: Context, args: dict[str, Any], invoke_from: InvokeFrom):
     with _translate_service_errors():
-        return _generate(ctx.app, ctx.caller, args, ctx.session)
+        return _generate(ctx.app, ctx.caller, args, ctx.session, invoke_from)
 
 
-def _require_mode(app: App, *modes: AppMode) -> None:
+def require_mode(app: App, *modes: AppMode) -> None:
     if app.mode not in modes:
         raise UnprocessableEntity("app_mode_mismatch")
 
@@ -231,6 +237,8 @@ class _RunRoute:
     modes: tuple[AppMode, ...]
     hints: tuple[HintLayer, ...] = ()
     examples: tuple[Example, ...] = ()
+    invoke_from: InvokeFrom = InvokeFrom.OPENAPI
+    requirements: tuple[Requirement, ...] = _RUN_GUARDS
 
 
 _RUN_ROUTES: Final = (
@@ -332,6 +340,35 @@ _RUN_ROUTES: Final = (
             ),
         ),
     ),
+    _RunRoute(
+        resource="WorkflowDraftRunApi",
+        segment="draft/workflow",
+        op="run.console_app.draft.workflow",
+        summary="Test-run the draft of a workflow app; streams workflow events. " + _DRAFT_FORM_NOTE,
+        payload=DraftWorkflowRunPayload,
+        modes=(AppMode.WORKFLOW,),
+        examples=(
+            Example(title="Test the draft with one input", input={"app_id": "<app_id>", "inputs": {"topic": "test"}}),
+        ),
+        invoke_from=InvokeFrom.DEBUGGER,
+        requirements=_DRAFT_RUN_GUARDS,
+    ),
+    _RunRoute(
+        resource="AdvancedChatDraftRunApi",
+        segment="draft/advanced-chat",
+        op="run.console_app.draft.advanced_chat",
+        summary="Test-run the draft of an advanced-chat app; streams message and workflow events. " + _DRAFT_FORM_NOTE,
+        payload=ChatRunPayload,
+        modes=(AppMode.ADVANCED_CHAT,),
+        hints=(_reply_layer,),
+        examples=(
+            Example(
+                title="Test the draft with one message", input={"app_id": "<app_id>", "query": "hello", "inputs": {}}
+            ),
+        ),
+        invoke_from=InvokeFrom.DEBUGGER,
+        requirements=_DRAFT_RUN_GUARDS,
+    ),
 )
 
 
@@ -340,14 +377,14 @@ def _run_api(route: _RunRoute) -> type[Resource]:
         op=route.op,
         kind=Kind.SSE,
         summary=route.summary,
-        requirements=_RUN_GUARDS,
+        requirements=route.requirements,
         body=route.payload,
         examples=route.examples,
         returns=_STREAM_RESULT,
     )
     def post(self: Resource, ctx: Context, app_id: str, *, body: RunPayloadBase):
-        _require_mode(ctx.app, *route.modes)
-        stream = _stream(ctx, _generate_args(ctx, body))
+        require_mode(ctx.app, *route.modes)
+        stream = _stream(ctx, _generate_args(ctx, body), route.invoke_from)
         for layer in route.hints:
             stream = layer(stream, route.op, ctx.app.id)
         return _respond(ctx, stream)
@@ -356,7 +393,14 @@ def _run_api(route: _RunRoute) -> type[Resource]:
     return openapi_ns.route(f"/apps/<string:app_id>/{route.segment}:run")(resource)
 
 
-WorkflowRunApi, ChatRunApi, AdvancedChatRunApi, CompletionRunApi = (_run_api(route) for route in _RUN_ROUTES)
+(
+    WorkflowRunApi,
+    ChatRunApi,
+    AdvancedChatRunApi,
+    CompletionRunApi,
+    WorkflowDraftRunApi,
+    AdvancedChatDraftRunApi,
+) = (_run_api(route) for route in _RUN_ROUTES)
 
 
 @openapi_ns.route("/apps/<string:app_id>/tasks/<string:task_id>:stop")

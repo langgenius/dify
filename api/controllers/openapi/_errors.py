@@ -68,6 +68,12 @@ class OpenApiErrorCode(StrEnum):
     RECIPIENT_SURFACE_MISMATCH = "recipient_surface_mismatch"
     CATALOG_STALE = "catalog_stale"
     TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE = "trigger_workflow_service_mode_unavailable"
+    RUN_NOT_FOUND = "run_not_found"
+    VERSION_NOT_FOUND = "version_not_found"
+    VERSION_NOT_RESTORABLE = "version_not_restorable"
+    DRAFT_NOT_FOUND = "draft_not_found"
+    SECRET_MASK_UNKNOWN_ID = "secret_mask_unknown_id"
+    SECRET_MASK_NOT_SECRET = "secret_mask_not_secret"
 
 
 class ErrorDetail(BaseModel):
@@ -270,3 +276,39 @@ class InvalidFilePart(OpenApiError):  # noqa: N818
     code = 422
     error_code = OpenApiErrorCode.INVALID_PARAM
     description = "A request part could not be used"
+
+
+class RunNotFound(OpenApiError):  # noqa: N818
+    code = 404
+    error_code = OpenApiErrorCode.RUN_NOT_FOUND
+    description = "No run with this id exists for this app."
+
+
+class VersionNotFound(OpenApiError):  # noqa: N818
+    code = 404
+    error_code = OpenApiErrorCode.VERSION_NOT_FOUND
+    description = "No version with this id exists for this app."
+
+
+class VersionNotRestorable(OpenApiError):  # noqa: N818
+    code = 400
+    error_code = OpenApiErrorCode.VERSION_NOT_RESTORABLE
+    description = "Only a published version can be restored."
+
+
+class DraftNotFound(OpenApiError):  # noqa: N818
+    code = 404
+    error_code = OpenApiErrorCode.DRAFT_NOT_FOUND
+    description = "This app has no draft."
+
+
+class SecretMaskUnknownId(OpenApiError):  # noqa: N818
+    code = 400
+    error_code = OpenApiErrorCode.SECRET_MASK_UNKNOWN_ID
+    description = "The value is the masked secret placeholder, but env_id is not an existing secret."
+
+
+class SecretMaskNotSecret(OpenApiError):  # noqa: N818
+    code = 400
+    error_code = OpenApiErrorCode.SECRET_MASK_NOT_SECRET
+    description = "The value is the masked secret placeholder, which only a secret value_type can keep."

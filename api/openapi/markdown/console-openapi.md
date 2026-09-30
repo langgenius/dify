@@ -16366,6 +16366,7 @@ This class is used to store the schema information of an api based tool.
 | ---- | ---- | ----------- | -------- |
 | app_id | string |  | No |
 | description | string |  | No |
+| draft_hash | string |  | No |
 | icon | string |  | No |
 | icon_background | string |  | No |
 | icon_type | string |  | No |
