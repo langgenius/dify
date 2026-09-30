@@ -1,6 +1,5 @@
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import { act, waitFor } from '@testing-library/react'
-import { useStore } from '@/app/components/app/store'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderHookWithConsoleQuery } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
@@ -35,7 +34,7 @@ const mockMarkAppDeletionFailed = vi.fn()
 const mockGetSocket = vi.fn()
 const mockOnAppMetaUpdate = vi.fn()
 
-let mockAppDetail: AppDetailWithSite | undefined
+let mockAppDetail: AppDetailWithSite
 
 const appDetailQueryKey = consoleQuery.apps.byAppId.get.queryKey({
   input: { params: { app_id: 'app-1' } },
@@ -47,14 +46,21 @@ const appListQueryKeys = [
 ]
 
 const renderActions = () => {
-  useStore.getState().setAppDetail(mockAppDetail)
   const queryClient = createConsoleQueryClient()
   if (mockAppDetail) queryClient.setQueryData(appDetailQueryKey, mockAppDetail)
   for (const queryKey of appListQueryKeys) queryClient.setQueryData(queryKey, { data: [] })
-  return renderHookWithConsoleQuery(() => useAppInfoActions(), {
-    queryClient,
-    systemFeatures: { rbac_enabled: true },
-  })
+  return renderHookWithConsoleQuery(
+    () =>
+      useAppInfoActions({
+        appId: mockAppDetail.id,
+        appName: mockAppDetail.name,
+        appMode: mockAppDetail.mode,
+      }),
+    {
+      queryClient,
+      systemFeatures: { rbac_enabled: true },
+    },
+  )
 }
 
 vi.mock('@/next/navigation', () => ({
@@ -144,7 +150,6 @@ describe('useAppInfoActions', () => {
   describe('Initial state', () => {
     it('should return initial state correctly', () => {
       const { result } = renderActions()
-      expect(result.current.appDetail).toEqual(mockAppDetail)
       expect(result.current.activeModal).toBeNull()
       expect(result.current.secretEnvList).toEqual([])
     })
@@ -209,7 +214,6 @@ describe('useAppInfoActions', () => {
       expect(queryClient.getQueryData(appDetailQueryKey)).toEqual(updatedApp)
       for (const queryKey of appListQueryKeys)
         expect(queryClient.getQueryState(queryKey)?.isInvalidated).toBe(true)
-      expect(useStore.getState().appDetail).toEqual(updatedApp)
       expect(toastMocks.call).toHaveBeenCalledWith({ type: 'success', message: 'app.editDone' })
     })
 
@@ -259,25 +263,6 @@ describe('useAppInfoActions', () => {
       })
 
       expect(toastMocks.call).toHaveBeenCalledWith({ type: 'error', message: 'app.editFailed' })
-    })
-
-    it('should not call updateAppInfo when appDetail is undefined', async () => {
-      mockAppDetail = undefined
-
-      const { result } = renderActions()
-
-      await act(async () => {
-        await result.current.onEdit({
-          name: 'Updated',
-          icon_type: 'emoji',
-          icon: '🤖',
-          icon_background: '#fff',
-          description: '',
-          use_icon_as_answer_icon: false,
-        })
-      })
-
-      expect(mockUpdateAppInfo).not.toHaveBeenCalled()
     })
   })
 
@@ -350,25 +335,6 @@ describe('useAppInfoActions', () => {
     })
   })
 
-  describe('onCopy - early return', () => {
-    it('should not call copyApp when appDetail is undefined', async () => {
-      mockAppDetail = undefined
-
-      const { result } = renderActions()
-
-      await act(async () => {
-        await result.current.onCopy({
-          name: 'Copy',
-          icon_type: 'emoji',
-          icon: '🤖',
-          icon_background: '#fff',
-        })
-      })
-
-      expect(mockCopyApp).not.toHaveBeenCalled()
-    })
-  })
-
   describe('onExport', () => {
     it('should export the app DSL', async () => {
       const { result } = renderActions()
@@ -390,20 +356,6 @@ describe('useAppInfoActions', () => {
     const { result } = renderActions()
     await act(async () => {
       await expect(result.current.onExport(true)).resolves.toBe(false)
-    })
-  })
-
-  describe('onExport - early return', () => {
-    it('should not export when appDetail is undefined', async () => {
-      mockAppDetail = undefined
-
-      const { result } = renderActions()
-
-      await act(async () => {
-        await result.current.onExport()
-      })
-
-      expect(mockExportAppDsl).not.toHaveBeenCalled()
     })
   })
 
@@ -440,20 +392,6 @@ describe('useAppInfoActions', () => {
       })
 
       expect(result.current.activeModal).toBe('exportWarning')
-    })
-  })
-
-  describe('exportCheck - early return', () => {
-    it('should not do anything when appDetail is undefined', async () => {
-      mockAppDetail = undefined
-
-      const { result } = renderActions()
-
-      await act(async () => {
-        await result.current.exportCheck()
-      })
-
-      expect(mockExportAppDsl).not.toHaveBeenCalled()
     })
   })
 
@@ -509,20 +447,6 @@ describe('useAppInfoActions', () => {
     })
   })
 
-  describe('handleConfirmExport - early return', () => {
-    it('should not do anything when appDetail is undefined', async () => {
-      mockAppDetail = undefined
-
-      const { result } = renderActions()
-
-      await act(async () => {
-        await result.current.handleConfirmExport()
-      })
-
-      expect(mockExportWorkflowAppDsl).not.toHaveBeenCalled()
-    })
-  })
-
   describe('onConfirmDelete', () => {
     it('should delete app and redirect on success', async () => {
       mockDeleteApp.mockResolvedValue({})
@@ -539,19 +463,6 @@ describe('useAppInfoActions', () => {
       expect(mockMarkAppDeletionFailed).not.toHaveBeenCalled()
       expect(toastMocks.call).toHaveBeenCalledWith({ type: 'success', message: 'app.appDeleted' })
       expect(mockReplace).toHaveBeenCalledWith('/apps')
-      expect(useStore.getState().appDetail).toBeUndefined()
-    })
-
-    it('should not delete when appDetail is undefined', async () => {
-      mockAppDetail = undefined
-
-      const { result } = renderActions()
-
-      await act(async () => {
-        await result.current.onConfirmDelete()
-      })
-
-      expect(mockDeleteApp).not.toHaveBeenCalled()
     })
 
     it('should notify error on delete failure', async () => {
@@ -594,7 +505,6 @@ describe('useAppInfoActions', () => {
 
       expect(mockFetchAppDetail).toHaveBeenCalledWith(expect.stringContaining('/apps/app-1'))
       expect(queryClient.getQueryData(appDetailQueryKey)).toEqual(updated)
-      expect(useStore.getState().appDetail).toEqual(updated)
 
       unmount()
       expect(unsubscribe).toHaveBeenCalled()

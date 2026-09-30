@@ -13,7 +13,7 @@ from models.account import Tenant
 from models.model import App, AppMode, AppModelConfig
 from models.workflow import Workflow, WorkflowType
 from repositories.app.console_repository import ConsoleAppRepository
-from repositories.workspace_query_repository import WorkspaceQueryRepository
+from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.app.access import AppAccessFilter
 from services.app.query_service import AppDiscoveryQuery, AppDiscoveryService
 from services.entities.app_entities import PermittedAppsPage
@@ -45,7 +45,7 @@ def access() -> DiscoveryAccess:
 def service(sqlite_session_factory: sessionmaker[Session], access: DiscoveryAccess) -> AppDiscoveryService:
     return AppDiscoveryService(
         apps=ConsoleAppRepository(session_factory=sqlite_session_factory),
-        workspaces=WorkspaceQueryRepository(sqlite_session_factory),
+        workspaces=WorkspaceRepository(sqlite_session_factory),
         access=access,
     )
 

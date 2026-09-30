@@ -28,7 +28,7 @@ from repositories.app.export_repository import AppExportRepository
 from services.app.export_service import AppExportService
 from services.app_dsl_service import AppDslService
 from services.entities.dsl_entities import Import, ImportStatus
-from services.errors.account import NoPermissionError
+from services.errors.base import NoPermissionError
 from tests.unit_tests.controllers.conftest import ControllerTestServices
 
 

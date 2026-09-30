@@ -31,7 +31,7 @@ from services.errors.app import AppDiscoveryNotFoundError
 class AppDescribeApi(Resource):
     @endpoint(
         context="app",
-        op="console_app.describe",
+        op="describe.console_app",
         kind=Kind.OBJECT,
         summary="App detail, parameters and runtime input_schema",
         examples=(
@@ -63,7 +63,7 @@ class AppDescribeApi(Resource):
 class AppListApi(Resource):
     @endpoint(
         context="workspace",
-        op="console_app.list",
+        op="get.console_app",
         kind=Kind.LIST,
         summary="List apps in a workspace",
         examples=(

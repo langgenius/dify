@@ -4,11 +4,11 @@ from dataclasses import dataclass
 
 from sqlalchemy.orm import Session, sessionmaker
 
-from repositories.account_repository import SQLAlchemyAccountRepository
+from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.app.api_key_repository import AppApiKeyRepository
 from repositories.app.console_repository import ConsoleAppRepository
 from repositories.app.export_repository import AppExportRepository
-from repositories.workspace_query_repository import WorkspaceQueryRepository
+from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.agent.roster_package_exporter import RosterAgentPackageExporter
 from services.agent.roster_package_importer import RosterAgentPackageImporter
 from services.api_token_service import ApiTokenCache
@@ -57,7 +57,7 @@ def build_app_services(
         ),
         discovery=AppDiscoveryService(
             apps=repository,
-            workspaces=WorkspaceQueryRepository(database_client),
+            workspaces=WorkspaceRepository(database_client),
             access=EnterpriseAppDiscoveryAccess(),
         ),
         console=ConsoleAppService(

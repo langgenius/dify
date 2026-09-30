@@ -14,6 +14,7 @@ from controllers.openapi.auth.requirements import assert_license_valid
 from controllers.openapi.auth.spec import EndpointSpec
 from controllers.openapi.auth.subjects import subject_from_auth
 from core.db.session_factory import session_factory
+from core.logging.context import get_trace_id
 from enums import DeploymentEdition
 from libs.oauth_bearer import InvalidBearerError, assert_bearer_feature_enabled, extract_bearer, get_authenticator
 
@@ -60,7 +61,12 @@ class AuthRouter:
         # The pipeline closes the admission session before handlers that use only
         # identity values or no context; ORM handlers keep sharing it.
         with session_factory.create_session() as session:
-            ctx = Context(subject, session, dict(request.view_args or {}))
+            ctx = Context(
+                subject,
+                session,
+                dict(request.view_args or {}),
+                trace_id=get_trace_id() or request.headers.get("X-Trace-Id"),
+            )
             try:
                 result = pipeline.run(
                     subject=subject,

@@ -13,7 +13,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import {
   Drawer,
   DrawerBackdrop,
-  DrawerCloseButton,
+  DrawerClose,
   DrawerContent,
   DrawerPopup,
   DrawerPortal,
@@ -21,6 +21,7 @@ import {
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
 import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
@@ -122,7 +123,13 @@ const WorkflowToolDrawerFrame = ({
                   <DrawerTitle className="min-w-0 truncate system-xl-semibold text-text-primary">
                     {title}
                   </DrawerTitle>
-                  <DrawerCloseButton className="size-6 rounded-md" aria-label={closeLabel} />
+                  <DrawerClose
+                    render={
+                      <IconButton aria-label={closeLabel} size="md">
+                        <span aria-hidden="true" className="i-ri-close-line size-4" />
+                      </IconButton>
+                    }
+                  />
                 </div>
               </div>
               <div className="grow overflow-hidden">{children}</div>

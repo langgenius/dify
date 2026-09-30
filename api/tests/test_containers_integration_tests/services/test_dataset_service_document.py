@@ -17,7 +17,7 @@ from models.dataset import Dataset, Document
 from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus
 from models.model import UploadFile
 from repositories.knowledge.dataset_read_repository import get_dataset_doc_form
-from services.errors.account import NoPermissionError
+from services.errors.base import NoPermissionError
 from services.knowledge.dataset_service import DocumentService
 from services.knowledge.resource_scope import DatasetRef
 

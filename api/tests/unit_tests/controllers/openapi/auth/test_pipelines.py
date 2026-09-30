@@ -13,6 +13,7 @@ from werkzeug.exceptions import Forbidden, Unauthorized
 
 from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
 from controllers.openapi._errors import CatalogStale
+from controllers.openapi.auth import loaders
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.pipelines import (
     _PIPELINES,
@@ -34,7 +35,6 @@ from controllers.openapi.auth.subjects import _SUBJECT_CLASSES, AccountSubject, 
 from enums import DeploymentEdition
 from libs.oauth_bearer import AuthContext, try_get_auth_ctx
 from machinery.context import AppRequestContext, RequestContext
-from services.account_service import AccountService, TenantService
 from services.app_service import AppService
 from services.enterprise.enterprise_service import WebAppAccessMode
 
@@ -199,8 +199,16 @@ def test_the_requirements_that_share_a_datum_fetch_it_once(
     with (
         app.test_request_context(f"/openapi/v1/apps/{APP_ID}", headers=_current_catalog(app)),
         patch.object(AppService, "get_app_by_id", wraps=AppService.get_app_by_id) as app_fetch,
-        patch.object(TenantService, "get_tenant_by_id", wraps=TenantService.get_tenant_by_id) as workspace_fetch,
-        patch.object(AccountService, "get_account_by_id", wraps=AccountService.get_account_by_id) as caller_fetch,
+        patch.object(
+            loaders.application_services().workspaces.identity,
+            "get_workspace",
+            wraps=loaders.application_services().workspaces.identity.get_workspace,
+        ) as workspace_fetch,
+        patch.object(
+            loaders.application_services().accounts.identity,
+            "get_account_by_id",
+            wraps=loaders.application_services().accounts.identity.get_account_by_id,
+        ) as caller_fetch,
     ):
         _run(
             AccountPipeline(),
@@ -287,6 +295,7 @@ def test_context_injection_and_admission_session_lifetime(
         elif context_kind == "workspace":
             assert isinstance(ctx, RequestContext)
             assert (ctx.account_id, ctx.active_workspace_id) == (ACCOUNT_ID, TENANT_ID)
+            assert (ctx.request_id, ctx.trace_id) == ("admission-request", "admission-trace")
         elif context_kind == "app":
             assert isinstance(ctx, AppRequestContext)
             assert (ctx.app_id, ctx.tenant_id) == (APP_ID, TENANT_ID)
@@ -304,6 +313,9 @@ def test_context_injection_and_admission_session_lifetime(
     event.listen(sqlite_engine, "checkin", checkin)
 
     def run() -> str:
+        ctx = make_ctx(sqlite_session, subject, app_id=APP_ID)
+        ctx.request_id = "admission-request"
+        ctx.trace_id = "admission-trace"
         return AccountPipeline().run(
             subject=subject,
             auth=subject.auth,
@@ -312,7 +324,7 @@ def test_context_injection_and_admission_session_lifetime(
                 requirements=(CheckAppApiEnabled(), CheckWorkspaceMember()),
                 catalog=CatalogMeta(op="test.context_injection", kind=Kind.OBJECT, summary="test"),
             ),
-            ctx=make_ctx(sqlite_session, subject, app_id=APP_ID),
+            ctx=ctx,
             session=sqlite_session,
             call=call,
         )

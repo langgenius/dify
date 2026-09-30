@@ -79,7 +79,7 @@ from services.entities.app_entities import (
     UpdateAppParams,
 )
 from services.entities.dsl_entities import ImportStatus
-from services.errors.account import NoPermissionError
+from services.errors.base import NoPermissionError
 from services.knowledge.entities.knowledge_entities import (
     DataSource,
     InfoList,

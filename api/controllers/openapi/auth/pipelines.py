@@ -22,10 +22,9 @@ from controllers.openapi.auth.requirements import (
 )
 from controllers.openapi.auth.spec import EndpointSpec
 from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject, Subject
-from core.logging.context import get_request_id, get_trace_id
 from enums import DeploymentEdition
 from libs.oauth_bearer import AuthContext, reset_auth_ctx, set_auth_ctx
-from machinery.context import AppRequestContext, RequestContext
+from machinery.context import AppRequestContext
 from models.account import Account
 from models.model import EndUser
 
@@ -65,13 +64,7 @@ class Pipeline:
                 case "orm":
                     handler_call = partial(call, ctx=ctx)
                 case "workspace":
-                    workspace_context = RequestContext(
-                        request_id=get_request_id(),
-                        trace_id=get_trace_id(),
-                        account_id=ctx.account.id,
-                        active_workspace_id=ctx.workspace.id,
-                    )
-                    handler_call = partial(call, ctx=workspace_context)
+                    handler_call = partial(call, ctx=ctx.request_context)
                 case "app":
                     app_context = AppRequestContext(tenant_id=ctx.app.tenant_id, app_id=ctx.app.id)
                     handler_call = partial(call, ctx=app_context)

@@ -80,6 +80,7 @@ jobs:
               - 'docker/volumes/sandbox/conf/**'
             cli:
               - 'cli/**'
+              - 'skills/**'
               - 'packages/contracts/**'
               - 'packages/tsconfig/**'
               - 'package.json'
@@ -191,6 +192,7 @@ jobs:
             ts-common-style:
               - 'web/**'
               - 'cli/**'
+              - 'skills/**'
               - 'e2e/**'
               - 'sdks/nodejs-client/**'
               - 'packages/**'

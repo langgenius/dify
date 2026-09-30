@@ -1544,7 +1544,7 @@ Create a new application
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [AppImportPayload](#appimportpayload)<br>**multipart/form-data**: { **"app_id"**: string, **"description"**: string, **"file"**: binary, **"icon"**: string, **"icon_background"**: string, **"icon_type"**: string, **"name"**: string }<br> | **application/json**: [AppImportPayload](#appimportpayload)<br>**multipart/form-data**: { **"app_id"**: string, **"description"**: string, **"file"**: binary, **"icon"**: string, **"icon_background"**: string, **"icon_type"**: string, **"name"**: string }<br> |
+| Yes | **application/json**: [AppImportPayload](#appimportpayload)<br>**multipart/form-data**: { **"app_id"**: string, **"description"**: string, **"file"**: binary, **"icon"**: string, **"icon_background"**: string, **"icon_type"**: string, **"name"**: string }<br> |
 
 #### Responses
 
@@ -10848,10 +10848,6 @@ Update a plugin endpoint
 | 200 | Available models retrieved successfully | **application/json**: [AvailableModelListResponse](#availablemodellistresponse)<br> |
 
 ### [GET] /workspaces/current/permission
-**Get workspace permission settings**
-
-Returns permission flags that control workspace features like member invitations and owner transfer.
-
 #### Responses
 
 | Code | Description | Schema |

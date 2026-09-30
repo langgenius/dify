@@ -33,7 +33,7 @@ from models.model import UploadFile
 from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepository
 from repositories.knowledge.segment_repository import SQLAlchemySegmentRepository
 from repositories.knowledge.upload_file_repository import SQLAlchemyKnowledgeUploadRepository
-from repositories.workspace_member_query_repository import WorkspaceMemberQueryRepository
+from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.knowledge.dataset_access import DatasetAccessService
 from services.knowledge.dataset_service import SegmentService
 from services.knowledge.entities.segments import ChildChunkUpdateArgs, SegmentUpdateArgs
@@ -273,7 +273,7 @@ def _application(
     return DatasetSegmentApplicationService(
         dataset_access=DatasetAccessService(
             datasets=datasets,
-            workspace_roles=WorkspaceMemberQueryRepository(session_factory=factory),
+            workspace_roles=WorkspaceRepository(session_factory=factory),
             legacy_permissions_enabled=False,
         ),
         scopes=datasets,

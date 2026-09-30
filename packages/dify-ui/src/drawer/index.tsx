@@ -1,9 +1,7 @@
 'use client'
 
-import type * as React from 'react'
 import { Drawer as BaseDrawer } from '@base-ui/react/drawer'
 import { cn } from '../cn'
-import { iconButtonVariants } from '../icon-button/variants'
 import { resolveClassName } from '../internals/resolve-class-name'
 
 const Drawer = BaseDrawer.Root
@@ -104,41 +102,11 @@ function DrawerContent({ className, ...props }: DrawerContentProps) {
   )
 }
 
-type DrawerCloseButtonProps = Omit<BaseDrawer.Close.Props, 'children'> & {
-  children?: React.ReactNode
-}
-
-function DrawerCloseButton({
-  className,
-  children,
-  type = 'button',
-  'aria-label': ariaLabel = 'Close drawer',
-  ...props
-}: DrawerCloseButtonProps) {
-  return (
-    <BaseDrawer.Close
-      type={type}
-      aria-label={ariaLabel}
-      className={(state) =>
-        cn(
-          iconButtonVariants({ size: 'lg' }),
-          'focus-visible:bg-state-base-hover disabled:cursor-not-allowed disabled:opacity-50 data-disabled:text-text-tertiary',
-          resolveClassName(className, state),
-        )
-      }
-      {...props}
-    >
-      {children ?? <span aria-hidden="true" className="i-ri-close-line size-4" />}
-    </BaseDrawer.Close>
-  )
-}
-
 export {
   createDrawerHandle,
   Drawer,
   DrawerBackdrop,
   DrawerClose,
-  DrawerCloseButton,
   DrawerContent,
   DrawerDescription,
   DrawerIndent,
@@ -154,7 +122,6 @@ export {
 
 export type {
   DrawerBackdropProps,
-  DrawerCloseButtonProps,
   DrawerCloseProps,
   DrawerContentProps,
   DrawerDescriptionProps,

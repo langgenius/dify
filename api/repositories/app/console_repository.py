@@ -71,8 +71,8 @@ from services.entities.app_entities import (
     StarredAppListParams,
     UpdateAppParams,
 )
-from services.errors.account import NoPermissionError
 from services.errors.app import AppDiscoveryNotFoundError
+from services.errors.base import NoPermissionError
 from services.knowledge.datasets.application import RelatedApps
 from services.openapi.visibility import apply_openapi_gate
 

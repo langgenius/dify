@@ -1,19 +1,22 @@
 """Console metadata routes use admission, explicit context, and response models."""
 
 from types import SimpleNamespace
-from unittest.mock import create_autospec
+from unittest.mock import Mock, create_autospec
 from uuid import uuid4
 
 import pytest
 from flask import Flask
+from flask.testing import FlaskClient
 from flask_restx import Api
 
 from controllers.common.rbac import DatasetId, RBACPermission
+from controllers.console import api as console_api
 from controllers.console import console_ns
 from controllers.console.datasets.metadata import DatasetMetadataCreateApi
 from enums import DeploymentEdition
 from libs.login import AccountWithTenant
 from models.account import Account, TenantAccountRole
+from services.errors.base import NoPermissionError
 from services.errors.metadata import MetadataResourceNotFoundError
 from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
 from services.knowledge.metadata.application import MetadataService
@@ -26,7 +29,9 @@ def routes(monkeypatch: pytest.MonkeyPatch, config_overrides):
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, LOGIN_DISABLED=True, RBAC_ENABLED=False)
     app = Flask(__name__)
     app.config.update(TESTING=False, PROPAGATE_EXCEPTIONS=False)
-    Api(app).add_namespace(console_ns, path="/console/api")
+    api = Api(app)
+    api.error_handlers = console_api.error_handlers.copy()
+    api.add_namespace(console_ns, path="/console/api")
     account = Account(name="Owner", email="metadata@example.com")
     account.id = "account-1"
     account.role = TenantAccountRole.OWNER
@@ -39,6 +44,24 @@ def routes(monkeypatch: pytest.MonkeyPatch, config_overrides):
     )
     app.extensions["application_services"] = SimpleNamespace(knowledge=SimpleNamespace(metadata=service))
     return app.test_client(), service
+
+
+@pytest.mark.parametrize(
+    ("error", "status", "code", "message"),
+    [
+        (NoPermissionError("Access denied"), 400, "invalid_param", "Access denied"),
+        (RuntimeError("backend detail"), 500, "unknown", "Internal Server Error"),
+    ],
+)
+def test_metadata_permission_error_http_contract(
+    routes: tuple[FlaskClient, Mock], error: Exception, status: int, code: str, message: str
+) -> None:
+    client, service = routes
+    service.require_dataset.side_effect = error
+    response = client.post(f"/console/api/datasets/{uuid4()}/metadata", json={"type": "string", "name": "author"})
+    assert response.status_code == status
+    assert response.json == {"code": code, "message": message, "status": status}
+    service.create_metadata.assert_not_called()
 
 
 def test_create_serializes_result_and_passes_actor(routes):

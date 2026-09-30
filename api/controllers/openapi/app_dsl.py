@@ -31,8 +31,8 @@ from machinery.context import AppRequestContext, RequestContext
 from models.account import TenantAccountRole
 from services.entities.app_entities import AppExportOptions
 from services.entities.dsl_entities import AppImportParams, CheckDependenciesResult, Import, ImportStatus
-from services.errors.account import NoPermissionError
 from services.errors.app import AppDiscoveryNotFoundError, WorkflowNotFoundError
+from services.errors.base import NoPermissionError
 
 
 def _import_response(result: Import, *, workspace_id: str) -> AppDslImportResponse:
@@ -64,7 +64,7 @@ class AppDslImportApi(Resource):
 
     @endpoint(
         context="workspace",
-        op="console_app.dsl.import",
+        op="import.console_app.dsl",
         kind=Kind.OBJECT,
         summary="Import an app from DSL text or URL",
         examples=(
@@ -127,7 +127,7 @@ class AppDslImportConfirmApi(Resource):
 
     @endpoint(
         context="workspace",
-        op="console_app.dsl.import_confirm",
+        op="confirm.console_app.dsl_import",
         kind=Kind.OBJECT,
         summary="Confirm a pending DSL import",
         examples=(Example(title="Confirm an import that is pending confirmation", input={"import_id": "<import_id>"}),),
@@ -166,7 +166,7 @@ class AppDslExportApi(Resource):
 
     @endpoint(
         context="app",
-        op="console_app.dsl.export",
+        op="export.console_app.dsl",
         kind=Kind.OBJECT,
         summary="Export app DSL as YAML text inside a JSON object",
         examples=(
@@ -209,7 +209,7 @@ class AppDslCheckDependenciesApi(Resource):
 
     @endpoint(
         context="workspace",
-        op="console_app.dependencies.check",
+        op="check.console_app.dependency",
         kind=Kind.OBJECT,
         summary="Check plugin dependencies of an app",
         examples=(Example(title="Check which plugins an app needs", input={"app_id": "<app_id>"}),),
