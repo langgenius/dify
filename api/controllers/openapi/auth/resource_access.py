@@ -16,7 +16,6 @@ from libs.oauth_bearer import AuthContext, TokenType, sha256_hex
 from libs.rate_limit import enforce_bearer_rate_limit
 from models.account import TenantStatus
 from models.enums import AppStatus
-from services.account_service import TenantService
 from services.app_service import AppService
 from services.auth.resource_access_token_contracts import ResourceAccessTokenInvalidError
 
@@ -54,7 +53,7 @@ class CheckResourceAccess(Requirement):
             )
         # The current OpenAPI pipeline still needs ORM context. Reconstruct it
         # within admission's session using the authorized owner chain.
-        tenant = TenantService.get_tenant_by_id(grant.tenant_id, session=session)
+        tenant = application_services().workspaces.identity.get_workspace(grant.tenant_id)
         if tenant is None or tenant.status != TenantStatus.NORMAL:
             raise Forbidden("workspace unavailable")
         ctx._workspace = tenant
