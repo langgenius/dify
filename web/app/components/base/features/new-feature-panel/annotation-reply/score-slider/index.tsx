@@ -50,7 +50,7 @@ const ScoreSlider: FC<Props> = ({ className, value, onChange }) => {
           <SliderTrack>
             <SliderIndicator />
             <SliderThumb>
-              <SliderValue className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 system-sm-semibold whitespace-nowrap text-text-primary" />
+              <SliderValue className="pointer-events-none absolute bottom-full left-1/2 mb-1.5 -translate-x-1/2 system-sm-semibold whitespace-nowrap text-text-primary" />
             </SliderThumb>
           </SliderTrack>
         </SliderControl>
