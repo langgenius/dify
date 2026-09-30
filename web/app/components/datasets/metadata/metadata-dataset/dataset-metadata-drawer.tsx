@@ -16,7 +16,7 @@ import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import {
   Drawer,
   DrawerBackdrop,
-  DrawerCloseButton,
+  DrawerClose,
   DrawerContent,
   DrawerPopup,
   DrawerPortal,
@@ -230,9 +230,15 @@ const DatasetMetadataDrawer: FC<Props> = ({
                 <DrawerTitle className="text-lg/6 font-medium text-text-primary">
                   {t(($) => $['metadata.metadata'], { ns: 'dataset' })}
                 </DrawerTitle>
-                <DrawerCloseButton
-                  aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                  className="size-6 rounded-md"
+                <DrawerClose
+                  render={
+                    <IconButton
+                      aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                      size="md"
+                    >
+                      <span aria-hidden="true" className="i-ri-close-line size-4" />
+                    </IconButton>
+                  }
                 />
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6">
