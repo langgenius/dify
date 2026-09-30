@@ -171,6 +171,22 @@ class MCPClientWithAuthRetry(MCPClient):
             # Reset retry flag after operation completes
             self._has_retried = False
 
+    def _discard_failed_enter(self) -> None:
+        """Close resources acquired before a failed ``__enter__``.
+
+        Python does not call ``__exit__`` when ``__enter__`` raises. ``cleanup()``
+        is not used here: it re-raises close errors as ``ValueError`` and would
+        mask the original failure.
+        """
+        try:
+            self._exit_stack.close()
+        except Exception:
+            logger.exception("Error closing partial MCP session after failed enter")
+        finally:
+            self._session = None
+            self._initialized = False
+            self._exit_stack = ExitStack()
+
     @override
     def __enter__(self):
         """Enter the context manager with retry support."""
@@ -179,7 +195,14 @@ class MCPClientWithAuthRetry(MCPClient):
             super(MCPClientWithAuthRetry, self).__enter__()
             return self
 
-        return self._execute_with_retry(initialize_with_retry)
+        entered = False
+        try:
+            result = self._execute_with_retry(initialize_with_retry)
+            entered = True
+            return result
+        finally:
+            if not entered:
+                self._discard_failed_enter()
 
     @override
     def list_tools(self) -> list[Tool]:

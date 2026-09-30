@@ -754,6 +754,65 @@ class TestMCPClientWithAuthRetry:
             assert result == auth_client
             mock_base_enter.assert_called_once()
 
+    @patch.object(MCPClientWithAuthRetry, "_handle_auth_error", side_effect=MCPAuthError("no provider"))
+    @patch.object(MCPClient, "__enter__", side_effect=MCPAuthError("expired token"))
+    def test_enter_closes_partial_stack_when_refresh_fails(self, mock_base_enter, mock_handle_auth, auth_client):
+        """Refresh failure during __enter__ must close the partial stack and keep the original error."""
+        partial = MagicMock()
+        partial.close.side_effect = RuntimeError("close failed")
+        auth_client._exit_stack = partial
+        auth_client._session = MagicMock()
+        auth_client._initialized = False
+
+        with pytest.raises(MCPAuthError, match="no provider"):
+            auth_client.__enter__()
+
+        partial.close.assert_called_once()
+        mock_handle_auth.assert_called_once()
+        mock_base_enter.assert_called_once()
+        assert auth_client._session is None
+        assert auth_client._initialized is False
+        assert isinstance(auth_client._exit_stack, ExitStack)
+        assert auth_client._exit_stack is not partial
+
+    @patch.object(MCPClientWithAuthRetry, "_handle_auth_error")
+    @patch.object(MCPClient, "__enter__")
+    def test_enter_closes_new_stack_when_second_initialize_fails(self, mock_base_enter, mock_handle_auth, auth_client):
+        """A second initialize failure must close the stack entered after the refreshed retry."""
+        closed: list[str] = []
+
+        class _Entered:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                closed.append("second")
+                return False
+
+        first = MagicMock()
+        auth_client._exit_stack = first
+        auth_client._session = MagicMock()
+        auth_client._initialized = False
+
+        def base_enter():
+            if mock_base_enter.call_count == 1:
+                raise MCPAuthError("expired token")
+            auth_client._exit_stack.enter_context(_Entered())
+            auth_client._session = MagicMock()
+            raise MCPAuthError("second initialize failed")
+
+        mock_base_enter.side_effect = base_enter
+
+        with pytest.raises(MCPAuthError, match="second initialize failed"):
+            auth_client.__enter__()
+
+        first.close.assert_called_once()
+        mock_handle_auth.assert_called_once()
+        assert closed == ["second"]
+        assert auth_client._session is None
+        assert auth_client._initialized is False
+        assert isinstance(auth_client._exit_stack, ExitStack)
+
     @patch.object(MCPClientWithAuthRetry, "_execute_with_retry")
     def test_auth_client_list_tools(self, mock_execute_retry, auth_client):
         """Test list_tools with retry."""
