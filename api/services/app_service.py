@@ -312,6 +312,15 @@ class AppService:
         return session.get(App, app_id)
 
     @staticmethod
+    def get_app_in_workspace(*, tenant_id: str, app_id: str, session: Session) -> App | None:
+        """Return the app within its owner workspace, or None if it is absent.
+
+        Keep the caller's session and leave status/API availability checks to
+        the caller so each admission surface retains its error contract.
+        """
+        return session.scalar(select(App).where(App.id == app_id, App.tenant_id == tenant_id))
+
+    @staticmethod
     def get_visible_app_by_id(
         app_id: str,
         session: Session,

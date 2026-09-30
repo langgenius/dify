@@ -30,9 +30,10 @@ from extensions.ext_redis import redis_client
 from libs.login import current_user
 from models import Account, Tenant, TenantAccountJoin, TenantStatus
 from models.dataset import Dataset, RateLimitLog
-from models.model import ApiToken, App
+from models.model import ApiToken
 from repositories.knowledge import dataset_api_key_bindings
 from services.api_token_service import ApiTokenCache, fetch_token_with_single_flight, record_token_usage
+from services.app_service import AppService
 from services.auth.resource_access_token_contracts import is_resource_access_token
 from services.feature_service import FeatureService
 
@@ -118,15 +119,14 @@ def validate_app_token[**P, R](
                         token=auth_token,
                         requested_app_id=request.headers.get("X-Dify-App-ID"),
                     )
-                app_model = db.session.scalar(
-                    select(App).where(
-                        App.id == next(iter(grant.app_ids)),
-                        App.tenant_id == grant.tenant_id,
-                    )
+                app_model = AppService.get_app_in_workspace(
+                    tenant_id=grant.tenant_id,
+                    app_id=next(iter(grant.app_ids)),
+                    session=db.session,
                 )
             else:
                 api_token = validate_and_get_api_token("app")
-                app_model = db.session.get(App, api_token.app_id)
+                app_model = AppService.get_app_by_id(api_token.app_id, session=db.session)
             if not app_model:
                 raise Forbidden("The app no longer exists.")
 
