@@ -3,10 +3,13 @@
 import type { AgentMonitoringChartRow, AgentMonitoringChartType } from './chart-utils'
 import type { I18nKeysWithPrefix } from '@/types/i18n'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import dayjs from 'dayjs'
 import ReactECharts from 'echarts-for-react/esm/core'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '#i18n'
 import { echarts } from '@/app/components/base/line-chart/echarts'
+import { formatToLocalTime } from '@/utils/format'
 import { buildChartOptions, getChartValueField, getTokenSummary } from './chart-utils'
 
 type AgentMonitoringChartProps = {
@@ -37,6 +40,7 @@ export function AgentMonitoringChart({
   const titleId = useId()
 
   const { t } = useTranslation(['agentV2'])
+  const locale = useLocale()
   const yField = getChartValueField(rows, valueKey)
   const tokenSummary = getTokenSummary(rows)
   const shouldUseEmptyYAxis = !hasChartData(rows, yField)
@@ -85,8 +89,37 @@ export function AgentMonitoringChart({
       </div>
 
       <div className="h-60 px-6">
-        <ReactECharts echarts={echarts} option={options} style={{ height: 240, width: '100%' }} />
+        <ReactECharts
+          aria-hidden="true"
+          echarts={echarts}
+          option={options}
+          style={{ height: 240, width: '100%' }}
+        />
       </div>
+      <table aria-labelledby={titleId} className="sr-only">
+        <thead>
+          <tr>
+            <th scope="col">{t(($) => $['agentDetail.monitoring.table.date'])}</th>
+            <th scope="col">{t(($) => $['agentDetail.monitoring.table.value'])}</th>
+            {chartType === 'tokenUsage' && (
+              <th scope="col">{t(($) => $['agentDetail.monitoring.table.estimatedCost'])}</th>
+            )}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.date}>
+              <th scope="row">
+                <time dateTime={row.date}>
+                  {formatToLocalTime(dayjs(row.date), locale, 'MMM D, YYYY')}
+                </time>
+              </th>
+              <td>{row[yField] ?? 0}</td>
+              {chartType === 'tokenUsage' && <td>${row.total_price ?? 0}</td>}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </article>
   )
 }
