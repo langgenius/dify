@@ -173,7 +173,7 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
           </div>
         </div>
         {/* Price */}
-        <div className="flex items-end gap-x-2 px-1 pt-4 pb-8">
+        <div className="flex flex-wrap items-end gap-x-2 px-1 pt-4 pb-8">
           {isFreePlan && (
             <span className="title-4xl-semi-bold text-text-primary">
               {t(($) => $['plansCommon.free'], { ns: 'billing' })}
