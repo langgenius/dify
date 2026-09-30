@@ -48,7 +48,7 @@ async function getNewAccessToken(timeout: number): Promise<void> {
       // To avoid this, handle token refresh separately in a dedicated function
       // that does not call baseFetch and uses a single retry mechanism.
       const [error, ret] = await fetchWithRetry(
-        globalThis.fetch(`${API_PREFIX}/refresh-token`, {
+        () => globalThis.fetch(`${API_PREFIX}/refresh-token`, {
           method: 'POST',
           credentials: 'include', // Important: include cookies in the request
           headers: {
