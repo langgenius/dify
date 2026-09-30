@@ -62,8 +62,13 @@ def test_apply_flag_writes_and_reports_applied() -> None:
 def _whitelist_config(
     scope: str | None = "all",
     account_ids: list[str] | None = None,
+    locked_account_ids: list[str] | None = None,
 ) -> _LegacyResourceWhitelistConfig:
-    return _LegacyResourceWhitelistConfig(rbac_whitelist_scope=scope, account_ids=account_ids or [])
+    return _LegacyResourceWhitelistConfig(
+        rbac_whitelist_scope=scope,
+        account_ids=account_ids or [],
+        locked_account_ids=locked_account_ids or [],
+    )
 
 
 @dataclass
@@ -89,9 +94,12 @@ class _AgentPhaseSetup:
 
 
 def _run_agent_phase(args: list[str], setup: _AgentPhaseSetup) -> tuple[Result, _AgentPhaseMocks]:
-    def _member_batches(_tenant_id: str, batch_size: int) -> Iterator[list[str]]:
-        for start in range(0, len(setup.workspace_members), batch_size):
-            yield setup.workspace_members[start : start + batch_size]
+    def _member_batches(
+        _tenant_id: str, batch_size: int, *, excluded_account_ids: frozenset[str]
+    ) -> Iterator[list[str]]:
+        members = [m for m in setup.workspace_members if m not in excluded_account_ids]
+        for start in range(0, len(members), batch_size):
+            yield members[start : start + batch_size]
 
     with ExitStack() as stack:
         stack.enter_context(patch(f"{MODULE}._iter_tenant_ids", return_value=iter(["t1"])))
@@ -159,7 +167,7 @@ def test_agent_bootstrap_apply_writes_whitelist_member_batches_and_creator_sync(
     assert mocks.replace_whitelist.call_args.kwargs["account_id"] == "c1"
     assert mocks.replace_whitelist.call_args.kwargs["payload"].automatic_include_workspace_members is True
 
-    mocks.member_batches.assert_called_once_with("t1", 2)
+    mocks.member_batches.assert_called_once_with("t1", 2, excluded_account_ids=frozenset())
     assert mocks.replace_user_access_policies.call_count == 2
     calls = mocks.replace_user_access_policies.call_args_list
     assert [call.kwargs["payload"].account_ids for call in calls] == [["m1", "m2"], ["m3"]]
@@ -191,3 +199,39 @@ def test_agent_bootstrap_is_idempotent_on_a_second_apply() -> None:
     mocks.sync_creator_bindings.assert_not_called()
     mocks.replace_user_access_policies.assert_not_called()
     assert "0 agent(s) changed, 2 already initialised" in result.output
+
+
+def test_agent_bootstrap_skips_locked_owner_and_admin_in_member_batches() -> None:
+    result, mocks = _run_agent_phase(
+        ["--apply", "--member-batch-size", "2"],
+        _AgentPhaseSetup(
+            agents=[("ag1", "admin-1", None)],
+            agent_configs=[_whitelist_config(locked_account_ids=["owner-1", "admin-1"])],
+            workspace_members=["owner-1", "m1", "admin-1", "m2", "m3"],
+        ),
+    )
+
+    assert result.exit_code == 0, result.output
+    mocks.member_batches.assert_called_once_with("t1", 2, excluded_account_ids=frozenset({"owner-1", "admin-1"}))
+    calls = mocks.replace_user_access_policies.call_args_list
+    assert [call.kwargs["payload"].account_ids for call in calls] == [["m1", "m2"], ["m3"]]
+    # The creator policy uses a separate RBAC write with no admin lock, so a locked creator still gets it.
+    mocks.sync_creator_bindings.assert_called_once()
+    assert mocks.sync_creator_bindings.call_args.kwargs["account_id"] == "admin-1"
+    mocks.replace_whitelist.assert_called_once()
+
+
+def test_agent_bootstrap_with_only_locked_members_writes_no_member_batches() -> None:
+    result, mocks = _run_agent_phase(
+        ["--apply"],
+        _AgentPhaseSetup(
+            agents=[("ag1", "owner-1", None)],
+            agent_configs=[_whitelist_config(locked_account_ids=["owner-1"])],
+            workspace_members=["owner-1"],
+        ),
+    )
+
+    assert result.exit_code == 0, result.output
+    mocks.replace_user_access_policies.assert_not_called()
+    mocks.sync_creator_bindings.assert_called_once()
+    mocks.replace_whitelist.assert_called_once()

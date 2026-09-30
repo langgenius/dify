@@ -24,6 +24,7 @@ from models.account import Tenant
 from models.base import TypeBase
 from models.enums import CredentialSourceType
 from models.provider import ProviderModel
+from services.enterprise.rbac_service import _LegacyResourceWhitelistConfig
 from tests.helpers.legacy_model_type_migration import (
     ALL_TABLE_NAMES,
     LEGACY_TO_CANONICAL,
@@ -462,6 +463,11 @@ def test_dataset_permission_rbac_migration_dry_run_outputs_structured_proposed_c
     rbac_session.commit()
     monkeypatch.setattr(
         rbac_module.RBACService.DatasetAccess,
+        "legacy_whitelist_config",
+        lambda **kwargs: _LegacyResourceWhitelistConfig(),
+    )
+    monkeypatch.setattr(
+        rbac_module.RBACService.DatasetAccess,
         "replace_whitelist",
         lambda **kwargs: pytest.fail("dry-run must not replace whitelist"),
     )
@@ -511,9 +517,10 @@ def test_resource_whitelist_scope_migration_specific_preserves_existing_members(
     monkeypatch.setattr(
         rbac_module.RBACService.DatasetAccess,
         "legacy_whitelist_config",
-        lambda **kwargs: SimpleNamespace(
+        lambda **kwargs: _LegacyResourceWhitelistConfig(
             rbac_whitelist_scope="specific",
-            account_ids=["member-account-2", "member-account-1", "member-account-1"],
+            account_ids=["member-account-2", "admin-account-1", "member-account-1", "member-account-1"],
+            locked_account_ids=["admin-account-1"],
         ),
     )
     monkeypatch.setattr(
@@ -539,6 +546,83 @@ def test_resource_whitelist_scope_migration_specific_preserves_existing_members(
     assert replace_whitelist_calls[0]["payload"].automatic_include_workspace_members is False
     assert replace_policy_calls[0]["payload"].access_policy_ids == ["default"]
     assert replace_policy_calls[0]["payload"].account_ids == ["member-account-1", "member-account-2"]
+
+
+def test_resource_whitelist_scope_migration_only_me_skips_locked_maintainer(
+    command_module,
+    rbac_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    rbac_module = importlib.import_module("commands.rbac")
+    _persist_dataset(rbac_session, maintainer="admin-account-1")
+    replace_whitelist_calls: list[dict[str, object]] = []
+
+    monkeypatch.setattr(
+        rbac_module.RBACService.DatasetAccess,
+        "legacy_whitelist_config",
+        lambda **kwargs: _LegacyResourceWhitelistConfig(
+            rbac_whitelist_scope="only_me", locked_account_ids=["admin-account-1"]
+        ),
+    )
+    monkeypatch.setattr(
+        rbac_module.RBACService.DatasetAccess,
+        "replace_whitelist",
+        lambda **kwargs: replace_whitelist_calls.append(kwargs),
+    )
+    monkeypatch.setattr(
+        rbac_module.RBACService.DatasetAccess,
+        "replace_user_access_policies",
+        lambda **kwargs: pytest.fail("locked maintainer must not get a per-resource policy write"),
+    )
+
+    command_module.migrate_resource_whitelist_scopes_to_automatic_include.callback(
+        tenant_id=None,
+        resource_type="dataset",
+        resource_id=None,
+        batch_size=500,
+        member_batch_size=500,
+        dry_run=False,
+    )
+
+    assert replace_whitelist_calls[0]["payload"].automatic_include_workspace_members is False
+
+
+def test_dataset_permission_rbac_migration_skips_locked_partial_members(
+    command_module,
+    rbac_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    rbac_module = importlib.import_module("commands.rbac")
+    dataset = _persist_dataset(rbac_session, permission=DatasetPermissionEnum.PARTIAL_TEAM)
+    rbac_session.add_all(
+        [
+            DatasetPermission(dataset_id=dataset.id, account_id=account_id, tenant_id=dataset.tenant_id)
+            for account_id in ("admin-account-1", "member-account-1")
+        ]
+    )
+    rbac_session.commit()
+    replace_policy_calls: list[dict[str, object]] = []
+
+    monkeypatch.setattr(
+        rbac_module.RBACService.DatasetAccess,
+        "legacy_whitelist_config",
+        lambda **kwargs: _LegacyResourceWhitelistConfig(locked_account_ids=["admin-account-1"]),
+    )
+    monkeypatch.setattr(rbac_module.RBACService.DatasetAccess, "replace_whitelist", lambda **kwargs: None)
+    monkeypatch.setattr(
+        rbac_module.RBACService.DatasetAccess,
+        "replace_user_access_policies",
+        lambda **kwargs: replace_policy_calls.append(kwargs),
+    )
+
+    command_module.migrate_dataset_permissions_to_rbac.callback(
+        tenant_id=None,
+        dataset_id=None,
+        batch_size=500,
+        dry_run=False,
+    )
+
+    assert [call["target_account_id"] for call in replace_policy_calls] == ["member-account-1"]
 
 
 def test_resource_whitelist_scope_migration_all_syncs_workspace_members(
@@ -569,7 +653,9 @@ def test_resource_whitelist_scope_migration_all_syncs_workspace_members(
     monkeypatch.setattr(
         rbac_module.RBACService.DatasetAccess,
         "legacy_whitelist_config",
-        lambda **kwargs: SimpleNamespace(rbac_whitelist_scope="all", account_ids=[]),
+        lambda **kwargs: _LegacyResourceWhitelistConfig(
+            rbac_whitelist_scope="all", locked_account_ids=["maintainer-account-1"]
+        ),
     )
     monkeypatch.setattr(
         rbac_module.RBACService.DatasetAccess,
@@ -593,7 +679,7 @@ def test_resource_whitelist_scope_migration_all_syncs_workspace_members(
 
     assert replace_whitelist_calls[0]["payload"].automatic_include_workspace_members is True
     assert replace_policy_calls[0]["payload"].access_policy_ids == ["default"]
-    assert set(replace_policy_calls[0]["payload"].account_ids) == {"maintainer-account-1", "member-account-1"}
+    assert replace_policy_calls[0]["payload"].account_ids == ["member-account-1"]
 
 
 def test_only_me_resource_whitelist_scope_migration_syncs_workspace_members(
@@ -624,7 +710,9 @@ def test_only_me_resource_whitelist_scope_migration_syncs_workspace_members(
     monkeypatch.setattr(
         rbac_module.RBACService.DatasetAccess,
         "legacy_whitelist_config",
-        lambda **kwargs: SimpleNamespace(rbac_whitelist_scope="only_me", account_ids=[]),
+        lambda **kwargs: _LegacyResourceWhitelistConfig(
+            rbac_whitelist_scope="only_me", locked_account_ids=["maintainer-account-1"]
+        ),
     )
     monkeypatch.setattr(
         rbac_module.RBACService.DatasetAccess,
@@ -648,7 +736,7 @@ def test_only_me_resource_whitelist_scope_migration_syncs_workspace_members(
 
     assert replace_whitelist_calls[0]["payload"].automatic_include_workspace_members is True
     assert replace_policy_calls[0]["payload"].access_policy_ids == ["default"]
-    assert set(replace_policy_calls[0]["payload"].account_ids) == {"maintainer-account-1", "member-account-1"}
+    assert replace_policy_calls[0]["payload"].account_ids == ["member-account-1"]
 
 
 def test_data_migrate_command_defaults_output_to_stdout_stream(

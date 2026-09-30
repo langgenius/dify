@@ -535,6 +535,26 @@ class TestResourceAccess:
         assert call.params == {"dataset_id": "dataset-1"}
         assert out.account_ids == ["acct-1"]
         assert out.rbac_whitelist_scope == "specific"
+        # RBAC versions without the owner/admin lock omit the field.
+        assert out.locked_account_ids == frozenset()
+
+    def test_legacy_whitelist_config_reads_locked_owner_and_admin_accounts(self, mock_send: MagicMock):
+        mock_send.return_value = {
+            "account_ids": ["owner-1", "admin-1", "acct-1"],
+            "locked_account_ids": ["owner-1", "admin-1"],
+            "scope": "all",
+        }
+
+        out = svc.RBACService.AgentAccess.legacy_whitelist_config("tenant-1", "acct-1", "agent-1")
+
+        assert out.locked_account_ids == frozenset({"owner-1", "admin-1"})
+
+    def test_legacy_whitelist_config_treats_null_locked_accounts_as_none_locked(self, mock_send: MagicMock):
+        mock_send.return_value = {"account_ids": [], "locked_account_ids": None, "scope": "all"}
+
+        out = svc.RBACService.AppAccess.legacy_whitelist_config("tenant-1", "acct-1", "app-1")
+
+        assert out.locked_account_ids == frozenset()
 
     def test_app_matrix(self, mock_send: MagicMock):
         mock_send.return_value = {"resource_id": "app-1", "items": []}

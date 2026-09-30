@@ -442,7 +442,9 @@ def _owner_account_id(tenant_id: str, *, session: Session) -> str:
     return str(account_id)
 
 
-def _workspace_member_account_id_batches(tenant_id: str, batch_size: int) -> Iterator[list[str]]:
+def _workspace_member_account_id_batches(
+    tenant_id: str, batch_size: int, *, excluded_account_ids: frozenset[str]
+) -> Iterator[list[str]]:
     last_join_id: str | None = None
     while True:
         with session_factory.create_session() as session:
@@ -452,6 +454,8 @@ def _workspace_member_account_id_batches(tenant_id: str, batch_size: int) -> Ite
                 .order_by(TenantAccountJoin.id.asc())
                 .limit(batch_size)
             )
+            if excluded_account_ids:
+                stmt = stmt.where(TenantAccountJoin.account_id.not_in(excluded_account_ids))
             if last_join_id:
                 stmt = stmt.where(TenantAccountJoin.id > last_join_id)
 
@@ -683,10 +687,14 @@ def migrate_resource_whitelist_scopes_to_automatic_include(
 
         automatic_include_workspace_members = scope is RBACResourceWhitelistScope.ALL
         if scope is RBACResourceWhitelistScope.SPECIFIC:
-            member_account_ids = sorted(set(legacy_config.account_ids))
+            member_account_ids = sorted(set(legacy_config.account_ids) - legacy_config.locked_account_ids)
             member_source = "legacy_specific_members"
         elif scope is RBACResourceWhitelistScope.ONLY_ME:
-            member_account_ids = [maintainer_account_id] if maintainer_account_id else []
+            member_account_ids = (
+                [maintainer_account_id]
+                if maintainer_account_id and maintainer_account_id not in legacy_config.locked_account_ids
+                else []
+            )
             member_source = "resource_maintainer"
         else:
             member_account_ids = []
@@ -725,7 +733,9 @@ def migrate_resource_whitelist_scopes_to_automatic_include(
         migrated_count += 1
 
         if scope is RBACResourceWhitelistScope.ALL:
-            for batch in _workspace_member_account_id_batches(workspace_id, member_batch_size):
+            for batch in _workspace_member_account_id_batches(
+                workspace_id, member_batch_size, excluded_account_ids=legacy_config.locked_account_ids
+            ):
                 _replace_resource_default_access_policies(
                     current_resource_type,
                     tenant_id=workspace_id,
@@ -877,7 +887,9 @@ def migrate_only_me_resource_whitelist_scopes_to_automatic_include(
         )
         migrated_count += 1
 
-        for batch in _workspace_member_account_id_batches(workspace_id, member_batch_size):
+        for batch in _workspace_member_account_id_batches(
+            workspace_id, member_batch_size, excluded_account_ids=legacy_config.locked_account_ids
+        ):
             _replace_resource_default_access_policies(
                 current_resource_type,
                 tenant_id=workspace_id,
@@ -1040,7 +1052,12 @@ def migrate_dataset_permissions_to_rbac(
 
             if should_bind_partial_members:
                 partial_dataset_count += 1
-                for member_account_id in partial_member_ids:
+                locked_account_ids = RBACService.DatasetAccess.legacy_whitelist_config(
+                    tenant_id=workspace_id,
+                    account_id=operator_account_id,
+                    dataset_id=current_dataset_id,
+                ).locked_account_ids
+                for member_account_id in (m for m in partial_member_ids if m not in locked_account_ids):
                     replace_user_access_policies_payload = ReplaceUserAccessPolicies(
                         access_policy_ids=[_RBAC_DEFAULT_ACCESS_POLICY_ID],
                     )
@@ -1186,8 +1203,10 @@ def _report_backing_app_specific_whitelist(options: _AgentAccessBootstrapOptions
     )
 
 
-def _write_agent_access_rows(options: _AgentAccessBootstrapOptions) -> None:
-    for batch in _workspace_member_account_id_batches(options.tenant_id, options.member_batch_size):
+def _write_agent_access_rows(options: _AgentAccessBootstrapOptions, locked_account_ids: frozenset[str]) -> None:
+    for batch in _workspace_member_account_id_batches(
+        options.tenant_id, options.member_batch_size, excluded_account_ids=locked_account_ids
+    ):
         RBACService.AgentAccess.replace_user_access_policies(
             tenant_id=options.tenant_id,
             account_id=options.operator_account_id,
@@ -1268,7 +1287,7 @@ def _bootstrap_agent_access(options: _AgentAccessBootstrapOptions, counts: _Agen
 
     if options.apply:
         try:
-            _write_agent_access_rows(options)
+            _write_agent_access_rows(options, config.locked_account_ids)
         except Exception as exc:
             raise _agent_access_bootstrap_failure(options, exc) from exc
     counts.changed += 1

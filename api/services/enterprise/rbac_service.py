@@ -291,9 +291,19 @@ class _LegacyResourceWhitelistConfig(_RBACModel):
     """RBAC service's pre-toggle whitelist payload, used only by data migrations."""
 
     account_ids: list[str] = Field(default_factory=list)
+    # Workspace owners/admins. RBAC grants them resource access by role and rejects
+    # per-resource policy writes for them. Absent on RBAC versions without that lock.
+    locked_account_ids: frozenset[str] = Field(default_factory=frozenset)
     rbac_whitelist_scope: str | None = Field(
         default=None, validation_alias=AliasChoices("rbac_whitelist_scope", "scope")
     )
+
+    @field_validator("locked_account_ids", mode="before")
+    @classmethod
+    def _coerce_locked_account_ids(cls, value: Any) -> frozenset[str]:
+        if value is None:
+            return frozenset()
+        return frozenset(value)
 
     @field_validator("account_ids", mode="before")
     @classmethod
