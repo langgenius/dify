@@ -112,7 +112,7 @@ export function PricingContent() {
       <div className="flex w-full justify-center border-t border-divider-accent px-3 xl:px-10">
         <TabsPanel
           value="cloud"
-          className="flex max-w-[1680px] min-w-0 grow flex-col border-x border-divider-accent xl:flex-row xl:flex-wrap [&>div]:border-b [&>div]:border-divider-accent xl:[&>div]:border-b-0"
+          className="flex max-w-[1680px] min-w-0 grow flex-col border-x border-divider-accent xl:flex-row xl:flex-wrap"
         >
           {pricingError ? (
             <div
@@ -144,7 +144,7 @@ export function PricingContent() {
         </TabsPanel>
         <TabsPanel
           value="self-hosted"
-          className="flex max-w-[1680px] min-w-0 grow flex-col border-x border-divider-accent xl:flex-row [&>div]:border-b [&>div]:border-divider-accent xl:[&>div]:border-b-0"
+          className="flex max-w-[1680px] min-w-0 grow flex-col border-x border-divider-accent xl:flex-row"
         >
           <SelfHostedPlanItem plan="community" />
           <Separator orientation="vertical" className="mx-0 hidden bg-divider-accent xl:block" />
