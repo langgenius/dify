@@ -4,6 +4,7 @@ import type { AgentLogSourceResponse } from '@dify/contracts/api/console/agent/t
 import type { ReactNode } from 'react'
 import type { AgentMonitoringPeriod } from './time-range-picker'
 import { Button } from '@langgenius/dify-ui/button'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import {
   ScrollArea,
   ScrollAreaContent,
@@ -210,10 +211,10 @@ function AgentMonitoringSourceFilter({
         if (selected) onSelect(selected)
       }}
     >
-      <div className="relative w-fit max-w-full">
+      <div className="flex w-fit max-w-full items-center gap-1">
         <SelectTrigger
           aria-label={triggerLabel}
-          className="h-auto min-h-8 w-fit max-w-full min-w-53 cursor-pointer items-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-2 py-1 pr-6 shadow-xs hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover! data-popup-open:border-components-button-secondary-border-hover! data-popup-open:bg-components-button-secondary-bg-hover! data-popup-open:hover:border-components-button-secondary-border-hover data-popup-open:hover:bg-components-button-secondary-bg-hover! [&>*:last-child]:hidden"
+          className="h-auto min-h-8 w-fit max-w-full min-w-53 cursor-pointer items-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-2 py-1 shadow-xs hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover! data-popup-open:border-components-button-secondary-border-hover! data-popup-open:bg-components-button-secondary-bg-hover! data-popup-open:hover:border-components-button-secondary-border-hover data-popup-open:hover:bg-components-button-secondary-bg-hover! [&>*:last-child]:hidden"
         >
           <span className="flex min-w-0 grow items-center gap-1 text-left">
             <span className="flex min-w-0 grow items-center gap-1 px-1">
@@ -222,17 +223,9 @@ function AgentMonitoringSourceFilter({
             </span>
           </span>
         </SelectTrigger>
-        <button
-          type="button"
-          aria-label={clearLabel}
-          className="group/clear absolute top-1/2 right-1.5 flex size-5 -translate-y-1/2 cursor-pointer touch-manipulation items-center justify-center rounded-md border-none bg-transparent p-0 outline-hidden focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
-          onClick={onClear}
-        >
-          <span
-            aria-hidden
-            className="i-ri-close-circle-fill block size-3.5 text-text-quaternary group-hover/clear:text-text-tertiary"
-          />
-        </button>
+        <IconButton aria-label={clearLabel} size="md" className="shrink-0" onClick={onClear}>
+          <span aria-hidden="true" className="i-ri-close-circle-fill size-3.5" />
+        </IconButton>
         <SelectPortal>
           <SelectPositioner placement="bottom-start" sideOffset={4}>
             <SelectPopup className="relative w-61 rounded-xl border-[0.5px] bg-components-panel-bg-blur p-0 text-sm text-text-secondary shadow-lg outline-hidden backdrop-blur-[5px] focus:outline-hidden focus-visible:outline-hidden">

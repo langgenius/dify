@@ -266,6 +266,17 @@ describe('AgentMonitoringPage', () => {
       'system-sm-medium',
       'text-text-secondary',
     )
+
+    const clearButton = screen.getByRole('button', { name: /operation.clear.*Book Translation/ })
+    clearButton.focus()
+    await user.keyboard('{Enter}')
+
+    await waitFor(() => {
+      expect(getLatestStatisticsQueryInput().input.query).not.toHaveProperty('source')
+    })
+    expect(
+      screen.getByRole('combobox', { name: /metadata.sourceLabel.*sources.all/ }),
+    ).toBeInTheDocument()
   })
 
   it('should keep previous statistics visible while a source filter refetches', async () => {
