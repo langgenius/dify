@@ -17,6 +17,8 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy.orm import Session
 
+from core.logging.context import get_request_id, get_trace_id
+from machinery.context import RequestContext
 from models.account import Account, Tenant, TenantAccountRole
 from models.model import App, EndUser
 
@@ -39,10 +41,22 @@ class Context:
     subject: Subject
     session: Session
     view_args: Mapping[str, str]
+    request_id: str = field(default_factory=get_request_id)
+    trace_id: str | None = field(default_factory=get_trace_id)
     _app: App | None = field(default=None, init=False)
     _workspace: Tenant | None = field(default=None, init=False)
     _workspace_role: TenantAccountRole | None = field(default=None, init=False)
     _caller: Caller | None = field(default=None, init=False)
+
+    @property
+    def request_context(self) -> RequestContext:
+        """Pass only stable identity values across the application boundary."""
+        return RequestContext(
+            request_id=self.request_id,
+            trace_id=self.trace_id,
+            account_id=str(self.subject.account_id),
+            active_workspace_id=str(self.workspace.id),
+        )
 
     @property
     def app(self) -> App:

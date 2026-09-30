@@ -1,40 +1,12 @@
 from contextlib import nullcontext
-from unittest.mock import ANY, MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 from redis.exceptions import ConnectionError as RedisConnectionError
 from redis.exceptions import LockError
-from sqlalchemy.orm import Session, sessionmaker
 
 from extensions.ext_redis import RedisClientWrapper
-from services.setup_adapters import RedisSetupLock, RegisterServiceAccountProvisioner
-from services.setup_service import SetupInput
-
-
-def test_provision_delegates_to_register_service_with_managed_session(
-    sqlite_session_factory: sessionmaker[Session],
-) -> None:
-    provisioner = RegisterServiceAccountProvisioner(session_factory=sqlite_session_factory)
-    setup = SetupInput(
-        email="admin@example.com",
-        name="Admin",
-        password="Passw0rd1",
-        ip_address="203.0.113.7",
-        language="en-US",
-    )
-
-    with patch("services.setup_adapters.RegisterService.setup") as register:
-        provisioner.provision(setup)
-
-    register.assert_called_once_with(
-        email="admin@example.com",
-        name="Admin",
-        password="Passw0rd1",
-        ip_address="203.0.113.7",
-        language="en-US",
-        session=ANY,
-    )
-    assert isinstance(register.call_args.kwargs["session"], Session)
+from services.setup_adapters import RedisSetupLock
 
 
 def test_acquire_uses_bounded_distributed_lock() -> None:

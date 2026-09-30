@@ -40,7 +40,6 @@ from extensions.ext_application_services import application_services
 from models import App
 from models.enums import AppStatus
 from models.model import AppMode
-from services.account_service import TenantService
 from services.app.access import AppAccessFilter, resolve_app_access_filter
 from services.entities.app_entities import AppListParams, AppSummary
 
@@ -105,7 +104,7 @@ def build_app_describe_response(app: App, fields: set[str] | None, *, session: S
 @openapi_ns.route("/apps/<string:app_id>")
 class AppDescribeApi(Resource):
     @endpoint(
-        op="console_app.describe",
+        op="describe.console_app",
         kind=Kind.OBJECT,
         summary="App detail, parameters and runtime input_schema",
         examples=(
@@ -133,7 +132,7 @@ class AppDescribeApi(Resource):
 @openapi_ns.route("/apps")
 class AppListApi(Resource):
     @endpoint(
-        op="console_app.list",
+        op="get.console_app",
         kind=Kind.LIST,
         summary="List apps in a workspace",
         examples=(
@@ -184,7 +183,8 @@ class AppListApi(Resource):
                 str(app.id), str(app.maintainer) if app.maintainer else None, account_id
             ):
                 return empty
-            tenant_name = TenantService.get_tenant_name(workspace_id, session=ctx.session)
+            workspace = application_services().workspaces.management.get(workspace_id)
+            tenant_name = workspace.name if workspace else None
             item = AppListRow(
                 id=str(app.id),
                 name=app.name,
@@ -216,7 +216,8 @@ class AppListApi(Resource):
 
         tenant_name = None
         if pagination.items:
-            tenant_name = TenantService.get_tenant_name(workspace_id, session=ctx.session)
+            workspace = application_services().workspaces.management.get(workspace_id)
+            tenant_name = workspace.name if workspace else None
 
         items = [
             AppListRow(

@@ -2,7 +2,8 @@ import type { ReactNode } from 'react'
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { PromptVariable } from '@/models/debug'
-import { DrawerCloseButton, DrawerTitle } from '@langgenius/dify-ui/drawer'
+import { DrawerClose, DrawerTitle } from '@langgenius/dify-ui/drawer'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useQueryState } from 'nuqs'
 import { useTranslation } from 'react-i18next'
 import AnnotationReply from '@/app/components/base/features/new-feature-panel/annotation-reply'
@@ -83,9 +84,12 @@ const NewFeaturePanel = ({
               {description ?? t(($) => $['common.featuresDescription'], { ns: 'workflow' })}
             </div>
           </div>
-          <DrawerCloseButton
-            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-            className="size-8 p-2"
+          <DrawerClose
+            render={
+              <IconButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} size="lg">
+                <span aria-hidden="true" className="i-ri-close-line size-4" />
+              </IconButton>
+            }
           />
         </div>
         {/* list */}

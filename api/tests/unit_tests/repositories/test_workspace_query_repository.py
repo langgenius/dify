@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session, sessionmaker
 
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
-from repositories.workspace_query_repository import WorkspaceQueryRepository
+from repositories.workspace.workspace_repository import WorkspaceRepository
 
 _WORKSPACE_ID = "11111111-1111-1111-1111-111111111111"
 _OTHER_WORKSPACE_ID = "22222222-2222-2222-2222-222222222222"
@@ -50,7 +50,7 @@ def test_get_role_for_account_is_scoped_by_workspace_and_account(
         )
         session.commit()
 
-    repository = WorkspaceQueryRepository(sqlite_session_factory)
+    repository = WorkspaceRepository(sqlite_session_factory)
 
     assert repository.get_role_for_account(workspace_id=_WORKSPACE_ID, account_id=_OWNER_ID) == "owner"
     assert repository.get_role_for_account(workspace_id=_WORKSPACE_ID, account_id=_ADMIN_ID) == "admin"

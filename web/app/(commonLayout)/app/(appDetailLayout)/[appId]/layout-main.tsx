@@ -3,7 +3,7 @@
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
@@ -21,7 +21,7 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { usePathname, useRouter } from '@/next/navigation'
 import { isAppDeletingOrDeleted } from '@/service/app-deletion'
-import { consoleClient } from '@/service/console'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
 import { getRedirectionPath } from '@/utils/app-redirection'
 import { getAppACLCapabilities } from '@/utils/permission'
@@ -79,7 +79,12 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const routeAppDetail =
     appDetail?.id === appId ? appDetail : appDetailRes?.id === appId ? appDetailRes : null
   const pageTitle = appDetailPageTitle(pathname, t)
-  const appName = routeAppDetail?.id === appId ? routeAppDetail.name : undefined
+  const { data: appName } = useQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({
+      input: { params: { app_id: appId } },
+      select: (detail) => detail.name,
+    }),
+  )
   const shouldBlockAgentResourceAccess =
     routeAppDetail?.mode === AppModeEnum.AGENT && pathname.endsWith('/access-config')
   const canViewAccessPoint =

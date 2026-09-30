@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 from sqlalchemy.orm import Session, sessionmaker
 
-from repositories.account_repository import SQLAlchemyAccountRepository
+from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.app.api_key_repository import AppApiKeyRepository
 from repositories.app.console_repository import ConsoleAppRepository
 from services.agent.roster_package_exporter import RosterAgentPackageExporter

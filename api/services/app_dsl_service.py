@@ -71,8 +71,8 @@ from services.entities.dsl_entities import (
     make_app_dsl,
 )
 from services.entities.site_dsl import SiteDsl, apply_site_dsl
-from services.errors.account import NoPermissionError
 from services.errors.app import WorkflowNotFoundError
+from services.errors.base import NoPermissionError
 from services.feature_service import FeatureService
 from services.icon_configuration import (
     DEFAULT_ICON,

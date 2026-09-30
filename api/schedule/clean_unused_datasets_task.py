@@ -9,7 +9,7 @@ from sqlalchemy.exc import SQLAlchemyError
 import app
 from configs import dify_config
 from core.db.session_factory import session_factory
-from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
+from core.rag.index_processor.index_processor import IndexProcessorFactory
 from enums import CloudPlan
 from extensions.ext_redis import redis_client
 from libs.pagination import paginate_query
