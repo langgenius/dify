@@ -352,4 +352,3 @@ describe('completion-params regressions', () => {
     expect(result.params).toEqual({})
   })
 })
-
