@@ -154,7 +154,7 @@ catalog:
   ahooks: 3.10.0
   ajv: 8.20.0
   bowser: 2.14.1
-  c12: 4.0.0-rc.1
+  c12: 4.0.0-rc.2
   chokidar: 5.0.0
   class-variance-authority: 0.7.1
   cn: 0.4.0

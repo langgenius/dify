@@ -6,6 +6,9 @@ importers:
   .:
     configDependencies: {}
     packageManagerDependencies:
+      '@pnpm/exe':
+        specifier: 12.6.0
+        version: 12.6.0
       pnpm:
         specifier: 12.6.0
         version: 12.6.0
@@ -89,6 +92,11 @@ packages:
     cpu: [x64]
     os: [win32]
 
+  '@pnpm/exe@12.6.0':
+    resolution: {integrity: sha512-CkNetlJZugjKp9vPvWqCm5ahORU6FfO46BlOqqSCKLJ+W6QcRgM0qmmPTvlgrXVvkAiH+9hE+mMp/wSaqcU5Aw==}
+    engines: {node: '>=18.*'}
+    hasBin: true
+
   pnpm@12.6.0:
     resolution: {integrity: sha512-PvaPlRyxEawgS0paFvCy3fDaVqluBBPoHYVdnwtV75JnFHCQKOHNAMQFwsX7e56OxNxGd3yAXQNzwvL/AP0g7A==}
     engines: {node: '>=18.*'}
@@ -137,6 +145,23 @@ snapshots:
 
   '@pnpm/exe.win32-x64@12.6.0':
     optional: true
+
+  '@pnpm/exe@12.6.0':
+    optionalDependencies:
+      '@pnpm/exe.android-arm64': 12.6.0
+      '@pnpm/exe.android-x64': 12.6.0
+      '@pnpm/exe.darwin-arm64': 12.6.0
+      '@pnpm/exe.darwin-x64': 12.6.0
+      '@pnpm/exe.freebsd-x64': 12.6.0
+      '@pnpm/exe.linux-arm64': 12.6.0
+      '@pnpm/exe.linux-arm64-musl': 12.6.0
+      '@pnpm/exe.linux-ppc64': 12.6.0
+      '@pnpm/exe.linux-riscv64': 12.6.0
+      '@pnpm/exe.linux-s390x': 12.6.0
+      '@pnpm/exe.linux-x64': 12.6.0
+      '@pnpm/exe.linux-x64-musl': 12.6.0
+      '@pnpm/exe.win32-arm64': 12.6.0
+      '@pnpm/exe.win32-x64': 12.6.0
 
   pnpm@12.6.0:
     optionalDependencies:
@@ -426,8 +451,8 @@ catalogs:
       specifier: 2.14.1
       version: 2.14.1
     c12:
-      specifier: 4.0.0-rc.1
-      version: 4.0.0-rc.1
+      specifier: 4.0.0-rc.2
+      version: 4.0.0-rc.2
     chokidar:
       specifier: 5.0.0
       version: 5.0.0
@@ -1076,7 +1101,7 @@ importers:
         version: 2.1.1(hono@4.13.9)
       c12:
         specifier: 'catalog:'
-        version: 4.0.0-rc.1(chokidar@5.0.0)(dotenv@17.4.2)(giget@3.3.0)(jiti@2.7.0)(magicast@0.5.3)
+        version: 4.0.0-rc.2(dotenv@17.4.2)(giget@3.3.0)(jiti@2.7.0)(magicast@0.5.3)
       chokidar:
         specifier: 'catalog:'
         version: 5.0.0
@@ -5952,17 +5977,14 @@ packages:
       magicast:
         optional: true
 
-  c12@4.0.0-rc.1:
-    resolution: {integrity: sha512-08UYGAVLTLqgiCzWNMNdBHdiWKzhIVwcapySI11mFTBacL5bP0dj1Vr7IcwOH0wcUTgMzm1VCh+by922viKWig==}
+  c12@4.0.0-rc.2:
+    resolution: {integrity: sha512-Qfc/XXsG5yyQZRm2asHeemRRbK5zmo3D+enxiNrJZs6i6zbl9CMj7Wr0lvYGq84txPNAsUKJfe3ea2Rva8h/eA==}
     peerDependencies:
-      chokidar: ^5
       dotenv: '*'
       giget: '>=3.1.0'
       jiti: '*'
       magicast: '*'
     peerDependenciesMeta:
-      chokidar:
-        optional: true
       dotenv:
         optional: true
       giget:
@@ -13522,7 +13544,7 @@ snapshots:
     optionalDependencies:
       magicast: 0.5.3
 
-  c12@4.0.0-rc.1(chokidar@5.0.0)(dotenv@17.4.2)(giget@3.3.0)(jiti@2.7.0)(magicast@0.5.3):
+  c12@4.0.0-rc.2(dotenv@17.4.2)(giget@3.3.0)(jiti@2.7.0)(magicast@0.5.3):
     dependencies:
       confbox: 0.3.1
       defu: 6.1.7
@@ -13531,7 +13553,6 @@ snapshots:
       pkg-types: 2.3.3
       rc9: 3.1.0
     optionalDependencies:
-      chokidar: 5.0.0
       dotenv: 17.4.2
       giget: 3.3.0
       jiti: 2.7.0
@@ -18126,7 +18147,7 @@ time:
   ahooks@3.10.0: '2026-09-06T01:59:54.024Z'
   ajv@8.20.0: '2026-04-24T15:22:16.529Z'
   bowser@2.14.1: '2026-02-08T22:04:35.837Z'
-  c12@4.0.0-rc.1: '2026-09-03T11:31:59.413Z'
+  c12@4.0.0-rc.2: '2026-09-22T23:44:24.160Z'
   chokidar@5.0.0: '2025-11-25T23:28:06.854Z'
   class-variance-authority@0.7.1: '2024-11-26T08:20:34.604Z'
   cn@0.4.0: '2026-09-22T10:43:46.016Z'
