@@ -308,4 +308,21 @@ describe('AgentMonitoringPage', () => {
 
     resolveNextStatistics(emptyStatisticsResponse)
   })
+
+  it('announces a loading failure and recovers after retry', async () => {
+    const user = userEvent.setup()
+    mocks.statisticsQueryFn
+      .mockRejectedValueOnce(new Error('Statistics unavailable'))
+      .mockResolvedValueOnce(statisticsResponse)
+
+    renderPage()
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'agentV2.agentDetail.monitoring.loadFailed',
+    )
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+
+    expect(await screen.findByText('1.3k')).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
 })

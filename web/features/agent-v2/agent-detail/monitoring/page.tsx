@@ -136,7 +136,7 @@ export function AgentMonitoringPage({ agentId }: AgentMonitoringPageProps) {
               {shouldShowError && (
                 <AgentMonitoringState>
                   <div className="flex items-center justify-center gap-2">
-                    <span>{t(($) => $['agentDetail.monitoring.loadFailed'])}</span>
+                    <span role="alert">{t(($) => $['agentDetail.monitoring.loadFailed'])}</span>
                     <Button
                       variant="secondary"
                       size="small"
