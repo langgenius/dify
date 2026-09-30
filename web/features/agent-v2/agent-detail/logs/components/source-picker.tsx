@@ -113,7 +113,7 @@ export function AgentLogSourcePicker({
         <ComboboxPositioner>
           <ComboboxPopup
             aria-label={t(($) => $['agentDetail.logs.filters.source.label'])}
-            className="w-80 p-0"
+            className="w-80 max-w-[calc(100vw-1rem)] p-0"
           >
             <div className="p-2 pb-1">
               <ComboboxInputGroup className="h-8 min-h-8 px-2">

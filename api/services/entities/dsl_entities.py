@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any, Protocol
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -23,6 +24,9 @@ class ImportStatus(StrEnum):
 
 class AppImportParams(BaseModel):
     mode: str = Field(..., description="Import mode")
+    template_id: UUID | None = None
+    version_id: UUID | None = None
+    package_url: str | None = None
     yaml_content: str | None = None
     yaml_url: str | None = None
     name: str | None = None

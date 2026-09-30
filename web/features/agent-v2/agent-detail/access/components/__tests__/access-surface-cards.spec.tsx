@@ -694,7 +694,7 @@ describe('Agent access surface cards', () => {
       })
 
       await user.click(
-        within(dialog).getByRole('button', {
+        within(dialog).getByRole('tab', {
           name: 'appOverview.overview.appInfo.embedded.scripts',
         }),
       )
@@ -849,7 +849,8 @@ describe('Agent access surface cards', () => {
       const dialog = await screen.findByRole('dialog', {
         name: 'appOverview.overview.appInfo.settings.title',
       })
-      expect(within(dialog).getByAltText('app icon')).toHaveAttribute(
+      const iconTrigger = within(dialog).getByRole('button', { name: 'app.iconPicker.title' })
+      expect(iconTrigger.querySelector('img')).toHaveAttribute(
         'src',
         'https://files.example.test/agent-icon.png',
       )
@@ -1109,7 +1110,21 @@ describe('Agent access surface cards', () => {
       )
 
       const dialog = await screen.findByRole('dialog', { name: 'appApi.apiKeyModal.apiSecretKey' })
-      expect(await within(dialog).findByText('app...ing-secret-key-token')).toBeInTheDocument()
+      const keyTable = within(dialog).getByRole('table', {
+        name: 'appApi.apiKeyModal.apiSecretKey',
+      })
+      expect(
+        within(keyTable).getByRole('columnheader', { name: 'appApi.apiKeyModal.secretKey' }),
+      ).toBeInTheDocument()
+      expect(
+        within(keyTable).getByRole('columnheader', { name: 'appApi.apiKeyModal.created' }),
+      ).toBeInTheDocument()
+      expect(
+        within(keyTable).getByRole('columnheader', { name: 'appApi.apiKeyModal.lastUsed' }),
+      ).toBeInTheDocument()
+      expect(
+        await within(keyTable).findByRole('cell', { name: 'app...ing-secret-key-token' }),
+      ).toBeInTheDocument()
 
       await user.click(
         within(dialog).getByRole('button', { name: 'appApi.apiKeyModal.createNewSecretKey' }),

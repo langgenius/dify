@@ -15,6 +15,12 @@ from libs.datetime_utils import naive_utc_now
 from models.dataset import DatasetAutoDisableLog, DocumentSegment
 from models.dataset import Document as DatasetDocument
 from models.enums import IndexingStatus, SegmentStatus
+from repositories.knowledge.dataset_read_repository import (
+    get_dataset_doc_form,
+    get_document_dataset,
+    get_segment_child_chunks,
+)
+from repositories.knowledge.segment_read_adapter import get_segment_attachments
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +50,7 @@ def add_document_to_index_task(dataset_document_id: str):
         indexing_cache_key = f"document_{dataset_document.id}_indexing"
 
         try:
-            dataset = dataset_document.get_dataset(session=session)
+            dataset = get_document_dataset(dataset_document, session=session)
             if not dataset:
                 raise Exception(f"Document {dataset_document.id} dataset {dataset_document.dataset_id} doesn't exist.")
 
@@ -70,7 +76,7 @@ def add_document_to_index_task(dataset_document_id: str):
                     },
                 )
                 if dataset_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX:
-                    child_chunks = segment.get_child_chunks(session=session)
+                    child_chunks = get_segment_child_chunks(segment, session=session)
                     if child_chunks:
                         child_documents = []
                         for child_chunk in child_chunks:
@@ -86,7 +92,7 @@ def add_document_to_index_task(dataset_document_id: str):
                             child_documents.append(child_document)
                         document.children = child_documents
                 if dataset.is_multimodal:
-                    for attachment in segment.get_attachments(session=session):
+                    for attachment in get_segment_attachments(segment, session=session):
                         multimodal_documents.append(
                             AttachmentDocument(
                                 page_content=attachment["name"],
@@ -101,7 +107,7 @@ def add_document_to_index_task(dataset_document_id: str):
                         )
                 documents.append(document)
 
-            index_type = dataset.get_doc_form(session=session)
+            index_type = get_dataset_doc_form(dataset, session=session)
             index_processor = IndexProcessorFactory(index_type).init_index_processor()
             index_processor.load(dataset, documents, multimodal_documents=multimodal_documents, session=session)
 
@@ -119,12 +125,12 @@ def add_document_to_index_task(dataset_document_id: str):
             session.commit()
 
             # Enable summary indexes for all segments in this document
-            from services.summary_index_service import SummaryIndexService
+            from services.knowledge.summaries.adapters import SummaryIndexAdapter
 
             segment_ids_list = [segment.id for segment in segments]
             if segment_ids_list:
                 try:
-                    SummaryIndexService.enable_summaries_for_segments(
+                    SummaryIndexAdapter.enable_summaries_for_segments(
                         dataset=dataset,
                         segment_ids=segment_ids_list,
                     )

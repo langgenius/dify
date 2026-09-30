@@ -1,4 +1,4 @@
-import type Resources from './resources.generated'
+import type Resources from './resources.generated.d.ts'
 import { kebabCase } from 'string-ts'
 
 export const defaultNS = 'app' as const

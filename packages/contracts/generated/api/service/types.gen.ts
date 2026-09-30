@@ -1799,8 +1799,10 @@ export type PipelineUploadFileResponse = {
 
 export type PreProcessingRule = {
   enabled: boolean
-  id: 'remove_extra_spaces' | 'remove_stopwords' | 'remove_urls_emails'
+  id: PreProcessingRuleKey
 }
+
+export type PreProcessingRuleKey = 'remove_extra_spaces' | 'remove_stopwords' | 'remove_urls_emails'
 
 export type ProcessRule = {
   mode: ProcessRuleMode

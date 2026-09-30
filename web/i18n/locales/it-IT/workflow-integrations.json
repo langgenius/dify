@@ -45,7 +45,6 @@
   "nodes.triggerSchedule.nextExecutionTimes": "Prossimi 5 tempi di esecuzione",
   "nodes.triggerSchedule.onMinute": "In un minuto",
   "nodes.triggerSchedule.selectFrequency": "Seleziona frequenza",
-  "nodes.triggerSchedule.selectTime": "Seleziona orario",
   "nodes.triggerSchedule.title": "Programma",
   "nodes.triggerSchedule.useCronExpression": "Usa un'espressione cron",
   "nodes.triggerSchedule.useVisualPicker": "Usa il selettore visivo",

@@ -43,7 +43,7 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-const HotkeyKbdGroup = ({
+function HotkeyKbdGroup({
   hotkey,
   color = 'gray',
   platform = 'mac',
@@ -51,16 +51,18 @@ const HotkeyKbdGroup = ({
   hotkey: DisplayHotkey
   color?: 'gray' | 'white'
   platform?: FormatDisplayOptions['platform']
-}) => (
-  <KbdGroup>
-    {formatForDisplay(hotkey, { platform, parts: true }).map((key, index) => (
-      // oxlint-disable-next-line react/no-array-index-key -- Repeated display keys are static, ordered tokens with no component state.
-      <Kbd key={`${key}-${index}`} color={color}>
-        {key}
-      </Kbd>
-    ))}
-  </KbdGroup>
-)
+}) {
+  return (
+    <KbdGroup>
+      {formatForDisplay(hotkey, { platform, parts: true }).map((key, index) => (
+        // oxlint-disable-next-line react/no-array-index-key -- Repeated display keys are static, ordered tokens with no component state.
+        <Kbd key={`${key}-${index}`} color={color}>
+          {key}
+        </Kbd>
+      ))}
+    </KbdGroup>
+  )
+}
 
 export const Default: Story = {
   render: () => <HotkeyKbdGroup hotkey="Mod+K" />,

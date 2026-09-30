@@ -243,9 +243,9 @@ ADMIT_NO_MOUNT = Expect(
 _RUN_TRAITS = frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED, Trait.EXTERNAL_REACHABLE})
 
 ROUTES: tuple[Route, ...] = (
-    Route("account.get", "GET", "/account", frozenset({Trait.ACCOUNT_PRIMARY})),
+    Route("describe.account", "GET", "/account", frozenset({Trait.ACCOUNT_PRIMARY})),
     Route("account.sessions.revoke_self", "DELETE", "/account/sessions/self", frozenset({Trait.ACCOUNT_PRIMARY})),
-    Route("account.sessions.list", "GET", "/account/sessions", frozenset({Trait.ACCOUNT_PRIMARY})),
+    Route("get.account.session", "GET", "/account/sessions", frozenset({Trait.ACCOUNT_PRIMARY})),
     Route(
         "account.sessions.revoke_one",
         "DELETE",
@@ -491,7 +491,7 @@ SCENARIOS: dict[Case, Scenario] = {
 }
 
 
-ROUTER_CASE_ROUTE = "account.get"
+ROUTER_CASE_ROUTE = "describe.account"
 ROUTER_CASES: dict[Case, Expect] = {
     Case.NO_BEARER: DENY_NO_BEARER,
     Case.LICENSE_INVALID: ADMIT_NO_LICENCE_GATE,
@@ -564,7 +564,7 @@ _DUAL_SUBJECT_RUN: dict[Case, Expect] = {
 
 
 MATRIX: dict[str, dict[Case, Expect]] = {
-    "account.get": dict(_ACCOUNT_ONLY_NO_WORKSPACE),
+    "describe.account": dict(_ACCOUNT_ONLY_NO_WORKSPACE),
     "workspaces.list": dict(_ACCOUNT_ONLY_NO_WORKSPACE),
     "apps.list": dict(_ACCOUNT_MEMBER_NO_ROLE),
     "workspaces.switch": dict(_ACCOUNT_MEMBER_NO_ROLE),
@@ -735,9 +735,9 @@ _REQ_EXTERNAL_DESCRIBE = (
 )
 
 DECLARED: dict[str, tuple[Requirement, ...]] = {
-    "account.get": _REQ_ACCOUNT_FULL,
+    "describe.account": _REQ_ACCOUNT_FULL,
     "account.sessions.revoke_self": _REQ_ACCOUNT_FULL,
-    "account.sessions.list": _REQ_ACCOUNT_FULL,
+    "get.account.session": _REQ_ACCOUNT_FULL,
     "account.sessions.revoke_one": _REQ_ACCOUNT_FULL,
     "apps.describe": _REQ_APP_DESCRIBE,
     "apps.list": _REQ_ACCOUNT_APPS_READ_MEMBER,
@@ -835,14 +835,20 @@ def token_rows() -> dict[str, ResolvedRow]:
     return {}
 
 
-@pytest.fixture
-def matrix_app(monkeypatch: pytest.MonkeyPatch) -> Iterator[Flask]:
-    """The openapi blueprint on the real factory app with a login manager and the admission probe."""
+@pytest.fixture(scope="module")
+def _matrix_app() -> Flask:
+    """Register the matrix's unchanging routes once; each case gets a fresh client."""
     app = create_flask_app_with_configs()
     app.config["TESTING"] = True
     app.secret_key = "openapi-auth-matrix"
     LoginManager(app)
     app.register_blueprint(openapi_bp)
+    return app
+
+
+@pytest.fixture
+def matrix_app(_matrix_app: Flask, monkeypatch: pytest.MonkeyPatch) -> Iterator[Flask]:
+    """Keep rate-limit overrides and the admission probe scoped to each case."""
 
     monkeypatch.setattr(
         rate_limit_module,
@@ -856,7 +862,7 @@ def matrix_app(monkeypatch: pytest.MonkeyPatch) -> Iterator[Flask]:
 
     user_logged_in.connect(_admit_on_mount)
     try:
-        yield app
+        yield _matrix_app
     finally:
         user_logged_in.disconnect(_admit_on_mount)
 
@@ -895,29 +901,25 @@ def world(sqlite_session_factory: sessionmaker[Session], token_rows: dict[str, R
     other_workspace = Tenant(name="other workspace")
     other_workspace.id = built.other_workspace_id
 
-    with sqlite_session_factory() as session:
-        session.add_all(
-            [
-                workspace,
-                other_workspace,
-                account(built.member_account_id, "owner@example.com"),
-                account(built.low_role_account_id, "normal@example.com"),
-                account(built.outsider_account_id, "outsider@example.com"),
-                application(built.app_id, enable_api=True),
-                application(built.disabled_app_id, enable_api=False),
-                TenantAccountJoin(
-                    tenant_id=built.workspace_id,
-                    account_id=built.member_account_id,
-                    role=TenantAccountRole.OWNER,
-                ),
-                TenantAccountJoin(
-                    tenant_id=built.workspace_id,
-                    account_id=built.low_role_account_id,
-                    role=TenantAccountRole.NORMAL,
-                ),
-            ]
-        )
-        session.commit()
+    rows: list[object] = [
+        workspace,
+        other_workspace,
+        account(built.member_account_id, "owner@example.com"),
+        account(built.low_role_account_id, "normal@example.com"),
+        account(built.outsider_account_id, "outsider@example.com"),
+        application(built.app_id, enable_api=True),
+        application(built.disabled_app_id, enable_api=False),
+        TenantAccountJoin(
+            tenant_id=built.workspace_id,
+            account_id=built.member_account_id,
+            role=TenantAccountRole.OWNER,
+        ),
+        TenantAccountJoin(
+            tenant_id=built.workspace_id,
+            account_id=built.low_role_account_id,
+            role=TenantAccountRole.NORMAL,
+        ),
+    ]
 
     def mint(bearer: Bearer, prefix: str, *, account_id: str | None, email: str) -> None:
         """Register a bearer with the fake resolver *and* persist the session row it
@@ -945,9 +947,7 @@ def world(sqlite_session_factory: sessionmaker[Session], token_rows: dict[str, R
             expires_at=datetime.now(UTC) + timedelta(days=365),
         )
         row.id = str(token_id)
-        with sqlite_session_factory() as session:
-            session.add(row)
-            session.commit()
+        rows.append(row)
         built.tokens[bearer] = raw
         built.session_ids[bearer] = str(token_id)
 
@@ -970,6 +970,8 @@ def world(sqlite_session_factory: sessionmaker[Session], token_rows: dict[str, R
         email="outsider@example.com",
     )
     mint(Bearer.EXTERNAL, TokenType.OAUTH_EXTERNAL_SSO.prefix, account_id=None, email="external@example.com")
+    with sqlite_session_factory.begin() as session:
+        session.add_all(rows)
     return built
 
 

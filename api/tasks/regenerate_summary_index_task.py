@@ -15,7 +15,7 @@ from core.rag.index_processor.constant.index_type import IndexStructureType, Ind
 from models.dataset import Dataset, DocumentSegment, DocumentSegmentSummary
 from models.dataset import Document as DatasetDocument
 from models.enums import SummaryStatus
-from services.summary_index_service import SummaryIndexService
+from services.knowledge.summaries.adapters import SummaryIndexAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -150,22 +150,8 @@ def regenerate_summary_index_task(
 
                     for segment, summary_record in segment_summary_pairs:
                         try:
-                            # Delete old vector
-                            if summary_record.summary_index_node_id:
-                                try:
-                                    from core.rag.datasource.vdb.vector_factory import Vector
-
-                                    vector = Vector(dataset, session=session)
-                                    vector.delete_by_ids([summary_record.summary_index_node_id])
-                                except Exception as e:
-                                    logger.warning(
-                                        "Failed to delete old summary vector for segment %s: %s",
-                                        segment.id,
-                                        str(e),
-                                    )
-
-                            # Re-vectorize with new embedding model
-                            SummaryIndexService.vectorize_summary(summary_record, segment, dataset, session=session)
+                            # The summary use case replaces the old vector after releasing this transaction.
+                            SummaryIndexAdapter.vectorize_summary(summary_record, segment, dataset, session=session)
                             session.commit()
                             total_segments_processed += 1
 
@@ -261,7 +247,7 @@ def regenerate_summary_index_task(
                                     continue
 
                                 # Regenerate both summary content and vectors (for summary_model change)
-                                SummaryIndexService.generate_and_vectorize_summary(
+                                SummaryIndexAdapter.generate_and_vectorize_summary(
                                     segment, dataset, summary_index_setting, session=session
                                 )
                                 total_segments_processed += 1

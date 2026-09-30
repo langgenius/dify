@@ -1,3 +1,4 @@
+import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import type { QueryClient } from '@tanstack/react-query'
 import type {
   AppPublisherProps,
@@ -24,7 +25,7 @@ type UsePublishControllerParams = Pick<
   'onPublish' | 'onRestore' | 'publishedAt'
 > & {
   appId?: string
-  appMode?: AppModeEnum
+  appMode?: AppMode
   appName?: string
   supportsMultiEnvironment: boolean
   onClose: () => void
