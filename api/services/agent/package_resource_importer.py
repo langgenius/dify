@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import mimetypes
 import os
+from collections.abc import Callable
 from typing import Protocol
 from uuid import uuid4
 
@@ -82,7 +83,26 @@ class AgentPackageResourceImporter:
         tenant_id: str,
         account_id: str,
     ) -> tuple[AgentPackage, list[DslImportWarning]]:
-        """Upload outside database transactions, then commit all file records together."""
+        return self.materialize_resources(
+            read_member=lambda path, limit: self._reader.read_member_bytes(archive, path, max_bytes=limit),
+            invalid_skills=archive.invalid_skills,
+            resources=resources,
+            agent_package=agent_package,
+            tenant_id=tenant_id,
+            account_id=account_id,
+        )
+
+    def materialize_resources(
+        self,
+        *,
+        read_member: Callable[[str, int], bytes],
+        invalid_skills: dict[str, str],
+        resources: AgentPackageResources,
+        agent_package: AgentPackage,
+        tenant_id: str,
+        account_id: str,
+    ) -> tuple[AgentPackage, list[DslImportWarning]]:
+        """Materialize portable references from archive members or local resource bytes."""
         files: list[ToolFile | UploadFile] = []
         warnings: list[DslImportWarning] = []
         soul_data = agent_package.soul.model_dump(mode="json")
@@ -112,15 +132,11 @@ class AgentPackageResourceImporter:
                     "mime_type": "application/zip",
                 }
             )
-            reason = archive.invalid_skills.get(skill_resource.id)
+            reason = invalid_skills.get(skill_resource.id)
             normalized = None
             try:
                 if reason is None:
-                    payload = self._reader.read_member_bytes(
-                        archive,
-                        skill_resource.path,
-                        max_bytes=dify_config.UPLOAD_SKILL_FILE_SIZE_LIMIT * 1024 * 1024,
-                    )
+                    payload = read_member(skill_resource.path, dify_config.UPLOAD_SKILL_FILE_SIZE_LIMIT * 1024 * 1024)
                     normalized = self._skill_packages.validate_and_normalize(
                         content=payload, filename=skill_resource.path
                     )
@@ -165,7 +181,7 @@ class AgentPackageResourceImporter:
             file_kind = package_ref["file_kind"]
             mime_type = package_ref["mime_type"] or "application/octet-stream"
             extension = self._extension(package_ref["name"])
-            payload = self._reader.read_member_bytes(archive, file_resource.path, max_bytes=file_resource.size)
+            payload = read_member(file_resource.path, file_resource.size)
             if file_kind == "tool_file":
                 storage_key = f"tools/{tenant_id}/{uuid4().hex}.{extension or 'bin'}"
                 row: ToolFile | UploadFile = ToolFile(
@@ -217,12 +233,25 @@ class AgentPackageResourceImporter:
     def materialize_icons(
         self, *, archive: PreparedPackageArchive, icons: list[PackageIcon], tenant_id: str, account_id: str
     ) -> dict[str, str]:
+        return self.materialize_icon_resources(
+            read_member=lambda path, limit: self._reader.read_member_bytes(archive, path, max_bytes=limit),
+            icons=icons,
+            tenant_id=tenant_id,
+            account_id=account_id,
+        )
+
+    def materialize_icon_resources(
+        self,
+        *,
+        read_member: Callable[[str, int], bytes],
+        icons: list[PackageIcon],
+        tenant_id: str,
+        account_id: str,
+    ) -> dict[str, str]:
         files: list[ToolFile | UploadFile] = []
         mapping: dict[str, str] = {}
         for icon in icons:
-            payload = self._reader.read_member_bytes(
-                archive, icon.path, max_bytes=dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT * 1024 * 1024
-            )
+            payload = read_member(icon.path, dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT * 1024 * 1024)
             extension = self._extension(icon.path)
             file_id = str(uuid4())
             key = f"upload_files/{tenant_id}/{file_id}.{extension}"

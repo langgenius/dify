@@ -4,6 +4,7 @@ import hashlib
 import io
 import zipfile
 from collections.abc import Callable, Generator
+from functools import partial
 from uuid import UUID
 
 import pytest
@@ -15,6 +16,8 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import QueuePool
 
 from configs import dify_config
+from extensions.storage.storage_type import StorageType
+from libs.datetime_utils import naive_utc_now
 from models.agent import (
     Agent,
     AgentConfigDraft,
@@ -28,7 +31,7 @@ from models.agent import (
     AgentStatus,
 )
 from models.agent_config_entities import AgentSoulConfig
-from models.enums import AppStatus, CustomizeTokenStrategy
+from models.enums import AppStatus, CreatorUserRole, CustomizeTokenStrategy
 from models.model import App, AppMode, IconType, Site
 from models.skill import AgentSkillBindingSnapshot, Skill, SkillVersion, SkillVersionManifest
 from models.tools import ToolFile
@@ -713,15 +716,18 @@ def test_member_read_rechecks_limit_and_integrity_after_preflight(rewrite_manife
     ("case", "error_type", "message"),
     [
         ("missing_manifest", RosterAgentPackageExportFailedError, "unusable Skill"),
-        ("name_mismatch", RosterAgentPackageExportFailedError, "unusable Skill"),
-        ("size_limit", RosterAgentPackageTooLargeError, "exceeds the size limit"),
+        ("name_mismatch", RosterAgentPackageExportFailedError, "Skill"),
+        ("size_limit", RosterAgentPackageTooLargeError, "size limit"),
+        ("missing_payload", RosterAgentPackageExportFailedError, "Unable to read"),
     ],
 )
+@pytest.mark.parametrize("local", [False, True])
 def test_export_rejects_unusable_or_oversized_skill_payload(
     case: str,
     error_type: type[RosterAgentPackageExportFailedError | RosterAgentPackageTooLargeError],
     message: str,
     monkeypatch: pytest.MonkeyPatch,
+    local: bool,
 ) -> None:
     payload = _zip({"README.md": b"missing skill manifest"}) if case == "missing_manifest" else _skill_archive("other")
     if case == "size_limit":
@@ -737,10 +743,18 @@ def test_export_rejects_unusable_or_oversized_skill_payload(
     app = _package_app()
     app.package.soul.config_files = []
     exporter = RosterAgentPackageExporter()
-    resources = AgentPackageResourceExporter(storage_backend=_MemoryStorage({"skill": payload}))
+    resources = AgentPackageResourceExporter(
+        storage_backend=_MemoryStorage({} if case == "missing_payload" else {"skill": payload})
+    )
     resources.sources["agent_1"] = ([source], list[_FileSource]())
+    resources.packages["agent_1"] = app.package
+    export = (
+        partial(resources.read_local_resources, "agent_1")
+        if local
+        else partial(exporter._build_archive, app=app, resources=resources)
+    )
     with pytest.raises(error_type, match=message):
-        exporter._build_archive(app=app, resources=resources)
+        export()
 
 
 @pytest.mark.parametrize("max_bytes", [0, 8])
@@ -1216,6 +1230,12 @@ def test_export_uses_current_workspace_skill_bindings(
     assert dsl.package.soul.prompt.system_prompt == ""
     assert len(dsl.package.workspace_skills) == 1
     assert dsl.package.workspace_skills[0].priority == 0
+    exported_yaml = exporter.export_yaml(
+        tenant_id=agent.tenant_id,
+        agent_id=agent.id,
+        version_id=historical_version_id,
+    )
+    assert AgentAppDsl.model_validate(yaml.safe_load(exported_yaml)) == dsl
 
 
 @pytest.mark.parametrize("source", ["missing", "other_tenant", "other_agent", "internal_snapshot"])
@@ -1378,7 +1398,12 @@ def test_export_download_closes_owned_archive(app: Flask) -> None:
     ],
 )
 def test_export_preserves_file_metadata_in_dsl(
-    monkeypatch: pytest.MonkeyPatch, file_kind: str, declared_mime: str | None, stored_mime: str, expected_mime: str
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    file_kind: str,
+    declared_mime: str | None,
+    stored_mime: str,
+    expected_mime: str,
 ) -> None:
     from unittest.mock import Mock
 
@@ -1396,7 +1421,20 @@ def test_export_preserves_file_metadata_in_dsl(
         original_url=None,
     )
     tool_file.id = "source-id"
-    upload_file = Mock(spec=UploadFile, id="source-id", key="payload", mime_type=stored_mime)
+    upload_file = UploadFile(
+        tenant_id="tenant-1",
+        storage_type=StorageType.LOCAL,
+        key="payload",
+        name="original.pdf",
+        size=1,
+        extension="pdf",
+        mime_type=stored_mime,
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="account-1",
+        created_at=naive_utc_now(),
+        used=False,
+    )
+    upload_file.id = "source-id"
     monkeypatch.setattr(exporter, "_tool_files", Mock(return_value={"source-id": tool_file}))
     monkeypatch.setattr(exporter, "_upload_files", Mock(return_value={"source-id": upload_file}))
     soul = AgentSoulConfig.model_validate(
@@ -1407,7 +1445,7 @@ def test_export_preserves_file_metadata_in_dsl(
         }
     )
 
-    portable_soul, _, sources = exporter._collect_payloads(session=Mock(spec=Session), tenant_id="tenant-1", soul=soul)
+    portable_soul, _, sources = exporter._collect_payloads(session=sqlite_session, tenant_id="tenant-1", soul=soul)
 
     ref = portable_soul.config_files[0]
     assert (ref.name, ref.file_kind, ref.mime_type, ref.file_id) == (
