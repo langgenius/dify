@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { act, screen, waitFor } from '@testing-library/react'
+import ErrorBoundary from '@/app/components/base/error-boundary'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
@@ -146,4 +147,30 @@ describe('Overview app identity', () => {
     })
     await waitFor(() => expect(screen.queryByText('api key info panel')).not.toBeInTheDocument())
   })
+})
+
+it('surfaces an initial detail failure instead of leaving the overview blank', async () => {
+  const queryClient = createConsoleQueryClient()
+  const queryKey = consoleQuery.apps.byAppId.get.queryKey({
+    input: { params: { app_id: 'unavailable-app' } },
+  })
+  queryClient.setQueryDefaults(queryKey, { retryOnMount: false })
+  await queryClient
+    .query({ queryKey, queryFn: () => Promise.reject(new Error('Detail unavailable')) })
+    .catch(() => {})
+  const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+  try {
+    renderWithConsoleQuery(
+      <ErrorBoundary>
+        <OverviewView appId="unavailable-app" />
+      </ErrorBoundary>,
+      { queryClient },
+    )
+    expect(
+      await screen.findByRole('button', { name: 'common.errorBoundary.tryAgain' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('api key info panel')).not.toBeInTheDocument()
+  } finally {
+    consoleError.mockRestore()
+  }
 })

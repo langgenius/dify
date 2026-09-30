@@ -19,6 +19,7 @@ const OverviewView = ({ appId }: OverviewViewProps) => {
   const { data: appDetail } = useQuery(
     consoleQuery.apps.byAppId.get.queryOptions({
       input: { params: { app_id: appId } },
+      throwOnError: true,
     }),
   )
   const { data: currentUserId } = useSuspenseQuery({
@@ -45,9 +46,7 @@ const OverviewView = ({ appId }: OverviewViewProps) => {
         <ChartView
           appId={appId}
           headerRight={
-            appACLCapabilities.canConfigureTracing ? (
-              <TracingPanel key={appId} appId={appId} />
-            ) : null
+            appACLCapabilities.canConfigureTracing ? <TracingPanel appId={appId} /> : null
           }
         />
       </div>
