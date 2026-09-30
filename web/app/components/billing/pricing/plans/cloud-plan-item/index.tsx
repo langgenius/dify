@@ -183,10 +183,18 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
             <>
               {isYearly && (
                 <span className="title-4xl-semi-bold text-text-quaternary line-through">
+                  <span className="sr-only">
+                    {t(($) => $['plansCommon.originalAnnualPrice'], { ns: 'billing' })}
+                  </span>
                   ${planInfo.price * 12}
                 </span>
               )}
               <span className="title-4xl-semi-bold text-text-primary">
+                {isYearly && (
+                  <span className="sr-only">
+                    {t(($) => $['plansCommon.discountedAnnualPrice'], { ns: 'billing' })}
+                  </span>
+                )}
                 ${isYearly ? planInfo.price * 10 : planInfo.price}
               </span>
               <span className="pb-0.5 system-md-regular text-text-tertiary">

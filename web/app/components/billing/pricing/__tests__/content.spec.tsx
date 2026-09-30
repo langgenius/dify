@@ -82,6 +82,28 @@ it('shows prices and disables purchase buttons while features load', async () =>
   expect(screen.queryByRole('status')).not.toBeInTheDocument()
 })
 
+it('distinguishes original and discounted annual prices in readable text', async () => {
+  const user = userEvent.setup()
+  const { queryClient, show } = setup()
+  seedFeatures(queryClient)
+  show()
+  expect(screen.queryByText('billing.plansCommon.originalAnnualPrice')).not.toBeInTheDocument()
+  expect(screen.queryByText('billing.plansCommon.discountedAnnualPrice')).not.toBeInTheDocument()
+
+  await user.click(screen.getByRole('switch'))
+
+  for (const amount of ['$708', '$1908']) {
+    expect(screen.getByText(amount)).toHaveTextContent(
+      `billing.plansCommon.originalAnnualPrice${amount}`,
+    )
+  }
+  for (const amount of ['$590', '$1590']) {
+    expect(screen.getByText(amount)).toHaveTextContent(
+      `billing.plansCommon.discountedAnnualPrice${amount}`,
+    )
+  }
+})
+
 it('preserves a billing interval selected before education eligibility arrives', async () => {
   const user = userEvent.setup()
   const { queryClient, show } = setup()
