@@ -4,7 +4,6 @@ import uuid
 from typing import override
 
 from flask import request
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, Unauthorized
 
@@ -15,9 +14,10 @@ from controllers.openapi.auth.subjects import Subject
 from extensions.ext_application_services import application_services
 from libs.oauth_bearer import AuthContext, TokenType, sha256_hex
 from libs.rate_limit import enforce_bearer_rate_limit
-from models.account import Tenant, TenantStatus
+from models.account import TenantStatus
 from models.enums import AppStatus
-from models.model import App
+from services.account_service import TenantService
+from services.app_service import AppService
 from services.auth.resource_access_token_contracts import ResourceAccessTokenInvalidError
 
 
@@ -54,13 +54,13 @@ class CheckResourceAccess(Requirement):
             )
         # The current OpenAPI pipeline still needs ORM context. Reconstruct it
         # within admission's session using the authorized owner chain.
-        tenant = session.get(Tenant, grant.tenant_id)
+        tenant = TenantService.get_tenant_by_id(grant.tenant_id, session=session)
         if tenant is None or tenant.status != TenantStatus.NORMAL:
             raise Forbidden("workspace unavailable")
         ctx._workspace = tenant
         ctx.resource_app_ids = grant.app_ids
         if app_id:
-            app = session.scalar(select(App).where(App.id == app_id, App.tenant_id == grant.tenant_id))
+            app = AppService.get_app_in_workspace(tenant_id=grant.tenant_id, app_id=app_id, session=session)
             if app is None or app.status != AppStatus.NORMAL or not app.enable_api:
                 raise Forbidden("resource_not_authorized")
             ctx._app = app
