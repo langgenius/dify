@@ -35,6 +35,11 @@ def request(operation, **kwargs):
     return VectorRequest.model_validate({"operation": operation, "scope": SCOPE, **kwargs})
 
 
+@pytest.fixture(autouse=True)
+def _vector_store_config(config_overrides):
+    config_overrides(DEPLOYMENT_EDITION="COMMUNITY")
+
+
 @pytest.fixture
 def client():
     client = QdrantClient(":memory:")
@@ -309,7 +314,8 @@ def test_cloud_quota_uses_existing_watermark_without_embedding_calls(config_over
     with (
         patch.object(service, "_get_plan", return_value=CloudPlan.SANDBOX),
         patch.object(service, "_get_usage_and_limit_mb", return_value=(0.0, 50)),
-        patch.object(service, "_reserve_projected_usage", return_value=(0, 1024)) as reserve,
+        patch.object(service, "_get_embedding_dimension") as dimension,
+        patch.object(service, "_reserve_projected_usage", return_value=(0, 60 * 1024 * 1024)) as reserve,
     ):
         for _ in range(2):
             service.ensure_external_points_can_be_indexed(
@@ -317,8 +323,10 @@ def test_cloud_quota_uses_existing_watermark_without_embedding_calls(config_over
             )
         assert reserve.call_args.kwargs["document_id"] == "knowledgefs:stable-batch"
         assert reserve.call_args.kwargs["document_estimate_bytes"] == 2 * (3 * 8 + 3584)
+        assert reserve.call_args.kwargs["estimate_limit_bytes"] == 60 * 1024 * 1024
+        dimension.assert_not_called()
         reserve.return_value = (0, 61 * 1024 * 1024)
-        with pytest.raises(VectorSpaceAdmissionError, match="exceeding"):
+        with pytest.raises(VectorSpaceAdmissionError, match="exceeding the 50 MB limit"):
             service.ensure_external_points_can_be_indexed(
                 tenant_id=TENANT, batch_id="large", point_count=2, dimension=3
             )
@@ -334,6 +342,48 @@ def test_unmetered_workspace_does_not_contact_billing_or_reserve_quota(config_ov
     with (
         patch.object(service, "_get_plan", return_value=None),
         patch.object(service, "_get_usage_and_limit_mb") as billing,
+        patch.object(service, "_reserve_projected_usage") as reserve,
+    ):
+        service.ensure_external_points_can_be_indexed(
+            tenant_id=TENANT, batch_id="unmetered", point_count=2, dimension=3
+        )
+        billing.assert_not_called()
+        reserve.assert_not_called()
+
+
+@pytest.mark.parametrize("limit", [50, -1])
+def test_external_points_with_unknown_usage_fail_before_reservation(config_overrides, limit):
+    from enums import CloudPlan
+    from services.vector_space_admission_service import (
+        VectorSpaceAdmissionService,
+        VectorSpaceAdmissionUnavailableError,
+    )
+
+    config_overrides(DEPLOYMENT_EDITION="CLOUD", VECTOR_STORE="tidb_on_qdrant")
+    service = VectorSpaceAdmissionService()
+    with (
+        patch.object(service, "_get_plan", return_value=CloudPlan.SANDBOX),
+        patch(
+            "services.vector_space_admission_service.BillingService.get_vector_space",
+            return_value={"size": 0, "limit": limit, "usage_unknown": True},
+        ),
+        patch.object(service, "_reserve_projected_usage") as reserve,
+    ):
+        with pytest.raises(VectorSpaceAdmissionUnavailableError, match="Unable to verify vector storage usage"):
+            service.ensure_external_points_can_be_indexed(
+                tenant_id=TENANT, batch_id="unknown", point_count=2, dimension=3
+            )
+        reserve.assert_not_called()
+
+
+@pytest.mark.parametrize(("edition", "vector_store"), [("COMMUNITY", "tidb_on_qdrant"), ("CLOUD", "qdrant")])
+def test_external_points_skip_billing_outside_cloud_tidb(config_overrides, edition, vector_store):
+    from services.vector_space_admission_service import VectorSpaceAdmissionService
+
+    config_overrides(DEPLOYMENT_EDITION=edition, VECTOR_STORE=vector_store)
+    service = VectorSpaceAdmissionService()
+    with (
+        patch("services.vector_space_admission_service.BillingService.get_vector_space") as billing,
         patch.object(service, "_reserve_projected_usage") as reserve,
     ):
         service.ensure_external_points_can_be_indexed(

@@ -3,10 +3,10 @@ from contextlib import nullcontext
 from unittest.mock import patch
 
 import pytest
-from werkzeug.exceptions import BadRequest, Forbidden, NotFound, ServiceUnavailable
+from werkzeug.exceptions import BadRequest, NotFound, ServiceUnavailable
 
-from controllers.inner_api.knowledge_fs.vectors import KnowledgeFSVectorApi
-from services.vector_space_admission_service import VectorSpaceAdmissionError
+from controllers.inner_api.knowledge_fs.vectors import KnowledgeFSVectorApi, KnowledgeFSVectorQuotaExceededError
+from services.vector_space_admission_service import VectorSpaceAdmissionError, VectorSpaceAdmissionUnavailableError
 
 PAYLOAD = {
     "operation": "get",
@@ -93,7 +93,7 @@ def test_vector_controller_reports_quota_failure(app):
             side_effect=VectorSpaceAdmissionError("vector quota exceeded"),
         ),
     ):
-        with pytest.raises(Forbidden, match="vector quota exceeded"):
+        with pytest.raises(KnowledgeFSVectorQuotaExceededError, match="vector quota exceeded"):
             inspect.unwrap(handler.post)(handler)
 
 
@@ -138,9 +138,43 @@ def test_quota_rejection_cannot_allocate_a_cluster(app):
         ),
         patch("controllers.inner_api.knowledge_fs.vectors.configured_vector_client") as client,
     ):
-        with pytest.raises(Forbidden):
+        with pytest.raises(KnowledgeFSVectorQuotaExceededError):
             inspect.unwrap(handler.post)(handler)
         client.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("admission_error", "status_code", "error_code"),
+    [
+        (VectorSpaceAdmissionError("vector quota exceeded"), 413, "vector_space_quota_exceeded"),
+        (VectorSpaceAdmissionUnavailableError("vector usage is unavailable"), 503, "vector_space_quota_unavailable"),
+    ],
+)
+def test_http_quota_failure_cannot_allocate_a_cluster(config_overrides, admission_error, status_code, error_code):
+    from flask import Flask
+    from flask_restx import Api
+
+    config_overrides(PLUGIN_DAEMON_KEY="enabled", INNER_API_KEY_FOR_PLUGIN="trusted-key")
+    http_app = Flask(__name__)
+    Api(http_app).add_resource(KnowledgeFSVectorApi, "/vectors")
+    payload = {
+        "operation": "upsert",
+        "scope": PAYLOAD["scope"],
+        "points": [
+            {"id": PAYLOAD["ids"][0], "generation_id": PAYLOAD["ids"][0], "content_hash": "a" * 64, "vector": [1, 0]}
+        ],
+    }
+    with (
+        patch("controllers.inner_api.knowledge_fs.vectors.admit_vector_request", side_effect=admission_error),
+        patch("controllers.inner_api.knowledge_fs.vectors.configured_vector_client") as client,
+        patch("controllers.inner_api.knowledge_fs.vectors.execute_vector_request") as execute,
+    ):
+        response = http_app.test_client().post("/vectors", json=payload, headers={"X-Inner-Api-Key": "trusted-key"})
+    assert response.status_code == status_code
+    assert response.get_json() == {"code": error_code, "message": str(admission_error), "status": status_code}
+    assert "Retry-After" not in response.headers
+    client.assert_not_called()
+    execute.assert_not_called()
 
 
 def test_pending_cluster_returns_explicit_retry_after_without_secrets(app):

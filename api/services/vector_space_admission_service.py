@@ -43,6 +43,10 @@ class VectorSpaceAdmissionError(ValueError):
         super().__init__(message)
 
 
+class VectorSpaceAdmissionUnavailableError(VectorSpaceAdmissionError):
+    """The usage or reservation dependency cannot safely authorize a write."""
+
+
 @dataclass(frozen=True)
 class VectorStorageWorkload:
     text_points: int
@@ -189,7 +193,11 @@ def _items(value: Any, name: str) -> list[Any]:
 
 
 class VectorSpaceAdmissionService:
-    """Cloud-only pre-write guard for unusually large TiDB vector workloads."""
+    """Cloud-only pre-write guard for unusually large TiDB vector workloads.
+
+    Configured estimate thresholds reject unusually large writes and are separate
+    from Billing plan limits. Billing supplies current usage and the displayed limit.
+    """
 
     def __init__(self) -> None:
         self._dimension_by_dataset: dict[str, int] = {}
@@ -350,10 +358,14 @@ class VectorSpaceAdmissionService:
     def _get_usage_and_limit_mb(self, tenant_id: str) -> tuple[float, int]:
         try:
             vector_space = BillingService.get_vector_space(tenant_id)
+            if vector_space.get("usage_unknown", False):
+                raise ValueError("Vector storage usage is unknown")
             current_usage_mb = float(vector_space["size"])
             plan_limit_mb = int(vector_space["limit"])
+            if not math.isfinite(current_usage_mb) or current_usage_mb < 0 or plan_limit_mb < -1:
+                raise ValueError("Invalid vector storage quota")
         except Exception as error:
-            raise VectorSpaceAdmissionError(
+            raise VectorSpaceAdmissionUnavailableError(
                 "Unable to verify vector storage usage right now. Please try again later."
             ) from error
         return current_usage_mb, plan_limit_mb
@@ -413,7 +425,7 @@ class VectorSpaceAdmissionService:
 
                 return base_usage_bytes, projected_usage_bytes
         except Exception as error:
-            raise VectorSpaceAdmissionError(
+            raise VectorSpaceAdmissionUnavailableError(
                 "Unable to reserve estimated vector storage right now. Please try again later."
             ) from error
 
@@ -423,7 +435,7 @@ class VectorSpaceAdmissionService:
         try:
             billing_info = BillingService.get_info(tenant_id, exclude_vector_space=True)
         except Exception as error:
-            raise VectorSpaceAdmissionError(
+            raise VectorSpaceAdmissionUnavailableError(
                 "Unable to verify the subscription plan right now. Please try again later."
             ) from error
 
@@ -459,7 +471,7 @@ class VectorSpaceAdmissionService:
 
         embeddings = CacheEmbedding(model_instance).embed_documents([probe_text])
         if not embeddings or not embeddings[0]:
-            raise VectorSpaceAdmissionError(
+            raise VectorSpaceAdmissionUnavailableError(
                 "Unable to estimate vector storage for this document. Please try again later."
             )
 

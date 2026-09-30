@@ -3,12 +3,13 @@
 from flask import request
 from flask_restx import Resource
 from pydantic import ValidationError
-from werkzeug.exceptions import BadRequest, Forbidden, ServiceUnavailable
+from werkzeug.exceptions import BadRequest, ServiceUnavailable
 
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.inner_api import inner_api_ns
 from controllers.inner_api.wraps import knowledge_fs_inner_api_only
 from fields.base import ResponseModel
+from libs.exception import BaseHTTPException
 from libs.helper import dump_response
 from services.knowledge_fs.vector_store import (
     VectorPoint,
@@ -18,7 +19,17 @@ from services.knowledge_fs.vector_store import (
     execute_vector_request,
 )
 from services.tidb_binding_service import TidbBindingPendingError
-from services.vector_space_admission_service import VectorSpaceAdmissionError
+from services.vector_space_admission_service import VectorSpaceAdmissionError, VectorSpaceAdmissionUnavailableError
+
+
+class KnowledgeFSVectorQuotaExceededError(BaseHTTPException):
+    error_code = "vector_space_quota_exceeded"
+    code = 413
+
+
+class KnowledgeFSVectorQuotaUnavailableError(BaseHTTPException):
+    error_code = "vector_space_quota_unavailable"
+    code = 503
 
 
 class VectorMatchResponse(ResponseModel):
@@ -54,8 +65,10 @@ class KnowledgeFSVectorApi(Resource):
                 result = execute_vector_request(client, payload, check_admission=False)
         except TidbBindingPendingError:
             raise ServiceUnavailable("KnowledgeFS vector backend is being provisioned", retry_after=5) from None
+        except VectorSpaceAdmissionUnavailableError as error:
+            raise KnowledgeFSVectorQuotaUnavailableError(str(error)) from None
         except VectorSpaceAdmissionError as error:
-            raise Forbidden(str(error)) from None
+            raise KnowledgeFSVectorQuotaExceededError(str(error)) from None
         except Exception:
             # Native SDK exceptions can contain endpoint credentials or vectors.
             raise ServiceUnavailable("KnowledgeFS vector backend is unavailable") from None
