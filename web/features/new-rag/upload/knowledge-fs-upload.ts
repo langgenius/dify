@@ -24,9 +24,10 @@ export async function stageKnowledgeFsDocument(file: File, signal?: AbortSignal)
 }
 
 export async function discardKnowledgeFsStagedUpload(uploadId: string) {
-  await consoleClient.knowledgeFs.uploads.byUploadId.delete({
-    params: { upload_id: uploadId },
-  })
+  await consoleClient.knowledgeFs.uploads.byUploadId.delete(
+    { params: { upload_id: uploadId } },
+    { context: { silent: true } },
+  )
 }
 
 export async function uploadKnowledgeFsDocuments(

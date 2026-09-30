@@ -53,9 +53,10 @@ describe('uploadKnowledgeFsDocuments', () => {
       { body: { file } },
       { context: { silent: true }, signal: controller.signal },
     )
-    expect(serviceMock.discardUpload).toHaveBeenCalledWith({
-      params: { upload_id: 'staged-upload-1' },
-    })
+    expect(serviceMock.discardUpload).toHaveBeenCalledWith(
+      { params: { upload_id: 'staged-upload-1' } },
+      { context: { silent: true } },
+    )
   })
 
   it('claims every staged file through the generated Dify API contract', async () => {
