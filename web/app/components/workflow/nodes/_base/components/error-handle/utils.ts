@@ -8,12 +8,15 @@ const getDefaultValueByType = (type: VarType) => {
 
   if (type === VarType.number) return 0
 
+  if (type === VarType.boolean) return false
+
   if (type === VarType.object) return '{}'
 
   if (
     type === VarType.arrayObject ||
     type === VarType.arrayString ||
     type === VarType.arrayNumber ||
+    type === VarType.arrayBoolean ||
     type === VarType.arrayFile
   )
     return '[]'
