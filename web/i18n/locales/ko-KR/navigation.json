@@ -44,6 +44,7 @@
   "settings.settings": "Settings",
   "settings.swaggerAPIAsTool": "Swagger API as Tool",
   "settings.trigger": "Trigger",
+  "settings.usageLimits": "Usage & Limits",
   "settings.workspace": "WORKSPACE",
   "toolsPage.description": "워크스페이스에서 사용할 수 있는 모든 도구 — 내장 도구와 Marketplace에서 설치한 통합입니다.",
   "toolsPage.toolPlugin": "Tool Plugin"

@@ -455,6 +455,13 @@ export const zReplaceBindingsRequest = z.object({
 })
 
 /**
+ * WorkspaceSettingsPayload
+ */
+export const zWorkspaceSettingsPayload = z.object({
+  max_active_requests: z.int().gte(0),
+})
+
+/**
  * SkillCreatePayload
  */
 export const zSkillCreatePayload = z.object({
@@ -1629,6 +1636,42 @@ export const zTenantListResponse = z.object({
 })
 
 /**
+ * TenantInfoResponse
+ */
+export const zTenantInfoResponse = z.object({
+  created_at: z.int().nullish(),
+  custom_config: zWorkspaceCustomConfigResponse.nullish(),
+  id: z.string(),
+  in_trial: z.boolean().nullish(),
+  max_active_requests: z.int().nullish(),
+  name: z.string().nullish(),
+  next_credit_reset_date: z.int().nullish(),
+  plan: zCloudPlan.nullish(),
+  role: z.string().nullish(),
+  status: z.string().nullish(),
+  trial_credits: z.int().nullish(),
+  trial_credits_exhausted_at: z.int().nullish(),
+  trial_credits_used: z.int().nullish(),
+  trial_end_reason: z.string().nullish(),
+})
+
+/**
+ * WorkspaceTenantResultResponse
+ */
+export const zWorkspaceTenantResultResponse = z.object({
+  result: z.string(),
+  tenant: zTenantInfoResponse,
+})
+
+/**
+ * SwitchWorkspaceResponse
+ */
+export const zSwitchWorkspaceResponse = z.object({
+  new_tenant: zTenantInfoResponse,
+  result: z.string(),
+})
+
+/**
  * TenantAccountRole
  */
 export const zTenantAccountRole = z.enum(['admin', 'dataset_operator', 'editor', 'normal', 'owner'])
@@ -1639,6 +1682,7 @@ export const zTenantAccountRole = z.enum(['admin', 'dataset_operator', 'editor',
 export const zCurrentWorkspaceSummaryResponse = z.object({
   credits: z.int().nullable(),
   id: z.string(),
+  max_active_requests: z.int(),
   name: z.string(),
   plan: zCloudPlan.nullable(),
   role: zTenantAccountRole,
@@ -1952,41 +1996,6 @@ export const zTriggerProviderSubscriptionApiEntity = z.object({
 export const zTriggerProviderSubscriptionListResponse = z.array(
   zTriggerProviderSubscriptionApiEntity,
 )
-
-/**
- * TenantInfoResponse
- */
-export const zTenantInfoResponse = z.object({
-  created_at: z.int().nullish(),
-  custom_config: zWorkspaceCustomConfigResponse.nullish(),
-  id: z.string(),
-  in_trial: z.boolean().nullish(),
-  name: z.string().nullish(),
-  next_credit_reset_date: z.int().nullish(),
-  plan: zCloudPlan.nullish(),
-  role: z.string().nullish(),
-  status: z.string().nullish(),
-  trial_credits: z.int().nullish(),
-  trial_credits_exhausted_at: z.int().nullish(),
-  trial_credits_used: z.int().nullish(),
-  trial_end_reason: z.string().nullish(),
-})
-
-/**
- * WorkspaceTenantResultResponse
- */
-export const zWorkspaceTenantResultResponse = z.object({
-  result: z.string(),
-  tenant: zTenantInfoResponse,
-})
-
-/**
- * SwitchWorkspaceResponse
- */
-export const zSwitchWorkspaceResponse = z.object({
-  new_tenant: zTenantInfoResponse,
-  result: z.string(),
-})
 
 /**
  * PluginDependencyType
@@ -5598,6 +5607,13 @@ export const zGetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdR
  * Success
  */
 export const zGetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyResponse = zWorkspaceAccessMatrix
+
+export const zPostWorkspacesCurrentSettingsBody = zWorkspaceSettingsPayload
+
+/**
+ * Success
+ */
+export const zPostWorkspacesCurrentSettingsResponse = zWorkspaceTenantResultResponse
 
 export const zGetWorkspacesCurrentSkillsQuery = z.object({
   keyword: z.string().optional(),

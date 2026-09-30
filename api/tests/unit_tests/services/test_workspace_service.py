@@ -25,6 +25,7 @@ def _persist_membership(session: Session, *, role: TenantAccountRole) -> Tenant:
 
 def test_get_current_workspace_summary_sandbox_uses_trial_only(sqlite_session: Session) -> None:
     tenant = _persist_membership(sqlite_session, role=TenantAccountRole.OWNER)
+    tenant.max_active_requests = 7
     trial_pool = CreditPoolBalance(
         tenant_id=tenant.id,
         pool_type="trial",
@@ -50,6 +51,7 @@ def test_get_current_workspace_summary_sandbox_uses_trial_only(sqlite_session: S
         "role": "owner",
         "plan": CloudPlan.SANDBOX,
         "credits": 180,
+        "max_active_requests": 7,
     }
     get_info.assert_called_once_with(tenant.id, exclude_vector_space=True)
     get_pool.assert_called_once_with(tenant_id=tenant.id, pool_type="trial", session=sqlite_session)
@@ -110,6 +112,7 @@ def test_get_current_workspace_summary_non_cloud_skips_billing_and_credits(sqlit
         "role": "editor",
         "plan": None,
         "credits": None,
+        "max_active_requests": 0,
     }
     get_info.assert_not_called()
     get_pool.assert_not_called()

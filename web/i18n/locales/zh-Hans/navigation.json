@@ -44,6 +44,7 @@
   "settings.settings": "设置",
   "settings.swaggerAPIAsTool": "Swagger API 作为工具",
   "settings.trigger": "触发器",
+  "settings.usageLimits": "用量与限制",
   "settings.workspace": "工作空间",
   "toolsPage.description": "工作区中所有可用的工具 —— 包括内置工具和从 Marketplace 安装的工具。",
   "toolsPage.toolPlugin": "工具插件"

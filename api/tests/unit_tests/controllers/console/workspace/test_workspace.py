@@ -9,6 +9,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
+from pydantic import ValidationError
 from sqlalchemy import Engine, event
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from werkzeug.datastructures import FileStorage
@@ -37,6 +38,8 @@ from controllers.console.workspace.workspace import (
     WorkspaceLogoUploadResponse,
     WorkspacePermissionApi,
     WorkspacePermissionResponse,
+    WorkspaceSettingsApi,
+    WorkspaceSettingsPayload,
 )
 from enums import CloudPlan, DeploymentEdition
 from extensions.storage.storage_type import StorageType
@@ -366,6 +369,7 @@ class TestCurrentWorkspaceSummaryApi:
             "role": "owner",
             "plan": CloudPlan.SANDBOX,
             "credits": 180,
+            "max_active_requests": 5,
         }
 
         with (
@@ -384,6 +388,7 @@ class TestCurrentWorkspaceSummaryApi:
             "role": "owner",
             "plan": "sandbox",
             "credits": 180,
+            "max_active_requests": 5,
         }
         get_summary.assert_called_once_with(tenant, user.id, session=session)
 
@@ -685,6 +690,34 @@ class TestWorkspaceInfoApi:
         with app.test_request_context("/workspaces/info", json=payload):
             with pytest.raises(ValueError):
                 method(api, sqlite_session, None)
+
+
+class TestWorkspaceSettingsApi:
+    def test_post_updates_only_the_concurrency_limit(self, app: Flask, workspace_session: scoped_session[Session]):
+        api = WorkspaceSettingsApi()
+        method = unwrap(api.post)
+        tenant = make_tenant(name="Original Name")
+        workspace_session.add(tenant)
+        workspace_session.commit()
+
+        with (
+            app.test_request_context("/workspaces/current/settings", json={"max_active_requests": 12}),
+            patch("controllers.console.workspace.workspace.TenantService.get_tenant_by_id", return_value=tenant),
+            patch(
+                "controllers.console.workspace.workspace.WorkspaceService.get_tenant_info",
+                return_value={"id": tenant.id, "name": tenant.name, "max_active_requests": 12},
+            ),
+        ):
+            result = method(api, workspace_session(), tenant.id)
+
+        assert result["result"] == "success"
+        assert result["tenant"]["max_active_requests"] == 12
+        assert tenant.name == "Original Name"
+        assert tenant.max_active_requests == 12
+
+    def test_negative_limit_is_rejected(self):
+        with pytest.raises(ValidationError):
+            WorkspaceSettingsPayload.model_validate({"max_active_requests": -1})
 
 
 class TestWorkspacePermissionApi:

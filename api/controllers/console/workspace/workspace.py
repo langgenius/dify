@@ -33,6 +33,7 @@ from controllers.console.workspace.error import CurrentWorkspaceArchivedError
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_resource_check,
+    is_admin_or_owner_required,
     only_edition_enterprise,
     setup_required,
     with_current_tenant_id,
@@ -78,6 +79,10 @@ class WorkspaceInfoPayload(BaseModel):
     name: str
 
 
+class WorkspaceSettingsPayload(BaseModel):
+    max_active_requests: int = Field(ge=0)
+
+
 class TenantInfoResponse(ResponseModel):
     id: str
     name: str | None = None
@@ -92,6 +97,7 @@ class TenantInfoResponse(ResponseModel):
     trial_credits_used: int | None = None
     trial_credits_exhausted_at: int | None = None
     next_credit_reset_date: int | None = None
+    max_active_requests: int | None = None
 
     @field_validator("status", "trial_end_reason", mode="before")
     @classmethod
@@ -114,6 +120,7 @@ class CurrentWorkspaceSummaryResponse(ResponseModel):
     role: TenantAccountRole
     plan: CloudPlan | None
     credits: int | None = Field(description="Remaining credits in the effective pool; -1 means unlimited.")
+    max_active_requests: int
 
 
 class TenantListItemResponse(ResponseModel):
@@ -209,6 +216,7 @@ register_schema_models(
     SwitchWorkspacePayload,
     WorkspaceCustomConfigPayload,
     WorkspaceInfoPayload,
+    WorkspaceSettingsPayload,
 )
 register_response_schema_models(
     console_ns,
@@ -366,6 +374,32 @@ class CustomConfigWorkspaceApi(Resource):
         }
 
         tenant.custom_config_dict = custom_config_dict
+        session.commit()
+
+        return WorkspaceTenantResultResponse(
+            result="success", tenant=WorkspaceService.get_tenant_info(tenant, session=session)
+        ).model_dump(mode="json")
+
+
+@console_ns.route("/workspaces/current/settings")
+class WorkspaceSettingsApi(Resource):
+    """Update the current workspace's concurrent request limit."""
+
+    @console_ns.expect(console_ns.models[WorkspaceSettingsPayload.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[WorkspaceTenantResultResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @is_admin_or_owner_required
+    @with_current_tenant_id
+    @with_session
+    def post(self, session: Session, current_tenant_id: str):
+        args = WorkspaceSettingsPayload.model_validate(console_ns.payload or {})
+        tenant = TenantService.get_tenant_by_id(current_tenant_id, session=session)
+        if tenant is None:
+            raise NotFound()
+
+        tenant.max_active_requests = args.max_active_requests
         session.commit()
 
         return WorkspaceTenantResultResponse(

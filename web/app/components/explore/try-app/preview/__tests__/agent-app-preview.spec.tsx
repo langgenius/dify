@@ -72,6 +72,7 @@ const workspaceSummary = {
   plan: null,
   credits: null,
   role: 'normal',
+  max_active_requests: 0,
 } satisfies CurrentWorkspaceSummaryResponse
 
 describe('AgentAppPreview', () => {

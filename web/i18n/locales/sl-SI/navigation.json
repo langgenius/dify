@@ -44,6 +44,7 @@
   "settings.settings": "Settings",
   "settings.swaggerAPIAsTool": "Swagger API as Tool",
   "settings.trigger": "Trigger",
+  "settings.usageLimits": "Usage & Limits",
   "settings.workspace": "WORKSPACE",
   "toolsPage.description": "Vsa orodja, ki so na voljo v vašem workspaceu — vgrajena orodja in integracija-i, nameščeni iz Marketplace.",
   "toolsPage.toolPlugin": "Tool Plugin"

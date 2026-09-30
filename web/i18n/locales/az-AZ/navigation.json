@@ -44,6 +44,7 @@
   "settings.settings": "Parametrlər",
   "settings.swaggerAPIAsTool": "Alət kimi Swagger API",
   "settings.trigger": "İşəsalma siqnalı",
+  "settings.usageLimits": "Usage & Limits",
   "settings.workspace": "İş sahəsi",
   "toolsPage.description": "İş sahənizdə əlçatan olan bütün alətlər: həm daxili, həm də mağazadan quraşdırılmış alətlər.",
   "toolsPage.toolPlugin": "Alət plagini"
