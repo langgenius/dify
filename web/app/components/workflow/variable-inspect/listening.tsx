@@ -19,7 +19,7 @@ const resolveListeningDescription = (
   message: string | undefined,
   triggerNode: Node | undefined,
   triggerType: BlockEnum,
-  t: TFunction<['workflow']>,
+  t: TFunction<['workflow', 'workflowDebug', 'workflowIntegrations']>,
 ): string => {
   if (message) return message
 
@@ -27,10 +27,10 @@ const resolveListeningDescription = (
     const scheduleData = triggerNode?.data as ScheduleTriggerNodeType | undefined
     const nextTriggerTime = scheduleData ? getNextExecutionTime(scheduleData) : ''
     return t(($) => $['debug.variableInspect.listening.tipSchedule'], {
-      ns: 'workflow',
+      ns: 'workflowDebug',
       nextTriggerTime:
         nextTriggerTime ||
-        t(($) => $['debug.variableInspect.listening.defaultScheduleTime'], { ns: 'workflow' }),
+        t(($) => $['debug.variableInspect.listening.defaultScheduleTime'], { ns: 'workflowDebug' }),
     })
   }
 
@@ -38,26 +38,32 @@ const resolveListeningDescription = (
     const pluginName =
       (triggerNode?.data as { provider_name?: string; title?: string })?.provider_name ||
       (triggerNode?.data as { title?: string })?.title ||
-      t(($) => $['debug.variableInspect.listening.defaultPluginName'], { ns: 'workflow' })
-    return t(($) => $['debug.variableInspect.listening.tipPlugin'], { ns: 'workflow', pluginName })
+      t(($) => $['debug.variableInspect.listening.defaultPluginName'], { ns: 'workflowDebug' })
+    return t(($) => $['debug.variableInspect.listening.tipPlugin'], {
+      ns: 'workflowDebug',
+      pluginName,
+    })
   }
 
   if (triggerType === BlockEnum.TriggerWebhook) {
     const nodeName =
       (triggerNode?.data as { title?: string })?.title ||
-      t(($) => $['debug.variableInspect.listening.defaultNodeName'], { ns: 'workflow' })
-    return t(($) => $['debug.variableInspect.listening.tip'], { ns: 'workflow', nodeName })
+      t(($) => $['debug.variableInspect.listening.defaultNodeName'], { ns: 'workflowDebug' })
+    return t(($) => $['debug.variableInspect.listening.tip'], { ns: 'workflowDebug', nodeName })
   }
 
   const nodeDescription = (triggerNode?.data as { desc?: string })?.desc
   if (nodeDescription) return nodeDescription
 
-  return t(($) => $['debug.variableInspect.listening.tipFallback'], { ns: 'workflow' })
+  return t(($) => $['debug.variableInspect.listening.tipFallback'], { ns: 'workflowDebug' })
 }
 
-const resolveMultipleListeningDescription = (nodes: Node[], t: TFunction<['workflow']>): string => {
+const resolveMultipleListeningDescription = (
+  nodes: Node[],
+  t: TFunction<['workflow', 'workflowDebug', 'workflowIntegrations']>,
+): string => {
   if (!nodes.length)
-    return t(($) => $['debug.variableInspect.listening.tipFallback'], { ns: 'workflow' })
+    return t(($) => $['debug.variableInspect.listening.tipFallback'], { ns: 'workflowDebug' })
 
   const titles = nodes
     .map((node) => (node.data as { title?: string })?.title)
@@ -65,11 +71,11 @@ const resolveMultipleListeningDescription = (nodes: Node[], t: TFunction<['workf
 
   if (titles.length)
     return t(($) => $['debug.variableInspect.listening.tip'], {
-      ns: 'workflow',
+      ns: 'workflowDebug',
       nodeName: titles.join(', '),
     })
 
-  return t(($) => $['debug.variableInspect.listening.tipFallback'], { ns: 'workflow' })
+  return t(($) => $['debug.variableInspect.listening.tipFallback'], { ns: 'workflowDebug' })
 }
 
 type ListeningProps = {
@@ -78,7 +84,7 @@ type ListeningProps = {
 }
 
 const Listening: FC<ListeningProps> = ({ onStop, message }) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow', 'workflowDebug', 'workflowIntegrations'])
   const store = useStoreApi()
 
   // Get the current trigger type and node ID from store
@@ -173,7 +179,7 @@ const Listening: FC<ListeningProps> = ({ onStop, message }) => {
       </div>
       <div className="flex flex-col gap-1">
         <div className="system-sm-semibold text-text-secondary">
-          {t(($) => $['debug.variableInspect.listening.title'], { ns: 'workflow' })}
+          {t(($) => $['debug.variableInspect.listening.title'], { ns: 'workflowDebug' })}
         </div>
         <div className="system-xs-regular whitespace-pre-line text-text-tertiary">
           {description}
@@ -182,7 +188,7 @@ const Listening: FC<ListeningProps> = ({ onStop, message }) => {
       {webhookDebugUrl && (
         <div className="flex items-center gap-2">
           <div className="shrink-0 system-xs-regular whitespace-pre-line text-text-tertiary">
-            {t(($) => $['nodes.triggerWebhook.debugUrlTitle'], { ns: 'workflow' })}
+            {t(($) => $['nodes.triggerWebhook.debugUrlTitle'], { ns: 'workflowIntegrations' })}
           </div>
           <Tooltip>
             <TooltipTrigger
@@ -190,7 +196,9 @@ const Listening: FC<ListeningProps> = ({ onStop, message }) => {
                 <button
                   type="button"
                   aria-label={
-                    t(($) => $['nodes.triggerWebhook.debugUrlCopy'], { ns: 'workflow' }) || ''
+                    t(($) => $['nodes.triggerWebhook.debugUrlCopy'], {
+                      ns: 'workflowIntegrations',
+                    }) || ''
                   }
                   className={`inline-flex items-center rounded-md border border-divider-regular bg-components-badge-white-to-dark px-1.5 py-0.5 font-mono text-[13px] leading-4.5 text-text-secondary transition-colors hover:bg-components-panel-on-panel-item-bg-hover focus:outline-hidden focus-visible:outline-2 focus-visible:outline-components-panel-border focus-visible:outline-solid ${debugUrlCopied ? 'bg-components-panel-on-panel-item-bg-hover text-text-primary' : ''}`}
                   onClick={() => {
@@ -204,8 +212,8 @@ const Listening: FC<ListeningProps> = ({ onStop, message }) => {
             />
             <TooltipContent placement="top">
               {debugUrlCopied
-                ? t(($) => $['nodes.triggerWebhook.debugUrlCopied'], { ns: 'workflow' })
-                : t(($) => $['nodes.triggerWebhook.debugUrlCopy'], { ns: 'workflow' })}
+                ? t(($) => $['nodes.triggerWebhook.debugUrlCopied'], { ns: 'workflowIntegrations' })
+                : t(($) => $['nodes.triggerWebhook.debugUrlCopy'], { ns: 'workflowIntegrations' })}
             </TooltipContent>
           </Tooltip>
         </div>
@@ -213,7 +221,7 @@ const Listening: FC<ListeningProps> = ({ onStop, message }) => {
       <div>
         <Button size="medium" className="px-3" variant="primary" onClick={onStop}>
           <span aria-hidden className="i-custom-vender-line-mediaAndDevices-stop-circle size-4" />
-          {t(($) => $['debug.variableInspect.listening.stopButton'], { ns: 'workflow' })}
+          {t(($) => $['debug.variableInspect.listening.stopButton'], { ns: 'workflowDebug' })}
         </Button>
       </div>
     </div>

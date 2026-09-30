@@ -56,7 +56,7 @@ export default function AccountSetting({
   activeTab,
   onTabChangeAction,
 }: IAccountSettingProps) {
-  const { t } = useTranslation(['appLog', 'billing', 'common', 'custom'])
+  const { t } = useTranslation(['appLog', 'billing', 'custom', 'navigation', 'accountSettings'])
   const { data: enableReplaceWebAppLogo } = useQuery(
     consoleQuery.features.get.queryOptions({
       select: (features) => features.can_replace_logo,
@@ -91,26 +91,26 @@ export default function AccountSetting({
   const settingItems: GroupItem[] = [
     {
       key: ACCOUNT_SETTING_TAB.MEMBERS,
-      name: t(($) => $['settings.members'], { ns: 'common' }),
+      name: t(($) => $['settings.members'], { ns: 'navigation' }),
       icon: <span className={cn('i-ri-group-2-line', iconClassName)} />,
       activeIcon: <span className={cn('i-ri-group-2-fill', iconClassName)} />,
     },
     {
       key: ACCOUNT_SETTING_TAB.ROLES_AND_PERMISSIONS,
-      name: t(($) => $['settings.rolesAndPermissions'], { ns: 'common' }),
+      name: t(($) => $['settings.rolesAndPermissions'], { ns: 'navigation' }),
       icon: <span className={cn('i-ri-shield-user-line', iconClassName)} />,
       activeIcon: <span className={cn('i-ri-shield-user-fill', iconClassName)} />,
     },
     {
       key: ACCOUNT_SETTING_TAB.PERMISSION_SET,
-      name: t(($) => $['settings.permissionSet'], { ns: 'common' }),
-      description: t(($) => $['settings.permissionSetDescription'], { ns: 'common' }),
+      name: t(($) => $['settings.permissionSet'], { ns: 'navigation' }),
+      description: t(($) => $['settings.permissionSetDescription'], { ns: 'navigation' }),
       icon: <span className={cn('i-ri-lock-2-line', iconClassName)} />,
       activeIcon: <span className={cn('i-ri-lock-2-fill', iconClassName)} />,
     },
     {
       key: ACCOUNT_SETTING_TAB.BILLING,
-      name: t(($) => $['settings.billing'], { ns: 'common' }),
+      name: t(($) => $['settings.billing'], { ns: 'navigation' }),
       description: t(($) => $['plansCommon.receiptInfo'], { ns: 'billing' }),
       icon: <span className={cn('i-ri-money-dollar-circle-line', iconClassName)} />,
       activeIcon: <span className={cn('i-ri-money-dollar-circle-fill', iconClassName)} />,
@@ -130,8 +130,8 @@ export default function AccountSetting({
     },
     {
       key: ACCOUNT_SETTING_TAB.PREFERENCES,
-      name: t(($) => $['settings.preferences'], { ns: 'common' }),
-      title: t(($) => $['account.general'], { ns: 'common' }),
+      name: t(($) => $['settings.preferences'], { ns: 'navigation' }),
+      title: t(($) => $['account.general'], { ns: 'accountSettings' }),
       icon: <span className={cn('i-ri-equalizer-2-line', iconClassName)} />,
       activeIcon: <span className={cn('i-ri-equalizer-2-fill', iconClassName)} />,
     },
@@ -167,7 +167,7 @@ export default function AccountSetting({
   const menuItems = [
     {
       key: 'workspace-group',
-      name: t(($) => $['settings.workspace'], { ns: 'common' }),
+      name: t(($) => $['settings.workspace'], { ns: 'navigation' }),
       items: visibleSettingItems,
     },
     {
@@ -177,11 +177,14 @@ export default function AccountSetting({
   ]
 
   return (
-    <MenuDialog title={t(($) => $['settings.settings'], { ns: 'common' })} onClose={onCancelAction}>
+    <MenuDialog
+      title={t(($) => $['settings.settings'], { ns: 'navigation' })}
+      onClose={onCancelAction}
+    >
       <div className="mx-auto flex h-screen w-full max-w-270 px-4">
         <div className="flex w-11 shrink-0 flex-col pr-6 pl-4 sm:w-56">
           <div className="mt-6 mb-8 flex h-9.5 items-center px-3 title-2xl-semi-bold whitespace-nowrap text-text-primary">
-            {t(($) => $['settings.settings'], { ns: 'common' })}
+            {t(($) => $['settings.settings'], { ns: 'navigation' })}
           </div>
           <div className="w-full">
             {menuItems.map((menuItem) => (

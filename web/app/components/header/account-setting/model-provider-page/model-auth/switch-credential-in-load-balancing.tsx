@@ -33,7 +33,7 @@ const SwitchCredentialInLoadBalancing = ({
   onUpdate,
   onRemove,
 }: SwitchCredentialInLoadBalancingProps) => {
-  const { t } = useTranslation(['common', 'plugin'])
+  const { t } = useTranslation(['common', 'plugin', 'modelProvider'])
   const notAllowCustomCredential = provider.allow_custom_token === false
   const { canUseCredential, canCreateCredential, canManageCredential } = useCredentialPermissions()
   const canOpenCredentialMenu = canUseCredential || canCreateCredential || canManageCredential
@@ -67,12 +67,12 @@ const SwitchCredentialInLoadBalancing = ({
         )}
       >
         {!empty && <StatusDot status={color} />}
-        {authRemoved && t(($) => $['modelProvider.auth.authRemoved'], { ns: 'common' })}
+        {authRemoved && t(($) => $['modelProvider.auth.authRemoved'], { ns: 'modelProvider' })}
         {unavailable && t(($) => $['auth.credentialUnavailableInButton'], { ns: 'plugin' })}
         {empty &&
           canCreateCredential &&
           !notAllowCustomCredential &&
-          t(($) => $['modelProvider.auth.addCredential'], { ns: 'common' })}
+          t(($) => $['modelProvider.auth.addCredential'], { ns: 'modelProvider' })}
         {empty &&
           (!canCreateCredential || notAllowCustomCredential) &&
           t(($) => $['auth.credentialUnavailableInButton'], { ns: 'plugin' })}
@@ -136,7 +136,7 @@ const SwitchCredentialInLoadBalancing = ({
       enableAddModelCredential
       showItemSelectedIcon
       hideAddAction={!canCreateCredential}
-      popupTitle={t(($) => $['modelProvider.auth.modelCredentials'], { ns: 'common' })}
+      popupTitle={t(($) => $['modelProvider.auth.modelCredentials'], { ns: 'modelProvider' })}
       triggerOnlyOpenModal={!credentials?.length && canCreateCredential}
     />
   )

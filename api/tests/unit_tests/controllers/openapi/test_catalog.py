@@ -92,12 +92,12 @@ def test_every_guarded_route_declares_catalog_meta_once(app: Flask, ops: dict[st
             streaming.add(meta.op)
             assert meta.kind is Kind.SSE, meta.op
     assert set(ops) <= set(seen)
-    per_mode = {f"console_app.{mode}.run" for mode in ("workflow", "chat", "advanced_chat", "completion")}
-    assert streaming == per_mode | {"run.events"}
+    per_mode = {f"run.console_app.{mode}" for mode in ("workflow", "chat", "advanced_chat", "completion")}
+    assert streaming == per_mode | {"get.run.event"}
 
 
 def test_run_entries_carry_path_bind_kind_and_flags(ops: dict[str, CatalogOp]) -> None:
-    chat = ops["console_app.chat.run"]
+    chat = ops["run.console_app.chat"]
     assert set(chat) == {"summary", "method", "path", "kind", "input", "bind", "internal", "deprecated", "examples"}
     assert (chat["method"], chat["path"], chat["kind"]) == (
         "POST",
@@ -113,10 +113,10 @@ def test_run_entries_carry_path_bind_kind_and_flags(ops: dict[str, CatalogOp]) -
         "attachments": "file",
     }
     assert chat["deprecated"] is False
-    assert ops["console_app.file.upload"]["bind"]["file"] == "file"
-    assert ops["console_app.list"]["bind"]["page"] == "query"
-    assert ops["run.events"]["bind"]["continue_on_pause"] == "query"
-    assert ops["workspace.switch"]["internal"] is True
+    assert ops["upload.console_app.file"]["bind"]["file"] == "file"
+    assert ops["get.console_app"]["bind"]["page"] == "query"
+    assert ops["get.run.event"]["bind"]["continue_on_pause"] == "query"
+    assert ops["switch.workspace"]["internal"] is True
 
 
 def test_input_schemas_are_flat_shallow_and_described(ops: dict[str, CatalogOp]) -> None:
@@ -140,8 +140,8 @@ def test_input_schemas_are_flat_shallow_and_described(ops: dict[str, CatalogOp])
         op for op, e in ops.items() if e["kind"] == "list" and not {"page", "limit"} <= set(e["input"]["properties"])
     ] == []
     assert [op for op, e in ops.items() if set(Hinted.model_fields) & set(e["input"]["properties"])] == []
-    desc = ops["console_app.chat.run"]["input"]["properties"]["inputs"]["description"]
-    assert "console_app.describe" in desc
+    desc = ops["run.console_app.chat"]["input"]["properties"]["inputs"]["description"]
+    assert "describe.console_app" in desc
     assert "input_schema" in desc
 
 

@@ -13,9 +13,10 @@ from sqlalchemy.orm import Session
 
 from app_factory import create_app
 from configs.app_config import DifyConfig
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from models import Account, DifySetup, Tenant, TenantAccountJoin
-from services.account_service import AccountService, RegisterService
+from services.account.contracts import SetupInput
 
 _DEFUALT_TEST_ENV = ".env"
 _DEFAULT_VDB_TEST_ENV = "vdb.env"
@@ -78,13 +79,15 @@ def setup_account(request) -> Generator[Account, None, None]:
         rand_suffix = random.randint(int(1e6), int(1e7))  # noqa
         name = f"test-user-{rand_suffix}"
         email = f"{name}@example.com"
-        RegisterService.setup(
-            email=email,
-            name=name,
-            password=secrets.token_hex(16),
-            ip_address="localhost",
-            language="en-US",
-            session=db.session(),
+        application_services().setup.initialize(
+            SetupInput(
+                email=email,
+                name=name,
+                password=secrets.token_hex(16),
+                ip_address="localhost",
+                language="en-US",
+            ),
+            initialization_validated=True,
         )
 
     with _CACHED_APP.test_request_context():
@@ -109,7 +112,7 @@ def flask_req_ctx():
 
 @pytest.fixture
 def auth_header(setup_account) -> dict[str, str]:
-    token = AccountService.get_account_jwt_token(setup_account)
+    token = application_services().accounts.lifecycle.login(setup_account.id, ip_address="127.0.0.1").access_token
     return {"Authorization": f"Bearer {token}"}
 
 

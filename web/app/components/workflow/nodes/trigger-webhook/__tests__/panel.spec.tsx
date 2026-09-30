@@ -250,15 +250,17 @@ describe('WebhookTriggerPanel', () => {
       const user = userEvent.setup()
       render(<Panel {...panelProps} />)
       const input = screen.getByRole('textbox', {
-        name: 'workflow.nodes.triggerWebhook.webhookUrl',
+        name: 'workflowIntegrations.nodes.triggerWebhook.webhookUrl',
       })
       expect(input).toHaveAttribute('readonly')
-      await user.click(screen.getByText('workflow.nodes.triggerWebhook.webhookUrl'))
+      await user.click(screen.getByText('workflowIntegrations.nodes.triggerWebhook.webhookUrl'))
       expect(input).toHaveFocus()
       await user.click(screen.getByRole('button', { name: 'common.operation.copy' }))
       expect(await navigator.clipboard.readText()).toBe('https://example.com/webhook')
       expect(
-        await screen.findByRole('button', { name: 'workflow.nodes.triggerWebhook.urlCopied' }),
+        await screen.findByRole('button', {
+          name: 'workflowIntegrations.nodes.triggerWebhook.urlCopied',
+        }),
       ).toHaveFocus()
     })
 
@@ -301,10 +303,12 @@ describe('WebhookTriggerPanel', () => {
       render(<Panel {...panelProps} />)
 
       const button = screen.getByRole('button', {
-        name: 'workflow.nodes.triggerWebhook.debugUrlTitle http://127.0.0.1:8000/debug workflow.nodes.triggerWebhook.debugUrlCopy',
+        name: 'workflowIntegrations.nodes.triggerWebhook.debugUrlTitle http://127.0.0.1:8000/debug workflowIntegrations.nodes.triggerWebhook.debugUrlCopy',
       })
       await user.click(
-        screen.getByRole('textbox', { name: 'workflow.nodes.triggerWebhook.webhookUrl' }),
+        screen.getByRole('textbox', {
+          name: 'workflowIntegrations.nodes.triggerWebhook.webhookUrl',
+        }),
       )
       await user.tab()
       await user.tab()
@@ -313,12 +317,12 @@ describe('WebhookTriggerPanel', () => {
       expect(await navigator.clipboard.readText()).toBe('http://127.0.0.1:8000/debug')
       await waitFor(() =>
         expect(screen.getByRole('status')).toHaveTextContent(
-          'workflow.nodes.triggerWebhook.debugUrlCopied',
+          'workflowIntegrations.nodes.triggerWebhook.debugUrlCopied',
         ),
       )
       expect(button).toHaveFocus()
       expect(
-        screen.getByText('workflow.nodes.triggerWebhook.debugUrlPrivateAddressWarning'),
+        screen.getByText('workflowIntegrations.nodes.triggerWebhook.debugUrlPrivateAddressWarning'),
       ).toBeInTheDocument()
     })
   })

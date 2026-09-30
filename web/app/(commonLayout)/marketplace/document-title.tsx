@@ -4,8 +4,8 @@ import { useTranslation } from 'react-i18next'
 import useDocumentTitle from '@/hooks/use-document-title'
 
 const MarketplaceDocumentTitle = () => {
-  const { t } = useTranslation(['common'])
-  useDocumentTitle(t(($) => $['mainNav.marketplace'], { ns: 'common' }))
+  const { t } = useTranslation(['navigation'])
+  useDocumentTitle(t(($) => $['mainNav.marketplace'], { ns: 'navigation' }))
   return null
 }
 

@@ -50,7 +50,7 @@ const EMPTY_COLLECTIONS: Collection[] = []
 const ProviderList = ({ category, contentInset = 'default', layout }: ProviderListProps) => {
   // const searchParams = useSearchParams()
   // searchParams.get('category') === 'workflow'
-  const { t } = useTranslation(['common', 'tools'])
+  const { t } = useTranslation(['tools', 'navigation'])
   const { getTagLabel } = useTags()
   const { canDeletePlugin, canSetPluginPreferences, canUpdatePlugin } = usePluginSettingsAccess()
   const canManageTools = useCanManageTools()
@@ -187,7 +187,7 @@ const ProviderList = ({ category, contentInset = 'default', layout }: ProviderLi
         <ScrollArea className="min-h-0 grow overflow-hidden bg-components-panel-bg">
           <ScrollAreaViewport
             ref={containerRef}
-            aria-label={t(($) => $['menus.tools'], { ns: 'common' })}
+            aria-label={t(($) => $['menus.tools'], { ns: 'navigation' })}
             className="overscroll-contain"
             role="region"
           >

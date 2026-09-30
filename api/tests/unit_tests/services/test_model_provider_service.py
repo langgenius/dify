@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 from typing import Any
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, create_autospec
 
 import pytest
 from sqlalchemy import event
@@ -15,6 +15,7 @@ from enums import DeploymentEdition
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import FetchFrom, ModelType, ParameterRule, ParameterType
 from graphon.model_runtime.entities.provider_entities import ConfigurateMethod
+from models.account import Account, TenantAccountRole
 from models.provider import (
     Provider,
     ProviderCredential,
@@ -23,9 +24,10 @@ from models.provider import (
     TenantDefaultModel,
     TenantPreferredModelProvider,
 )
-from services import model_provider_service as service_module
+from services.credentials.query import CredentialQuery, ModelCredentialRecord
 from services.errors.app_model_config import ProviderNotFoundError
-from services.model_provider_service import ModelProviderService, _ProviderSummaryState
+from services.model_provider import service as service_module
+from services.model_provider.service import ModelProviderService, _ProviderSummaryState
 
 
 def _create_service_with_mocked_manager() -> tuple[ModelProviderService, MagicMock]:
@@ -33,6 +35,21 @@ def _create_service_with_mocked_manager() -> tuple[ModelProviderService, MagicMo
     service = ModelProviderService()
     service._get_provider_manager = MagicMock(return_value=manager)
     return service, manager
+
+
+def test_available_credentials_use_injected_query_for_admin_viewer() -> None:
+    service, manager = _create_service_with_mocked_manager()
+    user = Account(name="Admin", email="admin@example.com")
+    user.id = "actor"
+    user.role = TenantAccountRole.ADMIN
+    query = create_autospec(CredentialQuery, instance=True, spec_set=True)
+    query.list_models.return_value = [ModelCredentialRecord(id="credential", name="Shared credential")]
+
+    result = service.get_provider_available_credentials("tenant", "openai", user=user, credential_query=query)
+
+    query.list_models.assert_called_once_with(workspace_id="tenant", provider="openai", actor_id="actor")
+    assert result == [CredentialConfiguration(credential_id="credential", credential_name="Shared credential")]
+    assert manager.mock_calls == []
 
 
 def _build_provider_configuration(
@@ -968,6 +985,57 @@ class TestModelProviderServiceListingsAndDefaults:
             )
         else:
             provider_configuration.get_model_schema.assert_not_called()
+
+    def test_get_default_model_selection_uses_saved_workspace_choice(self, sqlite_session: Session) -> None:
+        sqlite_session.add(
+            TenantDefaultModel(
+                tenant_id="tenant-1",
+                model_type=ModelType.LLM,
+                provider_name="langgenius/openai/openai",
+                model_name="gpt-4o",
+            )
+        )
+        sqlite_session.commit()
+        service, manager = _create_service_with_mocked_manager()
+
+        result = service.get_default_model_selection("tenant-1", ModelType.LLM, session=sqlite_session)
+
+        assert result == ("langgenius/openai/openai", "gpt-4o")
+        manager.get_configurations.assert_not_called()
+
+    def test_get_default_model_selection_uses_first_active_model_without_writing(self, sqlite_session: Session) -> None:
+        service, manager = _create_service_with_mocked_manager()
+        configurations = manager.get_configurations.return_value
+        configurations.get_models.return_value = [
+            SimpleNamespace(model="gpt-4o", provider=SimpleNamespace(provider="langgenius/openai/openai"))
+        ]
+
+        result = service.get_default_model_selection("tenant-1", ModelType.LLM, session=sqlite_session)
+
+        assert result == ("langgenius/openai/openai", "gpt-4o")
+        configurations.get_models.assert_called_once_with(model_type=ModelType.LLM, only_active=True)
+        assert sqlite_session.query(TenantDefaultModel).filter_by(tenant_id="tenant-1").first() is None
+
+    def test_get_default_model_selection_returns_none_when_provider_discovery_fails(
+        self, sqlite_session: Session
+    ) -> None:
+        service, manager = _create_service_with_mocked_manager()
+        manager.get_configurations.side_effect = RuntimeError("provider unavailable")
+
+        result = service.get_default_model_selection("tenant-1", ModelType.LLM, session=sqlite_session)
+
+        assert result is None
+
+    def test_get_default_model_selection_returns_none_when_no_active_models(self, sqlite_session: Session) -> None:
+        service, manager = _create_service_with_mocked_manager()
+        manager.get_configurations.return_value.get_models.return_value = []
+
+        result = service.get_default_model_selection("tenant-1", ModelType.LLM, session=sqlite_session)
+
+        assert result is None
+        manager.get_configurations.return_value.get_models.assert_called_once_with(
+            model_type=ModelType.LLM, only_active=True
+        )
 
     def test_get_default_model_of_model_type_should_return_response_when_manager_returns_model(self) -> None:
         service, manager = _create_service_with_mocked_manager()

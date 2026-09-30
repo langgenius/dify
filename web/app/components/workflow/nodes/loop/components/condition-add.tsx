@@ -16,7 +16,7 @@ type ConditionAddProps = {
 
 const ConditionAdd = ({ className, variables, onSelectVariable, disabled }: ConditionAddProps) => {
   const searchInputRef = useRef<HTMLInputElement>(null)
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowLogic'])
   const [open, setOpen] = useState(false)
 
   const handleSelectVariable = useCallback(
@@ -33,7 +33,7 @@ const ConditionAdd = ({ className, variables, onSelectVariable, disabled }: Cond
         render={
           <Button size="small" className={className} disabled={disabled}>
             <RiAddLine className="size-3.5" />
-            {t(($) => $['nodes.ifElse.addCondition'], { ns: 'workflow' })}
+            {t(($) => $['nodes.ifElse.addCondition'], { ns: 'workflowLogic' })}
           </Button>
         }
         onClick={(e) => {

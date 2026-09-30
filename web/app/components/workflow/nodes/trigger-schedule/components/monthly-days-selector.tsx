@@ -11,7 +11,7 @@ type MonthlyDaysSelectorProps = {
 const MonthlyDaysSelector = ({ selectedDays, onChange }: MonthlyDaysSelectorProps) => {
   const lastDayLabelId = React.useId()
 
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowIntegrations'])
 
   const handleDayClick = (day: number | 'last') => {
     const current = selectedDays || []
@@ -34,7 +34,7 @@ const MonthlyDaysSelector = ({ selectedDays, onChange }: MonthlyDaysSelectorProp
   return (
     <Fieldset className="space-y-2">
       <FieldsetLegend className="mb-2 py-0 text-xs font-medium text-text-tertiary">
-        {t(($) => $['nodes.triggerSchedule.days'], { ns: 'workflow' })}
+        {t(($) => $['nodes.triggerSchedule.days'], { ns: 'workflowIntegrations' })}
       </FieldsetLegend>
 
       <div className="space-y-1.5">
@@ -56,7 +56,7 @@ const MonthlyDaysSelector = ({ selectedDays, onChange }: MonthlyDaysSelectorProp
                     onClick={() => handleDayClick(day)}
                     className="min-w-0 flex-1 py-1"
                   >
-                    {t(($) => $['nodes.triggerSchedule.lastDay'], { ns: 'workflow' })}
+                    {t(($) => $['nodes.triggerSchedule.lastDay'], { ns: 'workflowIntegrations' })}
                   </button>
                   <Infotip>
                     <InfotipTrigger
@@ -65,7 +65,9 @@ const MonthlyDaysSelector = ({ selectedDays, onChange }: MonthlyDaysSelectorProp
                       iconSize="small"
                     />
                     <InfotipContent aria-labelledby={lastDayLabelId}>
-                      {t(($) => $['nodes.triggerSchedule.lastDayTooltip'], { ns: 'workflow' })}
+                      {t(($) => $['nodes.triggerSchedule.lastDayTooltip'], {
+                        ns: 'workflowIntegrations',
+                      })}
                     </InfotipContent>
                   </Infotip>
                 </div>
@@ -97,7 +99,7 @@ const MonthlyDaysSelector = ({ selectedDays, onChange }: MonthlyDaysSelectorProp
       {selectedDays?.includes(31) && (
         <div className="mt-1.5 grid grid-cols-7 gap-1.5">
           <div className="col-span-7 text-xs text-text-tertiary">
-            {t(($) => $['nodes.triggerSchedule.lastDayTooltip'], { ns: 'workflow' })}
+            {t(($) => $['nodes.triggerSchedule.lastDayTooltip'], { ns: 'workflowIntegrations' })}
           </div>
         </div>
       )}

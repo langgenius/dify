@@ -12,11 +12,11 @@ const AddCondition = ({
   metadataList,
   handleAddCondition,
 }: Pick<MetadataShape, 'handleAddCondition' | 'metadataList'>) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowModels'])
   const [open, setOpen] = useState(false)
   const [searchText, setSearchText] = useState('')
   const searchLabel = t(($) => $['nodes.knowledgeRetrieval.metadata.panel.search'], {
-    ns: 'workflow',
+    ns: 'workflowModels',
   })
 
   const filteredMetadataList = useMemo(() => {
@@ -37,7 +37,7 @@ const AddCondition = ({
         render={
           <Button size="small" variant="secondary">
             <RiAddLine className="size-3.5" />
-            {t(($) => $['nodes.knowledgeRetrieval.metadata.panel.add'], { ns: 'workflow' })}
+            {t(($) => $['nodes.knowledgeRetrieval.metadata.panel.add'], { ns: 'workflowModels' })}
           </Button>
         }
       />

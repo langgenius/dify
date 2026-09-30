@@ -30,6 +30,7 @@ from core.rag.rerank.rerank_model import RerankModelRunner
 from core.rag.rerank.rerank_type import RerankMode
 from core.rag.rerank.weight_rerank import WeightRerankRunner
 from extensions.storage.storage_type import StorageType
+from graphon.model_runtime.entities.model_entities import ModelFeature
 from graphon.model_runtime.entities.rerank_entities import RerankDocument, RerankResult
 from models.enums import CreatorUserRole
 from models.model import UploadFile
@@ -44,6 +45,7 @@ def create_mock_model_instance() -> ModelInstance:
     mock_instance.provider_model_bundle.configuration.tenant_id = "test-tenant-id"
     mock_instance.provider = "test-provider"
     mock_instance.model_name = "test-model"
+    mock_instance.get_model_schema.return_value = Mock(features=[])
     return mock_instance
 
 
@@ -65,13 +67,6 @@ class TestRerankModelRunner(_UsesSQLiteSession):
     - Top-k selection with proper sorting
     - Metadata preservation and score injection
     """
-
-    @pytest.fixture(autouse=True)
-    def mock_model_manager(self):
-        """Auto-use fixture to patch ModelManager for all tests in this class."""
-        with patch("core.rag.rerank.rerank_model.ModelManager.for_tenant", autospec=True) as mock_mm:
-            mock_mm.return_value.check_model_support_vision.return_value = False
-            yield mock_mm
 
     @pytest.fixture
     def mock_model_instance(self):
@@ -374,14 +369,12 @@ class TestRerankModelRunner(_UsesSQLiteSession):
         # Assert: Empty result is returned
         assert len(result) == 0
 
-    def test_run_uses_bound_model_instance(
-        self, rerank_runner, mock_model_instance, sample_documents, mock_model_manager
-    ):
+    def test_run_uses_bound_model_instance(self, rerank_runner, mock_model_instance, sample_documents):
         """Test that rerank uses the bound model instance directly.
 
         Verifies:
         - The injected model instance is used for invocation
-        - No late rebinding occurs through ModelManager.get_model_instance
+        - Capability detection uses the already-bound model instance
         """
         # Arrange: Mock rerank result
         mock_rerank_result = RerankResult(
@@ -400,7 +393,7 @@ class TestRerankModelRunner(_UsesSQLiteSession):
 
         # Assert: The injected model instance is invoked directly.
         assert len(result) == 1
-        mock_model_manager.return_value.get_model_instance.assert_not_called()
+        mock_model_instance.get_model_schema.assert_called_once_with()
         call_kwargs = mock_model_instance.invoke_rerank.call_args.kwargs
         assert call_kwargs["query"] == "test"
         assert "user" not in call_kwargs
@@ -448,9 +441,7 @@ class TestRerankModelRunnerMultimodal(_UsesSQLiteSession):
             Document(page_content="doc", metadata={"doc_id": "doc1"}, provider="dify"),
         ]
 
-        with patch("core.rag.rerank.rerank_model.ModelManager.for_tenant") as mock_mm:
-            mock_mm.return_value.check_model_support_vision.return_value = False
-            result = rerank_runner.run(query="image-file-id", documents=documents, query_type=QueryType.IMAGE_QUERY)
+        result = rerank_runner.run(query="image-file-id", documents=documents, query_type=QueryType.IMAGE_QUERY)
 
         assert result == documents
         mock_model_instance.invoke_rerank.assert_not_called()
@@ -464,15 +455,12 @@ class TestRerankModelRunnerMultimodal(_UsesSQLiteSession):
             docs=[RerankDocument(index=0, text="doc", score=0.88)],
         )
 
-        with (
-            patch("core.rag.rerank.rerank_model.ModelManager.for_tenant") as mock_mm,
-            patch.object(
-                rerank_runner,
-                "fetch_multimodal_rerank",
-                return_value=(rerank_result, documents),
-            ) as mock_multimodal,
-        ):
-            mock_mm.return_value.check_model_support_vision.return_value = True
+        rerank_runner.rerank_model_instance.get_model_schema.return_value = Mock(features=[ModelFeature.VISION])
+        with patch.object(
+            rerank_runner,
+            "fetch_multimodal_rerank",
+            return_value=(rerank_result, documents),
+        ) as mock_multimodal:
             result = rerank_runner.run(query="python", documents=documents, query_type=QueryType.TEXT_QUERY)
 
         mock_multimodal.assert_called_once()
@@ -1189,13 +1177,6 @@ class TestRerankIntegration(_UsesSQLiteSession):
     - Real-world usage scenarios
     """
 
-    @pytest.fixture(autouse=True)
-    def mock_model_manager(self):
-        """Auto-use fixture to patch ModelManager for all tests in this class."""
-        with patch("core.rag.rerank.rerank_model.ModelManager.for_tenant", autospec=True) as mock_mm:
-            mock_mm.return_value.check_model_support_vision.return_value = False
-            yield mock_mm
-
     def test_model_reranking_full_workflow(self):
         """Test complete model-based reranking workflow.
 
@@ -1301,13 +1282,6 @@ class TestRerankEdgeCases(_UsesSQLiteSession):
     - Special characters and encoding
     - Concurrent reranking scenarios
     """
-
-    @pytest.fixture(autouse=True)
-    def mock_model_manager(self):
-        """Auto-use fixture to patch ModelManager for all tests in this class."""
-        with patch("core.rag.rerank.rerank_model.ModelManager.for_tenant", autospec=True) as mock_mm:
-            mock_mm.return_value.check_model_support_vision.return_value = False
-            yield mock_mm
 
     def test_rerank_with_empty_metadata(self):
         """Test reranking when documents have empty metadata.
@@ -1643,13 +1617,6 @@ class TestRerankPerformance(_UsesSQLiteSession):
     - Score calculation optimization
     """
 
-    @pytest.fixture(autouse=True)
-    def mock_model_manager(self):
-        """Auto-use fixture to patch ModelManager for all tests in this class."""
-        with patch("core.rag.rerank.rerank_model.ModelManager.for_tenant", autospec=True) as mock_mm:
-            mock_mm.return_value.check_model_support_vision.return_value = False
-            yield mock_mm
-
     def test_rerank_batch_processing(self):
         """Test that documents are processed in a single batch.
 
@@ -1759,13 +1726,6 @@ class TestRerankErrorHandling(_UsesSQLiteSession):
     - Graceful degradation
     - Error propagation
     """
-
-    @pytest.fixture(autouse=True)
-    def mock_model_manager(self):
-        """Auto-use fixture to patch ModelManager for all tests in this class."""
-        with patch("core.rag.rerank.rerank_model.ModelManager.for_tenant", autospec=True) as mock_mm:
-            mock_mm.return_value.check_model_support_vision.return_value = False
-            yield mock_mm
 
     def test_rerank_model_invocation_error(self):
         """Test handling of model invocation errors.

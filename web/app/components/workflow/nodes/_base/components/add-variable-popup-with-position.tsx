@@ -1,6 +1,7 @@
 import type { ValueSelector, Var, VarType } from '../../../types'
 import { useClickAway } from 'ahooks'
 import { memo, useCallback, useMemo, useRef } from 'react'
+import { useStore as useReactFlowStore } from 'reactflow'
 import { useNodeDataUpdate } from '../../../hooks/use-node-data-update'
 import { useIsChatMode, useWorkflow } from '../../../hooks/use-workflow'
 import { useWorkflowVariables } from '../../../hooks/use-workflow-variables'
@@ -15,6 +16,7 @@ type AddVariablePopupWithPositionProps = {
 }
 const AddVariablePopupWithPosition = ({ nodeId, nodeData }: AddVariablePopupWithPositionProps) => {
   const ref = useRef<HTMLDivElement>(null)
+  const canvasElement = useReactFlowStore((state) => state.domNode)
   const showAssignVariablePopup = useStore((s) => s.showAssignVariablePopup)
   const setShowAssignVariablePopup = useStore((s) => s.setShowAssignVariablePopup)
   const { handleNodeDataUpdate } = useNodeDataUpdate()
@@ -113,7 +115,11 @@ const AddVariablePopupWithPosition = ({ nodeId, nodeData }: AddVariablePopupWith
       }}
       ref={ref}
     >
-      <AddVariablePopup availableVars={availableVars} onSelect={handleAddVariable} />
+      <AddVariablePopup
+        availableVars={availableVars}
+        keyboardTarget={canvasElement}
+        onSelect={handleAddVariable}
+      />
     </div>
   )
 }

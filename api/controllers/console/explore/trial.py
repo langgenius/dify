@@ -3,6 +3,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import asdict
 from datetime import datetime
 from functools import wraps
+from http import HTTPStatus
 from typing import Any, Literal
 from uuid import UUID
 
@@ -56,12 +57,14 @@ from controllers.console.explore.error import (
     NotCompletionAppError,
     NotWorkflowAppError,
 )
-from controllers.console.explore.trial_app_admission import get_trial_app
+from controllers.console.explore.trial_app_admission import get_trial_app, get_trial_app_for_stop
 from controllers.console.files import FILE_UPLOAD_PARAMS, upload_file_from_request_context
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.remote_files import RemoteFileUploadPayload, upload_remote_file
 from controllers.console.wraps import cloud_edition_billing_resource_check, model_validate
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
+from core.app.apps.agent_app.errors import AgentAppGeneratorError, AgentAppNotPublishedError
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
     AppInvokeQuotaExceededError,
     ModelCurrentlyNotSupportError,
@@ -71,6 +74,7 @@ from core.errors.error import (
 from core.helper import encrypter
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable, dump_environment_variable
 from extensions.ext_application_services import application_services
+from fields.agent_fields import AgentAppComposerResponse
 from fields.base import ResponseModel
 from fields.conversation_variable_fields import WorkflowConversationVariableResponse
 from fields.file_fields import FileResponse, FileWithSignedUrl
@@ -83,6 +87,7 @@ from libs.stream import close_stream
 from libs.url_utils import normalize_api_base_url
 from machinery.context import RequestContext
 from models.enums import CreatorUserRole
+from models.model import AppMode
 from services.account_errors import AccountNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.app_preview_query_service import (
@@ -152,7 +157,7 @@ class TrialDatasetListQuery(BaseModel):
     ids: list[str] = Field(default_factory=list, description="Dataset IDs")
 
 
-type TrialAppMode = Literal["chat", "agent-chat", "advanced-chat", "workflow", "completion"]
+type TrialAppMode = Literal["chat", "agent-chat", "agent", "advanced-chat", "workflow", "completion"]
 type TrialIconType = Literal["emoji", "image", "link"]
 type JsonObject = dict[str, Any]
 
@@ -447,6 +452,7 @@ register_response_schema_models(
     SiteResponse,
     SuggestedQuestionsResponse,
     TrialAppDetailResponse,
+    AgentAppComposerResponse,
     TrialDatasetListResponse,
     TrialWorkflowResponse,
 )
@@ -454,9 +460,13 @@ register_response_schema_models(
 simple_account_model = console_ns.models[TrialSimpleAccount.__name__]
 
 
+@console_ns.route(
+    "/trial-apps/<uuid:app_id>/files/upload",
+    endpoint="trial_app_file_upload",
+)
 class TrialAppFileUploadApi(Resource):
     @console_ns.doc(consumes=["multipart/form-data"], params=FILE_UPLOAD_PARAMS)
-    @console_ns.response(201, "File uploaded successfully", console_ns.models[FileResponse.__name__])
+    @console_ns.response(HTTPStatus.CREATED, "File uploaded successfully", console_ns.models[FileResponse.__name__])
     @console_account_admission()
     @get_trial_app
     @cloud_edition_billing_resource_check("documents")
@@ -466,12 +476,18 @@ class TrialAppFileUploadApi(Resource):
             request_context=request_context,
             resource_tenant_id=trial_app.tenant_id,
         )
-        return dump_response(FileResponse, upload_file), 201
+        return dump_response(FileResponse, upload_file), HTTPStatus.CREATED
 
 
+@console_ns.route(
+    "/trial-apps/<uuid:app_id>/remote-files/upload",
+    endpoint="trial_app_remote_file_upload",
+)
 class TrialAppRemoteFileUploadApi(Resource):
     @console_ns.expect(console_ns.models[RemoteFileUploadPayload.__name__])
-    @console_ns.response(201, "File uploaded successfully", console_ns.models[FileWithSignedUrl.__name__])
+    @console_ns.response(
+        HTTPStatus.CREATED, "File uploaded successfully", console_ns.models[FileWithSignedUrl.__name__]
+    )
     @console_account_admission()
     @get_trial_app
     @cloud_edition_billing_resource_check("documents")
@@ -485,12 +501,16 @@ class TrialAppRemoteFileUploadApi(Resource):
             current_user=FileUploadActor(id=request_context.account_id, creator_role=CreatorUserRole.ACCOUNT),
             resource_tenant_id=trial_app.tenant_id,
         )
-        return dump_response(FileWithSignedUrl, remote_file), 201
+        return dump_response(FileWithSignedUrl, remote_file), HTTPStatus.CREATED
 
 
+@console_ns.route(
+    "/trial-apps/<uuid:app_id>/workflows/run",
+    endpoint="trial_app_workflow_run",
+)
 class TrialAppWorkflowRunApi(Resource):
     @console_ns.expect(console_ns.models[WorkflowRunRequest.__name__])
-    @console_ns.response(200, "Success")
+    @console_ns.response(HTTPStatus.OK, "Success")
     @console_account_admission()
     @get_trial_app
     @model_validate(WorkflowRunRequest)
@@ -499,7 +519,7 @@ class TrialAppWorkflowRunApi(Resource):
         Run workflow
         """
         try:
-            response = application_services().trial_app_generation.generate_workflow(
+            response = application_services().trial_apps.generation.generate_workflow(
                 trial_app=trial_app,
                 account_id=request_context.account_id,
                 args=req_data.model_dump(),
@@ -531,8 +551,9 @@ class TrialAppWorkflowRunApi(Resource):
             raise InternalServerError()
 
 
+@console_ns.route("/trial-apps/<uuid:app_id>/workflows/tasks/<string:task_id>/stop")
 class TrialAppWorkflowTaskStopApi(Resource):
-    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission()
     @get_trial_app
     def post(self, request_context: RequestContext, trial_app: TrialAppRef, task_id: str) -> dict[str, object]:
@@ -547,9 +568,13 @@ class TrialAppWorkflowTaskStopApi(Resource):
         return dump_response(SimpleResultResponse, {"result": "success"})
 
 
+@console_ns.route(
+    "/trial-apps/<uuid:app_id>/chat-messages",
+    endpoint="trial_app_chat_completion",
+)
 class TrialChatApi(Resource):
     @console_ns.expect(console_ns.models[ChatRequest.__name__])
-    @console_ns.response(200, "Success")
+    @console_ns.response(HTTPStatus.OK, "Success")
     @console_account_admission()
     @get_trial_app
     @model_validate(ChatRequest)
@@ -563,7 +588,7 @@ class TrialChatApi(Resource):
             args["parent_message_id"] = uuid_value(args["parent_message_id"])
 
         try:
-            response = application_services().trial_app_generation.generate_chat(
+            response = application_services().trial_apps.generation.generate_chat(
                 trial_app=trial_app,
                 account_id=request_context.account_id,
                 args=args,
@@ -583,6 +608,8 @@ class TrialChatApi(Resource):
         except services.errors.app_model_config.AppModelConfigBrokenError:
             logger.exception("App model config broken.")
             raise AppUnavailableError()
+        except (AgentAppGeneratorError, AgentAppNotPublishedError):
+            raise AppUnavailableError() from None
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:
@@ -600,12 +627,37 @@ class TrialChatApi(Resource):
             raise InternalServerError()
 
 
+@console_ns.route(
+    "/trial-apps/<uuid:app_id>/chat-messages/<string:task_id>/stop",
+    endpoint="trial_app_stop_chat_completion",
+)
+class TrialChatTaskStopApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @console_account_admission()
+    @get_trial_app_for_stop
+    def post(self, request_context: RequestContext, trial_app: TrialAppRef, task_id: str):
+        if trial_app.app_mode not in {"chat", "agent-chat", "agent", "advanced-chat"}:
+            raise NotChatAppError()
+
+        application_services().app_tasks.stop_task(
+            task_id=task_id,
+            invoke_from=InvokeFrom.EXPLORE,
+            user_id=request_context.account_id,
+            app_mode=AppMode.value_of(trial_app.app_mode),
+        )
+        return SimpleResultResponse(result="success").model_dump(mode="json"), 200
+
+
+@console_ns.route(
+    "/trial-apps/<uuid:app_id>/messages/<uuid:message_id>/suggested-questions",
+    endpoint="trial_app_suggested_question",
+)
 class TrialMessageSuggestedQuestionApi(Resource):
-    @console_ns.response(200, "Success", console_ns.models[SuggestedQuestionsResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SuggestedQuestionsResponse.__name__])
     @console_account_admission()
     @get_trial_app
     def get(self, request_context: RequestContext, trial_app: TrialAppRef, message_id: UUID) -> dict[str, object]:
-        if trial_app.app_mode not in {"chat", "agent-chat", "advanced-chat"}:
+        if trial_app.app_mode not in {"chat", "agent-chat", "agent", "advanced-chat"}:
             raise NotChatAppError()
 
         try:
@@ -675,8 +727,12 @@ def _trial_audio_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     return decorated
 
 
+@console_ns.route(
+    "/trial-apps/<uuid:app_id>/audio-to-text",
+    endpoint="trial_app_audio",
+)
 class TrialChatAudioApi(Resource):
-    @console_ns.response(200, "Success", console_ns.models[AudioTranscriptResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AudioTranscriptResponse.__name__])
     @console_account_admission()
     @get_trial_app
     @_trial_audio_errors
@@ -687,13 +743,17 @@ class TrialChatAudioApi(Resource):
             app=AudioAppRef(app_id=trial_app.app_id, tenant_id=trial_app.tenant_id, app_mode=trial_app.app_mode),
             audio=audio,
         )
-        application_services().trial_app_usage.record(app_id=trial_app.app_id, account_id=request_context.account_id)
+        application_services().trial_apps.usage.record(app_id=trial_app.app_id, account_id=request_context.account_id)
         return dump_response(AudioTranscriptResponse, transcript)
 
 
+@console_ns.route(
+    "/trial-apps/<uuid:app_id>/text-to-audio",
+    endpoint="trial_app_text",
+)
 class TrialChatTextApi(Resource):
     @console_ns.expect(console_ns.models[TextToSpeechRequest.__name__])
-    @console_ns.response(200, "Success", console_ns.models[AudioBinaryResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AudioBinaryResponse.__name__])
     @console_account_admission()
     @get_trial_app
     @model_validate(TextToSpeechRequest)
@@ -712,7 +772,7 @@ class TrialChatTextApi(Resource):
         try:
             # Preserve usage after MIME inspection, including a missing message's
             # null response. Early provider/MIME failures do not consume a trial.
-            application_services().trial_app_usage.record(
+            application_services().trial_apps.usage.record(
                 app_id=trial_app.app_id, account_id=request_context.account_id
             )
         except BaseException:
@@ -723,15 +783,19 @@ class TrialChatTextApi(Resource):
         return response
 
 
+@console_ns.route(
+    "/trial-apps/<uuid:app_id>/completion-messages",
+    endpoint="trial_app_completion",
+)
 class TrialCompletionApi(Resource):
     @console_ns.expect(console_ns.models[CompletionRequest.__name__])
-    @console_ns.response(200, "Success")
+    @console_ns.response(HTTPStatus.OK, "Success")
     @console_account_admission()
     @get_trial_app
     @model_validate(CompletionRequest)
     def post(self, req_data: CompletionRequest, request_context: RequestContext, trial_app: TrialAppRef) -> Response:
         try:
-            response = application_services().trial_app_generation.generate_completion(
+            response = application_services().trial_apps.generation.generate_completion(
                 trial_app=trial_app,
                 account_id=request_context.account_id,
                 args=req_data.model_dump(),
@@ -768,10 +832,11 @@ class TrialCompletionApi(Resource):
             raise InternalServerError()
 
 
+@console_ns.route("/trial-apps/<uuid:app_id>/site")
 class TrialSitApi(Resource):
     """Resource for trial app sites."""
 
-    @console_ns.response(200, "Success", console_ns.models[SiteResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SiteResponse.__name__])
     @get_preview_app
     def get(self, app: AppPreviewRef) -> dict[str, object]:
         """Retrieve app site info.
@@ -787,24 +852,29 @@ class TrialSitApi(Resource):
         return dump_response(SiteResponse, site)
 
 
+@console_ns.route(
+    "/trial-apps/<uuid:app_id>/parameters",
+    endpoint="trial_app_parameters",
+)
 class TrialAppParameterApi(Resource):
     """Resource for app variables."""
 
-    @console_ns.response(200, "Success", console_ns.models[ParametersResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[ParametersResponse.__name__])
     @get_preview_app
     def get(self, app: AppPreviewRef) -> dict[str, object]:
         """Retrieve app parameters."""
 
         try:
-            parameters = application_services().app_definitions.get_parameters(app.app_id)
+            parameters = application_services().app_definitions.get_public_parameters(app.app_id)
         except AppDefinitionUnavailableError:
             raise AppUnavailableError() from None
 
         return dump_response(ParametersResponse, parameters)
 
 
+@console_ns.route("/trial-apps/<uuid:app_id>", endpoint="trial_app")
 class AppApi(Resource):
-    @console_ns.response(200, "Success", console_ns.models[TrialAppDetailResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[TrialAppDetailResponse.__name__])
     @console_account_admission()
     @get_preview_app
     def get(self, app: AppPreviewRef, request_context: RequestContext) -> dict[str, object]:
@@ -833,8 +903,24 @@ class AppApi(Resource):
         return dump_response(TrialAppDetailResponse, source)
 
 
+@console_ns.route("/trial-apps/<uuid:app_id>/agent-composer")
+class TrialAgentComposerApi(Resource):
+    @console_ns.response(200, "Published Agent configuration", console_ns.models[AgentAppComposerResponse.__name__])
+    @get_preview_app
+    def get(self, app: AppPreviewRef):
+        try:
+            preview = application_services().app_previews.get_agent_composer(app=app)
+        except AppDefinitionUnavailableError:
+            raise AppUnavailableError() from None
+        return dump_response(AgentAppComposerResponse, preview)
+
+
+@console_ns.route(
+    "/trial-apps/<uuid:app_id>/workflows",
+    endpoint="trial_app_workflow",
+)
 class AppWorkflowApi(Resource):
-    @console_ns.response(200, "Success", console_ns.models[TrialWorkflowResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[TrialWorkflowResponse.__name__])
     @get_preview_app
     def get(self, app: AppPreviewRef) -> dict[str, object]:
         """Get a detached workflow definition after catalog preview admission."""
@@ -847,9 +933,13 @@ class AppWorkflowApi(Resource):
         return dump_response(TrialWorkflowResponse, workflow)
 
 
+@console_ns.route(
+    "/trial-apps/<uuid:app_id>/datasets",
+    endpoint="trial_app_datasets",
+)
 class DatasetListApi(Resource):
     @console_ns.doc(params=query_params_from_model(TrialDatasetListQuery))
-    @console_ns.response(200, "Success", console_ns.models[TrialDatasetListResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[TrialDatasetListResponse.__name__])
     @get_preview_app
     def get(self, app: AppPreviewRef) -> dict[str, object]:
         # These legacy fields are response metadata: the query returns all
@@ -873,45 +963,3 @@ class DatasetListApi(Resource):
             "page": page,
         }
         return dump_response(TrialDatasetListResponse, response)
-
-
-console_ns.add_resource(TrialChatApi, "/trial-apps/<uuid:app_id>/chat-messages", endpoint="trial_app_chat_completion")
-
-console_ns.add_resource(
-    TrialAppFileUploadApi,
-    "/trial-apps/<uuid:app_id>/files/upload",
-    endpoint="trial_app_file_upload",
-)
-
-console_ns.add_resource(
-    TrialAppRemoteFileUploadApi,
-    "/trial-apps/<uuid:app_id>/remote-files/upload",
-    endpoint="trial_app_remote_file_upload",
-)
-
-console_ns.add_resource(
-    TrialMessageSuggestedQuestionApi,
-    "/trial-apps/<uuid:app_id>/messages/<uuid:message_id>/suggested-questions",
-    endpoint="trial_app_suggested_question",
-)
-
-console_ns.add_resource(TrialChatAudioApi, "/trial-apps/<uuid:app_id>/audio-to-text", endpoint="trial_app_audio")
-console_ns.add_resource(TrialChatTextApi, "/trial-apps/<uuid:app_id>/text-to-audio", endpoint="trial_app_text")
-
-console_ns.add_resource(
-    TrialCompletionApi, "/trial-apps/<uuid:app_id>/completion-messages", endpoint="trial_app_completion"
-)
-
-console_ns.add_resource(TrialSitApi, "/trial-apps/<uuid:app_id>/site")
-
-console_ns.add_resource(TrialAppParameterApi, "/trial-apps/<uuid:app_id>/parameters", endpoint="trial_app_parameters")
-
-console_ns.add_resource(AppApi, "/trial-apps/<uuid:app_id>", endpoint="trial_app")
-
-console_ns.add_resource(
-    TrialAppWorkflowRunApi, "/trial-apps/<uuid:app_id>/workflows/run", endpoint="trial_app_workflow_run"
-)
-console_ns.add_resource(TrialAppWorkflowTaskStopApi, "/trial-apps/<uuid:app_id>/workflows/tasks/<string:task_id>/stop")
-
-console_ns.add_resource(AppWorkflowApi, "/trial-apps/<uuid:app_id>/workflows", endpoint="trial_app_workflow")
-console_ns.add_resource(DatasetListApi, "/trial-apps/<uuid:app_id>/datasets", endpoint="trial_app_datasets")

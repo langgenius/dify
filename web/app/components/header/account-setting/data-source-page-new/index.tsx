@@ -54,7 +54,7 @@ function DataSourceListSkeleton() {
 }
 
 const DataSourcePage = ({ layout, onOpenMarketplace, stickyToolbar }: DataSourcePageProps) => {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['common', 'plugin'])
   const queryClient = useQueryClient()
   const renderI18nObject = useRenderI18nObject()
   const [searchText, setSearchText] = useState('')
@@ -107,13 +107,13 @@ const DataSourcePage = ({ layout, onOpenMarketplace, stickyToolbar }: DataSource
       className={
         stickyToolbar
           ? layout
-            ? 'flex w-full items-center justify-between gap-3'
-            : 'sticky top-0 z-10 -mx-6 mb-2 flex items-center justify-between gap-3 bg-components-panel-bg px-6 pb-2'
-          : 'mb-2 flex items-center justify-between gap-3'
+            ? 'flex w-full flex-wrap items-center justify-between gap-3'
+            : 'sticky top-0 z-10 -mx-6 mb-2 flex flex-wrap items-center justify-between gap-3 bg-components-panel-bg px-6 pb-2'
+          : 'mb-2 flex flex-wrap items-center justify-between gap-3'
       }
     >
       <SearchInput
-        className="w-50"
+        className="w-full min-w-0 sm:w-50"
         placeholder={t(($) => $['operation.search'], { ns: 'common' })}
         value={searchText}
         onValueChange={setSearchText}
@@ -125,6 +125,16 @@ const DataSourcePage = ({ layout, onOpenMarketplace, stickyToolbar }: DataSource
   const body = (
     <>
       {isDataSourceListLoading && <DataSourceListSkeleton />}
+      {!isDataSourceListLoading && !!searchText.trim() && (
+        <div role="status" className="sr-only">
+          {t(($) => $['category.datasources'], { ns: 'plugin' })}
+          {': '}
+          {t(($) => $['marketplace.pluginsResult'], {
+            ns: 'plugin',
+            num: filteredDataSources.length,
+          })}
+        </div>
+      )}
       {!isDataSourceListLoading && !dataSources.length && (
         <div
           className="mb-2 rounded-[10px] bg-workflow-process-bg p-4"

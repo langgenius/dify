@@ -16,7 +16,7 @@ type Props = Readonly<{
 }>
 
 const Left = ({ currentNodeVar, handleVarSelect }: Props) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowDebug'])
 
   const environmentVariables = useStore((s) => s.environmentVariables)
   const setCurrentFocusNodeId = useStore((s) => s.setCurrentFocusNodeId)
@@ -48,10 +48,10 @@ const Left = ({ currentNodeVar, handleVarSelect }: Props) => {
       {/* header */}
       <div className="flex shrink-0 items-center justify-between gap-1 pt-2 pr-1 pl-4">
         <div className="truncate system-sm-semibold-uppercase text-text-primary">
-          {t(($) => $['debug.variableInspect.title'], { ns: 'workflow' })}
+          {t(($) => $['debug.variableInspect.title'], { ns: 'workflowDebug' })}
         </div>
         <Button variant="ghost" size="small" className="shrink-0" onClick={handleClearAll}>
-          {t(($) => $['debug.variableInspect.clearAll'], { ns: 'workflow' })}
+          {t(($) => $['debug.variableInspect.clearAll'], { ns: 'workflowDebug' })}
         </Button>
       </div>
       {/* content */}

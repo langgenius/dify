@@ -1,9 +1,10 @@
-import type { App, AppSSO } from '@/types/app'
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
 import { render as renderWithConsoleState } from '@/test/console/render'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppModeEnum } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
 import AppInfoTrigger from '../app-info-trigger'
@@ -54,8 +55,8 @@ const defaultAppPermissionKeys = [
   AppACLPermission.Delete,
 ]
 
-const createAppDetail = (overrides: Partial<App> = {}): App & Partial<AppSSO> =>
-  ({
+const createAppDetail = (overrides: Partial<AppDetailWithSite> = {}) =>
+  createAppDetailFixture({
     id: 'app-1',
     name: 'Test App',
     mode: AppModeEnum.CHAT,
@@ -68,7 +69,7 @@ const createAppDetail = (overrides: Partial<App> = {}): App & Partial<AppSSO> =>
     permission_keys: defaultAppPermissionKeys,
     maintainer: 'user-1',
     ...overrides,
-  }) as App & Partial<AppSSO>
+  })
 
 const createProps = (overrides: Partial<React.ComponentProps<typeof AppInfoTrigger>> = {}) => ({
   appDetail: createAppDetail(),
@@ -167,7 +168,7 @@ describe('AppInfoTrigger', () => {
     expect(readyProps.exportCheck).toHaveBeenCalledTimes(1)
   })
 
-  it('hides the operations trigger when no operation is permitted', () => {
+  it('keeps the operations trigger disabled when no operation is permitted', () => {
     mockWorkspacePermissionKeys.value = []
     render(
       <AppInfoTrigger
@@ -180,6 +181,6 @@ describe('AppInfoTrigger', () => {
       />,
     )
 
-    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+    expect(getOperationsTrigger()).toBeDisabled()
   })
 })

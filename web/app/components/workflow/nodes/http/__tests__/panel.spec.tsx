@@ -229,8 +229,10 @@ describe('http/panel', () => {
     await user.click(screen.getAllByRole('button', { name: 'emit-key-value-add' })[1]!)
     await user.click(screen.getByRole('button', { name: 'emit-body-change' }))
     await user.click(screen.getByRole('button', { name: 'emit-timeout-change' }))
-    await user.click(screen.getByText('workflow.nodes.http.authorization.authorization'))
-    await user.click(screen.getByText('workflow.nodes.http.curl.title'))
+    await user.click(
+      screen.getByText('workflowIntegrations.nodes.http.authorization.authorization'),
+    )
+    await user.click(screen.getByText('workflowIntegrations.nodes.http.curl.title'))
 
     expect(handleMethodChange).toHaveBeenCalledWith(Method.post)
     expect(handleUrlChange).toHaveBeenCalledWith('https://changed.example.com')

@@ -1,3 +1,4 @@
+import type { Hotkey } from '@tanstack/react-hotkeys'
 import type { Item as TypeSelectItem } from '@/app/components/app/configuration/config-var/config-modal/type-select'
 import type {
   FormInputItem,
@@ -9,10 +10,10 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
-import { formatForDisplay } from '@tanstack/react-hotkeys'
+import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
 import { produce } from 'immer'
 import * as React from 'react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import TypeSelector from '@/app/components/app/configuration/config-var/config-modal/type-select'
 import ConfigSelect from '@/app/components/app/configuration/config-var/config-select'
@@ -29,6 +30,8 @@ import {
 import { InputVarType, VarType } from '@/app/components/workflow/types'
 import PrePopulate from './pre-populate'
 import TypeSwitch from './type-switch'
+
+const SAVE_HOTKEY = 'Mod+Enter' satisfies Hotkey
 
 const i18nPrefix = 'nodes.humanInput.insertInputField'
 
@@ -48,8 +51,9 @@ const InputField: React.FC<InputFieldProps> = ({
   onChange,
   onCancel,
 }) => {
+  const rootRef = useRef<HTMLDivElement>(null)
   const outputVariableNameInputId = React.useId()
-  const { t } = useTranslation(['appDebug', 'common', 'workflow'])
+  const { t } = useTranslation(['appDebug', 'common', 'workflow', 'workflowHumanInput'])
   const [tempPayload, setTempPayload] = useState<FormInputItem>(
     () => payload || createDefaultParagraphFormInput(),
   )
@@ -202,30 +206,44 @@ const InputField: React.FC<InputFieldProps> = ({
     })
   }, [])
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-        e.preventDefault()
-        handleSave()
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [handleSave])
+  // Let child React handlers commit their input before claiming the field shortcut.
+  useHotkey(
+    SAVE_HOTKEY,
+    (event) => {
+      if (
+        event.defaultPrevented ||
+        event.isComposing ||
+        !(event.target instanceof Node) ||
+        !rootRef.current?.contains(event.target)
+      )
+        return
+      event.preventDefault()
+      event.stopPropagation()
+      if (event.repeat) return
+      handleSave()
+    },
+    {
+      enabled: nameValid,
+      ignoreInputs: false,
+      preventDefault: false,
+      stopPropagation: false,
+    },
+  )
 
   return (
-    <div className="flex max-h-(--shortcut-popup-max-height,80dvh) w-93 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]">
+    <div
+      ref={rootRef}
+      className="flex max-h-(--shortcut-popup-max-height,80dvh) w-93 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]"
+    >
       <div className="shrink-0 p-3 pb-2">
         <div className="system-md-semibold text-text-primary">
-          {t(($) => $[`${i18nPrefix}.title`], { ns: 'workflow' })}
+          {t(($) => $[`${i18nPrefix}.title`], { ns: 'workflowHumanInput' })}
         </div>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-3 pt-0 pb-0">
         <div className="mt-3">
           <TypeSelector
-            label={t(($) => $[`${i18nPrefix}.fieldType`], { ns: 'workflow' })}
+            label={t(($) => $[`${i18nPrefix}.fieldType`], { ns: 'workflowHumanInput' })}
             labelClassName="mb-1.5 system-xs-medium"
             value={tempPayload.type}
             items={fieldTypeItems}
@@ -237,13 +255,15 @@ const InputField: React.FC<InputFieldProps> = ({
             htmlFor={outputVariableNameInputId}
             className="block system-xs-medium text-text-secondary"
           >
-            {t(($) => $[`${i18nPrefix}.saveResponseAs`], { ns: 'workflow' })}
+            {t(($) => $[`${i18nPrefix}.saveResponseAs`], { ns: 'workflowHumanInput' })}
             <span className="relative system-xs-regular text-text-destructive-secondary">*</span>
           </label>
           <Input
             id={outputVariableNameInputId}
             className="mt-1.5"
-            placeholder={t(($) => $[`${i18nPrefix}.saveResponseAsPlaceholder`], { ns: 'workflow' })}
+            placeholder={t(($) => $[`${i18nPrefix}.saveResponseAsPlaceholder`], {
+              ns: 'workflowHumanInput',
+            })}
             value={tempPayload.output_variable_name}
             onChange={(e) => {
               setTempPayload((prev) => ({ ...prev, output_variable_name: e.target.value }))
@@ -253,14 +273,14 @@ const InputField: React.FC<InputFieldProps> = ({
           />
           {tempPayload.output_variable_name && variableNameError && (
             <div className="mt-1 px-1 system-xs-regular text-text-destructive-secondary">
-              {t(($) => $[`${i18nPrefix}.${variableNameError}`], { ns: 'workflow' })}
+              {t(($) => $[`${i18nPrefix}.${variableNameError}`], { ns: 'workflowHumanInput' })}
             </div>
           )}
         </div>
         {isParagraphFormInput(tempPayload) && (
           <div className="mt-4">
             <div className="mb-1.5 system-xs-medium text-text-secondary">
-              {t(($) => $[`${i18nPrefix}.prePopulateField`], { ns: 'workflow' })}
+              {t(($) => $[`${i18nPrefix}.prePopulateField`], { ns: 'workflowHumanInput' })}
             </div>
             <PrePopulate
               isVariable={paragraphPayload.default.type === 'variable'}
@@ -278,7 +298,7 @@ const InputField: React.FC<InputFieldProps> = ({
         {isSelectFormInput(tempPayload) && (
           <div className="mt-4">
             <div className="mb-1.5 system-xs-medium text-text-secondary">
-              {t(($) => $[`${i18nPrefix}.options`], { ns: 'workflow' })}
+              {t(($) => $[`${i18nPrefix}.options`], { ns: 'workflowHumanInput' })}
             </div>
             {tempPayload.option_source.type === 'variable' ? (
               <div className="relative min-h-20 rounded-lg border border-transparent bg-components-input-bg-normal px-3 pt-2 pb-8">
@@ -349,11 +369,11 @@ const InputField: React.FC<InputFieldProps> = ({
             </Button>
           ) : (
             <Button className="flex" variant="primary" disabled={!nameValid} onClick={handleSave}>
-              <span>{t(($) => $[`${i18nPrefix}.insert`], { ns: 'workflow' })}</span>
+              <span>{t(($) => $[`${i18nPrefix}.insert`], { ns: 'workflowHumanInput' })}</span>
               <KbdGroup>
-                {['Mod', 'Enter'].map((key) => (
+                {formatForDisplay(SAVE_HOTKEY, { parts: true }).map((key) => (
                   <Kbd key={key} color="white">
-                    {formatForDisplay(key)}
+                    {key}
                   </Kbd>
                 ))}
               </KbdGroup>

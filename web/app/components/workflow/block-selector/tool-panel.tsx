@@ -1,6 +1,7 @@
 import type { RagPipelineDatasourceProviderResponse } from '@dify/contracts/api/console/rag/types.gen'
 import type { OnSelectBlock, ToolWithProvider } from '../types'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import dynamic from 'next/dynamic'
 import { useEffect, useMemo } from 'react'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useFeaturedToolsRecommendations } from '@/service/use-plugins'
@@ -13,7 +14,10 @@ import {
 } from '@/service/use-tools'
 import { basePath } from '@/utils/var'
 import { useWorkflowStore } from '../store'
-import ToolBrowser from './tool-browser'
+
+const ToolBrowser = dynamic(() => import('./tool-browser'), {
+  loading: () => <div className="h-24 animate-pulse rounded-lg bg-background-section" />,
+})
 
 function normalizeToolList(list: ToolWithProvider[] | undefined, currentBasePath?: string) {
   if (!list || !currentBasePath) return list

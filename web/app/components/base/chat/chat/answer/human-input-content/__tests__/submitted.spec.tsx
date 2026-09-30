@@ -23,7 +23,9 @@ describe('SubmittedHumanInputContent Integration', () => {
 
     expect(screen.getByText('Rendered **Markdown** content')).toBeInTheDocument()
 
-    expect(screen.getByText('workflow.nodes.humanInput.userActions.triggered')).toBeInTheDocument()
+    expect(
+      screen.getByText('workflowHumanInput.nodes.humanInput.userActions.triggered'),
+    ).toBeInTheDocument()
   })
 
   it('should prefer structured form data over rendered markdown when available', () => {

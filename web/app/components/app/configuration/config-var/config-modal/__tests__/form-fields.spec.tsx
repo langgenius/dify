@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next'
 import type { ReactNode } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -12,7 +13,7 @@ vi.mock('react-i18next', async () => {
       t: withSelectorKey((key: string, options?: Record<string, unknown>) => {
         const ns = options?.ns as string | undefined
         return ns ? `${ns}.${key}` : key
-      }),
+      }) as TFunction<['appDebug']>,
       i18n: { language: 'en', changeLanguage: vi.fn() },
     }),
     Trans: withSelectorKeyProps(
@@ -99,7 +100,7 @@ vi.mock('../../config-string', () => ({
   ),
 }))
 
-const t = withSelectorKey((key: string) => key)
+const t = withSelectorKey((key: string) => key) as TFunction<['appDebug']>
 
 const createPayloadChangeHandler = () => vi.fn<(value: unknown) => void>()
 
@@ -141,7 +142,7 @@ const createBaseProps = () => {
       required: false,
       hide: false,
     } as any,
-    t: withSelectorKey(t),
+    t,
     payloadChangeHandlers,
   }
 }

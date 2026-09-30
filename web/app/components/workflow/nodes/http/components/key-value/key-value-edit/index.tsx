@@ -33,7 +33,7 @@ const KeyValueList: FC<Props> = ({
   keyNotSupportVar,
   insertVarTipToLeft,
 }) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowIntegrations'])
 
   const handleChange = useCallback(
     (index: number) => {
@@ -74,11 +74,11 @@ const KeyValueList: FC<Props> = ({
             isSupportFile ? 'w-35' : 'w-1/2',
           )}
         >
-          {t(($) => $[`${i18nPrefix}.key`], { ns: 'workflow' })}
+          {t(($) => $[`${i18nPrefix}.key`], { ns: 'workflowIntegrations' })}
         </div>
         {isSupportFile && (
           <div className="flex h-full w-17.5 shrink-0 items-center border-r border-divider-regular pl-3">
-            {t(($) => $[`${i18nPrefix}.type`], { ns: 'workflow' })}
+            {t(($) => $[`${i18nPrefix}.type`], { ns: 'workflowIntegrations' })}
           </div>
         )}
         <div
@@ -87,7 +87,7 @@ const KeyValueList: FC<Props> = ({
             isSupportFile ? 'grow' : 'w-1/2',
           )}
         >
-          {t(($) => $[`${i18nPrefix}.value`], { ns: 'workflow' })}
+          {t(($) => $[`${i18nPrefix}.value`], { ns: 'workflowIntegrations' })}
         </div>
       </div>
       {list.map((item, index) => (

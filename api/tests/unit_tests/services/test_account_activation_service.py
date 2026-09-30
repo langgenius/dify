@@ -6,15 +6,13 @@ from services.account_activation_service import (
     AccountActivationEligibility,
     AccountActivationRepository,
     AccountActivationService,
-    EmailDomainSuspendedError,
-    FrozenAccountError,
-    InvalidInvitationError,
-    InvitationAccountMismatchError,
     InvitationTokenStore,
     WorkspaceInvitePolicy,
     WorkspaceMemberAccessSync,
     WorkspaceMembershipCache,
 )
+from services.account_errors import AccountEmailDomainSuspendedError as EmailDomainSuspendedError
+from services.account_errors import FrozenAccountError, InvalidInvitationError, InvitationAccountMismatchError
 from services.entities.account_activation_entities import (
     AccountInvitation,
     AccountSetup,

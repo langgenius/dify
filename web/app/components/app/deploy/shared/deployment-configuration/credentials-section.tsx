@@ -46,7 +46,7 @@ export const CredentialsSection = memo(
     onChange: DeploymentConfigurationValuesController['setCredential']
   }) => {
     const { t } = useTranslation(['deployments'])
-    const { t: tWorkflow } = useTranslation(['workflow'])
+    const { t: tWorkflow } = useTranslation(['navigation'])
     const appCredentialSlots = credentialSlots.filter((slot) => !slot.workflow_as_tool_dependency)
     const subworkflowCredentialSlots = credentialSlots.filter(
       (slot) => slot.workflow_as_tool_dependency,
@@ -77,7 +77,8 @@ export const CredentialsSection = memo(
           <>
             <div className="flex min-w-0 items-center gap-2 pt-2">
               <span className="shrink-0 system-xs-medium-uppercase text-text-tertiary">
-                {t(($) => $['studio.precheck.from'])} {tWorkflow(($) => $['common.workflowAsTool'])}
+                {t(($) => $['studio.precheck.from'])}{' '}
+                {tWorkflow(($) => $['common.workflowAsTool'], { ns: 'navigation' })}
               </span>
               <span
                 aria-hidden

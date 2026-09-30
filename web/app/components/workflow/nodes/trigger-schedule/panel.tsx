@@ -5,7 +5,13 @@ import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Input } from '@langgenius/dify-ui/input'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import TimePicker from '@/app/components/base/date-and-time-picker/time-picker'
+import {
+  TimePicker,
+  TimePickerContent,
+  TimePickerLabel,
+  TimePickerTrigger,
+  TimePickerValue,
+} from '@/app/components/base/date-time-picker/time-picker'
 import WorkflowField from '@/app/components/workflow/nodes/_base/components/field'
 import FrequencySelector from './components/frequency-selector'
 import ModeToggle from './components/mode-toggle'
@@ -14,13 +20,14 @@ import NextExecutionTimes from './components/next-execution-times'
 import OnMinuteSelector from './components/on-minute-selector'
 import WeekdaySelector from './components/weekday-selector'
 import useConfig from './use-config'
+import { formatClockTime, parseClockTime } from './utils/clock-time'
 
 const i18nPrefix = 'nodes.triggerSchedule'
 
 const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({ id, data }) => {
-  const { t } = useTranslation(['workflow'])
-  const timeInputId = React.useId()
+  const { t } = useTranslation(['workflow', 'workflowIntegrations'])
   const {
+    readOnly,
     inputs,
     setInputs,
     handleModeChange,
@@ -35,7 +42,7 @@ const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({ id, data }) => {
     <div className="mt-2">
       <div className="space-y-4 px-4 pt-2 pb-3">
         <WorkflowField
-          title={t(($) => $[`${i18nPrefix}.title`], { ns: 'workflow' })}
+          title={t(($) => $[`${i18nPrefix}.title`], { ns: 'workflowIntegrations' })}
           operations={<ModeToggle mode={inputs.mode} onChange={handleModeChange} />}
         >
           <div className="space-y-3">
@@ -53,31 +60,31 @@ const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({ id, data }) => {
                         onChange={handleOnMinuteChange}
                       />
                     ) : (
-                      <Field className="gap-0">
-                        <FieldLabel htmlFor={timeInputId} className="text-xs">
-                          {t(($) => $['nodes.triggerSchedule.time'], { ns: 'workflow' })}
-                        </FieldLabel>
+                      <div className="flex flex-col">
                         <TimePicker
-                          id={timeInputId}
-                          notClearable={true}
-                          timezone={inputs.timezone}
-                          value={inputs.visual_config?.time || '12:00 AM'}
-                          triggerFullWidth={true}
-                          onChange={(time) => {
-                            if (time) {
-                              const timeString = time.format('h:mm A')
-                              handleTimeChange(timeString)
-                            }
+                          readOnly={readOnly}
+                          timeZone={inputs.timezone}
+                          value={parseClockTime(inputs.visual_config?.time || '12:00 AM')}
+                          onValueChange={(time) => {
+                            if (time) handleTimeChange(formatClockTime(time))
                           }}
-                          onClear={() => {
-                            handleTimeChange('12:00 AM')
-                          }}
-                          placeholder={t(($) => $['nodes.triggerSchedule.selectTime'], {
-                            ns: 'workflow',
-                          })}
-                          showTimezone={true}
-                        />
-                      </Field>
+                        >
+                          <TimePickerLabel className="text-xs">
+                            {t(($) => $['nodes.triggerSchedule.time'], { ns: 'workflow' })}
+                          </TimePickerLabel>
+                          <TimePickerTrigger className="w-full">
+                            <TimePickerValue className="flex flex-1 items-center justify-between">
+                              {(value) => (
+                                <>
+                                  {value}
+                                  <span className="text-text-tertiary">{inputs.timezone}</span>
+                                </>
+                              )}
+                            </TimePickerValue>
+                          </TimePickerTrigger>
+                          <TimePickerContent />
+                        </TimePicker>
+                      </div>
                     )}
                   </div>
                 </div>

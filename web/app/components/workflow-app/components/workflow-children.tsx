@@ -3,6 +3,7 @@ import type {
   TriggerDefaultValue,
 } from '@/app/components/workflow/block-selector/types'
 import type { ExportSecretEnvironmentVariable } from '@/app/components/workflow/export-secret-env-event'
+import dynamic from 'next/dynamic'
 import { memo, useCallback, useState } from 'react'
 import { useStoreApi } from 'reactflow'
 import { START_INITIAL_POSITION } from '@/app/components/workflow/constants'
@@ -17,9 +18,9 @@ import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { generateNewNode } from '@/app/components/workflow/utils'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import dynamic from '@/next/dynamic'
 import { useAutoOnboarding } from '../hooks/use-auto-onboarding'
 import { useAvailableNodesMetaData } from '../hooks/use-available-nodes-meta-data'
+import { useIsChatMode } from '../hooks/use-is-chat-mode'
 import WorkflowHeader from './workflow-header'
 import WorkflowPanel from './workflow-panel'
 
@@ -62,6 +63,8 @@ const getTriggerPluginNodeData = (
 }
 
 const WorkflowChildren = () => {
+  const appId = useStore((s) => s.appId)
+  const isChatMode = useIsChatMode()
   const { eventEmitter } = useEventEmitterContextContext()
   const [secretEnvList, setSecretEnvList] = useState<ExportSecretEnvironmentVariable[]>([])
   const showFeaturesPanel = useStore((s) => s.showFeaturesPanel)
@@ -170,8 +173,10 @@ const WorkflowChildren = () => {
           onSelectStartNode={handleSelectStartNode}
         />
       )}
-      {canImportExportDSL && showImportDSLModal && (
+      {appId && canImportExportDSL && showImportDSLModal && (
         <UpdateDSLModal
+          appId={appId}
+          appMode={isChatMode ? 'advanced-chat' : 'workflow'}
           onCancel={() => setShowImportDSLModal(false)}
           onBackup={exportCheck!}
           onImport={handlePaneContextmenuCancel}

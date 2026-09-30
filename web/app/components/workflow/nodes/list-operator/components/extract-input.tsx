@@ -17,7 +17,7 @@ type Props = Readonly<{
 }>
 
 const ExtractInput: FC<Props> = ({ nodeId, readOnly, value, onChange }) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowIntegrations'])
 
   const [isFocus, setIsFocus] = useState(false)
   const { availableVars, availableNodesWithParent } = useAvailableVarList(nodeId, {
@@ -46,7 +46,9 @@ const ExtractInput: FC<Props> = ({ nodeId, readOnly, value, onChange }) => {
         availableNodes={availableNodesWithParent}
         onFocusChange={setIsFocus}
         placeholder={
-          !readOnly ? t(($) => $['nodes.http.extractListPlaceholder'], { ns: 'workflow' })! : ''
+          !readOnly
+            ? t(($) => $['nodes.http.extractListPlaceholder'], { ns: 'workflowIntegrations' })!
+            : ''
         }
         placeholderClassName="leading-[21px]!"
       />

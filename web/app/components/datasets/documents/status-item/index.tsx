@@ -128,6 +128,7 @@ const StatusItem = ({
               render={
                 <span className="flex">
                   <Switch
+                    aria-labelledby={statusLabelId}
                     checked={archived ? false : enabled}
                     onCheckedChange={(v) =>
                       !archived && canEdit && handleSwitch(v ? 'enable' : 'disable')

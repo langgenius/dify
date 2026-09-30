@@ -48,7 +48,7 @@ const VarList: FC<Props> = ({
   writeModeTypesArr,
   writeModeTypesNum,
 }) => {
-  const { t } = useTranslation(['common', 'workflow'])
+  const { t } = useTranslation(['common', 'workflowLogic'])
   const handleAssignedVarChange = useCallback(
     (index: number) => {
       return (value: ValueSelector | string) => {
@@ -143,7 +143,7 @@ const VarList: FC<Props> = ({
   if (list.length === 0) {
     return (
       <ListNoDataPlaceholder>
-        {t(($) => $['nodes.assigner.noVarTip'], { ns: 'workflow' })}
+        {t(($) => $['nodes.assigner.noVarTip'], { ns: 'workflowLogic' })}
       </ListNoDataPlaceholder>
     )
   }
@@ -173,7 +173,7 @@ const VarList: FC<Props> = ({
                   filterVar={filterVar}
                   placeholder={
                     t(($) => $['nodes.assigner.selectAssignedVariable'], {
-                      ns: 'workflow',
+                      ns: 'workflowLogic',
                     }) as string
                   }
                   minWidth={352}
@@ -205,7 +205,7 @@ const VarList: FC<Props> = ({
                     filterVar={handleFilterToAssignedVar(index)}
                     valueTypePlaceHolder={toAssignedVarType}
                     placeholder={
-                      t(($) => $['nodes.assigner.setParameter'], { ns: 'workflow' }) as string
+                      t(($) => $['nodes.assigner.setParameter'], { ns: 'workflowLogic' }) as string
                     }
                     minWidth={352}
                     popupFor="toAssigned"
@@ -218,7 +218,7 @@ const VarList: FC<Props> = ({
                     <Textarea
                       aria-label={
                         item.variable_selector?.join('.') ||
-                        t(($) => $['nodes.assigner.setParameter'], { ns: 'workflow' })
+                        t(($) => $['nodes.assigner.setParameter'], { ns: 'workflowLogic' })
                       }
                       value={item.value as string}
                       onValueChange={(value) => handleToAssignedVarChange(index)(value)}
@@ -255,7 +255,7 @@ const VarList: FC<Props> = ({
                     <NumberFieldInput
                       aria-label={
                         item.variable_selector.join('.') ||
-                        t(($) => $['nodes.assigner.setParameter'], { ns: 'workflow' })
+                        t(($) => $['nodes.assigner.setParameter'], { ns: 'workflowLogic' })
                       }
                       placeholder={
                         writeModeTypesNum?.includes(item.operation)

@@ -1,20 +1,23 @@
 'use client'
 
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Separator } from '@langgenius/dify-ui/separator'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQueries } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { Fragment, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore } from '@/app/components/app/store'
+import { getAppIdFromPathname } from '@/app/components/app/app-detail-route'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { usePathname } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
 import { getAppACLCapabilities } from '@/utils/permission'
 import { AppInfoView } from './app-info'
-import { useAppInfoActions } from './app-info/use-app-info-actions'
+import AppInfoHeader from './app-info/app-info-header'
+import { getAppModeLabel } from './app-info/app-mode-labels'
 import NavLink from './nav-link'
 
 type AppDetailNavItem = {
@@ -42,22 +45,30 @@ type AppDetailSectionProps = {
 }
 
 const AppDetailSection = ({ expand = true }: AppDetailSectionProps) => {
-  const { t } = useTranslation(['common'])
   const pathname = usePathname()
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const { data: currentUserId } = useSuspenseQuery({
-    ...userProfileQueryOptions(),
-    select: (data) => data.profile.id,
+  const appId = getAppIdFromPathname(pathname)
+  if (!appId) return null
+  return <AppDetailContent key={appId} appId={appId} expand={expand} />
+}
+
+function AppDetailContent({ appId, expand }: { appId: string; expand: boolean }) {
+  const { t } = useTranslation(['app', 'common', 'navigation'])
+  const pathname = usePathname()
+  const [detailQuery, featuresQuery, profileQuery] = useQueries({
+    queries: [
+      consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId } } }),
+      systemFeaturesQueryOptions(),
+      userProfileQueryOptions(),
+    ],
   })
+  const systemFeatures = featuresQuery.data
+  const currentUserId = profileQuery.data?.profile.id
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const isRbacEnabled = systemFeatures.rbac_enabled
-  const appDetail = useStore((state) => state.appDetail)
-  const appInfoActions = useAppInfoActions({
-    resetKey: appDetail?.id,
-  })
+  const isRbacEnabled = systemFeatures?.rbac_enabled
+  const appDetail = detailQuery.data
 
   const navigation = useMemo<AppDetailNavItem[]>(() => {
-    if (!appDetail) return []
+    if (!appDetail || !systemFeatures || !currentUserId) return []
 
     const appId = appDetail.id
     const isWorkflowApp =
@@ -136,7 +147,7 @@ const AppDetailSection = ({ expand = true }: AppDetailSectionProps) => {
       ...(supportsResourceAccess && appACLCapabilities.canAccessConfig
         ? [
             {
-              name: t(($) => $['settings.resourceAccess'], { ns: 'common' }),
+              name: t(($) => $['settings.resourceAccess'], { ns: 'navigation' }),
               href: `/app/${appId}/access-config`,
               icon: 'i-ri-lock-2-line',
               selectedIcon: 'i-ri-lock-2-fill',
@@ -144,9 +155,12 @@ const AppDetailSection = ({ expand = true }: AppDetailSectionProps) => {
           ]
         : []),
     ]
-  }, [appDetail, t, currentUserId, workspacePermissionKeys, isRbacEnabled])
+  }, [appDetail, t, currentUserId, workspacePermissionKeys, isRbacEnabled, systemFeatures])
 
-  if (!appDetail) return null
+  const failedQuery = [detailQuery, featuresQuery, profileQuery].find(
+    (query) => query.isError && !query.data,
+  )
+  const appTitle = appDetail?.name ?? t(($) => $['menus.appDetail'], { ns: 'navigation' })
 
   const hasLogsNavigation = navigation.some(isLogsNavItem)
   const hasAnnotationsNavigation = navigation.some(isAnnotationsNavItem)
@@ -164,9 +178,37 @@ const AppDetailSection = ({ expand = true }: AppDetailSectionProps) => {
         </div>
       )}
       <div className={cn('px-1 py-2', expand && '-mx-2')}>
-        <AppInfoView expand={expand} actions={appInfoActions} />
+        {appDetail && systemFeatures && currentUserId ? (
+          <AppInfoView appDetail={appDetail} expand={expand} />
+        ) : (
+          <AppInfoHeader
+            expand={expand}
+            appName={appTitle}
+            modeLabel={appDetail ? getAppModeLabel(appDetail.mode, t) : undefined}
+            iconType={appDetail?.icon_type}
+            icon={appDetail?.icon ?? undefined}
+            background={appDetail?.icon_background}
+            imageUrl={appDetail?.icon_url}
+            operationGroups={[]}
+          />
+        )}
       </div>
-      <nav className={cn('flex flex-col gap-y-0.5 py-1', expand ? 'px-1' : 'px-3')}>
+      {failedQuery && (
+        <div role="alert" className="flex flex-col gap-2 px-1 py-2">
+          {expand && (
+            <p className="system-xs-regular text-text-tertiary">
+              {t(($) => $['errorBoundary.message'], { ns: 'common' })}
+            </p>
+          )}
+          <Button variant="secondary" onClick={() => void failedQuery.refetch()}>
+            {t(($) => $['errorBoundary.tryAgain'], { ns: 'common' })}
+          </Button>
+        </div>
+      )}
+      <nav
+        aria-label={appTitle}
+        className={cn('flex flex-col gap-y-0.5 py-1', expand ? 'px-1' : 'px-3')}
+      >
         {navigation.map((item) => {
           const shouldRenderDividerBefore =
             isLogsNavItem(item) || (!hasLogsNavigation && isAnnotationsNavItem(item))

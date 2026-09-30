@@ -101,7 +101,7 @@ const Card = ({ item, disabled, pluginDetail, onPluginUpdate }: CardProps) => {
 
   return (
     <div className="rounded-xl bg-background-section-burn">
-      <div className="flex items-center gap-3 overflow-hidden px-3 pt-3 pb-2">
+      <div className="flex flex-wrap items-center gap-3 overflow-hidden px-3 pt-3 pb-2">
         <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg border-[0.5px] border-divider-regular bg-text-primary-on-surface p-1 shadow-xs backdrop-blur-sm">
           <img
             src={icon}
@@ -113,9 +113,9 @@ const Card = ({ item, disabled, pluginDetail, onPluginUpdate }: CardProps) => {
             className="h-5 w-5 object-contain"
           />
         </div>
-        <div className="flex min-w-0 grow items-center gap-2">
-          <div className="truncate system-md-medium text-text-primary">{providerLabel}</div>
-          <div className="flex shrink-0 items-center gap-1">
+        <div className="flex min-w-0 grow basis-40 flex-wrap items-center gap-2">
+          <h2 className="min-w-0 truncate system-md-medium text-text-primary">{providerLabel}</h2>
+          <div className="flex min-w-0 shrink-0 flex-wrap items-center gap-1">
             {pluginDetail ? (
               <DataSourcePluginActions detail={pluginDetail} onUpdate={onPluginUpdate} />
             ) : (
@@ -137,7 +137,7 @@ const Card = ({ item, disabled, pluginDetail, onPluginUpdate }: CardProps) => {
             )}
           </div>
         </div>
-        <div onClick={(e) => e.stopPropagation()}>
+        <div className="shrink-0">
           <Configure
             pluginPayload={pluginPayload}
             item={item}
@@ -151,7 +151,7 @@ const Card = ({ item, disabled, pluginDetail, onPluginUpdate }: CardProps) => {
         <div className="ml-3 h-px grow bg-divider-subtle"></div>
       </div>
       {!!credentials_list.length && (
-        <div className="space-y-1 p-3 pt-2" onClick={(e) => e.stopPropagation()}>
+        <div className="space-y-1 p-3 pt-2">
           {credentials_list.map((credentialItem) => (
             <Item
               key={credentialItem.id}

@@ -1,4 +1,8 @@
 import pytest
+from flask import Flask
+from flask.typing import ResponseReturnValue
+from flask_restx import Api, Resource
+from werkzeug.exceptions import Forbidden
 
 from controllers.common.errors import (
     BlockedFileExtensionError,
@@ -15,7 +19,55 @@ from controllers.common.errors import (
     TooManyFilesError,
     UnsupportedFileTypeError,
 )
+from controllers.console import api as console_api
+from controllers.service_api import api as service_api
 from libs.exception import BaseHTTPException
+from libs.external_api import ExternalApi
+from services.errors.base import NoPermissionError
+from services.errors.workspace import WorkspaceApplicationError
+
+
+@pytest.mark.parametrize("source_api", [console_api, service_api], ids=["console", "service_api"])
+@pytest.mark.parametrize(
+    ("error", "status", "code", "message"),
+    [
+        (NoPermissionError("Access denied"), 400, "invalid_param", "Access denied"),
+        (ValueError("Invalid input"), 400, "invalid_param", "Invalid input"),
+        (Forbidden("Access denied"), 403, "forbidden", "Access denied"),
+        (WorkspaceApplicationError("unmapped workspace failure"), 500, "unknown", "Internal Server Error"),
+        (RuntimeError("backend detail"), 500, "unknown", "Internal Server Error"),
+    ],
+)
+def test_surface_permission_error_mapping_preserves_other_responses(
+    source_api: Api, error: Exception, status: int, code: str, message: str
+) -> None:
+    app = Flask(__name__)
+    api = Api(app, doc=False)
+    # Use production registration and ordering; do not mutate the shared API instance.
+    api.error_handlers = source_api.error_handlers.copy()
+
+    class Endpoint(Resource):
+        def get(self) -> ResponseReturnValue:
+            raise error
+
+    api.add_resource(Endpoint, "/error")
+    response = app.test_client().get("/error")
+    assert response.status_code == status
+    assert response.json == {"code": code, "message": message, "status": status}
+
+
+def test_permission_error_mapping_is_not_registered_on_generic_apis() -> None:
+    app = Flask(__name__)
+    api = ExternalApi(app)
+
+    class Endpoint(Resource):
+        def get(self) -> ResponseReturnValue:
+            raise NoPermissionError("internal permission detail")
+
+    api.add_resource(Endpoint, "/error")
+    response = app.test_client().get("/error")
+    assert response.status_code == 500
+    assert response.json == {"code": "unknown", "message": "Internal Server Error", "status": 500}
 
 
 class TestFilenameNotExistsError:
