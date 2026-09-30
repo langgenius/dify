@@ -28,13 +28,14 @@ import {
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { AgentSelectorContent } from '@/app/components/workflow/block-selector/agent-selector'
 import { getAgentACLCapabilities } from '@/features/agent-v2/acl'
 import { useCanCreateAgents } from '@/features/agent-v2/permissions'
 import { EditInConsoleLink } from './edit-in-console-link'
+import { InlineAgentLoading } from './inline-agent-loading'
 
 const i18nPrefix = 'nodes.agent'
 type AgentRosterDrawerMode = 'setup' | 'detail'
@@ -322,7 +323,9 @@ function AgentRosterInlineConfigureDialog({
         <DialogDescription className="sr-only">
           {t(($) => $[`${i18nPrefix}.roster.inlineSetup.description`], { ns: 'workflowAgent' })}
         </DialogDescription>
-        {children ?? <div className="h-full min-h-80 bg-components-panel-bg" />}
+        <Suspense fallback={<InlineAgentLoading />}>
+          {children ?? <div className="h-full min-h-80 bg-components-panel-bg" />}
+        </Suspense>
       </DialogContent>
     </Dialog>
   )
