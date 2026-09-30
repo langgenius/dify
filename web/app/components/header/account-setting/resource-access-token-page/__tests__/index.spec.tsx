@@ -155,9 +155,11 @@ describe('ResourceAccessTokenPage', () => {
     expect(screen.getByText('track-on ...')).toBeInTheDocument()
     expect(screen.getByText('sk-12345...abcd')).toBeInTheDocument()
     expect(
-      screen.getByText('accountSettings.resourceAccessToken.boundResource'),
+      screen.getByText('accountSettings.resourceAccessToken.accessibleResources'),
     ).toBeInTheDocument()
-    expect(screen.getByText('accountSettings.resourceAccessToken.createdAt')).toBeInTheDocument()
+    expect(
+      screen.getByText('accountSettings.resourceAccessToken.createdColumn'),
+    ).toBeInTheDocument()
     expect(screen.queryByText('Support Bot')).not.toBeInTheDocument()
     expect(screen.queryByText('Help Center')).not.toBeInTheDocument()
   })
@@ -287,7 +289,7 @@ describe('ResourceAccessTokenPage', () => {
 
     await user.click(
       await screen.findByRole('button', {
-        name: 'accountSettings.resourceAccessToken.create',
+        name: 'accountSettings.resourceAccessToken.createButton',
       }),
     )
     const dialog = screen.getByRole('dialog')
@@ -356,7 +358,7 @@ describe('ResourceAccessTokenPage', () => {
 
     await user.click(
       await screen.findByRole('button', {
-        name: 'accountSettings.resourceAccessToken.create',
+        name: 'accountSettings.resourceAccessToken.createButton',
       }),
     )
     const dialog = screen.getByRole('dialog')
