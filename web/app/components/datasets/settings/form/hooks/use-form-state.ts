@@ -1,5 +1,5 @@
 'use client'
-import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
+import type { IconPickerValue } from '@/app/components/base/icon-picker'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Member } from '@/models/common'
 import type {
@@ -12,7 +12,10 @@ import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
+import {
+  isReRankModelSelected,
+  normalizeRetrievalConfigForSave,
+} from '@/app/components/datasets/common/check-rerank-model'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { toast } from '@/app/notifications'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
@@ -34,7 +37,7 @@ const DEFAULT_APP_ICON: IconInfo = {
 }
 
 export const useFormState = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common', 'datasetSettings'])
   const currentDataset = useDatasetDetailContextWithSelector((state) => state.dataset)
   const mutateDatasets = useDatasetDetailContextWithSelector((state) => state.mutateDatasetRes)
   const { data: currentUserId } = useSuspenseQuery({
@@ -65,7 +68,7 @@ export const useFormState = () => {
 
   // Icon state
   const [iconInfo, setIconInfo] = useState(currentDataset?.icon_info || DEFAULT_APP_ICON)
-  const [showAppIconPicker, setShowAppIconPicker] = useState(false)
+  const [showIconPicker, setShowIconPicker] = useState(false)
 
   // Permission state
   const [permission, setPermission] = useState(currentDataset?.permission)
@@ -131,10 +134,10 @@ export const useFormState = () => {
 
   // Icon handlers
   const handleOpenAppIconPicker = useCallback(() => {
-    setShowAppIconPicker(true)
+    setShowIconPicker(true)
   }, [])
 
-  const handleSelectAppIcon = useCallback((icon: AppIconSelection) => {
+  const handleSelectAppIcon = useCallback((icon: IconPickerValue) => {
     const newIconInfo: IconInfo = {
       icon_type: icon.type,
       icon: icon.type === 'emoji' ? icon.icon : icon.fileId,
@@ -201,6 +204,10 @@ export const useFormState = () => {
       retrievalConfig.weights.vector_setting.embedding_model_name = embeddingModel.model || ''
     }
 
+    // Hybrid Search renders no rerank on/off switch, so `reranking_enable` is only ever written
+    // when the retrieval method is switched. Derive it from the selected rerank model on save.
+    const retrievalConfigForSave = normalizeRetrievalConfigForSave(retrievalConfig)
+
     try {
       setLoading(true)
       const body: Record<string, unknown> = {
@@ -211,9 +218,9 @@ export const useFormState = () => {
         permission,
         indexing_technique: indexMethod,
         retrieval_model: {
-          ...retrievalConfig,
-          score_threshold: retrievalConfig.score_threshold_enabled
-            ? retrievalConfig.score_threshold
+          ...retrievalConfigForSave,
+          score_threshold: retrievalConfigForSave.score_threshold_enabled
+            ? retrievalConfigForSave.score_threshold
             : 0,
         },
         embedding_model: embeddingModel.model,
@@ -296,8 +303,8 @@ export const useFormState = () => {
 
     // Icon
     iconInfo,
-    showAppIconPicker,
-    setShowAppIconPicker,
+    showIconPicker,
+    setShowIconPicker,
     handleOpenAppIconPicker,
     handleSelectAppIcon,
 

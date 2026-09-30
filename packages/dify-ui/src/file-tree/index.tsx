@@ -5,15 +5,12 @@ import { mergeProps } from '@base-ui/react/merge-props'
 import { useRender } from '@base-ui/react/use-render'
 import * as React from 'react'
 import { cn } from '../cn'
+import { resolveClassName } from '../internals/resolve-class-name'
 
 const FileTreeLevelContext = React.createContext(1)
 
 function useFileTreeLevel() {
   return React.useContext(FileTreeLevelContext)
-}
-
-function getLabelText(children: React.ReactNode) {
-  return typeof children === 'string' || typeof children === 'number' ? String(children) : undefined
 }
 
 function renderGuides(level: number) {
@@ -66,17 +63,21 @@ function FileTreeList({ render, className, ...props }: FileTreeListProps) {
   })
 }
 
-type FileTreeFolderProps = Omit<BaseCollapsible.Root.Props, 'className' | 'render'> & {
-  className?: string
+type FileTreeFolderProps = Omit<BaseCollapsible.Root.Props, 'render'> & {
   render?: BaseCollapsible.Root.Props['render']
 }
 
 function FileTreeFolder({ render = <li />, className, ...props }: FileTreeFolderProps) {
-  return <BaseCollapsible.Root render={render} className={cn('min-w-0', className)} {...props} />
+  return (
+    <BaseCollapsible.Root
+      render={render}
+      className={(state) => cn('min-w-0', resolveClassName(className, state))}
+      {...props}
+    />
+  )
 }
 
-type FileTreeFolderTriggerProps = Omit<BaseCollapsible.Trigger.Props, 'className'> & {
-  className?: string
+type FileTreeFolderTriggerProps = BaseCollapsible.Trigger.Props & {
   level?: number
 }
 
@@ -92,7 +93,7 @@ function FileTreeFolderTrigger({
 
   return (
     <BaseCollapsible.Trigger
-      className={fileTreeRowClassName({ className })}
+      className={(state) => fileTreeRowClassName({ className: resolveClassName(className, state) })}
       disabled={disabled}
       data-disabled={disabled || undefined}
       {...props}
@@ -103,8 +104,7 @@ function FileTreeFolderTrigger({
   )
 }
 
-type FileTreeFolderPanelProps = Omit<BaseCollapsible.Panel.Props, 'className' | 'render'> & {
-  className?: string
+type FileTreeFolderPanelProps = Omit<BaseCollapsible.Panel.Props, 'render'> & {
   render?: BaseCollapsible.Panel.Props['render']
 }
 
@@ -119,7 +119,9 @@ function FileTreeFolderPanel({
   return (
     <BaseCollapsible.Panel
       render={render}
-      className={cn('m-0 flex min-w-0 list-none flex-col gap-px p-0', className)}
+      className={(state) =>
+        cn('m-0 flex min-w-0 list-none flex-col gap-px p-0', resolveClassName(className, state))
+      }
       {...props}
     >
       <FileTreeLevelContext.Provider value={level + 1}>{children}</FileTreeLevelContext.Provider>
@@ -252,23 +254,16 @@ function FileTreeIcon({ type = 'file', render, className, children, ...props }: 
 }
 
 type FileTreeLabelProps = useRender.ComponentProps<'span'>
-type FileTreeLabelElementProps = useRender.ElementProps<'span'> & {
-  'data-label'?: string
-}
 
 function FileTreeLabel({ render, className, children, ...props }: FileTreeLabelProps) {
-  const labelText = getLabelText(children)
   const defaultProps = {
-    'data-label': labelText,
     className: cn(
       'w-0 min-w-0 flex-1 truncate rounded-[5px] px-1 py-0.5',
-      labelText &&
-        'after:invisible after:block after:h-0 after:overflow-hidden after:system-sm-medium after:content-[attr(data-label)]',
       'system-sm-regular text-text-secondary group-data-selected/file-tree-row:system-sm-medium group-data-selected/file-tree-row:text-text-primary',
       className,
     ),
     children,
-  } satisfies FileTreeLabelElementProps
+  } satisfies useRender.ElementProps<'span'>
 
   return useRender({
     defaultTagName: 'span',

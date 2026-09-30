@@ -16,7 +16,7 @@ type StatsBarProps = {
  * the numbers do not already say.
  */
 const StatsBar = ({ stats }: StatsBarProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetSettings'])
 
   const sortedTypes = useMemo(() => {
     if (!stats?.entity_types) return []

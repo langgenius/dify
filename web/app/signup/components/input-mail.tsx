@@ -23,7 +23,7 @@ type SignupEmailFormValues = {
 }
 
 export default function SignupEmailForm({ onSuccess }: Props) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['login'])
   const locale = useLocale()
   const searchParams = useSearchParams()
   const queryString = searchParams.toString()

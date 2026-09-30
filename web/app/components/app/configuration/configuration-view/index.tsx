@@ -16,12 +16,14 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   Drawer,
   DrawerBackdrop,
-  DrawerCloseButton,
+  DrawerClose,
   DrawerContent,
   DrawerPopup,
   DrawerPortal,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -31,7 +33,6 @@ import EditHistoryModal from '@/app/components/app/configuration/config-prompt/c
 import AgentSettingButton from '@/app/components/app/configuration/config/agent-setting-button'
 import SelectDataSet from '@/app/components/app/configuration/dataset-config/select-dataset'
 import Debug from '@/app/components/app/configuration/debug'
-import Divider from '@/app/components/base/divider'
 import { FeaturesProvider } from '@/app/components/base/features'
 import NewFeaturePanel from '@/app/components/base/features/new-feature-panel'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
@@ -77,7 +78,7 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
   showUseGPT4Confirm,
   setShowUseGPT4Confirm,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common'])
   const debugWithMultipleModel = appPublisherProps.debugWithMultipleModel
   const showLegacyAgentBadge = isAgentV2Enabled() && contextValue.mode === AppModeEnum.AGENT_CHAT
   const handlePluginInstallComplete: InstallBundleCompleteCallback = (plugins, installStatus) => {
@@ -88,6 +89,7 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
       draft.agentConfig.tools.forEach((tool) => {
         if (
           'provider_id' in tool &&
+          typeof tool.provider_id === 'string' &&
           tool.isDeleted &&
           installedPluginNames.includes(tool.provider_id)
         ) {
@@ -149,7 +151,7 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
                           debugWithMultipleModel={debugWithMultipleModel}
                           onDebugWithMultipleModelChange={onEnableMultipleModelDebug}
                         />
-                        <Divider type="vertical" className="mx-2 h-3.5" />
+                        <Separator decorative orientation="vertical" className="mx-2 h-3.5" />
                       </>
                     )}
                     {isMobile && (
@@ -253,9 +255,15 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
                   <DrawerPopup className="data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-sm">
                     <DrawerContent className="flex min-h-0 flex-1 flex-col">
                       <div className="mb-4 flex shrink-0 justify-end">
-                        <DrawerCloseButton
-                          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                          className="size-6 rounded-md"
+                        <DrawerClose
+                          render={
+                            <IconButton
+                              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                              size="md"
+                            >
+                              <span aria-hidden="true" className="i-ri-close-line size-4" />
+                            </IconButton>
+                          }
                         />
                       </div>
                       <Debug

@@ -22,7 +22,7 @@ type KnowledgeGraphProps = {
 }
 
 const KnowledgeGraph = ({ datasetId }: KnowledgeGraphProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetSettings'])
   const router = useRouter()
   const dataset = useDatasetDetailContextWithSelector((state) => state.dataset)
   const graphEnabled = !!dataset?.graph_index_setting?.enabled

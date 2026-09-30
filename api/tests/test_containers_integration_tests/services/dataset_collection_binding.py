@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from models.dataset import DatasetCollectionBinding
 from models.enums import CollectionBindingType
-from services.dataset_service import DatasetCollectionBindingService
+from services.knowledge.dataset_service import DatasetCollectionBindingService
 
 
 class DatasetCollectionBindingTestDataFactory:

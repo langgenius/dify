@@ -327,10 +327,6 @@ export const checkWatercrawlTaskStatus = (jobId: string): Promise<CommonResponse
   )
 }
 
-export type FileTypesRes = {
-  allowed_extensions: string[]
-}
-
 export const retryErrorDocs = ({
   datasetId,
   document_ids,

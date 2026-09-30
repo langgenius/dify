@@ -6,6 +6,7 @@ import type {
 } from '@langgenius/dify-ui/number-field'
 import type { FC, PropsWithChildren, ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Input } from '@langgenius/dify-ui/input'
 import {
   NumberField,
@@ -18,7 +19,6 @@ import {
 } from '@langgenius/dify-ui/number-field'
 import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import { env } from '@/env'
 
 const FormField: FC<PropsWithChildren<{ label: ReactNode }>> = (props) => {
@@ -41,7 +41,9 @@ export const DelimiterInput: FC<
     onValueChange?: (value: string) => void
   }
 > = ({ tooltip, onValueChange, value, ...rest }) => {
-  const { t } = useTranslation()
+  const labelId = useId()
+
+  const { t } = useTranslation(['datasetCreation'])
   const generatedInputId = useId()
   const inputId = rest.id ?? generatedInputId
   const isComposing = useRef(false)
@@ -51,14 +53,14 @@ export const DelimiterInput: FC<
     <FormField
       label={
         <div className="mb-1 flex items-center">
-          <label htmlFor={inputId} className="mr-0.5 system-sm-semibold">
+          <label id={labelId} htmlFor={inputId} className="mr-0.5 system-sm-semibold">
             {t(($) => $['stepTwo.separator'], { ns: 'datasetCreation' })}
           </label>
-          <Infotip
-            aria-label={tooltip || t(($) => $['stepTwo.separatorTip'], { ns: 'datasetCreation' })}
-            popupClassName="max-w-[200px]"
-          >
-            {tooltip || t(($) => $['stepTwo.separatorTip'], { ns: 'datasetCreation' })}
+          <Infotip>
+            <InfotipTrigger aria-labelledby={labelId} />
+            <InfotipContent aria-labelledby={labelId} className="max-w-50">
+              {tooltip || t(($) => $['stepTwo.separatorTip'], { ns: 'datasetCreation' })}
+            </InfotipContent>
           </Infotip>
         </div>
       }
@@ -161,7 +163,7 @@ type LabeledCompoundNumberInputProps = Omit<CompoundNumberInputProps, 'label'>
 export const MaxLengthInput: FC<LabeledCompoundNumberInputProps> = (props) => {
   const maxValue = env.NEXT_PUBLIC_INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation'])
   const label = t(($) => $['stepTwo.maxLength'], { ns: 'datasetCreation' })
   return (
     <FormField label={<div className="mb-1 system-sm-semibold">{label}</div>}>
@@ -178,18 +180,22 @@ export const MaxLengthInput: FC<LabeledCompoundNumberInputProps> = (props) => {
 }
 
 export const OverlapInput: FC<LabeledCompoundNumberInputProps> = (props) => {
-  const { t } = useTranslation()
+  const labelId = useId()
+
+  const { t } = useTranslation(['datasetCreation'])
   const label = t(($) => $['stepTwo.overlap'], { ns: 'datasetCreation' })
   return (
     <FormField
       label={
         <div className="mb-1 flex items-center">
-          <span className="system-sm-semibold">{label}</span>
-          <Infotip
-            aria-label={t(($) => $['stepTwo.overlapTip'], { ns: 'datasetCreation' })}
-            popupClassName="max-w-[200px]"
-          >
-            {t(($) => $['stepTwo.overlapTip'], { ns: 'datasetCreation' })}
+          <span id={labelId} className="system-sm-semibold">
+            {label}
+          </span>
+          <Infotip>
+            <InfotipTrigger aria-labelledby={labelId} />
+            <InfotipContent aria-labelledby={labelId} className="max-w-50">
+              {t(($) => $['stepTwo.overlapTip'], { ns: 'datasetCreation' })}
+            </InfotipContent>
           </Infotip>
         </div>
       }

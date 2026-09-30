@@ -53,10 +53,10 @@ const datasetDetailPageTitle = (pathname: string, t: ReturnType<typeof useTransl
     return t(($) => $['datasetMenus.hitTesting'], { ns: 'common' })
   if (pathname.endsWith('/settings')) return t(($) => $['datasetMenus.settings'], { ns: 'common' })
   if (pathname.endsWith('/access-config'))
-    return t(($) => $['settings.resourceAccess'], { ns: 'common' })
+    return t(($) => $['settings.resourceAccess'], { ns: 'navigation' })
   if (pathname.endsWith('/api')) return t(($) => $['appMenus.apiAccess'], { ns: 'common' })
 
-  return t(($) => $['menus.datasets'], { ns: 'common' })
+  return t(($) => $['menus.datasets'], { ns: 'navigation' })
 }
 
 const isDocumentDetailPath = (pathname: string) =>
@@ -88,7 +88,7 @@ const getDatasetRedirectionPath = (
 
 const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const { children, datasetId } = props
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetPipeline', 'navigation'])
   const router = useRouter()
   const pathname = usePathname()
   const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
@@ -134,7 +134,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     ((isAccessConfigPath && !datasetACLCapabilities.canAccessConfig) ||
       (isHitTestingPath && !datasetACLCapabilities.canRetrievalRecall))
   const pageTitle = datasetDetailPageTitle(pathname, t)
-  const documentTitle = `${pageTitle} · ${datasetRes?.name || t(($) => $['menus.datasets'], { ns: 'common' })}`
+  const documentTitle = `${pageTitle} · ${datasetRes?.name || t(($) => $['menus.datasets'], { ns: 'navigation' })}`
 
   useEffect(() => {
     if (shouldRedirect) router.replace('/datasets')

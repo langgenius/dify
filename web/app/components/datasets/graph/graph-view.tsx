@@ -57,7 +57,7 @@ const escapeHtml = (value: string) =>
   value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 
 const GraphView = ({ entities, relations, focusedEntityName, onEntityClick }: GraphViewProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetSettings'])
   const { theme } = useTheme()
   const colors = getGraphChartColors(theme)
 

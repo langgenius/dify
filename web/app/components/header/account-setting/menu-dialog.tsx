@@ -18,7 +18,7 @@ type MenuDialogProps = {
 }
 
 const MenuDialog = ({ children, title, onClose }: MenuDialogProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
     <Dialog

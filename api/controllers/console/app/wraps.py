@@ -1,9 +1,8 @@
 """Controller decorators for console app resources.
 
 `get_app_model` still supports legacy handlers backed by Flask-SQLAlchemy's
-scoped session. Preview handlers compose `get_previewable_app_model` under
-`controllers.common.session.with_session`; preview admission finishes before
-the request Session loads the accepted App.
+scoped session. Public catalog previews use `app.preview_admission` and
+detached application queries.
 """
 
 from collections.abc import Callable
@@ -15,52 +14,40 @@ from sqlalchemy.orm import Session, scoped_session
 
 from controllers.common.session import with_session
 from controllers.console.app.error import AppNotFoundError
-from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant
 from models import App, AppMode
 from models.agent import AgentScope
-from services.app_service import AppService
+from models.enums import AppStatus
 
 __all__ = [
     "get_app_model",
-    "get_previewable_app_model",
     "with_session",
 ]
 
 
-def _is_hidden_backing_app(app_model: App, session: Session | scoped_session) -> bool:
-    binding = app_model.agent_app_binding_with_session(session=session, include_archived=True)
-    return binding is not None and binding.scope == AgentScope.WORKFLOW_ONLY
-
-
-def _load_app_model(session: Session, app_id: str) -> App | None:
-    """Load the tenant-scoped app row with the request session owned by `with_session`."""
+def _load_app_model(session: Session | scoped_session, app_id: str) -> App | None:
+    """Load the tenant-scoped Console app row through the given session."""
     _, current_tenant_id = current_account_with_tenant()
     app_model = session.scalar(
-        select(App).where(App.id == app_id, App.tenant_id == current_tenant_id, App.status == "normal").limit(1)
+        select(App)
+        .where(
+            App.id == app_id,
+            App.tenant_id == current_tenant_id,
+            App.status == AppStatus.NORMAL,
+        )
+        .limit(1)
     )
-    if app_model is not None and _is_hidden_backing_app(app_model, session):
-        return None
+    if app_model is not None:
+        binding = app_model.agent_app_binding_with_session(session=session, include_archived=True)
+        if binding is not None and binding.scope == AgentScope.WORKFLOW_ONLY:
+            return None
     return app_model
 
 
 def _load_app_model_from_scoped_session(app_id: str) -> App | None:
     """Load the app row for legacy handlers that have not adopted request session injection yet."""
-    _, current_tenant_id = current_account_with_tenant()
-    app_model = db.session.scalar(
-        select(App).where(App.id == app_id, App.tenant_id == current_tenant_id, App.status == "normal").limit(1)
-    )
-    if app_model is not None and _is_hidden_backing_app(app_model, db.session):
-        return None
-    return app_model
-
-
-def _load_previewable_app_model(session: Session, app_id: str) -> App | None:
-    """Load a normal App after preview admission completes outside the request Session."""
-    if not application_services().recommended_app_queries.is_previewable(app_id):
-        return None
-    return AppService.get_normal_app_by_id(app_id, session)
+    return _load_app_model(db.session, app_id)
 
 
 def _get_injected_session(args: tuple[object, ...]) -> Session | None:
@@ -122,78 +109,6 @@ def get_app_model[**P, R](
                 app_model = _load_app_model_from_scoped_session(app_id)
             else:
                 app_model = _load_app_model(session, app_id)
-
-            if not app_model:
-                raise AppNotFoundError()
-
-            app_mode = AppMode.value_of(app_model.mode)
-
-            if mode is not None:
-                if isinstance(mode, list):
-                    modes = mode
-                else:
-                    modes = [mode]
-
-                if app_mode not in modes:
-                    mode_values = {m.value for m in modes}
-                    raise AppNotFoundError(f"App mode is not in the supported list: {mode_values}")
-
-            kwargs["app_model"] = app_model
-
-            return view_func(*args, **kwargs)
-
-        return decorated_view
-
-    if view is None:
-        return decorator
-    else:
-        return decorator(view)
-
-
-@overload
-def get_previewable_app_model[**P, R](
-    view: Callable[P, R],
-    *,
-    mode: AppMode | list[AppMode] | None = None,
-) -> Callable[P, R]: ...
-
-
-@overload
-def get_previewable_app_model[**P, R](
-    view: None = None,
-    *,
-    mode: AppMode | list[AppMode] | None = None,
-) -> Callable[[Callable[P, R]], Callable[P, R]]: ...
-
-
-def get_previewable_app_model[**P, R](
-    view: Callable[P, R] | None = None,
-    *,
-    mode: AppMode | list[AppMode] | None = None,
-) -> Callable[P, R] | Callable[[Callable[P, R]], Callable[P, R]]:
-    """Inject an App authorized for read-only template preview.
-
-    Preview reads accept either an explicit TrialApp registration or membership
-    in the recommended catalog. This does not grant trial execution, which is
-    separately protected by TrialAppResource's feature, registration, and quota
-    checks.
-    """
-
-    def decorator(view_func: Callable[P, R]) -> Callable[P, R]:
-        @wraps(view_func)
-        def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R:
-            if not kwargs.get("app_id"):
-                raise ValueError("missing app_id in path parameters")
-
-            app_id = kwargs.get("app_id")
-            app_id = str(app_id)
-
-            del kwargs["app_id"]
-
-            session = _get_injected_session(args)
-            if session is None:
-                raise RuntimeError("get_previewable_app_model requires @with_session")
-            app_model = _load_previewable_app_model(session, app_id)
 
             if not app_model:
                 raise AppNotFoundError()

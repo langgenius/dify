@@ -1,21 +1,21 @@
-import type { DifyWorld } from '../../support/world'
+import type { DifyWorld } from '../../support/world.ts'
 import { Given } from '@cucumber/cucumber'
-import { requirePreseededAgentWorkflowReference } from '../../agent-v2/support/fixtures/access'
-import { requireAgentBackendRuntime } from '../../agent-v2/support/fixtures/agent-backend'
+import { requirePreseededAgentWorkflowReference } from '../../agent-v2/support/fixtures/access.ts'
+import { requireAgentBackendRuntime } from '../../agent-v2/support/fixtures/agent-backend.ts'
 import {
   requirePreseededAgent,
   requirePreseededDualRetrievalAgentConfiguration,
   requirePreseededFullConfigAgentCoreConfiguration,
   requirePreseededToolStatesAgentConfiguration,
   requirePreseededWorkflow,
-} from '../../agent-v2/support/fixtures/agents'
-import { requireReadyPreseededDataset } from '../../agent-v2/support/fixtures/datasets'
+} from '../../agent-v2/support/fixtures/agents.ts'
+import { requireReadyPreseededDataset } from '../../agent-v2/support/fixtures/datasets.ts'
 import {
   requireAgentBuilderAgentDecisionChatModel,
   requireAgentBuilderSpeechToTextModel,
   requireAgentBuilderStableChatModel,
-} from '../../agent-v2/support/fixtures/models'
-import { requirePreseededTool } from '../../agent-v2/support/fixtures/tools'
+} from '../../agent-v2/support/fixtures/models.ts'
+import { requirePreseededTool } from '../../agent-v2/support/fixtures/tools.ts'
 
 Given('the Agent Builder stable chat model is available', async function (this: DifyWorld) {
   const stableModel = await requireAgentBuilderStableChatModel(this, this.getConsoleClient())

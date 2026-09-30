@@ -97,18 +97,6 @@ def test_celery_signal_command_channel_emits_abort_once_per_instance() -> None:
     assert channel.fetch_commands() == []
 
 
-def test_celery_signal_command_channel_send_command_is_noop() -> None:
-    channel = CelerySignalCommandChannel(
-        shutdown_state_getter=lambda: False,
-        abort_reason="worker shutdown",
-    )
-    command = PauseCommand(reason="pause")
-
-    channel.send_command(command)
-
-    assert channel.fetch_commands() == []
-
-
 def test_stop_flag_command_channel_emits_abort_when_flag_is_set() -> None:
     channel = StopFlagCommandChannel(task_id="task-1", abort_reason="User requested stop")
 
@@ -128,14 +116,4 @@ def test_stop_flag_command_channel_emits_abort_once_per_instance() -> None:
 
     with patch("core.app.apps.workflow.command_channels.is_app_task_stop_flag_set", return_value=True):
         assert len(channel.fetch_commands()) == 1
-        assert channel.fetch_commands() == []
-
-
-def test_stop_flag_command_channel_send_command_is_noop() -> None:
-    channel = StopFlagCommandChannel(task_id="task-1")
-    command = PauseCommand(reason="pause")
-
-    channel.send_command(command)
-
-    with patch("core.app.apps.workflow.command_channels.is_app_task_stop_flag_set", return_value=False):
         assert channel.fetch_commands() == []

@@ -100,8 +100,8 @@ function SourceActions({
   pendingAction?: SourceAction
   source: Source
 }) {
-  const { t } = useTranslation('dataset')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['dataset'])
+  const { t: tCommon } = useTranslation(['common'])
   const [removeDialogOpen, setRemoveDialogOpen] = useState(false)
   const sourceUri = getOpenableSourceUri(source.uri)
 
@@ -226,8 +226,8 @@ function SourceRow({
   onSourceChange: (source: Source) => void
   source: Source
 }) {
-  const { t } = useTranslation('dataset')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['dataset'])
+  const { t: tCommon } = useTranslation(['common'])
   const queryClient = useQueryClient()
   const [pendingAction, setPendingAction] = useState<SourceAction>()
   const providerName = metadataString(source.metadata, 'providerName')
@@ -402,7 +402,7 @@ function SourcesEmpty({
   canAddSource: boolean
   knowledgeSpaceId: string
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation(['dataset'])
 
   return (
     <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-6 py-16 text-center">
@@ -437,8 +437,8 @@ function SourcesEmpty({
 }
 
 export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) {
-  const { t } = useTranslation('dataset')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['dataset'])
+  const { t: tCommon } = useTranslation(['common'])
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canManageSources = hasPermission(workspacePermissionKeys, 'dataset.external.connect')
   const [filter, setFilter] = useState<SourceFilter>('all')

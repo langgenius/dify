@@ -24,7 +24,7 @@ import { resolvePostLoginRedirect } from './utils/post-login-redirect'
 type AuthType = 'code' | 'password'
 
 function NormalForm() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['login'])
   const router = useRouter()
   const searchParams = useSearchParams()
   const queryString = searchParams.toString()

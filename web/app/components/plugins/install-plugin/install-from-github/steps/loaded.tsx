@@ -41,7 +41,7 @@ const Loaded: React.FC<LoadedProps> = ({
   onInstalled,
   onFailed,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const installButtonLabelId = React.useId()
   const toInstallVersion = payload.version
   const pluginId = (payload as Plugin).plugin_id

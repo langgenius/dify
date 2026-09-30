@@ -37,7 +37,9 @@ describe('parameter-extractor/extract-parameter/update', () => {
     const existingDialogs = screen.queryAllByRole('dialog').length
 
     fireEvent.click(
-      screen.getByRole('button', { name: 'workflow.nodes.parameterExtractor.addExtractParameter' }),
+      screen.getByRole('button', {
+        name: 'workflowModels.nodes.parameterExtractor.addExtractParameter',
+      }),
     )
     const dialogs = await waitFor(() => {
       const nextDialogs = screen.getAllByRole('dialog')
@@ -46,7 +48,7 @@ describe('parameter-extractor/extract-parameter/update', () => {
     })
     const dialog = dialogs.at(-1)!
     const nameInput = within(dialog).getByRole('textbox', {
-      name: 'workflow.nodes.parameterExtractor.addExtractParameterContent.name',
+      name: 'workflowModels.nodes.parameterExtractor.addExtractParameterContent.name',
     })
     const descriptionInput = within(dialog).getByPlaceholderText(
       'workflow.nodes.parameterExtractor.addExtractParameterContent.descriptionPlaceholder',
@@ -88,7 +90,9 @@ describe('parameter-extractor/extract-parameter/update', () => {
     const existingDialogs = screen.queryAllByRole('dialog').length
 
     await user.click(
-      screen.getByRole('button', { name: 'workflow.nodes.parameterExtractor.addExtractParameter' }),
+      screen.getByRole('button', {
+        name: 'workflowModels.nodes.parameterExtractor.addExtractParameter',
+      }),
     )
     const dialogs = await waitFor(() => {
       const nextDialogs = screen.getAllByRole('dialog')
@@ -99,7 +103,7 @@ describe('parameter-extractor/extract-parameter/update', () => {
 
     fireEvent.change(
       within(dialog).getByRole('textbox', {
-        name: 'workflow.nodes.parameterExtractor.addExtractParameterContent.name',
+        name: 'workflowModels.nodes.parameterExtractor.addExtractParameterContent.name',
       }),
       {
         target: { value: '1bad' },
@@ -110,7 +114,7 @@ describe('parameter-extractor/extract-parameter/update', () => {
     expect(mockToast.error).toHaveBeenCalled()
     expect(
       within(dialog).getByRole('textbox', {
-        name: 'workflow.nodes.parameterExtractor.addExtractParameterContent.name',
+        name: 'workflowModels.nodes.parameterExtractor.addExtractParameterContent.name',
       }),
     ).toHaveValue('')
   })

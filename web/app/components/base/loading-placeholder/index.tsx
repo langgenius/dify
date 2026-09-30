@@ -10,11 +10,11 @@ type LoadingPlaceholderProps = {
 }
 
 function LoadingPlaceholder({ label, className }: LoadingPlaceholderProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
     <div className={cn('flex w-full items-center justify-center', className)}>
-      <Spinner aria-label={label ?? t(($) => $.loading, { ns: 'appApi' })} />
+      <Spinner aria-label={label ?? t(($) => $.loading, { ns: 'common' })} />
     </div>
   )
 }

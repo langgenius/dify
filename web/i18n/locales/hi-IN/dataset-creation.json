@@ -23,6 +23,7 @@
   "stepOne.uploader.button": "फ़ाइलों या फ़ोल्डरों को खींचें और छोड़ें, या",
   "stepOne.uploader.buttonSingleFile": "फ़ाइल को खींचें और छोड़ें, या",
   "stepOne.uploader.change": "बदलें",
+  "stepOne.uploader.completed": "अपलोड पूरा हुआ",
   "stepOne.uploader.failed": "अपलोड विफल रहा",
   "stepOne.uploader.tip": "{{supportTypes}} समर्थित है। एक बैच में अधिकतम {{batchCount}} फ़ाइलें और प्रत्येक {{size}} MB।",
   "stepOne.uploader.tipWithTotalLimit": "{{supportTypes}} समर्थित है। एक बैच में अधिकतम {{batchCount}} फ़ाइलें और प्रत्येक {{size}} MB। कुल अधिकतम {{totalCount}} फ़ाइलें।",

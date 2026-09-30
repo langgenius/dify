@@ -1,8 +1,12 @@
 import type { ReactNode } from 'react'
+import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { createAccountProfileQueryClient } from '@/test/console/account-profile'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
+import { render } from '@/test/console/render'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { AppModeEnum } from '@/types/app'
 import ConversationList from '../list'
@@ -11,20 +15,11 @@ const mockFetchChatMessages = vi.fn()
 const mockUpdateLogMessageFeedbacks = vi.fn()
 const mockUpdateLogMessageAnnotations = vi.fn()
 const mockOnRefresh = vi.fn()
-const mockSetCurrentLogItem = vi.fn()
-const mockSetShowPromptLogModal = vi.fn()
-const mockSetShowAgentLogModal = vi.fn()
-const mockSetShowMessageLogModal = vi.fn()
 const mockCompletionRefetch = vi.fn()
 const mockDelAnnotation = vi.fn()
 
 let mockChatConversationDetail: Record<string, unknown> | undefined
 let mockCompletionConversationDetail: Record<string, unknown> | undefined
-let mockShowMessageLogModal = false
-let mockShowPromptLogModal = false
-let mockShowAgentLogModal = false
-let mockCurrentLogItem: Record<string, unknown> | undefined
-let mockCurrentLogModalActiveTab = 'messages'
 vi.mock('@/hooks/use-timestamp', () => ({
   default: () => ({
     formatTime: (timestamp: number) => `formatted-${timestamp}`,
@@ -59,21 +54,6 @@ vi.mock('@/service/annotation', () => ({
   delAnnotation: (...args: unknown[]) => mockDelAnnotation(...args),
 }))
 
-vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: Record<string, unknown>) => unknown) =>
-    selector({
-      currentLogItem: mockCurrentLogItem,
-      setCurrentLogItem: mockSetCurrentLogItem,
-      showMessageLogModal: mockShowMessageLogModal,
-      setShowPromptLogModal: mockSetShowPromptLogModal,
-      setShowAgentLogModal: mockSetShowAgentLogModal,
-      setShowMessageLogModal: mockSetShowMessageLogModal,
-      showPromptLogModal: mockShowPromptLogModal,
-      showAgentLogModal: mockShowAgentLogModal,
-      currentLogModalActiveTab: mockCurrentLogModalActiveTab,
-    }),
-}))
-
 vi.mock('@/app/components/base/loading-placeholder', () => ({
   LoadingPlaceholder: () => <div>loading</div>,
 }))
@@ -97,14 +77,14 @@ vi.mock('@/app/components/base/copy-icon', () => ({
 vi.mock('@/app/components/app/text-generate/item', () => ({
   default: ({
     content,
-    hideLogAction,
+    onOpenLog,
     onFeedback,
   }: {
     content: string
-    hideLogAction?: boolean
+    onOpenLog?: (item: IChatItem) => void
     onFeedback: (value: { rating: string; content?: string }) => Promise<boolean>
   }) => (
-    <div data-testid="text-generation" data-hide-log-action={String(hideLogAction)}>
+    <div data-testid="text-generation" data-log-enabled={String(!!onOpenLog)}>
       <div>{content}</div>
       <button onClick={() => void onFeedback({ rating: 'like', content: 'great' })}>
         completion-feedback
@@ -121,8 +101,7 @@ vi.mock('@/app/components/base/chat/chat', () => ({
     onAnnotationEdited,
     onAnnotationRemoved,
     switchSibling,
-    hideLogModal,
-    showPromptLog,
+    onOpenLog,
   }: {
     chatList: Array<{ id: string }>
     onFeedback: (mid: string, value: { rating: string; content?: string }) => Promise<boolean>
@@ -136,15 +115,78 @@ vi.mock('@/app/components/base/chat/chat', () => ({
     onAnnotationEdited: (query: string, answer: string, index: number) => void
     onAnnotationRemoved: (index: number) => Promise<boolean>
     switchSibling: (siblingMessageId: string) => void
-    hideLogModal?: boolean
-    showPromptLog?: boolean
+    onOpenLog?: (item: IChatItem) => void
   }) => (
-    <div
-      data-testid="chat-panel"
-      data-hide-log-modal={String(hideLogModal)}
-      data-show-prompt-log={String(showPromptLog)}
-    >
+    <div data-testid="chat-panel" data-log-enabled={String(!!onOpenLog)}>
       <div>{chatList.length}</div>
+      {onOpenLog && (
+        <>
+          <button
+            onClick={() =>
+              onOpenLog({
+                id: 'log-1',
+                content: 'answer',
+                isAnswer: true,
+                workflow_run_id: 'run-1',
+                agent_thoughts: [
+                  {
+                    id: 'thought',
+                    tool: '',
+                    thought: 'thinking',
+                    tool_input: '',
+                    message_id: 'log',
+                    conversation_id: 'conversation-1',
+                    observation: '',
+                    position: 0,
+                  },
+                ],
+                log: [],
+              })
+            }
+          >
+            open-workflow-log
+          </button>
+          <button
+            onClick={() =>
+              onOpenLog({
+                id: 'log-2',
+                content: 'answer',
+                isAnswer: true,
+                agent_thoughts: [
+                  {
+                    id: 'thought',
+                    tool: '',
+                    thought: 'thinking',
+                    tool_input: '',
+                    message_id: 'log',
+                    conversation_id: 'conversation-1',
+                    observation: '',
+                    position: 0,
+                  },
+                ],
+                log: [],
+              })
+            }
+          >
+            open-agent-log
+          </button>
+          <button
+            onClick={() =>
+              onOpenLog({
+                id: 'log-3',
+                content: 'answer',
+                isAnswer: true,
+                log: [{ role: 'user', text: 'prompt' }],
+              })
+            }
+          >
+            open-prompt-log
+          </button>
+          <button onClick={() => onOpenLog({ id: 'log-4', content: 'answer', isAnswer: true })}>
+            open-no-log
+          </button>
+        </>
+      )}
       <button onClick={() => void onFeedback('message-1', { rating: 'like', content: 'nice' })}>
         chat-feedback
       </button>
@@ -276,11 +318,6 @@ describe('ConversationList', () => {
     vi.clearAllMocks()
     mockChatConversationDetail = undefined
     mockCompletionConversationDetail = undefined
-    mockShowMessageLogModal = false
-    mockShowPromptLogModal = false
-    mockShowAgentLogModal = false
-    mockCurrentLogItem = undefined
-    mockCurrentLogModalActiveTab = 'messages'
     mockDelAnnotation.mockResolvedValue(undefined)
     mockFetchChatMessages.mockResolvedValue({
       data: [],
@@ -352,7 +389,7 @@ describe('ConversationList', () => {
     },
   )
 
-  it('should close the drawer, refresh, and clear modal flags', async () => {
+  it('should close the drawer and refresh', async () => {
     mockChatConversationDetail = {
       id: 'conversation-1',
       created_at: 1710000000,
@@ -378,9 +415,6 @@ describe('ConversationList', () => {
     fireEvent.click(await screen.findByRole('button', { name: /(?:^|\.)operation\.close(?=$|:)/ }))
 
     expect(mockOnRefresh).toHaveBeenCalledTimes(1)
-    expect(mockSetShowPromptLogModal).toHaveBeenCalledWith(false)
-    expect(mockSetShowAgentLogModal).toHaveBeenCalledWith(false)
-    expect(mockSetShowMessageLogModal).toHaveBeenCalledWith(false)
 
     await waitFor(() => {
       expect(onUrlUpdate).toHaveBeenCalled()
@@ -432,8 +466,6 @@ describe('ConversationList', () => {
       ],
       has_more: false,
     })
-    mockShowMessageLogModal = true
-    mockCurrentLogItem = { id: 'log-1' }
 
     renderConversationList({
       searchParams: '?page=2&conversation_id=conversation-1',
@@ -455,8 +487,6 @@ describe('ConversationList', () => {
 
     expect(screen.getByTestId('var-panel')).toHaveTextContent('query:Latest question')
     expect(screen.getByTestId('model-info')).toHaveTextContent('gpt-4o')
-    expect(screen.getByTestId('chat-panel')).toHaveAttribute('data-hide-log-modal', 'true')
-    expect(screen.getByTestId('message-log-modal')).toBeInTheDocument()
 
     fireEvent.click(screen.getByText('chat-feedback'))
 
@@ -501,65 +531,7 @@ describe('ConversationList', () => {
       searchParams: '?conversation_id=conversation-1',
     })
 
-    expect(await screen.findByTestId('chat-panel')).toHaveAttribute(
-      'data-show-prompt-log',
-      expected,
-    )
-  })
-
-  it('should mount agent log modals from the detail panel instead of the nested chat layout', async () => {
-    mockChatConversationDetail = {
-      id: 'conversation-1',
-      created_at: 1710000000,
-      model_config: {
-        model: 'gpt-4o',
-        configs: {
-          introduction: 'Hello there',
-        },
-        user_input_form: [],
-      },
-      message: {
-        inputs: {},
-      },
-    }
-    mockShowAgentLogModal = true
-    mockCurrentLogItem = {
-      id: 'message-1',
-      conversationId: 'conversation-1',
-    }
-    mockFetchChatMessages.mockResolvedValue({
-      data: [
-        {
-          id: 'message-1',
-          answer: 'Assistant reply',
-          query: 'Latest question',
-          created_at: 1710000000,
-          inputs: {},
-          feedbacks: [],
-          message: [],
-          message_files: [],
-          agent_thoughts: [{ id: 'thought-1' }],
-        },
-      ],
-      has_more: false,
-    })
-
-    renderConversationList({
-      searchParams: '?page=2&conversation_id=conversation-1',
-    })
-
-    await waitFor(() => {
-      expect(screen.getByTestId('chat-panel')).toBeInTheDocument()
-    })
-
-    expect(screen.getByTestId('chat-panel')).toHaveAttribute('data-hide-log-modal', 'true')
-    expect(screen.getByTestId('agent-log-modal')).toBeInTheDocument()
-    expect(screen.getByTestId('agent-log-modal')).toHaveAttribute('data-floating', 'true')
-
-    fireEvent.click(screen.getByText('close-agent-log-modal'))
-
-    expect(mockSetCurrentLogItem).toHaveBeenCalled()
-    expect(mockSetShowAgentLogModal).toHaveBeenCalledWith(false)
+    expect(await screen.findByTestId('chat-panel')).toHaveAttribute('data-log-enabled', expected)
   })
 
   it('should render completion details and refetch after feedback updates', async () => {
@@ -586,8 +558,6 @@ describe('ConversationList', () => {
         message_files: [{ url: 'https://example.com/file.txt' }],
       },
     }
-    mockShowPromptLogModal = true
-    mockCurrentLogItem = { id: 'log-2', log: [{ role: 'user', text: 'Prompt body' }] }
 
     renderConversationList({
       appDetail: { id: 'app-1', mode: AppModeEnum.COMPLETION } as any,
@@ -600,8 +570,8 @@ describe('ConversationList', () => {
     })
 
     expect(screen.getByTestId('var-panel')).toHaveTextContent('query:Question')
-    expect(screen.getByTestId('text-generation')).toHaveAttribute('data-hide-log-action', 'true')
-    expect(screen.getByTestId('prompt-log-modal')).toBeInTheDocument()
+    expect(screen.getByTestId('text-generation')).toHaveAttribute('data-log-enabled', 'false')
+    expect(screen.queryByTestId('prompt-log-modal')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByText('completion-feedback'))
 
@@ -683,7 +653,7 @@ describe('ConversationList', () => {
     expect(screen.getAllByText('1').length).toBeGreaterThan(0)
   })
 
-  it('should support annotation changes, modal closing, and paginated scroll loading in the detail drawer', async () => {
+  it('should support annotation changes and paginated scroll loading in the detail drawer', async () => {
     mockChatConversationDetail = {
       id: 'conversation-1',
       created_at: 1710000000,
@@ -706,8 +676,6 @@ describe('ConversationList', () => {
         },
       },
     }
-    mockShowMessageLogModal = true
-    mockCurrentLogItem = { id: 'log-1' }
     mockFetchChatMessages
       .mockResolvedValueOnce({
         data: [
@@ -747,10 +715,6 @@ describe('ConversationList', () => {
       expect(mockDelAnnotation).toHaveBeenCalledWith('app-1', 'annotation-2')
     })
 
-    fireEvent.click(screen.getByText('close-message-log-modal'))
-    expect(mockSetCurrentLogItem).toHaveBeenCalled()
-    expect(mockSetShowMessageLogModal).toHaveBeenCalledWith(false)
-
     const scrollableDiv = document.getElementById('scrollableDiv') as HTMLDivElement
     Object.defineProperty(scrollableDiv, 'clientHeight', { configurable: true, value: 100 })
     Object.defineProperty(scrollableDiv, 'scrollHeight', { configurable: true, value: 500 })
@@ -765,44 +729,82 @@ describe('ConversationList', () => {
     })
   })
 
-  it('should close the prompt log modal from completion detail drawers', async () => {
-    mockCompletionConversationDetail = {
+  it.each(['workflow', 'agent', 'prompt'])(
+    'should open and close the selected %s log within the conversation',
+    async (kind) => {
+      mockChatConversationDetail = {
+        id: 'conversation-1',
+        model_config: { user_input_form: [] },
+        message: { inputs: {} },
+      }
+      renderConversationList({
+        appDetail: { id: 'app-1', mode: AppModeEnum.ADVANCED_CHAT },
+        searchParams: '?conversation_id=conversation-1',
+      })
+      const user = userEvent.setup()
+      await user.click(await screen.findByRole('button', { name: `open-${kind}-log` }))
+      const modalKind = kind === 'workflow' ? 'message' : kind
+      expect(screen.getByTestId(`${modalKind}-log-modal`)).toBeInTheDocument()
+      for (const other of ['message', 'agent', 'prompt'].filter((value) => value !== modalKind))
+        expect(screen.queryByTestId(`${other}-log-modal`)).not.toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: `close-${modalKind}-log-modal` }))
+      expect(screen.queryByTestId(`${modalKind}-log-modal`)).not.toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'open-no-log' }))
+      expect(screen.queryByTestId('prompt-log-modal')).not.toBeInTheDocument()
+    },
+  )
+
+  it('should discard the selected log when the conversation drawer closes and reopens', async () => {
+    mockChatConversationDetail = {
       id: 'conversation-1',
-      created_at: 1710000000,
-      model_config: {
-        model: 'gpt-4o-mini',
-        user_input_form: [
-          {
-            query: {
-              variable: 'query',
-            },
-          },
-        ],
-      },
-      message: {
-        id: 'message-1',
-        answer: 'Generated output',
-        inputs: {
-          query: 'Question',
-        },
-        feedbacks: [],
-        message_files: [{ url: 'https://example.com/file.txt' }],
-      },
+      model_config: { user_input_form: [] },
+      message: { inputs: {} },
     }
-    mockShowPromptLogModal = true
-    mockCurrentLogItem = { id: 'log-2', log: [{ role: 'user', text: 'Prompt body' }] }
-
     renderConversationList({
-      appDetail: { id: 'app-1', mode: AppModeEnum.COMPLETION } as any,
-      logs: createCompletionLogs() as any,
-      searchParams: '?page=2&conversation_id=conversation-1',
+      appDetail: { id: 'app-1', mode: AppModeEnum.ADVANCED_CHAT },
+      searchParams: '?conversation_id=conversation-1',
     })
-
-    expect(await screen.findByTestId('prompt-log-modal')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByText('close-prompt-log-modal'))
-
-    expect(mockSetCurrentLogItem).toHaveBeenCalled()
-    expect(mockSetShowPromptLogModal).toHaveBeenCalledWith(false)
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('button', { name: 'open-workflow-log' }))
+    expect(screen.getByTestId('message-log-modal')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /(?:^|\.)operation\.close(?=$|:)/ }))
+    await waitFor(() => expect(screen.queryByTestId('message-log-modal')).not.toBeInTheDocument())
+    await user.click(screen.getByText('hello world'))
+    await screen.findByTestId('chat-panel')
+    expect(screen.queryByTestId('message-log-modal')).not.toBeInTheDocument()
+  })
+  it('should clear a selected log when URL navigation changes or closes the conversation', async () => {
+    const user = userEvent.setup()
+    const queryClient = createAccountProfileQueryClient({ timezone: 'Asia/Shanghai' })
+    const appDetail = createAppDetailFixture({ mode: AppModeEnum.ADVANCED_CHAT })
+    const view = (searchParams: string) => (
+      <NuqsTestingAdapter searchParams={searchParams} hasMemory>
+        <QueryClientTestProvider queryClient={queryClient}>
+          <ConversationList
+            appDetail={appDetail}
+            logs={{ data: [], has_more: false, limit: 20, page: 1, total: 0 }}
+            onRefresh={mockOnRefresh}
+          />
+        </QueryClientTestProvider>
+      </NuqsTestingAdapter>
+    )
+    mockChatConversationDetail = {
+      id: 'conversation-1',
+      model_config: { user_input_form: [] },
+      message: { inputs: {} },
+    }
+    const { rerender } = render(view('?conversation_id=conversation-1'))
+    await user.click(await screen.findByRole('button', { name: 'open-workflow-log' }))
+    expect(screen.getByTestId('message-log-modal')).toBeInTheDocument()
+    mockChatConversationDetail = { ...mockChatConversationDetail, id: 'conversation-2' }
+    rerender(view('?conversation_id=conversation-2'))
+    await waitFor(() => expect(screen.queryByTestId('message-log-modal')).not.toBeInTheDocument())
+    await user.click(await screen.findByRole('button', { name: 'open-agent-log' }))
+    expect(screen.getByTestId('agent-log-modal')).toBeInTheDocument()
+    rerender(view(''))
+    await waitFor(() => expect(screen.queryByTestId('agent-log-modal')).not.toBeInTheDocument())
+    rerender(view('?conversation_id=conversation-2'))
+    await screen.findByTestId('chat-panel')
+    expect(screen.queryByTestId('agent-log-modal')).not.toBeInTheDocument()
   })
 })

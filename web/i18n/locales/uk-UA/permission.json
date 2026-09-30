@@ -34,6 +34,7 @@
   "accessRule.summary_one": "{{count}} набір дозволів",
   "accessRule.summary_other": "{{count}} наборів дозволів",
   "accessRule.updated": "Правило доступу успішно оновлено",
+  "accessRule.workspaceAdmin": "Адміністратор робочого простору",
   "accessRule.workspaceOwner": "Власник робочого простору",
   "common.duplicateAction": "Дублювати",
   "group.agent": "Агенти",

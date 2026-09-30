@@ -29,11 +29,18 @@ from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.nodes.human_input.session_binding import default_session_binding
 from core.workflow.system_variables import SystemVariableKey, get_system_text
 from graphon.entities.pause_reason import HitlRequired, SchedulingPause
-from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from graphon.enums import (
+    BuiltinNodeTypes,
+    ErrorStrategy,
+    NodeExecutionType,
+    WorkflowNodeExecutionMetadataKey,
+    WorkflowNodeExecutionStatus,
+)
 from graphon.graph_events import NodeRunPauseRequestedEvent
 from graphon.node_events import NodeEventBase, NodeRunResult, StreamCompletedEvent
 from graphon.nodes.base.node import Node
-from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
+from graphon.nodes.base.variable_template_parser import VariableTemplateParser
+from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig, WorkflowOutputRoutes
 from services.agent.prompt_mentions import extract_workflow_node_output_selectors
 from services.agent.workspace_service import AgentWorkspaceNotFoundError
 
@@ -75,6 +82,14 @@ type _TerminalAgentBackendEvent = (
 
 
 class DifyAgentNode(Node[DifyAgentNodeData]):
+    """Execute a frozen node job and select one workflow exit on success.
+
+    Enabled routing selects a stable route ID through the required ``switch``
+    output. Disabled routing remains executable so
+    graph-owned default values can continue without a selected route; Graphon
+    still promotes nodes that opt into its failure branch.
+    """
+
     node_type = BuiltinNodeTypes.AGENT
 
     def __init__(
@@ -99,6 +114,11 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
         )
+        # The base node parses the factory's serialized payload into node_data.
+        if self.node_data.agent_output_routes.enabled and self.error_strategy == ErrorStrategy.DEFAULT_VALUE:
+            raise ValueError("Output routes do not support the node-level default-value error strategy.")
+        if self.node_data.agent_output_routes.enabled:
+            self.execution_type = NodeExecutionType.BRANCH
         self._binding_resolver = binding_resolver
         self._runtime_request_builder = runtime_request_builder
         self._agent_backend_client = agent_backend_client
@@ -229,6 +249,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         )
 
         node_job = WorkflowNodeJobConfig.model_validate(bundle.binding.node_job_config_dict)
+        node_job.output_routes.validate_for_execution()
         custom_outputs = list(node_job.declared_outputs)
         outputs_by_name = {output.name: output for output in custom_outputs}
 
@@ -490,9 +511,27 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                         )
                         return
 
+            # Select only after this attempt's custom outputs have passed. Failed
+            # route output uses the node's normal retry / failure-branch handling.
+            routes = node_job.output_routes
+            edge_source_handle = "source"
+            if routes.enabled:
+                selected = success_event.output.get("switch") if isinstance(success_event.output, dict) else None
+                if not isinstance(selected, str) or selected not in {route.id for route in routes.routes}:
+                    yield self._failure_event(
+                        inputs=inputs,
+                        process_data=process_data,
+                        metadata=metadata,
+                        error="Agent output switch must select one configured output route ID.",
+                        error_type="output_route_selection_failed",
+                    )
+                    return
+                edge_source_handle = selected
+
             yield StreamCompletedEvent(
                 node_run_result=self._output_adapter.build_success_result(
                     event=success_event,
+                    edge_source_handle=edge_source_handle,
                     inputs=inputs,
                     process_data=process_data,
                     metadata=metadata,
@@ -815,18 +854,23 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
     ) -> Mapping[str, Sequence[str]]:
         """Reuse frontend workflow-marker parsing for graph variable loading.
 
-        This follows the same marker parser used by publish sync and runtime
-        request building, including reserved-prefix exclusion.
+        Task mentions use the publish parser. Enabled route conditions use
+        Graphon template selectors, including environment and system variables;
+        disabled jobs do not load their saved conditions.
         """
         del graph_config
 
-        agent_task = (
-            node_data.get("agent_task") if isinstance(node_data, Mapping) else getattr(node_data, "agent_task", None)
-        )
-        if not isinstance(agent_task, str):
-            return {}
-
-        return {
-            f"{node_id}.{'.'.join(selector)}": list(selector)
-            for selector in extract_workflow_node_output_selectors(agent_task)
-        }
+        if isinstance(node_data, Mapping):
+            task = node_data.get("agent_task", "")
+            routes = WorkflowOutputRoutes.model_validate(node_data.get("agent_output_routes", {}))
+        else:
+            task = node_data.agent_task
+            routes = node_data.agent_output_routes
+        selectors = list(extract_workflow_node_output_selectors(task))
+        if routes.enabled:
+            for route in routes.routes:
+                selectors.extend(
+                    tuple(selector.value_selector)
+                    for selector in VariableTemplateParser(template=route.name).extract_variable_selectors()
+                )
+        return {f"{node_id}.{'.'.join(selector)}": list(selector) for selector in selectors}

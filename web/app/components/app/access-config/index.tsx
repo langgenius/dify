@@ -1,13 +1,13 @@
 'use client'
 
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { AccessPolicyMemberBindingRemoval } from '@/app/components/access-rules-editor'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useSuspenseQueries } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import AccessRulesEditor from '@/app/components/access-rules-editor'
-import { useStore } from '@/app/components/app/store'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -22,6 +22,7 @@ import {
   useUpdateAppAutomaticIncludeWorkspaceMembers,
   useUpdateAppUserAccessSettings,
 } from '@/service/access-control/use-app-access-config'
+import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
 import { getAppACLCapabilities } from '@/utils/permission'
 
@@ -31,11 +32,11 @@ type AppAccessConfigPageProps = {
 
 type AppAccessConfigContentProps = {
   appId: string
-  maintainerId?: string | null
+  maintainerId: AppDetailWithSite['maintainer']
 }
 
 const AppAccessConfigContent = ({ appId, maintainerId }: AppAccessConfigContentProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['permission', 'navigation'])
   const locale = useLocale()
   const language = useMemo(() => getAccessControlTemplateLanguage(locale), [locale])
   const [currentPage, setCurrentPage] = useState(1)
@@ -196,7 +197,7 @@ const AppAccessConfigContent = ({ appId, maintainerId }: AppAccessConfigContentP
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-background-default-subtle">
       <header className="flex min-h-15.5 shrink-0 flex-col justify-center px-6 py-3">
         <h1 className="system-xl-semibold text-text-primary">
-          {t(($) => $['settings.resourceAccess'], { ns: 'common' })}
+          {t(($) => $['settings.resourceAccess'], { ns: 'navigation' })}
         </h1>
         <p className="mt-0.5 system-sm-regular text-text-tertiary">
           {t(($) => $['accessRule.appDescription'], { ns: 'permission' })}
@@ -233,38 +234,38 @@ const AppAccessConfigContent = ({ appId, maintainerId }: AppAccessConfigContentP
 }
 
 const AppAccessConfigPage = ({ appId }: AppAccessConfigPageProps) => {
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const { data: currentUserId } = useSuspenseQuery({
-    ...userProfileQueryOptions(),
-    select: (data) => data.profile.id,
-  })
+  const [{ data: systemFeatures }, { data: userProfile }, { data: appDetail }] = useSuspenseQueries(
+    {
+      queries: [
+        systemFeaturesQueryOptions(),
+        userProfileQueryOptions(),
+        consoleQuery.apps.byAppId.get.queryOptions({
+          input: { params: { app_id: appId } },
+        }),
+      ],
+    },
+  )
+  const currentUserId = userProfile.profile.id
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isRbacEnabled = systemFeatures.rbac_enabled
-  const appDetail = useStore((state) => state.appDetail)
   const appACLCapabilities = useMemo(
     () =>
-      getAppACLCapabilities(appDetail?.permission_keys, {
+      getAppACLCapabilities(appDetail.permission_keys, {
         currentUserId,
-        resourceMaintainer: appDetail?.maintainer,
+        resourceMaintainer: appDetail.maintainer,
         workspacePermissionKeys,
         isRbacEnabled,
       }),
     [
-      appDetail?.maintainer,
-      appDetail?.permission_keys,
+      appDetail.maintainer,
+      appDetail.permission_keys,
       currentUserId,
       isRbacEnabled,
       workspacePermissionKeys,
     ],
   )
 
-  if (
-    !appDetail ||
-    appDetail.id !== appId ||
-    appDetail.mode === AppModeEnum.AGENT ||
-    !appACLCapabilities.canAccessConfig
-  )
-    return null
+  if (appDetail.mode === AppModeEnum.AGENT || !appACLCapabilities.canAccessConfig) return null
 
   return <AppAccessConfigContent appId={appId} maintainerId={appDetail.maintainer} />
 }

@@ -15,12 +15,19 @@ type OnMinuteSelectorProps = {
 }
 
 const OnMinuteSelector = ({ value = 0, onChange }: OnMinuteSelectorProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflowIntegrations'])
 
   return (
-    <Slider className="block" value={value} min={0} max={59} step={1} onValueChange={onChange}>
-      <SliderLabel className="mb-2 block py-0 text-xs font-medium text-gray-500">
-        {t(($) => $['nodes.triggerSchedule.onMinute'], { ns: 'workflow' })}
+    <Slider
+      className="flex flex-col"
+      value={value}
+      min={0}
+      max={59}
+      step={1}
+      onValueChange={onChange}
+    >
+      <SliderLabel className="text-xs">
+        {t(($) => $['nodes.triggerSchedule.onMinute'], { ns: 'workflowIntegrations' })}
       </SliderLabel>
       <div className="relative flex h-8 items-center rounded-lg bg-components-input-bg-normal">
         <div className="flex h-full w-12 shrink-0 items-center justify-center text-[13px] text-components-input-text-filled">

@@ -14,7 +14,7 @@ type UseSnippetPublishOptions = {
 }
 
 export const useSnippetPublish = ({ snippetId }: UseSnippetPublishOptions) => {
-  const { t } = useTranslation('snippet')
+  const { t } = useTranslation(['snippet'])
   const workflowStore = useWorkflowStore()
   const queryClient = useQueryClient()
   const publishSnippetMutation = usePublishSnippetWorkflowMutation(snippetId)

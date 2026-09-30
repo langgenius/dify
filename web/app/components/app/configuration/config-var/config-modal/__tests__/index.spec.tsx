@@ -1,5 +1,4 @@
 import type { InputVar } from '@/app/components/workflow/types'
-import type { App, AppSSO } from '@/types/app'
 import { fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
@@ -8,6 +7,7 @@ import { useStore } from '@/app/components/app/store'
 import { InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { commonQueryKeys } from '@/service/use-common'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppModeEnum, TransferMethod } from '@/types/app'
 import ConfigModal from '../index'
 
@@ -34,6 +34,12 @@ vi.mock('@monaco-editor/react', async () => ({
 
 const toastErrorSpy = vi.spyOn(toast, 'error').mockReturnValue('toast-error')
 
+const expectDescribedByLastError = (element: HTMLElement) => {
+  const message = toastErrorSpy.mock.lastCall?.[0]
+  if (typeof message !== 'string') throw new Error('Expected an error message')
+  expect(element).toHaveAccessibleDescription(message)
+}
+
 const createPayload = (overrides: Partial<InputVar> = {}): InputVar => ({
   type: InputVarType.textInput,
   label: '',
@@ -50,9 +56,7 @@ describe('ConfigModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     useStore.setState({
-      appDetail: {
-        mode: AppModeEnum.CHAT,
-      } as App & Partial<AppSSO>,
+      appDetail: createAppDetailFixture({ mode: AppModeEnum.CHAT }),
     })
   })
 
@@ -423,7 +427,7 @@ describe('ConfigModal', () => {
       await user.click(save)
       expect(input).toHaveFocus()
       expect(input).toBeInvalid()
-      expect(input).toHaveAccessibleDescription(toastErrorSpy.mock.lastCall![0])
+      expectDescribedByLastError(input)
       expect(onConfirm).not.toHaveBeenCalled()
 
       // Repeated invalid submissions must restore focus as well.
@@ -462,7 +466,7 @@ describe('ConfigModal', () => {
         : screen.getByRole('button', { name: 'appDebug.variableConfig.addOption' })
       expect(control).toHaveFocus()
       expect(control).toHaveAttribute('aria-invalid', 'true')
-      expect(control).toHaveAccessibleDescription(toastErrorSpy.mock.lastCall![0])
+      expectDescribedByLastError(control)
       expect(onConfirm).not.toHaveBeenCalled()
     },
   )
@@ -500,7 +504,7 @@ describe('ConfigModal', () => {
       const control = screen.getByRole(role, { name })
       expect(control).toHaveFocus()
       expect(control).toHaveAttribute('aria-invalid', 'true')
-      expect(control).toHaveAccessibleDescription(toastErrorSpy.mock.lastCall![0])
+      expectDescribedByLastError(control)
       expect(onConfirm).not.toHaveBeenCalled()
 
       if (role === 'textbox') await user.type(control, '.csv{Enter}')

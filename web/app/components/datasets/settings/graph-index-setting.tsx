@@ -32,7 +32,7 @@ const GraphIndexSetting = ({
   onGraphIndexSettingChange,
   readonly = false,
 }: GraphIndexSettingProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetDocuments', 'datasetSettings'])
   const { data: textGenerationModelList = [] } = useQuery(
     consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
       input: { params: { model_type: ModelTypeEnum.textGeneration } },

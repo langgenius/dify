@@ -122,19 +122,23 @@ def test_validate_snippet_graph_forbidden_nodes_raises_with_node_details() -> No
 
 
 def test_get_snippets_returns_empty_when_tag_filter_has_no_targets(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    application_tags, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
     get_target_ids = Mock(return_value=[])
-    monkeypatch.setattr("services.snippet_service.TagService.get_target_ids_by_tag_ids", get_target_ids)
+    monkeypatch.setattr(application_tags, "find_target_ids", get_target_ids)
     service = SnippetService.__new__(SnippetService)
 
-    result = service.get_snippets(tenant_id="tenant-1", session=sqlite_session, tag_ids=["tag-1"])
+    result = service.get_snippets(
+        tenant_id="tenant-1", session=sqlite_session, tag_ids=["tag-1"], tags=application_tags
+    )
 
     assert result == ([], 0, False)
-    get_target_ids.assert_called_once_with("snippet", "tenant-1", ["tag-1"], sqlite_session, match_all=True)
+    get_target_ids.assert_called_once_with(tag_type="snippet", tenant_id="tenant-1", tag_ids=["tag-1"], match_all=True)
 
 
-def test_get_snippets_applies_filters_and_paginates(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
+def test_get_snippets_applies_filters_and_paginates(
+    application_tags, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
     snippets = []
     for index in range(3):
         snippet = CustomizedSnippet(
@@ -152,7 +156,8 @@ def test_get_snippets_applies_filters_and_paginates(monkeypatch: pytest.MonkeyPa
     service = SnippetService.__new__(SnippetService)
     get_target_ids = Mock(return_value=["snippet-1", "snippet-2", "snippet-3"])
     monkeypatch.setattr(
-        "services.snippet_service.TagService.get_target_ids_by_tag_ids",
+        application_tags,
+        "find_target_ids",
         get_target_ids,
     )
 
@@ -165,13 +170,14 @@ def test_get_snippets_applies_filters_and_paginates(monkeypatch: pytest.MonkeyPa
         is_published=True,
         creators=["account-1"],
         tag_ids=["tag-1"],
+        tags=application_tags,
     )
 
     assert {snippet.id for snippet in result} <= {snippet.id for snippet in snippets}
     assert len(result) == 1
     assert total == 3
     assert has_more is False
-    get_target_ids.assert_called_once_with("snippet", "tenant-1", ["tag-1"], sqlite_session, match_all=True)
+    get_target_ids.assert_called_once_with(tag_type="snippet", tenant_id="tenant-1", tag_ids=["tag-1"], match_all=True)
 
 
 def test_update_snippet_allows_duplicate_names(sqlite_session: Session) -> None:

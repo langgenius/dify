@@ -34,7 +34,7 @@ import { DetailSkeleton } from './shell'
 import { RestoreVersionDialog, VersionPanel } from './version-panel'
 
 export function SkillDetailPage({ skillId }: { skillId: string }) {
-  const { t } = useTranslation('skill')
+  const { t } = useTranslation(['skill'])
   const queryClient = useQueryClient()
   const { canEdit, canPublish, canDelete } = useSkillPermissions()
   const [selectedPath, setSelectedPath] = useState<string>()

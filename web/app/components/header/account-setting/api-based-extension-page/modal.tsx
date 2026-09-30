@@ -30,7 +30,7 @@ type ApiBasedExtensionModalProps = {
 
 export function ApiBasedExtensionModal(props: ApiBasedExtensionModalProps) {
   const { open, mode, onOpenChange, onSaved } = props
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const docLink = useDocLink()
   const createApiBasedExtensionMutation = useMutation(
     consoleQuery.apiBasedExtension.post.mutationOptions(),

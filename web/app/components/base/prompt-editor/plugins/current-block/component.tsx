@@ -4,7 +4,6 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import { useEffect } from 'react'
 import { GeneratorType } from '@/app/components/app/configuration/config/automatic/types'
 import { CurrentBlockNode, DELETE_CURRENT_BLOCK_COMMAND } from '.'
-import { CodeAssistant, MagicEdit } from '../../../icons/src/vender/line/general'
 import { useSelectOrDelete } from '../../hooks'
 
 type CurrentBlockComponentProps = {
@@ -16,7 +15,10 @@ const CurrentBlockComponent: FC<CurrentBlockComponentProps> = ({ nodeKey, genera
   const [editor] = useLexicalComposerContext()
   const [ref, isSelected] = useSelectOrDelete(nodeKey, DELETE_CURRENT_BLOCK_COMMAND)
 
-  const Icon = generatorType === GeneratorType.prompt ? MagicEdit : CodeAssistant
+  const iconClassName =
+    generatorType === GeneratorType.prompt
+      ? 'i-custom-vender-line-general-magic-edit'
+      : 'i-custom-vender-line-general-code-assistant'
   useEffect(() => {
     if (!editor.hasNodes([CurrentBlockNode]))
       throw new Error('WorkflowVariableBlockPlugin: WorkflowVariableBlock not registered on editor')
@@ -35,7 +37,7 @@ const CurrentBlockComponent: FC<CurrentBlockComponentProps> = ({ nodeKey, genera
       }}
       ref={ref}
     >
-      <Icon className="mr-0.5 h-3.5 w-3.5" />
+      <span aria-hidden className={cn(iconClassName, 'mr-0.5 size-3.5')} />
       <div className="text-xs font-medium">
         {generatorType === GeneratorType.prompt ? 'current_prompt' : 'current_code'}
       </div>

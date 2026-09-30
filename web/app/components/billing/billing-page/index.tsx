@@ -12,7 +12,7 @@ import { consoleQuery } from '@/service/console'
 import PlanComp from '../plan'
 
 const Billing: FC = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['billing'])
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
   usePrefetchQuery(consoleQuery.features.vectorSpace.get.queryOptions())

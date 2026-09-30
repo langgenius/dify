@@ -6,7 +6,7 @@ import type {
 } from '@/app/components/datasets/metadata/types'
 import type { SortType } from '@/service/datasets'
 import { Button } from '@langgenius/dify-ui/button'
-import { useMemo } from 'react'
+import { useId, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Chip from '@/app/components/base/chip'
 import { SearchInput } from '@/app/components/base/search-input'
@@ -84,7 +84,9 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
   onBuiltInEnabledChange,
   onAddDocument,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['dataset', 'datasetDocuments'])
+  const statusFilterId = useId()
+  const statusFilterLabelId = useId()
   const docLink = useDocLink()
   const DOC_INDEX_STATUS_MAP = useIndexStatus()
 
@@ -152,7 +154,16 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
       <div className="flex flex-wrap items-center justify-between px-6 pt-4">
         {/* Left: Filters */}
         <div className="flex items-center gap-2">
+          <label
+            id={statusFilterLabelId}
+            htmlFor={statusFilterId}
+            className="system-sm-medium text-text-secondary"
+          >
+            {t(($) => $['list.table.header.status'], { ns: 'datasetDocuments' })}
+          </label>
           <Chip
+            id={statusFilterId}
+            aria-labelledby={statusFilterLabelId}
             className="w-40"
             showLeftIcon={false}
             value={statusFilterValue}

@@ -637,3 +637,67 @@ def test_workspace_collection_final_delete_failure_propagates(
 
     assert exc_info.value is error
     client.destroy_execution_binding_sync.assert_called_once()
+
+
+def test_binding_creation_ignores_unavailable_metering_configuration(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    apply_config_overrides(
+        monkeypatch,
+        AGENT_SANDBOX_METERING_ENABLED=True,
+        AGENT_SANDBOX_METERING_PROJECT_ID="",
+        AGENT_SANDBOX_METERING_START_AT="invalid",
+    )
+    client = _backend_client()
+    monkeypatch.setattr(AgentWorkspaceService, "_client", lambda: nullcontext(client))
+    binding = AgentWorkspaceService.create_binding(
+        session=sqlite_session,
+        scope=_scope(),
+        agent_id="agent-1",
+        base_home_snapshot_id=None,
+        agent_config_version_id="config-1",
+        agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
+    )
+    sqlite_session.commit()
+    assert binding.backend_binding_ref == "binding-ref"
+    client.create_execution_binding_sync.assert_called_once()
+
+
+def test_binding_lookups_ignore_bad_metering_configuration_and_remain_tenant_scoped(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    apply_config_overrides(
+        monkeypatch,
+        AGENT_SANDBOX_METERING_ENABLED=True,
+        AGENT_SANDBOX_METERING_PROJECT_ID="",
+        AGENT_SANDBOX_METERING_START_AT="invalid",
+    )
+    workspace, binding = _workspace(), _binding()
+    sqlite_session.add_all([workspace, binding])
+    sqlite_session.commit()
+    assert (
+        AgentWorkspaceService.get_active_binding(
+            session=sqlite_session,
+            tenant_id=binding.tenant_id,
+            binding_id=binding.id,
+            expected_owner_scope=_scope(),
+        )
+        is binding
+    )
+    assert (
+        AgentWorkspaceService.resolve_active_binding_for_scope(
+            session=sqlite_session,
+            scope=_scope(),
+            agent_id=binding.agent_id,
+        )
+        is binding
+    )
+    assert (
+        AgentWorkspaceService.get_active_binding(
+            session=sqlite_session,
+            tenant_id="another-tenant",
+            binding_id=binding.id,
+            expected_owner_scope=_scope(),
+        )
+        is None
+    )

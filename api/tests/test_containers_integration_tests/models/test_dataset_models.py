@@ -1,3 +1,9 @@
+from repositories.knowledge.dataset_read_repository import (
+    get_dataset_available_segment_count,
+    get_document_hit_count,
+    get_document_segment_count,
+)
+
 """
 Integration tests for Dataset and Document model properties using testcontainers.
 
@@ -13,6 +19,15 @@ from sqlalchemy.orm import Session
 
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
+from repositories.knowledge.dataset_read_repository import (
+    get_dataset_available_document_count,
+    get_dataset_document_count,
+    get_dataset_word_count,
+    get_next_segment,
+    get_previous_segment,
+    get_segment_dataset,
+    get_segment_document,
+)
 
 
 class TestDatasetDocumentProperties:
@@ -49,7 +64,7 @@ class TestDatasetDocumentProperties:
             db_session_with_containers.add(doc)
         db_session_with_containers.flush()
 
-        assert dataset.get_total_documents(session=db_session_with_containers) == 3
+        assert get_dataset_document_count(dataset, session=db_session_with_containers) == 3
 
     def test_dataset_available_documents_count(self, db_session_with_containers: Session) -> None:
         """Test dataset can count available documents."""
@@ -104,7 +119,7 @@ class TestDatasetDocumentProperties:
         db_session_with_containers.add_all([doc_available, doc_pending, doc_disabled])
         db_session_with_containers.flush()
 
-        assert dataset.get_total_available_documents(session=db_session_with_containers) == 1
+        assert get_dataset_available_document_count(dataset, session=db_session_with_containers) == 1
 
     def test_dataset_word_count_aggregation(self, db_session_with_containers: Session) -> None:
         """Test dataset can aggregate word count from documents."""
@@ -132,7 +147,7 @@ class TestDatasetDocumentProperties:
             db_session_with_containers.add(doc)
         db_session_with_containers.flush()
 
-        assert dataset.get_word_count(session=db_session_with_containers) == 5000
+        assert get_dataset_word_count(dataset, session=db_session_with_containers) == 5000
 
     def test_dataset_available_segment_count(self, db_session_with_containers: Session) -> None:
         """Test Dataset.available_segment_count counts completed and enabled segments."""
@@ -188,7 +203,7 @@ class TestDatasetDocumentProperties:
         db_session_with_containers.add(seg_waiting)
         db_session_with_containers.flush()
 
-        assert dataset.available_segment_count == 2
+        assert get_dataset_available_segment_count(dataset, session=db_session_with_containers) == 2
 
     def test_document_segment_count_property(self, db_session_with_containers: Session) -> None:
         """Test document can count its segments."""
@@ -228,7 +243,7 @@ class TestDatasetDocumentProperties:
             db_session_with_containers.add(seg)
         db_session_with_containers.flush()
 
-        assert doc.get_segment_count(session=db_session_with_containers) == 3
+        assert get_document_segment_count(doc, session=db_session_with_containers) == 3
 
     def test_document_hit_count_aggregation(self, db_session_with_containers: Session) -> None:
         """Test document can aggregate hit count from segments."""
@@ -269,7 +284,7 @@ class TestDatasetDocumentProperties:
             db_session_with_containers.add(seg)
         db_session_with_containers.flush()
 
-        assert doc.get_hit_count(session=db_session_with_containers) == 25
+        assert get_document_hit_count(doc, session=db_session_with_containers) == 25
 
 
 class TestDocumentSegmentNavigationProperties:
@@ -322,7 +337,7 @@ class TestDocumentSegmentNavigationProperties:
         db_session_with_containers.flush()
 
         # Act
-        related_dataset = segment.get_dataset(session=db_session_with_containers)
+        related_dataset = get_segment_dataset(segment, session=db_session_with_containers)
 
         # Assert
         assert related_dataset is not None
@@ -369,7 +384,7 @@ class TestDocumentSegmentNavigationProperties:
         db_session_with_containers.flush()
 
         # Act
-        related_document = segment.get_document(session=db_session_with_containers)
+        related_document = get_segment_document(segment, session=db_session_with_containers)
 
         # Assert
         assert related_document is not None
@@ -426,7 +441,7 @@ class TestDocumentSegmentNavigationProperties:
         db_session_with_containers.flush()
 
         # Act
-        prev_seg = segment.previous_segment(session=db_session_with_containers)
+        prev_seg = get_previous_segment(segment, session=db_session_with_containers)
 
         # Assert
         assert prev_seg is not None
@@ -483,7 +498,7 @@ class TestDocumentSegmentNavigationProperties:
         db_session_with_containers.flush()
 
         # Act
-        next_seg = segment.next_segment(session=db_session_with_containers)
+        next_seg = get_next_segment(segment, session=db_session_with_containers)
 
         # Assert
         assert next_seg is not None

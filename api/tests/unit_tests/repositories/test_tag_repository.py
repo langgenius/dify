@@ -1,5 +1,5 @@
 import pytest
-from sqlalchemy import select
+from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from models.enums import TagType
@@ -175,3 +175,49 @@ def test_binding_mutations_validate_skill_target(
             "account-1",
             TagBindingInput(("tag-1",), "missing", "skill"),
         )
+
+
+@pytest.mark.parametrize(
+    ("tag_ids", "match_all", "expected"),
+    [
+        ([], False, set()),
+        (["tag-1", "tag-1", "tag-2"], True, {"target-both"}),
+        (["tag-1", "tag-2"], False, {"target-one", "target-both"}),
+        (["tag-1", "missing"], True, set()),
+        (["other-tenant"], False, set()),
+        (["other-type"], False, set()),
+    ],
+)
+def test_target_query_shares_scoped_matching_and_releases_its_session(
+    sqlite_session_factory: sessionmaker[Session],
+    sqlite_engine: Engine,
+    tag_ids: list[str],
+    match_all: bool,
+    expected: set[str],
+) -> None:
+    from sqlalchemy.pool import QueuePool
+
+    from services.tag_application_service import TagApplicationService
+
+    with sqlite_session_factory.begin() as session:
+        session.add_all(
+            [
+                _tag("tag-1", workspace_id="workspace-1", tag_type=TagType.APP, name="First"),
+                _tag("tag-2", workspace_id="workspace-1", tag_type=TagType.APP, name="Second"),
+                _tag("other-tenant", workspace_id="workspace-2", tag_type=TagType.APP, name="Foreign"),
+                _tag("other-type", workspace_id="workspace-1", tag_type=TagType.KNOWLEDGE, name="Knowledge"),
+            ]
+        )
+        session.add_all(
+            [
+                TagBinding(tenant_id="workspace-1", tag_id="tag-1", target_id="target-one", created_by="account-1"),
+                TagBinding(tenant_id="workspace-1", tag_id="tag-1", target_id="target-both", created_by="account-1"),
+                TagBinding(tenant_id="workspace-1", tag_id="tag-2", target_id="target-both", created_by="account-1"),
+                TagBinding(tenant_id="workspace-2", tag_id="tag-1", target_id="foreign", created_by="account-1"),
+            ]
+        )
+    service = TagApplicationService(tags=TagRepository(sqlite_session_factory))
+    result = service.find_target_ids(tenant_id="workspace-1", tag_type="app", tag_ids=tag_ids, match_all=match_all)
+    assert set(result) == expected
+    assert isinstance(sqlite_engine.pool, QueuePool)
+    assert sqlite_engine.pool.checkedout() == 0

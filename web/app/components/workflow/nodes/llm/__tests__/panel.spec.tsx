@@ -194,7 +194,7 @@ describe('LLM Panel', () => {
     it('should not show the model warning dot when the node only has a connection checklist issue', () => {
       renderPanel()
 
-      const modelField = screen.getByText('workflow.nodes.llm.model').parentElement
+      const modelField = screen.getByText('workflowModels.nodes.llm.model').parentElement
       expect(modelField?.querySelector('.bg-text-warning-secondary')).not.toBeInTheDocument()
     })
 
@@ -225,7 +225,7 @@ describe('LLM Panel', () => {
         },
       })
 
-      const modelField = screen.getByText('workflow.nodes.llm.model').parentElement
+      const modelField = screen.getByText('workflowModels.nodes.llm.model').parentElement
       expect(modelField?.querySelector('.bg-text-warning-secondary')).toBeInTheDocument()
     })
   })

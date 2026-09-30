@@ -6,6 +6,7 @@ import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { AgentTool } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
@@ -19,9 +20,6 @@ import { useContext } from 'use-context-selector'
 import Panel from '@/app/components/app/configuration/base/feature-panel'
 import { OperationButton } from '@/app/components/app/configuration/base/operation-button'
 import AppIcon from '@/app/components/base/app-icon'
-import { DefaultToolIcon } from '@/app/components/base/icons/src/public/other'
-import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
-import { Infotip } from '@/app/components/base/infotip'
 import { parseToolProviderType } from '@/app/components/tools/provider-type'
 import { CollectionType } from '@/app/components/tools/types'
 import {
@@ -44,7 +42,10 @@ import SettingBuiltInTool from './setting-built-in-tool'
 
 type AgentToolWithMoreInfo = (AgentTool & { icon: any; collection?: Collection }) | null
 const AgentTools: FC = () => {
-  const { t } = useTranslation()
+  const toolNameLabelId = React.useId()
+  const toolsLabelId = React.useId()
+
+  const { t } = useTranslation(['appDebug', 'common', 'tools'])
   const [isShowChooseTool, setIsShowChooseTool] = useState(false)
   const { readonly, modelConfig, setModelConfig } = useContext(ConfigContext)
   const { data: buildInTools } = useAllBuiltInTools()
@@ -162,9 +163,14 @@ const AgentTools: FC = () => {
         noBodySpacing={tools.length === 0}
         title={
           <div className="flex items-center">
-            <h2 className="mr-1">{t(($) => $['agent.tools.name'], { ns: 'appDebug' })}</h2>
-            <Infotip aria-label={t(($) => $['agent.tools.description'], { ns: 'appDebug' })}>
-              {t(($) => $['agent.tools.description'], { ns: 'appDebug' })}
+            <h2 id={toolsLabelId} className="mr-1">
+              {t(($) => $['agent.tools.name'], { ns: 'appDebug' })}
+            </h2>
+            <Infotip>
+              <InfotipTrigger aria-labelledby={toolsLabelId} />
+              <InfotipContent aria-labelledby={toolsLabelId}>
+                {t(($) => $['agent.tools.description'], { ns: 'appDebug' })}
+              </InfotipContent>
             </Infotip>
           </div>
         }
@@ -209,7 +215,9 @@ const AgentTools: FC = () => {
               )}
             >
               <div className="flex w-0 grow items-center">
-                {item.isDeleted && <DefaultToolIcon className="size-5" />}
+                {item.isDeleted && (
+                  <span aria-hidden className="i-custom-public-other-default-tool-icon size-5" />
+                )}
                 {!item.isDeleted && (
                   <div className={cn((item.notAuthor || !item.enabled) && 'shrink-0 opacity-50')}>
                     {typeof item.icon === 'string' && (
@@ -239,13 +247,18 @@ const AgentTools: FC = () => {
                   </span>
                   <span className="text-text-tertiary">{item.tool_label}</span>
                   {!item.isDeleted && !readonly && (
-                    <Infotip
-                      aria-label={item.tool_name}
-                      className="ml-0.5 opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
-                      popupClassName="w-[220px]"
-                    >
-                      <div>
-                        <div className="mb-1.5 text-text-secondary">{item.tool_name}</div>
+                    <Infotip>
+                      <InfotipTrigger
+                        aria-label={item.tool_name}
+                        className="ml-0.5 opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+                      />
+                      <InfotipContent
+                        aria-labelledby={`${toolNameLabelId}-${index}`}
+                        className="w-55"
+                      >
+                        <div id={`${toolNameLabelId}-${index}`} className="mb-1.5">
+                          {item.tool_name}
+                        </div>
                         <div className="mb-1.5 text-text-tertiary">
                           {t(($) => $.toolNameUsageTip, { ns: 'tools' })}
                         </div>
@@ -256,7 +269,7 @@ const AgentTools: FC = () => {
                         >
                           {t(($) => $.copyToolName, { ns: 'tools' })}
                         </button>
-                      </div>
+                      </InfotipContent>
                     </Infotip>
                   )}
                 </div>
@@ -273,7 +286,10 @@ const AgentTools: FC = () => {
                             type="button"
                             className="mr-1 cursor-pointer rounded-md p-1 outline-hidden hover:bg-black/5 focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
                           >
-                            <AlertTriangle className="h-4 w-4 text-[#F79009]" />
+                            <span
+                              aria-hidden
+                              className="i-custom-vender-solid-alertsAndFeedback-alert-triangle h-4 w-4 text-[#F79009]"
+                            />
                           </button>
                         }
                       />

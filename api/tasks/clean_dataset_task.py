@@ -8,7 +8,7 @@ from sqlalchemy import delete, select
 
 from core.db.session_factory import session_factory
 from core.rag.graph.graph_index_service import GraphIndexService
-from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
+from core.rag.index_processor.index_processor import IndexProcessorFactory
 from core.tools.utils.web_reader_tool import get_image_upload_file_ids
 from extensions.ext_storage import storage
 from models import WorkflowType

@@ -50,6 +50,10 @@ import os
 import stat
 import sys
 
+# The shell transport may expose stdout only. Keep Python errors in the same
+# stream so the server can classify unavailable paths instead of returning 502.
+sys.stderr = sys.stdout
+
 path = sys.argv[1]
 response_path = sys.argv[2]
 limit = int(sys.argv[3])
@@ -88,6 +92,8 @@ import json
 import os
 import stat
 import sys
+
+sys.stderr = sys.stdout
 
 path = sys.argv[1]
 response_path = sys.argv[2]

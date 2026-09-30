@@ -31,22 +31,28 @@ it('copies through the keyboard action and retains focus after feedback', async 
   }
 })
 
-it('retains action focus when clipboard copying falls back to execCommand', async () => {
+it('preserves whitespace and action focus when clipboard copying falls back to execCommand', async () => {
+  const description = 'First line\n  indented  text\n\ttabbed text'
+  let selectedText = ''
   const writeText = vi
     .spyOn(navigator.clipboard, 'writeText')
     .mockRejectedValue(new Error('Denied'))
-  const execCommand = vi.spyOn(document, 'execCommand').mockReturnValue(true)
+  const execCommand = vi.spyOn(document, 'execCommand').mockImplementation(() => {
+    selectedText = document.getSelection()?.toString() ?? ''
+    return true
+  })
   const manager = createToastManager()
   const toast = createToast(manager)
   try {
     const screen = await render(<AppToastHost manager={manager} timeout={0} />)
-    toast.error('Connection failed')
+    toast.error('Connection failed', { description })
     await expect.element(screen.getByText('Connection failed')).toBeInTheDocument()
     await userEvent.keyboard('{F6}{Tab}{Tab}{Enter}')
     await expect
       .element(screen.getByRole('button', { name: 'common.operation.copied' }))
       .toHaveFocus()
     expect(execCommand).toHaveBeenCalledExactlyOnceWith('copy')
+    expect(selectedText).toBe(`Connection failed\n${description}`)
   } finally {
     toast.dismiss()
     writeText.mockRestore()

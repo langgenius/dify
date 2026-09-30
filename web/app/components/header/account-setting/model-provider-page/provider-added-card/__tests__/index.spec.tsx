@@ -3,6 +3,7 @@ import type { ModelProvider } from '../../declarations'
 import type { ModelProviderPluginSummary } from '../../index'
 import { QueryClient } from '@tanstack/react-query'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { commonQueryKeys } from '@/service/use-common'
 import { createQueryClientWrapper } from '@/test/console/query-client'
@@ -310,7 +311,9 @@ describe('ProviderAddedCard', () => {
     await waitFor(() => expect(screen.queryByTestId('model-list')).not.toBeInTheDocument())
 
     // Explicitly re-find and click to re-open
-    fireEvent.click(screen.getByRole('button', { name: /modelProvider\.showModels/i }))
+    const modelsCountButton = screen.getByRole('button', { name: /modelProvider\.modelsNum/i })
+    expect(modelsCountButton).not.toHaveAttribute('aria-label')
+    fireEvent.click(modelsCountButton)
     expect(await screen.findByTestId('model-list')).toBeInTheDocument()
     expect(mockFetchModelProviderModels).toHaveBeenCalledTimes(2) // Re-open fetches again with default stale/gc behavior
 
@@ -321,6 +324,25 @@ describe('ProviderAddedCard', () => {
       expect(mockFetchModelProviderModels).toHaveBeenCalledTimes(3)
     })
   })
+
+  it.each(['list', 'grid'] as const)(
+    'restores focus to the model list button after collapsing in %s layout',
+    async (layout) => {
+      const user = userEvent.setup()
+      mockFetchModelProviderModels.mockResolvedValue(modelProviderModelsResponse)
+      renderWithQueryClient(<ProviderAddedCard provider={mockProvider} layout={layout} />)
+
+      await user.click(screen.getByRole('button', { name: /modelProvider\.showModels/i }))
+      const collapseButton = await screen.findByRole('button', { name: 'collapse list' })
+      await user.tab()
+      expect(collapseButton).toHaveFocus()
+
+      await user.keyboard('{Enter}')
+
+      await waitFor(() => expect(collapseButton).not.toBeInTheDocument())
+      expect(screen.getByRole('button', { name: /modelProvider\.modelsNum/i })).toHaveFocus()
+    },
+  )
 
   it('should handle concurrent getModelList calls (loading state coverage)', async () => {
     let resolveOuter: (value: unknown) => void = () => {}
@@ -376,7 +398,7 @@ describe('ProviderAddedCard', () => {
       provider: 'custom/provider',
     } as unknown as ModelProvider
     renderWithQueryClient(<ProviderAddedCard provider={providerWithoutQuota} notConfigured />)
-    expect(screen.getByText('common.modelProvider.configureTip')).toBeInTheDocument()
+    expect(screen.getByText('modelProvider.modelProvider.configureTip')).toBeInTheDocument()
   })
 
   it('should render custom model actions when user can configure models', () => {
@@ -388,10 +410,10 @@ describe('ProviderAddedCard', () => {
     const { unmount } = renderWithQueryClient(<ProviderAddedCard provider={customConfigProvider} />)
 
     expect(
-      screen.getByRole('button', { name: 'common.modelProvider.auth.manageCredentials' }),
+      screen.getByRole('button', { name: 'modelProvider.modelProvider.auth.manageCredentials' }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: 'common.modelProvider.addModel' }),
+      screen.getByRole('button', { name: 'modelProvider.modelProvider.addModel' }),
     ).toBeInTheDocument()
 
     unmount()
@@ -399,10 +421,10 @@ describe('ProviderAddedCard', () => {
     mockWorkspacePermissionKeys = ['credential.use', 'credential.create', 'credential.manage']
     renderWithQueryClient(<ProviderAddedCard provider={customConfigProvider} />)
     expect(
-      screen.queryByRole('button', { name: 'common.modelProvider.auth.manageCredentials' }),
+      screen.queryByRole('button', { name: 'modelProvider.modelProvider.auth.manageCredentials' }),
     ).not.toBeInTheDocument()
     expect(
-      screen.queryByRole('button', { name: 'common.modelProvider.addModel' }),
+      screen.queryByRole('button', { name: 'modelProvider.modelProvider.addModel' }),
     ).not.toBeInTheDocument()
   })
 
@@ -417,10 +439,10 @@ describe('ProviderAddedCard', () => {
     renderWithQueryClient(<ProviderAddedCard provider={customConfigProvider} />)
 
     expect(
-      screen.queryByRole('button', { name: 'common.modelProvider.auth.manageCredentials' }),
+      screen.queryByRole('button', { name: 'modelProvider.modelProvider.auth.manageCredentials' }),
     ).not.toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: 'common.modelProvider.addModel' }),
+      screen.getByRole('button', { name: 'modelProvider.modelProvider.addModel' }),
     ).toBeInTheDocument()
   })
 })

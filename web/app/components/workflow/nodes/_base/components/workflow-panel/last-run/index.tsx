@@ -39,6 +39,15 @@ const LastRun: FC<Props> = ({
   isPaused,
   ...otherResultPanelProps
 }) => {
+  const finishedStatuses: readonly NodeRunningStatus[] = [
+    NodeRunningStatus.Succeeded,
+    NodeRunningStatus.Failed,
+  ]
+  const activeStatuses: readonly NodeRunningStatus[] = [
+    NodeRunningStatus.Running,
+    NodeRunningStatus.NotStart,
+  ]
+
   const configsMap = useHooksStore((s) => s.configsMap)
   const isOneStepRunSucceed = oneStepRunRunningStatus === NodeRunningStatus.Succeeded
   const isOneStepRunFailed = oneStepRunRunningStatus === NodeRunningStatus.Failed
@@ -48,10 +57,7 @@ const LastRun: FC<Props> = ({
   const [pageHasHide, setPageHasHide] = useState(false)
   const [pageShowed, setPageShowed] = useState(false)
 
-  const hidePageOneStepRunFinished = [
-    NodeRunningStatus.Succeeded,
-    NodeRunningStatus.Failed,
-  ].includes(hidePageOneStepFinishedStatus!)
+  const hidePageOneStepRunFinished = finishedStatuses.includes(hidePageOneStepFinishedStatus!)
   const canRunLastRun =
     !isRunAfterSingleRun ||
     isOneStepRunSucceed ||
@@ -71,8 +77,7 @@ const LastRun: FC<Props> = ({
   const isRunning =
     !isPaused &&
     (isRunAfterSingleRun
-      ? !hasAuthoritativeLastRun &&
-        [NodeRunningStatus.Running, NodeRunningStatus.NotStart].includes(oneStepRunRunningStatus!)
+      ? !hasAuthoritativeLastRun && activeStatuses.includes(oneStepRunRunningStatus!)
       : isFetching)
 
   const noLastRun = (error as any)?.status === 404
@@ -107,7 +112,12 @@ const LastRun: FC<Props> = ({
   ])
 
   useEffect(() => {
-    if ([NodeRunningStatus.Succeeded, NodeRunningStatus.Failed].includes(oneStepRunRunningStatus!))
+    const finishedStatuses: readonly NodeRunningStatus[] = [
+      NodeRunningStatus.Succeeded,
+      NodeRunningStatus.Failed,
+    ]
+
+    if (finishedStatuses.includes(oneStepRunRunningStatus!))
       setHidePageOneStepFinishedStatus(oneStepRunRunningStatus!)
   }, [oneStepRunRunningStatus])
 

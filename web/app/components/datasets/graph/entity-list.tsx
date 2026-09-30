@@ -19,7 +19,7 @@ type EntityListProps = {
  * exact mention counts are readable here without hovering.
  */
 const EntityList = ({ entities, focusedEntityId, onEntityClick }: EntityListProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetSettings'])
 
   const sorted = useMemo(() => [...entities].sort((a, b) => b.frequency - a.frequency), [entities])
 

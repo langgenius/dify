@@ -1,18 +1,18 @@
 import type { Locator } from '@playwright/test'
-import type { DifyWorld } from '../../support/world'
+import type { DifyWorld } from '../../support/world.ts'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import { createConfiguredTestAgent } from '../../agent-v2/support/agent'
 import {
   agentBuilderFixedInputs,
   agentBuilderPreseededResources,
-} from '../../agent-v2/support/agent-builder-resources'
+} from '../../agent-v2/support/agent-builder-resources.ts'
 import {
   createAgentSoulConfigWithKnowledgeDataset,
   normalAgentSoulConfig,
-} from '../../agent-v2/support/agent-soul'
-import { asArray, asRecord } from '../../agent-v2/support/fixtures/common'
-import { getCurrentAgentId } from './configure-helpers'
+} from '../../agent-v2/support/agent-soul.ts'
+import { createConfiguredTestAgent } from '../../agent-v2/support/agent.ts'
+import { asArray, asRecord } from '../../agent-v2/support/fixtures/common.ts'
+import { getCurrentAgentId } from './configure-helpers.ts'
 
 const getPreseededKnowledgeBase = (world: DifyWorld) => {
   const resource =

@@ -7,6 +7,7 @@ from flask import Flask
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
+from controllers.openapi._models import WorkspaceListQuery
 from controllers.openapi.workspaces import WorkspaceByIdApi, WorkspacesApi, WorkspaceSwitchApi
 from models import Account
 from models.account import TenantAccountRole
@@ -23,11 +24,13 @@ class TestWorkspacesList:
 
         api = WorkspacesApi()
         with app.test_request_context("/openapi/v1/workspaces"):
-            result = api.get.__handler__(api, context_for(account, session=db_session_with_containers))
+            result = api.get.__handler__(
+                api, context_for(account, session=db_session_with_containers), query=WorkspaceListQuery()
+            )
 
-        ids = {w.id for w in result.workspaces}
+        ids = {w.id for w in result.data}
         assert ids == {owner_tenant.id}
-        only = result.workspaces[0]
+        only = result.data[0]
         assert only.role == TenantAccountRole.OWNER.value
         assert only.status == "normal"
         # Newly-created owner membership is not yet "current"; switching flips it
@@ -44,9 +47,11 @@ class TestWorkspacesList:
 
         api = WorkspacesApi()
         with app.test_request_context("/openapi/v1/workspaces"):
-            result = api.get.__handler__(api, context_for(account, session=db_session_with_containers))
+            result = api.get.__handler__(
+                api, context_for(account, session=db_session_with_containers), query=WorkspaceListQuery()
+            )
 
-        assert {w.id for w in result.workspaces} == {owner_tenant.id, second.id}
+        assert {w.id for w in result.data} == {owner_tenant.id, second.id}
 
 
 class TestWorkspaceDetail:
@@ -121,8 +126,10 @@ class TestWorkspaceSwitch:
         # longer current (verified through the real read path).
         listing_api = WorkspacesApi()
         with app.test_request_context("/openapi/v1/workspaces"):
-            listing = listing_api.get.__handler__(listing_api, context_for(account, session=db_session_with_containers))
-        by_id = {w.id: w for w in listing.workspaces}
+            listing = listing_api.get.__handler__(
+                listing_api, context_for(account, session=db_session_with_containers), query=WorkspaceListQuery()
+            )
+        by_id = {w.id: w for w in listing.data}
         assert by_id[target.id].current is True
         assert by_id[owner_tenant.id].current is False
 

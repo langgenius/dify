@@ -31,7 +31,7 @@ function hasErrorCode(error: unknown, code: string) {
 }
 
 export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndPasswordAuthProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['login'])
   const router = useRouter()
   const queryClient = useQueryClient()
   const searchParams = useSearchParams()

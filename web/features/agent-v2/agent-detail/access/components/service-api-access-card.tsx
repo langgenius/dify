@@ -15,8 +15,8 @@ import { consoleQuery } from '@/service/console'
 import { AgentApiKeyModal } from './agent-api-key-modal'
 
 export function ServiceApiAccessCard({ agentId }: { agentId: string }) {
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['agentV2'])
+  const { t: tCommon } = useTranslation(['common'])
   const docLink = useDocLink()
   const queryClient = useQueryClient()
   const [apiKeyModalOpen, setApiKeyModalOpen] = useState(false)

@@ -9,7 +9,7 @@ import { useCreatePipelineDataset } from '@/service/knowledge/use-create-dataset
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 
 const CreateCard = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetPipeline'])
   const { push } = useRouter()
 
   const { mutateAsync: createEmptyDataset } = useCreatePipelineDataset()

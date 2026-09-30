@@ -14,7 +14,7 @@ import MailAndPasswordAuth from './components/mail-and-password-auth'
 import SSOAuth from './components/sso-auth'
 
 const NormalForm = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['login'])
 
   const [isLoading, setIsLoading] = useState(true)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())

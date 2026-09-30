@@ -36,7 +36,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
   selectedIds,
   onSelect,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common', 'dataset'])
   const [selectedIdsInModal, setSelectedIdsInModal] = useState(() => selectedIds)
   const canSelectMulti = true
   const { formatIndexingTechniqueAndMethod } = useKnowledge()

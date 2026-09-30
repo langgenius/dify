@@ -32,7 +32,7 @@ export const OAuthClientSettingsModal = ({
   onOpenChange,
   showOAuthCreateModal,
 }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin', 'pluginTrigger'])
   const detail = usePluginStore((state) => state.detail)
   const providerName = detail?.provider || ''
   const closeModal = useCallback(() => onOpenChange(false), [onOpenChange])

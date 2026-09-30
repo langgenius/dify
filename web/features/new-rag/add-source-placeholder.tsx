@@ -38,7 +38,7 @@ export function PendingWebsiteSetup({
   draft: NewKnowledgeWebsiteSourceDraft
   onDraftChange: (draft: NewKnowledgeWebsiteSourceDraft) => void
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation(['dataset'])
   const [optionsExpanded, setOptionsExpanded] = useState(false)
   const [backendBoundaryVisible, setBackendBoundaryVisible] = useState(false)
   const updateDraft = (nextDraft: NewKnowledgeWebsiteSourceDraft) => {
@@ -167,8 +167,8 @@ export function UnavailableConnectedSourceSetup({
   draft: NewKnowledgeOnlineDocumentsSourceDraft | NewKnowledgeOnlineDriveSourceDraft
   onDraftChange: (draft: NewKnowledgeSourceDraft) => void
 }) {
-  const { t } = useTranslation('dataset')
-  const { t: tCreation } = useTranslation('datasetCreation')
+  const { t } = useTranslation(['dataset'])
+  const { t: tCreation } = useTranslation(['datasetCreation'])
   const sourceType = draft.sourceType
   const providers = connectedProviders[sourceType]
   const activeProvider = draft.provider

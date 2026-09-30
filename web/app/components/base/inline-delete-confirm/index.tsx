@@ -24,7 +24,7 @@ const InlineDeleteConfirm: FC<InlineDeleteConfirmProps> = ({
   className,
   variant = 'delete',
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const titleId = useId()
   const descriptionId = useId()
 

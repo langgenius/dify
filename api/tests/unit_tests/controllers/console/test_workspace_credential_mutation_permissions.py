@@ -6,7 +6,6 @@ import pytest
 from controllers.common.rbac import AgentId, RBACPermission, Workspace
 from controllers.console.agent.composer import AgentComposerApi
 from controllers.console.agent.roster import AgentAppApi
-from controllers.console.datasets.data_source import DataSourceApi
 from controllers.console.datasets.rag_pipeline.datasource_auth import DatasourceAuth
 from controllers.console.workspace.model_providers import ModelProviderCredentialApi
 from controllers.console.workspace.models import ModelProviderModelCredentialApi
@@ -22,8 +21,6 @@ from tests.unit_tests.controllers.rbac_introspection import rbac_checks
     ("method", "permission"),
     [
         (ToolBuiltinProviderAddApi.post, RBACPermission.CREDENTIAL_CREATE),
-        (DataSourceApi.patch, RBACPermission.CREDENTIAL_MANAGE),
-        (DataSourceApi.get, RBACPermission.CREDENTIAL_MANAGE),
     ],
 )
 def test_workspace_credential_mutations_require_management_permission(

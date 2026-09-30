@@ -33,7 +33,7 @@ export function BuiltInAccessPoints({
   canReleaseAndVersion,
   highlightedAccessPoint,
 }: BuiltInAccessPointsProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'deployments'])
   const docLink = useDocLink()
   const appInfo = useAppStore((state) => state.appDetail)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
@@ -109,7 +109,6 @@ export function BuiltInAccessPoints({
           appInfo={appInfo}
           availability={appCardAvailability}
           canDeploy={canDeploy}
-          canManageAccess={canReleaseAndVersion}
           canManageAccessPoint={canManageAccessPoint}
           showAccessControl={systemFeatures.webapp_auth.enabled}
           onRefreshApp={actions.refreshAppDetail}

@@ -80,7 +80,9 @@ const RagPipelineMain = ({ nodes, edges, viewport }: RagPipelineMainProps) => {
   )
   const availableNodesMetaData = useAvailableNodesMetaData()
   const { getWorkflowRunAndTraceUrl } = useGetRunAndTraceUrl()
-  const { exportCheck, handleExportDSL } = useDSLByCanEdit(datasetACLCapabilities.canEdit)
+  const { exportCheck, handleExportDSL, isExporting } = useDSLByCanEdit(
+    datasetACLCapabilities.canEdit,
+  )
 
   const configsMap = useConfigsMap()
   const { fetchInspectVars } = useSetWorkflowVarsWithValue({
@@ -119,6 +121,7 @@ const RagPipelineMain = ({ nodes, edges, viewport }: RagPipelineMainProps) => {
       getWorkflowRunAndTraceUrl,
       exportCheck,
       handleExportDSL,
+      isExporting,
       fetchInspectVars,
       hasNodeInspectVars,
       hasSetInspectVar,
@@ -157,6 +160,7 @@ const RagPipelineMain = ({ nodes, edges, viewport }: RagPipelineMainProps) => {
     getWorkflowRunAndTraceUrl,
     exportCheck,
     handleExportDSL,
+    isExporting,
     fetchInspectVars,
     hasNodeInspectVars,
     hasSetInspectVar,

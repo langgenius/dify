@@ -27,7 +27,7 @@ type StarredAppCardProps = {
 
 export const StarredAppCard = memo(
   ({ app, stepByStepTourCardTarget, stepByStepTourCardHighlightPart }: StarredAppCardProps) => {
-    const { t } = useTranslation()
+    const { t } = useTranslation(['app', 'common', 'time'])
     const { data: currentUserId } = useSuspenseQuery({
       ...userProfileQueryOptions(),
       select: (data) => data.profile.id,
@@ -44,9 +44,9 @@ export const StarredAppCard = memo(
 
       const timeText = formatTime({
         date: timestamp * 1000,
-        dateFormat: `${t(($) => $['segment.dateTimeFormat'], { ns: 'datasetDocuments' })}`,
+        dateFormat: `${t(($) => $['dateFormats.compact'], { ns: 'time' })}`,
       })
-      return `${t(($) => $['segment.editedAt'], { ns: 'datasetDocuments' })} ${timeText}`
+      return `${t(($) => $.editedAt, { ns: 'common' })} ${timeText}`
     }, [app.created_at, app.updated_at, t])
     const href = getRedirectionPath(app, {
       currentUserId,
