@@ -179,7 +179,7 @@ const AddOAuthButton = ({
       return {
         ...item,
         label: index === 0 ? renderCustomLabel(item) : item.label,
-        labelClassName: index === 0 ? 'h-auto [&>*]:w-full' : undefined,
+        labelClassName: index === 0 ? 'h-auto' : undefined,
       }
     })
     if (is_system_oauth_params_exists) {
