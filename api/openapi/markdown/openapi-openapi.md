@@ -206,7 +206,7 @@ Machine-readable catalog of every op on this surface
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [ChatRunPayload](#chatrunpayload)<br>**multipart/form-data**: [ChatRunPayload](#chatrunpayload)<br> | **application/json**: [ChatRunPayload](#chatrunpayload)<br>**multipart/form-data**: [ChatRunPayload](#chatrunpayload)<br> |
+| Yes | **application/json**: [ChatRunPayload](#chatrunpayload)<br>**multipart/form-data**: [ChatRunPayload](#chatrunpayload)<br> |
 
 #### Responses
 
@@ -227,7 +227,7 @@ Machine-readable catalog of every op on this surface
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [DraftWorkflowRunPayload](#draftworkflowrunpayload)<br>**multipart/form-data**: [DraftWorkflowRunPayload](#draftworkflowrunpayload)<br> | **application/json**: [DraftWorkflowRunPayload](#draftworkflowrunpayload)<br>**multipart/form-data**: [DraftWorkflowRunPayload](#draftworkflowrunpayload)<br> |
+| Yes | **application/json**: [DraftWorkflowRunPayload](#draftworkflowrunpayload)<br>**multipart/form-data**: [DraftWorkflowRunPayload](#draftworkflowrunpayload)<br> |
 
 #### Responses
 
