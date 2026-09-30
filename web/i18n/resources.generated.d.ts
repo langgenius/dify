@@ -87,6 +87,7 @@ export default interface Resources {
     'resourceAccessToken.knowledgeCount': '{{count}} Knowledge'
     'resourceAccessToken.knowledgesCount': '{{count}} Knowledges'
     'resourceAccessToken.loadError': 'Could not load access tokens'
+    'resourceAccessToken.loadMore': 'Load more'
     'resourceAccessToken.name': 'Name'
     'resourceAccessToken.namePlaceholder': 'Enter a name'
     'resourceAccessToken.next': 'Next'
