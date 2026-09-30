@@ -8,7 +8,6 @@ import { flatten } from 'es-toolkit/compat'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { toast } from '@/app/notifications'
 import { fetchAgentLogDetail } from '@/service/log'
@@ -16,12 +15,14 @@ import ResultPanel from './result'
 import TracingPanel from './tracing'
 
 type AgentLogDetailProps = Readonly<{
+  appId: string
   activeTab?: 'DETAIL' | 'TRACING'
   conversationID: string
   log: IChatItem
   messageID: string
 }>
 const AgentLogDetail: FC<AgentLogDetailProps> = ({
+  appId,
   activeTab = 'DETAIL',
   conversationID,
   messageID,
@@ -29,7 +30,6 @@ const AgentLogDetail: FC<AgentLogDetailProps> = ({
 }) => {
   const { t } = useTranslation(['runLog'])
   const [currentTab, setCurrentTab] = useState<string>(activeTab)
-  const appDetail = useAppStore((s) => s.appDetail)
   const [loading, setLoading] = useState<boolean>(true)
   const [runDetail, setRunDetail] = useState<AgentLogDetailResponse>()
   const [list, setList] = useState<AgentIteration[]>([])
@@ -71,8 +71,8 @@ const AgentLogDetail: FC<AgentLogDetailProps> = ({
   }
   useEffect(() => {
     // fetch data
-    if (appDetail) getData(appDetail.id, conversationID, messageID)
-  }, [appDetail, conversationID, messageID])
+    getData(appId, conversationID, messageID)
+  }, [appId, conversationID, messageID])
   return (
     <div className="relative flex grow flex-col">
       {/* tab */}
