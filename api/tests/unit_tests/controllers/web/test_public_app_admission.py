@@ -21,9 +21,12 @@ from models.workflow import Workflow, WorkflowRun, WorkflowType
 from repositories.app_definition_query_repository import AppDefinitionQueryRepository
 from repositories.web_passport_repository import WebPassportRepository
 from repositories.webapp_access_query_repository import WebAppAccessQueryRepository
+from services import web_authentication_adapters
 from services.app_definition_query_service import AppDefinitionQueryService
 from services.entities.feature_entities import FeatureModel
 from services.web_app_runtime_query_service import WebAppRuntimeQueryService
+from services.web_authentication_adapters import PassportWebAppSessionGateway
+from services.web_authentication_service import WebAuthenticationService
 from services.web_passport_service import WebPassportService
 from services.webapp_access_query_service import WebAppAccessQueryService
 from tests.unit_tests.config_override import apply_config_overrides
@@ -95,14 +98,24 @@ def _harness(
     tokens.issue.return_value = "new-passport"
     tokens.verify.return_value = {"app_id": app.id, "app_code": "fixture-code", "end_user_id": old_user.id}
     definitions = AppDefinitionQueryRepository(session_factory=factory)
+    webapp_access = WebAppAccessQueryService(
+        access=access_repo,
+        webapp_auth_enabled=False,
+        policy=MagicMock(get_access_mode=mode_lookup),
+        get_access_modes=MagicMock(),
+        get_user_permissions=MagicMock(),
+    )
     services = SimpleNamespace(
-        webapp_access=WebAppAccessQueryService(
-            access=access_repo,
-            webapp_auth_enabled=False,
-            access_mode_for_app=mode_lookup,
-            is_user_allowed_for_app=MagicMock(),
-            get_access_modes=MagicMock(),
-            get_user_permissions=MagicMock(),
+        webapp_access=webapp_access,
+        web_authentication=WebAuthenticationService(
+            accounts=MagicMock(),
+            passwords=MagicMock(),
+            tokens=MagicMock(),
+            security=MagicMock(),
+            app_access=webapp_access,
+            app_sessions=PassportWebAppSessionGateway(sessions=access_repo, app_access=webapp_access),
+            audit=MagicMock(),
+            private_app_access_enabled=False,
         ),
         web_passport=WebPassportService(
             passports=passport_repo,
@@ -125,7 +138,9 @@ def _harness(
     for module in (app_controller, login, passport, site, wraps):
         monkeypatch.setattr(module, "application_services", lambda: services)
     monkeypatch.setattr(wraps, "PassportService", lambda: tokens)
+    monkeypatch.setattr(web_authentication_adapters, "PassportService", lambda: tokens)
     monkeypatch.setattr(wraps, "extract_webapp_passport", lambda *_: "old-passport")
+    monkeypatch.setattr(login, "extract_webapp_passport", lambda *_: "old-passport")
     monkeypatch.setattr(wraps.SystemFeatureService, "is_webapp_auth_enabled", lambda: False)
     apply_config_overrides(
         monkeypatch,
