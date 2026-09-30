@@ -79,10 +79,10 @@ export function SelfHostedPlanItem({ plan }: { plan: SelfHostedPlan }) {
           data-plan={plan}
           className={cn(
             buttonVariants({ variant: 'tertiary', size: null }),
-            'h-auto min-h-12 w-full justify-start gap-x-2 rounded-none bg-components-button-tertiary-bg py-3 pr-4 pl-5 system-xl-semibold whitespace-normal text-text-primary hover:bg-components-button-tertiary-bg-hover data-[plan=enterprise]:bg-saas-dify-blue-static data-[plan=enterprise]:text-text-primary-on-surface data-[plan=enterprise]:hover:bg-saas-dify-blue-static-hover data-[plan=premium]:bg-saas-background-inverted data-[plan=premium]:py-2 data-[plan=premium]:text-background-default data-[plan=premium]:hover:bg-saas-background-inverted-hover',
+            'h-auto min-h-12 w-full justify-start gap-x-2 rounded-none bg-components-button-tertiary-bg py-3 pr-4 pl-5 system-xl-semibold whitespace-normal text-text-primary hover:bg-components-button-tertiary-bg-hover data-[plan=enterprise]:bg-saas-dify-blue-static data-[plan=enterprise]:text-text-primary-on-surface data-[plan=enterprise]:hover:bg-saas-dify-blue-static-hover data-[plan=premium]:bg-saas-background-inverted data-[plan=premium]:py-2 data-[plan=premium]:text-background-default data-[plan=premium]:hover:bg-saas-background-inverted-hover xl:whitespace-nowrap',
           )}
         >
-          <span className="flex min-w-0 grow flex-wrap items-center gap-x-2">
+          <span className="flex min-w-0 grow flex-wrap items-center gap-x-2 xl:flex-nowrap">
             <span>{t(($) => $[`${i18nPrefix}.btnText`], { ns: 'billing' })}</span>
             {isPremiumPlan && (
               <span className="sr-only">

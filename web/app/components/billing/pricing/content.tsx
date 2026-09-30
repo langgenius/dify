@@ -72,7 +72,7 @@ export function PricingContent() {
           >
             <TabsTab
               value="cloud"
-              className="min-w-0 flex-1 appearance-none justify-center gap-x-2 border-b-0 px-2 py-3 system-xl-semibold whitespace-normal text-text-secondary hover:text-saas-dify-blue-accessible data-active:border-transparent data-active:text-saas-dify-blue-accessible xl:flex-none xl:px-5"
+              className="min-w-0 flex-1 appearance-none justify-center gap-x-2 border-b-0 px-2 py-3 system-xl-semibold whitespace-normal text-text-secondary hover:text-saas-dify-blue-accessible data-active:border-transparent data-active:text-saas-dify-blue-accessible xl:flex-none xl:px-5 xl:whitespace-nowrap"
             >
               <Cloud />
               {t(($) => $['plansCommon.cloud'], { ns: 'billing' })}
@@ -84,7 +84,7 @@ export function PricingContent() {
             />
             <TabsTab
               value="self-hosted"
-              className="min-w-0 flex-1 appearance-none justify-center gap-x-2 border-b-0 px-2 py-3 system-xl-semibold whitespace-normal text-text-secondary hover:text-saas-dify-blue-accessible data-active:border-transparent data-active:text-saas-dify-blue-accessible xl:flex-none xl:px-5"
+              className="min-w-0 flex-1 appearance-none justify-center gap-x-2 border-b-0 px-2 py-3 system-xl-semibold whitespace-normal text-text-secondary hover:text-saas-dify-blue-accessible data-active:border-transparent data-active:text-saas-dify-blue-accessible xl:flex-none xl:px-5 xl:whitespace-nowrap"
             >
               <SelfHosted />
               {t(($) => $['plansCommon.self'], { ns: 'billing' })}
