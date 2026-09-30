@@ -4,7 +4,6 @@ import type {
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
-import type { App } from '@/types/app'
 import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -18,8 +17,7 @@ import {
   markAppDeletionStarted,
   markAppDeletionSucceeded,
 } from '@/service/app-deletion'
-import { fetchAppDetail, updateAppInfo } from '@/service/apps'
-import { consoleQuery } from '@/service/console'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 
@@ -33,7 +31,7 @@ export type AppInfoModalType =
   | null
 
 type AppMetadata = Pick<
-  App,
+  AppDetailWithSite,
   | 'description'
   | 'icon'
   | 'icon_background'
@@ -123,7 +121,7 @@ export function useAppInfoActions() {
 
         unsubscribe = collaborationManager.onAppMetaUpdate(async () => {
           try {
-            const res = await fetchAppDetail({ url: '/apps', id: appDetail.id })
+            const res = await consoleClient.apps.byAppId.get({ params: { app_id: appDetail.id } })
             if (disposed) return
             queryClient.setQueryData(
               consoleQuery.apps.byAppId.get.queryKey({
@@ -160,15 +158,17 @@ export function useAppInfoActions() {
     }) => {
       if (!appDetail) return
       try {
-        const app = await updateAppInfo({
-          appID: appDetail.id,
-          name,
-          icon_type,
-          icon,
-          icon_background,
-          description,
-          use_icon_as_answer_icon,
-          max_active_requests,
+        const app = await consoleClient.apps.byAppId.put({
+          params: { app_id: appDetail.id },
+          body: {
+            name,
+            icon_type,
+            icon,
+            icon_background,
+            description,
+            use_icon_as_answer_icon,
+            max_active_requests,
+          },
         })
         closeModal()
         toast(

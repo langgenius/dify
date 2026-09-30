@@ -353,23 +353,25 @@ const renderVirtualizedOptionItem = (option: Option, index: number, itemCount: n
   </ComboboxItem>
 )
 
-const PopupSearchInput = ({ label, placeholder }: { label: string; placeholder: string }) => (
-  <div className="p-1 pb-0">
-    <ComboboxInputGroup className="h-8 min-h-8 px-2">
-      <span
-        aria-hidden
-        className="mr-0.5 i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
-      />
-      <ComboboxInput
-        aria-label={label}
-        placeholder={`${placeholder}…`}
-        className="block h-4.5 grow px-1 py-0 system-sm-regular text-components-input-text-filled"
-      />
-    </ComboboxInputGroup>
-  </div>
-)
+function PopupSearchInput({ label, placeholder }: { label: string; placeholder: string }) {
+  return (
+    <div className="p-1 pb-0">
+      <ComboboxInputGroup className="h-8 min-h-8 px-2">
+        <span
+          aria-hidden
+          className="mr-0.5 i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
+        />
+        <ComboboxInput
+          aria-label={label}
+          placeholder={`${placeholder}…`}
+          className="block h-4.5 grow px-1 py-0 system-sm-regular text-components-input-text-filled"
+        />
+      </ComboboxInputGroup>
+    </div>
+  )
+}
 
-const GroupedToolList = () => {
+function GroupedToolList() {
   const groups = useComboboxFilteredItems<OptionGroup>()
 
   return (
@@ -385,11 +387,11 @@ const GroupedToolList = () => {
   )
 }
 
-const VirtualizedModelList = ({
+function VirtualizedModelList({
   virtualizerRef,
 }: {
   virtualizerRef: React.RefObject<StoryVirtualizer | null>
-}) => {
+}) {
   const scrollRef = React.useRef<HTMLDivElement | null>(null)
   const filteredItems = useComboboxFilteredItems<Option>()
   const virtualizer = useVirtualizer({
@@ -451,7 +453,7 @@ const VirtualizedModelList = ({
   )
 }
 
-const FilteredModelStatus = () => {
+function FilteredModelStatus() {
   const filteredItems = useComboboxFilteredItems<Option>()
 
   return (
@@ -461,7 +463,7 @@ const FilteredModelStatus = () => {
   )
 }
 
-const VirtualizedLongListDemo = () => {
+function VirtualizedLongListDemo() {
   const [value, setValue] = React.useState<Option | null>(modelCatalogOptions[137]!)
   const virtualizerRef = React.useRef<StoryVirtualizer | null>(null)
 
@@ -495,7 +497,7 @@ const VirtualizedLongListDemo = () => {
   )
 }
 
-const AsyncDirectoryDemo = () => {
+function AsyncDirectoryDemo() {
   const [searchResults, setSearchResults] = React.useState<Option[]>([])
   const [selectedValue, setSelectedValue] = React.useState<Option | null>(null)
   const [searchValue, setSearchValue] = React.useState('')
@@ -599,7 +601,7 @@ const AsyncDirectoryDemo = () => {
   )
 }
 
-const InlinePopoverDemo = () => {
+function InlinePopoverDemo() {
   const [open, setOpen] = React.useState(false)
   const [value, setValue] = React.useState<Option | null>(null)
   const [inputValue, setInputValue] = React.useState('')
@@ -829,7 +831,7 @@ export const Grouped: Story = {
   ),
 }
 
-const MultipleChipsDemo = () => {
+function MultipleChipsDemo() {
   const [value, setValue] = React.useState<Option[]>(defaultReviewers)
 
   return (
@@ -1004,7 +1006,7 @@ export const ReadOnly: Story = {
   },
 }
 
-const ControlledDemo = () => {
+function ControlledDemo() {
   const [value, setValue] = React.useState<string | null>(defaultTag.value)
 
   return (

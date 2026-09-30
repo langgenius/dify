@@ -1,51 +1,17 @@
-import { describe, expect, it } from 'vite-plus/test'
-import { ALL_ERROR_CODES, CODE_TO_EXIT_MAP, ErrorCode, ExitCode, exitFor } from './codes'
+import { expect, it } from 'vite-plus/test'
+import { ALL_ERROR_CODES, ErrorCode, ExitCode, exitFor } from './codes'
 
-describe('error codes', () => {
-  it('has correct number codes (parity with internal/api/errors)', () => {
-    expect(ALL_ERROR_CODES).toHaveLength(Object.keys(CODE_TO_EXIT_MAP).length)
-  })
-
-  it('has the expected ExitCode buckets', () => {
-    expect(ExitCode.Success).toBe(0)
-    expect(ExitCode.Generic).toBe(1)
-    expect(ExitCode.Usage).toBe(2)
-    expect(ExitCode.Auth).toBe(4)
-    expect(ExitCode.VersionCompat).toBe(6)
-    expect(ExitCode.RateLimited).toBe(7)
-  })
-
-  it('every code maps to an exit', () => {
-    for (const code of ALL_ERROR_CODES) expect(CODE_TO_EXIT_MAP[code]).toBeDefined()
-  })
-
-  it('CODE_TO_EXIT_MAP entry count == ALL_ERROR_CODES length (drift guard)', () => {
-    expect(Object.keys(CODE_TO_EXIT_MAP)).toHaveLength(ALL_ERROR_CODES.length)
-  })
-
-  it.each([
-    [ErrorCode.NotLoggedIn, ExitCode.Auth],
-    [ErrorCode.AuthExpired, ExitCode.Auth],
-    [ErrorCode.TokenExpired, ExitCode.Auth],
-    [ErrorCode.AccessDenied, ExitCode.Auth],
-    [ErrorCode.ExpiredToken, ExitCode.Auth],
-    [ErrorCode.VersionSkew, ExitCode.VersionCompat],
-    [ErrorCode.UnsupportedEndpoint, ExitCode.VersionCompat],
-    [ErrorCode.ConfigSchemaUnsupported, ExitCode.VersionCompat],
-    [ErrorCode.UsageInvalidFlag, ExitCode.Usage],
-    [ErrorCode.UsageMissingArg, ExitCode.Usage],
-    [ErrorCode.ConfigInvalidKey, ExitCode.Usage],
-    [ErrorCode.ConfigInvalidValue, ExitCode.Usage],
-    [ErrorCode.Server5xx, ExitCode.Generic],
-    [ErrorCode.Server4xxOther, ExitCode.Generic],
-    [ErrorCode.ClientError, ExitCode.Generic],
-    [ErrorCode.Unknown, ExitCode.Generic],
-    [ErrorCode.RateLimited, ExitCode.RateLimited],
-  ])('exitFor(%s) -> %d', (code, want) => {
-    expect(exitFor(code)).toBe(want)
-  })
-
-  it('exitFor returns ExitCode.Generic for unknown code (conservative default)', () => {
-    expect(exitFor('no_such_code')).toBe(ExitCode.Generic)
-  })
+it('maps every code to the frozen exit taxonomy', () => {
+  expect(exitFor(ErrorCode.NotLoggedIn)).toBe(ExitCode.Auth)
+  expect(exitFor(ErrorCode.AccessDenied)).toBe(ExitCode.Auth)
+  expect(exitFor(ErrorCode.InputInvalid)).toBe(ExitCode.Usage)
+  expect(exitFor(ErrorCode.UsageInvalidFlag)).toBe(ExitCode.Usage)
+  expect(exitFor(ErrorCode.CatalogUnavailable)).toBe(ExitCode.Catalog)
+  expect(exitFor(ErrorCode.UnknownOp)).toBe(ExitCode.Catalog)
+  expect(exitFor(ErrorCode.ConfigSchemaUnsupported)).toBe(ExitCode.Catalog)
+  expect(exitFor(ErrorCode.RateLimited)).toBe(ExitCode.RateLimited)
+  expect(exitFor(ErrorCode.ServerError)).toBe(ExitCode.Generic)
+  expect(exitFor('something_from_the_future')).toBe(ExitCode.Generic)
+  expect(new Set(Object.values(ExitCode))).toEqual(new Set([0, 1, 2, 4, 6, 7]))
+  for (const code of ALL_ERROR_CODES) expect([0, 1, 2, 4, 6, 7]).toContain(exitFor(code))
 })

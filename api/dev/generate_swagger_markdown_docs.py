@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import re
 import subprocess
 import sys
 import tempfile
@@ -187,6 +188,23 @@ def _patch_wildcard_media_type_markdown(markdown: str) -> str:
     return markdown.replace("***/***", "`*/*`")
 
 
+def _patch_request_body_markdown(markdown: str) -> str:
+    """Collapse swagger-markdown 3.0.0's repeated cells for multi-content request bodies.
+
+    Its request-body renderer appends the same mutable Schema cell for every
+    content type, so every extra column repeats the complete set of media types.
+    Only repair that exact shape; preserve distinct cells and other tables.
+    """
+    lines = markdown.splitlines()
+    for index, line in enumerate(lines):
+        if index < 2 or lines[index - 2].strip() != "| Required | Schema |":
+            continue
+        cells = [cell.strip() for cell in re.split(r"(?<!\\)\|", line.strip().strip("|"))]
+        if len(cells) > 2 and cells[0] in {"Yes", "No"} and len(set(cells[1:])) == 1:
+            lines[index] = f"| {cells[0]} | {cells[1]} |"
+    return "\n".join(lines) + ("\n" if markdown.endswith("\n") else "")
+
+
 def _drop_null_values_for_markdown(value: object) -> object:
     """Remove null object members only from the converter's temporary input."""
 
@@ -238,6 +256,7 @@ def _convert_spec_to_markdown(spec_path: Path, markdown_path: Path) -> None:
             spec_path,
         )
         converted_markdown = _patch_wildcard_media_type_markdown(converted_markdown)
+        converted_markdown = _patch_request_body_markdown(converted_markdown)
         converted_markdown = _strip_trailing_line_whitespace(converted_markdown)
         if not converted_markdown.strip():
             raise RuntimeError(f"swagger-markdown wrote an empty document for {markdown_path}")

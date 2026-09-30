@@ -29,7 +29,6 @@ type OperationProps = {
   item: ChatItem
   question: string
   index: number
-  showPromptLog?: boolean
   maxSize: number
   contentWidth: number
   hasWorkflowProcess: boolean
@@ -84,7 +83,6 @@ function Operation({
   item,
   question,
   index,
-  showPromptLog,
   maxSize,
   contentWidth,
   hasWorkflowProcess,
@@ -93,6 +91,8 @@ function Operation({
   const { t } = useTranslation(['appLog', 'common'])
   const {
     config,
+    onOpenLog,
+    canOpenLog,
     onAnnotationAdded,
     onAnnotationEdited,
     onAnnotationRemoved,
@@ -116,6 +116,7 @@ function Operation({
 
   const content = getPublicResponseContent(item)
   const hasPublicContent = !!content.trim()
+  const availableLogAction = onOpenLog && (canOpenLog?.(item) ?? true) ? onOpenLog : undefined
 
   const displayUserFeedback = userFeedbackOverride ?? feedback
   const displayAdminFeedback = adminFeedbackOverride ?? adminFeedback
@@ -200,7 +201,7 @@ function Operation({
   const operationWidth = useMemo(() => {
     let width = 0
     if (!isOpeningStatement) width += 26
-    if (!isOpeningStatement && showPromptLog) width += 28 + 8
+    if (!isOpeningStatement && availableLogAction) width += 28 + 8
     if (!isOpeningStatement && config?.text_to_speech?.enabled && hasPublicContent) width += 26
     if (!isOpeningStatement && shouldShowAnnotationAction) width += 26
     if (shouldShowUserFeedbackBar) width += hasUserFeedback ? 28 + 8 : 60 + 8
@@ -214,10 +215,10 @@ function Operation({
     hasPublicContent,
     hasUserFeedback,
     isOpeningStatement,
+    availableLogAction,
     shouldShowAdminFeedbackBar,
     shouldShowAnnotationAction,
     shouldShowUserFeedbackBar,
-    showPromptLog,
   ])
 
   const positionRight = useMemo(
@@ -459,9 +460,9 @@ function Operation({
             </div>
           </DialogContent>
         </Dialog>
-        {showPromptLog && !isOpeningStatement && (
+        {availableLogAction && !isOpeningStatement && (
           <div className={cn('hidden', answerActiveBlockClassName)}>
-            <Log logItem={item} />
+            <Log logItem={item} onOpenLog={availableLogAction} />
           </div>
         )}
         {!isOpeningStatement && (
