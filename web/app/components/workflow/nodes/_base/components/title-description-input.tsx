@@ -43,7 +43,7 @@ export const TitleInput = memo(({ value, onBlur }: TitleInputProps) => {
 
   return (
     <div className="mr-2 min-w-0 grow">
-      <label htmlFor={inputId} className="block px-1 system-xs-medium text-text-secondary">
+      <label htmlFor={inputId} className="sr-only">
         {t(($) => $['common.nodeTitle'], { ns: 'workflow' })}
       </label>
       <input
