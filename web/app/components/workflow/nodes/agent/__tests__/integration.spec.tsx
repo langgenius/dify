@@ -331,10 +331,12 @@ describe('agent path', () => {
     it('should render strategy, models, and toolbox entries in the node', () => {
       const { container } = render(<Node id="agent-node" data={createData()} />)
 
-      expect(screen.getByText(/workflow\.nodes\.agent\.strategy\.shortLabel/)).toBeInTheDocument()
+      expect(
+        screen.getByText(/workflowAgent\.nodes\.agent\.strategy\.shortLabel/),
+      ).toBeInTheDocument()
       expect(container).toHaveTextContent('React Agent')
-      expect(screen.getByText('workflow.nodes.agent.model')).toBeInTheDocument()
-      expect(screen.getByText('workflow.nodes.agent.toolbox')).toBeInTheDocument()
+      expect(screen.getByText('workflowAgent.nodes.agent.model')).toBeInTheDocument()
+      expect(screen.getByText('workflowAgent.nodes.agent.toolbox')).toBeInTheDocument()
       expect(container).toHaveTextContent('openai/gpt-4o:1')
       expect(screen.getByText('indicator:warning')).toBeInTheDocument()
     })
@@ -346,7 +348,7 @@ describe('agent path', () => {
 
       render(<Panel id="agent-node" data={createData()} panelProps={panelProps} />)
 
-      expect(screen.getByText('workflow.nodes.agent.strategy.label')).toBeInTheDocument()
+      expect(screen.getByText('workflowAgent.nodes.agent.strategy.label')).toBeInTheDocument()
       expect(
         screen.getByText('text:String:workflow.nodes.agent.outputVars.text'),
       ).toBeInTheDocument()

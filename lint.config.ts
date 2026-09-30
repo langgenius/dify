@@ -922,7 +922,15 @@ export const lintConfig = {
                 message: 'Do not import next/font. Use the project font styles instead.',
               },
               {
-                group: ['next/*', '!next/font', '!next/font/*', '!next/image', '!next/image/*'],
+                // next/dynamic must be imported directly for compiler-generated preload metadata.
+                group: [
+                  'next/*',
+                  '!next/dynamic',
+                  '!next/font',
+                  '!next/font/*',
+                  '!next/image',
+                  '!next/image/*',
+                ],
                 message:
                   'Import Next APIs from the corresponding @/next/* module instead of next/*.',
               },
@@ -989,7 +997,15 @@ export const lintConfig = {
                 message: 'Do not import next/font. Use the project font styles instead.',
               },
               {
-                group: ['next/*', '!next/font', '!next/font/*', '!next/image', '!next/image/*'],
+                // next/dynamic must be imported directly for compiler-generated preload metadata.
+                group: [
+                  'next/*',
+                  '!next/dynamic',
+                  '!next/font',
+                  '!next/font/*',
+                  '!next/image',
+                  '!next/image/*',
+                ],
                 message:
                   'Import Next APIs from the corresponding @/next/* module instead of next/*.',
               },
@@ -1177,15 +1193,29 @@ export const lintConfig = {
     {
       files: ['packages/dify-ui/**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}'],
       rules: {
+        'func-names': ['error', 'as-needed'],
+        'id-denylist': ['error', 'e'],
         'unicorn/import-style': [
           'error',
           {
             extendDefaultStyles: false,
             styles: {
               react: { namespace: true },
+              'react-dom': { namespace: true },
+              'react-dom/client': { namespace: true },
+              'react-dom/server': { namespace: true },
             },
           },
         ],
+        'react/function-component-definition': [
+          'error',
+          {
+            namedComponents: ['function-declaration', 'function-expression'],
+            unnamedComponents: ['arrow-function', 'function-expression'],
+          },
+        ],
+        'react/jsx-fragments': ['error', 'element'],
+        'react/jsx-no-useless-fragment': ['error', { allowExpressions: true }],
         'react/exhaustive-deps': [
           'error',
           {

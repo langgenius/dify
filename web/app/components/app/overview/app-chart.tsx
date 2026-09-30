@@ -6,9 +6,10 @@ import type { FC } from 'react'
 import type { ChartRow } from './app-chart-utils'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { useQuery } from '@tanstack/react-query'
-import ReactECharts from 'echarts-for-react'
+import ReactECharts from 'echarts-for-react/esm/core'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import { echarts } from '@/app/components/base/line-chart/echarts'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { consoleQuery } from '@/service/console'
 import {
@@ -131,6 +132,7 @@ const Chart: React.FC<IChartProps> = ({
       </div>
       <div className="h-60 shrink-0 px-6 pb-4">
         <ReactECharts
+          echarts={echarts}
           option={options}
           opts={ECHARTS_RENDER_OPTIONS}
           style={{ height: '100%', width: '100%' }}

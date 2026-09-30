@@ -5,8 +5,6 @@ import * as z from 'zod'
 import {
   zDeleteInstalledAppsByInstalledAppIdConversationsByCIdPath,
   zDeleteInstalledAppsByInstalledAppIdConversationsByCIdResponse,
-  zDeleteInstalledAppsByInstalledAppIdPath,
-  zDeleteInstalledAppsByInstalledAppIdResponse,
   zDeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdPath,
   zDeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdResponse,
   zGetInstalledAppsByInstalledAppIdConversationsPath,
@@ -38,7 +36,6 @@ import {
   zPatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinResponse,
   zPatchInstalledAppsByInstalledAppIdPath,
   zPatchInstalledAppsByInstalledAppIdResponse,
-  zPostInstalledAppsBody,
   zPostInstalledAppsByInstalledAppIdAudioToTextPath,
   zPostInstalledAppsByInstalledAppIdAudioToTextResponse,
   zPostInstalledAppsByInstalledAppIdChatMessagesBody,
@@ -68,7 +65,6 @@ import {
   zPostInstalledAppsByInstalledAppIdWorkflowsRunResponse,
   zPostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopPath,
   zPostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopResponse,
-  zPostInstalledAppsResponse,
 } from './zod.gen.ts'
 
 export const post = oc
@@ -510,18 +506,6 @@ export const workflows = {
   tasks,
 }
 
-export const delete3 = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'DELETE',
-    operationId: 'deleteInstalledAppsByInstalledAppId',
-    path: '/installed-apps/{installed_app_id}',
-    successStatus: 204,
-    tags: ['console'],
-  })
-  .input(z.object({ params: zDeleteInstalledAppsByInstalledAppIdPath }))
-  .output(zDeleteInstalledAppsByInstalledAppIdResponse)
-
 export const get8 = oc
   .route({
     inputStructure: 'detailed',
@@ -550,7 +534,6 @@ export const patch3 = oc
   .output(zPatchInstalledAppsByInstalledAppIdResponse)
 
 export const byInstalledAppId = {
-  delete: delete3,
   get: get8,
   patch: patch3,
   audioToText,
@@ -576,20 +559,8 @@ export const get9 = oc
   .input(z.object({ query: zGetInstalledAppsQuery.optional() }))
   .output(zGetInstalledAppsResponse)
 
-export const post12 = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postInstalledApps',
-    path: '/installed-apps',
-    tags: ['console'],
-  })
-  .input(z.object({ body: zPostInstalledAppsBody }))
-  .output(zPostInstalledAppsResponse)
-
 export const installedApps = {
   get: get9,
-  post: post12,
   byInstalledAppId,
 }
 

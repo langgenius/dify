@@ -1,5 +1,8 @@
-import { act, renderHook } from '@testing-library/react'
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
+import { act, waitFor } from '@testing-library/react'
 import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderHookWithConsoleQuery } from '@/test/console/query-data'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { useAppInfoActions } from '../use-app-info-actions'
@@ -17,8 +20,6 @@ const toastMocks = vi.hoisted(() => {
   }
 })
 const mockReplace = vi.fn()
-const mockInvalidateQueries = vi.fn()
-const mockSetAppDetail = vi.fn()
 const mockUpdateAppInfo = vi.fn()
 const mockCopyApp = vi.fn()
 const mockExportAppDsl = vi.fn()
@@ -32,27 +33,38 @@ const mockMarkAppDeletionSucceeded = vi.fn()
 const mockMarkAppDeletionFailed = vi.fn()
 const mockGetSocket = vi.fn()
 const mockOnAppMetaUpdate = vi.fn()
-const mockSetQueryData = vi.fn()
 
-let mockAppDetail: Record<string, unknown> | undefined = {
-  id: 'app-1',
-  name: 'Test App',
-  mode: AppModeEnum.CHAT,
-  icon: '🤖',
-  icon_type: 'emoji',
-  icon_background: '#FFEAD5',
+let mockAppDetail: AppDetailWithSite
+
+const appDetailQueryKey = consoleQuery.apps.byAppId.get.queryKey({
+  input: { params: { app_id: 'app-1' } },
+})
+const appListQueryKeys = [
+  consoleQuery.apps.get.key(),
+  consoleQuery.apps.starred.get.key(),
+  consoleQuery.apps.recent.get.key(),
+]
+
+const renderActions = () => {
+  const queryClient = createConsoleQueryClient()
+  if (mockAppDetail) queryClient.setQueryData(appDetailQueryKey, mockAppDetail)
+  for (const queryKey of appListQueryKeys) queryClient.setQueryData(queryKey, { data: [] })
+  return renderHookWithConsoleQuery(
+    () =>
+      useAppInfoActions({
+        appId: mockAppDetail.id,
+        appName: mockAppDetail.name,
+        appMode: mockAppDetail.mode,
+      }),
+    {
+      queryClient,
+      systemFeatures: { rbac_enabled: true },
+    },
+  )
 }
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ replace: mockReplace }),
-}))
-
-vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: Record<string, unknown>) => unknown) =>
-    selector({
-      appDetail: mockAppDetail,
-      setAppDetail: mockSetAppDetail,
-    }),
 }))
 
 vi.mock('@/app/components/app/use-export-app-dsl', () => ({
@@ -78,27 +90,20 @@ vi.mock('@/app/notifications', () => ({
   }),
 }))
 
-vi.mock('@tanstack/react-query', () => ({
-  queryOptions: <TOptions>(options: TOptions) => options,
-  useSuspenseQuery: () => ({
-    data: { rbac_enabled: true },
-  }),
-  useMutation: ({ mutationKey }: { mutationKey: unknown }) => ({
-    mutateAsync:
-      JSON.stringify(mutationKey) ===
-      JSON.stringify(consoleQuery.apps.byAppId.copy.post.mutationOptions().mutationKey)
-        ? mockCopyApp
-        : mockDeleteApp,
-  }),
-  useQueryClient: () => ({
-    invalidateQueries: mockInvalidateQueries,
-    setQueryData: mockSetQueryData,
-  }),
-}))
-
-vi.mock('@/service/apps', () => ({
-  updateAppInfo: (...args: unknown[]) => mockUpdateAppInfo(...args),
-  fetchAppDetail: (...args: unknown[]) => mockFetchAppDetail(...args),
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  request: async (url: string, _init: RequestInit, { request }: { request: Request }) => {
+    if (request.method === 'GET') return Response.json(await mockFetchAppDetail(url))
+    if (request.method === 'PUT')
+      return Response.json(await mockUpdateAppInfo(url, await request.json()))
+    if (request.method === 'POST' && new URL(url).pathname.endsWith('/copy'))
+      return Response.json(await mockCopyApp(url, await request.json()))
+    if (request.method === 'DELETE') {
+      await mockDeleteApp(url)
+      return new Response(null, { status: 204 })
+    }
+    throw new Error(`Unexpected request: ${request.method} ${url}`)
+  },
 }))
 
 vi.mock('@/service/app-deletion', () => ({
@@ -132,39 +137,19 @@ describe('useAppInfoActions', () => {
     mockExportWorkflowAppDsl.mockResolvedValue({ status: 'downloaded' })
     mockOnAppMetaUpdate.mockReturnValue(() => {})
     mockGetSocket.mockReturnValue(null)
-    mockAppDetail = {
+    mockAppDetail = createAppDetailFixture({
       id: 'app-1',
       name: 'Test App',
       mode: AppModeEnum.CHAT,
       icon: '🤖',
       icon_type: 'emoji',
       icon_background: '#FFEAD5',
-    }
+    })
   })
 
   describe('Initial state', () => {
     it('should return initial state correctly', () => {
-      const { result } = renderHook(() => useAppInfoActions({}))
-      expect(result.current.appDetail).toEqual(mockAppDetail)
-      expect(result.current.activeModal).toBeNull()
-      expect(result.current.secretEnvList).toEqual([])
-    })
-  })
-
-  describe('App-scoped state', () => {
-    it('should reset app-scoped state when resetKey changes', () => {
-      const { result, rerender } = renderHook(({ resetKey }) => useAppInfoActions({ resetKey }), {
-        initialProps: { resetKey: 'app-1' },
-      })
-
-      act(() => {
-        result.current.openModal('delete')
-      })
-
-      expect(result.current.activeModal).toBe('delete')
-
-      rerender({ resetKey: 'app-2' })
-
+      const { result } = renderActions()
       expect(result.current.activeModal).toBeNull()
       expect(result.current.secretEnvList).toEqual([])
     })
@@ -172,7 +157,7 @@ describe('useAppInfoActions', () => {
 
   describe('Modal management', () => {
     it('should open modal', () => {
-      const { result } = renderHook(() => useAppInfoActions({}))
+      const { result } = renderActions()
 
       act(() => {
         result.current.openModal('edit')
@@ -182,7 +167,7 @@ describe('useAppInfoActions', () => {
     })
 
     it('should close modal', () => {
-      const { result } = renderHook(() => useAppInfoActions({}))
+      const { result } = renderActions()
 
       act(() => {
         result.current.openModal('delete')
@@ -198,10 +183,14 @@ describe('useAppInfoActions', () => {
 
   describe('onEdit', () => {
     it('should update app info and close modal on success', async () => {
-      const updatedApp = { ...mockAppDetail, name: 'Updated' }
+      const updatedApp = createAppDetailFixture({
+        ...mockAppDetail,
+        name: 'Updated',
+        max_active_requests: null,
+      })
       mockUpdateAppInfo.mockResolvedValue(updatedApp)
 
-      const { result } = renderHook(() => useAppInfoActions({}))
+      const { result, queryClient } = renderActions()
 
       await act(async () => {
         await result.current.onEdit({
@@ -214,37 +203,27 @@ describe('useAppInfoActions', () => {
         })
       })
 
-      expect(mockUpdateAppInfo).toHaveBeenCalled()
-      expect(mockSetQueryData).toHaveBeenCalledWith(
-        consoleQuery.apps.byAppId.get.queryKey({
-          input: { params: { app_id: 'app-1' } },
-        }),
-        expect.any(Function),
-      )
-      const updateCachedApp = mockSetQueryData.mock.calls[0]![1]
-      expect(updateCachedApp({ id: 'app-1', name: 'Old name' })).toEqual(
-        expect.objectContaining({ id: 'app-1', name: 'Updated' }),
-      )
-      expect(mockInvalidateQueries).toHaveBeenCalledWith({
-        queryKey: consoleQuery.apps.get.key(),
+      expect(mockUpdateAppInfo).toHaveBeenCalledWith(expect.stringContaining('/apps/app-1'), {
+        name: 'Updated',
+        icon_type: 'emoji',
+        icon: '🤖',
+        icon_background: '#fff',
+        description: '',
+        use_icon_as_answer_icon: false,
       })
-      expect(mockInvalidateQueries).toHaveBeenCalledWith({
-        queryKey: consoleQuery.apps.starred.get.key(),
-      })
-      expect(mockInvalidateQueries).toHaveBeenCalledWith({
-        queryKey: consoleQuery.apps.recent.get.key(),
-      })
-      expect(mockSetAppDetail).toHaveBeenCalledWith(updatedApp)
+      expect(queryClient.getQueryData(appDetailQueryKey)).toEqual(updatedApp)
+      for (const queryKey of appListQueryKeys)
+        expect(queryClient.getQueryState(queryKey)?.isInvalidated).toBe(true)
       expect(toastMocks.call).toHaveBeenCalledWith({ type: 'success', message: 'app.editDone' })
     })
 
     it('should emit app_meta_update after successful edit when collaboration socket exists', async () => {
-      const updatedApp = { ...mockAppDetail, name: 'Updated' }
+      const updatedApp = createAppDetailFixture({ ...mockAppDetail, name: 'Updated' })
       const socket = { emit: vi.fn() }
       mockUpdateAppInfo.mockResolvedValue(updatedApp)
       mockGetSocket.mockReturnValue(socket)
 
-      const { result } = renderHook(() => useAppInfoActions({}))
+      const { result } = renderActions()
 
       await act(async () => {
         await result.current.onEdit({
@@ -256,7 +235,7 @@ describe('useAppInfoActions', () => {
           use_icon_as_answer_icon: false,
         })
       })
-      await new Promise((resolve) => setTimeout(resolve, 0))
+      await waitFor(() => expect(socket.emit).toHaveBeenCalled())
 
       expect(mockGetSocket).toHaveBeenCalledWith('app-1')
       expect(socket.emit).toHaveBeenCalledWith(
@@ -270,7 +249,7 @@ describe('useAppInfoActions', () => {
     it('should notify error on edit failure', async () => {
       mockUpdateAppInfo.mockRejectedValue(new Error('fail'))
 
-      const { result } = renderHook(() => useAppInfoActions({}))
+      const { result } = renderActions()
 
       await act(async () => {
         await result.current.onEdit({
@@ -285,32 +264,13 @@ describe('useAppInfoActions', () => {
 
       expect(toastMocks.call).toHaveBeenCalledWith({ type: 'error', message: 'app.editFailed' })
     })
-
-    it('should not call updateAppInfo when appDetail is undefined', async () => {
-      mockAppDetail = undefined
-
-      const { result } = renderHook(() => useAppInfoActions({}))
-
-      await act(async () => {
-        await result.current.onEdit({
-          name: 'Updated',
-          icon_type: 'emoji',
-          icon: '🤖',
-          icon_background: '#fff',
-          description: '',
-          use_icon_as_answer_icon: false,
-        })
-      })
-
-      expect(mockUpdateAppInfo).not.toHaveBeenCalled()
-    })
   })
 
   describe('onCopy', () => {
     it.each(['completed', 'pending'] as const)(
       'should redirect only when the copy is completed (%s)',
       async (status) => {
-        const newApp = { id: 'app-2', name: 'Copy', mode: 'chat' }
+        const newApp = createAppDetailFixture({ id: 'app-2', name: 'Copy' })
         mockCopyApp.mockResolvedValue(
           status === 'completed'
             ? newApp
@@ -321,7 +281,7 @@ describe('useAppInfoActions', () => {
               },
         )
 
-        const { result } = renderHook(() => useAppInfoActions({}))
+        const { result } = renderActions()
 
         await act(async () => {
           await result.current.onCopy({
@@ -332,9 +292,11 @@ describe('useAppInfoActions', () => {
           })
         })
 
-        expect(mockCopyApp).toHaveBeenCalledWith({
-          params: { app_id: 'app-1' },
-          body: { name: 'Copy', icon_type: 'emoji', icon: '🤖', icon_background: '#fff' },
+        expect(mockCopyApp).toHaveBeenCalledWith(expect.stringContaining('/apps/app-1/copy'), {
+          name: 'Copy',
+          icon_type: 'emoji',
+          icon: '🤖',
+          icon_background: '#fff',
         })
         if (status === 'completed') {
           expect(toastMocks.call).toHaveBeenCalledWith({
@@ -355,7 +317,7 @@ describe('useAppInfoActions', () => {
     it('should notify error on copy failure', async () => {
       mockCopyApp.mockRejectedValue(new Error('fail'))
 
-      const { result } = renderHook(() => useAppInfoActions({}))
+      const { result } = renderActions()
 
       await act(async () => {
         await result.current.onCopy({
@@ -373,28 +335,9 @@ describe('useAppInfoActions', () => {
     })
   })
 
-  describe('onCopy - early return', () => {
-    it('should not call copyApp when appDetail is undefined', async () => {
-      mockAppDetail = undefined
-
-      const { result } = renderHook(() => useAppInfoActions({}))
-
-      await act(async () => {
-        await result.current.onCopy({
-          name: 'Copy',
-          icon_type: 'emoji',
-          icon: '🤖',
-          icon_background: '#fff',
-        })
-      })
-
-      expect(mockCopyApp).not.toHaveBeenCalled()
-    })
-  })
-
   describe('onExport', () => {
     it('should export the app DSL', async () => {
-      const { result } = renderHook(() => useAppInfoActions({}))
+      const { result } = renderActions()
 
       await act(async () => {
         await result.current.onExport(false)
@@ -410,29 +353,15 @@ describe('useAppInfoActions', () => {
 
   it('preserves the export failure result for the confirmation dialog', async () => {
     mockExportAppDsl.mockResolvedValue({ status: 'failed' })
-    const { result } = renderHook(() => useAppInfoActions({}))
+    const { result } = renderActions()
     await act(async () => {
       await expect(result.current.onExport(true)).resolves.toBe(false)
     })
   })
 
-  describe('onExport - early return', () => {
-    it('should not export when appDetail is undefined', async () => {
-      mockAppDetail = undefined
-
-      const { result } = renderHook(() => useAppInfoActions({}))
-
-      await act(async () => {
-        await result.current.onExport()
-      })
-
-      expect(mockExportAppDsl).not.toHaveBeenCalled()
-    })
-  })
-
   describe('exportCheck', () => {
     it('should call onExport directly for non-workflow modes', async () => {
-      const { result } = renderHook(() => useAppInfoActions({}))
+      const { result } = renderActions()
 
       await act(async () => {
         await result.current.exportCheck()
@@ -442,9 +371,9 @@ describe('useAppInfoActions', () => {
     })
 
     it('should open export warning modal for workflow mode', async () => {
-      mockAppDetail = { ...mockAppDetail, mode: AppModeEnum.WORKFLOW }
+      mockAppDetail = createAppDetailFixture({ ...mockAppDetail, mode: AppModeEnum.WORKFLOW })
 
-      const { result } = renderHook(() => useAppInfoActions({}))
+      const { result } = renderActions()
 
       await act(async () => {
         await result.current.exportCheck()
@@ -454,9 +383,9 @@ describe('useAppInfoActions', () => {
     })
 
     it('should open export warning modal for advanced_chat mode', async () => {
-      mockAppDetail = { ...mockAppDetail, mode: AppModeEnum.ADVANCED_CHAT }
+      mockAppDetail = createAppDetailFixture({ ...mockAppDetail, mode: AppModeEnum.ADVANCED_CHAT })
 
-      const { result } = renderHook(() => useAppInfoActions({}))
+      const { result } = renderActions()
 
       await act(async () => {
         await result.current.exportCheck()
@@ -466,27 +395,13 @@ describe('useAppInfoActions', () => {
     })
   })
 
-  describe('exportCheck - early return', () => {
-    it('should not do anything when appDetail is undefined', async () => {
-      mockAppDetail = undefined
-
-      const { result } = renderHook(() => useAppInfoActions({}))
-
-      await act(async () => {
-        await result.current.exportCheck()
-      })
-
-      expect(mockExportAppDsl).not.toHaveBeenCalled()
-    })
-  })
-
   describe('handleConfirmExport', () => {
     it('keeps the warning open after failure so the user can retry', async () => {
-      mockAppDetail = { ...mockAppDetail, mode: AppModeEnum.WORKFLOW }
+      mockAppDetail = createAppDetailFixture({ ...mockAppDetail, mode: AppModeEnum.WORKFLOW })
       mockExportWorkflowAppDsl
         .mockResolvedValueOnce({ status: 'failed' })
         .mockResolvedValueOnce({ status: 'downloaded' })
-      const { result } = renderHook(() => useAppInfoActions({}))
+      const { result } = renderActions()
       await act(async () => {
         await result.current.exportCheck()
       })
@@ -501,8 +416,8 @@ describe('useAppInfoActions', () => {
     })
 
     it('should export directly when no secret env variables', async () => {
-      mockAppDetail = { ...mockAppDetail, mode: AppModeEnum.WORKFLOW }
-      const { result } = renderHook(() => useAppInfoActions({}))
+      mockAppDetail = createAppDetailFixture({ ...mockAppDetail, mode: AppModeEnum.WORKFLOW })
+      const { result } = renderActions()
 
       await act(async () => {
         await result.current.handleConfirmExport()
@@ -515,14 +430,14 @@ describe('useAppInfoActions', () => {
     })
 
     it('should set secret env list when secret variables exist', async () => {
-      mockAppDetail = { ...mockAppDetail, mode: AppModeEnum.WORKFLOW }
+      mockAppDetail = createAppDetailFixture({ ...mockAppDetail, mode: AppModeEnum.WORKFLOW })
       const secretVars = [{ value_type: 'secret', name: 'API_KEY', value: 'secret' }]
       mockExportWorkflowAppDsl.mockResolvedValue({
         status: 'confirmation-required',
         secretEnvList: secretVars,
       })
 
-      const { result } = renderHook(() => useAppInfoActions({}))
+      const { result } = renderActions()
 
       await act(async () => {
         await result.current.handleConfirmExport()
@@ -532,55 +447,28 @@ describe('useAppInfoActions', () => {
     })
   })
 
-  describe('handleConfirmExport - early return', () => {
-    it('should not do anything when appDetail is undefined', async () => {
-      mockAppDetail = undefined
-
-      const { result } = renderHook(() => useAppInfoActions({}))
-
-      await act(async () => {
-        await result.current.handleConfirmExport()
-      })
-
-      expect(mockExportWorkflowAppDsl).not.toHaveBeenCalled()
-    })
-  })
-
   describe('onConfirmDelete', () => {
     it('should delete app and redirect on success', async () => {
       mockDeleteApp.mockResolvedValue({})
 
-      const { result } = renderHook(() => useAppInfoActions({}))
+      const { result } = renderActions()
 
       await act(async () => {
         await result.current.onConfirmDelete()
       })
 
-      expect(mockDeleteApp).toHaveBeenCalledWith({ params: { app_id: 'app-1' } })
+      expect(mockDeleteApp).toHaveBeenCalledWith(expect.stringContaining('/apps/app-1'))
       expect(mockMarkAppDeletionStarted).toHaveBeenCalledWith('app-1')
       expect(mockMarkAppDeletionSucceeded).toHaveBeenCalledWith('app-1')
       expect(mockMarkAppDeletionFailed).not.toHaveBeenCalled()
       expect(toastMocks.call).toHaveBeenCalledWith({ type: 'success', message: 'app.appDeleted' })
       expect(mockReplace).toHaveBeenCalledWith('/apps')
-      expect(mockSetAppDetail).toHaveBeenCalledWith()
-    })
-
-    it('should not delete when appDetail is undefined', async () => {
-      mockAppDetail = undefined
-
-      const { result } = renderHook(() => useAppInfoActions({}))
-
-      await act(async () => {
-        await result.current.onConfirmDelete()
-      })
-
-      expect(mockDeleteApp).not.toHaveBeenCalled()
     })
 
     it('should notify error on delete failure', async () => {
       mockDeleteApp.mockRejectedValue({ message: 'cannot delete' })
 
-      const { result } = renderHook(() => useAppInfoActions({}))
+      const { result } = renderActions()
 
       await act(async () => {
         await result.current.onConfirmDelete()
@@ -598,7 +486,7 @@ describe('useAppInfoActions', () => {
 
   describe('collaboration app meta updates', () => {
     it('should refresh app detail when receiving app_meta_update', async () => {
-      const updated = { ...mockAppDetail, name: 'Remote Updated' }
+      const updated = createAppDetailFixture({ ...mockAppDetail, name: 'Remote Updated' })
       const unsubscribe = vi.fn()
       let onUpdate: (() => Promise<void>) | undefined
 
@@ -608,25 +496,15 @@ describe('useAppInfoActions', () => {
       })
       mockFetchAppDetail.mockResolvedValue(updated)
 
-      const { unmount } = renderHook(() => useAppInfoActions({}))
-      await new Promise((resolve) => setTimeout(resolve, 0))
+      const { unmount, queryClient } = renderActions()
+      await waitFor(() => expect(onUpdate).toBeDefined())
 
       await act(async () => {
         await onUpdate?.()
       })
 
-      expect(mockFetchAppDetail).toHaveBeenCalledWith({ url: '/apps', id: 'app-1' })
-      expect(mockSetQueryData).toHaveBeenCalledWith(
-        consoleQuery.apps.byAppId.get.queryKey({
-          input: { params: { app_id: 'app-1' } },
-        }),
-        expect.any(Function),
-      )
-      const updateCachedApp = mockSetQueryData.mock.calls[0]![1]
-      expect(updateCachedApp({ id: 'app-1', name: 'Old name' })).toEqual(
-        expect.objectContaining({ id: 'app-1', name: 'Remote Updated' }),
-      )
-      expect(mockSetAppDetail).toHaveBeenCalledWith(updated)
+      expect(mockFetchAppDetail).toHaveBeenCalledWith(expect.stringContaining('/apps/app-1'))
+      expect(queryClient.getQueryData(appDetailQueryKey)).toEqual(updated)
 
       unmount()
       expect(unsubscribe).toHaveBeenCalled()

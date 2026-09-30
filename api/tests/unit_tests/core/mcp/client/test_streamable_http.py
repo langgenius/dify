@@ -554,7 +554,7 @@ class TestUpdateHeadersWithSession:
 class TestResponseRegistry:
     def test_register_and_unregister(self):
         t = _new_transport()
-        resp = MagicMock(spec=httpx.Response)
+        resp = httpx.Response(200, stream=httpx.ByteStream(b""))
         t._register_response(resp)
         assert resp in t._active_responses
         t._unregister_response(resp)
@@ -562,26 +562,29 @@ class TestResponseRegistry:
 
     def test_unregister_not_registered_does_not_raise(self):
         t = _new_transport()
-        resp = MagicMock(spec=httpx.Response)
+        resp = httpx.Response(200, stream=httpx.ByteStream(b""))
         t._unregister_response(resp)  # Should swallow ValueError silently
 
     def test_close_active_responses_calls_close(self):
         t = _new_transport()
-        resp1 = MagicMock(spec=httpx.Response)
-        resp2 = MagicMock(spec=httpx.Response)
+        resp1 = httpx.Response(200, stream=httpx.ByteStream(b""))
+        resp2 = httpx.Response(200, stream=httpx.ByteStream(b""))
         t._register_response(resp1)
         t._register_response(resp2)
+        assert not resp1.is_closed
+        assert not resp2.is_closed
         t.close_active_responses()
-        resp1.close.assert_called_once()
-        resp2.close.assert_called_once()
+        assert resp1.is_closed
+        assert resp2.is_closed
         assert t._active_responses == []
 
     def test_close_active_responses_swallows_runtime_error(self):
         t = _new_transport()
-        resp = MagicMock(spec=httpx.Response)
-        resp.close.side_effect = RuntimeError("already closed")
+        resp = httpx.Response(200, stream=httpx.ByteStream(b""))
         t._register_response(resp)
-        t.close_active_responses()  # Should not raise
+        with patch.object(resp, "close", side_effect=RuntimeError("already closed")):
+            t.close_active_responses()  # Should not raise
+        resp.close()
 
 
 # ── _is_initialization_request / _is_initialized_notification ────────────────
@@ -798,7 +801,7 @@ class TestHandleResumptionRequestNew:
         session_msg = SessionMessage(message)
         metadata = None
         if resumption_token:
-            metadata = MagicMock(spec=ClientMessageMetadata)
+            metadata = ClientMessageMetadata()
             metadata.resumption_token = resumption_token
             metadata.on_resumption_token_update = MagicMock()
         return RequestContext(
@@ -814,7 +817,7 @@ class TestHandleResumptionRequestNew:
     def test_raises_resumption_error_without_token(self):
         t = _new_transport()
         q: queue.Queue = queue.Queue()
-        metadata = MagicMock(spec=ClientMessageMetadata)
+        metadata = ClientMessageMetadata()
         metadata.resumption_token = None
         ctx = RequestContext(
             client=MagicMock(),
@@ -1226,7 +1229,7 @@ class TestHandleSseResponseNew:
     def test_with_metadata_resumption_callback(self):
         t = _new_transport()
         q: queue.Queue = queue.Queue()
-        metadata = MagicMock(spec=ClientMessageMetadata)
+        metadata = ClientMessageMetadata()
         callback = MagicMock()
         metadata.on_resumption_token_update = callback
 
@@ -1322,7 +1325,7 @@ class TestPostWriterNew:
         start_get_stream = MagicMock()
 
         msg = SessionMessage(_make_request_msg("tools/list", 10))
-        metadata = MagicMock(spec=ClientMessageMetadata)
+        metadata = ClientMessageMetadata()
         metadata.resumption_token = "resume-abc"
         msg.metadata = metadata
         c2s.put(msg)

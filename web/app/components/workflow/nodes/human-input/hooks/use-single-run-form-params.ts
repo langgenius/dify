@@ -29,7 +29,7 @@ const useSingleRunFormParams = ({
   getInputVars,
   setRunInputData,
 }: Params) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow', 'workflowHumanInput'])
   const { inputs } = useNodeCrud<HumanInputNodeType>(id, payload)
   const [showGeneratedForm, setShowGeneratedForm] = useState(false)
   const [formData, setFormData] = useState<HumanInputFormData | null>(null)
@@ -48,7 +48,7 @@ const useSingleRunFormParams = ({
   const forms = useMemo(() => {
     const forms: FormProps[] = [
       {
-        label: t(($) => $[`${i18nPrefix}.singleRun.label`], { ns: 'workflow' })!,
+        label: t(($) => $[`${i18nPrefix}.singleRun.label`], { ns: 'workflowHumanInput' })!,
         inputs: generatedInputs,
         values: runInputData,
         onChange: setRunInputData,

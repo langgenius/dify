@@ -100,7 +100,7 @@ const ConditionItem = ({
     ComparisonOperator.notIn,
   ]
 
-  const { t } = useTranslation(['common', 'workflow'])
+  const { t } = useTranslation(['common', 'workflow', 'workflowLogic'])
   const isChatMode = useIsChatMode()
   const [isHovered, setIsHovered] = useState(false)
   const [open, setOpen] = useState(false)
@@ -196,13 +196,13 @@ const ConditionItem = ({
     if (isSelect) {
       if (fileAttr?.key === 'type' || condition.comparison_operator === ComparisonOperator.allOf) {
         return FILE_TYPE_OPTIONS.map((item) => ({
-          name: t(($) => $[`${optionNameI18NPrefix}.${item.i18nKey}`], { ns: 'workflow' }),
+          name: t(($) => $[`${optionNameI18NPrefix}.${item.i18nKey}`], { ns: 'workflowLogic' }),
           value: item.value,
         }))
       }
       if (fileAttr?.key === 'transfer_method') {
         return TRANSFER_METHOD.map((item) => ({
-          name: t(($) => $[`${optionNameI18NPrefix}.${item.i18nKey}`], { ns: 'workflow' }),
+          name: t(($) => $[`${optionNameI18NPrefix}.${item.i18nKey}`], { ns: 'workflowLogic' }),
           value: item.value,
         }))
       }

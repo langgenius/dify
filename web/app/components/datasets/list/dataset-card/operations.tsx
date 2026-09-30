@@ -25,7 +25,7 @@ const Operations = ({
   openAccessConfig,
   onClose,
 }: OperationsProps) => {
-  const { t } = useTranslation(['common', 'datasetPipeline'])
+  const { t } = useTranslation(['common', 'datasetPipeline', 'navigation'])
 
   const handleRename = () => {
     onClose?.()
@@ -64,7 +64,7 @@ const Operations = ({
       {showAccessConfig && (
         <DropdownMenuItem onClick={handleAccessConfig}>
           <span aria-hidden className="mr-1 i-ri-lock-line size-4 text-text-tertiary" />
-          {t(($) => $['settings.resourceAccess'], { ns: 'common' })}
+          {t(($) => $['settings.resourceAccess'], { ns: 'navigation' })}
         </DropdownMenuItem>
       )}
       {showDelete && (

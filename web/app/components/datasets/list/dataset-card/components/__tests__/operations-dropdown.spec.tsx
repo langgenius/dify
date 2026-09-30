@@ -133,7 +133,7 @@ describe('OperationsDropdown', () => {
 
       fireEvent.click(screen.getByLabelText('Dataset operations'))
 
-      expect(screen.getByText('common.settings.resourceAccess')).toBeInTheDocument()
+      expect(screen.getByText('navigation.settings.resourceAccess')).toBeInTheDocument()
     })
 
     it('should hide resource access option when RBAC is disabled', () => {
@@ -146,7 +146,7 @@ describe('OperationsDropdown', () => {
       fireEvent.click(screen.getByLabelText('Dataset operations'))
 
       expect(screen.getByText('common.operation.delete')).toBeInTheDocument()
-      expect(screen.queryByText('common.settings.resourceAccess')).not.toBeInTheDocument()
+      expect(screen.queryByText('navigation.settings.resourceAccess')).not.toBeInTheDocument()
     })
   })
 
@@ -291,7 +291,7 @@ describe('OperationsDropdown', () => {
       )
 
       fireEvent.click(screen.getByLabelText('Dataset operations'))
-      fireEvent.click(screen.getByText('common.settings.resourceAccess'))
+      fireEvent.click(screen.getByText('navigation.settings.resourceAccess'))
 
       expect(openAccessConfig).toHaveBeenCalledTimes(1)
     })

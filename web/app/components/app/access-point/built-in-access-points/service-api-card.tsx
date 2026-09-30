@@ -1,6 +1,6 @@
 'use client'
 
-import type { AccessPointAppInfo } from '../shared/utils'
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { AccessPointAvailability } from '@/app/components/base/access-point/status'
 import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -12,7 +12,7 @@ import { ServiceApiCardView } from '../shared/service-api-card-view'
 import { getBuiltInAccessUrls } from '../shared/utils'
 
 type ServiceApiAccessPointCardProps = {
-  appInfo: AccessPointAppInfo
+  appInfo: AppDetailWithSite
   availability: AccessPointAvailability
   canManage: boolean
   highlighted?: boolean

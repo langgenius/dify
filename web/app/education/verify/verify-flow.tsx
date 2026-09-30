@@ -196,7 +196,7 @@ function EducationVerifyLoading() {
 }
 
 function EducationVerifiedContent() {
-  const { t } = useTranslation(['common', 'education'])
+  const { t } = useTranslation(['education', 'navigation'])
 
   return (
     <EducationVerifyContent>
@@ -208,7 +208,7 @@ function EducationVerifiedContent() {
         actions={
           <>
             <Link className={buttonVariants({ variant: 'primary' })} href="/?settings=billing">
-              {t(($) => $['settings.billing'], { ns: 'common' })}
+              {t(($) => $['settings.billing'], { ns: 'navigation' })}
             </Link>
             <Link className={buttonVariants({ variant: 'ghost-accent' })} href="/">
               <span className="i-ri-arrow-left-line size-4" aria-hidden="true" />

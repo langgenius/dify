@@ -12,7 +12,7 @@ import useConfig from './use-config'
 const i18nPrefix = 'nodes.assigner'
 
 const Panel: FC<NodePanelProps<AssignerNodeType>> = ({ id, data }) => {
-  const { t } = useTranslation(['common', 'workflow'])
+  const { t } = useTranslation(['common', 'workflowLogic'])
   const handleAddOperationItem = useHandleAddOperationItem()
   const {
     readOnly,
@@ -36,7 +36,7 @@ const Panel: FC<NodePanelProps<AssignerNodeType>> = ({ id, data }) => {
       <div className="flex w-full flex-col items-start justify-center gap-1 self-stretch px-4 py-2">
         <div className="flex items-start gap-2 self-stretch">
           <div className="flex grow flex-col items-start justify-center system-sm-semibold-uppercase text-text-secondary">
-            {t(($) => $[`${i18nPrefix}.variables`], { ns: 'workflow' })}
+            {t(($) => $[`${i18nPrefix}.variables`], { ns: 'workflowLogic' })}
           </div>
           <IconButton
             aria-label={t(($) => $['operation.add'], { ns: 'common' })}

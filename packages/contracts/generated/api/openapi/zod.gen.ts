@@ -398,7 +398,7 @@ export const zImportStatus = z.enum(['completed', 'completed-with-warnings', 'fa
  */
 export const zAppDslImportResponse = z.object({
   app_id: z.string().nullish(),
-  app_mode: z.string().nullish(),
+  app_mode: zAppMode.nullish(),
   current_dsl_version: z.string().optional().default('0.7.0'),
   error: z.string().optional().default(''),
   hints: z.array(zHint).optional(),
@@ -414,7 +414,7 @@ export const zAppDslImportResponse = z.object({
  */
 export const zImport = z.object({
   app_id: z.string().nullish(),
-  app_mode: z.string().nullish(),
+  app_mode: zAppMode.nullish(),
   current_dsl_version: z.string().optional().default('0.7.0'),
   error: z.string().optional().default(''),
   id: z.string(),

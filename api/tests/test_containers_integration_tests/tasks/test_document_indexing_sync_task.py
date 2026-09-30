@@ -15,11 +15,13 @@ import pytest
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 
-from core.indexing_runner import DocumentIsPausedError, IndexingRunner
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
+from services.knowledge.indexing.errors import DocumentIsPausedError
+from services.knowledge.indexing.execution import DocumentIndexingService
+from services.knowledge.resource_scope import DatasetRef
 from tasks.document_indexing_sync_task import document_indexing_sync_task
 
 
@@ -133,14 +135,14 @@ class TestDocumentIndexingSyncTask:
     def mock_external_dependencies(self):
         """Patch only external collaborators; keep DB access real."""
         with (
-            patch("tasks.document_indexing_sync_task.DatasourceProviderService") as mock_datasource_service_class,
+            patch("tasks.document_indexing_sync_task.build_data_source_credentials") as mock_credentials,
             patch("tasks.document_indexing_sync_task.NotionExtractor") as mock_notion_extractor_class,
             patch("tasks.document_indexing_sync_task.IndexProcessorFactory") as mock_index_processor_factory,
-            patch("tasks.document_indexing_sync_task.IndexingRunner") as mock_indexing_runner_class,
+            patch("tasks.document_indexing_sync_task.build_document_indexing_service") as mock_indexing_runner_class,
         ):
             datasource_service = Mock()
             datasource_service.get_datasource_credentials.return_value = {"integration_secret": "test_token"}
-            mock_datasource_service_class.return_value = datasource_service
+            mock_credentials.return_value.providers = datasource_service
 
             notion_extractor = Mock()
             notion_extractor.get_notion_last_edited_time.return_value = "2024-01-02T00:00:00Z"
@@ -150,7 +152,7 @@ class TestDocumentIndexingSyncTask:
             index_processor.clean = Mock()
             mock_index_processor_factory.return_value.init_index_processor.return_value = index_processor
 
-            indexing_runner = Mock(spec=IndexingRunner)
+            indexing_runner = Mock(spec=DocumentIndexingService)
             indexing_runner.run = Mock()
             mock_indexing_runner_class.return_value = indexing_runner
 
@@ -339,16 +341,14 @@ class TestDocumentIndexingSyncTask:
         clean_call_args = mock_external_dependencies["index_processor"].clean.call_args
         assert clean_call_args is not None
         clean_args, clean_kwargs = clean_call_args
-        assert getattr(clean_args[0], "id", None) == context["dataset"].id
+        assert clean_args[0].id == context["dataset"].id
         assert set(clean_args[1]) == set(context["node_ids"])
         assert clean_kwargs.get("with_keywords") is True
         assert clean_kwargs.get("delete_child_chunks") is True
 
-        run_call_args = mock_external_dependencies["indexing_runner"].run.call_args
-        assert run_call_args is not None
-        run_documents = run_call_args[0][0]
-        assert len(run_documents) == 1
-        assert getattr(run_documents[0], "id", None) == context["document"].id
+        mock_external_dependencies["indexing_runner"].run.assert_called_once_with(
+            [DatasetRef(context["tenant"].id, context["dataset"].id).document(context["document"].id)]
+        )
 
     def test_dataset_not_found_during_cleaning(self, db_session_with_containers: Session, mock_external_dependencies):
         """Test that task still updates document and reindexes if dataset vanishes before clean."""
@@ -458,7 +458,7 @@ class TestDocumentIndexingSyncTask:
         clean_call_args = mock_external_dependencies["index_processor"].clean.call_args
         assert clean_call_args is not None
         clean_args, clean_kwargs = clean_call_args
-        assert getattr(clean_args[0], "id", None) == context["dataset"].id
+        assert clean_args[0].id == context["dataset"].id
         assert set(clean_args[1]) == set(context["node_ids"])
         assert clean_kwargs.get("with_keywords") is True
         assert clean_kwargs.get("delete_child_chunks") is True

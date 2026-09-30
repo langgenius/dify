@@ -10,18 +10,40 @@ from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 
 from core.db.session_factory import session_factory
-from core.rag.index_processor.constant.index_type import IndexTechniqueType
-from core.rag.index_processor.index_processor_base import SummaryIndexSettingDict
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
+from core.rag.index_processor.index_processor_base import BaseIndexProcessor, SummaryIndexSettingDict
 from core.workflow.nodes.knowledge_index.exc import KnowledgeIndexNodeError
 from core.workflow.nodes.knowledge_index.protocols import IndexingResultDict, Preview, PreviewItem, QaPreview
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import SegmentStatus
 from services.vector_space_admission_service import VectorSpaceAdmissionService
 
-from .index_processor_factory import IndexProcessorFactory
 from .processor.paragraph_index_processor import ParagraphIndexProcessor
+from .processor.parent_child_index_processor import ParentChildIndexProcessor
+from .processor.qa_index_processor import QAIndexProcessor
 
 logger = logging.getLogger(__name__)
+
+
+class IndexProcessorFactory:
+    """Select the processor for a document's index structure."""
+
+    def __init__(self, index_type: str | None):
+        self._index_type = index_type
+
+    def init_index_processor(self) -> BaseIndexProcessor:
+        """Create a processor for a supported index type."""
+        if not self._index_type:
+            raise ValueError("Index type must be specified.")
+
+        if self._index_type == IndexStructureType.PARAGRAPH_INDEX:
+            return ParagraphIndexProcessor()
+        elif self._index_type == IndexStructureType.QA_INDEX:
+            return QAIndexProcessor()
+        elif self._index_type == IndexStructureType.PARENT_CHILD_INDEX:
+            return ParentChildIndexProcessor()
+        else:
+            raise ValueError(f"Index type {self._index_type} is not supported.")
 
 
 class IndexProcessor:

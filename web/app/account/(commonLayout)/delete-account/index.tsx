@@ -13,7 +13,7 @@ type DeleteAccountProps = {
 }
 
 export default function DeleteAccount(props: DeleteAccountProps) {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['accountSettings'])
   const setCountdownLeftTime = useSetCountdownLeftTime()
 
   const [showVerifyEmail, setShowVerifyEmail] = useState(false)
@@ -42,7 +42,7 @@ export default function DeleteAccount(props: DeleteAccountProps) {
         backdropProps={{ className: 'bg-background-overlay-backdrop backdrop-blur-[6px]' }}
       >
         <DialogTitle className="pr-8 pb-3 title-2xl-semi-bold text-text-primary">
-          {t(($) => $['account.delete'], { ns: 'common' })}
+          {t(($) => $['account.delete'], { ns: 'accountSettings' })}
         </DialogTitle>
         {!showVerifyEmail && (
           <CheckEmail onCancel={props.onCancel} onConfirm={handleEmailCheckSuccess} />

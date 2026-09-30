@@ -8,12 +8,12 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
+import dynamic from 'next/dynamic'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SearchBox from '@/app/components/plugins/marketplace/search-box'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
 import { useCanManageTools } from '@/app/components/tools/hooks/use-tool-permissions'
-import ToolBrowser from '@/app/components/workflow/block-selector/tool-browser'
 import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { createCustomCollection } from '@/service/tools'
@@ -28,6 +28,10 @@ import {
   useInvalidateAllMCPTools,
   useInvalidateAllWorkflowTools,
 } from '@/service/use-tools'
+
+const ToolBrowser = dynamic(() => import('./tool-browser'), {
+  loading: () => <div className="h-24 animate-pulse rounded-lg bg-background-section" />,
+})
 
 type Props = Readonly<
   Pick<PopoverContentProps, 'placement' | 'sideOffset'> & {

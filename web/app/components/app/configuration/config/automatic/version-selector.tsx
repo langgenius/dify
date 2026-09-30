@@ -16,10 +16,10 @@ type VersionSelectorProps = {
 }
 
 const VersionSelector: React.FC<VersionSelectorProps> = ({ versionLen, value, onChange }) => {
-  const { t } = useTranslation(['appDebug'])
+  const { t } = useTranslation(['appGeneration'])
   const moreThanOneVersion = versionLen > 1
   const versions = Array.from({ length: versionLen }, (_, index) => ({
-    label: `${t(($) => $['generate.version'], { ns: 'appDebug' })} ${index + 1}${index === versionLen - 1 ? ` · ${t(($) => $['generate.latest'], { ns: 'appDebug' })}` : ''}`,
+    label: `${t(($) => $['generate.version'], { ns: 'appGeneration' })} ${index + 1}${index === versionLen - 1 ? ` · ${t(($) => $['generate.latest'], { ns: 'appGeneration' })}` : ''}`,
     value: index,
   }))
 
@@ -32,8 +32,8 @@ const VersionSelector: React.FC<VersionSelectorProps> = ({ versionLen, value, on
         className="flex cursor-pointer items-center border-none bg-transparent p-0 system-xs-medium text-text-tertiary data-disabled:cursor-default data-popup-open:text-text-secondary"
       >
         <div>
-          {t(($) => $['generate.version'], { ns: 'appDebug' })} {value + 1}
-          {isLatest && ` · ${t(($) => $['generate.latest'], { ns: 'appDebug' })}`}
+          {t(($) => $['generate.version'], { ns: 'appGeneration' })} {value + 1}
+          {isLatest && ` · ${t(($) => $['generate.latest'], { ns: 'appGeneration' })}`}
         </div>
         {moreThanOneVersion && <RiArrowDownSLine className="size-3" />}
       </DropdownMenuTrigger>
@@ -44,7 +44,7 @@ const VersionSelector: React.FC<VersionSelectorProps> = ({ versionLen, value, on
         className="w-52 rounded-xl border-[0.5px] bg-components-panel-bg-blur p-1"
       >
         <div className="flex h-5.5 items-center px-3 pl-3 system-xs-medium-uppercase text-text-tertiary">
-          {t(($) => $['generate.versions'], { ns: 'appDebug' })}
+          {t(($) => $['generate.versions'], { ns: 'appGeneration' })}
         </div>
         <DropdownMenuRadioGroup
           value={value}

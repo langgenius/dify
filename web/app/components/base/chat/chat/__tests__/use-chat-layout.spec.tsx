@@ -44,7 +44,7 @@ const LayoutHarness = ({
   sidebarCollapseState?: boolean
   attachRefs?: boolean
 }) => {
-  const { width, chatContainerRef, chatContainerInnerRef, chatFooterRef, chatFooterInnerRef } =
+  const { chatContainerRef, chatContainerInnerRef, chatFooterRef, chatFooterInnerRef } =
     useChatLayout({ chatList, sidebarCollapseState })
 
   return (
@@ -85,7 +85,6 @@ const LayoutHarness = ({
           }}
         />
       </div>
-      <output data-testid="layout-width">{width}</output>
     </>
   )
 }
@@ -150,7 +149,6 @@ describe('useChatLayout', () => {
         vi.runAllTimers()
       })
 
-      expect(screen.getByTestId('layout-width')).toHaveTextContent('600')
       expect(screen.getByTestId('chat-footer').style.width).toBe('400px')
       expect(screen.getByTestId('chat-footer-inner').style.width).toBe('360px')
       expect((screen.getByTestId('chat-container') as HTMLDivElement).scrollTop).toBe(640)
@@ -265,7 +263,6 @@ describe('useChatLayout', () => {
         vi.runAllTimers()
       })
 
-      expect(screen.getByTestId('layout-width')).toHaveTextContent('0')
       expect(capturedResizeCallbacks).toHaveLength(0)
       expect(screen.getByTestId('chat-footer').style.width).toBe('')
       expect(screen.getByTestId('chat-footer-inner').style.width).toBe('')

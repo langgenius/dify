@@ -19,8 +19,8 @@ from models.dataset import (
     DatasetPermissionEnum,
 )
 from models.enums import DataSourceType
-from services.dataset_service import DatasetPermissionService, DatasetService
-from services.errors.account import NoPermissionError
+from services.errors.base import NoPermissionError
+from services.knowledge.dataset_service import DatasetPermissionService, DatasetService
 
 
 class DatasetPermissionTestDataFactory:
@@ -55,7 +55,7 @@ class DatasetPermissionTestDataFactory:
         db.session.add(join)
         db.session.commit()
 
-        account.current_tenant = tenant
+        account.set_current_tenant_with_session(tenant, session=db.session)
         return account, tenant
 
     @staticmethod

@@ -35,7 +35,7 @@ function toParmExactParams(toolParams: ToolParameter[], lan: string): Param[] {
   })
 }
 const ImportFromTool: FC<Props> = ({ onImport }) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowModels'])
   const language = useLanguage()
 
   const { data: buildInTools } = useAllBuiltInTools()
@@ -76,7 +76,7 @@ const ImportFromTool: FC<Props> = ({ onImport }) => {
       size="small"
       className="text-text-tertiary data-popup-open:bg-state-base-hover data-popup-open:hover:bg-components-button-ghost-bg-hover"
     >
-      {t(($) => $[`${i18nPrefix}.importFromTool`], { ns: 'workflow' })}
+      {t(($) => $[`${i18nPrefix}.importFromTool`], { ns: 'workflowModels' })}
     </Button>
   )
 

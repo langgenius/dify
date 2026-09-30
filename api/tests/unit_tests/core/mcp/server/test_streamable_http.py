@@ -4,7 +4,7 @@ from unittest.mock import Mock, patch
 import jsonschema
 import pytest
 
-from core.app.features.rate_limiting.rate_limit import RateLimitGenerator
+from core.app.features.rate_limiting.rate_limit import RateLimit, RateLimitGenerator
 from core.mcp import types
 from core.mcp.server.streamable_http import (
     build_parameter_schema,
@@ -48,22 +48,16 @@ class TestHandleMCPRequest:
         self.end_user = EndUser()
         self.user_input_form = []
 
-        # Create mock request
-        self.mock_request = Mock()
-        self.mock_request.root = Mock()
-        self.mock_request.root.id = 123
+        self.request = types.ClientRequest(root=types.PingRequest())
 
     def test_handle_ping_request(self):
         """Test handling ping request"""
         # Setup ping request
-        self.mock_request.root = Mock(spec=types.PingRequest)
-        self.mock_request.root.id = 123
-        request_type = Mock(return_value=types.PingRequest)
+        self.request.root = types.PingRequest()
 
-        with patch("core.mcp.server.streamable_http.type", request_type):
-            result = handle_mcp_request(
-                Mock(), self.app, self.mock_request, self.user_input_form, self.mcp_server, self.end_user, 123
-            )
+        result = handle_mcp_request(
+            Mock(), self.app, self.request, self.user_input_form, self.mcp_server, self.end_user, 123
+        )
 
         assert isinstance(result, types.JSONRPCResponse)
         assert result.jsonrpc == "2.0"
@@ -72,16 +66,17 @@ class TestHandleMCPRequest:
     def test_handle_initialize_request(self):
         """Test handling initialize request"""
         # Setup initialize request
-        self.mock_request.root = Mock(spec=types.InitializeRequest)
-        self.mock_request.root.id = 123
-        self.mock_request.root.params = Mock()
-        self.mock_request.root.params.protocolVersion = "2025-06-18"
-        request_type = Mock(return_value=types.InitializeRequest)
-
-        with patch("core.mcp.server.streamable_http.type", request_type):
-            result = handle_mcp_request(
-                Mock(), self.app, self.mock_request, self.user_input_form, self.mcp_server, self.end_user, 123
+        self.request.root = types.InitializeRequest(
+            params=types.InitializeRequestParams(
+                protocolVersion="2025-06-18",
+                capabilities=types.ClientCapabilities(),
+                clientInfo=types.Implementation(name="test-client", version="1.0"),
             )
+        )
+
+        result = handle_mcp_request(
+            Mock(), self.app, self.request, self.user_input_form, self.mcp_server, self.end_user, 123
+        )
 
         assert isinstance(result, types.JSONRPCResponse)
         assert result.jsonrpc == "2.0"
@@ -90,14 +85,11 @@ class TestHandleMCPRequest:
     def test_handle_list_tools_request(self):
         """Test handling list tools request"""
         # Setup list tools request
-        self.mock_request.root = Mock(spec=types.ListToolsRequest)
-        self.mock_request.root.id = 123
-        request_type = Mock(return_value=types.ListToolsRequest)
+        self.request.root = types.ListToolsRequest()
 
-        with patch("core.mcp.server.streamable_http.type", request_type):
-            result = handle_mcp_request(
-                Mock(), self.app, self.mock_request, self.user_input_form, self.mcp_server, self.end_user, 123
-            )
+        result = handle_mcp_request(
+            Mock(), self.app, self.request, self.user_input_form, self.mcp_server, self.end_user, 123
+        )
 
         assert isinstance(result, types.JSONRPCResponse)
         assert result.jsonrpc == "2.0"
@@ -105,11 +97,10 @@ class TestHandleMCPRequest:
 
     def test_handle_list_tools_request_threads_protocol_version(self):
         """The negotiated version reaches handle_list_tools through the dispatcher."""
-        self.mock_request.root = Mock(spec=types.ListToolsRequest)
-        self.mock_request.root.id = 123
+        self.request.root = types.ListToolsRequest()
 
         result = handle_mcp_request(
-            Mock(), self.app, self.mock_request, self.user_input_form, self.mcp_server, self.end_user, 123, "2025-06-18"
+            Mock(), self.app, self.request, self.user_input_form, self.mcp_server, self.end_user, 123, "2025-06-18"
         )
 
         assert isinstance(result, types.JSONRPCResponse)
@@ -119,11 +110,10 @@ class TestHandleMCPRequest:
 
     def test_handle_list_tools_request_legacy_serialization_unchanged(self):
         """A 2024-11-05 tools/list response serializes without any 2025-06-18 fields."""
-        self.mock_request.root = Mock(spec=types.ListToolsRequest)
-        self.mock_request.root.id = 123
+        self.request.root = types.ListToolsRequest()
 
         result = handle_mcp_request(
-            Mock(), self.app, self.mock_request, self.user_input_form, self.mcp_server, self.end_user, 123, "2024-11-05"
+            Mock(), self.app, self.request, self.user_input_form, self.mcp_server, self.end_user, 123, "2024-11-05"
         )
 
         assert isinstance(result, types.JSONRPCResponse)
@@ -134,22 +124,19 @@ class TestHandleMCPRequest:
     def test_handle_call_tool_request(self, mock_app_generate):
         """Test handling call tool request"""
         # Setup call tool request
-        mock_call_request = Mock(spec=types.CallToolRequest)
-        mock_call_request.params = Mock()
-        mock_call_request.params.arguments = {"query": "test question"}
-        mock_call_request.id = 123
+        call_request = types.CallToolRequest(
+            params=types.CallToolRequestParams(name="test_app", arguments={"query": "test question"})
+        )
 
-        self.mock_request.root = mock_call_request
-        request_type = Mock(return_value=types.CallToolRequest)
+        self.request.root = call_request
 
         # Mock app generate service response
         mock_response = {"answer": "test answer"}
         mock_app_generate.generate.return_value = mock_response
 
-        with patch("core.mcp.server.streamable_http.type", request_type):
-            result = handle_mcp_request(
-                Mock(), self.app, self.mock_request, self.user_input_form, self.mcp_server, self.end_user, 123
-            )
+        result = handle_mcp_request(
+            Mock(), self.app, self.request, self.user_input_form, self.mcp_server, self.end_user, 123
+        )
 
         assert isinstance(result, types.JSONRPCResponse)
         assert result.jsonrpc == "2.0"
@@ -160,17 +147,16 @@ class TestHandleMCPRequest:
 
     @patch("core.mcp.server.streamable_http.AppGenerateService")
     def test_handle_call_tool_returns_trigger_workflow_business_error(self, mock_app_generate):
-        mock_call_request = Mock(spec=types.CallToolRequest)
-        mock_call_request.params = Mock()
-        mock_call_request.params.arguments = {"query": "test question"}
-        mock_call_request.id = 123
-        self.mock_request.root = mock_call_request
+        call_request = types.CallToolRequest(
+            params=types.CallToolRequestParams(name="test_app", arguments={"query": "test question"})
+        )
+        self.request.root = call_request
         mock_app_generate.generate.side_effect = TriggerWorkflowServiceModeUnavailableError()
 
         result = handle_mcp_request(
             Mock(),
             self.app,
-            self.mock_request,
+            self.request,
             self.user_input_form,
             self.mcp_server,
             self.end_user,
@@ -184,16 +170,15 @@ class TestHandleMCPRequest:
     @patch("core.mcp.server.streamable_http.AppGenerateService")
     def test_handle_call_tool_request_threads_protocol_version(self, mock_app_generate):
         """The negotiated version reaches handle_call_tool through the dispatcher."""
-        mock_call_request = Mock(spec=types.CallToolRequest)
-        mock_call_request.params = Mock()
-        mock_call_request.params.arguments = {"query": "test question"}
-        mock_call_request.id = 123
-        self.mock_request.root = mock_call_request
+        call_request = types.CallToolRequest(
+            params=types.CallToolRequestParams(name="test_app", arguments={"query": "test question"})
+        )
+        self.request.root = call_request
 
         mock_app_generate.generate.return_value = {"answer": "test answer"}
 
         result = handle_mcp_request(
-            Mock(), self.app, self.mock_request, self.user_input_form, self.mcp_server, self.end_user, 123, "2025-06-18"
+            Mock(), self.app, self.request, self.user_input_form, self.mcp_server, self.end_user, 123, "2025-06-18"
         )
 
         assert isinstance(result, types.JSONRPCResponse)
@@ -202,16 +187,15 @@ class TestHandleMCPRequest:
     @patch("core.mcp.server.streamable_http.AppGenerateService")
     def test_handle_call_tool_request_legacy_serialization_unchanged(self, mock_app_generate):
         """A 2024-11-05 tools/call response serializes without structuredContent."""
-        mock_call_request = Mock(spec=types.CallToolRequest)
-        mock_call_request.params = Mock()
-        mock_call_request.params.arguments = {"query": "test question"}
-        mock_call_request.id = 123
-        self.mock_request.root = mock_call_request
+        call_request = types.CallToolRequest(
+            params=types.CallToolRequestParams(name="test_app", arguments={"query": "test question"})
+        )
+        self.request.root = call_request
 
         mock_app_generate.generate.return_value = {"answer": "test answer"}
 
         result = handle_mcp_request(
-            Mock(), self.app, self.mock_request, self.user_input_form, self.mcp_server, self.end_user, 123, "2024-11-05"
+            Mock(), self.app, self.request, self.user_input_form, self.mcp_server, self.end_user, 123, "2024-11-05"
         )
 
         assert isinstance(result, types.JSONRPCResponse)
@@ -221,18 +205,12 @@ class TestHandleMCPRequest:
     def test_handle_unknown_request_type(self):
         """Test handling unknown request type"""
 
-        # Setup unknown request
-        class UnknownRequest:
-            pass
+        # A valid request type with no application-side handler.
+        self.request.root = types.ListResourcesRequest()
 
-        self.mock_request.root = Mock(spec=UnknownRequest)
-        self.mock_request.root.id = 123
-        request_type = Mock(return_value=UnknownRequest)
-
-        with patch("core.mcp.server.streamable_http.type", request_type):
-            result = handle_mcp_request(
-                Mock(), self.app, self.mock_request, self.user_input_form, self.mcp_server, self.end_user, 123
-            )
+        result = handle_mcp_request(
+            Mock(), self.app, self.request, self.user_input_form, self.mcp_server, self.end_user, 123
+        )
 
         assert isinstance(result, types.JSONRPCError)
         assert result.jsonrpc == "2.0"
@@ -242,17 +220,10 @@ class TestHandleMCPRequest:
     def test_handle_value_error(self):
         """Test handling ValueError"""
         # Setup request that will cause ValueError
-        self.mock_request.root = Mock(spec=types.CallToolRequest)
-        self.mock_request.root.params = Mock()
-        self.mock_request.root.params.arguments = {}
-
-        request_type = Mock(return_value=types.CallToolRequest)
+        self.request.root = types.CallToolRequest(params=types.CallToolRequestParams(name="test_app", arguments={}))
 
         # Don't provide end_user to cause ValueError
-        with patch("core.mcp.server.streamable_http.type", request_type):
-            result = handle_mcp_request(
-                Mock(), self.app, self.mock_request, self.user_input_form, self.mcp_server, None, 123
-            )
+        result = handle_mcp_request(Mock(), self.app, self.request, self.user_input_form, self.mcp_server, None, 123)
 
         assert isinstance(result, types.JSONRPCError)
         assert result.error.code == types.INVALID_PARAMS
@@ -260,15 +231,13 @@ class TestHandleMCPRequest:
     def test_handle_generic_exception(self):
         """Test handling generic exception"""
         # Setup request that will cause generic exception
-        self.mock_request.root = Mock(spec=types.PingRequest)
-        self.mock_request.root.id = 123
+        self.request.root = types.PingRequest()
 
-        # Patch handle_ping to raise exception instead of type
+        # Inject the handler failure while preserving normal request dispatch.
         with patch("core.mcp.server.streamable_http.handle_ping", side_effect=Exception("Test error")):
-            with patch("core.mcp.server.streamable_http.type", return_value=types.PingRequest):
-                result = handle_mcp_request(
-                    Mock(), self.app, self.mock_request, self.user_input_form, self.mcp_server, self.end_user, 123
-                )
+            result = handle_mcp_request(
+                Mock(), self.app, self.request, self.user_input_form, self.mcp_server, self.end_user, 123
+            )
 
         assert isinstance(result, types.JSONRPCError)
         assert result.error.code == types.INTERNAL_ERROR
@@ -361,12 +330,10 @@ class TestIndividualHandlers:
             mode=AppMode.CHAT,
         )
 
-        # Create mock request
-        mock_request = Mock()
-        mock_call_request = Mock(spec=types.CallToolRequest)
-        mock_call_request.params = Mock()
-        mock_call_request.params.arguments = {"query": "test question"}
-        mock_request.root = mock_call_request
+        call_request = types.CallToolRequest(
+            params=types.CallToolRequestParams(name="test_app", arguments={"query": "test question"})
+        )
+        request = types.ClientRequest(root=call_request)
 
         user_input_form: list[VariableEntity] = []
         end_user = EndUser()
@@ -375,7 +342,7 @@ class TestIndividualHandlers:
         mock_response = {"answer": "test answer"}
         mock_app_generate.generate.return_value = mock_response
 
-        result = handle_call_tool(Mock(), app, mock_request, user_input_form, end_user)
+        result = handle_call_tool(Mock(), app, request, user_input_form, end_user)
 
         assert isinstance(result, types.CallToolResult)
         assert len(result.content) == 1
@@ -391,15 +358,14 @@ class TestIndividualHandlers:
             mode=AppMode.CHAT,
         )
 
-        mock_request = Mock()
-        mock_call_request = Mock(spec=types.CallToolRequest)
-        mock_call_request.params = Mock()
-        mock_call_request.params.arguments = {"query": "test question"}
-        mock_request.root = mock_call_request
+        call_request = types.CallToolRequest(
+            params=types.CallToolRequestParams(name="test_app", arguments={"query": "test question"})
+        )
+        request = types.ClientRequest(root=call_request)
 
         mock_app_generate.generate.return_value = {"answer": "test answer"}
 
-        result = handle_call_tool(Mock(), app, mock_request, [], EndUser(), "2025-06-18")
+        result = handle_call_tool(Mock(), app, request, [], EndUser(), "2025-06-18")
 
         assert result.structuredContent == {"answer": "test answer"}
         assert result.content[0].text == "test answer"
@@ -411,15 +377,14 @@ class TestIndividualHandlers:
             mode=AppMode.CHAT,
         )
 
-        mock_request = Mock()
-        mock_call_request = Mock(spec=types.CallToolRequest)
-        mock_call_request.params = Mock()
-        mock_call_request.params.arguments = {"query": "test question"}
-        mock_request.root = mock_call_request
+        call_request = types.CallToolRequest(
+            params=types.CallToolRequestParams(name="test_app", arguments={"query": "test question"})
+        )
+        request = types.ClientRequest(root=call_request)
 
         mock_app_generate.generate.return_value = {"answer": "test answer"}
 
-        result = handle_call_tool(Mock(), app, mock_request, [], EndUser(), "2024-11-05")
+        result = handle_call_tool(Mock(), app, request, [], EndUser(), "2024-11-05")
 
         assert result.structuredContent is None
         assert result.content[0].text == "test answer"
@@ -427,11 +392,11 @@ class TestIndividualHandlers:
     def test_handle_call_tool_no_end_user(self):
         """Test call tool handler without end user"""
         app = App()
-        mock_request = Mock()
+        request = types.ClientRequest(root=types.CallToolRequest(params=types.CallToolRequestParams(name="test_app")))
         user_input_form: list[VariableEntity] = []
 
         with pytest.raises(ValueError, match="End user not found"):
-            handle_call_tool(Mock(), app, mock_request, user_input_form, None)
+            handle_call_tool(Mock(), app, request, user_input_form, None)
 
 
 class TestUtilityFunctions:
@@ -548,20 +513,26 @@ class TestUtilityFunctions:
         expected = json.dumps({"result": "test result"}, ensure_ascii=False)
         assert result == expected
 
-    def test_extract_answer_from_streaming_response(self):
+    def test_extract_answer_from_streaming_response(self, monkeypatch: pytest.MonkeyPatch):
         """Test extracting answer from streaming response"""
         app = App()
 
-        # Mock RateLimitGenerator
-        mock_generator = Mock(spec=RateLimitGenerator)
-        mock_generator.generator = [
+        events = [
             'data: {"event": "agent_thought", "thought": "thinking..."}',
             'data: {"event": "agent_thought", "thought": "more thinking"}',
             'data: {"event": "other", "content": "ignore this"}',
             "not data format",
         ]
 
-        result = extract_answer_from_response(app, mock_generator)
+        monkeypatch.setattr(RateLimit, "_instance_dict", {})
+        rate_limit = RateLimit(client_id="mcp-stream-fixture", max_active_requests=0)
+        response = RateLimitGenerator(
+            rate_limit=rate_limit, generator=(item for item in events), request_id=rate_limit.enter()
+        )
+        try:
+            result = extract_answer_from_response(app, response)
+        finally:
+            response.close()
 
         assert result == "thinking...more thinking"
 

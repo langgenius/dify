@@ -37,7 +37,7 @@ type Props = {
 }
 
 const LoopResultPanel: FC<Props> = ({ list, onBack, loopDurationMap, loopVariableMap }) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow', 'workflowLogic'])
   const [expandedLoops, setExpandedLoops] = useState<Record<number, boolean>>({})
 
   const toggleLoop = useCallback((index: number) => {
@@ -144,7 +144,7 @@ const LoopResultPanel: FC<Props> = ({ list, onBack, loopDurationMap, loopVariabl
                     title={
                       <div>
                         {t(($) => $['nodes.loop.loopVariables'], {
-                          ns: 'workflow',
+                          ns: 'workflowLogic',
                         }).toLocaleUpperCase()}
                       </div>
                     }

@@ -29,7 +29,7 @@ const LLMParamsPanel = ({
   completionParams,
   onCompletionParamsChange,
 }: Props) => {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['modelProvider'])
   const { data: parameterRulesData, isLoading } = useModelParameterRules(provider, modelId)
   const isRulesLoading = !!provider && !!modelId && isLoading
 
@@ -79,7 +79,7 @@ const LLMParamsPanel = ({
     <>
       <div className="mb-2 flex items-center justify-between">
         <div className={cn('flex h-6 items-center system-sm-semibold text-text-secondary')}>
-          {t(($) => $['modelProvider.parameters'], { ns: 'common' })}
+          {t(($) => $['modelProvider.parameters'], { ns: 'modelProvider' })}
         </div>
         {PROVIDER_WITH_PRESET_TONE.includes(provider) && (
           <PresetsParameter

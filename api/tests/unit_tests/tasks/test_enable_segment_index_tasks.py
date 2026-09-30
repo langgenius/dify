@@ -94,7 +94,7 @@ def test_enable_segment_commits_index_rows_after_loading(
         _record_transaction_events(sqlite_session_factory, phase_events),
         patch("tasks.enable_segment_to_index_task.IndexProcessorFactory") as processor_factory,
         patch(
-            "services.summary_index_service.SummaryIndexService.enable_summaries_for_segments",
+            "services.knowledge.summaries.adapters.SummaryIndexAdapter.enable_summaries_for_segments",
             enable_summaries,
         ),
         patch("tasks.enable_segment_to_index_task.redis_client.delete"),
@@ -126,7 +126,9 @@ def test_enable_segment_rolls_back_before_error_compensation(
     with (
         _record_transaction_events(sqlite_session_factory, phase_events),
         patch("tasks.enable_segment_to_index_task.IndexProcessorFactory") as processor_factory,
-        patch("services.summary_index_service.SummaryIndexService.enable_summaries_for_segments") as enable_summaries,
+        patch(
+            "services.knowledge.summaries.adapters.SummaryIndexAdapter.enable_summaries_for_segments"
+        ) as enable_summaries,
         patch("tasks.enable_segment_to_index_task.redis_client.delete"),
     ):
         processor_factory.return_value.init_index_processor.return_value = index_processor
@@ -157,7 +159,7 @@ def test_enable_segments_commits_index_rows_after_loading(
         _record_transaction_events(sqlite_session_factory, phase_events),
         patch("tasks.enable_segments_to_index_task.IndexProcessorFactory") as processor_factory,
         patch(
-            "services.summary_index_service.SummaryIndexService.enable_summaries_for_segments",
+            "services.knowledge.summaries.adapters.SummaryIndexAdapter.enable_summaries_for_segments",
             enable_summaries,
         ),
         patch("tasks.enable_segments_to_index_task.redis_client.delete"),
@@ -189,7 +191,9 @@ def test_enable_segments_rolls_back_before_error_compensation(
     with (
         _record_transaction_events(sqlite_session_factory, phase_events),
         patch("tasks.enable_segments_to_index_task.IndexProcessorFactory") as processor_factory,
-        patch("services.summary_index_service.SummaryIndexService.enable_summaries_for_segments") as enable_summaries,
+        patch(
+            "services.knowledge.summaries.adapters.SummaryIndexAdapter.enable_summaries_for_segments"
+        ) as enable_summaries,
         patch("tasks.enable_segments_to_index_task.redis_client.delete"),
     ):
         processor_factory.return_value.init_index_processor.return_value = index_processor

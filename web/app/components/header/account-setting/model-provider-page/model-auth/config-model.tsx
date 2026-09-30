@@ -20,7 +20,7 @@ const ConfigModel = ({
   loadBalancingInvalid,
   credentialRemoved,
 }: ConfigModelProps) => {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['common', 'modelProvider'])
 
   if (loadBalancingInvalid) {
     return (
@@ -33,7 +33,7 @@ const ConfigModel = ({
         onClick={onClick}
       >
         <span aria-hidden className="i-ri-scales-3-line size-3" />
-        {t(($) => $['modelProvider.auth.authorizationError'], { ns: 'common' })}
+        {t(($) => $['modelProvider.auth.authorizationError'], { ns: 'modelProvider' })}
         <StatusDot status="warning" className="absolute -top-px -right-px size-1.5" />
       </Button>
     )
@@ -50,7 +50,7 @@ const ConfigModel = ({
     >
       {credentialRemoved && (
         <>
-          {t(($) => $['modelProvider.auth.credentialRemoved'], { ns: 'common' })}
+          {t(($) => $['modelProvider.auth.credentialRemoved'], { ns: 'modelProvider' })}
           <StatusDot status="error" />
         </>
       )}
@@ -63,7 +63,7 @@ const ConfigModel = ({
       {loadBalancingEnabled && !credentialRemoved && !loadBalancingInvalid && (
         <>
           <span aria-hidden className="i-ri-scales-3-line size-4" />
-          {t(($) => $['modelProvider.auth.configLoadBalancing'], { ns: 'common' })}
+          {t(($) => $['modelProvider.auth.configLoadBalancing'], { ns: 'modelProvider' })}
         </>
       )}
     </Button>

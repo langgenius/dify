@@ -14,7 +14,7 @@ type Props = Readonly<{
 }>
 
 const ResolutionPicker: FC<Props> = ({ value, onChange }) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowModels'])
 
   const handleOnChange = useCallback(
     (value: Resolution) => {
@@ -27,16 +27,16 @@ const ResolutionPicker: FC<Props> = ({ value, onChange }) => {
   return (
     <div className="flex items-center justify-between">
       <div className="mr-2 text-xs font-medium text-text-secondary uppercase">
-        {t(($) => $[`${i18nPrefix}.resolution.name`], { ns: 'workflow' })}
+        {t(($) => $[`${i18nPrefix}.resolution.name`], { ns: 'workflowModels' })}
       </div>
       <div className="flex items-center space-x-1">
         <OptionCard
-          title={t(($) => $[`${i18nPrefix}.resolution.high`], { ns: 'workflow' })}
+          title={t(($) => $[`${i18nPrefix}.resolution.high`], { ns: 'workflowModels' })}
           onSelect={handleOnChange(Resolution.high)}
           selected={value === Resolution.high}
         />
         <OptionCard
-          title={t(($) => $[`${i18nPrefix}.resolution.low`], { ns: 'workflow' })}
+          title={t(($) => $[`${i18nPrefix}.resolution.low`], { ns: 'workflowModels' })}
           onSelect={handleOnChange(Resolution.low)}
           selected={value === Resolution.low}
         />

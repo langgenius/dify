@@ -18,7 +18,7 @@ type IInvitedModalProps = {
   onCancel: () => void
 }
 const InvitedModal = ({ invitationResults, onCancel }: IInvitedModalProps) => {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['common', 'workspaceMembers'])
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
@@ -41,7 +41,7 @@ const InvitedModal = ({ invitationResults, onCancel }: IInvitedModalProps) => {
     failedInvitationResults.length === 0
   const description = t(
     ($) => $[onlyAlreadyMembers ? 'members.alreadyInTeamTip' : 'members.invitationSentTip'],
-    { ns: 'common' },
+    { ns: 'workspaceMembers' },
   )
 
   return (
@@ -72,7 +72,7 @@ const InvitedModal = ({ invitationResults, onCancel }: IInvitedModalProps) => {
           {t(
             ($) =>
               $[onlyAlreadyMembers ? 'members.noNewInvitationsSent' : 'members.invitationSent'],
-            { ns: 'common' },
+            { ns: 'workspaceMembers' },
           )}
         </DialogTitle>
         {isCloudEdition && <div className="mb-5 text-sm text-text-tertiary">{description}</div>}
@@ -85,7 +85,7 @@ const InvitedModal = ({ invitationResults, onCancel }: IInvitedModalProps) => {
               {isNonCloudEdition && !!successInvitationResults.length && (
                 <>
                   <div className="py-2 text-sm font-medium text-text-primary">
-                    {t(($) => $['members.invitationLink'], { ns: 'common' })}
+                    {t(($) => $['members.invitationLink'], { ns: 'workspaceMembers' })}
                   </div>
                   {successInvitationResults.map((item) => (
                     <InvitationLink key={item.email} value={item} />
@@ -95,11 +95,11 @@ const InvitedModal = ({ invitationResults, onCancel }: IInvitedModalProps) => {
               {!!alreadyMemberInvitationResults.length && (
                 <>
                   <div className="py-2 text-sm font-medium text-text-primary">
-                    {t(($) => $['members.alreadyInTeam'], { ns: 'common' })}
+                    {t(($) => $['members.alreadyInTeam'], { ns: 'workspaceMembers' })}
                   </div>
                   {!onlyAlreadyMembers && (
                     <div className="text-sm text-text-tertiary">
-                      {t(($) => $['members.alreadyInTeamTip'], { ns: 'common' })}
+                      {t(($) => $['members.alreadyInTeamTip'], { ns: 'workspaceMembers' })}
                     </div>
                   )}
                   <div className="flex flex-wrap justify-between gap-y-1">
@@ -117,7 +117,7 @@ const InvitedModal = ({ invitationResults, onCancel }: IInvitedModalProps) => {
               {isNonCloudEdition && !!failedInvitationResults.length && (
                 <>
                   <div className="py-2 text-sm font-medium text-text-primary">
-                    {t(($) => $['members.failedInvitationEmails'], { ns: 'common' })}
+                    {t(($) => $['members.failedInvitationEmails'], { ns: 'workspaceMembers' })}
                   </div>
                   <div className="flex flex-wrap justify-between gap-y-1">
                     {failedInvitationResults.map((item) => (
@@ -146,7 +146,7 @@ const InvitedModal = ({ invitationResults, onCancel }: IInvitedModalProps) => {
         )}
         <div className="flex justify-end">
           <Button className="w-24" onClick={onCancel} variant="primary">
-            {t(($) => $['members.ok'], { ns: 'common' })}
+            {t(($) => $['members.ok'], { ns: 'workspaceMembers' })}
           </Button>
         </div>
       </DialogContent>

@@ -395,10 +395,9 @@ class AgentRosterService:
 
         Unlike :meth:`create_roster_agent`, this does not commit: the caller
         (``AppService.create_app``) owns the surrounding transaction so the App
-        row and its backing Agent are persisted atomically. A default (empty)
-        Agent Soul is seeded; the user configures model/prompt/tools afterward in
-        the Composer. Importers may provide a portable Soul and provenance while
-        retaining the same one-App-to-one-Agent transaction boundary.
+        row and its backing Agent are persisted atomically. The caller supplies
+        the initial Agent Soul, or an empty one is seeded. Importers may provide
+        a portable Soul and provenance while retaining the same transaction boundary.
         """
         soul = initial_soul or AgentSoulConfig()
         agent = Agent(

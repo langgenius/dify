@@ -99,7 +99,7 @@ export function useWorkflowInlineAgentDetail(
 }
 
 export function useCreateInlineAgentBinding() {
-  const { t } = useTranslation(['agentV2'])
+  const { t } = useTranslation(['agentV2', 'agentRoster'])
   const configsMap = useHooksStore((state) => state.configsMap)
   const agentScope = useInlineAgentScope()
   const { data: defaultModel } = useDefaultModel(ModelTypeEnum.textGeneration)
@@ -118,7 +118,7 @@ export function useCreateInlineAgentBinding() {
         !configsMap?.flowId ||
         (configsMap.flowType !== FlowType.appFlow && configsMap.flowType !== FlowType.snippet)
       ) {
-        toast.error(t(($) => $['roster.nodeSelector.createInlineFailed']))
+        toast.error(t(($) => $['roster.nodeSelector.createInlineFailed'], { ns: 'agentRoster' }))
         options?.onError?.()
         return
       }
@@ -158,7 +158,7 @@ export function useCreateInlineAgentBinding() {
           !binding.agent_id ||
           !binding.current_snapshot_id
         ) {
-          toast.error(t(($) => $['roster.nodeSelector.createInlineFailed']))
+          toast.error(t(($) => $['roster.nodeSelector.createInlineFailed'], { ns: 'agentRoster' }))
           options?.onError?.()
           return
         }

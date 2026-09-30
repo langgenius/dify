@@ -95,6 +95,7 @@ describe('Configure Component', () => {
       }
       render(<Configure item={itemWithApiKey} pluginPayload={mockPluginPayload} />)
       const trigger = screen.getByRole('button', { name: /dataSource.configure/i })
+      expect(trigger).toHaveAccessibleName('common.dataSource.configure Test Label')
 
       // Assert: Initially closed (button from content should not be present)
       expect(screen.queryByTestId('add-api-key')).not.toBeInTheDocument()

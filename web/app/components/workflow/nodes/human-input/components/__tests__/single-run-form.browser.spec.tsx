@@ -3,7 +3,7 @@ import SingleRunForm from '../single-run-form'
 
 vi.mock('react-i18next', async () => {
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
-  return createReactI18nextMock({ 'workflow.nodes.humanInput.singleRun.back': 'Back' })
+  return createReactI18nextMock({ 'workflowHumanInput.nodes.humanInput.singleRun.back': 'Back' })
 })
 
 it('keeps the full node name inside the form panel', async () => {

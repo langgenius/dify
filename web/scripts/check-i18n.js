@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import data from '../i18n/languages.ts'
+import { getTranslationSourceKey } from './check-i18n-plurals.ts'
 import { findValueIssues, formatValueIssue } from './check-i18n-values.ts'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -252,13 +253,12 @@ async function main() {
         )
       : allLanguagesKeys
 
-    const keysCount = languagesKeys.map((keys) => keys.length)
-    const targetKeysCount = targetKeys.length
-
+    const sourceKeys = new Set(targetKeys)
     const comparison = languagesToProcess.reduce((result, language, index) => {
-      const languageKeysCount = keysCount[index]
-      const difference = targetKeysCount - languageKeysCount
-      result[language] = difference
+      const keys = languagesKeys[index]
+      const missing = targetKeys.filter((key) => !keys.includes(key))
+      const extra = keys.filter((key) => !getTranslationSourceKey(sourceKeys, key, language))
+      result[language] = missing.length - extra.length
       return result
     }, {})
 
@@ -269,7 +269,9 @@ async function main() {
       const language = languagesToProcess[index]
       const languageKeys = languagesKeys[index]
       const missingKeys = targetKeys.filter((key) => !languageKeys.includes(key))
-      const extraKeys = languageKeys.filter((key) => !targetKeys.includes(key))
+      const extraKeys = languageKeys.filter(
+        (key) => !getTranslationSourceKey(sourceKeys, key, language),
+      )
 
       console.log(`Missing keys in ${language}:`, missingKeys)
       if (missingKeys.length > 0) hasDiff = true
@@ -321,7 +323,7 @@ async function main() {
         const translation = readLocaleFile(language, fileName)
         if (!source || !translation) continue
 
-        for (const issue of findValueIssues(source, translation))
+        for (const issue of findValueIssues(source, translation, language))
           issueLines.push(formatValueIssue(fileName, issue))
       }
 

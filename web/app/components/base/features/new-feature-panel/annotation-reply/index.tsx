@@ -22,7 +22,7 @@ type Props = Readonly<{
 }>
 
 const AnnotationReply = ({ disabled, onChange }: Props) => {
-  const { t } = useTranslation(['appDebug', 'common'])
+  const { t } = useTranslation(['appDebug', 'common', 'modelProvider'])
   const pathname = usePathname()
   const matched = /\/app\/([^/]+)/.exec(pathname)
   const appId = matched?.length && matched[1] ? matched[1] : ''
@@ -112,7 +112,7 @@ const AnnotationReply = ({ disabled, onChange }: Props) => {
                   <div className="h-6.75 w-px rotate-12 bg-divider-subtle"></div>
                   <div className="">
                     <div className="mb-0.5 system-2xs-medium-uppercase text-text-tertiary">
-                      {t(($) => $['modelProvider.embeddingModel.key'], { ns: 'common' })}
+                      {t(($) => $['modelProvider.embeddingModel.key'], { ns: 'modelProvider' })}
                     </div>
                     <div className="system-xs-regular text-text-secondary">
                       {annotationReply.embedding_model?.embedding_model_name}

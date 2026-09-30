@@ -262,7 +262,7 @@ vi.mock('@/hooks/use-pay', () => ({
   CheckModal: () => null,
 }))
 
-vi.mock('@/next/dynamic', () => ({
+vi.mock('next/dynamic', () => ({
   default: (importFn: () => Promise<unknown>) => {
     const fnString = importFn.toString()
 
@@ -1090,7 +1090,7 @@ describe('List', () => {
       const searchBox = screen.getByRole('searchbox', {
         name: 'app.gotoAnything.actions.searchApplications',
       })
-      const scrollContainer = screen.getByRole('region', { name: 'common.menus.apps' })
+      const scrollContainer = screen.getByRole('region', { name: 'navigation.menus.apps' })
       expect(scrollContainer).not.toContainElement(searchBox)
       const scrollTo = vi.fn()
       scrollContainer.scrollTo = scrollTo

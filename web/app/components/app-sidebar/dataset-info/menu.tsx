@@ -26,7 +26,7 @@ const Menu = ({
   detectIsUsedByApp,
   openAccessConfig,
 }: MenuProps) => {
-  const { t } = useTranslation(['common', 'datasetPipeline'])
+  const { t } = useTranslation(['common', 'datasetPipeline', 'navigation'])
   const runtimeMode = useDatasetDetailContextWithSelector((state) => state.dataset?.runtime_mode)
 
   return (
@@ -49,7 +49,7 @@ const Menu = ({
         {showAccessConfig && (
           <MenuItem
             Icon={RiLock2Line}
-            name={t(($) => $['settings.resourceAccess'], { ns: 'common' })}
+            name={t(($) => $['settings.resourceAccess'], { ns: 'navigation' })}
             handleClick={openAccessConfig}
           />
         )}

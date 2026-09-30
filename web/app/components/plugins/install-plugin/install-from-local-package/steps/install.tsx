@@ -126,7 +126,7 @@ const Installed: FC<Props> = ({
             <p className="flex items-center gap-1 system-md-regular text-text-warning">
               {t(($) => $.difyVersionNotCompatible, {
                 ns: 'plugin',
-                minimalDifyVersion: payload.meta.minimum_dify_version,
+                minimalDifyVersion: payload.meta.minimum_dify_version ?? '0.0.0',
               })}
             </p>
           )}

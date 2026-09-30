@@ -10,7 +10,7 @@ import { VersionHistoryContextMenuOptions } from '../../../types'
 
 const useActionMenu = (props: ActionMenuProps) => {
   const { workflowId, isNamedVersion, canImportExportDSL } = props
-  const { t } = useTranslation(['app', 'common', 'workflow'])
+  const { t } = useTranslation(['app', 'common', 'workflow', 'workflowHistory'])
   const pipelineId = useStore((s) => s.pipelineId)
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { data: plan } = useQuery(
@@ -37,11 +37,11 @@ const useActionMenu = (props: ActionMenuProps) => {
       isNamedVersion
         ? {
             key: VersionHistoryContextMenuOptions.edit,
-            name: t(($) => $['versionHistory.editVersionInfo'], { ns: 'workflow' }),
+            name: t(($) => $['versionHistory.editVersionInfo'], { ns: 'workflowHistory' }),
           }
         : {
             key: VersionHistoryContextMenuOptions.edit,
-            name: t(($) => $['versionHistory.nameThisVersion'], { ns: 'workflow' }),
+            name: t(($) => $['versionHistory.nameThisVersion'], { ns: 'workflowHistory' }),
           },
       // todo: pipeline support export specific version DSL
       ...(canImportExportDSL && !pipelineId
@@ -56,7 +56,7 @@ const useActionMenu = (props: ActionMenuProps) => {
         : []),
       {
         key: VersionHistoryContextMenuOptions.copyId,
-        name: t(($) => $['versionHistory.copyId'], { ns: 'workflow' }),
+        name: t(($) => $['versionHistory.copyId'], { ns: 'workflowHistory' }),
         description: workflowId,
       },
     ]

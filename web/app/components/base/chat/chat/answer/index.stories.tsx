@@ -19,15 +19,10 @@ const meta = {
         'If set to true, some buttons that are supposed to be shown on hover will not be displayed.',
     },
     responding: { control: 'boolean', description: 'Indicates if the answer is being generated.' },
-    showPromptLog: {
-      control: 'boolean',
-      description: 'If set to true, the prompt log button will be shown on hover.',
-    },
   },
   args: {
     noChatInput: false,
     responding: false,
-    showPromptLog: false,
   },
 } satisfies Meta<typeof Answer>
 

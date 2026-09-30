@@ -1,4 +1,4 @@
-import type * as React from 'react'
+import * as React from 'react'
 import { render } from 'vitest-browser-react'
 import {
   ScrollArea,
@@ -105,7 +105,7 @@ describe('scroll area', () => {
 
     it('should keep accessible region semantics on the viewport', async () => {
       const screen = await render(
-        <>
+        <React.Fragment>
           <p id="installed-apps-label">Installed apps</p>
           <ScrollArea className="h-40 w-40" data-testid="scroll-area-root">
             <ScrollAreaViewport
@@ -121,7 +121,7 @@ describe('scroll area', () => {
               <ScrollAreaThumb />
             </ScrollAreaScrollbar>
           </ScrollArea>
-        </>,
+        </React.Fragment>,
       )
 
       const viewport = screen.getByRole('region', { name: 'Installed apps' })
