@@ -1,17 +1,17 @@
 """add max active requests to tenants
 
 Revision ID: a7f3c9d2e1b4
-Revises: a4f2d8c9b731
+Revises: e7b2a9c4d601
 Create Date: 2026-06-16 12:00:00.000000
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 
-
 # revision identifiers, used by Alembic.
 revision = "a7f3c9d2e1b4"
-down_revision = "a4f2d8c9b731"
+down_revision = "e7b2a9c4d601"
 branch_labels = None
 depends_on = None
 

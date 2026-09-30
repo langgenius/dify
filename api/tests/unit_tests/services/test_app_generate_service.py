@@ -303,22 +303,22 @@ class TestGetMaxActiveRequests:
 
 
 class TestGetWorkspaceMaxActiveRequests:
-    def test_reads_limit_from_current_workspace(self):
+    def test_reads_limit_from_current_workspace(self, mocker: MockerFixture):
         app = _make_app(AppMode.CHAT)
         tenant = Tenant(name="Workspace")
         tenant.max_active_requests = 9
-        session = MagicMock(spec=Session)
-        session.get.return_value = tenant
+        with Session() as session:
+            get_tenant = mocker.patch.object(session, "get", return_value=tenant)
 
-        assert AppGenerateService._get_workspace_max_active_requests(app, session=session) == 9
-        session.get.assert_called_once_with(Tenant, "tenant-id")
+            assert AppGenerateService._get_workspace_max_active_requests(app, session=session) == 9
+            get_tenant.assert_called_once_with(Tenant, "tenant-id")
 
-    def test_missing_workspace_is_unlimited(self):
+    def test_missing_workspace_is_unlimited(self, mocker: MockerFixture):
         app = _make_app(AppMode.CHAT)
-        session = MagicMock(spec=Session)
-        session.get.return_value = None
+        with Session() as session:
+            mocker.patch.object(session, "get", return_value=None)
 
-        assert AppGenerateService._get_workspace_max_active_requests(app, session=session) == 0
+            assert AppGenerateService._get_workspace_max_active_requests(app, session=session) == 0
 
 
 # ---------------------------------------------------------------------------
