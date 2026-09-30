@@ -1,21 +1,72 @@
+import inspect
+from types import SimpleNamespace
+from unittest.mock import MagicMock
+from uuid import uuid4
+
 import pytest
+from flask import Flask
 from werkzeug.exceptions import Forbidden
 
-from controllers.console.resource_access_token import _require_owner
-from models.account import Account, TenantAccountRole
+from controllers.console import flask_admission
+from controllers.console import resource_access_token as controller
+from libs.login import AccountWithTenant
+from models.account import TenantAccountRole
+from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.model_factories import make_account
+
+_ENDPOINTS = [
+    controller.ResourceAccessTokenListApi.get,
+    controller.ResourceAccessTokenListApi.post,
+    controller.ResourceAccessTokenApi.patch,
+    controller.ResourceAccessTokenRelationApi.delete,
+]
 
 
-def test_require_owner_allows_owner() -> None:
-    account = Account(name="Owner", email="owner@example.com")
-    account.role = TenantAccountRole.OWNER
-    _require_owner(account)
+def _admission_injector(method):
+    while "inject_request_context" not in method.__code__.co_qualname:
+        method = method.__wrapped__
+    return method
 
 
-def test_require_owner_rejects_non_owner() -> None:
-    account = Account(name="Admin", email="admin@example.com")
-    account.role = TenantAccountRole.ADMIN
-    with pytest.raises(Forbidden):
-        _require_owner(account)
+def _admit_as(monkeypatch: pytest.MonkeyPatch, role: TenantAccountRole) -> None:
+    account = make_account(name="Test User", email="user@example.com", role=role)
+    account.id = "account-1"
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=False)
+    monkeypatch.setattr(
+        flask_admission,
+        "current_account_with_tenant",
+        lambda: AccountWithTenant(account=account, tenant_id="tenant-1"),
+    )
+
+
+@pytest.mark.parametrize("method", _ENDPOINTS)
+def test_endpoints_declare_owner_only_admission(method) -> None:
+    allowed_roles = inspect.getclosurevars(_admission_injector(method)).nonlocals["allowed_roles"]
+    assert allowed_roles == frozenset({TenantAccountRole.OWNER})
+
+
+@pytest.mark.parametrize("method", _ENDPOINTS)
+@pytest.mark.parametrize("role", [TenantAccountRole.ADMIN, TenantAccountRole.EDITOR, TenantAccountRole.NORMAL])
+def test_endpoints_reject_non_owner(monkeypatch: pytest.MonkeyPatch, method, role: TenantAccountRole) -> None:
+    _admit_as(monkeypatch, role)
+    with Flask(__name__).test_request_context(), pytest.raises(Forbidden):
+        _admission_injector(method)(None)
+
+
+def test_owner_is_admitted_with_request_context(monkeypatch: pytest.MonkeyPatch) -> None:
+    _admit_as(monkeypatch, TenantAccountRole.OWNER)
+    tokens = MagicMock()
+    monkeypatch.setattr(controller, "application_services", lambda: SimpleNamespace(resource_access_tokens=tokens))
+    injector = _admission_injector(controller.ResourceAccessTokenRelationApi.delete)
+    token_id, relation_id = uuid4(), uuid4()
+
+    with Flask(__name__).test_request_context():
+        result = injector(controller.ResourceAccessTokenRelationApi(), token_id=token_id, relation_id=relation_id)
+
+    assert result == ("", 204)
+    context = tokens.delete_relation.call_args.args[0]
+    assert (context.account_id, context.active_workspace_id) == ("account-1", "tenant-1")
+    tokens.delete_relation.assert_called_once_with(context, token_id=str(token_id), relation_id=str(relation_id))
 
 
 @pytest.mark.parametrize(

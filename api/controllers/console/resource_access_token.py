@@ -5,26 +5,17 @@ from uuid import UUID
 
 from flask_restx import Resource
 from pydantic import Field, field_validator
-from werkzeug.exceptions import Forbidden
 
 from constants.resource_access_token import ResourceAccessTokenResourceType
 from controllers.common.resource_access_token_errors import resource_access_token_errors
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
-from controllers.console.wraps import (
-    account_initialization_required,
-    model_validate,
-    setup_required,
-    with_current_tenant_id,
-    with_current_user,
-)
-from core.logging.context import get_request_id, get_trace_id
+from controllers.console.flask_admission import console_account_admission
+from controllers.console.wraps import model_validate
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from libs.helper import dump_response, to_timestamp
-from libs.login import login_required
 from machinery.context import RequestContext
-from models import Account
 from models.account import TenantAccountRole
 from services.auth.resource_access_token_contracts import (
     ResourceAccessTokenResource,
@@ -99,9 +90,7 @@ register_response_schema_models(
 )
 
 
-def _require_owner(current_user: Account) -> None:
-    if current_user.current_role != TenantAccountRole.OWNER:
-        raise Forbidden()
+_OWNER_ROLES = frozenset({TenantAccountRole.OWNER})
 
 
 def _dump_rows(rows: tuple[ResourceAccessTokenRow, ...]) -> list[dict[str, object]]:
@@ -116,22 +105,16 @@ def _dump_rows(rows: tuple[ResourceAccessTokenRow, ...]) -> list[dict[str, objec
 
 @console_ns.route("/resource-access-tokens")
 class ResourceAccessTokenListApi(Resource):
-    method_decorators = [account_initialization_required, login_required, setup_required]
-
     @console_ns.doc("list_resource_access_tokens")
     @console_ns.doc(params=query_params_from_model(ResourceAccessTokenListQuery))
     @console_ns.response(200, "Resource access tokens", console_ns.models[ResourceAccessTokenListResponse.__name__])
+    @console_account_admission(allowed_roles=_OWNER_ROLES)
     @model_validate(ResourceAccessTokenListQuery)
-    @with_current_user
-    @with_current_tenant_id
     def get(
         self,
-        current_tenant_id: str,
-        current_user: Account,
         query: ResourceAccessTokenListQuery,
+        context: RequestContext,
     ) -> dict[str, object]:
-        _require_owner(current_user)
-        context = RequestContext(get_request_id(), get_trace_id(), current_user.id, current_tenant_id)
         with resource_access_token_errors():
             rows = application_services().resource_access_tokens.list_rows(
                 context,
@@ -157,17 +140,13 @@ class ResourceAccessTokenListApi(Resource):
         "Resource access token created",
         console_ns.models[ResourceAccessTokenCreateResponse.__name__],
     )
+    @console_account_admission(allowed_roles=_OWNER_ROLES)
     @model_validate(ResourceAccessTokenCreatePayload)
-    @with_current_user
-    @with_current_tenant_id
     def post(
         self,
-        current_tenant_id: str,
-        current_user: Account,
         payload: ResourceAccessTokenCreatePayload,
+        context: RequestContext,
     ) -> tuple[dict[str, object], int]:
-        _require_owner(current_user)
-        context = RequestContext(get_request_id(), get_trace_id(), current_user.id, current_tenant_id)
         with resource_access_token_errors():
             result = application_services().resource_access_tokens.create(
                 context,
@@ -184,8 +163,6 @@ class ResourceAccessTokenListApi(Resource):
 
 @console_ns.route("/resource-access-tokens/<uuid:token_id>")
 class ResourceAccessTokenApi(Resource):
-    method_decorators = [account_initialization_required, login_required, setup_required]
-
     @console_ns.doc("update_resource_access_token")
     @console_ns.expect(console_ns.models[ResourceAccessTokenUpdatePayload.__name__])
     @console_ns.response(
@@ -193,18 +170,14 @@ class ResourceAccessTokenApi(Resource):
         "Resource access token updated",
         console_ns.models[ResourceAccessTokenListResponse.__name__],
     )
+    @console_account_admission(allowed_roles=_OWNER_ROLES)
     @model_validate(ResourceAccessTokenUpdatePayload)
-    @with_current_user
-    @with_current_tenant_id
     def patch(
         self,
-        current_tenant_id: str,
-        current_user: Account,
         payload: ResourceAccessTokenUpdatePayload,
+        context: RequestContext,
         token_id: UUID,
     ) -> dict[str, object]:
-        _require_owner(current_user)
-        context = RequestContext(get_request_id(), get_trace_id(), current_user.id, current_tenant_id)
         with resource_access_token_errors():
             rows = application_services().resource_access_tokens.update(
                 context,
@@ -228,21 +201,15 @@ class ResourceAccessTokenApi(Resource):
 
 @console_ns.route("/resource-access-tokens/<uuid:token_id>/relations/<uuid:relation_id>")
 class ResourceAccessTokenRelationApi(Resource):
-    method_decorators = [account_initialization_required, login_required, setup_required]
-
     @console_ns.doc("delete_resource_access_token_relation")
     @console_ns.response(204, "Resource access token relation deleted")
-    @with_current_user
-    @with_current_tenant_id
+    @console_account_admission(allowed_roles=_OWNER_ROLES)
     def delete(
         self,
-        current_tenant_id: str,
-        current_user: Account,
+        context: RequestContext,
         token_id: UUID,
         relation_id: UUID,
     ) -> tuple[str, int]:
-        _require_owner(current_user)
-        context = RequestContext(get_request_id(), get_trace_id(), current_user.id, current_tenant_id)
         with resource_access_token_errors():
             application_services().resource_access_tokens.delete_relation(
                 context,
