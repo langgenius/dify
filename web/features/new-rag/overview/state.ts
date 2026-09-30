@@ -3,6 +3,7 @@ import { skipToken } from '@tanstack/react-query'
 import { atom } from 'jotai'
 import { atomWithInfiniteQuery, atomWithQuery, queryClientAtom } from 'jotai-tanstack-query'
 import { atomWithLazy, selectAtom } from 'jotai/utils'
+import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
 import { OVERVIEW_REFRESH_INTERVAL, overviewRefreshInterval } from './overview-format'
 import { overviewQueryGroup } from './query-state'
@@ -260,6 +261,18 @@ export const reconcileOverviewAfterTasksAtom = atom(null, async (get) => {
   const input = { params: { control_space_id: get(overviewKnowledgeSpaceIdAtom) } }
   const overview = consoleQuery.knowledgeFs.spaces.byControlSpaceId.overview
   const keys = [overview.attention.get.key({ input }), overview.activity.get.key({ input })]
+  if (get(deploymentEditionAtom) === 'CLOUD') {
+    void Promise.allSettled([
+      queryClient.invalidateQueries(
+        { queryKey: consoleQuery.features.get.key() },
+        { cancelRefetch: false },
+      ),
+      queryClient.invalidateQueries(
+        { queryKey: consoleQuery.features.vectorSpace.get.key() },
+        { cancelRefetch: false },
+      ),
+    ])
+  }
   await Promise.all(
     keys.map(async (queryKey) => {
       // A pre-completion request may finish late with a stale snapshot. Cancel it before the

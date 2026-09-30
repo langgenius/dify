@@ -2,7 +2,7 @@ import type {
   KnowledgeFsBackgroundTaskResponse,
   KnowledgeFsOverviewAttentionResponse,
 } from '@dify/contracts/api/console/knowledge-fs/types.gen'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, QueryObserver } from '@tanstack/react-query'
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import { createStore, Provider, useAtomValueRawSync } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
@@ -10,7 +10,16 @@ import { OverviewTaskSync } from '../overview-task-sync'
 import { overviewActivityPreviewDataAtom, overviewAttentionDataAtom } from '../state'
 import { OverviewStateBoundary } from '../state-boundary'
 
-const service = vi.hoisted(() => ({ attention: vi.fn(), activity: vi.fn(), tasks: vi.fn() }))
+const service = vi.hoisted(() => ({
+  attention: vi.fn(),
+  activity: vi.fn(),
+  tasks: vi.fn(),
+  deploymentEdition: vi.fn(),
+}))
+vi.mock('@/features/system-features/state', async () => {
+  const { atom } = await import('jotai')
+  return { deploymentEditionAtom: atom(() => service.deploymentEdition()) }
+})
 vi.mock('@/service/console', () => {
   const endpoint = (name: 'attention' | 'activity') => ({
     get: {
@@ -29,6 +38,10 @@ vi.mock('@/service/console', () => {
   })
   return {
     consoleQuery: {
+      features: {
+        get: { key: () => ['billing', 'features'] },
+        vectorSpace: { get: { key: () => ['billing', 'vector-space'] } },
+      },
       knowledgeFs: {
         spaces: {
           byControlSpaceId: {
@@ -106,6 +119,9 @@ describe('overview task completion synchronization', () => {
     service.activity.mockResolvedValue({ data: [], next_cursor: null })
     service.attention.mockResolvedValue({ data: [] })
     service.tasks.mockResolvedValue({ data: [task('running')], next_cursor: null })
+    service.deploymentEdition.mockReturnValue('ENTERPRISE')
+    client.setQueryData(['billing', 'features'], { documents_upload_quota: { size: 1, limit: 10 } })
+    client.setQueryData(['billing', 'vector-space'], { size: 1, limit: 10 })
   })
   afterEach(() => {
     cleanup()
@@ -128,6 +144,9 @@ describe('overview task completion synchronization', () => {
   }
 
   it('cancels a pre-terminal snapshot and fetches failures after the last active task stops', async () => {
+    service.deploymentEdition.mockReturnValue('CLOUD')
+    const cancelQueries = vi.spyOn(client, 'cancelQueries')
+    const invalidateQueries = vi.spyOn(client, 'invalidateQueries')
     let resolveStale!: (value: { data: KnowledgeFsOverviewAttentionResponse[] }) => void
     service.attention.mockImplementationOnce(
       () =>
@@ -138,6 +157,8 @@ describe('overview task completion synchronization', () => {
     mount()
     await waitFor(() => expect(service.attention).toHaveBeenCalledOnce())
     await waitFor(() => expect(service.tasks).toHaveBeenCalledOnce())
+    expect(client.getQueryState(['billing', 'features'])?.isInvalidated).toBe(false)
+    expect(client.getQueryState(['billing', 'vector-space'])?.isInvalidated).toBe(false)
     const staleSignal = service.attention.mock.calls[0]![1] as AbortSignal
     service.tasks.mockResolvedValue({ data: [task('failed')], next_cursor: null })
     service.attention.mockResolvedValue({ data: [failedIssue] })
@@ -145,6 +166,18 @@ describe('overview task completion synchronization', () => {
     await act(() => client.invalidateQueries({ queryKey: ['overview', 'tasks', 'space-a'] }))
     expect(await screen.findByText('Document processing failed')).toBeInTheDocument()
     expect(staleSignal.aborted).toBe(true)
+    expect(client.getQueryState(['billing', 'features'])?.isInvalidated).toBe(true)
+    expect(client.getQueryState(['billing', 'vector-space'])?.isInvalidated).toBe(true)
+    expect(cancelQueries).not.toHaveBeenCalledWith({ queryKey: ['billing', 'features'] })
+    expect(cancelQueries).not.toHaveBeenCalledWith({ queryKey: ['billing', 'vector-space'] })
+    expect(invalidateQueries).toHaveBeenCalledWith(
+      { queryKey: ['billing', 'features'] },
+      { cancelRefetch: false },
+    )
+    expect(invalidateQueries).toHaveBeenCalledWith(
+      { queryKey: ['billing', 'vector-space'] },
+      { cancelRefetch: false },
+    )
     await act(async () => {
       resolveStale({ data: [] })
     })
@@ -156,6 +189,44 @@ describe('overview task completion synchronization', () => {
     })
     expect(service.attention).toHaveBeenCalledTimes(calls)
   })
+
+  it.each(['features', 'vector-space'])(
+    'preserves an active %s precheck while refreshing terminal tasks',
+    async (usageKey) => {
+      service.deploymentEdition.mockReturnValue('CLOUD')
+      const queryKey = ['billing', usageKey]
+      let resolveUsage!: (value: { size: number; limit: number }) => void
+      let precheckSignal!: AbortSignal
+      const queryFn = vi.fn(({ signal }: { signal: AbortSignal }) => {
+        precheckSignal = signal
+        return new Promise<{ size: number; limit: number }>((resolve) => {
+          resolveUsage = resolve
+        })
+      })
+      const observer = new QueryObserver(client, { queryKey, queryFn, staleTime: Infinity })
+      const unsubscribe = observer.subscribe(() => {})
+      const precheck = client
+        .query({ queryKey, queryFn, staleTime: 0, retry: false })
+        .catch((error: unknown) => error)
+
+      try {
+        mount()
+        await waitFor(() => expect(service.tasks).toHaveBeenCalledOnce())
+        service.tasks.mockResolvedValue({ data: [task('failed')], next_cursor: null })
+        service.attention.mockResolvedValue({ data: [failedIssue] })
+
+        await act(() => client.invalidateQueries({ queryKey: ['overview', 'tasks', 'space-a'] }))
+        expect(await screen.findByText('Document processing failed')).toBeInTheDocument()
+        expect(precheckSignal.aborted).toBe(false)
+        expect(queryFn).toHaveBeenCalledOnce()
+
+        resolveUsage({ size: 2, limit: 10 })
+        await expect(precheck).resolves.toEqual({ size: 2, limit: 10 })
+      } finally {
+        unsubscribe()
+      }
+    },
+  )
 
   it('refreshes again for a manual retry completion while preserving another space cache', async () => {
     client.setQueryData(['overview', 'attention', 'space-b'], { data: [failedIssue] })
@@ -180,5 +251,7 @@ describe('overview task completion synchronization', () => {
     expect(client.getQueryData(['overview', 'attention', 'space-b'])).toEqual({
       data: [failedIssue],
     })
+    expect(client.getQueryState(['billing', 'features'])?.isInvalidated).toBe(false)
+    expect(client.getQueryState(['billing', 'vector-space'])?.isInvalidated).toBe(false)
   })
 })

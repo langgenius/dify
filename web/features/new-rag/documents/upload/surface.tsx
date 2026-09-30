@@ -110,8 +110,20 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
         predicate: (query) => queryKeyMatchesKnowledgeSpace(query.queryKey, knowledgeSpaceId),
         queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.get.key(),
       }),
+      ...(deploymentEdition === 'CLOUD'
+        ? [
+            queryClient.invalidateQueries(
+              { queryKey: consoleQuery.features.get.key() },
+              { cancelRefetch: false },
+            ),
+            queryClient.invalidateQueries(
+              { queryKey: consoleQuery.features.vectorSpace.get.key() },
+              { cancelRefetch: false },
+            ),
+          ]
+        : []),
     ])
-  }, [knowledgeSpaceId, queryClient])
+  }, [deploymentEdition, knowledgeSpaceId, queryClient])
 
   const close = useCallback(() => {
     resetProgress()

@@ -196,8 +196,11 @@ export function useTaskRuntimeController({
     for (const task of backgroundTasks) {
       states.set(task.id, task.state)
       const previousState = previousStates.get(task.id)
+      // A deletion can finish before its first polled snapshot arrives.
       if (
-        (previousState === 'queued' || previousState === 'running') &&
+        (previousState === 'queued' ||
+          previousState === 'running' ||
+          (previousState === undefined && task.operation === 'document_delete')) &&
         task.state !== 'queued' &&
         task.state !== 'running' &&
         (task.taskKind === 'document' || task.taskKind === 'document_bulk')

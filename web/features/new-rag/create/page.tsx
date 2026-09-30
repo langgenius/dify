@@ -342,6 +342,20 @@ function CreateKnowledgeSession() {
           setUploadPhases(
             (current) => new Map([...current].filter(([, phase]) => phase === 'completed')),
           )
+          if (
+            deploymentEdition === 'CLOUD' &&
+            validUploads.some(({ id }) => uploadProgressRef.current.get(id)?.phase === 'completed')
+          )
+            void Promise.allSettled([
+              queryClient.invalidateQueries(
+                { queryKey: consoleQuery.features.get.key() },
+                { cancelRefetch: false },
+              ),
+              queryClient.invalidateQueries(
+                { queryKey: consoleQuery.features.vectorSpace.get.key() },
+                { cancelRefetch: false },
+              ),
+            ])
         }
       }
 

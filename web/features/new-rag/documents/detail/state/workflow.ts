@@ -9,6 +9,7 @@ import {
   queryClientAtom,
 } from 'jotai-tanstack-query'
 import { selectAtom } from 'jotai/utils'
+import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
 import {
   knowledgeFsRequestFailureMessageKey,
@@ -336,6 +337,21 @@ async function invalidateDocumentWorkflow(get: Getter) {
   ])
 }
 
+function invalidateDocumentUsage(get: Getter) {
+  if (get(deploymentEditionAtom) !== 'CLOUD') return
+  const queryClient = get(queryClientAtom)
+  void Promise.allSettled([
+    queryClient.invalidateQueries(
+      { queryKey: consoleQuery.features.get.key() },
+      { cancelRefetch: false },
+    ),
+    queryClient.invalidateQueries(
+      { queryKey: consoleQuery.features.vectorSpace.get.key() },
+      { cancelRefetch: false },
+    ),
+  ])
+}
+
 async function retryWritePermission(
   get: Getter,
   set: Setter,
@@ -417,7 +433,10 @@ export const reconcileDocumentTaskAtom = atom(null, async (get, set) => {
     invalidatedTerminalTask: shouldInvalidate ? terminalTaskKey : current.invalidatedTerminalTask,
     previousTaskState: latestTask?.state,
   }))
-  if (shouldInvalidate) await invalidateDocumentWorkflow(get)
+  if (shouldInvalidate) {
+    invalidateDocumentUsage(get)
+    await invalidateDocumentWorkflow(get)
+  }
 })
 
 export const reconcileSubmittedDocumentJobAtom = atom(null, async (get, set) => {
@@ -433,7 +452,10 @@ export const reconcileSubmittedDocumentJobAtom = atom(null, async (get, set) => 
   } catch {
     // Browser storage recovery is optional.
   }
-  if (terminal) await invalidateDocumentWorkflow(get)
+  if (terminal) {
+    invalidateDocumentUsage(get)
+    await invalidateDocumentWorkflow(get)
+  }
 })
 
 export const loadNextDocumentTaskPageAtom = atom(null, (get) =>

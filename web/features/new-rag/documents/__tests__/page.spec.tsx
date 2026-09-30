@@ -611,6 +611,10 @@ vi.mock('@/service/console', () => ({
     },
   },
   consoleQuery: {
+    features: {
+      get: { key: () => ['features'] },
+      vectorSpace: { get: { key: () => ['features', 'vector-space'] } },
+    },
     knowledgeFs: {
       spaces: {
         byControlSpaceId: {
@@ -2054,9 +2058,10 @@ describe('DocumentsPage', () => {
 
   it('confirms permanent document removal from the row action', async () => {
     const user = userEvent.setup()
+    systemFeaturesStateMock.deploymentEdition = 'CLOUD'
     documentsQuery.data = { pages: [{ items: [document()] }] }
 
-    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    const { rerender } = render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(screen.getByRole('button', { name: /knowledgeDocuments\.documentActions/ }))
     await user.click(await screen.findByRole('menuitem', { name: 'common.operation.delete' }))
     expect(removeDocumentMutation).not.toHaveBeenCalled()
@@ -2067,6 +2072,32 @@ describe('DocumentsPage', () => {
       headers: { 'Idempotency-Key': expect.any(String) },
       params: { control_space_id: 'space-1', document_id: 'document-1' },
     })
+    expect(queryClient.invalidateQueries).not.toHaveBeenCalledWith(
+      { queryKey: ['features'] },
+      { cancelRefetch: false },
+    )
+    expect(queryClient.invalidateQueries).not.toHaveBeenCalledWith(
+      { queryKey: ['features', 'vector-space'] },
+      { cancelRefetch: false },
+    )
+
+    tasksQuery.data = { pages: [{ items: [backgroundTask({ operation: 'document_delete' })] }] }
+    rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await waitFor(() =>
+      expect(queryClient.invalidateQueries).toHaveBeenCalledWith(
+        { queryKey: ['features'] },
+        { cancelRefetch: false },
+      ),
+    )
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith(
+      { queryKey: ['features', 'vector-space'] },
+      { cancelRefetch: false },
+    )
+
+    queryClient.invalidateQueries.mockClear()
+    tasksQuery.data = { pages: [{ items: [backgroundTask({ operation: 'document_delete' })] }] }
+    rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+    expect(queryClient.invalidateQueries).not.toHaveBeenCalled()
   })
 
   it('opens the upload form and consumes the one-shot URL request', async () => {
@@ -2480,6 +2511,14 @@ describe('DocumentsPage', () => {
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
     expect(uploadMutation.mutateAsync).toHaveBeenCalledTimes(3)
     expect(getUploadQuotaFailure).not.toHaveBeenCalled()
+    expect(queryClient.invalidateQueries).not.toHaveBeenCalledWith(
+      { queryKey: ['features'] },
+      { cancelRefetch: false },
+    )
+    expect(queryClient.invalidateQueries).not.toHaveBeenCalledWith(
+      { queryKey: ['features', 'vector-space'] },
+      { cancelRefetch: false },
+    )
     expect(queryClient.invalidateQueries).toHaveBeenCalled()
     const documentInvalidation = queryClient.invalidateQueries.mock.calls.find(
       ([options]) => options.queryKey[1] === 'documents',
@@ -2500,6 +2539,29 @@ describe('DocumentsPage', () => {
         ],
       }),
     ).toBe(false)
+  })
+
+  it('refreshes Cloud plan usage only after a staged file becomes a document', async () => {
+    const user = userEvent.setup()
+    systemFeaturesStateMock.deploymentEdition = 'CLOUD'
+    render(<DocumentsPage knowledgeSpaceId="space-1" />, { searchParams: '?upload=1' })
+    await user.upload(
+      screen.getByLabelText('knowledgeCreate.uploadDocuments'),
+      new File(['draft'], 'draft.md', { type: 'text/markdown' }),
+    )
+    await waitForDocumentFilesStaged()
+
+    expect(queryClient.invalidateQueries).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
+
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith(
+      { queryKey: ['features'] },
+      { cancelRefetch: false },
+    )
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith(
+      { queryKey: ['features', 'vector-space'] },
+      { cancelRefetch: false },
+    )
   })
 
   it.each([
@@ -3036,6 +3098,7 @@ describe('DocumentsPage', () => {
     'shows %s without losing the staged file or write access',
     async (code, category, status, key) => {
       const user = userEvent.setup()
+      systemFeaturesStateMock.deploymentEdition = 'CLOUD'
       uploadMutation.mutateAsync.mockRejectedValueOnce(
         new Response(
           JSON.stringify({
@@ -3105,6 +3168,15 @@ describe('DocumentsPage', () => {
       within(uploadRegion).queryByText('knowledgeCreate.uploadingFiles'),
     ).not.toBeInTheDocument()
     expect(queryClient.invalidateQueries).toHaveBeenCalled()
+
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith(
+      { queryKey: ['features'] },
+      { cancelRefetch: false },
+    )
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith(
+      { queryKey: ['features', 'vector-space'] },
+      { cancelRefetch: false },
+    )
 
     await user.click(screen.getByRole('button', { name: 'knowledgeCreate.retryRemainingFiles' }))
 
@@ -4286,6 +4358,7 @@ describe('DocumentsPage', () => {
 
   it('removes selected documents through one bulk deletion request', async () => {
     const user = userEvent.setup()
+    systemFeaturesStateMock.deploymentEdition = 'CLOUD'
     documentsQuery.data = {
       pages: [
         {
@@ -4297,7 +4370,7 @@ describe('DocumentsPage', () => {
       ],
     }
 
-    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    const { rerender } = render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(screen.getByRole('checkbox', { name: 'One.pdf' }))
     await user.click(screen.getByRole('checkbox', { name: 'Two.pdf' }))
     await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
@@ -4316,6 +4389,56 @@ describe('DocumentsPage', () => {
       params: { control_space_id: 'space-1' },
     })
     expect(removeDocumentMutation).not.toHaveBeenCalled()
+    expect(queryClient.invalidateQueries).not.toHaveBeenCalledWith(
+      { queryKey: ['features'] },
+      { cancelRefetch: false },
+    )
+    expect(queryClient.invalidateQueries).not.toHaveBeenCalledWith(
+      { queryKey: ['features', 'vector-space'] },
+      { cancelRefetch: false },
+    )
+
+    tasksQuery.data = {
+      pages: [
+        {
+          items: [
+            backgroundTask({
+              operation: 'document_delete',
+              progressCompleted: 2,
+              progressTotal: 2,
+            }),
+          ],
+        },
+      ],
+    }
+    rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await waitFor(() =>
+      expect(queryClient.invalidateQueries).toHaveBeenCalledWith(
+        { queryKey: ['features'] },
+        { cancelRefetch: false },
+      ),
+    )
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith(
+      { queryKey: ['features', 'vector-space'] },
+      { cancelRefetch: false },
+    )
+
+    queryClient.invalidateQueries.mockClear()
+    tasksQuery.data = {
+      pages: [
+        {
+          items: [
+            backgroundTask({
+              operation: 'document_delete',
+              progressCompleted: 2,
+              progressTotal: 2,
+            }),
+          ],
+        },
+      ],
+    }
+    rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+    expect(queryClient.invalidateQueries).not.toHaveBeenCalled()
   })
 
   it('prompts for model setup before re-indexing selected documents', async () => {
@@ -6384,6 +6507,7 @@ describe('DocumentsPage', () => {
   })
 
   it('refreshes logical documents when task-list polling reports a terminal state', async () => {
+    systemFeaturesStateMock.deploymentEdition = 'CLOUD'
     documentsQuery.data = {
       pages: [
         {
@@ -6430,6 +6554,89 @@ describe('DocumentsPage', () => {
     )
     expect(queryClient.invalidateQueries).toHaveBeenCalledWith(
       expect.objectContaining({ queryKey: ['knowledge-fs', 'golden-questions'] }),
+    )
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith(
+      { queryKey: ['features'] },
+      { cancelRefetch: false },
+    )
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith(
+      { queryKey: ['features', 'vector-space'] },
+      { cancelRefetch: false },
+    )
+  })
+
+  it.each([1, 3])(
+    'refreshes Cloud plan usage after a background deletion of %s documents finishes',
+    async (total) => {
+      systemFeaturesStateMock.deploymentEdition = 'CLOUD'
+      const deletion = backgroundTask({
+        id: 'delete-documents',
+        operation: 'document_delete',
+        progressCompleted: 0,
+        progressPercent: 0,
+        progressTotal: total,
+        state: 'queued',
+      })
+      tasksQuery.data = { pages: [{ items: [deletion] }] }
+      const { rerender } = render(<DocumentsPage knowledgeSpaceId="space-1" />)
+      expect(queryClient.invalidateQueries).not.toHaveBeenCalled()
+
+      tasksQuery.data = { pages: [{ items: [{ ...deletion, state: 'running' }] }] }
+      rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+      expect(queryClient.invalidateQueries).not.toHaveBeenCalled()
+
+      tasksQuery.data = {
+        pages: [
+          {
+            items: [
+              {
+                ...deletion,
+                progressCompleted: total,
+                progressPercent: 100,
+                state: 'succeeded',
+                updatedAt: '2026-07-20T10:06:00Z',
+              },
+            ],
+          },
+        ],
+      }
+      rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+      await waitFor(() =>
+        expect(queryClient.invalidateQueries).toHaveBeenCalledWith(
+          { queryKey: ['features'] },
+          { cancelRefetch: false },
+        ),
+      )
+      expect(queryClient.invalidateQueries).toHaveBeenCalledWith(
+        { queryKey: ['features', 'vector-space'] },
+        { cancelRefetch: false },
+      )
+
+      queryClient.invalidateQueries.mockClear()
+      rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+      expect(queryClient.invalidateQueries).not.toHaveBeenCalled()
+    },
+  )
+
+  it('does not refresh plan usage for completed deletions in Enterprise', async () => {
+    const deletion = backgroundTask({
+      id: 'delete-documents',
+      operation: 'document_delete',
+      state: 'running',
+    })
+    tasksQuery.data = { pages: [{ items: [deletion] }] }
+    const { rerender } = render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    tasksQuery.data = { pages: [{ items: [{ ...deletion, state: 'succeeded' }] }] }
+    rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await waitFor(() => expect(queryClient.invalidateQueries).toHaveBeenCalled())
+
+    expect(queryClient.invalidateQueries).not.toHaveBeenCalledWith(
+      { queryKey: ['features'] },
+      { cancelRefetch: false },
+    )
+    expect(queryClient.invalidateQueries).not.toHaveBeenCalledWith(
+      { queryKey: ['features', 'vector-space'] },
+      { cancelRefetch: false },
     )
   })
 

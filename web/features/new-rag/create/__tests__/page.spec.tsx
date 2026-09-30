@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { consoleQuery } from '@/service/console'
 import { render } from '@/test/console/render'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { CreateKnowledgePage } from '../page'
@@ -237,6 +238,10 @@ vi.mock('@/service/console', () => ({
     },
   },
   consoleQuery: {
+    features: {
+      get: { key: () => ['features'] },
+      vectorSpace: { get: { key: () => ['vector-space'] } },
+    },
     rag: {
       pipelines: {
         datasourcePlugins: {
@@ -1282,6 +1287,7 @@ describe('CreateKnowledgePage', () => {
   it('safely resumes a downstream upload after the control space is created', async () => {
     const user = userEvent.setup()
     navigationMock.startMode = 'upload'
+    systemFeaturesStateMock.deploymentEdition = 'CLOUD'
     const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } })
     const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
     serviceMock.upload.mockRejectedValueOnce(new Error('upload unavailable'))
@@ -1307,6 +1313,14 @@ describe('CreateKnowledgePage', () => {
     expect(invalidate).toHaveBeenCalledWith({
       queryKey: ['console', 'knowledgeFs', 'listKnowledgeSpaces'],
     })
+    expect(invalidate).not.toHaveBeenCalledWith(
+      { queryKey: ['features'] },
+      { cancelRefetch: false },
+    )
+    expect(invalidate).not.toHaveBeenCalledWith(
+      { queryKey: ['vector-space'] },
+      { cancelRefetch: false },
+    )
     const nameInput = screen.getByRole('textbox', { name: 'knowledgeSpace.name' })
     expect(nameInput).toBeDisabled()
     expect(screen.getByRole('button', { name: /^knowledgeSpace\.permission/ })).toBeDisabled()
@@ -1318,11 +1332,22 @@ describe('CreateKnowledgePage', () => {
     expect(routerMock.replace).toHaveBeenCalledWith(
       '/datasets/new/e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084/documents',
     )
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['features'] }, { cancelRefetch: false })
+    expect(invalidate).toHaveBeenCalledWith(
+      { queryKey: ['vector-space'] },
+      { cancelRefetch: false },
+    )
   })
 
   it('shows a quota failure after a partial upload and retries only the remaining file', async () => {
     const user = userEvent.setup()
     navigationMock.startMode = 'upload'
+    systemFeaturesStateMock.deploymentEdition = 'CLOUD'
+    const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } })
+    queryClient.setQueryData(consoleQuery.features.get.key(), {
+      documents_upload_quota: { size: 0, limit: 10 },
+    })
+    queryClient.setQueryData(consoleQuery.features.vectorSpace.get.key(), { size: 0, limit: 10 })
     vi.mocked(crypto.randomUUID)
       .mockReturnValueOnce('00000000-0000-4000-8000-000000000001')
       .mockReturnValueOnce('00000000-0000-4000-8000-000000000002')
@@ -1339,7 +1364,7 @@ describe('CreateKnowledgePage', () => {
         { status: 413 },
       ),
     )
-    renderPage()
+    renderPage(queryClient)
     await user.upload(
       screen.getByLabelText('knowledgeSpace.uploadFiles', { selector: 'input[type="file"]' }),
       [new File(['first'], 'first.md'), new File(['second'], 'second.md')],
@@ -1357,6 +1382,10 @@ describe('CreateKnowledgePage', () => {
     expect(alert).not.toHaveTextContent('Private billing diagnostic')
     expect(screen.getAllByText('knowledgeCreate.uploadCompleted')).toHaveLength(1)
     expect(routerMock.replace).not.toHaveBeenCalled()
+    expect(queryClient.getQueryState(consoleQuery.features.get.key())?.isInvalidated).toBe(true)
+    expect(
+      queryClient.getQueryState(consoleQuery.features.vectorSpace.get.key())?.isInvalidated,
+    ).toBe(true)
 
     await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
     await waitFor(() => expect(routerMock.replace).toHaveBeenCalled())

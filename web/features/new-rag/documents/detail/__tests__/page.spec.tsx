@@ -188,6 +188,13 @@ const queryClient = vi.hoisted(() => ({
   invalidateQueries: vi.fn(),
   removeQueries: vi.fn(),
 }))
+const systemFeaturesState = vi.hoisted(() => ({ deploymentEdition: 'ENTERPRISE' }))
+
+vi.mock('@/features/system-features/state', async () => {
+  const { atom } = await import('jotai')
+  return { deploymentEditionAtom: atom(() => systemFeaturesState.deploymentEdition) }
+})
+
 const toastState = vi.hoisted(() => ({ error: vi.fn(), info: vi.fn(), success: vi.fn() }))
 const virtualizerState = vi.hoisted(() => ({ scrollToIndex: vi.fn() }))
 const revisionApiResponse = vi.hoisted(
@@ -667,6 +674,10 @@ vi.mock('@/service/console', () => ({
     },
   },
   consoleQuery: {
+    features: {
+      get: { key: () => ['features'] },
+      vectorSpace: { get: { key: () => ['vector-space'] } },
+    },
     knowledgeFs: {
       spaces: {
         byControlSpaceId: {
@@ -988,6 +999,7 @@ describe('DocumentDetailPage', () => {
       next_cursor: null,
     })
     queryClient.invalidateQueries.mockResolvedValue(undefined)
+    systemFeaturesState.deploymentEdition = 'ENTERPRISE'
   })
 
   afterEach(() => {
@@ -2495,17 +2507,43 @@ describe('DocumentDetailPage', () => {
     expect(screen.queryByText('knowledgeTasks.graphRepairPending')).not.toBeInTheDocument()
   })
 
-  it('refreshes the document and content when an active task becomes terminal', async () => {
-    taskSnapshotQuery.data = task({ state: 'running' })
-    documentQuery.data = logicalDocument({ latestTask: taskSnapshotQuery.data })
-    const rendered = render(
-      <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
-    )
-    taskSnapshotQuery.data = task({ state: 'succeeded' })
-    rendered.rerender(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+  it.each(['CLOUD', 'ENTERPRISE'])(
+    'refreshes document content and applicable usage when an active task becomes terminal in %s',
+    async (edition) => {
+      systemFeaturesState.deploymentEdition = edition
+      taskSnapshotQuery.data = task({ state: 'running' })
+      documentQuery.data = logicalDocument({ latestTask: taskSnapshotQuery.data })
+      const rendered = render(
+        <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
+      )
+      expect(queryClient.invalidateQueries).not.toHaveBeenCalledWith(
+        { queryKey: ['features'] },
+        { cancelRefetch: false },
+      )
+      expect(queryClient.invalidateQueries).not.toHaveBeenCalledWith(
+        { queryKey: ['vector-space'] },
+        { cancelRefetch: false },
+      )
+      taskSnapshotQuery.data = task({ state: 'succeeded' })
+      rendered.rerender(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
-    await waitFor(() => expect(queryClient.invalidateQueries).toHaveBeenCalledTimes(4))
-  })
+      await waitFor(() =>
+        expect(queryClient.invalidateQueries).toHaveBeenCalledTimes(edition === 'CLOUD' ? 6 : 4),
+      )
+      if (edition === 'CLOUD') {
+        expect(queryClient.invalidateQueries).toHaveBeenCalledWith(
+          { queryKey: ['features'] },
+          { cancelRefetch: false },
+        )
+        expect(queryClient.invalidateQueries).toHaveBeenCalledWith(
+          { queryKey: ['vector-space'] },
+          { cancelRefetch: false },
+        )
+      }
+      rendered.rerender(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+      expect(queryClient.invalidateQueries).toHaveBeenCalledTimes(edition === 'CLOUD' ? 6 : 4)
+    },
+  )
 
   it('virtualizes long trees and bounds their accessible labels', () => {
     chunksQuery.data = {

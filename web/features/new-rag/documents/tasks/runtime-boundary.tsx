@@ -5,6 +5,7 @@ import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { useCallback, useLayoutEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
+import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
 import { documentsKnowledgeSpaceIdAtom } from '../state/inputs'
 import { documentTaskPermissionGuardFactsAtom } from '../state/recovery'
@@ -18,6 +19,7 @@ import { useTaskRuntimeController } from './use-task-runtime'
 export function DocumentTaskRuntimeController() {
   const { t } = useTranslation(['knowledgeSpace', 'knowledgeTasks'])
   const queryClient = useQueryClient()
+  const deploymentEdition = useAtomValueRawSync(deploymentEditionAtom)
   const knowledgeSpaceId = useAtomValueRawSync(documentsKnowledgeSpaceIdAtom)
   const tasksOpen = useAtomValueRawSync(documentTasksOpenAtom)
   const permissionQueryFacts = useAtomValueRawSync(documentTaskPermissionGuardFactsAtom)
@@ -42,8 +44,20 @@ export function DocumentTaskRuntimeController() {
         predicate: (query) => queryKeyMatchesKnowledgeSpace(query.queryKey, knowledgeSpaceId),
         queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.get.key(),
       }),
+      ...(deploymentEdition === 'CLOUD'
+        ? [
+            queryClient.invalidateQueries(
+              { queryKey: consoleQuery.features.get.key() },
+              { cancelRefetch: false },
+            ),
+            queryClient.invalidateQueries(
+              { queryKey: consoleQuery.features.vectorSpace.get.key() },
+              { cancelRefetch: false },
+            ),
+          ]
+        : []),
     ])
-  }, [knowledgeSpaceId, queryClient])
+  }, [deploymentEdition, knowledgeSpaceId, queryClient])
   const notifyTaskFailed = useCallback(
     () => toast.error(t(($) => $.taskFailedNotification, { ns: 'knowledgeTasks' })),
     [t],
