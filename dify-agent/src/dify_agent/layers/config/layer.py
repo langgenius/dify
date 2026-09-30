@@ -7,7 +7,7 @@ import shlex
 from dataclasses import dataclass
 from typing import ClassVar
 
-from pydantic_ai import Tool
+from pydantic_ai import ModelRetry, Tool
 from typing_extensions import Self, override
 
 from agenton.layers import LayerDeps, PydanticAILayer, PydanticAIPrompt, PydanticAITool
@@ -98,6 +98,13 @@ class DifyConfigLayer(PydanticAILayer[DifyConfigDeps, object, DifyConfigLayerCon
 
     async def _read_skill(self, name: str, offset: int = 0) -> dict[str, str | int | bool]:
         """Read one page of a configured skill, continuing with next_offset until complete."""
+        try:
+            return await self._read_skill_page(name, offset)
+        except (RuntimeError, ValueError) as exc:
+            # Tool callers can correct input or retry a pull; eager context pulls still fail fast.
+            raise ModelRetry(str(exc)) from exc
+
+    async def _read_skill_page(self, name: str, offset: int) -> dict[str, str | int | bool]:
         if name not in {skill.name for skill in self.config.skills}:
             raise ValueError(f"unknown config skill: {name}")
         if offset < 0:
