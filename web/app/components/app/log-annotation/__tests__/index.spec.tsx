@@ -1,5 +1,7 @@
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import { screen } from '@testing-library/react'
+import { Suspense } from 'react'
+import ErrorBoundary from '@/app/components/base/error-boundary'
 import { PageType } from '@/app/components/base/features/new-feature-panel/annotation-reply/type'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
@@ -42,7 +44,9 @@ const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) => {
       consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: appDetail.id } } }),
       appDetail,
     )
-  return renderWithConsoleQuery(ui, { queryClient })
+  return renderWithConsoleQuery(<Suspense fallback={<div>Loading logs</div>}>{ui}</Suspense>, {
+    queryClient,
+  })
 }
 
 vi.mock('@/service/base', async (importOriginal) => ({
@@ -66,7 +70,7 @@ describe('LogAnnotation', () => {
       render(<LogAnnotation appId="app-123" pageType={PageType.log} />)
 
       // Assert
-      expect(screen.getByRole('progressbar')).toBeInTheDocument()
+      expect(screen.getByText('Loading logs')).toBeInTheDocument()
     })
 
     it('should render log content without the old page tabs', () => {
@@ -149,4 +153,31 @@ it('shows the destination log mode and app identity after navigation', () => {
   rerender(<LogAnnotation appId="workflow-app" pageType={PageType.log} />)
   expect(screen.getByRole('region', { name: 'Workflow log' })).toHaveTextContent('workflow-app')
   expect(screen.queryByRole('region', { name: 'App log' })).not.toBeInTheDocument()
+})
+
+it('surfaces an initial detail error instead of staying in the loading state', async () => {
+  const queryClient = createConsoleQueryClient()
+  const queryKey = consoleQuery.apps.byAppId.get.queryKey({
+    input: { params: { app_id: 'unavailable-app' } },
+  })
+  await queryClient
+    .query({ queryKey, queryFn: () => Promise.reject(new Error('Detail unavailable')) })
+    .catch(() => {})
+  const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+  try {
+    renderWithConsoleQuery(
+      <ErrorBoundary>
+        <Suspense fallback={<div>Loading logs</div>}>
+          <LogAnnotation appId="unavailable-app" pageType={PageType.log} />
+        </Suspense>
+      </ErrorBoundary>,
+      { queryClient },
+    )
+    expect(
+      await screen.findByRole('button', { name: 'common.errorBoundary.tryAgain' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('Loading logs')).not.toBeInTheDocument()
+  } finally {
+    consoleError.mockRestore()
+  }
 })
