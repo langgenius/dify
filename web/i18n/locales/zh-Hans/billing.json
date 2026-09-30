@@ -46,6 +46,7 @@
     "优先电子邮件和聊天支持"
   ],
   "plans.premium.includesTitle": "Community 版的所有功能，加上：",
+  "plans.premium.marketplaceName": "AWS Marketplace",
   "plans.premium.name": "Premium",
   "plans.premium.price": "可扩展",
   "plans.premium.priceTip": "基于 Cloud Marketplace",

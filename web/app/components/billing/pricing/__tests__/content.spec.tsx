@@ -252,3 +252,18 @@ it('uses the visible billing label to name and toggle the switch', async () => {
   expect(billingSwitch).not.toBeChecked()
   expect(screen.getByText('$59')).toBeVisible()
 })
+
+it('includes the marketplace in the Premium purchase link name', async () => {
+  const user = userEvent.setup()
+  const { queryClient, show } = setup()
+  seedFeatures(queryClient)
+  show()
+
+  await user.click(screen.getByRole('tab', { name: 'billing.plansCommon.self' }))
+
+  expect(
+    screen.getByRole('link', {
+      name: 'billing.plans.premium.btnText billing.plans.premium.marketplaceName',
+    }),
+  ).toBeVisible()
+})

@@ -1438,6 +1438,7 @@ export default interface Resources {
       'Priority Email & Chat Support',
     ]
     'plans.premium.includesTitle': 'Everything from Community, plus:'
+    'plans.premium.marketplaceName': 'AWS Marketplace'
     'plans.premium.name': 'Premium'
     'plans.premium.price': 'Scalable'
     'plans.premium.priceTip': 'Based on Cloud Marketplace'

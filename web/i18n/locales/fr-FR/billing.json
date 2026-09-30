@@ -46,6 +46,7 @@
     "Assistance prioritaire par e-mail et chat"
   ],
   "plans.premium.includesTitle": "Tout de la communauté, en plus :",
+  "plans.premium.marketplaceName": "AWS Marketplace",
   "plans.premium.name": "Premium",
   "plans.premium.price": "Scalable",
   "plans.premium.priceTip": "Basé sur le marché des nuages",

@@ -85,6 +85,12 @@ export function SelfHostedPlanItem({ plan }: { plan: SelfHostedPlan }) {
           <span className="flex min-w-0 grow flex-wrap items-center gap-x-2">
             <span>{t(($) => $[`${i18nPrefix}.btnText`], { ns: 'billing' })}</span>
             {isPremiumPlan && (
+              <span className="sr-only">
+                {' '}
+                {t(($) => $['plans.premium.marketplaceName'], { ns: 'billing' })}
+              </span>
+            )}
+            {isPremiumPlan && (
               <span aria-hidden className="pt-1.75 pb-px">
                 {theme === Theme.light ? (
                   <span
