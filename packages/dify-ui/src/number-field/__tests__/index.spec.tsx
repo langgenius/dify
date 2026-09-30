@@ -268,7 +268,7 @@ describe('Invalid focus colors', () => {
       document.documentElement.dataset.theme = theme
       try {
         const screen = await render(
-          <>
+          <React.Fragment>
             <Button>Before</Button>
             <Field invalid>
               <FieldLabel>Invalid value</FieldLabel>
@@ -278,7 +278,7 @@ describe('Invalid focus colors', () => {
                 </NumberFieldGroup>
               </NumberField>
             </Field>
-          </>,
+          </React.Fragment>,
         )
         const input = screen.getByRole('textbox', { name: 'Invalid value' })
         const surface = screen.getByTestId('invalid-surface').element()

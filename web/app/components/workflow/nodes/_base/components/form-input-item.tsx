@@ -17,7 +17,6 @@ import {
   SelectItemText,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
-import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CheckboxList } from '@/app/components/base/checkbox-list'
@@ -25,13 +24,12 @@ import { useLanguage } from '@/app/components/header/account-setting/model-provi
 import { AppSelector } from '@/app/components/plugins/plugin-detail-panel/app-selector'
 import ModelParameterModal from '@/app/components/plugins/plugin-detail-panel/model-selector'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
+import { ToolDatePicker } from '@/app/components/tools/parameters/tool-date-picker'
+import { ToolDateRangePicker } from '@/app/components/tools/parameters/tool-date-range-picker'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import MixedVariableTextInput from '@/app/components/workflow/nodes/tool/components/mixed-variable-text-input'
-import ToolDatePicker from '@/app/components/workflow/nodes/tool/components/tool-date-picker'
-import ToolDateRangePicker from '@/app/components/workflow/nodes/tool/components/tool-date-range-picker'
 import { VarType } from '@/app/components/workflow/types'
-import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useFetchDynamicOptions, useFetchDynamicTreeOptions } from '@/service/use-plugins'
 import { useTriggerPluginDynamicOptions } from '@/service/use-triggers'
 import { VarKindType } from '../types'
@@ -60,7 +58,6 @@ type Props = Readonly<{
   schema: FormInputSchema
   value: ResourceVarInputs
   onChange: (value: ResourceVarInputs) => void
-  inPanel?: boolean
   currentTool?: Tool | Event
   currentProvider?: ToolWithProvider | TriggerWithProvider
   showManageInputField?: boolean
@@ -122,15 +119,9 @@ const FormInputItem: FC<Props> = ({
   providerType,
   staticSchema = false,
   disableVariableInsertion = false,
-  inPanel,
 }) => {
   const language = useLanguage()
   const { t } = useTranslation(['common'])
-  const { data: userProfile } = useSuspenseQuery({
-    ...userProfileQueryOptions(),
-    select: (data) => data.profile,
-  })
-  const timezone = userProfile.timezone ?? 'UTC'
   const [toolsOptions, setToolsOptions] = useState<FormOption[] | null>(null)
   const [isLoadingToolsOptions, setIsLoadingToolsOptions] = useState(false)
 
@@ -514,9 +505,9 @@ const FormInputItem: FC<Props> = ({
       {isDate && isConstant && (
         <div className="min-w-0 grow">
           <ToolDatePicker
+            aria-labelledby={labelId}
             value={varInput?.value}
             onChange={handleValueChange}
-            timezone={timezone}
             readOnly={readOnly}
             placeholder={placeholder?.[language] || placeholder?.en_US}
           />
@@ -525,11 +516,10 @@ const FormInputItem: FC<Props> = ({
       {isDateRange && varInput?.type !== VarKindType.variable && (
         <div className="min-w-0 grow">
           <ToolDateRangePicker
+            label={schema.label?.[language] || schema.label?.en_US || variable}
             value={varInput?.value}
             onChange={handleValueChange}
             readOnly={readOnly}
-            timezone={timezone}
-            inPanel={inPanel}
           />
         </div>
       )}

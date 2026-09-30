@@ -1,7 +1,7 @@
 'use client'
 
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { PublishedWorkflow } from '../shared/utils'
-import type { App } from '@/types/app'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -31,7 +31,7 @@ import { useAccessPointStatusLabel } from '../shared/use-access-point-status-lab
 import { getPublishedWorkflowNodes, isAdvancedApp } from '../shared/utils'
 
 type MCPAccessPointCardProps = {
-  appInfo: App
+  appInfo: AppDetailWithSite
   canManageAccessPoint: boolean
   highlighted?: boolean
   triggerModeDisabled: boolean

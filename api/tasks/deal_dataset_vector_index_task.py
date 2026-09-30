@@ -12,6 +12,8 @@ from core.rag.index_processor.index_processor_factory import IndexProcessorFacto
 from core.rag.models.document import AttachmentDocument, ChildDocument, Document
 from models.dataset import Dataset, DocumentSegment
 from models.dataset import Document as DatasetDocument
+from repositories.knowledge.dataset_read_repository import get_dataset_doc_form, get_segment_child_chunks
+from repositories.knowledge.segment_read_adapter import get_segment_attachments
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +35,7 @@ def deal_dataset_vector_index_task(dataset_id: str, action: str):
 
             if not dataset:
                 raise Exception("Dataset not found")
-            index_type = dataset.get_doc_form(session=session) or IndexStructureType.PARAGRAPH_INDEX
+            index_type = get_dataset_doc_form(dataset, session=session) or IndexStructureType.PARAGRAPH_INDEX
             index_processor = IndexProcessorFactory(index_type).init_index_processor()
             if action == "remove":
                 index_processor.clean(dataset, None, with_keywords=False, session=session)
@@ -146,7 +148,7 @@ def deal_dataset_vector_index_task(dataset_id: str, action: str):
                                         },
                                     )
                                     if dataset_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX:
-                                        child_chunks = segment.get_child_chunks(session=session)
+                                        child_chunks = get_segment_child_chunks(segment, session=session)
                                         if child_chunks:
                                             child_documents = []
                                             for child_chunk in child_chunks:
@@ -162,7 +164,7 @@ def deal_dataset_vector_index_task(dataset_id: str, action: str):
                                                 child_documents.append(child_document)
                                             document.children = child_documents
                                     if dataset.is_multimodal:
-                                        for attachment in segment.get_attachments(session=session):
+                                        for attachment in get_segment_attachments(segment, session=session):
                                             multimodal_documents.append(
                                                 AttachmentDocument(
                                                     page_content=attachment["name"],

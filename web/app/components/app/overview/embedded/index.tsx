@@ -1,13 +1,14 @@
+import type { AppDetailSiteResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { MutableRefObject } from 'react'
 import type {
   EmbeddedWebAppRoute,
   WorkflowHiddenStartVariable,
   WorkflowLaunchInputValue,
 } from '../app-card-utils'
-import type { SiteInfo } from '@/models/share'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import copy from 'copy-to-clipboard'
@@ -29,7 +30,7 @@ import WorkflowHiddenInputFields from '../workflow-hidden-input-fields'
 import style from './style.module.css'
 
 type Props = Readonly<{
-  siteInfo?: SiteInfo
+  siteInfo?: Partial<Pick<AppDetailSiteResponse, 'chat_color_theme' | 'chat_color_theme_inverted'>>
   isShow: boolean
   onClose: () => void
   accessToken?: string
@@ -182,7 +183,7 @@ const EmbeddedContent = ({
     [accessToken, appBaseUrl, hiddenInputValues, isTestEnv, theme.primaryColor, webAppRoute],
   )
 
-  const onClickCopy = async () => {
+  const onClickCopy = async (selectedOption: Option) => {
     const latestIframeUrl = await buildEmbeddedIframeUrl({
       appBaseUrl,
       accessToken,
@@ -191,21 +192,16 @@ const EmbeddedContent = ({
       values: hiddenInputValues,
     })
 
-    if (option === 'chromePlugin') {
+    if (selectedOption === 'chromePlugin') {
       const splitUrl = getChromePluginContent(latestIframeUrl).split(': ')
       if (splitUrl.length > 1) copy(splitUrl[1]!)
-    } else if (option === 'iframe') {
+    } else if (selectedOption === 'iframe') {
       copy(getEmbeddedIframeSnippet(latestIframeUrl))
     } else {
       copy(scriptsContent)
     }
-    setCopiedOption(option)
+    setCopiedOption(selectedOption)
   }
-  const previewFallback = latestResolvedIframeUrlRef.current
-    ? option === 'chromePlugin'
-      ? getChromePluginContent(latestResolvedIframeUrlRef.current)
-      : getEmbeddedIframeSnippet(latestResolvedIframeUrlRef.current)
-    : ''
 
   const navigateToChromeUrl = () => {
     window.open(
@@ -259,93 +255,115 @@ const EmbeddedContent = ({
           )}
         </div>
       )}
-      <div className="flex flex-wrap items-center justify-between gap-y-2">
-        {OPTION_KEYS.map((v) => {
-          return (
-            <button
-              type="button"
+      <Tabs
+        value={option}
+        onValueChange={(value) => {
+          setOption(value as Option)
+          setCopiedOption(null)
+        }}
+      >
+        <TabsList
+          aria-label={t(($) => $[`${prefixEmbedded}.title`], { ns: 'appOverview' })}
+          className="flex items-center justify-between gap-0"
+        >
+          {OPTION_KEYS.map((v) => (
+            <TabsTab
               key={v}
+              value={v}
               aria-label={t(($) => $[`${prefixEmbedded}.${v}`], { ns: 'appOverview' }) || v}
-              className={cn(style.option, optionIconClassName[v], option === v && style.active)}
-              onClick={() => {
-                setOption(v)
-                setCopiedOption(null)
-              }}
-            ></button>
+              className={cn(
+                style.option,
+                optionIconClassName[v],
+                'border-0! p-0!',
+                option === v && style.active,
+              )}
+            />
+          ))}
+        </TabsList>
+        {OPTION_KEYS.map((v) => {
+          const previewFallback = latestResolvedIframeUrlRef.current
+            ? v === 'chromePlugin'
+              ? getChromePluginContent(latestResolvedIframeUrlRef.current)
+              : getEmbeddedIframeSnippet(latestResolvedIframeUrlRef.current)
+            : ''
+
+          return (
+            <TabsPanel key={v} value={v} tabIndex={-1}>
+              {v === 'chromePlugin' && (
+                <div className="mt-6 w-full">
+                  <button
+                    type="button"
+                    className={cn(
+                      'inline-flex w-full items-center justify-center gap-2 rounded-lg py-3',
+                      'shrink-0 bg-primary-600 text-white hover:bg-primary-600/75 hover:shadow-sm',
+                    )}
+                    onClick={navigateToChromeUrl}
+                  >
+                    <div className={`relative size-4 ${style.pluginInstallIcon}`}></div>
+                    <div className="font-['Inter'] text-sm leading-tight font-medium text-white">
+                      {t(($) => $[`${prefixEmbedded}.chromePlugin`], { ns: 'appOverview' })}
+                    </div>
+                  </button>
+                </div>
+              )}
+              <div
+                className={cn(
+                  'inline-flex w-full flex-col items-start justify-start rounded-lg border-[0.5px] border-components-panel-border bg-background-section',
+                  'mt-6',
+                )}
+              >
+                <div className="inline-flex items-center justify-start gap-2 self-stretch rounded-t-lg bg-background-section-burn py-1 pr-1 pl-3">
+                  <div className="shrink-0 grow system-sm-medium text-text-secondary">
+                    {t(($) => $[`${prefixEmbedded}.${v}`], { ns: 'appOverview' })}
+                  </div>
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <IconButton
+                          aria-label={
+                            (copiedOption === v
+                              ? t(($) => $[`${prefixEmbedded}.copied`], { ns: 'appOverview' })
+                              : t(($) => $[`${prefixEmbedded}.copy`], { ns: 'appOverview' })) || ''
+                          }
+                          onClick={() => void onClickCopy(v)}
+                        >
+                          {copiedOption === v ? (
+                            <span aria-hidden="true" className="i-ri-clipboard-fill size-4" />
+                          ) : (
+                            <span aria-hidden="true" className="i-ri-clipboard-line size-4" />
+                          )}
+                        </IconButton>
+                      }
+                    />
+                    <TooltipContent>
+                      {(copiedOption === v
+                        ? t(($) => $[`${prefixEmbedded}.copied`], { ns: 'appOverview' })
+                        : t(($) => $[`${prefixEmbedded}.copy`], { ns: 'appOverview' })) || ''}
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+                <div className="flex max-h-[clamp(180px,calc(100dvh-320px),360px)] w-full items-start justify-start gap-2 overflow-auto p-3">
+                  <div className="shrink grow basis-0 font-mono text-[13px] leading-tight text-text-secondary">
+                    <pre className="select-text">
+                      {v === 'scripts' ? (
+                        scriptsContent
+                      ) : (
+                        <Suspense fallback={previewFallback}>
+                          <AsyncEmbeddedOptionContent
+                            option={v}
+                            iframeUrlPromise={previewIframeUrlPromise}
+                            latestResolvedIframeUrlRef={latestResolvedIframeUrlRef}
+                          />
+                        </Suspense>
+                      )}
+                    </pre>
+                  </div>
+                </div>
+              </div>
+            </TabsPanel>
           )
         })}
-      </div>
-      {option === 'chromePlugin' && (
-        <div className="mt-6 w-full">
-          <button
-            type="button"
-            className={cn(
-              'inline-flex w-full items-center justify-center gap-2 rounded-lg py-3',
-              'shrink-0 bg-primary-600 text-white hover:bg-primary-600/75 hover:shadow-sm',
-            )}
-            onClick={navigateToChromeUrl}
-          >
-            <div className={`relative size-4 ${style.pluginInstallIcon}`}></div>
-            <div className="font-['Inter'] text-sm leading-tight font-medium text-white">
-              {t(($) => $[`${prefixEmbedded}.chromePlugin`], { ns: 'appOverview' })}
-            </div>
-          </button>
-        </div>
-      )}
-      <div
-        className={cn(
-          'inline-flex w-full flex-col items-start justify-start rounded-lg border-[0.5px] border-components-panel-border bg-background-section',
-          'mt-6',
-        )}
-      >
-        <div className="inline-flex items-center justify-start gap-2 self-stretch rounded-t-lg bg-background-section-burn py-1 pr-1 pl-3">
-          <div className="shrink-0 grow system-sm-medium text-text-secondary">
-            {t(($) => $[`${prefixEmbedded}.${option}`], { ns: 'appOverview' })}
-          </div>
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <IconButton
-                  aria-label={
-                    (copiedOption === option
-                      ? t(($) => $[`${prefixEmbedded}.copied`], { ns: 'appOverview' })
-                      : t(($) => $[`${prefixEmbedded}.copy`], { ns: 'appOverview' })) || ''
-                  }
-                  onClick={() => void onClickCopy()}
-                >
-                  {copiedOption === option ? (
-                    <span aria-hidden="true" className="i-ri-clipboard-fill size-4" />
-                  ) : (
-                    <span aria-hidden="true" className="i-ri-clipboard-line size-4" />
-                  )}
-                </IconButton>
-              }
-            />
-            <TooltipContent>
-              {(copiedOption === option
-                ? t(($) => $[`${prefixEmbedded}.copied`], { ns: 'appOverview' })
-                : t(($) => $[`${prefixEmbedded}.copy`], { ns: 'appOverview' })) || ''}
-            </TooltipContent>
-          </Tooltip>
-        </div>
-        <div className="flex max-h-[clamp(180px,calc(100dvh-320px),360px)] w-full items-start justify-start gap-2 overflow-auto p-3">
-          <div className="shrink grow basis-0 font-mono text-[13px] leading-tight text-text-secondary">
-            <pre className="select-text">
-              {option === 'scripts' ? (
-                scriptsContent
-              ) : (
-                <Suspense fallback={previewFallback}>
-                  <AsyncEmbeddedOptionContent
-                    option={option}
-                    iframeUrlPromise={previewIframeUrlPromise}
-                    latestResolvedIframeUrlRef={latestResolvedIframeUrlRef}
-                  />
-                </Suspense>
-              )}
-            </pre>
-          </div>
-        </div>
-      </div>
+      </Tabs>
     </>
   )
 }

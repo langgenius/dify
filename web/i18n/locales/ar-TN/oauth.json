@@ -1,4 +1,8 @@
 {
+  "callback.error": "فشل التفويض",
+  "callback.errorHint": "يرجى العودة إلى الصفحة السابقة والمحاولة مرة أخرى.",
+  "callback.success": "اكتمل التفويض",
+  "callback.successHint": "يمكنك الآن إغلاق علامة التبويب هذه والعودة إلى الصفحة السابقة.",
   "connect": "الاتصال بـ",
   "continue": "متابعة",
   "error.authAppInfoFetchFailed": "فشل جلب معلومات التطبيق للتفويض",

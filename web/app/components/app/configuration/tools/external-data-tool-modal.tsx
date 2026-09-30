@@ -41,7 +41,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
   onSave,
   onValidateBeforeSave,
 }) => {
-  const { t } = useTranslation(['appDebug', 'common'])
+  const { t } = useTranslation(['appDebug', 'common', 'app'])
   const docLink = useDocLink()
   const locale = useLocale()
   const [localeData, setLocaleData] = useState(data.type ? data : { ...data, type: 'api' })
@@ -156,15 +156,20 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
                 t(($) => $['feature.tools.modal.name.placeholder'], { ns: 'appDebug' }) || ''
               }
             />
-            <AppIcon
-              size="large"
-              onClick={() => {
-                setShowEmojiPicker(true)
-              }}
-              className="h-9! w-9! cursor-pointer rounded-lg border-[0.5px] border-components-panel-border"
-              icon={localeData.icon}
-              background={localeData.icon_background}
-            />
+            <button
+              type="button"
+              aria-label={t(($) => $['iconPicker.title'], { ns: 'app' })}
+              className="shrink-0 cursor-pointer rounded-lg focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+              onClick={() => setShowEmojiPicker(true)}
+            >
+              <AppIcon
+                decorative
+                size="large"
+                className="h-9! w-9! rounded-lg border-[0.5px] border-components-panel-border"
+                icon={localeData.icon}
+                background={localeData.icon_background}
+              />
+            </button>
           </div>
         </div>
         <div className="py-2">
