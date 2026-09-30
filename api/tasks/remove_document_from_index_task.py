@@ -10,6 +10,7 @@ from core.rag.index_processor.index_processor_factory import IndexProcessorFacto
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Document, DocumentSegment
+from repositories.knowledge.dataset_read_repository import get_document_dataset
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +39,7 @@ def remove_document_from_index_task(document_id: str):
         indexing_cache_key = f"document_{document.id}_indexing"
 
         try:
-            dataset = document.get_dataset(session=session)
+            dataset = get_document_dataset(document, session=session)
 
             if not dataset:
                 raise Exception("Document has no dataset")
@@ -48,12 +49,12 @@ def remove_document_from_index_task(document_id: str):
             segments = session.scalars(select(DocumentSegment).where(DocumentSegment.document_id == document.id)).all()
 
             # Disable summary indexes for all segments in this document
-            from services.summary_index_service import SummaryIndexService
+            from services.knowledge.summaries.adapters import SummaryIndexAdapter
 
             segment_ids_list = [segment.id for segment in segments]
             if segment_ids_list:
                 try:
-                    SummaryIndexService.disable_summaries_for_segments(
+                    SummaryIndexAdapter.disable_summaries_for_segments(
                         dataset=dataset,
                         segment_ids=segment_ids_list,
                         disabled_by=document.disabled_by,

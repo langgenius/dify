@@ -65,7 +65,6 @@ const Details = ({ id, type, onApplyTemplate, onClose }: DetailsProps) => {
             icon={appIcon.type === 'image' ? appIcon.fileId : appIcon.icon}
             background={appIcon.type === 'image' ? undefined : appIcon.background}
             imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
-            showEditIcon
           />
           <div className="flex grow flex-col gap-y-1 overflow-hidden py-px">
             <div

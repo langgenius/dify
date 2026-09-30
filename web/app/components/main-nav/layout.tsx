@@ -55,7 +55,9 @@ const MainNavLayout = ({
   const pathname = usePathname()
   const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)
   const useResponsiveNavigation =
-    pathname === '/datasets/create' || pathname.startsWith('/integrations/')
+    pathname === '/agents' ||
+    pathname === '/datasets/create' ||
+    pathname.startsWith('/integrations/')
   const hideMainNavigation = shouldHideMainNavigation(pathname)
   const useDetailSidebar = shouldUseDetailSidebar(pathname, {
     agentV2Enabled: isAgentV2Enabled(),

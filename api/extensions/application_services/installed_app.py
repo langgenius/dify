@@ -74,7 +74,6 @@ def build_installed_app_services(
         messages=InstalledAppMessageService(
             messages=SQLAlchemyInstalledAppMessageRepository(session_factory=database_client),
             get_extra_contents=message_runtime.get_extra_contents,
-            suggested_questions=message_runtime.get_suggested_questions,
             emit_feedback=emit_installed_app_feedback,
         ),
     )

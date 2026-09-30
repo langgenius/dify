@@ -50,7 +50,7 @@ function TriggerIcon() {
 
 function RecoveryKeys(props: Pick<CollapsiblePanelProps, 'keepMounted' | 'hiddenUntilFound'>) {
   return (
-    <>
+    <React.Fragment>
       <CollapsibleTrigger className={cn(triggerClassName, 'justify-between gap-2')}>
         Recovery keys
         <TriggerIcon />
@@ -62,7 +62,7 @@ function RecoveryKeys(props: Pick<CollapsiblePanelProps, 'keepMounted' | 'hidden
           <div>horse-battery-staple</div>
         </div>
       </CollapsiblePanel>
-    </>
+    </React.Fragment>
   )
 }
 

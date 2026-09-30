@@ -53,7 +53,7 @@ const buttonClassName =
 const cardClassName =
   'flex min-h-[220px] flex-col gap-4 rounded-2xl border border-divider-subtle bg-components-panel-bg p-6 shadow-sm shadow-shadow-shadow-3'
 
-const ExampleCard = ({
+function ExampleCard({
   eyebrow,
   title,
   description,
@@ -63,7 +63,7 @@ const ExampleCard = ({
   title: string
   description: string
   children: React.ReactNode
-}) => {
+}) {
   return (
     <section className={cardClassName}>
       <div className="space-y-2">
@@ -76,7 +76,7 @@ const ExampleCard = ({
   )
 }
 
-const VariantExamples = () => {
+function VariantExamples() {
   const createVariantToast = (type: 'success' | 'error' | 'warning' | 'info') => {
     const copy = {
       success: {
@@ -132,7 +132,7 @@ const VariantExamples = () => {
   )
 }
 
-const StackExamples = () => {
+function StackExamples() {
   const createStack = () => {
     ;[
       {
@@ -194,7 +194,7 @@ const StackExamples = () => {
   )
 }
 
-const PromiseExamples = () => {
+function PromiseExamples() {
   const [pendingExample, setPendingExample] = React.useState<'success' | 'error' | null>(null)
 
   const exportDsl = async (outcome: 'success' | 'error') => {
@@ -255,7 +255,7 @@ const PromiseExamples = () => {
   )
 }
 
-const ActionExamples = () => {
+function ActionExamples() {
   const createActionToast = () => {
     let archivedToastId = ''
     archivedToastId = toast.warning('Project archived', {
@@ -301,7 +301,7 @@ const ActionExamples = () => {
   )
 }
 
-const DeduplicateExamples = () => {
+function DeduplicateExamples() {
   const saveCountRef = React.useRef(0)
 
   const saveDraft = () => {
@@ -328,7 +328,7 @@ const DeduplicateExamples = () => {
   )
 }
 
-const UpdateExamples = () => {
+function UpdateExamples() {
   const createUpdatableToast = () => {
     const toastId = toast.info('Import started', {
       description: 'Preparing assets and metadata for processing.',
@@ -365,7 +365,7 @@ const UpdateExamples = () => {
   )
 }
 
-const ToastDocsDemo = () => {
+function ToastDocsDemo() {
   return (
     <React.Fragment>
       <ExampleToastHost manager={manager} />

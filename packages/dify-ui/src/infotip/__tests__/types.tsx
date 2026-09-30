@@ -1,5 +1,5 @@
-import type * as React from 'react'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import * as React from 'react'
 
 export function infotipTypeContracts(
   triggerRef: React.Ref<HTMLButtonElement>,
@@ -8,7 +8,7 @@ export function infotipTypeContracts(
   const composition = (
     <Infotip<{ title: string }>>
       {({ payload }) => (
-        <>
+        <React.Fragment>
           <InfotipTrigger
             aria-label="Details"
             ref={triggerRef}
@@ -28,7 +28,7 @@ export function infotipTypeContracts(
           >
             {payload?.title}
           </InfotipContent>
-        </>
+        </React.Fragment>
       )}
     </Infotip>
   )

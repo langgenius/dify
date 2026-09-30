@@ -6,7 +6,6 @@ import type {
   SelectFormInput,
 } from '../../../types'
 import type { CodeNodeType } from '@/app/components/workflow/nodes/code/types'
-import type { App } from '@/types/app'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -19,6 +18,7 @@ import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/type
 import { toast } from '@/app/notifications'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { render } from '@/test/console/render'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import EmailSenderModal from '../test-email-sender'
 
 vi.mock('@/app/notifications', async (importOriginal) => ({
@@ -181,10 +181,7 @@ describe('human-input/delivery-method/test-email-sender', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     useAppStore.setState({
-      appDetail: {
-        id: 'app-1',
-        name: 'Workflow App',
-      } as App,
+      appDetail: createAppDetailFixture({ name: 'Workflow App' }),
     })
   })
 

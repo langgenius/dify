@@ -19,14 +19,23 @@ from configs import dify_config
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from constants.languages import languages
 from core.db.session_factory import get_session_maker
-from core.helper.ssrf_proxy import ssrf_proxy
 from core.schemas.schema_manager import SchemaManager
 from core.tools.tool_file_manager import ToolFileManager
 from enums import DeploymentEdition, WebAppAccessMode
 from extensions.application_services.agent import AgentAppServices, build_agent_app_services
 from extensions.application_services.app import AppServices, build_app_api_key_service, build_app_services
+from extensions.application_services.data_sources import (
+    DataSourceServices,
+    build_data_source_credentials,
+    build_data_source_services,
+)
+from extensions.application_services.datasets import build_dataset_dependencies
 from extensions.application_services.installed_app import InstalledAppServices, build_installed_app_services
-from extensions.application_services.knowledge import build_dataset_api_key_service
+from extensions.application_services.knowledge import (
+    KnowledgeServices,
+    build_dataset_api_key_service,
+    build_knowledge_services,
+)
 from extensions.application_services.trial_app import TrialAppServices, build_trial_app_services
 from extensions.ext_redis import RedisClientWrapper, redis_client
 from extensions.ext_storage import storage
@@ -45,14 +54,14 @@ from repositories.account_oauth_repository import (
     RegisterServiceOAuthInvitationGateway,
 )
 from repositories.account_repository import SQLAlchemyAccountRepository
+from repositories.app.mcp_server_repository import AppMCPServerRepository
+from repositories.app.site_command_repository import AppSiteCommandRepository
+from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfigRepository
 from repositories.app_definition_query_repository import AppDefinitionQueryRepository
 from repositories.app_preview_query_repository import AppPreviewQueryRepository
 from repositories.app_scoped_end_user_repository import AppScopedEndUserRepo
-from repositories.app_site_command_repository import AppSiteCommandRepository
 from repositories.app_statistic_query_repository import AppStatisticQueryRepository
-from repositories.app_tracing_config_repository import SQLAlchemyAppTracingConfigRepository
-from repositories.data_source_api_key_auth_repository import SQLAlchemyDataSourceApiKeyAuthBindingRepository
-from repositories.data_source_oauth_binding_repository import SQLAlchemyDataSourceOAuthBindingRepository
+from repositories.credentials.query_repository import CredentialQueryRepository
 from repositories.explore_banner_query_repository import ExploreBannerQueryRepository
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.file_grant_repository import FileGrantRepository
@@ -146,8 +155,10 @@ from services.account_oauth_service import AccountOAuthService, OAuthProviderGat
 from services.account_password_hasher import DefaultAccountPasswordHasher
 from services.account_password_service import AccountPasswordService
 from services.account_profile_service import AccountProfileService
+from services.agent.roster_package_exporter import RosterAgentPackageExporter
 from services.app.advanced_prompt_template_service import AdvancedPromptTemplateService
 from services.app.api_key_service import AppApiKeyService
+from services.app.mcp_server_service import AppMCPServerService
 from services.app_audio_adapters import AppAudioRuntime
 from services.app_audio_service import AppAudio
 from services.app_definition_query_service import AppDefinitionQueryService
@@ -161,15 +172,10 @@ from services.app_statistic_query import AppStatisticQuery
 from services.app_task_service import AppTaskControlService
 from services.app_tracing_config_gateway import OpsTraceManagerGateway
 from services.app_tracing_config_service import AppTracingConfigService
-from services.auth.data_source_api_key_auth_gateways import (
-    ProviderApiKeyAuthCredentialValidator,
-    TenantApiKeyAuthCredentialEncryptor,
-)
-from services.auth.data_source_api_key_auth_service import DataSourceApiKeyAuthService
 from services.billing_portal_service import BillingPortalService
 from services.billing_service import BillingService
 from services.compliance_download_service import ComplianceDownloadService
-from services.data_source_oauth_service import DataSourceOAuthService, InvalidDataSourceOAuthProviderError
+from services.credentials.query import CredentialQuery
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.file_grant_entities import FileGrantLimits
 from services.errors.enterprise import EnterpriseServiceError
@@ -188,7 +194,6 @@ from services.message_suggested_questions_adapters import MessageSuggestedQuesti
 from services.message_suggested_questions_service import MessageSuggestedQuestions
 from services.notification_gateway import BillingNotificationGateway
 from services.notification_service import NotificationService
-from services.notion_data_source_gateway import NotionDataSourceGateway
 from services.oauth_device_adapters import (
     DifyConfigOAuthDeviceSettings,
     EnterpriseOAuthDeviceSSOGateway,
@@ -211,6 +216,7 @@ from services.recommended_app_catalog_gateway import (
     RecommendedAppCatalogRouter,
     RemoteRecommendedAppCatalogGateway,
 )
+from services.recommended_app_package_service import RecommendedAppPackageService
 from services.recommended_app_query_service import RecommendedAppQueryService
 from services.remote_file_service import RemoteFileService
 from services.retention.workflow_run.archive_download_adapters import (
@@ -333,12 +339,14 @@ class AppScopedEndUserServices:
 class ApplicationServices:
     agent_apps: AgentAppServices
     advanced_prompt_templates: AdvancedPromptTemplateService
+    credential_queries: CredentialQuery
     accounts: AccountServices
     app_api_keys: AppApiKeyService
     dataset_api_keys: DatasetApiKeyService
     account_activation: AccountActivationService
     apps: AppServices
     app_definitions: AppDefinitionQueryService
+    app_mcp_servers: AppMCPServerService
     app_preview_details: AppPreviewDetails
     app_previews: AppPreviewQueryService
     app_sites: AppSiteService
@@ -346,8 +354,8 @@ class ApplicationServices:
     app_tracing_configs: AppTracingConfigService
     billing_portal: BillingPortalService
     compliance_downloads: ComplianceDownloadService
-    data_source_api_key_auth: DataSourceApiKeyAuthService
-    data_source_oauth: Mapping[str, DataSourceOAuthService]
+    data_sources: DataSourceServices
+    knowledge: KnowledgeServices
     app_scoped_end_users: AppScopedEndUserServices
     webapp_access: WebAppAccessQueryService
     web_app_runtime: WebAppRuntimeQueryService
@@ -371,6 +379,7 @@ class ApplicationServices:
     step_by_step_tour: StepByStepTourService
     partner_tenant_bindings: PartnerTenantBindingService
     recommended_app_queries: RecommendedAppQueryService
+    recommended_app_packages: RecommendedAppPackageService
     remote_files: RemoteFileService
     saved_messages: SavedMessageService
     app_tasks: AppTaskControlService
@@ -385,34 +394,6 @@ class ApplicationServices:
     web_passport: WebPassportService
     tags: TagApplicationService
     workflow_statistics: WorkflowStatisticQueryService
-
-    def resolve_data_source_oauth(self, provider: str) -> DataSourceOAuthService:
-        service = self.data_source_oauth.get(provider)
-        if service is None:
-            raise InvalidDataSourceOAuthProviderError("Invalid provider")
-        return service
-
-
-def _build_data_source_oauth_services(
-    *,
-    database_client: sessionmaker[Session],
-) -> Mapping[str, DataSourceOAuthService]:
-    notion_data_source = NotionDataSourceGateway(
-        client_id=dify_config.NOTION_CLIENT_ID or "",
-        client_secret=dify_config.NOTION_CLIENT_SECRET or "",
-        redirect_uri=dify_config.CONSOLE_API_URL + "/console/api/oauth/data-source/callback/notion",
-        http_client=ssrf_proxy,
-    )
-    bindings = SQLAlchemyDataSourceOAuthBindingRepository(session_factory=database_client)
-    return {
-        "notion": DataSourceOAuthService(
-            provider_name="notion",
-            provider_gateway=notion_data_source,
-            bindings=bindings,
-            is_internal_provider=dify_config.NOTION_INTEGRATION_TYPE == "internal",
-            internal_access_token=dify_config.NOTION_INTERNAL_SECRET,
-        )
-    }
 
 
 def _build_oauth_server_service(
@@ -541,7 +522,6 @@ def build_application_services(
     redis: RedisClientWrapper,
 ) -> ApplicationServices:
     installation_state = InstallationStateRepository(session_factory=database_client)
-    data_source_api_key_auth_bindings = SQLAlchemyDataSourceApiKeyAuthBindingRepository(session_factory=database_client)
     app_definition_repository = AppDefinitionQueryRepository(session_factory=database_client)
     app_definitions = AppDefinitionQueryService(
         definitions=app_definition_repository,
@@ -577,7 +557,43 @@ def build_application_services(
         trial_apps=trial_apps,
         trial_enabled=trial_app_enabled,
     )
+    recommended_app_packages = RecommendedAppPackageService(
+        sources=database_catalog, exporter=RosterAgentPackageExporter()
+    )
     workspace_query_repository = WorkspaceQueryRepository(session_factory=database_client)
+    workspace_member_repository = WorkspaceMemberQueryRepository(session_factory=database_client)
+    dataset_dependencies = build_dataset_dependencies(
+        database_client=database_client,
+        workspace_roles=workspace_member_repository,
+    )
+    datasource_credentials = build_data_source_credentials(database_client=database_client)
+    data_sources = build_data_source_services(
+        database_client=database_client,
+        dataset_access=dataset_dependencies.access,
+        datasets=dataset_dependencies.datasets,
+        documents=dataset_dependencies.documents,
+        actor_credentials=datasource_credentials.actor,
+        providers=datasource_credentials.providers,
+    )
+    oauth_server = _build_oauth_server_service(database_client=database_client, redis=redis)
+    apps = build_app_services(
+        database_client=database_client,
+        oauth=oauth_server,
+        recommended_packages=recommended_app_packages,
+    )
+    tags = TagApplicationService(tags=TagRepository(session_factory=database_client))
+    knowledge = build_knowledge_services(
+        database_client=database_client,
+        dataset_access=dataset_dependencies.access,
+        datasets=dataset_dependencies.datasets,
+        documents=dataset_dependencies.documents,
+        actor_credentials=datasource_credentials.actor,
+        stored_credentials=datasource_credentials.stored,
+        providers=datasource_credentials.providers,
+        redis=redis,
+        tags=tags,
+        app_queries=apps.queries,
+    )
     app_scoped_end_user_repository = AppScopedEndUserRepo(session_factory=database_client)
     file_service = FileService(session_factory=database_client)
     remote_file_service = RemoteFileService(files=file_service)
@@ -589,8 +605,8 @@ def build_application_services(
     workflow_node_execution_repository = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
         session_maker=database_client
     )
-    oauth_server = _build_oauth_server_service(database_client=database_client, redis=redis)
     return ApplicationServices(
+        credential_queries=CredentialQueryRepository(session_factory=database_client),
         accounts=AccountServices(
             access=AccountAccessService(
                 accounts=accounts,
@@ -745,13 +761,13 @@ def build_application_services(
                 enabled=dify_config.RBAC_ENABLED,
             ),
         ),
-        apps=build_app_services(
-            database_client=database_client,
-            oauth=oauth_server,
-        ),
+        apps=apps,
         agent_apps=build_agent_app_services(database_client=database_client),
         advanced_prompt_templates=AdvancedPromptTemplateService(),
         app_definitions=app_definitions,
+        app_mcp_servers=AppMCPServerService(
+            servers=AppMCPServerRepository(session_factory=database_client),
+        ),
         app_preview_details=AppPreviewDetailsRuntime(details=app_preview_repository),
         app_previews=AppPreviewQueryService(
             apps=app_preview_repository,
@@ -761,7 +777,10 @@ def build_application_services(
             sites=AppSiteCommandRepository(session_factory=database_client),
         ),
         app_api_keys=build_app_api_key_service(database_client=database_client),
-        dataset_api_keys=build_dataset_api_key_service(database_client=database_client),
+        dataset_api_keys=build_dataset_api_key_service(
+            database_client=database_client,
+            dataset_access=dataset_dependencies.access,
+        ),
         app_statistics=AppStatisticQueryRepository(session_factory=database_client),
         app_tracing_configs=AppTracingConfigService(
             configs=SQLAlchemyAppTracingConfigRepository(session_factory=database_client),
@@ -781,12 +800,8 @@ def build_application_services(
                 redis_client=redis,
             ),
         ),
-        data_source_api_key_auth=DataSourceApiKeyAuthService(
-            bindings=data_source_api_key_auth_bindings,
-            validator=ProviderApiKeyAuthCredentialValidator(),
-            encryptor=TenantApiKeyAuthCredentialEncryptor(),
-        ),
-        data_source_oauth=_build_data_source_oauth_services(database_client=database_client),
+        data_sources=data_sources,
+        knowledge=knowledge,
         app_scoped_end_users=AppScopedEndUserServices(
             commands=AppScopedEndUserService(end_users=app_scoped_end_user_repository),
             queries=AppScopedEndUserQueryService(end_users=app_scoped_end_user_repository),
@@ -869,6 +884,7 @@ def build_application_services(
             sync_bindings=BillingService.sync_partner_tenants_bindings,
         ),
         recommended_app_queries=recommended_app_queries,
+        recommended_app_packages=recommended_app_packages,
         remote_files=remote_file_service,
         saved_messages=SavedMessageService(
             saved_messages=SQLAlchemySavedMessageRepository(session_factory=database_client),
@@ -891,9 +907,7 @@ def build_application_services(
             plans=DeploymentWorkspacePlanGateway(),
         ),
         workspace_member_queries=WorkspaceMemberQueryService(
-            members=WorkspaceMemberQueryRepository(
-                session_factory=database_client,
-            ),
+            members=workspace_member_repository,
             roles=DeploymentWorkspaceMemberRoleResolver(),
         ),
         workflow_app_logs=WorkflowAppLogQueryService(
@@ -913,9 +927,7 @@ def build_application_services(
             now=lambda: datetime.now(UTC),
             access_token_expire_minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES,
         ),
-        tags=TagApplicationService(
-            tags=TagRepository(session_factory=database_client),
-        ),
+        tags=tags,
         workflow_statistics=WorkflowStatisticQueryService(
             workflow_runs=DifyAPIRepositoryFactory.create_api_workflow_run_repository(
                 session_maker=database_client,
