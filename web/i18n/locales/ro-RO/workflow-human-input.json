@@ -1,4 +1,12 @@
 {
+  "nodes.humanInput.approvers.description": "Doar membrii, destinatarii de e-mail sau rolurile selectate pot trimite. Livrarea publică prin Web App nu este disponibilă.",
+  "nodes.humanInput.approvers.role.admin": "Administrator",
+  "nodes.humanInput.approvers.role.dataset_operator": "Operator seturi de date",
+  "nodes.humanInput.approvers.role.editor": "Editor",
+  "nodes.humanInput.approvers.role.normal": "Membru",
+  "nodes.humanInput.approvers.role.owner": "Proprietar",
+  "nodes.humanInput.approvers.roles": "Roluri în spațiul de lucru",
+  "nodes.humanInput.approvers.title": "Aprobatori",
   "nodes.humanInput.deliveryMethod.added": "Adăugat",
   "nodes.humanInput.deliveryMethod.contactTip1": "Lipsește o metodă de livrare de care aveți nevoie?",
   "nodes.humanInput.deliveryMethod.contactTip2": "Spuneți-ne la <email>support@dify.ai</email>.",

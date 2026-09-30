@@ -1,4 +1,12 @@
 {
+  "nodes.humanInput.approvers.description": "Solo i membri, i destinatari email o i ruoli selezionati possono inviare. La distribuzione pubblica tramite Web App non è disponibile.",
+  "nodes.humanInput.approvers.role.admin": "Amministratore",
+  "nodes.humanInput.approvers.role.dataset_operator": "Operatore dataset",
+  "nodes.humanInput.approvers.role.editor": "Editor",
+  "nodes.humanInput.approvers.role.normal": "Membro",
+  "nodes.humanInput.approvers.role.owner": "Proprietario",
+  "nodes.humanInput.approvers.roles": "Ruoli dello spazio di lavoro",
+  "nodes.humanInput.approvers.title": "Approvatori",
   "nodes.humanInput.deliveryMethod.added": "Aggiunto",
   "nodes.humanInput.deliveryMethod.contactTip1": "Manca un metodo di consegna di cui hai bisogno?",
   "nodes.humanInput.deliveryMethod.contactTip2": "Faccelo sapere a <email>support@dify.ai</email>.",

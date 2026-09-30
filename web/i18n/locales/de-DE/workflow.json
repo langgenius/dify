@@ -349,6 +349,8 @@
   "nodes.end.output.variable": "Ausgabevariable",
   "nodes.http.api": "API",
   "nodes.http.binaryFileVariable": "Variable der Binärdatei",
+  "nodes.humanInput.errorMsg.approversRequired": "Wählen Sie mindestens eine genehmigende Person aus",
+  "nodes.humanInput.errorMsg.approversWebAppUnsupported": "Eingeschränkte Genehmigung kann keine Web-App-Zustellung verwenden",
   "nodes.humanInput.errorMsg.duplicateActionId": "Doppelte Aktions-ID in Benutzeraktionen gefunden",
   "nodes.humanInput.errorMsg.emailConfigIncomplete": "Bitte schließen Sie die Konfiguration der E-Mail-Zustellmethode ab",
   "nodes.humanInput.errorMsg.emptyActionId": "Aktions-ID darf nicht leer sein",

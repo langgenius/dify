@@ -8,6 +8,7 @@ from pydantic import TypeAdapter
 
 from core.workflow.nodes.human_input._exc import ExtensionsNotSetErrorValueError
 from core.workflow.nodes.human_input.entities import (
+    ApproverConfig,
     FileInputConfig,
     FormDefinition,
     ParagraphInputConfig,
@@ -18,6 +19,7 @@ from core.workflow.nodes.human_input.enums import ButtonStyle, FormInputType, Va
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.nodes.human_input.session_binding import SessionBinding
 from graphon.file import FileType
+from models.account import TenantAccountRole
 
 
 def test_session_binding_identity_mapping() -> None:
@@ -128,6 +130,24 @@ def test_form_definition_dump_keeps_public_json_shape() -> None:
     assert payload["expiration_time"] == "2024-01-01T00:00:00Z"
     assert payload["user_actions"][0]["id"] == "approve"
     assert payload["inputs"][0]["type"] == "paragraph"
+
+
+def test_form_definition_round_trips_approver_policy() -> None:
+    definition = FormDefinition(
+        form_content="Approval",
+        rendered_content="Approval",
+        expiration_time=datetime(2024, 1, 1, tzinfo=UTC),
+        approvers=ApproverConfig(
+            member_ids=["member-id"], emails=["Reviewer@Example.com"], roles=[TenantAccountRole.ADMIN]
+        ),
+    )
+
+    restored = FormDefinition.model_validate_json(definition.model_dump_json())
+
+    assert restored.approvers is not None
+    assert restored.approvers.member_ids == ["member-id"]
+    assert restored.approvers.emails == ["reviewer@example.com"]
+    assert restored.approvers.roles == [TenantAccountRole.ADMIN]
 
 
 def test_custom_file_input_requires_extensions() -> None:

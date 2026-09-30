@@ -29,7 +29,7 @@ from core.workflow.human_input_adapter import (
     MemberRecipient,
     WebAppDeliveryMethod,
 )
-from core.workflow.nodes.human_input.entities import HumanInputNodeData, UserActionConfig
+from core.workflow.nodes.human_input.entities import ApproverConfig, HumanInputNodeData, UserActionConfig
 from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from libs.datetime_utils import naive_utc_now
 from models.account import Account, TenantAccountJoin, TenantAccountRole
@@ -423,6 +423,23 @@ def test_create_form_adds_console_and_backstage_recipients(
         RecipientType.CONSOLE,
         RecipientType.BACKSTAGE,
     }
+
+
+def test_create_form_rejects_public_delivery_for_restricted_approval(repository_session: Session) -> None:
+    repo = HumanInputFormRepositoryImpl(tenant_id="tenant", app_id="app", workflow_execution_id="run")
+    params = FormCreateParams(
+        workflow_execution_id="run",
+        node_id="node",
+        form_config=HumanInputNodeData(title="Approval", approvers=ApproverConfig(member_ids=["acc-1"])),
+        rendered_content="Approval",
+        delivery_methods=[WebAppDeliveryMethod()],
+        display_in_ui=True,
+        resolved_default_values={},
+        form_kind=HumanInputFormKind.RUNTIME,
+    )
+
+    with pytest.raises(ValueError, match="cannot use public Web App delivery"):
+        repo.create_form(params)
 
 
 def test_submission_get_by_token_returns_none_when_missing_or_form_missing(repository_session: Session) -> None:

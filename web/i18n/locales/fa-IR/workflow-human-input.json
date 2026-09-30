@@ -1,4 +1,12 @@
 {
+  "nodes.humanInput.approvers.description": "فقط اعضا، گیرندگان ایمیل یا نقش‌های انتخاب‌شدهٔ فضای کاری می‌توانند ارسال کنند. ارسال عمومی از طریق Web App در دسترس نیست.",
+  "nodes.humanInput.approvers.role.admin": "مدیر",
+  "nodes.humanInput.approvers.role.dataset_operator": "اپراتور مجموعه‌داده",
+  "nodes.humanInput.approvers.role.editor": "ویرایشگر",
+  "nodes.humanInput.approvers.role.normal": "عضو",
+  "nodes.humanInput.approvers.role.owner": "مالک",
+  "nodes.humanInput.approvers.roles": "نقش‌های فضای کاری",
+  "nodes.humanInput.approvers.title": "تأییدکنندگان",
   "nodes.humanInput.deliveryMethod.added": "اضافه شد",
   "nodes.humanInput.deliveryMethod.contactTip1": "روش ارسال مورد نظرتان وجود ندارد؟",
   "nodes.humanInput.deliveryMethod.contactTip2": "به ما اطلاع دهید: <email>support@dify.ai</email>",

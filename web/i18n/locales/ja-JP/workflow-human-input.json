@@ -1,4 +1,12 @@
 {
+  "nodes.humanInput.approvers.description": "選択したメンバー、メール受信者、またはワークスペースのロールのみ送信できます。公開 Web App 配信は利用できません。",
+  "nodes.humanInput.approvers.role.admin": "管理者",
+  "nodes.humanInput.approvers.role.dataset_operator": "データセット担当者",
+  "nodes.humanInput.approvers.role.editor": "編集者",
+  "nodes.humanInput.approvers.role.normal": "メンバー",
+  "nodes.humanInput.approvers.role.owner": "所有者",
+  "nodes.humanInput.approvers.roles": "ワークスペースのロール",
+  "nodes.humanInput.approvers.title": "承認者",
   "nodes.humanInput.deliveryMethod.added": "追加済み",
   "nodes.humanInput.deliveryMethod.contactTip1": "必要な配信方法が見つかりませんか?",
   "nodes.humanInput.deliveryMethod.contactTip2": "<email>support@dify.ai</email>までお知らせください。",

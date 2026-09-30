@@ -86,6 +86,7 @@ class WorkflowHumanInputFormApi(Resource):
         tags=["Human Input"],
         responses={
             200: "Form contents retrieved successfully.",
+            403: "Not a designated approver.",
             404: "`not_found` : Form not found.",
             412: (
                 "- `human_input_form_submitted` : Form already submitted. Forms are one-shot; the first "
@@ -101,6 +102,7 @@ class WorkflowHumanInputFormApi(Resource):
         responses={
             200: "Form retrieved successfully",
             401: "Unauthorized - invalid API token",
+            403: "Not a designated approver",
             404: "Form not found",
             412: "Form already submitted or expired",
         }
@@ -120,6 +122,7 @@ class WorkflowHumanInputFormApi(Resource):
         _ensure_form_belongs_to_app(form, app_model)
         _ensure_form_is_allowed_for_service_api(form)
         service.ensure_form_active(form)
+        service.ensure_approver_allowed(form, submission_user_id=None)
         inputs = service.resolve_form_inputs(form)
         return _jsonify_form_definition(form, inputs=inputs)
 
@@ -133,6 +136,7 @@ class WorkflowHumanInputFormApi(Resource):
         tags=["Human Input"],
         responses={
             200: "Form submitted successfully. The response body is an empty object.",
+            403: "Not a designated approver.",
             400: (
                 "- `bad_request` : Form recipient type is invalid.\n"
                 "- `invalid_form_data` : Submission failed validation against the form definition."
@@ -154,6 +158,7 @@ class WorkflowHumanInputFormApi(Resource):
             200: "Form submitted successfully",
             400: "Bad request - invalid submission data",
             401: "Unauthorized - invalid API token",
+            403: "Not a designated approver",
             404: "Form not found",
             412: "Form already submitted or expired",
         }

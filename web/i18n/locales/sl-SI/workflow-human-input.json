@@ -1,4 +1,12 @@
 {
+  "nodes.humanInput.approvers.description": "Oddajo lahko le izbrani člani, prejemniki e-pošte ali vloge delovnega prostora. Javna dostava prek Web App ni na voljo.",
+  "nodes.humanInput.approvers.role.admin": "Skrbnik",
+  "nodes.humanInput.approvers.role.dataset_operator": "Upravljavec podatkovnih zbirk",
+  "nodes.humanInput.approvers.role.editor": "Urednik",
+  "nodes.humanInput.approvers.role.normal": "Član",
+  "nodes.humanInput.approvers.role.owner": "Lastnik",
+  "nodes.humanInput.approvers.roles": "Vloge delovnega prostora",
+  "nodes.humanInput.approvers.title": "Odobritelji",
   "nodes.humanInput.deliveryMethod.added": "Dodano",
   "nodes.humanInput.deliveryMethod.contactTip1": "Manjka vam način dostave, ki ga potrebujete?",
   "nodes.humanInput.deliveryMethod.contactTip2": "Povejte nam na <email>support@dify.ai</email>.",

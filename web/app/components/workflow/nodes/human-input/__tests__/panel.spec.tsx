@@ -30,6 +30,10 @@ vi.mock('@/app/notifications', () => ({
   },
 }))
 
+vi.mock('@/service/use-common', () => ({
+  useMembers: () => ({ data: { accounts: [] } }),
+}))
+
 vi.mock('@/app/components/workflow/store', () => ({
   useStore: (selector: (state: { nodePanelWidth: number }) => unknown) => mockUseStore(selector),
 }))
@@ -252,6 +256,7 @@ const createConfigResult = (
   readOnly: false,
   inputs: createData(),
   handleDeliveryMethodChange: vi.fn(),
+  handleApproversChange: vi.fn(),
   handleUserActionAdd: vi.fn(),
   handleUserActionChange: vi.fn(),
   handleUserActionDelete: vi.fn(),

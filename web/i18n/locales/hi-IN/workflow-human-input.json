@@ -1,4 +1,12 @@
 {
+  "nodes.humanInput.approvers.description": "केवल चुने गए सदस्य, ईमेल प्राप्तकर्ता या कार्यस्थान की भूमिकाएँ ही जमा कर सकती हैं। सार्वजनिक Web App वितरण उपलब्ध नहीं है।",
+  "nodes.humanInput.approvers.role.admin": "व्यवस्थापक",
+  "nodes.humanInput.approvers.role.dataset_operator": "डेटासेट ऑपरेटर",
+  "nodes.humanInput.approvers.role.editor": "संपादक",
+  "nodes.humanInput.approvers.role.normal": "सदस्य",
+  "nodes.humanInput.approvers.role.owner": "स्वामी",
+  "nodes.humanInput.approvers.roles": "कार्यस्थान की भूमिकाएँ",
+  "nodes.humanInput.approvers.title": "अनुमोदक",
   "nodes.humanInput.deliveryMethod.added": "जोड़ा गया",
   "nodes.humanInput.deliveryMethod.contactTip1": "आपको जिस डिलीवरी विधि की आवश्यकता है वह गायब है?",
   "nodes.humanInput.deliveryMethod.contactTip2": "हमें <email>support@dify.ai</email> पर बताएं।",

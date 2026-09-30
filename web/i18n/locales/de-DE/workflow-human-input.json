@@ -1,4 +1,12 @@
 {
+  "nodes.humanInput.approvers.description": "Nur ausgewählte Mitglieder, E-Mail-Empfänger oder Workspace-Rollen dürfen antworten. Öffentliche Web-App-Zustellung ist nicht verfügbar.",
+  "nodes.humanInput.approvers.role.admin": "Administrator",
+  "nodes.humanInput.approvers.role.dataset_operator": "Datensatz-Operator",
+  "nodes.humanInput.approvers.role.editor": "Bearbeiter",
+  "nodes.humanInput.approvers.role.normal": "Mitglied",
+  "nodes.humanInput.approvers.role.owner": "Eigentümer",
+  "nodes.humanInput.approvers.roles": "Workspace-Rollen",
+  "nodes.humanInput.approvers.title": "Genehmigende",
   "nodes.humanInput.deliveryMethod.added": "Hinzugefügt",
   "nodes.humanInput.deliveryMethod.contactTip1": "Fehlt Ihnen eine Zustellmethode, die Sie benötigen?",
   "nodes.humanInput.deliveryMethod.contactTip2": "Teilen Sie es uns unter <email>support@dify.ai</email> mit.",

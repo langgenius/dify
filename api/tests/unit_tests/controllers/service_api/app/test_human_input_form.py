@@ -98,6 +98,7 @@ class TestWorkflowHumanInputFormApi:
         service_mock.get_form_by_token.assert_called_once_with("token-1")
         service_mock.resolve_form_inputs.assert_called_once_with(form)
         service_mock.ensure_form_active.assert_called_once_with(form)
+        service_mock.ensure_approver_allowed.assert_called_once_with(form, submission_user_id=None)
 
     def test_get_resolves_runtime_select_values(
         self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine

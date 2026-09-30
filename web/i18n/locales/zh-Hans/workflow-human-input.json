@@ -1,4 +1,12 @@
 {
+  "nodes.humanInput.approvers.description": "仅所选成员、邮箱收件人或工作区角色可提交。受限审批不支持公开 Web App 投递。",
+  "nodes.humanInput.approvers.role.admin": "管理员",
+  "nodes.humanInput.approvers.role.dataset_operator": "知识库操作员",
+  "nodes.humanInput.approvers.role.editor": "编辑者",
+  "nodes.humanInput.approvers.role.normal": "成员",
+  "nodes.humanInput.approvers.role.owner": "所有者",
+  "nodes.humanInput.approvers.roles": "工作区角色",
+  "nodes.humanInput.approvers.title": "审批人",
   "nodes.humanInput.deliveryMethod.added": "已添加",
   "nodes.humanInput.deliveryMethod.contactTip1": "缺少所需的提交方式？",
   "nodes.humanInput.deliveryMethod.contactTip2": "请告诉我们 <email>support@dify.ai</email>",

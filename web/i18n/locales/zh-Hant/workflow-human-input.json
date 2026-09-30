@@ -1,4 +1,12 @@
 {
+  "nodes.humanInput.approvers.description": "僅所選成員、電子郵件收件人或工作區角色可提交。受限審批不支援公開 Web App 投遞。",
+  "nodes.humanInput.approvers.role.admin": "管理員",
+  "nodes.humanInput.approvers.role.dataset_operator": "知識庫操作員",
+  "nodes.humanInput.approvers.role.editor": "編輯者",
+  "nodes.humanInput.approvers.role.normal": "成員",
+  "nodes.humanInput.approvers.role.owner": "擁有者",
+  "nodes.humanInput.approvers.roles": "工作區角色",
+  "nodes.humanInput.approvers.title": "審批人",
   "nodes.humanInput.deliveryMethod.added": "已添加",
   "nodes.humanInput.deliveryMethod.contactTip1": "缺少您需要的發送方式?",
   "nodes.humanInput.deliveryMethod.contactTip2": "請通過<email>support@dify.ai</email>告訴我們。",

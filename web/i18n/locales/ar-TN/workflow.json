@@ -349,6 +349,8 @@
   "nodes.end.output.variable": "متغير الإخراج",
   "nodes.http.api": "API",
   "nodes.http.binaryFileVariable": "متغير ملف ثنائي",
+  "nodes.humanInput.errorMsg.approversRequired": "اختر موافقًا واحدًا على الأقل",
+  "nodes.humanInput.errorMsg.approversWebAppUnsupported": "لا يمكن للموافقة المقيّدة استخدام التسليم عبر Web App",
   "nodes.humanInput.errorMsg.duplicateActionId": "تم العثور على معرف إجراء مكرر في إجراءات المستخدم",
   "nodes.humanInput.errorMsg.emailConfigIncomplete": "يرجى استكمال تكوين طريقة تسليم البريد الإلكتروني",
   "nodes.humanInput.errorMsg.emptyActionId": "لا يمكن أن يكون معرف الإجراء فارغاً",

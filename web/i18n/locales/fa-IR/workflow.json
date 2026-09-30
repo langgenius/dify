@@ -349,6 +349,8 @@
   "nodes.end.output.variable": "متغیر خروجی",
   "nodes.http.api": "API",
   "nodes.http.binaryFileVariable": "متغیر فایل باینری",
+  "nodes.humanInput.errorMsg.approversRequired": "حداقل یک تأییدکننده انتخاب کنید",
+  "nodes.humanInput.errorMsg.approversWebAppUnsupported": "تأیید محدود نمی‌تواند از ارسال Web App استفاده کند",
   "nodes.humanInput.errorMsg.duplicateActionId": "شناسه عملیات تکراری است",
   "nodes.humanInput.errorMsg.emailConfigIncomplete": "لطفاً پیکربندی روش ارسال ایمیل را تکمیل کنید",
   "nodes.humanInput.errorMsg.emptyActionId": "شناسه عملیات نمی‌تواند خالی باشد",

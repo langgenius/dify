@@ -125,6 +125,7 @@ class TestOpenApiHumanInputFormGet:
         assert payload["resolved_default_values"] == {"field1": "default"}
         assert payload["user_actions"] == [{"id": "submit", "title": "Submit"}]
         service_mock.ensure_form_active.assert_called_once_with(form)
+        service_mock.ensure_approver_allowed.assert_called_once_with(form, submission_user_id="acct-1")
 
     def test_get_form_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         _mock_service(monkeypatch, None)

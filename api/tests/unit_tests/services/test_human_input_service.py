@@ -18,6 +18,7 @@ from core.repositories.human_input_repository import (
     HumanInputFormSubmissionRepository,
 )
 from core.workflow.nodes.human_input.entities import (
+    ApproverConfig,
     FileInputConfig,
     FileListInputConfig,
     FormDefinition,
@@ -30,11 +31,13 @@ from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInput
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.runtime import GraphRuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
+from models.account import TenantAccountRole
 from models.human_input import RecipientType
 from models.model import App, AppMode
 from models.workflow import WorkflowRun
 from services.human_input_service import (
     Form,
+    FormApproverNotAllowedError,
     FormExpiredError,
     FormSubmittedError,
     HumanInputService,
@@ -203,6 +206,79 @@ def test_get_form_definition_by_token_for_console_uses_repository(
     repo.get_by_token.assert_called_once_with("token")
     assert form is not None
     assert form.get_definition() == console_record.definition
+
+
+def test_restricted_form_rejects_public_webapp_token(sample_form_record: HumanInputFormRecord) -> None:
+    record = dataclasses.replace(
+        sample_form_record,
+        definition=sample_form_record.definition.model_copy(
+            update={"approvers": ApproverConfig(member_ids=["member-id"])}
+        ),
+    )
+    service = HumanInputService(MagicMock())
+
+    with pytest.raises(FormApproverNotAllowedError):
+        service.ensure_approver_allowed(Form(record), submission_user_id=None)
+
+
+def test_restricted_form_allows_bound_external_email(sample_form_record: HumanInputFormRecord) -> None:
+    record = dataclasses.replace(
+        sample_form_record,
+        recipient_type=RecipientType.EMAIL_EXTERNAL,
+        recipient_payload={"email": "Reviewer@Example.com"},
+        definition=sample_form_record.definition.model_copy(
+            update={"approvers": ApproverConfig(emails=["reviewer@example.com"])}
+        ),
+    )
+    service = HumanInputService(MagicMock())
+
+    service.ensure_approver_allowed(Form(record), submission_user_id=None)
+
+
+def test_restricted_form_checks_current_workspace_role(sample_form_record: HumanInputFormRecord) -> None:
+    record = dataclasses.replace(
+        sample_form_record,
+        recipient_type=RecipientType.CONSOLE,
+        definition=sample_form_record.definition.model_copy(
+            update={"approvers": ApproverConfig(roles=[TenantAccountRole.ADMIN])}
+        ),
+    )
+    session_factory = MagicMock()
+    session_factory.return_value.__enter__.return_value.execute.return_value.one_or_none.return_value = (
+        TenantAccountRole.ADMIN,
+        "admin@example.com",
+    )
+    service = HumanInputService(session_factory)
+
+    service.ensure_approver_allowed(Form(record), submission_user_id="member-id")
+
+    session_factory.return_value.__enter__.return_value.execute.return_value.one_or_none.return_value = (
+        TenantAccountRole.NORMAL,
+        "member@example.com",
+    )
+    with pytest.raises(FormApproverNotAllowedError):
+        service.ensure_approver_allowed(Form(record), submission_user_id="member-id")
+
+
+def test_bound_member_email_token_requires_current_membership(sample_form_record: HumanInputFormRecord) -> None:
+    record = dataclasses.replace(
+        sample_form_record,
+        recipient_type=RecipientType.EMAIL_MEMBER,
+        recipient_payload={"user_id": "member-id", "email": "member@example.com"},
+        definition=sample_form_record.definition.model_copy(
+            update={"approvers": ApproverConfig(member_ids=["member-id"])}
+        ),
+    )
+    session_factory = MagicMock()
+    lookup = session_factory.return_value.__enter__.return_value.execute.return_value.one_or_none
+    lookup.return_value = (TenantAccountRole.NORMAL, "member@example.com")
+    service = HumanInputService(session_factory)
+
+    service.ensure_approver_allowed(Form(record), submission_user_id=None)
+
+    lookup.return_value = None
+    with pytest.raises(FormApproverNotAllowedError):
+        service.ensure_approver_allowed(Form(record), submission_user_id=None)
 
 
 def _build_resumption_context_state(*, options: list[str], workflow_run_id: str) -> bytes:

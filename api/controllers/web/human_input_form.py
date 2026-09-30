@@ -181,6 +181,7 @@ class HumanInputFormApi(Resource):
             raise NotFoundError("Form not found")
 
         service.ensure_form_active(form)
+        service.ensure_approver_allowed(form, submission_user_id=None)
         app_model, site = _get_app_site_from_form(form)
         tenant = app_model.tenant(db.session)
         if tenant is None:
@@ -213,6 +214,7 @@ class HumanInputFormApi(Resource):
         responses={
             200: "Form submitted successfully",
             400: "Bad request - invalid submission data",
+            403: "Not a designated approver",
             404: "Form not found",
             412: "Form already submitted or expired",
             429: "Too many requests",

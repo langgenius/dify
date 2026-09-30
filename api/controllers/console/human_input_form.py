@@ -62,7 +62,7 @@ register_response_schema_models(
 
 
 def _jsonify_form_definition(form: Form) -> Response:
-    payload = form.get_definition().model_dump()
+    payload = form.get_definition().model_dump(exclude={"approvers"})
     payload["expiration_time"] = int(form.expiration_time.timestamp())
     return Response(json.dumps(payload, ensure_ascii=False), mimetype="application/json")
 
@@ -86,8 +86,9 @@ class ConsoleHumanInputFormApi(Resource):
     @login_required
     @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[ConsoleHumanInputFormDefinitionResponse.__name__])
+    @with_current_user
     @with_current_tenant_id
-    def get(self, current_tenant_id: str, form_token: str):
+    def get(self, current_tenant_id: str, current_user: Account, form_token: str):
         """
         Get human input form definition by form token.
 
@@ -99,6 +100,7 @@ class ConsoleHumanInputFormApi(Resource):
             raise NotFoundError(f"form not found, token={form_token}")
 
         self._ensure_console_access(form, current_tenant_id)
+        service.ensure_approver_allowed(form, submission_user_id=current_user.id)
 
         return _jsonify_form_definition(form)
 

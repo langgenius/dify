@@ -349,6 +349,8 @@
   "nodes.end.output.variable": "variable de sortie",
   "nodes.http.api": "API",
   "nodes.http.binaryFileVariable": "Variable de fichier binaire",
+  "nodes.humanInput.errorMsg.approversRequired": "Sélectionnez au moins un approbateur",
+  "nodes.humanInput.errorMsg.approversWebAppUnsupported": "Une approbation restreinte ne peut pas utiliser la diffusion Web App",
   "nodes.humanInput.errorMsg.duplicateActionId": "ID d'action en double trouvé dans les actions utilisateur",
   "nodes.humanInput.errorMsg.emailConfigIncomplete": "Veuillez compléter la configuration de la méthode de livraison par e-mail",
   "nodes.humanInput.errorMsg.emptyActionId": "L'ID d'action ne peut pas être vide",

@@ -1,4 +1,12 @@
 {
+  "nodes.humanInput.approvers.description": "เฉพาะสมาชิก ผู้รับอีเมล หรือบทบาทพื้นที่ทำงานที่เลือกเท่านั้นที่ส่งได้ ไม่รองรับการส่งผ่าน Web App สาธารณะ",
+  "nodes.humanInput.approvers.role.admin": "ผู้ดูแลระบบ",
+  "nodes.humanInput.approvers.role.dataset_operator": "ผู้ดูแลชุดข้อมูล",
+  "nodes.humanInput.approvers.role.editor": "ผู้แก้ไข",
+  "nodes.humanInput.approvers.role.normal": "สมาชิก",
+  "nodes.humanInput.approvers.role.owner": "เจ้าของ",
+  "nodes.humanInput.approvers.roles": "บทบาทพื้นที่ทำงาน",
+  "nodes.humanInput.approvers.title": "ผู้อนุมัติ",
   "nodes.humanInput.deliveryMethod.added": "เพิ่มแล้ว",
   "nodes.humanInput.deliveryMethod.contactTip1": "ไม่มีวิธีการส่งมอบที่คุณต้องการหรือไม่?",
   "nodes.humanInput.deliveryMethod.contactTip2": "แจ้งให้เราทราบที่ <email>support@dify.ai</email>",

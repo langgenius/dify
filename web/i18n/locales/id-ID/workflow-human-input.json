@@ -1,4 +1,12 @@
 {
+  "nodes.humanInput.approvers.description": "Hanya anggota, penerima email, atau peran ruang kerja yang dipilih yang dapat mengirim. Pengiriman Web App publik tidak tersedia.",
+  "nodes.humanInput.approvers.role.admin": "Admin",
+  "nodes.humanInput.approvers.role.dataset_operator": "Operator dataset",
+  "nodes.humanInput.approvers.role.editor": "Editor",
+  "nodes.humanInput.approvers.role.normal": "Anggota",
+  "nodes.humanInput.approvers.role.owner": "Pemilik",
+  "nodes.humanInput.approvers.roles": "Peran ruang kerja",
+  "nodes.humanInput.approvers.title": "Penyetuju",
   "nodes.humanInput.deliveryMethod.added": "Ditambahkan",
   "nodes.humanInput.deliveryMethod.contactTip1": "Tidak ada metode pengiriman yang Anda butuhkan?",
   "nodes.humanInput.deliveryMethod.contactTip2": "Beritahu kami di <email>support@dify.ai</email>.",

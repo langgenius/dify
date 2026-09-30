@@ -349,6 +349,8 @@
   "nodes.end.output.variable": "çıktı değişkeni",
   "nodes.http.api": "API",
   "nodes.http.binaryFileVariable": "İkili Dosya Değişkeni",
+  "nodes.humanInput.errorMsg.approversRequired": "En az bir onaylayan seçin",
+  "nodes.humanInput.errorMsg.approversWebAppUnsupported": "Kısıtlı onay Web App iletimini kullanamaz",
   "nodes.humanInput.errorMsg.duplicateActionId": "Kullanıcı eylemlerinde yinelenen eylem kimliği bulundu",
   "nodes.humanInput.errorMsg.emailConfigIncomplete": "Lütfen E-posta teslimat yöntemi yapılandırmasını tamamlayın",
   "nodes.humanInput.errorMsg.emptyActionId": "Eylem kimliği boş olamaz",

@@ -2044,7 +2044,7 @@ Retrieve a paused Human Input form's contents using the `form_token` from a `hum
 | ---- | ----------- | ------ |
 | 200 | Form contents retrieved successfully. | **application/json**: [HumanInputFormDefinitionResponse](#humaninputformdefinitionresponse)<br> |
 | 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 403 | Not a designated approver. |  |
 | 404 | `not_found` : Form not found. |  |
 | 412 | - `human_input_form_submitted` : Form already submitted. Forms are one-shot; the first response wins regardless of which user submits it. - `human_input_form_expired` : The form's expiration time passed before submission arrived. |  |
 
@@ -2072,7 +2072,7 @@ Submit the recipient's response to a paused Human Input form. The workflow resum
 | 200 | Form submitted successfully. The response body is an empty object. | **application/json**: [HumanInputFormSubmitResponse](#humaninputformsubmitresponse)<br> |
 | 400 | - `bad_request` : Form recipient type is invalid. - `invalid_form_data` : Submission failed validation against the form definition. |  |
 | 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 403 | Not a designated approver. |  |
 | 404 | `not_found` : Form not found. |  |
 | 412 | - `human_input_form_submitted` : Form already submitted. Forms are one-shot; the first response wins regardless of which user submits it. - `human_input_form_expired` : The form's expiration time passed before submission arrived. |  |
 

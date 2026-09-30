@@ -349,6 +349,8 @@
   "nodes.end.output.variable": "zmienna wyjściowa",
   "nodes.http.api": "API",
   "nodes.http.binaryFileVariable": "Binarna zmienna pliku",
+  "nodes.humanInput.errorMsg.approversRequired": "Wybierz co najmniej jedną osobę zatwierdzającą",
+  "nodes.humanInput.errorMsg.approversWebAppUnsupported": "Ograniczone zatwierdzanie nie może używać dostawy przez Web App",
   "nodes.humanInput.errorMsg.duplicateActionId": "Znaleziono zduplikowany identyfikator akcji w akcjach użytkownika",
   "nodes.humanInput.errorMsg.emailConfigIncomplete": "Proszę dokończyć konfigurację metody dostarczania e-mail",
   "nodes.humanInput.errorMsg.emptyActionId": "Identyfikator akcji nie może być pusty",

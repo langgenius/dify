@@ -1,4 +1,12 @@
 {
+  "nodes.humanInput.approvers.description": "Alleen geselecteerde leden, e-mailontvangers of werkruimterollen mogen indienen. Openbare Web App-bezorging is niet beschikbaar.",
+  "nodes.humanInput.approvers.role.admin": "Beheerder",
+  "nodes.humanInput.approvers.role.dataset_operator": "Datasetbeheerder",
+  "nodes.humanInput.approvers.role.editor": "Bewerker",
+  "nodes.humanInput.approvers.role.normal": "Lid",
+  "nodes.humanInput.approvers.role.owner": "Eigenaar",
+  "nodes.humanInput.approvers.roles": "Werkruimterollen",
+  "nodes.humanInput.approvers.title": "Goedkeurders",
   "nodes.humanInput.deliveryMethod.added": "Added",
   "nodes.humanInput.deliveryMethod.contactTip1": "Missing a delivery method you need?",
   "nodes.humanInput.deliveryMethod.contactTip2": "Tell us at <email>support@dify.ai</email>.",

@@ -1,4 +1,12 @@
 {
+  "nodes.humanInput.approvers.description": "Chỉ thành viên, người nhận email hoặc vai trò không gian làm việc đã chọn mới được gửi. Không hỗ trợ gửi qua Web App công khai.",
+  "nodes.humanInput.approvers.role.admin": "Quản trị viên",
+  "nodes.humanInput.approvers.role.dataset_operator": "Người vận hành tập dữ liệu",
+  "nodes.humanInput.approvers.role.editor": "Biên tập viên",
+  "nodes.humanInput.approvers.role.normal": "Thành viên",
+  "nodes.humanInput.approvers.role.owner": "Chủ sở hữu",
+  "nodes.humanInput.approvers.roles": "Vai trò không gian làm việc",
+  "nodes.humanInput.approvers.title": "Người phê duyệt",
   "nodes.humanInput.deliveryMethod.added": "Đã thêm",
   "nodes.humanInput.deliveryMethod.contactTip1": "Thiếu phương thức giao hàng bạn cần?",
   "nodes.humanInput.deliveryMethod.contactTip2": "Hãy cho chúng tôi biết tại <email>support@dify.ai</email>.",
