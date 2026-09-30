@@ -1,6 +1,8 @@
 import type { PeriodParams } from '@/app/components/app/overview/app-chart'
 import { screen } from '@testing-library/react'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppACLPermission } from '@/utils/permission'
 import ChartView from '../chart-view'
 
@@ -23,13 +25,6 @@ vi.mock('@/context/workspace-state', async () => {
     currentWorkspace: { id: 'workspace-1' },
   }))
 })
-
-vi.mock('@/app/components/app/store', () => ({
-  useStore: <T,>(selector: (state: { appDetail: typeof testState.appDetail }) => T): T =>
-    selector({
-      appDetail: testState.appDetail,
-    }),
-}))
 
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => path,
@@ -103,6 +98,16 @@ vi.mock('@/context/permission-state', async () => {
   }))
 })
 
+const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) => {
+  const queryClient = createConsoleQueryClient()
+  const detail = createAppDetailFixture({ ...testState.appDetail, mode: 'chat' })
+  queryClient.setQueryData(
+    consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: detail.id } } }),
+    detail,
+  )
+  return renderWithConsoleQuery(ui, { queryClient })
+}
+
 describe('ChartView monitor permission', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -139,4 +144,21 @@ describe('ChartView monitor permission', () => {
       expect(testState.chartRenderSpy).toHaveBeenCalledWith('conversations')
     })
   })
+})
+
+it('switches the visible charts to the destination app mode', () => {
+  testState.appDetail.permission_keys = [AppACLPermission.Monitor]
+  const { queryClient, rerender } = render(<ChartView appId="app-1" headerRight={null} />)
+  queryClient.setQueryData(
+    consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-2' } } }),
+    createAppDetailFixture({
+      id: 'app-2',
+      mode: 'workflow',
+      permission_keys: [AppACLPermission.Monitor],
+    }),
+  )
+  expect(screen.getByText('conversations chart')).toBeInTheDocument()
+  rerender(<ChartView appId="app-2" headerRight={null} />)
+  expect(screen.getByText('workflow messages chart')).toBeInTheDocument()
+  expect(screen.queryByText('conversations chart')).not.toBeInTheDocument()
 })

@@ -1,7 +1,9 @@
 import type { ComponentProps, ReactNode } from 'react'
 import { screen, waitFor } from '@testing-library/react'
 import { fetchTracingConfig, fetchTracingStatus, updateTracingStatus } from '@/service/apps'
-import { renderWithAccountProfile as render } from '@/test/console/account-profile'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppACLPermission } from '@/utils/permission'
 import Panel from '../panel'
 
@@ -23,16 +25,6 @@ vi.mock('@/context/workspace-state', async () => {
 
 vi.mock('@/next/navigation', () => ({
   usePathname: () => '/app/app-1/overview',
-}))
-
-vi.mock('@/app/components/app/store', () => ({
-  useStore: vi.fn((selector: (state: { appDetail: { permission_keys: string[] } }) => unknown) =>
-    selector({
-      appDetail: {
-        permission_keys: testState.appPermissionKeys,
-      },
-    }),
-  ),
 }))
 
 vi.mock('@/service/apps', () => ({
@@ -79,8 +71,18 @@ const mockedFetchTracingStatus = vi.mocked(fetchTracingStatus)
 const mockedFetchTracingConfig = vi.mocked(fetchTracingConfig)
 const mockedUpdateTracingStatus = vi.mocked(updateTracingStatus)
 
+const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) => {
+  const queryClient = createConsoleQueryClient()
+  const detail = createAppDetailFixture({ permission_keys: testState.appPermissionKeys })
+  queryClient.setQueryData(
+    consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: detail.id } } }),
+    detail,
+  )
+  return renderWithConsoleQuery(ui, { queryClient })
+}
+
 const renderPanel = async () => {
-  render(<Panel />)
+  render(<Panel appId="app-1" />)
 
   await screen.findAllByTestId('config-button')
 }

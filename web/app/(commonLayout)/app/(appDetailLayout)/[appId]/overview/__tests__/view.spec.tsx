@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react'
-import { screen } from '@testing-library/react'
-import { renderWithAccountProfile as render } from '@/test/console/account-profile'
+import { act, screen, waitFor } from '@testing-library/react'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppACLPermission } from '@/utils/permission'
 import OverviewView from '../view'
 
@@ -21,13 +23,6 @@ vi.mock('@/context/workspace-state', async () => {
     currentWorkspace: { id: 'workspace-1' },
   }))
 })
-
-vi.mock('@/app/components/app/store', () => ({
-  useStore: <T,>(selector: (state: { appDetail: typeof testState.appDetail }) => T): T =>
-    selector({
-      appDetail: testState.appDetail,
-    }),
-}))
 
 vi.mock('@/app/components/app/overview/apikey-info-panel', () => ({
   default: () => <div>api key info panel</div>,
@@ -53,6 +48,16 @@ vi.mock('@/context/permission-state', async () => {
     workspacePermissionKeys: [],
   }))
 })
+
+const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) => {
+  const queryClient = createConsoleQueryClient()
+  const detail = createAppDetailFixture({ ...testState.appDetail, mode: 'chat' })
+  queryClient.setQueryData(
+    consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: detail.id } } }),
+    detail,
+  )
+  return renderWithConsoleQuery(ui, { queryClient })
+}
 
 describe('OverviewView monitor permission', () => {
   beforeEach(() => {
@@ -109,5 +114,36 @@ describe('OverviewView monitor permission', () => {
       expect(screen.queryByText(/chart view app-1/)).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'tracing' })).not.toBeInTheDocument()
     })
+  })
+})
+
+describe('Overview app identity', () => {
+  it('uses the destination permissions when navigating between cached apps', async () => {
+    testState.appDetail.permission_keys = [AppACLPermission.Monitor, AppACLPermission.TracingConfig]
+    const { queryClient, rerender } = render(<OverviewView appId="app-1" />)
+    queryClient.setQueryData(
+      consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-2' } } }),
+      createAppDetailFixture({ id: 'app-2', permission_keys: [] }),
+    )
+    expect(screen.getByRole('button', { name: 'tracing' })).toBeInTheDocument()
+
+    rerender(<OverviewView appId="app-2" />)
+    expect(screen.queryByText('api key info panel')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'tracing' })).not.toBeInTheDocument()
+
+    act(() => {
+      queryClient.setQueryData(
+        consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-2' } } }),
+        createAppDetailFixture({ id: 'app-2', permission_keys: [AppACLPermission.Monitor] }),
+      )
+    })
+    await screen.findByText(/chart view app-2/)
+    act(() => {
+      queryClient.setQueryData(
+        consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-2' } } }),
+        createAppDetailFixture({ id: 'app-2', permission_keys: [] }),
+      )
+    })
+    await waitFor(() => expect(screen.queryByText('api key info panel')).not.toBeInTheDocument())
   })
 })
