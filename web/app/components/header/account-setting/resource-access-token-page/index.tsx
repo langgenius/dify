@@ -14,7 +14,8 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Input } from '@langgenius/dify-ui/input'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useDebounce } from 'ahooks'
 import copy from 'copy-to-clipboard'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -160,33 +161,41 @@ function ResourceAccessTokenDialog({
   )
   const [resourceTab, setResourceTab] = useState<ResourceTab>('all')
   const [resourceSearchText, setResourceSearchText] = useState('')
+  const debouncedResourceSearch = useDebounce(resourceSearchText.trim(), { wait: 300 })
   const [createdToken, setCreatedToken] = useState<string | null>(null)
   const invalidateResourceAccessTokens = useInvalidateResourceAccessTokens()
   const createMutation = useMutation(consoleQuery.resourceAccessTokens.post.mutationOptions())
   const updateMutation = useMutation(
     consoleQuery.resourceAccessTokens.byTokenId.patch.mutationOptions(),
   )
-  const appsQuery = useQuery(
-    consoleQuery.apps.get.queryOptions({
+  const appsQuery = useInfiniteQuery(
+    consoleQuery.apps.get.infiniteOptions({
       enabled: isCreate || isEdit,
-      input: {
+      input: (page) => ({
         query: {
           limit: 100,
-          page: 1,
+          name: debouncedResourceSearch || undefined,
+          openapi_visible: true,
+          page: Number(page),
         },
-      },
+      }),
+      getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : undefined),
+      initialPageParam: 1,
     }),
   )
-  const datasetsQuery = useQuery(
-    consoleQuery.datasets.get.queryOptions({
+  const datasetsQuery = useInfiniteQuery(
+    consoleQuery.datasets.get.infiniteOptions({
       enabled: isCreate || isEdit,
-      input: {
+      input: (page) => ({
         query: {
           include_all: true,
+          keyword: debouncedResourceSearch || undefined,
           limit: 100,
-          page: 1,
+          page: Number(page),
         },
-      },
+      }),
+      getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : undefined),
+      initialPageParam: 1,
     }),
   )
   const selectedRelationCandidates = useMemo<ResourceCandidate[]>(
@@ -202,11 +211,13 @@ function ResourceAccessTokenDialog({
   )
   const appCandidates = useMemo<ResourceCandidate[]>(() => {
     const candidates: ResourceCandidate[] =
-      appsQuery.data?.data.map((app) => ({
-        id: app.id,
-        name: app.name,
-        type: 'app' as const,
-      })) ?? []
+      appsQuery.data?.pages
+        .flatMap((page) => page.data)
+        .map((app) => ({
+          id: app.id,
+          name: app.name,
+          type: 'app' as const,
+        })) ?? []
 
     selectedRelationCandidates
       .filter((candidate) => candidate.type === 'app')
@@ -215,10 +226,11 @@ function ResourceAccessTokenDialog({
       })
 
     return candidates
-  }, [appsQuery.data?.data, selectedRelationCandidates])
+  }, [appsQuery.data?.pages, selectedRelationCandidates])
   const knowledgeCandidates = useMemo<ResourceCandidate[]>(() => {
     const candidates: ResourceCandidate[] =
-      datasetsQuery.data?.data
+      datasetsQuery.data?.pages
+        .flatMap((page) => page.data)
         .filter((dataset) => dataset.enable_api)
         .map((dataset) => ({
           id: dataset.id,
@@ -233,7 +245,7 @@ function ResourceAccessTokenDialog({
       })
 
     return candidates
-  }, [datasetsQuery.data?.data, selectedRelationCandidates])
+  }, [datasetsQuery.data?.pages, selectedRelationCandidates])
   const resourceCandidates = useMemo(
     () => [...appCandidates, ...knowledgeCandidates],
     [appCandidates, knowledgeCandidates],
@@ -296,8 +308,35 @@ function ResourceAccessTokenDialog({
     )
   }
 
-  const renderCandidateSection = (title: string, candidates: ResourceCandidate[]) => {
-    if (!candidates.length) return null
+  const renderNextPageButton = (
+    hasNextPage: boolean,
+    isFetchingNextPage: boolean,
+    fetchNextPage: () => void,
+  ) => {
+    if (!hasNextPage) return null
+
+    return (
+      <div className="flex justify-center border-b border-divider-subtle p-2">
+        <Button
+          size="small"
+          variant="tertiary"
+          disabled={isFetchingNextPage}
+          onClick={fetchNextPage}
+        >
+          {t(($) => $['resourceAccessToken.next'], { ns: 'accountSettings' })}
+        </Button>
+      </div>
+    )
+  }
+
+  const renderCandidateSection = (
+    title: string,
+    candidates: ResourceCandidate[],
+    hasNextPage: boolean,
+    isFetchingNextPage: boolean,
+    fetchNextPage: () => void,
+  ) => {
+    if (!candidates.length && !hasNextPage) return null
 
     return (
       <div>
@@ -305,6 +344,7 @@ function ResourceAccessTokenDialog({
           {title}
         </div>
         {candidates.map(renderCandidate)}
+        {renderNextPageButton(hasNextPage, isFetchingNextPage, fetchNextPage)}
       </div>
     )
   }
@@ -488,19 +528,35 @@ function ResourceAccessTokenDialog({
                                 ns: 'accountSettings',
                               }),
                               filteredAppCandidates,
+                              appsQuery.hasNextPage,
+                              appsQuery.isFetchingNextPage,
+                              () => void appsQuery.fetchNextPage(),
                             )}
                             {renderCandidateSection(
                               t(($) => $['resourceAccessToken.knowledgeBasesSection'], {
                                 ns: 'accountSettings',
                               }),
                               filteredKnowledgeCandidates,
+                              datasetsQuery.hasNextPage,
+                              datasetsQuery.isFetchingNextPage,
+                              () => void datasetsQuery.fetchNextPage(),
                             )}
                           </TabsPanel>
                           <TabsPanel value="app">
                             {filteredAppCandidates.map(renderCandidate)}
+                            {renderNextPageButton(
+                              appsQuery.hasNextPage,
+                              appsQuery.isFetchingNextPage,
+                              () => void appsQuery.fetchNextPage(),
+                            )}
                           </TabsPanel>
                           <TabsPanel value="knowledge">
                             {filteredKnowledgeCandidates.map(renderCandidate)}
+                            {renderNextPageButton(
+                              datasetsQuery.hasNextPage,
+                              datasetsQuery.isFetchingNextPage,
+                              () => void datasetsQuery.fetchNextPage(),
+                            )}
                           </TabsPanel>
                         </>
                       )}
@@ -650,6 +706,7 @@ export default function ResourceAccessTokenPage() {
   const { t } = useTranslation(['common', 'accountSettings'])
   const [page, setPage] = useState(1)
   const [searchText, setSearchText] = useState('')
+  const debouncedSearchText = useDebounce(searchText.trim(), { wait: 300 })
   const [dialogState, setDialogState] = useState<DialogState>(null)
   const [deletingRow, setDeletingRow] = useState<ResourceAccessTokenRowResponse | null>(null)
   const invalidateResourceAccessTokens = useInvalidateResourceAccessTokens()
@@ -660,6 +717,7 @@ export default function ResourceAccessTokenPage() {
     consoleQuery.resourceAccessTokens.get.queryOptions({
       input: {
         query: {
+          keyword: debouncedSearchText || undefined,
           limit: PAGE_SIZE,
           page,
         },
@@ -718,7 +776,10 @@ export default function ResourceAccessTokenPage() {
             ns: 'accountSettings',
           })}
           value={searchText}
-          onValueChange={setSearchText}
+          onValueChange={(value) => {
+            setSearchText(value)
+            setPage(1)
+          }}
         />
         <Button variant="primary" onClick={() => setDialogState({ mode: 'create' })}>
           <span aria-hidden className="i-ri-add-line size-4" />

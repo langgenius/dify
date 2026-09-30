@@ -20,9 +20,11 @@ class ResourceAccessTokenStore(Protocol):
         self, tenant_id: str, created_by: str, name: str, resources: tuple[ResourceAccessTokenResource, ...]
     ) -> ResourceAccessTokenCreateResult: ...
 
-    def list_rows(self, tenant_id: str, page: int, limit: int) -> tuple[ResourceAccessTokenRow, ...]: ...
+    def list_rows(
+        self, tenant_id: str, page: int, limit: int, keyword: str | None = None
+    ) -> tuple[ResourceAccessTokenRow, ...]: ...
 
-    def count_tokens(self, tenant_id: str) -> int: ...
+    def count_tokens(self, tenant_id: str, keyword: str | None = None) -> int: ...
 
     def update(
         self, tenant_id: str, token_id: str, name: str, resources: tuple[ResourceAccessTokenResource, ...] | None
@@ -50,11 +52,13 @@ class ResourceAccessTokenService:
             context.active_workspace_id, context.account_id, self._normalize_name(name), self._resources(resources)
         )
 
-    def list_rows(self, context: RequestContext, *, page: int, limit: int) -> tuple[ResourceAccessTokenRow, ...]:
-        return self._tokens.list_rows(context.active_workspace_id, page, limit)
+    def list_rows(
+        self, context: RequestContext, *, page: int, limit: int, keyword: str | None = None
+    ) -> tuple[ResourceAccessTokenRow, ...]:
+        return self._tokens.list_rows(context.active_workspace_id, page, limit, keyword)
 
-    def count_rows(self, context: RequestContext) -> int:
-        return self._tokens.count_tokens(context.active_workspace_id)
+    def count_rows(self, context: RequestContext, *, keyword: str | None = None) -> int:
+        return self._tokens.count_tokens(context.active_workspace_id, keyword)
 
     def update(
         self,

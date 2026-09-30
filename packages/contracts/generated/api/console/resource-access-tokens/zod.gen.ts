@@ -68,6 +68,7 @@ export const zResourceAccessTokenUpdatePayload = z.object({
 })
 
 export const zGetResourceAccessTokensQuery = z.object({
+  keyword: z.string().min(1).max(100).optional(),
   limit: z.int().gte(1).lte(100).optional().default(20),
   page: z.int().gte(1).optional().default(1),
 })
