@@ -619,7 +619,7 @@ A chat run against an advanced-chat (chatflow) app, which can also pin a workflo
 | auto_generate_name | boolean, <br>**Default:** true | Let the server name a new conversation | No |
 | conversation_id | string | Continue an existing conversation | No |
 | files | object | Local files keyed by the app's file variable name; the server uploads each one and sets `inputs[<name>]`. Send a list (part name `files[<name>][]`) for a file-list variable | No |
-| inputs | object | Variables declared by the app. The exact shape is per app: read `input_schema` from console_app.describe. A file variable takes a Dify file mapping (remote url or upload id) here, or a local file in `files`, not both. | Yes |
+| inputs | object | Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local file in `files`, not both. | Yes |
 | query | string | User message | Yes |
 | workflow_id | string | Pin a published workflow version | No |
 | workspace_id | string | Workspace that owns the app | No |
@@ -762,7 +762,7 @@ mode is a closed enum of listable app types.
 | auto_generate_name | boolean, <br>**Default:** true | Let the server name a new conversation | No |
 | conversation_id | string | Continue an existing conversation | No |
 | files | object | Local files keyed by the app's file variable name; the server uploads each one and sets `inputs[<name>]`. Send a list (part name `files[<name>][]`) for a file-list variable | No |
-| inputs | object | Variables declared by the app. The exact shape is per app: read `input_schema` from console_app.describe. A file variable takes a Dify file mapping (remote url or upload id) here, or a local file in `files`, not both. | Yes |
+| inputs | object | Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local file in `files`, not both. | Yes |
 | query | string | User message | Yes |
 | workspace_id | string | Workspace that owns the app | No |
 
@@ -778,7 +778,7 @@ mode is a closed enum of listable app types.
 | ---- | ---- | ----------- | -------- |
 | attachments | [ string ] | Local files attached to the run itself (the app's `sys.files`), not to a variable | No |
 | files | object | Local files keyed by the app's file variable name; the server uploads each one and sets `inputs[<name>]`. Send a list (part name `files[<name>][]`) for a file-list variable | No |
-| inputs | object | Variables declared by the app. The exact shape is per app: read `input_schema` from console_app.describe. A file variable takes a Dify file mapping (remote url or upload id) here, or a local file in `files`, not both. | Yes |
+| inputs | object | Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local file in `files`, not both. | Yes |
 | query | string | Prompt text; most completion apps take their input through `inputs` | No |
 | workspace_id | string | Workspace that owns the app | No |
 
@@ -1242,7 +1242,7 @@ types it as a required `'success'` rather than an optional field.
 | ---- | ---- | ----------- | -------- |
 | attachments | [ string ] | Local files attached to the run itself (the app's `sys.files`), not to a variable | No |
 | files | object | Local files keyed by the app's file variable name; the server uploads each one and sets `inputs[<name>]`. Send a list (part name `files[<name>][]`) for a file-list variable | No |
-| inputs | object | Variables declared by the app. The exact shape is per app: read `input_schema` from console_app.describe. A file variable takes a Dify file mapping (remote url or upload id) here, or a local file in `files`, not both. | Yes |
+| inputs | object | Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local file in `files`, not both. | Yes |
 | workflow_id | string | Pin a published workflow version | No |
 | workspace_id | string | Workspace that owns the app | No |
 
