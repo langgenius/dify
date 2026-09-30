@@ -17,6 +17,14 @@ describe('MCPServerParamItem', () => {
     it('should display label', () => {
       render(<MCPServerParamItem {...defaultProps} />)
       expect(screen.getByText('Test Label')).toBeInTheDocument()
+      expect(screen.getByRole('textbox', { name: 'Test Label' })).toHaveAccessibleDescription(
+        'test_variable string',
+      )
+    })
+
+    it('uses the variable as the visible label when a parameter has no label', () => {
+      render(<MCPServerParamItem {...defaultProps} data={{ variable: 'query', type: 'string' }} />)
+      expect(screen.getByRole('textbox', { name: 'query' })).toBeInTheDocument()
     })
 
     it('should display variable name', () => {
@@ -36,7 +44,7 @@ describe('MCPServerParamItem', () => {
 
     it('should render textarea with placeholder', () => {
       render(<MCPServerParamItem {...defaultProps} />)
-      const textarea = screen.getByPlaceholderText('tools.mcp.server.modal.parametersPlaceholder')
+      const textarea = screen.getByRole('textbox', { name: 'Test Label' })
       expect(textarea).toBeInTheDocument()
     })
   })
@@ -44,20 +52,20 @@ describe('MCPServerParamItem', () => {
   describe('Value Display', () => {
     it('should display empty value by default', () => {
       render(<MCPServerParamItem {...defaultProps} />)
-      const textarea = screen.getByPlaceholderText('tools.mcp.server.modal.parametersPlaceholder')
+      const textarea = screen.getByRole('textbox', { name: 'Test Label' })
       expect(textarea).toHaveValue('')
     })
 
     it('should display provided value', () => {
       render(<MCPServerParamItem {...defaultProps} value="test value" />)
-      const textarea = screen.getByPlaceholderText('tools.mcp.server.modal.parametersPlaceholder')
+      const textarea = screen.getByRole('textbox', { name: 'Test Label' })
       expect(textarea).toHaveValue('test value')
     })
 
     it('should display long text value', () => {
       const longValue = 'This is a very long text value that might span multiple lines'
       render(<MCPServerParamItem {...defaultProps} value={longValue} />)
-      const textarea = screen.getByPlaceholderText('tools.mcp.server.modal.parametersPlaceholder')
+      const textarea = screen.getByRole('textbox', { name: 'Test Label' })
       expect(textarea).toHaveValue(longValue)
     })
   })
@@ -67,7 +75,7 @@ describe('MCPServerParamItem', () => {
       const onChange = vi.fn()
       render(<MCPServerParamItem {...defaultProps} onChange={onChange} />)
 
-      const textarea = screen.getByPlaceholderText('tools.mcp.server.modal.parametersPlaceholder')
+      const textarea = screen.getByRole('textbox', { name: 'Test Label' })
       fireEvent.change(textarea, { target: { value: 'new value' } })
 
       expect(onChange).toHaveBeenCalledWith('new value')
@@ -77,7 +85,7 @@ describe('MCPServerParamItem', () => {
       const onChange = vi.fn()
       render(<MCPServerParamItem {...defaultProps} value="existing" onChange={onChange} />)
 
-      const textarea = screen.getByPlaceholderText('tools.mcp.server.modal.parametersPlaceholder')
+      const textarea = screen.getByRole('textbox', { name: 'Test Label' })
       fireEvent.change(textarea, { target: { value: '' } })
 
       expect(onChange).toHaveBeenCalledWith('')
@@ -87,7 +95,7 @@ describe('MCPServerParamItem', () => {
       const onChange = vi.fn()
       render(<MCPServerParamItem {...defaultProps} onChange={onChange} />)
 
-      const textarea = screen.getByPlaceholderText('tools.mcp.server.modal.parametersPlaceholder')
+      const textarea = screen.getByRole('textbox', { name: 'Test Label' })
 
       fireEvent.change(textarea, { target: { value: 'first' } })
       fireEvent.change(textarea, { target: { value: 'second' } })
@@ -150,7 +158,7 @@ describe('MCPServerParamItem', () => {
       const onChange = vi.fn()
       render(<MCPServerParamItem {...defaultProps} onChange={onChange} />)
 
-      const textarea = screen.getByPlaceholderText('tools.mcp.server.modal.parametersPlaceholder')
+      const textarea = screen.getByRole('textbox', { name: 'Test Label' })
       fireEvent.change(textarea, { target: { value: '你好世界 🌍' } })
 
       expect(onChange).toHaveBeenCalledWith('你好世界 🌍')

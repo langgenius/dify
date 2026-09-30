@@ -2,21 +2,29 @@ import type { ReactNode } from 'react'
 import type { MCPServerDetail } from '@/app/components/tools/types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import MCPServerModal from '../mcp-server-modal'
 
-// Mock the services
+const serviceMocks = vi.hoisted(() => ({
+  create: vi.fn(),
+  update: vi.fn(),
+  invalidate: vi.fn(),
+  creating: false,
+  updating: false,
+}))
+
 vi.mock('@/service/use-tools', () => ({
   useCreateMCPServer: () => ({
-    mutateAsync: vi.fn().mockResolvedValue({ result: 'success' }),
-    isPending: false,
+    mutateAsync: serviceMocks.create,
+    isPending: serviceMocks.creating,
   }),
   useUpdateMCPServer: () => ({
-    mutateAsync: vi.fn().mockResolvedValue({ result: 'success' }),
-    isPending: false,
+    mutateAsync: serviceMocks.update,
+    isPending: serviceMocks.updating,
   }),
-  useInvalidateMCPServerDetail: () => vi.fn(),
+  useInvalidateMCPServerDetail: () => serviceMocks.invalidate,
 }))
 
 describe('MCPServerModal', () => {
@@ -40,12 +48,18 @@ describe('MCPServerModal', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    serviceMocks.create.mockResolvedValue({ result: 'success' })
+    serviceMocks.update.mockResolvedValue({ result: 'success' })
+    serviceMocks.creating = false
+    serviceMocks.updating = false
   })
 
   describe('Rendering', () => {
     it('should render add title when no data is provided', () => {
       render(<MCPServerModal {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.server.modal.addTitle'))!.toBeInTheDocument()
+      expect(
+        screen.getByRole('dialog', { name: 'tools.mcp.server.modal.addTitle' }),
+      )!.toBeInTheDocument()
     })
 
     it('should render edit title when data is provided', () => {
@@ -56,7 +70,9 @@ describe('MCPServerModal', () => {
       } as unknown as MCPServerDetail
 
       render(<MCPServerModal {...defaultProps} data={mockData} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.server.modal.editTitle'))!.toBeInTheDocument()
+      expect(
+        screen.getByRole('dialog', { name: 'tools.mcp.server.modal.editTitle' }),
+      )!.toBeInTheDocument()
     })
 
     it('should render description label', () => {
@@ -71,18 +87,21 @@ describe('MCPServerModal', () => {
 
     it('should render description textarea', () => {
       render(<MCPServerModal {...defaultProps} />, { wrapper: createWrapper() })
-      const textarea = screen.getByPlaceholderText('tools.mcp.server.modal.descriptionPlaceholder')
+      const textarea = screen.getByRole('textbox', { name: 'tools.mcp.server.modal.description' })
       expect(textarea)!.toBeInTheDocument()
+      expect(textarea).toBeRequired()
     })
 
     it('should render cancel button', () => {
       render(<MCPServerModal {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.modal.cancel'))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'tools.mcp.modal.cancel' }))!.toBeInTheDocument()
     })
 
     it('should render confirm button in add mode', () => {
       render(<MCPServerModal {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.server.modal.confirm'))!.toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'tools.mcp.server.modal.confirm' }),
+      )!.toBeInTheDocument()
     })
 
     it('should render save button in edit mode', () => {
@@ -93,7 +112,7 @@ describe('MCPServerModal', () => {
       } as unknown as MCPServerDetail
 
       render(<MCPServerModal {...defaultProps} data={mockData} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.modal.save'))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'tools.mcp.modal.save' }))!.toBeInTheDocument()
     })
 
     it('should render close icon', () => {
@@ -141,7 +160,7 @@ describe('MCPServerModal', () => {
     it('should update description when typing', () => {
       render(<MCPServerModal {...defaultProps} />, { wrapper: createWrapper() })
 
-      const textarea = screen.getByPlaceholderText('tools.mcp.server.modal.descriptionPlaceholder')
+      const textarea = screen.getByRole('textbox', { name: 'tools.mcp.server.modal.description' })
       fireEvent.change(textarea, { target: { value: 'New description' } })
 
       expect(textarea)!.toHaveValue('New description')
@@ -151,7 +170,7 @@ describe('MCPServerModal', () => {
       const onHide = vi.fn()
       render(<MCPServerModal {...defaultProps} onHide={onHide} />, { wrapper: createWrapper() })
 
-      const cancelButton = screen.getByText('tools.mcp.modal.cancel')
+      const cancelButton = screen.getByRole('button', { name: 'tools.mcp.modal.cancel' })
       fireEvent.click(cancelButton)
 
       expect(onHide).toHaveBeenCalledTimes(1)
@@ -177,17 +196,17 @@ describe('MCPServerModal', () => {
     it('should disable confirm button when description is empty', () => {
       render(<MCPServerModal {...defaultProps} />, { wrapper: createWrapper() })
 
-      const confirmButton = screen.getByText('tools.mcp.server.modal.confirm')
+      const confirmButton = screen.getByRole('button', { name: 'tools.mcp.server.modal.confirm' })
       expect(confirmButton)!.toBeDisabled()
     })
 
     it('should enable confirm button when description is filled', () => {
       render(<MCPServerModal {...defaultProps} />, { wrapper: createWrapper() })
 
-      const textarea = screen.getByPlaceholderText('tools.mcp.server.modal.descriptionPlaceholder')
+      const textarea = screen.getByRole('textbox', { name: 'tools.mcp.server.modal.description' })
       fireEvent.change(textarea, { target: { value: 'Valid description' } })
 
-      const confirmButton = screen.getByText('tools.mcp.server.modal.confirm')
+      const confirmButton = screen.getByRole('button', { name: 'tools.mcp.server.modal.confirm' })
       expect(confirmButton).not.toBeDisabled()
     })
   })
@@ -202,7 +221,7 @@ describe('MCPServerModal', () => {
     it('should populate description with existing value', () => {
       render(<MCPServerModal {...defaultProps} data={mockData} />, { wrapper: createWrapper() })
 
-      const textarea = screen.getByPlaceholderText('tools.mcp.server.modal.descriptionPlaceholder')
+      const textarea = screen.getByRole('textbox', { name: 'tools.mcp.server.modal.description' })
       expect(textarea)!.toHaveValue('Existing description')
     })
 
@@ -212,7 +231,7 @@ describe('MCPServerModal', () => {
         wrapper: createWrapper(),
       })
 
-      const paramInput = screen.getByPlaceholderText('tools.mcp.server.modal.parametersPlaceholder')
+      const paramInput = screen.getByRole('textbox', { name: 'Parameter 1' })
       expect(paramInput)!.toHaveValue('existing value')
     })
   })
@@ -222,14 +241,19 @@ describe('MCPServerModal', () => {
       const onHide = vi.fn()
       render(<MCPServerModal {...defaultProps} onHide={onHide} />, { wrapper: createWrapper() })
 
-      const textarea = screen.getByPlaceholderText('tools.mcp.server.modal.descriptionPlaceholder')
+      const textarea = screen.getByRole('textbox', { name: 'tools.mcp.server.modal.description' })
       fireEvent.change(textarea, { target: { value: 'Test description' } })
 
-      const confirmButton = screen.getByText('tools.mcp.server.modal.confirm')
+      const confirmButton = screen.getByRole('button', { name: 'tools.mcp.server.modal.confirm' })
       fireEvent.click(confirmButton)
 
       await waitFor(() => {
         expect(onHide).toHaveBeenCalled()
+      })
+      expect(serviceMocks.create).toHaveBeenCalledWith({
+        appID: 'app-123',
+        description: 'Test description',
+        parameters: {},
       })
     })
   })
@@ -239,7 +263,7 @@ describe('MCPServerModal', () => {
       const appInfo = { description: 'App default description' }
       render(<MCPServerModal {...defaultProps} appInfo={appInfo} />, { wrapper: createWrapper() })
 
-      const textarea = screen.getByPlaceholderText('tools.mcp.server.modal.descriptionPlaceholder')
+      const textarea = screen.getByRole('textbox', { name: 'tools.mcp.server.modal.description' })
       expect(textarea)!.toHaveValue('App default description')
     })
 
@@ -255,7 +279,7 @@ describe('MCPServerModal', () => {
         wrapper: createWrapper(),
       })
 
-      const textarea = screen.getByPlaceholderText('tools.mcp.server.modal.descriptionPlaceholder')
+      const textarea = screen.getByRole('textbox', { name: 'tools.mcp.server.modal.description' })
       expect(textarea)!.toHaveValue('Data description')
     })
   })
@@ -263,7 +287,7 @@ describe('MCPServerModal', () => {
   describe('Not Shown State', () => {
     it('should not render modal content when show is false', () => {
       render(<MCPServerModal {...defaultProps} show={false} />, { wrapper: createWrapper() })
-      expect(screen.queryByText('tools.mcp.server.modal.addTitle')).not.toBeInTheDocument()
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     })
   })
 
@@ -281,15 +305,21 @@ describe('MCPServerModal', () => {
       })
 
       // Change description
-      const textarea = screen.getByPlaceholderText('tools.mcp.server.modal.descriptionPlaceholder')
+      const textarea = screen.getByRole('textbox', { name: 'tools.mcp.server.modal.description' })
       fireEvent.change(textarea, { target: { value: 'Updated description' } })
 
       // Click save button
-      const saveButton = screen.getByText('tools.mcp.modal.save')
+      const saveButton = screen.getByRole('button', { name: 'tools.mcp.modal.save' })
       fireEvent.click(saveButton)
 
       await waitFor(() => {
         expect(onHide).toHaveBeenCalled()
+      })
+      expect(serviceMocks.update).toHaveBeenCalledWith({
+        appID: 'app-123',
+        id: 'server-1',
+        description: 'Updated description',
+        parameters: {},
       })
     })
   })
@@ -306,13 +336,11 @@ describe('MCPServerModal', () => {
       })
 
       // Fill description first
-      const textarea = screen.getByPlaceholderText('tools.mcp.server.modal.descriptionPlaceholder')
+      const textarea = screen.getByRole('textbox', { name: 'tools.mcp.server.modal.description' })
       fireEvent.change(textarea, { target: { value: 'Test description' } })
 
       // Get all parameter inputs
-      const paramInputs = screen.getAllByPlaceholderText(
-        'tools.mcp.server.modal.parametersPlaceholder',
-      )
+      const paramInputs = screen.getAllByRole('textbox', { name: /^Parameter/ })
 
       // Change the first parameter value
       fireEvent.change(paramInputs[0]!, { target: { value: 'new param value' } })
@@ -329,19 +357,24 @@ describe('MCPServerModal', () => {
       })
 
       // Fill description
-      const textarea = screen.getByPlaceholderText('tools.mcp.server.modal.descriptionPlaceholder')
+      const textarea = screen.getByRole('textbox', { name: 'tools.mcp.server.modal.description' })
       fireEvent.change(textarea, { target: { value: 'Test description' } })
 
       // Fill parameter
-      const paramInput = screen.getByPlaceholderText('tools.mcp.server.modal.parametersPlaceholder')
+      const paramInput = screen.getByRole('textbox', { name: 'Parameter 1' })
       fireEvent.change(paramInput, { target: { value: 'param value' } })
 
       // Submit
-      const confirmButton = screen.getByText('tools.mcp.server.modal.confirm')
+      const confirmButton = screen.getByRole('button', { name: 'tools.mcp.server.modal.confirm' })
       fireEvent.click(confirmButton)
 
       await waitFor(() => {
         expect(onHide).toHaveBeenCalled()
+      })
+      expect(serviceMocks.create).toHaveBeenCalledWith({
+        appID: 'app-123',
+        description: 'Test description',
+        parameters: { param1: 'param value' },
       })
     })
 
@@ -356,12 +389,12 @@ describe('MCPServerModal', () => {
       expect(screen.queryByText('Missing variable')).not.toBeInTheDocument()
 
       fireEvent.change(
-        screen.getByPlaceholderText('tools.mcp.server.modal.descriptionPlaceholder'),
+        screen.getByRole('textbox', { name: 'tools.mcp.server.modal.description' }),
         {
           target: { value: 'Test description' },
         },
       )
-      fireEvent.click(screen.getByText('tools.mcp.server.modal.confirm'))
+      fireEvent.click(screen.getByRole('button', { name: 'tools.mcp.server.modal.confirm' }))
 
       await waitFor(() => {
         expect(onHide).toHaveBeenCalled()
@@ -372,12 +405,36 @@ describe('MCPServerModal', () => {
       const onHide = vi.fn()
       render(<MCPServerModal {...defaultProps} onHide={onHide} />, { wrapper: createWrapper() })
 
-      const textarea = screen.getByPlaceholderText('tools.mcp.server.modal.descriptionPlaceholder')
+      const textarea = screen.getByRole('textbox', { name: 'tools.mcp.server.modal.description' })
       fireEvent.change(textarea, { target: { value: '' } })
 
       // Button should be disabled
-      const confirmButton = screen.getByText('tools.mcp.server.modal.confirm')
+      const confirmButton = screen.getByRole('button', { name: 'tools.mcp.server.modal.confirm' })
       expect(confirmButton)!.toBeDisabled()
     })
+  })
+
+  it('keeps the submit action focused and prevents duplicate keyboard submission while saving', async () => {
+    const user = userEvent.setup()
+    const props = { ...defaultProps, appInfo: { description: 'App description' } }
+    const { rerender } = render(<MCPServerModal {...props} />, { wrapper: createWrapper() })
+    const submit = screen.getByRole('button', { name: 'tools.mcp.server.modal.confirm' })
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /operation\.close/ })).toHaveFocus(),
+    )
+    submit.focus()
+    serviceMocks.creating = true
+    rerender(<MCPServerModal {...props} />)
+
+    expect(submit).toHaveFocus()
+    expect(submit).toHaveAttribute('aria-disabled', 'true')
+    await user.keyboard('{Enter} ')
+    expect(serviceMocks.create).not.toHaveBeenCalled()
+
+    serviceMocks.creating = false
+    rerender(<MCPServerModal {...props} />)
+    await user.keyboard('{Enter}')
+    await waitFor(() => expect(serviceMocks.create).toHaveBeenCalledOnce())
+    expect(serviceMocks.invalidate).toHaveBeenCalledWith('app-123')
   })
 })
