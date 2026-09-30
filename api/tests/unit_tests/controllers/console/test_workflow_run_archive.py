@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import inspect
 from collections.abc import Callable
 from types import CodeType, SimpleNamespace
@@ -58,7 +60,7 @@ def _original(method):
 
 
 def _admission_injector(method: Callable[..., object]) -> Callable[..., object]:
-    current = cast(_WrappedEndpoint, inspect.getclosurevars(method).nonlocals["admitted"])
+    current = cast(_WrappedEndpoint, method)
     while "inject_request_context" not in current.__code__.co_qualname:
         current = current.__wrapped__
     return cast(Callable[..., object], current)
