@@ -22,7 +22,7 @@ export const AppInfoView = ({ appDetail, expand }: AppInfoViewProps) => {
     exportCheck,
     handleConfirmExport,
     onConfirmDelete,
-  } = useAppInfoActions(appDetail)
+  } = useAppInfoActions({ appId: appDetail.id, appName: appDetail.name, appMode: appDetail.mode })
 
   return (
     <>

@@ -83,16 +83,16 @@ export function PublisherContent({
   const addEnvironment = useSetAtom(addPublisherEnvironmentAtom)
   const selectEnvironment = useSetAtom(selectedPublisherEnvironmentIdAtom)
 
-  useRefreshAppEnvironmentsAfterPublisherDeploymentPolling(appDetail?.id)
+  useRefreshAppEnvironmentsAfterPublisherDeploymentPolling(appDetail.id)
 
   function closePublisher() {
     onOpenStateChange(false)
   }
 
   const publish = usePublishController({
-    appId: appDetail?.id,
-    appMode: appDetail?.mode,
-    appName: appDetail?.name,
+    appId: appDetail.id,
+    appMode: appDetail.mode,
+    appName: appDetail.name,
     onClose: closePublisher,
     onPublish,
     onRestore,
@@ -112,21 +112,21 @@ export function PublisherContent({
   }
 
   const workflowLaunch = useWorkflowLaunch(inputs)
-  const marketplace = useMarketplacePublish(appDetail?.id)
+  const marketplace = useMarketplacePublish(appDetail.id)
   const versionInfo = useVersionInfo({
-    appId: appDetail?.id,
-    appMode: appDetail?.mode,
+    appId: appDetail.id,
+    appMode: appDetail.mode,
     publishedWorkflow: publish.publishedWorkflow,
     onClosePublisher: closePublisher,
   })
   const workflowTool = useWorkflowTool({
-    appDescription: appDetail?.description,
-    appIcon: appDetail?.icon,
-    appIconBackground: appDetail?.icon_background,
-    appIconType: appDetail?.icon_type,
-    appId: appDetail?.id,
-    appMode: appDetail?.mode,
-    appName: appDetail?.name,
+    appDescription: appDetail.description,
+    appIcon: appDetail.icon,
+    appIconBackground: appDetail.icon_background,
+    appIconType: appDetail.icon_type,
+    appId: appDetail.id,
+    appMode: appDetail.mode,
+    appName: appDetail.name,
     appPublished: publish.published,
     hasHumanInputNode,
     hasPublishedVersion: publish.hasPublishedVersion,
@@ -139,22 +139,21 @@ export function PublisherContent({
     toolPublished,
     workflowToolAvailable,
   })
-  const { app_base_url: appBaseURL = '', access_token: accessToken = '' } = appDetail?.site ?? {}
+  const { app_base_url: appBaseURL = '', access_token: accessToken = '' } = appDetail.site ?? {}
   const appURL = getPublisherAppUrl({
     appBaseUrl: appBaseURL,
     accessToken: accessToken ?? '',
-    mode: appDetail?.mode,
+    mode: appDetail.mode,
   })
   const shouldLoadUserCanAccessApp = Boolean(
-    appDetail?.id && open && systemFeatures.webapp_auth.enabled,
+    appDetail.id && open && systemFeatures.webapp_auth.enabled,
   )
   const { data: userCanAccessApp } = useGetUserCanAccessApp({
-    appId: appDetail?.id,
+    appId: appDetail.id,
     enabled: shouldLoadUserCanAccessApp,
   })
   const noAccessPermission = Boolean(
     systemFeatures.webapp_auth.enabled &&
-    appDetail &&
     appDetail.access_mode !== AccessMode.EXTERNAL_MEMBERS &&
     !userCanAccessApp?.result,
   )
@@ -214,7 +213,8 @@ export function PublisherContent({
             versionInfo: publish.publishedWorkflow,
           },
           actions: {
-            appDetail,
+            appId: appDetail.id,
+            appMode: appDetail.mode,
             appURL,
             canViewAccessPoint,
             disabledFunctionButton,
@@ -240,7 +240,7 @@ export function PublisherContent({
         crossAxisOffset={crossAxisOffset}
         disabled={disabled}
         environmentPublisher={{
-          appId: appDetail?.id,
+          appId: appDetail.id,
           canViewAccessPoint,
           deployment: selectedEnvironmentDeployment,
           environmentId: selectedEnvironmentId,

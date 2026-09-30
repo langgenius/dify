@@ -126,7 +126,7 @@ const renderComponent = (overrides: Partial<React.ComponentProps<typeof SwitchAp
   const appDetail = createMockApp()
 
   const utils = render(
-    <SwitchAppModal show appDetail={appDetail} onClose={onClose} {...overrides} />,
+    <SwitchAppModal show sourceApp={appDetail} onClose={onClose} {...overrides} />,
   )
 
   return {

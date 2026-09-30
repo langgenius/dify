@@ -49,10 +49,18 @@ const renderActions = () => {
   const queryClient = createConsoleQueryClient()
   if (mockAppDetail) queryClient.setQueryData(appDetailQueryKey, mockAppDetail)
   for (const queryKey of appListQueryKeys) queryClient.setQueryData(queryKey, { data: [] })
-  return renderHookWithConsoleQuery(() => useAppInfoActions(mockAppDetail), {
-    queryClient,
-    systemFeatures: { rbac_enabled: true },
-  })
+  return renderHookWithConsoleQuery(
+    () =>
+      useAppInfoActions({
+        appId: mockAppDetail.id,
+        appName: mockAppDetail.name,
+        appMode: mockAppDetail.mode,
+      }),
+    {
+      queryClient,
+      systemFeatures: { rbac_enabled: true },
+    },
+  )
 }
 
 vi.mock('@/next/navigation', () => ({

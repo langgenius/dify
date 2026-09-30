@@ -31,14 +31,14 @@ import { getRedirection } from '@/utils/app-redirection'
 
 type SwitchAppModalProps = {
   show: boolean
-  appDetail: Pick<
+  sourceApp: Pick<
     AppPartial,
     'icon' | 'icon_background' | 'icon_type' | 'icon_url' | 'id' | 'mode' | 'name'
   >
   onClose: () => void
 }
 
-const SwitchAppModal = ({ show, appDetail, onClose }: SwitchAppModalProps) => {
+const SwitchAppModal = ({ show, sourceApp, onClose }: SwitchAppModalProps) => {
   const { push, replace } = useRouter()
   const nameInputId = useId()
   const { t } = useTranslation(['app', 'common'])
@@ -61,18 +61,18 @@ const SwitchAppModal = ({ show, appDetail, onClose }: SwitchAppModalProps) => {
     appQuota.size >= appQuota.limit
 
   const [showIconPicker, setShowIconPicker] = useState(false)
-  const appIconType = zIconType.safeParse(appDetail.icon_type).data
+  const appIconType = zIconType.safeParse(sourceApp.icon_type).data
   const [appIcon, setAppIcon] = useState(
     appIconType === 'image'
-      ? { type: 'image' as const, url: appDetail.icon_url ?? '', fileId: appDetail.icon ?? '' }
+      ? { type: 'image' as const, url: sourceApp.icon_url ?? '', fileId: sourceApp.icon ?? '' }
       : {
           type: 'emoji' as const,
-          icon: appDetail.icon ?? '',
-          background: appDetail.icon_background,
+          icon: sourceApp.icon ?? '',
+          background: sourceApp.icon_background,
         },
   )
 
-  const [name, setName] = useState(`${appDetail.name}(copy)`)
+  const [name, setName] = useState(`${sourceApp.name}(copy)`)
   const [removeOriginal, setRemoveOriginal] = useState<boolean>(false)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const { mutateAsync: convertToWorkflow } = useMutation(
@@ -86,7 +86,7 @@ const SwitchAppModal = ({ show, appDetail, onClose }: SwitchAppModalProps) => {
     if (isAppQuotaUnavailable || isAppsFull) return
     try {
       const { new_app_id: newAppID, permission_keys } = await convertToWorkflow({
-        params: { app_id: appDetail.id },
+        params: { app_id: sourceApp.id },
         body: {
           name,
           icon_type: appIcon.type,
@@ -98,13 +98,13 @@ const SwitchAppModal = ({ show, appDetail, onClose }: SwitchAppModalProps) => {
       toast.success(t(($) => $['newApp.appCreated'], { ns: 'app' }))
       if (removeOriginal)
         await deleteOriginalApp({
-          params: { app_id: appDetail.id },
+          params: { app_id: sourceApp.id },
         })
       getRedirection(
         {
           id: newAppID,
           mode:
-            appDetail.mode === AppModeEnum.COMPLETION
+            sourceApp.mode === AppModeEnum.COMPLETION
               ? AppModeEnum.WORKFLOW
               : AppModeEnum.ADVANCED_CHAT,
           permission_keys,

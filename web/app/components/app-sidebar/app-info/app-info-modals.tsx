@@ -99,7 +99,7 @@ const AppInfoModals = ({
   return (
     <>
       {activeModal === 'switch' && (
-        <SwitchAppModal show appDetail={appDetail} onClose={closeModal} />
+        <SwitchAppModal show sourceApp={appDetail} onClose={closeModal} />
       )}
       {activeModal === 'edit' && (
         <CreateAppModal
