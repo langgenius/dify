@@ -62,17 +62,25 @@ describe('provider normalization', () => {
 })
 
 it('reissues a failed operation rather than reawaiting its rejected promise', async () => {
-  const request = vi.fn().mockRejectedValueOnce(new Error('temporary network failure')).mockResolvedValue('ok')
+  const request = vi
+    .fn()
+    .mockRejectedValueOnce(new Error('temporary network failure'))
+    .mockResolvedValue('ok')
   expect(await fetchWithRetry(request, 1)).toEqual([null, 'ok'])
   expect(request).toHaveBeenCalledTimes(2)
 })
 
 it('stops after the configured retries and returns the last error', async () => {
- const error=new Error('offline');const request=vi.fn().mockRejectedValue(error)
- expect(await fetchWithRetry(request,2)).toEqual([error])
- expect(request).toHaveBeenCalledTimes(3)
+  const error = new Error('offline')
+  const request = vi.fn().mockRejectedValue(error)
+  expect(await fetchWithRetry(request, 2)).toEqual([error])
+  expect(request).toHaveBeenCalledTimes(3)
 })
 it('handles synchronous operation failures', async () => {
- const error=new Error('synchronous failure')
- expect(await fetchWithRetry(()=>{throw error},0)).toEqual([error])
+  const error = new Error('synchronous failure')
+  expect(
+    await fetchWithRetry(() => {
+      throw error
+    }, 0),
+  ).toEqual([error])
 })
