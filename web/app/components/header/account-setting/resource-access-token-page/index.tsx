@@ -722,7 +722,7 @@ export default function ResourceAccessTokenPage() {
         />
         <Button variant="primary" onClick={() => setDialogState({ mode: 'create' })}>
           <span aria-hidden className="i-ri-add-line size-4" />
-          {t(($) => $['resourceAccessToken.create'], { ns: 'accountSettings' })}
+          {t(($) => $['resourceAccessToken.createButton'], { ns: 'accountSettings' })}
         </Button>
       </div>
 
@@ -755,8 +755,10 @@ export default function ResourceAccessTokenPage() {
             <div>{t(($) => $['resourceAccessToken.name'], { ns: 'accountSettings' })}</div>
             <div>{t(($) => $['resourceAccessToken.trackingId'], { ns: 'accountSettings' })}</div>
             <div>{t(($) => $['resourceAccessToken.token'], { ns: 'accountSettings' })}</div>
-            <div>{t(($) => $['resourceAccessToken.boundResource'], { ns: 'accountSettings' })}</div>
-            <div>{t(($) => $['resourceAccessToken.createdAt'], { ns: 'accountSettings' })}</div>
+            <div>
+              {t(($) => $['resourceAccessToken.accessibleResources'], { ns: 'accountSettings' })}
+            </div>
+            <div>{t(($) => $['resourceAccessToken.createdColumn'], { ns: 'accountSettings' })}</div>
             <div>{t(($) => $['resourceAccessToken.actions'], { ns: 'accountSettings' })}</div>
           </div>
 

@@ -1,3 +1,4 @@
+from collections.abc import Callable, Generator
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
@@ -9,15 +10,17 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, Unauthorized
 
 from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
+from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import CheckScope, CheckSubject
 from controllers.openapi.auth.resource_access import authenticate_resource_token
 from controllers.openapi.auth.router import subject_router
 from controllers.openapi.auth.spec import CatalogMeta, EndpointSpec, Kind
 from controllers.openapi.auth.subjects import AccountSubject, ResourceAccessSubject
 from core.db.session_factory import get_session_maker
+from extensions.application_services.app import AppServices
 from extensions.application_services.resource_access_token import build_resource_access_token_service
 from libs.oauth_bearer import Scope, TokenType
-from models.account import Tenant
+from models.account import Tenant, TenantStatus
 from models.enums import CreatorUserRole
 from models.model import App, AppMode, AppStar, EndUser
 from models.resource_access_token import (
@@ -32,9 +35,15 @@ pytestmark = pytest.mark.parametrize(
     indirect=True,
 )
 
+ResourceFixture = tuple[Flask, str, str, str, MagicMock]
+
 
 @pytest.fixture
-def resource_fixture(sqlite_session: Session, config_overrides, app_services):
+def resource_fixture(
+    sqlite_session: Session,
+    config_overrides: Callable[..., None],
+    app_services: AppServices,
+) -> Generator[ResourceFixture, None, None]:
     config_overrides(ENABLE_OAUTH_BEARER=True)
     tenant = Tenant(name="Token workspace")
     tenant.id = str(uuid4())
@@ -50,7 +59,7 @@ def resource_fixture(sqlite_session: Session, config_overrides, app_services):
     sqlite_session.add_all([tenant, app, token, relation])
     sqlite_session.commit()
     flask_app = Flask(__name__)
-    flask_app.login_manager = MagicMock()
+    flask_app.login_manager = MagicMock()  # type: ignore[attr-defined]
     with (
         patch(
             "controllers.openapi.auth.resource_access.application_services",
@@ -72,7 +81,13 @@ def resource_fixture(sqlite_session: Session, config_overrides, app_services):
         yield flask_app, app.id, token.id, tenant.id, end_user
 
 
-def call(flask_app, app_id=None, workspace_id=None, scope=Scope.APPS_RUN, allowed=None):
+def call(
+    flask_app: Flask,
+    app_id: str | None = None,
+    workspace_id: str | None = None,
+    scope: Scope = Scope.APPS_RUN,
+    allowed: frozenset[TokenType] | None = None,
+) -> Context:
     path = "/apps" + (f"/{app_id}" if app_id else "")
     if workspace_id:
         path += f"?workspace_id={workspace_id}"
@@ -92,13 +107,13 @@ def call(flask_app, app_id=None, workspace_id=None, scope=Scope.APPS_RUN, allowe
                 catalog=CatalogMeta(op="test.resource", kind=Kind.OBJECT, summary="Resource token test"),
             )
         )
-        def view(*, ctx):
+        def view(*, ctx: Context) -> Context:
             return ctx
 
         return view()
 
 
-def test_bound_app_uses_machine_end_user_without_account(resource_fixture):
+def test_bound_app_uses_machine_end_user_without_account(resource_fixture: ResourceFixture) -> None:
     flask_app, app_id, token_id, tenant_id, end_user = resource_fixture
     data = call(flask_app, app_id)
     assert data.subject.caller_role == CreatorUserRole.END_USER
@@ -109,20 +124,20 @@ def test_bound_app_uses_machine_end_user_without_account(resource_fixture):
     assert end_user.call_args.kwargs["tenant_id"] == tenant_id
 
 
-def test_rejects_unbound_app_before_creating_caller(resource_fixture):
+def test_rejects_unbound_app_before_creating_caller(resource_fixture: ResourceFixture) -> None:
     flask_app, _, _, _, end_user = resource_fixture
     with pytest.raises(Forbidden, match="resource_not_authorized"):
         call(flask_app, str(uuid4()))
     end_user.assert_not_called()
 
 
-def test_rejects_other_workspace(resource_fixture):
+def test_rejects_other_workspace(resource_fixture: ResourceFixture) -> None:
     flask_app, _, _, _, _ = resource_fixture
     with pytest.raises(Forbidden, match="resource_not_authorized"):
         call(flask_app, workspace_id=str(uuid4()), scope=Scope.APPS_READ)
 
 
-def test_binding_revocation_is_immediate(resource_fixture, sqlite_session):
+def test_binding_revocation_is_immediate(resource_fixture: ResourceFixture, sqlite_session: Session) -> None:
     flask_app, app_id, token_id, _, _ = resource_fixture
     call(flask_app, app_id)
     sqlite_session.execute(delete(ResourceAccessTokenRelation).where(ResourceAccessTokenRelation.token_id == token_id))
@@ -131,7 +146,7 @@ def test_binding_revocation_is_immediate(resource_fixture, sqlite_session):
         call(flask_app, app_id)
 
 
-def test_token_revocation_is_immediate(resource_fixture, sqlite_session):
+def test_token_revocation_is_immediate(resource_fixture: ResourceFixture, sqlite_session: Session) -> None:
     flask_app, app_id, token_id, _, _ = resource_fixture
     call(flask_app, app_id)
     sqlite_session.execute(delete(ResourceAccessToken).where(ResourceAccessToken.id == token_id))
@@ -140,15 +155,19 @@ def test_token_revocation_is_immediate(resource_fixture, sqlite_session):
         call(flask_app, app_id)
 
 
-def test_disabled_app_is_rejected(resource_fixture, sqlite_session):
+def test_disabled_app_is_rejected(resource_fixture: ResourceFixture, sqlite_session: Session) -> None:
     flask_app, app_id, _, _, _ = resource_fixture
-    sqlite_session.get(App, app_id).enable_api = False
+    app = sqlite_session.get(App, app_id)
+    assert app is not None
+    app.enable_api = False
     sqlite_session.commit()
     with pytest.raises(Forbidden):
         call(flask_app, app_id)
 
 
-def test_app_discovery_keeps_explicit_empty_binding_set(resource_fixture, sqlite_session):
+def test_app_discovery_keeps_explicit_empty_binding_set(
+    resource_fixture: ResourceFixture, sqlite_session: Session
+) -> None:
     flask_app, _, token_id, tenant_id, _ = resource_fixture
     sqlite_session.execute(delete(ResourceAccessTokenRelation).where(ResourceAccessTokenRelation.token_id == token_id))
     sqlite_session.commit()
@@ -156,36 +175,38 @@ def test_app_discovery_keeps_explicit_empty_binding_set(resource_fixture, sqlite
     assert data.resource_app_ids == frozenset()
 
 
-def test_account_only_routes_reject_resource_token(resource_fixture):
+def test_account_only_routes_reject_resource_token(resource_fixture: ResourceFixture) -> None:
     flask_app, _, _, _, _ = resource_fixture
     with pytest.raises(Forbidden, match="unsupported_token_type"):
         call(flask_app, scope=Scope.WORKSPACE_WRITE, allowed=frozenset({TokenType.OAUTH_ACCOUNT}))
 
 
-def test_invalid_token_is_unauthorized(resource_fixture):
+def test_invalid_token_is_unauthorized(resource_fixture: ResourceFixture) -> None:
     flask_app, _, _, _, _ = resource_fixture
     with flask_app.test_request_context("/"):
         with pytest.raises(Unauthorized):
             authenticate_resource_token("sk-invalid")
 
 
-def test_archived_workspace_is_rejected(resource_fixture, sqlite_session):
+def test_archived_workspace_is_rejected(resource_fixture: ResourceFixture, sqlite_session: Session) -> None:
     flask_app, app_id, _, tenant_id, _ = resource_fixture
-    sqlite_session.get(Tenant, tenant_id).status = "archive"
+    tenant = sqlite_session.get(Tenant, tenant_id)
+    assert tenant is not None
+    tenant.status = TenantStatus.ARCHIVE
     sqlite_session.commit()
     with pytest.raises(Forbidden):
         call(flask_app, app_id)
 
 
-def test_resource_token_has_workspace_read_scope(resource_fixture):
+def test_resource_token_has_workspace_read_scope(resource_fixture: ResourceFixture) -> None:
     flask_app, _, _, tenant_id, _ = resource_fixture
     with flask_app.test_request_context("/"):
         identity = authenticate_resource_token("sk-test")
     assert identity.scopes == frozenset({Scope.WORKSPACE_READ, Scope.APPS_READ, Scope.APPS_RUN})
-    assert str(call(flask_app, scope=Scope.WORKSPACE_READ).workspace.id) == tenant_id
+    assert call(flask_app, scope=Scope.WORKSPACE_READ).workspace.id == tenant_id
 
 
-def test_workspace_list_returns_only_token_tenant(resource_fixture, sqlite_session):
+def test_workspace_list_returns_only_token_tenant(resource_fixture: ResourceFixture, sqlite_session: Session) -> None:
     from controllers.openapi.workspaces import WorkspacesApi
 
     flask_app, _, _, tenant_id, _ = resource_fixture
@@ -209,7 +230,7 @@ def test_workspace_list_returns_only_token_tenant(resource_fixture, sqlite_sessi
 
 
 @pytest.mark.parametrize("endpoint", ["detail", "members", "switch"])
-def test_other_workspace_endpoints_reject_resource_token(resource_fixture, endpoint):
+def test_other_workspace_endpoints_reject_resource_token(resource_fixture: ResourceFixture, endpoint: str) -> None:
     from controllers.openapi.workspaces import WorkspaceByIdApi, WorkspaceMembersApi, WorkspaceSwitchApi
 
     flask_app, _, _, tenant_id, _ = resource_fixture
@@ -225,7 +246,7 @@ def test_other_workspace_endpoints_reject_resource_token(resource_fixture, endpo
             methods[endpoint](workspace_id=tenant_id)
 
 
-def test_stop_task_rejects_other_token_owner(resource_fixture):
+def test_stop_task_rejects_other_token_owner(resource_fixture: ResourceFixture) -> None:
     import inspect
 
     from werkzeug.exceptions import NotFound
@@ -251,7 +272,9 @@ def test_stop_task_rejects_other_token_owner(resource_fixture):
 
 
 @pytest.mark.parametrize("search_unbound", [False, True])
-def test_app_list_filters_unbound_apps_before_pagination(resource_fixture, sqlite_session, search_unbound):
+def test_app_list_filters_unbound_apps_before_pagination(
+    resource_fixture: ResourceFixture, sqlite_session: Session, search_unbound: bool
+) -> None:
     import inspect
 
     from controllers.openapi._models import AppListQuery
