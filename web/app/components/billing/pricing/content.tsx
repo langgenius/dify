@@ -137,8 +137,10 @@ export function PricingContent() {
             )
           )}
           <CloudPlanItem plan="sandbox" billingInterval={billingInterval} billing={billing} />
+          <Separator orientation="horizontal" className="bg-divider-accent xl:hidden" />
           <Separator orientation="vertical" className="mx-0 hidden bg-divider-accent xl:block" />
           <CloudPlanItem plan="professional" billingInterval={billingInterval} billing={billing} />
+          <Separator orientation="horizontal" className="bg-divider-accent xl:hidden" />
           <Separator orientation="vertical" className="mx-0 hidden bg-divider-accent xl:block" />
           <CloudPlanItem plan="team" billingInterval={billingInterval} billing={billing} />
         </TabsPanel>
@@ -147,8 +149,10 @@ export function PricingContent() {
           className="flex max-w-[1680px] min-w-0 grow flex-col border-x border-divider-accent xl:flex-row"
         >
           <SelfHostedPlanItem plan="community" />
+          <Separator orientation="horizontal" className="bg-divider-accent xl:hidden" />
           <Separator orientation="vertical" className="mx-0 hidden bg-divider-accent xl:block" />
           <SelfHostedPlanItem plan="premium" />
+          <Separator orientation="horizontal" className="bg-divider-accent xl:hidden" />
           <Separator orientation="vertical" className="mx-0 hidden bg-divider-accent xl:block" />
           <SelfHostedPlanItem plan="enterprise" />
         </TabsPanel>
