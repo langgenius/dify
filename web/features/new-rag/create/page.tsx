@@ -30,7 +30,11 @@ import { ScopeProvider } from 'jotai-scope'
 import { useCallback, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { datasetDefaultPermissionKeysAtom } from '@/context/permission-state'
-import { knowledgeFsUploadEnabledAtom, rbacEnabledAtom } from '@/features/system-features/state'
+import {
+  deploymentEditionAtom,
+  knowledgeFsUploadEnabledAtom,
+  rbacEnabledAtom,
+} from '@/features/system-features/state'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
@@ -50,6 +54,7 @@ import {
   stageKnowledgeFsDocument,
   uploadKnowledgeFsDocuments,
 } from '../upload/knowledge-fs-upload'
+import { getKnowledgeFsUploadQuotaFailure } from '../upload/quota'
 import { useKnowledgeFileSizeLimit } from '../upload/use-file-size-limit'
 import { KnowledgeIllustration, StartMode } from './components/dialog-parts'
 import { KnowledgeCreationPermissions } from './permissions'
@@ -94,6 +99,7 @@ function CreateKnowledgeSession() {
   const queryClient = useQueryClient()
   const dialogTitleId = useId()
   const datasetDefaultPermissionKeys = useAtomValue(datasetDefaultPermissionKeysAtom)
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const uploadAvailable = useAtomValue(knowledgeFsUploadEnabledAtom)
   const isRbacEnabled = useAtomValue(rbacEnabledAtom)
   const canConfigureAccess =
@@ -155,15 +161,31 @@ function CreateKnowledgeSession() {
     setUploads(next)
   }
 
-  const handleUploadsChange = (nextUploads: QueuedUpload[]) => {
+  const checkUploadQuota = async () => {
+    if (deploymentEdition !== 'CLOUD') return true
+    const failure = await getKnowledgeFsUploadQuotaFailure(queryClient)
+    if (!failure) return true
+    setUploadError(tError(($) => $[failure]))
+    return false
+  }
+
+  const handleUploadsChange = async (nextUploads: QueuedUpload[]) => {
     const previousUploads = uploadsRef.current
     const nextIds = new Set(nextUploads.map(({ id }) => id))
     const previousIds = new Set(previousUploads.map(({ id }) => id))
     const removedUploads = previousUploads.filter(({ id }) => !nextIds.has(id))
     const addedUploads = nextUploads.filter(({ id }) => !previousIds.has(id))
+    resetUnsubmittedError()
+    if (deploymentEdition === 'CLOUD' && addedUploads.some((upload) => !upload.issue)) {
+      setStagingCount((count) => count + 1)
+      try {
+        if (!(await checkUploadQuota())) return
+      } finally {
+        setStagingCount((count) => Math.max(0, count - 1))
+      }
+    }
     uploadsRef.current = nextUploads
     setUploads(nextUploads)
-    resetUnsubmittedError()
 
     for (const removed of removedUploads) {
       if (removed.stagedUploadId)
@@ -232,6 +254,24 @@ function CreateKnowledgeSession() {
     if (!normalizedName || nameLengthInvalid || descriptionLengthInvalid) return
 
     if (startMode === 'source' && !initialSource) return
+
+    if (
+      startMode === 'upload' &&
+      deploymentEdition === 'CLOUD' &&
+      validUploads.some(({ id }) => uploadProgressRef.current.get(id)?.phase !== 'completed')
+    ) {
+      setSubmissionLocked(true)
+      setUploading(true)
+      setUploadError(undefined)
+      try {
+        if (!(await checkUploadQuota())) {
+          setSubmissionLocked(submissionLocked)
+          return
+        }
+      } finally {
+        setUploading(false)
+      }
+    }
 
     idempotencyKeyRef.current ??= createRequestId()
     setSubmissionLocked(true)

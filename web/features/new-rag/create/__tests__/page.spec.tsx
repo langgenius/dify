@@ -60,6 +60,12 @@ const navigationMock = vi.hoisted(() => ({
   startMode: null as string | null,
 }))
 
+const uploadQuotaMock = vi.hoisted(() => vi.fn())
+
+vi.mock('../../upload/quota', () => ({
+  getKnowledgeFsUploadQuotaFailure: uploadQuotaMock,
+}))
+
 const fileUploadConfigMock = vi.hoisted(() => ({
   knowledgeFileSizeLimit: 15,
 }))
@@ -70,6 +76,8 @@ const permissionStateMock = vi.hoisted(() => ({
 }))
 
 const systemFeaturesStateMock = vi.hoisted(() => ({
+  editionAtom: Symbol('deploymentEditionAtom'),
+  deploymentEdition: 'ENTERPRISE',
   uploadAtom: Symbol('knowledgeFsUploadEnabledAtom'),
   rbacAtom: Symbol('rbacEnabledAtom'),
   uploadEnabled: true,
@@ -133,6 +141,7 @@ vi.mock('@/context/permission-state', () => ({
 }))
 
 vi.mock('@/features/system-features/state', () => ({
+  deploymentEditionAtom: systemFeaturesStateMock.editionAtom,
   knowledgeFsUploadEnabledAtom: systemFeaturesStateMock.uploadAtom,
   rbacEnabledAtom: systemFeaturesStateMock.rbacAtom,
 }))
@@ -144,11 +153,13 @@ vi.mock('jotai', async (importOriginal) => {
     useAtomValue: (atom: unknown) =>
       atom === permissionStateMock.atom
         ? permissionStateMock.keys
-        : atom === systemFeaturesStateMock.uploadAtom
-          ? systemFeaturesStateMock.uploadEnabled
-          : atom === systemFeaturesStateMock.rbacAtom
-            ? systemFeaturesStateMock.rbacEnabled
-            : original.useAtomValue(atom as Parameters<typeof original.useAtomValue>[0]),
+        : atom === systemFeaturesStateMock.editionAtom
+          ? systemFeaturesStateMock.deploymentEdition
+          : atom === systemFeaturesStateMock.uploadAtom
+            ? systemFeaturesStateMock.uploadEnabled
+            : atom === systemFeaturesStateMock.rbacAtom
+              ? systemFeaturesStateMock.rbacEnabled
+              : original.useAtomValue(atom as Parameters<typeof original.useAtomValue>[0]),
   }
 })
 
@@ -845,6 +856,8 @@ describe('CreateKnowledgePage', () => {
     fileUploadConfigMock.knowledgeFileSizeLimit = 15
     systemFeaturesStateMock.uploadEnabled = true
     systemFeaturesStateMock.rbacEnabled = true
+    systemFeaturesStateMock.deploymentEdition = 'ENTERPRISE'
+    uploadQuotaMock.mockReset().mockResolvedValue(undefined)
     navigationMock.startMode = null
     vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue(
       'a9c36c57-2d84-44d6-a36d-841f0d92a179',
@@ -1501,6 +1514,142 @@ describe('CreateKnowledgePage', () => {
     expect(serviceMock.create).not.toHaveBeenCalled()
   })
 
+  it.each([
+    'taskFailure.documentCountQuotaExceeded',
+    'taskFailure.documentCountQuotaUnavailable',
+    'taskFailure.vectorSpaceQuotaExceeded',
+    'taskFailure.vectorSpaceQuotaUnavailable',
+  ])('blocks file transfer before creating a space when preflight returns %s', async (failure) => {
+    const user = userEvent.setup()
+    navigationMock.startMode = 'upload'
+    systemFeaturesStateMock.deploymentEdition = 'CLOUD'
+    uploadQuotaMock.mockResolvedValue(failure)
+    renderPage()
+
+    await user.upload(
+      screen.getByLabelText('knowledgeSpace.uploadFiles', { selector: 'input[type="file"]' }),
+      new File(['content'], 'handbook.md', { type: 'text/markdown' }),
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(`knowledgeErrors.${failure}`)
+    expect(serviceMock.stageUpload).not.toHaveBeenCalled()
+    expect(serviceMock.create).not.toHaveBeenCalled()
+    expect(serviceMock.upload).not.toHaveBeenCalled()
+    expect(uploadQuotaMock).toHaveBeenCalledOnce()
+  })
+
+  it('rechecks quota before creation and keeps the staged files for retry after quota recovers', async () => {
+    const user = userEvent.setup()
+    navigationMock.startMode = 'upload'
+    systemFeaturesStateMock.deploymentEdition = 'CLOUD'
+    let finishQuotaCheck: (failure: string) => void = () => undefined
+    uploadQuotaMock
+      .mockResolvedValueOnce(undefined)
+      .mockImplementationOnce(
+        () =>
+          new Promise<string>((resolve) => {
+            finishQuotaCheck = resolve
+          }),
+      )
+      .mockResolvedValueOnce(undefined)
+    renderPage()
+    await user.upload(
+      screen.getByLabelText('knowledgeSpace.uploadFiles', { selector: 'input[type="file"]' }),
+      new File(['content'], 'handbook.md', { type: 'text/markdown' }),
+    )
+    await waitFor(() => expect(serviceMock.stageUpload).toHaveBeenCalledOnce())
+    await fillRequiredFields(user)
+
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
+
+    expect(screen.getByRole('textbox', { name: 'knowledgeSpace.name' })).toBeDisabled()
+    expect(serviceMock.create).not.toHaveBeenCalled()
+    await act(async () => {
+      finishQuotaCheck('taskFailure.vectorSpaceQuotaExceeded')
+    })
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'knowledgeErrors.taskFailure.vectorSpaceQuotaExceeded',
+    )
+    expect(serviceMock.create).not.toHaveBeenCalled()
+    expect(serviceMock.upload).not.toHaveBeenCalled()
+    expect(screen.getByRole('textbox', { name: 'knowledgeSpace.name' })).toBeEnabled()
+
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
+
+    await waitFor(() => expect(serviceMock.upload).toHaveBeenCalledOnce())
+    expect(serviceMock.create).toHaveBeenCalledOnce()
+    expect(serviceMock.stageUpload).toHaveBeenCalledOnce()
+    expect(uploadQuotaMock).toHaveBeenCalledTimes(3)
+  })
+
+  it('allows selecting the file again after the upload quota recovers', async () => {
+    const user = userEvent.setup()
+    navigationMock.startMode = 'upload'
+    systemFeaturesStateMock.deploymentEdition = 'CLOUD'
+    uploadQuotaMock.mockResolvedValueOnce('taskFailure.documentCountQuotaExceeded')
+    renderPage()
+    const input = screen.getByLabelText('knowledgeSpace.uploadFiles', {
+      selector: 'input[type="file"]',
+    })
+    const file = new File(['content'], 'handbook.md', { type: 'text/markdown' })
+
+    await user.upload(input, file)
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'knowledgeErrors.taskFailure.documentCountQuotaExceeded',
+    )
+    await waitFor(() => expect(input).toBeEnabled())
+    await user.upload(input, file)
+
+    await waitFor(() => expect(serviceMock.stageUpload).toHaveBeenCalledOnce())
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('does not check document or vector quota when creating an empty space', async () => {
+    const user = userEvent.setup()
+    systemFeaturesStateMock.deploymentEdition = 'CLOUD'
+    uploadQuotaMock.mockResolvedValue('taskFailure.documentCountQuotaExceeded')
+    renderPage()
+    await fillRequiredFields(user)
+
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
+
+    await waitFor(() => expect(serviceMock.create).toHaveBeenCalledOnce())
+    expect(uploadQuotaMock).not.toHaveBeenCalled()
+  })
+
+  it('finishes a partial upload without another quota check after removing the failed file', async () => {
+    const user = userEvent.setup()
+    navigationMock.startMode = 'upload'
+    systemFeaturesStateMock.deploymentEdition = 'CLOUD'
+    vi.mocked(crypto.randomUUID)
+      .mockReturnValueOnce('00000000-0000-4000-8000-000000000001')
+      .mockReturnValueOnce('00000000-0000-4000-8000-000000000002')
+    serviceMock.upload.mockResolvedValueOnce({}).mockRejectedValueOnce(new Error('Quota full'))
+    renderPage()
+    await user.upload(
+      screen.getByLabelText('knowledgeSpace.uploadFiles', { selector: 'input[type="file"]' }),
+      [new File(['one'], 'one.txt'), new File(['two'], 'two.txt')],
+    )
+    await fillRequiredFields(user)
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
+    await screen.findByRole('alert')
+    expect(serviceMock.upload).toHaveBeenCalledTimes(2)
+
+    uploadQuotaMock.mockResolvedValue('taskFailure.documentCountQuotaExceeded')
+    const checksBeforeFinishing = uploadQuotaMock.mock.calls.length
+    await user.click(screen.getByRole('button', { name: /two\.txt/ }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
+
+    await waitFor(() =>
+      expect(routerMock.replace).toHaveBeenCalledWith(
+        `/datasets/new/${createdKnowledge.control_space_id}/documents`,
+      ),
+    )
+    expect(uploadQuotaMock).toHaveBeenCalledTimes(checksBeforeFinishing)
+    expect(serviceMock.upload).toHaveBeenCalledTimes(2)
+    expect(serviceMock.create).toHaveBeenCalledOnce()
+  })
+
   it('continues from the upload mode after real creation succeeds', async () => {
     const user = userEvent.setup()
     navigationMock.startMode = 'upload'
@@ -1526,6 +1675,7 @@ describe('CreateKnowledgePage', () => {
       body: { upload_id: 'staged-handbook.md' },
       params: { control_space_id: createdKnowledge.control_space_id },
     })
+    expect(uploadQuotaMock).not.toHaveBeenCalled()
   })
 
   it('queues uploads when native random UUID generation is unavailable', async () => {

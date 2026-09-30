@@ -97,6 +97,7 @@ const metadataFieldsQuery = vi.hoisted(() => ({
 const updateSourceMutation = vi.hoisted(() => vi.fn())
 const uploadMutation = vi.hoisted(() => ({ mutateAsync: vi.fn() }))
 const stageUploadMutation = vi.hoisted(() => vi.fn())
+const getUploadQuotaFailure = vi.hoisted(() => vi.fn())
 const discardStagedUploadMutation = vi.hoisted(() => vi.fn())
 const bulkUploadMutation = vi.hoisted(() => ({ mutateAsync: vi.fn() }))
 const queryCacheListeners = vi.hoisted(
@@ -174,6 +175,8 @@ vi.mock('../../space/context', () => ({
 }))
 const systemFeaturesStateMock = vi.hoisted(() => ({
   atom: Symbol('knowledgeFsUploadEnabledAtom'),
+  deploymentEdition: 'ENTERPRISE',
+  deploymentEditionAtom: Symbol('deploymentEditionAtom'),
   uploadEnabled: true,
 }))
 const fileUploadConfigMock = vi.hoisted(() => ({
@@ -290,6 +293,7 @@ vi.mock('@/context/permission-state', () => ({
 }))
 
 vi.mock('@/features/system-features/state', () => ({
+  deploymentEditionAtom: systemFeaturesStateMock.deploymentEditionAtom,
   knowledgeFsUploadEnabledAtom: systemFeaturesStateMock.atom,
 }))
 
@@ -303,6 +307,8 @@ vi.mock('jotai', async (importOriginal) => {
       if (atom === permissionStateMock.fetchingAtom) return permissionStateMock.fetching
       if (atom === permissionStateMock.loadingAtom) return permissionStateMock.loading
       if (atom === systemFeaturesStateMock.atom) return systemFeaturesStateMock.uploadEnabled
+      if (atom === systemFeaturesStateMock.deploymentEditionAtom)
+        return systemFeaturesStateMock.deploymentEdition
       return original.useAtomValueRawSync(
         atom as Parameters<typeof original.useAtomValueRawSync>[0],
       )
@@ -666,6 +672,9 @@ vi.mock('@/service/console', () => ({
 }))
 
 vi.mock('../tasks/events', () => ({ streamProcessingTaskEvents }))
+vi.mock('../../upload/quota', () => ({
+  getKnowledgeFsUploadQuotaFailure: getUploadQuotaFailure,
+}))
 vi.mock('../../upload/knowledge-fs-upload', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../upload/knowledge-fs-upload')>()),
   discardKnowledgeFsStagedUpload: discardStagedUploadMutation,
@@ -811,6 +820,8 @@ describe('DocumentsPage', () => {
     vi.clearAllMocks()
     fileUploadConfigMock.knowledgeFileSizeLimit = 15
     systemFeaturesStateMock.uploadEnabled = true
+    systemFeaturesStateMock.deploymentEdition = 'ENTERPRISE'
+    getUploadQuotaFailure.mockReset().mockResolvedValue(undefined)
     settingsState.configurationState = 'active'
     settingsState.refetch.mockImplementation(async () => ({
       data: {
@@ -1828,6 +1839,8 @@ describe('DocumentsPage', () => {
 
   it('shows the quota verification error when retrying a document row', async () => {
     const user = userEvent.setup()
+    systemFeaturesStateMock.deploymentEdition = 'CLOUD'
+    getUploadQuotaFailure.mockResolvedValue('taskFailure.documentCountQuotaExceeded')
     const failedTask = task({ documentId: 'one', id: 'failed-task', state: 'failed' })
     documentsQuery.data = {
       pages: [{ items: [document({ id: 'one', status: 'failed', latestTask: failedTask })] }],
@@ -1860,6 +1873,7 @@ describe('DocumentsPage', () => {
     expect(
       screen.getByRole('button', { name: /knowledgeDocuments\.documentActions/ }),
     ).toBeEnabled()
+    expect(getUploadQuotaFailure).not.toHaveBeenCalled()
   })
 
   it.each(['document', 'document_bulk'] as const)(
@@ -2465,6 +2479,7 @@ describe('DocumentsPage', () => {
     await waitForDocumentFilesStaged()
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
     expect(uploadMutation.mutateAsync).toHaveBeenCalledTimes(3)
+    expect(getUploadQuotaFailure).not.toHaveBeenCalled()
     expect(queryClient.invalidateQueries).toHaveBeenCalled()
     const documentInvalidation = queryClient.invalidateQueries.mock.calls.find(
       ([options]) => options.queryKey[1] === 'documents',
@@ -2486,6 +2501,94 @@ describe('DocumentsPage', () => {
       }),
     ).toBe(false)
   })
+
+  it.each([
+    'taskFailure.documentCountQuotaExceeded',
+    'taskFailure.vectorSpaceQuotaExceeded',
+    'taskFailure.documentCountQuotaUnavailable',
+    'taskFailure.vectorSpaceQuotaUnavailable',
+  ])('blocks file transfer and submission for Cloud uploads with %s', async (failureKey) => {
+    const user = userEvent.setup()
+    systemFeaturesStateMock.deploymentEdition = 'CLOUD'
+    getUploadQuotaFailure.mockResolvedValue(failureKey)
+    render(<DocumentsPage knowledgeSpaceId="space-1" />, { searchParams: '?upload=1' })
+
+    await user.upload(
+      screen.getByLabelText('knowledgeCreate.uploadDocuments'),
+      new File(['draft'], 'draft.md', { type: 'text/markdown' }),
+    )
+    await waitForDocumentFilesStaged()
+
+    expect(toastMock.error).toHaveBeenCalledWith(`knowledgeErrors.${failureKey}`)
+    expect(stageUploadMutation).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
+
+    expect(getUploadQuotaFailure).toHaveBeenCalledTimes(2)
+    expect(stageUploadMutation).not.toHaveBeenCalled()
+    expect(settingsState.refetch).not.toHaveBeenCalled()
+    expect(uploadMutation.mutateAsync).not.toHaveBeenCalled()
+    expect(screen.getByText('draft.md')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' })).toBeEnabled()
+  })
+
+  it('rechecks Cloud quotas before claiming already staged files', async () => {
+    const user = userEvent.setup()
+    systemFeaturesStateMock.deploymentEdition = 'CLOUD'
+    render(<DocumentsPage knowledgeSpaceId="space-1" />, { searchParams: '?upload=1' })
+    await user.upload(screen.getByLabelText('knowledgeCreate.uploadDocuments'), [
+      new File(['one'], 'one.md', { type: 'text/markdown' }),
+      new File(['two'], 'two.md', { type: 'text/markdown' }),
+    ])
+    await waitForDocumentFilesStaged()
+    expect(getUploadQuotaFailure).toHaveBeenCalledOnce()
+    expect(stageUploadMutation).toHaveBeenCalledTimes(2)
+
+    getUploadQuotaFailure.mockResolvedValue('taskFailure.documentCountQuotaExceeded')
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
+
+    expect(toastMock.error).toHaveBeenCalledWith(
+      'knowledgeErrors.taskFailure.documentCountQuotaExceeded',
+    )
+    expect(settingsState.refetch).not.toHaveBeenCalled()
+    expect(uploadMutation.mutateAsync).not.toHaveBeenCalled()
+    expect(stageUploadMutation).toHaveBeenCalledTimes(2)
+  })
+
+  it.each(['remove', 'cancel'])(
+    'does not transfer files after %s while a Cloud quota check is pending',
+    async (action) => {
+      const user = userEvent.setup()
+      systemFeaturesStateMock.deploymentEdition = 'CLOUD'
+      let resolveQuota!: (value: string) => void
+      getUploadQuotaFailure.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveQuota = resolve
+          }),
+      )
+      render(<DocumentsPage knowledgeSpaceId="space-1" />, { searchParams: '?upload=1' })
+      await user.upload(
+        screen.getByLabelText('knowledgeCreate.uploadDocuments'),
+        new File(['draft'], 'draft.md', { type: 'text/markdown' }),
+      )
+      expect(getUploadQuotaFailure).toHaveBeenCalledOnce()
+      expect(stageUploadMutation).not.toHaveBeenCalled()
+      await user.click(
+        screen.getByRole('button', {
+          name:
+            action === 'remove' ? 'common.operation.remove · draft.md' : 'common.operation.cancel',
+        }),
+      )
+
+      await act(async () => {
+        resolveQuota('taskFailure.vectorSpaceQuotaExceeded')
+      })
+
+      expect(stageUploadMutation).not.toHaveBeenCalled()
+      expect(uploadMutation.mutateAsync).not.toHaveBeenCalled()
+      expect(toastMock.error).not.toHaveBeenCalled()
+    },
+  )
 
   it('shows progress on only the staged file currently being uploaded', async () => {
     const user = userEvent.setup()
@@ -2967,6 +3070,7 @@ describe('DocumentsPage', () => {
 
   it('reports a partial quota failure and only retries files that were not added', async () => {
     const user = userEvent.setup()
+    systemFeaturesStateMock.deploymentEdition = 'CLOUD'
     uploadMutation.mutateAsync.mockResolvedValueOnce({}).mockRejectedValueOnce(
       new Response(
         JSON.stringify({

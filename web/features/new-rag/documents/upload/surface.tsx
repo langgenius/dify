@@ -9,11 +9,15 @@ import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
-import { knowledgeFsUploadEnabledAtom } from '@/features/system-features/state'
+import {
+  deploymentEditionAtom,
+  knowledgeFsUploadEnabledAtom,
+} from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
 import { knowledgeFsRequestFailureMessageKey } from '../../knowledge-fs-task-error'
 import { DocumentUploadForm } from '../../upload/form'
 import { documentUploadIssue } from '../../upload/policy'
+import { getKnowledgeFsUploadQuotaFailure } from '../../upload/quota'
 import { useKnowledgeFileSizeLimit } from '../../upload/use-file-size-limit'
 import { DocumentDropOverlay } from '../list'
 import { responseStatus } from '../request-error'
@@ -69,6 +73,7 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
   const { t } = useTranslation(['knowledgeSpace', 'dataset', 'knowledgeDocuments'])
   const { t: tError } = useTranslation(['knowledgeErrors'])
   const queryClient = useQueryClient()
+  const deploymentEdition = useAtomValueRawSync(deploymentEditionAtom)
   const knowledgeSpaceId = useAtomValueRawSync(documentsKnowledgeSpaceIdAtom)
   const canWrite = useAtomValueRawSync(documentCanWriteAtom)
   const bulkActionsVisible = useAtomValueRawSync(documentBulkActionsVisibleAtom)
@@ -159,6 +164,18 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
     [fileSizeLimitMb, t],
   )
 
+  const checkUploadQuota = useCallback(
+    async (isActive?: () => boolean) => {
+      if (deploymentEdition !== 'CLOUD') return true
+      const failureKey = await getKnowledgeFsUploadQuotaFailure(queryClient)
+      if (isActive && !isActive()) return false
+      if (!failureKey) return true
+      toast.error(tError(($) => $[failureKey]))
+      return false
+    },
+    [deploymentEdition, queryClient, tError],
+  )
+
   const uploadFiles = useCallback(
     async (files: File[]): Promise<boolean> => {
       if (!canUpload || !files.length) return false
@@ -183,6 +200,7 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
       }
       try {
         const uploaded = await uploadStagedFiles(uploadableFiles, async () => {
+          if (!(await checkUploadQuota())) return false
           if (
             (await ensureModelReady({ capability: 'ingest', intent: 'upload' })).status !== 'ready'
           )
@@ -232,6 +250,7 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
     [
       canUpload,
       cancel,
+      checkUploadQuota,
       completedUploadCount,
       ensureModelReady,
       fileSizeLimitMb,
@@ -248,7 +267,7 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
   const onFilesAdded = useCallback(
     async (files: File[]) => {
       try {
-        await stageFiles(files)
+        await stageFiles(files, deploymentEdition === 'CLOUD' ? checkUploadQuota : undefined)
       } catch (error) {
         if (error instanceof DocumentStagingCanceledError) return
         const failureKey = await knowledgeFsRequestFailureMessageKey(error)
@@ -256,7 +275,7 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
         throw error
       }
     },
-    [stageFiles, t, tError],
+    [checkUploadQuota, deploymentEdition, stageFiles, t, tError],
   )
 
   const onSubmit = useCallback(

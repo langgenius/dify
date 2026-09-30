@@ -35,74 +35,84 @@ export function useDocumentUploadSession() {
     () => new Map(),
   )
 
-  const stageFiles = useCallback(async (files: File[]) => {
-    const tasks = files.map((file) => {
-      const stagedUploadId = stagedUploadIdsRef.current.get(file)
-      if (stagedUploadId) return Promise.resolve(stagedUploadId)
-      const active = stagingPromisesRef.current.get(file)
-      if (active) return active
+  const stageFiles = useCallback(
+    async (files: File[], prepare?: (isActive: () => boolean) => Promise<boolean>) => {
+      const controllers: AbortController[] = []
+      const prepared = prepare?.(() => controllers.some((controller) => !controller.signal.aborted))
+      const tasks = files.map((file) => {
+        const stagedUploadId = stagedUploadIdsRef.current.get(file)
+        if (stagedUploadId) return Promise.resolve(stagedUploadId)
+        const active = stagingPromisesRef.current.get(file)
+        if (active) return active
 
-      const controller = new AbortController()
-      let settled = false
-      let timeout: number | undefined
-      const promise = new Promise<string>((resolve, reject) => {
-        function cleanup() {
-          if (timeout !== undefined) window.clearTimeout(timeout)
-          controller.signal.removeEventListener('abort', handleAbort)
-          if (stagingControllersRef.current.get(file) === controller) {
-            stagingPromisesRef.current.delete(file)
-            stagingControllersRef.current.delete(file)
-          }
-        }
-        function rejectOnce(error: unknown) {
-          if (settled) return
-          settled = true
-          cleanup()
-          reject(error)
-        }
-        function handleAbort() {
-          rejectOnce(
-            controller.signal.reason instanceof Error
-              ? controller.signal.reason
-              : new DocumentStagingCanceledError(),
-          )
-        }
-        controller.signal.addEventListener('abort', handleAbort, { once: true })
-        timeout = window.setTimeout(
-          () => controller.abort(new DocumentStagingTimeoutError()),
-          DOCUMENT_STAGING_REQUEST_TIMEOUT,
-        )
-        void stageKnowledgeFsDocument(file, controller.signal).then(
-          (uploadId) => {
-            if (settled) {
-              void discardKnowledgeFsStagedUpload(uploadId).catch(() => undefined)
-              return
+        const controller = new AbortController()
+        controllers.push(controller)
+        let settled = false
+        let timeout: number | undefined
+        const promise = new Promise<string>((resolve, reject) => {
+          function cleanup() {
+            if (timeout !== undefined) window.clearTimeout(timeout)
+            controller.signal.removeEventListener('abort', handleAbort)
+            if (stagingControllersRef.current.get(file) === controller) {
+              stagingPromisesRef.current.delete(file)
+              stagingControllersRef.current.delete(file)
             }
+          }
+          function rejectOnce(error: unknown) {
+            if (settled) return
             settled = true
             cleanup()
-            stagedUploadIdsRef.current.set(file, uploadId)
-            resolve(uploadId)
-          },
-          (error) => {
-            rejectOnce(error)
-          },
-        )
+            reject(error)
+          }
+          function handleAbort() {
+            rejectOnce(
+              controller.signal.reason instanceof Error
+                ? controller.signal.reason
+                : new DocumentStagingCanceledError(),
+            )
+          }
+          controller.signal.addEventListener('abort', handleAbort, { once: true })
+          function stage() {
+            if (controller.signal.aborted) return
+            timeout = window.setTimeout(
+              () => controller.abort(new DocumentStagingTimeoutError()),
+              DOCUMENT_STAGING_REQUEST_TIMEOUT,
+            )
+            void stageKnowledgeFsDocument(file, controller.signal).then((uploadId) => {
+              if (settled) {
+                void discardKnowledgeFsStagedUpload(uploadId).catch(() => undefined)
+                return
+              }
+              settled = true
+              cleanup()
+              stagedUploadIdsRef.current.set(file, uploadId)
+              resolve(uploadId)
+            }, rejectOnce)
+          }
+          if (prepared)
+            void prepared.then((allowed) => {
+              if (allowed) stage()
+              else rejectOnce(new DocumentStagingCanceledError())
+            }, rejectOnce)
+          else stage()
+        })
+        stagingPromisesRef.current.set(file, promise)
+        stagingControllersRef.current.set(file, controller)
+        return promise
       })
-      stagingPromisesRef.current.set(file, promise)
-      stagingControllersRef.current.set(file, controller)
-      return promise
-    })
-    if (!tasks.length) return
+      if (!tasks.length) return
 
-    const results = await Promise.allSettled(tasks)
-    const failures = results.filter(
-      (result): result is PromiseRejectedResult => result.status === 'rejected',
-    )
-    const failed =
-      failures.find(({ reason }) => !(reason instanceof DocumentStagingCanceledError)) ??
-      failures[0]
-    if (failed) throw failed.reason
-  }, [])
+      const results = await Promise.allSettled(tasks)
+      const failures = results.filter(
+        (result): result is PromiseRejectedResult => result.status === 'rejected',
+      )
+      const failed =
+        failures.find(({ reason }) => !(reason instanceof DocumentStagingCanceledError)) ??
+        failures[0]
+      if (failed) throw failed.reason
+    },
+    [],
+  )
 
   const discardStagedFile = useCallback((file: File) => {
     stagingControllersRef.current.get(file)?.abort(new DocumentStagingCanceledError())
