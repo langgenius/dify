@@ -210,10 +210,10 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
             variant="tertiary"
             size={null}
             disabled={isPlanDisabled}
-            className="h-auto w-full justify-start gap-x-2 rounded-none bg-components-button-tertiary-bg py-3 pr-4 pl-5 system-xl-semibold text-text-primary hover:bg-components-button-tertiary-bg-hover data-disabled:bg-components-button-tertiary-bg-disabled data-disabled:text-text-disabled data-disabled:hover:bg-components-button-tertiary-bg-disabled data-[plan=professional]:not-data-disabled:bg-saas-dify-blue-static data-[plan=professional]:not-data-disabled:text-text-primary-on-surface data-[plan=professional]:not-data-disabled:hover:bg-saas-dify-blue-static-hover data-[plan=team]:not-data-disabled:bg-saas-background-inverted data-[plan=team]:not-data-disabled:text-background-default data-[plan=team]:not-data-disabled:hover:bg-saas-background-inverted-hover"
+            className="h-auto w-full justify-start gap-x-2 rounded-none bg-components-button-tertiary-bg py-3 pr-4 pl-5 system-xl-semibold whitespace-normal text-text-primary hover:bg-components-button-tertiary-bg-hover data-disabled:bg-components-button-tertiary-bg-disabled data-disabled:text-text-disabled data-disabled:hover:bg-components-button-tertiary-bg-disabled data-[plan=professional]:not-data-disabled:bg-saas-dify-blue-static data-[plan=professional]:not-data-disabled:text-text-primary-on-surface data-[plan=professional]:not-data-disabled:hover:bg-saas-dify-blue-static-hover data-[plan=team]:not-data-disabled:bg-saas-background-inverted data-[plan=team]:not-data-disabled:text-background-default data-[plan=team]:not-data-disabled:hover:bg-saas-background-inverted-hover xl:whitespace-nowrap"
             onClick={handlePlanButtonClick}
           >
-            <span className="grow text-start">{buttonLabel}</span>
+            <span className="min-w-0 grow text-start">{buttonLabel}</span>
             {!isPlanDisabled && (
               <span aria-hidden className="i-ri-arrow-right-line size-5 shrink-0" />
             )}
