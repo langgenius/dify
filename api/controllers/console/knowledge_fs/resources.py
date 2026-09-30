@@ -44,6 +44,7 @@ from controllers.console.knowledge_fs.error import (
     KnowledgeFSRequestTooLargeHTTPError,
     KnowledgeFSResourceNotFoundHTTPError,
     KnowledgeFSSpaceNotFoundHTTPError,
+    KnowledgeFSTimeoutHTTPError,
     KnowledgeFSUpstreamUnavailableHTTPError,
 )
 from controllers.console.wraps import (
@@ -488,6 +489,10 @@ def _knowledge_fs_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
                 raise KnowledgeFSRequestTooLargeHTTPError(exc.failure) from exc
             if exc.status_code == HTTPStatus.TOO_MANY_REQUESTS:
                 raise KnowledgeFSRateLimitHTTPError(exc.failure) from exc
+            if exc.status_code == HTTPStatus.SERVICE_UNAVAILABLE:
+                raise KnowledgeFSOperationUnavailableHTTPError(exc.failure) from exc
+            if exc.status_code == HTTPStatus.GATEWAY_TIMEOUT:
+                raise KnowledgeFSTimeoutHTTPError(exc.failure) from exc
             raise KnowledgeFSRequestRejectedHTTPError(exc.failure) from exc
         except KnowledgeFSQueryImageError as exc:
             if exc.code == "QUERY_IMAGE_NOT_FOUND":

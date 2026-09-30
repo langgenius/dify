@@ -26,6 +26,7 @@ from controllers.console.knowledge_fs.error import (
     KnowledgeFSRequestTooLargeHTTPError,
     KnowledgeFSResourceNotFoundHTTPError,
     KnowledgeFSSpaceNotFoundHTTPError,
+    KnowledgeFSTimeoutHTTPError,
     KnowledgeFSUpstreamUnavailableHTTPError,
 )
 from controllers.service_api.knowledge_fs import resources as service_resources
@@ -41,6 +42,7 @@ from controllers.service_api.knowledge_fs.error import (
     KnowledgeFSServiceResourceNotFoundHTTPError,
     KnowledgeFSServiceUpstreamUnavailableHTTPError,
 )
+from libs.exception import BaseHTTPException
 from models.knowledge_fs import KnowledgeFSAppSpaceJoinType
 from services.knowledge_fs.product_dto import (
     KnowledgeFSOverviewBaseStatsResponse,
@@ -1770,24 +1772,85 @@ def test_service_resource_helpers_validate_feature_bearer_headers_and_boolean_qu
         service_resources._runtime()
 
 
-def test_console_request_rejections_preserve_conflict_size_and_validation_contracts() -> None:
+def test_console_request_rejections_preserve_http_status_contracts() -> None:
     from services.knowledge_fs.product_remote import KnowledgeFSProductRequestRejectedError
 
-    expected: dict[Literal[400, 403, 409, 413, 422, 429], type[Exception]] = {
+    expected: dict[Literal[400, 403, 409, 413, 422, 429, 503, 504], type[BaseHTTPException]] = {
         400: KnowledgeFSInvalidRequestHTTPError,
         403: KnowledgeFSAccessDeniedHTTPError,
         409: KnowledgeFSConflictHTTPError,
         413: KnowledgeFSRequestTooLargeHTTPError,
         422: KnowledgeFSRequestRejectedHTTPError,
         429: KnowledgeFSRateLimitHTTPError,
+        503: KnowledgeFSOperationUnavailableHTTPError,
+        504: KnowledgeFSTimeoutHTTPError,
     }
     for status, http_error in expected.items():
         reject = console_resources._knowledge_fs_errors(
             MagicMock(side_effect=KnowledgeFSProductRequestRejectedError(status_code=status))
         )
 
-        with pytest.raises(http_error):
+        with pytest.raises(http_error) as raised:
             reject()
+
+        assert raised.value.code == status
+        assert raised.value.data == {
+            "code": http_error.error_code,
+            "message": http_error.description,
+            "status": status,
+        }
+
+
+@pytest.mark.parametrize(
+    ("status", "failure_code", "category", "safe_message"),
+    [
+        (
+            503,
+            "DOCUMENT_COUNT_QUOTA_UNAVAILABLE",
+            "dependency",
+            "The workspace document quota could not be verified. Try again later.",
+        ),
+        (
+            503,
+            "VECTOR_SPACE_QUOTA_UNAVAILABLE",
+            "dependency",
+            "The workspace vector storage quota could not be verified. Try again later.",
+        ),
+        (504, "KNOWLEDGE_FS_TIMEOUT", "timeout", "The Agent Knowledge Base operation timed out. Try again later."),
+    ],
+)
+def test_console_unavailable_and_timeout_rejections_preserve_safe_failure_metadata(
+    status: Literal[503, 504], failure_code: str, category: str, safe_message: str
+) -> None:
+    from services.knowledge_fs.product_remote import KnowledgeFSProductRequestRejectedError
+
+    expected_failure = {
+        "action": "retry",
+        "category": category,
+        "code": failure_code,
+        "message": safe_message,
+        "retryPolicy": "manual",
+        "traceId": "trace-quota",
+        "parameters": {"retryAfterSeconds": 30},
+    }
+    failure = KnowledgeFSPublicFailureResponse.model_validate(
+        {**expected_failure, "message": "Private upstream diagnostic that must not reach the client"}
+    )
+    reject = console_resources._knowledge_fs_errors(
+        MagicMock(side_effect=KnowledgeFSProductRequestRejectedError(status_code=status, failure=failure))
+    )
+    http_error = KnowledgeFSOperationUnavailableHTTPError if status == 503 else KnowledgeFSTimeoutHTTPError
+
+    with pytest.raises(http_error) as raised:
+        reject()
+
+    assert raised.value.code == status
+    assert raised.value.data == {
+        "code": http_error.error_code,
+        "message": safe_message,
+        "status": status,
+        "failure": expected_failure,
+    }
 
 
 def test_console_request_rejection_preserves_safe_failure_metadata() -> None:

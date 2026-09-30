@@ -35,6 +35,12 @@ class KnowledgeFSUpstreamUnavailableHTTPError(_KnowledgeFSFailureHTTPError):
     code = 503
 
 
+class KnowledgeFSTimeoutHTTPError(_KnowledgeFSFailureHTTPError):
+    error_code = "knowledge_fs_timeout"
+    description = "Agent Knowledge Base request timed out."
+    code = 504
+
+
 class KnowledgeFSInvalidRequestHTTPError(_KnowledgeFSFailureHTTPError):
     error_code = "knowledge_fs_invalid_request"
     description = "Agent Knowledge Base request is invalid."
@@ -81,5 +87,6 @@ __all__ = [
     "KnowledgeFSRequestTooLargeHTTPError",
     "KnowledgeFSResourceNotFoundHTTPError",
     "KnowledgeFSSpaceNotFoundHTTPError",
+    "KnowledgeFSTimeoutHTTPError",
     "KnowledgeFSUpstreamUnavailableHTTPError",
 ]
