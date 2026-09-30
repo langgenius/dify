@@ -13,7 +13,7 @@ from core.app.app_config.entities import (
     PromptTemplateEntity,
 )
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
-from core.app.entities.app_invoke_entities import ChatAppGenerateEntity, InvokeFrom, ModelConfigWithCredentialsEntity
+from core.app.entities.app_invoke_entities import ChatAppGenerateEntity, InvokeFrom
 from core.app.entities.queue_entities import (
     AppQueueEvent,
     MessageQueueMessage,
@@ -37,20 +37,13 @@ from core.app.entities.task_entities import (
 )
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.base.tts import AppGeneratorTTSPublisher
-from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
-from core.entities.provider_entities import CustomConfiguration, SystemConfiguration
 from core.ops.ops_trace_manager import TraceQueueManager
-from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
-from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.llm_entities import LLMResult as RuntimeLLMResult
 from graphon.model_runtime.entities.llm_entities import LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, TextPromptMessageContent
-from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
-from graphon.model_runtime.entities.provider_entities import ProviderEntity
-from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from models.enums import ConversationFromSource
 from models.model import AppMode, Conversation, Message
-from models.provider import ProviderType
+from tests.unit_tests.core.model_fixtures import make_model_config
 
 
 class _QueueManager(AppQueueManager):
@@ -83,42 +76,6 @@ def queue_message(event: AppQueueEvent) -> MessageQueueMessage:
         message_id="test-message-id",
         conversation_id="test-conversation-id",
         event=event,
-    )
-
-
-def model_config() -> ModelConfigWithCredentialsEntity:
-    provider = ProviderEntity(
-        provider="test-provider",
-        label=I18nObject(en_US="Test"),
-        supported_model_types=[ModelType.LLM],
-        configurate_methods=[],
-    )
-    return ModelConfigWithCredentialsEntity(
-        provider=provider.provider,
-        model="test-model",
-        mode="chat",
-        model_schema=AIModelEntity(
-            model="test-model",
-            label=I18nObject(en_US="Test"),
-            model_type=ModelType.LLM,
-            fetch_from=FetchFrom.PREDEFINED_MODEL,
-            model_properties={},
-        ),
-        provider_model_bundle=ProviderModelBundle(
-            configuration=ProviderConfiguration(
-                tenant_id="test-tenant-id",
-                provider=provider,
-                preferred_provider_type=ProviderType.CUSTOM,
-                using_provider_type=ProviderType.CUSTOM,
-                system_configuration=SystemConfiguration(enabled=False),
-                custom_configuration=CustomConfiguration(provider=None),
-                model_settings=[],
-            ),
-            model_type_instance=LargeLanguageModel(
-                provider_schema=provider,
-                model_runtime=create_plugin_model_runtime(tenant_id="test-tenant-id"),
-            ),
-        ),
     )
 
 
@@ -165,7 +122,7 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
                 model=ModelConfigEntity(provider="test-provider", model="test-model"),
                 prompt_template=PromptTemplateEntity(prompt_type=PromptTemplateEntity.PromptType.SIMPLE),
             ),
-            model_conf=model_config(),
+            model_conf=make_model_config(provider="test-provider", model="test-model", mode="chat"),
             inputs={},
             files=[],
             user_id="test-user-id",
