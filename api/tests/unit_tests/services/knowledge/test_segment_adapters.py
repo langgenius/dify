@@ -1205,7 +1205,8 @@ def test_automatic_summary_keeps_knowledge_credit_attribution(
 
     regenerate_segment_summary_task.run(**probe.summary_jobs[0])
     summary = repository.get_indexing_snapshot(reference).summary
-    assert summary is not None and summary.summary_content == "new summary"
+    assert summary is not None
+    assert summary.summary_content == "new summary"
     assert metadata == [{"created_by": CreditUsageCreatedBy.KNOWLEDGE_INDEXING}]
     assert get_credit_usage_metadata() is None
 
