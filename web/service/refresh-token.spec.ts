@@ -1,6 +1,7 @@
+import { refreshAccessTokenOrReLogin } from './refresh-token'
+
 vi.mock('@/config', () => ({ API_PREFIX: '/console/api' }))
 vi.mock('@/utils/client', () => ({ isClient: true }))
-import { refreshAccessTokenOrReLogin } from './refresh-token'
 it('reissues token refresh after a temporary network rejection', async () => {
   const fetch = vi
     .fn()
