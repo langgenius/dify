@@ -11,7 +11,7 @@ This test suite covers:
 import json
 from datetime import UTC, datetime
 from decimal import Decimal
-from unittest.mock import PropertyMock, patch
+from unittest.mock import patch
 from uuid import UUID, uuid4
 
 import pytest
@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session
 from models.dataset import DatasetCollectionBinding
 from models.enums import CollectionBindingType, ConversationFromSource, CustomizeTokenStrategy
 from models.model import (
+    AnnotationReplyConfig,
     App,
     AppAnnotationHitHistory,
     AppAnnotationSetting,
@@ -531,15 +532,9 @@ class TestAppModelConfig:
 
     def test_to_dict_uses_injected_annotation_reply(self):
         config = AppModelConfig(app_id=str(uuid4()))
-        annotation_reply = {"enabled": False}
+        annotation_reply: AnnotationReplyConfig = {"enabled": False}
 
-        with patch.object(
-            AppModelConfig,
-            "annotation_reply_dict",
-            new_callable=PropertyMock,
-            side_effect=AssertionError("annotation_reply_dict should not be accessed"),
-        ):
-            result = config.to_dict(annotation_reply=annotation_reply)
+        result = config.to_dict(annotation_reply=annotation_reply)
 
         assert result["annotation_reply"] == annotation_reply
 
@@ -621,6 +616,29 @@ class TestAnnotationReplyConfigLoader:
 
 class TestConversationModel:
     """Test suite for Conversation model integrity."""
+
+    def test_app_returns_matching_app_from_caller_session(self, sqlite_session: Session) -> None:
+        other_app = App(
+            tenant_id=str(uuid4()), name="Other app", mode=AppMode.CHAT, enable_site=False, enable_api=False
+        )
+        app = App(
+            tenant_id=str(uuid4()), name="Conversation app", mode=AppMode.CHAT, enable_site=False, enable_api=False
+        )
+        sqlite_session.add_all([other_app, app])
+        sqlite_session.flush()
+        conversation = Conversation(app_id=app.id)
+
+        assert conversation.app(session=sqlite_session) is app
+
+    def test_app_returns_none_when_app_is_missing(self, sqlite_session: Session) -> None:
+        other_app = App(
+            tenant_id=str(uuid4()), name="Other app", mode=AppMode.CHAT, enable_site=False, enable_api=False
+        )
+        sqlite_session.add(other_app)
+        sqlite_session.flush()
+        conversation = Conversation(app_id=str(uuid4()))
+
+        assert conversation.app(session=sqlite_session) is None
 
     def test_conversation_creation_with_required_fields(self):
         """Test creating a conversation with required fields."""

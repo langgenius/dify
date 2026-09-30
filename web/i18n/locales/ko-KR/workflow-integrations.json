@@ -45,7 +45,6 @@
   "nodes.triggerSchedule.nextExecutionTimes": "다음 5회 실행 시간",
   "nodes.triggerSchedule.onMinute": "분 안에",
   "nodes.triggerSchedule.selectFrequency": "주파수 선택",
-  "nodes.triggerSchedule.selectTime": "시간 선택",
   "nodes.triggerSchedule.title": "일정",
   "nodes.triggerSchedule.useCronExpression": "크론 표현식 사용",
   "nodes.triggerSchedule.useVisualPicker": "시각적 선택기 사용",

@@ -4,6 +4,7 @@ import os
 import shutil
 from collections.abc import Callable, Iterator
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
@@ -12,6 +13,10 @@ from flask import Flask
 from sqlalchemy import create_engine
 from sqlalchemy.engine import URL, Engine
 from sqlalchemy.orm import Session, sessionmaker
+
+if TYPE_CHECKING:
+    from extensions.ext_application_services import ApplicationServices
+    from tests.unit_tests.account_domain import AccountDomain
 
 # Getting the absolute path of the current file's directory
 ABS_PATH = os.path.dirname(os.path.abspath(__file__))
@@ -125,18 +130,22 @@ def config_overrides(monkeypatch: pytest.MonkeyPatch) -> Callable[..., None]:
 
 
 @pytest.fixture
-def _sqlite_engine(_sqlite_database_template: Path, tmp_path: Path) -> Iterator[Engine]:
-    """Create an engine over a pristine per-test copy of the SQLite schema."""
+def _sqlite_engine(_sqlite_database_template: Path) -> Iterator[Engine]:
+    """Copy the schema into an isolated directory without pytest's numbered scan.
 
-    database_path = tmp_path / "unit-tests.sqlite3"
-    shutil.copyfile(_sqlite_database_template, database_path)
-    engine = create_engine(URL.create("sqlite", database=str(database_path)))
+    ``tmp_path`` searches all preceding test directories for a free number. This
+    autouse dependency needs only a unique, disposable directory, including any
+    SQLite journal files, so keep it separate from test-owned ``tmp_path`` data.
+    """
+    with TemporaryDirectory(prefix="case-", dir=_sqlite_database_template.parent) as directory:
+        database_path = Path(directory) / "unit-tests.sqlite3"
+        shutil.copyfile(_sqlite_database_template, database_path)
+        engine = create_engine(URL.create("sqlite", database=str(database_path)))
 
-    try:
-        yield engine
-    finally:
-        engine.dispose()
-        database_path.unlink(missing_ok=True)
+        try:
+            yield engine
+        finally:
+            engine.dispose()
 
 
 @pytest.fixture(scope="session")
@@ -249,14 +258,65 @@ def persist_service_api_dataset_owner(
 
 
 @pytest.fixture
+def account_domain(
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+) -> AccountDomain:
+    from blinker import Signal
+
+    from enums import DeploymentEdition
+    from services.workspace import gateways
+    from tests.unit_tests.account_domain import build_account_domain
+
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, RBAC_ENABLED=False)
+    monkeypatch.setattr(gateways, "generate_key_pair", lambda _workspace_id: "public-key")
+    monkeypatch.setattr(gateways, "tenant_was_created", Signal())
+    return build_account_domain(sqlite_session_factory)
+
+
+@pytest.fixture
+def account_application_services(
+    sqlite_session_factory: sessionmaker[Session], account_domain: AccountDomain
+) -> ApplicationServices:
+    from dataclasses import replace
+    from unittest.mock import Mock
+
+    from enums import DeploymentEdition
+    from extensions.ext_application_services import build_application_services
+    from extensions.ext_redis import RedisClientWrapper
+
+    services = build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=Mock(spec=RedisClientWrapper),
+    )
+    return replace(
+        services,
+        accounts=replace(services.accounts, lifecycle=account_domain.accounts),
+        workspaces=replace(
+            services.workspaces,
+            members=account_domain.members,
+            provisioning=account_domain.provisioning,
+            invitations=account_domain.invitations,
+        ),
+    )
+
+
+@pytest.fixture
 def app_services(sqlite_session_factory: sessionmaker[Session]) -> AppServices:
+    from unittest.mock import Mock
+
     from extensions.application_services.app import build_app_services
     from extensions.ext_application_services import _build_oauth_server_service
     from extensions.ext_redis import redis_client
+    from services.recommended_app_package_service import RecommendedAppPackageService
 
     return build_app_services(
         database_client=sqlite_session_factory,
         oauth=_build_oauth_server_service(database_client=sqlite_session_factory, redis=redis_client),
+        recommended_packages=RecommendedAppPackageService(sources=Mock(), exporter=Mock()),
     )
 
 

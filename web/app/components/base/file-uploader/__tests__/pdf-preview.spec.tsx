@@ -65,6 +65,7 @@ describe('PdfPreview', () => {
   it('should render the pdf preview portal with overlay and loading indicator', () => {
     render(<PdfPreview url="https://example.com/doc.pdf" onCancel={mockOnCancel} />)
 
+    expect(screen.getByRole('dialog', { name: 'workflow.common.preview' })).toBeInTheDocument()
     expect(document.querySelector('[tabindex="-1"]')).toBeInTheDocument()
     expect(getScaleContainer()).not.toHaveAttribute('aria-label')
     expect(screen.getByTestId('pdf-loader')).toBeInTheDocument()
@@ -110,7 +111,7 @@ describe('PdfPreview', () => {
   it('should zoom in when ArrowUp key is pressed', () => {
     render(<PdfPreview url="https://example.com/doc.pdf" onCancel={mockOnCancel} />)
 
-    fireEvent.keyDown(document, { key: 'ArrowUp', code: 'ArrowUp' })
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'ArrowUp', code: 'ArrowUp' })
 
     expect(getScaleContainer().getAttribute('style')).toContain('scale(1.2)')
   })
@@ -118,7 +119,7 @@ describe('PdfPreview', () => {
   it('should zoom out when ArrowDown key is pressed', () => {
     render(<PdfPreview url="https://example.com/doc.pdf" onCancel={mockOnCancel} />)
 
-    fireEvent.keyDown(document, { key: 'ArrowDown', code: 'ArrowDown' })
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'ArrowDown', code: 'ArrowDown' })
 
     expect(getScaleContainer().getAttribute('style')).toMatch(/scale\(0\.8333/)
   })

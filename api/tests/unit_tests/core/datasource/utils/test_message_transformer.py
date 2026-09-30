@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -198,17 +198,18 @@ class TestDatasourceFileMessageTransformer:
 
     def test_transform_file_tool_file_image(self):
         # Setup
-        mock_file = MagicMock(spec=File)
-        mock_file.transfer_method = FileTransferMethod.TOOL_FILE
-        mock_file.related_id = "related_123"
-        mock_file.extension = ".png"
-        mock_file.type = FileType.IMAGE
+        file = File(
+            transfer_method=FileTransferMethod.TOOL_FILE,
+            reference="related_123",
+            extension=".png",
+            file_type=FileType.IMAGE,
+        )
 
         messages = [
             DatasourceMessage(
                 type=DatasourceMessage.MessageType.FILE,
                 message=DatasourceMessage.TextMessage(text="ignored"),
-                meta={"file": mock_file},
+                meta={"file": file},
             )
         ]
 
@@ -226,17 +227,18 @@ class TestDatasourceFileMessageTransformer:
 
     def test_transform_file_tool_file_binary(self):
         # Setup
-        mock_file = MagicMock(spec=File)
-        mock_file.transfer_method = FileTransferMethod.TOOL_FILE
-        mock_file.related_id = "related_456"
-        mock_file.extension = ".txt"
-        mock_file.type = FileType.DOCUMENT
+        file = File(
+            transfer_method=FileTransferMethod.TOOL_FILE,
+            reference="related_456",
+            extension=".txt",
+            file_type=FileType.DOCUMENT,
+        )
 
         messages = [
             DatasourceMessage(
                 type=DatasourceMessage.MessageType.FILE,
                 message=DatasourceMessage.TextMessage(text="ignored"),
-                meta={"file": mock_file},
+                meta={"file": file},
             )
         ]
 
@@ -254,13 +256,16 @@ class TestDatasourceFileMessageTransformer:
 
     def test_transform_file_other_transfer_method(self):
         # Setup
-        mock_file = MagicMock(spec=File)
-        mock_file.transfer_method = FileTransferMethod.REMOTE_URL
+        file = File(
+            transfer_method=FileTransferMethod.REMOTE_URL,
+            remote_url="https://example.com/image.png",
+            file_type=FileType.IMAGE,
+        )
 
         msg = DatasourceMessage(
             type=DatasourceMessage.MessageType.FILE,
             message=DatasourceMessage.TextMessage(text="remote image"),
-            meta={"file": mock_file},
+            meta={"file": file},
         )
         messages = [msg]
 

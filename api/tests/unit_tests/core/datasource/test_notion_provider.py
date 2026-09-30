@@ -35,6 +35,8 @@ from core.rag.models.document import Document
 from models.base import TypeBase
 from models.dataset import Document as DocumentModel
 from models.enums import DataSourceType, DocumentCreatedFrom
+from services.data_source.credential_gateway import DatasourceProviderCredentialStore
+from services.data_source.provider_service import DatasourceProviderService
 
 
 @dataclass(frozen=True)
@@ -102,6 +104,7 @@ class TestNotionExtractorAuthentication:
             tenant_id="tenant-789",
             notion_access_token="explicit-token-abc",
             document_model=mock_document_model,
+            notion_token_loader=lambda: "token",
         )
 
         # Assert
@@ -110,13 +113,11 @@ class TestNotionExtractorAuthentication:
         assert extractor._notion_obj_id == "page-456"
         assert extractor._notion_page_type == "page"
 
-    @patch("core.rag.extractor.notion_extractor.DatasourceProviderService")
-    def test_init_with_credential_id(self, mock_service_class, mock_document_model):
+    def test_init_with_credential_id(self, mock_document_model):
         """Test NotionExtractor initialization with credential ID retrieval."""
         # Arrange
         mock_service = Mock()
-        mock_service.get_datasource_credentials.return_value = {"integration_secret": "credential-token-xyz"}
-        mock_service_class.return_value = mock_service
+        mock_service.get_stored_notion_access_token.return_value = "credential-token-xyz"
 
         # Act
         extractor = NotionExtractor(
@@ -126,23 +127,25 @@ class TestNotionExtractorAuthentication:
             tenant_id="tenant-789",
             credential_id="cred-123",
             document_model=mock_document_model,
+            notion_token_loader=lambda: mock_service.get_stored_notion_access_token(
+                tenant_id="tenant-789", credential_id="cred-123"
+            ),
         )
 
         # Assert
         assert extractor._notion_access_token == "credential-token-xyz"
-        mock_service.get_datasource_credentials.assert_called_once_with(
+        mock_service.get_stored_notion_access_token.assert_called_once_with(
             tenant_id="tenant-789",
             credential_id="cred-123",
-            provider="notion_datasource",
-            plugin_id="langgenius/notion_datasource",
         )
 
-    @patch("core.rag.extractor.notion_extractor.NotionExtractor._get_access_token")
+    @patch("services.data_source.provider_service.DatasourceProviderService.get_datasource_credentials")
     def test_init_with_integration_token_fallback(self, mock_get_token, mock_document_model, config_overrides):
         """Test NotionExtractor falls back to integration token when credential not found."""
         # Arrange
         mock_get_token.side_effect = Exception("No credential id found")
         config_overrides(NOTION_INTEGRATION_TOKEN="integration-token-fallback")
+        providers = DatasourceProviderService(credentials=Mock(spec=DatasourceProviderCredentialStore))
 
         # Act
         extractor = NotionExtractor(
@@ -152,17 +155,21 @@ class TestNotionExtractorAuthentication:
             tenant_id="tenant-789",
             credential_id=None,
             document_model=mock_document_model,
+            notion_token_loader=lambda: providers.get_stored_notion_access_token(
+                tenant_id="tenant-789", credential_id=None
+            ),
         )
 
         # Assert
         assert extractor._notion_access_token == "integration-token-fallback"
 
-    @patch("core.rag.extractor.notion_extractor.NotionExtractor._get_access_token")
+    @patch("services.data_source.provider_service.DatasourceProviderService.get_datasource_credentials")
     def test_init_missing_credentials_raises_error(self, mock_get_token, mock_document_model, config_overrides):
         """Test NotionExtractor raises error when no credentials available."""
         # Arrange
         mock_get_token.side_effect = Exception("No credential id found")
         config_overrides(NOTION_INTEGRATION_TOKEN=None)
+        providers = DatasourceProviderService(credentials=Mock(spec=DatasourceProviderCredentialStore))
 
         # Act & Assert
         with pytest.raises(ValueError) as exc_info:
@@ -173,6 +180,9 @@ class TestNotionExtractorAuthentication:
                 tenant_id="tenant-789",
                 credential_id=None,
                 document_model=mock_document_model,
+                notion_token_loader=lambda: providers.get_stored_notion_access_token(
+                    tenant_id="tenant-789", credential_id=None
+                ),
             )
         assert "Must specify `integration_token`" in str(exc_info.value)
 
@@ -196,6 +206,7 @@ class TestNotionExtractorPageRetrieval:
             notion_page_type="page",
             tenant_id="tenant-789",
             notion_access_token="test-token",
+            notion_token_loader=lambda: "token",
         )
 
     def _create_mock_response(self, data: dict[str, Any], status_code: int = 200) -> Mock:
@@ -396,6 +407,7 @@ class TestNotionExtractorDatabaseRetrieval:
             notion_page_type="database",
             tenant_id="tenant-789",
             notion_access_token="test-token",
+            notion_token_loader=lambda: "token",
         )
 
     def _create_database_page(self, page_id: str, properties: dict[str, Any]) -> dict[str, Any]:
@@ -600,6 +612,7 @@ class TestNotionExtractorTableParsing:
             notion_page_type="page",
             tenant_id="tenant-789",
             notion_access_token="test-token",
+            notion_token_loader=lambda: "token",
         )
 
     @patch("httpx.request")
@@ -751,6 +764,7 @@ class TestNotionExtractorLastEditedTime:
             tenant_id="tenant-789",
             notion_access_token="test-token",
             document_model=mock_document_model,
+            notion_token_loader=lambda: "token",
         )
 
     @pytest.fixture
@@ -763,6 +777,7 @@ class TestNotionExtractorLastEditedTime:
             tenant_id="tenant-789",
             notion_access_token="test-token",
             document_model=mock_document_model,
+            notion_token_loader=lambda: "token",
         )
 
     @patch("httpx.request")
@@ -869,6 +884,7 @@ class TestNotionExtractorIntegration:
             tenant_id="tenant-789",
             notion_access_token="test-token",
             document_model=persisted_document,
+            notion_token_loader=lambda: "token",
         )
 
         # Mock last edited time request
@@ -940,6 +956,7 @@ class TestNotionExtractorIntegration:
             tenant_id="tenant-789",
             notion_access_token="test-token",
             document_model=persisted_document,
+            notion_token_loader=lambda: "token",
         )
 
         # Mock last edited time request
@@ -990,6 +1007,7 @@ class TestNotionExtractorIntegration:
             notion_page_type="invalid_type",
             tenant_id="tenant-789",
             notion_access_token="test-token",
+            notion_token_loader=lambda: "token",
         )
 
         # Act & Assert
@@ -1016,6 +1034,7 @@ class TestNotionExtractorReadBlock:
             notion_page_type="page",
             tenant_id="tenant-789",
             notion_access_token="test-token",
+            notion_token_loader=lambda: "token",
         )
 
     @patch("httpx.request")
@@ -1172,6 +1191,7 @@ class TestNotionExtractorAdvancedBlockTypes:
             notion_page_type="page",
             tenant_id="tenant-789",
             notion_access_token="test-token",
+            notion_token_loader=lambda: "token",
         )
 
     def _create_block_with_rich_text(
@@ -1343,6 +1363,7 @@ class TestNotionExtractorDatabaseAdvanced:
             notion_page_type="database",
             tenant_id="tenant-789",
             notion_access_token="test-token",
+            notion_token_loader=lambda: "token",
         )
 
     def _create_database_page_with_properties(self, page_id: str, properties: dict[str, Any]) -> dict[str, Any]:
@@ -1535,6 +1556,7 @@ class TestNotionExtractorErrorScenarios:
             notion_page_type="page",
             tenant_id="tenant-789",
             notion_access_token="test-token",
+            notion_token_loader=lambda: "token",
         )
 
     @pytest.mark.parametrize(
@@ -1680,6 +1702,7 @@ class TestNotionExtractorTableAdvanced:
             notion_page_type="page",
             tenant_id="tenant-789",
             notion_access_token="test-token",
+            notion_token_loader=lambda: "token",
         )
 
     @patch("httpx.request")

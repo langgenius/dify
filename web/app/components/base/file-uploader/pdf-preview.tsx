@@ -1,10 +1,9 @@
-import type { FC } from 'react'
-import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogBackdrop, DialogPopup, DialogPortal } from '@langgenius/dify-ui/dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiCloseLine, RiZoomInLine, RiZoomOutLine } from '@remixicon/react'
 import { useHotkey } from '@tanstack/react-hotkeys'
 import { noop } from 'es-toolkit/function'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -16,8 +15,9 @@ type PdfPreviewProps = {
   onCancel: () => void
 }
 
-const PdfPreview: FC<PdfPreviewProps> = ({ url, onCancel }) => {
-  const { t } = useTranslation(['common'])
+function PdfPreviewContent({ url, onCancel }: PdfPreviewProps) {
+  const previewRef = useRef<HTMLDivElement>(null)
+  const { t } = useTranslation(['common', 'workflow'])
   const media = useBreakpoints()
   const [scale, setScale] = useState(1)
   const [position, setPosition] = useState({ x: 0, y: 0 })
@@ -38,24 +38,52 @@ const PdfPreview: FC<PdfPreviewProps> = ({ url, onCancel }) => {
     })
   }
 
-  useHotkey('ArrowUp', zoomIn)
-  useHotkey('ArrowDown', zoomOut)
+  useHotkey(
+    'ArrowUp',
+    (event) => {
+      if (event.defaultPrevented || event.isComposing) return
+      event.preventDefault()
+      event.stopPropagation()
+      zoomIn()
+    },
+    {
+      target: previewRef,
+      enabled: true,
+      ignoreInputs: true,
+      requireReset: false,
+      preventDefault: false,
+      stopPropagation: false,
+    },
+  )
+  useHotkey(
+    'ArrowDown',
+    (event) => {
+      if (event.defaultPrevented || event.isComposing) return
+      event.preventDefault()
+      event.stopPropagation()
+      zoomOut()
+    },
+    {
+      target: previewRef,
+      enabled: true,
+      ignoreInputs: true,
+      requireReset: false,
+      preventDefault: false,
+      stopPropagation: false,
+    },
+  )
 
   const zoomOutLabel = t(($) => $['operation.zoomOut'], { ns: 'common' })
   const zoomInLabel = t(($) => $['operation.zoomIn'], { ns: 'common' })
   const cancelLabel = t(($) => $['operation.cancel'], { ns: 'common' })
 
   return (
-    <Dialog
-      open
-      onOpenChange={(open) => {
-        if (!open) onCancel()
-      }}
-      disablePointerDismissal
-    >
-      <DialogContent
-        className={`inset-0! top-0! left-0! flex h-dvh! max-h-none! w-screen! max-w-none! translate-0! items-center justify-center overflow-hidden! rounded-none! border-none! bg-black/80 shadow-none! ${!isMobile ? 'p-8!' : 'p-0!'}`}
-        backdropProps={{ className: 'bg-transparent!' }}
+    <>
+      <DialogBackdrop className="bg-transparent!" />
+      <DialogPopup
+        ref={previewRef}
+        aria-label={t(($) => $['common.preview'], { ns: 'workflow' })}
+        className={`fixed inset-0! top-0! left-0! flex h-dvh! max-h-none! w-screen! max-w-none! translate-0! items-center justify-center overflow-hidden! rounded-none! border-none! bg-black/80 shadow-none! ${!isMobile ? 'p-8!' : 'p-0!'}`}
       >
         <div
           tabIndex={-1}
@@ -134,7 +162,23 @@ const PdfPreview: FC<PdfPreviewProps> = ({ url, onCancel }) => {
           />
           <TooltipContent>{cancelLabel}</TooltipContent>
         </Tooltip>
-      </DialogContent>
+      </DialogPopup>
+    </>
+  )
+}
+
+function PdfPreview(props: PdfPreviewProps) {
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) props.onCancel()
+      }}
+      disablePointerDismissal
+    >
+      <DialogPortal>
+        <PdfPreviewContent {...props} />
+      </DialogPortal>
     </Dialog>
   )
 }

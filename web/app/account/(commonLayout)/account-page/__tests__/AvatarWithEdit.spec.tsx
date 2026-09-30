@@ -1,4 +1,4 @@
-import type { OnImageInput } from '@/app/components/base/app-icon-picker/ImageInput'
+import type { ImageIconInputProps } from '@/app/components/base/icon-picker/image-input'
 import type { ImageFile } from '@/types/app'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
@@ -28,23 +28,23 @@ vi.mock('@/service/base', () => ({
   request: mocks.request,
 }))
 
-vi.mock('@/app/components/base/app-icon-picker/ImageInput', () => ({
-  default: ({ onImageInput }: { onImageInput?: OnImageInput }) => (
+vi.mock('@/app/components/base/icon-picker/image-input', () => ({
+  ImageIconInput: ({ onChange }: ImageIconInputProps) => (
     <div>
       <button
         type="button"
         onClick={() =>
-          onImageInput?.(
-            true,
-            'blob:static-avatar',
-            { x: 10, y: 20, width: 1000, height: 1000 },
-            'avatar.png',
-          )
+          onChange?.({
+            type: 'crop',
+            url: 'blob:static-avatar',
+            area: { x: 10, y: 20, width: 1000, height: 1000 },
+            fileName: 'avatar.png',
+          })
         }
       >
         Select static avatar
       </button>
-      <button type="button" onClick={() => onImageInput?.(false, mocks.animatedFile)}>
+      <button type="button" onClick={() => onChange?.({ type: 'file', file: mocks.animatedFile })}>
         Select animated avatar
       </button>
     </div>

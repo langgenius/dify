@@ -556,17 +556,17 @@ def test_session_exit_timeout(streams):
     read_stream, write_stream = streams
     session = MockSession(read_stream, write_stream, ReceiveRequest, ReceiveNotification)
 
-    mock_future = MagicMock(spec=Future)
-    mock_future.result.side_effect = TimeoutError()
-    mock_future.done.return_value = False
+    future = Future()
+    session._receiver_future = future
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        session._executor = executor
+        with patch.object(executor, "shutdown", wraps=executor.shutdown) as shutdown:
+            session.__exit__(None, None, None)
 
-    session._receiver_future = mock_future
-    session._executor = MagicMock(spec=ThreadPoolExecutor)
-
-    session.__exit__(None, None, None)
-
-    mock_future.cancel.assert_called_once()
-    session._executor.shutdown.assert_called_once_with(wait=False)
+            assert future.cancelled()
+            shutdown.assert_called_once_with(wait=False)
+            with pytest.raises(RuntimeError, match="cannot schedule new futures after shutdown"):
+                executor.submit(lambda: None)
 
 
 @pytest.mark.timeout(10)

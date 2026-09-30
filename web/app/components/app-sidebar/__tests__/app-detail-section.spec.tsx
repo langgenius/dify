@@ -1,10 +1,13 @@
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import { screen } from '@testing-library/react'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppModeEnum } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
 import AppDetailSection from '../app-detail-section'
 
-let mockAppMode = 'chat'
+let mockAppMode: AppDetailWithSite['mode'] = 'chat'
 let mockPathname = '/app/app-1/logs'
 let mockAppPermissionKeys: string[] = []
 let mockIsRbacEnabled = true
@@ -15,28 +18,25 @@ const mockConsoleState = vi.hoisted(() => ({
   },
 }))
 
-const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) =>
-  renderWithConsoleQuery(ui, {
+const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) => {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(
+    consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
+    createAppDetailFixture({
+      id: 'app-1',
+      name: 'Test App',
+      mode: mockAppMode,
+      permission_keys: mockAppPermissionKeys,
+    }),
+  )
+  return renderWithConsoleQuery(ui, {
+    queryClient,
     systemFeatures: {
       rbac_enabled: mockIsRbacEnabled,
       enable_app_deploy: false,
     },
   })
-
-vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: Record<string, unknown>) => unknown) =>
-    selector({
-      appDetail: {
-        id: 'app-1',
-        name: 'Test App',
-        mode: mockAppMode,
-        icon: '🤖',
-        icon_type: 'emoji',
-        icon_background: '#fff',
-        permission_keys: mockAppPermissionKeys,
-      },
-    }),
-}))
+}
 
 vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
@@ -200,7 +200,7 @@ describe('AppDetailSection', () => {
       ).not.toBeInTheDocument()
     })
 
-    it.each(['workflow', 'advanced-chat'])(
+    it.each(['workflow', 'advanced-chat'] as const)(
       'should render deploy navigation for a %s app with app deploy ACL regardless of the legacy workspace role',
       (mode) => {
         // Arrange
@@ -221,12 +221,12 @@ describe('AppDetailSection', () => {
     it.each([
       {
         label: 'the app is not a workflow app',
-        mode: 'chat',
+        mode: AppModeEnum.CHAT,
         permissionKeys: [AppACLPermission.Deploy],
       },
       {
         label: 'app deploy ACL permission is missing',
-        mode: 'workflow',
+        mode: AppModeEnum.WORKFLOW,
         permissionKeys: [AppACLPermission.Monitor],
       },
     ])('should hide deploy navigation when $label', ({ mode, permissionKeys }) => {
