@@ -669,7 +669,8 @@ export default function ResourceAccessTokenPage() {
   const rows = tokensQuery.data?.data
   const total = tokensQuery.data?.total ?? 0
   const tokenRows = useMemo(() => getTokenRows(rows ?? []), [rows])
-  const isEmptyList = !tokensQuery.isPending && total === 0 && !searchText.trim()
+  const hasLoadError = tokensQuery.isError && !tokensQuery.data
+  const isEmptyList = !tokensQuery.isPending && !hasLoadError && total === 0 && !searchText.trim()
   const filteredRows = useMemo(() => {
     const keyword = searchText.trim().toLowerCase()
     if (!keyword) return tokenRows
@@ -721,13 +722,25 @@ export default function ResourceAccessTokenPage() {
         />
         <Button variant="primary" onClick={() => setDialogState({ mode: 'create' })}>
           <span aria-hidden className="i-ri-add-line size-4" />
-          {t(($) => $['resourceAccessToken.createButton'], { ns: 'accountSettings' })}
+          {t(($) => $['resourceAccessToken.create'], { ns: 'accountSettings' })}
         </Button>
       </div>
 
-      {isEmptyList ? (
-        <div className="flex min-h-[360px] items-center justify-center text-center">
-          <div className="grid max-w-[520px] gap-3">
+      {hasLoadError ? (
+        <div
+          role="alert"
+          className="flex min-h-90 flex-col items-center justify-center gap-3 text-center"
+        >
+          <div className="system-sm-regular text-text-tertiary">
+            {t(($) => $['resourceAccessToken.loadError'], { ns: 'accountSettings' })}
+          </div>
+          <Button onClick={() => void tokensQuery.refetch()}>
+            {t(($) => $['operation.retry'], { ns: 'common' })}
+          </Button>
+        </div>
+      ) : isEmptyList ? (
+        <div className="flex min-h-90 items-center justify-center text-center">
+          <div className="grid max-w-130 gap-3">
             <div className="title-md-semi-bold text-text-primary">
               {t(($) => $['resourceAccessToken.empty'], { ns: 'accountSettings' })}
             </div>
@@ -738,14 +751,12 @@ export default function ResourceAccessTokenPage() {
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <div className="grid min-w-[900px] grid-cols-[minmax(140px,1.15fr)_minmax(140px,1fr)_minmax(140px,1fr)_minmax(180px,1.2fr)_minmax(120px,0.8fr)_80px] gap-6 border-b border-divider-subtle pb-3 system-xs-medium-uppercase text-text-tertiary">
+          <div className="grid min-w-225 grid-cols-[minmax(140px,1.15fr)_minmax(140px,1fr)_minmax(140px,1fr)_minmax(180px,1.2fr)_minmax(120px,0.8fr)_80px] gap-6 border-b border-divider-subtle pb-3 system-xs-medium-uppercase text-text-tertiary">
             <div>{t(($) => $['resourceAccessToken.name'], { ns: 'accountSettings' })}</div>
             <div>{t(($) => $['resourceAccessToken.trackingId'], { ns: 'accountSettings' })}</div>
             <div>{t(($) => $['resourceAccessToken.token'], { ns: 'accountSettings' })}</div>
-            <div>
-              {t(($) => $['resourceAccessToken.accessibleResources'], { ns: 'accountSettings' })}
-            </div>
-            <div>{t(($) => $['resourceAccessToken.createdColumn'], { ns: 'accountSettings' })}</div>
+            <div>{t(($) => $['resourceAccessToken.boundResource'], { ns: 'accountSettings' })}</div>
+            <div>{t(($) => $['resourceAccessToken.createdAt'], { ns: 'accountSettings' })}</div>
             <div>{t(($) => $['resourceAccessToken.actions'], { ns: 'accountSettings' })}</div>
           </div>
 
@@ -772,7 +783,7 @@ export default function ResourceAccessTokenPage() {
         </div>
       )}
 
-      {!isEmptyList && (
+      {!hasLoadError && !isEmptyList && (
         <div className="flex items-center justify-between system-xs-regular text-text-tertiary">
           <span>{t(($) => $['resourceAccessToken.total'], { ns: 'accountSettings', total })}</span>
           <div className="flex items-center gap-2">

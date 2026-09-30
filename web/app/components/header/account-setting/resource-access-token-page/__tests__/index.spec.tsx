@@ -154,6 +154,10 @@ describe('ResourceAccessTokenPage', () => {
     ).toBeInTheDocument()
     expect(screen.getByText('track-on ...')).toBeInTheDocument()
     expect(screen.getByText('sk-12345...abcd')).toBeInTheDocument()
+    expect(
+      screen.getByText('accountSettings.resourceAccessToken.boundResource'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('accountSettings.resourceAccessToken.createdAt')).toBeInTheDocument()
     expect(screen.queryByText('Support Bot')).not.toBeInTheDocument()
     expect(screen.queryByText('Help Center')).not.toBeInTheDocument()
   })
@@ -204,6 +208,30 @@ describe('ResourceAccessTokenPage', () => {
     expect(
       screen.queryByText('accountSettings.resourceAccessToken.total:{"total":0}'),
     ).not.toBeInTheDocument()
+  })
+
+  it('shows a retryable error instead of an empty list when loading tokens fails', async () => {
+    const user = userEvent.setup()
+    mocks.listResourceAccessTokens
+      .mockRejectedValueOnce(new Error('Request failed'))
+      .mockResolvedValueOnce({
+        data: [],
+        has_more: false,
+        limit: 20,
+        page: 1,
+        total: 0,
+      })
+    renderWithQueryClient(<ResourceAccessTokenPage />)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'accountSettings.resourceAccessToken.loadError',
+    )
+    expect(screen.queryByText('accountSettings.resourceAccessToken.empty')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+
+    expect(await screen.findByText('accountSettings.resourceAccessToken.empty')).toBeInTheDocument()
+    expect(mocks.listResourceAccessTokens).toHaveBeenCalledTimes(2)
   })
 
   it('filters tokens by bound resource name', async () => {
@@ -259,7 +287,7 @@ describe('ResourceAccessTokenPage', () => {
 
     await user.click(
       await screen.findByRole('button', {
-        name: 'accountSettings.resourceAccessToken.createButton',
+        name: 'accountSettings.resourceAccessToken.create',
       }),
     )
     const dialog = screen.getByRole('dialog')
@@ -328,7 +356,7 @@ describe('ResourceAccessTokenPage', () => {
 
     await user.click(
       await screen.findByRole('button', {
-        name: 'accountSettings.resourceAccessToken.createButton',
+        name: 'accountSettings.resourceAccessToken.create',
       }),
     )
     const dialog = screen.getByRole('dialog')
