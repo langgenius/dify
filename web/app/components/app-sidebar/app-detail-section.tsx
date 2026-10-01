@@ -8,8 +8,6 @@ import { useAtomValue } from 'jotai'
 import { Fragment, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getAppIdFromPathname } from '@/app/components/app/app-detail-route'
-import AppIcon from '@/app/components/base/app-icon'
-import { SkeletonContainer, SkeletonRectangle } from '@/app/components/base/skeleton'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -18,6 +16,8 @@ import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
 import { getAppACLCapabilities } from '@/utils/permission'
 import { AppInfoView } from './app-info'
+import AppInfoHeader from './app-info/app-info-header'
+import { getAppModeLabel } from './app-info/app-mode-labels'
 import NavLink from './nav-link'
 
 type AppDetailNavItem = {
@@ -52,7 +52,7 @@ const AppDetailSection = ({ expand = true }: AppDetailSectionProps) => {
 }
 
 function AppDetailContent({ appId, expand }: { appId: string; expand: boolean }) {
-  const { t } = useTranslation(['common', 'navigation'])
+  const { t } = useTranslation(['app', 'common', 'navigation'])
   const pathname = usePathname()
   const [detailQuery, featuresQuery, profileQuery] = useQueries({
     queries: [
@@ -157,37 +157,10 @@ function AppDetailContent({ appId, expand }: { appId: string; expand: boolean })
     ]
   }, [appDetail, t, currentUserId, workspacePermissionKeys, isRbacEnabled, systemFeatures])
 
-  if (!appDetail || !systemFeatures || !currentUserId) {
-    const failedQuery = [detailQuery, featuresQuery, profileQuery].find(
-      (query) => query.isError && !query.data,
-    )
-    return (
-      <div className={cn('px-3 py-2', !expand && 'px-2')}>
-        <div className="flex h-13 items-center gap-2">
-          <AppIcon size="large" rounded decorative />
-          {expand && <SkeletonRectangle className="h-4 w-24" />}
-        </div>
-        {failedQuery ? (
-          <div role="alert" className="mt-3 flex flex-col gap-2">
-            {expand && (
-              <p className="system-xs-regular text-text-tertiary">
-                {t(($) => $['errorBoundary.message'], { ns: 'common' })}
-              </p>
-            )}
-            <Button variant="secondary" onClick={() => void failedQuery.refetch()}>
-              {t(($) => $['errorBoundary.tryAgain'], { ns: 'common' })}
-            </Button>
-          </div>
-        ) : (
-          <SkeletonContainer className="mt-3 gap-3" aria-busy="true">
-            {[0, 1, 2, 3].map((row) => (
-              <SkeletonRectangle key={row} className="h-8 w-full" />
-            ))}
-          </SkeletonContainer>
-        )}
-      </div>
-    )
-  }
+  const failedQuery = [detailQuery, featuresQuery, profileQuery].find(
+    (query) => query.isError && !query.data,
+  )
+  const appTitle = appDetail?.name ?? t(($) => $['menus.appDetail'], { ns: 'navigation' })
 
   const hasLogsNavigation = navigation.some(isLogsNavItem)
   const hasAnnotationsNavigation = navigation.some(isAnnotationsNavItem)
@@ -205,10 +178,35 @@ function AppDetailContent({ appId, expand }: { appId: string; expand: boolean })
         </div>
       )}
       <div className={cn('px-1 py-2', expand && '-mx-2')}>
-        <AppInfoView appDetail={appDetail} expand={expand} />
+        {appDetail && systemFeatures && currentUserId ? (
+          <AppInfoView appDetail={appDetail} expand={expand} />
+        ) : (
+          <AppInfoHeader
+            expand={expand}
+            appName={appTitle}
+            modeLabel={appDetail ? getAppModeLabel(appDetail.mode, t) : undefined}
+            iconType={appDetail?.icon_type}
+            icon={appDetail?.icon ?? undefined}
+            background={appDetail?.icon_background}
+            imageUrl={appDetail?.icon_url}
+            operationGroups={[]}
+          />
+        )}
       </div>
+      {failedQuery && (
+        <div role="alert" className="flex flex-col gap-2 px-1 py-2">
+          {expand && (
+            <p className="system-xs-regular text-text-tertiary">
+              {t(($) => $['errorBoundary.message'], { ns: 'common' })}
+            </p>
+          )}
+          <Button variant="secondary" onClick={() => void failedQuery.refetch()}>
+            {t(($) => $['errorBoundary.tryAgain'], { ns: 'common' })}
+          </Button>
+        </div>
+      )}
       <nav
-        aria-label={appDetail.name}
+        aria-label={appTitle}
         className={cn('flex flex-col gap-y-0.5 py-1', expand ? 'px-1' : 'px-3')}
       >
         {navigation.map((item) => {

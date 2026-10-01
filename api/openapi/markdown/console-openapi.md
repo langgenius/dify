@@ -10848,10 +10848,6 @@ Update a plugin endpoint
 | 200 | Available models retrieved successfully | **application/json**: [AvailableModelListResponse](#availablemodellistresponse)<br> |
 
 ### [GET] /workspaces/current/permission
-**Get workspace permission settings**
-
-Returns permission flags that control workspace features like member invitations and owner transfer.
-
 #### Responses
 
 | Code | Description | Schema |

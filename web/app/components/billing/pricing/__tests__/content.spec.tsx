@@ -82,6 +82,28 @@ it('shows prices and disables purchase buttons while features load', async () =>
   expect(screen.queryByRole('status')).not.toBeInTheDocument()
 })
 
+it('distinguishes original and discounted annual prices in readable text', async () => {
+  const user = userEvent.setup()
+  const { queryClient, show } = setup()
+  seedFeatures(queryClient)
+  show()
+  expect(screen.queryByText('billing.plansCommon.originalAnnualPrice')).not.toBeInTheDocument()
+  expect(screen.queryByText('billing.plansCommon.discountedAnnualPrice')).not.toBeInTheDocument()
+
+  await user.click(screen.getByRole('switch'))
+
+  for (const amount of ['$708', '$1908']) {
+    expect(screen.getByText(amount)).toHaveTextContent(
+      `billing.plansCommon.originalAnnualPrice${amount}`,
+    )
+  }
+  for (const amount of ['$590', '$1590']) {
+    expect(screen.getByText(amount)).toHaveTextContent(
+      `billing.plansCommon.discountedAnnualPrice${amount}`,
+    )
+  }
+})
+
 it('preserves a billing interval selected before education eligibility arrives', async () => {
   const user = userEvent.setup()
   const { queryClient, show } = setup()
@@ -229,4 +251,19 @@ it('uses the visible billing label to name and toggle the switch', async () => {
   await user.click(screen.getByText(/billing\.plansCommon\.annualBilling/))
   expect(billingSwitch).not.toBeChecked()
   expect(screen.getByText('$59')).toBeVisible()
+})
+
+it('includes the marketplace in the Premium purchase link name', async () => {
+  const user = userEvent.setup()
+  const { queryClient, show } = setup()
+  seedFeatures(queryClient)
+  show()
+
+  await user.click(screen.getByRole('tab', { name: 'billing.plansCommon.self' }))
+
+  expect(
+    screen.getByRole('link', {
+      name: 'billing.plans.premium.btnText billing.plans.premium.marketplaceName',
+    }),
+  ).toBeVisible()
 })

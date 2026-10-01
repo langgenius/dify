@@ -6,7 +6,6 @@ import time
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from functools import partial
 from typing import cast
 from uuid import uuid4
 
@@ -17,11 +16,11 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
-from constants.languages import languages
 from core.db.session_factory import get_session_maker
 from core.schemas.schema_manager import SchemaManager
 from core.tools.tool_file_manager import ToolFileManager
 from enums import DeploymentEdition, WebAppAccessMode
+from extensions.application_services.account import AccountServices, build_account_services
 from extensions.application_services.agent import AgentAppServices, build_agent_app_services
 from extensions.application_services.app import AppServices, build_app_api_key_service, build_app_services
 from extensions.application_services.data_sources import (
@@ -37,23 +36,19 @@ from extensions.application_services.knowledge import (
     build_knowledge_services,
 )
 from extensions.application_services.trial_app import TrialAppServices, build_trial_app_services
+from extensions.application_services.workspace import (
+    WorkspaceServices,
+    build_workspace_membership_services,
+    build_workspace_services,
+)
 from extensions.ext_redis import RedisClientWrapper, redis_client
 from extensions.ext_storage import storage
-from libs.datetime_utils import naive_utc_now, utc_now
 from libs.helper import RateLimiter
-from libs.oauth import GitHubOAuth, GoogleOAuth
-from libs.oauth_bearer import invalidate_oauth_token_cache
 from libs.passport import PassportService
 from models.model import EndUser
+from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
-from repositories.account_oauth_repository import (
-    AccountServiceOAuthAccountRegistrationGateway,
-    AccountServiceOAuthSessionGateway,
-    AccountServiceOAuthWorkspaceGateway,
-    RegisterServiceOAuthInvitationGateway,
-)
-from repositories.account_repository import SQLAlchemyAccountRepository
 from repositories.app.mcp_server_repository import AppMCPServerRepository
 from repositories.app.site_command_repository import AppSiteCommandRepository
 from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfigRepository
@@ -68,7 +63,6 @@ from repositories.file_grant_repository import FileGrantRepository
 from repositories.human_input_file_upload_repository import SQLAlchemyHumanInputFileUploadRepository
 from repositories.installation_state_repository import InstallationStateRepository
 from repositories.message_file_preview_repository import MessageFilePreviewQueryRepository
-from repositories.oauth_access_token_repository import SQLAlchemyOAuthAccessTokenRepository
 from repositories.oauth_device_token_repository import SQLAlchemyOAuthDeviceTokenRepository
 from repositories.oauth_server_repository import RedisOAuthServerTokenRepository, SQLAlchemyOAuthServerRepository
 from repositories.plugin_file_upload_repository import SQLAlchemyPluginFileUploadOwnerRepository
@@ -83,78 +77,20 @@ from repositories.web_passport_repository import WebPassportRepository
 from repositories.webapp_access_query_repository import WebAppAccessQueryRepository
 from repositories.workflow_app_log_query_repository import WorkflowAppLogQueryRepository
 from repositories.workflow_run_archive_repository import WorkflowRunArchiveBundleQueryRepository
-from repositories.workspace_member_query_repository import WorkspaceMemberQueryRepository
-from repositories.workspace_query_repository import WorkspaceQueryRepository
-from services.account_access_service import AccountAccessService
-from services.account_activation_service import AccountActivationService
-from services.account_adapters import (
-    BillingAccountActivationEligibility,
-    BillingAccountDeletionFeedbackGateway,
-    BillingAccountEducationGateway,
-    BillingAccountEmailPolicyGateway,
-    BillingWorkspaceMembershipCache,
-    CeleryAccountDeletionScheduler,
-    CeleryAccountDeletionVerificationNotifier,
-    CeleryChangeEmailNotificationGateway,
-    DeploymentWorkspaceInvitePolicy,
-    EnterpriseAccountDeletionSyncGateway,
-    RateLimiterChangeEmailSendLimiter,
-    RBACWorkspaceMemberAccessSync,
-    RedisChangeEmailSecurityGateway,
+from repositories.workspace.workspace_repository import WorkspaceRepository
+from services.account.adapters import (
+    InstallationTelemetryGateway,
     RedisInvitationTokenStore,
-    SecureChangeEmailCodeGenerator,
-    TokenManagerAccountDeletionVerificationGateway,
-    TokenManagerChangeEmailTokenGateway,
 )
-from services.account_avatar_file_gateway import SQLAlchemyAccountAvatarFileGateway
-from services.account_avatar_service import AccountAvatarService
-from services.account_change_email_service import AccountChangeEmailService
-from services.account_deletion_feedback_service import AccountDeletionFeedbackService
-from services.account_deletion_service import AccountDeletionService
-from services.account_education_service import AccountEducationService
-from services.account_email_registration_adapters import (
-    AccountServiceRegistrationGateway,
-    BillingAccountRegistrationPolicyGateway,
-    CeleryEmailRegistrationNotificationGateway,
-    RateLimiterEmailRegistrationSendLimiter,
-    RedisEmailRegistrationSecurityGateway,
-    SecureEmailRegistrationCodeGenerator,
-    TokenManagerEmailRegistrationTokenGateway,
+from services.account.forgot_password_adapters import RedisForgotPasswordSecurityGateway
+from services.account.forgot_password_service import (
+    FORGOT_PASSWORD_SEND_RATE_LIMIT_MAX_ATTEMPTS,
+    FORGOT_PASSWORD_SEND_RATE_LIMIT_PREFIX,
+    FORGOT_PASSWORD_SEND_RATE_LIMIT_WINDOW_SECONDS,
 )
-from services.account_email_registration_service import AccountEmailRegistrationService
-from services.account_forgot_password_adapters import (
-    CeleryForgotPasswordNotificationGateway,
-    RateLimiterForgotPasswordSendLimiter,
-    RedisForgotPasswordSecurityGateway,
-    RedisForgotPasswordTokenGateway,
-    SecureForgotPasswordCodeGenerator,
-    SystemFeatureServiceForgotPasswordRegistrationPolicy,
-)
-from services.account_forgot_password_service import AccountForgotPasswordService
-from services.account_initialization_service import AccountInitializationService
-from services.account_integration_service import AccountIntegrationService
-from services.account_login_adapters import (
-    AccountActivationConsoleAuthInvitationGateway,
-    DeploymentConsoleAuthPolicyGateway,
-    LoggingConsoleAuthAuditGateway,
-    RedisAccountSessionGateway,
-    RedisConsoleAuthSecurityGateway,
-    RedisEmailCodeGateway,
-    RedisResetPasswordEmailGateway,
-    SQLAlchemyAccountRefreshPreparationGateway,
-    SQLAlchemyConsoleAuthProvisioningGateway,
-    TurnstileHumanVerificationGateway,
-)
-from services.account_login_service import ConsoleAuthenticationService
-from services.account_oauth_adapters import (
-    DeploymentOAuthPolicyGateway,
-    DifyOAuthProviderGateway,
-    RedisOAuthAccountClaimLock,
-)
-from services.account_oauth_service import AccountOAuthService, OAuthProviderGateway
+from services.account.login_adapters import RedisConsoleAuthSecurityGateway
+from services.account.service import AccountSetupProvisioner
 from services.account_password_hasher import DefaultAccountPasswordHasher
-from services.account_password_service import AccountPasswordService
-from services.account_profile_service import AccountProfileService
 from services.agent.roster_package_exporter import RosterAgentPackageExporter
 from services.app.advanced_prompt_template_service import AdvancedPromptTemplateService
 from services.app.api_key_service import AppApiKeyService
@@ -227,7 +163,7 @@ from services.retention.workflow_run.archive_download_task_cache import Workflow
 from services.retention.workflow_run.archive_log_service import WorkflowRunArchiveService
 from services.saved_message_service import SavedMessageService
 from services.schema_definition_service import SchemaDefinitionService
-from services.setup_adapters import RedisSetupLock, RegisterServiceAccountProvisioner
+from services.setup_adapters import RedisSetupLock
 from services.setup_service import SetupService
 from services.step_by_step_tour_service import StepByStepTourService
 from services.system_feature_service import SystemFeatureService
@@ -235,22 +171,23 @@ from services.tag_application_service import TagApplicationService
 from services.tool_file_download_service import ToolFileDownloadService
 from services.upload_file_delivery_service import UploadFileDeliveryService
 from services.web_app_runtime_query_service import WebAppRuntimeQueryService
+from services.web_authentication_adapters import (
+    AccountWebAuthenticationSecurityGateway,
+    LoggingWebAuthenticationAuditGateway,
+    PassportWebAppSessionGateway,
+    TokenManagerWebAuthenticationGateway,
+)
+from services.web_authentication_service import WebAuthenticationService
 from services.web_passport_gateways import (
     DeploymentWebPassportAuthGateway,
     PassportTokenGateway,
 )
 from services.web_passport_service import WebPassportService
-from services.webapp_access_query_service import (
-    WebAppAccessQueryService,
-    WebAppAccessUnavailableError,
-)
+from services.webapp_access_adapters import EnterpriseWebAppAccessPolicyGateway
+from services.webapp_access_query_service import WebAppAccessQueryService, WebAppAccessUnavailableError
 from services.workflow_app_log_query_service import WorkflowAppLogQueryService
 from services.workflow_run_service import WorkflowRunService
 from services.workflow_statistic_query_service import WorkflowStatisticQueryService
-from services.workspace_member_query_service import WorkspaceMemberQueryService
-from services.workspace_member_role_resolver import DeploymentWorkspaceMemberRoleResolver
-from services.workspace_plan_gateway import DeploymentWorkspacePlanGateway
-from services.workspace_query_service import WorkspaceQueryService
 from tasks.mail_inner_task import enqueue_inner_mail
 
 logger = logging.getLogger(__name__)
@@ -259,32 +196,14 @@ _EXTENSION_KEY = "application_services"
 
 
 # TODO: Normalize EnterpriseService.WebAppAuth result/error contracts in the SDK,
-# migrate its callers, then inject its methods directly and remove these adapters.
+# migrate its callers, then inject its batch methods directly and remove these wrappers.
 # Define SDK errors for timeouts, transport failures, upstream status and invalid
-# responses before adding finer HTTP mappings; these adapters report unavailability.
+# responses before adding finer HTTP mappings; these wrappers report unavailability.
 # Validate required fields and real booleans there, replacing legacy permission
 # truthiness conversion. Missing fields currently become False, {} or a default mode.
 # Replace response-shape ValueError/KeyError/AttributeError with typed SDK errors;
 # ordinary ValueError can still reach the global 400 invalid_param handler. The
 # lost field information cannot be recovered by translating exceptions here.
-def _get_enterprise_webapp_access_mode(app_id: str) -> WebAppAccessMode:
-    try:
-        settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id)
-    except (EnterpriseServiceError, httpx.RequestError, json.JSONDecodeError, UnicodeDecodeError, ValidationError) as e:
-        raise WebAppAccessUnavailableError from e
-    try:
-        return WebAppAccessMode(settings.access_mode)
-    except ValueError as e:
-        raise WebAppAccessUnavailableError from e
-
-
-def _is_enterprise_webapp_user_allowed(user_id: str, app_id: str) -> bool:
-    try:
-        return EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(user_id, app_id)
-    except (EnterpriseServiceError, httpx.RequestError, json.JSONDecodeError, UnicodeDecodeError) as e:
-        raise WebAppAccessUnavailableError from e
-
-
 def _batch_get_enterprise_webapp_access_modes(*, app_ids: Sequence[str]) -> Mapping[str, WebAppAccessMode]:
     try:
         settings = EnterpriseService.WebAppAuth.batch_get_app_access_mode_by_id(list(app_ids))
@@ -312,24 +231,6 @@ def _batch_get_enterprise_webapp_user_permissions(*, user_id: str, app_ids: Sequ
 
 
 @dataclass(frozen=True, slots=True)
-class AccountServices:
-    access: AccountAccessService
-    authentication: ConsoleAuthenticationService
-    avatar: AccountAvatarService
-    change_email: AccountChangeEmailService
-    email_registration: AccountEmailRegistrationService
-    deletion: AccountDeletionService
-    deletion_feedback: AccountDeletionFeedbackService
-    education: AccountEducationService
-    forgot_password: AccountForgotPasswordService
-    initialization: AccountInitializationService
-    integrations: AccountIntegrationService
-    oauth: AccountOAuthService
-    password: AccountPasswordService
-    profile: AccountProfileService
-
-
-@dataclass(frozen=True, slots=True)
 class AppScopedEndUserServices:
     commands: AppScopedEndUserService[EndUser]
     queries: AppScopedEndUserQueryService
@@ -343,7 +244,6 @@ class ApplicationServices:
     accounts: AccountServices
     app_api_keys: AppApiKeyService
     dataset_api_keys: DatasetApiKeyService
-    account_activation: AccountActivationService
     apps: AppServices
     app_definitions: AppDefinitionQueryService
     app_mcp_servers: AppMCPServerService
@@ -358,6 +258,7 @@ class ApplicationServices:
     knowledge: KnowledgeServices
     app_scoped_end_users: AppScopedEndUserServices
     webapp_access: WebAppAccessQueryService
+    web_authentication: WebAuthenticationService
     web_app_runtime: WebAppRuntimeQueryService
     explore_banner_queries: ExploreBannerQueryService
     schema_definitions: SchemaDefinitionService
@@ -387,8 +288,7 @@ class ApplicationServices:
     trial_apps: TrialAppServices
     workflow_run_archives: WorkflowRunArchiveService
     workflow_runs: WorkflowRunService
-    workspace_queries: WorkspaceQueryService
-    workspace_member_queries: WorkspaceMemberQueryService
+    workspaces: WorkspaceServices
     workflow_app_logs: WorkflowAppLogQueryService
     inner_mail: InnerMailService
     web_passport: WebPassportService
@@ -465,55 +365,6 @@ def _build_file_grant_service(*, database_client: sessionmaker[Session]) -> File
     )
 
 
-def _build_account_oauth_service(
-    *,
-    database_client: sessionmaker[Session],
-    deployment_edition: DeploymentEdition,
-    redis: RedisClientWrapper,
-    accounts: SQLAlchemyAccountRepository,
-    integrations: SQLAlchemyAccountIntegrationRepository,
-    memberships: WorkspaceQueryRepository,
-) -> AccountOAuthService:
-    providers: dict[str, OAuthProviderGateway] = {}
-    if dify_config.GITHUB_CLIENT_ID and dify_config.GITHUB_CLIENT_SECRET:
-        providers["github"] = DifyOAuthProviderGateway(
-            provider_name="github",
-            client=GitHubOAuth(
-                client_id=dify_config.GITHUB_CLIENT_ID,
-                client_secret=dify_config.GITHUB_CLIENT_SECRET,
-                redirect_uri=dify_config.CONSOLE_API_URL + "/console/api/oauth/authorize/github",
-            ),
-        )
-    if dify_config.GOOGLE_CLIENT_ID and dify_config.GOOGLE_CLIENT_SECRET:
-        providers["google"] = DifyOAuthProviderGateway(
-            provider_name="google",
-            client=GoogleOAuth(
-                client_id=dify_config.GOOGLE_CLIENT_ID,
-                client_secret=dify_config.GOOGLE_CLIENT_SECRET,
-                redirect_uri=dify_config.CONSOLE_API_URL + "/console/api/oauth/authorize/google",
-            ),
-        )
-
-    policy = DeploymentOAuthPolicyGateway(
-        billing_enabled=deployment_edition == DeploymentEdition.CLOUD,
-    )
-    return AccountOAuthService(
-        providers=providers,
-        accounts=accounts,
-        integrations=integrations,
-        memberships=memberships,
-        invitations=RegisterServiceOAuthInvitationGateway(session_factory=database_client),
-        account_claims=RedisOAuthAccountClaimLock(client=redis),
-        registration=AccountServiceOAuthAccountRegistrationGateway(session_factory=database_client),
-        workspaces=AccountServiceOAuthWorkspaceGateway(session_factory=database_client),
-        sessions=AccountServiceOAuthSessionGateway(session_factory=database_client),
-        registration_policy=policy,
-        workspace_policy=policy,
-        supported_languages=languages,
-        now=naive_utc_now,
-    )
-
-
 def build_application_services(
     *,
     database_client: sessionmaker[Session],
@@ -530,11 +381,11 @@ def build_application_services(
         ),
     )
     webapp_auth_enabled = SystemFeatureService.is_webapp_auth_enabled(deployment_edition=deployment_edition)
+    webapp_access_repository = WebAppAccessQueryRepository(session_factory=database_client)
     webapp_access = WebAppAccessQueryService(
-        access=WebAppAccessQueryRepository(session_factory=database_client),
+        access=webapp_access_repository,
+        policy=EnterpriseWebAppAccessPolicyGateway(webapp_auth=EnterpriseService.WebAppAuth),
         webapp_auth_enabled=webapp_auth_enabled,
-        access_mode_for_app=_get_enterprise_webapp_access_mode,
-        is_user_allowed_for_app=_is_enterprise_webapp_user_allowed,
         get_access_modes=_batch_get_enterprise_webapp_access_modes,
         get_user_permissions=_batch_get_enterprise_webapp_user_permissions,
     )
@@ -552,6 +403,7 @@ def build_application_services(
         database=database_catalog,
         builtin=builtin_catalog,
     )
+    workspace_repository = WorkspaceRepository(session_factory=database_client)
     recommended_app_queries = RecommendedAppQueryService(
         catalog=recommended_app_catalog,
         trial_apps=trial_apps,
@@ -560,11 +412,9 @@ def build_application_services(
     recommended_app_packages = RecommendedAppPackageService(
         sources=database_catalog, exporter=RosterAgentPackageExporter()
     )
-    workspace_query_repository = WorkspaceQueryRepository(session_factory=database_client)
-    workspace_member_repository = WorkspaceMemberQueryRepository(session_factory=database_client)
     dataset_dependencies = build_dataset_dependencies(
         database_client=database_client,
-        workspace_roles=workspace_member_repository,
+        workspace_roles=workspace_repository,
     )
     datasource_credentials = build_data_source_credentials(database_client=database_client)
     data_sources = build_data_source_services(
@@ -598,170 +448,52 @@ def build_application_services(
     file_service = FileService(session_factory=database_client)
     remote_file_service = RemoteFileService(files=file_service)
     passwords = DefaultAccountPasswordHasher()
+    web_authentication_tokens = TokenManagerWebAuthenticationGateway(
+        reset_password_rate_limiter=RateLimiter(
+            prefix=FORGOT_PASSWORD_SEND_RATE_LIMIT_PREFIX,
+            max_attempts=FORGOT_PASSWORD_SEND_RATE_LIMIT_MAX_ATTEMPTS,
+            time_window=FORGOT_PASSWORD_SEND_RATE_LIMIT_WINDOW_SECONDS,
+            redis_client=redis,
+        ),
+        access_token_expire_minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES,
+    )
     invitation_tokens = RedisInvitationTokenStore(redis=redis)
     activation_accounts = SQLAlchemyAccountActivationRepository(session_factory=database_client)
-    account_provisioning = SQLAlchemyConsoleAuthProvisioningGateway(session_factory=database_client)
     workflow_run_repository = DifyAPISQLAlchemyWorkflowRunRepository(session_maker=database_client)
     workflow_node_execution_repository = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
         session_maker=database_client
     )
+    workspace_members, workspace_provisioning = build_workspace_membership_services(
+        database_client=database_client,
+        workspaces=workspace_repository,
+        accounts=accounts,
+    )
+    account_services = build_account_services(
+        database_client=database_client,
+        deployment_edition=deployment_edition,
+        redis=redis,
+        accounts=accounts,
+        integrations=integrations,
+        workspace_repository=workspace_repository,
+        workspace_provisioning=workspace_provisioning,
+        passwords=passwords,
+        invitation_tokens=invitation_tokens,
+        activation_accounts=activation_accounts,
+    )
+    workspace_services = build_workspace_services(
+        workspaces=workspace_repository,
+        accounts=accounts,
+        files=file_service,
+        redis=redis,
+        members=workspace_members,
+        provisioning=workspace_provisioning,
+        registration=account_services.lifecycle,
+        invitation_tokens=invitation_tokens,
+    )
     return ApplicationServices(
-        credential_queries=CredentialQueryRepository(session_factory=database_client),
-        accounts=AccountServices(
-            access=AccountAccessService(
-                accounts=accounts,
-                workspaces=workspace_query_repository,
-                sessions=SQLAlchemyOAuthAccessTokenRepository(session_factory=database_client),
-                invalidate_token_cache=partial(invalidate_oauth_token_cache, redis),
-                now=utc_now,
-            ),
-            authentication=ConsoleAuthenticationService(
-                accounts=accounts,
-                workspaces=workspace_query_repository,
-                invitations=AccountActivationConsoleAuthInvitationGateway(
-                    tokens=invitation_tokens,
-                    accounts=activation_accounts,
-                ),
-                policies=DeploymentConsoleAuthPolicyGateway(
-                    billing_enabled=deployment_edition == DeploymentEdition.CLOUD,
-                ),
-                security=RedisConsoleAuthSecurityGateway(redis=redis),
-                passwords=passwords,
-                human_verification=TurnstileHumanVerificationGateway(),
-                sessions=RedisAccountSessionGateway(redis=redis),
-                refresh_preparation=SQLAlchemyAccountRefreshPreparationGateway(session_factory=database_client),
-                account_provisioning=account_provisioning,
-                workspace_provisioning=account_provisioning,
-                email_codes=RedisEmailCodeGateway(redis=redis),
-                reset_password_emails=RedisResetPasswordEmailGateway(redis=redis),
-                audit=LoggingConsoleAuthAuditGateway(),
-                now=naive_utc_now,
-                turnstile_enabled=deployment_edition == DeploymentEdition.CLOUD,
-                turnstile_verify_required=(
-                    deployment_edition == DeploymentEdition.CLOUD and dify_config.TURNSTILE_EMAIL_CODE_VERIFY_REQUIRED
-                ),
-            ),
-            avatar=AccountAvatarService(
-                files=SQLAlchemyAccountAvatarFileGateway(session_factory=database_client),
-            ),
-            change_email=AccountChangeEmailService(
-                accounts=accounts,
-                tokens=TokenManagerChangeEmailTokenGateway(),
-                codes=SecureChangeEmailCodeGenerator(),
-                notifications=CeleryChangeEmailNotificationGateway(),
-                send_limits=RateLimiterChangeEmailSendLimiter(redis=redis),
-                security=RedisChangeEmailSecurityGateway(
-                    redis=redis,
-                    email_send_ip_limit_per_minute=dify_config.EMAIL_SEND_IP_LIMIT_PER_MINUTE,
-                    verification_failure_limit=5,
-                    verification_lockout_duration=dify_config.CHANGE_EMAIL_LOCKOUT_DURATION,
-                ),
-                email_policy=BillingAccountEmailPolicyGateway(
-                    billing_enabled=deployment_edition == DeploymentEdition.CLOUD,
-                ),
-            ),
-            email_registration=AccountEmailRegistrationService(
-                accounts=accounts,
-                tokens=TokenManagerEmailRegistrationTokenGateway(),
-                codes=SecureEmailRegistrationCodeGenerator(),
-                notifications=CeleryEmailRegistrationNotificationGateway(),
-                send_limits=RateLimiterEmailRegistrationSendLimiter(
-                    rate_limiter=RateLimiter(
-                        prefix="email_register_rate_limit",
-                        max_attempts=1,
-                        time_window=60,
-                        redis_client=redis,
-                    )
-                ),
-                security=RedisEmailRegistrationSecurityGateway(
-                    redis=redis,
-                    verification_failure_limit=5,
-                    verification_lockout_duration=dify_config.EMAIL_REGISTER_LOCKOUT_DURATION,
-                ),
-                account_policy=BillingAccountRegistrationPolicyGateway(
-                    enabled=deployment_edition == DeploymentEdition.CLOUD,
-                ),
-                registration=AccountServiceRegistrationGateway(session_factory=database_client),
-            ),
-            deletion=AccountDeletionService(
-                accounts=accounts,
-                memberships=workspace_query_repository,
-                verification=TokenManagerAccountDeletionVerificationGateway(),
-                notifications=CeleryAccountDeletionVerificationNotifier(redis=redis),
-                synchronization=EnterpriseAccountDeletionSyncGateway(),
-                scheduler=CeleryAccountDeletionScheduler(),
-            ),
-            deletion_feedback=AccountDeletionFeedbackService(
-                feedback=BillingAccountDeletionFeedbackGateway(),
-            ),
-            education=AccountEducationService(
-                accounts=accounts,
-                education=BillingAccountEducationGateway(),
-                verification_rate_limiter=RateLimiter(
-                    prefix="edu_verification_rate_limit",
-                    max_attempts=10,
-                    time_window=60,
-                    redis_client=redis,
-                ),
-                activation_rate_limiter=RateLimiter(
-                    prefix="edu_activation_rate_limit",
-                    max_attempts=10,
-                    time_window=60,
-                    redis_client=redis,
-                ),
-            ),
-            forgot_password=AccountForgotPasswordService(
-                accounts=accounts,
-                passwords=passwords,
-                tokens=RedisForgotPasswordTokenGateway(
-                    redis=redis,
-                    expiry_seconds=dify_config.RESET_PASSWORD_TOKEN_EXPIRY_MINUTES * 60,
-                ),
-                codes=SecureForgotPasswordCodeGenerator(),
-                notifications=CeleryForgotPasswordNotificationGateway(),
-                send_limits=RateLimiterForgotPasswordSendLimiter(redis=redis),
-                security=RedisForgotPasswordSecurityGateway(
-                    redis=redis,
-                    email_send_ip_limit_per_minute=dify_config.EMAIL_SEND_IP_LIMIT_PER_MINUTE,
-                    verification_lockout_duration=dify_config.FORGOT_PASSWORD_LOCKOUT_DURATION,
-                ),
-                registration=SystemFeatureServiceForgotPasswordRegistrationPolicy(),
-            ),
-            initialization=AccountInitializationService(
-                accounts=accounts,
-                invitation_required=deployment_edition == DeploymentEdition.CLOUD,
-                now=naive_utc_now,
-            ),
-            integrations=AccountIntegrationService(integrations=integrations),
-            oauth=_build_account_oauth_service(
-                database_client=database_client,
-                deployment_edition=deployment_edition,
-                redis=redis,
-                accounts=accounts,
-                integrations=integrations,
-                memberships=workspace_query_repository,
-            ),
-            password=AccountPasswordService(
-                accounts=accounts,
-                passwords=passwords,
-            ),
-            profile=AccountProfileService(accounts=accounts),
-        ),
-        account_activation=AccountActivationService(
-            tokens=invitation_tokens,
-            accounts=activation_accounts,
-            workspace_policy=DeploymentWorkspaceInvitePolicy(),
-            eligibility=BillingAccountActivationEligibility(
-                enabled=deployment_edition == DeploymentEdition.CLOUD,
-            ),
-            membership_cache=BillingWorkspaceMembershipCache(
-                enabled=deployment_edition == DeploymentEdition.CLOUD,
-            ),
-            member_access_sync=RBACWorkspaceMemberAccessSync(
-                enabled=dify_config.RBAC_ENABLED,
-            ),
-        ),
+        accounts=account_services,
         apps=apps,
+        credential_queries=CredentialQueryRepository(session_factory=database_client),
         agent_apps=build_agent_app_services(database_client=database_client),
         advanced_prompt_templates=AdvancedPromptTemplateService(),
         app_definitions=app_definitions,
@@ -807,10 +539,30 @@ def build_application_services(
             queries=AppScopedEndUserQueryService(end_users=app_scoped_end_user_repository),
         ),
         webapp_access=webapp_access,
+        web_authentication=WebAuthenticationService(
+            accounts=accounts,
+            passwords=passwords,
+            tokens=web_authentication_tokens,
+            security=AccountWebAuthenticationSecurityGateway(
+                password_security=RedisForgotPasswordSecurityGateway(
+                    redis=redis,
+                    email_send_ip_limit_per_minute=dify_config.EMAIL_SEND_IP_LIMIT_PER_MINUTE,
+                    verification_lockout_duration=dify_config.FORGOT_PASSWORD_LOCKOUT_DURATION,
+                ),
+                login_security=RedisConsoleAuthSecurityGateway(redis=redis),
+            ),
+            app_access=webapp_access,
+            app_sessions=PassportWebAppSessionGateway(
+                sessions=webapp_access_repository,
+                app_access=webapp_access,
+            ),
+            audit=LoggingWebAuthenticationAuditGateway(logger=logging.getLogger("controllers.web.login")),
+            private_app_access_enabled=deployment_edition == DeploymentEdition.ENTERPRISE,
+        ),
         installed_apps=build_installed_app_services(
             database_client=database_client,
             webapp_access=webapp_access,
-            get_workspace_role=workspace_query_repository.get_account_role,
+            get_workspace_role=workspace_repository.get_account_role,
             webapp_auth_enabled=webapp_auth_enabled,
         ),
         web_app_runtime=WebAppRuntimeQueryService(
@@ -827,7 +579,12 @@ def build_application_services(
         schema_definitions=SchemaDefinitionService(source_factory=SchemaManager),
         setup=SetupService(
             state=installation_state,
-            accounts=RegisterServiceAccountProvisioner(session_factory=database_client),
+            accounts=AccountSetupProvisioner(
+                accounts=account_services.lifecycle,
+                workspaces=workspace_services.provisioning,
+                installation=installation_state,
+                telemetry=InstallationTelemetryGateway(session_factory=database_client),
+            ),
             lock=RedisSetupLock(client=redis),
             setup_required=deployment_edition != DeploymentEdition.CLOUD,
         ),
@@ -864,7 +621,7 @@ def build_application_services(
             database_client=database_client,
             redis=redis,
             accounts=accounts,
-            workspaces=workspace_query_repository,
+            workspaces=workspace_repository,
         ),
         init_validation=InitValidationService(
             state=installation_state,
@@ -902,14 +659,7 @@ def build_application_services(
             workflow_runs=workflow_run_repository,
             node_executions=workflow_node_execution_repository,
         ),
-        workspace_queries=WorkspaceQueryService(
-            workspaces=workspace_query_repository,
-            plans=DeploymentWorkspacePlanGateway(),
-        ),
-        workspace_member_queries=WorkspaceMemberQueryService(
-            members=workspace_member_repository,
-            roles=DeploymentWorkspaceMemberRoleResolver(),
-        ),
+        workspaces=workspace_services,
         workflow_app_logs=WorkflowAppLogQueryService(
             logs=WorkflowAppLogQueryRepository(session_factory=database_client),
         ),
@@ -937,12 +687,16 @@ def build_application_services(
 
 
 def init_app(app: Flask) -> None:
-    app.extensions[_EXTENSION_KEY] = build_application_services(
+    from extensions.ext_login import bind_account_loader
+
+    services = build_application_services(
         database_client=get_session_maker(),
         deployment_edition=dify_config.DEPLOYMENT_EDITION,
         initialization_password=dify_config.INIT_PASSWORD,
         redis=redis_client,
     )
+    app.extensions[_EXTENSION_KEY] = services
+    bind_account_loader(app, services.accounts.identity.load_user)
 
 
 def application_services() -> ApplicationServices:

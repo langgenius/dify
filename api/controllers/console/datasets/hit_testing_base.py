@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
-import services
+import services.errors.base
 from controllers.console.app.error import (
     CompletionRequestError,
     ProviderModelCurrentlyNotSupportError,
@@ -97,7 +97,7 @@ class DatasetsHitTestingBase:
 
         try:
             DatasetService.check_dataset_permission(dataset, current_user, session)
-        except services.errors.account.NoPermissionError as e:
+        except services.errors.base.NoPermissionError as e:
             raise Forbidden(str(e))
 
         return dataset

@@ -1058,7 +1058,7 @@ describe('AppPublisher', () => {
   it('waits for app details before exposing publishing actions', () => {
     mockAppDetail = null
     render(<AppPublisher appId="app-1" publishedAt={Date.now()} />)
-    expect(screen.queryByText(/(?:^|\.)common\.publish(?=$|:)/)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /(?:^|\.)common\.publish(?=$|:)/ })).toBeDisabled()
     expect(sectionProps.summary).toBeNull()
   })
 

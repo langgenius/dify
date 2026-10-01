@@ -33,17 +33,6 @@ class TestCreditPoolService:
         db_session.add(pool)
         db_session.commit()
 
-    def test_create_default_pool(self, db_session_with_containers: Session) -> None:
-        tenant_id = self._create_tenant_id()
-
-        pool = CreditPoolService.create_default_pool(tenant_id, session=db_session_with_containers)
-
-        assert isinstance(pool, TenantCreditPool)
-        assert pool.tenant_id == tenant_id
-        assert pool.pool_type == ProviderQuotaType.TRIAL
-        assert pool.quota_used == 0
-        assert pool.quota_limit > 0
-
     def test_get_pool_returns_pool_when_exists(self, db_session_with_containers: Session) -> None:
         tenant_id = self._create_tenant_id()
         self._create_pool(db_session_with_containers, tenant_id=tenant_id, quota_limit=10, quota_used=0)

@@ -18,7 +18,7 @@ from models.provider_ids import ModelProviderID
 from repositories.knowledge.dataset_repository import _get_dataset
 from services.app.query_service import AppQueryService
 from services.enterprise import rbac_service
-from services.errors.account import NoPermissionError
+from services.errors.base import NoPermissionError
 from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
 from services.knowledge.dataset_read_service import get_dataset_queries, load_dataset_detail, load_dataset_details
 from services.knowledge.dataset_service import DatasetPermissionService, DatasetService, DocumentService

@@ -1,6 +1,6 @@
 import { renderHook } from '@testing-library/react'
 import { renderToString } from 'react-dom/server'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useOAuthCallback } from '../use-oauth'
 
 const originalOpener = window.opener

@@ -46,6 +46,7 @@
     "Пріоритетна підтримка електронної пошти та чату"
   ],
   "plans.premium.includesTitle": "Все з громади, плюс:",
+  "plans.premium.marketplaceName": "AWS Marketplace",
   "plans.premium.name": "Преміум",
   "plans.premium.price": "Масштабований",
   "plans.premium.priceTip": "На основі Хмарного ринку",
@@ -69,6 +70,7 @@
   "plansCommon.comparePlanAndFeatures": "Порівняйте плани та функції",
   "plansCommon.currentPlan": "Поточний план",
   "plansCommon.days": "днів",
+  "plansCommon.discountedAnnualPrice": "Річна ціна зі знижкою: ",
   "plansCommon.documentProcessingPriority": "Пріоритет обробки документів",
   "plansCommon.documentProcessingPriorityTip": "Для вищого пріоритету обробки документів оновіть свій план.",
   "plansCommon.documentProcessingPriorityUpgrade": "Обробляйте більше даних із вищою точністю та на більших швидкостях.",
@@ -87,6 +89,7 @@
   "plansCommon.modelProviders": "Постачальники моделей",
   "plansCommon.month": "місяць",
   "plansCommon.mostPopular": "Найпопулярніший",
+  "plansCommon.originalAnnualPrice": "Початкова річна ціна: ",
   "plansCommon.priceTip": "за робочим простором/",
   "plansCommon.priority.priority": "Пріоритетний",
   "plansCommon.priority.standard": "Стандартний",
