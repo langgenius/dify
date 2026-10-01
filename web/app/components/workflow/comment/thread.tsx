@@ -799,7 +799,11 @@ function CommentThreadComponent({
       </div>
       <AlertDialog
         open={deletingReplyId !== null}
-        onOpenChange={(open) => {
+        onOpenChange={(open, eventDetails) => {
+          if (!open && loading) {
+            eventDetails.cancel()
+            return
+          }
           if (!open) setDeletingReplyId(null)
         }}
       >
@@ -819,12 +823,13 @@ function CommentThreadComponent({
             </AlertDialogDescription>
           </div>
           <AlertDialogActions>
-            <AlertDialogCancelButton>
+            <AlertDialogCancelButton disabled={loading}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton
-              onClick={() => {
-                if (deletingReplyId) void onReplyDeleteDirect?.(deletingReplyId)
+              loading={loading}
+              onClick={async () => {
+                if (deletingReplyId) await onReplyDeleteDirect?.(deletingReplyId)
                 setDeletingReplyId(null)
               }}
             >

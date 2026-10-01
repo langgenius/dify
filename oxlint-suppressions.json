@@ -1040,11 +1040,6 @@
       "count": 2
     }
   },
-  "web/app/components/base/inline-delete-confirm/index.stories.tsx": {
-    "no-console": {
-      "count": 2
-    }
-  },
   "web/app/components/base/markdown-blocks/__tests__/paragraph.spec.tsx": {
     "jsx-a11y/anchor-is-valid": {
       "count": 1
