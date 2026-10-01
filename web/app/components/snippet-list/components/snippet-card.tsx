@@ -10,7 +10,6 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
-import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -188,14 +187,7 @@ const SnippetCard = ({
             </div>
           </div>
           {canShowOperations && (
-            <div
-              className={cn(
-                'absolute top-1/2 right-1.5 flex -translate-y-1/2 items-center transition-opacity',
-                isOperationsMenuOpen
-                  ? 'pointer-events-auto opacity-100'
-                  : 'pointer-events-none opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100',
-              )}
-            >
+            <div className="pointer-events-none absolute top-1/2 right-1.5 flex -translate-y-1/2 items-center opacity-0 transition-opacity group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 has-data-popup-open:pointer-events-auto has-data-popup-open:opacity-100">
               <div className="mx-1 h-3.5 w-px shrink-0 bg-divider-regular" />
               <DropdownMenu
                 modal={false}
