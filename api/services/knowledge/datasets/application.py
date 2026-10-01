@@ -6,7 +6,6 @@ from typing import Any, Protocol
 
 from libs.url_utils import normalize_api_base_url
 from machinery.context import RequestContext
-from services.entities.app_entities import AppRecord
 from services.knowledge.dataset_access import DatasetAccess
 from services.knowledge.datasets.retrieval import retrieval_methods
 from services.knowledge.entities.datasets import DatasetDetailRecord, DatasetPage
@@ -48,10 +47,6 @@ class DatasetVisibility:
             else sorted(key for key, grants in self.overrides.items() if read_keys.intersection(grants))
         )
         return ids, "dataset.create_and_management" in self.workspace_permissions
-
-
-class RelatedApps(Protocol):
-    def related_apps(self, tenant_id: str, app_ids: Sequence[str]) -> list[AppRecord]: ...
 
 
 class DatasetOperations(Protocol):
