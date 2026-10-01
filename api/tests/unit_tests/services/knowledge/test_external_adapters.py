@@ -17,13 +17,16 @@ from services.knowledge.dataset_access import DatasetNotFoundError
 from services.knowledge.external.adapters import SQLAlchemyExternalKnowledgeOperations
 from services.knowledge.external.application import ExternalTemplateNotFoundError
 from services.knowledge.resource_scope import DatasetRef
+from tests.unit_tests.rbac_fakes import RBACDomain
 
 CONTEXT = RequestContext("request", None, "actor", "tenant")
 REF = DatasetRef("tenant", "dataset")
 
 
 @pytest.fixture
-def operations(sqlite_session_factory: sessionmaker[Session]) -> SQLAlchemyExternalKnowledgeOperations:
+def operations(
+    sqlite_session_factory: sessionmaker[Session], rbac_domain: RBACDomain
+) -> SQLAlchemyExternalKnowledgeOperations:
     with sqlite_session_factory.begin() as session:
         for workspace, template_id, dataset_id in [
             ("tenant", "template", "dataset"),
@@ -53,7 +56,9 @@ def operations(sqlite_session_factory: sessionmaker[Session]) -> SQLAlchemyExter
                     ),
                 ]
             )
-    return SQLAlchemyExternalKnowledgeOperations(session_factory=sqlite_session_factory)
+    return SQLAlchemyExternalKnowledgeOperations(
+        session_factory=sqlite_session_factory, members=rbac_domain.rbac.members
+    )
 
 
 @pytest.fixture

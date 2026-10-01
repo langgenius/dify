@@ -284,6 +284,17 @@ def test_build_application_services_preserves_composed_boundaries(
     assert services.trial_apps.generation._usage is trial_apps
     assert services.recommended_app_queries._trial_apps is trial_apps
 
+    assert services.rbac.resources._apps is services.apps.console._apps
+    assert services.rbac.queries._apps is services.rbac.resources._apps
+    assert services.rbac.queries._datasets is services.rbac.resources._datasets
+    assert services.rbac.resources._datasets is services.knowledge.datasets._dataset_access._datasets
+    assert services.rbac.members._members is services.rbac.resources._members
+    assert services.rbac.members._members is services.workspaces.members._workspaces
+    assert services.rbac.members._workspace_roles is services.workspaces.members
+    assert services.apps.console._access._members is services.rbac.members
+    assert services.knowledge.datasets._operations._members_service is services.rbac.members
+    assert services.knowledge.external._operations._members is services.rbac.members
+
 
 @pytest.mark.parametrize(
     ("deployment_edition", "setup_completed"),

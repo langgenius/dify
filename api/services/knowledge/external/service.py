@@ -27,6 +27,7 @@ from services.entities.external_knowledge_entities.external_knowledge_entities i
 )
 from services.errors.dataset import DatasetNameDuplicateError
 from services.errors.knowledge_retrieval import ExternalKnowledgeRetrievalError
+from services.rbac import contracts as rbac_contracts
 
 
 class ExternalDatasetService:
@@ -333,7 +334,7 @@ class ExternalDatasetService:
         enterprise_rbac_service.try_sync_creator_access_policy_member_bindings(
             tenant_id,
             user_id,
-            enterprise_rbac_service.RBACResourceType.DATASET,
+            rbac_contracts.RBACResourceType.DATASET,
             dataset.id,
         )
 

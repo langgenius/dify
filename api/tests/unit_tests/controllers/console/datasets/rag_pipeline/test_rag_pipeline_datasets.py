@@ -18,8 +18,8 @@ from controllers.console.datasets.rag_pipeline.rag_pipeline_datasets import (
     RagPipelineDatasetImportPayload,
 )
 from models.account import Account, TenantAccountRole
-from services.enterprise import rbac_service as enterprise_rbac_service
 from services.entities.dsl_entities import ImportStatus
+from services.rbac import contracts as rbac_contracts
 from tests.unit_tests.config_override import config_overrides_context
 from tests.unit_tests.model_factories import make_account
 
@@ -122,9 +122,7 @@ class TestCreateRagPipelineDatasetApi:
 
         assert status == 201
         assert sync_creator.called, "RAG pipeline create must sync the creator's own access"
-        sync_creator.assert_called_once_with(
-            "tenant-1", user.id, enterprise_rbac_service.RBACResourceType.DATASET, "ds-1"
-        )
+        sync_creator.assert_called_once_with("tenant-1", user.id, rbac_contracts.RBACResourceType.DATASET, "ds-1")
         assert response["dataset_id"] == "ds-1"
 
     def test_post_forbidden_non_editor(self, app: Flask) -> None:
