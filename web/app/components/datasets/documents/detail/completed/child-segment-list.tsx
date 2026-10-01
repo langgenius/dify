@@ -78,7 +78,7 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
   isLoading,
   focused = false,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetDocuments'])
   const parentMode = useDocumentContext((s) => s.parentMode)
   const canEdit = useDocumentContext((s) => s.canEdit)
   const currChildChunk = useSegmentListContext((s) => s.currChildChunk)

@@ -22,7 +22,7 @@ const AgentSettingButton: FC<Props> = ({
   agentConfig,
   disabled = false,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   const [isShowAgentSetting, setIsShowAgentSetting] = useState(false)
 
   return (

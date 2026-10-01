@@ -10,7 +10,7 @@ type OperationsProps = {
 }
 
 const Operations = ({ openEditModal, onDelete, onExport, onClose }: OperationsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetPipeline'])
 
   const onClickEdit = (e: React.MouseEvent<HTMLDivElement>) => {
     e.stopPropagation()

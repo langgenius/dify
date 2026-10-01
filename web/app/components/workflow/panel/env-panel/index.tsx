@@ -413,7 +413,7 @@ const useEnvPanelActions = ({
 }
 
 const EnvPanel = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const collaborativeWorkflow = useCollaborativeWorkflow()
   const workflowStore = useWorkflowStore()
   const setShowEnvPanel = useStore((s) => s.setShowEnvPanel)

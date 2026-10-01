@@ -56,7 +56,7 @@ function parseNotificationBody(body: string): NotificationBodyPayload | null {
 }
 
 function InSiteMessageNotification() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const locale = useLocale()
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),

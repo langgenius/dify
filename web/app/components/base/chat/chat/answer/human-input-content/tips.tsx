@@ -29,7 +29,7 @@ const EmailDebugTip = () => {
 }
 
 const Tips = ({ showEmailTip, isEmailDebugMode, showDebugModeTip }: TipsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   return (
     <>

@@ -43,7 +43,7 @@ function SearchBox({
   autoFocus = false,
   showTags = true,
 }: SearchBoxProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin', 'tools'])
   const accessibleLabel = placeholder || t(($) => $.searchTools, { ns: 'plugin' })!
   const inputRef = useRef<HTMLInputElement>(null)
   useImperativeHandle(ref, () => inputRef.current as HTMLInputElement, [])

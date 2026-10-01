@@ -145,8 +145,8 @@ function normalizedTaskSnapshot(task: DocumentProcessingTask): DocumentProcessin
 }
 
 export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) {
-  const { t } = useTranslation('dataset')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['dataset'])
+  const { t: tCommon } = useTranslation(['common'])
   const queryClient = useQueryClient()
   const datasetDefaultPermissionKeys = useAtomValue(datasetDefaultPermissionKeysAtom)
   const workspacePermissionKeysLoading = useAtomValue(workspacePermissionKeysLoadingAtom)

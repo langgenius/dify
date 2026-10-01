@@ -4,7 +4,7 @@ import { AgentLogNav } from '../agent-log-nav'
 
 vi.mock('react-i18next', async () => {
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
-  return createReactI18nextMock({ 'workflow.nodes.agent.strategy.label': 'Strategy' })
+  return createReactI18nextMock({ 'workflowAgent.nodes.agent.strategy.label': 'Strategy' })
 })
 
 it('keeps a long current log name readable inside the result panel', async () => {

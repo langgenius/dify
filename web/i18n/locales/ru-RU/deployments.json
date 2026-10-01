@@ -73,6 +73,9 @@
   "studio.noCredentialsYetDescription": "Добавьте учётные данные в разделе «Интеграции» или в настройках узла",
   "studio.precheck.description": "Она содержит типы узлов, которые пока не поддерживаются:",
   "studio.precheck.from": "Из",
+  "studio.precheck.nodeCount_few": "{{count}} узла",
+  "studio.precheck.nodeCount_many": "{{count}} узлов",
+  "studio.precheck.nodeCount_one": "{{count}} узел",
   "studio.precheck.nodeCount_other": "{{count}} узлов",
   "studio.precheck.supportMessage": "Поддержка этих типов узлов появится в одном из будущих выпусков.",
   "studio.precheck.title": "Эту версию нельзя развернуть в этой среде",
@@ -84,6 +87,8 @@
   "studio.undeployConfirmTitle": "Отменить развертывание {{versionName}} в среде {{envName}}",
   "studio.updatedAtBy": "Обновлено {{time}}, {{name}}",
   "studio.versionValue": "Значение версии",
+  "studio.versionsBehind_few": "Отставание на {{count}} версии",
+  "studio.versionsBehind_many": "Отставание на {{count}} версий",
   "studio.versionsBehind_one": "Отставание на {{count}} версию",
   "studio.versionsBehind_other": "Отставание на {{count}} версий",
   "versions.deployTo": "Развернуть в {{name}}"

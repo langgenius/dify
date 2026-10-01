@@ -66,7 +66,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
   embeddingAvailable,
   focused,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'dataset', 'datasetDocuments'])
   const {
     id,
     position,
@@ -140,6 +140,17 @@ const SegmentCard: FC<ISegmentCardProps> = ({
 
   if (loading) return <ParentChunkCardSkeleton />
 
+  const segmentIndex = (
+    <SegmentIndexTag
+      className={cn(contentOpacity)}
+      iconClassName={focused.segmentIndex ? 'text-text-accent' : ''}
+      labelClassName={focused.segmentIndex ? 'text-text-accent' : ''}
+      positionId={position}
+      label={isFullDocMode ? labelPrefix : ''}
+      labelPrefix={labelPrefix}
+    />
+  )
+
   return (
     <div
       data-testid="segment-card"
@@ -154,14 +165,21 @@ const SegmentCard: FC<ISegmentCardProps> = ({
       <div className="relative flex h-5 items-center justify-between">
         <>
           <div className="flex items-center gap-x-2">
-            <SegmentIndexTag
-              className={cn(contentOpacity)}
-              iconClassName={focused.segmentIndex ? 'text-text-accent' : ''}
-              labelClassName={focused.segmentIndex ? 'text-text-accent' : ''}
-              positionId={position}
-              label={isFullDocMode ? labelPrefix : ''}
-              labelPrefix={labelPrefix}
-            />
+            {isFullDocMode ? (
+              segmentIndex
+            ) : (
+              <button
+                type="button"
+                aria-label={`${labelPrefix}-${String(position).padStart(2, '0')} ${t(($) => $['segment.chunkDetail'], { ns: 'datasetDocuments' })}`}
+                className="rounded-sm border-0 bg-transparent p-0 text-left focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  handleClickCard()
+                }}
+              >
+                {segmentIndex}
+              </button>
+            )}
             <Dot />
             <div className={cn('system-xs-medium text-text-tertiary', contentOpacity)}>
               {wordCountText}
@@ -189,7 +207,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
                 textCls="text-text-tertiary system-xs-regular"
               />
               {embeddingAvailable && (
-                <div className="absolute -top-2 -right-2.5 z-20 hidden items-center gap-x-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-1 shadow-md backdrop-blur-[5px] group-hover/card:flex">
+                <div className="absolute -top-2 -right-2.5 z-20 hidden items-center gap-x-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-1 shadow-md backdrop-blur-[5px] group-focus-within/card:flex group-hover/card:flex">
                   {!archived && (
                     <>
                       <Tooltip>

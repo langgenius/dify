@@ -68,11 +68,10 @@ type SwitchControlProps = ControlledSwitchProps | UncontrolledSwitchProps
 
 type SwitchProps = Omit<
   BaseSwitchNS.Root.Props,
-  'checked' | 'defaultChecked' | 'size' | 'onCheckedChange'
+  'checked' | 'children' | 'defaultChecked' | 'size'
 > &
   VariantProps<typeof switchRootVariants> &
   SwitchControlProps & {
-    onCheckedChange?: (checked: boolean) => void
     loading?: boolean
   }
 
@@ -82,7 +81,6 @@ function Switch({
   disabled,
   loading = false,
   className,
-  onCheckedChange,
   ...props
 }: SwitchProps) {
   const isDisabled = disabled || loading
@@ -93,7 +91,6 @@ function Switch({
       disabled={isDisabled}
       aria-busy={loading || undefined}
       className={(state) => cn(switchRootVariants({ size }), resolveClassName(className, state))}
-      onCheckedChange={(value) => onCheckedChange?.(value)}
       {...props}
     >
       <BaseSwitch.Thumb className={switchThumbVariants({ size })} />

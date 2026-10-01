@@ -17,8 +17,11 @@ from services.dsl_content import DSL_MAX_SIZE
 
 
 @contextmanager
-def download_app_import_source(url: str) -> Generator[BinaryIO]:
+def download_app_import_source(url: str, *, max_bytes: int | None = None) -> Generator[BinaryIO]:
     """Fetch a bounded source without opening import transactions or creating resources."""
+    size_limit = max(dify_config.AGENT_PACKAGE_MAX_BYTES, DSL_MAX_SIZE) if max_bytes is None else max_bytes
+    if size_limit <= 0:
+        raise ValueError("Import download size limit must be positive")
     url = url.strip()
     try:
         parsed = urlsplit(url)
@@ -49,7 +52,7 @@ def download_app_import_source(url: str) -> Generator[BinaryIO]:
                 size = 0
                 for chunk in response.iter_bytes(chunk_size=1024 * 1024):
                     size += len(chunk)
-                    if size > max(dify_config.AGENT_PACKAGE_MAX_BYTES, DSL_MAX_SIZE):
+                    if size > size_limit:
                         raise RosterAgentPackageTooLargeError("App import download exceeds the size limit")
                     source.write(chunk)
             finally:

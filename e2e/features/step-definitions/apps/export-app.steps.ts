@@ -1,4 +1,4 @@
-import type { DifyWorld } from '../../support/world'
+import type { DifyWorld } from '../../support/world.ts'
 import { Buffer } from 'node:buffer'
 import { readFile } from 'node:fs/promises'
 import { Then } from '@cucumber/cucumber'

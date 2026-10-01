@@ -10,7 +10,7 @@ import { useUpdateModelList, useUpdateModelProviders } from '../hooks'
 export function useChangeProviderPriority(
   provider: ModelProvider | ModelProviderSummaryResponse | undefined,
 ) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const queryClient = useQueryClient()
   const updateModelList = useUpdateModelList()
   const updateModelProviders = useUpdateModelProviders()

@@ -13,7 +13,8 @@ from werkzeug.exceptions import UnprocessableEntity
 
 from controllers.common.schema import register_response_schema_model, register_schema_model
 from controllers.openapi import openapi_ns
-from controllers.openapi._contract import accepts, returns
+from controllers.openapi._contract import accepts, paginated, returns
+from controllers.openapi._models import Hint, PaginationEnvelope
 
 
 class ContractQuery(BaseModel):
@@ -52,6 +53,28 @@ def _guard_like(view):
         return view(*args, **kwargs)
 
     return wrapper
+
+
+class _Page(PaginationEnvelope[int]):
+    pass
+
+
+def test_paginated_fills_the_next_page_hint_from_the_call_and_leaves_the_rest_alone():
+    @paginated("thing.list")
+    def view(*, ctx, workspace_id, query):
+        return _Page.build(page=query.page, limit=query.limit, total=50, items=[])
+
+    result = view(ctx=object(), workspace_id="ws-1", query=ContractQuery(page=1, limit=20))
+    assert result.hints == [
+        Hint(summary="Next page", op="thing.list", input={"workspace_id": "ws-1", "page": 2, "limit": 20})
+    ]
+    assert view(ctx=object(), workspace_id="ws-1", query=ContractQuery(page=3, limit=20)).hints == []
+
+    @paginated("thing.get")
+    def plain(*, ctx):
+        return ContractResp(value=1)
+
+    assert plain(ctx=object()) == ContractResp(value=1)
 
 
 def test_accepts_injects_validated_query_with_defaults_for_absent_fields(app):

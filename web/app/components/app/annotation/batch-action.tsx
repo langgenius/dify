@@ -29,7 +29,7 @@ const BatchAction: FC<IBatchActionProps> = ({
   onBatchDelete,
   onSelectedIdsChange,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appAnnotation', 'common'])
   const [isShowDeleteConfirm, { setTrue: showDeleteConfirm, setFalse: hideDeleteConfirm }] =
     useBoolean(false)
   const [isDeleting, { setTrue: setIsDeleting, setFalse: setIsNotDeleting }] = useBoolean(false)

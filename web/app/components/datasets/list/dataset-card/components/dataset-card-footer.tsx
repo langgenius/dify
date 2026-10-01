@@ -20,7 +20,7 @@ type DatasetCardFooterProps = {
 }
 
 const DatasetCardFooter = ({ dataset }: DatasetCardFooterProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'dataset'])
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const isExternalProvider = dataset.provider === EXTERNAL_PROVIDER
 

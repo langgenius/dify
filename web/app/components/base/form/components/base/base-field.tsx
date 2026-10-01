@@ -3,6 +3,7 @@ import type { FieldState, FormSchema, TypeWithI18N } from '@/app/components/base
 import { cn } from '@langgenius/dify-ui/cn'
 import { Field, FieldItem, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Input } from '@langgenius/dify-ui/input'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { NumberField, NumberFieldGroup, NumberFieldInput } from '@langgenius/dify-ui/number-field'
@@ -23,7 +24,6 @@ import { useTranslation } from 'react-i18next'
 import { CheckboxList } from '@/app/components/base/checkbox-list'
 import { CopyFeedback } from '@/app/components/base/copy-feedback'
 import { FormItemValidateStatusEnum, FormTypeEnum } from '@/app/components/base/form/types'
-import { Infotip } from '@/app/components/base/infotip'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { useTriggerPluginDynamicOptions } from '@/service/use-triggers'
 
@@ -125,8 +125,15 @@ const BaseField = ({
   onChange,
   fieldState,
 }: BaseFieldProps) => {
+  const inputFieldTypes: readonly FormTypeEnum[] = [
+    FormTypeEnum.textInput,
+    FormTypeEnum.secretInput,
+    FormTypeEnum.textNumber,
+  ]
+  const textFieldTypes: readonly FormTypeEnum[] = [FormTypeEnum.textInput, FormTypeEnum.secretInput]
+
   const renderI18nObject = useRenderI18nObject()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const {
     name,
     label,
@@ -170,11 +177,8 @@ const BaseField = ({
   }
   const isDynamicSelect = formItemType === FormTypeEnum.dynamicSelect
   const isSelect = formItemType === FormTypeEnum.select || isDynamicSelect
-  const isSingleControl = [
-    FormTypeEnum.textInput,
-    FormTypeEnum.secretInput,
-    FormTypeEnum.textNumber,
-  ].includes(formItemType)
+  const isSingleControl = inputFieldTypes.includes(formItemType)
+  const hasCustomLabel = isValidElement(label)
 
   const [
     translatedLabel,
@@ -291,33 +295,40 @@ const BaseField = ({
       <div className={cn(fieldClassName)}>
         <div className={cn(labelClassName, formLabelClassName)}>
           {isSelect ? (
-            <SelectLabel className="inline p-0 text-inherit [font:inherit]">
-              {translatedLabel || name}
+            <SelectLabel
+              className={cn('inline p-0 text-inherit [font:inherit]', hasCustomLabel && 'w-full')}
+            >
+              <span id={labelId}>{translatedLabel || name}</span>
             </SelectLabel>
           ) : isSingleControl ? (
             <label
               id={labelId}
               htmlFor={controlId}
-              className={cn(isValidElement(label) && 'w-full')}
+              className={hasCustomLabel ? 'w-full' : undefined}
             >
               {translatedLabel || name}
             </label>
           ) : (
-            <span id={labelId}>{translatedLabel || name}</span>
+            <span id={labelId} className={hasCustomLabel ? 'w-full' : undefined}>
+              {translatedLabel || name}
+            </span>
           )}
-          {required && !isValidElement(label) && (
+          {required && !hasCustomLabel && (
             <span aria-hidden="true" className="ml-1 text-text-destructive-secondary">
               *
             </span>
           )}
           {translatedTooltip && (
-            <Infotip aria-label={translatedTooltip} className="ml-0.5" popupClassName="w-[200px]">
-              {translatedTooltip}
+            <Infotip>
+              <InfotipTrigger aria-labelledby={labelId} className="ml-0.5" />
+              <InfotipContent aria-labelledby={labelId} className="w-50">
+                {translatedTooltip}
+              </InfotipContent>
             </Infotip>
           )}
         </div>
         <div className={cn(inputContainerClassName)} data-form-field={field.name}>
-          {[FormTypeEnum.textInput, FormTypeEnum.secretInput].includes(formItemType) && (
+          {textFieldTypes.includes(formItemType) && (
             <Field
               className="contents"
               invalid={validateStatus === FormItemValidateStatusEnum.Error}
@@ -331,11 +342,8 @@ const BaseField = ({
                   )}
                 >
                   <InputGroupInput {...textInputProps} />
-                  <InputGroupAddon align="inline-end" className="pe-0">
-                    <CopyFeedback
-                      content={stringValue ?? ''}
-                      className="size-7 hover:bg-transparent"
-                    />
+                  <InputGroupAddon align="inline-end" className="pe-0.5">
+                    <CopyFeedback content={stringValue ?? ''} className="hover:bg-transparent" />
                   </InputGroupAddon>
                 </InputGroup>
               ) : (
@@ -379,7 +387,7 @@ const BaseField = ({
                   {showCopy && (
                     <CopyFeedback
                       content={value == null ? '' : String(value)}
-                      className="size-7 shrink-0 hover:bg-transparent"
+                      className="me-0.5 shrink-0 self-center hover:bg-transparent"
                     />
                   )}
                 </NumberFieldGroup>

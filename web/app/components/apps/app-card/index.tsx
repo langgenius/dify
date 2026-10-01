@@ -49,7 +49,7 @@ export const AppCard = memo(
     stepByStepTourCardHighlightPart,
     stepByStepTourActionMenuHighlightPart,
   }: AppCardProps) => {
-    const { t } = useTranslation()
+    const { t } = useTranslation(['app', 'common', 'time'])
     const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
     const { data: currentUserId } = useSuspenseQuery({
       ...userProfileQueryOptions(),

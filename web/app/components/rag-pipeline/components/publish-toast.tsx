@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { useStore } from '@/app/components/workflow/store'
 
 const PublishToast = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'pipeline'])
   const publishedAt = useStore((s) => s.publishedAt)
   const [hideToast, setHideToast] = useState(false)
 

@@ -17,7 +17,7 @@ type TagsFilterProps = {
   usedInMarketplace?: boolean
 }
 function TagsFilter({ tags, onTagsChange, usedInMarketplace = false }: TagsFilterProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['pluginTags'])
   const [searchText, setSearchText] = useState('')
   const { tags: options, tagsMap } = useTags()
   const filteredOptions = options.filter((option) =>

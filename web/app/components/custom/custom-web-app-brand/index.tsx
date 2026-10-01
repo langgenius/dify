@@ -10,7 +10,7 @@ import useWebAppBrand from './hooks/use-web-app-brand'
 const ALLOW_FILE_EXTENSIONS = ['svg', 'png']
 
 const CustomWebAppBrand = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appOverview', 'common', 'custom'])
   const {
     fileId,
     imgKey,

@@ -16,7 +16,7 @@ type PopupProps = {
 }
 
 const Popup: FC<PopupProps> = ({ data, showHitInfo = false }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const fileType =
     data.dataSourceType !== 'notion' ? /\.([^.]*)$/.exec(data.documentName)?.[1] || '' : 'notion'
 

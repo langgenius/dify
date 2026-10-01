@@ -19,14 +19,16 @@ import {
   ContextMenuTrigger,
 } from '.'
 
-const TriggerArea = ({ label = 'Right-click inside this area' }: { label?: string }) => (
-  <ContextMenuTrigger
-    aria-label="context menu trigger area"
-    className="flex h-44 w-80 items-center justify-center rounded-xl border border-divider-subtle bg-background-default-subtle px-6 text-center text-sm text-text-tertiary select-none"
-  >
-    {label}
-  </ContextMenuTrigger>
-)
+function TriggerArea({ label = 'Right-click inside this area' }: { label?: string }) {
+  return (
+    <ContextMenuTrigger
+      aria-label="context menu trigger area"
+      className="flex h-44 w-80 items-center justify-center rounded-xl border border-divider-subtle bg-background-default-subtle px-6 text-center text-sm text-text-tertiary select-none"
+    >
+      {label}
+    </ContextMenuTrigger>
+  )
+}
 
 const meta = {
   title: 'Base/UI/ContextMenu',
@@ -102,7 +104,7 @@ export const WithGroupLabel: Story = {
 
 type Density = 'compact' | 'comfortable' | 'spacious'
 
-const WithRadioItemsDemo = () => {
+function WithRadioItemsDemo() {
   const [density, setDensity] = React.useState<Density>('comfortable')
 
   return (
@@ -132,7 +134,7 @@ export const WithRadioItems: Story = {
   render: () => <WithRadioItemsDemo />,
 }
 
-const WithCheckboxItemsDemo = () => {
+function WithCheckboxItemsDemo() {
   const [showToolbar, setShowToolbar] = React.useState(true)
   const [showSidebar, setShowSidebar] = React.useState(false)
   const [showStatusBar, setShowStatusBar] = React.useState(true)

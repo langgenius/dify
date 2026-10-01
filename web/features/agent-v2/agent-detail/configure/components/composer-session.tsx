@@ -2,7 +2,6 @@
 
 import type {
   AgentAppDetailWithSite,
-  AgentIconType,
   AgentSoulConfig,
 } from '@dify/contracts/api/console/agent/types.gen'
 import type { useAgentConfigureData } from '../hooks'
@@ -73,7 +72,7 @@ export function AgentConfigureComposerScope({
   onRightPanelModeChange: (mode: AgentConfigureRightPanelMode) => void | Promise<unknown>
   onSelectVersion: (versionId: string | null) => void
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const { composerQuery, selectedVersionId, activeVersionId, agentSoulConfig } = configureData
   const soulSourceOverride = useAtomValue(agentConfigureSoulSourceOverrideAtom)
   const setSoulSourceOverride = useSetAtom(agentConfigureSoulSourceOverrideAtom)
@@ -152,7 +151,6 @@ function AgentConfigurePageComposerSession({
     normalAgentSoulConfig: agentSoulConfig,
     onModeChange: onRightPanelModeChange,
   })
-  const agentIconType = agentQuery.data?.icon_type as AgentIconType | null | undefined
   const refreshDebugConversationMutation = useMutation(
     consoleQuery.agent.byAgentId.debugConversation.refresh.post.mutationOptions({
       onSuccess: ({
@@ -231,7 +229,6 @@ function AgentConfigurePageComposerSession({
       >
         <AgentConfigurePageComposerContent
           agentId={agentId}
-          agentIconType={agentIconType}
           buildDraft={buildDraft}
           configureData={configureData}
           isRefreshingDebugConversation={
@@ -254,7 +251,6 @@ function AgentConfigurePageComposerSession({
 
 function AgentConfigurePageComposerContent({
   agentId,
-  agentIconType,
   buildDraft,
   configureData,
   isRefreshingDebugConversation,
@@ -269,7 +265,6 @@ function AgentConfigurePageComposerContent({
   onSelectVersion,
 }: {
   agentId: string
-  agentIconType: AgentIconType | null | undefined
   buildDraft: ReturnType<typeof useAgentConfigureBuildDraftData>
   configureData: ReturnType<typeof useAgentConfigureData>
   isRefreshingDebugConversation: boolean
@@ -293,8 +288,8 @@ function AgentConfigurePageComposerContent({
     activeConfigSnapshot,
     agentSoulConfig,
   } = configureData
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['agentV2'])
+  const { t: tCommon } = useTranslation(['modelProvider'])
   const [clearChatByMode, setClearChatByMode] = useState<
     Record<AgentConfigureRightPanelMode, boolean>
   >({
@@ -478,6 +473,7 @@ function AgentConfigurePageComposerContent({
       aria-busy={agentQuery.isFetching || isEnteringBuildMode}
       leftPanel={
         <AgentOrchestratePanel
+          className="max-xl:h-100 max-xl:w-full max-xl:max-w-none max-xl:min-w-0 max-xl:flex-none"
           agentId={agentId}
           agentSoulConfig={buildDraft.agentSoulConfig}
           agentName={agentQuery.data?.name}
@@ -554,9 +550,6 @@ function AgentConfigurePageComposerContent({
               <AgentConfigureRightPanelChat
                 agentId={agentId}
                 answerActionPosition="below"
-                agentIcon={agentQuery.data?.icon}
-                agentIconBackground={agentQuery.data?.icon_background}
-                agentIconType={agentIconType}
                 agentName={agentQuery.data?.name}
                 agentSoulConfig={buildDraft.agentSoulConfig}
                 clearChatList={clearChatByMode[rightPanelChatMode]}
@@ -596,7 +589,9 @@ function AgentConfigurePageComposerContent({
                   rightPanelChatMode === 'build'
                     ? async () => {
                         if (!currentModel?.provider || !currentModel.model) {
-                          toast.error(tCommon(($) => $['modelProvider.selectModel']))
+                          toast.error(
+                            tCommon(($) => $['modelProvider.selectModel'], { ns: 'modelProvider' }),
+                          )
                           throw new Error('Agent model is required.')
                         }
 

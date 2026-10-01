@@ -1,10 +1,8 @@
+import type { RagPipelineDatasourceProviderResponse } from '@dify/contracts/api/console/rag/types.gen'
 import type { StateCreator } from 'zustand'
 import type { InputFieldEditorProps } from '../components/panel/input-field/editor'
-import type { DataSourceItem } from '@/app/components/workflow/block-selector/types'
-import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { IconInfo } from '@/models/datasets'
 import type { RAGPipelineVariables } from '@/models/pipeline'
-import { transformDataSourceToTool } from '@/app/components/workflow/block-selector/utils'
 
 export type RagPipelineSliceShape = {
   pipelineId: string
@@ -20,13 +18,18 @@ export type RagPipelineSliceShape = {
   setNodesDefaultConfigs: (nodesDefaultConfigs: Record<string, any>) => void
   ragPipelineVariables: RAGPipelineVariables
   setRagPipelineVariables: (ragPipelineVariables: RAGPipelineVariables) => void
-  dataSourceList: ToolWithProvider[]
-  setDataSourceList: (dataSourceList: DataSourceItem[]) => void
+  dataSourceList: RagPipelineDatasourceProviderResponse[]
+  setDataSourceList: (dataSourceList: RagPipelineDatasourceProviderResponse[]) => void
   isPreparingDataSource: boolean
   setIsPreparingDataSource: (isPreparingDataSource: boolean) => void
 }
 
-export const createRagPipelineSliceSlice: StateCreator<RagPipelineSliceShape> = (set) => ({
+export const createRagPipelineSliceSlice: StateCreator<
+  Partial<RagPipelineSliceShape>,
+  [],
+  [],
+  RagPipelineSliceShape
+> = (set) => ({
   pipelineId: '',
   knowledgeName: '',
   showInputFieldPanel: false,
@@ -43,10 +46,7 @@ export const createRagPipelineSliceSlice: StateCreator<RagPipelineSliceShape> = 
   setRagPipelineVariables: (ragPipelineVariables: RAGPipelineVariables) =>
     set(() => ({ ragPipelineVariables })),
   dataSourceList: [],
-  setDataSourceList: (dataSourceList: DataSourceItem[]) => {
-    const formattedDataSourceList = dataSourceList.map((item) => transformDataSourceToTool(item))
-    set(() => ({ dataSourceList: formattedDataSourceList }))
-  },
+  setDataSourceList: (dataSourceList) => set(() => ({ dataSourceList })),
   isPreparingDataSource: false,
   setIsPreparingDataSource: (isPreparingDataSource) => set(() => ({ isPreparingDataSource })),
 })

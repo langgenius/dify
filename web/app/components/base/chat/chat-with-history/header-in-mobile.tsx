@@ -43,7 +43,7 @@ const HeaderInMobile = () => {
     conversationRenaming,
     inputsForms,
   } = useChatWithHistoryContext()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'layout', 'share'])
   const isPin = pinnedConversationList.some((item) => item.id === currentConversationId)
   const [showConfirm, setShowConfirm] = useState<ConversationItem | null>(null)
   const [showRename, setShowRename] = useState<ConversationItem | null>(null)

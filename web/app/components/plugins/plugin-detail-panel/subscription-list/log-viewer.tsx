@@ -21,13 +21,15 @@ type Props = Readonly<{
   className?: string
 }>
 
-enum LogTypeEnum {
-  REQUEST = 'request',
-  RESPONSE = 'response',
-}
+const LogTypeEnum = {
+  REQUEST: 'request',
+  RESPONSE: 'response',
+} as const
+
+type LogTypeEnum = (typeof LogTypeEnum)[keyof typeof LogTypeEnum]
 
 const LogViewer = ({ logs, className }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'pluginTrigger'])
   const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set())
 
   const toggleLogExpansion = (logId: string) => {

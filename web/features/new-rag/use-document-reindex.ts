@@ -30,7 +30,7 @@ export function useDocumentReindex({
   knowledgeSpaceId: string
   revisionsQueryKey: readonly unknown[]
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation(['dataset'])
   const queryClient = useQueryClient()
   const refreshWorkspacePermissionKeysAfterMutationDenial = useSetAtom(
     refreshWorkspacePermissionKeysAfterMutationDenialAtom,

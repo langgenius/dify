@@ -23,7 +23,7 @@ const ExternalKnowledgeBaseCreate: React.FC<ExternalKnowledgeBaseCreateProps> = 
   onConnect,
   loading,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'dataset'])
   const docLink = useDocLink()
   const router = useRouter()
   const [formData, setFormData] = useState<CreateKnowledgeBaseReq>({

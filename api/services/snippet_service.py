@@ -41,7 +41,7 @@ from repositories.factory import DifyAPIRepositoryFactory
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
-from services.tag_service import TagService
+from services.tag_application_service import TagTargetQuery
 from services.workflow_node_execution_trace_service import (
     WorkflowNodeExecutionTrace,
     assemble_workflow_node_execution_traces,
@@ -212,6 +212,7 @@ class SnippetService:
         is_published: bool | None = None,
         creators: list[str] | None = None,
         tag_ids: list[str] | None = None,
+        tags: TagTargetQuery,
     ) -> tuple[Sequence[CustomizedSnippet], int, bool]:
         """
         Get paginated list of snippets with optional search.
@@ -243,7 +244,7 @@ class SnippetService:
             stmt = stmt.where(CustomizedSnippet.created_by.in_(creators))
 
         if tag_ids:
-            target_ids = TagService.get_target_ids_by_tag_ids("snippet", tenant_id, tag_ids, session, match_all=True)
+            target_ids = tags.find_target_ids(tag_type="snippet", tenant_id=tenant_id, tag_ids=tag_ids, match_all=True)
             if target_ids:
                 stmt = stmt.where(CustomizedSnippet.id.in_(target_ids))
             else:

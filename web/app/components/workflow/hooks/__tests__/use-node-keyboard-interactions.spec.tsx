@@ -81,9 +81,14 @@ describe('node keyboard interactions', () => {
 
   it('selects and deselects the focused node while leaving editor keys alone', async () => {
     const user = userEvent.setup()
-    renderWorkflowComponent(<Canvas />)
+    const { store } = renderWorkflowComponent(<Canvas />)
     await user.tab()
-    await user.keyboard('{Enter}{Escape} ')
+    await user.keyboard('{Enter}')
+    expect(store.getState().pendingNodePanelFocusId).toBe('node')
+    await user.keyboard('{Escape}')
+    expect(store.getState().pendingNodePanelFocusId).toBeUndefined()
+    await user.keyboard(' ')
+    expect(store.getState().pendingNodePanelFocusId).toBe('node')
     expect(state.select.mock.calls).toEqual([
       ['node', false],
       ['node', true],

@@ -1,10 +1,9 @@
-import type { ReactNode } from 'react'
 import type { PromptEditorProps } from '@/app/components/base/prompt-editor'
 import type { AgentTool } from '@/features/agent-v2/agent-composer/form-state'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider } from 'jotai'
-import { API_PREFIX } from '@/config'
+import { API_PREFIX, MARKETPLACE_API_PREFIX } from '@/config'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
 import { agentComposerKnowledgeRetrievalsAtom } from '@/features/agent-v2/agent-composer/store-modules/knowledge'
@@ -13,7 +12,7 @@ import { agentComposerToolsAtom } from '@/features/agent-v2/agent-composer/store
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render as renderWithState } from '@/test/console/render'
 import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
-import { AgentPromptEditor } from '../orchestrate/prompt-editor'
+import { AgentPromptEditor, AgentTemplatePromptEditor } from '../orchestrate/prompt-editor'
 import { AgentPromptSlashMenu } from '../orchestrate/prompt-editor/slash'
 
 const render = (ui: React.ReactElement) => {
@@ -213,10 +212,6 @@ vi.mock('lexical', () => ({
   $isTextNode: (node: { __text?: boolean } | null | undefined) => !!node?.__text,
   COMMAND_PRIORITY_LOW: 1,
   SELECTION_CHANGE_COMMAND: Symbol('selection-change-command'),
-}))
-
-vi.mock('@/app/components/base/infotip', () => ({
-  Infotip: ({ children }: { children: ReactNode }) => <span>{children}</span>,
 }))
 
 vi.mock('foxact/use-clipboard', () => ({
@@ -737,6 +732,30 @@ describe('AgentPromptEditor', () => {
       })
     })
 
+    it('should leave slash-menu navigation and selection to IME while composing', async () => {
+      const user = userEvent.setup()
+      const { store } = renderAgentPromptEditor('Review /')
+      const textbox = screen.getByRole('textbox')
+
+      textbox.focus()
+      const menu = await openSlashMenuFromEditor(textbox)
+      await user.keyboard('{ArrowDown}{ArrowRight}{ArrowDown}')
+      const skill = screen.getByRole('button', { name: 'Library Skill' })
+      expect(skill).toHaveAttribute('data-agent-prompt-menu-active')
+
+      for (const key of ['ArrowDown', 'Enter', 'Escape'])
+        fireEvent.keyDown(textbox, { key, isComposing: true })
+
+      expect(menu).toBeInTheDocument()
+      expect(skill).toHaveAttribute('data-agent-prompt-menu-active')
+      expect(store.get(agentComposerPromptAtom)).toBe('Review /')
+
+      await user.keyboard('{Enter}')
+      expect(store.get(agentComposerPromptAtom)).toBe(
+        'Review [§skill:library-skill:Library Skill§] ',
+      )
+    })
+
     it('should keep editor focus when selecting slash menu items with a pointer', async () => {
       const user = userEvent.setup()
       const { store } = renderAgentPromptEditor('Review these tenders /')
@@ -1214,12 +1233,17 @@ describe('AgentPromptEditor', () => {
       try {
         renderAgentPromptEditor('Review /')
 
-        await openSlashMenuFromEditor()
+        const textbox = screen.getByRole('textbox')
+        textbox.focus()
+        expect(textbox).toHaveFocus()
+
+        await openSlashMenuFromEditor(textbox)
         expect(
           screen.getByRole('button', { name: /agentDetail\.configure\.skills\.label/i }),
         ).toBeInTheDocument()
 
-        fireEvent.focusIn(outsideButton)
+        outsideButton.focus()
+        expect(outsideButton).toHaveFocus()
 
         await waitFor(() => {
           expect(
@@ -1244,5 +1268,61 @@ describe('AgentPromptEditor', () => {
         ).toBeInTheDocument()
       })
     })
+  })
+})
+
+describe('AgentTemplatePromptEditor', () => {
+  it('shows provider and marketplace icons for configured tool references', () => {
+    const store = createStore()
+    seedRegisteredConsoleStateFixture(store)
+    store.set(agentComposerDraftAtom, {
+      ...defaultAgentSoulConfigFormState,
+      prompt:
+        'Use [§tool:duckduckgo/ddg_search:DuckDuckGo Search§] and [§tool:langgenius/google/google/google_search:Google Search§]',
+      tools: [
+        duckDuckGoProviderTool,
+        {
+          ...duckDuckGoProviderTool,
+          id: 'langgenius/google/google',
+          name: 'google',
+          iconClassName: 'i-custom-public-other-default-tool-icon',
+          providerType: 'builtin',
+          actions: [{ ...duckDuckGoSearchAction, toolName: 'google_search' }],
+        },
+      ],
+    })
+
+    render(
+      <JotaiProvider store={store}>
+        <AgentTemplatePromptEditor />
+      </JotaiProvider>,
+    )
+
+    const promptEditorProps = mockPromptEditor.mock.calls.at(-1)?.[0] as PromptEditorProps
+    const renderIcon = promptEditorProps.rosterReferenceBlock?.renderIcon
+    expect(promptEditorProps.editable).toBe(false)
+
+    const { container } = render(
+      <>
+        {renderIcon?.({ kind: 'tool', id: 'duckduckgo/ddg_search', label: 'DuckDuckGo Search' })}
+        {renderIcon?.({
+          kind: 'tool',
+          id: 'langgenius/google/google/google_search',
+          label: 'Google Search',
+        })}
+      </>,
+    )
+
+    const iconBackgrounds = Array.from(container.querySelectorAll<HTMLElement>('[style]')).map(
+      (element) => element.style.backgroundImage,
+    )
+    expect(iconBackgrounds).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining(
+          `${API_PREFIX}/workspaces/current/plugin/icon?tenant_id=workspace-123&filename=duckduckgo.svg`,
+        ),
+        expect.stringContaining(`${MARKETPLACE_API_PREFIX}/plugins/langgenius/google/icon`),
+      ]),
+    )
   })
 })

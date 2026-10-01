@@ -64,7 +64,6 @@ import copy from 'copy-to-clipboard'
 import { parseAsBoolean, useQueryState } from 'nuqs'
 import { useCallback, useEffect, useEffectEvent, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import SidebarLeftArrowIcon from '@/app/components/base/icons/src/vender/SidebarLeftArrowIcon'
 import { getKeyboardResizeValue } from '@/app/components/base/resize-handle/keyboard'
 import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
 import { GOTO_ANYTHING_HOTKEY } from '@/app/components/goto-anything/hotkeys'
@@ -178,9 +177,9 @@ export function FileTree({
   selectedPath: string | undefined
   skillId: string
 }) {
-  const { t } = useTranslation('skill')
-  const { t: tApp } = useTranslation('app')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['skill', 'common'])
+  const { t: tApp } = useTranslation(['app'])
+  const { t: tCommon } = useTranslation(['common', 'navigation'])
   const queryClient = useQueryClient()
   const sidebarRef = useRef<HTMLElement>(null)
   const filesTitleId = useId()
@@ -223,13 +222,9 @@ export function FileTree({
     refetchOnMount: 'always',
   })
   const referenceCount = referencesQuery.data?.data?.length ?? detail?.reference_count ?? 0
-  const referenceCountLabel = t(
-    ($) =>
-      referenceCount === 1
-        ? $['skillManagement.detail.referencedBy_one']
-        : $['skillManagement.detail.referencedBy_other'],
-    { count: referenceCount },
-  )
+  const referenceCountLabel = t(($) => $['skillManagement.detail.referencedBy'], {
+    count: referenceCount,
+  })
   const activeUploadXhrRef = useRef<XMLHttpRequest | undefined>(undefined)
   const cancelUploadRef = useRef(false)
   const stopSidebarResizeRef = useRef<() => void>(() => undefined)
@@ -966,57 +961,53 @@ export function FileTree({
     !readonly && !!shortcutTargetPath && !fileMutation.isPending && !inlineAction
   const isInSidebar = (target: EventTarget | null) =>
     target instanceof Node && !!sidebarRef.current?.contains(target)
-  const handleOpenMenuHotkey = useEffectEvent((event: globalThis.KeyboardEvent) => {
+  const handleOpenMenuPaste = (event: ReactKeyboardEvent<HTMLElement>) => {
     if (readonly || fileMutation.isPending || inlineAction) return
-    if (!(event.target instanceof Element) || !event.target.closest('[role="menu"]')) return
-
-    if (
-      shortcutTargetPath &&
-      (matchesKeyboardEvent(event, 'Meta+X') || matchesKeyboardEvent(event, 'Control+X'))
-    ) {
-      event.preventDefault()
-      event.stopPropagation()
-      handleCut(shortcutTargetPath)
+    if (event.defaultPrevented) return
+    if (!(event.target instanceof Element) || !event.target.closest('[data-skill-file-menu]'))
       return
-    }
+    if (isEditableKeyboardTarget(event.target)) return
 
-    if (
-      shortcutTargetPath &&
-      (matchesKeyboardEvent(event, 'Meta+C') || matchesKeyboardEvent(event, 'Control+C'))
-    ) {
+    if (clipboard && matchesKeyboardEvent(event.nativeEvent, skillFileHotkeys.paste.command)) {
       event.preventDefault()
       event.stopPropagation()
-      handleCopy(shortcutTargetPath)
-      return
-    }
-
-    if (
-      clipboard &&
-      (matchesKeyboardEvent(event, 'Meta+V') || matchesKeyboardEvent(event, 'Control+V'))
-    ) {
-      event.preventDefault()
-      event.stopPropagation()
+      if (event.repeat) return
       handlePaste(getPasteTargetDirectory())
     }
-  })
+  }
 
-  useEffect(() => {
-    document.addEventListener('keydown', handleOpenMenuHotkey, true)
-    return () => document.removeEventListener('keydown', handleOpenMenuHotkey, true)
-  }, [])
+  const handleRootMenuKeyDown = (event: ReactKeyboardEvent<HTMLElement>) => {
+    if (!fileShortcutEnabled || !shortcutTargetPath) return
+    if (event.defaultPrevented) return
+    if (!(event.target instanceof Node) || !event.currentTarget.contains(event.target)) return
+    if (isEditableKeyboardTarget(event.target)) return
+
+    const action = matchesKeyboardEvent(event.nativeEvent, skillFileHotkeys.copy.command)
+      ? handleCopy
+      : matchesKeyboardEvent(event.nativeEvent, skillFileHotkeys.cut.command)
+        ? handleCut
+        : undefined
+    if (!action) return
+
+    event.preventDefault()
+    event.stopPropagation()
+    if (event.repeat) return
+    action(shortcutTargetPath)
+  }
 
   useHotkey(
     skillFileHotkeys.cut.command,
     (event) => {
-      if (!shortcutTargetPath) return
-      if (!isInSidebar(event.target)) return
+      if (!shortcutTargetPath || event.defaultPrevented) return
 
       event.preventDefault()
       event.stopPropagation()
+      if (event.repeat) return
       handleCut(shortcutTargetPath)
     },
     {
       enabled: fileShortcutEnabled,
+      target: sidebarRef,
       ignoreInputs: true,
       preventDefault: false,
       stopPropagation: false,
@@ -1025,15 +1016,16 @@ export function FileTree({
   useHotkey(
     skillFileHotkeys.copy.command,
     (event) => {
-      if (!shortcutTargetPath) return
-      if (!isInSidebar(event.target)) return
+      if (!shortcutTargetPath || event.defaultPrevented) return
 
       event.preventDefault()
       event.stopPropagation()
+      if (event.repeat) return
       handleCopy(shortcutTargetPath)
     },
     {
       enabled: fileShortcutEnabled,
+      target: sidebarRef,
       ignoreInputs: true,
       preventDefault: false,
       stopPropagation: false,
@@ -1143,7 +1135,10 @@ export function FileTree({
                   className="mt-2 flex size-8 cursor-pointer items-center justify-center rounded-[10px] border-0 bg-transparent text-text-tertiary shadow-none outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
                   onClick={() => onCollapsedChange(false)}
                 >
-                  <SidebarLeftArrowIcon aria-hidden className="size-4" />
+                  <span
+                    aria-hidden
+                    className="i-custom-vender-line-arrows-sidebar-left-arrow size-4"
+                  />
                 </button>
               }
             />
@@ -1165,9 +1160,11 @@ export function FileTree({
 
   return (
     <>
+      {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- The sidebar delegates paste shortcuts from its portalled menus after child handlers. */}
       <section
         aria-labelledby={filesTitleId}
         ref={sidebarRef}
+        onKeyDown={handleOpenMenuPaste}
         data-testid="skill-detail-sidebar-shell"
         className={cn(
           'relative flex h-full shrink-0 bg-background-body p-1',
@@ -1216,7 +1213,10 @@ export function FileTree({
             data-testid="skill-detail-sidebar-header"
             className="flex h-12 shrink-0 items-center py-2 pr-2 pl-1"
           >
-            <Breadcrumb aria-label={tCommon(($) => $['mainNav.skills'])} className="flex-1">
+            <Breadcrumb
+              aria-label={tCommon(($) => $['mainNav.skills'], { ns: 'navigation' })}
+              className="flex-1"
+            >
               <BreadcrumbList className="gap-px">
                 <BreadcrumbItem className="shrink-0">
                   <BreadcrumbLink
@@ -1262,8 +1262,8 @@ export function FileTree({
               <TooltipContent placement="bottom" className="flex items-center gap-1">
                 <span className="px-0.5">{tApp(($) => $['gotoAnything.quickAction'])}</span>
                 <KbdGroup>
-                  {GOTO_ANYTHING_HOTKEY.split('+').map((key) => (
-                    <Kbd key={key}>{formatForDisplay(key)}</Kbd>
+                  {formatForDisplay(GOTO_ANYTHING_HOTKEY, { parts: true }).map((key) => (
+                    <Kbd key={key}>{key}</Kbd>
                   ))}
                 </KbdGroup>
               </TooltipContent>
@@ -1284,7 +1284,10 @@ export function FileTree({
                       }
                     }}
                   >
-                    <SidebarLeftArrowIcon aria-hidden className="size-4" />
+                    <span
+                      aria-hidden
+                      className="i-custom-vender-line-arrows-sidebar-left-arrow size-4"
+                    />
                   </button>
                 }
               />
@@ -1346,13 +1349,7 @@ export function FileTree({
               id={filesTitleId}
               className="min-w-0 flex-1 system-xs-medium-uppercase text-text-tertiary"
             >
-              {t(
-                ($) =>
-                  fileCount === 1
-                    ? $['skillManagement.detail.fileCount_one']
-                    : $['skillManagement.detail.fileCount_other'],
-                { count: fileCount },
-              )}
+              {t(($) => $['skillManagement.detail.fileCount'], { count: fileCount })}
             </h2>
             {!readonly && (
               <DropdownMenu modal={false}>
@@ -1363,7 +1360,12 @@ export function FileTree({
                 >
                   <span aria-hidden className="i-ri-add-line size-4" />
                 </DropdownMenuTrigger>
-                <DropdownMenuContent placement="bottom-end" className={skillFileMenuPopupClassName}>
+                <DropdownMenuContent
+                  data-skill-file-menu
+                  onKeyDown={handleRootMenuKeyDown}
+                  placement="bottom-end"
+                  className={skillFileMenuPopupClassName}
+                >
                   <RootFileActionMenuItems
                     kind="dropdown"
                     onCreateFile={() =>
@@ -1507,7 +1509,11 @@ export function FileTree({
                       </ul>
                     )}
                   </ContextMenuTrigger>
-                  <ContextMenuContent className={skillFileMenuPopupClassName}>
+                  <ContextMenuContent
+                    data-skill-file-menu
+                    className={skillFileMenuPopupClassName}
+                    onKeyDown={handleRootMenuKeyDown}
+                  >
                     <RootFileActionMenuItems
                       kind="context"
                       onCreateFile={() =>

@@ -31,7 +31,7 @@ export function Uploader({
   importType = 'dsl',
   disabled = false,
 }: Props) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common', 'datasetCreation'])
   const { accept, displayName: formatName } = importFormats[importType]
   const isPackage = importType === 'app' && file?.name.toLowerCase().endsWith('.ifpkg')
   const displayName = isPackage ? t(($) => $.appPackage, { ns: 'app' }) : formatName

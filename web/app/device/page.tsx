@@ -32,7 +32,7 @@ type View =
   | { kind: 'error_sso'; code: string; userCode: string }
 
 export default function DevicePage() {
-  const { t } = useTranslation('deviceFlow')
+  const { t } = useTranslation(['deviceFlow'])
   const searchParams = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()

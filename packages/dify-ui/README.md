@@ -44,10 +44,12 @@ Import `styles.css` once from the consumer's root stylesheet or entrypoint.
 | Layout           | `./scroll-area`, `./separator`                                                                                                                                                       |
 | Media            | `./avatar`                                                                                                                                                                           |
 | Navigation       | `./breadcrumb`, `./file-tree`, `./pagination`, `./tabs`                                                                                                                              |
-| Overlay and menu | `./alert-dialog`, `./context-menu`, `./dialog`, `./drawer`, `./dropdown-menu`, `./popover`, `./preview-card`, `./tooltip`                                                            |
-| Search and pick  | `./autocomplete`, `./combobox`, `./select`                                                                                                                                           |
+| Overlay and menu | `./alert-dialog`, `./context-menu`, `./dialog`, `./drawer`, `./dropdown-menu`, `./infotip`, `./popover`, `./preview-card`, `./tooltip`                                               |
+| Search and pick  | `./autocomplete`, `./combobox`, `./select`, `./date-picker`, `./time-picker`, `./date-time-picker`                                                                                   |
 
 Utilities:
+
+- `./direction-provider` exports Base UI `DirectionProvider` and `useDirection`. Set HTML `dir` as well for CSS layout; pickers propagate their resolved direction to their trigger and portaled content.
 
 - `./cn` re-exports `cn` from the `cn` package through Dify UI's public subpath.
 - `./styles.css` provides design tokens, theme variables, and shared utilities.
@@ -60,11 +62,13 @@ Upstream behavior remains owned by the [Base UI documentation].
 
 ### Component guides
 
-| Guide         | Dify-owned contract                                                                         |
-| ------------- | ------------------------------------------------------------------------------------------- |
-| [Button]      | Action semantics, submit and link choices, loading versus disabled, and content spacing.    |
-| [Icon Button] | Accessible names, decorative glyphs, appearance ownership, and primitive composition.       |
-| [Input Group] | Compound input anatomy, shared-surface ownership, DOM order, focus, and interactive addons. |
+| Guide                   | Dify-owned contract                                                                         |
+| ----------------------- | ------------------------------------------------------------------------------------------- |
+| [Date and time pickers] | Value semantics, composition, draft commits, localization and native forms.                 |
+| [Button]                | Action semantics, submit and link choices, loading versus disabled, and content spacing.    |
+| [Icon Button]           | Accessible names, decorative glyphs, appearance ownership, and primitive composition.       |
+| [Infotip]               | Explanation triggers, concise dialog names, and hint surface ownership.                     |
+| [Input Group]           | Compound input anatomy, shared-surface ownership, DOM order, focus, and interactive addons. |
 
 ### Cross-component guides
 
@@ -87,8 +91,10 @@ For a known contract, go directly to its guide above.
 [Base UI documentation]: https://base-ui.com/llms.txt
 [Base UI]: https://base-ui.com/react
 [Button]: ./src/button/README.md
+[Date and time pickers]: ./src/date-time/README.md
 [Forms]: ./docs/forms.md
 [Icon Button]: ./src/icon-button/README.md
+[Infotip]: ./src/infotip/README.md
 [Input Group]: ./src/input-group/README.md
 [Overlays]: ./docs/overlays.md
 [Public API authoring]: ./docs/authoring.md

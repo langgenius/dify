@@ -20,7 +20,7 @@ export function EnvironmentServiceApiCard({
   canManageAccessPoint,
   highlighted,
 }: EnvironmentServiceApiCardProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const appMode = useAppStore((state) => state.appDetail?.mode)
   const params = {
     app_id: appId,

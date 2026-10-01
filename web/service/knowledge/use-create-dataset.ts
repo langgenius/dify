@@ -78,7 +78,7 @@ type GetFileIndexingEstimateParamsOptionBase = {
 }
 
 type GetFileIndexingEstimateParamsOptionFile = GetFileIndexingEstimateParamsOptionBase & {
-  dataSourceType: DataSourceType.FILE
+  dataSourceType: typeof DataSourceType.FILE
   files: CustomFile[]
 }
 
@@ -121,7 +121,7 @@ export const useFetchFileIndexingEstimateForFile = (
 }
 
 type GetFileIndexingEstimateParamsOptionNotion = GetFileIndexingEstimateParamsOptionBase & {
-  dataSourceType: DataSourceType.NOTION
+  dataSourceType: typeof DataSourceType.NOTION
   notionPages: NotionPage[]
   credential_id: string
 }
@@ -162,7 +162,7 @@ export const useFetchFileIndexingEstimateForNotion = (
 }
 
 type GetFileIndexingEstimateParamsOptionWeb = GetFileIndexingEstimateParamsOptionBase & {
-  dataSourceType: DataSourceType.WEB
+  dataSourceType: typeof DataSourceType.WEB
   websitePages: CrawlResultItem[]
   crawlOptions?: CrawlOptions
   websiteCrawlProvider: DataSourceProvider

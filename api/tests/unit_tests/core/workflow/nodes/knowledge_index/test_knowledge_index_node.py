@@ -120,35 +120,6 @@ class TestKnowledgeIndexNode:
     Test suite for KnowledgeIndexNode.
     """
 
-    def test_node_initialization(
-        self, mock_graph_init_params, mock_graph_runtime_state, mock_index_processor, mock_summary_index_service
-    ):
-        """Test KnowledgeIndexNode initialization."""
-        # Arrange
-        node_id = str(uuid.uuid4())
-        config = {
-            "id": node_id,
-            "data": {
-                "title": "Knowledge Index",
-                "type": "knowledge-index",
-                "chunk_structure": "general_structure",
-                "index_chunk_variable_selector": ["start", "chunks"],
-            },
-        }
-
-        # Act
-        node = _build_node(
-            node_id=node_id,
-            node_data=config["data"],
-            graph_init_params=mock_graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
-        )
-
-        # Assert
-        assert node.id == node_id
-        assert node.index_processor == mock_index_processor
-        assert node.summary_index_service == mock_summary_index_service
-
     def test_run_without_dataset_id(
         self,
         mock_graph_init_params,
@@ -585,14 +556,6 @@ class TestKnowledgeIndexNode:
         assert mock_index_processor.index_and_clean.called
         assert commits == ["commit"]
         assert result == {"status": "indexed"}
-
-    def test_version_method(self):
-        """Test version class method."""
-        # Act
-        version = KnowledgeIndexNode.version()
-
-        # Assert
-        assert version == "1"
 
     def test_get_streaming_template(
         self,

@@ -2,19 +2,11 @@
 
 ## Setup and Run
 
-> [!IMPORTANT]
->
-> In the v1.3.0 release, `poetry` has been replaced with
-> [`uv`](https://docs.astral.sh/uv/) as the package manager
-> for Dify API backend service.
-
-`uv` and `pnpm` are required to run the setup and development commands below.
+[`uv`](https://docs.astral.sh/uv/), Docker Compose, and the Node.js and pnpm versions pinned in the root `package.json` are required. Run the commands below from the repository root, with each long-running service in its own terminal.
 
 ### Using scripts (recommended)
 
-The scripts resolve paths relative to their location, so you can run them from anywhere.
-
-1. Run setup (copies env files and installs dependencies).
+1. Run setup for a new checkout (copies env files and installs dependencies). This overwrites `api/.env`, `web/.env.local`, and `docker/middleware.env`; preserve existing configuration before rerunning it.
 
    ```bash
    ./dev/setup
@@ -44,7 +36,7 @@ The scripts resolve paths relative to their location, so you can run them from a
 
 1. Set up your application by visiting `http://localhost:3000`.
 
-1. Start the worker service (async and scheduler tasks, runs from `api`).
+1. Start the worker service (executes queued async tasks).
 
    ```bash
    ./dev/start-worker
@@ -62,51 +54,35 @@ The scripts resolve paths relative to their location, so you can run them from a
 >
 > When the frontend and backend run on different subdomains, set COOKIE_DOMAIN to the site’s top-level domain (e.g., `example.com`). The frontend and backend must be under the same top-level domain in order to share authentication cookies.
 
-- Generate a `SECRET_KEY` in the `.env` file.
-
-  bash for Linux
-
-  ```bash
-  sed -i "/^SECRET_KEY=/c\\SECRET_KEY=$(openssl rand -base64 42)" .env
-  ```
-
-  bash for Mac
-
-  ```bash
-  secret_key=$(openssl rand -base64 42)
-  sed -i '' "/^SECRET_KEY=/c\\
-  SECRET_KEY=${secret_key}" .env
-  ```
+Leave `SECRET_KEY` empty to let Dify generate a persistent key in the storage directory. To manage it explicitly, generate a value with `openssl rand -base64 42` and set `SECRET_KEY` in `api/.env`.
 
 ## Testing
 
-1. Install dependencies for both the backend and the test environment
+Run from the repository root:
 
-   ```bash
-   cd api
-   uv sync --group dev
-   ```
-
-1. Run the tests locally with mocked system environment variables in `tool.pytest_env` section in `pyproject.toml`, more can check [AGENTS.md](../AGENTS.md)
-
-   Continue in the `api` directory from the previous step.
-
-   ```bash
-   uv run pytest                           # Run all tests
-   uv run pytest tests/unit_tests/         # Unit tests only
-   uv run pytest tests/integration_tests/  # Integration tests
-
-   # Code quality
-   ../dev/reformat              # Run all formatters and linters
-   uv run ruff check --fix ./   # Fix linting issues
-   uv run ruff format ./        # Format code
-   uv run pyrefly check         # Type checking
-   ```
-
-## Generate TS stub
-
-```
-uv run dev/generate_swagger_specs.py --output-dir openapi
+```bash
+uv sync --project api --group dev
+make test
+make test TARGET_TESTS=./api/tests/unit_tests/<path>
+make lint
+make type-check
 ```
 
-use https://jsontotable.org/openapi-to-typescript to convert to typescript
+`make test` includes provider unit tests and runs controller tests separately. Integration suites are CI-only and are not expected to run locally. Test environment defaults live in `api/pyproject.toml` under `tool.pytest_env`; see the backend [agent guide](AGENTS.md) for package conventions.
+
+## API contracts
+
+The [API schema guide](controllers/API_SCHEMA_GUIDE.md) owns schema changes and verification. Generate the OpenAPI specifications and TypeScript/Zod contracts through the workspace script:
+
+```bash
+pnpm -C packages/contracts gen-api-contract
+```
+
+Refresh the checked-in Markdown reference with:
+
+```bash
+uv run --project api python api/dev/generate_swagger_markdown_docs.py \
+  --swagger-dir packages/contracts/openapi --markdown-dir api/openapi/markdown --keep-swagger-json
+```
+
+Update the backend schema owner and regenerate contracts instead of converting types manually or editing generated files.

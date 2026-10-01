@@ -15,7 +15,7 @@ import { useTranslation } from 'react-i18next'
 import { PricingContent } from './content'
 
 export function PricingDialogContent() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
     <>
@@ -35,7 +35,7 @@ export function PricingDialogContent() {
         />
         <ScrollArea className="h-full w-full overflow-hidden">
           <ScrollAreaViewport tabIndex={-1} className="overscroll-contain">
-            <ScrollAreaContent className="grid min-h-full min-w-300">
+            <ScrollAreaContent className="grid min-h-full" style={{ minWidth: 0 }}>
               <PricingContent />
             </ScrollAreaContent>
           </ScrollAreaViewport>

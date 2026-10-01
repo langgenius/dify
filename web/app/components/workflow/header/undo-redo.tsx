@@ -9,7 +9,7 @@ import TipPopup from '../operator/tip-popup'
 
 type UndoRedoProps = { handleUndo: () => void; handleRedo: () => void }
 function UndoRedo({ handleUndo, handleRedo }: UndoRedoProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { store } = useWorkflowHistoryStore()
   const [buttonsDisabled, setButtonsDisabled] = useState({ undo: true, redo: true })
 

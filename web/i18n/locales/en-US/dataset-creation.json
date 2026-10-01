@@ -23,6 +23,7 @@
   "stepOne.uploader.button": "Drag and drop file or folder, or",
   "stepOne.uploader.buttonSingleFile": "Drag and drop file, or",
   "stepOne.uploader.change": "Change",
+  "stepOne.uploader.completed": "Upload complete",
   "stepOne.uploader.failed": "Upload failed",
   "stepOne.uploader.tip": "Supports {{supportTypes}}. Max {{batchCount}} in a batch and {{size}} MB each.",
   "stepOne.uploader.tipWithTotalLimit": "Supports {{supportTypes}}. Max {{batchCount}} in a batch and {{size}} MB each. Max total {{totalCount}} files.",

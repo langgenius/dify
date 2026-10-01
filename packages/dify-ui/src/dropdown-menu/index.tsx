@@ -232,7 +232,10 @@ function DropdownMenuSubContent({
         sideOffset={sideOffset}
         alignOffset={alignOffset}
       >
-        <DropdownMenuPopup className={cn(menuPopupSurfaceClassName, className)} {...props}>
+        <DropdownMenuPopup
+          className={(state) => cn(menuPopupSurfaceClassName, resolveClassName(className, state))}
+          {...props}
+        >
           {children}
         </DropdownMenuPopup>
       </DropdownMenuPositioner>

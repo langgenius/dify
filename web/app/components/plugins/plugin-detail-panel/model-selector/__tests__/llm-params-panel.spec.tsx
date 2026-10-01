@@ -281,7 +281,7 @@ describe('LLMParamsPanel', () => {
 
       // Assert
       expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
-      expect(screen.getByText('common.modelProvider.parameters')).toBeInTheDocument()
+      expect(screen.getByText('modelProvider.modelProvider.parameters')).toBeInTheDocument()
     })
 
     it('should render parameters header', () => {
@@ -293,7 +293,7 @@ describe('LLMParamsPanel', () => {
       render(<LLMParamsPanel {...props} />)
 
       // Assert
-      expect(screen.getByText('common.modelProvider.parameters')).toBeInTheDocument()
+      expect(screen.getByText('modelProvider.modelProvider.parameters')).toBeInTheDocument()
     })
 
     it('should render PresetsParameter for openai provider', () => {

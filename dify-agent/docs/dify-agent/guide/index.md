@@ -81,6 +81,43 @@ in [E2B runtime metering](runtime-metering.md).
 | `DIFY_AGENT_OUTBOUND_HTTP_MAX_CONNECTIONS` | `100` | Maximum total shared outbound HTTP connections. |
 | `DIFY_AGENT_OUTBOUND_HTTP_MAX_KEEPALIVE_CONNECTIONS` | `20` | Maximum idle shared outbound HTTP connections. |
 | `DIFY_AGENT_OUTBOUND_HTTP_KEEPALIVE_EXPIRY` | `30` | Idle keep-alive expiry in seconds. |
+| `DIFY_AGENT_TRAJECTORY_ENABLED` | `false` | Opt-in switch for the separate Agent trajectory export pipeline. |
+| `DIFY_AGENT_TRAJECTORY_OTLP_TRACES_ENDPOINT` | empty | Full HTTP(S) OTLP traces endpoint required when trajectory export is enabled. |
+| `DIFY_AGENT_TRAJECTORY_OTLP_HEADERS` | `{}` | JSON object of request headers sent with Agent OTLP trace exports. |
+| `DIFY_AGENT_TRAJECTORY_SERVICE_NAME` | `dify-agent-trajectory` | Resource service name attached to Agent trajectory spans. |
+| `DIFY_AGENT_TRAJECTORY_INCLUDE_CONTENT` | `false` | Include message and tool content in Agent trajectory spans. |
+| `DIFY_AGENT_TRAJECTORY_TRACE_CONTEXT_MODE` | `isolated` | `isolated` starts independent platform/Agent traces; `shared` preserves cross-instance parent context. Requires process restart to change. |
+| `DIFY_AGENT_TRAJECTORY_MAX_QUEUE_SIZE` | `2048` | Maximum number of spans queued for Agent trace export; must be positive. |
+| `DIFY_AGENT_TRAJECTORY_MAX_EXPORT_BATCH_SIZE` | `512` | Maximum spans per export batch; must be positive and no greater than the queue size. |
+| `DIFY_AGENT_TRAJECTORY_SCHEDULE_DELAY_MS` | `5000` | Delay between scheduled Agent span exports, in milliseconds; must be positive. |
+| `DIFY_AGENT_TRAJECTORY_EXPORT_TIMEOUT_MS` | `5000` | Batch processor export timeout setting, in milliseconds; must be positive. Does not change the OTLP HTTP exporter request timeout. |
+
+Platform observability uses the process-level Logfire instance and standard
+`OTEL_*` / `LOGFIRE_*` configuration. Agent observability uses a separate local
+Logfire instance and is disabled by default. Set `DIFY_AGENT_TRAJECTORY_ENABLED=true`
+and a full `DIFY_AGENT_TRAJECTORY_OTLP_TRACES_ENDPOINT` to opt in;
+`DIFY_AGENT_TRAJECTORY_OTLP_HEADERS` is a JSON object of request headers. Agent
+traces do not inherit platform endpoints, credentials, sampling, or console
+export. Message/tool content requires the separate
+`DIFY_AGENT_TRAJECTORY_INCLUDE_CONTENT` opt-in. Platform FastAPI parameter/error
+payloads, HTTPX bodies/headers and Redis statements are not captured by these
+instrumentations. The Agent instance is created at service startup and shut down
+after active runs finish. These are deployment-level settings, not yet
+per-tenant authorization or routing; a shared backend does not provide storage
+isolation.
+
+With `DIFY_AGENT_TRAJECTORY_TRACE_CONTEXT_MODE=isolated` (the default), Agent
+run spans start independent traces instead of inheriting platform request
+parents. Platform HTTPX/Redis instrumentation also detaches local Agent
+parents while preserving platform-only and incoming distributed trace
+relationships. In `shared` mode both pipelines retain cross-instance parent
+context and the Agent sampler respects the parent sampling decision. Use
+`shared` only when both pipelines export to the same queryable backend space;
+otherwise missing-root spans can recur. Service names do not select the mode.
+The two SDK instances, exporters, enable switch, and content opt-in remain
+separate. The mode is fixed at process initialization and requires a restart
+to change. No extra shared root span is added; incomplete traces may still
+appear temporarily while a run or export is in progress.
 
 Example `.env`:
 

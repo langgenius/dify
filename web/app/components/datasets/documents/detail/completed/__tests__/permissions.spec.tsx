@@ -90,7 +90,7 @@ vi.mock('@/app/components/datasets/common/image-uploader/image-uploader-in-chunk
   default: () => null,
 }))
 
-function renderChunks(canEdit: boolean, docForm = ChunkingMode.text) {
+function renderChunks(canEdit: boolean, docForm: ChunkingMode = ChunkingMode.text) {
   return render(
     // oxlint-disable-next-line eslint-react/no-context-provider -- use-context-selector contexts are not React 19 context components.
     <DocumentContext.Provider

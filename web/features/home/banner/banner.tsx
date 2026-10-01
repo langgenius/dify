@@ -77,7 +77,7 @@ function BannerCarouselContent({
   onRotationControlPointerDown,
   onApiChange,
 }: BannerCarouselContentProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'explore'])
   const { api, selectedIndex } = useCarousel()
   const trackedBannerKeysRef = useRefWithInit(() => new Set<string>())
   const nextIndex = (selectedIndex + 1) % banners.length
@@ -206,7 +206,7 @@ type BannerProps = {
 }
 
 export function Banner({ banners }: BannerProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['explore'])
   const locale = useLocale()
   const { data: userProfile } = useSuspenseQuery({
     ...userProfileQueryOptions(),

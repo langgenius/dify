@@ -14,7 +14,7 @@ import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 
 const UpgradeCard: FC = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['billing'])
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,

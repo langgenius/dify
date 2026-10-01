@@ -30,7 +30,7 @@ function AddAccessSubjectPopoverContent({
   updatingAccountId,
   onAddAccessSubject,
 }: AddAccessSubjectPopoverContentProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'permission'])
   const [searchValue, setSearchValue] = useState('')
   const {
     data: membersData,
@@ -170,7 +170,7 @@ function AddAccessSubjectPopover({
   updatingAccountId,
   onAddAccessSubject,
 }: AddAccessSubjectPopoverProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [open, setOpen] = useState(false)
   const isOpen = !disabled && open
 

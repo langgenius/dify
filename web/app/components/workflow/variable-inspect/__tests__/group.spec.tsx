@@ -71,7 +71,7 @@ describe('VariableInspect Group', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /API_KEY/ }))
 
-    expect(screen.getByText('workflow.debug.variableInspect.envNode'))!.toBeInTheDocument()
+    expect(screen.getByText('workflowDebug.debug.variableInspect.envNode'))!.toBeInTheDocument()
     expect(handleSelect).toHaveBeenCalledWith({
       nodeId: VarInInspectType.environment,
       nodeType: VarInInspectType.environment,
@@ -120,9 +120,11 @@ describe('VariableInspect Group', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'workflow.debug.variableInspect.view' }))
     fireEvent.click(
-      screen.getByRole('button', { name: 'workflow.debug.variableInspect.clearNode' }),
+      screen.getByRole('button', { name: 'workflowDebug.debug.variableInspect.view' }),
+    )
+    fireEvent.click(
+      screen.getByRole('button', { name: 'workflowDebug.debug.variableInspect.clearNode' }),
     )
 
     expect(handleView).toHaveBeenCalledTimes(1)

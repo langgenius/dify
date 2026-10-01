@@ -22,8 +22,8 @@ export function CreateKnowledgeExitDialog({
   onConfirm: () => void
   reason: CreateKnowledgeExitReason | null
 }) {
-  const { t } = useTranslation('dataset')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['dataset'])
+  const { t: tCommon } = useTranslation(['common'])
   const isPartial = reason === 'partial'
 
   return (

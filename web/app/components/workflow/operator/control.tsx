@@ -18,7 +18,7 @@ const pressedModeClassName =
   'data-pressed:bg-state-accent-active data-pressed:text-text-accent data-pressed:hover:bg-state-base-hover data-pressed:hover:text-text-secondary data-disabled:data-pressed:text-text-disabled data-disabled:data-pressed:hover:bg-transparent data-disabled:data-pressed:hover:text-text-disabled'
 
 const Control = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const controlMode = useStore((s) => s.controlMode)
   const {
     handleModePointer,

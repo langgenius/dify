@@ -70,20 +70,11 @@ function AlertDialogActions({ className, ...props }: AlertDialogActionsProps) {
   )
 }
 
-type AlertDialogCancelButtonProps = Omit<ButtonProps, 'children'> & {
-  children: React.ReactNode
-  closeProps?: Omit<BaseAlertDialog.Close.Props, 'children' | 'render'>
-}
+type AlertDialogCancelButtonProps = ButtonProps
 
-function AlertDialogCancelButton({
-  children,
-  closeProps,
-  ...buttonProps
-}: AlertDialogCancelButtonProps) {
+function AlertDialogCancelButton({ children, ...buttonProps }: AlertDialogCancelButtonProps) {
   return (
-    <BaseAlertDialog.Close {...closeProps} render={<Button {...buttonProps} />}>
-      {children}
-    </BaseAlertDialog.Close>
+    <BaseAlertDialog.Close render={<Button {...buttonProps} />}>{children}</BaseAlertDialog.Close>
   )
 }
 

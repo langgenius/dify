@@ -25,8 +25,9 @@ import {
   useQueryClient,
 } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
+import { noop } from 'es-toolkit/function'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
@@ -48,7 +49,7 @@ import { useRegisterAgentOrchestrateAddAction } from '../add-actions-context'
 import { ConfigureSectionEmpty } from '../common/empty'
 import { ConfigureSection } from '../common/section'
 import { AgentConfigureTipContent } from '../common/tip-content'
-import { useAgentConfigApiContext } from '../config-context'
+import { useAgentConfigApiContext, useAgentConfigSkills } from '../config-context'
 import { useAgentOrchestrateReadOnly } from '../read-only-context'
 import { AgentSkillItem } from './item'
 import { AgentSkillUploadDialog } from './upload-dialog'
@@ -125,7 +126,7 @@ function WorkspaceSkillRow({
   selected: boolean
   skill: SkillResponse
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const cannotAdd = unavailable || isAdded || isPending
 
   return (
@@ -163,7 +164,7 @@ function WorkspaceSkillRow({
 }
 
 function WorkspaceSkillPreview({ skill }: { skill?: SkillResponse }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
 
   if (!skill) {
     return (
@@ -213,7 +214,7 @@ function WorkspaceSkillSelector({
   isBindingPending: boolean
   onSelect: (skill: SkillResponse) => void
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const [keyword, setKeyword] = useState('')
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([])
   const [previewSkillId, setPreviewSkillId] = useState<string | undefined>(undefined)
@@ -353,7 +354,7 @@ function WorkspaceAgentSkillItem({
   skill: AgentSkillBindingItemResponse
   onRemove: (skillId: string) => void
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const readOnly = useAgentOrchestrateReadOnly()
   const [isActionsOpen, setIsActionsOpen] = useState(false)
   const [isRemoveHighlighted, setIsRemoveHighlighted] = useState(false)
@@ -454,10 +455,10 @@ function WorkspaceAgentSkillItem({
 }
 
 export function AgentSkills() {
-  const { t } = useTranslation('agentV2')
-  const { t: tSkill } = useTranslation('skill')
-  const { t: tCommon } = useTranslation('common')
-  const skillsTip = t(($) => $['agentDetail.configure.skills.tip'])
+  const { t } = useTranslation(['agentV2'])
+  const { t: tSkill } = useTranslation(['skill'])
+  const { t: tCommon } = useTranslation(['common'])
+
   const skillsListId = 'agent-configure-skills-list'
   const queryClient = useQueryClient()
   const readOnly = useAgentOrchestrateReadOnly()
@@ -714,9 +715,7 @@ export function AgentSkills() {
         buildDraftChangeSection="skills"
         panelId={skillsListId}
         tip={<AgentConfigureTipContent type="skills" />}
-        tipAriaLabel={skillsTip}
-        rootClassName="border-b border-divider-subtle pt-4"
-        panelContentClassName="flex flex-col gap-1 pb-4"
+        panelContentClassName="flex flex-col gap-1"
         actions={
           !readOnly && (
             <Popover open={addMenuOpen} onOpenChange={handleAddMenuOpenChange}>
@@ -799,6 +798,7 @@ export function AgentSkills() {
               <AgentSkillItem
                 key={skill.id}
                 apiContext={apiContext}
+                canDownload
                 canRemove={!readOnly}
                 skill={skill}
                 onRemove={handleRemoveSkill}
@@ -814,5 +814,40 @@ export function AgentSkills() {
         onUploaded={handleUploaded}
       />
     </>
+  )
+}
+
+export function AgentTemplateSkills() {
+  const { t } = useTranslation(['agentV2'])
+  const labelId = useId()
+  const { apiContext, skills } = useAgentConfigSkills()
+
+  return (
+    <ConfigureSection
+      label={t(($) => $['agentDetail.configure.skills.label'])}
+      labelId={labelId}
+      tip={<AgentConfigureTipContent type="skills" />}
+    >
+      {skills.length === 0 ? (
+        <ConfigureSectionEmpty
+          title={t(($) => $['agentDetail.configure.skills.empty.title'])}
+          description={t(($) => $['agentDetail.configure.skills.empty.description'])}
+        />
+      ) : (
+        <ul className="flex flex-col gap-1">
+          {skills.map((skill) => (
+            <li key={skill.id}>
+              <AgentSkillItem
+                apiContext={apiContext}
+                canDownload={false}
+                canRemove={false}
+                skill={skill}
+                onRemove={noop}
+              />
+            </li>
+          ))}
+        </ul>
+      )}
+    </ConfigureSection>
   )
 }

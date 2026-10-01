@@ -5,7 +5,7 @@ import { ChunkingMode } from '@/models/datasets'
 import { SegmentDetail } from '../segment-detail'
 
 // Mock dataset detail context
-let mockIndexingTechnique = IndexingType.QUALIFIED
+let mockIndexingTechnique: IndexingType = IndexingType.QUALIFIED
 let mockRuntimeMode = 'general'
 vi.mock('@/context/dataset-detail', () => ({
   useDatasetDetailContextWithSelector: (

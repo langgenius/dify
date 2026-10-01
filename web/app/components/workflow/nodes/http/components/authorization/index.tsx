@@ -49,14 +49,16 @@ const Field = ({
 }
 
 const Authorization: FC<Props> = ({ nodeId, payload, onChange, isShow, onHide }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflowIntegrations'])
   const headerId = useId()
 
   const [isFocus, setIsFocus] = useState(false)
   const { availableVars, availableNodesWithParent } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
     filterVar: (varPayload: Var) => {
-      return [VarType.string, VarType.number, VarType.secret].includes(varPayload.type)
+      const textVariableTypes: readonly VarType[] = [VarType.string, VarType.number, VarType.secret]
+
+      return textVariableTypes.includes(varPayload.type)
     },
   })
 
@@ -140,7 +142,7 @@ const Authorization: FC<Props> = ({ nodeId, payload, onChange, isShow, onHide })
     >
       <DialogContent className="border-none text-left align-middle">
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
-          {t(($) => $[`${i18nPrefix}.authorization`], { ns: 'workflow' })}
+          {t(($) => $[`${i18nPrefix}.authorization`], { ns: 'workflowIntegrations' })}
         </DialogTitle>
 
         <form
@@ -150,16 +152,18 @@ const Authorization: FC<Props> = ({ nodeId, payload, onChange, isShow, onHide })
           }}
         >
           <div className="space-y-2">
-            <Field title={t(($) => $[`${i18nPrefix}.authorizationType`], { ns: 'workflow' })}>
+            <Field
+              title={t(($) => $[`${i18nPrefix}.authorizationType`], { ns: 'workflowIntegrations' })}
+            >
               <RadioGroup
                 options={[
                   {
                     value: AuthorizationType.none,
-                    label: t(($) => $[`${i18nPrefix}.no-auth`], { ns: 'workflow' }),
+                    label: t(($) => $[`${i18nPrefix}.no-auth`], { ns: 'workflowIntegrations' }),
                   },
                   {
                     value: AuthorizationType.apiKey,
-                    label: t(($) => $[`${i18nPrefix}.api-key`], { ns: 'workflow' }),
+                    label: t(($) => $[`${i18nPrefix}.api-key`], { ns: 'workflowIntegrations' }),
                   },
                 ]}
                 value={tempPayload.type}
@@ -169,20 +173,22 @@ const Authorization: FC<Props> = ({ nodeId, payload, onChange, isShow, onHide })
 
             {tempPayload.type === AuthorizationType.apiKey && (
               <>
-                <Field title={t(($) => $[`${i18nPrefix}.auth-type`], { ns: 'workflow' })}>
+                <Field
+                  title={t(($) => $[`${i18nPrefix}.auth-type`], { ns: 'workflowIntegrations' })}
+                >
                   <RadioGroup
                     options={[
                       {
                         value: APIType.basic,
-                        label: t(($) => $[`${i18nPrefix}.basic`], { ns: 'workflow' }),
+                        label: t(($) => $[`${i18nPrefix}.basic`], { ns: 'workflowIntegrations' }),
                       },
                       {
                         value: APIType.bearer,
-                        label: t(($) => $[`${i18nPrefix}.bearer`], { ns: 'workflow' }),
+                        label: t(($) => $[`${i18nPrefix}.bearer`], { ns: 'workflowIntegrations' }),
                       },
                       {
                         value: APIType.custom,
-                        label: t(($) => $[`${i18nPrefix}.custom`], { ns: 'workflow' }),
+                        label: t(($) => $[`${i18nPrefix}.custom`], { ns: 'workflowIntegrations' }),
                       },
                     ]}
                     value={tempPayload.config?.type || APIType.basic}
@@ -192,7 +198,7 @@ const Authorization: FC<Props> = ({ nodeId, payload, onChange, isShow, onHide })
                 {tempPayload.config?.type === APIType.custom && (
                   <Field
                     htmlFor={headerId}
-                    title={t(($) => $[`${i18nPrefix}.header`], { ns: 'workflow' })}
+                    title={t(($) => $[`${i18nPrefix}.header`], { ns: 'workflowIntegrations' })}
                     isRequired
                   >
                     <Input
@@ -205,7 +211,7 @@ const Authorization: FC<Props> = ({ nodeId, payload, onChange, isShow, onHide })
                 )}
 
                 <Field
-                  title={t(($) => $[`${i18nPrefix}.api-key-title`], { ns: 'workflow' })}
+                  title={t(($) => $[`${i18nPrefix}.api-key-title`], { ns: 'workflowIntegrations' })}
                   isRequired
                 >
                   <div className="flex">

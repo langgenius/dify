@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vite-plus/test'
 import {
   zGetAppsByAppIdExportResponse,
   zPostAppsImportsBody,
-} from './generated/api/console/apps/zod.gen'
-import { zPostFilesUploadBody } from './generated/api/console/files/zod.gen'
-import { zPostWorkspacesCurrentPluginUploadPkgBody } from './generated/api/console/workspaces/zod.gen'
+} from './generated/api/console/apps/zod.gen.ts'
+import { zPostFilesUploadBody } from './generated/api/console/files/zod.gen.ts'
+import { zPostWorkspacesCurrentPluginUploadPkgBody } from './generated/api/console/workspaces/zod.gen.ts'
 
 describe('generated binary schemas', () => {
   it('accepts binary package imports alongside YAML import requests', () => {

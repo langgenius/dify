@@ -82,6 +82,7 @@ from dify_agent.runtime.event_sink import (
     emit_run_started,
     emit_run_succeeded,
 )
+from dify_agent.runtime.observability import AgentObservability
 from dify_agent.runtime.history import (
     get_history_layer,
     replace_run_history,
@@ -198,6 +199,7 @@ class AgentRunRunner:
     stream_text_delta_coalescing_enabled: bool
     stream_text_delta_flush_interval_seconds: float
     stream_text_delta_max_chars: int
+    agent_observability: AgentObservability | None
     _terminal_session_snapshot: CompositorSessionSnapshot | None
     _terminal_usage: AgentRunUsage | None
 
@@ -215,6 +217,7 @@ class AgentRunRunner:
         stream_text_delta_coalescing_enabled: bool = True,
         stream_text_delta_flush_interval_seconds: float = DEFAULT_TEXT_DELTA_FLUSH_INTERVAL_SECONDS,
         stream_text_delta_max_chars: int = DEFAULT_TEXT_DELTA_MAX_CHARS,
+        agent_observability: AgentObservability | None = None,
     ) -> None:
         if stream_text_delta_flush_interval_seconds <= 0:
             raise ValueError("stream_text_delta_flush_interval_seconds must be positive")
@@ -231,6 +234,7 @@ class AgentRunRunner:
         self.stream_text_delta_coalescing_enabled = stream_text_delta_coalescing_enabled
         self.stream_text_delta_flush_interval_seconds = stream_text_delta_flush_interval_seconds
         self.stream_text_delta_max_chars = stream_text_delta_max_chars
+        self.agent_observability = agent_observability
         self._terminal_session_snapshot = None
         self._terminal_usage = None
 
@@ -390,6 +394,14 @@ class AgentRunRunner:
                     tools=tools,
                     output_type=_resolve_agent_output_type(output_contract.output_type, ask_human_layer is not None),
                 )
+                if self.agent_observability is not None:
+                    # The model layer's required execution-context dependency is the
+                    # run's only carrier of Dify identity, and its node name is
+                    # caller-chosen, so read it through the typed dependency.
+                    self.agent_observability.instrument(
+                        agent,
+                        execution_context=llm_layer.deps.execution_context.config,
+                    )
                 run_timeout = asyncio.timeout(self.run_timeout_seconds)
                 try:
                     with capture_run_messages() as captured_messages:

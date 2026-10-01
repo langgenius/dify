@@ -102,10 +102,6 @@ vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: vi.fn(),
 }))
 
-vi.mock('@/app/components/base/icons/src/public/common', () => ({
-  SparklesSoft: () => <span data-testid="sparkles" />,
-}))
-
 vi.mock('@/app/components/base/premium-badge', () => ({
   default: ({ children }: { children: React.ReactNode }) => (
     <span data-testid="premium-badge">{children}</span>

@@ -43,7 +43,7 @@ type ApiKeyModalProps = {
 }
 
 export function ApiKeyModal({ open, canManage, scope, onOpenChange }: ApiKeyModalProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appApi', 'common'])
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const [deleteKeyId, setDeleteKeyId] = useState<string>()
   const [createdApiKey, setCreatedApiKey] = useState<CreatedApiKey>()

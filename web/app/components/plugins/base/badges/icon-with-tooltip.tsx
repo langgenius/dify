@@ -8,23 +8,22 @@ type IconWithTooltipProps = {
   className?: string
   popupContent?: string
   theme: Theme
-  BadgeIconLight: React.ElementType
-  BadgeIconDark: React.ElementType
+  lightIconClassName: string
+  darkIconClassName: string
 }
 
 const IconWithTooltip: FC<IconWithTooltipProps> = ({
   className,
   theme,
   popupContent,
-  BadgeIconLight,
-  BadgeIconDark,
+  lightIconClassName,
+  darkIconClassName,
 }) => {
   const isDark = theme === Theme.dark
-  const iconClassName = cn('size-5', className)
-  const Icon = isDark ? BadgeIconDark : BadgeIconLight
+  const iconClassName = cn(isDark ? darkIconClassName : lightIconClassName, 'size-5', className)
   const icon = (
     <span className="flex shrink-0 items-center justify-center">
-      <Icon aria-hidden={!!popupContent} className={iconClassName} />
+      <span aria-hidden className={iconClassName} />
       {popupContent && <span className="sr-only">{popupContent}</span>}
     </span>
   )

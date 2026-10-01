@@ -36,7 +36,7 @@ export type WorkflowHistoryEventT = keyof typeof WorkflowHistoryEvent
 export const useWorkflowHistory = () => {
   const store = useStoreApi()
   const { store: workflowHistoryStore } = useWorkflowHistoryStore()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   const [undoCallbacks, setUndoCallbacks] = useState<(() => void)[]>([])
   const [redoCallbacks, setRedoCallbacks] = useState<(() => void)[]>([])

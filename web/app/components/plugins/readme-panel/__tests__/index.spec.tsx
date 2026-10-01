@@ -1,245 +1,203 @@
-import type { ReactElement } from 'react'
-import type { PluginDetail } from '../../types'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { PluginCategoryEnum, PluginSource } from '../../types'
+import type { Locale } from '@/i18n/locale'
+import { QueryClient } from '@tanstack/react-query'
+import { act, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { toast } from '@/app/notifications'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { createPluginDetail } from '../../plugin-detail-panel/__tests__/endpoint-fixture'
 import { ReadmeEntrance } from '../entrance'
 import ReadmePanel from '../index'
 import { useReadmePanelStore } from '../store'
 
-;(
-  globalThis as typeof globalThis & {
-    BASE_UI_ANIMATIONS_DISABLED: boolean
-  }
-).BASE_UI_ANIMATIONS_DISABLED = true
-
-const mockUsePluginReadme = vi.fn()
-vi.mock('@/service/use-plugins', () => ({
-  usePluginReadme: (params: { plugin_unique_identifier: string; language?: string }) =>
-    mockUsePluginReadme(params),
-}))
-
-let mockLanguage = 'en-US'
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useLanguage: () => mockLanguage,
+let mockLocale: Locale = 'en-US'
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
+  useLocale: () => mockLocale,
 }))
 
 vi.mock('../../plugin-detail-panel/detail-header', () => ({
-  default: ({ detail, isReadmeView }: { detail: PluginDetail; isReadmeView: boolean }) => (
-    <div data-testid="detail-header" data-is-readme-view={isReadmeView}>
-      {detail.name}
-    </div>
-  ),
+  default: ({ detail }: { detail: { name: string } }) => <p>{detail.name}</p>,
 }))
 
-const createMockPluginDetail = (overrides: Partial<PluginDetail> = {}): PluginDetail => ({
-  id: 'test-plugin-id',
-  created_at: '2024-01-01T00:00:00Z',
-  updated_at: '2024-01-01T00:00:00Z',
-  name: 'test-plugin',
-  plugin_id: 'test-plugin-id',
-  plugin_unique_identifier: 'test-plugin@1.0.0',
-  declaration: {
-    plugin_unique_identifier: 'test-plugin@1.0.0',
-    version: '1.0.0',
-    author: 'test-author',
-    icon: 'test-icon.png',
-    name: 'test-plugin',
-    category: PluginCategoryEnum.tool,
-    label: { 'en-US': 'Test Plugin' } as Record<string, string>,
-    description: { 'en-US': 'Test plugin description' } as Record<string, string>,
-    created_at: '2024-01-01T00:00:00Z',
-    resource: null,
-    plugins: null,
-    verified: true,
-    endpoint: { settings: [], endpoints: [] },
-    model: null,
-    tags: [],
-    agent_strategy: null,
-    meta: { version: '1.0.0' },
-    trigger: {
-      events: [],
-      identity: {
-        author: 'test-author',
-        name: 'test-plugin',
-        label: { 'en-US': 'Test Plugin' } as Record<string, string>,
-        description: { 'en-US': 'Test plugin description' } as Record<string, string>,
-        icon: 'test-icon.png',
-        tags: [],
-      },
-      subscription_constructor: {
-        credentials_schema: [],
-        oauth_schema: { client_schema: [], credentials_schema: [] },
-        parameters: [],
-      },
-      subscription_schema: [],
-    },
-  },
-  installation_id: 'install-123',
-  tenant_id: 'tenant-123',
-  endpoints_setups: 0,
-  endpoints_active: 0,
-  version: '1.0.0',
-  latest_version: '1.0.0',
-  latest_unique_identifier: 'test-plugin@1.0.0',
-  source: PluginSource.marketplace,
-  status: 'active' as const,
-  deprecated_reason: '',
-  alternative_plugin_id: '',
-  ...overrides,
-})
+const fetchMock = vi.fn<typeof fetch>()
 
-const createQueryClient = () =>
-  new QueryClient({
+function createQueryClient() {
+  return new QueryClient({
     defaultOptions: {
-      queries: {
-        retry: false,
-      },
+      queries: { staleTime: 5 * 60 * 1000, retry: 2, retryDelay: 0 },
     },
   })
-
-const renderWithQueryClient = (ui: ReactElement) => {
-  const queryClient = createQueryClient()
-  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
 }
 
-const openReadmePanel = (
-  detail = createMockPluginDetail(),
-  presentation: 'drawer' | 'dialog' = 'drawer',
-) => {
-  useReadmePanelStore.getState().openReadmePanel({
-    detail,
-    presentation,
-    triggerId: 'readme-trigger',
-  })
+function openPanel(identifier = 'langgenius/test:1.0.0') {
+  const detail = { ...createPluginDetail(), plugin_unique_identifier: identifier }
+  act(() => useReadmePanelStore.getState().openReadmePanel({ detail }))
   return detail
 }
 
+function readmeURL(input: Parameters<typeof fetch>[0]) {
+  return new URL(input instanceof Request ? input.url : String(input))
+}
+
+beforeEach(() => {
+  vi.clearAllMocks()
+  mockLocale = 'en-US'
+  useReadmePanelStore.setState({ currentPanel: undefined })
+  vi.stubGlobal('fetch', fetchMock)
+  fetchMock.mockImplementation(async () => Response.json({ readme: '# Plugin documentation' }))
+})
+
+afterEach(() => {
+  vi.restoreAllMocks()
+  vi.unstubAllGlobals()
+})
+
 describe('ReadmePanel', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockLanguage = 'en-US'
-    useReadmePanelStore.setState({ currentPanel: undefined })
-    mockUsePluginReadme.mockReturnValue({
-      data: null,
-      isLoading: false,
-      error: null,
-    })
-  })
+  it.each(['drawer', 'dialog'] as const)(
+    'opens the %s from its entrance and closes the active panel',
+    async (presentation) => {
+      const user = userEvent.setup()
+      const detail = createPluginDetail()
+      render(
+        <>
+          <ReadmeEntrance pluginDetail={detail} presentation={presentation} />
+          <ReadmePanel />
+        </>,
+        { queryClient: createQueryClient() },
+      )
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      expect(fetchMock).not.toHaveBeenCalled()
 
-  it('should return null when no readme panel is open', () => {
-    const { container } = renderWithQueryClient(<ReadmePanel />)
+      await user.click(
+        screen.getByRole('button', { name: 'plugin.readmeInfo.needHelpCheckReadme' }),
+      )
 
-    expect(container.firstChild).toBeNull()
-  })
+      expect(
+        await screen.findByRole('dialog', { name: 'plugin.readmeInfo.title' }),
+      ).toBeInTheDocument()
+      expect(
+        await screen.findByRole('heading', { name: 'Plugin documentation' }),
+      ).toBeInTheDocument()
+      expect(screen.getByText(detail.name)).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      expect(useReadmePanelStore.getState().currentPanel).toBeUndefined()
+    },
+  )
 
-  it('should render drawer presentation with plugin header content', () => {
-    openReadmePanel()
-
-    renderWithQueryClient(<ReadmePanel />)
-
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
-    expect(screen.getByText('plugin.readmeInfo.title')).toBeInTheDocument()
-    expect(screen.getByTestId('detail-header')).toHaveAttribute('data-is-readme-view', 'true')
-    expect(screen.getByRole('dialog')).toHaveClass('data-[swipe-direction=left]:w-150')
-  })
-
-  it('should render dialog presentation when requested', () => {
-    openReadmePanel(createMockPluginDetail(), 'dialog')
-
-    renderWithQueryClient(<ReadmePanel />)
-
-    expect(screen.getByRole('dialog')).toHaveClass('max-w-200')
-  })
-
-  it('should close the active panel when close button is clicked', () => {
-    openReadmePanel()
-
-    renderWithQueryClient(<ReadmePanel />)
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
-
-    expect(useReadmePanelStore.getState().currentPanel).toBeUndefined()
-  })
-
-  it('should render loading, error, empty, and readme states from the readme query', () => {
-    openReadmePanel()
-    mockUsePluginReadme.mockReturnValue({
-      data: null,
-      isLoading: true,
-      error: null,
-    })
-    const { rerender } = renderWithQueryClient(<ReadmePanel />)
-    expect(screen.getByRole('progressbar')).toBeInTheDocument()
-
-    mockUsePluginReadme.mockReturnValue({
-      data: null,
-      isLoading: false,
-      error: new Error('Failed to fetch'),
-    })
-    rerender(<ReadmePanel />)
-    expect(screen.getByText('plugin.readmeInfo.failedToFetch')).toBeInTheDocument()
-
-    mockUsePluginReadme.mockReturnValue({
-      data: { readme: '' },
-      isLoading: false,
-      error: null,
-    })
-    rerender(<ReadmePanel />)
-    expect(screen.getByText('plugin.readmeInfo.noReadmeAvailable')).toBeInTheDocument()
-
-    mockUsePluginReadme.mockReturnValue({
-      data: { readme: '# Test Readme Content' },
-      isLoading: false,
-      error: null,
-    })
-    rerender(<ReadmePanel />)
-    expect(screen.getByTestId('markdown-body')).toBeInTheDocument()
-  })
-
-  it('should call usePluginReadme with the plugin identifier and selected language', () => {
-    openReadmePanel(
-      createMockPluginDetail({
-        plugin_unique_identifier: 'custom-plugin@2.0.0',
+  it('shows loading until the requested Readme arrives', async () => {
+    let resolveResponse!: (response: Response) => void
+    fetchMock.mockReturnValue(
+      new Promise<Response>((resolve) => {
+        resolveResponse = resolve
       }),
     )
+    openPanel()
+    render(<ReadmePanel />, { queryClient: createQueryClient() })
 
-    renderWithQueryClient(<ReadmePanel />)
+    expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
+    await act(async () => resolveResponse(Response.json({ readme: '# Loaded documentation' })))
 
-    expect(mockUsePluginReadme).toHaveBeenCalledWith({
-      plugin_unique_identifier: 'custom-plugin@2.0.0',
-      language: 'en-US',
-    })
+    expect(await screen.findByRole('heading', { name: 'Loaded documentation' })).toBeInTheDocument()
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
   })
 
-  it('should pass undefined language for zh-Hans locale', () => {
-    mockLanguage = 'zh-Hans'
-    openReadmePanel(
-      createMockPluginDetail({
-        plugin_unique_identifier: 'zh-plugin@1.0.0',
-      }),
-    )
+  it('shows the empty state when the server has no Readme', async () => {
+    fetchMock.mockImplementation(async () => Response.json({ readme: '' }))
+    openPanel()
+    render(<ReadmePanel />, { queryClient: createQueryClient() })
 
-    renderWithQueryClient(<ReadmePanel />)
-
-    expect(mockUsePluginReadme).toHaveBeenCalledWith({
-      plugin_unique_identifier: 'zh-plugin@1.0.0',
-      language: undefined,
-    })
+    expect(await screen.findByText('plugin.readmeInfo.noReadmeAvailable')).toBeInTheDocument()
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
   })
 
-  it('should open correctly from ReadmeEntrance through the global host', () => {
-    const detail = createMockPluginDetail()
-
-    renderWithQueryClient(
-      <>
-        <ReadmeEntrance pluginDetail={detail} />
-        <ReadmePanel />
-      </>,
+  it('shows a local error without a toast or automatic retries', async () => {
+    const notifyError = vi.spyOn(toast, 'error')
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    fetchMock.mockImplementation(async () =>
+      Response.json(
+        { code: 'internal_server_error', message: 'Readme unavailable' },
+        { status: 500 },
+      ),
     )
+    openPanel()
+    render(<ReadmePanel />, { queryClient: createQueryClient() })
 
-    fireEvent.click(screen.getByRole('button', { name: /plugin\.readmeInfo\.needHelpCheckReadme/ }))
+    expect(await screen.findByText('plugin.readmeInfo.failedToFetch')).toBeInTheDocument()
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(notifyError).not.toHaveBeenCalled()
+  })
 
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
+  it('does not fetch or stay loading when the panel has no plugin identifier', async () => {
+    openPanel('')
+    render(<ReadmePanel />, { queryClient: createQueryClient() })
+
+    expect(await screen.findByText('plugin.readmeInfo.noReadmeAvailable')).toBeInTheDocument()
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('keeps plugin versions isolated when an earlier request finishes last', async () => {
+    let resolveOldResponse!: (response: Response) => void
+    const oldResponse = new Promise<Response>((resolve) => {
+      resolveOldResponse = resolve
+    })
+    fetchMock.mockImplementation(async (input) => {
+      const url = readmeURL(input)
+      expect(url.pathname).toMatch(/\/workspaces\/current\/plugin\/readme$/)
+      return url.searchParams.get('plugin_unique_identifier') === 'langgenius/test:1.0.0'
+        ? oldResponse
+        : Response.json({ readme: '# Version two' })
+    })
+    openPanel()
+    render(<ReadmePanel />, { queryClient: createQueryClient() })
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+
+    openPanel('langgenius/test:2.0.0')
+    expect(await screen.findByRole('heading', { name: 'Version two' })).toBeInTheDocument()
+    await act(async () => resolveOldResponse(Response.json({ readme: '# Version one' })))
+
+    expect(screen.getByRole('heading', { name: 'Version two' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Version one' })).not.toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('uses the real locale conversion and reuses only the matching language cache', async () => {
+    const requestedLanguages: Array<string | null> = []
+    fetchMock.mockImplementation(async (input) => {
+      const url = readmeURL(input)
+      expect(url.searchParams.get('plugin_unique_identifier')).toBe('langgenius/test:1.0.0')
+      const language = url.searchParams.get('language')
+      requestedLanguages.push(language)
+      return Response.json({
+        readme:
+          language === 'zh_Hans'
+            ? '# 中文说明'
+            : language === 'de_DE'
+              ? '# Deutsche Dokumentation'
+              : '# English Readme',
+      })
+    })
+    openPanel()
+    const { rerender } = render(<ReadmePanel />, { queryClient: createQueryClient() })
+    expect(await screen.findByRole('heading', { name: 'English Readme' })).toBeInTheDocument()
+
+    mockLocale = 'zh-Hans'
+    rerender(<ReadmePanel />)
+    expect(await screen.findByRole('heading', { name: '中文说明' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'English Readme' })).not.toBeInTheDocument()
+
+    mockLocale = 'de-DE'
+    rerender(<ReadmePanel />)
+    expect(
+      await screen.findByRole('heading', { name: 'Deutsche Dokumentation' }),
+    ).toBeInTheDocument()
+
+    mockLocale = 'en-US'
+    rerender(<ReadmePanel />)
+    expect(await screen.findByRole('heading', { name: 'English Readme' })).toBeInTheDocument()
+    expect(requestedLanguages).toEqual(['en_US', 'zh_Hans', 'de_DE'])
   })
 })

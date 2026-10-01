@@ -23,17 +23,19 @@ import { useAgentSkillDetail } from './use-skill-detail'
 
 export function AgentSkillItem({
   apiContext,
+  canDownload,
   canRemove,
   skill,
   onRemove,
 }: {
   apiContext: AgentConfigApiContext
+  canDownload: boolean
   canRemove: boolean
   skill: AgentSkill
   onRemove: (skillId: string) => void
 }) {
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['agentV2'])
+  const { t: tCommon } = useTranslation(['common'])
   const queryClient = useQueryClient()
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
   const [isActionsOpen, setIsActionsOpen] = useState(false)
@@ -43,6 +45,20 @@ export function AgentSkillItem({
   }, [onRemove, skill.id])
   const downloadSkill = useCallback(async () => {
     if (skill.isMissing) return
+
+    if (apiContext.trialAppId) {
+      const result = await queryClient.query({
+        ...consoleQuery.trialApps.byAppId.agent.config.skills.byName.download.get.queryOptions({
+          input: {
+            params: { app_id: apiContext.trialAppId, name: skill.name },
+            query: { version_id: apiContext.versionId },
+          },
+        }),
+        staleTime: 0,
+      })
+      downloadUrl({ url: result.url, fileName: skill.name })
+      return
+    }
 
     if (apiContext.workflow) {
       const result = await queryClient.query({
@@ -85,6 +101,8 @@ export function AgentSkillItem({
   const handleDownload = useCallback(() => {
     void downloadSkill().catch(noop)
   }, [downloadSkill])
+  const onDownloadSkill = canDownload ? handleDownload : undefined
+  const hasActions = (!skill.isMissing && !!onDownloadSkill) || canRemove
   const handleOpenPreview = useCallback(() => {
     if (skill.isMissing) return
 
@@ -92,6 +110,7 @@ export function AgentSkillItem({
   }, [skill.isMissing])
   const detail = useAgentSkillDetail({
     apiContext,
+    canDownload,
     description: skill.description ?? t(($) => $['agentDetail.configure.skills.tip']),
     isOpen: isPreviewOpen,
     skill,
@@ -126,7 +145,8 @@ export function AgentSkillItem({
           ) : (
             <span
               className={cn(
-                'shrink-0 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary group-focus-within:opacity-0 group-hover:opacity-0',
+                'shrink-0 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary',
+                hasActions && 'group-focus-within:opacity-0 group-hover:opacity-0',
                 isActionsOpen && 'opacity-0',
               )}
             >
@@ -140,7 +160,7 @@ export function AgentSkillItem({
             label={t(($) => $['agentDetail.configure.skills.missing'])}
           />
         )}
-        {(!skill.isMissing || canRemove) && (
+        {hasActions && (
           <DropdownMenu
             modal={false}
             onOpenChange={(open) => {
@@ -162,8 +182,8 @@ export function AgentSkillItem({
               <span aria-hidden className="i-ri-more-fill size-4" />
             </DropdownMenuTrigger>
             <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-48">
-              {!skill.isMissing && (
-                <DropdownMenuItem className="gap-2" onClick={handleDownload}>
+              {!skill.isMissing && onDownloadSkill && (
+                <DropdownMenuItem className="gap-2" onClick={onDownloadSkill}>
                   <span
                     aria-hidden
                     className="i-ri-download-line size-4 shrink-0 text-text-tertiary"
@@ -171,7 +191,7 @@ export function AgentSkillItem({
                   <span>{tCommon(($) => $['operation.download'])}</span>
                 </DropdownMenuItem>
               )}
-              {!skill.isMissing && canRemove && <DropdownMenuSeparator />}
+              {!skill.isMissing && onDownloadSkill && canRemove && <DropdownMenuSeparator />}
               {canRemove && (
                 <DropdownMenuItem
                   data-agent-skill-remove-button

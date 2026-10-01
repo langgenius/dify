@@ -35,7 +35,7 @@ export default function AddMemberOrGroupDialog({
   subjects: selectedAccessSubjects,
   onChange,
 }: AddMemberOrGroupDialogProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common'])
   const [open, setOpen] = useState(false)
   const [keyword, setKeyword] = useState('')
   const [selectedGroupsForBreadcrumb, setSelectedGroupsForBreadcrumb] = useState<

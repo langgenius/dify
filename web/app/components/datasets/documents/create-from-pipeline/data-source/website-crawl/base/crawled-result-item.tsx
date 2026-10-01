@@ -26,7 +26,7 @@ const CrawledResultItem = ({
   showPreview,
   isMultipleChoice = true,
 }: CrawledResultItemProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation'])
 
   return (
     <div

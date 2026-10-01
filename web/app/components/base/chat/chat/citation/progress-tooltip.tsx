@@ -7,7 +7,7 @@ type ProgressTooltipProps = {
 }
 
 const ProgressTooltip: FC<ProgressTooltipProps> = ({ data }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
     <Tooltip>
@@ -24,11 +24,7 @@ const ProgressTooltip: FC<ProgressTooltipProps> = ({ data }) => {
         </div>
         {data}
       </TooltipTrigger>
-      <TooltipContent
-        data-testid="progress-tooltip-popup"
-        placement="top-start"
-        className="p-3 text-text-quaternary"
-      >
+      <TooltipContent data-testid="progress-tooltip-popup" placement="top-start">
         {t(($) => $['chat.citation.hitScore'], { ns: 'common' })} {data}
       </TooltipContent>
     </Tooltip>

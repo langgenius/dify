@@ -13,16 +13,22 @@ type VersionHistoryButtonProps = {
 
 export function VersionHistoryButton({ onClick }: VersionHistoryButtonProps) {
   const { theme } = useTheme()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const label = t(($) => $['common.versionHistory'], { ns: 'workflow' })
 
   useHotkey(
     VERSION_HISTORY_HOTKEY,
-    () => {
+    (event) => {
+      if (event.defaultPrevented) return
+      event.preventDefault()
+      event.stopPropagation()
+      if (event.repeat) return
       void onClick()
     },
     {
       ignoreInputs: true,
+      preventDefault: false,
+      stopPropagation: false,
     },
   )
 

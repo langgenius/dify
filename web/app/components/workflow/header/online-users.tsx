@@ -48,7 +48,7 @@ const useAvatarUrls = (users: OnlineUser[]) => {
 }
 
 const OnlineUsers = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workspaceMembers', 'workflowComments'])
   const appId = useStore((s) => s.appId)
   const canEdit = useHooksStore((s) => s.accessControl.canEdit)
   const {
@@ -64,8 +64,8 @@ const OnlineUsers = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const avatarUrls = useAvatarUrls(onlineUsers || [])
 
-  const fallbackUsername = t(($) => $['comments.fallback.user'], { ns: 'workflow' })
-  const currentUserSuffix = t(($) => $['members.you'], { ns: 'common' })
+  const fallbackUsername = t(($) => $['comments.fallback.user'], { ns: 'workflowComments' })
+  const currentUserSuffix = t(($) => $['members.you'], { ns: 'workspaceMembers' })
 
   const renderDisplayName = (user: OnlineUser, baseClassName: string, suffixClassName: string) => {
     const baseName = user.username || fallbackUsername
@@ -158,7 +158,7 @@ const OnlineUsers = () => {
                     )
                   }
                 />
-                <TooltipContent placement="bottom" sideOffset={4} className="max-w-55 px-3">
+                <TooltipContent placement="bottom" sideOffset={4} className="max-w-55">
                   {displayName}
                   {isCurrentUser && (
                     <span className="ml-1 text-text-quaternary">{currentUserSuffix}</span>

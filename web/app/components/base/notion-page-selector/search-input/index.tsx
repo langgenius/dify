@@ -8,7 +8,7 @@ type SearchInputProps = {
   onChange: (v: string) => void
 }
 const SearchInput = ({ value, onChange }: SearchInputProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   const handleClear = useCallback(() => {
     onChange('')

@@ -4,6 +4,7 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useQuery } from '@tanstack/react-query'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
 import {
@@ -16,6 +17,7 @@ import ModelName from '../model-name'
 import { useCredentialPanelState as useCredentialPanelInfo } from '../provider-added-card/use-credential-panel-state'
 
 type ModelSelectorTriggerProps = {
+  'aria-labelledby'?: string
   currentProvider?: ModelSelectorProvider
   currentModel?: ModelSelectorModel
   defaultModel?: ModelSelectorValue
@@ -33,6 +35,7 @@ type ModelSelectorTriggerProps = {
 }
 
 function ModelSelectorTrigger({
+  'aria-labelledby': labelledBy,
   currentProvider,
   currentModel,
   defaultModel,
@@ -48,7 +51,8 @@ function ModelSelectorTrigger({
   showModelMeta = true,
   isModelCompatible = true,
 }: ModelSelectorTriggerProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin', 'modelProvider'])
+  const valueId = useId()
 
   const showClear = !!defaultModel && !!onClear
   const isSelected = !!currentProvider && !!currentModel
@@ -82,14 +86,14 @@ function ModelSelectorTrigger({
   const tooltipI18nKey =
     DERIVED_MODEL_STATUS_TOOLTIP_I18N[status as keyof typeof DERIVED_MODEL_STATUS_TOOLTIP_I18N]
   const statusLabel = !isModelCompatible
-    ? t(($) => $['modelProvider.selector.incompatible'], { ns: 'common' })
+    ? t(($) => $['modelProvider.selector.incompatible'], { ns: 'modelProvider' })
     : statusI18nKey
-      ? t(($) => $[statusI18nKey], { ns: 'common' })
+      ? t(($) => $[statusI18nKey], { ns: 'modelProvider' })
       : undefined
   const tooltipLabel = !isModelCompatible
-    ? t(($) => $['modelProvider.selector.incompatibleTip'], { ns: 'common' })
+    ? t(($) => $['modelProvider.selector.incompatibleTip'], { ns: 'modelProvider' })
     : tooltipI18nKey
-      ? t(($) => $[tooltipI18nKey], { ns: 'common' })
+      ? t(($) => $[tooltipI18nKey], { ns: 'modelProvider' })
       : statusLabel
   const isCreditsExhausted = status === 'credits-exhausted'
   const shouldShowModelMeta = showModelMeta && status === 'active' && isModelCompatible
@@ -110,6 +114,7 @@ function ModelSelectorTrigger({
             render={
               <button
                 type="button"
+                aria-labelledby={labelledBy ? `${labelledBy} ${valueId}` : undefined}
                 data-deprecated={isDeprecated && !isStatusUnavailable ? '' : undefined}
                 data-model-status={status}
                 data-shape={shape}
@@ -162,6 +167,7 @@ function ModelSelectorTrigger({
               )}
 
               <span
+                id={valueId}
                 className={cn(
                   'flex grow items-center gap-1 truncate',
                   size === 'small' ? 'px-0.5' : 'px-1 py-0.75',

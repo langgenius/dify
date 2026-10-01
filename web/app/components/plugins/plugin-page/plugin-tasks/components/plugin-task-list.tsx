@@ -31,7 +31,7 @@ function PluginTaskList({
   onClearErrors,
   onClearSingle,
 }: PluginTaskListProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const language = useGetLanguage()
   const runningSectionTitle = t(($) => $['task.runningPlugins'], { ns: 'plugin' })
   const successSectionTitle = t(($) => $['task.successPlugins'], { ns: 'plugin' })

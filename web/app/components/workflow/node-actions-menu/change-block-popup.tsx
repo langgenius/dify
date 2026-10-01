@@ -26,7 +26,7 @@ export function ChangeBlockPopup({
   sourceHandle,
   onComplete,
 }: ChangeBlockPopupProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const searchInputRef = useRef<HTMLInputElement>(null)
   const completedRef = useRef(false)
   const { handleNodeChange } = useNodesInteractions()

@@ -15,7 +15,7 @@ type SelectorProps = {
   trigger?: ReactElement
 }
 const Selector = ({ options, value, onChange, readonly, trigger }: SelectorProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const [open, setOpen] = useState(false)
 
   const handleSelect = useCallback(

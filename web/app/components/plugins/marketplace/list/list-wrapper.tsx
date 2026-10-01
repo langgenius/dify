@@ -29,7 +29,8 @@ const ListWrapper = ({
   showInstallButton,
   linkToMarketplaceDetail,
 }: ListWrapperProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
+  const { t: tPlugin } = useTranslation(['plugin'])
 
   const {
     plugins,
@@ -86,16 +87,22 @@ const ListWrapper = ({
         {isLoading || isRefreshing || isFetchingNextPage
           ? t(($) => $.loading, { ns: 'common' })
           : isError
-            ? t(($) => $['marketplace.loadError'], { ns: 'plugin' })
+            ? tPlugin(($) => $['marketplace.loadError'], { ns: 'plugin' })
             : plugins
-              ? t(($) => $['marketplace.pluginsResult'], { ns: 'plugin', num: pluginsTotal })
+              ? tPlugin(($) => $['marketplace.pluginsResult'], {
+                  ns: 'plugin',
+                  num: pluginsTotal ?? 0,
+                })
               : null}
       </div>
       <div className="flex w-full grow flex-col">
         {plugins && (
           <div className="mb-4 flex items-center pt-3">
             <div className="title-xl-semi-bold text-text-primary">
-              {t(($) => $['marketplace.pluginsResult'], { ns: 'plugin', num: pluginsTotal })}
+              {tPlugin(($) => $['marketplace.pluginsResult'], {
+                ns: 'plugin',
+                num: pluginsTotal ?? 0,
+              })}
             </div>
             <div className="mx-3 h-3.5 w-px bg-divider-regular"></div>
             <SortDropdown />
@@ -103,7 +110,7 @@ const ListWrapper = ({
         )}
         {isError && !plugins?.length ? (
           <div className="flex min-h-60 flex-col items-center justify-center gap-3 text-sm text-text-tertiary">
-            <span>{t(($) => $['marketplace.loadError'], { ns: 'plugin' })}</span>
+            <span>{tPlugin(($) => $['marketplace.loadError'], { ns: 'plugin' })}</span>
             <Button size="small" variant="secondary" onClick={() => void refetch()}>
               {t(($) => $['operation.retry'], { ns: 'common' })}
             </Button>

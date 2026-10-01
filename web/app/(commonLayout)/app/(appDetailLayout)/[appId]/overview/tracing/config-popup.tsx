@@ -82,7 +82,7 @@ const ConfigPopup: FC<PopupProps> = ({
   onConfigUpdated,
   onConfigRemoved,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
 
   const [currentProvider, setCurrentProvider] = useState<TracingProvider | null>(
     TracingProvider.langfuse,

@@ -13,19 +13,19 @@ import { cn } from '@langgenius/dify-ui/cn'
 import {
   Drawer,
   DrawerBackdrop,
-  DrawerCloseButton,
+  DrawerClose,
   DrawerContent,
   DrawerPopup,
   DrawerPortal,
   DrawerTitle,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Pagination } from '@langgenius/dify-ui/pagination'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { MessageCheckRemove } from '@/app/components/base/icons/src/vender/line/communication'
 import { APP_PAGE_LIMIT } from '@/config'
 import useTimestamp from '@/hooks/use-timestamp'
 import { fetchHitHistoryList } from '@/service/annotation'
@@ -41,16 +41,18 @@ type Props = Readonly<{
   onRemove: () => void
 }>
 
-enum TabType {
-  annotation = 'annotation',
-  hitHistory = 'hitHistory',
-}
+const TabType = {
+  annotation: 'annotation',
+  hitHistory: 'hitHistory',
+} as const
+
+type TabType = (typeof TabType)[keyof typeof TabType]
 
 const ViewAnnotationModal: FC<Props> = ({ appId, isShow, onHide, item, onSave, onRemove }) => {
   const { id, question, answer, created_at: createdAt } = item
   const [newQuestion, setNewQuery] = useState(question)
   const [newAnswer, setNewAnswer] = useState(answer)
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appAnnotation', 'appDebug', 'appLog', 'common'])
   const { formatTime } = useTimestamp()
   const [currPage, setCurrPage] = React.useState<number>(0)
   const [total, setTotal] = useState(0)
@@ -86,7 +88,7 @@ const ViewAnnotationModal: FC<Props> = ({ appId, isShow, onHide, item, onSave, o
     if (isShow && id) fetchHitHistory(1)
   }, [id, isShow])
 
-  const [activeTab, setActiveTab] = useState(TabType.annotation)
+  const [activeTab, setActiveTab] = useState<TabType>(TabType.annotation)
   const handleSave = async (type: EditItemType, editedContent: string) => {
     try {
       if (type === EditItemType.Query) {
@@ -238,9 +240,15 @@ const ViewAnnotationModal: FC<Props> = ({ appId, isShow, onHide, item, onSave, o
                         )}
                       </TabsTab>
                     </TabsList>
-                    <DrawerCloseButton
-                      aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                      className="size-6 rounded-md"
+                    <DrawerClose
+                      render={
+                        <IconButton
+                          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                          size="md"
+                        >
+                          <span aria-hidden="true" className="i-ri-close-line size-4" />
+                        </IconButton>
+                      }
                     />
                   </div>
                   <div className="min-h-0 flex-1 overflow-y-auto">
@@ -291,7 +299,10 @@ const ViewAnnotationModal: FC<Props> = ({ appId, isShow, onHide, item, onSave, o
                       className="flex cursor-pointer appearance-none items-center space-x-2 border-0 bg-transparent py-0 pr-0 pl-3 text-left"
                       onClick={() => setShowModal(true)}
                     >
-                      <MessageCheckRemove />
+                      <span
+                        aria-hidden
+                        className="i-custom-vender-line-communication-message-check-remove h-6 w-6"
+                      />
                       <span>
                         {t(($) => $['editModal.removeThisCache'], { ns: 'appAnnotation' })}
                       </span>

@@ -9,7 +9,7 @@ import { useWorkflowStore } from '@/app/components/workflow/store'
 const Header = () => {
   const workflowStore = useWorkflowStore()
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetPipeline'])
   const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()
 
   const handleClose = useCallback(() => {

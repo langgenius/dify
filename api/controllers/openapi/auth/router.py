@@ -14,6 +14,7 @@ from controllers.openapi.auth.requirements import assert_license_valid
 from controllers.openapi.auth.spec import EndpointSpec
 from controllers.openapi.auth.subjects import subject_from_auth
 from core.db.session_factory import session_factory
+from core.logging.context import get_trace_id
 from enums import DeploymentEdition
 from libs.oauth_bearer import InvalidBearerError, assert_bearer_feature_enabled, extract_bearer, get_authenticator
 
@@ -37,7 +38,7 @@ class AuthRouter:
         caller, so this is the one place it is checked. The bearer feature flag
         is the same kind of fact and answers 503 next.
         """
-        if spec.edition is not None and dify_config.DEPLOYMENT_EDITION not in spec.edition:
+        if not spec.allows(dify_config.DEPLOYMENT_EDITION):
             raise NotFound()
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE:
             assert_license_valid()
@@ -57,11 +58,16 @@ class AuthRouter:
         subject = subject_from_auth(auth)
         pipeline = pipeline_for_subject(subject)
 
-        # One session spans the loaders and the handler, so the objects the
-        # requirements load stay attached while the handler reads them. It is
-        # finalised here, like `with_session` does, until repositories own it.
+        # ORM-backed endpoints share the admission session with the handler.
+        # Account-context endpoints materialize identity and release it in the
+        # pipeline, before calling services that own their transactions.
         with session_factory.create_session() as session:
-            ctx = Context(subject, session, dict(request.view_args or {}))
+            ctx = Context(
+                subject,
+                session,
+                dict(request.view_args or {}),
+                trace_id=get_trace_id() or request.headers.get("X-Trace-Id"),
+            )
             try:
                 result = pipeline.run(
                     subject=subject,

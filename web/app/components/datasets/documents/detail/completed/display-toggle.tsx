@@ -3,7 +3,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { RiLineHeight } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Collapse } from '@/app/components/base/icons/src/vender/knowledge'
 
 type DisplayToggleProps = {
   isCollapsed: boolean
@@ -11,7 +10,7 @@ type DisplayToggleProps = {
 }
 
 const DisplayToggle: FC<DisplayToggleProps> = ({ isCollapsed, toggleCollapsed }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetDocuments'])
   const label = isCollapsed
     ? t(($) => $['segment.expandChunks'], { ns: 'datasetDocuments' })
     : t(($) => $['segment.collapseChunks'], { ns: 'datasetDocuments' })
@@ -29,7 +28,10 @@ const DisplayToggle: FC<DisplayToggleProps> = ({ isCollapsed, toggleCollapsed })
             {isCollapsed ? (
               <RiLineHeight className="size-4 text-components-button-secondary-text" />
             ) : (
-              <Collapse className="size-4 text-components-button-secondary-text" />
+              <span
+                aria-hidden
+                className="i-custom-vender-knowledge-collapse size-4 text-components-button-secondary-text"
+              />
             )}
           </button>
         }

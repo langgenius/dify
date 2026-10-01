@@ -35,7 +35,7 @@ const useSingleRunFormParams = ({
   toVarInputs,
   varSelectorsToVarInputs,
 }: Params) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   const { isNodeInLoop } = useIsNodeInLoop(id)
 

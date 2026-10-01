@@ -11,7 +11,7 @@ import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
 import { useIsChatMode, useNodesReadOnly, useWorkflow } from '../../hooks/use-workflow'
 
 const useConfig = (id: string, payload: StartNodeType) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const { handleOutVarRenameChange, isVarUsedInNodes, removeUsedVarInNodes } = useWorkflow()
   const isChatMode = useIsChatMode()

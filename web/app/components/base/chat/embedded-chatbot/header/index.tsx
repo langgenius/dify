@@ -31,7 +31,7 @@ const Header: FC<IHeaderProps> = ({
   theme,
   onCreateNewChat,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['share'])
   const { appData, currentConversationId, inputsForms, allInputsHidden } =
     useEmbeddedChatbotContext()
 

@@ -19,7 +19,7 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
 
 export default function SupportMenu() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['billing', 'common'])
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,

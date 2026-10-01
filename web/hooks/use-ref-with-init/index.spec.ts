@@ -1,6 +1,6 @@
 import { renderHook } from '@testing-library/react'
 import { StrictMode } from 'react'
-import { describe, expect, expectTypeOf, it, vi } from 'vitest'
+import { describe, expect, expectTypeOf, it, vi } from 'vite-plus/test'
 import { useRefWithInit } from './index'
 
 describe('useRefWithInit', () => {
