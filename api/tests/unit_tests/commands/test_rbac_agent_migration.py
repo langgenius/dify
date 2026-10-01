@@ -53,12 +53,26 @@ def _seed_agent(domain: RBACDomain) -> None:
                 created_by="c1",
             )
         )
-        for account_id in ("m1", "m2", "m3"):
+        for index, account_id in enumerate(("owner-1", "m1", "admin-1", "m2", "m3")):
             membership = TenantAccountJoin(tenant_id="t1", account_id=account_id, role=TenantAccountRole.NORMAL)
-            membership.id = account_id
+            membership.id = f"membership-{index}"
             session.add(membership)
         session.add(TenantAccountJoin(tenant_id="other", account_id="foreign", role=TenantAccountRole.NORMAL))
     domain.transport.responses["/rbac/agents/whitelist"] = {"rbac_whitelist_scope": "all"}
+    # Remote RBAC bindings protect administrators even when the local role is normal.
+    domain.transport.responses["/rbac/members/rbac-roles/batch"] = {
+        f"{role_tag}-1": [
+            {
+                "id": f"role-{role_tag}",
+                "type": "workspace",
+                "category": "global_system_default",
+                "name": role_tag,
+                "is_builtin": True,
+                "role_tag": role_tag,
+            }
+        ]
+        for role_tag in ("owner", "admin")
+    }
 
 
 def test_agent_bootstrap_apply_writes_whitelist_member_batches_and_creator_sync(rbac_domain: RBACDomain) -> None:
@@ -69,17 +83,28 @@ def test_agent_bootstrap_apply_writes_whitelist_member_batches_and_creator_sync(
     assert result.exit_code == 0, result.output
     assert [event["event"] for event in _events(result.output)] == ["agent_access_bootstrap_applied"]
     assert _events(result.output)[0]["dry_run"] is False
+    role_queries = [
+        request for request in rbac_domain.transport.requests if request.endpoint == "/rbac/members/rbac-roles/batch"
+    ]
+    assert [request.json for request in role_queries] == [
+        {"member_ids": ["owner-1", "m1"]},
+        {"member_ids": ["admin-1", "m2"]},
+        {"member_ids": ["m3"]},
+    ]
+    for request in role_queries:
+        assert (request.method, request.tenant_id, request.account_id) == ("POST", "t1", "c1")
     writes = [request for request in rbac_domain.transport.requests if request.method == "PUT"]
     assert [request.endpoint for request in writes] == [
+        "/rbac/agents/user-access-policies",
         "/rbac/agents/user-access-policies",
         "/rbac/agents/user-access-policies",
         "/rbac/access-policies/creator-member-bindings",
         "/rbac/agents/whitelist",
     ]
-    first, second, creator, whitelist = writes
+    first, second, third, creator, whitelist = writes
     for request in writes:
         assert (request.tenant_id, request.account_id) == ("t1", "c1")
-    for request, account_ids in ((first, ["m1", "m2"]), (second, ["m3"])):
+    for request, account_ids in ((first, ["m1"]), (second, ["m2"]), (third, ["m3"])):
         assert request.params == {"agent_id": "ag1", "account_id": None}
         assert request.json == {"account_ids": account_ids, "access_policy_ids": ["default"]}
     assert creator.params == {"resource_type": "agent", "agent_id": "ag1"}
