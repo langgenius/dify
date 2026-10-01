@@ -1,5 +1,7 @@
 import type { OutputVar } from '../../../../code/types'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import OutputVarList from '../output-var-list'
 
 vi.mock('../var-type-picker', () => ({
@@ -84,23 +86,110 @@ describe('OutputVarList', () => {
       expect(newOutputs.var_1).toEqual({ type: 'string', children: null })
     })
 
-    it('should keep outputs key alive when duplicate is renamed back to unique name', () => {
-      // Step 1: rename var_2 -> var_1 (creates duplicate)
-      const outputs = createOutputs({ var_1: 'string', var_2: 'number' })
-      const afterFirst = collectRenameResult(outputs, ['var_1', 'var_2'], 1, 'var_1')
+    it('should not commit a rename to a name another row already holds', async () => {
+      const user = userEvent.setup()
+      const outputs = createOutputs({ var_1: 'string', var_12: 'number' })
+      const onChange = vi.fn()
 
-      expect(afterFirst.var_2).toBeUndefined()
-      expect(afterFirst.var_1).toBeDefined()
+      render(
+        <OutputVarList
+          readonly={false}
+          outputs={outputs}
+          outputKeyOrders={['var_1', 'var_12']}
+          onChange={onChange}
+          onRemove={vi.fn()}
+        />,
+      )
 
-      // Clean up first render before the second to avoid DOM collision
-      cleanup()
+      const inputs = screen.getAllByRole('textbox')
+      await user.type(inputs[1]!, '{Backspace}')
 
-      // Step 2: rename second var_1 -> var_2 (restores unique names)
-      const afterSecond = collectRenameResult(afterFirst, ['var_1', 'var_1'], 1, 'var_2')
+      // outputs is keyed by name, so committing would replace var_1's entry with var_12's
+      expect(onChange).not.toHaveBeenCalled()
+      expect(inputs[1])!.toHaveValue('var_1')
+    })
+  })
 
-      // var_1 must survive because index 0 still uses it
-      expect(afterSecond.var_1).toBeDefined()
-      expect(afterSecond.var_2).toBeDefined()
+  describe('typing a name another row already holds', () => {
+    // The list is controlled, so each change is fed back the way use-output-var-list does:
+    // outputs are replaced and the changed row is pointed at its new key.
+    const renderControlled = (initialOutputs: OutputVar, initialKeyOrders: string[]) => {
+      const state = { outputs: initialOutputs, outputKeyOrders: initialKeyOrders }
+      const renames: Array<{ from: string; to: string }> = []
+
+      const Harness = () => {
+        const [outputs, setOutputs] = useState(initialOutputs)
+        const [outputKeyOrders, setOutputKeyOrders] = useState(initialKeyOrders)
+
+        return (
+          <OutputVarList
+            readonly={false}
+            outputs={outputs}
+            outputKeyOrders={outputKeyOrders}
+            onChange={(newOutputs, changedIndex, newKey) => {
+              state.outputs = newOutputs
+              setOutputs(newOutputs)
+              if (changedIndex === undefined || newKey === undefined) return
+
+              renames.push({ from: outputKeyOrders[changedIndex]!, to: newKey })
+              const newOutputKeyOrders = outputKeyOrders.map((key, index) =>
+                index === changedIndex ? newKey : key,
+              )
+              state.outputKeyOrders = newOutputKeyOrders
+              setOutputKeyOrders(newOutputKeyOrders)
+            }}
+            onRemove={vi.fn()}
+          />
+        )
+      }
+
+      render(<Harness />)
+      return { state, renames }
+    }
+
+    it('should keep the declared type of a row whose name is typed through', async () => {
+      const user = userEvent.setup()
+      const { state, renames } = renderControlled(
+        createOutputs({ a: 'array[object]', var_2: 'string' }),
+        ['a', 'var_2'],
+      )
+
+      const input = screen.getAllByRole('textbox')[1]!
+      await user.clear(input)
+      await user.type(input, 'ab')
+
+      expect(state.outputs).toEqual({
+        a: { type: 'array[object]', children: null },
+        ab: { type: 'string', children: null },
+      })
+      expect(state.outputKeyOrders).toEqual(['a', 'ab'])
+      expect(input).toHaveValue('ab')
+      // The transient name is never reported as a rename, so references to `a` stay on row 1
+      expect(renames).toEqual([
+        { from: 'var_2', to: '' },
+        { from: '', to: 'ab' },
+      ])
+    })
+
+    it('should restore the row name when the field is left while it still collides', async () => {
+      const user = userEvent.setup()
+      const { state, renames } = renderControlled(
+        createOutputs({ a: 'array[object]', ab: 'string' }),
+        ['a', 'ab'],
+      )
+
+      const input = screen.getAllByRole('textbox')[1]!
+      await user.type(input, '{Backspace}')
+      expect(input).toHaveValue('a')
+
+      await user.tab()
+
+      expect(input).toHaveValue('ab')
+      expect(renames).toEqual([])
+      expect(state.outputs).toEqual({
+        a: { type: 'array[object]', children: null },
+        ab: { type: 'string', children: null },
+      })
     })
   })
 
