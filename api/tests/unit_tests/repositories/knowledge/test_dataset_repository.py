@@ -26,7 +26,7 @@ def _dataset(
     )
 
 
-def test_rbac_maintainer_lookup_requires_owning_workspace(sqlite_session_factory: sessionmaker[Session]):
+def test_rbac_maintainer_lookup_requires_owning_workspace(sqlite_session_factory: sessionmaker[Session]) -> None:
     with sqlite_session_factory.begin() as session:
         session.add(_dataset("dataset", "workspace"))
     repository = SQLAlchemyDatasetRepository(session_factory=sqlite_session_factory)
