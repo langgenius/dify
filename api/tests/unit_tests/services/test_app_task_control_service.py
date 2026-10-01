@@ -20,7 +20,7 @@ def test_workflow_stop_sets_flag_before_sending_command(
     queued: list[tuple[object, ...]] = []
     commands.side_effect = lambda *_, **__: events.append("flag")
 
-    def execute_pipeline(pipeline: Pipeline) -> list[object]:
+    def execute_pipeline(pipeline: "Pipeline[bytes]") -> list[object]:
         events.append("command")
         queued.extend(args for args, _ in pipeline.command_stack)
         if command_fails:
