@@ -1,6 +1,7 @@
 """Task behavior with real workspace queries and an explicit RBAC transport."""
 
 from collections.abc import Callable, Iterator
+from typing import Protocol, cast
 
 import pytest
 from flask import Flask
@@ -17,6 +18,10 @@ from tasks.initialize_created_app_rbac_access_task import (
     sync_joined_workspace_member_rbac_access_task,
 )
 from tests.unit_tests.rbac_fakes import RBACDomain
+
+
+class _TaskWithQueue(Protocol):
+    queue: str
 
 
 @pytest.fixture(autouse=True)
@@ -46,11 +51,13 @@ def _seed_members(domain: RBACDomain, members: tuple[str, ...]) -> None:
 
 
 def test_initialize_created_app_rbac_access_task_uses_rbac_queue() -> None:
-    assert getattr(initialize_created_app_rbac_access_task, "queue", None) == "app_rbac"
+    task = cast(_TaskWithQueue, initialize_created_app_rbac_access_task)
+    assert task.queue == "app_rbac"
 
 
 def test_sync_joined_workspace_member_rbac_access_task_uses_rbac_queue() -> None:
-    assert getattr(sync_joined_workspace_member_rbac_access_task, "queue", None) == "app_rbac"
+    task = cast(_TaskWithQueue, sync_joined_workspace_member_rbac_access_task)
+    assert task.queue == "app_rbac"
 
 
 def test_initialize_created_app_rbac_access_task_batches_workspace_members(

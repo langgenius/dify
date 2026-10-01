@@ -1,8 +1,9 @@
 """Access-policy writes must expose typed bodies through the RBAC decorators."""
 
 import json
+from collections.abc import Callable
 from inspect import unwrap
-from typing import cast
+from typing import Protocol, cast
 from uuid import UUID
 
 import pytest
@@ -14,6 +15,10 @@ from controllers.console.workspace.rbac import policies, resources, roles
 from machinery.context import RequestContext
 from services.rbac.contracts import RBACResourceType
 from tests.unit_tests.rbac_fakes import build_rbac_domain
+
+
+class _DeleteResource(Protocol):
+    delete: Callable[..., dict[str, object]]
 
 
 def _object_at(root: dict[str, object], *keys: str) -> dict[str, object]:
@@ -87,8 +92,7 @@ def test_delete_response_matches_exported_schema(
         )
         path_params = {kind.route.id_param: item_id, "policy_id": item_id}
     monkeypatch.setattr(module, "application_services", lambda: domain)
-    delete = getattr(resource, "delete", None)
-    assert callable(delete)
+    delete = cast(_DeleteResource, resource).delete
     with app.test_request_context(method="DELETE", json={"account_ids": ["member"]}):
         response = unwrap(delete)(resource, context, **path_params)
 
