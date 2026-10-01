@@ -18,7 +18,7 @@ import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
 import { VersionHistoryContextMenuOptions } from '../../../types'
 
-export type ActionMenuProps = {
+type ActionMenuProps = {
   workflowId: string
   isShowDelete: boolean
   isNamedVersion: boolean
