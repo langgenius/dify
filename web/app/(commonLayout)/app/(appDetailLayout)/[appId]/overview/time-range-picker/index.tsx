@@ -10,7 +10,7 @@ import dayjs from 'dayjs'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useLocale } from '#i18n'
-import { MonitoringDateRangePicker } from '@/features/monitoring/date-range-picker'
+import { MonitoringDateRangePicker } from '@/app/components/app/monitoring/date-range-picker'
 import { formatToLocalTime } from '@/utils/format'
 import RangeSelector from './range-selector'
 
