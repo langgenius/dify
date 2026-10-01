@@ -21,6 +21,7 @@ from typing import Any
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
 from core.tools.utils.yaml_utils import _load_yaml_file
+from core.workflow.graph_engine.iteration_conversation_variables import DIFY_GRAPH_ENGINE_CONTAINER_HANDLER_FACTORIES
 from core.workflow.node_factory import DifyNodeFactory, get_default_root_node_id
 from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
@@ -332,6 +333,7 @@ class TableTestRunner:
                     scale_up_threshold=self.graph_engine_scale_up_threshold,
                     scale_down_idle_time=self.graph_engine_scale_down_idle_time,
                 ),
+                container_handler_factories=DIFY_GRAPH_ENGINE_CONTAINER_HANDLER_FACTORIES,
             )
 
             # Execute and collect events

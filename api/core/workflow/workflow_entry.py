@@ -16,6 +16,7 @@ from core.app.file_access import DatabaseFileAccessController
 from core.app.workflow.layers.observability import ObservabilityLayer
 from core.credit_usage import CreditUsageAppType
 from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
+from core.workflow.graph_engine.iteration_conversation_variables import DIFY_GRAPH_ENGINE_CONTAINER_HANDLER_FACTORIES
 from core.workflow.node_factory import (
     DifyGraphInitContext,
     DifyNodeFactory,
@@ -160,6 +161,7 @@ class WorkflowEntry:
                 scale_up_threshold=dify_config.GRAPH_ENGINE_SCALE_UP_THRESHOLD,
                 scale_down_idle_time=dify_config.GRAPH_ENGINE_SCALE_DOWN_IDLE_TIME,
             ),
+            container_handler_factories=DIFY_GRAPH_ENGINE_CONTAINER_HANDLER_FACTORIES,
         )
 
         # Add debug logging layer when in debug mode
