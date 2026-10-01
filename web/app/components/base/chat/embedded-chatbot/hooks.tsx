@@ -270,7 +270,7 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
   useEffect(() => {
     const conversationInputs: Record<string, InputValueTypes> = {}
     inputsForms.forEach((item) => {
-      conversationInputs[item.variable] = item.default ?? null
+      conversationInputs[item.variable] = item.default === '' ? null : (item.default ?? null)
     })
     handleNewConversationInputsChange(conversationInputs)
   }, [handleNewConversationInputsChange, inputsForms])

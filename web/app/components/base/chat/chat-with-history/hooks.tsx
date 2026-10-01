@@ -288,10 +288,16 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
           }
         }
         if (item.number) {
-          const convertedNumber = Number(initInputs[item.number.variable])
+          const rawNumber = initInputs[item.number.variable]
+          const convertedNumber =
+            rawNumber === undefined || rawNumber === null || rawNumber === ''
+              ? Number.NaN
+              : Number(rawNumber)
           return {
             ...item.number,
-            default: convertedNumber || item.default || item.number.default,
+            default: Number.isNaN(convertedNumber)
+              ? (item.default ?? item.number.default)
+              : convertedNumber,
             type: 'number',
           }
         }
@@ -356,7 +362,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
   useEffect(() => {
     const conversationInputs: Record<string, any> = {}
     inputsForms.forEach((item: any) => {
-      conversationInputs[item.variable] = item.default || null
+      conversationInputs[item.variable] = item.default === '' ? null : (item.default ?? null)
     })
     handleNewConversationInputsChange(conversationInputs)
   }, [handleNewConversationInputsChange, inputsForms])
@@ -432,7 +438,8 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
         requiredVars.forEach(({ variable, label, type }) => {
           if (hasEmptyInput) return
           if (fileIsUploading) return
-          if (!newConversationInputsRef.current[variable] && !silent)
+          const inputValue = newConversationInputsRef.current[variable]
+          if ((inputValue === undefined || inputValue === null || inputValue === '') && !silent)
             hasEmptyInput = label as string
           if (
             (type === InputVarType.singleFile || type === InputVarType.multiFiles) &&
@@ -491,7 +498,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
     handleChangeConversation('')
     const conversationInputs: Record<string, any> = {}
     inputsForms.forEach((item: any) => {
-      conversationInputs[item.variable] = item.default || null
+      conversationInputs[item.variable] = item.default === '' ? null : (item.default ?? null)
     })
     handleNewConversationInputsChange(conversationInputs)
     setClearChatList(true)
