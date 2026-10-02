@@ -14,6 +14,7 @@ and ensure proper handling of crawl options, status checking, and data retrieval
 
 from unittest.mock import Mock, create_autospec, patch
 
+import httpx
 import pytest
 from pytest_mock import MockerFixture
 
@@ -568,8 +569,7 @@ class TestWebsiteService:
             "api_key": "test_key",
         }
 
-        mock_response = Mock()
-        mock_response.json.return_value = {"code": 200, "data": {"taskId": "task-789"}}
+        mock_response = httpx.Response(200, json={"code": 200, "data": {"taskId": "task-789"}})
         mock_httpx_post = mocker.patch(
             "services.data_source.website_service._adaptive_http_client.post",
             return_value=mock_response,
@@ -913,8 +913,7 @@ class TestErrorHandling:
         # Simulate API error for non-existent job
         from core.rag.extractor.watercrawl.exceptions import WaterCrawlBadRequestError
 
-        mock_response = Mock()
-        mock_response.status_code = 404
+        mock_response = httpx.Response(404, json={"message": "Crawl job not found", "errors": {}})
         mock_instance.get_crawl_request.side_effect = WaterCrawlBadRequestError(mock_response)
 
         provider = WaterCrawlProvider(api_key="test_key")
@@ -1356,8 +1355,7 @@ class TestProviderSpecificFeatures:
             "api_key": "test_key",
         }
 
-        mock_response = Mock()
-        mock_response.json.return_value = {
+        response_data = {
             "code": 200,
             "data": {
                 "title": "Single Page Title",
@@ -1365,6 +1363,7 @@ class TestProviderSpecificFeatures:
                 "url": "https://example.com/page",
             },
         }
+        mock_response = httpx.Response(200, json=response_data)
         mocker.patch("services.data_source.website_service._jina_http_client.get", return_value=mock_response)
 
         from services.data_source.website_service import WebsiteCrawlApiRequest
