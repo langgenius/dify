@@ -1,15 +1,26 @@
 import json
 import unittest
+import zoneinfo
+from collections.abc import Iterator
 from datetime import UTC, datetime
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import MagicMock
+from uuid import uuid4
 
 import pytest
+from sqlalchemy import select
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session
 
 from core.trigger.constants import TRIGGER_SCHEDULE_NODE_TYPE
 from core.workflow.nodes.trigger_schedule.entities import VisualConfig
 from core.workflow.nodes.trigger_schedule.exc import ScheduleConfigError
+from events.event_handlers import sync_workflow_schedule_when_app_published
+from libs import schedule_utils
+from libs.datetime_utils import naive_utc_now
 from libs.schedule_utils import calculate_next_run_at, convert_12h_to_24h
+from models.trigger import WorkflowSchedulePlan
 from models.workflow import Workflow
 from services.trigger.schedule_service import ScheduleService
 from tests.unit_tests.model_factories import make_workflow
@@ -597,6 +608,103 @@ def test_extract_schedule_config_should_raise_when_mode_invalid() -> None:
     # Act / Assert
     with pytest.raises(ScheduleConfigError, match="Invalid schedule mode: invalid"):
         ScheduleService.extract_schedule_config(workflow=workflow)
+
+
+@pytest.fixture(params=["host-zone-files", "tzdata-wheel-only"])
+def zone_data(request: pytest.FixtureRequest) -> Iterator[None]:
+    """Read zones through zoneinfo's default path, or from the tzdata wheel alone as with PYTHONTZPATH=""."""
+    tzpath = zoneinfo.TZPATH
+    if request.param == "tzdata-wheel-only":
+        zoneinfo.reset_tzpath(to=[])
+    zoneinfo.ZoneInfo.clear_cache()
+    schedule_utils._resolve_zone.cache_clear()
+    yield
+    zoneinfo.reset_tzpath(to=tzpath)
+    zoneinfo.ZoneInfo.clear_cache()
+    schedule_utils._resolve_zone.cache_clear()
+
+
+# Stored names are not validated, so a DSL import or a draft sync can save one in any case. pytz matches names
+# case-insensitively; zoneinfo looks them up as files, which is case-sensitive on Linux and, in the tzdata wheel,
+# for directory names everywhere.
+@pytest.mark.usefixtures("zone_data")
+@pytest.mark.parametrize(
+    ("timezone", "expected"),
+    [
+        # 11:00:05 BST -> 12:30 BST
+        ("europe/london", datetime(2026, 7, 15, 11, 30, tzinfo=UTC)),
+        # 10:00:05 UTC -> 12:30 UTC
+        ("utc", datetime(2026, 7, 15, 12, 30, tzinfo=UTC)),
+        # 18:00:05 CST -> 12:30 CST the next day
+        ("Asia/shanghai", datetime(2026, 7, 16, 4, 30, tzinfo=UTC)),
+    ],
+)
+def test_calculate_next_run_at_accepts_zone_names_in_any_case(timezone: str, expected: datetime) -> None:
+    result = calculate_next_run_at("30 12 * * *", timezone, datetime(2026, 7, 15, 10, 0, 5, tzinfo=UTC))
+
+    assert result == expected
+
+
+@pytest.mark.usefixtures("zone_data")
+def test_calculate_next_run_at_reads_each_zone_once_per_process(monkeypatch: pytest.MonkeyPatch) -> None:
+    # ZoneInfo keeps only its 8 most recent zones strongly, so a poll over 9 zones is the case to cover.
+    timezones = [
+        "UTC",
+        "Europe/London",
+        "Europe/Dublin",
+        "Europe/Paris",
+        "Asia/Shanghai",
+        "Asia/Tokyo",
+        "America/New_York",
+        "America/Los_Angeles",
+        "Africa/Casablanca",
+    ]
+    reads: list[str] = []
+
+    def counting_zone_info(key: str) -> zoneinfo.ZoneInfo:
+        reads.append(key)
+        return zoneinfo.ZoneInfo(key)
+
+    monkeypatch.setattr(schedule_utils, "ZoneInfo", counting_zone_info)
+
+    for _ in range(2):
+        for timezone in timezones:
+            calculate_next_run_at("30 12 * * *", timezone, datetime(2026, 7, 15, 10, 0, 5, tzinfo=UTC))
+
+    assert reads == timezones
+
+
+@pytest.mark.usefixtures("zone_data")
+@pytest.mark.parametrize("timezone", ["europe/london", "utc", "Asia/shanghai"])
+def test_publish_schedules_next_run_for_zone_names_in_any_case(
+    timezone: str,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_engine: Engine,
+    sqlite_session: Session,
+) -> None:
+    monkeypatch.setattr(sync_workflow_schedule_when_app_published, "db", SimpleNamespace(engine=sqlite_engine))
+    app_id = str(uuid4())
+    schedule_node = {
+        "id": "schedule-1",
+        "data": {
+            "type": TRIGGER_SCHEDULE_NODE_TYPE,
+            "mode": "cron",
+            "cron_expression": "30 12 * * *",
+            "timezone": timezone,
+        },
+    }
+    now = naive_utc_now()
+
+    # Publishing an app syncs its schedule plan; an error here fails the publish request.
+    sync_workflow_schedule_when_app_published.sync_schedule_from_workflow(
+        tenant_id=str(uuid4()), app_id=app_id, workflow=_workflow(graph_dict={"nodes": [schedule_node]})
+    )
+
+    plan = sqlite_session.scalar(select(WorkflowSchedulePlan).where(WorkflowSchedulePlan.app_id == app_id))
+    assert plan is not None
+    next_run_at = plan.next_run_at
+    assert next_run_at is not None
+    assert next_run_at > now
 
 
 if __name__ == "__main__":

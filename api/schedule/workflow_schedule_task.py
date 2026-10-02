@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Collection
 
 from celery import current_app, group, shared_task
 from sqlalchemy import and_, select
@@ -28,16 +29,19 @@ def poll_workflow_schedules() -> None:
 
     with session_factory() as session:
         total_dispatched = 0
+        # Skipped schedules stay due, so later batches of this tick must not fetch them again.
+        skipped_schedule_ids: set[str] = set()
 
         while True:
-            due_schedules = _fetch_due_schedules(session)
+            due_schedules = _fetch_due_schedules(session, skipped_schedule_ids)
 
             if not due_schedules:
                 break
 
             with current_app.producer_or_acquire() as producer:  # type: ignore
-                dispatched_count = _process_schedules(session, due_schedules, producer)
+                dispatched_count, skipped_ids = _process_schedules(session, due_schedules, producer)
                 total_dispatched += dispatched_count
+                skipped_schedule_ids.update(skipped_ids)
 
                 logger.debug("Batch processed: %d dispatched", dispatched_count)
 
@@ -52,33 +56,37 @@ def poll_workflow_schedules() -> None:
             logger.info("Total processed: %d workflow schedule(s) dispatched", total_dispatched)
 
 
-def _fetch_due_schedules(session: Session) -> list[WorkflowSchedulePlan]:
+def _fetch_due_schedules(session: Session, skipped_schedule_ids: Collection[str]) -> list[WorkflowSchedulePlan]:
     """
     Fetch a batch of due schedules, sorted by most overdue first.
 
     Returns up to WORKFLOW_SCHEDULE_POLLER_BATCH_SIZE schedules per call.
     Used in a loop to progressively process all due schedules.
+    Schedules skipped earlier in the same tick are left out.
     """
     now = naive_utc_now()
 
-    due_schedules = session.scalars(
-        (
-            select(WorkflowSchedulePlan)
-            .join(
-                AppTrigger,
-                and_(
-                    AppTrigger.app_id == WorkflowSchedulePlan.app_id,
-                    AppTrigger.node_id == WorkflowSchedulePlan.node_id,
-                    AppTrigger.trigger_type == AppTriggerType.TRIGGER_SCHEDULE,
-                ),
-            )
-            .where(
-                WorkflowSchedulePlan.next_run_at <= now,
-                WorkflowSchedulePlan.next_run_at.isnot(None),
-                AppTrigger.status == AppTriggerStatus.ENABLED,
-            )
+    query = (
+        select(WorkflowSchedulePlan)
+        .join(
+            AppTrigger,
+            and_(
+                AppTrigger.app_id == WorkflowSchedulePlan.app_id,
+                AppTrigger.node_id == WorkflowSchedulePlan.node_id,
+                AppTrigger.trigger_type == AppTriggerType.TRIGGER_SCHEDULE,
+            ),
         )
-        .order_by(WorkflowSchedulePlan.next_run_at.asc())
+        .where(
+            WorkflowSchedulePlan.next_run_at <= now,
+            WorkflowSchedulePlan.next_run_at.isnot(None),
+            AppTrigger.status == AppTriggerStatus.ENABLED,
+        )
+    )
+    if skipped_schedule_ids:
+        query = query.where(WorkflowSchedulePlan.id.not_in(skipped_schedule_ids))
+
+    due_schedules = session.scalars(
+        query.order_by(WorkflowSchedulePlan.next_run_at.asc())
         .with_for_update(skip_locked=True)
         .limit(dify_config.WORKFLOW_SCHEDULE_POLLER_BATCH_SIZE)
     )
@@ -86,17 +94,27 @@ def _fetch_due_schedules(session: Session) -> list[WorkflowSchedulePlan]:
     return list(due_schedules)
 
 
-def _process_schedules(session: Session, schedules: list[WorkflowSchedulePlan], producer=None) -> int:
-    """Process schedules: check quota, update next run time and dispatch to Celery in parallel."""
+def _process_schedules(session: Session, schedules: list[WorkflowSchedulePlan], producer=None) -> tuple[int, list[str]]:
+    """Process schedules: check quota, update next run time and dispatch to Celery in parallel.
+
+    A schedule whose next run cannot be calculated is logged and skipped, so it cannot block the rest of the
+    batch; it stays due for the next poll. Returns the dispatched count and the skipped schedule ids.
+    """
     if not schedules:
-        return 0
+        return 0, []
 
     tasks_to_dispatch: list[str] = []
+    skipped_schedule_ids: list[str] = []
     for schedule in schedules:
-        next_run_at = calculate_next_run_at(
-            schedule.cron_expression,
-            schedule.timezone,
-        )
+        try:
+            next_run_at = calculate_next_run_at(
+                schedule.cron_expression,
+                schedule.timezone,
+            )
+        except Exception:
+            logger.exception("Skipping workflow schedule %s for this poll: cannot calculate its next run", schedule.id)
+            skipped_schedule_ids.append(schedule.id)
+            continue
         schedule.next_run_at = next_run_at
 
         tasks_to_dispatch.append(schedule.id)
@@ -109,4 +127,4 @@ def _process_schedules(session: Session, schedules: list[WorkflowSchedulePlan], 
 
     session.commit()
 
-    return len(tasks_to_dispatch)
+    return len(tasks_to_dispatch), skipped_schedule_ids
