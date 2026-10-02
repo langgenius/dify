@@ -959,6 +959,69 @@ class TestDatasetServiceGraphIndexSetting:
         assert stored["enabled"] is False
         check.assert_not_called()
 
+    @pytest.mark.parametrize(
+        ("previous", "current", "expected"),
+        [
+            # Creating a knowledge base indexes its first documents before the
+            # graph can be enabled, so turning it on must cover them.
+            ({}, {"enabled": True, "model_provider_name": "p", "model_name": "m"}, True),
+            ({"enabled": False}, {"enabled": True, "model_provider_name": "p", "model_name": "m"}, True),
+            # A new extraction model changes what every existing chunk yields.
+            (
+                {"enabled": True, "model_provider_name": "p", "model_name": "m"},
+                {"enabled": True, "model_provider_name": "p", "model_name": "other"},
+                True,
+            ),
+            # Retrieval tuning applies on the next query; re-extracting would
+            # only spend model calls.
+            (
+                {"enabled": True, "model_provider_name": "p", "model_name": "m", "max_depth": 2},
+                {"enabled": True, "model_provider_name": "p", "model_name": "m", "max_depth": 3},
+                False,
+            ),
+            ({"enabled": True, "model_provider_name": "p", "model_name": "m"}, {"enabled": False}, False),
+        ],
+    )
+    def test_backfill_runs_only_when_extraction_inputs_change(
+        self, previous: dict[str, object], current: dict[str, object], expected: bool
+    ) -> None:
+        assert DatasetService._graph_needs_backfill(previous, current) is expected
+
+    def test_enabling_the_graph_queues_a_backfill_only_after_commit(self, sqlite_session: Session) -> None:
+        dataset = _dataset()
+        sqlite_session.add(dataset)
+        sqlite_session.commit()
+
+        with (
+            patch.object(DatasetService, "check_graph_extraction_model_setting"),
+            patch("services.knowledge.dataset_service.build_dataset_graph_task") as task,
+        ):
+            DatasetService._update_internal_dataset(
+                dataset,
+                {"graph_index_setting": {"enabled": True, "model_provider_name": "p", "model_name": "m"}},
+                _account(),
+                sqlite_session,
+            )
+            # The task reads the setting back; before the commit it would see
+            # the graph still disabled and do nothing.
+            task.delay.assert_not_called()
+            sqlite_session.commit()
+
+        task.delay.assert_called_once_with(dataset.id, dataset.tenant_id)
+
+    def test_a_rolled_back_setting_change_queues_nothing(self, sqlite_session_factory: sessionmaker[Session]) -> None:
+        with (
+            sqlite_session_factory() as session,
+            patch("services.knowledge.dataset_service.build_dataset_graph_task") as task,
+        ):
+            session.execute(select(Dataset))
+            DatasetService._build_graph_after_commit(session, "dataset-1", "tenant-1")
+            session.rollback()
+            session.execute(select(Dataset))
+            session.commit()
+
+        task.delay.assert_not_called()
+
     def test_external_datasets_reject_graph_indexing(self, unbound_session: Session) -> None:
         dataset = _dataset(provider="external")
 

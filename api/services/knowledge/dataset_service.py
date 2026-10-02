@@ -5,7 +5,7 @@ import logging
 import secrets
 import time
 import uuid
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from contextlib import nullcontext
 from dataclasses import replace
 from typing import Any, Literal, TypedDict, cast
@@ -13,7 +13,7 @@ from typing import Any, Literal, TypedDict, cast
 import sqlalchemy as sa
 from pydantic import ValidationError
 from redis.exceptions import LockNotOwnedError
-from sqlalchemy import ColumnElement, case, delete, exists, func, select, tuple_, update
+from sqlalchemy import ColumnElement, case, delete, event, exists, func, select, tuple_, update
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -105,6 +105,7 @@ from services.rag_pipeline.rag_pipeline import RagPipelineService
 from services.tag_application_service import TagTargetQuery
 from tasks.add_document_to_index_task import add_document_to_index_task
 from tasks.batch_clean_document_task import batch_clean_document_task
+from tasks.build_dataset_graph_task import build_dataset_graph_task
 from tasks.clean_notion_document_task import clean_notion_document_task
 from tasks.deal_dataset_index_update_task import deal_dataset_index_update_task
 from tasks.deal_dataset_vector_index_task import deal_dataset_vector_index_task
@@ -761,11 +762,16 @@ class DatasetService:
         if data.get("summary_index_setting"):
             filtered_data["summary_index_setting"] = data.get("summary_index_setting")
         # update knowledge graph index setting
+        build_graph = False
         if data.get("graph_index_setting") is not None:
+            previous_graph_setting = dataset.graph_index_setting or {}
             # `{}` goes through the merge too, rather than replacing the stored
             # configuration with nothing.
             filtered_data["graph_index_setting"] = DatasetService.validate_graph_index_setting(
                 dataset, data["graph_index_setting"]
+            )
+            build_graph = DatasetService._graph_needs_backfill(
+                previous_graph_setting, filtered_data["graph_index_setting"]
             )
         # update icon info
         if data.get("icon_info"):
@@ -798,12 +804,51 @@ class DatasetService:
                     regenerate_vectors_only=True,
                 )
 
+        if build_graph:
+            DatasetService._build_graph_after_commit(session, dataset.id, dataset.tenant_id)
+
         # Note: summary_index_setting changes do not trigger automatic regeneration of existing summaries.
         # The new setting will only apply to:
         # 1. New documents added after the setting change
         # 2. Manual summary generation requests
 
         return dataset
+
+    @staticmethod
+    def _graph_needs_backfill(previous: Mapping[str, Any], current: Mapping[str, Any]) -> bool:
+        """Whether saving this graph setting should extract already indexed chunks.
+
+        Enabling the graph or switching its extraction model changes what
+        existing chunks contribute; the other fields only shape retrieval and
+        apply on the next query.
+        """
+        if not current.get("enabled"):
+            return False
+        return (
+            not previous.get("enabled")
+            or previous.get("model_provider_name") != current.get("model_provider_name")
+            or previous.get("model_name") != current.get("model_name")
+        )
+
+    @staticmethod
+    def _build_graph_after_commit(session: Session, dataset_id: str, tenant_id: str) -> None:
+        """Queue the graph backfill once the new setting is committed.
+
+        The task reads the setting back from the database, so dispatching before
+        the commit could let it see the old, disabled value and do nothing.
+        """
+        cancelled = False
+
+        def cancel_on_rollback(_session: Session) -> None:
+            nonlocal cancelled
+            cancelled = True
+
+        def dispatch_after_commit(_session: Session) -> None:
+            if not cancelled:
+                build_dataset_graph_task.delay(dataset_id, tenant_id)
+
+        event.listen(session, "after_rollback", cancel_on_rollback, once=True)
+        event.listen(session, "after_commit", dispatch_after_commit, once=True)
 
     @staticmethod
     def _update_pipeline_knowledge_base_node_data(dataset: Dataset, updata_user_id: str, session: Session):
