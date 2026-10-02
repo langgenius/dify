@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
+from zoneinfo import ZoneInfo
 
-import pytz  # type: ignore[import-untyped]
 from croniter import croniter
 
 
@@ -38,7 +38,7 @@ def calculate_next_run_at(
             f"(@daily, @weekly, etc.). Got {len(parts)} fields: '{cron_expression}'"
         )
 
-    tz = pytz.timezone(timezone)
+    tz = ZoneInfo(timezone)
 
     if base_time is None:
         base_time = datetime.now(UTC)
