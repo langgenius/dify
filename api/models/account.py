@@ -2,7 +2,7 @@ import enum
 import json
 from dataclasses import field
 from datetime import datetime
-from typing import Optional, TypedDict
+from typing import TypedDict
 from uuid import uuid4
 
 import sqlalchemy as sa
@@ -12,70 +12,10 @@ from sqlalchemy.orm import Mapped, Session, mapped_column
 from typing_extensions import deprecated
 
 from configs import dify_config
+from enums.account import TenantAccountRole
 
 from .base import TypeBase
-from .engine import db
 from .types import EnumText, LongText, StringUUID
-
-
-class TenantAccountRole(enum.StrEnum):
-    OWNER = "owner"
-    ADMIN = "admin"
-    EDITOR = "editor"
-    NORMAL = "normal"
-    DATASET_OPERATOR = "dataset_operator"
-
-    @staticmethod
-    def is_valid_role(role: str) -> bool:
-        if not role:
-            return False
-        return role in {
-            TenantAccountRole.OWNER,
-            TenantAccountRole.ADMIN,
-            TenantAccountRole.EDITOR,
-            TenantAccountRole.NORMAL,
-            TenantAccountRole.DATASET_OPERATOR,
-        }
-
-    @staticmethod
-    def is_privileged_role(role: Optional["TenantAccountRole"]) -> bool:
-        if not role:
-            return False
-        return role in {TenantAccountRole.OWNER, TenantAccountRole.ADMIN}
-
-    @staticmethod
-    def is_admin_role(role: Optional["TenantAccountRole"]) -> bool:
-        if not role:
-            return False
-        return role == TenantAccountRole.ADMIN
-
-    @staticmethod
-    def is_non_owner_role(role: Optional["TenantAccountRole"]) -> bool:
-        if not role:
-            return False
-        return role in {
-            TenantAccountRole.ADMIN,
-            TenantAccountRole.EDITOR,
-            TenantAccountRole.NORMAL,
-            TenantAccountRole.DATASET_OPERATOR,
-        }
-
-    @staticmethod
-    def is_editing_role(role: Optional["TenantAccountRole"]) -> bool:
-        if not role:
-            return False
-        return role in {TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}
-
-    @staticmethod
-    def is_dataset_edit_role(role: Optional["TenantAccountRole"]) -> bool:
-        if not role:
-            return False
-        return role in {
-            TenantAccountRole.OWNER,
-            TenantAccountRole.ADMIN,
-            TenantAccountRole.EDITOR,
-            TenantAccountRole.DATASET_OPERATOR,
-        }
 
 
 class AccountStatus(enum.StrEnum):
@@ -131,18 +71,6 @@ class Account(UserMixin, TypeBase):
     def current_tenant(self):
         return self._current_tenant
 
-    @current_tenant.setter
-    def current_tenant(self, tenant: "Tenant") -> None:
-        with Session(db.engine, expire_on_commit=False) as session:
-            # TODO: A workaround to reload the tenant with `expire_on_commit=False`, allowing
-            # access to it after the session has been closed.
-            # This prevents `DetachedInstanceError` when accessing the tenant outside
-            # the session's lifecycle.
-            # (The `tenant` argument is typically loaded by `db.session` without the
-            # `expire_on_commit=False` flag, meaning its lifetime is tied to the web
-            # request's lifecycle.)
-            self.set_current_tenant_with_session(tenant, session=session)
-
     def set_current_tenant_with_session(self, tenant: "Tenant", *, session: Session) -> None:
         """Set the current tenant and role using the caller-owned session."""
         tenant_join_query = select(TenantAccountJoin).where(
@@ -161,10 +89,6 @@ class Account(UserMixin, TypeBase):
     @property
     def current_tenant_id(self) -> str | None:
         return self._current_tenant.id if self._current_tenant else None
-
-    def set_tenant_id(self, tenant_id: str) -> None:
-        with Session(db.engine, expire_on_commit=False) as session:
-            self.set_tenant_id_with_session(tenant_id, session=session)
 
     def set_tenant_id_with_session(self, tenant_id: str, *, session: Session) -> None:
         """Set the current tenant by id using the caller-owned session."""

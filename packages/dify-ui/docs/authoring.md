@@ -13,6 +13,15 @@ Use React namespace imports throughout this package, including stories and tests
 import also covers React types; do not add separate named type imports. JSX alone does not
 require an explicit React import.
 
+Use namespace imports for `react-dom`, `react-dom/client`, and `react-dom/server` as well.
+Write grouping fragments as `<React.Fragment>` and remove unnecessary fragment wrappers.
+
+## Component writing style
+
+Define named components with function declarations or function expressions. Arrow functions
+remain appropriate for event handlers, render props, and Storybook render callbacks. Name function
+expressions when JavaScript cannot infer their name. Use `event` or `error` instead of `e`.
+
 ## Subpaths and names
 
 Every public primitive needs a matching `package.json#exports` subpath. Import relatively between

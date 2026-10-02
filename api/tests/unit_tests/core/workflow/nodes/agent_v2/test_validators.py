@@ -687,7 +687,7 @@ def test_publish_validation_rejects_missing_or_out_of_scope_knowledge_datasets(
         captured["tenant_id"] = tenant_id
         return [], 0
 
-    import services.dataset_service as dataset_service_module
+    import services.knowledge.dataset_service as dataset_service_module
 
     monkeypatch.setattr(dataset_service_module.DatasetService, "get_datasets_by_ids", fake_get_datasets_by_ids)
 

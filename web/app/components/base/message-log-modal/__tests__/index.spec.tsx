@@ -1,6 +1,5 @@
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { useStore } from '@/app/components/app/store'
 import MessageLogModal from '../index'
 
 let clickAwayHandler: (() => void) | null = null
@@ -8,10 +7,6 @@ vi.mock('ahooks', () => ({
   useClickAway: (fn: () => void) => {
     clickAwayHandler = fn
   },
-}))
-
-vi.mock('@/app/components/app/store', () => ({
-  useStore: vi.fn(),
 }))
 
 vi.mock('@/app/components/workflow/run', () => ({
@@ -46,23 +41,20 @@ describe('MessageLogModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     clickAwayHandler = null
-    // oxlint-disable-next-line typescript/no-explicit-any
-    vi.mocked(useStore).mockImplementation((selector: any) =>
-      selector({
-        appDetail: { id: 'app-1' },
-      }),
-    )
   })
 
   describe('Render', () => {
     it('renders nothing if currentLogItem is missing', () => {
-      const { container } = render(<MessageLogModal width={800} onCancel={onCancel} />)
+      const { container } = render(
+        <MessageLogModal appId="app-1" width={800} onCancel={onCancel} />,
+      )
       expect(container.firstChild).toBeNull()
     })
 
     it('renders nothing if currentLogItem.workflow_run_id is missing', () => {
       const { container } = render(
         <MessageLogModal
+          appId="app-1"
           width={800}
           onCancel={onCancel}
           currentLogItem={{ id: '1' } as IChatItem}
@@ -72,7 +64,9 @@ describe('MessageLogModal', () => {
     })
 
     it('renders modal with correct title and Run component', () => {
-      render(<MessageLogModal width={800} onCancel={onCancel} currentLogItem={mockLog} />)
+      render(
+        <MessageLogModal appId="app-1" width={800} onCancel={onCancel} currentLogItem={mockLog} />,
+      )
       expect(screen.getByText(/title/i))!.toBeInTheDocument()
       expect(screen.getByTestId('workflow-run'))!.toBeInTheDocument()
     })
@@ -82,6 +76,7 @@ describe('MessageLogModal', () => {
     it('passes correct props to Run component', () => {
       render(
         <MessageLogModal
+          appId="inspected-app"
           width={800}
           onCancel={onCancel}
           currentLogItem={mockLog}
@@ -91,16 +86,17 @@ describe('MessageLogModal', () => {
       const runComponent = screen.getByTestId('workflow-run')
       expect(runComponent.getAttribute('data-active-tab')).toBe('TRACING')
       expect(runComponent.getAttribute('data-run-detail-url')).toBe(
-        '/apps/app-1/workflow-runs/run-1',
+        '/apps/inspected-app/workflow-runs/run-1',
       )
       expect(runComponent.getAttribute('data-tracing-list-url')).toBe(
-        '/apps/app-1/workflow-runs/run-1/node-executions',
+        '/apps/inspected-app/workflow-runs/run-1/node-executions',
       )
     })
 
     it('sets fixed style when fixedWidth is false (floating)', () => {
       const { container } = render(
         <MessageLogModal
+          appId="app-1"
           width={1000}
           onCancel={onCancel}
           currentLogItem={mockLog}
@@ -115,6 +111,7 @@ describe('MessageLogModal', () => {
     it('sets fixed width when fixedWidth is true', () => {
       const { container } = render(
         <MessageLogModal
+          appId="app-1"
           width={1000}
           onCancel={onCancel}
           currentLogItem={mockLog}
@@ -129,7 +126,9 @@ describe('MessageLogModal', () => {
 
   describe('Interaction', () => {
     it('calls onCancel when close icon is clicked', () => {
-      render(<MessageLogModal width={800} onCancel={onCancel} currentLogItem={mockLog} />)
+      render(
+        <MessageLogModal appId="app-1" width={800} onCancel={onCancel} currentLogItem={mockLog} />,
+      )
       const closeButton = screen.getByRole('button', { name: 'common.operation.close' })
       expect(closeButton)!.toBeInTheDocument()
       fireEvent.click(closeButton)
@@ -138,7 +137,13 @@ describe('MessageLogModal', () => {
 
     it('calls onCancel when clicked away', () => {
       render(
-        <MessageLogModal width={800} onCancel={onCancel} currentLogItem={mockLog} fixedWidth />,
+        <MessageLogModal
+          appId="app-1"
+          width={800}
+          onCancel={onCancel}
+          currentLogItem={mockLog}
+          fixedWidth
+        />,
       )
       expect(clickAwayHandler).toBeTruthy()
       clickAwayHandler!()
@@ -146,7 +151,9 @@ describe('MessageLogModal', () => {
     })
 
     it('does not use click away to close the floating dialog', () => {
-      render(<MessageLogModal width={800} onCancel={onCancel} currentLogItem={mockLog} />)
+      render(
+        <MessageLogModal appId="app-1" width={800} onCancel={onCancel} currentLogItem={mockLog} />,
+      )
       expect(clickAwayHandler).toBeTruthy()
       clickAwayHandler!()
       expect(onCancel).not.toHaveBeenCalled()

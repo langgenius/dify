@@ -323,7 +323,7 @@ describe('useFormState', () => {
         result.current.handleOpenAppIconPicker()
       })
 
-      expect(result.current.showAppIconPicker).toBe(true)
+      expect(result.current.showIconPicker).toBe(true)
     })
 
     it('should select emoji icon without owning picker close state', () => {
@@ -341,7 +341,7 @@ describe('useFormState', () => {
         })
       })
 
-      expect(result.current.showAppIconPicker).toBe(true)
+      expect(result.current.showIconPicker).toBe(true)
       expect(result.current.iconInfo).toEqual({
         icon_type: 'emoji',
         icon: '🎉',
@@ -365,7 +365,7 @@ describe('useFormState', () => {
         })
       })
 
-      expect(result.current.showAppIconPicker).toBe(true)
+      expect(result.current.showIconPicker).toBe(true)
       expect(result.current.iconInfo).toEqual({
         icon_type: 'image',
         icon: 'file-123',
@@ -390,10 +390,10 @@ describe('useFormState', () => {
       })
 
       act(() => {
-        result.current.setShowAppIconPicker(false)
+        result.current.setShowIconPicker(false)
       })
 
-      expect(result.current.showAppIconPicker).toBe(false)
+      expect(result.current.showIconPicker).toBe(false)
       expect(result.current.iconInfo).toEqual({
         icon_type: 'emoji',
         icon: '🎉',

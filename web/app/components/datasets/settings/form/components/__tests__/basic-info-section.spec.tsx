@@ -41,7 +41,7 @@ const render = (ui: ReactElement) => {
   return renderWithConsoleState(ui, { wrapper })
 }
 
-// Mock image uploader hooks for AppIconPicker
+// Mock image uploader hooks for IconPickerDialog
 vi.mock('@/app/components/base/image-uploader/hooks', () => ({
   useLocalFileUploader: () => ({
     disabled: false,
@@ -168,10 +168,10 @@ describe('BasicInfoSection', () => {
     description: 'Test description',
     setDescription: vi.fn(),
     iconInfo: mockIconInfo,
-    showAppIconPicker: false,
+    showIconPicker: false,
     handleOpenAppIconPicker: vi.fn(),
     handleSelectAppIcon: vi.fn(),
-    setShowAppIconPicker: vi.fn(),
+    setShowIconPicker: vi.fn(),
     permission: DatasetPermission.onlyMe,
     setPermission: vi.fn(),
     selectedMemberIDs: ['user-1'],
@@ -334,41 +334,41 @@ describe('BasicInfoSection', () => {
       expect(handleOpenAppIconPicker).toHaveBeenCalledOnce()
     })
 
-    it('should not render AppIconPicker when showAppIconPicker is false', () => {
-      const { container } = render(<BasicInfoSection {...defaultProps} showAppIconPicker={false} />)
+    it('should not render IconPickerDialog when showIconPicker is false', () => {
+      const { container } = render(<BasicInfoSection {...defaultProps} showIconPicker={false} />)
 
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
-      // Check that AppIconPicker is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
+      // Check that IconPickerDialog is not rendered
       expect(container.querySelector('[data-testid="app-icon-picker"]')).not.toBeInTheDocument()
     })
 

@@ -1193,15 +1193,29 @@ export const lintConfig = {
     {
       files: ['packages/dify-ui/**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}'],
       rules: {
+        'func-names': ['error', 'as-needed'],
+        'id-denylist': ['error', 'e'],
         'unicorn/import-style': [
           'error',
           {
             extendDefaultStyles: false,
             styles: {
               react: { namespace: true },
+              'react-dom': { namespace: true },
+              'react-dom/client': { namespace: true },
+              'react-dom/server': { namespace: true },
             },
           },
         ],
+        'react/function-component-definition': [
+          'error',
+          {
+            namedComponents: ['function-declaration', 'function-expression'],
+            unnamedComponents: ['arrow-function', 'function-expression'],
+          },
+        ],
+        'react/jsx-fragments': ['error', 'element'],
+        'react/jsx-no-useless-fragment': ['error', { allowExpressions: true }],
         'react/exhaustive-deps': [
           'error',
           {

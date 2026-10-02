@@ -4084,7 +4084,7 @@ class TestDatasetRetrievalAdditionalHelpers:
             prompt_messages, stop = retrieval._get_prompt_template(
                 model_config=model_config_chat,
                 mode="chat",
-                metadata_fields=["author"],
+                metadata_fields=[{"name": "author", "type": "string"}],
                 query="python",
             )
             assert prompt_messages == ["prompt"]
@@ -4097,7 +4097,7 @@ class TestDatasetRetrievalAdditionalHelpers:
                 prompt_messages_completion, stop_completion = retrieval._get_prompt_template(
                     model_config=model_config_completion,
                     mode="completion",
-                    metadata_fields=["author"],
+                    metadata_fields=[{"name": "author", "type": "string"}],
                     query="python",
                 )
                 assert prompt_messages_completion == ["prompt"]

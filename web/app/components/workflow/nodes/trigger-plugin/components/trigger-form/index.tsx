@@ -13,7 +13,6 @@ type Props = Readonly<{
   value: PluginTriggerVarInputs
   onChange: (value: PluginTriggerVarInputs) => void
   onOpen?: (index: number) => void
-  inPanel?: boolean
   currentEvent?: Event
   currentProvider?: TriggerWithProvider
   extraParams?: Record<string, any>
@@ -26,7 +25,6 @@ const TriggerForm: FC<Props> = ({
   schema,
   value,
   onChange,
-  inPanel,
   currentEvent,
   currentProvider,
   extraParams,
@@ -42,7 +40,6 @@ const TriggerForm: FC<Props> = ({
           schema={schema}
           value={value}
           onChange={onChange}
-          inPanel={inPanel}
           currentEvent={currentEvent}
           currentProvider={currentProvider}
           extraParams={extraParams}

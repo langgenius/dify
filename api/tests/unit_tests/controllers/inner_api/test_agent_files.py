@@ -44,15 +44,17 @@ def test_upload_request_returns_origin_free_uri(app: Flask, unbound_session: Ses
     session = unbound_session
     with app.test_request_context("/", method="POST", json=payload):
         with (
-            patch(f"{MODULE}.TenantService") as tenant_service,
+            patch(f"{MODULE}.application_services") as service_provider,
             patch(f"{MODULE}.get_user", return_value=user),
             patch(f"{MODULE}.get_signed_file_uri_for_plugin", return_value="/files/upload/for-plugin?sign=1") as sign,
         ):
-            tenant_service.get_tenant_by_id.return_value = tenant
+            tenant_service = service_provider.return_value.workspaces.management
+            service_provider.return_value.workspaces.members = tenant_service
+            tenant_service.get.return_value = tenant
             response = _raw(AgentFileUploadRequestApi.post)(AgentFileUploadRequestApi(), session)
 
     assert response == {"upload_uri": "/files/upload/for-plugin?sign=1"}
-    tenant_service.get_tenant_by_id.assert_called_once_with("tenant-1", session=session)
+    tenant_service.get.assert_called_once_with("tenant-1")
     sign.assert_called_once_with(
         filename="report.pdf",
         mimetype="application/pdf",
@@ -93,10 +95,12 @@ def test_download_request_returns_origin_free_uri_for_sandbox(app: Flask, unboun
     session = unbound_session
     with app.test_request_context("/", method="POST", json=payload):
         with (
-            patch(f"{MODULE}.TenantService") as tenant_service,
+            patch(f"{MODULE}.application_services") as service_provider,
             patch(f"{MODULE}.FileRequestService") as service,
         ):
-            tenant_service.get_tenant_by_id.return_value = _tenant()
+            tenant_service = service_provider.return_value.workspaces.management
+            service_provider.return_value.workspaces.members = tenant_service
+            tenant_service.get.return_value = _tenant()
             service.return_value.request_download.return_value = DownloadFileRequestResult(
                 filename="report.pdf",
                 mime_type="application/pdf",
@@ -136,10 +140,12 @@ def test_download_request_binds_frontend_url(
     session = unbound_session
     with app.test_request_context("/", method="POST", json=payload):
         with (
-            patch(f"{MODULE}.TenantService") as tenant_service,
+            patch(f"{MODULE}.application_services") as service_provider,
             patch(f"{MODULE}.FileRequestService") as service,
         ):
-            tenant_service.get_tenant_by_id.return_value = _tenant()
+            tenant_service = service_provider.return_value.workspaces.management
+            service_provider.return_value.workspaces.members = tenant_service
+            tenant_service.get.return_value = _tenant()
             service.return_value.request_download.return_value = DownloadFileRequestResult(
                 filename="report.pdf",
                 mime_type="application/pdf",

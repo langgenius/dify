@@ -58,7 +58,7 @@ jobs:
         run: |
           set -o pipefail
           started=$SECONDS
-          pnpm exec vinext build 2>&1 | tee "$RUNNER_TEMP/vinext-build.log"
+          pnpm run build:vinext 2>&1 | tee "$RUNNER_TEMP/vinext-build.log"
           printf 'Full Vinext build: **%s seconds**.\n' "$((SECONDS - started))" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Collect sizes
@@ -101,7 +101,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup Node.js
-        uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
+        uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024 # v3.0.0
         with:
           install: false
 

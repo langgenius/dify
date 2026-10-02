@@ -46,6 +46,7 @@
     "دعم البريد الإلكتروني والمحادثة ذو الأولوية"
   ],
   "plans.premium.includesTitle": "كل شيء من المجتمع، بالإضافة إلى:",
+  "plans.premium.marketplaceName": "AWS Marketplace",
   "plans.premium.name": "بريميوم",
   "plans.premium.price": "قابل للتطوير",
   "plans.premium.priceTip": "استنادًا إلى سوق السحابة",
@@ -69,6 +70,7 @@
   "plansCommon.comparePlanAndFeatures": "قارن الخطط والميزات",
   "plansCommon.currentPlan": "الخطة الحالية",
   "plansCommon.days": "أيام",
+  "plansCommon.discountedAnnualPrice": "السعر السنوي بعد الخصم: ",
   "plansCommon.documentProcessingPriority": " أولوية معالجة المستندات",
   "plansCommon.documentProcessingPriorityTip": "لأولوية معالجة مستندات أعلى، يرجى ترقية خطتك.",
   "plansCommon.documentProcessingPriorityUpgrade": "معالجة المزيد من البيانات بدقة أعلى وسرعة أكبر.",
@@ -87,6 +89,7 @@
   "plansCommon.modelProviders": "دعم OpenAI/Anthropic/Llama2/Azure OpenAI/Hugging Face/Replicate",
   "plansCommon.month": "شهر",
   "plansCommon.mostPopular": "الأكثر شعبية",
+  "plansCommon.originalAnnualPrice": "السعر السنوي الأصلي: ",
   "plansCommon.priceTip": "لكل مساحة عمل/",
   "plansCommon.priority.priority": "أولوية",
   "plansCommon.priority.standard": "قياسي",

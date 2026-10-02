@@ -70,7 +70,7 @@ from services.entities.app_entities import (
     StarredAppListParams,
     UpdateAppParams,
 )
-from services.errors.account import NoPermissionError
+from services.errors.base import NoPermissionError
 from services.openapi.visibility import apply_openapi_gate, is_openapi_visible
 
 logger = logging.getLogger(__name__)

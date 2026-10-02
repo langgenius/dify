@@ -6,8 +6,8 @@ Migrated from unit_tests/models/test_account_models.py, replacing
 Also absorbs unit_tests/models/test_account.py role helper coverage.
 
 Covers:
-- Account.current_tenant setter (sets _current_tenant and role from TenantAccountJoin)
-- Account.set_tenant_id (resolves tenant + role from real join row)
+- Account.set_current_tenant_with_session (sets _current_tenant and role from TenantAccountJoin)
+- Account.set_tenant_id_with_session (resolves tenant + role from real join row)
 - Tenant.get_accounts (returns accounts linked via TenantAccountJoin)
 """
 
@@ -103,8 +103,8 @@ class TestTenantAccountRole:
         assert not TenantAccountRole.is_privileged_role(cast(TenantAccountRole, ""))
 
 
-class TestAccountCurrentTenantSetter(_DBTrackingTestBase):
-    """Integration tests for Account.current_tenant property setter."""
+class TestAccountSetCurrentTenant(_DBTrackingTestBase):
+    """Integration tests for Account.current_tenant and set_current_tenant_with_session."""
 
     def test_current_tenant_property_returns_cached_tenant(self, db_session_with_containers: Session) -> None:
         """current_tenant getter returns the in-memory _current_tenant without DB access."""
@@ -114,59 +114,61 @@ class TestAccountCurrentTenantSetter(_DBTrackingTestBase):
 
         assert account.current_tenant is tenant
 
-    def test_current_tenant_setter_sets_tenant_and_role_when_join_exists(
+    def test_set_current_tenant_with_session_sets_tenant_and_role_when_join_exists(
         self, db_session_with_containers: Session
     ) -> None:
-        """Setting current_tenant loads the join row and assigns role when relationship exists."""
+        """set_current_tenant_with_session loads the join row and assigns role when relationship exists."""
         tenant = self._create_tenant(db_session_with_containers)
         account = self._create_account(db_session_with_containers)
         self._create_join(db_session_with_containers, tenant.id, account.id, TenantAccountRole.OWNER)
         db_session_with_containers.commit()
 
-        account.current_tenant = tenant
+        account.set_current_tenant_with_session(tenant, session=db_session_with_containers)
 
         assert account._current_tenant is not None
         assert account._current_tenant.id == tenant.id
         assert account.role == TenantAccountRole.OWNER
 
-    def test_current_tenant_setter_sets_none_when_no_join_exists(self, db_session_with_containers: Session) -> None:
-        """Setting current_tenant results in _current_tenant=None when no join row exists."""
+    def test_set_current_tenant_with_session_sets_none_when_no_join_exists(
+        self, db_session_with_containers: Session
+    ) -> None:
+        """set_current_tenant_with_session results in _current_tenant=None when no join row exists."""
         tenant = self._create_tenant(db_session_with_containers)
         account = self._create_account(db_session_with_containers)
         db_session_with_containers.commit()
 
-        account.current_tenant = tenant
+        account.set_current_tenant_with_session(tenant, session=db_session_with_containers)
 
         assert account._current_tenant is None
 
 
 class TestAccountSetTenantId(_DBTrackingTestBase):
-    """Integration tests for Account.set_tenant_id method."""
+    """Integration tests for Account.set_tenant_id_with_session method."""
 
-    def test_set_tenant_id_sets_tenant_and_role_when_relationship_exists(
+    def test_set_tenant_id_with_session_sets_tenant_and_role_when_relationship_exists(
         self, db_session_with_containers: Session
     ) -> None:
-        """set_tenant_id loads the tenant and assigns role when a join row exists."""
+        """set_tenant_id_with_session loads the tenant and assigns role when a join row exists."""
         tenant = self._create_tenant(db_session_with_containers)
         account = self._create_account(db_session_with_containers)
         self._create_join(db_session_with_containers, tenant.id, account.id, TenantAccountRole.ADMIN)
         db_session_with_containers.commit()
 
-        account.set_tenant_id(tenant.id)
+        account.set_tenant_id_with_session(tenant.id, session=db_session_with_containers)
 
         assert account._current_tenant is not None
         assert account._current_tenant.id == tenant.id
         assert account.role == TenantAccountRole.ADMIN
 
-    def test_set_tenant_id_does_not_set_tenant_when_no_relationship_exists(
+    def test_set_tenant_id_with_session_does_not_set_tenant_when_no_relationship_exists(
         self, db_session_with_containers: Session
     ) -> None:
-        """set_tenant_id does nothing when no join row matches the tenant."""
+        """set_tenant_id_with_session does nothing when no join row matches the tenant."""
         tenant = self._create_tenant(db_session_with_containers)
         account = self._create_account(db_session_with_containers)
         db_session_with_containers.commit()
 
-        account.set_tenant_id(tenant.id)
+        account.set_tenant_id_with_session(tenant.id, session=db_session_with_containers)
 
         assert account._current_tenant is None
 

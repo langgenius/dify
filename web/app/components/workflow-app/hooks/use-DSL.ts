@@ -1,15 +1,15 @@
 import type { useNodesSyncDraft } from './use-nodes-sync-draft'
 import type { ExportSecretEnvironmentEvent } from '@/app/components/workflow/export-secret-env-event'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { getAppTransferErrorMessage } from '@/app/components/app/transfer-error'
 import { exportAppDslFile } from '@/app/components/app/use-export-app-dsl'
 import { DSL_EXPORT_CHECK } from '@/app/components/workflow/constants'
 import { toast } from '@/app/notifications'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { consoleClient } from '@/service/console'
+import { useParams } from '@/next/navigation'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { useNodesSyncDraftByCanEdit } from './use-nodes-sync-draft'
 
 type DoSyncWorkflowDraft = ReturnType<typeof useNodesSyncDraft>['doSyncWorkflowDraft']
@@ -18,7 +18,12 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   const { t } = useTranslation(['app'])
   const { eventEmitter } = useEventEmitterContextContext()
 
-  const appDetail = useAppStore((s) => s.appDetail)
+  const { appId } = useParams<{ appId: string }>()
+  const { data: appDetail } = useQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({
+      input: { params: { app_id: appId } },
+    }),
+  )
 
   const { mutateAsync: exportWorkflow, isPending: isExporting } = useMutation({
     mutationFn: async ({ include, workflowId }: { include: boolean; workflowId?: string }) => {

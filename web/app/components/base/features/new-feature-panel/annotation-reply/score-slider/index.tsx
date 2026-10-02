@@ -7,6 +7,7 @@ import {
   SliderLabel,
   SliderThumb,
   SliderTrack,
+  SliderValue,
 } from '@langgenius/dify-ui/slider'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -24,7 +25,7 @@ const clamp = (value: number, min: number, max: number) => {
 }
 
 const SCORE_MIN = 0
-const SCORE_MAX = 100
+const SCORE_MAX = 1
 
 const ScoreSlider: FC<Props> = ({ className, value, onChange }) => {
   const { t } = useTranslation(['appDebug'])
@@ -32,37 +33,28 @@ const ScoreSlider: FC<Props> = ({ className, value, onChange }) => {
 
   return (
     <div className={className}>
-      <div className="relative mt-3.5">
-        <Slider
-          className="w-full"
-          value={safeValue}
-          min={SCORE_MIN}
-          max={SCORE_MAX}
-          step={1}
-          onValueChange={onChange}
-        >
-          <SliderLabel className="sr-only">
-            {t(($) => $['feature.annotation.scoreThreshold.title'], { ns: 'appDebug' })}
-          </SliderLabel>
-          <SliderControl>
-            <SliderTrack>
-              <SliderIndicator />
-              <SliderThumb
-                getAriaValueText={(_formattedValue, sliderValue) => (sliderValue / 100).toFixed(2)}
-              />
-            </SliderTrack>
-          </SliderControl>
-        </Slider>
-        <div
-          className="pointer-events-none absolute -top-4 system-sm-semibold text-text-primary"
-          style={{
-            left: `calc(4px + ${safeValue / SCORE_MAX} * (100% - 8px))`,
-            transform: 'translateX(-50%)',
-          }}
-        >
-          {(safeValue / 100).toFixed(2)}
-        </div>
-      </div>
+      <Slider
+        className="mt-3.5 flex w-full"
+        value={safeValue}
+        min={SCORE_MIN}
+        max={SCORE_MAX}
+        step={0.01}
+        largeStep={0.1}
+        format={{ minimumFractionDigits: 2, maximumFractionDigits: 2 }}
+        onValueChange={onChange}
+      >
+        <SliderLabel className="sr-only">
+          {t(($) => $['feature.annotation.scoreThreshold.title'], { ns: 'appDebug' })}
+        </SliderLabel>
+        <SliderControl>
+          <SliderTrack>
+            <SliderIndicator />
+            <SliderThumb>
+              <SliderValue className="pointer-events-none absolute bottom-full left-1/2 mb-1.5 -translate-x-1/2 system-sm-semibold whitespace-nowrap text-text-primary" />
+            </SliderThumb>
+          </SliderTrack>
+        </SliderControl>
+      </Slider>
       <div className="mt-2.5 flex items-center justify-between system-xs-semibold-uppercase">
         <div className="flex space-x-1 text-util-colors-cyan-cyan-500">
           <div>0.0</div>

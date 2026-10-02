@@ -5,6 +5,7 @@ from collections.abc import Sequence
 from unittest import mock
 
 import pytest
+from pytest_mock import MockerFixture
 
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, ModelConfigWithCredentialsEntity, UserFrom
 from core.app.llm.model_access import (
@@ -17,6 +18,7 @@ from core.entities.provider_configuration import ProviderConfiguration, Provider
 from core.entities.provider_entities import CustomConfiguration, SystemConfiguration
 from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
+from core.workflow.node_runtime import DifyFileReferenceFactory, DifyToolFileManager
 from core.workflow.system_variables import default_system_variables
 from graphon.entities import GraphInitParams
 from graphon.file import File, FileTransferMethod, FileType
@@ -71,7 +73,7 @@ from graphon.nodes.llm.exc import (
     NoPromptFoundError,
     VariableNotFoundError,
 )
-from graphon.nodes.llm.file_saver import LLMFileSaver
+from graphon.nodes.llm.file_saver import FileSaverImpl, LLMFileSaver
 from graphon.nodes.llm.node import (
     LLMNode,
     _calculate_rest_token,
@@ -100,6 +102,20 @@ class MockTokenBufferMemory:
         if message_limit is not None:
             return self.history_messages[-message_limit * 2 :]
         return self.history_messages
+
+
+def _build_file_saver() -> FileSaverImpl:
+    run_context = DifyRunContext(
+        tenant_id="tenant",
+        app_id="app",
+        user_id="user",
+        user_from=UserFrom.ACCOUNT,
+        invoke_from=InvokeFrom.DEBUGGER,
+    )
+    return FileSaverImpl(
+        tool_file_manager=DifyToolFileManager(run_context),
+        file_reference_factory=DifyFileReferenceFactory(run_context),
+    )
 
 
 def _build_prepared_llm_mock() -> mock.MagicMock:
@@ -207,7 +223,7 @@ def graph_runtime_state() -> GraphRuntimeState:
 def llm_node(
     llm_node_data: LLMNodeData, graph_init_params: GraphInitParams, graph_runtime_state: GraphRuntimeState
 ) -> LLMNode:
-    mock_file_saver = mock.MagicMock(spec=LLMFileSaver)
+    file_saver = _build_file_saver()
     mock_credentials_provider = mock.MagicMock(spec=CredentialsProvider)
     mock_model_factory = mock.MagicMock(spec=ModelFactory)
     mock_prompt_message_serializer = mock.MagicMock(spec=PromptMessageSerializerProtocol)
@@ -220,7 +236,7 @@ def llm_node(
         credentials_provider=mock_credentials_provider,
         model_factory=mock_model_factory,
         model_instance=_build_prepared_llm_mock(),
-        llm_file_saver=mock_file_saver,
+        llm_file_saver=file_saver,
         prompt_message_serializer=mock_prompt_message_serializer,
         http_client=http_client,
     )
@@ -1046,12 +1062,12 @@ def test_fetch_context_rejects_invalid_context_structure(llm_node):
         list(llm_node._fetch_context(node_data))
 
 
-def test_fetch_prompt_messages_chat_mode_appends_memory_query_and_files():
+def test_fetch_prompt_messages_chat_mode_appends_memory_query_and_files(mocker: MockerFixture):
     model_instance = _build_prepared_llm_mock()
     model_instance.get_model_schema.return_value = _build_model_schema(features=[ModelFeature.VISION])
 
-    memory = mock.MagicMock(spec=MockTokenBufferMemory)
-    memory.get_history_prompt_messages.return_value = [AssistantPromptMessage(content="history answer")]
+    memory = MockTokenBufferMemory([AssistantPromptMessage(content="history answer")])
+    history_lookup = mocker.spy(memory, "get_history_prompt_messages")
 
     sys_file = _build_image_file(file_id="sys-file", related_id="sys-related", remote_url="https://example.com/sys.png")
     context_file = _build_image_file(
@@ -1112,18 +1128,19 @@ def test_fetch_prompt_messages_chat_mode_appends_memory_query_and_files():
     assert prompt_messages[2].content[0].url == "https://example.com/context.png"
     assert prompt_messages[2].content[1].url == "https://example.com/sys.png"
     assert prompt_messages[2].content[2].data == "current question"
-    memory.get_history_prompt_messages.assert_called_once_with(max_token_limit=2000, message_limit=None)
+    history_lookup.assert_called_once_with(max_token_limit=2000, message_limit=None)
 
 
 def test_fetch_prompt_messages_completion_mode_injects_histories_and_query():
     model_instance = _build_prepared_llm_mock()
     model_instance.get_model_schema.return_value = _build_model_schema(features=[])
 
-    memory = mock.MagicMock(spec=MockTokenBufferMemory)
-    memory.get_history_prompt_messages.return_value = [
-        UserPromptMessage(content="previous question"),
-        AssistantPromptMessage(content="previous answer"),
-    ]
+    memory = MockTokenBufferMemory(
+        history_messages=[
+            UserPromptMessage(content="previous question"),
+            AssistantPromptMessage(content="previous answer"),
+        ]
+    )
 
     prompt_messages, stop = LLMNode.fetch_prompt_messages(
         sys_query="latest question",
@@ -1219,21 +1236,23 @@ def test_handle_completion_template_replaces_double_brace_context_placeholder(ll
     ]
 
 
-def test_handle_memory_completion_mode_uses_prompt_message_interface():
-    memory = mock.MagicMock(spec=MockTokenBufferMemory)
-    memory.get_history_prompt_messages.return_value = [
-        UserPromptMessage(
-            content=[
-                TextPromptMessageContent(data="first question"),
-                ImagePromptMessageContent(
-                    format="png",
-                    url="https://example.com/image.png",
-                    mime_type="image/png",
-                ),
-            ]
-        ),
-        AssistantPromptMessage(content="first answer"),
-    ]
+def test_handle_memory_completion_mode_uses_prompt_message_interface(mocker: MockerFixture):
+    memory = MockTokenBufferMemory(
+        history_messages=[
+            UserPromptMessage(
+                content=[
+                    TextPromptMessageContent(data="first question"),
+                    ImagePromptMessageContent(
+                        format="png",
+                        url="https://example.com/image.png",
+                        mime_type="image/png",
+                    ),
+                ]
+            ),
+            AssistantPromptMessage(content="first answer"),
+        ]
+    )
+    history_lookup = mocker.spy(memory, "get_history_prompt_messages")
 
     model_instance = _build_prepared_llm_mock()
 
@@ -1251,7 +1270,7 @@ def test_handle_memory_completion_mode_uses_prompt_message_interface():
 
     assert memory_text == "Human: first question\n[image]\nAssistant: first answer"
     mock_rest_token.assert_called_once_with(prompt_messages=[], model_instance=model_instance)
-    memory.get_history_prompt_messages.assert_called_once_with(max_token_limit=2000, message_limit=3)
+    history_lookup.assert_called_once_with(max_token_limit=2000, message_limit=3)
 
 
 @pytest.fixture
@@ -1340,10 +1359,10 @@ class TestLLMNodeSaveMultiModalImageOutput:
 
 
 def test_llm_node_image_file_to_markdown(llm_node: LLMNode):
-    mock_file = mock.MagicMock(spec=File)
-    mock_file.type = FileType.IMAGE
-    mock_file.generate_url.return_value = "https://example.com/image.png"
-    markdown = llm_node._saved_file_to_markdown(mock_file)
+    image_file = _build_image_file(
+        file_id="image-file", related_id="image-related", remote_url="https://example.com/image.png"
+    )
+    markdown = llm_node._saved_file_to_markdown(image_file)
     assert markdown == "![](https://example.com/image.png)"
 
 
@@ -1525,7 +1544,7 @@ class TestReasoningFormat:
 def test_invoke_llm_dispatches_to_expected_model_method(structured_output_enabled, structured_output):
     model_instance = _build_prepared_llm_mock()
     prompt_messages = [UserPromptMessage(content="hello")]
-    file_saver = mock.MagicMock(spec=LLMFileSaver)
+    file_saver = _build_file_saver()
 
     model_instance.invoke_llm.return_value = iter([])
     model_instance.invoke_llm_with_structured_output.return_value = iter([])
@@ -1597,7 +1616,7 @@ def test_handle_invoke_result_streaming_collects_text_metrics_and_structured_out
         events = list(
             LLMNode.handle_invoke_result(
                 invoke_result=iter([first_chunk, final_chunk]),
-                file_saver=mock.MagicMock(spec=LLMFileSaver),
+                file_saver=_build_file_saver(),
                 file_outputs=[],
                 node_id="node-1",
                 model_instance=_build_prepared_llm_mock(),
@@ -1638,7 +1657,7 @@ def test_handle_invoke_result_wraps_structured_output_parse_errors():
         list(
             LLMNode.handle_invoke_result(
                 invoke_result=broken_stream(),
-                file_saver=mock.MagicMock(spec=LLMFileSaver),
+                file_saver=_build_file_saver(),
                 file_outputs=[],
                 node_id="node-1",
                 model_instance=model_instance,
@@ -1657,7 +1676,7 @@ def test_handle_blocking_result_extracts_reasoning_and_structured_output():
 
     event = LLMNode.handle_blocking_result(
         invoke_result=invoke_result,
-        saver=mock.MagicMock(spec=LLMFileSaver),
+        saver=_build_file_saver(),
         file_outputs=[],
         reasoning_format="separated",
         request_latency=1.2345,
@@ -1779,10 +1798,10 @@ def test_calculate_rest_token_uses_context_size_and_max_tokens():
     )
 
 
-def test_handle_memory_chat_mode_uses_calculated_token_budget():
-    memory = mock.MagicMock(spec=MockTokenBufferMemory)
+def test_handle_memory_chat_mode_uses_calculated_token_budget(mocker: MockerFixture):
     history = [UserPromptMessage(content="question")]
-    memory.get_history_prompt_messages.return_value = history
+    memory = MockTokenBufferMemory(history)
+    history_lookup = mocker.spy(memory, "get_history_prompt_messages")
 
     with mock.patch("graphon.nodes.llm.node._calculate_rest_token", return_value=321) as mock_rest_token:
         result = _handle_memory_chat_mode(
@@ -1793,7 +1812,7 @@ def test_handle_memory_chat_mode_uses_calculated_token_budget():
 
     assert result == history
     mock_rest_token.assert_called_once()
-    memory.get_history_prompt_messages.assert_called_once_with(max_token_limit=321, message_limit=2)
+    history_lookup.assert_called_once_with(max_token_limit=321, message_limit=2)
 
 
 def test_dify_model_access_adapters_skip_runtime_build_when_managers_are_injected():

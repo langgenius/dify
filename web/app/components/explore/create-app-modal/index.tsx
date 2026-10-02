@@ -1,6 +1,10 @@
 'use client'
+import type {
+  AppDetailWithSite,
+  UpdateAppPayload,
+} from '@dify/contracts/api/console/apps/types.gen'
 import type { Hotkey } from '@tanstack/react-hotkeys'
-import type { AppIconType } from '@/types/app'
+import type { IconPickerDefaultValue, IconPickerValue } from '@/app/components/base/icon-picker'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
@@ -16,39 +20,30 @@ import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
+import { IconPickerDialog } from '@/app/components/base/icon-picker'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { toast } from '@/app/notifications'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
-import AppIconPicker from '../../base/app-icon-picker'
 
 export type CreateAppModalProps = {
   show: boolean
   isEditModal?: boolean
   appName: string
   appDescription: string
-  appIconType: AppIconType | null
-  appIcon: string
+  appIconType: AppDetailWithSite['icon_type']
+  appIcon: AppDetailWithSite['icon']
   appIconBackground?: string | null
   appIconUrl?: string | null
   appMode?: string
   appUseIconAsAnswerIcon?: boolean
   max_active_requests?: number | null
-  onConfirm: (info: {
-    name: string
-    icon_type: AppIconType
-    icon: string
-    icon_background?: string
-    description: string
-    use_icon_as_answer_icon?: boolean
-    max_active_requests?: number | null
-  }) => Promise<void>
+  onConfirm: (info: UpdateAppPayload) => Promise<void>
   confirmDisabled?: boolean
+  confirmLoading?: boolean
   onHide: () => void
 }
-
-type CreateAppPayload = Parameters<CreateAppModalProps['onConfirm']>[0]
 
 const SUBMIT_APP_HOTKEY = 'Mod+Enter' satisfies Hotkey
 
@@ -66,6 +61,7 @@ const CreateAppModal = ({
   max_active_requests,
   onConfirm,
   confirmDisabled,
+  confirmLoading,
   onHide,
 }: CreateAppModalProps) => {
   const nameInputId = React.useId()
@@ -74,12 +70,33 @@ const CreateAppModal = ({
   const { t } = useTranslation(['app', 'common', 'explore'])
 
   const [name, setName] = React.useState(appName)
-  const [appIcon, setAppIcon] = useState(() =>
-    appIconType === 'image'
-      ? { type: 'image' as const, fileId: _appIcon, url: appIconUrl }
-      : { type: 'emoji' as const, icon: _appIcon, background: appIconBackground },
-  )
-  const [showAppIconPicker, setShowAppIconPicker] = useState(false)
+  const [selectedIcon, setSelectedIcon] = useState<IconPickerValue | null>(null)
+  const pickerDefaultValue: IconPickerDefaultValue | undefined =
+    selectedIcon ??
+    (appIconType === 'image' && _appIcon
+      ? { type: 'image', fileId: _appIcon, url: appIconUrl ?? '' }
+      : appIconType === 'emoji' && _appIcon
+        ? { type: 'emoji', icon: _appIcon, background: appIconBackground }
+        : undefined)
+  const currentIcon = selectedIcon
+    ? {
+        icon_type: selectedIcon.type,
+        icon: selectedIcon.type === 'emoji' ? selectedIcon.icon : selectedIcon.fileId,
+        icon_background: selectedIcon.type === 'emoji' ? selectedIcon.background : undefined,
+        icon_url: selectedIcon.type === 'image' ? selectedIcon.url : undefined,
+      }
+    : {
+        icon_type: appIconType,
+        icon: _appIcon,
+        icon_background: appIconBackground,
+        icon_url: appIconUrl,
+      }
+  const {
+    icon_type: currentIconType,
+    icon: currentIconValue,
+    icon_background: currentIconBackground,
+  } = currentIcon
+  const [showIconPicker, setShowIconPicker] = useState(false)
   const [description, setDescription] = useState(appDescription || '')
   const [useIconAsAnswerIcon, setUseIconAsAnswerIcon] = useState(appUseIconAsAnswerIcon || false)
 
@@ -106,7 +123,12 @@ const CreateAppModal = ({
     appQuota.size >= appQuota.limit
 
   const submit = useCallback(() => {
-    if (confirmDisabled || (!isEditModal && (isAppQuotaUnavailable || isAppsFull))) return
+    if (
+      confirmLoading ||
+      confirmDisabled ||
+      (!isEditModal && (isAppQuotaUnavailable || isAppsFull))
+    )
+      return
     if (!name.trim()) {
       toast(
         t(($) => $['appCustomize.nameRequired'], { ns: 'explore' }),
@@ -116,11 +138,11 @@ const CreateAppModal = ({
     }
     const parsedMaxActiveRequests = Number(maxActiveRequestsInput)
     const isValid = maxActiveRequestsInput.trim() !== '' && !Number.isNaN(parsedMaxActiveRequests)
-    const payload: CreateAppPayload = {
+    const payload: UpdateAppPayload = {
       name,
-      icon_type: appIcon.type,
-      icon: appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId,
-      icon_background: appIcon.type === 'emoji' ? appIcon.background! : undefined,
+      icon_type: currentIconType,
+      icon: currentIconValue,
+      icon_background: currentIconBackground,
       description,
       use_icon_as_answer_icon: useIconAsAnswerIcon,
     }
@@ -129,12 +151,15 @@ const CreateAppModal = ({
     onConfirm(payload)
     onHide()
   }, [
+    confirmLoading,
     confirmDisabled,
     isEditModal,
     isAppQuotaUnavailable,
     isAppsFull,
     name,
-    appIcon,
+    currentIconType,
+    currentIconValue,
+    currentIconBackground,
     description,
     useIconAsAnswerIcon,
     onConfirm,
@@ -156,7 +181,8 @@ const CreateAppModal = ({
             if (
               !show ||
               submitDisabled ||
-              showAppIconPicker ||
+              confirmLoading ||
+              showIconPicker ||
               event.defaultPrevented ||
               event.nativeEvent.isComposing ||
               !(event.target instanceof Node) ||
@@ -203,17 +229,23 @@ const CreateAppModal = ({
                 {t(($) => $['newApp.captionName'], { ns: 'app' })}
               </label>
               <div className="flex items-center justify-between space-x-2">
-                <AppIcon
-                  size="large"
-                  onClick={() => {
-                    setShowAppIconPicker(true)
-                  }}
-                  className="cursor-pointer"
-                  iconType={appIcon.type}
-                  icon={appIcon.type === 'image' ? appIcon.fileId : appIcon.icon}
-                  background={appIcon.type === 'image' ? undefined : appIcon.background}
-                  imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
-                />
+                <button
+                  type="button"
+                  aria-label={t(($) => $['iconPicker.title'], { ns: 'app' })}
+                  className="shrink-0 cursor-pointer rounded-[10px] focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                  onClick={() => setShowIconPicker(true)}
+                >
+                  <AppIcon
+                    decorative
+                    size="large"
+                    iconType={currentIcon.icon_type === 'link' ? 'image' : currentIcon.icon_type}
+                    icon={currentIcon.icon ?? undefined}
+                    background={currentIcon.icon_background}
+                    imageUrl={
+                      currentIcon.icon_type === 'link' ? currentIcon.icon : currentIcon.icon_url
+                    }
+                  />
+                </button>
                 <Input
                   id={nameInputId}
                   value={name}
@@ -287,6 +319,7 @@ const CreateAppModal = ({
           </div>
           <div className="flex flex-row-reverse">
             <Button
+              loading={confirmLoading}
               disabled={submitDisabled}
               className="ml-2 w-24"
               variant="primary"
@@ -311,20 +344,12 @@ const CreateAppModal = ({
           </div>
         </DialogContent>
       </Dialog>
-      {showAppIconPicker && (
-        <AppIconPicker
-          open={showAppIconPicker}
-          initialEmoji={
-            appIcon.type === 'emoji'
-              ? { icon: appIcon.icon, background: appIcon.background }
-              : undefined
-          }
-          onOpenChange={setShowAppIconPicker}
-          onSelect={(payload) => {
-            setAppIcon(payload)
-          }}
-        />
-      )}
+      <IconPickerDialog
+        open={showIconPicker}
+        defaultValue={pickerDefaultValue}
+        onOpenChange={setShowIconPicker}
+        onConfirm={setSelectedIcon}
+      />
     </>
   )
 }

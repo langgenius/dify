@@ -40,7 +40,7 @@ export default defineConfig({
     },
   },
   pack: {
-    entry: ['src/index.ts'],
+    entry: ['src/main.ts'],
     format: ['esm'],
     outDir: 'dist',
     target: 'node24',
@@ -49,8 +49,6 @@ export default defineConfig({
       __DIFYCTL_COMMIT__: JSON.stringify(buildInfo.commit),
       __DIFYCTL_BUILD_DATE__: JSON.stringify(buildInfo.buildDate),
       __DIFYCTL_CHANNEL__: JSON.stringify(buildInfo.channel),
-      __DIFYCTL_MIN_DIFY__: JSON.stringify(buildInfo.minDify),
-      __DIFYCTL_MAX_DIFY__: JSON.stringify(buildInfo.maxDify),
     },
   },
   test: {

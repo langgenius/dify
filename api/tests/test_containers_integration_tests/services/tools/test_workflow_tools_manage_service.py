@@ -10,9 +10,9 @@ from core.tools.entities.tool_entities import WorkflowToolParameterConfiguration
 from core.tools.errors import WorkflowToolHumanInputNotSupportedError
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow as WorkflowModel
-from services.account_service import AccountService, TenantService
 from services.app_service import AppService, CreateAppParams
 from services.tools.workflow_tools_manage_service import WorkflowToolManageService
+from tests.test_containers_integration_tests.helpers import accounts as account_fixtures
 from tests.test_containers_integration_tests.helpers import generate_valid_password
 
 
@@ -26,7 +26,7 @@ class TestWorkflowToolManageService:
             patch("services.app_service.SystemFeatureService") as mock_feature_service,
             patch("services.app_service.EnterpriseService") as mock_enterprise_service,
             patch("services.app_service.ModelManager.for_tenant") as mock_model_manager,
-            patch("services.account_service.SystemFeatureService") as mock_account_feature_service,
+            patch("services.account.login_adapters.SystemFeatureService") as mock_account_feature_service,
             patch(
                 "services.tools.workflow_tools_manage_service.WorkflowToolProviderController"
             ) as mock_workflow_tool_provider_controller,
@@ -82,14 +82,14 @@ class TestWorkflowToolManageService:
         mock_external_service_dependencies["account_feature_service"].is_registration_allowed.return_value = True
 
         # Create account and tenant
-        account = AccountService.create_account(
+        account = account_fixtures.create_account(
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
             session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
+        account_fixtures.create_owner_workspace(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Create app with realistic data

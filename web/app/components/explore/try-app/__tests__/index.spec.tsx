@@ -1,10 +1,28 @@
 import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
-import type { ComponentProps } from 'react'
-import type { TryAppInfo } from '@/service/try-app'
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import type { TrialAppDetailResponse } from '@dify/contracts/api/console/trial-apps/types.gen'
+import type { ComponentProps, ReactElement, ReactNode } from 'react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render as rtlRender,
+  screen,
+  waitFor,
+} from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { consoleQuery } from '@/service/console'
 import TryAppComponent from '../index'
 import { TypeEnum } from '../types'
+
+function render(ui: ReactElement) {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return rtlRender(ui, {
+    wrapper: ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    ),
+  })
+}
 
 const defaultApp: RecommendedAppResponse = { app_id: 'test-app-id', can_trial: true }
 
@@ -28,15 +46,29 @@ function TryApp({
   )
 }
 
-const mockUseGetTryAppInfo = vi.fn()
+const mockDetailQueryResult = vi.fn()
 const mockPreviewSuspension = vi.hoisted(() => ({ promise: null as Promise<void> | null }))
 
-vi.mock('@/service/use-try-app', () => ({
-  useGetTryAppInfo: (...args: unknown[]) => mockUseGetTryAppInfo(...args),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useQuery: (options: Parameters<typeof actual.useQuery>[0]) => {
+      const appId = ['test-app-id', 'my-specific-app-id', 'my-app-id'].find(
+        (id) =>
+          JSON.stringify(options.queryKey) ===
+          JSON.stringify(
+            consoleQuery.trialApps.byAppId.get.queryKey({ input: { params: { app_id: id } } }),
+          ),
+      )
+      if (appId) return mockDetailQueryResult(appId)
+      return actual.useQuery(options)
+    },
+  }
+})
 
 vi.mock('../app', () => ({
-  default: ({ appId, appDetail }: { appId: string; appDetail: TryAppInfo }) => (
+  default: ({ appId, appDetail }: { appId: string; appDetail: TrialAppDetailResponse }) => (
     <div data-testid="app-component" data-app-id={appId} data-mode={appDetail?.mode}>
       App Component
     </div>
@@ -44,7 +76,7 @@ vi.mock('../app', () => ({
 }))
 
 vi.mock('../preview', () => ({
-  default: ({ appId, appDetail }: { appId: string; appDetail: TryAppInfo }) => {
+  default: ({ appId, appDetail }: { appId: string; appDetail: TrialAppDetailResponse }) => {
     if (mockPreviewSuspension.promise) throw mockPreviewSuspension.promise
     return (
       <div data-testid="preview-component" data-app-id={appId} data-mode={appDetail?.mode}>
@@ -63,7 +95,7 @@ vi.mock('../app-info', () => ({
     onCreate,
   }: {
     appId: string
-    appDetail: TryAppInfo
+    appDetail: TrialAppDetailResponse
     categories?: string[]
     className?: string
     onCreate: () => void
@@ -82,7 +114,7 @@ vi.mock('../app-info', () => ({
   ),
 }))
 
-const createMockAppDetail = (mode: string = 'chat'): TryAppInfo =>
+const createMockAppDetail = (mode: string = 'chat'): TrialAppDetailResponse =>
   ({
     id: 'test-app-id',
     name: 'Test App Name',
@@ -111,7 +143,7 @@ const createMockAppDetail = (mode: string = 'chat'): TryAppInfo =>
       },
       user_input_form: [],
     },
-  }) as unknown as TryAppInfo
+  }) as unknown as TrialAppDetailResponse
 
 describe('TryApp (main index.tsx)', () => {
   beforeEach(() => {
@@ -119,7 +151,7 @@ describe('TryApp (main index.tsx)', () => {
     mockPreviewSuspension.promise = null
     // Suppress expected React act() warnings from internal async state updates
     vi.spyOn(console, 'error').mockImplementation(() => {})
-    mockUseGetTryAppInfo.mockReturnValue({
+    mockDetailQueryResult.mockReturnValue({
       data: createMockAppDetail(),
       isLoading: false,
     })
@@ -132,7 +164,7 @@ describe('TryApp (main index.tsx)', () => {
 
   describe('loading state', () => {
     it('renders loading when isLoading is true', () => {
-      mockUseGetTryAppInfo.mockReturnValue({
+      mockDetailQueryResult.mockReturnValue({
         data: null,
         isLoading: true,
       })
@@ -143,8 +175,8 @@ describe('TryApp (main index.tsx)', () => {
     })
 
     it('keeps the dialog and tabs mounted when the initial load finishes', () => {
-      let result = { data: null as TryAppInfo | null, isLoading: true }
-      mockUseGetTryAppInfo.mockImplementation(() => result)
+      let result = { data: null as TrialAppDetailResponse | null, isLoading: true }
+      mockDetailQueryResult.mockImplementation(() => result)
       const { rerender } = render(<TryApp onClose={vi.fn()} onCreate={vi.fn()} />)
       const dialog = screen.getByRole('dialog')
       const detailTab = screen.getByRole('tab', { name: 'explore.tryApp.tabHeader.detail' })
@@ -162,7 +194,7 @@ describe('TryApp (main index.tsx)', () => {
 
     it('keeps the tabs mounted when the initial load fails', () => {
       let result = { data: null, isLoading: true, isError: false, refetch: vi.fn() }
-      mockUseGetTryAppInfo.mockImplementation(() => result)
+      mockDetailQueryResult.mockImplementation(() => result)
       const { rerender } = render(<TryApp onClose={vi.fn()} onCreate={vi.fn()} />)
       const detailTab = screen.getByRole('tab', { name: 'explore.tryApp.tabHeader.detail' })
 
@@ -170,6 +202,30 @@ describe('TryApp (main index.tsx)', () => {
       rerender(<TryApp onClose={vi.fn()} onCreate={vi.fn()} />)
 
       expect(screen.getByRole('tab', { name: 'explore.tryApp.tabHeader.detail' })).toBe(detailTab)
+      expect(screen.getByRole('button', { name: 'common.operation.retry' })).toBeInTheDocument()
+    })
+
+    it('starts a new dialog session with loading when a cached failure is retried', () => {
+      let result = {
+        data: null,
+        isLoading: true,
+        isFetching: true,
+        isFetched: true,
+        isFetchedAfterMount: false,
+        errorUpdateCount: 1,
+        refetch: vi.fn(),
+      }
+      mockDetailQueryResult.mockImplementation(() => result)
+      const { rerender } = render(<TryApp onClose={vi.fn()} onCreate={vi.fn()} />)
+
+      expect(screen.getByRole('progressbar')).toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'common.operation.retry' }),
+      ).not.toBeInTheDocument()
+
+      result = { ...result, isLoading: false, isFetching: false, isFetchedAfterMount: true }
+      rerender(<TryApp onClose={vi.fn()} onCreate={vi.fn()} />)
+
       expect(screen.getByRole('button', { name: 'common.operation.retry' })).toBeInTheDocument()
     })
 
@@ -196,7 +252,7 @@ describe('TryApp (main index.tsx)', () => {
     })
 
     it('shows retry without the create panel when the app detail request fails', () => {
-      mockUseGetTryAppInfo.mockReturnValue({
+      mockDetailQueryResult.mockReturnValue({
         data: null,
         isError: true,
         isFetching: false,
@@ -212,7 +268,7 @@ describe('TryApp (main index.tsx)', () => {
     })
 
     it('renders unknown unavailable state when app detail is empty', () => {
-      mockUseGetTryAppInfo.mockReturnValue({
+      mockDetailQueryResult.mockReturnValue({
         data: null,
         isLoading: false,
         isError: false,
@@ -225,35 +281,49 @@ describe('TryApp (main index.tsx)', () => {
       expect(screen.getByText('explore.tryApp.loadError')).toBeInTheDocument()
     })
 
-    it('disables retry while fetching and restores the full preview after recovery', async () => {
+    it('keeps the error block during retry and restores the preview after recovery', async () => {
       const refetch = vi.fn().mockResolvedValue({ data: createMockAppDetail() })
       let result = {
-        data: null as TryAppInfo | null,
+        data: null as TrialAppDetailResponse | null,
         isLoading: false,
+        isFetched: true,
+        isFetchedAfterMount: true,
         isError: true,
         isFetching: false,
+        errorUpdateCount: 1,
         refetch,
       }
-      mockUseGetTryAppInfo.mockImplementation(() => result)
+      mockDetailQueryResult.mockImplementation(() => result)
       const { rerender } = render(<TryApp onClose={vi.fn()} onCreate={vi.fn()} />)
 
       const retryButton = screen.getByRole('button', { name: 'common.operation.retry' })
+      const errorBlock = screen.getByRole('alert')
       retryButton.focus()
       fireEvent.click(retryButton)
       expect(refetch).toHaveBeenCalledTimes(1)
 
-      result = { ...result, isFetching: true }
+      result = { ...result, isLoading: true, isFetching: true }
       rerender(<TryApp onClose={vi.fn()} onCreate={vi.fn()} />)
       const retryingButton = screen.getByRole('button', { name: 'explore.tryApp.retrying' })
+      expect(retryingButton).toBe(retryButton)
+      expect(screen.getByRole('alert')).toBe(errorBlock)
+      expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
       expect(retryingButton).toHaveAttribute('aria-disabled', 'true')
       expect(retryingButton).toHaveFocus()
       fireEvent.click(retryingButton)
       expect(refetch).toHaveBeenCalledTimes(1)
 
-      result = { ...result, data: createMockAppDetail(), isError: false, isFetching: false }
+      result = {
+        ...result,
+        data: createMockAppDetail(),
+        isLoading: false,
+        isError: false,
+        isFetching: false,
+      }
       rerender(<TryApp onClose={vi.fn()} onCreate={vi.fn()} />)
       expect(screen.getByTestId('preview-component')).toBeInTheDocument()
       expect(screen.getByTestId('create-button')).toBeInTheDocument()
+      expect(errorBlock.parentElement).toHaveAttribute('aria-hidden', 'true')
       await waitFor(() => {
         expect(screen.getByRole('tab', { name: 'explore.tryApp.tabHeader.detail' })).toHaveFocus()
       })
@@ -261,17 +331,29 @@ describe('TryApp (main index.tsx)', () => {
 
     it('allows another retry after a failed request', () => {
       const refetch = vi.fn().mockResolvedValue({ data: null })
-      mockUseGetTryAppInfo.mockReturnValue({
+      let result = {
         data: null,
         isLoading: false,
+        isFetched: true,
+        isFetchedAfterMount: true,
         isError: true,
         isFetching: false,
         refetch,
-      })
-      render(<TryApp onClose={vi.fn()} onCreate={vi.fn()} />)
+      }
+      mockDetailQueryResult.mockImplementation(() => result)
+      const { rerender } = render(<TryApp onClose={vi.fn()} onCreate={vi.fn()} />)
 
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.retry' }))
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+      const retryButton = screen.getByRole('button', { name: 'common.operation.retry' })
+      const errorBlock = screen.getByRole('alert')
+      fireEvent.click(retryButton)
+      result = { ...result, isLoading: true, isFetching: true }
+      rerender(<TryApp onClose={vi.fn()} onCreate={vi.fn()} />)
+      result = { ...result, isLoading: false, isFetching: false }
+      rerender(<TryApp onClose={vi.fn()} onCreate={vi.fn()} />)
+
+      expect(screen.getByRole('alert')).toBe(errorBlock)
+      expect(screen.getByRole('button', { name: 'common.operation.retry' })).toBe(retryButton)
+      fireEvent.click(retryButton)
       expect(refetch).toHaveBeenCalledTimes(2)
     })
   })
@@ -328,11 +410,11 @@ describe('TryApp (main index.tsx)', () => {
       const { rerender } = render(<TryApp app={app} onClose={vi.fn()} onCreate={vi.fn()} />)
       expect(screen.getByRole('dialog', { name: 'Sample template' })).toBeInTheDocument()
 
-      mockUseGetTryAppInfo.mockReturnValue({ data: null, isLoading: true })
+      mockDetailQueryResult.mockReturnValue({ data: null, isLoading: true })
       rerender(<TryApp app={app} onClose={vi.fn()} onCreate={vi.fn()} />)
       expect(screen.getByRole('dialog', { name: 'Sample template' })).toBeInTheDocument()
 
-      mockUseGetTryAppInfo.mockReturnValue({ data: null, isError: true, refetch: vi.fn() })
+      mockDetailQueryResult.mockReturnValue({ data: null, isError: true, refetch: vi.fn() })
       rerender(<TryApp app={app} onClose={vi.fn()} onCreate={vi.fn()} />)
       expect(screen.getByRole('dialog', { name: 'Sample template' })).toBeInTheDocument()
     })
@@ -468,7 +550,7 @@ describe('TryApp (main index.tsx)', () => {
         />,
       )
 
-      expect(mockUseGetTryAppInfo).toHaveBeenCalledWith('my-specific-app-id')
+      expect(mockDetailQueryResult).toHaveBeenCalledWith('my-specific-app-id')
     })
   })
 
