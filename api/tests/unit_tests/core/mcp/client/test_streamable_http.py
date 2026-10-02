@@ -1099,40 +1099,60 @@ class TestSendSessionTerminatedErrorNew:
 
 
 class TestPostWriterNew:
-    def test_none_message_exits_loop(self):
+    @pytest.fixture
+    def requests(self) -> list[httpx.Request]:
+        return []
+
+    @pytest.fixture
+    def client(self, requests: list[httpx.Request]):
+        def respond(request: httpx.Request) -> httpx.Response:
+            requests.append(request)
+            payload = {"jsonrpc": "2.0", "id": 5, "result": {}}
+            if request.method == "GET":
+                return httpx.Response(
+                    200, headers={"content-type": "text/event-stream"}, content=f"data: {json.dumps(payload)}\n\n"
+                )
+            return httpx.Response(200, json=payload)
+
+        with httpx.Client(transport=httpx.MockTransport(respond)) as client:
+            yield client
+
+    def test_none_message_exits_loop(self, client: httpx.Client):
         t = _new_transport()
         c2s: queue.Queue = queue.Queue()
         s2c: queue.Queue = queue.Queue()
         c2s.put(None)
-        t.post_writer(MagicMock(), c2s, s2c, MagicMock())
+        t.post_writer(client, c2s, s2c, lambda: None)
 
-    def test_stop_event_exits_loop(self):
+    def test_stop_event_exits_loop(self, client: httpx.Client):
         t = _new_transport()
         t.stop_event.set()
         c2s: queue.Queue = queue.Queue()
         s2c: queue.Queue = queue.Queue()
-        t.post_writer(MagicMock(), c2s, s2c, MagicMock())
+        t.post_writer(client, c2s, s2c, lambda: None)
 
-    def test_initialized_notification_calls_start_get_stream(self):
+    def test_initialized_notification_calls_start_get_stream(self, client: httpx.Client, requests: list[httpx.Request]):
         t = _new_transport()
         c2s: queue.Queue = queue.Queue()
         s2c: queue.Queue = queue.Queue()
-        start_get_stream = MagicMock()
+        started: list[bool] = []
 
         notif_msg = _make_notification_msg("notifications/initialized")
         c2s.put(SessionMessage(notif_msg))
         c2s.put(None)
 
-        with patch.object(t, "_handle_post_request"):
-            t.post_writer(MagicMock(), c2s, s2c, start_get_stream)
+        t.post_writer(client, c2s, s2c, lambda: started.append(True))
 
-        start_get_stream.assert_called_once()
+        assert started == [True]
+        assert len(requests) == 1
 
-    def test_resumption_message_calls_handle_resumption_request(self):
+    def test_resumption_message_calls_handle_resumption_request(
+        self, client: httpx.Client, requests: list[httpx.Request]
+    ):
         t = _new_transport()
         c2s: queue.Queue = queue.Queue()
         s2c: queue.Queue = queue.Queue()
-        start_get_stream = MagicMock()
+        started: list[bool] = []
 
         msg = SessionMessage(_make_request_msg("tools/list", 10))
         metadata = ClientMessageMetadata()
@@ -1141,12 +1161,17 @@ class TestPostWriterNew:
         c2s.put(msg)
         c2s.put(None)
 
-        with patch.object(t, "_handle_resumption_request") as mock_resumption:
-            t.post_writer(MagicMock(), c2s, s2c, start_get_stream)
+        t.post_writer(client, c2s, s2c, lambda: started.append(True))
 
-        mock_resumption.assert_called_once()
+        assert len(requests) == 1
+        assert requests[0].method == "GET"
+        assert requests[0].headers[LAST_EVENT_ID] == "resume-abc"
+        assert started == []
+        response = s2c.get_nowait()
+        assert isinstance(response, SessionMessage)
+        assert response.message.root.id == 10
 
-    def test_regular_message_calls_handle_post_request(self):
+    def test_regular_message_calls_handle_post_request(self, client: httpx.Client, requests: list[httpx.Request]):
         t = _new_transport()
         c2s: queue.Queue = queue.Queue()
         s2c: queue.Queue = queue.Queue()
@@ -1155,12 +1180,14 @@ class TestPostWriterNew:
         c2s.put(msg)
         c2s.put(None)
 
-        with patch.object(t, "_handle_post_request") as mock_post:
-            t.post_writer(MagicMock(), c2s, s2c, MagicMock())
+        t.post_writer(client, c2s, s2c, lambda: None)
 
-        mock_post.assert_called_once()
+        assert len(requests) == 1
+        assert requests[0].method == "POST"
+        assert json.loads(requests[0].content)["id"] == 5
+        assert isinstance(s2c.get_nowait(), SessionMessage)
 
-    def test_exception_in_handler_put_to_s2c_when_not_stopped(self):
+    def test_exception_in_handler_put_to_s2c_when_not_stopped(self, requests: list[httpx.Request]):
         t = _new_transport()
         c2s: queue.Queue = queue.Queue()
         s2c: queue.Queue = queue.Queue()
@@ -1170,13 +1197,18 @@ class TestPostWriterNew:
         c2s.put(None)
 
         boom = RuntimeError("oops")
-        with patch.object(t, "_handle_post_request", side_effect=boom):
-            t.post_writer(MagicMock(), c2s, s2c, MagicMock())
+
+        def fail(request: httpx.Request) -> httpx.Response:
+            requests.append(request)
+            raise boom
+
+        with httpx.Client(transport=httpx.MockTransport(fail)) as failing_client:
+            t.post_writer(failing_client, c2s, s2c, lambda: None)
 
         item = s2c.get_nowait()
         assert item is boom
 
-    def test_exception_suppressed_when_stopped(self):
+    def test_exception_suppressed_when_stopped(self, requests: list[httpx.Request]):
         t = _new_transport()
         c2s: queue.Queue = queue.Queue()
         s2c: queue.Queue = queue.Queue()
@@ -1187,19 +1219,22 @@ class TestPostWriterNew:
         t.stop_event.set()
 
         boom = RuntimeError("oops")
-        with patch.object(t, "_handle_post_request", side_effect=boom):
-            t.post_writer(MagicMock(), c2s, s2c, MagicMock())
+
+        def fail(request: httpx.Request) -> httpx.Response:
+            requests.append(request)
+            raise boom
+
+        with httpx.Client(transport=httpx.MockTransport(fail)) as failing_client:
+            t.post_writer(failing_client, c2s, s2c, lambda: None)
 
         assert s2c.empty()
 
-    def test_queue_empty_timeout_continues_loop(self):
+    def test_queue_empty_timeout_continues_loop(self, client: httpx.Client):
         """Cover the 'except queue.Empty: continue' branch in post_writer."""
         t = _new_transport()
         c2s: queue.Queue = queue.Queue()
         s2c: queue.Queue = queue.Queue()
         call_count = {"n": 0}
-
-        original_get = c2s.get
 
         def patched_get[**P](*args: P.args, **kwargs: P.kwargs):
             call_count["n"] += 1
@@ -1207,10 +1242,10 @@ class TestPostWriterNew:
                 raise queue.Empty
 
         c2s.get = patched_get  # type: ignore[method-assign]
-        t.post_writer(MagicMock(), c2s, s2c, MagicMock())
+        t.post_writer(client, c2s, s2c, lambda: None)
         assert call_count["n"] >= 2
 
-    def test_non_client_metadata_treated_as_none(self):
+    def test_non_client_metadata_treated_as_none(self, client: httpx.Client):
         """session_message.metadata that's not ClientMessageMetadata → metadata is None."""
         t = _new_transport()
         c2s: queue.Queue = queue.Queue()
@@ -1221,11 +1256,12 @@ class TestPostWriterNew:
         c2s.put(msg)
         c2s.put(None)
 
-        with patch.object(t, "_handle_post_request") as mock_post:
-            t.post_writer(MagicMock(), c2s, s2c, MagicMock())
+        contexts: list[RequestContext] = []
+        with patch.object(t, "_handle_post_request", new=contexts.append):
+            t.post_writer(client, c2s, s2c, lambda: None)
 
-        ctx = mock_post.call_args[0][0]
-        assert ctx.metadata is None
+        assert len(contexts) == 1
+        assert contexts[0].metadata is None
 
 
 # ── terminate_session ─────────────────────────────────────────────────────────
@@ -1454,15 +1490,16 @@ class TestRequestContextNew:
         import queue
 
         q: queue.Queue = queue.Queue()
-        ctx = RequestContext(
-            client=MagicMock(),
-            headers={"X-Test": "val"},
-            session_id="sid",
-            session_message=SessionMessage(_make_request_msg()),
-            metadata=None,
-            server_to_client_queue=q,
-            sse_read_timeout=30.0,
-        )
-        assert ctx.session_id == "sid"
-        assert ctx.sse_read_timeout == 30.0
-        assert ctx.metadata is None
+        with httpx.Client(transport=httpx.MockTransport(lambda _request: httpx.Response(200))) as client:
+            ctx = RequestContext(
+                client=client,
+                headers={"X-Test": "val"},
+                session_id="sid",
+                session_message=SessionMessage(_make_request_msg()),
+                metadata=None,
+                server_to_client_queue=q,
+                sse_read_timeout=30.0,
+            )
+            assert ctx.session_id == "sid"
+            assert ctx.sse_read_timeout == 30.0
+            assert ctx.metadata is None
