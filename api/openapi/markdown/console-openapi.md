@@ -6185,6 +6185,22 @@ Inspect the knowledge graph extracted from a dataset's documents
 | 200 | Graph retrieved successfully | **application/json**: [DatasetGraphResponse](#datasetgraphresponse)<br> |
 | 404 | Dataset not found |  |
 
+### [POST] /datasets/{dataset_id}/graph/retry
+Retry knowledge graph extraction for the chunks that failed
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Retry queued | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 404 | Dataset not found |  |
+
 ### [GET] /datasets/{dataset_id}/graph/stats
 Get knowledge graph statistics for a dataset
 
@@ -18283,8 +18299,12 @@ Knowledge-graph configuration of a dataset.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| building | boolean |  | Yes |
 | entity_count | integer |  | Yes |
 | entity_types | object |  | Yes |
+| failed_chunk_count | integer |  | Yes |
+| last_error | string |  | Yes |
+| last_failed_at | integer |  | Yes |
 | relation_count | integer |  | Yes |
 
 #### DatasetIconInfoResponse
