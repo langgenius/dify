@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from unittest.mock import Mock, create_autospec
+from unittest.mock import create_autospec
 
 import pytest
 
@@ -23,19 +23,46 @@ from services.data_source.notion_import_adapters import PluginNotionSourceGatewa
 from services.data_source.notion_import_application_service import NotionImportCredentialUnavailableError
 
 
-def _credentials(credentials: dict[str, object], *, error: DatasourceCredentialError | None = None) -> Mock:
+def _credentials(
+    credentials: dict[str, object], *, error: DatasourceCredentialError | None = None
+) -> ActorDatasourceCredentialResolver:
     resolver = create_autospec(ActorDatasourceCredentialResolver, instance=True, spec_set=True)
     resolver.resolve.return_value = credentials
     resolver.resolve.side_effect = error
     return resolver
 
 
-def _runtime(messages: Sequence[OnlineDocumentPagesMessage] = ()) -> Mock:
+def _runtime(messages: Sequence[OnlineDocumentPagesMessage] = ()) -> OnlineDocumentDatasourcePlugin:
     runtime = create_autospec(OnlineDocumentDatasourcePlugin, instance=True)
     runtime.runtime = DatasourceRuntime(tenant_id="workspace-1")
     runtime.get_online_document_pages.return_value = iter(messages)
     runtime.datasource_provider_type.return_value = DatasourceProviderType.ONLINE_DOCUMENT
     return runtime
+
+
+def _runtime_loader(runtime: OnlineDocumentDatasourcePlugin):
+    def load_runtime(
+        *,
+        provider_id: str,
+        datasource_name: str,
+        tenant_id: str,
+        datasource_type: DatasourceProviderType,
+    ) -> object:
+        del provider_id, datasource_name, tenant_id, datasource_type
+        return runtime
+
+    return load_runtime
+
+
+def _unexpected_runtime_loader(
+    *,
+    provider_id: str,
+    datasource_name: str,
+    tenant_id: str,
+    datasource_type: DatasourceProviderType,
+) -> object:
+    del provider_id, datasource_name, tenant_id, datasource_type
+    raise AssertionError("runtime loader should not be called")
 
 
 def _page(page_id: str, *, with_icon: bool = True, page_type: str = "page") -> OnlineDocumentPage:
@@ -84,7 +111,18 @@ def test_list_authorized_pages_groups_paginated_results_by_workspace() -> None:
         )
     )
     resolver = _credentials({"integration_secret": "secret"})
-    loader = Mock(return_value=runtime)
+    loader_calls: list[tuple[str, str, str, DatasourceProviderType]] = []
+
+    def loader(
+        *,
+        provider_id: str,
+        datasource_name: str,
+        tenant_id: str,
+        datasource_type: DatasourceProviderType,
+    ) -> object:
+        loader_calls.append((provider_id, datasource_name, tenant_id, datasource_type))
+        return runtime
+
     gateway = PluginNotionSourceGateway(credentials=resolver, runtime_loader=loader)
 
     workspaces = gateway.list_authorized_pages(
@@ -110,12 +148,14 @@ def test_list_authorized_pages_groups_paginated_results_by_workspace() -> None:
         provider="notion_datasource",
         plugin_id="langgenius/notion_datasource",
     )
-    loader.assert_called_once_with(
-        provider_id="langgenius/notion_datasource/notion_datasource",
-        datasource_name="notion_datasource",
-        tenant_id="workspace-1",
-        datasource_type=DatasourceProviderType.ONLINE_DOCUMENT,
-    )
+    assert loader_calls == [
+        (
+            "langgenius/notion_datasource/notion_datasource",
+            "notion_datasource",
+            "workspace-1",
+            DatasourceProviderType.ONLINE_DOCUMENT,
+        )
+    ]
 
 
 def test_list_authorized_pages_skips_unknown_page_types() -> None:
@@ -136,7 +176,7 @@ def test_list_authorized_pages_skips_unknown_page_types() -> None:
     )
     gateway = PluginNotionSourceGateway(
         credentials=_credentials({"integration_secret": "secret"}),
-        runtime_loader=Mock(return_value=runtime),
+        runtime_loader=_runtime_loader(runtime),
     )
 
     workspaces = gateway.list_authorized_pages(
@@ -151,7 +191,7 @@ def test_preview_requires_secret_and_passes_it_only_to_extractor() -> None:
     factory.return_value.extract.return_value = [Document(page_content="one"), Document(page_content="two")]
     gateway = PluginNotionSourceGateway(
         credentials=_credentials({"integration_secret": "secret"}),
-        runtime_loader=Mock(),
+        runtime_loader=_unexpected_runtime_loader,
         extractor_factory=factory,
     )
 
@@ -175,7 +215,7 @@ def test_preview_requires_secret_and_passes_it_only_to_extractor() -> None:
 def test_preview_fails_closed_when_secret_is_missing() -> None:
     gateway = PluginNotionSourceGateway(
         credentials=_credentials({}),
-        runtime_loader=Mock(),
+        runtime_loader=_unexpected_runtime_loader,
     )
 
     with pytest.raises(NotionImportCredentialUnavailableError):
@@ -191,7 +231,7 @@ def test_preview_fails_closed_when_secret_is_missing() -> None:
 def test_gateway_translates_credential_infrastructure_failure() -> None:
     gateway = PluginNotionSourceGateway(
         credentials=_credentials({}, error=DatasourceCredentialNotFoundError()),
-        runtime_loader=Mock(),
+        runtime_loader=_unexpected_runtime_loader,
     )
 
     with pytest.raises(NotionImportCredentialUnavailableError):
