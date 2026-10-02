@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import sqlalchemy as sa
-from sqlalchemy import func, select, tuple_
+from sqlalchemy import Select, func, select, tuple_
 from sqlalchemy.orm import Session, scoped_session
 
 from core.app.file_access import DatabaseFileAccessController
@@ -570,9 +570,11 @@ def get_pipeline_template_creator_name(template: PipelineCustomizedTemplate, ses
 
 
 def get_pipeline_dataset(pipeline: Pipeline, session: Session | scoped_session) -> Dataset | None:
-    return session.scalar(
-        select(Dataset).where(Dataset.pipeline_id == pipeline.id, Dataset.tenant_id == pipeline.tenant_id)
-    )
+    return session.scalar(pipeline_dataset_query(pipeline.tenant_id, pipeline.id))
+
+
+def pipeline_dataset_query(workspace_id: str, pipeline_id: str) -> Select[tuple[Dataset]]:
+    return select(Dataset).where(Dataset.pipeline_id == pipeline_id, Dataset.tenant_id == workspace_id)
 
 
 @dataclass(frozen=True)

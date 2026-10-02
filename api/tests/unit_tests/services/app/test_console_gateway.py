@@ -39,6 +39,7 @@ from services.recommended_app_package_service import RecommendedAppPackageServic
 from services.system_feature_service import SystemFeatureService
 from services.workflow_service import WorkflowService
 from tests.unit_tests.model_factories import make_account, make_tenant, make_upload_file
+from tests.unit_tests.rbac_fakes import RBACDomain
 
 
 @pytest.fixture
@@ -229,7 +230,7 @@ def test_copy_rejects_foreign_import_result_before_external_effects(
 def test_only_cloud_version_export_consults_workspace_plan(
     monkeypatch: pytest.MonkeyPatch,
     config_overrides: Callable[..., None],
-    sqlite_session_factory: sessionmaker[Session],
+    rbac_domain: RBACDomain,
     edition: DeploymentEdition,
     plan: CloudPlan,
     allowed: bool,
@@ -242,20 +243,18 @@ def test_only_cloud_version_export_consults_workspace_plan(
         return plan
 
     monkeypatch.setattr("services.app.console_gateway.FeatureService.get_workspace_plan", get_plan)
-    gateway = EnterpriseConsoleAppAccess(session_factory=sqlite_session_factory)
+    gateway = EnterpriseConsoleAppAccess(members=rbac_domain.rbac.members)
     assert gateway.can_export_version("workspace") is allowed
     assert calls == (["workspace"] if edition == DeploymentEdition.CLOUD else [])
 
 
-def test_access_mode_batch_validates_completeness(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
-) -> None:
+def test_access_mode_batch_validates_completeness(monkeypatch: pytest.MonkeyPatch, rbac_domain: RBACDomain) -> None:
     monkeypatch.setattr("services.app.console_gateway.SystemFeatureService.is_webapp_auth_enabled", lambda: True)
     monkeypatch.setattr(
         "services.app.console_gateway.EnterpriseService.WebAppAuth.batch_get_app_access_mode_by_id",
         lambda **_kwargs: {},
     )
-    gateway = EnterpriseConsoleAppAccess(session_factory=sqlite_session_factory)
+    gateway = EnterpriseConsoleAppAccess(members=rbac_domain.rbac.members)
     with pytest.raises(InvalidAppAccessModesError):
         gateway.access_modes(["app"])
 

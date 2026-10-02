@@ -177,6 +177,14 @@ class AppExportOptions:
 
 
 @dataclass(frozen=True, slots=True)
+class AppAgentBinding:
+    """Authorization binding materialized before the repository closes its Session."""
+
+    id: str
+    workflow_only: bool
+
+
+@dataclass(frozen=True, slots=True)
 class AppReference:
     id: str
     name: str

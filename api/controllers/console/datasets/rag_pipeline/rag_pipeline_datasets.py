@@ -29,6 +29,7 @@ from services.entities.knowledge_entities.rag_pipeline_entities import IconInfo,
 from services.knowledge.dataset_read_service import load_dataset_detail
 from services.knowledge.dataset_service import DatasetPermissionService, DatasetService
 from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineDslService
+from services.rbac import contracts as rbac_contracts
 
 
 class RagPipelineDatasetImportPayload(BaseModel):
@@ -98,12 +99,12 @@ class CreateRagPipelineDatasetApi(Resource):
                 current_tenant_id,
                 current_user.id,
                 dataset_id,
-                enterprise_rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=False),
+                rbac_contracts.ReplaceMemberBindings(automatic_include_workspace_members=False),
             )
             enterprise_rbac_service.try_sync_creator_access_policy_member_bindings(
                 current_tenant_id,
                 current_user.id,
-                enterprise_rbac_service.RBACResourceType.DATASET,
+                rbac_contracts.RBACResourceType.DATASET,
                 dataset_id,
             )
 
