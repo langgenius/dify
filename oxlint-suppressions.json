@@ -1040,11 +1040,6 @@
       "count": 2
     }
   },
-  "web/app/components/base/inline-delete-confirm/index.stories.tsx": {
-    "no-console": {
-      "count": 2
-    }
-  },
   "web/app/components/base/markdown-blocks/__tests__/paragraph.spec.tsx": {
     "jsx-a11y/anchor-is-valid": {
       "count": 1
@@ -1485,14 +1480,6 @@
     },
     "jsx-a11y/no-static-element-interactions": {
       "count": 1
-    }
-  },
-  "web/app/components/datasets/create-from-pipeline/list/template-card/operations.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 3
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 3
     }
   },
   "web/app/components/datasets/create/file-uploader/hooks/use-file-upload.ts": {

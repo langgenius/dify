@@ -10,6 +10,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
+from redis import Redis
 from sqlalchemy import create_engine
 from sqlalchemy.engine import URL, Engine
 from sqlalchemy.orm import Session, sessionmaker
@@ -67,6 +68,28 @@ def _patch_redis_clients_on_loaded_modules() -> None:
         for client_attribute in ("redis_client", "_pubsub_redis_client"):
             if hasattr(module, client_attribute):
                 setattr(module, client_attribute, redis_mock)
+
+
+@pytest.fixture
+def redis_transport(monkeypatch: pytest.MonkeyPatch) -> Iterator[tuple[ext_redis.RedisClientWrapper, MagicMock]]:
+    """Exercise the wrapper and Redis command builders with network dispatch replaced."""
+    apply_config_overrides(monkeypatch, REDIS_KEY_PREFIX="")
+    with Redis() as client, patch.object(client, "execute_command", return_value=None) as commands:
+        wrapper = ext_redis.RedisClientWrapper()
+        wrapper.initialize(client)
+        yield wrapper, commands
+
+
+@pytest.fixture
+def tenant_queue_commands(
+    redis_transport: tuple[ext_redis.RedisClientWrapper, MagicMock], monkeypatch: pytest.MonkeyPatch
+) -> MagicMock:
+    """Run tenant queue serialization and command building without Redis I/O."""
+    from core.rag.pipeline import queue
+
+    redis, commands = redis_transport
+    monkeypatch.setattr(queue, "redis_client", redis)
+    return commands
 
 
 @pytest.fixture

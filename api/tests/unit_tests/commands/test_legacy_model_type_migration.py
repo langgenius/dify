@@ -526,6 +526,7 @@ def test_resource_whitelist_scope_migration_specific_preserves_existing_members(
         "replace_user_access_policies",
         lambda **kwargs: replace_policy_calls.append(kwargs),
     )
+    monkeypatch.setattr(rbac_module.RBACService.MemberRoles, "batch_get", lambda **kwargs: [])
 
     command_module.migrate_resource_whitelist_scopes_to_automatic_include.callback(
         tenant_id=None,
@@ -581,6 +582,7 @@ def test_resource_whitelist_scope_migration_all_syncs_workspace_members(
         "replace_user_access_policies",
         lambda **kwargs: replace_policy_calls.append(kwargs),
     )
+    monkeypatch.setattr(rbac_module.RBACService.MemberRoles, "batch_get", lambda **kwargs: [])
 
     command_module.migrate_resource_whitelist_scopes_to_automatic_include.callback(
         tenant_id=None,
@@ -636,6 +638,7 @@ def test_only_me_resource_whitelist_scope_migration_syncs_workspace_members(
         "replace_user_access_policies",
         lambda **kwargs: replace_policy_calls.append(kwargs),
     )
+    monkeypatch.setattr(rbac_module.RBACService.MemberRoles, "batch_get", lambda **kwargs: [])
 
     command_module.migrate_only_me_resource_whitelist_scopes_to_automatic_include.callback(
         tenant_id=None,

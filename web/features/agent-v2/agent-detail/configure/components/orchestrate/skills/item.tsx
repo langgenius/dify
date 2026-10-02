@@ -38,7 +38,6 @@ export function AgentSkillItem({
   const { t: tCommon } = useTranslation(['common'])
   const queryClient = useQueryClient()
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
-  const [isActionsOpen, setIsActionsOpen] = useState(false)
   const [isRemoveHighlighted, setIsRemoveHighlighted] = useState(false)
   const handleRemove = useCallback(() => {
     onRemove(skill.id)
@@ -147,7 +146,7 @@ export function AgentSkillItem({
               className={cn(
                 'shrink-0 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary',
                 hasActions && 'group-focus-within:opacity-0 group-hover:opacity-0',
-                isActionsOpen && 'opacity-0',
+                'group-has-data-popup-open:opacity-0',
               )}
             >
               {t(($) => $['agentDetail.configure.skills.addMenu.upload.badge'])}
@@ -164,7 +163,6 @@ export function AgentSkillItem({
           <DropdownMenu
             modal={false}
             onOpenChange={(open) => {
-              setIsActionsOpen(open)
               if (!open) setIsRemoveHighlighted(false)
             }}
           >
