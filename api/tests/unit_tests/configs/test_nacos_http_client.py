@@ -1,17 +1,15 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import httpx
 
 from configs.remote_settings_sources.nacos.http_request import NacosHttpClient
 
 
-def _ok_response(text: str = "ok", json_data: dict | None = None) -> MagicMock:
-    response = MagicMock()
-    response.text = text
-    response.raise_for_status.return_value = None
+def _ok_response(text: str = "ok", json_data: dict | None = None) -> httpx.Response:
+    request = httpx.Request("GET", "http://nacos.test")
     if json_data is not None:
-        response.json.return_value = json_data
-    return response
+        return httpx.Response(200, json=json_data, request=request)
+    return httpx.Response(200, text=text, request=request)
 
 
 def test_http_request_passes_bounded_timeout():
