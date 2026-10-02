@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from redis import RedisError
@@ -63,12 +63,14 @@ def test_token_gateway_issues_verified_registration_state() -> None:
 
 @pytest.mark.parametrize(("count", "limited"), [(0, False), (1, False), (2, True)])
 def test_security_gateway_preserves_shared_ip_limit(
-    config_overrides: Callable[..., None], count: int, limited: bool
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+    config_overrides: Callable[..., None],
+    count: int,
+    limited: bool,
 ) -> None:
     config_overrides(EMAIL_SEND_IP_LIMIT_PER_MINUTE=1)
-    redis = Mock(spec=RedisClientWrapper)
-    redis.get.side_effect = [None, str(count), None]
-    redis.set.return_value = True
+    redis, commands = redis_transport
+    commands.side_effect = [None, str(count), None, True] if limited else [None, str(count), True, True]
     gateway = RedisEmailRegistrationSecurityGateway(
         redis=redis,
         login_security=Mock(spec=ConsoleAuthSecurityGateway),
@@ -78,15 +80,18 @@ def test_security_gateway_preserves_shared_ip_limit(
 
     assert gateway.is_ip_limited("127.0.0.1") is limited
     if limited:
-        redis.set.assert_called_once_with("email_send_ip_limit_hour:127.0.0.1", 1, ex=600, nx=True)
+        commands.assert_any_call("SET", "email_send_ip_limit_hour:127.0.0.1", 1, "NX", "EX", 600)
     else:
-        redis.setex.assert_called_once_with("email_send_ip_limit_minute:127.0.0.1", 60, count + 1)
-        redis.expire.assert_called_once_with("email_send_ip_limit_minute:127.0.0.1", 60)
+        commands.assert_any_call("SETEX", "email_send_ip_limit_minute:127.0.0.1", 60, count + 1)
+        commands.assert_any_call("EXPIRE", "email_send_ip_limit_minute:127.0.0.1", 60)
+    assert commands.call_count == 4
 
 
-def test_security_gateway_uses_registration_and_login_keys() -> None:
-    redis = Mock(spec=RedisClientWrapper)
-    redis.get.return_value = 1
+def test_security_gateway_uses_registration_and_login_keys(
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+) -> None:
+    redis, commands = redis_transport
+    commands.return_value = 1
     gateway = RedisEmailRegistrationSecurityGateway(
         redis=redis,
         login_security=RedisConsoleAuthSecurityGateway(redis=redis),
@@ -101,9 +106,10 @@ def test_security_gateway_uses_registration_and_login_keys() -> None:
         gateway.reset_verification_failures("user@example.com")
         gateway.reset_login_failures("user@example.com")
 
-    redis.setex.assert_called_once_with("email_register_error_rate_limit:user@example.com", 600, 2)
-    redis.delete.assert_called_once_with("email_register_error_rate_limit:user@example.com")
+    commands.assert_any_call("SETEX", "email_register_error_rate_limit:user@example.com", 600, 2)
+    commands.assert_any_call("DEL", "email_register_error_rate_limit:user@example.com")
     reset_login_error_rate_limit.assert_called_once_with("user@example.com")
+    assert commands.call_count == 3
 
 
 @pytest.mark.parametrize(("count", "limited"), [(5, False), (6, True)])
