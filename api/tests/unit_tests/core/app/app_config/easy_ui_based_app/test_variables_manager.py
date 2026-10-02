@@ -262,6 +262,21 @@ class TestValidateExternalDataToolsAndSetDefaults:
 
         spy.assert_called_once_with(name="tool", tenant_id="tenant_id", config={"a": 1})
 
+    def test_validate_enabled_tool_returns_app_config(self, mocker: MockerFixture):
+        config = {
+            "pre_prompt": "hello",
+            "external_data_tools": [{"enabled": True, "type": "tool", "config": {"a": 1}}],
+        }
+
+        mocker.patch("core.app.app_config.easy_ui_based_app.variables.manager.ExternalDataToolFactory.validate_config")
+
+        updated, keys = BasicVariablesConfigManager.validate_external_data_tools_and_set_defaults("tenant_id", config)
+
+        assert updated is config
+        assert updated["pre_prompt"] == "hello"
+        assert updated["external_data_tools"] == [{"enabled": True, "type": "tool", "config": {"a": 1}}]
+        assert keys == ["external_data_tools"]
+
 
 class TestValidateAndSetDefaultsIntegration:
     def test_validate_and_set_defaults_calls_both(self, mocker: MockerFixture):
