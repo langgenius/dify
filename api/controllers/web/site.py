@@ -23,6 +23,10 @@ class WebSiteResponse(ResponseModel):
     icon_type: str | None = None
     icon: str | None = None
     icon_background: str | None = None
+    default_user_icon_type: str | None = None
+    default_user_icon: str | None = None
+    default_user_icon_background: str | None = None
+    default_user_icon_url: str | None = None
     description: str | None = None
     copyright: str | None = None
     privacy_policy: str | None = None
@@ -102,6 +106,7 @@ class WebAppSiteResponse(ResponseModel):
 
         site_response = WebSiteResponse.model_validate(site, from_attributes=True)
         site_response.icon_url = icon_url if icon_url is not None else build_icon_url(site.icon_type, site.icon)
+        site_response.default_user_icon_url = build_icon_url(site.default_user_icon_type, site.default_user_icon)
         if features.billing.enabled and not features.webapp_copyright_enabled:
             site_response.copyright = None
             site_response.input_placeholder = None

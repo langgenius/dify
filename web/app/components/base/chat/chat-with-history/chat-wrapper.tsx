@@ -471,6 +471,14 @@ const ChatWrapper = () => {
               name={initUserVariables.name || 'user'}
               size="xl"
             />
+          ) : appData?.site.default_user_icon_type ? (
+            <AppIcon
+              size="large"
+              iconType={appData.site.default_user_icon_type}
+              icon={appData.site.default_user_icon ?? undefined}
+              background={appData.site.default_user_icon_background}
+              imageUrl={appData.site.default_user_icon_url}
+            />
           ) : undefined
         }
       />

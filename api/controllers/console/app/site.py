@@ -46,6 +46,9 @@ class AppSiteUpdatePayload(BaseModel):
     icon_type: str | None = Field(default=None)
     icon: str | None = Field(default=None)
     icon_background: str | None = Field(default=None)
+    default_user_icon_type: str | None = Field(default=None)
+    default_user_icon: str | None = Field(default=None)
+    default_user_icon_background: str | None = Field(default=None)
     description: str | None = Field(default=None)
     default_language: str | None = Field(default=None)
     chat_color_theme: str | None = Field(default=None)
@@ -78,6 +81,9 @@ class AppSiteResponse(ResponseModel):
     title: str
     icon: str | None = None
     icon_background: str | None = None
+    default_user_icon_type: str | None = None
+    default_user_icon: str | None = None
+    default_user_icon_background: str | None = None
     description: str | None = None
     default_language: str
     customize_domain: str | None = None

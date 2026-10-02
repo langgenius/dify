@@ -35,6 +35,9 @@ class AppSiteConfiguration(NamedTuple):
     icon_type: str | None
     icon: str | None
     icon_background: str | None
+    default_user_icon_type: str | None
+    default_user_icon: str | None
+    default_user_icon_background: str | None
     description: str | None
     copyright: str | None
     privacy_policy: str | None

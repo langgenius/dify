@@ -67,9 +67,15 @@ class WebAppRuntimeQueryService:
             if record.site.icon_type == "image" and record.site.icon
             else None
         )
+        default_user_icon_url = (
+            self._file_service.get_icon_url(record.site.default_user_icon, record.tenant_id)
+            if record.site.default_user_icon_type == "image" and record.site.default_user_icon
+            else None
+        )
 
         site = cast(dict[str, str | bool | None], record.site._asdict())
         site["icon_url"] = site_icon_url
+        site["default_user_icon_url"] = default_user_icon_url
         if features.billing.enabled and not features.webapp_copyright_enabled:
             site["copyright"] = None
             site["input_placeholder"] = None

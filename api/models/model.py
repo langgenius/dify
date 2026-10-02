@@ -2339,6 +2339,14 @@ class Site(TypeBase):
     icon_type: Mapped[IconType | None] = mapped_column(EnumText(IconType, length=255), nullable=True, default=None)
     icon: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
     icon_background: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    # Default avatar shown next to the end-user's own messages in the chat web
+    # app/embedded widget, when the embedding page doesn't pass a per-visitor
+    # user.avatar_url. Falls back to a generic icon when unset.
+    default_user_icon_type: Mapped[IconType | None] = mapped_column(
+        EnumText(IconType, length=255), nullable=True, default=None
+    )
+    default_user_icon: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    default_user_icon_background: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
     description: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
     copyright: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
     privacy_policy: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)

@@ -17,6 +17,10 @@ export type SiteInfo = {
   icon?: string
   icon_background?: string | null
   icon_url?: string | null
+  default_user_icon_type?: AppIconType | null
+  default_user_icon?: string | null
+  default_user_icon_background?: string | null
+  default_user_icon_url?: string | null
   description?: string
   default_language?: Locale
   prompt_public?: boolean

@@ -66,6 +66,10 @@ type SettingsSiteInfo = Pick<
   | 'icon'
   | 'icon_background'
   | 'icon_url'
+  | 'default_user_icon_type'
+  | 'default_user_icon'
+  | 'default_user_icon_background'
+  | 'default_user_icon_url'
   | 'show_workflow_steps'
   | 'use_icon_as_answer_icon'
 >
@@ -99,6 +103,9 @@ export type ConfigParams = {
   icon_type: AppIconType
   icon: string
   icon_background?: string
+  default_user_icon_type?: AppIconType
+  default_user_icon?: string
+  default_user_icon_background?: string
   show_workflow_steps: boolean
   use_icon_as_answer_icon: boolean
   enable_sso?: boolean
@@ -159,6 +166,30 @@ const createAppIcon = (appInfo: ISettingsModalProps['appInfo']): SettingsAppIcon
   return { type: 'emoji', icon, background: icon_background! }
 }
 
+// Unlike the bot icon (always set), the end-user default avatar starts unset
+// (null) until an admin explicitly picks one — null means "use the generic
+// default icon".
+const DEFAULT_USER_ICON_PICKER_SEED: SettingsAppIconSelection = {
+  type: 'emoji',
+  icon: '🙂',
+  background: '#FFEAD5',
+}
+
+const createUserIcon = (appInfo: ISettingsModalProps['appInfo']): SettingsAppIconSelection | null => {
+  const {
+    default_user_icon_type: icon_type,
+    default_user_icon: icon,
+    default_user_icon_background: icon_background,
+    default_user_icon_url: icon_url,
+  } = appInfo.site
+
+  if (!icon_type) return null
+  if (icon_type === 'image') return { type: 'image', url: icon_url!, fileId: icon! }
+  if (icon_type === 'link') return { type: 'link', icon: icon!, url: icon! }
+
+  return { type: 'emoji', icon: icon!, background: icon_background! }
+}
+
 const getSettingsResetKey = (appInfo: ISettingsModalProps['appInfo']) =>
   JSON.stringify([
     appInfo.id,
@@ -176,6 +207,10 @@ const getSettingsResetKey = (appInfo: ISettingsModalProps['appInfo']) =>
     appInfo.site.icon,
     appInfo.site.icon_background,
     appInfo.site.icon_url,
+    appInfo.site.default_user_icon_type,
+    appInfo.site.default_user_icon,
+    appInfo.site.default_user_icon_background,
+    appInfo.site.default_user_icon_url,
     appInfo.site.show_workflow_steps,
     appInfo.site.use_icon_as_answer_icon,
   ])
@@ -192,6 +227,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   const { default_language } = appInfo.site
   const nextInputInfo = createInputInfo(appInfo)
   const nextAppIcon = createAppIcon(appInfo)
+  const nextUserIcon = createUserIcon(appInfo)
   const settingsResetKey = getSettingsResetKey(appInfo)
   const [inputInfo, setInputInfo] = useState(nextInputInfo)
   const [language, setLanguage] = useState(default_language)
@@ -200,6 +236,8 @@ const SettingsModal: FC<ISettingsModalProps> = ({
 
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)
   const [appIcon, setAppIcon] = useState<SettingsAppIconSelection>(nextAppIcon)
+  const [showUserIconPicker, setShowUserIconPicker] = useState(false)
+  const [userIcon, setUserIcon] = useState<SettingsAppIconSelection | null>(nextUserIcon)
   const [previousIsShow, setPreviousIsShow] = useState(isShow)
   const [previousSettingsResetKey, setPreviousSettingsResetKey] = useState(settingsResetKey)
 
@@ -271,6 +309,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
       setInputInfo(nextInputInfo)
       setLanguage(default_language)
       setAppIcon(nextAppIcon)
+      setUserIcon(nextUserIcon)
       setPreviousSettingsResetKey(settingsResetKey)
     }
   }
@@ -333,6 +372,11 @@ const SettingsModal: FC<ISettingsModalProps> = ({
       icon_type: appIcon.type,
       icon: appIcon.type === 'image' ? appIcon.fileId : appIcon.icon,
       icon_background: appIcon.type === 'emoji' ? appIcon.background : undefined,
+      ...(userIcon && {
+        default_user_icon_type: userIcon.type,
+        default_user_icon: userIcon.type === 'image' ? userIcon.fileId : userIcon.icon,
+        default_user_icon_background: userIcon.type === 'emoji' ? userIcon.background : undefined,
+      }),
       show_workflow_steps: inputInfo.show_workflow_steps,
       use_icon_as_answer_icon: inputInfo.use_icon_as_answer_icon,
       enable_sso: inputInfo.enable_sso,
@@ -445,6 +489,34 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                       imageUrl={appIcon.type === 'emoji' ? undefined : appIcon.url}
                     />
                   </div>
+                  {/* default user avatar */}
+                  {isChat && (
+                    <Field name="default_user_icon" className="w-full">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <FieldLabel>
+                            {t(($) => $[`${prefixSettings}.userIcon.title`], { ns: 'appOverview' })}
+                          </FieldLabel>
+                          <FieldDescription>
+                            {t(($) => $[`${prefixSettings}.userIcon.description`], { ns: 'appOverview' })}
+                          </FieldDescription>
+                        </div>
+                        <AppIcon
+                          size="large"
+                          onClick={() => setShowUserIconPicker(true)}
+                          className="shrink-0 cursor-pointer"
+                          iconType={
+                            userIcon ? (userIcon.type === 'link' ? 'image' : userIcon.type) : 'emoji'
+                          }
+                          icon={userIcon ? (userIcon.type === 'image' ? userIcon.fileId : userIcon.icon) : undefined}
+                          background={
+                            userIcon?.type === 'emoji' ? userIcon.background : undefined
+                          }
+                          imageUrl={userIcon && userIcon.type !== 'emoji' ? userIcon.url : undefined}
+                        />
+                      </div>
+                    </Field>
+                  )}
                   {/* description */}
                   <Field name="description">
                     <FieldLabel>
@@ -802,6 +874,16 @@ const SettingsModal: FC<ISettingsModalProps> = ({
         }
         onOpenChange={setShowAppIconPicker}
         onSelect={setAppIcon}
+      />
+      <AppIconPicker
+        open={showUserIconPicker}
+        initialEmoji={
+          userIcon?.type === 'emoji'
+            ? { icon: userIcon.icon, background: userIcon.background }
+            : { icon: DEFAULT_USER_ICON_PICKER_SEED.icon, background: DEFAULT_USER_ICON_PICKER_SEED.background }
+        }
+        onOpenChange={setShowUserIconPicker}
+        onSelect={setUserIcon}
       />
     </>
   )
