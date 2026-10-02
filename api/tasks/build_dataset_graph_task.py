@@ -33,7 +33,9 @@ def build_dataset_graph_task(dataset_id: str, tenant_id: str) -> None:
     """
     started = time.perf_counter()
     built = 0
-    last_segment_id = ""
+    # None until the first page: segment ids are UUIDs on PostgreSQL, so an
+    # empty-string cursor is not a valid comparison value.
+    last_segment_id: str | None = None
     while True:
         with session_factory.create_session() as session:
             dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id, Dataset.tenant_id == tenant_id))
@@ -43,7 +45,7 @@ def build_dataset_graph_task(dataset_id: str, tenant_id: str) -> None:
             if GraphIndexService.get_setting(dataset) is None:
                 logger.info("Knowledge graph disabled for dataset %s, stopping build", dataset_id)
                 return
-            rows = session.execute(
+            query = (
                 select(
                     DocumentSegment.id,
                     DocumentSegment.content,
@@ -57,7 +59,6 @@ def build_dataset_graph_task(dataset_id: str, tenant_id: str) -> None:
                     DocumentSegment.status == SegmentStatus.COMPLETED,
                     DocumentSegment.enabled.is_(True),
                     DocumentSegment.index_node_id.is_not(None),
-                    DocumentSegment.id > last_segment_id,
                     Document.tenant_id == tenant_id,
                     Document.dataset_id == dataset_id,
                     Document.indexing_status == IndexingStatus.COMPLETED,
@@ -66,7 +67,10 @@ def build_dataset_graph_task(dataset_id: str, tenant_id: str) -> None:
                 )
                 .order_by(DocumentSegment.id)
                 .limit(_BATCH_SIZE)
-            ).all()
+            )
+            if last_segment_id is not None:
+                query = query.where(DocumentSegment.id > last_segment_id)
+            rows = session.execute(query).all()
             session.expunge(dataset)
         if not rows:
             break

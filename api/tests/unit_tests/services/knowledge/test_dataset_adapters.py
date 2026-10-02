@@ -244,6 +244,22 @@ def test_create_update_and_api_status_commit_owned_changes(
         assert session.get(Dataset, created["id"]) is not None
 
 
+def test_console_save_enabling_the_graph_queues_the_backfill(operations: SQLAlchemyDatasetOperations) -> None:
+    # The settings page saves through this adapter; the backfill must survive
+    # its commit so documents indexed before the graph was on get extracted.
+    with (
+        patch("services.knowledge.dataset_service.DatasetService.check_graph_extraction_model_setting"),
+        patch("services.knowledge.dataset_service.build_dataset_graph_task") as task,
+    ):
+        operations.update_dataset(
+            CONTEXT,
+            REF,
+            {"graph_index_setting": {"enabled": True, "model_provider_name": "provider", "model_name": "model"}},
+        )
+
+    task.delay.assert_called_once_with("dataset", "tenant")
+
+
 @pytest.mark.parametrize("entry_point", ["empty", "documents"])
 @pytest.mark.parametrize("rbac_enabled", [False, True])
 def test_created_dataset_initializes_rbac_access(

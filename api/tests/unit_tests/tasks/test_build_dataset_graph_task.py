@@ -1,6 +1,7 @@
 """The graph backfill extracts exactly the chunks retrieval can return."""
 
 import pytest
+from sqlalchemy import event
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.rag.models.document import Document as IndexDocument
@@ -106,6 +107,32 @@ def test_backfill_pages_through_every_chunk_once(
 
     assert [len(batch) for batch in extracted] == [2, 2, 1]
     assert [node for batch in extracted for node, _, _ in batch] == [f"node-s{i}" for i in range(5)]
+
+
+def test_first_page_has_no_cursor_filter(
+    sqlite_session_factory: sessionmaker[Session],
+    extracted: list[list[tuple[str, str, str]]],
+) -> None:
+    # Segment ids are UUIDs on PostgreSQL, where `id > ''` is a type error;
+    # SQLite accepts it, so pin the query shape instead of the outcome.
+    with sqlite_session_factory.begin() as session:
+        session.add_all([_graph_dataset(), _document("live"), _segment("s1", "live")])
+    statements: list[str] = []
+    engine = sqlite_session_factory.kw["bind"]
+
+    def record(_conn: object, _cursor: object, statement: str, *_args: object) -> None:
+        if "FROM document_segments" in statement:
+            statements.append(statement)
+
+    event.listen(engine, "before_cursor_execute", record)
+    try:
+        module.build_dataset_graph_task("dataset-1", "workspace-1")
+    finally:
+        event.remove(engine, "before_cursor_execute", record)
+
+    assert extracted == [[("node-s1", "live", "dataset-1")]]
+    assert "document_segments.id >" not in statements[0]
+    assert "document_segments.id >" in statements[1]
 
 
 def test_turning_the_graph_off_stops_further_model_calls(
