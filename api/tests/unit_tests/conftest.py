@@ -81,6 +81,18 @@ def redis_transport(monkeypatch: pytest.MonkeyPatch) -> Iterator[tuple[ext_redis
 
 
 @pytest.fixture
+def tenant_queue_commands(
+    redis_transport: tuple[ext_redis.RedisClientWrapper, MagicMock], monkeypatch: pytest.MonkeyPatch
+) -> MagicMock:
+    """Run tenant queue serialization and command building without Redis I/O."""
+    from core.rag.pipeline import queue
+
+    redis, commands = redis_transport
+    monkeypatch.setattr(queue, "redis_client", redis)
+    return commands
+
+
+@pytest.fixture
 def app() -> Flask:
     return CACHED_APP
 
