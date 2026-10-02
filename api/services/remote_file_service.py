@@ -112,8 +112,11 @@ class RemoteFileService:
         if any(separator in file_info.filename for separator in ("/", "\\")):
             raise RemoteFileInvalidResponseError("The remote response contains an invalid filename")
 
+        # file_info.extension keeps its leading dot; the size limits are keyed by
+        # bare lowercase extensions, the same form upload_file derives itself.
+        extension = file_info.extension.lstrip(".").lower()
         if not self._files.is_file_size_within_limit(
-            extension=file_info.extension,
+            extension=extension,
             file_size=file_info.size,
         ):
             raise FileTooLargeError()
