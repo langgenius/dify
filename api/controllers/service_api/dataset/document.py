@@ -71,7 +71,7 @@ from fields.document_fields import (
     DocumentStatusListResponse,
     normalize_enum,
 )
-from libs.helper import dump_response
+from libs.helper import dump_response, escape_like_pattern
 from libs.login import current_user
 from libs.pagination import clamp_pagination, paginate_query
 from models.dataset import Dataset, Document
@@ -1040,8 +1040,8 @@ class DocumentListApi(DatasetApiResource):
             query = DocumentService.apply_display_status_filter(query, query_params.status)
 
         if query_params.keyword:
-            search = f"%{query_params.keyword}%"
-            query = query.where(Document.name.like(search))
+            escaped_keyword = escape_like_pattern(query_params.keyword)
+            query = query.where(Document.name.ilike(f"%{escaped_keyword}%", escape="\\"))
 
         query = query.order_by(desc(Document.created_at), desc(Document.position))
 
