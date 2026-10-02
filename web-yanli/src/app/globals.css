@@ -1,0 +1,71 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 全局样式 - 唐宋美学 */
+:root {
+  /* 水墨色系 */
+  --color-ink-black: #1a1a1a;
+  --color-ink-grey: #4a4a4a;
+  --color-ink-light: #8a8a8a;
+  --color-paper-white: #fafaf8;
+  --color-mist-grey: #e8e8e6;
+
+  /* 文人雅色 */
+  --color-bamboo-green: #7c9885;
+  --color-pine-green: #5a7363;
+  --color-clay-red: #b7817a;
+  --color-sky-blue: #a8c5d1;
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  color: var(--color-ink-black);
+  background: var(--color-paper-white);
+}
+
+/* 宋体标题样式 */
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Noto Serif SC', serif;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+}
+
+/* 英文字体 */
+.font-en {
+  font-family: 'Inter', 'SF Pro Display', sans-serif;
+}
+
+/* 滚动条样式 - 简约水墨风 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-paper-white);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-mist-grey);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-ink-grey);
+}
+
+/* 选中文本样式 */
+::selection {
+  background: rgba(124, 152, 133, 0.2);
+  color: var(--color-ink-black);
+}
