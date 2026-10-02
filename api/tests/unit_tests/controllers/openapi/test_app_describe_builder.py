@@ -1,5 +1,4 @@
 from datetime import datetime
-from unittest.mock import MagicMock
 
 from sqlalchemy.orm import Session
 
@@ -25,8 +24,17 @@ def _app() -> App:
 def test_fields_none_returns_all_blocks(monkeypatch, unbound_session: Session):
     app = _app()
     session = unbound_session
-    parameters_payload = MagicMock(return_value={"k": "v"})
-    input_schema = MagicMock(return_value={"s": 1})
+    parameters_calls: list[tuple[App, Session]] = []
+    input_schema_calls: list[tuple[App, Session]] = []
+
+    def parameters_payload(requested_app: App, *, session: Session):
+        parameters_calls.append((requested_app, session))
+        return {"k": "v"}
+
+    def input_schema(requested_app: App, *, session: Session):
+        input_schema_calls.append((requested_app, session))
+        return {"s": 1}
+
     monkeypatch.setattr("controllers.openapi.apps.parameters_payload", parameters_payload)
     monkeypatch.setattr("controllers.openapi.apps.build_input_schema", input_schema)
     resp = build_app_describe_response(app, None, session=session)
@@ -34,14 +42,14 @@ def test_fields_none_returns_all_blocks(monkeypatch, unbound_session: Session):
     assert resp.info.name == "Demo"
     assert resp.parameters == {"k": "v"}
     assert resp.input_schema == {"s": 1}
-    parameters_payload.assert_called_once_with(app, session=session)
-    input_schema.assert_called_once_with(app, session=session)
+    assert parameters_calls == [(app, session)]
+    assert input_schema_calls == [(app, session)]
 
 
 def test_fields_subset_limits_blocks(monkeypatch, unbound_session: Session):
     session = unbound_session
-    monkeypatch.setattr("controllers.openapi.apps.parameters_payload", MagicMock(return_value={"k": "v"}))
-    monkeypatch.setattr("controllers.openapi.apps.build_input_schema", MagicMock(return_value={"s": 1}))
+    monkeypatch.setattr("controllers.openapi.apps.parameters_payload", lambda _app, **_kwargs: {"k": "v"})
+    monkeypatch.setattr("controllers.openapi.apps.build_input_schema", lambda _app, **_kwargs: {"s": 1})
     resp = build_app_describe_response(_app(), ["info"], session=session)
     assert resp.info is not None
     assert resp.parameters is None
@@ -50,8 +58,8 @@ def test_fields_subset_limits_blocks(monkeypatch, unbound_session: Session):
 
 def test_info_omits_author_and_tags(monkeypatch, unbound_session: Session):
     session = unbound_session
-    monkeypatch.setattr("controllers.openapi.apps.parameters_payload", MagicMock(return_value={}))
-    monkeypatch.setattr("controllers.openapi.apps.build_input_schema", MagicMock(return_value={}))
+    monkeypatch.setattr("controllers.openapi.apps.parameters_payload", lambda _app, **_kwargs: {})
+    monkeypatch.setattr("controllers.openapi.apps.build_input_schema", lambda _app, **_kwargs: {})
     resp = build_app_describe_response(_app(), ["info"], session=session)
     assert resp.info is not None
     # Usage-face describe must not expose creator identity or tags (cross-tenant leak).
@@ -64,7 +72,7 @@ def test_parameters_fallback_on_app_unavailable(monkeypatch, unbound_session: Se
         raise AppUnavailableError()
 
     monkeypatch.setattr("controllers.openapi.apps.parameters_payload", _raise)
-    monkeypatch.setattr("controllers.openapi.apps.build_input_schema", MagicMock(return_value={"s": 1}))
+    monkeypatch.setattr("controllers.openapi.apps.build_input_schema", lambda _app, **_kwargs: {"s": 1})
     resp = build_app_describe_response(_app(), ["parameters"], session=unbound_session)
     assert resp.parameters == dict(_EMPTY_PARAMETERS)
 
@@ -73,7 +81,7 @@ def test_input_schema_fallback_on_app_unavailable(monkeypatch, unbound_session: 
     def _raise(app, *, session):
         raise AppUnavailableError()
 
-    monkeypatch.setattr("controllers.openapi.apps.parameters_payload", MagicMock(return_value={"k": "v"}))
+    monkeypatch.setattr("controllers.openapi.apps.parameters_payload", lambda _app, **_kwargs: {"k": "v"})
     monkeypatch.setattr("controllers.openapi.apps.build_input_schema", _raise)
     resp = build_app_describe_response(_app(), ["input_schema"], session=unbound_session)
     assert resp.input_schema == dict(EMPTY_INPUT_SCHEMA)
