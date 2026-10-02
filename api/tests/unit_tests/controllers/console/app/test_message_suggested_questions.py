@@ -45,14 +45,17 @@ from models.agent_config_entities import AgentSoulConfig
 from models.enums import ConversationFromSource
 from models.model import App, AppMode, AppModelConfig, Conversation, Message
 from repositories.app.agent_app_repository import AgentAppRepository
-from services import message_service
+from repositories.message_suggested_questions_repository import SuggestedQuestionsRepository
+from services import message_suggested_questions_generator as generator_module
 from services.app.agent_app_service import AgentAppAccessService
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError, SuggestedQuestionsAfterAnswerDisabledError
-from services.message_suggested_questions_adapters import MessageSuggestedQuestionsRuntime
+from services.message_suggested_questions_generator import SuggestedQuestionsGenerator
+from services.message_suggested_questions_queries import SuggestedQuestionsQuery
 from services.message_suggested_questions_service import (
     MessageSuggestedQuestions,
+    MessageSuggestedQuestionsService,
     SuggestedQuestionsAccount,
     SuggestedQuestionsActor,
     SuggestedQuestionsActorNotFoundError,
@@ -228,18 +231,21 @@ def harness(
         assert app_id == target.id
         return provider
 
-    monkeypatch.setattr(message_service.ModelManager, "for_tenant", manager)
-    monkeypatch.setattr(message_service, "TraceQueueManager", trace_manager)
+    monkeypatch.setattr(generator_module.ModelManager, "for_tenant", manager)
+    monkeypatch.setattr(generator_module, "TraceQueueManager", trace_manager)
     monkeypatch.setattr(login, "current_user", account)
     monkeypatch.setattr(console_wraps, "_is_setup_completed", lambda: True)
     apply_config_overrides(monkeypatch, LOGIN_DISABLED=True, RBAC_ENABLED=False)
     flask_app = Flask(__name__)
     flask_app.config.update(TESTING=True, RESTX_ERROR_404_HELP=False, SQLALCHEMY_DATABASE_URI=str(sqlite_engine.url))
     db.init_app(flask_app)
+    queries = SuggestedQuestionsQuery(
+        session_factory=sqlite_session_factory, repository_factory=SuggestedQuestionsRepository
+    )
     services = _Services(
         app_services,
         _Agents(AgentAppAccessService(references=AgentAppRepository(session_factory=sqlite_session_factory))),
-        MessageSuggestedQuestionsRuntime(session_factory=sqlite_session_factory),
+        MessageSuggestedQuestionsService(queries=queries, generator=SuggestedQuestionsGenerator(queries=queries)),
     )
     flask_app.extensions["application_services"] = services
     api = ExternalApi(flask_app)

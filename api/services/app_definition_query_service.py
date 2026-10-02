@@ -28,6 +28,17 @@ class AppDefinitionSummary(NamedTuple):
     author_name: str | None
 
 
+class ServiceApiAppRecord(NamedTuple):
+    """App admission state; a null tenant status means the workspace is missing."""
+
+    app_id: str
+    tenant_id: str
+    mode: str
+    status: str
+    enable_api: bool
+    tenant_status: str | None
+
+
 class AppSiteConfiguration(NamedTuple):
     title: str
     chat_color_theme: str | None
@@ -48,6 +59,8 @@ class AppSiteConfiguration(NamedTuple):
 
 class AppDefinitionQuery(Protocol):
     def get_mode(self, app_id: str) -> str | None: ...
+
+    def get_service_api_record(self, app_id: str) -> ServiceApiAppRecord | None: ...
 
     def get_published_parameter_config(
         self,
@@ -83,6 +96,10 @@ class AppDefinitionQueryService:
     ) -> None:
         self._definitions = definitions
         self._builtin_icon_url_prefix = builtin_icon_url_prefix
+
+    def get_service_api_record(self, app_id: str) -> ServiceApiAppRecord | None:
+        """Return current Service API admission state, or None if the app is missing."""
+        return self._definitions.get_service_api_record(app_id)
 
     def get_mode(self, app_id: str) -> str:
         mode = self._definitions.get_mode(app_id)

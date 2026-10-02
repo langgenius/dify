@@ -689,6 +689,8 @@ class TrialMessageSuggestedQuestionApi(Resource):
             raise ProviderModelCurrentlyNotSupportError()
         except InvokeError as e:
             raise CompletionRequestError(e.description)
+        except HTTPException:
+            raise
         except Exception:
             logger.exception("internal server error.")
             raise InternalServerError()

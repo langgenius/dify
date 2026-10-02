@@ -16,7 +16,7 @@ from werkzeug.exceptions import Forbidden
 from werkzeug.test import TestResponse
 
 import controllers.console.explore.message as module
-import services.message_service as message_module
+import services.message_suggested_questions_generator as generator_module
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_manager import ModelInstance
@@ -31,14 +31,17 @@ from models.enums import ConversationFromSource, ConversationStatus, FeedbackFro
 from models.model import AppModelConfig, Conversation, Message, MessageFeedback
 from repositories.installed_app_message_repository import SQLAlchemyInstalledAppMessageRepository
 from repositories.installed_app_repository import SQLAlchemyInstalledAppRepository
+from repositories.message_suggested_questions_repository import SuggestedQuestionsRepository
 from services.errors.app import MoreLikeThisDisabledError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError, SuggestedQuestionsAfterAnswerDisabledError
 from services.installed_app_generation_service import GenerationResponse, InstalledAppGenerationService
 from services.installed_app_message_service import InstalledAppMessageService, MessageFeedbackEvent
-from services.message_suggested_questions_adapters import MessageSuggestedQuestionsRuntime
+from services.message_suggested_questions_generator import SuggestedQuestionsGenerator
+from services.message_suggested_questions_queries import SuggestedQuestionsQuery
 from services.message_suggested_questions_service import (
     MessageSuggestedQuestions,
+    MessageSuggestedQuestionsService,
     SuggestedQuestionsAccount,
     SuggestedQuestionsActor,
 )
@@ -276,7 +279,7 @@ def real_questions(
     conversation = _conversation(messages)
     with messages.factory.begin() as session:
         session.execute(
-            update(Conversation).where(Conversation.id == conversation.id).values(app_model_config_id=config.id)
+            update(Conversation).where(Conversation.id == conversation.id).values({"app_model_config_id": config.id})
         )
     provider = _QuestionProvider(messages=messages, message=_message(messages, conversation))
 
@@ -288,11 +291,14 @@ def real_questions(
         assert app_id == messages.harness.target_app.id
         return provider
 
-    monkeypatch.setattr(message_module.ModelManager, "for_tenant", model_manager)
-    monkeypatch.setattr(message_module, "TraceQueueManager", trace_manager)
+    monkeypatch.setattr(generator_module.ModelManager, "for_tenant", model_manager)
+    monkeypatch.setattr(generator_module, "TraceQueueManager", trace_manager)
+    queries = SuggestedQuestionsQuery(session_factory=messages.factory, repository_factory=SuggestedQuestionsRepository)
     messages.services = replace(
         messages.services,
-        message_suggested_questions=MessageSuggestedQuestionsRuntime(session_factory=messages.factory),
+        message_suggested_questions=MessageSuggestedQuestionsService(
+            queries=queries, generator=SuggestedQuestionsGenerator(queries=queries)
+        ),
     )
     messages.harness.app.config["SQLALCHEMY_DATABASE_URI"] = str(sqlite_engine.url)
     db.init_app(messages.harness.app)

@@ -83,6 +83,12 @@ class CompletionRequestError(BaseHTTPException):
     code = 400
 
 
+class AppSuggestedQuestionsAfterAnswerDisabledError(BaseHTTPException):
+    error_code = "app_suggested_questions_after_answer_disabled"
+    description = "The 'Suggested Questions After Answer' feature is disabled."
+    code = 403
+
+
 class NoAudioUploadedError(BaseHTTPException):
     error_code = "no_audio_uploaded"
     description = "Please upload your audio."
