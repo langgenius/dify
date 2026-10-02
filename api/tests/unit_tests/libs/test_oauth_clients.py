@@ -1,5 +1,5 @@
 import urllib.parse
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import httpx
 import pytest
@@ -17,12 +17,6 @@ class BaseOAuthTest:
             "client_secret": "test_client_secret",
             "redirect_uri": "http://localhost/callback",
         }
-
-    @pytest.fixture
-    def mock_response(self):
-        response = MagicMock()
-        response.json.return_value = {}
-        return response
 
     def parse_auth_url(self, url):
         """Helper to parse authorization URL"""
@@ -87,11 +81,8 @@ class TestGitHubOAuth(BaseOAuthTest):
         ],
     )
     @patch("libs.oauth._http_client.post", autospec=True)
-    def test_should_retrieve_access_token(
-        self, mock_post, oauth, mock_response, response_data, expected_token, should_raise
-    ):
-        mock_response.json.return_value = response_data
-        mock_post.return_value = mock_response
+    def test_should_retrieve_access_token(self, mock_post, oauth, response_data, expected_token, should_raise):
+        mock_post.return_value = httpx.Response(200, json=response_data)
 
         if should_raise:
             with pytest.raises(ValueError) as exc_info:
@@ -129,11 +120,8 @@ class TestGitHubOAuth(BaseOAuthTest):
     )
     @patch("libs.oauth._http_client.get", autospec=True)
     def test_should_retrieve_user_info_correctly(self, mock_get, oauth, user_data, email_data, expected_email):
-        user_response = MagicMock()
-        user_response.json.return_value = user_data
-
-        email_response = MagicMock()
-        email_response.json.return_value = email_data
+        user_response = httpx.Response(200, json=user_data, request=httpx.Request("GET", oauth._USER_INFO_URL))
+        email_response = httpx.Response(200, json=email_data, request=httpx.Request("GET", oauth._EMAIL_INFO_URL))
 
         mock_get.side_effect = [user_response, email_response]
 
@@ -148,13 +136,11 @@ class TestGitHubOAuth(BaseOAuthTest):
     @patch("libs.oauth._http_client.get", autospec=True)
     def test_should_skip_email_endpoint_when_profile_email_present(self, mock_get, oauth):
         """When the /user profile already contains an email, do not call /user/emails."""
-        user_response = MagicMock()
-        user_response.json.return_value = {
-            "id": 12345,
-            "login": "testuser",
-            "name": "Test User",
-            "email": "profile@example.com",
-        }
+        user_response = httpx.Response(
+            200,
+            json={"id": 12345, "login": "testuser", "name": "Test User", "email": "profile@example.com"},
+            request=httpx.Request("GET", oauth._USER_INFO_URL),
+        )
         mock_get.return_value = user_response
 
         user_info = oauth.get_user_info("test_token")
@@ -182,11 +168,8 @@ class TestGitHubOAuth(BaseOAuthTest):
     )
     @patch("libs.oauth._http_client.get", autospec=True)
     def test_should_use_noreply_email_when_no_usable_email(self, mock_get, oauth, user_data, email_data):
-        user_response = MagicMock()
-        user_response.json.return_value = user_data
-
-        email_response = MagicMock()
-        email_response.json.return_value = email_data
+        user_response = httpx.Response(200, json=user_data, request=httpx.Request("GET", oauth._USER_INFO_URL))
+        email_response = httpx.Response(200, json=email_data, request=httpx.Request("GET", oauth._EMAIL_INFO_URL))
 
         mock_get.side_effect = [user_response, email_response]
 
@@ -197,13 +180,12 @@ class TestGitHubOAuth(BaseOAuthTest):
 
     @patch("libs.oauth._http_client.get", autospec=True)
     def test_should_use_noreply_email_when_email_endpoint_fails(self, mock_get, oauth):
-        user_response = MagicMock()
-        user_response.json.return_value = {"id": 12345, "login": "testuser", "name": "Test User"}
-
-        email_response = MagicMock()
-        email_response.raise_for_status.side_effect = httpx.HTTPStatusError(
-            "Forbidden", request=MagicMock(), response=MagicMock()
+        user_response = httpx.Response(
+            200,
+            json={"id": 12345, "login": "testuser", "name": "Test User"},
+            request=httpx.Request("GET", oauth._USER_INFO_URL),
         )
+        email_response = httpx.Response(403, request=httpx.Request("GET", oauth._EMAIL_INFO_URL))
 
         mock_get.side_effect = [user_response, email_response]
 
@@ -278,10 +260,9 @@ class TestGoogleOAuth(BaseOAuthTest):
     )
     @patch("libs.oauth._http_client.post", autospec=True)
     def test_should_retrieve_access_token(
-        self, mock_post, oauth, oauth_config, mock_response, response_data, expected_token, should_raise
+        self, mock_post, oauth, oauth_config, response_data, expected_token, should_raise
     ):
-        mock_response.json.return_value = response_data
-        mock_post.return_value = mock_response
+        mock_post.return_value = httpx.Response(200, json=response_data)
 
         if should_raise:
             with pytest.raises(ValueError) as exc_info:
@@ -311,9 +292,8 @@ class TestGoogleOAuth(BaseOAuthTest):
         ],
     )
     @patch("libs.oauth._http_client.get", autospec=True)
-    def test_should_retrieve_user_info_correctly(self, mock_get, oauth, mock_response, user_data, expected_name):
-        mock_response.json.return_value = user_data
-        mock_get.return_value = mock_response
+    def test_should_retrieve_user_info_correctly(self, mock_get, oauth, user_data, expected_name):
+        mock_get.return_value = httpx.Response(200, json=user_data, request=httpx.Request("GET", oauth._USER_INFO_URL))
 
         user_info = oauth.get_user_info("test_token")
 
@@ -333,12 +313,20 @@ class TestGoogleOAuth(BaseOAuthTest):
     )
     @patch("libs.oauth._http_client.get", autospec=True)
     def test_should_handle_http_errors(self, mock_get, oauth, exception_type):
-        mock_response = MagicMock()
-        mock_response.raise_for_status.side_effect = exception_type("Error")
-        mock_get.return_value = mock_response
+        mock_get.side_effect = exception_type("Error")
 
         with pytest.raises(exception_type):
             oauth.get_raw_user_info("invalid_token")
+
+    @patch("libs.oauth._http_client.get", autospec=True)
+    def test_should_handle_http_status_errors(self, mock_get, oauth):
+        response = httpx.Response(401, request=httpx.Request("GET", oauth._USER_INFO_URL))
+        mock_get.return_value = response
+
+        with pytest.raises(httpx.HTTPStatusError) as exc_info:
+            oauth.get_raw_user_info("invalid_token")
+
+        assert exc_info.value.response is response
 
 
 class TestOAuthUserInfo:
