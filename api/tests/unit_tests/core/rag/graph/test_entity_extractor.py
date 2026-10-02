@@ -4,6 +4,7 @@ from contextlib import contextmanager
 
 import pytest
 
+from core.plugin.impl.exc import PluginDaemonInternalError
 from core.rag.graph import entity_extractor as entity_extractor_module
 from core.rag.graph.entities import (
     DEFAULT_ENTITY_TYPES,
@@ -17,6 +18,7 @@ from core.rag.models.document import Document
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage
 from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.errors.invoke import InvokeServerUnavailableError
 
 TENANT_ID = "tenant-1"
 
@@ -486,15 +488,18 @@ class TestExtractDocuments:
 
 class TestDescribeExtractionError:
     def test_the_providers_description_wins_over_the_transport_string(self) -> None:
-        class _ProviderError(Exception):
-            description = "[models] Connection Error, 503 UNAVAILABLE.\n  The model is overloaded."
+        error = PluginDaemonInternalError("[models] Connection Error, 503 UNAVAILABLE.\n  The model is overloaded.")
 
-        error = _ProviderError("PluginDaemonInnerError: {...raw response body...}")
-
-        # One line a user can read on the graph page, not the transport dump.
+        # One line a user can read on the graph page, not the request-id
+        # prefixed transport string.
         assert entity_extractor_module.describe_extraction_error(error) == (
             "[models] Connection Error, 503 UNAVAILABLE. The model is overloaded."
         )
+
+    def test_a_model_runtime_error_reports_its_description(self) -> None:
+        error = InvokeServerUnavailableError("503 UNAVAILABLE. The model is overloaded.")
+
+        assert entity_extractor_module.describe_extraction_error(error) == "503 UNAVAILABLE. The model is overloaded."
 
     def test_long_messages_are_trimmed(self) -> None:
         message = entity_extractor_module.describe_extraction_error(RuntimeError("x" * 5000))

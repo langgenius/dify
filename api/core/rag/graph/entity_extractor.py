@@ -9,6 +9,7 @@ from flask import Flask, current_app
 
 from configs import dify_config
 from core.model_manager import ModelManager
+from core.plugin.impl.exc import PluginDaemonError
 from core.rag.graph.entities import (
     UNKNOWN_ENTITY_TYPE,
     ChunkExtractionBatch,
@@ -26,6 +27,7 @@ from core.rag.models.document import Document
 from graphon.model_runtime.entities.llm_entities import LLMResult
 from graphon.model_runtime.entities.message_entities import PromptMessage, UserPromptMessage
 from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.errors.invoke import InvokeError
 from libs.json_in_md_parser import parse_json_markdown
 
 logger = logging.getLogger(__name__)
@@ -44,11 +46,12 @@ _extraction_slots: threading.BoundedSemaphore | None = None
 def describe_extraction_error(error: Exception) -> str:
     """Return a provider error as a single line a user can act on.
 
-    Model runtime errors carry the provider's message in ``description``; the
-    exception string adds transport prefixes and can span many lines.
+    Model runtime and plugin daemon errors carry the provider's message in
+    ``description``; the exception string adds transport prefixes and can span
+    many lines.
     """
-    description = getattr(error, "description", None)
-    text = description if isinstance(description, str) and description.strip() else str(error)
+    description = error.description if isinstance(error, (InvokeError, PluginDaemonError)) else None
+    text = description if description and description.strip() else str(error)
     text = " ".join(text.split()) or type(error).__name__
     if len(text) > MAX_FAILURE_LENGTH:
         text = text[: MAX_FAILURE_LENGTH - 3] + "..."
