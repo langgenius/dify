@@ -68,12 +68,12 @@ class TestScheduleService(unittest.TestCase):
 
     def test_calculate_next_run_at_invalid_timezone(self):
         """Test calculating next run time with invalid timezone."""
-        from pytz import UnknownTimeZoneError
+        from zoneinfo import ZoneInfoNotFoundError
 
         cron_expr = "30 10 * * *"
         timezone = "Invalid/Timezone"
 
-        with pytest.raises(UnknownTimeZoneError):
+        with pytest.raises(ZoneInfoNotFoundError):
             calculate_next_run_at(cron_expr, timezone)
 
 
