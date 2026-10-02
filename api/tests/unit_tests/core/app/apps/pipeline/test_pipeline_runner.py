@@ -12,7 +12,6 @@ Primary collaborators include ``PipelineRunner``,
 """
 
 import json
-from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
@@ -22,13 +21,20 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 import core.app.apps.pipeline.pipeline_runner as module
+from core.app.apps.pipeline.pipeline_config_manager import PipelineConfig
+from core.app.apps.pipeline.pipeline_queue_manager import PipelineQueueManager
 from core.app.apps.pipeline.pipeline_runner import PipelineRunner
-from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerateEntity, UserFrom
+from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
+from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from graphon.graph_events import GraphRunFailedEvent
+from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.variable_loader import DUMMY_VARIABLE_LOADER
+from models.account import Account
 from models.dataset import Dataset, Document, Pipeline
-from models.enums import DocumentCreatedFrom
-from models.model import EndUser
-from models.workflow import Workflow, WorkflowType
+from models.enums import DocumentCreatedFrom, WorkflowRunTriggeredFrom
+from models.model import AppMode, EndUser
+from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom, WorkflowType
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
 from tests.unit_tests.model_factories import make_dataset, make_document, make_end_user, make_workflow
 
@@ -94,13 +100,16 @@ def _persist_scope(
     return pipeline, dataset, workflow
 
 
-def _build_app_generate_entity() -> SimpleNamespace:
-    app_config = SimpleNamespace(app_id="pipe", workflow_id="wf", tenant_id="tenant")
-    return SimpleNamespace(
+def _build_app_generate_entity() -> RagPipelineGenerateEntity:
+    app_config = PipelineConfig(app_id="pipe", workflow_id="wf", tenant_id="tenant", app_mode=AppMode.RAG_PIPELINE)
+    return RagPipelineGenerateEntity(
+        task_id="task",
+        stream=True,
         app_config=app_config,
+        pipeline_config=app_config,
         invoke_from=InvokeFrom.WEB_APP,
         user_id="user",
-        trace_manager=MagicMock(),
+        trace_manager=None,
         inputs={"input1": "v1"},
         files=[],
         workflow_execution_id="run",
@@ -117,25 +126,48 @@ def _build_app_generate_entity() -> SimpleNamespace:
     )
 
 
-@pytest.fixture
-def runner(sqlite_engine: Engine):
-    app_generate_entity = _build_app_generate_entity()
-    queue_manager = MagicMock()
-    variable_loader = MagicMock()
-    workflow = _workflow()
-    workflow_execution_repository = MagicMock()
-    workflow_node_execution_repository = MagicMock()
+@pytest.fixture(autouse=True)
+def isolate_queue_redis(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("core.app.apps.base_app_queue_manager.redis_client.setex", lambda *_args, **_kwargs: True)
 
+
+def _build_runner(
+    app_generate_entity: RagPipelineGenerateEntity, sqlite_engine: Engine, workflow: Workflow
+) -> PipelineRunner:
+    user = Account(name="User", email="user@example.com")
+    user.id = app_generate_entity.user_id
     return PipelineRunner(
         application_generate_entity=app_generate_entity,
-        queue_manager=queue_manager,
-        variable_loader=variable_loader,
+        queue_manager=PipelineQueueManager(
+            task_id=app_generate_entity.task_id,
+            user_id=user.id,
+            invoke_from=app_generate_entity.invoke_from,
+            app_mode=AppMode.RAG_PIPELINE,
+        ),
+        variable_loader=DUMMY_VARIABLE_LOADER,
         workflow=workflow,
         system_user_id="sys",
-        workflow_execution_repository=workflow_execution_repository,
-        workflow_node_execution_repository=workflow_node_execution_repository,
+        workflow_execution_repository=SQLAlchemyWorkflowExecutionRepository(
+            session_factory=sqlite_engine,
+            tenant_id="tenant",
+            user=user,
+            app_id="pipe",
+            triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        ),
+        workflow_node_execution_repository=SQLAlchemyWorkflowNodeExecutionRepository(
+            session_factory=sqlite_engine,
+            tenant_id="tenant",
+            user=user,
+            app_id="pipe",
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        ),
         documents=SQLAlchemyDocumentRepository(session_factory=sessionmaker(bind=sqlite_engine)),
     )
+
+
+@pytest.fixture
+def runner(sqlite_engine: Engine):
+    return _build_runner(_build_app_generate_entity(), sqlite_engine, _workflow())
 
 
 def test_get_app_id(runner):
@@ -154,15 +186,21 @@ def test_init_rag_pipeline_graph_invalid_config(mocker, runner):
     workflow = _workflow(graph={})
 
     with pytest.raises(ValueError):
-        runner._init_rag_pipeline_graph(workflow=workflow, graph_runtime_state=MagicMock())
+        runner._init_rag_pipeline_graph(
+            workflow=workflow, graph_runtime_state=GraphRuntimeState(variable_pool=VariablePool(), start_at=0)
+        )
 
     workflow.graph = json.dumps({"nodes": "bad", "edges": []})
     with pytest.raises(ValueError):
-        runner._init_rag_pipeline_graph(workflow=workflow, graph_runtime_state=MagicMock())
+        runner._init_rag_pipeline_graph(
+            workflow=workflow, graph_runtime_state=GraphRuntimeState(variable_pool=VariablePool(), start_at=0)
+        )
 
     workflow.graph = json.dumps({"nodes": [], "edges": "bad"})
     with pytest.raises(ValueError):
-        runner._init_rag_pipeline_graph(workflow=workflow, graph_runtime_state=MagicMock())
+        runner._init_rag_pipeline_graph(
+            workflow=workflow, graph_runtime_state=GraphRuntimeState(variable_pool=VariablePool(), start_at=0)
+        )
 
 
 def test_init_rag_pipeline_graph_not_found(mocker, runner):
@@ -170,7 +208,9 @@ def test_init_rag_pipeline_graph_not_found(mocker, runner):
     mocker.patch.object(module.Graph, "init", return_value=None)
 
     with pytest.raises(ValueError):
-        runner._init_rag_pipeline_graph(workflow=workflow, graph_runtime_state=MagicMock())
+        runner._init_rag_pipeline_graph(
+            workflow=workflow, graph_runtime_state=GraphRuntimeState(variable_pool=VariablePool(), start_at=0)
+        )
 
 
 def test_update_document_status_on_failure(runner, sqlite_session: Session):
@@ -233,16 +273,7 @@ def test_run_pipeline_not_found(sqlite_engine: Engine):
     app_generate_entity.single_iteration_run = None
     app_generate_entity.single_loop_run = None
 
-    runner = PipelineRunner(
-        application_generate_entity=app_generate_entity,
-        queue_manager=MagicMock(),
-        variable_loader=MagicMock(),
-        workflow=_workflow(),
-        system_user_id="sys",
-        workflow_execution_repository=MagicMock(),
-        workflow_node_execution_repository=MagicMock(),
-        documents=SQLAlchemyDocumentRepository(session_factory=sessionmaker(bind=sqlite_engine)),
-    )
+    runner = _build_runner(app_generate_entity, sqlite_engine, _workflow())
 
     with pytest.raises(ValueError):
         runner.run()
@@ -322,36 +353,20 @@ def test_run_workflow_not_initialized(sqlite_session: Session, sqlite_engine: En
     sqlite_session.add_all([pipeline, dataset, document])
     sqlite_session.commit()
 
-    runner = PipelineRunner(
-        application_generate_entity=app_generate_entity,
-        queue_manager=MagicMock(),
-        variable_loader=MagicMock(),
-        workflow=_workflow(),
-        system_user_id="sys",
-        workflow_execution_repository=MagicMock(),
-        workflow_node_execution_repository=MagicMock(),
-        documents=SQLAlchemyDocumentRepository(session_factory=sessionmaker(bind=sqlite_engine)),
-    )
+    runner = _build_runner(app_generate_entity, sqlite_engine, _workflow())
     with pytest.raises(ValueError):
         runner.run()
 
 
 def test_run_single_iteration_path(mocker: MockerFixture, sqlite_session: Session, sqlite_engine: Engine):
     app_generate_entity = _build_app_generate_entity()
-    app_generate_entity.single_iteration_run = MagicMock()
+    app_generate_entity.single_iteration_run = RagPipelineGenerateEntity.SingleIterationRunEntity(
+        node_id="start", inputs={}
+    )
 
     _, dataset, _ = _persist_scope(sqlite_session, documents=(_document(),))
 
-    runner = PipelineRunner(
-        application_generate_entity=app_generate_entity,
-        queue_manager=MagicMock(),
-        variable_loader=MagicMock(),
-        workflow=_workflow(),
-        system_user_id="sys",
-        workflow_execution_repository=MagicMock(),
-        workflow_node_execution_repository=MagicMock(),
-        documents=SQLAlchemyDocumentRepository(session_factory=sessionmaker(bind=sqlite_engine)),
-    )
+    runner = _build_runner(app_generate_entity, sqlite_engine, _workflow())
 
     runner._resolve_user_from = MagicMock(return_value=UserFrom.ACCOUNT)
     runner._prepare_single_node_execution = MagicMock(return_value=("graph", "pool", "state"))
@@ -399,27 +414,12 @@ def test_run_normal_path_builds_graph(mocker: MockerFixture, sqlite_session: Ses
         documents=(_document(),),
     )
 
-    runner = PipelineRunner(
-        application_generate_entity=app_generate_entity,
-        queue_manager=MagicMock(),
-        variable_loader=MagicMock(),
-        workflow=workflow,
-        system_user_id="sys",
-        workflow_execution_repository=MagicMock(),
-        workflow_node_execution_repository=MagicMock(),
-        documents=SQLAlchemyDocumentRepository(session_factory=sessionmaker(bind=sqlite_engine)),
-    )
+    runner = _build_runner(app_generate_entity, sqlite_engine, workflow)
 
     runner._resolve_user_from = MagicMock(return_value=UserFrom.ACCOUNT)
     runner._init_rag_pipeline_graph = MagicMock(return_value="graph")
     runner._update_document_status = MagicMock()
     runner._handle_event = MagicMock()
-
-    class FakeVariablePool:
-        def add(self, selector, value):
-            return None
-
-    mocker.patch.object(module, "VariablePool", return_value=FakeVariablePool())
 
     workflow_entry = MagicMock()
     workflow_entry.graph_engine = MagicMock()
