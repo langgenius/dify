@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from datetime import datetime
 
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -48,6 +49,13 @@ class GraphStats(BaseModel):
     entity_count: int = 0
     relation_count: int = 0
     entity_types: dict[str, int] = Field(default_factory=dict)
+    # Chunks the extraction model last failed on. Zero with no entities means
+    # the documents genuinely yielded no graph; anything else is a problem the
+    # console has to explain.
+    failed_chunk_count: int = 0
+    # Most recent failure reason; None when no chunk has failed.
+    last_error: str | None = None
+    last_failed_at: datetime | None = None
 
 
 class BaseGraphStore(ABC):

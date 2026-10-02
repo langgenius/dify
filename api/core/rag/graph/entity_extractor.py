@@ -11,6 +11,8 @@ from configs import dify_config
 from core.model_manager import ModelManager
 from core.rag.graph.entities import (
     UNKNOWN_ENTITY_TYPE,
+    ChunkExtractionBatch,
+    ChunkExtractionFailure,
     ChunkGraph,
     GraphEntity,
     GraphExtraction,
@@ -31,9 +33,26 @@ logger = logging.getLogger(__name__)
 # Relation labels are stored in a String(255) column.
 MAX_PREDICATE_LENGTH = 255
 MAX_DESCRIPTION_LENGTH = 2000
+# Failure reasons are shown in the console; provider errors can embed whole
+# response bodies, so keep the useful head of the message.
+MAX_FAILURE_LENGTH = 1000
 
 _slots_lock = threading.Lock()
 _extraction_slots: threading.BoundedSemaphore | None = None
+
+
+def describe_extraction_error(error: Exception) -> str:
+    """Return a provider error as a single line a user can act on.
+
+    Model runtime errors carry the provider's message in ``description``; the
+    exception string adds transport prefixes and can span many lines.
+    """
+    description = getattr(error, "description", None)
+    text = description if isinstance(description, str) and description.strip() else str(error)
+    text = " ".join(text.split()) or type(error).__name__
+    if len(text) > MAX_FAILURE_LENGTH:
+        text = text[: MAX_FAILURE_LENGTH - 3] + "..."
+    return text
 
 
 def _acquire_extraction_slot() -> threading.BoundedSemaphore:
@@ -89,12 +108,13 @@ class EntityRelationExtractor:
         raw = self._invoke_llm(prompt)
         return self.parse_extraction(raw)
 
-    def extract_documents(self, documents: list[Document]) -> list[ChunkGraph]:
+    def extract_documents(self, documents: list[Document]) -> ChunkExtractionBatch:
         """Extract subgraphs for many chunks concurrently.
 
-        Returns one :class:`ChunkGraph` per chunk that produced at least one
-        entity. Chunks missing provenance metadata are skipped, since a fact we
-        cannot cite is not useful for retrieval.
+        The batch holds one :class:`ChunkGraph` per chunk that produced at least
+        one entity, plus the chunks the model failed on and why. Chunks missing
+        provenance metadata are skipped, since a fact we cannot cite is not
+        useful for retrieval.
         """
         pending: list[Document] = []
         for document in documents:
@@ -102,7 +122,7 @@ class EntityRelationExtractor:
             if metadata.get("doc_id") and metadata.get("document_id"):
                 pending.append(document)
         if not pending:
-            return []
+            return ChunkExtractionBatch()
 
         flask_app: Flask | None = None
         try:
@@ -110,15 +130,19 @@ class EntityRelationExtractor:
         except RuntimeError:
             logger.warning("No Flask application context available for graph extraction")
 
-        results: list[ChunkGraph] = []
+        batch = ChunkExtractionBatch()
         max_workers = min(dify_config.KNOWLEDGE_GRAPH_EXTRACTION_WORKERS, len(pending))
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = {executor.submit(self._extract_one, flask_app, document): document for document in pending}
             for future in concurrent.futures.as_completed(futures):
-                chunk_graph = future.result()
-                if chunk_graph and chunk_graph.extraction.entities:
-                    results.append(chunk_graph)
-        return results
+                outcome = future.result()
+                if isinstance(outcome, ChunkExtractionFailure):
+                    batch.failures.append(outcome)
+                    continue
+                batch.succeeded.append(outcome.index_node_id)
+                if outcome.extraction.entities:
+                    batch.graphs.append(outcome)
+        return batch
 
     def extract_query_entities(self, query: str) -> list[str]:
         """Extract candidate entity mentions from a user query.
@@ -149,7 +173,7 @@ class EntityRelationExtractor:
                 mentions.append(normalized)
         return mentions
 
-    def _extract_one(self, flask_app: Flask | None, document: Document) -> ChunkGraph | None:
+    def _extract_one(self, flask_app: Flask | None, document: Document) -> ChunkGraph | ChunkExtractionFailure:
         metadata = document.metadata or {}
         try:
             with _acquire_extraction_slot():
@@ -158,11 +182,16 @@ class EntityRelationExtractor:
                         extraction = self.extract(document.page_content)
                 else:
                     extraction = self.extract(document.page_content)
-        except Exception:
+        except Exception as error:
             # A failed chunk must not abort indexing: the chunk stays searchable
-            # through the vector/keyword index, it just has no graph facts.
+            # through the vector/keyword index, it just has no graph facts. The
+            # reason is kept so the console can say why the graph is missing.
             logger.warning("Graph extraction failed for chunk %s", metadata.get("doc_id"), exc_info=True)
-            return None
+            return ChunkExtractionFailure(
+                index_node_id=str(metadata["doc_id"]),
+                document_id=str(metadata["document_id"]),
+                error=describe_extraction_error(error),
+            )
 
         return ChunkGraph(
             index_node_id=str(metadata["doc_id"]),

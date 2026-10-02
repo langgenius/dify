@@ -84,6 +84,27 @@ class ChunkGraph(BaseModel):
     extraction: GraphExtraction = Field(default_factory=GraphExtraction)
 
 
+class ChunkExtractionFailure(BaseModel):
+    """A chunk the extraction model could not process, with the reason to show the user."""
+
+    index_node_id: str = Field(description="DocumentSegment.index_node_id of the source chunk.")
+    document_id: str = Field(description="Dify document id of the source chunk.")
+    error: str = Field(description="Provider error description, trimmed for display.")
+
+
+class ChunkExtractionBatch(BaseModel):
+    """Outcome of extracting a batch of chunks.
+
+    ``succeeded`` lists every chunk the model processed, including those it
+    found nothing in, so a stale failure record can be cleared for them;
+    ``graphs`` only holds the chunks that produced entities.
+    """
+
+    graphs: list[ChunkGraph] = Field(default_factory=list)
+    failures: list[ChunkExtractionFailure] = Field(default_factory=list)
+    succeeded: list[str] = Field(default_factory=list)
+
+
 class GraphIndexSetting(BaseModel):
     """Per-dataset knowledge-graph configuration, persisted on ``datasets.graph_index_setting``."""
 

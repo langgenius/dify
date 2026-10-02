@@ -160,6 +160,8 @@ import {
   zPostDatasetsByDatasetIdExternalHitTestingBody,
   zPostDatasetsByDatasetIdExternalHitTestingPath,
   zPostDatasetsByDatasetIdExternalHitTestingResponse,
+  zPostDatasetsByDatasetIdGraphRetryPath,
+  zPostDatasetsByDatasetIdGraphRetryResponse,
   zPostDatasetsByDatasetIdHitTestingBody,
   zPostDatasetsByDatasetIdHitTestingPath,
   zPostDatasetsByDatasetIdHitTestingResponse,
@@ -1355,6 +1357,25 @@ export const externalHitTesting = {
 }
 
 /**
+ * Retry knowledge graph extraction for the chunks that failed
+ */
+export const post17 = oc
+  .route({
+    description: 'Retry knowledge graph extraction for the chunks that failed',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postDatasetsByDatasetIdGraphRetry',
+    path: '/datasets/{dataset_id}/graph/retry',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zPostDatasetsByDatasetIdGraphRetryPath }))
+  .output(zPostDatasetsByDatasetIdGraphRetryResponse)
+
+export const retry = {
+  post: post17,
+}
+
+/**
  * Get knowledge graph statistics for a dataset
  */
 export const get26 = oc
@@ -1395,13 +1416,14 @@ export const get27 = oc
 
 export const graph = {
   get: get27,
+  retry,
   stats,
 }
 
 /**
  * Test dataset knowledge retrieval
  */
-export const post17 = oc
+export const post18 = oc
   .route({
     description: 'Test dataset knowledge retrieval',
     inputStructure: 'detailed',
@@ -1419,7 +1441,7 @@ export const post17 = oc
   .output(zPostDatasetsByDatasetIdHitTestingResponse)
 
 export const hitTesting = {
-  post: post17,
+  post: post18,
 }
 
 /**
@@ -1441,7 +1463,7 @@ export const indexingStatus3 = {
   get: get28,
 }
 
-export const post18 = oc
+export const post19 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1454,7 +1476,7 @@ export const post18 = oc
   .output(zPostDatasetsByDatasetIdMetadataBuiltInByActionResponse)
 
 export const byAction4 = {
-  post: post18,
+  post: post19,
 }
 
 export const builtIn2 = {
@@ -1505,7 +1527,7 @@ export const get29 = oc
   .input(z.object({ params: zGetDatasetsByDatasetIdMetadataPath }))
   .output(zGetDatasetsByDatasetIdMetadataResponse)
 
-export const post19 = oc
+export const post20 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1524,7 +1546,7 @@ export const post19 = oc
 
 export const metadata4 = {
   get: get29,
-  post: post19,
+  post: post20,
   builtIn: builtIn2,
   byMetadataId,
 }
@@ -1608,7 +1630,7 @@ export const relatedApps = {
 /**
  * retry document
  */
-export const post20 = oc
+export const post21 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1626,8 +1648,8 @@ export const post20 = oc
   )
   .output(zPostDatasetsByDatasetIdRetryResponse)
 
-export const retry = {
-  post: post20,
+export const retry2 = {
+  post: post21,
 }
 
 /**
@@ -1709,7 +1731,7 @@ export const byDatasetId = {
   permissionPartUsers,
   queries,
   relatedApps,
-  retry,
+  retry: retry2,
   useCheck: useCheck2,
 }
 
@@ -1751,7 +1773,7 @@ export const get36 = oc
 /**
  * Create a new API key for a dataset
  */
-export const post21 = oc
+export const post22 = oc
   .route({
     description: 'Create a new API key for a dataset',
     inputStructure: 'detailed',
@@ -1766,7 +1788,7 @@ export const post21 = oc
 
 export const apiKeys3 = {
   get: get36,
-  post: post21,
+  post: post22,
   byApiKeyId: byApiKeyId2,
 }
 
@@ -1792,7 +1814,7 @@ export const get37 = oc
 /**
  * Create a new dataset
  */
-export const post22 = oc
+export const post23 = oc
   .route({
     description: 'Create a new dataset',
     inputStructure: 'detailed',
@@ -1807,7 +1829,7 @@ export const post22 = oc
 
 export const datasets = {
   get: get37,
-  post: post22,
+  post: post23,
   apiBaseInfo,
   apiKeys,
   batchImportStatus,

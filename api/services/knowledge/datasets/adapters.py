@@ -4,7 +4,7 @@ from collections.abc import Generator, Mapping
 from contextlib import contextmanager
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import exists, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
@@ -15,6 +15,7 @@ from libs.pagination import clamp_pagination
 from machinery.context import RequestContext
 from models import Account, Dataset, Document
 from models.dataset import DatasetPermission, DatasetPermissionEnum
+from models.enums import IndexingStatus
 from models.provider_ids import ModelProviderID
 from repositories.knowledge.dataset_repository import _get_dataset
 from services.app.query_service import AppQueryService
@@ -28,8 +29,18 @@ from services.knowledge.datasets.application import (
     DatasetVisibility,
 )
 from services.knowledge.entities.datasets import DatasetDetailRecord, DatasetPage
+from services.knowledge.graph_build_state import is_graph_build_active, mark_graph_build_active
 from services.knowledge.resource_scope import DatasetRef
 from services.tag_application_service import TagTargetQuery
+from tasks.build_dataset_graph_task import build_dataset_graph_task
+
+_INDEXING_IN_PROGRESS = (
+    IndexingStatus.WAITING,
+    IndexingStatus.PARSING,
+    IndexingStatus.CLEANING,
+    IndexingStatus.SPLITTING,
+    IndexingStatus.INDEXING,
+)
 
 
 @contextmanager
@@ -323,7 +334,33 @@ class SQLAlchemyDatasetOperations:
 
     def graph_stats(self, ref: DatasetRef) -> dict[str, Any]:
         with self._sessions() as session:
-            return GraphIndexService.get_stats(require_dataset(session, ref), session=session).model_dump()
+            dataset = require_dataset(session, ref)
+            stats = GraphIndexService.get_stats(dataset, session=session).model_dump()
+            # Extraction runs inside document indexing and in rebuild tasks;
+            # until both settle, an empty graph is "not built yet", not "none".
+            stats["building"] = GraphIndexService.is_enabled(dataset) and (
+                is_graph_build_active(ref.dataset_id)
+                or bool(
+                    session.scalar(
+                        select(
+                            exists().where(
+                                Document.tenant_id == ref.tenant_id,
+                                Document.dataset_id == ref.dataset_id,
+                                Document.indexing_status.in_(_INDEXING_IN_PROGRESS),
+                            )
+                        )
+                    )
+                )
+            )
+            return stats
+
+    def retry_graph(self, ref: DatasetRef) -> None:
+        with self._sessions() as session:
+            dataset = require_dataset(session, ref)
+            if GraphIndexService.get_setting(dataset) is None:
+                return
+        mark_graph_build_active(ref.dataset_id)
+        build_dataset_graph_task.delay(ref.dataset_id, ref.tenant_id, only_failed=True)
 
     def graph(self, ref: DatasetRef, *, query: str | None, limit: int) -> dict[str, Any]:
         with self._sessions() as session:

@@ -5,7 +5,7 @@ from sqlalchemy import event
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.rag.models.document import Document as IndexDocument
-from models.dataset import Dataset, DocumentSegment
+from models.dataset import Dataset, DatasetGraphExtractionFailure, DocumentSegment
 from models.enums import IndexingStatus, SegmentStatus
 from tasks import build_dataset_graph_task as module
 from tests.unit_tests.repositories.knowledge.test_document_repository import _dataset, _document
@@ -50,6 +50,8 @@ def extracted(
     sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
 ) -> list[list[tuple[str, str, str]]]:
     monkeypatch.setattr(module.session_factory, "create_session", sqlite_session_factory)
+    monkeypatch.setattr(module, "mark_graph_build_active", lambda _dataset_id: None)
+    monkeypatch.setattr(module, "clear_graph_build", lambda _dataset_id: None)
     calls: list[list[tuple[str, str, str]]] = []
 
     def build(dataset: Dataset, documents: list[IndexDocument], *, session: Session) -> None:
@@ -89,7 +91,7 @@ def test_backfill_covers_only_searchable_chunks(
             ]
         )
 
-    module.build_dataset_graph_task("dataset-1", "workspace-1")
+    module.build_dataset_graph_task("dataset-1", "workspace-1", only_failed=False)
 
     assert extracted == [[("node-s1", "live", "dataset-1")]]
 
@@ -103,7 +105,7 @@ def test_backfill_pages_through_every_chunk_once(
     with sqlite_session_factory.begin() as session:
         session.add_all([_graph_dataset(), _document("live"), *(_segment(f"s{i}", "live") for i in range(5))])
 
-    module.build_dataset_graph_task("dataset-1", "workspace-1")
+    module.build_dataset_graph_task("dataset-1", "workspace-1", only_failed=False)
 
     assert [len(batch) for batch in extracted] == [2, 2, 1]
     assert [node for batch in extracted for node, _, _ in batch] == [f"node-s{i}" for i in range(5)]
@@ -126,7 +128,7 @@ def test_first_page_has_no_cursor_filter(
 
     event.listen(engine, "before_cursor_execute", record)
     try:
-        module.build_dataset_graph_task("dataset-1", "workspace-1")
+        module.build_dataset_graph_task("dataset-1", "workspace-1", only_failed=False)
     finally:
         event.remove(engine, "before_cursor_execute", record)
 
@@ -154,7 +156,7 @@ def test_turning_the_graph_off_stops_further_model_calls(
 
     monkeypatch.setattr(module.GraphIndexService, "build_for_documents", build_then_disable)
 
-    module.build_dataset_graph_task("dataset-1", "workspace-1")
+    module.build_dataset_graph_task("dataset-1", "workspace-1", only_failed=False)
 
     assert len(extracted) == 1
 
@@ -178,6 +180,42 @@ def test_backfill_is_a_no_op_without_an_enabled_owned_dataset(
     with sqlite_session_factory.begin() as session:
         session.add_all([_graph_dataset(setting=setting), _document("live"), _segment("s1", "live")])
 
-    module.build_dataset_graph_task(dataset_id, tenant_id)
+    module.build_dataset_graph_task(dataset_id, tenant_id, only_failed=False)
 
     assert extracted == []
+
+
+def test_retry_extracts_only_the_failed_chunks(
+    sqlite_session_factory: sessionmaker[Session], extracted: list[list[tuple[str, str, str]]]
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        session.add_all([_graph_dataset(), _document("live"), _segment("s1", "live"), _segment("s2", "live")])
+        session.add(
+            DatasetGraphExtractionFailure(
+                tenant_id="workspace-1",
+                dataset_id="dataset-1",
+                document_id="live",
+                index_node_id="node-s2",
+                error="503",
+            )
+        )
+
+    module.build_dataset_graph_task("dataset-1", "workspace-1", only_failed=True)
+
+    assert extracted == [[("node-s2", "live", "dataset-1")]]
+
+
+def test_the_building_marker_is_cleared_even_when_the_build_raises(monkeypatch: pytest.MonkeyPatch) -> None:
+    cleared: list[str] = []
+    monkeypatch.setattr(module, "clear_graph_build", cleared.append)
+
+    def _explode(*_args: object, **_kwargs: object) -> None:
+        raise RuntimeError("database unavailable")
+
+    monkeypatch.setattr(module, "_build", _explode)
+
+    with pytest.raises(RuntimeError):
+        module.build_dataset_graph_task("dataset-1", "workspace-1", only_failed=False)
+
+    # Otherwise the graph page would show "building" until the marker expires.
+    assert cleared == ["dataset-1"]

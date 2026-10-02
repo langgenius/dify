@@ -246,8 +246,12 @@ export const zExternalHitTestingPayload = z.object({
  * DatasetGraphStatsResponse
  */
 export const zDatasetGraphStatsResponse = z.object({
+  building: z.boolean(),
   entity_count: z.int(),
   entity_types: z.record(z.string(), z.int()),
+  failed_chunk_count: z.int(),
+  last_error: z.string().nullable(),
+  last_failed_at: z.int().nullable(),
   relation_count: z.int(),
 })
 
@@ -2249,6 +2253,15 @@ export const zGetDatasetsByDatasetIdGraphQuery = z.object({
  * Graph retrieved successfully
  */
 export const zGetDatasetsByDatasetIdGraphResponse = zDatasetGraphResponse
+
+export const zPostDatasetsByDatasetIdGraphRetryPath = z.object({
+  dataset_id: z.uuid(),
+})
+
+/**
+ * Retry queued
+ */
+export const zPostDatasetsByDatasetIdGraphRetryResponse = zSimpleResultResponse
 
 export const zGetDatasetsByDatasetIdGraphStatsPath = z.object({
   dataset_id: z.uuid(),

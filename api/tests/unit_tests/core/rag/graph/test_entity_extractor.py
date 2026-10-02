@@ -8,7 +8,6 @@ from core.rag.graph import entity_extractor as entity_extractor_module
 from core.rag.graph.entities import (
     DEFAULT_ENTITY_TYPES,
     UNKNOWN_ENTITY_TYPE,
-    ChunkGraph,
     GraphIndexSetting,
     normalize_display_name,
     normalize_entity_name,
@@ -404,7 +403,7 @@ class TestExtractDocuments:
 
         # A fact that cannot be cited back to a chunk is not worth an LLM call.
         assert len(manager.instance.prompts) == 1
-        assert [chunk.index_node_id for chunk in results] == ["node-1"]
+        assert [chunk.index_node_id for chunk in results.graphs] == ["node-1"]
 
     def test_a_batch_with_nothing_citable_costs_nothing(self, llm: Callable[..., _FakeModelManager]) -> None:
         manager = llm(_answer('{"name": "Acme"}'))
@@ -413,7 +412,8 @@ class TestExtractDocuments:
             [_document("orphan", doc_id=None)]
         )
 
-        assert results == []
+        assert results.graphs == []
+        assert results.failures == []
         assert manager.instance.prompts == []
 
     def test_each_chunk_keeps_its_own_provenance(self, llm: Callable[..., _FakeModelManager]) -> None:
@@ -425,7 +425,7 @@ class TestExtractDocuments:
 
         results = EntityRelationExtractor(tenant_id=TENANT_ID, setting=_setting()).extract_documents(documents)
 
-        by_node = {chunk.index_node_id: chunk for chunk in results}
+        by_node = {chunk.index_node_id: chunk for chunk in results.graphs}
         assert set(by_node) == {"node-1", "node-2"}
         assert by_node["node-1"].document_id == "doc-1"
         assert [entity.name for entity in by_node["node-1"].extraction.entities] == ["acme"]
@@ -438,8 +438,10 @@ class TestExtractDocuments:
             [_document("boilerplate")]
         )
 
-        # An empty subgraph would still cost a row per chunk to store.
-        assert results == []
+        # An empty subgraph would still cost a row per chunk to store, but the
+        # chunk did succeed, so a stale failure record for it must be cleared.
+        assert results.graphs == []
+        assert results.succeeded == ["node-1"]
 
     def test_a_failing_chunk_does_not_abort_the_batch(self, llm: Callable[..., _FakeModelManager]) -> None:
         def _respond(prompt: str) -> object:
@@ -457,7 +459,12 @@ class TestExtractDocuments:
 
         # The failed chunk is still searchable through the vector index; the
         # graph is an enhancement layer over it, not a gate on indexing.
-        assert [chunk.index_node_id for chunk in results] == ["node-2"]
+        assert [chunk.index_node_id for chunk in results.graphs] == ["node-2"]
+        # The reason is kept so the console can explain the missing facts.
+        assert [(failure.index_node_id, failure.document_id, failure.error) for failure in results.failures] == [
+            ("node-1", "doc-1", "the provider rate-limited us")
+        ]
+        assert results.succeeded == ["node-2"]
 
     def test_extraction_survives_a_missing_application_context(
         self, llm: Callable[..., _FakeModelManager], monkeypatch: pytest.MonkeyPatch
@@ -470,11 +477,33 @@ class TestExtractDocuments:
 
         monkeypatch.setattr(entity_extractor_module, "current_app", _NoAppContext())
 
-        results: list[ChunkGraph] = EntityRelationExtractor(tenant_id=TENANT_ID, setting=_setting()).extract_documents(
+        results = EntityRelationExtractor(tenant_id=TENANT_ID, setting=_setting()).extract_documents(
             [_document("Acme ships widgets.")]
         )
 
-        assert [chunk.index_node_id for chunk in results] == ["node-1"]
+        assert [chunk.index_node_id for chunk in results.graphs] == ["node-1"]
+
+
+class TestDescribeExtractionError:
+    def test_the_providers_description_wins_over_the_transport_string(self) -> None:
+        class _ProviderError(Exception):
+            description = "[models] Connection Error, 503 UNAVAILABLE.\n  The model is overloaded."
+
+        error = _ProviderError("PluginDaemonInnerError: {...raw response body...}")
+
+        # One line a user can read on the graph page, not the transport dump.
+        assert entity_extractor_module.describe_extraction_error(error) == (
+            "[models] Connection Error, 503 UNAVAILABLE. The model is overloaded."
+        )
+
+    def test_long_messages_are_trimmed(self) -> None:
+        message = entity_extractor_module.describe_extraction_error(RuntimeError("x" * 5000))
+
+        assert len(message) == entity_extractor_module.MAX_FAILURE_LENGTH
+        assert message.endswith("...")
+
+    def test_an_empty_message_falls_back_to_the_error_type(self) -> None:
+        assert entity_extractor_module.describe_extraction_error(TimeoutError()) == "TimeoutError"
 
 
 class TestExtractQueryEntities:

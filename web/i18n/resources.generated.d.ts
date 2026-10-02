@@ -2929,6 +2929,8 @@ export default interface Resources {
     'form.summaryInstructionsPlaceholder': 'Describe the rules or style for auto-generated summaries…'
     'form.summaryModel': 'Summary Model'
     'form.upgradeHighQualityTip': 'Once upgrading to High Quality mode, reverting to Economical mode is not available'
+    'graph.buildingDescription': "Extracting entities and relations from your documents. This page updates when it's done."
+    'graph.buildingTitle': 'Building the knowledge graph'
     'graph.clearFocus': 'Clear'
     'graph.disabledDescription': 'Turn on knowledge graph indexing in settings to extract entities and relations from this knowledge base.'
     'graph.disabledTitle': 'Knowledge graph is off'
@@ -2937,11 +2939,17 @@ export default interface Resources {
     'graph.entities': 'Entities'
     'graph.entitiesInView': '{{count}} in view'
     'graph.entityTypes': 'Entity Types'
+    'graph.extractionFailedDescription': 'The extraction model could not process {{count}} chunks, so no graph was built. Check the error below, then try again.'
+    'graph.extractionFailedTitle': 'Graph extraction failed'
     'graph.focusedOn': 'Focused on {{name}}'
     'graph.goToSettings': 'Go to Settings'
+    'graph.loadFailedDescription': 'The request to the server failed.'
+    'graph.loadFailedTitle': "Couldn't load the knowledge graph"
     'graph.mentionCount': '{{count}} mentions'
     'graph.noMatch': 'No entity matches this search.'
+    'graph.partialFailure': '{{count}} chunks could not be processed, so this graph is incomplete.'
     'graph.relations': 'Relations'
+    'graph.retry': 'Try again'
     'graph.searchPlaceholder': 'Search entities'
     title: 'Knowledge settings'
   }

@@ -380,6 +380,18 @@ class DatasetGraphStatsResponse(ResponseModel):
     entity_count: int
     relation_count: int
     entity_types: dict[str, int]
+    # Lets the console show why a graph is empty or partial instead of
+    # presenting extraction failures as "no graph yet".
+    failed_chunk_count: int
+    last_error: str | None
+    last_failed_at: int | None
+    # Extraction is still running, so an empty graph is not a final answer.
+    building: bool
+
+    @field_validator("last_failed_at", mode="before")
+    @classmethod
+    def _normalize_last_failed_at(cls, value: datetime | int | None) -> int | None:
+        return to_timestamp(value)
 
 
 class DatasetGraphResponse(ResponseModel):
@@ -872,3 +884,22 @@ class DatasetGraphApi(Resource):
         except Exception as error:
             _raise_dataset_error(error)
         return dump_response(DatasetGraphResponse, result), 200
+
+
+@console_ns.route("/datasets/<uuid:dataset_id>/graph/retry")
+class DatasetGraphRetryApi(Resource):
+    @console_ns.doc("retry_dataset_graph")
+    @console_ns.doc(description="Retry knowledge graph extraction for the chunks that failed")
+    @console_ns.doc(params={"dataset_id": "Dataset ID"})
+    @console_ns.response(200, "Retry queued", console_ns.models[SimpleResultResponse.__name__])
+    @console_ns.response(404, "Dataset not found")
+    @console_account_admission(
+        allowed_roles=_DATASET_EDIT_ROLES, rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),)
+    )
+    @cloud_edition_billing_rate_limit_check("knowledge")
+    def post(self, request_context: RequestContext, dataset_id: UUID):
+        try:
+            application_services().knowledge.datasets.retry_graph(request_context, dataset_id=str(dataset_id))
+        except Exception as error:
+            _raise_dataset_error(error)
+        return dump_response(SimpleResultResponse, {"result": "success"}), 200

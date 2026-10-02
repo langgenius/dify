@@ -11,8 +11,9 @@ from core.db.session_factory import session_factory
 from core.rag.graph.graph_index_service import GraphIndexService
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.models.document import Document as IndexDocument
-from models.dataset import Dataset, Document, DocumentSegment
+from models.dataset import Dataset, DatasetGraphExtractionFailure, Document, DocumentSegment
 from models.enums import IndexingStatus, SegmentStatus
+from services.knowledge.graph_build_state import clear_graph_build, mark_graph_build_active
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +21,19 @@ _BATCH_SIZE = 50
 
 
 @shared_task(queue="dataset")
-def build_dataset_graph_task(dataset_id: str, tenant_id: str) -> None:
+def build_dataset_graph_task(dataset_id: str, tenant_id: str, only_failed: bool) -> None:
+    """Extract the knowledge graph for a dataset's chunks, or retry only the failed ones.
+
+    The console shows the graph as building until this finishes, whatever the
+    outcome, so the marker is cleared even when the build raises.
+    """
+    try:
+        _build(dataset_id, tenant_id, only_failed=only_failed)
+    finally:
+        clear_graph_build(dataset_id)
+
+
+def _build(dataset_id: str, tenant_id: str, *, only_failed: bool) -> None:
     """Extract the knowledge graph for every searchable chunk of a dataset.
 
     Indexing only extracts the graph while the setting is enabled, and creating
@@ -68,12 +81,22 @@ def build_dataset_graph_task(dataset_id: str, tenant_id: str) -> None:
                 .order_by(DocumentSegment.id)
                 .limit(_BATCH_SIZE)
             )
+            if only_failed:
+                query = query.where(
+                    DocumentSegment.index_node_id.in_(
+                        select(DatasetGraphExtractionFailure.index_node_id).where(
+                            DatasetGraphExtractionFailure.dataset_id == dataset_id
+                        )
+                    )
+                )
             if last_segment_id is not None:
                 query = query.where(DocumentSegment.id > last_segment_id)
             rows = session.execute(query).all()
             session.expunge(dataset)
         if not rows:
             break
+        # Keep the console's "building" state alive across slow batches.
+        mark_graph_build_active(dataset_id)
         last_segment_id = rows[-1].id
         chunks = [
             IndexDocument(

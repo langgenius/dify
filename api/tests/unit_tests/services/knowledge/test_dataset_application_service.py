@@ -113,6 +113,7 @@ def test_list_applies_visibility_and_reports_model_availability(
         (DatasetApplicationService.auto_disable_logs, {}),
         (DatasetApplicationService.graph_stats, {}),
         (DatasetApplicationService.graph, {"query": None, "limit": 50}),
+        (DatasetApplicationService.retry_graph, {}),
         (DatasetApplicationService.set_api_enabled, {"status": "enable"}),
     ],
 )

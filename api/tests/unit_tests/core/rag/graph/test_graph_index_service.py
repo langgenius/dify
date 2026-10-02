@@ -9,10 +9,22 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.rag.datasource.graph.postgres.postgres_graph_store import PostgresGraphStore
 from core.rag.graph import graph_index_service as graph_index_service_module
 from core.rag.graph import graph_retrieval as graph_retrieval_module
-from core.rag.graph.entities import ChunkGraph, GraphEntity, GraphExtraction, GraphRelation
+from core.rag.graph.entities import (
+    ChunkExtractionBatch,
+    ChunkExtractionFailure,
+    ChunkGraph,
+    GraphEntity,
+    GraphExtraction,
+    GraphRelation,
+)
 from core.rag.graph.graph_index_service import GraphIndexService
 from core.rag.models.document import Document
-from models.dataset import Dataset, DatasetGraphChunkLink, DatasetGraphEntity, DatasetGraphRelation
+from models.dataset import (
+    Dataset,
+    DatasetGraphChunkLink,
+    DatasetGraphEntity,
+    DatasetGraphRelation,
+)
 
 DATASET_ID = "dataset-1"
 TENANT_ID = "tenant-1"
@@ -133,25 +145,38 @@ class _FakeExtractor:
         self.setting = setting
         self.documents: list[Document] = []
         self.result: list[ChunkGraph] = []
+        self.failures: list[ChunkExtractionFailure] = []
         self.error: Exception | None = None
         _FakeExtractor.instances.append(self)
 
-    def extract_documents(self, documents: list[Document]) -> list[ChunkGraph]:
+    def extract_documents(self, documents: list[Document]) -> ChunkExtractionBatch:
         self.documents = documents
         if self.error:
             raise self.error
-        return self.result
+        return ChunkExtractionBatch(
+            graphs=self.result,
+            failures=self.failures,
+            succeeded=[chunk.index_node_id for chunk in self.result],
+        )
 
 
 @pytest.fixture
-def extractor(monkeypatch: pytest.MonkeyPatch) -> Callable[..., None]:
+def extractor(monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]) -> Callable[..., None]:
     """Install a stand-in extractor so indexing never reaches a real model."""
     _FakeExtractor.instances.clear()
+    # Failure records are written in their own transaction.
+    monkeypatch.setattr(graph_index_service_module.session_factory, "create_session", sqlite_session_factory)
 
-    def _install(*, result: list[ChunkGraph] | None = None, error: Exception | None = None) -> None:
+    def _install(
+        *,
+        result: list[ChunkGraph] | None = None,
+        failures: list[ChunkExtractionFailure] | None = None,
+        error: Exception | None = None,
+    ) -> None:
         def _factory(*, tenant_id: str, setting: object) -> _FakeExtractor:
             instance = _FakeExtractor(tenant_id=tenant_id, setting=setting)
             instance.result = result or []
+            instance.failures = failures or []
             instance.error = error
             return instance
 

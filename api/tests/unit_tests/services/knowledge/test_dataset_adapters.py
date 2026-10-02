@@ -25,6 +25,7 @@ from models.dataset import (
 from models.enums import CreatorUserRole, DatasetQuerySource, IndexingStatus, SegmentStatus
 from services.enterprise import rbac_service
 from services.knowledge.dataset_access import DatasetNotFoundError
+from services.knowledge.datasets import adapters as dataset_adapters
 from services.knowledge.datasets.adapters import SQLAlchemyDatasetOperations
 from services.knowledge.datasets.application import DatasetListFilter
 from services.knowledge.documents.adapters import SQLAlchemyDocumentOperations
@@ -191,6 +192,7 @@ def test_list_visibility_restricts_even_requested_ids(
         "partial_members",
         "graph_stats",
         "graph",
+        "retry_graph",
         "update_dataset",
         "delete_dataset",
         "set_api_enabled",
@@ -218,6 +220,7 @@ def test_wrong_tenant_ref_cannot_read_or_write(operations: SQLAlchemyDatasetOper
         "partial_members": operations.partial_members,
         "graph_stats": operations.graph_stats,
         "graph": operations.graph,
+        "retry_graph": operations.retry_graph,
         "update_dataset": operations.update_dataset,
         "delete_dataset": operations.delete_dataset,
         "set_api_enabled": operations.set_api_enabled,
@@ -257,7 +260,7 @@ def test_console_save_enabling_the_graph_queues_the_backfill(operations: SQLAlch
             {"graph_index_setting": {"enabled": True, "model_provider_name": "provider", "model_name": "model"}},
         )
 
-    task.delay.assert_called_once_with("dataset", "tenant")
+    task.delay.assert_called_once_with("dataset", "tenant", only_failed=False)
 
 
 @pytest.mark.parametrize("entry_point", ["empty", "documents"])
@@ -416,3 +419,65 @@ def test_queries_and_related_apps_materialize_after_session_close(
     assert related["total"] == 1
     assert related["data"][0]["id"] == "app"
     assert related["data"][0]["mode"] == "chat"
+
+
+_GRAPH_ON = {"enabled": True, "model_provider_name": "provider", "model_name": "model"}
+
+
+def _enable_graph(session_factory: sessionmaker[Session]) -> None:
+    with session_factory.begin() as session:
+        row = session.get(Dataset, "dataset")
+        assert row is not None
+        row.graph_index_setting = _GRAPH_ON
+
+
+@pytest.mark.parametrize(
+    ("status", "rebuild_active", "expected"),
+    [
+        # Extraction runs inside document indexing.
+        (IndexingStatus.INDEXING, False, True),
+        (IndexingStatus.WAITING, False, True),
+        # A queued or running rebuild after indexing finished.
+        (IndexingStatus.COMPLETED, True, True),
+        (IndexingStatus.COMPLETED, False, False),
+        (IndexingStatus.ERROR, False, False),
+    ],
+)
+def test_graph_stats_report_building_while_extraction_can_still_run(
+    operations: SQLAlchemyDatasetOperations,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    status: IndexingStatus,
+    rebuild_active: bool,
+    expected: bool,
+) -> None:
+    _enable_graph(sqlite_session_factory)
+    with sqlite_session_factory.begin() as session:
+        session.add(document(indexing_status=status))
+    monkeypatch.setattr(dataset_adapters, "is_graph_build_active", lambda _dataset_id: rebuild_active)
+
+    assert operations.graph_stats(REF)["building"] is expected
+
+
+def test_retry_queues_only_failed_chunks_and_marks_the_build(
+    operations: SQLAlchemyDatasetOperations,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _enable_graph(sqlite_session_factory)
+    marked: list[str] = []
+    monkeypatch.setattr(dataset_adapters, "mark_graph_build_active", marked.append)
+
+    with patch.object(dataset_adapters, "build_dataset_graph_task") as task:
+        operations.retry_graph(REF)
+
+    # Marked before queueing, so the page polls instead of flashing "no graph".
+    assert marked == ["dataset"]
+    task.delay.assert_called_once_with("dataset", "tenant", only_failed=True)
+
+
+def test_retry_is_a_no_op_while_the_graph_is_off(operations: SQLAlchemyDatasetOperations) -> None:
+    with patch.object(dataset_adapters, "build_dataset_graph_task") as task:
+        operations.retry_graph(REF)
+
+    task.delay.assert_not_called()

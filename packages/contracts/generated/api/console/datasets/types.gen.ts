@@ -515,10 +515,14 @@ export type DatasetGraphResponse = {
 }
 
 export type DatasetGraphStatsResponse = {
+  building: boolean
   entity_count: number
   entity_types: {
     [key: string]: number
   }
+  failed_chunk_count: number
+  last_error: string | null
+  last_failed_at: number | null
   relation_count: number
 }
 
@@ -2331,6 +2335,26 @@ export type GetDatasetsByDatasetIdGraphResponses = {
 
 export type GetDatasetsByDatasetIdGraphResponse =
   GetDatasetsByDatasetIdGraphResponses[keyof GetDatasetsByDatasetIdGraphResponses]
+
+export type PostDatasetsByDatasetIdGraphRetryData = {
+  body?: never
+  path: {
+    dataset_id: string
+  }
+  query?: never
+  url: '/datasets/{dataset_id}/graph/retry'
+}
+
+export type PostDatasetsByDatasetIdGraphRetryErrors = {
+  404: unknown
+}
+
+export type PostDatasetsByDatasetIdGraphRetryResponses = {
+  200: SimpleResultResponse
+}
+
+export type PostDatasetsByDatasetIdGraphRetryResponse =
+  PostDatasetsByDatasetIdGraphRetryResponses[keyof PostDatasetsByDatasetIdGraphRetryResponses]
 
 export type GetDatasetsByDatasetIdGraphStatsData = {
   body?: never

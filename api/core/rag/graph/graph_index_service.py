@@ -2,15 +2,22 @@
 
 import logging
 
-from sqlalchemy import delete
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
+from core.db.session_factory import session_factory
 from core.rag.datasource.graph.graph_base import GraphStats, StoredEntity, StoredRelation
 from core.rag.datasource.graph.graph_factory import GraphStore
-from core.rag.graph.entities import GraphIndexSetting
-from core.rag.graph.entity_extractor import EntityRelationExtractor
+from core.rag.graph.entities import ChunkExtractionBatch, ChunkExtractionFailure, GraphIndexSetting
+from core.rag.graph.entity_extractor import EntityRelationExtractor, describe_extraction_error
 from core.rag.models.document import Document
-from models.dataset import Dataset, DatasetGraphChunkLink, DatasetGraphEntity, DatasetGraphRelation
+from models.dataset import (
+    Dataset,
+    DatasetGraphChunkLink,
+    DatasetGraphEntity,
+    DatasetGraphExtractionFailure,
+    DatasetGraphRelation,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -49,17 +56,71 @@ class GraphIndexService:
             return
         try:
             extractor = EntityRelationExtractor(tenant_id=dataset.tenant_id, setting=setting)
-            chunk_graphs = extractor.extract_documents(documents)
-            if not chunk_graphs:
-                return
-            GraphStore(dataset).add_chunk_graphs(chunk_graphs, session=session)
-            logger.info(
-                "Built knowledge graph for %s chunks in dataset %s",
-                len(chunk_graphs),
-                dataset.id,
-            )
+            batch = extractor.extract_documents(documents)
+        except Exception as error:
+            logger.exception("Failed to extract the knowledge graph for dataset %s", dataset.id)
+            batch = ChunkExtractionBatch(failures=cls._fail_all(documents, error))
+        if batch.graphs:
+            try:
+                GraphStore(dataset).add_chunk_graphs(batch.graphs, session=session)
+                logger.info(
+                    "Built knowledge graph for %s chunks in dataset %s",
+                    len(batch.graphs),
+                    dataset.id,
+                )
+            except Exception:
+                logger.exception("Failed to build the knowledge graph for dataset %s", dataset.id)
+        cls._record_extraction_outcome(dataset, batch)
+
+    @staticmethod
+    def _fail_all(documents: list[Document], error: Exception) -> list[ChunkExtractionFailure]:
+        reason = describe_extraction_error(error)
+        failures: list[ChunkExtractionFailure] = []
+        for document in documents:
+            metadata = document.metadata or {}
+            if metadata.get("doc_id") and metadata.get("document_id"):
+                failures.append(
+                    ChunkExtractionFailure(
+                        index_node_id=str(metadata["doc_id"]),
+                        document_id=str(metadata["document_id"]),
+                        error=reason,
+                    )
+                )
+        return failures
+
+    @staticmethod
+    def _record_extraction_outcome(dataset: Dataset, batch: ChunkExtractionBatch) -> None:
+        """Replace the failure records of every chunk this batch attempted.
+
+        Runs in its own short transaction rather than the caller's: these rows
+        only explain the graph to the console, so a conflict here must never
+        roll back the indexing write that called us.
+        """
+        attempted = [*batch.succeeded, *(failure.index_node_id for failure in batch.failures)]
+        if not attempted:
+            return
+        try:
+            with session_factory.create_session() as session, session.begin():
+                session.execute(
+                    delete(DatasetGraphExtractionFailure).where(
+                        DatasetGraphExtractionFailure.dataset_id == dataset.id,
+                        DatasetGraphExtractionFailure.index_node_id.in_(attempted),
+                    )
+                )
+                session.add_all(
+                    [
+                        DatasetGraphExtractionFailure(
+                            tenant_id=dataset.tenant_id,
+                            dataset_id=dataset.id,
+                            document_id=failure.document_id,
+                            index_node_id=failure.index_node_id,
+                            error=failure.error,
+                        )
+                        for failure in batch.failures
+                    ]
+                )
         except Exception:
-            logger.exception("Failed to build the knowledge graph for dataset %s", dataset.id)
+            logger.exception("Failed to record knowledge graph extraction failures for dataset %s", dataset.id)
 
     @classmethod
     def delete_by_index_node_ids(cls, dataset: Dataset, index_node_ids: list[str], *, session: Session) -> None:
@@ -69,6 +130,12 @@ class GraphIndexService:
         if not index_node_ids or not dataset.graph_index_setting:
             return
         try:
+            session.execute(
+                delete(DatasetGraphExtractionFailure).where(
+                    DatasetGraphExtractionFailure.dataset_id == dataset.id,
+                    DatasetGraphExtractionFailure.index_node_id.in_(index_node_ids),
+                )
+            )
             GraphStore(dataset).delete_by_index_node_ids(index_node_ids, session=session)
         except Exception:
             logger.exception("Failed to clean the knowledge graph for dataset %s", dataset.id)
@@ -79,6 +146,12 @@ class GraphIndexService:
         if not document_ids or not dataset.graph_index_setting:
             return
         try:
+            session.execute(
+                delete(DatasetGraphExtractionFailure).where(
+                    DatasetGraphExtractionFailure.dataset_id == dataset.id,
+                    DatasetGraphExtractionFailure.document_id.in_(document_ids),
+                )
+            )
             GraphStore(dataset).delete_by_document_ids(document_ids, session=session)
         except Exception:
             logger.exception("Failed to clean the knowledge graph for dataset %s", dataset.id)
@@ -89,6 +162,9 @@ class GraphIndexService:
         if not dataset.graph_index_setting:
             return
         try:
+            session.execute(
+                delete(DatasetGraphExtractionFailure).where(DatasetGraphExtractionFailure.dataset_id == dataset.id)
+            )
             GraphStore(dataset).delete(session=session)
         except Exception:
             logger.exception("Failed to delete the knowledge graph for dataset %s", dataset.id)
@@ -107,7 +183,7 @@ class GraphIndexService:
         after indexing and the backend in force today is not necessarily the one
         that wrote yesterday's rows.
         """
-        for model in (DatasetGraphChunkLink, DatasetGraphRelation, DatasetGraphEntity):
+        for model in (DatasetGraphChunkLink, DatasetGraphRelation, DatasetGraphEntity, DatasetGraphExtractionFailure):
             try:
                 session.execute(delete(model).where(model.dataset_id == dataset.id))
             except Exception:
@@ -131,10 +207,34 @@ class GraphIndexService:
 
     @classmethod
     def get_stats(cls, dataset: Dataset, *, session: Session) -> GraphStats:
-        """Return entity/relation counts for a dataset, or zeros when no graph exists."""
+        """Return entity/relation counts and extraction failures, or zeros when no graph exists.
+
+        The failure summary is what lets the console tell an empty graph apart
+        from one the model could not build.
+        """
         if not cls.is_enabled(dataset):
             return GraphStats()
-        return GraphStore(dataset).stats(session=session)
+        stats = GraphStore(dataset).stats(session=session)
+        failed_chunk_count, last_failed_at = session.execute(
+            select(func.count(), func.max(DatasetGraphExtractionFailure.created_at)).where(
+                DatasetGraphExtractionFailure.dataset_id == dataset.id
+            )
+        ).one()
+        if not failed_chunk_count:
+            return stats
+        last_error = session.scalar(
+            select(DatasetGraphExtractionFailure.error)
+            .where(DatasetGraphExtractionFailure.dataset_id == dataset.id)
+            .order_by(DatasetGraphExtractionFailure.created_at.desc(), DatasetGraphExtractionFailure.id.desc())
+            .limit(1)
+        )
+        return stats.model_copy(
+            update={
+                "failed_chunk_count": failed_chunk_count,
+                "last_error": last_error,
+                "last_failed_at": last_failed_at,
+            }
+        )
 
     @classmethod
     def explore(

@@ -91,6 +91,7 @@ from services.knowledge.entities.knowledge_entities import (
 )
 from services.knowledge.entities.segments import SegmentUpdateArgs
 from services.knowledge.external.service import ExternalDatasetService
+from services.knowledge.graph_build_state import mark_graph_build_active
 from services.knowledge.resource_scope import DatasetRef, SegmentRef
 from services.knowledge.segments.application import (
     ChildChunkDeleteIndexApplicationError,
@@ -845,7 +846,9 @@ class DatasetService:
 
         def dispatch_after_commit(_session: Session) -> None:
             if not cancelled:
-                build_dataset_graph_task.delay(dataset_id, tenant_id)
+                # Mark before queueing so the console never sees an idle gap.
+                mark_graph_build_active(dataset_id)
+                build_dataset_graph_task.delay(dataset_id, tenant_id, only_failed=False)
 
         event.listen(session, "after_rollback", cancel_on_rollback, once=True)
         event.listen(session, "after_commit", dispatch_after_commit, once=True)

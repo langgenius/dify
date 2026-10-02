@@ -1379,3 +1379,41 @@ class DatasetGraphChunkLink(TypeBase):
     @override
     def __repr__(self):
         return f"<DatasetGraphChunkLink id={self.id} index_node_id={self.index_node_id}>"
+
+
+class DatasetGraphExtractionFailure(TypeBase):
+    """A chunk the extraction model last failed on, and why.
+
+    Extraction failures never fail indexing, so without this record an empty
+    graph would look the same whether the documents had nothing to extract or
+    the model was unreachable. A row is replaced on the next failure and removed
+    once the chunk is extracted or deleted.
+    """
+
+    __tablename__ = "dataset_graph_extraction_failures"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="dataset_graph_extraction_failure_pkey"),
+        sa.UniqueConstraint("dataset_id", "index_node_id", name="dataset_graph_extraction_failure_node_uniq"),
+        sa.Index("dataset_graph_extraction_failure_document_idx", "dataset_id", "document_id"),
+    )
+
+    id: Mapped[str] = mapped_column(
+        StringUUID,
+        nullable=False,
+        insert_default=lambda: str(uuid4()),
+        default_factory=lambda: str(uuid4()),
+        init=False,
+    )
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    document_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    # DocumentSegment.index_node_id of the chunk that failed
+    index_node_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    error: Mapped[str] = mapped_column(LongText, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
+
+    @override
+    def __repr__(self):
+        return f"<DatasetGraphExtractionFailure id={self.id} index_node_id={self.index_node_id}>"

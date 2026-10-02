@@ -1007,7 +1007,7 @@ class TestDatasetServiceGraphIndexSetting:
             task.delay.assert_not_called()
             sqlite_session.commit()
 
-        task.delay.assert_called_once_with(dataset.id, dataset.tenant_id)
+        task.delay.assert_called_once_with(dataset.id, dataset.tenant_id, only_failed=False)
 
     def test_a_rolled_back_setting_change_queues_nothing(self, sqlite_session_factory: sessionmaker[Session]) -> None:
         with (
