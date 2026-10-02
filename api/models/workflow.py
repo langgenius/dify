@@ -453,7 +453,13 @@ class Workflow(Base):  # bug
 
     @staticmethod
     def _normalize_features_payload(features: dict[str, Any]) -> dict[str, Any]:
-        if features.get("file_upload", {}).get("image", {}).get("enabled", False):
+        file_upload = features.get("file_upload")
+        if not isinstance(file_upload, dict):
+            return features
+        image = file_upload.get("image")
+        if not isinstance(image, dict):
+            return features
+        if image.get("enabled", False):
             image_number_limits = int(features["file_upload"]["image"].get("number_limits", DEFAULT_FILE_NUMBER_LIMITS))
             image_transfer_methods = features["file_upload"]["image"].get(
                 "transfer_methods", ["remote_url", "local_file"]

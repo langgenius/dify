@@ -21,6 +21,7 @@ from services.app_definition_query_service import (
     AppParameterConfig,
     AppSiteConfiguration,
     AppToolIconSource,
+    ServiceApiAppRecord,
 )
 from services.web_app_runtime_query_service import WebAppRuntimeRecord
 
@@ -80,6 +81,26 @@ def _get_public_agent_parameter_config(app: App, *, session: Session) -> AppPara
 class AppDefinitionQueryRepository(AppDefinitionQuery):
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
+
+    @override
+    def get_service_api_record(self, app_id: str) -> ServiceApiAppRecord | None:
+        with self._session_factory() as session:
+            row = session.execute(
+                select(App.id, App.tenant_id, App.mode, App.status, App.enable_api, Tenant.status)
+                .outerjoin(Tenant, Tenant.id == App.tenant_id)
+                .where(App.id == app_id)
+            ).one_or_none()
+            if row is None:
+                return None
+            resolved_id, tenant_id, mode, status, enable_api, tenant_status = row
+            return ServiceApiAppRecord(
+                app_id=resolved_id,
+                tenant_id=tenant_id,
+                mode=mode.value,
+                status=status.value,
+                enable_api=enable_api,
+                tenant_status=tenant_status.value if tenant_status is not None else None,
+            )
 
     @override
     def get_mode(self, app_id: str) -> str | None:

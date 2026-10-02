@@ -2198,11 +2198,12 @@ export const feedbacks2 = {
 /**
  * Get Next Suggested Questions
  *
- * Get next questions suggestions for the current message.
+ * Get next question suggestions for the current message. If no usable model can be resolved or question generation fails, the response is successful with an empty data list.
  */
 export const get25 = oc
   .route({
-    description: 'Get next questions suggestions for the current message.',
+    description:
+      'Get next question suggestions for the current message. If no usable model can be resolved or question generation fails, the response is successful with an empty data list.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getMessagesByMessageIdSuggested',

@@ -370,7 +370,7 @@ Stops a chat message generation task. Only supported in `streaming` mode.
 ### [GET] /messages/{message_id}/suggested
 **Get Next Suggested Questions**
 
-Get next questions suggestions for the current message.
+Get next question suggestions for the current message. If no usable model can be resolved or question generation fails, the response is successful with an empty data list.
 
 #### Parameters
 
@@ -384,10 +384,10 @@ Get next questions suggestions for the current message.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Suggested questions retrieved successfully | **application/json**: [SimpleResultStringListResponse](#simpleresultstringlistresponse)<br> |
-| 400 | - `not_chat_app` : App mode does not match the API route. - `bad_request` : Suggested questions feature is disabled. |  |
+| 400 | - `not_chat_app` : App mode does not match the API route. - `app_unavailable` : App is no longer available. |  |
 | 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 404 | `not_found` : Message does not exist. |  |
+| 403 | - `forbidden` : Token, app, or workspace access denied. - `app_suggested_questions_after_answer_disabled` : Suggested questions feature is disabled. |  |
+| 404 | - `not_found` : End user, message, or conversation does not exist. - `agent_version_not_found_error` : Agent config version does not exist. |  |
 | 500 | `internal_server_error` : Internal server error. |  |
 
 ### [GET] /workflow/{workflow_run_id}/events
@@ -517,7 +517,7 @@ Stops a chat message generation task. Only supported in `streaming` mode.
 ### [GET] /messages/{message_id}/suggested
 **Get Next Suggested Questions**
 
-Get next questions suggestions for the current message.
+Get next question suggestions for the current message. If no usable model can be resolved or question generation fails, the response is successful with an empty data list.
 
 #### Parameters
 
@@ -531,10 +531,10 @@ Get next questions suggestions for the current message.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Suggested questions retrieved successfully | **application/json**: [SimpleResultStringListResponse](#simpleresultstringlistresponse)<br> |
-| 400 | - `not_chat_app` : App mode does not match the API route. - `bad_request` : Suggested questions feature is disabled. |  |
+| 400 | - `not_chat_app` : App mode does not match the API route. - `app_unavailable` : App is no longer available. |  |
 | 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 404 | `not_found` : Message does not exist. |  |
+| 403 | - `forbidden` : Token, app, or workspace access denied. - `app_suggested_questions_after_answer_disabled` : Suggested questions feature is disabled. |  |
+| 404 | - `not_found` : End user, message, or conversation does not exist. - `agent_version_not_found_error` : Agent config version does not exist. |  |
 | 500 | `internal_server_error` : Internal server error. |  |
 
 ---
