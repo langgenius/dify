@@ -21,7 +21,6 @@ project-excludes = [
   "commands/test_fix_app_site_missing.py",
   "commands/test_generate_swagger_markdown_docs.py",
   "commands/test_generate_swagger_specs.py",
-  "commands/test_legacy_model_type_migration.py",
   "commands/test_lint_response_contracts.py",
   "commands/test_reset_encrypt_key_pair.py",
   "commands/test_upgrade_db.py",
