@@ -312,10 +312,12 @@ def test_verification_gateway_creates_six_digit_account_bound_challenge() -> Non
     assert generate_token.call_args.kwargs["additional_data"] == {"code": "123456"}
 
 
-def test_verification_notifier_preserves_rate_limit_before_enqueuing_email() -> None:
-    limiter = MagicMock(spec=RateLimiter)
-    limiter.is_rate_limited.return_value = True
-    limiter.time_window = 60
+def test_verification_notifier_preserves_rate_limit_before_enqueuing_email(
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+) -> None:
+    redis, commands = redis_transport
+    commands.return_value = 10
+    limiter = RateLimiter("deletion", 10, 60, redis_client=redis)
     notifier = CeleryAccountDeletionVerificationNotifier(rate_limiter=limiter)
 
     with (
@@ -324,5 +326,6 @@ def test_verification_notifier_preserves_rate_limit_before_enqueuing_email() -> 
     ):
         notifier.send(email="account@example.com", code="123456")
 
+    assert [call.args[0] for call in commands.call_args_list] == ["ZREMRANGEBYSCORE", "ZCARD"]
     assert error.value.retry_after_minutes == 1
     mail_task.delay.assert_not_called()
