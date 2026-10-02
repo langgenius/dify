@@ -40,7 +40,7 @@ const baseChipClassName =
   'flex h-8 items-center whitespace-nowrap rounded-lg border-[0.5px] px-2 text-[13px] leading-4 outline-hidden transition-colors focus-visible:ring-2 focus-visible:ring-state-accent-solid'
 
 const CreatorsFilter = ({ value, onChange }: CreatorsFilterProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common'])
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.id,
@@ -160,7 +160,7 @@ const CreatorsFilter = ({ value, onChange }: CreatorsFilterProps) => {
           <IconButton
             size="sm"
             aria-label={resetLabel}
-            className="absolute top-1/2 right-1 size-5 -translate-y-1/2 text-text-tertiary peer-data-popup-open/creators-trigger:text-text-secondary"
+            className="absolute top-1/2 right-1 -translate-y-1/2 peer-data-popup-open/creators-trigger:text-text-secondary"
             onClick={handleSelectionClear}
           >
             <span aria-hidden className="i-ri-close-circle-fill h-3.5 w-3.5" />

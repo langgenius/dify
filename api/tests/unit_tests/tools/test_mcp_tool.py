@@ -2,7 +2,7 @@ import base64
 from collections.abc import Iterator
 from decimal import Decimal
 from typing import Any
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 from sqlalchemy.engine import Engine
@@ -39,15 +39,14 @@ def _make_mcp_tool(output_schema: dict[str, Any] | None = None) -> MCPTool:
         provider="test_provider",
     )
     entity = ToolEntity(identity=identity, output_schema=output_schema or {})
-    runtime = Mock(spec=ToolRuntime)
-    runtime.credentials = {}
+    runtime = ToolRuntime(tenant_id="test_tenant")
     return MCPTool(
         entity=entity,
         runtime=runtime,
         tenant_id="test_tenant",
         icon="",
         server_url="https://server.invalid",
-        provider_id="provider_1",
+        server_identifier="provider_1",
         headers={},
     )
 

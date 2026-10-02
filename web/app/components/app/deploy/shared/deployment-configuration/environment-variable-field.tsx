@@ -19,10 +19,10 @@ import {
   SelectItemText,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
+import dynamic from 'next/dynamic'
 import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isLLMEnvironmentVariableValue } from '@/app/components/workflow/llm-environment-variable'
-import dynamic from '@/next/dynamic'
 import { resolveEnvironmentVariableSelection } from './utils/workflow-deployment-input'
 
 const LLMEnvironmentVariableValueField = dynamic(
@@ -63,8 +63,8 @@ export const EnvironmentVariableField = memo(
     ) => EnvironmentVariableSelection | undefined
     onChange: (workflowId: string, key: string, value: EnvironmentVariableSelection) => void
   }) => {
-    const { t } = useTranslation('deployments')
-    const { t: tWorkflow } = useTranslation('workflow')
+    const { t } = useTranslation(['deployments'])
+    const { t: tWorkflow } = useTranslation(['workflow'])
     const [selection, setSelection] = useState(() =>
       resolveEnvironmentVariableSelection(slot, getInitialSelection(workflowId, slot.key)),
     )

@@ -20,6 +20,19 @@ function memStore(label: string): TokenStore & { _label: string } {
 }
 
 describe('detectTokenStore', () => {
+  it('skips the probe and returns the file store when asked', async () => {
+    const k = memStore('keyring')
+    const f = memStore('file')
+    const writeSpy = vi.spyOn(k, 'write')
+    const result = await detectTokenStore({
+      skipKeyring: true,
+      factory: { keyring: () => k, file: () => f },
+    })
+    expect(writeSpy).not.toHaveBeenCalled()
+    expect(result.mode).toBe('file')
+    expect(result.store).toBe(f)
+  })
+
   it('returns keychain store when probe succeeds', async () => {
     const k = memStore('keyring')
     const f = memStore('file')

@@ -8,15 +8,16 @@ import type { DeploymentDialogRequest } from './types'
 import type { DeploymentVersion } from './utils/version'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
+import dynamic from 'next/dynamic'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '#i18n'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import Loading from '@/app/components/base/loading'
-import { getEnterpriseDocUrl, useLocale } from '@/context/i18n'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { getEnterpriseDocUrl } from '@/context/i18n'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { getDocLanguage } from '@/i18n-config/language'
-import dynamic from '@/next/dynamic'
+import { getDocLanguage } from '@/i18n/language'
 import { AppModeEnum } from '@/types/app'
 import { getAppACLCapabilities } from '@/utils/permission'
 import { BuiltInEnvironmentCard } from './built-in-environment-card'
@@ -37,9 +38,9 @@ function AppDeployContent({
   appId: string
   canViewAccessPoint: boolean
 }) {
-  const { t } = useTranslation('deployments')
-  const { t: tCommon } = useTranslation('common')
-  const { t: tWorkflow } = useTranslation('workflow')
+  const { t } = useTranslation(['deployments'])
+  const { t: tCommon } = useTranslation(['common'])
+  const { t: tWorkflow } = useTranslation(['workflow', 'workflowHistory'])
   const locale = useLocale()
   const docLanguage = getDocLanguage(locale)
   const deployOverviewDocUrl = getEnterpriseDocUrl('/use/deploy/overview', docLanguage)
@@ -97,7 +98,7 @@ function AppDeployContent({
         environmentId,
         initialVersion: toDeploymentVersion(
           version,
-          tWorkflow(($) => $['versionHistory.defaultName']),
+          tWorkflow(($) => $['versionHistory.defaultName'], { ns: 'workflowHistory' }),
         ),
         kind: 'redeploy',
       })
@@ -160,7 +161,7 @@ export default function AppDeploy() {
   })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
 
-  if (!appDetail) return <Loading type="app" />
+  if (!appDetail) return <LoadingPlaceholder className="h-full" />
 
   const { canDeploy, canViewAccessPoint } = getAppACLCapabilities(appDetail.permission_keys, {
     currentUserId,

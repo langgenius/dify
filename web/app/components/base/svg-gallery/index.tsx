@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
 
 const SVGRenderer = ({ content }: { content: string }) => {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
   const svgRef = useRef<HTMLDivElement>(null)
   const [imagePreview, setImagePreview] = useState('')
 

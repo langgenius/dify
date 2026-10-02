@@ -17,7 +17,7 @@ vi.mock('next/navigation', () => ({
   useParams: () => ({}),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => ({
+vi.mock('@/app/notifications', async (importOriginal) => ({
   ...(await importOriginal()),
   toast: {
     success: (message: string) => mockNotify({ type: 'success', message }),

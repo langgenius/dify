@@ -25,7 +25,7 @@ export function CopyMembersConfirmDialog({
   onOpenChange,
   onDuplicate,
 }: CopyMembersConfirmDialogProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'permission'])
   const { data: membersOfRole, isPending: isLoadingMembersOfRole } = useGetMembersOfRole({
     roleId: role.id,
     page: 1,

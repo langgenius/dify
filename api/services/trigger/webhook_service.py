@@ -3,7 +3,7 @@ import logging
 import mimetypes
 import secrets
 from collections.abc import Callable, Mapping, Sequence
-from typing import Any, NotRequired, TypedDict
+from typing import Any, NotRequired, Protocol, TypedDict
 
 import orjson
 from flask import request
@@ -31,11 +31,10 @@ from graphon.entities.graph_config import NodeConfigDict
 from graphon.file import FileTransferMethod
 from graphon.variables.types import ArrayValidation, SegmentType
 from models.enums import AppTriggerStatus, AppTriggerType, EndUserType
-from models.model import App
+from models.model import App, EndUser
 from models.trigger import AppTrigger, WorkflowWebhookTrigger
 from models.workflow import Workflow
 from services.async_workflow_service import AsyncWorkflowService
-from services.end_user_service import EndUserService
 from services.errors.app import QuotaExceededError
 from services.quota_service import QuotaService
 from services.trigger.app_trigger_service import AppTriggerService
@@ -69,6 +68,16 @@ class WorkflowInputsDict(TypedDict):
     webhook_headers: dict[str, str]
     webhook_query_params: dict[str, str]
     webhook_body: dict[str, Any]
+
+
+class WebhookEndUserProvisioner(Protocol):
+    def get_or_create_end_user_by_type(
+        self,
+        type: EndUserType,
+        tenant_id: str,
+        app_id: str,
+        user_id: str | None = None,
+    ) -> EndUser: ...
 
 
 class WebhookService:
@@ -792,7 +801,12 @@ class WebhookService:
 
     @classmethod
     def trigger_workflow_execution(
-        cls, webhook_trigger: WorkflowWebhookTrigger, webhook_data: RawWebhookDataDict, workflow: Workflow
+        cls,
+        webhook_trigger: WorkflowWebhookTrigger,
+        webhook_data: RawWebhookDataDict,
+        workflow: Workflow,
+        *,
+        end_users: WebhookEndUserProvisioner,
     ) -> None:
         """Trigger workflow execution via AsyncWorkflowService.
 
@@ -817,7 +831,7 @@ class WebhookService:
                 tenant_id=webhook_trigger.tenant_id,
             )
 
-            end_user = EndUserService.get_or_create_end_user_by_type(
+            end_user = end_users.get_or_create_end_user_by_type(
                 type=EndUserType.TRIGGER,
                 tenant_id=webhook_trigger.tenant_id,
                 app_id=webhook_trigger.app_id,

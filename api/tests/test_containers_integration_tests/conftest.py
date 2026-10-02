@@ -102,6 +102,9 @@ class DifyTestContainers:
         logger.info("Initializing PostgreSQL container...")
         self.postgres = PostgresContainer(
             image="postgres:14-alpine",
+            # This per-worker database is discarded after the session. Keep its
+            # data in bounded tmpfs to reduce I/O from full-schema TRUNCATE cleanup.
+            tmpfs={"/var/lib/postgresql/data": "rw,size=2g"},
         ).with_network(self.network)
         self.postgres.waiting_for(_wait_for_log_message("is ready to accept connections", 30))
         self.postgres.start()
@@ -173,6 +176,9 @@ class DifyTestContainers:
         self.dify_sandbox.waiting_for(_wait_for_log_message("config init success", 60))
         self.dify_sandbox.env = {
             "API_KEY": "test_api_key",
+            # Match Docker Compose: the image's 5-second limit can expire during
+            # Python/Jinja2 startup under parallel CI load.
+            "WORKER_TIMEOUT": "15",
         }
         self.dify_sandbox.start()
         sandbox_host = self.dify_sandbox.get_container_host_ip()

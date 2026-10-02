@@ -1,3 +1,4 @@
+import type { TextGenerationTranslate } from '../../../types'
 import type { ResultInputValue } from '../../result-request'
 import type { ResultRunStateController } from '../use-result-run-state'
 import type { PromptConfig } from '@/models/debug'
@@ -219,7 +220,7 @@ const renderSender = ({
         onShowRes,
         promptConfig,
         runState: runState || createRunStateHarness().runState,
-        t: withSelectorKey((key: string) => key),
+        t: withSelectorKey((key: string) => key) as TextGenerationTranslate,
         taskId,
         visionConfig,
       }),

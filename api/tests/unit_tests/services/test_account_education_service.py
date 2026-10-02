@@ -1,146 +1,139 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from unittest.mock import Mock
+from unittest.mock import MagicMock
 
 import pytest
+from pytest_mock import MockerFixture
+from sqlalchemy.orm import Session, sessionmaker
 
+from extensions.ext_redis import RedisClientWrapper
+from libs.helper import RateLimiter
 from machinery.context import RequestContext
-from services.account_education_service import (
-    AccountEducationGateway,
-    AccountEducationRateLimiter,
-    AccountEducationService,
-)
+from repositories.account.repository import SQLAlchemyAccountRepository
+from services.account.adapters import BillingAccountEducationGateway
+from services.account_education_service import AccountEducationService
 from services.account_errors import EducationRateLimitExceededError
-from services.account_ports import AccountRepository
+from services.billing_service import BillingService
 from services.entities.account_entities import (
     AccountEducationActivation,
     AccountEducationAutocomplete,
     AccountEducationStatus,
     AccountEducationVerification,
-    AccountSnapshot,
 )
+from tests.unit_tests.model_factories import make_account
 
 
 def _context() -> RequestContext:
     return RequestContext(
-        request_id="request-1",
-        trace_id="trace-1",
-        account_id="account-1",
-        active_workspace_id="workspace-1",
+        request_id="request-1", trace_id="trace-1", account_id="account-1", active_workspace_id="workspace-1"
     )
 
 
-def _account() -> AccountSnapshot:
-    return AccountSnapshot(
-        id="account-1",
-        name="Student",
-        email="student@example.edu",
-        avatar=None,
-        is_password_set=True,
-        interface_language="en-US",
-        interface_theme="light",
-        timezone="UTC",
-        last_login_at=None,
-        last_login_ip=None,
-        status="active",
-        initialized_at=datetime(2026, 1, 1),
-        created_at=datetime(2026, 1, 1),
-    )
+@pytest.fixture
+def accounts(sqlite_session_factory: sessionmaker[Session]) -> SQLAlchemyAccountRepository:
+    with sqlite_session_factory.begin() as session:
+        session.add(make_account(name="Student", email="student@example.edu"))
+    return SQLAlchemyAccountRepository(sqlite_session_factory)
 
 
-def _rate_limiter() -> Mock:
-    rate_limiter = Mock(spec=AccountEducationRateLimiter)
-    rate_limiter.is_rate_limited.return_value = False
-    return rate_limiter
-
-
-def test_verify_reads_account_before_billing_gateway_call() -> None:
-    accounts = Mock(spec=AccountRepository)
-    accounts.get.return_value = _account()
-    education = Mock(spec=AccountEducationGateway)
-    verification_rate_limiter = _rate_limiter()
-    activation_rate_limiter = _rate_limiter()
-    events: list[str] = []
-    verification_rate_limiter.is_rate_limited.side_effect = lambda _key: events.append("check") or False
-    verification_rate_limiter.increment_rate_limit.side_effect = lambda _key: events.append("increment")
-    education.verify.side_effect = lambda **_kwargs: (
-        events.append("verify") or AccountEducationVerification(token="education-token")
-    )
-    service = AccountEducationService(
+@pytest.fixture
+def service(
+    accounts: SQLAlchemyAccountRepository, redis_transport: tuple[RedisClientWrapper, MagicMock]
+) -> AccountEducationService:
+    redis, _commands = redis_transport
+    return AccountEducationService(
         accounts=accounts,
-        education=education,
-        verification_rate_limiter=verification_rate_limiter,
-        activation_rate_limiter=activation_rate_limiter,
+        education=BillingAccountEducationGateway(),
+        verification_rate_limiter=RateLimiter("verification", 10, 60, redis_client=redis),
+        activation_rate_limiter=RateLimiter("activation", 10, 60, redis_client=redis),
     )
 
-    result = service.verify(_context())
 
-    assert result == AccountEducationVerification(token="education-token")
+def _record_commands(commands: MagicMock, events: list[str]) -> None:
+    def execute(command: str, *_args: object, **_kwargs: object) -> int:
+        if command == "ZCARD":
+            events.append("check")
+        elif command == "ZADD":
+            events.append("increment")
+        return 0
+
+    commands.side_effect = execute
+
+
+def test_verify_reads_account_before_billing_gateway_call(
+    service: AccountEducationService,
+    accounts: SQLAlchemyAccountRepository,
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+    mocker: MockerFixture,
+) -> None:
+    _, commands = redis_transport
+    events: list[str] = []
+    _record_commands(commands, events)
+    lookup = mocker.spy(accounts, "get")
+
+    def verify(*, account_id: str) -> dict[str, str]:
+        lookup.assert_called_once_with(account_id)
+        events.append("verify")
+        return {"token": "education-token"}
+
+    billing = mocker.patch.object(BillingService.EducationIdentity, "verify", side_effect=verify)
+
+    assert service.verify(_context()) == AccountEducationVerification(token="education-token")
     assert events == ["check", "increment", "verify"]
-    accounts.get.assert_called_once_with("account-1")
-    verification_rate_limiter.is_rate_limited.assert_called_once_with("student@example.edu")
-    verification_rate_limiter.increment_rate_limit.assert_called_once_with("student@example.edu")
-    education.verify.assert_called_once_with(account_id="account-1")
-    activation_rate_limiter.is_rate_limited.assert_not_called()
+    billing.assert_called_once_with(account_id="account-1")
+    assert all(call.args[1] == "verification:student@example.edu" for call in commands.call_args_list)
 
 
-def test_status_and_autocomplete_delegate_framework_neutral_contracts() -> None:
-    accounts = Mock(spec=AccountRepository)
-    education = Mock(spec=AccountEducationGateway)
-    status = AccountEducationStatus(
-        result=True,
-        is_student=True,
-        expire_at=datetime(2027, 1, 1, tzinfo=UTC),
-        allow_refresh=False,
+def test_status_and_autocomplete_delegate_framework_neutral_contracts(
+    service: AccountEducationService, mocker: MockerFixture
+) -> None:
+    status = mocker.patch.object(
+        BillingService.EducationIdentity,
+        "status",
+        return_value={
+            "result": True,
+            "is_student": True,
+            "expire_at": "2027-01-01T00:00:00+00:00",
+            "allow_refresh": False,
+        },
     )
-    autocomplete = AccountEducationAutocomplete(data=("Example University",), curr_page=0, has_next=False)
-    education.status.return_value = status
-    education.autocomplete.return_value = autocomplete
-    service = AccountEducationService(
-        accounts=accounts,
-        education=education,
-        verification_rate_limiter=_rate_limiter(),
-        activation_rate_limiter=_rate_limiter(),
+    autocomplete = mocker.patch.object(
+        BillingService.EducationIdentity,
+        "autocomplete",
+        return_value={"data": ["Example University"], "curr_page": 0, "has_next": False},
     )
 
-    assert service.status(_context()) == status
-    assert service.autocomplete(_context(), keywords="Example", page=0, limit=20) == autocomplete
-    education.status.assert_called_once_with("account-1")
-    education.autocomplete.assert_called_once_with(keywords="Example", page=0, limit=20)
+    assert service.status(_context()) == AccountEducationStatus(
+        result=True, is_student=True, expire_at=datetime(2027, 1, 1, tzinfo=UTC), allow_refresh=False
+    )
+    assert service.autocomplete(_context(), keywords="Example", page=0, limit=20) == AccountEducationAutocomplete(
+        data=("Example University",), curr_page=0, has_next=False
+    )
+    status.assert_called_once_with("account-1")
+    autocomplete.assert_called_once_with("Example", 0, 20)
 
 
-def test_activate_delegates_account_and_workspace_context() -> None:
-    accounts = Mock(spec=AccountRepository)
-    accounts.get.return_value = _account()
-    education = Mock(spec=AccountEducationGateway)
-    activation = AccountEducationActivation(message="success")
-    verification_rate_limiter = _rate_limiter()
-    activation_rate_limiter = _rate_limiter()
+def test_activate_delegates_account_and_workspace_context(
+    service: AccountEducationService,
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+    mocker: MockerFixture,
+) -> None:
+    _, commands = redis_transport
     events: list[str] = []
-    activation_rate_limiter.is_rate_limited.side_effect = lambda _key: events.append("check") or False
-    activation_rate_limiter.increment_rate_limit.side_effect = lambda _key: events.append("increment")
-    education.activate.side_effect = lambda **_kwargs: events.append("activate") or activation
-    service = AccountEducationService(
-        accounts=accounts,
-        education=education,
-        verification_rate_limiter=verification_rate_limiter,
-        activation_rate_limiter=activation_rate_limiter,
+    _record_commands(commands, events)
+    billing = mocker.patch.object(
+        BillingService.EducationIdentity,
+        "activate",
+        side_effect=lambda **_kwargs: events.append("activate") or {"message": "success"},
     )
 
-    result = service.activate(
-        _context(),
-        token="education-token",
-        institution="Dify University",
-        role="Student",
-    )
+    result = service.activate(_context(), token="education-token", institution="Dify University", role="Student")
 
-    assert result == activation
+    assert result == AccountEducationActivation(message="success")
     assert events == ["check", "increment", "activate"]
-    activation_rate_limiter.is_rate_limited.assert_called_once_with("student@example.edu")
-    activation_rate_limiter.increment_rate_limit.assert_called_once_with("student@example.edu")
-    verification_rate_limiter.is_rate_limited.assert_not_called()
-    education.activate.assert_called_once_with(
+    assert all(call.args[1] == "activation:student@example.edu" for call in commands.call_args_list)
+    billing.assert_called_once_with(
         account_id="account-1",
         tenant_id="workspace-1",
         token="education-token",
@@ -149,46 +142,25 @@ def test_activate_delegates_account_and_workspace_context() -> None:
     )
 
 
-def test_verify_rejects_rate_limited_request() -> None:
-    accounts = Mock(spec=AccountRepository)
-    accounts.get.return_value = _account()
-    education = Mock(spec=AccountEducationGateway)
-    verification_rate_limiter = _rate_limiter()
-    verification_rate_limiter.is_rate_limited.return_value = True
-    service = AccountEducationService(
-        accounts=accounts,
-        education=education,
-        verification_rate_limiter=verification_rate_limiter,
-        activation_rate_limiter=_rate_limiter(),
-    )
+@pytest.mark.parametrize("operation", ["verify", "activate"])
+def test_rejects_rate_limited_request(
+    operation: str,
+    service: AccountEducationService,
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+    mocker: MockerFixture,
+) -> None:
+    _, commands = redis_transport
+    commands.return_value = 10
+    verify = mocker.patch.object(BillingService.EducationIdentity, "verify")
+    activate = mocker.patch.object(BillingService.EducationIdentity, "activate")
 
-    with pytest.raises(EducationRateLimitExceededError):
-        service.verify(_context())
+    if operation == "verify":
+        with pytest.raises(EducationRateLimitExceededError):
+            service.verify(_context())
+    else:
+        with pytest.raises(EducationRateLimitExceededError):
+            service.activate(_context(), token="education-token", institution="Dify University", role="Student")
 
-    verification_rate_limiter.increment_rate_limit.assert_not_called()
-    education.verify.assert_not_called()
-
-
-def test_activate_rejects_rate_limited_request() -> None:
-    accounts = Mock(spec=AccountRepository)
-    accounts.get.return_value = _account()
-    education = Mock(spec=AccountEducationGateway)
-    activation_rate_limiter = _rate_limiter()
-    activation_rate_limiter.is_rate_limited.return_value = True
-    service = AccountEducationService(
-        accounts=accounts,
-        education=education,
-        verification_rate_limiter=_rate_limiter(),
-        activation_rate_limiter=activation_rate_limiter,
-    )
-
-    with pytest.raises(EducationRateLimitExceededError):
-        service.activate(
-            _context(),
-            token="education-token",
-            institution="Dify University",
-            role="Student",
-        )
-
-    activation_rate_limiter.increment_rate_limit.assert_not_called()
-    education.activate.assert_not_called()
+    assert [call.args[0] for call in commands.call_args_list] == ["ZREMRANGEBYSCORE", "ZCARD"]
+    verify.assert_not_called()
+    activate.assert_not_called()

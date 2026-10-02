@@ -12,7 +12,7 @@ const mockEducationStatus = vi.hoisted(() => ({
 }))
 const mockPricingModal = vi.hoisted(() => ({ isOpen: false }))
 
-vi.mock('@/next/dynamic', () => ({
+vi.mock('next/dynamic', () => ({
   default:
     () =>
     ({ expired, onClose }: { expired: boolean; onClose: () => void }) => (

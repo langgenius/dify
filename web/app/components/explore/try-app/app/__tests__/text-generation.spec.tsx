@@ -129,7 +129,7 @@ describe('TextGeneration', () => {
     it('renders loading when appData is null', () => {
       render(<TextGeneration appId="test-app-id" appData={null} />)
 
-      expect(screen.getByRole('status')).toBeInTheDocument()
+      expect(screen.getByRole('progressbar')).toBeInTheDocument()
     })
 
     it('renders loading when appParams is not available', () => {
@@ -140,7 +140,7 @@ describe('TextGeneration', () => {
 
       render(<TextGeneration appId="test-app-id" appData={createMockAppData()} />)
 
-      expect(screen.getByRole('status')).toBeInTheDocument()
+      expect(screen.getByRole('progressbar')).toBeInTheDocument()
     })
   })
 

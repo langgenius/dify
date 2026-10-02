@@ -1,6 +1,8 @@
 import type { Edge, Node } from '../types'
 import { ContextMenu } from '@langgenius/dify-ui/context-menu'
+import { detectPlatform } from '@tanstack/react-hotkeys'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { useEffect } from 'react'
 import { useNodes } from 'reactflow'
 import { PipelineInputVarType } from '@/models/pipeline'
@@ -157,6 +159,24 @@ describe('SelectionContextmenu', () => {
     mockHandleCreateSnippet.mockReset()
     mockCreateSnippetDialogRender.mockReset()
     mockWorkspacePermissionKeys.value = ['snippets.create_and_modify']
+  })
+
+  it.each([
+    { key: 'c', action: mockHandleNodesCopy },
+    { key: 'd', action: mockHandleNodesDuplicate },
+    { key: 'Delete', action: mockHandleNodesDelete },
+  ])('runs $key for the menu selection and closes the menu', async ({ key, action }) => {
+    const user = userEvent.setup()
+    renderSelectionMenu({
+      nodes: [createNode({ id: 'n1', selected: true }), createNode({ id: 'n2', selected: true })],
+      initialStoreState: { contextMenuTarget: { type: 'selection' } },
+    })
+    const item = await screen.findByRole('menuitem', { name: /common.copy/ })
+    act(() => item.focus())
+    const mod = detectPlatform() === 'mac' ? 'Meta' : 'Control'
+    await user.keyboard(key.length === 1 ? `{${mod}>}${key}{/${mod}}` : `{${key}}`)
+    expect(action).toHaveBeenCalledTimes(1)
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
   })
 
   it('should not render when selection context menu target is absent', () => {

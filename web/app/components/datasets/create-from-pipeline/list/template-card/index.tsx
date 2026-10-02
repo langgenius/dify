@@ -9,12 +9,12 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
+import { toast } from '@/app/notifications'
 import { useRouter } from '@/next/navigation'
 import { useCreatePipelineDatasetFromCustomized } from '@/service/knowledge/use-create-dataset'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
@@ -37,7 +37,7 @@ type TemplateCardProps = {
 }
 
 const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCardProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetPipeline'])
   const { push } = useRouter()
   const [showEditModal, setShowEditModal] = useState(false)
   const [showDeleteConfirm, setShowConfirmDelete] = useState(false)

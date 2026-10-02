@@ -1,9 +1,9 @@
 import type { BuiltInMetadataItem, MetadataItemWithValue } from '../types'
 import type { FullDocumentDetail } from '@/models/datasets'
-import { toast } from '@langgenius/dify-ui/toast'
 import { get } from 'es-toolkit/compat'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { useDatasetDetailContext } from '@/context/dataset-detail'
 import { useLanguages, useMetadataMap } from '@/hooks/use-metadata'
 import {
@@ -21,7 +21,7 @@ type Props = Readonly<{
   docDetail: FullDocumentDetail
 }>
 const useMetadataDocument = ({ datasetId, documentId, docDetail }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const { dataset } = useDatasetDetailContext()
   const embeddingAvailable = !!dataset?.embedding_available
   const { mutateAsync } = useBatchUpdateDocMetadata()

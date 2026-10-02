@@ -2,6 +2,7 @@
 
 import { useId, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useRefWithInit } from '@/hooks/use-ref-with-init'
 
 type Options<T> = {
   items: T[]
@@ -26,11 +27,11 @@ export function useKeyboardSortable<T>({
   minIndex = 0,
   getItemLabel,
 }: Options<T>) {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
   const descriptionId = useId()
   const [session, setSession] = useState<SortSession<T> | null>(null)
   const [message, setMessage] = useState('')
-  const handlesRef = useRef(new Map<number, HTMLButtonElement>())
+  const handlesRef = useRefWithInit(() => new Map<number, HTMLButtonElement>())
   const pendingFocusRef = useRef<number | null>(null)
   const current =
     session?.source === items && !disabled && session.minIndex === minIndex ? session : null

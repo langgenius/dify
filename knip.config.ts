@@ -33,7 +33,7 @@ const config: KnipConfig = {
         '!vitest.setup.ts!',
       ],
       ignore: ['public/**'],
-      ignoreFiles: ['i18n-config/locale-resources/*.ts'],
+      ignoreFiles: ['i18n/locale-resources/*.ts'],
       ignoreDependencies: ['@iconify-json/*', '@storybook/addon-onboarding'],
     },
   },

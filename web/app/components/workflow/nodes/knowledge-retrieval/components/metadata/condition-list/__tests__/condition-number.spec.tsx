@@ -27,7 +27,7 @@ describe('numeric metadata condition', () => {
     const onChange = vi.fn()
     render(<NumericCondition onChange={onChange} />)
     const input = screen.getByRole('textbox', {
-      name: 'workflow.nodes.knowledgeRetrieval.metadata.panel.placeholder',
+      name: 'workflowModels.nodes.knowledgeRetrieval.metadata.panel.placeholder',
     })
     expect(input).toHaveValue('0')
     await user.clear(input)

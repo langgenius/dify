@@ -37,7 +37,7 @@ const DatasetCardModals = ({
   onConfirmDelete,
   onSuccess,
 }: DatasetCardModalsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'dataset'])
 
   return (
     <>

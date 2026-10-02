@@ -1,13 +1,13 @@
-import type { DifyWorld } from '../../support/world'
+import type { DifyWorld } from '../../support/world.ts'
 import { Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import { agentBuilderTestMaterials } from '../../agent-v2/support/test-materials'
+import { agentBuilderTestMaterials } from '../../agent-v2/support/test-materials.ts'
 import {
   expectAgentConfigFileHidden,
   expectAgentConfigFileSaved,
   expectAgentConfigFileVisible,
   uploadAgentConfigFile,
-} from './configure-helpers'
+} from './configure-helpers.ts'
 
 When('I upload the small Agent v2 file from the Files section', async function (this: DifyWorld) {
   await uploadAgentConfigFile(this, 'smallFile')

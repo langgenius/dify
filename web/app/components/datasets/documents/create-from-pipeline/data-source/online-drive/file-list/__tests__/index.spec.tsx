@@ -1,5 +1,5 @@
 import type { OnlineDriveFile } from '@/models/pipeline'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { OnlineDriveFileType } from '@/models/pipeline'
@@ -114,9 +114,7 @@ describe('FileList', () => {
       const props = createDefaultProps({ isLoading: true, fileList: [] })
 
       const { container } = render(<FileList {...props} />)
-
-      // Assert - Loading component should be rendered with spin-animation class
-      expect(container.querySelector('.spin-animation')).toBeInTheDocument()
+      expect(within(container).queryByRole('progressbar')).toBeInTheDocument()
     })
 
     it('should show empty folder state when not loading and fileList is empty', () => {
@@ -202,9 +200,7 @@ describe('FileList', () => {
         const props = createDefaultProps({ isLoading: true, fileList: [] })
 
         const { container } = render(<FileList {...props} />)
-
-        // Assert - Loading component with spin-animation class
-        expect(container.querySelector('.spin-animation')).toBeInTheDocument()
+        expect(within(container).queryByRole('progressbar')).toBeInTheDocument()
       })
 
       it('should show loading indicator at bottom when isLoading is true with files', () => {
@@ -509,7 +505,7 @@ describe('FileList', () => {
       const { container } = render(<FileList {...props} />)
 
       if (isLoading && fileCount === 0)
-        expect(container.querySelector('.spin-animation')).toBeInTheDocument()
+        expect(within(container).queryByRole('progressbar')).toBeInTheDocument()
       else if (!isLoading && fileCount === 0)
         expect(screen.getByText('datasetPipeline.onlineDrive.emptyFolder')).toBeInTheDocument()
       else expect(screen.getByText('file-0.txt')).toBeInTheDocument()

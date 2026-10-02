@@ -1,4 +1,6 @@
 'use client'
+
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
 import type { ChatItemInTree } from '../../base/chat/types'
 import type {
@@ -15,7 +17,6 @@ import type {
   CompletionConversationsResponse,
   LogAnnotation,
 } from '@/models/log'
-import type { App } from '@/types/app'
 import { HandThumbDownIcon, HandThumbUpIcon } from '@heroicons/react/24/outline'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -30,7 +31,6 @@ import {
 } from '@langgenius/dify-ui/drawer'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
-import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiCloseLine, RiEditFill } from '@remixicon/react'
 import { useQuery } from '@tanstack/react-query'
@@ -42,16 +42,15 @@ import { parseAsString, useQueryState } from 'nuqs'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useShallow } from 'zustand/react/shallow'
 import ModelInfo from '@/app/components/app/log/model-info'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import TextGeneration from '@/app/components/app/text-generate/item'
 import AgentLogModal from '@/app/components/base/agent-log-modal'
 import Chat from '@/app/components/base/chat/chat'
 import CopyIcon from '@/app/components/base/copy-icon'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import MessageLogModal from '@/app/components/base/message-log-modal'
 import { WorkflowContextProvider } from '@/app/components/workflow/context'
+import { toast } from '@/app/notifications'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useTimestamp from '@/hooks/use-timestamp'
@@ -80,7 +79,6 @@ import {
 } from './list-utils'
 import VarPanel from './var-panel'
 
-type AppStoreState = ReturnType<typeof useAppStore.getState>
 type ConversationListItem = ChatConversationGeneralDetail | CompletionConversationGeneralDetail
 type ConversationSelection = ConversationListItem | { id: string; isPlaceholder?: true }
 
@@ -89,7 +87,7 @@ dayjs.extend(timezone)
 
 type IConversationList = {
   logs?: ChatConversationsResponse | CompletionConversationsResponse
-  appDetail: App
+  appDetail: AppDetailWithSite
   onRefresh: () => void
 }
 
@@ -158,7 +156,7 @@ const statusTdRender = (statusCount: StatusCount) => {
 }
 
 type IDetailPanel = {
-  appDetail: App
+  appDetail: AppDetailWithSite
   detail: any
   onClose: () => void
   onFeedback: FeedbackFunc
@@ -173,30 +171,8 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
     select: (data) => data.profile.timezone ?? undefined,
   })
   const { formatTime } = useTimestamp()
-  const {
-    currentLogItem,
-    setCurrentLogItem,
-    showMessageLogModal,
-    setShowMessageLogModal,
-    showPromptLogModal,
-    setShowPromptLogModal,
-    showAgentLogModal,
-    setShowAgentLogModal,
-    currentLogModalActiveTab,
-  } = useAppStore(
-    useShallow((state: AppStoreState) => ({
-      currentLogItem: state.currentLogItem,
-      setCurrentLogItem: state.setCurrentLogItem,
-      showMessageLogModal: state.showMessageLogModal,
-      setShowMessageLogModal: state.setShowMessageLogModal,
-      showPromptLogModal: state.showPromptLogModal,
-      setShowPromptLogModal: state.setShowPromptLogModal,
-      showAgentLogModal: state.showAgentLogModal,
-      setShowAgentLogModal: state.setShowAgentLogModal,
-      currentLogModalActiveTab: state.currentLogModalActiveTab,
-    })),
-  )
-  const { t } = useTranslation()
+  const [selectedLogItem, setSelectedLogItem] = useState<IChatItem>()
+  const { t } = useTranslation(['appLog', 'common'])
   const [hasMore, setHasMore] = useState(true)
   const [varValues, setVarValues] = useState<Record<string, string>>({})
   const isLoadingRef = useRef(false)
@@ -426,7 +402,13 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
 
   const isChatMode = appDetail.mode !== AppModeEnum.COMPLETION
   const isAdvanced = appDetail.mode === AppModeEnum.ADVANCED_CHAT
-  const shouldShowPromptLogModal = showPromptLogModal && !!currentLogItem?.log
+  const logKind = selectedLogItem?.workflow_run_id
+    ? 'workflow'
+    : selectedLogItem?.agent_thoughts?.length
+      ? 'agent'
+      : selectedLogItem?.log
+        ? 'prompt'
+        : undefined
 
   const varList = getDetailVarList(detail, varValues)
   const message_files = getCompletionMessageFiles(detail, isChatMode)
@@ -517,7 +499,6 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
               onRetry={noop}
               supportFeedback
               feedback={detail.message.feedbacks.find((item: any) => item.from_source === 'admin')}
-              hideLogAction
               onFeedback={(feedback) => onFeedback(detail.message.id, feedback)}
               isShowTextToSpeech
               siteInfo={null}
@@ -546,9 +527,8 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
               onAnnotationRemoved={handleAnnotationRemoved}
               onFeedback={onFeedback}
               noChatInput
-              showPromptLog={isAdvanced}
+              onOpenLog={isAdvanced ? setSelectedLogItem : undefined}
               hideProcessDetail
-              hideLogModal
               chatContainerInnerClassName="px-3"
               switchSibling={switchSibling}
             />
@@ -588,9 +568,8 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
                 onAnnotationRemoved={handleAnnotationRemoved}
                 onFeedback={onFeedback}
                 noChatInput
-                showPromptLog={isAdvanced}
+                onOpenLog={isAdvanced ? setSelectedLogItem : undefined}
                 hideProcessDetail
-                hideLogModal
                 chatContainerInnerClassName="px-3"
                 switchSibling={switchSibling}
               />
@@ -606,38 +585,30 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
           </div>
         )}
       </div>
-      {showMessageLogModal && (
+      {logKind === 'workflow' && (
         <WorkflowContextProvider>
           <MessageLogModal
+            appId={appDetail.id}
             width={width}
-            currentLogItem={currentLogItem}
-            onCancel={() => {
-              setCurrentLogItem()
-              setShowMessageLogModal(false)
-            }}
-            defaultTab={currentLogModalActiveTab}
+            currentLogItem={selectedLogItem}
+            onCancel={() => setSelectedLogItem(undefined)}
           />
         </WorkflowContextProvider>
       )}
-      {showAgentLogModal && (
+      {logKind === 'agent' && (
         <AgentLogModal
+          appId={appDetail.id}
           floating
           width={width}
-          currentLogItem={currentLogItem}
-          onCancel={() => {
-            setCurrentLogItem()
-            setShowAgentLogModal(false)
-          }}
+          currentLogItem={selectedLogItem}
+          onCancel={() => setSelectedLogItem(undefined)}
         />
       )}
-      {shouldShowPromptLogModal && (
+      {logKind === 'prompt' && (
         <PromptLogModal
           width={width}
-          currentLogItem={currentLogItem}
-          onCancel={() => {
-            setCurrentLogItem()
-            setShowPromptLogModal(false)
-          }}
+          currentLogItem={selectedLogItem}
+          onCancel={() => setSelectedLogItem(undefined)}
         />
       )}
     </div>
@@ -645,7 +616,7 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
 }
 
 type ConversationDetailProps = {
-  appDetail: App
+  appDetail: AppDetailWithSite
   conversationId?: string
   onClose: () => void
 }
@@ -661,7 +632,7 @@ const CompletionConversationDetailComp: FC<ConversationDetailProps> = ({
   // Text Generator App Session Details Including Message List
   const { data: conversationDetail, refetch: conversationDetailMutate } =
     useCompletionConversationDetail(appDetail.id, conversationId)
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appLog', 'common'])
 
   const handleFeedback = async (
     mid: string,
@@ -706,6 +677,7 @@ const CompletionConversationDetailComp: FC<ConversationDetailProps> = ({
 
   return (
     <DetailPanel
+      key={`${appDetail.id}:${conversationId}`}
       appDetail={appDetail}
       detail={conversationDetail}
       onClose={onClose}
@@ -724,7 +696,7 @@ const ChatConversationDetailComp: FC<ConversationDetailProps> = ({
   onClose,
 }) => {
   const { data: conversationDetail } = useChatConversationDetail(appDetail.id, conversationId)
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appLog', 'common'])
 
   const handleFeedback = async (
     mid: string,
@@ -767,6 +739,7 @@ const ChatConversationDetailComp: FC<ConversationDetailProps> = ({
 
   return (
     <DetailPanel
+      key={`${appDetail.id}:${conversationId}`}
       appDetail={appDetail}
       detail={conversationDetail}
       onClose={onClose}
@@ -780,7 +753,7 @@ const ChatConversationDetailComp: FC<ConversationDetailProps> = ({
  * Conversation list component including basic information
  */
 const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appLog'])
   const { formatTime } = useTimestamp()
   const [conversationIdInUrl, setConversationIdInUrl] = useQueryState(
     'conversation_id',
@@ -799,14 +772,6 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
   const pendingConversationCacheRef = useRef<ConversationSelection | undefined>(undefined)
   const isChatMode = appDetail.mode !== AppModeEnum.COMPLETION // Whether the app is a chat app
   const isChatflow = appDetail.mode === AppModeEnum.ADVANCED_CHAT // Whether the app is a chatflow app
-  const { setShowPromptLogModal, setShowAgentLogModal, setShowMessageLogModal } = useAppStore(
-    useShallow((state: AppStoreState) => ({
-      setShowPromptLogModal: state.setShowPromptLogModal,
-      setShowAgentLogModal: state.setShowAgentLogModal,
-      setShowMessageLogModal: state.setShowMessageLogModal,
-    })),
-  )
-
   const activeConversationId =
     conversationIdInUrl ?? pendingConversationIdRef.current ?? currentConversation?.id
 
@@ -873,22 +838,12 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
     onRefresh()
     setShowDrawer(false)
     setCurrentConversation(undefined)
-    setShowPromptLogModal(false)
-    setShowAgentLogModal(false)
-    setShowMessageLogModal(false)
     pendingConversationIdRef.current = null
     pendingConversationCacheRef.current = undefined
     closingConversationIdRef.current = conversationIdInUrl ?? null
 
     if (conversationIdInUrl) void setConversationIdInUrl(null, { history: 'replace' })
-  }, [
-    conversationIdInUrl,
-    onRefresh,
-    setConversationIdInUrl,
-    setShowAgentLogModal,
-    setShowMessageLogModal,
-    setShowPromptLogModal,
-  ])
+  }, [conversationIdInUrl, onRefresh, setConversationIdInUrl])
 
   // Annotated data needs to be highlighted
   const renderTdValue = (
@@ -898,7 +853,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
     annotation?: LogAnnotation,
   ) => {
     return (
-      <Tooltip>
+      <Tooltip disabled={!isHighlight || isChatMode}>
         <TooltipTrigger
           render={
             <div
@@ -912,17 +867,17 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
             </div>
           }
         />
-        <TooltipContent className={isHighlight && !isChatMode ? '' : 'hidden!'}>
-          <span className="inline-flex items-center text-xs text-text-tertiary">
-            <RiEditFill className="mr-1 size-3" />
-            {`${t(($) => $['detail.annotationTip'], { ns: 'appLog', user: annotation?.account?.name })} ${formatTime(annotation?.created_at || dayjs().unix(), 'MM-DD hh:mm A')}`}
+        <TooltipContent className="flex items-center gap-1">
+          <RiEditFill aria-hidden className="size-3 shrink-0" />
+          <span>
+            {`${t(($) => $['detail.annotationTip'], { ns: 'appLog', user: annotation?.account?.name ?? '-' })} ${formatTime(annotation?.created_at || dayjs().unix(), 'MM-DD hh:mm A')}`}
           </span>
         </TooltipContent>
       </Tooltip>
     )
   }
 
-  if (!logs) return <Loading />
+  if (!logs) return <LoadingPlaceholder />
 
   return (
     <div className="relative mt-2 grow overflow-x-auto">

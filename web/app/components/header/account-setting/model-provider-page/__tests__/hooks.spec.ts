@@ -8,7 +8,7 @@ import type {
   ModelProvider,
 } from '../declarations'
 import { act, renderHook } from '@testing-library/react'
-import { useLocale } from '@/context/i18n'
+import { useLocale } from '#i18n'
 import { fetchDefaultModal } from '@/service/common'
 import { consoleQuery } from '@/service/console'
 import {
@@ -36,7 +36,8 @@ import {
   useUpdateModelProviders,
 } from '../hooks'
 
-vi.mock('@/context/i18n', () => ({
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: vi.fn(() => 'en-US'),
 }))
 
@@ -187,7 +188,7 @@ describe('hooks', () => {
       expect(result.current[0]).toBeUndefined()
     })
 
-    it('should return undefined when provider not found in model list', () => {
+    it('should preserve the default model when its provider is missing from the model list', () => {
       const defaultModel = {
         provider: {
           provider: 'anthropic',
@@ -201,17 +202,17 @@ describe('hooks', () => {
         useSystemDefaultModelAndModelList(defaultModel, modelList),
       )
 
-      expect(result.current[0]).toBeUndefined()
+      expect(result.current[0]).toEqual({ model: 'claude-3', provider: 'anthropic' })
     })
 
-    it('should return undefined when model not found in provider', () => {
+    it('should preserve the default model when it is missing from its provider', () => {
       const defaultModel = createMockDefaultModel('gpt-5')
       const modelList = createMockModelList()
       const { result } = renderHook(() =>
         useSystemDefaultModelAndModelList(defaultModel, modelList),
       )
 
-      expect(result.current[0]).toBeUndefined()
+      expect(result.current[0]).toEqual({ model: 'gpt-5', provider: 'openai' })
     })
 
     it('should update default model state', () => {
@@ -245,11 +246,28 @@ describe('hooks', () => {
       expect(result.current[0]).toEqual({ model: 'gpt-4', provider: 'openai' })
     })
 
-    it('should handle empty model list', () => {
+    it('should preserve the default model when the model list is empty', () => {
       const defaultModel = createMockDefaultModel()
       const { result } = renderHook(() => useSystemDefaultModelAndModelList(defaultModel, []))
 
-      expect(result.current[0]).toBeUndefined()
+      expect(result.current[0]).toEqual({ model: 'gpt-3.5-turbo', provider: 'openai' })
+    })
+
+    it('should preserve the selected model when a refreshed model list removes it', () => {
+      const defaultModel = createMockDefaultModel()
+      const modelList = createMockModelList()
+      const { result, rerender } = renderHook(
+        ({ modelList }) => useSystemDefaultModelAndModelList(defaultModel, modelList),
+        { initialProps: { modelList } },
+      )
+      const selectedModel = { model: 'gpt-4', provider: 'openai' }
+      act(() => {
+        result.current[1](selectedModel)
+      })
+
+      rerender({ modelList: [] })
+
+      expect(result.current[0]).toEqual(selectedModel)
     })
   })
 

@@ -13,9 +13,9 @@ import {
 } from '@langgenius/dify-ui/scroll-area'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '#i18n'
 import { SearchInput } from '@/app/components/base/search-input'
-import { useLocale } from '@/context/i18n'
-import { getAccessControlTemplateLanguage } from '@/i18n-config/language'
+import { getAccessControlTemplateLanguage } from '@/i18n/language'
 import { useWorkspaceRoleList } from '@/service/access-control/use-workspace-roles'
 
 type WorkspaceRoleCheckboxListProps = {
@@ -69,7 +69,7 @@ const WorkspaceRoleCheckboxList = ({
   onSelectedRolesChange,
   includeOwner = false,
 }: WorkspaceRoleCheckboxListProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['permission', 'workspaceMembers'])
   const locale = useLocale()
   const [keyword, setKeyword] = useState('')
   const containerRef = useRef<HTMLDivElement>(null)
@@ -189,7 +189,7 @@ const WorkspaceRoleCheckboxList = ({
 
     if (legacyRoleDescriptionKey)
       return t(($) => $[LEGACY_ROLE_DESCRIPTION_KEY_MAP[legacyRoleDescriptionKey]], {
-        ns: 'common',
+        ns: 'workspaceMembers',
       })
 
     return t(($) => $['role.noDescription'], { ns: 'permission' })

@@ -15,7 +15,7 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({}))
+vi.mock('@/app/notifications', () => ({}))
 
 // Mock CodeEditor to trigger onChange easily
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({

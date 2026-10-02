@@ -20,7 +20,7 @@ import {
   AgentOrchestrateReadOnlyContext,
   AgentOrchestrateViewingVersionContext,
 } from '../../read-only-context'
-import { AgentTools } from '../index'
+import { AgentTemplateTools, AgentTools } from '../index'
 
 const toolProviderState = vi.hoisted(() => ({
   builtInTools: [] as ToolWithProvider[] | undefined,
@@ -70,7 +70,7 @@ vi.mock('@/app/components/workflow/nodes/_base/components/install-plugin-button'
     onSuccess?: () => void
   }) => (
     <button type="button" data-unique-identifier={uniqueIdentifier} onClick={onSuccess}>
-      workflow.nodes.agent.pluginInstaller.install
+      workflowAgent.nodes.agent.pluginInstaller.install
     </button>
   ),
 }))
@@ -490,9 +490,11 @@ function renderAgentToolsWithStore(initialDraft: AgentSoulConfigFormState = agen
 
 function renderReadonlyAgentTools({
   initialDraft = agentToolsDraft,
+  template = false,
   viewingVersion = false,
 }: {
   initialDraft?: AgentSoulConfigFormState
+  template?: boolean
   viewingVersion?: boolean
 } = {}) {
   const queryClient = new QueryClient({
@@ -509,7 +511,7 @@ function renderReadonlyAgentTools({
       <AgentComposerProvider initialDraft={initialDraft}>
         <AgentOrchestrateViewingVersionContext value={viewingVersion}>
           <AgentOrchestrateReadOnlyContext value>
-            <AgentTools />
+            {template ? <AgentTemplateTools /> : <AgentTools />}
           </AgentOrchestrateReadOnlyContext>
         </AgentOrchestrateViewingVersionContext>
       </AgentComposerProvider>
@@ -674,6 +676,23 @@ describe('AgentTools', () => {
   })
 
   describe('Display Metadata', () => {
+    it('shows a template tool icon from its published provider reference without marketplace metadata', () => {
+      const draft = {
+        ...reflectedUninstalledPluginDraft,
+        tools: reflectedUninstalledPluginDraft.tools.map((tool) => ({
+          ...tool,
+          pluginId: undefined,
+          providerType: CollectionType.builtIn,
+        })),
+      } satisfies AgentSoulConfigFormState
+
+      renderReadonlyAgentTools({ initialDraft: draft, template: true })
+
+      expect(
+        screen.getByText('https://marketplace.example.com/langgenius/google/icon'),
+      ).toBeInTheDocument()
+    })
+
     it('should enrich reflected provider tools with provider icon and localized names', async () => {
       const user = userEvent.setup()
       toolProviderState.builtInTools = [
@@ -721,7 +740,7 @@ describe('AgentTools', () => {
       ).not.toBeInTheDocument()
 
       const installButton = screen.getByRole('button', {
-        name: 'workflow.nodes.agent.pluginInstaller.install',
+        name: 'workflowAgent.nodes.agent.pluginInstaller.install',
       })
       expect(installButton).toHaveAttribute(
         'data-unique-identifier',
@@ -752,7 +771,7 @@ describe('AgentTools', () => {
       ).toBeInTheDocument()
       expect(
         screen.getByRole('button', {
-          name: 'workflow.nodes.agent.pluginInstaller.install',
+          name: 'workflowAgent.nodes.agent.pluginInstaller.install',
         }),
       ).toHaveAttribute('data-unique-identifier', 'langgenius/google:0.0.1@fallback')
     })

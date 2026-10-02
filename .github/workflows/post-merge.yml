@@ -36,7 +36,6 @@ jobs:
               - 'e2e/package.json'
               - 'e2e/test-env.ts'
               - 'e2e/tsconfig.json'
-              - 'e2e/tsx-register.js'
               - 'package.json'
               - 'pnpm-lock.yaml'
               - '.github/workflows/post-merge.yml'
@@ -100,8 +99,8 @@ jobs:
               - 'web/app/components/workflow/hooks/use-nodes-sync-draft.ts'
               - 'web/app/components/workflow/nodes/_base/**'
               - 'web/app/components/workflow/nodes/agent-v2/**'
-              - 'web/i18n/en-US/agent-v-2.json'
-              - 'web/i18n/en-US/common.json'
+              - 'web/i18n/locales/en-US/agent-v-2.json'
+              - 'web/i18n/locales/en-US/common.json'
               - 'web/service/base.ts'
               - 'web/service/console/**'
               - 'web/service/share.ts'
@@ -114,6 +113,9 @@ jobs:
     name: External Runtime E2E
     needs: check-changes
     if: needs.check-changes.outputs.external-e2e-changed == 'true'
+    permissions:
+      actions: read
+      contents: read
     uses: ./.github/workflows/web-e2e.yml
     with:
       run-external-runtime: true

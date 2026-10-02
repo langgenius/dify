@@ -1,13 +1,12 @@
-import type { FC } from 'react'
-import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import { toast } from '@langgenius/dify-ui/toast'
+import { Dialog, DialogBackdrop, DialogPopup, DialogPortal } from '@langgenius/dify-ui/dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useHotkey } from '@tanstack/react-hotkeys'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { downloadUrl } from '@/utils/download'
+import { toast } from '@/app/notifications'
+import { downloadBlob } from '@/utils/download'
 
 type ImagePreviewProps = {
   url: string
@@ -50,8 +49,9 @@ const fetchImageAsPng = async (url: string): Promise<Blob> => {
   }
 }
 
-const ImagePreview: FC<ImagePreviewProps> = ({ url, title, onCancel, onPrev, onNext }) => {
-  const { t } = useTranslation()
+function ImagePreviewContent({ url, title, onCancel, onPrev, onNext }: ImagePreviewProps) {
+  const previewRef = useRef<HTMLDivElement>(null)
+  const { t } = useTranslation(['common', 'workflow'])
   const [scale, setScale] = useState(1)
   const [position, setPosition] = useState({ x: 0, y: 0 })
   const [isDragging, setIsDragging] = useState(false)
@@ -72,13 +72,25 @@ const ImagePreview: FC<ImagePreviewProps> = ({ url, title, onCancel, onPrev, onN
     }
   }
 
-  const downloadImage = () => {
-    // Open in a new window, considering the case when the page is inside an iframe
-    if (url.startsWith('http') || url.startsWith('/') || url.startsWith('data:image')) {
-      downloadUrl({ url, fileName: title, target: '_blank' })
-      return
+  const downloadImage = async () => {
+    try {
+      const response = await fetch(isBase64(url) ? `data:image/png;base64,${url}` : url)
+      if (!response.ok) throw new Error('Unable to load image')
+      const data = await response.blob()
+      const extensions: Record<string, string> = {
+        'image/png': 'png',
+        'image/jpeg': 'jpg',
+        'image/gif': 'gif',
+        'image/webp': 'webp',
+        'image/avif': 'avif',
+        'image/svg+xml': 'svg',
+      }
+      const extension = extensions[data.type]
+      const fileName = title.trim() || (extension ? `image.${extension}` : 'image')
+      downloadBlob({ data, fileName })
+    } catch {
+      toast.error(t(($) => $['operation.downloadFailed'], { ns: 'common' }))
     }
-    toast.error(`Unable to open image: ${url}`)
   }
 
   const zoomIn = () => {
@@ -172,10 +184,18 @@ const ImagePreview: FC<ImagePreviewProps> = ({ url, title, onCancel, onPrev, onN
     }
   }, [handleMouseUp])
 
-  useHotkey('ArrowUp', zoomIn)
-  useHotkey('ArrowDown', zoomOut)
-  useHotkey('ArrowLeft', onPrev || noop)
-  useHotkey('ArrowRight', onNext || noop)
+  useHotkey('ArrowUp', zoomIn, { target: previewRef })
+  useHotkey('ArrowDown', zoomOut, { target: previewRef })
+  useHotkey('ArrowLeft', () => onPrev?.(), {
+    target: previewRef,
+    enabled: !!onPrev,
+    requireReset: true,
+  })
+  useHotkey('ArrowRight', () => onNext?.(), {
+    target: previewRef,
+    enabled: !!onNext,
+    requireReset: true,
+  })
 
   const copyImageLabel = t(($) => $['operation.copyImage'], { ns: 'common' })
   const zoomOutLabel = t(($) => $['operation.zoomOut'], { ns: 'common' })
@@ -185,16 +205,12 @@ const ImagePreview: FC<ImagePreviewProps> = ({ url, title, onCancel, onPrev, onN
   const cancelLabel = t(($) => $['operation.cancel'], { ns: 'common' })
 
   return (
-    <Dialog
-      open
-      onOpenChange={(open) => {
-        if (!open) onCancel()
-      }}
-      disablePointerDismissal
-    >
-      <DialogContent
-        className="image-preview-container inset-0! top-0! left-0! flex h-dvh! max-h-none! w-screen! max-w-none! translate-0! items-center justify-center overflow-hidden! rounded-none! border-none! bg-black/80 p-8! shadow-none!"
-        backdropProps={{ className: 'bg-transparent!' }}
+    <>
+      <DialogBackdrop className="bg-transparent!" />
+      <DialogPopup
+        ref={previewRef}
+        aria-label={title.trim() || t(($) => $['common.preview'], { ns: 'workflow' })}
+        className="image-preview-container fixed inset-0! top-0! left-0! flex h-dvh! max-h-none! w-screen! max-w-none! translate-0! items-center justify-center overflow-hidden! rounded-none! border-none! bg-black/80 p-8! shadow-none!"
       >
         <div
           data-testid="image-preview-container"
@@ -315,7 +331,23 @@ const ImagePreview: FC<ImagePreviewProps> = ({ url, title, onCancel, onPrev, onN
           />
           <TooltipContent>{cancelLabel}</TooltipContent>
         </Tooltip>
-      </DialogContent>
+      </DialogPopup>
+    </>
+  )
+}
+
+function ImagePreview(props: ImagePreviewProps) {
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) props.onCancel()
+      }}
+      disablePointerDismissal
+    >
+      <DialogPortal>
+        <ImagePreviewContent {...props} />
+      </DialogPortal>
     </Dialog>
   )
 }

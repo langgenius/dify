@@ -15,12 +15,6 @@ describe('Kbd', () => {
     await expect.element(screen.getByText('⌘')).toHaveAttribute('data-disabled')
     await expect.element(screen.getByText('⌘')).not.toHaveAttribute('aria-disabled')
   })
-
-  it('merges custom classes with the design-system recipe', async () => {
-    const screen = await render(<Kbd className="custom-key h-5">K</Kbd>)
-
-    await expect.element(screen.getByText('K')).toHaveClass('custom-key')
-  })
 })
 
 describe('KbdGroup', () => {

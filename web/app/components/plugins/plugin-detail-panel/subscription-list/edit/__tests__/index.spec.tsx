@@ -14,7 +14,7 @@ import { OAuthEditModal } from '../oauth-edit-modal'
 // ==================== Mock Setup ====================
 
 const mockToastNotify = vi.fn()
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: Object.assign(
     (message: string, options?: { type?: string }) =>
       mockToastNotify({ type: options?.type, message }),
@@ -224,7 +224,7 @@ const createPluginDetail = (overrides: Partial<PluginDetail> = {}): PluginDetail
     endpoint: { settings: [], endpoints: [] },
     model: {},
     tags: [],
-    agent_strategy: {},
+    agent_strategy: null,
     meta: { version: '1.0.0' },
     trigger: {
       events: [],

@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-import hashlib
 import logging
-import os
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import BinaryIO, Protocol
+from typing import BinaryIO
+from urllib.parse import urlsplit
 from uuid import uuid4
 
+from pydantic import ValidationError
 from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 
@@ -16,51 +17,43 @@ from configs import dify_config
 from constants.model_template import default_app_templates
 from core.db.session_factory import session_factory
 from extensions.ext_storage import storage
-from extensions.storage.storage_type import StorageType
 from libs.datetime_utils import naive_utc_now
 from models import Account
 from models.agent import (
-    Agent,
     AgentConfigDraft,
     AgentConfigDraftType,
     AgentConfigRevisionOperation,
     AgentConfigSnapshot,
-    AgentScope,
+    AgentIconType,
     AgentSource,
-    AgentStatus,
 )
 from models.agent_config_entities import AgentSoulConfig
-from models.enums import CreatorUserRole
-from models.model import App, AppMode, AppModelConfig, UploadFile
-from models.tools import ToolFile
-from services.agent.composer_validator import ComposerConfigValidator
-from services.agent.dsl_entities import AgentPackage, AgentPackageMetadata, make_portable_agent_soul
+from models.model import App, AppMode, AppModelConfig, IconType, UploadFile
+from services.agent.dsl_entities import AgentAppDsl, AgentPackage, AgentPackageMetadata
 from services.agent.dsl_service import AgentDslService
 from services.agent.errors import (
     AgentNameConflictError,
-    InvalidComposerConfigError,
     InvalidRosterAgentPackageError,
-    PlaintextSecretNotAllowedError,
     RosterAgentPackageImportFailedError,
     RosterAgentPackageResourceUnavailableError,
     RosterAgentPackageTooLargeError,
 )
-from services.agent.roster_package_dependencies import check_package_dependencies
-from services.agent.roster_package_entities import PreparedRosterAgentPackage
+from services.agent.package_resource_importer import AgentPackageResourceImporter, _Storage
+from services.agent.roster_package_entities import AgentPackageResources, PackageIcon
+from services.agent.roster_package_exporter import RosterAgentPackageExporter
 from services.agent.roster_package_reader import RosterAgentPackageReader
 from services.agent.roster_service import AgentRosterService
-from services.agent.skill_package_service import SkillPackageError, SkillPackageService
 from services.app_creation_records import create_installed_app_record, create_site_record
+from services.app_dsl_service import AppDslService
+from services.app_import_source import download_app_import_source
 from services.app_service import AppService
 from services.entities.dsl_entities import DslImportWarning
-from services.file_service import FileService
-from services.icon_configuration import DEFAULT_ICON, DEFAULT_ICON_BACKGROUND, DEFAULT_ICON_TYPE
+from services.entities.site_dsl import SiteDsl, apply_site_dsl
+from services.feature_service import FeatureService
+from services.icon_configuration import DEFAULT_ICON, DEFAULT_ICON_BACKGROUND, DEFAULT_ICON_TYPE, is_valid_image_icon
+from services.recommended_app_package_service import RecommendedAgentPackageSource
 
 logger = logging.getLogger(__name__)
-
-
-class _Storage(Protocol):
-    def save(self, filename: str, data: bytes) -> None: ...
 
 
 @dataclass(frozen=True)
@@ -73,14 +66,73 @@ class RosterAgentPackageImportResult:
 class RosterAgentPackageImporter:
     """Commit uploaded file records before creating the Agent in a separate transaction."""
 
-    def __init__(
+    def __init__(self, *, storage_backend: _Storage = storage) -> None:
+        self._resources = AgentPackageResourceImporter(storage_backend=storage_backend)
+
+    def import_template(
         self,
         *,
-        storage_backend: _Storage = storage,
-    ) -> None:
-        self._reader = RosterAgentPackageReader()
-        self._skill_packages = SkillPackageService()
-        self._storage = storage_backend
+        source: RecommendedAgentPackageSource,
+        tenant_id: str,
+        account: Account,
+        name: str | None = None,
+        description: str | None = None,
+        icon_type: str | None = None,
+        icon: str | None = None,
+        icon_background: str | None = None,
+    ) -> RosterAgentPackageImportResult:
+        """Import a catalog-admitted published source without an outer archive."""
+        app, resources, _ = RosterAgentPackageExporter().collect(
+            tenant_id=source.tenant_id, agent_id=source.agent_id, version_id=source.version_id
+        )
+        payloads, resource_index, icons = resources.read_local_resources(app.agent.package_ref)
+
+        return self.import_collected(
+            app_dsl=app,
+            resources=resource_index,
+            icons=icons,
+            # Local payloads already passed per-resource and aggregate limits during collection.
+            read_member=lambda path, _limit: payloads[path],
+            invalid_skills={},
+            tenant_id=tenant_id,
+            account=account,
+            name=name,
+            description=description,
+            icon_type=icon_type,
+            icon=icon,
+            icon_background=icon_background,
+        )
+
+    def import_package_url(
+        self,
+        *,
+        url: str,
+        tenant_id: str,
+        account: Account,
+        name: str | None = None,
+        description: str | None = None,
+        icon_type: str | None = None,
+        icon: str | None = None,
+        icon_background: str | None = None,
+    ) -> RosterAgentPackageImportResult:
+        try:
+            parsed = urlsplit(url)
+            credential_free = not parsed.username and not parsed.password
+        except ValueError:
+            credential_free = False
+        if not credential_free:
+            raise InvalidRosterAgentPackageError("Package URL must be an HTTP(S) URL without credentials")
+        with download_app_import_source(url, max_bytes=dify_config.AGENT_PACKAGE_MAX_BYTES) as source:
+            return self.import_package(
+                source=source,
+                tenant_id=tenant_id,
+                account=account,
+                name=name,
+                description=description,
+                icon_type=icon_type,
+                icon=icon,
+                icon_background=icon_background,
+            )
 
     def import_package(
         self,
@@ -88,258 +140,158 @@ class RosterAgentPackageImporter:
         source: BinaryIO,
         tenant_id: str,
         account: Account,
+        name: str | None = None,
+        description: str | None = None,
+        icon_type: str | None = None,
+        icon: str | None = None,
+        icon_background: str | None = None,
     ) -> RosterAgentPackageImportResult:
-        with self._reader.read(source) as package:
+        with RosterAgentPackageReader().read(source) as package:
             if len(package.apps) != 1:
                 raise InvalidRosterAgentPackageError("Import requires exactly one Agent App")
-            app_dsl = next(iter(package.apps.values()))
-            agent_package = app_dsl.package
-            agent_package.soul = make_portable_agent_soul(agent_package.soul)
-            self._validate_supported_resources(package, soul=agent_package.soul)
-            try:
-                ComposerConfigValidator.validate_importable_agent_soul(agent_package.soul)
-            except (InvalidComposerConfigError, PlaintextSecretNotAllowedError) as exc:
-                raise InvalidRosterAgentPackageError("Roster Agent package Soul is invalid") from exc
+            return self.import_collected(
+                app_dsl=next(iter(package.apps.values())),
+                resources=package.manifest,
+                icons=package.manifest.icons,
+                read_member=lambda path, limit: RosterAgentPackageReader().read_member_bytes(
+                    package, path, max_bytes=limit
+                ),
+                invalid_skills=package.invalid_skills,
+                tenant_id=tenant_id,
+                account=account,
+                name=name,
+                description=description,
+                icon_type=icon_type,
+                icon=icon,
+                icon_background=icon_background,
+            )
 
-            check_package_dependencies(tenant_id=tenant_id, account=account, dependencies=app_dsl.dependencies)
+    def import_collected(
+        self,
+        *,
+        app_dsl: AgentAppDsl,
+        resources: AgentPackageResources,
+        icons: list[PackageIcon],
+        read_member: Callable[[str, int], bytes],
+        invalid_skills: dict[str, str],
+        tenant_id: str,
+        account: Account,
+        name: str | None = None,
+        description: str | None = None,
+        icon_type: str | None = None,
+        icon: str | None = None,
+        icon_background: str | None = None,
+    ) -> RosterAgentPackageImportResult:
+        if icon_type is not None:
             try:
-                self._ensure_name_available(tenant_id=tenant_id, name=agent_package.metadata.name)
-                soul, skill_warnings = self._upload_resources(
-                    package=package,
-                    agent_package=agent_package,
-                    tenant_id=tenant_id,
-                    account_id=account.id,
-                )
-                with session_factory.create_session() as session:
-                    resolved_soul, warnings = AgentDslService(session).resolve_package_soul(
-                        tenant_id=tenant_id,
-                        package=AgentPackage(metadata=agent_package.metadata, soul=soul),
-                        package_path="agent",
-                    )
-                warnings = [*skill_warnings, *warnings]
-                app_id, agent_id = self._persist_import(
-                    tenant_id=tenant_id,
-                    account=account,
-                    metadata=agent_package.metadata,
-                    soul=resolved_soul,
-                )
-            except Exception as exc:
-                if isinstance(exc, IntegrityError) and "roster_unique_name" in str(exc):
-                    raise AgentNameConflictError() from exc
-                if isinstance(
-                    exc,
-                    (
-                        AgentNameConflictError,
-                        InvalidRosterAgentPackageError,
-                        RosterAgentPackageTooLargeError,
-                        RosterAgentPackageResourceUnavailableError,
-                    ),
-                ):
-                    raise
-                raise RosterAgentPackageImportFailedError() from exc
+                IconType(icon_type)
+            except ValueError as exc:
+                raise InvalidRosterAgentPackageError("Invalid icon type") from exc
+        with session_factory.create_session() as session:
+            if not is_valid_image_icon(session=session, tenant_id=tenant_id, icon_type=icon_type, icon=icon):
+                raise InvalidRosterAgentPackageError("Image icon must belong to the current workspace")
+        agent_package = app_dsl.package
+        self._resources.validate(resources=resources, agent_package=agent_package)
+        overrides = {
+            key: value for key, value in {"name": name, "description": description}.items() if value is not None
+        }
+        try:
+            agent_package.metadata = AgentPackageMetadata.model_validate(
+                {**agent_package.metadata.model_dump(), **overrides}
+            )
+        except ValidationError as exc:
+            raise InvalidRosterAgentPackageError("Invalid Agent metadata overrides") from exc
 
+        try:
+            # Resolve billing before uploading package members or opening the write transaction.
+            allow_premium_site_settings = app_dsl.site is None or FeatureService.can_import_premium_site_settings(
+                tenant_id
+            )
+            materialized_icons = self._resources.materialize_icon_resources(
+                read_member=read_member, icons=icons, tenant_id=tenant_id, account_id=account.id
+            )
+            if agent_package.metadata.icon_type == "image" and agent_package.metadata.icon in materialized_icons:
+                agent_package.metadata.icon = materialized_icons[agent_package.metadata.icon]
+            app_metadata = AgentPackageMetadata(
+                name=agent_package.metadata.name,
+                icon_type=app_dsl.app.get("icon_type"),
+                icon=app_dsl.app.get("icon"),
+                icon_background=app_dsl.app.get("icon_background"),
+            )
+            if app_metadata.icon_type == "image" and app_metadata.icon in materialized_icons:
+                app_metadata.icon = materialized_icons[app_metadata.icon]
+            site_data = app_dsl.site.model_copy(deep=True) if app_dsl.site is not None else None
+            if site_data is not None and site_data.icon_type == "image":
+                site_icon = site_data.icon
+                if site_icon is not None and site_icon in materialized_icons:
+                    site_data = site_data.model_copy(update={"icon": materialized_icons[site_icon]})
+            for field_name, value in {
+                "icon_type": icon_type,
+                "icon": icon,
+                "icon_background": icon_background,
+            }.items():
+                if value is not None:
+                    setattr(agent_package.metadata, field_name, value)
+                    setattr(app_metadata, field_name, value)
+            materialized, skill_warnings = self._resources.materialize_resources(
+                read_member=read_member,
+                invalid_skills=invalid_skills,
+                resources=resources,
+                agent_package=agent_package,
+                tenant_id=tenant_id,
+                account_id=account.id,
+            )
+            with session_factory.create_session() as session:
+                resolved_soul, warnings = AgentDslService(session).resolve_package_soul(
+                    tenant_id=tenant_id,
+                    package=AgentPackage(metadata=agent_package.metadata, soul=materialized.soul),
+                    package_path="agent",
+                )
+            warnings = [*skill_warnings, *warnings]
+            app_id, agent_id = self._persist_import(
+                tenant_id=tenant_id,
+                account=account,
+                metadata=agent_package.metadata,
+                app_metadata=app_metadata,
+                site_data=site_data,
+                allow_premium_site_settings=allow_premium_site_settings,
+                soul=resolved_soul,
+            )
+        except Exception as exc:
+            if isinstance(exc, IntegrityError) and "roster_unique_name" in str(exc):
+                raise AgentNameConflictError() from exc
+            if isinstance(
+                exc,
+                (
+                    AgentNameConflictError,
+                    InvalidRosterAgentPackageError,
+                    RosterAgentPackageTooLargeError,
+                    RosterAgentPackageResourceUnavailableError,
+                ),
+            ):
+                raise
+            raise RosterAgentPackageImportFailedError() from exc
+
+        try:
+            self._finalize_app(app_id=app_id, agent_id=agent_id, tenant_id=tenant_id, account=account)
+        except Exception:
+            logger.warning(
+                "Imported Agent App post-commit initialization failed: tenant_id=%s app_id=%s",
+                tenant_id,
+                app_id,
+                exc_info=True,
+            )
+        if app_dsl.dependencies:
             try:
-                self._finalize_app(app_id=app_id, agent_id=agent_id, tenant_id=tenant_id, account=account)
+                AppDslService.cache_import_dependencies(app_id=app_id, dependencies=app_dsl.dependencies)
             except Exception:
                 logger.warning(
-                    "Imported Agent App post-commit initialization failed: tenant_id=%s app_id=%s",
+                    "Imported Agent App dependency check could not be cached: tenant_id=%s app_id=%s",
                     tenant_id,
                     app_id,
                     exc_info=True,
                 )
-            return RosterAgentPackageImportResult(app_id=app_id, agent_id=agent_id, warnings=warnings)
-
-    @classmethod
-    def _validate_supported_resources(cls, package: PreparedRosterAgentPackage, *, soul: AgentSoulConfig) -> None:
-        skill_names = [item.name for item in soul.config_skills]
-        skill_names.extend(item.name for item in package.manifest.skills if item.scope == "workspace")
-        if len(skill_names) != len(set(skill_names)):
-            raise InvalidRosterAgentPackageError("Roster Agent package contains duplicate effective Skill names")
-        file_names = [item.name for item in soul.config_files]
-        if len(file_names) != len(set(file_names)):
-            raise InvalidRosterAgentPackageError("Roster Agent package contains duplicate config file names")
-        file_refs = {item.file_id: item for item in soul.config_files if not item.is_missing}
-        for resource in package.manifest.files:
-            filename = file_refs[resource.id].name
-            extension = cls._extension(filename)
-            limit = FileService.file_size_limit(extension=extension)
-            if resource.size > limit:
-                raise InvalidRosterAgentPackageError(
-                    f"Roster Agent package file {filename!r} exceeds its file size limit"
-                )
-            if extension and extension in dify_config.UPLOAD_FILE_EXTENSION_BLACKLIST:
-                raise InvalidRosterAgentPackageError(
-                    f"Roster Agent package file extension '.{extension}' is not allowed"
-                )
-
-    @staticmethod
-    def _ensure_name_available(*, tenant_id: str, name: str) -> None:
-        with session_factory.create_session() as session:
-            exists = session.scalar(
-                select(Agent.id)
-                .where(
-                    Agent.tenant_id == tenant_id,
-                    Agent.scope == AgentScope.ROSTER,
-                    Agent.status == AgentStatus.ACTIVE,
-                    Agent.name == name,
-                )
-                .limit(1)
-            )
-        if exists is not None:
-            raise AgentNameConflictError()
-
-    def _upload_resources(
-        self,
-        *,
-        package: PreparedRosterAgentPackage,
-        agent_package: AgentPackage,
-        tenant_id: str,
-        account_id: str,
-    ) -> tuple[AgentSoulConfig, list[DslImportWarning]]:
-        """Upload outside database transactions, then commit all file records together."""
-        files: list[ToolFile | UploadFile] = []
-        warnings: list[DslImportWarning] = []
-        soul_data = agent_package.soul.model_dump(mode="json")
-        skill_refs_by_package_id = {
-            item["file_id"]: item for item in soul_data["config_skills"] if not item["is_missing"]
-        }
-        file_refs_by_package_id = {
-            item["file_id"]: item for item in soul_data["config_files"] if not item["is_missing"]
-        }
-
-        skill_descriptions = {item.name: item.description for item in agent_package.workspace_skills}
-        skill_descriptions.update({item.name: item.description for item in agent_package.soul.config_skills})
-        for skill_resource in package.manifest.skills:
-            target_ref = skill_refs_by_package_id.get(skill_resource.id)
-            if target_ref is None:
-                target_ref = {}
-                soul_data["config_skills"].append(target_ref)
-            target_ref.update(
-                {
-                    "name": skill_resource.name,
-                    "description": skill_descriptions.get(skill_resource.name, ""),
-                    "file_kind": "tool_file",
-                    "file_id": "",
-                    "is_missing": True,
-                    "size": skill_resource.size,
-                    "hash": skill_resource.sha256,
-                    "mime_type": "application/zip",
-                }
-            )
-            reason = package.invalid_skills.get(skill_resource.id)
-            normalized = None
-            try:
-                if reason is None:
-                    payload = self._reader.read_member_bytes(
-                        package,
-                        skill_resource.path,
-                        max_bytes=dify_config.UPLOAD_SKILL_FILE_SIZE_LIMIT * 1024 * 1024,
-                    )
-                    normalized = self._skill_packages.validate_and_normalize(
-                        content=payload, filename=skill_resource.path
-                    )
-            except SkillPackageError as exc:
-                reason = exc.code
-            except InvalidRosterAgentPackageError:
-                reason = "archive_integrity_failed"
-            if normalized is None:
-                warnings.append(
-                    DslImportWarning(
-                        code="agent_skill_missing",
-                        path=f"skills.{skill_resource.id}",
-                        message=f"Skill {skill_resource.name!r} is damaged and must be uploaded again.",
-                        details={"name": skill_resource.name, "reason": reason, "path": skill_resource.path},
-                    )
-                )
-                continue
-            storage_key = f"tools/{tenant_id}/{uuid4().hex}.zip"
-            tool_file = ToolFile(
-                user_id=account_id,
-                tenant_id=tenant_id,
-                conversation_id=None,
-                file_key=storage_key,
-                mimetype="application/zip",
-                name=f"{skill_resource.name}.zip",
-                size=len(normalized.archive_bytes),
-                original_url=None,
-            )
-            self._save_resource(storage_key=storage_key, payload=normalized.archive_bytes, files=files, row=tool_file)
-            target_ref.update(
-                {
-                    "description": normalized.manifest.description,
-                    "file_id": tool_file.id,
-                    "is_missing": False,
-                    "size": tool_file.size,
-                    "hash": normalized.manifest.hash,
-                }
-            )
-
-        for file_resource in package.manifest.files:
-            package_ref = file_refs_by_package_id[file_resource.id]
-            file_kind = package_ref["file_kind"]
-            mime_type = package_ref["mime_type"] or "application/octet-stream"
-            extension = self._extension(package_ref["name"])
-            payload = self._reader.read_member_bytes(package, file_resource.path, max_bytes=file_resource.size)
-            if file_kind == "tool_file":
-                storage_key = f"tools/{tenant_id}/{uuid4().hex}.{extension or 'bin'}"
-                row: ToolFile | UploadFile = ToolFile(
-                    user_id=account_id,
-                    tenant_id=tenant_id,
-                    conversation_id=None,
-                    file_key=storage_key,
-                    mimetype=mime_type,
-                    name=package_ref["name"],
-                    size=len(payload),
-                    original_url=None,
-                )
-                hash_value = None
-            else:
-                storage_key = f"upload_files/{tenant_id}/{uuid4()}.{extension or 'bin'}"
-                now = naive_utc_now()
-                row = UploadFile(
-                    tenant_id=tenant_id,
-                    storage_type=StorageType(dify_config.STORAGE_TYPE),
-                    key=storage_key,
-                    name=package_ref["name"],
-                    size=len(payload),
-                    extension=extension,
-                    mime_type=mime_type,
-                    created_by_role=CreatorUserRole.ACCOUNT,
-                    created_by=account_id,
-                    created_at=now,
-                    used=False,
-                    hash=hashlib.sha3_256(payload).hexdigest(),
-                )
-                hash_value = row.hash
-            self._save_resource(storage_key=storage_key, payload=payload, files=files, row=row)
-            package_ref.update(
-                {
-                    "file_id": row.id,
-                    "is_missing": False,
-                    "size": row.size,
-                    "hash": hash_value,
-                    "mime_type": mime_type,
-                }
-            )
-
-        soul = AgentSoulConfig.model_validate(soul_data)
-        with session_factory.create_session() as session, session.begin():
-            session.add_all(files)
-        return soul, warnings
-
-    def _save_resource(
-        self,
-        *,
-        storage_key: str,
-        payload: bytes,
-        files: list[ToolFile | UploadFile],
-        row: ToolFile | UploadFile,
-    ) -> None:
-        try:
-            self._storage.save(storage_key, payload)
-        except Exception as exc:
-            raise RosterAgentPackageResourceUnavailableError() from exc
-        files.append(row)
+        return RosterAgentPackageImportResult(app_id=app_id, agent_id=agent_id, warnings=warnings)
 
     @staticmethod
     def _persist_import(
@@ -348,16 +300,27 @@ class RosterAgentPackageImporter:
         account: Account,
         metadata: AgentPackageMetadata,
         soul: AgentSoulConfig,
+        allow_premium_site_settings: bool,
+        app_metadata: AgentPackageMetadata | None = None,
+        site_data: SiteDsl | None = None,
     ) -> tuple[str, str]:
         with session_factory.create_session() as session, session.begin():
+            name = AgentDslService(session).unique_roster_name(tenant_id=tenant_id, requested=metadata.name)
             app = App(**default_app_templates[AppMode.AGENT]["app"])
             app.id = str(uuid4())
             app.tenant_id = tenant_id
-            app.name = metadata.name
+            app.name = name
             app.description = metadata.description
             app.icon_type = DEFAULT_ICON_TYPE
             app.icon = DEFAULT_ICON
             app.icon_background = DEFAULT_ICON_BACKGROUND
+            app_metadata = app_metadata or metadata
+            if app_metadata.icon_type in {item.value for item in IconType} and is_valid_image_icon(
+                session=session, tenant_id=tenant_id, icon_type=app_metadata.icon_type, icon=app_metadata.icon
+            ):
+                app.icon_type = IconType(app_metadata.icon_type)
+                app.icon = app_metadata.icon or DEFAULT_ICON
+                app.icon_background = app_metadata.icon_background or DEFAULT_ICON_BACKGROUND
             app.api_rph = 0
             app.api_rpm = 0
             app.max_active_requests = None
@@ -374,13 +337,22 @@ class RosterAgentPackageImporter:
                 tenant_id=tenant_id,
                 account_id=account.id,
                 app_id=app.id,
-                name=metadata.name,
+                name=name,
                 description=metadata.description,
                 role=metadata.role,
+                icon_type=app.icon_type,
+                icon=app.icon,
+                icon_background=app.icon_background,
                 source=AgentSource.IMPORTED,
                 initial_soul=soul,
                 revision_operation=AgentConfigRevisionOperation.IMPORT_PACKAGE,
             )
+            if metadata.icon_type in {item.value for item in AgentIconType} and is_valid_image_icon(
+                session=session, tenant_id=tenant_id, icon_type=metadata.icon_type, icon=metadata.icon
+            ):
+                agent.icon_type = AgentIconType(metadata.icon_type)
+                agent.icon = metadata.icon
+                agent.icon_background = metadata.icon_background
             snapshot = session.get(AgentConfigSnapshot, agent.active_config_snapshot_id)
             if snapshot is None:
                 raise RuntimeError("Imported Agent snapshot was not created")
@@ -409,6 +381,17 @@ class RosterAgentPackageImporter:
                     .values(used=True, used_by=account.id, used_at=naive_utc_now())
                 )
             create_site_record(app=app, account=account, session=session)
+            if site_data is not None:
+                site = app.site_with_session(session=session)
+                if site is None:
+                    raise RuntimeError("Imported App Site is unavailable")
+                apply_site_dsl(
+                    site=site,
+                    app=app,
+                    data=site_data,
+                    session=session,
+                    allow_premium_settings=allow_premium_site_settings,
+                )
             create_installed_app_record(app=app, session=session)
             return app.id, agent.id
 
@@ -425,10 +408,6 @@ class RosterAgentPackageImporter:
                 session=session,
                 created_records_initialized=True,
             )
-
-    @staticmethod
-    def _extension(filename: str) -> str:
-        return os.path.splitext(filename)[1].lstrip(".").lower()
 
 
 __all__ = ["RosterAgentPackageImportResult", "RosterAgentPackageImporter"]

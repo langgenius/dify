@@ -21,7 +21,7 @@ export function useNodeKeyboardInteractions(onSelect: (id: string, cancel?: bool
   const { getNodesReadOnly } = useNodesReadOnly()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { saveStateToHistory } = useWorkflowHistory()
-  const { t } = useTranslation('workflow')
+  const { t } = useTranslation(['workflow'])
 
   return (event: KeyboardEvent<HTMLDivElement>) => {
     const target = event.target
@@ -52,7 +52,12 @@ export function useNodeKeyboardInteractions(onSelect: (id: string, cancel?: bool
       return
 
     if (isSelectionKey) {
-      if (focusedNode) onSelect(focusedNode.id, event.key === 'Escape')
+      if (focusedNode) {
+        workflowStore
+          .getState()
+          .setPendingNodePanelFocusId(event.key === 'Escape' ? undefined : focusedNode.id)
+        onSelect(focusedNode.id, event.key === 'Escape')
+      }
       return
     }
     if (getNodesReadOnly() || !movement) return

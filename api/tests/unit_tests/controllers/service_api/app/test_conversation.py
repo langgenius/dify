@@ -53,6 +53,7 @@ from services.errors.conversation import (
     ConversationVariableNotExistsError,
     ConversationVariableTypeMismatchError,
 )
+from tests.unit_tests.model_factories import make_conversation
 
 
 def _app(*, app_id: str = "app-1", mode: AppMode = AppMode.CHAT) -> App:
@@ -86,17 +87,15 @@ def _conversation(
     app_id: str = "app-1",
     end_user_id: str = "end-user-1",
 ) -> Conversation:
-    conversation = Conversation(
+    return make_conversation(
+        conversation_id=conversation_id,
         app_id=app_id,
-        mode=AppMode.CHAT,
         name="Original Name",
+        inputs={},
         from_source=ConversationFromSource.API,
         from_end_user_id=end_user_id,
         invoke_from=InvokeFrom.SERVICE_API,
     )
-    conversation.id = conversation_id
-    conversation.inputs = {}
-    return conversation
 
 
 class TestConversationListQuery:

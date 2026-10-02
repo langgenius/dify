@@ -1,7 +1,9 @@
 from unittest.mock import MagicMock
 
 import pytest
+from flask import Flask
 
+from extensions.ext_application_services import ApplicationServices, application_services
 from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 from tests.unit_tests.config_override import apply_config_overrides
 
@@ -24,9 +26,9 @@ def test_initialize_created_app_rbac_access_task_batches_workspace_members(monke
 
     apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
     monkeypatch.setattr(
-        task_module.TenantService,
+        application_services().workspaces.management,
         "iter_member_account_id_batches",
-        lambda tenant_id, batch_size, session: iter([["acct-1", "acct-2"], ["acct-3"]]),
+        lambda tenant_id, batch_size: iter([("acct-1", "acct-2"), ("acct-3",)]),
     )
     replace_whitelist = MagicMock()
     replace_user_access_policies = MagicMock()
@@ -66,9 +68,9 @@ def test_initialize_created_app_rbac_access_task_targets_the_resource_that_was_p
 
     apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
     monkeypatch.setattr(
-        task_module.TenantService,
+        application_services().workspaces.management,
         "iter_member_account_id_batches",
-        lambda tenant_id, batch_size, session: iter([["acct-1"]]),
+        lambda tenant_id, batch_size: iter([("acct-1",)]),
     )
     rbac_service = task_module.enterprise_rbac_service.RBACService
     access_clients = {
@@ -100,9 +102,9 @@ def test_initialize_created_app_rbac_access_task_retries_on_failure(monkeypatch:
 
     apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
     monkeypatch.setattr(
-        task_module.TenantService,
+        application_services().workspaces.management,
         "iter_member_account_id_batches",
-        lambda tenant_id, batch_size, session: iter([["acct-1"]]),
+        lambda tenant_id, batch_size: iter([("acct-1",)]),
     )
     monkeypatch.setattr(
         task_module.enterprise_rbac_service.RBACService.AppAccess,
@@ -206,3 +208,10 @@ def test_sync_joined_workspace_member_rbac_access_task_appends_auto_included_res
     assert [item.agent_id for item in agent_call["data"]] == ["agent-1"]
     assert agent_call["data"][0].account_ids == ["member-1"]
     assert agent_call["data"][0].policy_id == task_module.APP_RBAC_DEFAULT_ACCESS_POLICY_ID
+
+
+@pytest.fixture(autouse=True)
+def _account_services(
+    monkeypatch: pytest.MonkeyPatch, app: Flask, account_application_services: ApplicationServices
+) -> None:
+    monkeypatch.setitem(app.extensions, "application_services", account_application_services)

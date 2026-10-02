@@ -10,9 +10,9 @@ import type {
   TencentConfig,
   WeaveConfig,
 } from '../type'
-import { toast } from '@langgenius/dify-ui/toast'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { toast } from '@/app/notifications'
 import { addTracingConfig, removeTracingConfig, updateTracingConfig } from '@/service/apps'
 import ConfigBtn from '../config-button'
 import ProviderConfigModal from '../provider-config-modal'
@@ -24,7 +24,7 @@ vi.mock('@/service/apps', () => ({
   updateTracingConfig: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: vi.fn(),
 }))
 

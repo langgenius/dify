@@ -1,6 +1,7 @@
 'use client'
+
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
-import type { App } from '@/types/app'
 import { Pagination } from '@langgenius/dify-ui/pagination'
 import { useDebounce } from 'ahooks'
 import dayjs from 'dayjs'
@@ -8,7 +9,7 @@ import { omit } from 'es-toolkit/object'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { APP_PAGE_LIMIT } from '@/config'
 import { useDocLink } from '@/context/i18n'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
@@ -26,7 +27,7 @@ import List from './list'
 import { RetentionUpgradeNotice } from './retention-upgrade-notice'
 
 type ILogsProps = {
-  appDetail: App
+  appDetail: AppDetailWithSite
 }
 
 export type QueryParam = {
@@ -52,7 +53,7 @@ const logsStateCache = new Map<
 >()
 
 const Logs: FC<ILogsProps> = ({ appDetail }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appLog', 'common'])
   const docLink = useDocLink()
   const router = useRouter()
   const pathname = usePathname()
@@ -163,7 +164,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
         />
         <RetentionUpgradeNotice />
         {total === undefined ? (
-          <Loading type="app" />
+          <LoadingPlaceholder className="h-full" />
         ) : total > 0 ? (
           <List
             logs={isChatMode ? chatConversations : completionConversations}

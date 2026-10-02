@@ -1,9 +1,10 @@
 import type { UserProfile, WorkflowCommentDetail, WorkflowCommentList } from '../types'
-import { act, screen } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { renderWithAccountProfile } from '@/test/console/account-profile'
 import { CommentIcon } from '../comment-icon'
+import { CommentInput } from '../comment-input'
 import { CommentThread } from '../thread'
 
 const storeState = vi.hoisted(() => ({
@@ -53,12 +54,39 @@ const createComment = (): WorkflowCommentDetail & WorkflowCommentList => ({
 describe('Comment thread focus', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    storeState.mentionableUsersCache['app-1'] = []
     vi.useFakeTimers({ shouldAdvanceTime: true })
   })
 
   afterEach(() => {
     vi.useRealTimers()
   })
+
+  it.each(['draft', 'thread'] as const)(
+    'dismisses mentions before closing the %s',
+    async (kind) => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+      const onClose = vi.fn()
+      storeState.mentionableUsersCache['app-1'] = [
+        { id: 'user-2', name: 'Bob', email: 'bob@example.com', avatar_url: null },
+      ]
+      renderWithAccountProfile(
+        kind === 'draft' ? (
+          <CommentInput position={{ x: 0, y: 0 }} onSubmit={() => {}} onCancel={onClose} />
+        ) : (
+          <CommentThread comment={createComment()} onClose={onClose} onReply={() => {}} />
+        ),
+      )
+      await user.click(screen.getByRole('textbox'))
+      await user.type(screen.getByRole('textbox'), '@')
+      expect(screen.getByText('Bob')).toBeInTheDocument()
+      await user.keyboard('{Escape}')
+      expect(screen.queryByText('Bob')).not.toBeInTheDocument()
+      expect(onClose).not.toHaveBeenCalled()
+      await user.keyboard('{Escape}')
+      expect(onClose).toHaveBeenCalledTimes(1)
+    },
+  )
 
   it('keeps focus on the marker after saving a keyboard move with its thread open', async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
@@ -95,6 +123,7 @@ describe('Comment thread focus', () => {
     await user.keyboard('{Enter}')
     await act(() => vi.advanceTimersByTimeAsync(100))
     expect(screen.getByRole('textbox')).toHaveFocus()
+    expect(screen.getByRole('dialog')).not.toHaveAttribute('aria-modal', 'true')
 
     act(() => marker.focus())
     await user.keyboard('{ArrowRight}')
@@ -105,6 +134,59 @@ describe('Comment thread focus', () => {
     await user.keyboard('{ArrowDown}')
     expect(onPositionUpdate).toHaveBeenLastCalledWith({ x: 125, y: 85 })
     expect(onPositionUpdate).toHaveBeenCalledTimes(2)
+  })
+
+  it('confirms reply deletion outside the menu and restores focus when cancelled', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    const onDelete = vi.fn()
+    const onClose = vi.fn()
+    const comment = createComment()
+    comment.replies = [
+      {
+        id: 'reply-1',
+        content: 'A reply',
+        created_at: 2,
+        created_by: 'user-1',
+        created_by_account: comment.created_by_account,
+      },
+    ]
+    renderWithAccountProfile(
+      <CommentThread
+        comment={comment}
+        onClose={onClose}
+        onReply={() => {}}
+        onReplyEdit={() => {}}
+        onReplyDeleteDirect={onDelete}
+      />,
+    )
+    await act(() => vi.advanceTimersByTimeAsync(100))
+    const trigger = screen.getByRole('button', {
+      name: 'workflowComments.comments.aria.replyActions',
+    })
+    await user.click(trigger)
+    const deleteItem = screen.getByRole('menuitem', {
+      name: 'workflowComments.comments.actions.deleteReply',
+    })
+    await user.click(deleteItem)
+    const confirm = await screen.findByRole('alertdialog', {
+      name: 'workflowComments.comments.actions.deleteReply',
+    })
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+    expect(onDelete).not.toHaveBeenCalled()
+    await user.click(within(confirm).getByRole('button', { name: 'common.operation.cancel' }))
+    await waitFor(() => expect(trigger).toHaveFocus())
+    expect(onClose).not.toHaveBeenCalled()
+    await user.click(trigger)
+    await user.click(
+      await screen.findByRole('menuitem', {
+        name: 'workflowComments.comments.actions.deleteReply',
+      }),
+    )
+    const reopened = await screen.findByRole('alertdialog')
+    await user.click(within(reopened).getByRole('button', { name: 'common.operation.delete' }))
+    expect(onDelete).toHaveBeenCalledExactlyOnceWith('reply-1')
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    expect(onClose).not.toHaveBeenCalled()
   })
 
   it('focuses the reply input when navigating to another comment', async () => {
@@ -129,7 +211,9 @@ describe('Comment thread focus', () => {
     const replyInput = screen.getByRole('textbox')
     expect(replyInput).toHaveFocus()
 
-    await user.click(screen.getByRole('button', { name: 'workflow.comments.aria.nextComment' }))
+    await user.click(
+      screen.getByRole('button', { name: 'workflowComments.comments.aria.nextComment' }),
+    )
     await act(() => vi.advanceTimersByTimeAsync(100))
     expect(replyInput).toHaveFocus()
   })

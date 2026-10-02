@@ -3,7 +3,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { currentWorkspaceIdAtom } from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useWorkspacePermissions } from '@/service/use-workspace'
@@ -11,14 +11,14 @@ import { useWorkspacePermissions } from '@/service/use-workspace'
 type InviteButtonProps = Omit<ButtonProps, 'children' | 'variant'>
 
 const InviteButton = (props: InviteButtonProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workspaceMembers'])
   const currentWorkspaceId = useAtomValue(currentWorkspaceIdAtom)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: workspacePermissions, isFetching: isFetchingWorkspacePermissions } =
     useWorkspacePermissions(currentWorkspaceId, systemFeatures.branding.enabled)
   if (systemFeatures.branding.enabled) {
     if (isFetchingWorkspacePermissions) {
-      return <Loading />
+      return <LoadingPlaceholder />
     }
     if (!workspacePermissions || workspacePermissions.allow_member_invite !== true) {
       return null
@@ -27,7 +27,7 @@ const InviteButton = (props: InviteButtonProps) => {
   return (
     <Button {...props} variant="primary">
       <span aria-hidden="true" className="i-ri-user-add-line size-4" />
-      {t(($) => $['members.invite'], { ns: 'common' })}
+      {t(($) => $['members.invite'], { ns: 'workspaceMembers' })}
     </Button>
   )
 }

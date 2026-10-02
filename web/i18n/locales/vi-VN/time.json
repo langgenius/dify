@@ -1,0 +1,22 @@
+{
+  "dateFormats.compact": "DD/MM/YYYY HH:mm",
+  "dateFormats.withSeconds": "MM/DD/YYYY hh:mm:ss A",
+  "operation.cancel": "Hủy bỏ",
+  "operation.now": "Bây giờ",
+  "operation.ok": "Được rồi",
+  "operation.pickDate": "Chọn Ngày",
+  "picker.chooseMonthAndYear": "Chọn tháng và năm",
+  "picker.endDate": "Ngày kết thúc",
+  "picker.hour": "Giờ",
+  "picker.minute": "Phút",
+  "picker.month": "Tháng",
+  "picker.nextMonth": "Tháng sau",
+  "picker.period": "SA/CH",
+  "picker.previousMonth": "Tháng trước",
+  "picker.required": "Chọn một giá trị.",
+  "picker.requiredLabel": "Bắt buộc",
+  "picker.startDate": "Ngày bắt đầu",
+  "picker.unavailable": "Ngày hoặc giờ này không khả dụng.",
+  "picker.year": "Năm",
+  "title.pickTime": "Chọn Thời Gian"
+}

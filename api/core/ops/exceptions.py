@@ -5,6 +5,11 @@ generic Celery tasks should not import provider-specific exception classes.
 """
 
 
+class TraceProviderNotInstalledError(ImportError):
+    def __init__(self, tracing_provider: str, module_name: str) -> None:
+        super().__init__(f"Tracing provider {tracing_provider} requires the missing module {module_name}.")
+
+
 class RetryableTraceDispatchError(RuntimeError):
     """Base class for transient trace dispatch failures that Celery may retry."""
 

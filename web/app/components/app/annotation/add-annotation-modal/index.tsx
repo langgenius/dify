@@ -6,20 +6,21 @@ import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import {
   Drawer,
   DrawerBackdrop,
-  DrawerCloseButton,
+  DrawerClose,
   DrawerContent,
   DrawerPopup,
   DrawerPortal,
   DrawerTitle,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
-import { toast } from '@langgenius/dify-ui/toast'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AnnotationFull from '@/app/components/billing/annotation-full'
+import { toast } from '@/app/notifications'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
 import EditItem, { EditItemType } from './edit-item'
@@ -31,7 +32,7 @@ type Props = Readonly<{
 }>
 
 const AddAnnotationModal: FC<Props> = ({ isShow, onHide, onAdd }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appAnnotation', 'common'])
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { data: annotationQuota } = useQuery(
     consoleQuery.features.get.queryOptions({
@@ -107,9 +108,15 @@ const AddAnnotationModal: FC<Props> = ({ isShow, onHide, onAdd }) => {
                     <DrawerTitle className="min-w-0 truncate system-xl-semibold text-text-primary">
                       {t(($) => $['addModal.title'], { ns: 'appAnnotation' })}
                     </DrawerTitle>
-                    <DrawerCloseButton
-                      aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                      className="size-6 rounded-md"
+                    <DrawerClose
+                      render={
+                        <IconButton
+                          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                          size="md"
+                        >
+                          <span aria-hidden="true" className="i-ri-close-line size-4" />
+                        </IconButton>
+                      }
                     />
                   </div>
                 </div>
