@@ -1,11 +1,11 @@
 import uuid
-from unittest.mock import MagicMock
 
 import pytest
 from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session
 
 from core.app.app_config.easy_ui_based_app.dataset.manager import DatasetConfigManager
+from core.app.app_config.entities import MetadataFilteringCondition, ModelConfig
 from core.entities.agent_entities import PlanningStrategy
 from models.dataset import Dataset
 from models.model import AppMode
@@ -76,36 +76,14 @@ class TestDatasetConfigManagerConvert:
         assert result.dataset_ids == [valid_uuid]
         assert result.retrieve_config.query_variable == "query"
 
-    def test_convert_single_with_metadata_configs(self, valid_uuid, mocker: MockerFixture):
-        mock_retrieve_config = MagicMock()
-        mock_entity = MagicMock()
-        mock_entity.dataset_ids = [valid_uuid]
-        mock_entity.retrieve_config = mock_retrieve_config
-
-        mocker.patch(
-            "core.app.app_config.easy_ui_based_app.dataset.manager.ModelConfig",
-            return_value={"mock": "model"},
-        )
-        mocker.patch(
-            "core.app.app_config.easy_ui_based_app.dataset.manager.MetadataFilteringCondition",
-            return_value={"mock": "condition"},
-        )
-        mocker.patch(
-            "core.app.app_config.easy_ui_based_app.dataset.manager.DatasetRetrieveConfigEntity",
-            return_value=mock_retrieve_config,
-        )
-        mocker.patch(
-            "core.app.app_config.easy_ui_based_app.dataset.manager.DatasetEntity",
-            return_value=mock_entity,
-        )
-
+    def test_convert_single_with_metadata_configs(self, valid_uuid):
         config = {
             "dataset_query_variable": "query",
             "dataset_configs": {
                 "retrieval_model": "single",
                 "metadata_filtering_mode": "manual",
-                "metadata_model_config": {"any": "value"},
-                "metadata_filtering_conditions": {"any": "value"},
+                "metadata_model_config": {"provider": "openai", "name": "gpt-4o", "mode": "chat"},
+                "metadata_filtering_conditions": {"logical_operator": "or", "conditions": []},
                 "datasets": {
                     "strategy": "router",
                     "datasets": [{"dataset": {"id": valid_uuid, "enabled": True}}],
@@ -113,8 +91,16 @@ class TestDatasetConfigManagerConvert:
             },
         }
         result = DatasetConfigManager.convert(config)
+        assert result is not None
         assert result.dataset_ids == [valid_uuid]
-        assert result.retrieve_config is mock_retrieve_config
+        assert result.retrieve_config.query_variable == "query"
+        assert result.retrieve_config.metadata_filtering_mode == "manual"
+        assert result.retrieve_config.metadata_model_config == ModelConfig(
+            provider="openai", name="gpt-4o", mode="chat"
+        )
+        assert result.retrieve_config.metadata_filtering_conditions == MetadataFilteringCondition(
+            logical_operator="or", conditions=[]
+        )
 
     def test_convert_multiple_defaults(self, valid_uuid):
         config = {
