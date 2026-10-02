@@ -31,6 +31,7 @@
   "error.passwordEmpty": "Parola este obligatorie",
   "error.passwordInvalid": "Parola trebuie să conțină litere și cifre, iar lungimea trebuie să fie mai mare de 8 caractere",
   "error.registrationNotAllowed": "Contul nu a fost găsit. Vă rugăm să contactați administratorul de sistem pentru a vă înregistra.",
+  "error.ssoFailed": "Autentificarea SSO a eșuat. Încercați din nou sau contactați administratorul.",
   "explore": "Explorează Dify",
   "forget": "Ai uitat parola?",
   "forgotPassword": "Ați uitat parola?",

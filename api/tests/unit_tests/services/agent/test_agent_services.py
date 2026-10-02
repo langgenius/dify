@@ -6750,7 +6750,7 @@ def test_dataset_rows_filters_malformed_ids(monkeypatch: pytest.MonkeyPatch, sql
         captured["ids"] = ids
         return [], 0
 
-    import services.dataset_service as dataset_service_module
+    import services.knowledge.dataset_service as dataset_service_module
     from services.agent.knowledge_datasets import get_tenant_knowledge_dataset_rows
 
     monkeypatch.setattr(dataset_service_module.DatasetService, "get_datasets_by_ids", fake_get_datasets_by_ids)
@@ -6779,7 +6779,7 @@ def test_composer_save_rejects_malformed_knowledge_dataset_ids(
         captured["tenant_id"] = tenant_id
         return [], 0
 
-    import services.dataset_service as dataset_service_module
+    import services.knowledge.dataset_service as dataset_service_module
 
     monkeypatch.setattr(dataset_service_module.DatasetService, "get_datasets_by_ids", fake_get_datasets_by_ids)
 
@@ -6818,7 +6818,7 @@ def test_composer_save_rejects_missing_or_out_of_scope_knowledge_datasets(
         captured["tenant_id"] = tenant_id
         return [], 0
 
-    import services.dataset_service as dataset_service_module
+    import services.knowledge.dataset_service as dataset_service_module
 
     monkeypatch.setattr(dataset_service_module.DatasetService, "get_datasets_by_ids", fake_get_datasets_by_ids)
 
@@ -6877,7 +6877,7 @@ def test_save_agent_composer_allows_incomplete_knowledge_draft(
 
     event.listen(session, "after_flush", count_flush)
 
-    import services.dataset_service as dataset_service_module
+    import services.knowledge.dataset_service as dataset_service_module
 
     monkeypatch.setattr(
         dataset_service_module.DatasetService,
@@ -7005,7 +7005,7 @@ def test_resolve_workflow_node_agent_id_degrades_without_workflow_or_binding(
     )
 
 
-def test_save_as_new_agent_preserves_omitted_node_job(monkeypatch: pytest.MonkeyPatch):
+def test_save_as_new_agent_preserves_omitted_node_job(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
     job = WorkflowNodeJobConfig.model_validate(
         {
             "workflow_prompt": "Keep this task",
@@ -7015,7 +7015,19 @@ def test_save_as_new_agent_preserves_omitted_node_job(monkeypatch: pytest.Monkey
             },
         }
     )
-    binding = WorkflowAgentNodeBinding(agent_id="old-agent", current_snapshot_id="old-snapshot", node_job_config=job)
+    binding = WorkflowAgentNodeBinding(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_id="workflow-1",
+        node_id="node-1",
+        workflow_version="draft",
+        binding_type=WorkflowAgentBindingType.INLINE_AGENT,
+        agent_id="old-agent",
+        current_snapshot_id="old-snapshot",
+        node_job_config=job,
+    )
+    sqlite_session.add(binding)
+    sqlite_session.commit()
     monkeypatch.setattr(
         AgentComposerService,
         "_create_roster_agent_for_composer",
@@ -7025,7 +7037,7 @@ def test_save_as_new_agent_preserves_omitted_node_job(monkeypatch: pytest.Monkey
         "services.agent.composer_service.SkillManagementService.copy_agent_bindings", lambda self, **kwargs: None
     )
     result = AgentComposerService._save_as_new_agent(
-        session=MagicMock(spec=Session),
+        session=sqlite_session,
         tenant_id="tenant-1",
         app_id="app-1",
         workflow_id="workflow-1",
@@ -7040,3 +7052,8 @@ def test_save_as_new_agent_preserves_omitted_node_job(monkeypatch: pytest.Monkey
     )
     assert result.agent_id == "new-agent"
     assert result.node_job_config_dict == job.model_dump(mode="json")
+    sqlite_session.commit()
+    sqlite_session.expire_all()
+    persisted = sqlite_session.get(WorkflowAgentNodeBinding, result.id)
+    assert persisted is not None
+    assert persisted.node_job_config_dict == job.model_dump(mode="json")

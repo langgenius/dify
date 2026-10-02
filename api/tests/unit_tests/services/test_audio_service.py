@@ -32,7 +32,7 @@ Tests available voice retrieval:
 
 ## Testing Approach
 
-- **Isolation Strategy**: External dependencies (ModelManager and FileStorage) are mocked,
+- **Isolation Strategy**: ModelManager is mocked; uploads use real FileStorage byte streams,
   while database paths use isolated in-memory SQLite sessions
 - **Factory Pattern**: AudioServiceTestDataFactory provides consistent test data
 - **Fixtures**: Mock objects are configured per test method
@@ -56,7 +56,8 @@ Tests available voice retrieval:
 import json
 from collections.abc import Generator
 from decimal import Decimal
-from unittest.mock import MagicMock, Mock, patch
+from io import BytesIO
+from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
@@ -224,32 +225,13 @@ class AudioServiceTestDataFactory:
         return config
 
     @staticmethod
-    def create_file_storage_mock(
+    def create_file_storage(
         filename: str = "test.mp3",
         mimetype: str = "audio/mp3",
         content: bytes = b"fake audio content",
-        **kwargs: object,
-    ) -> Mock:
-        """
-        Create a mock FileStorage object.
-
-        Args:
-            filename: Name of the file
-            mimetype: MIME type of the file
-            content: File content as bytes
-            **kwargs: Additional attributes to set on the mock
-
-        Returns:
-            Mock FileStorage object with specified attributes
-        """
-        file = Mock(spec=FileStorage)
-        file.filename = filename
-        file.mimetype = mimetype
-        file.stream = Mock()
-        file.stream.read = Mock(return_value=content)
-        for key, value in kwargs.items():
-            setattr(file, key, value)
-        return file
+    ) -> FileStorage:
+        """Create an upload with an in-memory byte stream and the requested MIME type."""
+        return FileStorage(stream=BytesIO(content), filename=filename, content_type=mimetype)
 
 
 @pytest.fixture
@@ -316,7 +298,7 @@ class TestAudioServiceASR:
             mode=AppMode.CHAT,
             app_model_config=app_model_config,
         )
-        file = factory.create_file_storage_mock()
+        file = factory.create_file_storage()
 
         # Mock ModelManager
         mock_model_manager = mock_model_manager_class.return_value
@@ -347,7 +329,7 @@ class TestAudioServiceASR:
         # Arrange
         app_model_config = factory.create_app_model_config_mock(speech_to_text_dict={"enabled": True})
         app = factory.create_app_mock(mode=AppMode.CHAT, app_model_config=app_model_config)
-        file = factory.create_file_storage_mock(filename="audio.m4a", mimetype="audio/x-m4a")
+        file = factory.create_file_storage(filename="audio.m4a", mimetype="audio/x-m4a")
         mock_model_instance = MagicMock()
         mock_model_instance.invoke_speech2text.return_value = "M4A transcript"
         mock_model_manager_class.return_value.get_default_model_instance.return_value = mock_model_instance
@@ -370,7 +352,7 @@ class TestAudioServiceASR:
             mode=AppMode.ADVANCED_CHAT,
             workflow=workflow,
         )
-        file = factory.create_file_storage_mock()
+        file = factory.create_file_storage()
 
         # Mock ModelManager
         mock_model_manager = mock_model_manager_class.return_value
@@ -391,7 +373,7 @@ class TestAudioServiceASR:
         factory: AudioServiceTestDataFactory,
     ) -> None:
         app = factory.create_app_mock(mode=AppMode.AGENT)
-        file = factory.create_file_storage_mock()
+        file = factory.create_file_storage()
         agent_soul = AgentSoulConfig.model_validate({"app_features": {"speech_to_text": {"enabled": True}}})
         agent = Agent(
             tenant_id=app.tenant_id,
@@ -433,7 +415,7 @@ class TestAudioServiceASR:
     ) -> None:
         app_model_config = factory.create_app_model_config_mock(speech_to_text_dict={"enabled": True})
         app = factory.create_app_mock(mode=AppMode.AGENT, app_model_config=app_model_config)
-        file = factory.create_file_storage_mock()
+        file = factory.create_file_storage()
         mock_model_instance = MagicMock()
         mock_model_instance.invoke_speech2text.return_value = "Legacy Agent transcript"
         mock_model_manager_class.return_value.get_default_model_instance.return_value = mock_model_instance
@@ -447,7 +429,7 @@ class TestAudioServiceASR:
         self, mock_model_manager_class: MagicMock, factory: AudioServiceTestDataFactory
     ) -> None:
         app = factory.create_app_mock(mode=AppMode.AGENT)
-        file = factory.create_file_storage_mock()
+        file = factory.create_file_storage()
         agent_soul = AgentSoulConfig.model_validate({"app_features": {"speech_to_text": {"enabled": True}}})
         mock_model_instance = MagicMock()
         mock_model_instance.invoke_speech2text.return_value = "Agent transcript"
@@ -482,7 +464,7 @@ class TestAudioServiceASR:
         self, factory: AudioServiceTestDataFactory, agent_soul: AgentSoulConfig
     ) -> None:
         app = factory.create_app_mock(mode=AppMode.AGENT)
-        file = factory.create_file_storage_mock()
+        file = factory.create_file_storage()
 
         with pytest.raises(SpeechToTextDisabledServiceError):
             AudioService.transcript_agent_asr(app_model=app, agent_soul=agent_soul, file=file, session=self.session)
@@ -493,7 +475,7 @@ class TestAudioServiceASR:
     ) -> None:
         app_model_config = factory.create_app_model_config_mock(speech_to_text_dict={"enabled": True})
         app = factory.create_app_mock(mode=AppMode.AGENT, app_model_config=app_model_config)
-        file = factory.create_file_storage_mock()
+        file = factory.create_file_storage()
         mock_model_instance = MagicMock()
         mock_model_instance.invoke_speech2text.return_value = "Legacy feature transcript"
         mock_model_manager_class.return_value.get_default_model_instance.return_value = mock_model_instance
@@ -512,7 +494,7 @@ class TestAudioServiceASR:
     ) -> None:
         app_model_config = factory.create_app_model_config_mock(speech_to_text_dict={"enabled": True})
         app = factory.create_app_mock(mode=AppMode.AGENT, app_model_config=app_model_config)
-        file = factory.create_file_storage_mock()
+        file = factory.create_file_storage()
         agent_soul = AgentSoulConfig.model_validate({"app_features": {"speech_to_text": {"enabled": False}}})
 
         with pytest.raises(SpeechToTextDisabledServiceError):
@@ -528,7 +510,7 @@ class TestAudioServiceASR:
             mode=AppMode.CHAT,
             app_model_config=app_model_config,
         )
-        file = factory.create_file_storage_mock()
+        file = factory.create_file_storage()
 
         # Act & Assert
         with pytest.raises(SpeechToTextDisabledServiceError):
@@ -544,7 +526,7 @@ class TestAudioServiceASR:
             mode=AppMode.WORKFLOW,
             workflow=workflow,
         )
-        file = factory.create_file_storage_mock()
+        file = factory.create_file_storage()
 
         # Act & Assert
         with pytest.raises(SpeechToTextDisabledServiceError):
@@ -557,7 +539,7 @@ class TestAudioServiceASR:
             mode=AppMode.WORKFLOW,
             workflow=None,
         )
-        file = factory.create_file_storage_mock()
+        file = factory.create_file_storage()
 
         # Act & Assert
         with pytest.raises(SpeechToTextDisabledServiceError):
@@ -584,7 +566,7 @@ class TestAudioServiceASR:
             mode=AppMode.CHAT,
             app_model_config=app_model_config,
         )
-        file = factory.create_file_storage_mock(mimetype="video/mp4")
+        file = factory.create_file_storage(mimetype="video/mp4")
 
         # Act & Assert
         with pytest.raises(UnsupportedAudioTypeServiceError):
@@ -600,7 +582,7 @@ class TestAudioServiceASR:
         )
         # Create file larger than 30MB
         large_content = b"x" * (31 * 1024 * 1024)
-        file = factory.create_file_storage_mock(content=large_content)
+        file = factory.create_file_storage(content=large_content)
 
         # Act & Assert
         with pytest.raises(AudioTooLargeServiceError, match="Audio size larger than 30 mb"):
@@ -617,7 +599,7 @@ class TestAudioServiceASR:
             mode=AppMode.CHAT,
             app_model_config=app_model_config,
         )
-        file = factory.create_file_storage_mock()
+        file = factory.create_file_storage()
 
         # Mock ModelManager to return None
         mock_model_manager = mock_model_manager_class.return_value

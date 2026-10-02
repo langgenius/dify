@@ -62,7 +62,7 @@ from services.entities.dsl_entities import (
     Import,
     ImportStatus,
 )
-from services.model_provider_service import ModelProviderService
+from services.model_provider.service import ModelProviderService
 
 CONTEXT = RequestContext("request", "trace", "actor", "workspace")
 RECORD = AppRecord(id="app", name="Example", mode_compatible_with_agent="chat")
@@ -181,6 +181,14 @@ class Transfers:
     def import_agent_package(self, context: RequestContext, source: BinaryIO) -> ImportedAppPackage:
         del context, source
         pytest.fail("Unexpected Agent package import")
+
+    def import_agent_template(self, context: RequestContext, params: AppImportParams) -> ImportedAppPackage:
+        del context, params
+        pytest.fail("Unexpected Agent template import")
+
+    def import_agent_package_url(self, context: RequestContext, params: AppImportParams) -> ImportedAppPackage:
+        del context, params
+        pytest.fail("Unexpected Agent package URL import")
 
     def check_dependencies(self, context: RequestContext, app_id: str) -> CheckDependenciesResult:
         del context, app_id

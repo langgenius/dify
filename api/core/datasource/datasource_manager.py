@@ -1,5 +1,5 @@
 import logging
-from collections.abc import Generator
+from collections.abc import Generator, Mapping
 from threading import Lock
 from typing import Any, cast
 
@@ -33,7 +33,6 @@ from graphon.file import File, FileTransferMethod, FileType, get_file_type_by_mi
 from graphon.node_events import NodeRunResult, StreamChunkEvent, StreamCompletedEvent
 from models.model import UploadFile
 from models.tools import ToolFile
-from services.datasource_provider_service import DatasourceProviderService
 
 logger = logging.getLogger(__name__)
 _file_access_controller = DatabaseFileAccessController()
@@ -147,9 +146,7 @@ class DatasourceManager:
         datasource_type: str,
         provider_id: str,
         tenant_id: str,
-        provider: str,
-        plugin_id: str,
-        credential_id: str,
+        credentials: Mapping[str, Any],
         datasource_param: DatasourceParameter | None = None,
         online_drive_request: OnlineDriveDownloadFileParam | None = None,
     ) -> Generator[DatasourceMessage, None, Any]:
@@ -166,18 +163,10 @@ class DatasourceManager:
             datasource_type=ds_type,
         )
 
-        dsp_service = DatasourceProviderService()
-        credentials = dsp_service.get_datasource_credentials(
-            tenant_id=tenant_id,
-            provider=provider,
-            plugin_id=plugin_id,
-            credential_id=credential_id,
-        )
-
         if ds_type == DatasourceProviderType.ONLINE_DOCUMENT:
             doc_runtime = cast(OnlineDocumentDatasourcePlugin, runtime)
             if credentials:
-                doc_runtime.runtime.credentials = credentials
+                doc_runtime.runtime.credentials = dict(credentials)
             if datasource_param is None:
                 raise ValueError("datasource_param is required for ONLINE_DOCUMENT streaming")
             inner_gen: Generator[DatasourceMessage, None, None] = doc_runtime.get_online_document_page_content(
@@ -192,7 +181,7 @@ class DatasourceManager:
         elif ds_type == DatasourceProviderType.ONLINE_DRIVE:
             drive_runtime = cast(OnlineDriveDatasourcePlugin, runtime)
             if credentials:
-                drive_runtime.runtime.credentials = credentials
+                drive_runtime.runtime.credentials = dict(credentials)
             if online_drive_request is None:
                 raise ValueError("online_drive_request is required for ONLINE_DRIVE streaming")
             inner_gen = drive_runtime.online_drive_download_file(
@@ -221,9 +210,7 @@ class DatasourceManager:
         datasource_type: str,
         provider_id: str,
         tenant_id: str,
-        provider: str,
-        plugin_id: str,
-        credential_id: str,
+        credentials: Mapping[str, Any],
         parameters_for_log: dict[str, Any],
         datasource_info: dict[str, Any],
         variable_pool: Any,
@@ -238,9 +225,7 @@ class DatasourceManager:
             datasource_type=datasource_type,
             provider_id=provider_id,
             tenant_id=tenant_id,
-            provider=provider,
-            plugin_id=plugin_id,
-            credential_id=credential_id,
+            credentials=credentials,
             datasource_param=datasource_param,
             online_drive_request=online_drive_request,
         )

@@ -64,23 +64,27 @@ export function PricingContent() {
 
       <Header />
 
-      <div className="flex w-full justify-center border-t border-divider-accent px-10">
-        <div className="flex max-w-[1680px] grow items-center justify-between border-x border-divider-accent p-1">
+      <div className="flex w-full justify-center border-t border-divider-accent px-3 xl:px-10">
+        <div className="flex max-w-[1680px] min-w-0 grow flex-col items-start justify-between gap-3 border-x border-divider-accent p-1 xl:flex-row xl:items-center xl:gap-0">
           <TabsList
             aria-label={t(($) => $['plansCommon.title.plans'], { ns: 'billing' })}
-            className="items-center gap-0"
+            className="w-full min-w-0 items-center gap-0 xl:w-auto"
           >
             <TabsTab
               value="cloud"
-              className="appearance-none justify-center gap-x-2 border-b-0 px-5 py-3 system-xl-semibold text-text-secondary hover:text-saas-dify-blue-accessible data-active:border-transparent data-active:text-saas-dify-blue-accessible"
+              className="min-w-0 flex-1 appearance-none justify-center gap-x-2 border-b-0 px-2 py-3 system-xl-semibold whitespace-normal text-text-secondary hover:text-saas-dify-blue-accessible data-active:border-transparent data-active:text-saas-dify-blue-accessible xl:flex-none xl:px-5 xl:whitespace-nowrap"
             >
               <Cloud />
               {t(($) => $['plansCommon.cloud'], { ns: 'billing' })}
             </TabsTab>
-            <Separator decorative orientation="vertical" className="mx-2 h-4 bg-divider-accent" />
+            <Separator
+              decorative
+              orientation="vertical"
+              className="mx-1 h-4 bg-divider-accent xl:mx-2"
+            />
             <TabsTab
               value="self-hosted"
-              className="appearance-none justify-center gap-x-2 border-b-0 px-5 py-3 system-xl-semibold text-text-secondary hover:text-saas-dify-blue-accessible data-active:border-transparent data-active:text-saas-dify-blue-accessible"
+              className="min-w-0 flex-1 appearance-none justify-center gap-x-2 border-b-0 px-2 py-3 system-xl-semibold whitespace-normal text-text-secondary hover:text-saas-dify-blue-accessible data-active:border-transparent data-active:text-saas-dify-blue-accessible xl:flex-none xl:px-5 xl:whitespace-nowrap"
             >
               <SelfHosted />
               {t(($) => $['plansCommon.self'], { ns: 'billing' })}
@@ -88,7 +92,7 @@ export function PricingContent() {
           </TabsList>
           {isCloud && (
             <Field>
-              <FieldLabel className="flex items-center justify-end gap-x-3 pr-5">
+              <FieldLabel className="flex items-center gap-x-3 px-2 pb-3 xl:justify-end xl:pr-5 xl:pb-0 xl:pl-0">
                 <Switch
                   size="lg"
                   checked={billingInterval === 'year'}
@@ -105,10 +109,10 @@ export function PricingContent() {
         </div>
       </div>
 
-      <div className="flex w-full justify-center border-t border-divider-accent px-10">
+      <div className="flex w-full justify-center border-t border-divider-accent px-3 xl:px-10">
         <TabsPanel
           value="cloud"
-          className="flex max-w-[1680px] grow flex-wrap border-x border-divider-accent"
+          className="flex max-w-[1680px] min-w-0 grow flex-col border-x border-divider-accent xl:flex-row xl:flex-wrap"
         >
           {pricingError ? (
             <div
@@ -133,19 +137,23 @@ export function PricingContent() {
             )
           )}
           <CloudPlanItem plan="sandbox" billingInterval={billingInterval} billing={billing} />
-          <Separator orientation="vertical" className="mx-0 bg-divider-accent" />
+          <Separator orientation="horizontal" className="bg-divider-accent xl:hidden" />
+          <Separator orientation="vertical" className="mx-0 hidden bg-divider-accent xl:block" />
           <CloudPlanItem plan="professional" billingInterval={billingInterval} billing={billing} />
-          <Separator orientation="vertical" className="mx-0 bg-divider-accent" />
+          <Separator orientation="horizontal" className="bg-divider-accent xl:hidden" />
+          <Separator orientation="vertical" className="mx-0 hidden bg-divider-accent xl:block" />
           <CloudPlanItem plan="team" billingInterval={billingInterval} billing={billing} />
         </TabsPanel>
         <TabsPanel
           value="self-hosted"
-          className="flex max-w-[1680px] grow border-x border-divider-accent"
+          className="flex max-w-[1680px] min-w-0 grow flex-col border-x border-divider-accent xl:flex-row"
         >
           <SelfHostedPlanItem plan="community" />
-          <Separator orientation="vertical" className="mx-0 bg-divider-accent" />
+          <Separator orientation="horizontal" className="bg-divider-accent xl:hidden" />
+          <Separator orientation="vertical" className="mx-0 hidden bg-divider-accent xl:block" />
           <SelfHostedPlanItem plan="premium" />
-          <Separator orientation="vertical" className="mx-0 bg-divider-accent" />
+          <Separator orientation="horizontal" className="bg-divider-accent xl:hidden" />
+          <Separator orientation="vertical" className="mx-0 hidden bg-divider-accent xl:block" />
           <SelfHostedPlanItem plan="enterprise" />
         </TabsPanel>
       </div>

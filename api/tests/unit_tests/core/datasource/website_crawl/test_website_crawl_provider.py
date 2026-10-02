@@ -1,25 +1,23 @@
-from unittest.mock import MagicMock, patch
-
 import pytest
 
 from core.datasource.__base.datasource_runtime import DatasourceRuntime
 from core.datasource.entities.datasource_entities import (
-    DatasourceProviderEntityWithPlugin,
     DatasourceProviderType,
 )
+from core.datasource.website_crawl.website_crawl_plugin import WebsiteCrawlDatasourcePlugin
 from core.datasource.website_crawl.website_crawl_provider import WebsiteCrawlDatasourcePluginProviderController
+from tests.unit_tests.core.datasource.factories import datasource_entity, provider_entity
 
 
 class TestWebsiteCrawlDatasourcePluginProviderController:
     @pytest.fixture
-    def mock_entity(self):
-        entity = MagicMock(spec=DatasourceProviderEntityWithPlugin)
+    def entity(self):
+        entity = provider_entity(DatasourceProviderType.WEBSITE_CRAWL)
         entity.datasources = []
-        entity.identity = MagicMock()
         entity.identity.icon = "test-icon"
         return entity
 
-    def test_init(self, mock_entity):
+    def test_init(self, entity):
         # Arrange
         plugin_id = "test-plugin-id"
         plugin_unique_identifier = "test-unique-id"
@@ -27,67 +25,59 @@ class TestWebsiteCrawlDatasourcePluginProviderController:
 
         # Act
         controller = WebsiteCrawlDatasourcePluginProviderController(
-            entity=mock_entity,
+            entity=entity,
             plugin_id=plugin_id,
             plugin_unique_identifier=plugin_unique_identifier,
             tenant_id=tenant_id,
         )
 
         # Assert
-        assert controller.entity == mock_entity
+        assert controller.entity == entity
         assert controller.plugin_id == plugin_id
         assert controller.plugin_unique_identifier == plugin_unique_identifier
         assert controller.tenant_id == tenant_id
 
-    def test_provider_type(self, mock_entity):
+    def test_provider_type(self, entity):
         # Arrange
         controller = WebsiteCrawlDatasourcePluginProviderController(
-            entity=mock_entity, plugin_id="test", plugin_unique_identifier="test", tenant_id="test"
+            entity=entity, plugin_id="test", plugin_unique_identifier="test", tenant_id="test"
         )
 
         # Act & Assert
         assert controller.provider_type == DatasourceProviderType.WEBSITE_CRAWL
 
-    def test_get_datasource_success(self, mock_entity):
+    def test_get_datasource_success(self, entity):
         # Arrange
         datasource_name = "test-datasource"
         tenant_id = "test-tenant-id"
         plugin_unique_identifier = "test-unique-id"
 
-        mock_datasource_entity = MagicMock()
-        mock_datasource_entity.identity = MagicMock()
-        mock_datasource_entity.identity.name = datasource_name
-        mock_entity.datasources = [mock_datasource_entity]
+        source = datasource_entity(datasource_name)
+        entity.datasources = [source]
 
         controller = WebsiteCrawlDatasourcePluginProviderController(
-            entity=mock_entity, plugin_id="test", plugin_unique_identifier=plugin_unique_identifier, tenant_id=tenant_id
+            entity=entity, plugin_id="test", plugin_unique_identifier=plugin_unique_identifier, tenant_id=tenant_id
         )
 
         # Act
-        with patch(
-            "core.datasource.website_crawl.website_crawl_provider.WebsiteCrawlDatasourcePlugin"
-        ) as mock_plugin_class:
-            mock_plugin_instance = mock_plugin_class.return_value
-            result = controller.get_datasource(datasource_name)
+        result = controller.get_datasource(datasource_name)
 
-            # Assert
-            assert result == mock_plugin_instance
-            mock_plugin_class.assert_called_once()
-            args, kwargs = mock_plugin_class.call_args
-            assert kwargs["entity"] == mock_datasource_entity
-            assert isinstance(kwargs["runtime"], DatasourceRuntime)
-            assert kwargs["runtime"].tenant_id == tenant_id
-            assert kwargs["tenant_id"] == tenant_id
-            assert kwargs["icon"] == "test-icon"
-            assert kwargs["plugin_unique_identifier"] == plugin_unique_identifier
+        # Assert
+        assert isinstance(result, WebsiteCrawlDatasourcePlugin)
+        assert result.entity is source
+        assert isinstance(result.runtime, DatasourceRuntime)
+        assert result.runtime.tenant_id == tenant_id
+        assert result.tenant_id == tenant_id
+        assert result.icon == "test-icon"
+        assert result.plugin_unique_identifier == plugin_unique_identifier
 
-    def test_get_datasource_not_found(self, mock_entity):
+    def test_get_datasource_not_found(self, entity):
         # Arrange
         datasource_name = "non-existent"
-        mock_entity.datasources = []
+        entity.datasources = []
 
         controller = WebsiteCrawlDatasourcePluginProviderController(
-            entity=mock_entity, plugin_id="test", plugin_unique_identifier="test", tenant_id="test"
+            entity=entity, plugin_id="test", plugin_unique_identifier="test", tenant_id="test"
         )
 
         # Act & Assert

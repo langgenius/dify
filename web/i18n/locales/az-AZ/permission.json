@@ -34,6 +34,7 @@
   "accessRule.summary_one": "{{count}} icazə dəsti",
   "accessRule.summary_other": "{{count}} icazə dəsti",
   "accessRule.updated": "Giriş qaydası uğurla yeniləndi",
+  "accessRule.workspaceAdmin": "İş sahəsinin administratoru",
   "accessRule.workspaceOwner": "İş sahəsinin sahibi",
   "common.duplicateAction": "Nüsxə yarat",
   "group.agent": "Agentlər",

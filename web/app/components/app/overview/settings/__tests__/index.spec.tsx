@@ -1,12 +1,14 @@
 import type { ReactElement, ReactNode } from 'react'
 import type { SettingsAppInfo } from '../index'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { consoleQuery } from '@/service/console'
 import {
   createConsoleQueryClient,
   renderWithConsoleQuery as renderWithoutPricing,
 } from '@/test/console/query-data'
+import { createAppSiteFixture } from '@/test/fixtures/app'
 import { AppModeEnum } from '@/types/app'
 import SettingsModal from '../index'
 
@@ -132,6 +134,29 @@ describe('SettingsModal', () => {
     vi.useRealTimers()
   })
 
+  it('edits a site with nullable optional fields as empty form values', async () => {
+    renderSettingsModal({ id: 'app-null-fields', mode: 'chat', site: createAppSiteFixture() })
+
+    expect(screen.getByRole('textbox', { name: inputPlaceholderName })).toHaveValue('')
+    fireEvent.click(screen.getByText('common.operation.save'))
+
+    await waitFor(() =>
+      expect(mockOnSave).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'App',
+          description: '',
+          chat_color_theme: '',
+          privacy_policy: '',
+          input_placeholder: '',
+          icon: null,
+          icon_type: null,
+          icon_background: null,
+        }),
+      ),
+    )
+    expect(mockOnClose).toHaveBeenCalledOnce()
+  })
+
   it('should render the modal with all settings exposed by default', async () => {
     renderSettingsModal()
     expect(screen.getByText('appOverview.overview.appInfo.settings.title')).toBeInTheDocument()
@@ -159,6 +184,20 @@ describe('SettingsModal', () => {
     expect(screen.getByRole('status')).toHaveTextContent(
       'appOverview.overview.appInfo.settings.multiEnvironmentNotice',
     )
+  })
+
+  it('names the Inverted switch from its visible label and exposes its state', async () => {
+    const user = userEvent.setup()
+    renderSettingsModal()
+
+    const invertedSwitch = screen.getByRole('switch', {
+      name: 'appOverview.overview.appInfo.settings.chatColorThemeInverted',
+    })
+    expect(invertedSwitch).toBeChecked()
+
+    await user.click(invertedSwitch)
+
+    expect(invertedSwitch).not.toBeChecked()
   })
 
   it('should notify the user when the name is empty', async () => {

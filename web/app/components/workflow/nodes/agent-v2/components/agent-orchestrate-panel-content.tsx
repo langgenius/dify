@@ -72,6 +72,7 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
 import { FlowType } from '@/types/common'
 import { useWorkflowInlineAgentConfigureSync } from '../agent-soul-config'
+import { InlineAgentLoading } from './inline-agent-loading'
 
 type WorkflowRosterAgentOrchestratePanelContentProps = {
   agentId?: string
@@ -188,11 +189,7 @@ export function WorkflowInlineAgentConfigureWorkspace(
       : undefined
 
   if (!agentId) {
-    return (
-      <div className="flex h-full min-h-80 items-center justify-center bg-components-panel-bg">
-        <LoadingPlaceholder className="h-full" />
-      </div>
-    )
+    return <InlineAgentLoading />
   }
 
   const composerSessionKey = `${nodeId}:${agentId}`
@@ -239,11 +236,7 @@ function WorkflowInlineAgentConfigureWorkspaceComposerScope({
   const composerSessionKey = `${props.nodeId}:${agentId}`
 
   if (!agentSoulConfig || buildDraft.isPending) {
-    return (
-      <div className="flex h-full min-h-80 items-center justify-center bg-components-panel-bg">
-        <LoadingPlaceholder className="h-full" />
-      </div>
-    )
+    return <InlineAgentLoading />
   }
 
   return (

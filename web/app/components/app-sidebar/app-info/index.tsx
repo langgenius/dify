@@ -1,14 +1,15 @@
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import AppInfoModals from './app-info-modals'
 import AppInfoTrigger from './app-info-trigger'
 import { useAppInfoActions } from './use-app-info-actions'
 
 type AppInfoViewProps = {
+  appDetail: AppDetailWithSite
   expand: boolean
 }
 
-export const AppInfoView = ({ expand }: AppInfoViewProps) => {
+export const AppInfoView = ({ appDetail, expand }: AppInfoViewProps) => {
   const {
-    appDetail,
     activeModal,
     openModal,
     closeModal,
@@ -21,9 +22,7 @@ export const AppInfoView = ({ expand }: AppInfoViewProps) => {
     exportCheck,
     handleConfirmExport,
     onConfirmDelete,
-  } = useAppInfoActions()
-
-  if (!appDetail) return null
+  } = useAppInfoActions({ appId: appDetail.id, appName: appDetail.name, appMode: appDetail.mode })
 
   return (
     <>

@@ -58,11 +58,7 @@ class TestFeedbackExportApi:
         mock_scalars_result.one.return_value = tenant
         monkeypatch.setattr(mock_session_instance, "scalars", mock.Mock(return_value=mock_scalars_result))
 
-        mock_session_context = mock.Mock()
-        mock_session_context.__enter__.return_value = mock_session_instance
-        monkeypatch.setattr("models.account.Session", lambda _, expire_on_commit: mock_session_context)
-
-        account.current_tenant = tenant
+        account.set_current_tenant_with_session(tenant, session=mock_session_instance)
         return account
 
     @pytest.fixture

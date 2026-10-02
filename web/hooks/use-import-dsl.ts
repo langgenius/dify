@@ -1,5 +1,4 @@
 import type { AppImportPayload, Import } from '@dify/contracts/api/console/apps/types.gen'
-import type { AppIconType } from '@/types/app'
 import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { createElement, useCallback, useRef, useState } from 'react'
@@ -17,9 +16,6 @@ import { consoleQuery } from '@/service/console'
 import { getRedirection } from '@/utils/app-redirection'
 import { resolveImportedAppRedirectionTarget } from '@/utils/imported-app-redirection'
 
-type DSLPayload = Omit<AppImportPayload, 'icon_type'> & {
-  icon_type?: AppIconType
-}
 type ResponseCallback = {
   onSuccess?: (payload: Import) => void
   onPending?: (payload: Import) => void
@@ -53,7 +49,7 @@ export const useImportDSL = () => {
 
   const handleImportDSL = useCallback(
     async (
-      payload: DSLPayload,
+      payload: AppImportPayload,
       { onSuccess, onPending, onFailed, skipRedirectOnSuccess }: ResponseCallback,
     ) => {
       if (actionInFlightRef.current) return

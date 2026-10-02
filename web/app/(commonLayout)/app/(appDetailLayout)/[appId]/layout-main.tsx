@@ -1,8 +1,9 @@
 'use client'
+
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
-import type { App } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
@@ -19,7 +20,7 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { usePathname, useRouter } from '@/next/navigation'
-import { fetchAppDetailDirect } from '@/service/apps'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
 import { getRedirectionPath } from '@/utils/app-redirection'
 import { getAppACLCapabilities } from '@/utils/permission'
@@ -73,11 +74,16 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     })),
   )
   const [isLoadingAppDetail, setIsLoadingAppDetail] = useState(false)
-  const [appDetailRes, setAppDetailRes] = useState<App | null>(null)
+  const [appDetailRes, setAppDetailRes] = useState<AppDetailWithSite | null>(null)
   const routeAppDetail =
     appDetail?.id === appId ? appDetail : appDetailRes?.id === appId ? appDetailRes : null
   const pageTitle = appDetailPageTitle(pathname, t)
-  const appName = routeAppDetail?.id === appId ? routeAppDetail.name : undefined
+  const { data: appName } = useQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({
+      input: { params: { app_id: appId } },
+      select: (detail) => detail.name,
+    }),
+  )
   const shouldBlockAgentResourceAccess =
     routeAppDetail?.mode === AppModeEnum.AGENT && pathname.endsWith('/access-config')
   const canViewAccessPoint =
@@ -113,8 +119,9 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     void Promise.resolve().then(() => {
       if (!ignore) setIsLoadingAppDetail(true)
     })
-    fetchAppDetailDirect({ url: '/apps', id: appId })
-      .then((res: App) => {
+    consoleClient.apps.byAppId
+      .get({ params: { app_id: appId } })
+      .then((res: AppDetailWithSite) => {
         if (ignore) return
 
         setAppDetailRes(res)

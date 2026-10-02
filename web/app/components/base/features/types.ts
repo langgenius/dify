@@ -1,5 +1,6 @@
+import type { AppModelSelectionResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { FileUploadConfigResponse } from '@/models/common'
-import type { Model, Resolution, TransferMethod, TtsAutoPlay } from '@/types/app'
+import type { Resolution, TransferMethod, TtsAutoPlay } from '@/types/app'
 
 type EnabledOrDisabled = {
   enabled?: boolean
@@ -13,7 +14,7 @@ export type OpeningStatement = EnabledOrDisabled & {
 }
 
 export type SuggestedQuestionsAfterAnswer = EnabledOrDisabled & {
-  model?: Model
+  model?: AppModelSelectionResponse
   prompt?: string
 }
 

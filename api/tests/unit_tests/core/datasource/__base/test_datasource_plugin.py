@@ -1,9 +1,9 @@
 from collections.abc import Callable
-from unittest.mock import MagicMock
 
 from core.datasource.__base.datasource_plugin import DatasourcePlugin
 from core.datasource.__base.datasource_runtime import DatasourceRuntime
-from core.datasource.entities.datasource_entities import DatasourceEntity, DatasourceProviderType
+from core.datasource.entities.datasource_entities import DatasourceProviderType
+from tests.unit_tests.core.datasource.factories import datasource_entity
 
 
 class ConcreteDatasourcePlugin(DatasourcePlugin):
@@ -19,8 +19,8 @@ class ConcreteDatasourcePlugin(DatasourcePlugin):
 class TestDatasourcePlugin:
     def test_init(self):
         # Arrange
-        entity = MagicMock(spec=DatasourceEntity)
-        runtime = MagicMock(spec=DatasourceRuntime)
+        entity = datasource_entity("test_datasource")
+        runtime = DatasourceRuntime(tenant_id="tenant-1")
         icon = "test-icon.png"
 
         # Act
@@ -33,8 +33,8 @@ class TestDatasourcePlugin:
 
     def test_datasource_provider_type(self):
         # Arrange
-        entity = MagicMock(spec=DatasourceEntity)
-        runtime = MagicMock(spec=DatasourceRuntime)
+        entity = datasource_entity("test_datasource")
+        runtime = DatasourceRuntime(tenant_id="tenant-1")
         icon = "test-icon.png"
         plugin = ConcreteDatasourcePlugin(entity=entity, runtime=runtime, icon=icon)
 
@@ -49,31 +49,31 @@ class TestDatasourcePlugin:
 
     def test_fork_datasource_runtime(self):
         # Arrange
-        mock_entity = MagicMock(spec=DatasourceEntity)
-        mock_entity_copy = MagicMock(spec=DatasourceEntity)
-        mock_entity.model_copy.return_value = mock_entity_copy
+        entity = datasource_entity("test_datasource")
 
-        runtime = MagicMock(spec=DatasourceRuntime)
-        new_runtime = MagicMock(spec=DatasourceRuntime)
+        runtime = DatasourceRuntime(tenant_id="tenant-1")
+        new_runtime = DatasourceRuntime(tenant_id="tenant-2", credentials={"token": "new-token"})
         icon = "test-icon.png"
 
-        plugin = ConcreteDatasourcePlugin(entity=mock_entity, runtime=runtime, icon=icon)
+        plugin = ConcreteDatasourcePlugin(entity=entity, runtime=runtime, icon=icon)
 
         # Act
         new_plugin = plugin.fork_datasource_runtime(new_runtime)
 
         # Assert
         assert isinstance(new_plugin, ConcreteDatasourcePlugin)
-        assert new_plugin.entity == mock_entity_copy
-        assert new_plugin.runtime == new_runtime
+        assert new_plugin.entity == entity
+        assert new_plugin.entity is not entity
+        assert new_plugin.runtime is new_runtime
         assert new_plugin.icon == icon
-        mock_entity.model_copy.assert_called_once()
+        assert plugin.runtime is runtime
+        assert plugin.runtime.credentials == {}
 
     def test_get_icon_url(self, config_overrides: Callable[..., None]):
         config_overrides(CONSOLE_API_URL="https://api.dify.ai")
         # Arrange
-        entity = MagicMock(spec=DatasourceEntity)
-        runtime = MagicMock(spec=DatasourceRuntime)
+        entity = datasource_entity("test_datasource")
+        runtime = DatasourceRuntime(tenant_id="tenant-1")
         icon = "test-icon.png"
         tenant_id = "test-tenant-id"
 
