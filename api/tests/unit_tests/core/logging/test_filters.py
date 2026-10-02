@@ -5,6 +5,7 @@ import logging
 from unittest import mock
 
 import pytest
+from opentelemetry.trace import NonRecordingSpan, SpanContext, use_span
 
 
 @pytest.fixture
@@ -75,61 +76,31 @@ class TestTraceContextFilter:
     def test_sets_trace_id_from_otel_when_available(self, log_record):
         from core.logging.filters import TraceContextFilter
 
-        mock_span = mock.MagicMock()
-        mock_context = mock.MagicMock()
-        mock_context.trace_id = 0x5B8AA5A2D2C872E8321CF37308D69DF2
-        mock_context.span_id = 0x051581BF3BB55C45
-        mock_span.get_span_context.return_value = mock_context
-
-        with (
-            mock.patch("opentelemetry.trace.get_current_span", return_value=mock_span, autospec=True),
-            mock.patch("opentelemetry.trace.span.INVALID_TRACE_ID", 0),
-            mock.patch("opentelemetry.trace.span.INVALID_SPAN_ID", 0),
-        ):
+        span = NonRecordingSpan(
+            SpanContext(
+                trace_id=0x5B8AA5A2D2C872E8321CF37308D69DF2,
+                span_id=0x051581BF3BB55C45,
+                is_remote=False,
+            )
+        )
+        with use_span(span):
             filter = TraceContextFilter()
             filter.filter(log_record)
 
             assert log_record.trace_id == "5b8aa5a2d2c872e8321cf37308d69df2"
             assert log_record.span_id == "051581bf3bb55c45"
 
-    def test_otel_context_invalid_trace_id(self, log_record):
+    @pytest.mark.parametrize(("trace_id", "span_id"), [(0, 1), (1, 0)])
+    def test_otel_context_invalid_ids(self, log_record, trace_id, span_id):
         from core.logging.filters import TraceContextFilter
 
-        mock_span = mock.MagicMock()
-        mock_context = mock.MagicMock()
-        mock_context.trace_id = 0
-        mock_context.is_valid = True
-        mock_span.get_span_context.return_value = mock_context
+        context = SpanContext(trace_id=trace_id, span_id=span_id, is_remote=False)
+        assert not context.is_valid
+        with use_span(NonRecordingSpan(context)):
+            TraceContextFilter().filter(log_record)
 
-        # Use mocks for base context to ensure we can test the fallback
-        with (
-            mock.patch("opentelemetry.trace.get_current_span", return_value=mock_span),
-            mock.patch("opentelemetry.trace.span.INVALID_TRACE_ID", 0),
-            mock.patch("core.logging.filters.get_trace_id", return_value=""),
-        ):
-            filter = TraceContextFilter()
-            filter.filter(log_record)
-            assert log_record.trace_id == ""
-
-    def test_otel_context_invalid_span_id(self, log_record):
-        from core.logging.filters import TraceContextFilter
-
-        mock_span = mock.MagicMock()
-        mock_context = mock.MagicMock()
-        mock_context.trace_id = 0x5B8AA5A2D2C872E8321CF37308D69DF2
-        mock_context.span_id = 0
-        mock_context.is_valid = True
-        mock_span.get_span_context.return_value = mock_context
-
-        with (
-            mock.patch("opentelemetry.trace.get_current_span", return_value=mock_span),
-            mock.patch("opentelemetry.trace.span.INVALID_TRACE_ID", 0),
-            mock.patch("opentelemetry.trace.span.INVALID_SPAN_ID", 0),
-        ):
-            filter = TraceContextFilter()
-            filter.filter(log_record)
-            assert log_record.trace_id == "5b8aa5a2d2c872e8321cf37308d69df2"
-            assert log_record.span_id == ""
+        assert log_record.trace_id == ""
+        assert log_record.span_id == ""
 
     def test_otel_context_span_none(self, log_record):
         from core.logging.filters import TraceContextFilter
@@ -199,7 +170,10 @@ class TestIdentityContextFilter:
         app = Flask(__name__)
         app.secret_key = "test"
         login_manager = LoginManager(app)
-        request_loader = mock.Mock(return_value=None)
+
+        def request_loader(_request):
+            pytest.fail("Logging must not invoke authentication")
+
         login_manager.request_loader(request_loader)
         clear_request_context()
 
@@ -210,7 +184,6 @@ class TestIdentityContextFilter:
             IdentityContextFilter().filter(log_record)
             assert "_login_user" not in g
 
-        request_loader.assert_not_called()
         assert log_record.tenant_id == ""
         assert log_record.user_id == ""
         assert log_record.user_type == ""
@@ -227,7 +200,10 @@ class TestIdentityContextFilter:
         app = Flask(__name__)
         app.secret_key = "test"
         login_manager = LoginManager(app)
-        request_loader = mock.Mock(return_value=None)
+
+        def request_loader(_request):
+            pytest.fail("Logging must not invoke authentication")
+
         login_manager.request_loader(request_loader)
 
         span = TracerProvider().get_tracer(__name__).start_span("ended")
@@ -263,5 +239,4 @@ class TestIdentityContextFilter:
             sdk_logger.disabled = previous_disabled
             handler.close()
 
-        request_loader.assert_not_called()
         assert "Setting attribute on ended span" in stream.getvalue()
