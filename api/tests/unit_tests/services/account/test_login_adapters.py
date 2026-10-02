@@ -3,8 +3,9 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from datetime import timedelta
 from typing import override
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, call
 
 import pytest
 from sqlalchemy import select
@@ -110,9 +111,11 @@ def test_session_gateway_owns_refresh_token_storage(
 
     assert result == AccountSessionTokens(access_token="access", refresh_token="refresh", csrf_token="csrf")
     assert issued_payloads[0]["user_id"] == "account-1"
-    assert commands.call_args_list[0].args[1] == "refresh_token:refresh"
-    assert commands.call_args_list[1].args[1] == "account_refresh_token:account-1"
-    assert commands.call_count == 2
+    expires_in = int(timedelta(days=adapters.dify_config.REFRESH_TOKEN_EXPIRE_DAYS).total_seconds())
+    assert commands.call_args_list == [
+        call("SETEX", "refresh_token:refresh", expires_in, "account-1"),
+        call("SETEX", "account_refresh_token:account-1", expires_in, "refresh"),
+    ]
 
 
 def test_session_gateway_resolves_rotates_and_revokes_refresh_tokens(
