@@ -294,7 +294,7 @@ def test_graph_validation_with_dify_node_factory(invalid_kind, monkeypatch):
         assert set(graph.nodes) == {"start", "left", "right", "end"}
         assert len(graph.edges) == 4
     else:
-        create_node = Mock(side_effect=AssertionError("Invalid graphs must fail before node construction"))
+        create_node = MagicMock(side_effect=AssertionError("Invalid graphs must fail before node construction"))
         monkeypatch.setattr(node_factory.DifyNodeFactory, "create_node", create_node)
         with pytest.raises(GraphValidationError) as error:
             Graph.init(graph_config=graph_config, node_factory=factory, root_node_id="start")
