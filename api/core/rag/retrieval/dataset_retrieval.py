@@ -1717,10 +1717,11 @@ class DatasetRetrieval:
                         filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() != value)
 
             case "empty":
-                filters.append(DatasetDocument.doc_metadata[metadata_name].is_(None))
+                # Compare the text value so a stored JSON null (a field attached without a value) counts as empty.
+                filters.append(or_(json_field.is_(None), json_field == ""))
 
             case "not empty":
-                filters.append(DatasetDocument.doc_metadata[metadata_name].isnot(None))
+                filters.append(and_(json_field.isnot(None), json_field != ""))
 
             case "before" | "<":
                 filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() < value)

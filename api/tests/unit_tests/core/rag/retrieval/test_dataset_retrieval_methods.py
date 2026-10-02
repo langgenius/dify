@@ -72,6 +72,7 @@ def _persist_document(
     indexing_status: IndexingStatus = IndexingStatus.COMPLETED,
     enabled: bool = True,
     archived: bool = False,
+    doc_metadata: dict | None = None,
 ) -> DatasetDocument:
     document = DatasetDocument(
         id=document_id,
@@ -86,6 +87,7 @@ def _persist_document(
         indexing_status=indexing_status,
         enabled=enabled,
         archived=archived,
+        doc_metadata=doc_metadata,
     )
     with database.session_maker.begin() as session:
         session.add(document)
@@ -446,3 +448,36 @@ class TestDatasetRetrievalKnowledgeRetrieval:
         sorted_documents = sorted(documents, key=lambda document: document.metadata["score"], reverse=True)
 
         assert [document.metadata["score"] for document in sorted_documents] == [0.95, 0.8, 0.6]
+
+
+class TestEmptyMetadataConditions:
+    @pytest.fixture
+    def documents_by_author(self, retrieval_database: RetrievalDatabase) -> RetrievalDatabase:
+        _persist_dataset(retrieval_database, dataset_id="dataset-1")
+        for document_id, doc_metadata in (
+            ("missing", {}),
+            ("json-null", {"author": None}),
+            ("blank", {"author": ""}),
+            ("set", {"author": "bob"}),
+        ):
+            _persist_document(
+                retrieval_database, dataset_id="dataset-1", document_id=document_id, doc_metadata=doc_metadata
+            )
+        return retrieval_database
+
+    @pytest.mark.parametrize(
+        ("condition", "expected_ids"),
+        [
+            ("empty", {"missing", "json-null", "blank"}),
+            ("not empty", {"set"}),
+        ],
+    )
+    def test_empty_conditions_treat_json_null_and_blank_as_empty(
+        self, documents_by_author: RetrievalDatabase, condition: str, expected_ids: set[str]
+    ):
+        filters = DatasetRetrieval.process_metadata_filter_func(0, condition, "author", None, [])
+
+        with documents_by_author.session_maker() as session:
+            matched_ids = set(session.scalars(select(DatasetDocument.id).where(*filters)))
+
+        assert matched_ids == expected_ids
