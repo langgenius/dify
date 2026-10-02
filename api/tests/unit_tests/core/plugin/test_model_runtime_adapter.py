@@ -5,10 +5,11 @@ import inspect
 import uuid
 from collections import defaultdict
 from collections.abc import Callable
-from types import SimpleNamespace
-from unittest.mock import MagicMock, Mock, call, patch, sentinel
+from unittest.mock import call, patch, sentinel
 
 import pytest
+from redis import Redis
+from redis.lock import Lock
 
 from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginModelProviderEntity
@@ -25,7 +26,7 @@ from graphon.model_runtime.entities.llm_entities import (
     LLMResultChunkDelta,
     LLMUsage,
 )
-from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
+from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessageTool
 from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
 from graphon.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
 
@@ -74,52 +75,35 @@ class _RecordingModelClient(PluginModelClient):
         return self._record(PluginModelClient.get_llm_num_tokens, **kwargs)
 
 
-class _FakeRedis:
-    def __init__(self) -> None:
-        self._values: dict[str, str] = {}
-        self.setex_calls: list[tuple[str, int, str]] = []
+def _redis_cache(monkeypatch: pytest.MonkeyPatch) -> tuple[Redis, list[tuple[str, int, str]]]:
+    redis = Redis()
+    values: dict[str, str] = {}
+    writes: list[tuple[str, int, str]] = []
 
-    def get(self, key: str) -> str | None:
-        return self._values.get(key)
+    def setex(key: str, ttl: int, value: str) -> None:
+        values[key] = value
+        writes.append((key, ttl, value))
 
-    def mget(self, keys: list[str]) -> list[str | None]:
-        return [self.get(key) for key in keys]
+    def lock(name: str, *, timeout: int, sleep: float) -> Lock:
+        result = Lock(redis, name, timeout=timeout, sleep=sleep)
 
-    def setex(self, key: str, ttl: int, value: str) -> None:
-        self._values[key] = value
-        self.setex_calls.append((key, ttl, value))
+        def acquire(*, blocking: bool = True, blocking_timeout: float | None = None) -> bool:
+            del blocking, blocking_timeout
+            if name in values:
+                return False
+            values[name] = "locked"
+            return True
 
-    def delete(self, key: str) -> None:
-        self._values.pop(key, None)
+        monkeypatch.setattr(result, "acquire", acquire)
+        monkeypatch.setattr(result, "release", lambda: values.pop(name, None))
+        return result
 
-    def lock(
-        self,
-        key: str,
-        *,
-        timeout: int,
-        sleep: float,
-    ) -> "_FakeRedisLock":
-        return _FakeRedisLock(self, key)
-
-
-class _FakeRedisLock:
-    def __init__(self, redis: _FakeRedis, key: str) -> None:
-        self._redis = redis
-        self._key = key
-        self._acquired = False
-
-    def acquire(self, *, blocking: bool = True, blocking_timeout: float | None = None) -> bool:
-        if self._key in self._redis._values:
-            return False
-
-        self._redis._values[self._key] = "locked"
-        self._acquired = True
-        return True
-
-    def release(self) -> None:
-        if self._acquired:
-            self._redis.delete(self._key)
-            self._acquired = False
+    monkeypatch.setattr(redis, "get", values.get)
+    monkeypatch.setattr(redis, "mget", lambda keys: [values.get(key) for key in keys])
+    monkeypatch.setattr(redis, "setex", setex)
+    monkeypatch.setattr(redis, "delete", lambda key: values.pop(key, None))
+    monkeypatch.setattr(redis, "lock", lock)
+    return redis, writes
 
 
 def _build_model_schema() -> AIModelEntity:
@@ -553,17 +537,16 @@ class TestPluginModelRuntime:
         client.results["fetch_model_providers"] = []
         from core.plugin import plugin_service as plugin_service_module
 
-        monkeypatch.setattr(
-            plugin_service_module,
-            "redis_client",
-            SimpleNamespace(
-                get=Mock(return_value=None),
-                mget=Mock(return_value=[None]),
-                delete=Mock(),
-                setex=Mock(),
-                lock=Mock(return_value=MagicMock()),
-            ),
-        )
+        redis = Redis()
+        lock = redis.lock("provider-test")
+        monkeypatch.setattr(lock, "acquire", lambda **_kwargs: True)
+        monkeypatch.setattr(lock, "release", lambda: None)
+        monkeypatch.setattr(redis, "get", lambda _key: None)
+        monkeypatch.setattr(redis, "mget", lambda _keys: [None])
+        monkeypatch.setattr(redis, "delete", lambda _key: None)
+        monkeypatch.setattr(redis, "setex", lambda _key, _ttl, _value: None)
+        monkeypatch.setattr(redis, "lock", lambda *_args, **_kwargs: lock)
+        monkeypatch.setattr(plugin_service_module, "redis_client", redis)
         config_overrides(PLUGIN_MODEL_PROVIDERS_CACHE_TTL=0)
         runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client, plugin_service=PluginService)
 
@@ -576,7 +559,7 @@ class TestPluginModelRuntime:
         self, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
     ) -> None:
         config_overrides(PLUGIN_MODEL_PROVIDERS_CACHE_TTL=300)
-        redis = _FakeRedis()
+        redis, writes = _redis_cache(monkeypatch)
         from core.plugin import plugin_service as plugin_service_module
 
         monkeypatch.setattr(plugin_service_module, "redis_client", redis)
@@ -597,13 +580,13 @@ class TestPluginModelRuntime:
         assert [provider.provider for provider in second_providers] == ["langgenius/openai/openai"]
         assert first_client.calls["fetch_model_providers"] == [call("tenant")]
         assert not second_client.calls["fetch_model_providers"]
-        assert redis.setex_calls[0][1] == 300
+        assert writes[0][1] == 300
 
     def test_fetch_model_providers_cache_is_tenant_isolated(
         self, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
     ) -> None:
         config_overrides(PLUGIN_MODEL_PROVIDERS_CACHE_TTL=300)
-        redis = _FakeRedis()
+        redis, writes = _redis_cache(monkeypatch)
         from core.plugin import plugin_service as plugin_service_module
 
         monkeypatch.setattr(plugin_service_module, "redis_client", redis)
@@ -625,9 +608,11 @@ class TestPluginModelRuntime:
         assert [provider.provider for provider in second_providers] == ["langgenius/openai/openai"]
         assert first_client.calls["fetch_model_providers"] == [call("tenant-a")]
         assert second_client.calls["fetch_model_providers"] == [call("tenant-b")]
-        assert len(redis.setex_calls) == 2
+        assert len(writes) == 2
 
-    def test_fetch_model_providers_delegates_cache_to_injected_plugin_service(self) -> None:
+    def test_fetch_model_providers_delegates_cache_to_injected_plugin_service(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         client = _RecordingModelClient()
         service_result = [
             ProviderEntity(
@@ -637,21 +622,20 @@ class TestPluginModelRuntime:
                 configurate_methods=[ConfigurateMethod.PREDEFINED_MODEL],
             )
         ]
-        fetch_plugin_model_providers = Mock(return_value=service_result)
+        calls: list[tuple[str, PluginModelClient]] = []
 
-        class TestPluginService(PluginService):
-            pass
+        def fetch_plugin_model_providers(*, tenant_id: str, client: PluginModelClient) -> list[ProviderEntity]:
+            calls.append((tenant_id, client))
+            return service_result
 
-        TestPluginService.fetch_plugin_model_providers = fetch_plugin_model_providers
+        monkeypatch.setattr(PluginService, "fetch_plugin_model_providers", fetch_plugin_model_providers)
 
-        runtime = PluginModelRuntime(
-            tenant_id="tenant", user_id="user", client=client, plugin_service=TestPluginService
-        )
+        runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client, plugin_service=PluginService)
 
         result = runtime.fetch_model_providers()
 
         assert result is service_result
-        fetch_plugin_model_providers.assert_called_once_with(tenant_id="tenant", client=client)
+        assert calls == [("tenant", client)]
         assert not client.calls["fetch_model_providers"]
 
 
@@ -679,15 +663,9 @@ def test_plugin_model_runtime_requires_plugin_service() -> None:
 def test_get_model_schema_uses_cached_schema_without_hitting_client(monkeypatch: pytest.MonkeyPatch) -> None:
     client = _RecordingModelClient()
     schema = _build_model_schema()
-    monkeypatch.setattr(
-        model_runtime_module,
-        "redis_client",
-        SimpleNamespace(
-            get=Mock(return_value=schema.model_dump_json()),
-            delete=Mock(),
-            setex=Mock(),
-        ),
-    )
+    redis = Redis()
+    monkeypatch.setattr(redis, "get", lambda _key: schema.model_dump_json())
+    monkeypatch.setattr(model_runtime_module, "redis_client", redis)
 
     runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client, plugin_service=PluginService)
     result = runtime.get_model_schema(
@@ -701,16 +679,22 @@ def test_get_model_schema_uses_cached_schema_without_hitting_client(monkeypatch:
     assert not client.calls["get_model_schema"]
 
 
-def test_structured_output_adapter_invokes_bound_runtime_streaming() -> None:
-    runtime = Mock()
-    runtime.invoke_llm.return_value = sentinel.stream_result
+def test_structured_output_adapter_invokes_bound_runtime_streaming(monkeypatch: pytest.MonkeyPatch) -> None:
+    runtime = create_plugin_model_runtime(tenant_id="tenant", user_id="user")
+    calls: list[dict[str, object]] = []
+
+    def invoke_llm(**kwargs: object) -> object:
+        calls.append(kwargs)
+        return sentinel.stream_result
+
+    monkeypatch.setattr(runtime, "invoke_llm", invoke_llm)
     adapter = model_runtime_module._PluginStructuredOutputModelInstance(
         runtime=runtime,
         provider="langgenius/openai/openai",
         model="gpt-4o-mini",
         credentials={"api_key": "secret"},
     )
-    tool = Mock()
+    tool = PromptMessageTool(name="lookup", description="Look up a value", parameters={})
 
     result = adapter.invoke_llm(
         prompt_messages=[],
@@ -722,21 +706,29 @@ def test_structured_output_adapter_invokes_bound_runtime_streaming() -> None:
     )
 
     assert result is sentinel.stream_result
-    runtime.invoke_llm.assert_called_once_with(
-        provider="langgenius/openai/openai",
-        model="gpt-4o-mini",
-        credentials={"api_key": "secret"},
-        model_parameters={},
-        prompt_messages=[],
-        tools=[tool],
-        stop=["END"],
-        stream=True,
-    )
+    assert calls == [
+        {
+            "provider": "langgenius/openai/openai",
+            "model": "gpt-4o-mini",
+            "credentials": {"api_key": "secret"},
+            "model_parameters": {},
+            "prompt_messages": [],
+            "tools": [tool],
+            "stop": ["END"],
+            "stream": True,
+        }
+    ]
 
 
-def test_structured_output_adapter_invokes_bound_runtime_non_streaming() -> None:
-    runtime = Mock()
-    runtime.invoke_llm.return_value = sentinel.result
+def test_structured_output_adapter_invokes_bound_runtime_non_streaming(monkeypatch: pytest.MonkeyPatch) -> None:
+    runtime = create_plugin_model_runtime(tenant_id="tenant", user_id="user")
+    calls: list[dict[str, object]] = []
+
+    def invoke_llm(**kwargs: object) -> object:
+        calls.append(kwargs)
+        return sentinel.result
+
+    monkeypatch.setattr(runtime, "invoke_llm", invoke_llm)
     adapter = model_runtime_module._PluginStructuredOutputModelInstance(
         runtime=runtime,
         provider="langgenius/openai/openai",
@@ -753,23 +745,31 @@ def test_structured_output_adapter_invokes_bound_runtime_non_streaming() -> None
     )
 
     assert result is sentinel.result
-    runtime.invoke_llm.assert_called_once_with(
-        provider="langgenius/openai/openai",
-        model="gpt-4o-mini",
-        credentials={"api_key": "secret"},
-        model_parameters={"temperature": 0},
-        prompt_messages=[],
-        tools=None,
-        stop=None,
-        stream=False,
-    )
+    assert calls == [
+        {
+            "provider": "langgenius/openai/openai",
+            "model": "gpt-4o-mini",
+            "credentials": {"api_key": "secret"},
+            "model_parameters": {"temperature": 0},
+            "prompt_messages": [],
+            "tools": None,
+            "stop": None,
+            "stream": False,
+        }
+    ]
 
 
-def test_invoke_llm_with_structured_output_delegates_with_bound_adapter() -> None:
+def test_invoke_llm_with_structured_output_delegates_with_bound_adapter(monkeypatch: pytest.MonkeyPatch) -> None:
     client = _RecordingModelClient()
     runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client, plugin_service=PluginService)
     schema = _build_model_schema()
-    runtime.get_model_schema = Mock(return_value=schema)  # type: ignore[method-assign]
+    schema_calls: list[dict[str, object]] = []
+
+    def get_model_schema(**kwargs: object) -> AIModelEntity:
+        schema_calls.append(kwargs)
+        return schema
+
+    monkeypatch.setattr(runtime, "get_model_schema", get_model_schema)
 
     with patch.object(
         model_runtime_module,
@@ -788,12 +788,14 @@ def test_invoke_llm_with_structured_output_delegates_with_bound_adapter() -> Non
         )
 
     assert result is sentinel.structured_result
-    runtime.get_model_schema.assert_called_once_with(
-        provider="langgenius/openai/openai",
-        model_type=ModelType.LLM,
-        model="gpt-4o-mini",
-        credentials={"api_key": "secret"},
-    )
+    assert schema_calls == [
+        {
+            "provider": "langgenius/openai/openai",
+            "model_type": ModelType.LLM,
+            "model": "gpt-4o-mini",
+            "credentials": {"api_key": "secret"},
+        }
+    ]
     helper_kwargs = mock_helper.call_args.kwargs
     assert helper_kwargs["provider"] == "langgenius/openai/openai"
     assert helper_kwargs["model_schema"] == schema
@@ -806,10 +808,10 @@ def test_invoke_llm_with_structured_output_delegates_with_bound_adapter() -> Non
     assert isinstance(helper_kwargs["model_instance"], model_runtime_module._PluginStructuredOutputModelInstance)
 
 
-def test_invoke_llm_with_structured_output_raises_when_model_schema_is_missing() -> None:
+def test_invoke_llm_with_structured_output_raises_when_model_schema_is_missing(monkeypatch: pytest.MonkeyPatch) -> None:
     client = _RecordingModelClient()
     runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client, plugin_service=PluginService)
-    runtime.get_model_schema = Mock(return_value=None)  # type: ignore[method-assign]
+    monkeypatch.setattr(runtime, "get_model_schema", lambda **_kwargs: None)
 
     with pytest.raises(ValueError, match="Model schema not found for gpt-4o-mini"):
         runtime.invoke_llm_with_structured_output(
@@ -830,17 +832,17 @@ def test_get_model_schema_deletes_invalid_cache_and_refetches(
     config_overrides(PLUGIN_MODEL_SCHEMA_CACHE_TTL=300)
     client = _RecordingModelClient()
     schema = _build_model_schema()
-    delete = Mock()
-    setex = Mock()
-    monkeypatch.setattr(
-        model_runtime_module,
-        "redis_client",
-        SimpleNamespace(
-            get=Mock(return_value="not-json"),
-            delete=delete,
-            setex=setex,
-        ),
-    )
+    redis = Redis()
+    deleted: list[str] = []
+    writes: list[tuple[str, int, str]] = []
+
+    def setex(key: str, ttl: int, value: str) -> None:
+        writes.append((key, ttl, value))
+
+    monkeypatch.setattr(redis, "get", lambda _key: "not-json")
+    monkeypatch.setattr(redis, "delete", deleted.append)
+    monkeypatch.setattr(redis, "setex", setex)
+    monkeypatch.setattr(model_runtime_module, "redis_client", redis)
     client.results["get_model_schema"] = schema
     runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client, plugin_service=PluginService)
 
@@ -852,7 +854,7 @@ def test_get_model_schema_deletes_invalid_cache_and_refetches(
     )
 
     assert result == schema
-    delete.assert_called_once()
+    assert len(deleted) == 1
     assert client.calls["get_model_schema"] == [
         call(
             tenant_id="tenant",
@@ -864,7 +866,7 @@ def test_get_model_schema_deletes_invalid_cache_and_refetches(
             credentials={"api_key": "secret"},
         )
     ]
-    setex.assert_called_once()
+    assert writes == [(deleted[0], 300, schema.model_dump_json())]
 
 
 def test_get_llm_num_tokens_returns_zero_when_plugin_counting_is_disabled(
@@ -910,7 +912,12 @@ def test_get_provider_icon_reads_requested_variant_and_detects_svg_mime(monkeypa
             ),
         )
     ]
-    fetch_asset = Mock(return_value=b"<svg></svg>")
+    asset_calls: list[tuple[str, str]] = []
+
+    def fetch_asset(_self: model_runtime_module.PluginAssetManager, *, tenant_id: str, id: str) -> bytes:
+        asset_calls.append((tenant_id, id))
+        return b"<svg></svg>"
+
     monkeypatch.setattr(model_runtime_module.PluginAssetManager, "fetch_asset", fetch_asset)
     runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client, plugin_service=PluginService)
 
@@ -922,7 +929,7 @@ def test_get_provider_icon_reads_requested_variant_and_detects_svg_mime(monkeypa
 
     assert icon_bytes == b"<svg></svg>"
     assert mime_type == "image/svg+xml"
-    fetch_asset.assert_called_once_with(tenant_id="tenant", id="logo.svg")
+    assert asset_calls == [("tenant", "logo.svg")]
 
 
 def test_get_provider_icon_rejects_unsupported_types_and_missing_variants() -> None:
