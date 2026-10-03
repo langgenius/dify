@@ -303,15 +303,14 @@ class MCPTool(Tool):
                 server_identifier=self.server_identifier, tenant_id=self.tenant_id
             )
 
-            # Decrypt and prepare all credentials before closing session
+            # Decrypt and prepare all credentials before closing session.
+            # Match MCPToolManageService._prepare_auth_headers: OAuth tokens must
+            # be applied even when custom headers are present. Gating on
+            # ``if not headers`` made invoke drop Authorization whenever any
+            # header (e.g. X-Tenant) was configured, while tool listing still
+            # succeeded with the merged auth headers.
             server_url = provider_entity.decrypt_server_url()
-            headers = provider_entity.decrypt_headers()
-
-            # Try to get existing token and add to headers
-            if not headers:
-                tokens = provider_entity.retrieve_tokens()
-                if tokens and tokens.access_token:
-                    headers["Authorization"] = f"{tokens.token_type.capitalize()} {tokens.access_token}"
+            headers = mcp_service._prepare_auth_headers(provider_entity)
 
         # Forwarded identity rides in a custom header so workspace-scoped
         # provider credentials (Authorization / custom Headers) keep working
