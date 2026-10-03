@@ -825,6 +825,7 @@ export const zDatasourceProviderIdentity = z.object({
  * PluginParameterOption
  */
 export const zPluginParameterOption = z.object({
+  children: z.array(z.lazy((): any => zPluginParameterOption)).optional(),
   icon: z.string().nullish(),
   label: zI18nObject,
   value: z.string(),
@@ -883,6 +884,7 @@ export const zDatasourceParameter = z.object({
     ])
     .nullish(),
   description: zI18nObject,
+  dynamic_select_lazy_load: z.boolean().optional().default(false),
   label: zI18nObject,
   max: z.union([z.number(), z.int()]).nullish(),
   min: z.union([z.number(), z.int()]).nullish(),

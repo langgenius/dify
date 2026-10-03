@@ -26,6 +26,7 @@ export const FormTypeEnum = {
   object: 'object',
   array: 'array',
   dynamicSelect: 'dynamic-select',
+  dynamicTreeSelect: 'dynamic-tree-select',
   date: 'date',
   dateRange: 'date-range',
 } as const
@@ -37,6 +38,7 @@ export type FormOption = {
   value: string
   show_on: FormShowOnObject[]
   icon?: string
+  children?: FormOption[]
 }
 
 export const ModelTypeEnum = {
@@ -126,6 +128,12 @@ export type CredentialFormSchemaBase = {
   url?: string
   scope?: string
   input_schema?: SchemaRoot
+  /**
+   * Tool dynamic-select / dynamic-tree-select only. Defaults to `false`.
+   * - `false` or omitted: prefetch when tool/provider/field context changes (not on every sibling value edit).
+   * - `true`: load options only when the user opens the dropdown.
+   */
+  dynamic_select_lazy_load?: boolean
 }
 
 export type CredentialFormSchemaTextInput = CredentialFormSchemaBase & {

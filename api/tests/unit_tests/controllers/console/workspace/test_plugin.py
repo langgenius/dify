@@ -3,6 +3,7 @@ from datetime import datetime
 from inspect import unwrap
 from typing import Any
 from unittest.mock import MagicMock, patch
+from urllib.parse import quote
 
 import pytest
 from flask import Flask
@@ -41,6 +42,7 @@ from controllers.console.workspace.plugin import (
     PluginFetchAutoUpgradeApi,
     PluginFetchDynamicSelectOptionsApi,
     PluginFetchDynamicSelectOptionsWithCredentialsApi,
+    PluginFetchDynamicTreeSelectOptionsApi,
     PluginFetchInstallTaskApi,
     PluginFetchInstallTasksApi,
     PluginFetchManifestApi,
@@ -355,6 +357,7 @@ def _expected_dynamic_option_dump() -> dict[str, Any]:
         "value": "101",
         "label": _expected_i18n("Dataset 101"),
         "icon": None,
+        "children": [],
     }
 
 
@@ -779,6 +782,139 @@ class TestPluginFetchDynamicSelectOptionsApi:
             )
 
         assert result == {"options": [_expected_dynamic_option_dump()]}
+
+    def test_forwards_parameter_values(self, app: Flask, user):
+        api = PluginFetchDynamicSelectOptionsApi()
+        method = unwrap(api.get)
+        service = MagicMock(return_value=[_dynamic_option()])
+        raw = '{"region":"us"}'
+
+        with (
+            app.test_request_context("/"),
+            patch(
+                "controllers.console.workspace.plugin.PluginParameterService.get_dynamic_select_options",
+                service,
+            ),
+        ):
+            result = method(
+                api,
+                ParserDynamicOptions.model_validate(
+                    {
+                        "plugin_id": "p",
+                        "provider": "x",
+                        "action": "y",
+                        "parameter": "z",
+                        "provider_type": "tool",
+                        "parameter_values": raw,
+                    }
+                ),
+                "t1",
+                user,
+            )
+
+        assert result == {"options": [_expected_dynamic_option_dump()]}
+        assert service.call_args.kwargs["parameter_values"] == {"region": "us"}
+
+    def test_rejects_invalid_parameter_values(self, app: Flask, user):
+        api = PluginFetchDynamicSelectOptionsApi()
+        method = unwrap(api.get)
+
+        with (
+            app.test_request_context("/"),
+            pytest.raises(ValueError, match="parameter_values must be valid JSON"),
+        ):
+            method(
+                api,
+                ParserDynamicOptions.model_validate(
+                    {
+                        "plugin_id": "p",
+                        "provider": "x",
+                        "action": "y",
+                        "parameter": "z",
+                        "provider_type": "tool",
+                        "parameter_values": "{",
+                    }
+                ),
+                "t1",
+                user,
+            )
+
+    def test_rejects_non_object_parameter_values(self, app: Flask, user):
+        api = PluginFetchDynamicSelectOptionsApi()
+        method = unwrap(api.get)
+
+        with (
+            app.test_request_context("/"),
+            pytest.raises(ValueError, match="parameter_values must be a JSON object"),
+        ):
+            method(
+                api,
+                ParserDynamicOptions.model_validate(
+                    {
+                        "plugin_id": "p",
+                        "provider": "x",
+                        "action": "y",
+                        "parameter": "z",
+                        "provider_type": "tool",
+                        "parameter_values": "[]",
+                    }
+                ),
+                "t1",
+                user,
+            )
+
+
+class TestPluginFetchDynamicTreeSelectOptionsApi:
+    def test_fetch_dynamic_tree_options(self, app, user):
+        api = PluginFetchDynamicTreeSelectOptionsApi()
+        method = unwrap(api.get)
+
+        with (
+            app.test_request_context("/?plugin_id=p&provider=x&action=y&parameter=z&credential_id=c1"),
+            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(user, "t1")),
+            patch(
+                "controllers.console.workspace.plugin.PluginParameterService.get_dynamic_tree_select_options",
+                return_value=[1, 2],
+            ),
+        ):
+            result = method(api)
+
+        assert result["options"] == [1, 2]
+
+    def test_forwards_parameter_values(self, app, user):
+        api = PluginFetchDynamicTreeSelectOptionsApi()
+        method = unwrap(api.get)
+        service = MagicMock(return_value=[])
+        raw = '{"region":"us"}'
+
+        with (
+            app.test_request_context(f"/?plugin_id=p&provider=x&action=y&parameter=z&parameter_values={quote(raw)}"),
+            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(user, "t1")),
+            patch(
+                "controllers.console.workspace.plugin.PluginParameterService.get_dynamic_tree_select_options",
+                service,
+            ),
+        ):
+            result = method(api)
+
+        assert result["options"] == []
+        assert service.call_args.kwargs["parameter_values"] == {"region": "us"}
+
+    def test_daemon_error(self, app, user):
+        api = PluginFetchDynamicTreeSelectOptionsApi()
+        method = unwrap(api.get)
+
+        with (
+            app.test_request_context("/?plugin_id=p&provider=x&action=y&parameter=z"),
+            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(user, "t1")),
+            patch(
+                "controllers.console.workspace.plugin.PluginParameterService.get_dynamic_tree_select_options",
+                side_effect=PluginDaemonClientSideError("error"),
+            ),
+        ):
+            result = method(api)
+
+        assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
 class TestPluginReadmeApi:
@@ -1341,6 +1477,32 @@ class TestPluginFetchDynamicSelectOptionsWithCredentialsApi:
             result = method(api, ParserDynamicOptionsWithCredentials.model_validate(payload), "t1", user)
 
         assert result == {"options": [_expected_dynamic_option_dump()]}
+
+    def test_forwards_parameter_values(self, app: Flask, user):
+        api = PluginFetchDynamicSelectOptionsWithCredentialsApi()
+        method = unwrap(api.post)
+        service = MagicMock(return_value=[_dynamic_option()])
+        payload = {
+            "plugin_id": "p",
+            "provider": "x",
+            "action": "y",
+            "parameter": "z",
+            "credential_id": "c",
+            "credentials": {"k": "v"},
+            "parameter_values": {"region": "us"},
+        }
+
+        with (
+            app.test_request_context("/", json=payload),
+            patch(
+                "controllers.console.workspace.plugin.PluginParameterService.get_dynamic_select_options_with_credentials",
+                service,
+            ),
+        ):
+            result = method(api, ParserDynamicOptionsWithCredentials.model_validate(payload), "t1", user)
+
+        assert result == {"options": [_expected_dynamic_option_dump()]}
+        assert service.call_args.kwargs["parameter_values"] == {"region": "us"}
 
     def test_daemon_error(self, app: Flask, user):
         api = PluginFetchDynamicSelectOptionsWithCredentialsApi()

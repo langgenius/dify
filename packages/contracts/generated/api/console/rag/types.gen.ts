@@ -638,6 +638,7 @@ export type DatasourceParameter = {
       }
     | null
   description: I18nObject
+  dynamic_select_lazy_load?: boolean
   label: I18nObject
   max?: number | number | null
   min?: number | number | null
@@ -682,6 +683,7 @@ export type PluginParameterAutoGenerate = {
 }
 
 export type PluginParameterOption = {
+  children?: Array<PluginParameterOption>
   icon?: string | null
   label: I18nObject
   value: string

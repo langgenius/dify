@@ -1,4 +1,5 @@
 import io
+import json
 from collections.abc import Mapping, Sequence
 from datetime import datetime
 from typing import Any, Literal, TypedDict
@@ -52,7 +53,7 @@ from extensions.ext_database import db
 from fields.base import ResponseModel
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs.helper import dump_response
-from libs.login import login_required
+from libs.login import current_account_with_tenant, login_required
 from models.account import (
     Account,
     TenantPluginAutoUpgradeCategory,
@@ -85,6 +86,18 @@ class AutoUpgradeSettingsResponse(TypedDict):
     upgrade_mode: TenantPluginAutoUpgradeMode
     exclude_plugins: list[str]
     include_plugins: list[str]
+
+
+def _parse_parameter_values_query(raw: str | None) -> dict[str, Any]:
+    if not raw:
+        return {}
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError as e:
+        raise ValueError("parameter_values must be valid JSON") from e
+    if not isinstance(data, dict):
+        raise ValueError("parameter_values must be a JSON object")
+    return data
 
 
 class ParserList(BaseModel):
@@ -179,6 +192,7 @@ class ParserDynamicOptions(BaseModel):
     parameter: str
     credential_id: str | None = None
     provider_type: Literal["tool", "trigger"]
+    parameter_values: str | None = None
 
 
 class ParserDynamicOptionsWithCredentials(BaseModel):
@@ -188,6 +202,16 @@ class ParserDynamicOptionsWithCredentials(BaseModel):
     parameter: str
     credential_id: str
     credentials: Mapping[str, Any]
+    parameter_values: Mapping[str, Any] | None = None
+
+
+class PluginDynamicTreeOptionsQuery(BaseModel):
+    plugin_id: str
+    provider: str
+    action: str
+    parameter: str
+    credential_id: str | None = None
+    parameter_values: str | None = None
 
 
 class PluginPermissionSettingsPayload(BaseModel):
@@ -420,6 +444,7 @@ register_schema_models(
     ParserPermissionChange,
     ParserDynamicOptions,
     ParserDynamicOptionsWithCredentials,
+    PluginDynamicTreeOptionsQuery,
     ParserAutoUpgradeChange,
     ParserAutoUpgradeFetch,
     ParserExcludePlugin,
@@ -1146,6 +1171,7 @@ class PluginFetchDynamicSelectOptionsApi(Resource):
     def get(self, req_data: ParserDynamicOptions, tenant_id: str, current_user: Account):
 
         try:
+            parameter_values = _parse_parameter_values_query(req_data.parameter_values)
             options = PluginParameterService.get_dynamic_select_options(
                 tenant_id=tenant_id,
                 user_id=current_user.id,
@@ -1155,6 +1181,7 @@ class PluginFetchDynamicSelectOptionsApi(Resource):
                 parameter=req_data.parameter,
                 credential_id=req_data.credential_id,
                 provider_type=req_data.provider_type,
+                parameter_values=parameter_values,
             )
         except PluginDaemonClientSideError as e:
             return {"code": "plugin_error", "message": e.description}, 400
@@ -1187,6 +1214,39 @@ class PluginFetchDynamicSelectOptionsWithCredentialsApi(Resource):
                 parameter=req_data.parameter,
                 credential_id=req_data.credential_id,
                 credentials=req_data.credentials,
+                parameter_values=dict(req_data.parameter_values) if req_data.parameter_values is not None else None,
+            )
+        except PluginDaemonClientSideError as e:
+            return {"code": "plugin_error", "message": e.description}, 400
+
+        return jsonable_encoder({"options": options})
+
+
+@console_ns.route("/workspaces/current/plugin/parameters/dynamic-tree-options")
+class PluginFetchDynamicTreeSelectOptionsApi(Resource):
+    @console_ns.doc(params=query_params_from_model(PluginDynamicTreeOptionsQuery))
+    @console_ns.response(200, "Success", console_ns.models[PluginDynamicOptionsResponse.__name__])
+    @setup_required
+    @login_required
+    @is_admin_or_owner_required
+    @account_initialization_required
+    def get(self):
+        current_user, tenant_id = current_account_with_tenant()
+        user_id = current_user.id
+
+        args = PluginDynamicTreeOptionsQuery.model_validate(request.args.to_dict(flat=True))
+
+        try:
+            parameter_values = _parse_parameter_values_query(args.parameter_values)
+            options = PluginParameterService.get_dynamic_tree_select_options(
+                tenant_id=tenant_id,
+                user_id=user_id,
+                plugin_id=args.plugin_id,
+                provider=args.provider,
+                action=args.action,
+                parameter=args.parameter,
+                credential_id=args.credential_id,
+                parameter_values=parameter_values,
             )
         except PluginDaemonClientSideError as e:
             return {"code": "plugin_error", "message": e.description}, 400
