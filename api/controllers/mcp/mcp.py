@@ -1,21 +1,33 @@
+import json
+import logging
+import threading
+from collections.abc import Callable, Iterator
 from typing import Any, Union
 
-from flask import Response, request
+from core.mcp import types as mcp_types
+from core.mcp.server.streamable_http import handle_mcp_request, negotiate_protocol_version
+from extensions.ext_database import db
+from flask import Response, copy_current_request_context, request, stream_with_context
 from flask_restx import Resource
+from libs import helper
+from models.enums import EndUserType
+from models.model import App, AppMCPServer, AppMode, EndUser
 from pydantic import BaseModel, Field, RootModel, ValidationError
+from services.app.mcp_server_service import AppMCPServerStatus
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from controllers.common.schema import register_response_schema_models, register_schema_model
 from controllers.mcp import mcp_ns
-from core.mcp import types as mcp_types
-from core.mcp.server.streamable_http import handle_mcp_request, negotiate_protocol_version
-from extensions.ext_database import db
 from graphon.variables.input_entities import VariableEntity, VariableEntityType
-from libs import helper
-from models.enums import EndUserType
-from models.model import App, AppMCPServer, AppMode, EndUser
-from services.app.mcp_server_service import AppMCPServerStatus
+
+logger = logging.getLogger(__name__)
+
+# Proxies in front of the API (Cloudflare's ~100s read timeout, common load
+# balancers at 60–120s) drop a tools/call that stays silent until the app
+# finishes. SSE comments reset those idle timers while the run is in progress.
+TOOL_CALL_SSE_KEEPALIVE_SECONDS = 15.0
+_SSE_MEDIA_TYPE = "text/event-stream"
 
 
 class MCPRequestError(Exception):
@@ -174,6 +186,11 @@ class MCPAppApi(Resource):
         if request_id is None:
             raise MCPRequestError(mcp_types.INVALID_REQUEST, "Request ID is required")
 
+        if isinstance(mcp_request.root, mcp_types.CallToolRequest) and _client_accepts_sse():
+            return self._stream_tool_call(
+                app, mcp_server, mcp_request, user_input_form, session, request_id, protocol_version
+            )
+
         result = self._handle_mcp_request(
             app, mcp_server, mcp_request, user_input_form, session, request_id, protocol_version
         )
@@ -182,6 +199,64 @@ class MCPAppApi(Resource):
             raise MCPRequestError(mcp_types.INTERNAL_ERROR, "No response generated for request")
 
         return helper.compact_generate_response(result.model_dump(by_alias=True, mode="json", exclude_none=True))
+
+    def _stream_tool_call(
+        self,
+        app: App,
+        mcp_server: AppMCPServer,
+        mcp_request: mcp_types.ClientRequest,
+        user_input_form: list[VariableEntity],
+        session: Session,
+        request_id: Union[int, str],
+        protocol_version: str,
+    ) -> Response:
+        """Answer tools/call with SSE keep-alives so proxies do not time out the run.
+
+        The app still runs to completion. The response opens immediately and emits
+        ``: keep-alive`` comments until the JSON-RPC result is ready, then one
+        ``event: message`` frame. The worker uses its own database session because
+        the request session is closed before the response body is consumed.
+        """
+        end_user = self._retrieve_end_user(mcp_server.tenant_id, mcp_server.id, session)
+        app_id = app.id
+        mcp_server_id = mcp_server.id
+        end_user_id = end_user.id if end_user is not None else None
+
+        @copy_current_request_context
+        def _execute_tool_call() -> mcp_types.JSONRPCResponse | mcp_types.JSONRPCError | None:
+            with Session(db.engine, expire_on_commit=False) as worker_session:
+                worker_app = worker_session.get(App, app_id)
+                worker_server = worker_session.get(AppMCPServer, mcp_server_id)
+                worker_user = worker_session.get(EndUser, end_user_id) if end_user_id is not None else None
+                if worker_app is None or worker_server is None:
+                    return _jsonrpc_internal_error(request_id, "App or MCP server no longer exists")
+                result = handle_mcp_request(
+                    worker_session,
+                    worker_app,
+                    mcp_request,
+                    user_input_form,
+                    worker_server,
+                    worker_user,
+                    request_id,
+                    protocol_version,
+                )
+                worker_session.commit()
+                return result
+
+        return Response(
+            stream_with_context(
+                _iter_tool_call_sse(
+                    request_id=request_id,
+                    execute_tool_call=_execute_tool_call,
+                )
+            ),
+            status=200,
+            mimetype=_SSE_MEDIA_TYPE,
+            headers={
+                "Cache-Control": "no-cache, no-transform",
+                "X-Accel-Buffering": "no",
+            },
+        )
 
     def _get_user_input_form(self, app: App, session: Session) -> list[VariableEntity]:
         """Get and convert user input form"""
@@ -286,3 +361,83 @@ class MCPAppApi(Resource):
         return handle_mcp_request(
             session, app, mcp_request, user_input_form, mcp_server, end_user, request_id, protocol_version
         )
+
+
+def _client_accepts_sse() -> bool:
+    """True when the client asked for the MCP Streamable HTTP SSE response."""
+    accept = request.headers.get("Accept", "")
+    return _SSE_MEDIA_TYPE in accept.lower()
+
+
+def _jsonrpc_internal_error(request_id: int | str, message: str) -> mcp_types.JSONRPCError:
+    return mcp_types.JSONRPCError(
+        jsonrpc="2.0",
+        id=request_id,
+        error=mcp_types.ErrorData(code=mcp_types.INTERNAL_ERROR, message=message),
+    )
+
+
+def _format_sse_message(payload: dict[str, Any]) -> str:
+    data = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+    return f"event: message\ndata: {data}\n\n"
+
+
+def _iter_tool_call_sse(
+    *,
+    request_id: int | str,
+    execute_tool_call: Callable[[], mcp_types.JSONRPCResponse | mcp_types.JSONRPCError | None],
+) -> Iterator[str]:
+    """Yield SSE keep-alives until ``execute_tool_call`` finishes, then one JSON-RPC message.
+
+    The first comment is sent immediately so a proxy sees response bytes before the
+    app run finishes. If the worker dies without publishing a result, the stream
+    still ends with a JSON-RPC error instead of keeping the connection open.
+    """
+    done = threading.Event()
+    outcome: dict[str, mcp_types.JSONRPCResponse | mcp_types.JSONRPCError | BaseException | None] = {}
+
+    def _worker() -> None:
+        try:
+            outcome["response"] = execute_tool_call()
+        except BaseException as exc:
+            logger.exception("MCP tools/call worker failed")
+            outcome["error"] = exc
+        finally:
+            done.set()
+
+    worker = threading.Thread(target=_worker, name="mcp-tool-call", daemon=True)
+    worker.start()
+    try:
+        yield ": keep-alive\n\n"
+        while not done.wait(TOOL_CALL_SSE_KEEPALIVE_SECONDS):
+            if not worker.is_alive():
+                logger.error("MCP tools/call worker stopped before producing a result")
+                yield _format_sse_message(
+                    _jsonrpc_internal_error(request_id, "Tool call stopped before producing a result").model_dump(
+                        by_alias=True, mode="json", exclude_none=True
+                    )
+                )
+                return
+            yield ": keep-alive\n\n"
+    except GeneratorExit:
+        return
+
+    error = outcome.get("error")
+    if isinstance(error, BaseException):
+        yield _format_sse_message(
+            _jsonrpc_internal_error(request_id, "Internal server error").model_dump(
+                by_alias=True, mode="json", exclude_none=True
+            )
+        )
+        return
+
+    response = outcome.get("response")
+    if not isinstance(response, mcp_types.JSONRPCResponse | mcp_types.JSONRPCError):
+        yield _format_sse_message(
+            _jsonrpc_internal_error(request_id, "No response generated for request").model_dump(
+                by_alias=True, mode="json", exclude_none=True
+            )
+        )
+        return
+
+    yield _format_sse_message(response.model_dump(by_alias=True, mode="json", exclude_none=True))
