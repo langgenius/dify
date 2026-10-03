@@ -10,7 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any, override
 
 import psycopg2.errors
-from sqlalchemy import UnaryExpression, asc, desc, select
+from sqlalchemy import ColumnElement, UnaryExpression, and_, asc, desc, or_, select
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
@@ -18,7 +18,8 @@ from tenacity import before_sleep_log, retry, retry_if_exception, stop_after_att
 
 from configs import dify_config
 from core.repositories.factory import OrderConfig, WorkflowNodeExecutionRepository
-from core.workflow.node_execution_process_data import preserve_workflow_agent_binding_id
+from core.workflow.node_execution import WorkflowNodeExecution as DifyWorkflowNodeExecution
+from core.workflow.node_execution_process_data import keep_agent_and_tool_ids
 from extensions.ext_storage import storage
 from graphon.entities import WorkflowNodeExecution
 from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
@@ -110,6 +111,16 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         # Initialize FileService for handling offloaded data
         self._file_service = FileService(session_factory)
 
+    @override
+    def for_workflow_tool(self, app_id: str) -> "SQLAlchemyWorkflowNodeExecutionRepository":
+        return SQLAlchemyWorkflowNodeExecutionRepository(
+            session_factory=self._session_factory,
+            tenant_id=self._tenant_id,
+            user=self._user,
+            app_id=app_id,
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL,
+        )
+
     def _create_truncator(self) -> VariableTruncator:
         return VariableTruncator(
             max_size_bytes=dify_config.WORKFLOW_VARIABLE_TRUNCATION_MAX_SIZE,
@@ -139,10 +150,12 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         # Convert status to domain enum
         status = WorkflowNodeExecutionStatus(db_model.status)
 
-        domain_model = WorkflowNodeExecution(
+        domain_model = DifyWorkflowNodeExecution(
             id=db_model.id,
             node_execution_id=db_model.node_execution_id,
             workflow_id=db_model.workflow_id,
+            triggered_from_workflow_id=db_model.triggered_from_workflow_id,
+            triggered_from_node_execution_id=db_model.triggered_from_node_execution_id,
             workflow_execution_id=db_model.workflow_run_id,
             index=db_model.index,
             predecessor_node_id=db_model.predecessor_node_id,
@@ -224,6 +237,9 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         if self._app_id is not None:
             db_model.app_id = self._app_id
         db_model.workflow_id = domain_model.workflow_id
+        if isinstance(domain_model, DifyWorkflowNodeExecution):
+            db_model.triggered_from_workflow_id = domain_model.triggered_from_workflow_id
+            db_model.triggered_from_node_execution_id = domain_model.triggered_from_node_execution_id
         db_model.triggered_from = self._triggered_from
         db_model.workflow_run_id = domain_model.workflow_execution_id
         db_model.index = domain_model.index
@@ -375,6 +391,50 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             raise
 
     @override
+    def save_many(self, executions: Sequence[WorkflowNodeExecution]) -> None:
+        """Upsert a cleanup batch in one transaction, preserving existing offloads."""
+        if not executions:
+            return
+        db_models = [self._to_db_model(execution) for execution in executions]
+        with self._session_factory() as session, session.begin():
+            query = WorkflowNodeExecutionModel.preload_offload_data(select(WorkflowNodeExecutionModel)).where(
+                WorkflowNodeExecutionModel.tenant_id == self._tenant_id,
+                WorkflowNodeExecutionModel.app_id == self._app_id,
+                WorkflowNodeExecutionModel.triggered_from == self._triggered_from,
+                or_(
+                    *(
+                        and_(
+                            WorkflowNodeExecutionModel.id == model.id,
+                            WorkflowNodeExecutionModel.workflow_id == model.workflow_id,
+                            WorkflowNodeExecutionModel.workflow_run_id == model.workflow_run_id,
+                        )
+                        for model in db_models
+                    )
+                ),
+            )
+            existing_models = {model.id: model for model in session.scalars(query)}
+            for db_model in db_models:
+                existing = existing_models.get(db_model.id)
+                if existing is None:
+                    session.add(db_model)
+                    continue
+                process_data = keep_agent_and_tool_ids(existing.process_data_dict, db_model.process_data_dict)
+                db_model.process_data = _deterministic_json_dump(process_data) if process_data is not None else None
+                if db_model.triggered_from_workflow_id is None:
+                    db_model.triggered_from_workflow_id = existing.triggered_from_workflow_id
+                if db_model.triggered_from_node_execution_id is None:
+                    db_model.triggered_from_node_execution_id = existing.triggered_from_node_execution_id
+                # Cleanup changes terminal state; replacing an offloaded preview would
+                # leave it inconsistent with the separately owned upload/file reference.
+                if existing.inputs_truncated:
+                    db_model.inputs = existing.inputs
+                if existing.process_data_truncated:
+                    db_model.process_data = existing.process_data
+                if existing.outputs_truncated:
+                    db_model.outputs = existing.outputs
+                session.merge(db_model)
+
+    @override
     def save_synchronously(self, execution: WorkflowNodeExecution) -> None:
         """Persist a caller row before an Agent v2 participant is materialized."""
 
@@ -394,7 +454,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             existing = session.get(WorkflowNodeExecutionModel, db_model.id)
 
             if existing:
-                merged_process_data = preserve_workflow_agent_binding_id(
+                merged_process_data = keep_agent_and_tool_ids(
                     existing.process_data_dict,
                     db_model.process_data_dict,
                 )
@@ -457,7 +517,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             else:
                 db_model.outputs = self._json_encode(domain_model.outputs)
 
-        process_data = preserve_workflow_agent_binding_id(db_model.process_data_dict, domain_model.process_data)
+        process_data = keep_agent_and_tool_ids(db_model.process_data_dict, domain_model.process_data)
         if process_data is not None:
             result = self._truncate_and_upload(
                 process_data,
@@ -465,7 +525,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
                 ExecutionOffLoadType.PROCESS_DATA,
             )
             if result is not None:
-                truncated_process_data = preserve_workflow_agent_binding_id(
+                truncated_process_data = keep_agent_and_tool_ids(
                     process_data,
                     result.truncated_value,
                 )
@@ -496,6 +556,9 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         The returned models have `offload_data` preloaded, along with the associated
         `inputs_file` and `outputs_file` data.
 
+        Reads preserve this repository's app/origin scope, including trace export.
+        Paused nodes stay hidden unless resume hydration requests include_paused.
+
         This method directly returns database models without converting to domain models,
         which is useful when you need to access database-specific fields like triggered_from.
         It also updates the in-memory cache with the retrieved models.
@@ -510,19 +573,18 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             A list of WorkflowNodeExecution database models
         """
         with self._session_factory() as session:
+            trigger = triggered_from or self._triggered_from or WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN
+            owner_filter: ColumnElement[bool] = WorkflowNodeExecutionModel.triggered_from == trigger
+            if self._app_id:
+                owner_filter &= WorkflowNodeExecutionModel.app_id == self._app_id
             stmt = WorkflowNodeExecutionModel.preload_offload_data_and_files(select(WorkflowNodeExecutionModel))
             stmt = stmt.where(
                 WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id,
                 WorkflowNodeExecutionModel.tenant_id == self._tenant_id,
-                WorkflowNodeExecutionModel.triggered_from
-                == (triggered_from or self._triggered_from or WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN),
+                owner_filter,
             )
-
             if not include_paused:
                 stmt = stmt.where(WorkflowNodeExecutionModel.status != WorkflowNodeExecutionStatus.PAUSED)
-
-            if self._app_id:
-                stmt = stmt.where(WorkflowNodeExecutionModel.app_id == self._app_id)
 
             # Apply ordering if provided
             if order_config and order_config.order_by:
@@ -573,7 +635,10 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             A list of node execution instances
         """
         db_models = self.get_db_models_by_workflow_run(
-            workflow_execution_id, order_config, triggered_from, include_paused=include_paused
+            workflow_execution_id,
+            order_config,
+            triggered_from,
+            include_paused=include_paused,
         )
 
         with ThreadPoolExecutor(max_workers=10) as executor:

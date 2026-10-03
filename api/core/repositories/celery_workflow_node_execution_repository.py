@@ -24,6 +24,7 @@ from models import Account, CreatorUserRole, EndUser
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
 from tasks.workflow_node_execution_tasks import (
     save_workflow_node_execution_task,
+    save_workflow_node_executions_task,
 )
 
 logger = logging.getLogger(__name__)
@@ -94,6 +95,7 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         # Extract user context
         self._triggered_from = triggered_from
         self._creator_user_id = user.id
+        self._user = user
 
         # Determine user role based on user type
         self._creator_user_role = CreatorUserRole.ACCOUNT if isinstance(user, Account) else CreatorUserRole.END_USER
@@ -117,6 +119,16 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             self._tenant_id,
             self._app_id,
             self._triggered_from,
+        )
+
+    @override
+    def for_workflow_tool(self, app_id: str) -> "CeleryWorkflowNodeExecutionRepository":
+        return CeleryWorkflowNodeExecutionRepository(
+            session_factory=self._session_factory,
+            tenant_id=self._tenant_id,
+            user=self._user,
+            app_id=app_id,
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL,
         )
 
     @override
@@ -163,6 +175,26 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             raise
 
     @override
+    def save_many(self, executions: Sequence[WorkflowNodeExecution]) -> None:
+        """Cache exact records and queue one storage task for the whole batch."""
+        if not executions:
+            return
+        for execution in executions:
+            self._execution_cache[execution.id] = execution
+            if execution.workflow_execution_id:
+                execution_ids = self._workflow_execution_mapping.setdefault(execution.workflow_execution_id, [])
+                if execution.id not in execution_ids:
+                    execution_ids.append(execution.id)
+        save_workflow_node_executions_task.delay(
+            executions_data=[execution.model_dump() for execution in executions],
+            tenant_id=self._tenant_id,
+            app_id=self._app_id or "",
+            triggered_from=self._triggered_from.value if self._triggered_from else "",
+            creator_user_id=self._creator_user_id,
+            creator_user_role=self._creator_user_role.value,
+        )
+
+    @override
     def save_execution_data(self, execution: WorkflowNodeExecution) -> None:
         """`save` already queues the complete inputs, process data, and outputs."""
         return None
@@ -189,6 +221,8 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         """
         Retrieve workflow node executions from cache after loading persisted history once.
 
+        Resume hydration reads SQL directly when include_paused is requested.
+
         Args:
             workflow_execution_id: The workflow execution identifier
             order_config: Optional configuration for ordering results
@@ -197,9 +231,11 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             A sequence of WorkflowNodeExecution instances
         """
         if include_paused:
-            # Resume hydration must not widen the ordinary runtime cache.
+            # Resume reads must not widen the ordinary runtime cache.
             return self._sql_repository.get_by_workflow_execution(
-                workflow_execution_id, order_config, include_paused=True
+                workflow_execution_id,
+                order_config,
+                include_paused=include_paused,
             )
         try:
             if workflow_execution_id not in self._database_loaded_workflow_executions:

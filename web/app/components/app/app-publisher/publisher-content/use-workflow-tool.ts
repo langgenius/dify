@@ -18,7 +18,6 @@ type UseWorkflowToolParams = {
   appMode?: AppMode
   appName?: string
   appPublished: boolean
-  hasHumanInputNode: boolean
   hasPublishedVersion: boolean
   hasTriggerNode: boolean
   inputs?: InputVar[]
@@ -39,7 +38,6 @@ export function useWorkflowTool({
   appMode,
   appName,
   appPublished,
-  hasHumanInputNode,
   hasPublishedVersion,
   hasTriggerNode,
   inputs,
@@ -53,7 +51,7 @@ export function useWorkflowTool({
   const { t } = useTranslation(['workflow'])
   const [drawerOpen, setDrawerOpen] = useState(false)
   const canManageTools = useCanManageTools()
-  const visible = appMode === AppModeEnum.WORKFLOW && !hasHumanInputNode && !hasTriggerNode
+  const visible = appMode === AppModeEnum.WORKFLOW && !hasTriggerNode
   const published = Boolean(toolPublished)
   const message =
     !hasPublishedVersion || !workflowToolAvailable
@@ -101,5 +99,6 @@ export function useWorkflowTool({
     message,
     openDrawer,
     published,
+    visible,
   }
 }

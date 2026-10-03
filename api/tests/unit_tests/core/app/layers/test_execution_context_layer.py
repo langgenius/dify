@@ -1,5 +1,6 @@
 from concurrent.futures import ThreadPoolExecutor
 from contextvars import ContextVar
+from functools import partial
 from typing import override
 
 import pytest
@@ -9,17 +10,19 @@ from context.flask_app_context import capture_flask_context
 from core.app.layers import execution_context_layer as module
 from core.app.layers.execution_context_layer import ExecutionContextLayer
 from core.app.workflow.file_runtime import create_dify_workflow_file_runtime, init_app
-from core.workflow.node_factory import DifyNodeFactory
+from core.workflow.workflow_tool_container_handler import WorkflowToolContainerHandler
 from dify_app import DifyApp
 from graphon.engine import Engine
 from graphon.engine.layer import Layer
 from graphon.engine_events import GraphRunSucceededEvent
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.file.runtime import peek_workflow_file_runtime, use_workflow_file_runtime
-from graphon.graph import Graph
 from graphon.nodes.base.node import Node
-from graphon.runtime import RuntimeState, VariablePool
-from tests.workflow_test_utils import build_test_graph_init_params
+from tests.unit_tests.core.workflow.test_workflow_tool_container import (
+    _outer_graph,
+    _workflow_tool_node,
+    _workflow_tool_source,
+)
 
 
 def test_host_context_preserves_each_engine_file_runtime(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -28,6 +31,7 @@ def test_host_context_preserves_each_engine_file_runtime(monkeypatch: pytest.Mon
     monkeypatch.setattr(module, "capture_current_context", capture_flask_context)
     request_id: ContextVar[str] = ContextVar("request_id")
     caller_runtime = create_dify_workflow_file_runtime()
+    source = _workflow_tool_source()
 
     def build_engine(request: str) -> tuple[Engine, list[str]]:
         runtime = create_dify_workflow_file_runtime()
@@ -49,26 +53,20 @@ def test_host_context_preserves_each_engine_file_runtime(monkeypatch: pytest.Mon
                 check_context()
                 checked_nodes.append(node.id)
 
-        graph_config: dict[str, object] = {
-            "nodes": [
-                {"id": "start", "data": {"type": "start", "title": "Start", "variables": []}},
-                {"id": "end", "data": {"type": "end", "title": "End", "outputs": []}},
-            ],
-            "edges": [{"source": "start", "target": "end", "sourceHandle": "source"}],
-        }
-        state = RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0.0)
+        sources = {source.workflow_id: source}
+        tool, _, _ = _workflow_tool_node()
         engine = Engine(
-            graph=Graph.init(
-                graph_config=graph_config,
-                root_node_id="start",
-                node_factory=DifyNodeFactory(
-                    init_params=build_test_graph_init_params(workflow_id="workflow", graph_config=graph_config),
-                    runtime_state=state,
-                ),
-            ),
-            runtime_state=state,
+            graph=_outer_graph(tool),
+            runtime_state=tool.runtime_state,
             workers=2,
             file_runtime=runtime,
+            container_handler_factories=(
+                partial(
+                    WorkflowToolContainerHandler,
+                    sources=sources,
+                    execution_context_factory=host.enter_context,
+                ),
+            ),
         )
         engine.add_layer(host)
         engine.add_layer(CheckNodeContext())
@@ -82,7 +80,7 @@ def test_host_context_preserves_each_engine_file_runtime(monkeypatch: pytest.Mon
             for event in engine.run():
                 assert peek_workflow_file_runtime() is caller_runtime
             assert isinstance(event, GraphRunSucceededEvent)
-            assert set(checked_nodes) == {"start", "end"}
+            assert set(checked_nodes) == {"outer-start", "tool", "source-start", "source-end"}
             assert peek_workflow_file_runtime() is caller_runtime
 
     with ThreadPoolExecutor(max_workers=2) as pool:

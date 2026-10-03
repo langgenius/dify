@@ -75,7 +75,7 @@ class WorkflowToolProviderController(ToolProviderController[ToolProviderEntity, 
             )
 
             controller.tools = [
-                controller._get_db_provider_tool(db_provider, app, session=session, user=user),
+                controller._get_db_provider_tool(db_provider, session=session, user=user),
             ]
 
         return controller
@@ -88,7 +88,6 @@ class WorkflowToolProviderController(ToolProviderController[ToolProviderEntity, 
     def _get_db_provider_tool(
         self,
         db_provider: WorkflowToolProvider,
-        app: App,
         *,
         session: Session,
         user: Account | None = None,
@@ -96,7 +95,6 @@ class WorkflowToolProviderController(ToolProviderController[ToolProviderEntity, 
         """
         get db provider tool
         :param db_provider: the db provider
-        :param app: the app
         :return: the tool
         """
         workflow: Workflow | None = session.scalar(
@@ -108,6 +106,11 @@ class WorkflowToolProviderController(ToolProviderController[ToolProviderEntity, 
         if not workflow:
             raise ValueError("workflow not found")
 
+        return self.build_tool(db_provider, workflow, author=user.name if user else "")
+
+    @staticmethod
+    def build_tool(db_provider: WorkflowToolProvider, workflow: Workflow, *, author: str) -> WorkflowTool:
+        """Build a tool from an already-loaded provider and its pinned definition."""
         # fetch start node
         graph: Mapping = workflow.graph_dict
         features_dict: Mapping = workflow.features_dict
@@ -183,10 +186,10 @@ class WorkflowToolProviderController(ToolProviderController[ToolProviderEntity, 
             workflow_as_tool_id=db_provider.id,
             entity=ToolEntity(
                 identity=ToolIdentity(
-                    author=user.name if user else "",
+                    author=author,
                     name=db_provider.name,
                     label=I18nObject(en_US=db_provider.label, zh_Hans=db_provider.label),
-                    provider=self.provider_id,
+                    provider=db_provider.id,
                     icon=db_provider.icon,
                 ),
                 description=ToolDescription(
@@ -199,11 +202,8 @@ class WorkflowToolProviderController(ToolProviderController[ToolProviderEntity, 
             runtime=ToolRuntime(
                 tenant_id=db_provider.tenant_id,
             ),
-            workflow_app_id=app.id,
-            workflow_entities={
-                "app": app,
-                "workflow": workflow,
-            },
+            workflow_app_id=workflow.app_id,
+            workflow_id=workflow.id,
             version=db_provider.version,
             workflow_call_depth=0,
             label=db_provider.label,
@@ -237,7 +237,7 @@ class WorkflowToolProviderController(ToolProviderController[ToolProviderEntity, 
                 raise ValueError("app not found")
 
             user = session.get(Account, db_provider.user_id) if db_provider.user_id else None
-            self.tools = [self._get_db_provider_tool(db_provider, app, session=session, user=user)]
+            self.tools = [self._get_db_provider_tool(db_provider, session=session, user=user)]
 
         return self.tools
 

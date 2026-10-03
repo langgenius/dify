@@ -25,6 +25,7 @@ from clients.agent_backend import (
 )
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
 from core.repositories.human_input_repository import HumanInputFormRepository, HumanInputFormRepositoryImpl
+from core.workflow.node_execution_process_data import WORKFLOW_TOOL_INVOCATION_ID_KEY
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.nodes.human_input.session_binding import default_session_binding
 from core.workflow.system_variables import SystemVariableKey, get_system_text
@@ -106,6 +107,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         type_checker: PerOutputTypeChecker,
         failure_orchestrator: OutputFailureOrchestrator,
         session_store: WorkflowAgentWorkspaceStore,
+        human_input_run_context: DifyRunContext | None = None,
     ) -> None:
         super().__init__(
             node_id=node_id,
@@ -125,6 +127,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         self._type_checker = type_checker
         self._failure_orchestrator = failure_orchestrator
         self._session_store = session_store
+        self._human_input_run_context = human_input_run_context
 
     @classmethod
     @override
@@ -197,6 +200,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 node_id=self._node_id,
                 node_execution_id=self.execution_id,
                 conversation_id=conversation_id,
+                workflow_tool_invocation_id=dify_ctx.workflow_tool_invocation_id,
             )
             bundle = self._binding_resolver.resolve(
                 tenant_id=dify_ctx.tenant_id,
@@ -205,7 +209,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 node_id=self._node_id,
                 binding_id=existing_scope.workflow_agent_binding_id if existing_scope is not None else None,
                 snapshot_id=existing_scope.agent_config_snapshot_id if existing_scope is not None else None,
-                conversation_id=conversation_id,
+                conversation_id=conversation_id if dify_ctx.workflow_tool_invocation_id is None else None,
             )
         except WorkflowAgentBindingError as error:
             yield self._failure_event(
@@ -233,6 +237,8 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 "workflow_agent_binding_id": bundle.binding.id,
             }
         )
+        if dify_ctx.workflow_tool_invocation_id is not None:
+            process_data[WORKFLOW_TOOL_INVOCATION_ID_KEY] = dify_ctx.workflow_tool_invocation_id
         session_scope = existing_scope or WorkflowAgentSessionScope(
             tenant_id=dify_ctx.tenant_id,
             app_id=dify_ctx.app_id,
@@ -244,6 +250,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             agent_id=bundle.agent.id,
             agent_config_snapshot_id=bundle.snapshot.id,
             conversation_id=conversation_id,
+            workflow_tool_invocation_id=dify_ctx.workflow_tool_invocation_id,
         )
 
         node_job = WorkflowNodeJobConfig.model_validate(bundle.binding.node_job_config_dict)
@@ -700,6 +707,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         ask_human form shares the same delivery/debug/console behavior: a
         submission actor is only attributed for debugger/explore surfaces.
         """
+        dify_ctx = self._human_input_run_context or dify_ctx
         invoke_source = dify_ctx.invoke_from.value
         return HumanInputFormRepositoryImpl(
             tenant_id=dify_ctx.tenant_id,
