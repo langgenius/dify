@@ -244,6 +244,75 @@ def test_keyword_io_releases_transactions_and_commits_before_unlocking(
     assert segments.resume_indexing(job) == ([], 5)
 
 
+@pytest.mark.parametrize("resume", [False, True])
+def test_parent_child_economy_indexes_children_and_completes_parent(
+    backend: BackendFixture,
+    sqlite_session_factory: sessionmaker[Session],
+    active_transactions: set[Connection],
+    monkeypatch: pytest.MonkeyPatch,
+    resume: bool,
+) -> None:
+    from core.rag.datasource.keyword.jieba import jieba as jieba_module
+    from core.rag.datasource.keyword.jieba.jieba import Jieba
+
+    adapter, _, segments, _, job, _ = backend
+    job = replace(job, source=job.source._replace(document_model=IndexStructureType.PARENT_CHILD_INDEX))
+    with sqlite_session_factory.begin() as session:
+        document = session.get(Document, job.ref.document_id)
+        assert document is not None
+        document.doc_form = IndexStructureType.PARENT_CHILD_INDEX
+        rule = DatasetProcessRule(
+            dataset_id="dataset-1",
+            mode=ProcessRuleMode.HIERARCHICAL,
+            rules='{"parent_mode":"full-doc","subchunk_segmentation":{"max_tokens":100}}',
+            created_by="account-1",
+        )
+        session.add(rule)
+        session.flush()
+        document.dataset_process_rule_id = rule.id
+    apply_config_overrides(monkeypatch, KEYWORD_DATA_SOURCE_TYPE="database")
+    checking_indexing = True
+
+    class KeywordExtractor:
+        def extract_keywords(self, text: str, _keyword_number: int = 10) -> set[str]:
+            if checking_indexing:
+                assert not active_transactions
+            return set(text.split())
+
+    monkeypatch.setattr(jieba_module, "JiebaKeywordTableHandler", KeywordExtractor)
+    chunk = IndexDocument(
+        page_content="parent",
+        metadata={"doc_id": "parent-node", "doc_hash": "parent-hash"},
+        children=[ChildDocument(page_content="childword", metadata={"doc_id": "child-node", "doc_hash": "child-hash"})],
+    )
+    segments.save_for_indexing(job, [chunk], [5])
+    if resume:
+        saved, tokens = segments.resume_indexing(job)
+        assert tokens == 5
+        assert saved[0].children is not None
+        assert [child.page_content for child in saved[0].children] == ["childword"]
+        chunks = saved
+    else:
+        chunks = [chunk]
+
+    with Flask(__name__).app_context():
+        adapter.load(job, chunks)
+    checking_indexing = False
+
+    with sqlite_session_factory() as session:
+        dataset = session.get(Dataset, "dataset-1")
+        assert dataset is not None
+        hits = Jieba(dataset).search("childword", session=session)
+        assert [hit.page_content for hit in hits] == ["childword"]
+        assert [hit.metadata["doc_id"] for hit in hits] == ["child-node"]
+        parent = session.scalar(select(DocumentSegment))
+        assert parent is not None
+        assert parent.index_node_id == "parent-node"
+        assert parent.status == SegmentStatus.COMPLETED
+        assert not parent.keywords
+    assert segments.resume_indexing(job) == ([], 5)
+
+
 def test_extract_attaches_document_metadata_and_owns_local_session(backend: BackendFixture) -> None:
     adapter, _, _, sources, job, _ = backend
     text = IndexDocument(page_content="source")
