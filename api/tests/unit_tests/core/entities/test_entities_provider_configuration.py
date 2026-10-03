@@ -4,15 +4,14 @@ import json
 import logging
 from collections.abc import Iterator
 from contextlib import contextmanager
-from types import SimpleNamespace
-from unittest.mock import Mock, PropertyMock, patch
+from unittest.mock import PropertyMock, patch
 
 import pytest
 from sqlalchemy import Engine, event, select
 from sqlalchemy.orm import Session
 
 from constants import HIDDEN_VALUE
-from core.entities.model_entities import ModelStatus
+from core.entities.model_entities import ModelStatus, ProviderModelWithStatusEntity
 from core.entities.provider_configuration import ProviderConfiguration, ProviderConfigurations
 from core.entities.provider_entities import (
     CredentialConfiguration,
@@ -29,6 +28,7 @@ from core.entities.provider_entities import (
     SystemConfigurationStatus,
 )
 from core.helper.model_provider_cache import ProviderCredentialsCacheType
+from core.plugin.impl.model_runtime_factory import PluginModelAssembly, create_model_type_instance
 from extensions.ext_database import db
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
@@ -41,6 +41,7 @@ from graphon.model_runtime.entities.provider_entities import (
     ProviderCredentialSchema,
     ProviderEntity,
 )
+from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from models.enums import CredentialSourceType
 from models.provider import (
     LoadBalancingModelConfig,
@@ -97,6 +98,10 @@ def _build_ai_model(name: str, *, model_type: ModelType = ModelType.LLM) -> AIMo
         fetch_from=FetchFrom.PREDEFINED_MODEL,
         model_properties={},
     )
+
+
+def _build_provider_model(name: str) -> ProviderModelWithStatusEntity:
+    return ProviderModelWithStatusEntity(**_build_ai_model(name).model_dump(), status=ModelStatus.ACTIVE)
 
 
 def _build_secret_provider_schema() -> ProviderCredentialSchema:
@@ -190,7 +195,7 @@ def test_provider_configurations_get_models_forwards_filters() -> None:
     provider_key = str(ModelProviderID("openai"))
     configurations = ProviderConfigurations(tenant_id="tenant-1")
     configurations[provider_key] = configuration
-    expected_model = Mock()
+    expected_model = _build_provider_model("gpt-4o")
 
     with patch.object(ProviderConfiguration, "get_provider_models", return_value=[expected_model]) as mock_get:
         models = configurations.get_models(provider="openai", model_type=ModelType.LLM, only_active=True)
@@ -205,7 +210,9 @@ def test_provider_configurations_get_models_skips_non_matching_provider_filter()
     configurations = ProviderConfigurations(tenant_id="tenant-1")
     configurations[provider_key] = configuration
 
-    with patch.object(ProviderConfiguration, "get_provider_models", return_value=[Mock()]) as mock_get:
+    with patch.object(
+        ProviderConfiguration, "get_provider_models", return_value=[_build_provider_model("gpt-4o")]
+    ) as mock_get:
         models = configurations.get_models(provider="anthropic", model_type=ModelType.LLM, only_active=True)
 
     assert models == []
@@ -268,84 +275,68 @@ def test_get_provider_names_supports_legacy_and_full_plugin_id() -> None:
 
 def test_get_model_type_instance_and_schema_delegate_to_factory() -> None:
     configuration = _build_provider_configuration()
-    mock_model_type_instance = Mock()
-    mock_schema = _build_ai_model("gpt-4o")
-    mock_factory = Mock()
-    mock_assembly = Mock()
-    mock_assembly.model_runtime = Mock()
-    mock_assembly.model_runtime.get_model_schema.return_value = mock_schema
-    mock_assembly.model_provider_factory = mock_factory
+    assembly = PluginModelAssembly(tenant_id="tenant-1")
+    schema = _build_ai_model("gpt-4o")
 
     with (
+        patch("core.entities.provider_configuration.create_plugin_model_assembly", return_value=assembly) as builder,
         patch(
-            "core.entities.provider_configuration.create_plugin_model_assembly",
-            return_value=mock_assembly,
-        ) as mock_assembly_builder,
-        patch(
-            "core.entities.provider_configuration.create_model_type_instance",
-            return_value=mock_model_type_instance,
-        ) as mock_model_builder,
+            "core.entities.provider_configuration.create_model_type_instance", wraps=create_model_type_instance
+        ) as model_builder,
+        patch.object(assembly.model_runtime, "get_model_schema", return_value=schema) as get_schema,
     ):
         model_type_instance = configuration.get_model_type_instance(ModelType.LLM)
         model_schema = configuration.get_model_schema(ModelType.LLM, "gpt-4o", {"api_key": "x"})
 
-    assert model_type_instance is mock_model_type_instance
-    assert model_schema is mock_schema
-    assert mock_assembly_builder.call_count == 2
-    mock_model_builder.assert_called_once_with(
-        runtime=mock_assembly.model_runtime,
+    assert isinstance(model_type_instance, LargeLanguageModel)
+    assert model_schema is schema
+    assert builder.call_count == 2
+    model_builder.assert_called_once_with(
+        runtime=assembly.model_runtime,
         provider_schema=configuration.provider,
         model_type=ModelType.LLM,
     )
-    mock_assembly.model_runtime.get_model_schema.assert_called_once_with(
-        provider="openai",
-        model_type=ModelType.LLM,
-        model="gpt-4o",
-        credentials={"api_key": "x"},
+    get_schema.assert_called_once_with(
+        provider="openai", model_type=ModelType.LLM, model="gpt-4o", credentials={"api_key": "x"}
     )
 
 
 def test_get_model_type_instance_and_schema_reuse_bound_runtime_factory() -> None:
     configuration = _build_provider_configuration()
-    bound_runtime = Mock()
-    bound_runtime.get_model_schema.return_value = _build_ai_model("gpt-4o")
+    bound_runtime = PluginModelAssembly(tenant_id="tenant-1").model_runtime
+    schema = _build_ai_model("gpt-4o")
     configuration.bind_model_runtime(bound_runtime)
 
-    mock_model_type_instance = Mock()
-
     with (
-        patch("core.entities.provider_configuration.ModelProviderFactory") as mock_factory_cls,
-        patch("core.entities.provider_configuration.create_plugin_model_assembly") as mock_assembly_builder,
+        patch("core.entities.provider_configuration.ModelProviderFactory") as factory_cls,
+        patch("core.entities.provider_configuration.create_plugin_model_assembly") as assembly_builder,
         patch(
-            "core.entities.provider_configuration.create_model_type_instance",
-            return_value=mock_model_type_instance,
-        ) as mock_model_builder,
+            "core.entities.provider_configuration.create_model_type_instance", wraps=create_model_type_instance
+        ) as model_builder,
+        patch.object(bound_runtime, "get_model_schema", return_value=schema) as get_schema,
     ):
         model_type_instance = configuration.get_model_type_instance(ModelType.LLM)
         model_schema = configuration.get_model_schema(ModelType.LLM, "gpt-4o", {"api_key": "x"})
 
-    assert model_type_instance is mock_model_type_instance
-    assert model_schema == bound_runtime.get_model_schema.return_value
-    mock_factory_cls.assert_not_called()
-    mock_assembly_builder.assert_not_called()
-    mock_model_builder.assert_called_once_with(
+    assert isinstance(model_type_instance, LargeLanguageModel)
+    assert model_schema is schema
+    factory_cls.assert_not_called()
+    assembly_builder.assert_not_called()
+    model_builder.assert_called_once_with(
         runtime=bound_runtime,
         provider_schema=configuration.provider,
         model_type=ModelType.LLM,
     )
-    bound_runtime.get_model_schema.assert_called_once_with(
-        provider="openai",
-        model_type=ModelType.LLM,
-        model="gpt-4o",
-        credentials={"api_key": "x"},
+    get_schema.assert_called_once_with(
+        provider="openai", model_type=ModelType.LLM, model="gpt-4o", credentials={"api_key": "x"}
     )
 
 
 def test_get_provider_model_returns_none_when_model_not_found() -> None:
     configuration = _build_provider_configuration()
-    fake_model = SimpleNamespace(model="other-model")
+    other_model = _build_provider_model("other-model")
 
-    with patch.object(ProviderConfiguration, "get_provider_models", return_value=[fake_model]):
+    with patch.object(ProviderConfiguration, "get_provider_models", return_value=[other_model]):
         selected = configuration.get_provider_model(ModelType.LLM, "gpt-4o")
 
     assert selected is None
@@ -364,12 +355,11 @@ def test_get_provider_models_system_deduplicates_sorts_and_filters_active() -> N
         configurate_methods=[ConfigurateMethod.PREDEFINED_MODEL],
         models=[_build_ai_model("a-model"), _build_ai_model("b-model"), _build_ai_model("a-model")],
     )
-    mock_factory = Mock()
-    mock_factory.get_provider_schema.return_value = provider_schema
+    assembly = PluginModelAssembly(tenant_id="tenant-1")
 
-    with patch(
-        "core.entities.provider_configuration.create_plugin_model_assembly",
-        return_value=SimpleNamespace(model_runtime=Mock(), model_provider_factory=mock_factory),
+    with (
+        patch("core.entities.provider_configuration.create_plugin_model_assembly", return_value=assembly),
+        patch.object(assembly.model_provider_factory, "get_model_provider", return_value=provider_schema),
     ):
         all_models = configuration.get_provider_models(model_type=ModelType.LLM, only_active=False)
         active_models = configuration.get_provider_models(model_type=ModelType.LLM, only_active=True)
@@ -388,12 +378,11 @@ def test_get_provider_models_system_filters_requested_model() -> None:
         configurate_methods=[ConfigurateMethod.PREDEFINED_MODEL],
         models=[_build_ai_model("a-model"), _build_ai_model("target-model"), _build_ai_model("b-model")],
     )
-    mock_factory = Mock()
-    mock_factory.get_provider_schema.return_value = provider_schema
+    assembly = PluginModelAssembly(tenant_id="tenant-1")
 
-    with patch(
-        "core.entities.provider_configuration.create_plugin_model_assembly",
-        return_value=SimpleNamespace(model_runtime=Mock(), model_provider_factory=mock_factory),
+    with (
+        patch("core.entities.provider_configuration.create_plugin_model_assembly", return_value=assembly),
+        patch.object(assembly.model_provider_factory, "get_model_provider", return_value=provider_schema),
     ):
         models = configuration.get_provider_models(
             model_type=ModelType.LLM,
@@ -436,8 +425,7 @@ def test_get_provider_models_system_customizable_filters_requested_restricted_mo
         configurate_methods=[ConfigurateMethod.PREDEFINED_MODEL],
         models=[],
     )
-    mock_factory = Mock()
-    mock_factory.get_provider_schema.return_value = provider_schema
+    assembly = PluginModelAssembly(tenant_id="tenant-1")
 
     with patch("core.entities.provider_configuration.original_provider_configurate_methods", {}):
         configuration = ProviderConfiguration(
@@ -451,10 +439,8 @@ def test_get_provider_models_system_customizable_filters_requested_restricted_mo
         )
 
     with (
-        patch(
-            "core.entities.provider_configuration.create_plugin_model_assembly",
-            return_value=SimpleNamespace(model_runtime=Mock(), model_provider_factory=mock_factory),
-        ),
+        patch("core.entities.provider_configuration.create_plugin_model_assembly", return_value=assembly),
+        patch.object(assembly.model_provider_factory, "get_model_provider", return_value=provider_schema),
         patch.object(
             ProviderConfiguration,
             "get_model_schema",
@@ -881,13 +867,11 @@ def test_validate_provider_credentials_reuses_hidden_secret(sqlite_provider_sess
     configuration = _build_provider_configuration()
     configuration.provider.provider_credential_schema = _build_secret_provider_schema()
     credential = _provider_credential(sqlite_provider_session, encrypted_config='{"openai_api_key":"enc-old"}')
-    factory = Mock()
-    factory.provider_credentials_validate.return_value = {"openai_api_key": "raw"}
+    assembly = PluginModelAssembly(tenant_id="tenant-1")
     with (
-        patch(
-            "core.entities.provider_configuration.create_plugin_model_assembly",
-            return_value=SimpleNamespace(model_runtime=Mock(), model_provider_factory=factory),
-        ),
+        patch("core.entities.provider_configuration.create_plugin_model_assembly", return_value=assembly),
+        patch.object(assembly.model_provider_factory, "get_model_provider", return_value=configuration.provider),
+        patch.object(assembly.model_runtime, "validate_provider_credentials", new=lambda **_kwargs: None),
         patch("core.entities.provider_configuration.encrypter.decrypt_token", return_value="raw"),
         patch("core.entities.provider_configuration.encrypter.encrypt_token", return_value="enc-new"),
     ):
@@ -1091,13 +1075,11 @@ def test_validate_custom_model_credentials_reuses_hidden_secret(sqlite_provider_
     configuration = _build_provider_configuration()
     configuration.provider.model_credential_schema = _build_secret_model_schema()
     credential = _model_credential(sqlite_provider_session, encrypted_config='{"openai_api_key":"enc-old"}')
-    factory = Mock()
-    factory.model_credentials_validate.return_value = {"openai_api_key": "raw"}
+    assembly = PluginModelAssembly(tenant_id="tenant-1")
     with (
-        patch(
-            "core.entities.provider_configuration.create_plugin_model_assembly",
-            return_value=SimpleNamespace(model_runtime=Mock(), model_provider_factory=factory),
-        ),
+        patch("core.entities.provider_configuration.create_plugin_model_assembly", return_value=assembly),
+        patch.object(assembly.model_provider_factory, "get_model_provider", return_value=configuration.provider),
+        patch.object(assembly.model_runtime, "validate_model_credentials", new=lambda **_kwargs: None),
         patch("core.entities.provider_configuration.encrypter.decrypt_token", return_value="raw"),
         patch("core.entities.provider_configuration.encrypter.encrypt_token", return_value="enc-new"),
     ):
