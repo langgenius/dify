@@ -18,7 +18,7 @@ from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
-from sqlalchemy import Engine, event
+from sqlalchemy import Engine, event, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
@@ -26,6 +26,9 @@ from extensions.storage.storage_type import StorageType
 from models.base import TypeBase
 from models.dataset import (
     AppDatasetJoin,
+    DatasetGraphChunkLink,
+    DatasetGraphEntity,
+    DatasetGraphRelation,
     DatasetMetadata,
     DatasetMetadataBinding,
     DatasetProcessRule,
@@ -85,6 +88,9 @@ def orm_session_maker(
         AppDatasetJoin,
         DatasetMetadata,
         DatasetMetadataBinding,
+        DatasetGraphChunkLink,
+        DatasetGraphEntity,
+        DatasetGraphRelation,
         Pipeline,
         Workflow,
     )
@@ -579,3 +585,156 @@ class TestIndexProcessorParameters:
             )
 
         schedule_refresh.assert_not_called()
+
+
+# ============================================================================
+# Test Knowledge Graph Cleanup
+# ============================================================================
+
+
+class TestGraphCleanup:
+    """The graph must not outlive the dataset it describes."""
+
+    @staticmethod
+    def _persist_graph(
+        session_maker: sessionmaker[Session],
+        *,
+        dataset_id: str,
+        tenant_id: str,
+    ) -> None:
+        source = DatasetGraphEntity(
+            tenant_id=tenant_id,
+            dataset_id=dataset_id,
+            name="acme",
+            display_name="Acme",
+            entity_type="ORGANIZATION",
+        )
+        target = DatasetGraphEntity(
+            tenant_id=tenant_id,
+            dataset_id=dataset_id,
+            name="globex",
+            display_name="Globex",
+            entity_type="ORGANIZATION",
+        )
+        with session_maker.begin() as session:
+            session.add_all([source, target])
+            session.flush()
+            relation = DatasetGraphRelation(
+                tenant_id=tenant_id,
+                dataset_id=dataset_id,
+                source_entity_id=source.id,
+                target_entity_id=target.id,
+                predicate="acquired",
+            )
+            session.add(relation)
+            session.flush()
+            session.add(
+                DatasetGraphChunkLink(
+                    tenant_id=tenant_id,
+                    dataset_id=dataset_id,
+                    document_id=str(uuid.uuid4()),
+                    index_node_id="node-1",
+                    entity_id=source.id,
+                )
+            )
+
+    @staticmethod
+    def _graph_row_count(session_maker: sessionmaker[Session], dataset_id: str) -> int:
+        with session_maker() as session:
+            return sum(
+                len(
+                    session.scalars(select(model).where(model.dataset_id == dataset_id)).all()  # type: ignore[attr-defined]
+                )
+                for model in (DatasetGraphChunkLink, DatasetGraphRelation, DatasetGraphEntity)
+            )
+
+    def test_graph_rows_are_purged_with_the_dataset(
+        self,
+        dataset_id: str,
+        tenant_id: str,
+        collection_binding_id: str,
+        orm_session_maker: sessionmaker[Session],
+        mock_storage: MagicMock,
+        mock_index_processor_factory: dict[str, MagicMock],
+        mock_get_image_upload_file_ids: MagicMock,
+    ) -> None:
+        self._persist_graph(orm_session_maker, dataset_id=dataset_id, tenant_id=tenant_id)
+
+        _run_clean_dataset(
+            dataset_id=dataset_id,
+            tenant_id=tenant_id,
+            collection_binding_id=collection_binding_id,
+        )
+
+        assert self._graph_row_count(orm_session_maker, dataset_id) == 0
+
+    def test_graph_rows_are_purged_even_when_vector_cleanup_fails(
+        self,
+        dataset_id: str,
+        tenant_id: str,
+        collection_binding_id: str,
+        orm_session_maker: sessionmaker[Session],
+        mock_storage: MagicMock,
+        mock_index_processor_factory: dict[str, MagicMock],
+        mock_get_image_upload_file_ids: MagicMock,
+    ) -> None:
+        # Vector cleanup is allowed to fail without aborting the deletion, so
+        # anything sequenced behind it would silently never run.
+        mock_index_processor_factory["processor"].clean.side_effect = RuntimeError("vector cleanup failed")
+        self._persist_graph(orm_session_maker, dataset_id=dataset_id, tenant_id=tenant_id)
+
+        _run_clean_dataset(
+            dataset_id=dataset_id,
+            tenant_id=tenant_id,
+            collection_binding_id=collection_binding_id,
+        )
+
+        assert self._graph_row_count(orm_session_maker, dataset_id) == 0
+
+    def test_graph_rows_are_purged_without_a_stored_graph_setting(
+        self,
+        dataset_id: str,
+        tenant_id: str,
+        collection_binding_id: str,
+        orm_session_maker: sessionmaker[Session],
+        mock_storage: MagicMock,
+        mock_index_processor_factory: dict[str, MagicMock],
+        mock_get_image_upload_file_ids: MagicMock,
+    ) -> None:
+        # The dataset row is already gone when this task runs, so the settings
+        # guards used elsewhere would skip cleanup and strand the rows forever.
+        self._persist_graph(orm_session_maker, dataset_id=dataset_id, tenant_id=tenant_id)
+
+        clean_dataset_task(
+            dataset_id=dataset_id,
+            tenant_id=tenant_id,
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
+            index_struct='{"type": "paragraph"}',
+            collection_binding_id=collection_binding_id,
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
+            graph_index_setting=None,
+        )
+
+        assert self._graph_row_count(orm_session_maker, dataset_id) == 0
+
+    def test_another_datasets_graph_is_left_alone(
+        self,
+        dataset_id: str,
+        tenant_id: str,
+        collection_binding_id: str,
+        orm_session_maker: sessionmaker[Session],
+        mock_storage: MagicMock,
+        mock_index_processor_factory: dict[str, MagicMock],
+        mock_get_image_upload_file_ids: MagicMock,
+    ) -> None:
+        other_dataset_id = str(uuid.uuid4())
+        self._persist_graph(orm_session_maker, dataset_id=dataset_id, tenant_id=tenant_id)
+        self._persist_graph(orm_session_maker, dataset_id=other_dataset_id, tenant_id=tenant_id)
+
+        _run_clean_dataset(
+            dataset_id=dataset_id,
+            tenant_id=tenant_id,
+            collection_binding_id=collection_binding_id,
+        )
+
+        assert self._graph_row_count(orm_session_maker, other_dataset_id) == 4

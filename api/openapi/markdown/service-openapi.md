@@ -2819,6 +2819,7 @@ Enum class for custom configuration status.
 | enable_api | boolean |  | Yes |
 | external_knowledge_info | [DatasetExternalKnowledgeInfoResponse](#datasetexternalknowledgeinforesponse) | Connection details for external knowledge bases. Populated when `provider` is `external`; otherwise its properties are `null`. | No |
 | external_retrieval_model | [DatasetExternalRetrievalModelResponse](#datasetexternalretrievalmodelresponse) |  | Yes |
+| graph_index_setting | [DatasetGraphIndexSettingResponse](#datasetgraphindexsettingresponse) |  | No |
 | icon_info | [DatasetIconInfoResponse](#dataseticoninforesponse) | Icon display configuration for the knowledge base. | No |
 | id | string |  | Yes |
 | indexing_technique | string |  | Yes |
@@ -2860,6 +2861,7 @@ Enum class for custom configuration status.
 | enable_api | boolean |  | Yes |
 | external_knowledge_info | [DatasetExternalKnowledgeInfoResponse](#datasetexternalknowledgeinforesponse) | Connection details for external knowledge bases. Populated when `provider` is `external`; otherwise its properties are `null`. | No |
 | external_retrieval_model | [DatasetExternalRetrievalModelResponse](#datasetexternalretrievalmodelresponse) |  | Yes |
+| graph_index_setting | [DatasetGraphIndexSettingResponse](#datasetgraphindexsettingresponse) |  | No |
 | icon_info | [DatasetIconInfoResponse](#dataseticoninforesponse) | Icon display configuration for the knowledge base. | No |
 | id | string |  | Yes |
 | indexing_technique | string |  | Yes |
@@ -2905,6 +2907,24 @@ Enum class for custom configuration status.
 | score_threshold | number |  | No |
 | score_threshold_enabled | boolean |  | No |
 | top_k | integer |  | Yes |
+
+#### DatasetGraphIndexSettingResponse
+
+Knowledge-graph configuration of a dataset.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | No |
+| entity_types | [ string ] |  | No |
+| extract_prompt | string |  | No |
+| hop_decay | number |  | No |
+| llm_query_fallback | boolean |  | No |
+| max_depth | integer |  | No |
+| max_entities_per_chunk | integer |  | No |
+| max_neighbors_per_hop | integer |  | No |
+| max_seed_entities | integer |  | No |
+| model_name | string |  | No |
+| model_provider_name | string |  | No |
 
 #### DatasetIconInfoResponse
 

@@ -127,6 +127,10 @@ class DatasetUpdatePayload(BaseModel):
     embedding_model_provider: str | None = None
     retrieval_model: dict[str, Any] | None = Field(default=None)
     summary_index_setting: dict[str, Any] | None = Field(default=None)
+    # Validated and merged over the stored setting by
+    # DatasetService.validate_graph_index_setting; kept loose here so the
+    # console can send a partial object.
+    graph_index_setting: dict[str, Any] | None = Field(default=None)
     partial_member_list: list[dict[str, str]] | None = None
     external_retrieval_model: dict[str, Any] | None = Field(default=None)
     external_knowledge_id: str | None = None
@@ -163,6 +167,11 @@ class IndexingEstimatePayload(BaseModel):
         if result is None:
             return "text_model"
         return result
+
+
+class DatasetGraphQuery(BaseModel):
+    query: str | None = Field(default=None, description="Entity mention to centre the returned subgraph on")
+    limit: int = Field(default=50, ge=1, le=200, description="Maximum number of seed entities to return")
 
 
 _NOTION_SELECTIONS = TypeAdapter(list[NotionEstimateWorkspacePayload])
@@ -349,12 +358,54 @@ class AutoDisableLogsResponse(ResponseModel):
     count: int
 
 
+class GraphEntityResponse(ResponseModel):
+    id: str
+    name: str
+    display_name: str
+    entity_type: str
+    description: str
+    frequency: int
+
+
+class GraphRelationResponse(ResponseModel):
+    id: str
+    source_entity_id: str
+    target_entity_id: str
+    predicate: str
+    description: str
+    weight: float
+
+
+class DatasetGraphStatsResponse(ResponseModel):
+    entity_count: int
+    relation_count: int
+    entity_types: dict[str, int]
+    # Lets the console show why a graph is empty or partial instead of
+    # presenting extraction failures as "no graph yet".
+    failed_chunk_count: int
+    last_error: str | None
+    last_failed_at: int | None
+    # Extraction is still running, so an empty graph is not a final answer.
+    building: bool
+
+    @field_validator("last_failed_at", mode="before")
+    @classmethod
+    def _normalize_last_failed_at(cls, value: datetime | int | None) -> int | None:
+        return to_timestamp(value)
+
+
+class DatasetGraphResponse(ResponseModel):
+    entities: list[GraphEntityResponse]
+    relations: list[GraphRelationResponse]
+
+
 register_schema_models(
     console_ns,
     DatasetCreatePayload,
     DatasetUpdatePayload,
     IndexingEstimatePayload,
     ConsoleDatasetListQuery,
+    DatasetGraphQuery,
     DatasetApiKeyCreatePayload,
 )
 register_response_schema_models(
@@ -370,6 +421,8 @@ register_response_schema_models(
     RetrievalSettingResponse,
     PartialMemberListResponse,
     AutoDisableLogsResponse,
+    DatasetGraphStatsResponse,
+    DatasetGraphResponse,
 )
 
 
@@ -791,3 +844,62 @@ class DatasetAutoDisableLogApi(Resource):
         except Exception as error:
             _raise_dataset_error(error)
         return dump_response(AutoDisableLogsResponse, result), 200
+
+
+@console_ns.route("/datasets/<uuid:dataset_id>/graph/stats")
+class DatasetGraphStatsApi(Resource):
+    @console_ns.doc("get_dataset_graph_stats")
+    @console_ns.doc(description="Get knowledge graph statistics for a dataset")
+    @console_ns.doc(params={"dataset_id": "Dataset ID"})
+    @console_ns.response(
+        200,
+        "Graph statistics retrieved successfully",
+        console_ns.models[DatasetGraphStatsResponse.__name__],
+    )
+    @console_ns.response(404, "Dataset not found")
+    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()),))
+    def get(self, request_context: RequestContext, dataset_id: UUID):
+        try:
+            result = application_services().knowledge.datasets.graph_stats(request_context, dataset_id=str(dataset_id))
+        except Exception as error:
+            _raise_dataset_error(error)
+        return dump_response(DatasetGraphStatsResponse, result), 200
+
+
+@console_ns.route("/datasets/<uuid:dataset_id>/graph")
+class DatasetGraphApi(Resource):
+    @console_ns.doc("get_dataset_graph")
+    @console_ns.doc(description="Inspect the knowledge graph extracted from a dataset's documents")
+    @console_ns.doc(params={"dataset_id": "Dataset ID"})
+    @console_ns.doc(params=query_params_from_model(DatasetGraphQuery))
+    @console_ns.response(200, "Graph retrieved successfully", console_ns.models[DatasetGraphResponse.__name__])
+    @console_ns.response(404, "Dataset not found")
+    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()),))
+    @model_validate(DatasetGraphQuery)
+    def get(self, args: DatasetGraphQuery, request_context: RequestContext, dataset_id: UUID):
+        try:
+            result = application_services().knowledge.datasets.graph(
+                request_context, dataset_id=str(dataset_id), query=args.query, limit=args.limit
+            )
+        except Exception as error:
+            _raise_dataset_error(error)
+        return dump_response(DatasetGraphResponse, result), 200
+
+
+@console_ns.route("/datasets/<uuid:dataset_id>/graph/retry")
+class DatasetGraphRetryApi(Resource):
+    @console_ns.doc("retry_dataset_graph")
+    @console_ns.doc(description="Retry knowledge graph extraction for the chunks that failed")
+    @console_ns.doc(params={"dataset_id": "Dataset ID"})
+    @console_ns.response(200, "Retry queued", console_ns.models[SimpleResultResponse.__name__])
+    @console_ns.response(404, "Dataset not found")
+    @console_account_admission(
+        allowed_roles=_DATASET_EDIT_ROLES, rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),)
+    )
+    @cloud_edition_billing_rate_limit_check("knowledge")
+    def post(self, request_context: RequestContext, dataset_id: UUID):
+        try:
+            application_services().knowledge.datasets.retry_graph(request_context, dataset_id=str(dataset_id))
+        except Exception as error:
+            _raise_dataset_error(error)
+        return dump_response(SimpleResultResponse, {"result": "success"}), 200

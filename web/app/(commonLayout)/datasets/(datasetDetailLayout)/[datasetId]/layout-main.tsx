@@ -47,6 +47,8 @@ const datasetDetailPageTitle = (pathname: string, t: ReturnType<typeof useTransl
   if (pathname.includes('/documents'))
     return t(($) => $['datasetMenus.documents'], { ns: 'common' })
   if (pathname.endsWith('/pipeline')) return t(($) => $['datasetMenus.pipeline'], { ns: 'common' })
+  if (pathname.endsWith('/graph'))
+    return t(($) => $['datasetMenus.knowledgeGraph'], { ns: 'common' })
   if (pathname.endsWith('/hitTesting'))
     return t(($) => $['datasetMenus.hitTesting'], { ns: 'common' })
   if (pathname.endsWith('/settings')) return t(($) => $['datasetMenus.settings'], { ns: 'common' })

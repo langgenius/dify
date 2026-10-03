@@ -243,6 +243,19 @@ export const zExternalHitTestingPayload = z.object({
 })
 
 /**
+ * DatasetGraphStatsResponse
+ */
+export const zDatasetGraphStatsResponse = z.object({
+  building: z.boolean(),
+  entity_count: z.int(),
+  entity_types: z.record(z.string(), z.int()),
+  failed_chunk_count: z.int(),
+  last_error: z.string().nullable(),
+  last_failed_at: z.int().nullable(),
+  relation_count: z.int(),
+})
+
+/**
  * MetadataArgs
  */
 export const zMetadataArgs = z.object({
@@ -317,6 +330,7 @@ export const zDatasetUpdatePayload = z.object({
   external_knowledge_api_id: z.string().nullish(),
   external_knowledge_id: z.string().nullish(),
   external_retrieval_model: z.record(z.string(), z.unknown()).nullish(),
+  graph_index_setting: z.record(z.string(), z.unknown()).nullish(),
   icon_info: z.record(z.string(), z.unknown()).nullish(),
   indexing_technique: z.string().nullish(),
   is_multimodal: z.boolean().nullish().default(false),
@@ -353,6 +367,25 @@ export const zDatasetExternalRetrievalModelResponse = z.object({
   score_threshold: z.number().nullish(),
   score_threshold_enabled: z.boolean().nullish(),
   top_k: z.int(),
+})
+
+/**
+ * DatasetGraphIndexSettingResponse
+ *
+ * Knowledge-graph configuration of a dataset.
+ */
+export const zDatasetGraphIndexSettingResponse = z.object({
+  enabled: z.boolean().nullish(),
+  entity_types: z.array(z.string()).nullish(),
+  extract_prompt: z.string().nullish(),
+  hop_decay: z.number().nullish(),
+  llm_query_fallback: z.boolean().nullish(),
+  max_depth: z.int().nullish(),
+  max_entities_per_chunk: z.int().nullish(),
+  max_neighbors_per_hop: z.int().nullish(),
+  max_seed_entities: z.int().nullish(),
+  model_name: z.string().nullish(),
+  model_provider_name: z.string().nullish(),
 })
 
 /**
@@ -746,6 +779,38 @@ export const zExternalHitTestingResponse = z.object({
 })
 
 /**
+ * GraphEntityResponse
+ */
+export const zGraphEntityResponse = z.object({
+  description: z.string(),
+  display_name: z.string(),
+  entity_type: z.string(),
+  frequency: z.int(),
+  id: z.string(),
+  name: z.string(),
+})
+
+/**
+ * GraphRelationResponse
+ */
+export const zGraphRelationResponse = z.object({
+  description: z.string(),
+  id: z.string(),
+  predicate: z.string(),
+  source_entity_id: z.string(),
+  target_entity_id: z.string(),
+  weight: z.number(),
+})
+
+/**
+ * DatasetGraphResponse
+ */
+export const zDatasetGraphResponse = z.object({
+  entities: z.array(zGraphEntityResponse),
+  relations: z.array(zGraphRelationResponse),
+})
+
+/**
  * HitTestingQuery
  */
 export const zHitTestingQuery = z.object({
@@ -813,6 +878,7 @@ export const zRerankingModel = z.object({
  */
 export const zRetrievalMethod = z.enum([
   'full_text_search',
+  'graph_search',
   'hybrid_search',
   'keyword_search',
   'semantic_search',
@@ -1000,6 +1066,7 @@ export const zDatasetDetailWithPartialMembersResponse = z.object({
   enable_api: z.boolean(),
   external_knowledge_info: zDatasetExternalKnowledgeInfoResponse.optional(),
   external_retrieval_model: zDatasetExternalRetrievalModelResponse.nullable(),
+  graph_index_setting: zDatasetGraphIndexSettingResponse.optional(),
   icon_info: zDatasetIconInfoResponse.optional(),
   id: z.string(),
   indexing_technique: z.string().nullable(),
@@ -1044,6 +1111,7 @@ export const zDatasetDetailResponse = z.object({
   enable_api: z.boolean(),
   external_knowledge_info: zDatasetExternalKnowledgeInfoResponse.optional(),
   external_retrieval_model: zDatasetExternalRetrievalModelResponse.nullable(),
+  graph_index_setting: zDatasetGraphIndexSettingResponse.optional(),
   icon_info: zDatasetIconInfoResponse.optional(),
   id: z.string(),
   indexing_technique: z.string().nullable(),
@@ -1087,6 +1155,7 @@ export const zDatasetListItemResponse = z.object({
   enable_api: z.boolean(),
   external_knowledge_info: zDatasetExternalKnowledgeInfoResponse.optional(),
   external_retrieval_model: zDatasetExternalRetrievalModelResponse.nullable(),
+  graph_index_setting: zDatasetGraphIndexSettingResponse.optional(),
   icon_info: zDatasetIconInfoResponse.optional(),
   id: z.string(),
   indexing_technique: z.string().nullable(),
@@ -2170,6 +2239,38 @@ export const zPostDatasetsByDatasetIdExternalHitTestingPath = z.object({
  * External hit testing completed successfully
  */
 export const zPostDatasetsByDatasetIdExternalHitTestingResponse = zExternalHitTestingResponse
+
+export const zGetDatasetsByDatasetIdGraphPath = z.object({
+  dataset_id: z.uuid(),
+})
+
+export const zGetDatasetsByDatasetIdGraphQuery = z.object({
+  limit: z.int().gte(1).lte(200).optional().default(50),
+  query: z.string().optional(),
+})
+
+/**
+ * Graph retrieved successfully
+ */
+export const zGetDatasetsByDatasetIdGraphResponse = zDatasetGraphResponse
+
+export const zPostDatasetsByDatasetIdGraphRetryPath = z.object({
+  dataset_id: z.uuid(),
+})
+
+/**
+ * Retry queued
+ */
+export const zPostDatasetsByDatasetIdGraphRetryResponse = zSimpleResultResponse
+
+export const zGetDatasetsByDatasetIdGraphStatsPath = z.object({
+  dataset_id: z.uuid(),
+})
+
+/**
+ * Graph statistics retrieved successfully
+ */
+export const zGetDatasetsByDatasetIdGraphStatsResponse = zDatasetGraphStatsResponse
 
 export const zPostDatasetsByDatasetIdHitTestingBody = zHitTestingPayload
 
