@@ -17,7 +17,6 @@ from core.ops.ops_trace_manager import TraceQueueManager
 from models import Account, Workflow
 from models.enums import ConversationFromSource
 from models.model import App, AppMode, Conversation
-from services.errors.conversation import ConversationNotExistsError
 
 
 def _make_app_config() -> WorkflowUIBasedAppConfig:
@@ -148,12 +147,12 @@ def test_generate_falls_back_to_new_conversation_when_conversation_missing(
     app_model = _app()
     user = _account()
 
-    def raise_conversation_not_exists(**_kwargs):
-        raise ConversationNotExistsError()
-
+    # New behaviour: `try_get_conversation` returns None when the id is unknown
+    # instead of raising. The generator falls back to provisioning a new row with
+    # the caller-provided id. See Issue #41448.
     monkeypatch.setattr(
-        "core.app.apps.advanced_chat.app_generator.ConversationService.get_conversation",
-        raise_conversation_not_exists,
+        "core.app.apps.advanced_chat.app_generator.ConversationService.try_get_conversation",
+        lambda **_kwargs: None,
     )
     monkeypatch.setattr(
         "core.app.apps.advanced_chat.app_generator.FileUploadConfigManager.convert",

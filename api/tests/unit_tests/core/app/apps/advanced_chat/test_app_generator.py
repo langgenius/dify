@@ -216,7 +216,7 @@ class TestAdvancedChatAppGeneratorInternals:
         get_conversation = MagicMock(return_value=conversation)
 
         monkeypatch.setattr(
-            "core.app.apps.advanced_chat.app_generator.ConversationService.get_conversation",
+            "core.app.apps.advanced_chat.app_generator.ConversationService.try_get_conversation",
             get_conversation,
         )
         monkeypatch.setattr(
@@ -289,6 +289,27 @@ class TestAdvancedChatAppGeneratorInternals:
         assert captured["session"] is session
         assert build_files_called["called"] is True
         assert get_conversation.call_args.kwargs["session"] is session
+
+    def test_generate_rejects_unknown_web_conversation(self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session):
+        generator = AdvancedChatAppGenerator()
+        monkeypatch.setattr(
+            "core.app.apps.advanced_chat.app_generator.ConversationService.try_get_conversation",
+            lambda **kwargs: None,
+        )
+
+        from services.errors.conversation import ConversationNotExistsError
+
+        with pytest.raises(ConversationNotExistsError):
+            generator.generate(
+                app_model=_make_app(),
+                workflow=_make_workflow(),
+                user=_make_end_user(),
+                args={"query": "hello", "inputs": {}, "conversation_id": "unknown"},
+                invoke_from=InvokeFrom.WEB_APP,
+                workflow_run_id="run-id",
+                streaming=False,
+                session=unbound_session,
+            )
 
     def test_resume_delegates_to_generate(self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session):
         generator = AdvancedChatAppGenerator()
@@ -1298,6 +1319,10 @@ class TestAdvancedChatAppGeneratorInternals:
             SimpleNamespace(engine=sqlite_engine, session=unbound_session),
         )
 
+        monkeypatch.setattr(
+            "core.app.apps.advanced_chat.app_generator.ConversationService.try_get_conversation",
+            lambda **kwargs: None,
+        )
         captured = {}
 
         def _fake_generate(**kwargs):
@@ -1314,7 +1339,7 @@ class TestAdvancedChatAppGeneratorInternals:
             app_model=app_model,
             workflow=workflow,
             user=user,
-            args={"query": "hello", "inputs": {}, "parent_message_id": "p1"},
+            args={"query": "hello", "inputs": {}, "parent_message_id": "p1", "conversation_id": "new-api-id"},
             invoke_from=InvokeFrom.SERVICE_API,
             workflow_run_id="run-id",
             streaming=False,
@@ -1322,6 +1347,7 @@ class TestAdvancedChatAppGeneratorInternals:
         )
 
         assert captured["application_generate_entity"].parent_message_id == UUID_NIL
+        assert captured["provided_conversation_id"] == "new-api-id"
 
 
 class TestAdvancedChatAppGeneratorResume:

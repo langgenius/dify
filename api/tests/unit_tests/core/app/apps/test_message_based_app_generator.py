@@ -16,6 +16,7 @@ from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.entities.app_invoke_entities import ChatAppGenerateEntity, InvokeFrom
 from models.account import Account
+from models.enums import ConversationFromSource
 from models.model import App, AppMode, Conversation, Message
 from services.errors.app_model_config import AppModelConfigBrokenError
 from tests.unit_tests.model_factories import make_account, make_app
@@ -126,6 +127,62 @@ def test_init_generate_records_sets_conversation_fields_for_chat_entity(sqlite_s
     assert entity.conversation_id == conversation.id
     assert entity.is_new_conversation is True
     assert conversation.id is not None
+
+
+def test_init_generate_records_uses_provided_conversation_id_for_new_conversation(sqlite_session: Session):
+    """Issue #41448: callers (chatflow / chat / completion API) can mint their own
+    conversation id. When the generator provisions a new Conversation, it must use
+    the provided id verbatim rather than letting the model default mint a UUID.
+    """
+
+    app_config = _make_app_config(AppMode.CHAT)
+    entity = _make_chat_generate_entity(app_config)
+    generator = MessageBasedAppGenerator()
+
+    external_id = "cccccccc-cccc-4ccc-8ccc-cccccccccccc"
+
+    conversation, _ = generator._init_generate_records(
+        entity,
+        conversation=None,
+        session=sqlite_session,
+        provided_conversation_id=external_id,
+    )
+
+    assert conversation.id == external_id
+    assert entity.conversation_id == external_id
+    assert entity.is_new_conversation is True
+
+
+def test_init_generate_records_keeps_existing_conversation_when_provided_id_matches(sqlite_session: Session):
+    """If an existing Conversation is supplied the provided_conversation_id must be
+    ignored and the existing row reused (we don't repoint the id to the caller's value).
+    """
+
+    app_config = _make_app_config(AppMode.CHAT)
+    entity = _make_chat_generate_entity(app_config)
+    generator = MessageBasedAppGenerator()
+
+    existing = Conversation(
+        id="existing-conv",
+        app_id="app-id",
+        mode=AppMode.CHAT,
+        name="Test Conversation",
+        status="normal",
+        from_source=ConversationFromSource.API,
+    )
+    existing.inputs = {}
+    sqlite_session.add(existing)
+    sqlite_session.flush()
+
+    conversation, _ = generator._init_generate_records(
+        entity,
+        conversation=existing,
+        session=sqlite_session,
+        provided_conversation_id="ignored-id",
+    )
+
+    assert conversation is existing
+    assert conversation.id == "existing-conv"
 
 
 class TestMessageBasedAppGeneratorExtras:
