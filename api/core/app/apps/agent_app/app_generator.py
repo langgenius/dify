@@ -51,6 +51,7 @@ from core.app.entities.app_invoke_entities import (
 from core.credit_usage import CreditUsageAppType
 from core.db.session_factory import session_factory
 from core.ops.ops_trace_manager import TraceQueueManager
+from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from extensions.ext_database import db
 from factories import file_factory
 from models import Account, App, AppModelConfig, Conversation, EndUser, Message, MessageAnnotation
@@ -68,6 +69,7 @@ from models.agent import (
     AgentWorkspaceOwnerType,
 )
 from models.agent_config_entities import AgentSoulConfig
+from models.human_input import HumanInputForm
 from models.model import load_annotation_reply_config
 from services.agent.workspace_service import AgentWorkspaceService, WorkspaceOwnerScope
 from services.conversation_service import ConversationService
@@ -244,6 +246,47 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             form_id=form_id,
             session=session,
         )
+        form = session.get(HumanInputForm, form_id)
+        if (
+            form is None
+            or form.tenant_id != app_model.tenant_id
+            or form.app_id != app_model.id
+            or form.workflow_run_id is not None
+            or form.conversation_id != conversation.id
+            or form.form_kind != HumanInputFormKind.RUNTIME
+            or form.status not in {HumanInputFormStatus.SUBMITTED, HumanInputFormStatus.TIMEOUT}
+        ):
+            logger.info("Skipping Agent App resume for unavailable form %s", form_id)
+            return
+
+        is_build_draft = draft_type == AgentConfigDraftType.DEBUG_BUILD.value and draft_id is not None
+        caller = session.get(AgentConfigDraft, draft_id) if is_build_draft else conversation
+        binding_id = caller.agent_workspace_binding_id if caller is not None else None
+        owner_scope = WorkspaceOwnerScope(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            owner_type=AgentWorkspaceOwnerType.BUILD_DRAFT if is_build_draft else AgentWorkspaceOwnerType.CONVERSATION,
+            owner_id=draft_id if is_build_draft and draft_id is not None else conversation.id,
+        )
+        binding = (
+            AgentWorkspaceService.get_active_continuation_binding(
+                session=session,
+                tenant_id=app_model.tenant_id,
+                binding_id=binding_id,
+                expected_owner_scope=owner_scope,
+                form_id=form_id,
+            )
+            if binding_id is not None
+            else None
+        )
+        if binding is None:
+            logger.info(
+                "Skipping Agent App resume without matching caller continuation: conversation_id=%s form_id=%s",
+                conversation.id,
+                form_id,
+            )
+            return
+
         agent, agent_config_id, agent_config_version_kind, agent_soul = self._resolve_agent(
             app_model,
             invoke_from=invoke_from,
@@ -333,8 +376,8 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                 "conversation_id": conversation.id,
                 "message_id": message.id,
                 "user_from": UserFrom.ACCOUNT if isinstance(user, Account) else UserFrom.END_USER,
-                # Resume continues a paused agent run; skip input guards (see _generate_worker).
-                "is_resume": True,
+                # Resume continues the paused form identified by this form id.
+                "resume_form_id": form_id,
             },
         )
         worker_thread.start()
@@ -392,7 +435,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         conversation_id: str,
         message_id: str,
         user_from: UserFrom,
-        is_resume: bool = False,
+        resume_form_id: str | None = None,
     ) -> None:
         from libs.flask_utils import preserve_flask_contexts
 
@@ -402,7 +445,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                 message = self._get_message(message_id)
                 app_config = application_generate_entity.app_config
 
-                if is_resume:
+                if resume_form_id is not None:
                     # ENG-638: a resume continues a paused agent run; the human's
                     # reply is threaded in by the runner as deferred_tool_results.
                     # The query is the replayed paused-turn message, kept only to
@@ -488,6 +531,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                         if application_generate_entity.agent_config_version_kind == AgentConfigVersionKind.BUILD_DRAFT
                         else None
                     ),
+                    expected_pending_form_id=resume_form_id,
                 )
             except GenerateTaskStoppedError:
                 pass

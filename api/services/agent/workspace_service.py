@@ -73,6 +73,32 @@ class AgentWorkspaceService:
         )
 
     @classmethod
+    def get_active_continuation_binding(
+        cls,
+        *,
+        session: Session,
+        tenant_id: str,
+        binding_id: str,
+        expected_owner_scope: WorkspaceOwnerScope,
+        form_id: str,
+    ) -> AgentWorkspaceBinding | None:
+        """Return the caller-owned active Binding only when it holds this continuation."""
+        binding = cls.get_active_binding(
+            session=session,
+            tenant_id=tenant_id,
+            binding_id=binding_id,
+            expected_owner_scope=expected_owner_scope,
+        )
+        if (
+            binding is None
+            or binding.pending_form_id != form_id
+            or binding.pending_tool_call_id is None
+            or binding.session_snapshot is None
+        ):
+            return None
+        return binding
+
+    @classmethod
     def resolve_active_binding_for_scope(
         cls,
         *,

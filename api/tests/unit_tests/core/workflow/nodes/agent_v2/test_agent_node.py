@@ -25,6 +25,7 @@ from dify_agent.protocol import (
 from pydantic_ai.messages import PartDeltaEvent, TextPartDelta
 
 from clients.agent_backend import (
+    AgentBackendDeferredToolCallInternalEvent,
     AgentBackendInternalEventType,
     AgentBackendRunCancelledInternalEvent,
     AgentBackendRunEventAdapter,
@@ -34,6 +35,7 @@ from clients.agent_backend import (
     FakeAgentBackendScenario,
 )
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext, InvokeFrom, UserFrom
+from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
 from core.workflow.file_reference import build_file_reference
 from core.workflow.nodes.agent_v2 import DifyAgentNode
 from core.workflow.nodes.agent_v2.ask_human_resume import AskHumanResumeOutcome
@@ -49,6 +51,7 @@ from core.workflow.nodes.agent_v2.session_store import (
     WorkflowAgentSessionScope,
     WorkflowAgentWorkspaceStore,
 )
+from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from graphon.entities import GraphInitParams
 from graphon.entities.pause_reason import HitlRequired
@@ -867,6 +870,59 @@ def test_agent_node_paused_run_requests_workflow_pause_and_persists_snapshot():
     # ENG-637: the awaiting form + deferred tool_call correlation is persisted.
     assert store.saved[0][3] == "form-1"
     assert store.saved[0][4] == "fake-ask-human-1"
+
+
+@pytest.mark.parametrize(
+    ("snapshot_missing", "form_expiry_fails"),
+    [(False, False), (False, True), (True, False), (True, True)],
+)
+def test_agent_node_does_not_pause_when_ask_human_snapshot_is_unavailable(
+    monkeypatch: pytest.MonkeyPatch,
+    snapshot_missing: bool,
+    form_expiry_fails: bool,
+) -> None:
+    store = ExplodingSessionStore()
+    node = _node(scenario=FakeAgentBackendScenario.PAUSED, session_store=store)
+    fake_repo = MagicMock()
+    fake_repo.create_form.return_value = MagicMock(id="form-1")
+    node._build_human_input_form_repository = lambda *, dify_ctx, workflow_run_id: fake_repo  # type: ignore[assignment]
+
+    if snapshot_missing:
+        original_adapt = node._event_adapter.adapt
+
+        def adapt_without_snapshot(public_event: RunEvent) -> list[object]:
+            return [
+                internal_event.model_copy(update={"session_snapshot": None})
+                if isinstance(internal_event, AgentBackendDeferredToolCallInternalEvent)
+                else internal_event
+                for internal_event in original_adapt(public_event)
+            ]
+
+        monkeypatch.setattr(node._event_adapter, "adapt", adapt_without_snapshot)
+
+    with patch.object(HumanInputFormSubmissionRepository, "mark_timeout") as expire_form:
+        if form_expiry_fails:
+            expire_form.side_effect = RuntimeError("form store unavailable")
+        events = list(node._run())
+
+    assert len(events) == 1
+    assert isinstance(events[0], StreamCompletedEvent)
+    result = events[0].node_run_result
+    assert result.status == WorkflowNodeExecutionStatus.FAILED
+    assert result.error_type == "workflow_agent_workspace_store_error"
+    assert not any(isinstance(event, NodeRunPauseRequestedEvent) for event in events)
+    assert len(store.save_attempts) == (0 if snapshot_missing else 1)
+    agent_backend = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["agent_backend"]
+    assert agent_backend["session_snapshot_persisted"] is False
+    expected_error = (
+        "workflow_agent_session_snapshot_missing" if snapshot_missing else "workflow_agent_workspace_store_error"
+    )
+    assert agent_backend["session_snapshot_persist_error"] == expected_error
+    expire_form.assert_called_once_with(
+        form_id="form-1",
+        timeout_status=HumanInputFormStatus.EXPIRED,
+        reason="agent_continuation_persistence_failed",
+    )
 
 
 def _pending_session(snapshot: CompositorSessionSnapshot) -> StoredWorkflowAgentSession:

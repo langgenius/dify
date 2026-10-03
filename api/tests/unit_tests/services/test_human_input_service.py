@@ -678,6 +678,29 @@ def test_submit_form_by_token_no_workflow_run_id(
     enqueue_spy.assert_not_called()
 
 
+def test_expired_runtime_form_cannot_be_submitted(
+    form_repository: Callable[[HumanInputFormRecord | None], HumanInputFormSubmissionRepository],
+    sample_form_record: HumanInputFormRecord,
+    unbound_session_factory: sessionmaker[Session],
+    mocker: MockerFixture,
+) -> None:
+    repo = form_repository(sample_form_record)
+    service = HumanInputService(unbound_session_factory, form_repository=repo)
+    enqueue_spy = mocker.patch.object(service, "enqueue_resume")
+    repo.mark_timeout(form_id=sample_form_record.form_id, timeout_status=HumanInputFormStatus.EXPIRED)
+
+    with pytest.raises(FormExpiredError):
+        service.submit_form_by_token(
+            RecipientType.STANDALONE_WEB_APP,
+            "token",
+            "submit",
+            {},
+        )
+
+    cast(MagicMock, repo.mark_submitted).assert_not_called()
+    enqueue_spy.assert_not_called()
+
+
 def test_ensure_form_active_errors(
     sample_form_record: HumanInputFormRecord,
     unbound_session_factory: sessionmaker[Session],

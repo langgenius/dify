@@ -43,6 +43,7 @@ from sqlalchemy import event, select
 from sqlalchemy.orm import Session
 
 from clients.agent_backend import (
+    AgentBackendDeferredToolCallInternalEvent,
     AgentBackendError,
     AgentBackendRunEventAdapter,
     AgentBackendRunFailedError,
@@ -64,12 +65,16 @@ from core.app.entities.queue_entities import (
     QueueLLMChunkEvent,
     QueueMessageEndEvent,
 )
+from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
 from core.workflow.nodes.agent_v2.ask_human_resume import AskHumanResumeOutcome
 from core.workflow.nodes.agent_v2.dify_tools_builder import WorkflowAgentToolLayers
+from core.workflow.nodes.human_input.entities import FormDefinition
+from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from graphon.model_runtime.errors.invoke import InvokeRateLimitError
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import ConversationFromSource
+from models.human_input import HumanInputForm
 from models.model import AppMode, Message, MessageAgentThought
 
 
@@ -540,6 +545,7 @@ class _FakeSessionStore:
         self.workspace_id = workspace_id
         self.backend_binding_ref = backend_binding_ref
         self.resolved_scopes: list[AgentAppSessionScope] = []
+        self.existing_scopes: list[AgentAppSessionScope] = []
         self.saved: list[
             tuple[
                 AgentAppSessionScope,
@@ -549,6 +555,10 @@ class _FakeSessionStore:
                 str | None,
             ]
         ] = []
+
+    def load_existing(self, scope: AgentAppSessionScope) -> StoredAgentAppSession | None:
+        self.existing_scopes.append(scope)
+        return self._loaded_session
 
     def load_or_create(self, scope: AgentAppSessionScope) -> StoredAgentAppSession:
         self.resolved_scopes.append(scope)
@@ -675,19 +685,27 @@ def _runner(
     )
 
 
-def _run(runner: AgentAppRunner, qm: _FakeQueueManager) -> None:
-    runner.run(
-        dify_context=_dify_ctx(),
-        agent_id="agent-1",
-        agent_config_snapshot_id="snap-1",
-        agent_soul=_soul(),
-        home_snapshot_id="home-1",
-        conversation_id="conv-1",
-        query="hello",
-        message_id="msg-1",
-        model_name="gpt-4o-mini",
-        queue_manager=qm,  # type: ignore[arg-type]
-    )
+def _run(
+    runner: AgentAppRunner,
+    qm: _FakeQueueManager,
+    *,
+    expected_pending_form_id: str | None = None,
+) -> None:
+    run_kwargs = {
+        "dify_context": _dify_ctx(),
+        "agent_id": "agent-1",
+        "agent_config_snapshot_id": "snap-1",
+        "agent_soul": _soul(),
+        "home_snapshot_id": "home-1",
+        "conversation_id": "conv-1",
+        "query": "hello",
+        "message_id": "msg-1",
+        "model_name": "gpt-4o-mini",
+        "queue_manager": qm,
+    }
+    if expected_pending_form_id is not None:
+        run_kwargs["expected_pending_form_id"] = expected_pending_form_id
+    runner.run(**run_kwargs)  # type: ignore[arg-type]
 
 
 def _message_record() -> Message:
@@ -1641,7 +1659,58 @@ def test_ask_human_pauses_turn_creates_form_and_persists_correlation() -> None:
     assert store.saved[0][4] == "fake-ask-human-1"
 
 
-def test_submitted_form_resumes_turn_with_deferred_tool_results(monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize(
+    ("snapshot_missing", "form_expiry_fails"),
+    [(False, False), (False, True), (True, False), (True, True)],
+)
+def test_ask_human_form_is_not_published_when_session_snapshot_is_unavailable(
+    monkeypatch: pytest.MonkeyPatch,
+    snapshot_missing: bool,
+    form_expiry_fails: bool,
+) -> None:
+    client = _UsagePausedClient()
+    store = _ExplodingSessionStore()
+    queue_manager = _FakeQueueManager()
+    runner = _runner(client, store)
+    fake_repo = MagicMock()
+    fake_repo.create_form.return_value = MagicMock(id="form-1")
+    runner._build_form_repository = lambda dify_context: fake_repo  # type: ignore[assignment]
+
+    if snapshot_missing:
+        original_adapt = runner._event_adapter.adapt
+
+        def adapt_without_snapshot(public_event: RunEvent) -> list[object]:
+            return [
+                internal_event.model_copy(update={"session_snapshot": None})
+                if isinstance(internal_event, AgentBackendDeferredToolCallInternalEvent)
+                else internal_event
+                for internal_event in original_adapt(public_event)
+            ]
+
+        monkeypatch.setattr(runner._event_adapter, "adapt", adapt_without_snapshot)
+
+    expire_form = MagicMock()
+    if form_expiry_fails:
+        expire_form.side_effect = RuntimeError("form store unavailable")
+    monkeypatch.setattr(HumanInputFormSubmissionRepository, "mark_timeout", expire_form)
+
+    with pytest.raises(AgentBackendError, match="Failed to persist ask_human continuation"):
+        _run(runner, queue_manager)
+
+    expire_form.assert_called_once_with(
+        form_id="form-1",
+        timeout_status=HumanInputFormStatus.EXPIRED,
+        reason="agent_continuation_persistence_failed",
+    )
+    assert len(store.save_attempts) == (0 if snapshot_missing else 1)
+    assert not any(isinstance(event, QueueMessageEndEvent) for event in queue_manager.events)
+
+
+@pytest.mark.parametrize("form_status", ["submitted", "timeout"])
+def test_terminal_form_resumes_turn_with_deferred_tool_results(
+    monkeypatch: pytest.MonkeyPatch,
+    form_status: str,
+) -> None:
     # ENG-638: a turn that runs while a pending form is answered threads the
     # human's reply into the request as deferred_tool_results.
     snapshot = _compatible_session_snapshot()
@@ -1662,21 +1731,166 @@ def test_submitted_form_resumes_turn_with_deferred_tool_results(monkeypatch: pyt
         pending_tool_call_id="call-1",
     )
     store = _FakeSessionStore(loaded_session=stored)
-    submitted = AskHumanResumeOutcome(deferred_result=AskHumanToolResult(status="submitted", values={"ok": True}))
+    result = (
+        AskHumanToolResult(status="submitted", values={"ok": True})
+        if form_status == "submitted"
+        else AskHumanToolResult(status="timeout")
+    )
+    terminal_outcome = AskHumanResumeOutcome(deferred_result=result)
     monkeypatch.setattr(
         "core.app.apps.agent_app.app_runner.resolve_ask_human_form",
-        lambda **_kwargs: submitted,
+        lambda **_kwargs: terminal_outcome,
     )
 
     client = FakeAgentBackendRunClient()  # SUCCESS -> the resumed run completes
     qm = _FakeQueueManager()
-    _run(_runner(client, store), qm)
+    _run(_runner(client, store), qm, expected_pending_form_id="form-1")
 
     assert client.request is not None
     assert client.request.deferred_tool_results is not None
-    assert set(client.request.deferred_tool_results.calls) == {"call-1"}
+    assert client.request.deferred_tool_results.calls == {"call-1": result.model_dump(mode="json")}
     # ENG-638: the resume composition must keep the user-prompt layer so it
     # matches the suspended snapshot's layer names (the agent backend rejects a
     # mismatch). A resume therefore re-sends a non-blank query, never blank.
     layer_names = [layer.name for layer in client.request.composition.layers]
     assert "agent_app_user_prompt" in layer_names
+
+
+@pytest.mark.parametrize(
+    ("stored_form_id", "pending_tool_call_id", "snapshot_missing"),
+    [
+        (None, "call-1", False),
+        ("other-form", "call-1", False),
+        ("form-1", None, False),
+        ("form-1", "call-1", True),
+    ],
+)
+def test_resume_refuses_missing_or_mismatched_stored_continuation(
+    stored_form_id: str | None,
+    pending_tool_call_id: str | None,
+    snapshot_missing: bool,
+) -> None:
+    snapshot = None if snapshot_missing else _compatible_session_snapshot()
+    stored = StoredAgentAppSession(
+        scope=AgentAppSessionScope(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            conversation_id="conv-1",
+            agent_id="agent-1",
+            agent_config_snapshot_id="snap-1",
+            home_snapshot_id="home-1",
+        ),
+        binding_id="binding-1",
+        workspace_id="workspace-1",
+        backend_binding_ref="backend-binding-1",
+        session_snapshot=snapshot,
+        pending_form_id=stored_form_id,
+        pending_tool_call_id=pending_tool_call_id,
+    )
+    store = _FakeSessionStore(loaded_session=stored)
+    client = FakeAgentBackendRunClient()
+    runner = _runner(client, store)
+    qm = _FakeQueueManager()
+
+    with pytest.raises(AgentBackendError, match="no longer matches"):
+        _run(runner, qm, expected_pending_form_id="form-1")
+
+    assert store.existing_scopes
+    assert not store.resolved_scopes
+    assert client.request is None
+
+
+def test_empty_resume_form_id_does_not_fall_back_to_normal_turn() -> None:
+    store = _FakeSessionStore()
+    client = FakeAgentBackendRunClient()
+    runner = _runner(client, store)
+
+    with pytest.raises(AgentBackendError, match="no longer matches"):
+        _run(runner, _FakeQueueManager(), expected_pending_form_id="")
+
+    assert store.existing_scopes
+    assert not store.resolved_scopes
+    assert client.request is None
+
+
+@pytest.mark.parametrize("form_status", [None, HumanInputFormStatus.WAITING])
+def test_resume_does_not_start_backend_without_terminal_form(
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    form_status: HumanInputFormStatus | None,
+) -> None:
+    observed_outcomes = []
+    original_resolver = app_runner_module.resolve_ask_human_form
+
+    def resolve_and_record(**kwargs):
+        outcome = original_resolver(**kwargs)
+        observed_outcomes.append(outcome)
+        return outcome
+
+    monkeypatch.setattr(app_runner_module, "resolve_ask_human_form", resolve_and_record)
+    if form_status is HumanInputFormStatus.WAITING:
+        definition = FormDefinition(
+            form_content="Approve?",
+            inputs=[],
+            user_actions=[],
+            rendered_content="Approve?",
+            expiration_time=datetime(2026, 1, 1),
+            default_values={},
+            node_title="Approval",
+        )
+        sqlite_session.add(
+            HumanInputForm(
+                id="form-1",
+                tenant_id="tenant-1",
+                app_id="app-1",
+                workflow_run_id=None,
+                conversation_id="conv-1",
+                form_kind=HumanInputFormKind.RUNTIME,
+                node_id="ask-human-node",
+                form_definition=definition.model_dump_json(),
+                rendered_content="Approve?",
+                status=form_status,
+                expiration_time=datetime(2026, 1, 1),
+            )
+        )
+        sqlite_session.commit()
+
+    stored = StoredAgentAppSession(
+        scope=AgentAppSessionScope(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            conversation_id="conv-1",
+            agent_id="agent-1",
+            agent_config_snapshot_id="snap-1",
+            home_snapshot_id="home-1",
+        ),
+        binding_id="binding-1",
+        workspace_id="workspace-1",
+        backend_binding_ref="backend-binding-1",
+        session_snapshot=_compatible_session_snapshot(),
+        pending_form_id="form-1",
+        pending_tool_call_id="call-1",
+    )
+    store = _FakeSessionStore(loaded_session=stored)
+    client = FakeAgentBackendRunClient()
+    backend_calls = []
+
+    def record_backend_call(request):
+        backend_calls.append(request)
+        raise RuntimeError("Agent App backend create_run was reached for a nonterminal form")
+
+    monkeypatch.setattr(client, "create_run", record_backend_call)
+    runner = _runner(client, store)
+
+    with pytest.raises(AgentBackendError, match="resume form is unavailable or still waiting"):
+        _run(runner, _FakeQueueManager(), expected_pending_form_id="form-1")
+
+    assert backend_calls == []
+    assert len(observed_outcomes) == 1
+    if form_status is None:
+        assert observed_outcomes[0] is None
+    else:
+        assert observed_outcomes[0] is not None
+        assert observed_outcomes[0].deferred_result is None
+        assert observed_outcomes[0].repause is not None
+    assert client.request is None

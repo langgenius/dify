@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import contextlib
 import inspect
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from types import SimpleNamespace
 
@@ -28,10 +29,25 @@ from core.app.apps.agent_app.errors import AgentSessionSnapshotIncompatibleError
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.app.entities.queue_entities import QueueAnnotationReplyEvent
+from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from models import Account, AppModelConfig
-from models.agent import Agent, AgentConfigSnapshot, AgentScope, AgentSource, AgentStatus
+from models.agent import (
+    Agent,
+    AgentConfigDraft,
+    AgentConfigDraftType,
+    AgentConfigSnapshot,
+    AgentConfigVersionKind,
+    AgentScope,
+    AgentSource,
+    AgentStatus,
+    AgentWorkingResourceStatus,
+    AgentWorkspace,
+    AgentWorkspaceBinding,
+    AgentWorkspaceOwnerType,
+)
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import AppStatus, ConversationFromSource
+from models.human_input import HumanInputForm
 from models.model import App, AppMode, Conversation, Message, MessageAnnotation
 
 MODULE = "core.app.apps.agent_app.app_generator"
@@ -113,6 +129,89 @@ def _message(*, query: str = "query") -> Message:
     )
     message._inputs = {}
     return message
+
+
+def _persist_continuation(
+    session: Session,
+    *,
+    conversation: Conversation,
+    form_status: HumanInputFormStatus = HumanInputFormStatus.SUBMITTED,
+    form_id: str = "form-1",
+    pending_form_id: str | None = "form-1",
+    pending_tool_call_id: str | None = "tool-call-1",
+    with_snapshot: bool = True,
+    save_form: bool = True,
+    build_draft: bool = False,
+    owner_id: str | None = None,
+    set_caller_pointer: bool = True,
+) -> None:
+    binding_id = "binding-1"
+    workspace_id = "workspace-1"
+    owner_type = AgentWorkspaceOwnerType.BUILD_DRAFT if build_draft else AgentWorkspaceOwnerType.CONVERSATION
+    owner_id = owner_id or ("draft-build-1" if build_draft else conversation.id)
+    if build_draft:
+        session.add(
+            AgentConfigDraft(
+                id="draft-build-1",
+                tenant_id="tenant",
+                agent_id="agent1",
+                draft_type=AgentConfigDraftType.DEBUG_BUILD,
+                account_id="user",
+                draft_owner_key="user",
+                home_snapshot_id="home-1",
+                agent_workspace_binding_id=binding_id,
+                config_snapshot=AgentSoulConfig(),
+            )
+        )
+    elif set_caller_pointer:
+        conversation.agent_workspace_binding_id = binding_id
+
+    workspace = AgentWorkspace(
+        id=workspace_id,
+        tenant_id="tenant",
+        app_id="app1",
+        owner_type=owner_type,
+        owner_id=owner_id,
+        owner_scope_key="root",
+        backend_workspace_ref="workspace-ref",
+        status=AgentWorkingResourceStatus.ACTIVE,
+        active_guard=1,
+    )
+    binding = AgentWorkspaceBinding(
+        id=binding_id,
+        tenant_id="tenant",
+        app_id="app1",
+        workspace_id=workspace_id,
+        agent_id="agent1",
+        base_home_snapshot_id="home-1",
+        agent_config_version_id="draft-build-1" if build_draft else "snap1",
+        agent_config_version_kind=(
+            AgentConfigVersionKind.BUILD_DRAFT if build_draft else AgentConfigVersionKind.SNAPSHOT
+        ),
+        backend_binding_ref="backend-binding-1",
+        session_snapshot='{"layers":[]}' if with_snapshot else None,
+        status=AgentWorkingResourceStatus.ACTIVE,
+        pending_form_id=pending_form_id,
+        pending_tool_call_id=pending_tool_call_id,
+    )
+    session.add_all([conversation, workspace, binding])
+    if save_form:
+        session.add(
+            HumanInputForm(
+                id=form_id,
+                tenant_id="tenant",
+                app_id="app1",
+                workflow_run_id=None,
+                conversation_id=conversation.id,
+                form_kind=HumanInputFormKind.RUNTIME,
+                node_id="agent-ask-human",
+                form_definition="{}",
+                rendered_content="Question",
+                status=form_status,
+                expiration_time=datetime.now(UTC).replace(tzinfo=None) + timedelta(days=1),
+            )
+        )
+    session.commit()
 
 
 _CURRENT_SESSION: Session | None = None
@@ -381,16 +480,16 @@ class TestGenerateWorker:
         mocker: MockerFixture,
         queue_manager,
         *,
-        is_resume=False,
+        resume_form_id=None,
         query="query",
         session_scope_config_version_id="s",
         files=(),
         file_upload_config=None,
     ):
-        generator._generate_worker(
-            flask_app=mocker.MagicMock(),
-            context=mocker.MagicMock(),
-            application_generate_entity=mocker.MagicMock(
+        worker_kwargs = {
+            "flask_app": mocker.MagicMock(),
+            "context": mocker.MagicMock(),
+            "application_generate_entity": mocker.MagicMock(
                 app_config=SimpleNamespace(app_id="app1", tenant_id="tenant"),
                 agent_id="a",
                 agent_config_snapshot_id="s",
@@ -400,12 +499,14 @@ class TestGenerateWorker:
                 files=files,
                 file_upload_config=file_upload_config,
             ),
-            queue_manager=queue_manager,
-            conversation_id="conv",
-            message_id="msg",
-            user_from=UserFrom.END_USER,
-            is_resume=is_resume,
-        )
+            "queue_manager": queue_manager,
+            "conversation_id": "conv",
+            "message_id": "msg",
+            "user_from": UserFrom.END_USER,
+        }
+        if resume_form_id is not None:
+            worker_kwargs["resume_form_id"] = resume_form_id
+        generator._generate_worker(**worker_kwargs)
 
     def test_happy_path_runs_backend(self, generator: AgentAppGenerator, mocker: MockerFixture):
         runner, resolver_sessions = self._wire(generator, mocker)
@@ -487,10 +588,17 @@ class TestGenerateWorker:
         runner, _ = self._wire(generator, mocker, handled=True)  # guards WOULD short-circuit
         queue_manager = mocker.MagicMock()
 
-        self._call(generator, mocker, queue_manager, is_resume=True, query="the approved reply")
+        self._call(
+            generator,
+            mocker,
+            queue_manager,
+            resume_form_id="form-1",
+            query="the approved reply",
+        )
 
         generator._run_input_guards.assert_not_called()
         runner.run.assert_called_once()
+        assert runner.run.call_args.kwargs["expected_pending_form_id"] == "form-1"
         # the replayed paused-turn query flows straight to the runner (snapshot match)
         assert runner.run.call_args.kwargs["query"] == "the approved reply"
 
@@ -534,7 +642,7 @@ class TestResumeAfterFormSubmission:
         generator._handle_response = mocker.MagicMock(return_value=None)
         get_conversation = mocker.patch(
             f"{MODULE}.ConversationService.get_conversation",
-            return_value=_conversation(),
+            side_effect=lambda **kwargs: kwargs["session"].get(Conversation, kwargs["conversation_id"]),
         )
         mocker.patch(f"{MODULE}.AgentAppConfigManager.get_app_config", return_value=mocker.MagicMock(variables=[]))
         mocker.patch(f"{MODULE}.load_annotation_reply_config", return_value={"enabled": False})
@@ -542,7 +650,6 @@ class TestResumeAfterFormSubmission:
         mocker.patch(f"{MODULE}.TraceQueueManager", return_value=mocker.MagicMock())
         mocker.patch(f"{MODULE}.MessageBasedAppQueueManager", return_value=mocker.MagicMock())
         mocker.patch(f"{MODULE}.threading.Thread", return_value=mocker.MagicMock())
-        generator._resolve_resume_draft = mocker.MagicMock(return_value=(None, None))
         return (
             mocker.patch(
                 f"{MODULE}.AgentAppGenerateEntity", return_value=mocker.MagicMock(task_id="t", user_id="user")
@@ -550,13 +657,15 @@ class TestResumeAfterFormSubmission:
             get_conversation,
         )
 
-    def test_resume_resends_paused_turn_query(self, generator, mocker: MockerFixture):
+    @pytest.mark.parametrize("form_status", [HumanInputFormStatus.SUBMITTED, HumanInputFormStatus.TIMEOUT])
+    def test_resume_resends_paused_turn_query(self, generator, mocker: MockerFixture, form_status):
         entity, get_conversation = self._wire(generator, mocker)
         session = _session()
         config = AppModelConfig(app_id="app1")
         config.id = "config-1"
-        session.add_all([config, _conversation(), _message(query="original question")])
-        session.commit()
+        conversation = _conversation()
+        session.add_all([config, conversation, _message(query="original question")])
+        _persist_continuation(session, conversation=conversation, form_status=form_status)
         app_model = _app(app_model_config_id=config.id)
         user = _account()
 
@@ -585,6 +694,7 @@ class TestResumeAfterFormSubmission:
     def test_resume_falls_back_to_placeholder_when_no_paused_message(self, generator, mocker: MockerFixture):
         entity, _ = self._wire(generator, mocker)
         session = _session()
+        _persist_continuation(session, conversation=_conversation())
 
         generator.resume_after_form_submission(
             app_model=_app(),
@@ -601,15 +711,13 @@ class TestResumeAfterFormSubmission:
     def test_resume_uses_build_draft_for_debugger_conversation(self, generator, mocker: MockerFixture):
         self._wire(generator, mocker)
         conversation = _conversation(invoke_from=InvokeFrom.DEBUGGER)
-        mocker.patch(f"{MODULE}.ConversationService.get_conversation", return_value=conversation)
-        generator._resolve_resume_draft.return_value = ("debug_build", "draft-build-1")
         account_user = Account(name="Test Account", email="test@example.com")
         account_user.id = "user"
         session = _session()
         config = AppModelConfig(app_id="app1")
         config.id = "config-1"
         session.add_all([config, conversation, _message(query="original question")])
-        session.commit()
+        _persist_continuation(session, conversation=conversation, build_draft=True)
         app_model = _app(app_model_config_id=config.id)
 
         generator.resume_after_form_submission(
@@ -625,3 +733,56 @@ class TestResumeAfterFormSubmission:
         assert generator._resolve_agent.call_args.kwargs["draft_id"] == "draft-build-1"
         assert generator._resolve_agent.call_args.kwargs["session"] is session
         assert generator._resolve_agent.call_args.kwargs["conversation"] is conversation
+
+    @pytest.mark.parametrize(
+        ("form_status", "pending_form_id", "pending_tool_call_id", "with_snapshot", "save_form", "owner_id", "pointer"),
+        [
+            (HumanInputFormStatus.SUBMITTED, "form-1", "tool-call-1", True, False, None, True),
+            (HumanInputFormStatus.EXPIRED, "form-1", "tool-call-1", True, True, None, True),
+            (HumanInputFormStatus.SUBMITTED, "other-form", "tool-call-1", True, True, None, True),
+            (HumanInputFormStatus.SUBMITTED, None, "tool-call-1", True, True, None, True),
+            (HumanInputFormStatus.SUBMITTED, "form-1", None, True, True, None, True),
+            (HumanInputFormStatus.SUBMITTED, "form-1", "tool-call-1", False, True, None, True),
+            (HumanInputFormStatus.SUBMITTED, "form-1", "tool-call-1", True, True, "other-owner", True),
+            (HumanInputFormStatus.SUBMITTED, "form-1", "tool-call-1", True, True, None, False),
+        ],
+    )
+    def test_resume_rejects_missing_or_unmatched_continuations(
+        self,
+        generator,
+        mocker: MockerFixture,
+        form_status,
+        pending_form_id,
+        pending_tool_call_id,
+        with_snapshot,
+        save_form,
+        owner_id,
+        pointer,
+    ):
+        entity, _ = self._wire(generator, mocker)
+        session = _session()
+        conversation = _conversation()
+        _persist_continuation(
+            session,
+            conversation=conversation,
+            form_status=form_status,
+            pending_form_id=pending_form_id,
+            pending_tool_call_id=pending_tool_call_id,
+            with_snapshot=with_snapshot,
+            save_form=save_form,
+            owner_id=owner_id,
+            set_caller_pointer=pointer,
+        )
+
+        generator.resume_after_form_submission(
+            app_model=_app(),
+            user=_account(),
+            conversation_id="conv",
+            form_id="form-1",
+            invoke_from=InvokeFrom.WEB_APP,
+            session=session,
+        )
+
+        entity.assert_not_called()
+        generator._init_generate_records.assert_not_called()
+        generator._handle_response.assert_not_called()

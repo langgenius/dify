@@ -51,9 +51,14 @@ from core.app.entities.queue_entities import (
     QueueLLMChunkEvent,
     QueueMessageEndEvent,
 )
-from core.repositories.human_input_repository import HumanInputFormRepository, HumanInputFormRepositoryImpl
+from core.repositories.human_input_repository import (
+    HumanInputFormRepository,
+    HumanInputFormRepositoryImpl,
+    HumanInputFormSubmissionRepository,
+)
 from core.workflow.nodes.agent_v2.ask_human_hitl import AskHumanFormBuildError, create_ask_human_form
 from core.workflow.nodes.agent_v2.ask_human_resume import build_deferred_tool_results, resolve_ask_human_form
+from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from extensions.ext_database import db
 from graphon.file import File
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
@@ -653,6 +658,7 @@ class AgentAppRunner:
         image_detail_config: ImagePromptMessageContent.DETAIL | None = None,
         session_scope_snapshot_id: str | None | _DefaultSessionScopeSnapshotId = _DEFAULT_SESSION_SCOPE_SNAPSHOT_ID,
         build_draft_id: str | None = None,
+        expected_pending_form_id: str | None = None,
     ) -> None:
         scope = self._build_session_scope(
             dify_context=dify_context,
@@ -666,7 +672,17 @@ class AgentAppRunner:
         )
         # ENG-638: if a prior turn paused on ask_human and the form is now answered,
         # resume by threading the human's reply into this run as deferred_tool_results.
-        stored = self._session_store.load_or_create(scope)
+        if expected_pending_form_id is None:
+            stored = self._session_store.load_or_create(scope)
+        else:
+            stored = self._session_store.load_existing(scope)
+            if (
+                stored is None
+                or stored.pending_form_id != expected_pending_form_id
+                or stored.pending_tool_call_id is None
+                or stored.session_snapshot is None
+            ):
+                raise AgentBackendError("Agent App resume no longer matches the active ask_human continuation.")
         runtime = self._build_runtime(
             dify_context=dify_context,
             agent_id=agent_id,
@@ -683,6 +699,9 @@ class AgentAppRunner:
             stored=stored,
             message_id=message_id,
         )
+
+        if expected_pending_form_id is not None and runtime.request.deferred_tool_results is None:
+            raise AgentBackendError("Agent App resume form is unavailable or still waiting.")
 
         create_response = self._agent_backend_client.create_run(runtime.request)
         terminal, process_recorder = self._consume_stream(
@@ -868,13 +887,27 @@ class AgentAppRunner:
 
         # Persist the snapshot + correlation so a form submission can start the
         # second run with the human's answer (ENG-637/638 columns, conversation owner).
-        self._save_session(
+        snapshot_persisted = terminal.session_snapshot is not None and self._save_session(
             scope=scope,
             binding_id=runtime.binding_id,
             snapshot=terminal.session_snapshot,
             pending_form_id=created.form_id,
             pending_tool_call_id=terminal.deferred_tool_call.tool_call_id,
         )
+        if not snapshot_persisted:
+            try:
+                HumanInputFormSubmissionRepository().mark_timeout(
+                    form_id=created.form_id,
+                    timeout_status=HumanInputFormStatus.EXPIRED,
+                    reason="agent_continuation_persistence_failed",
+                )
+            except Exception:
+                logger.warning(
+                    "Failed to expire non-resumable Agent App ask_human form: form_id=%s",
+                    created.form_id,
+                    exc_info=True,
+                )
+            raise AgentBackendError("Failed to persist ask_human continuation; refusing to publish the form.")
 
         # The structured form is delivered via the HITL surface(s); the chat turn
         # ends by echoing the agent's question so the conversation reflects the ask.
