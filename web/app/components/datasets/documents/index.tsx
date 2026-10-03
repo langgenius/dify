@@ -119,8 +119,6 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
     builtInMetaData,
   } = useEditDocumentMetadata({
     datasetId,
-    dataset,
-    onUpdateDocList: invalidDocumentList,
   })
 
   // Route to document creation page

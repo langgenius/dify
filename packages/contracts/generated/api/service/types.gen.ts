@@ -690,7 +690,7 @@ export type DatasetMetadataActionResponse = {
 
 export type DatasetMetadataBuiltInFieldResponse = {
   name: string
-  type: string
+  type: DatasetMetadataType
 }
 
 export type DatasetMetadataBuiltInFieldsResponse = {
@@ -701,7 +701,7 @@ export type DatasetMetadataListItemResponse = {
   count?: number
   id: string
   name: string
-  type: string
+  type: DatasetMetadataType
 }
 
 export type DatasetMetadataListResponse = {
@@ -712,8 +712,10 @@ export type DatasetMetadataListResponse = {
 export type DatasetMetadataResponse = {
   id: string
   name: string
-  type: string
+  type: DatasetMetadataType
 }
+
+export type DatasetMetadataType = 'number' | 'string' | 'time'
 
 export type DatasetRerankingModelResponse = {
   reranking_model_name?: string | null
@@ -900,7 +902,7 @@ export type DocumentMetadataOperation = {
 export type DocumentMetadataResponse = {
   id: string
   name: string
-  type: string
+  type: DatasetMetadataType
   value?: string | number | number | boolean | null
 }
 

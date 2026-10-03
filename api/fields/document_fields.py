@@ -5,6 +5,7 @@ from typing import Any
 
 from pydantic import Field, field_validator
 
+from enums.dataset import DatasetMetadataType
 from fields.base import ResponseModel
 from libs.helper import to_timestamp
 
@@ -18,7 +19,7 @@ def normalize_enum(value: Any) -> Any:
 class DocumentMetadataResponse(ResponseModel):
     id: str
     name: str
-    type: str
+    type: DatasetMetadataType
     value: str | int | float | bool | None = None
 
 

@@ -1,25 +1,25 @@
+import type { ReactElement } from 'react'
 import type { MetadataItemInBatchEdit, MetadataItemWithEdit } from '../../types'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, render as testingLibraryRender, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vite-plus/test'
+import { createMetadataQueryWrapper } from '../../__tests__/query-wrapper'
 import { DataType, UpdateType } from '../../types'
 import EditMetadataBatchModal from '../modal'
 
 // Mock service/API calls
-const mockDoAddMetaData = vi.fn().mockResolvedValue({})
-vi.mock('@/service/knowledge/use-metadata', () => ({
-  useCreateMetaData: () => ({
-    mutate: mockDoAddMetaData,
-  }),
-  useDatasetMetaData: () => ({
-    data: {
-      doc_metadata: [
-        { id: 'existing-1', name: 'existing_field', type: DataType.string },
-        { id: 'existing-2', name: 'another_field', type: DataType.number },
+const { request } = vi.hoisted(() => ({ request: vi.fn() }))
+vi.mock('@/service/base', () => ({ request }))
+
+const render = (ui: ReactElement) =>
+  testingLibraryRender(ui, {
+    wrapper: createMetadataQueryWrapper({
+      fields: [
+        { id: 'existing-1', name: 'existing_field', type: 'string', count: 0 },
+        { id: 'existing-2', name: 'another_field', type: 'number', count: 0 },
       ],
-    },
-  }),
-}))
+    }).wrapper,
+  })
 
 // Mock check name hook to control validation
 let mockCheckNameResult = { errorMsg: '' }
@@ -116,6 +116,14 @@ describe('EditMetadataBatchModal', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    request.mockImplementation(
+      (_url: string, _init: RequestInit, { request: req }: { request: Request }) =>
+        Promise.resolve(
+          req.method === 'POST'
+            ? Response.json({ id: 'new-field', name: 'new_field', type: 'string' }, { status: 201 })
+            : Response.json({ doc_metadata: [], built_in_field_enabled: false }),
+        ),
+    )
     mockCheckNameResult = { errorMsg: '' }
   })
 
@@ -359,7 +367,11 @@ describe('EditMetadataBatchModal', () => {
       await createMetadata()
 
       await waitFor(() => {
-        expect(mockDoAddMetaData).toHaveBeenCalled()
+        expect(request).toHaveBeenCalledWith(
+          expect.stringContaining('/metadata'),
+          expect.anything(),
+          expect.objectContaining({ request: expect.objectContaining({ method: 'POST' }) }),
+        )
       })
     })
 
@@ -375,7 +387,11 @@ describe('EditMetadataBatchModal', () => {
       await createMetadata()
 
       await waitFor(() => {
-        expect(mockDoAddMetaData).toHaveBeenCalled()
+        expect(request).toHaveBeenCalledWith(
+          expect.stringContaining('/metadata'),
+          expect.anything(),
+          expect.objectContaining({ request: expect.objectContaining({ method: 'POST' }) }),
+        )
       })
 
       await waitFor(() => {

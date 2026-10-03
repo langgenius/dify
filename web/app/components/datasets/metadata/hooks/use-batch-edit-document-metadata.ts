@@ -5,12 +5,14 @@ import type {
   MetadataItemWithValue,
 } from '../types'
 import type { SimpleDocumentDetail } from '@/models/datasets'
+import { useMutation } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { t } from 'i18next'
 import { useMemo } from 'react'
 import { toast } from '@/app/notifications'
-import { useBatchUpdateDocMetadata } from '@/service/knowledge/use-metadata'
+import { consoleQuery } from '@/service/console'
 import { UpdateType } from '../types'
+import { toMetadataDetail } from '../utils/to-metadata-detail'
 
 type Props = Readonly<{
   datasetId: string
@@ -41,7 +43,7 @@ const useBatchEditDocumentMetadata = ({
     const idNameValue: Record<
       string,
       {
-        value: string | number | null
+        value: MetadataItemWithValue['value']
         isMultipleValue: boolean
       }
     > = {}
@@ -120,13 +122,15 @@ const useBatchEditDocumentMetadata = ({
       })
       return {
         document_id: documentId,
-        metadata_list: newMetadataList,
+        metadata_list: newMetadataList.map(toMetadataDetail),
         partial_update: docIndex < 0,
       }
     })
     return res
   }
-  const { mutateAsync } = useBatchUpdateDocMetadata()
+  const { mutateAsync } = useMutation(
+    consoleQuery.datasets.byDatasetId.documents.metadata.post.mutationOptions(),
+  )
   const handleSave = async (
     editedList: MetadataItemInBatchEdit[],
     addedList: MetadataItemInBatchEdit[],
@@ -134,8 +138,8 @@ const useBatchEditDocumentMetadata = ({
   ) => {
     const backendList = formateToBackendList(editedList, addedList, isApplyToAllSelectDocument)
     await mutateAsync({
-      dataset_id: datasetId,
-      metadata_list: backendList,
+      params: { dataset_id: datasetId },
+      body: { operation_data: backendList },
     })
     onUpdate()
     hideEditModal()

@@ -1,18 +1,11 @@
+import type { ReactElement } from 'react'
 import type { BuiltInMetadataItem, MetadataItemWithValueLength } from '../../types'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, render as testingLibraryRender, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vite-plus/test'
+import { createMetadataQueryWrapper } from '../../__tests__/query-wrapper'
 import { DataType } from '../../types'
 import DatasetMetadataDrawer from '../dataset-metadata-drawer'
-
-// Mock service/API calls
-vi.mock('@/service/knowledge/use-metadata', () => ({
-  useDatasetMetaData: () => ({
-    data: {
-      doc_metadata: [{ id: '1', name: 'existing_field', type: DataType.string }],
-    },
-  }),
-}))
 
 // Mock check name hook
 vi.mock('../../hooks/use-check-metadata-name', () => ({
@@ -33,6 +26,9 @@ vi.mock('@/app/notifications', () => ({
     info: (message: string) => mockToastNotify({ type: 'info', message }),
   },
 }))
+
+const render = (ui: ReactElement) =>
+  testingLibraryRender(ui, { wrapper: createMetadataQueryWrapper({}).wrapper })
 
 describe('DatasetMetadataDrawer', () => {
   const mockUserMetadata: MetadataItemWithValueLength[] = [

@@ -7,12 +7,13 @@ import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dif
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Separator } from '@langgenius/dify-ui/separator'
+import { useMutation } from '@tanstack/react-query'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
-import { useCreateMetaData } from '@/service/knowledge/use-metadata'
+import { consoleQuery } from '@/service/console'
 import useCheckMetadataName from '../hooks/use-check-metadata-name'
 import { DatasetMetadataPicker } from '../metadata-dataset/dataset-metadata-picker'
 import { UpdateType } from '../types'
@@ -86,7 +87,9 @@ const EditMetadataBatchModal: FC<Props> = ({
     [list, templeList],
   )
   const { checkName } = useCheckMetadataName()
-  const { mutate: doAddMetaData } = useCreateMetaData(datasetId)
+  const { mutateAsync: doAddMetaData } = useMutation(
+    consoleQuery.datasets.byDatasetId.metadata.post.mutationOptions(),
+  )
   const handleAddMetaData = useCallback(
     async (payload: BuiltInMetadataItem) => {
       const errorMsg = checkName(payload.name).errorMsg
@@ -94,10 +97,10 @@ const EditMetadataBatchModal: FC<Props> = ({
         toast.error(errorMsg)
         return Promise.reject(new Error(errorMsg))
       }
-      await doAddMetaData(payload)
+      await doAddMetaData({ params: { dataset_id: datasetId }, body: payload })
       toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
     },
-    [checkName, doAddMetaData, t],
+    [checkName, doAddMetaData, t, datasetId],
   )
   const [addedList, setAddedList] = useState<MetadataItemWithEdit[]>([])
   const handleAddedListChange = useCallback(
