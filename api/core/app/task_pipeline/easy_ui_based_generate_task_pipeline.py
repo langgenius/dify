@@ -40,6 +40,7 @@ from core.app.entities.task_entities import (
     MessageAudioEndStreamResponse,
     MessageAudioStreamResponse,
     MessageEndStreamResponse,
+    ReasoningChunkStreamResponse,
     StreamEvent,
     StreamResponse,
 )
@@ -62,6 +63,7 @@ from graphon.model_runtime.entities.message_entities import (
 )
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from libs.datetime_utils import naive_utc_now
+from libs.think_split import REASONING, ThinkSplitter, split_think
 from models.model import AppMode, Conversation, Message, MessageAgentThought, MessageFile, UploadFile
 
 logger = logging.getLogger(__name__)
@@ -107,6 +109,9 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                 usage=LLMUsage.empty_usage(),
             )
         )
+        # Reasoning models embed <think> reasoning in the message content. Keep it
+        # out of the answer and publish it on the dedicated reasoning channel.
+        self._think_splitter = ThinkSplitter()
 
         self._message_cycle_manager = MessageCycleManager(
             application_generate_entity=application_generate_entity,
@@ -304,6 +309,22 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                 case QueueStopEvent() | QueueMessageEndEvent():
                     if isinstance(event, QueueMessageEndEvent):
                         if event.llm_result:
+                            # Flush buffered text, then strip reasoning from the final
+                            # content so blocking responses and the stored message agree
+                            # with the streamed answer.
+                            for kind, piece in self._think_splitter.finalize():
+                                if kind == REASONING:
+                                    yield self._reasoning_to_stream_response(piece)
+                                elif piece:
+                                    buffered = cast(str, event.llm_result.message.content)
+                                    event.llm_result.message.content = buffered + piece
+                            final_content = event.llm_result.message.content
+                            if isinstance(final_content, str) and final_content:
+                                clean_content, reasoning = split_think(final_content)
+                                if reasoning:
+                                    yield self._reasoning_to_stream_response(reasoning)
+                                if clean_content != final_content:
+                                    event.llm_result.message.content = clean_content
                             self._task_state.llm_result = event.llm_result
                     else:
                         self._handle_stop(event)
@@ -355,10 +376,14 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                     delta_text = self._chunk_delta_text(chunk)
                     if delta_text is None:
                         continue
-                    yield self._agent_message_to_stream_response(
-                        answer=delta_text,
-                        message_id=self._message_id,
-                    )
+                    for kind, piece in self._think_splitter.feed(delta_text):
+                        if kind == REASONING:
+                            yield self._reasoning_to_stream_response(piece)
+                        elif piece:
+                            yield self._agent_message_to_stream_response(
+                                answer=piece,
+                                message_id=self._message_id,
+                            )
                 case QueueLLMChunkEvent():
                     chunk = event.chunk
                     delta_text = self._chunk_delta_text(chunk)
@@ -368,25 +393,30 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                     if not self._task_state.llm_result.prompt_messages:
                         self._task_state.llm_result.prompt_messages = chunk.prompt_messages
 
-                    # handle output moderation chunk
-                    should_direct_answer = self._handle_output_moderation_chunk(delta_text)
-                    if should_direct_answer:
-                        continue
+                    for kind, piece in self._think_splitter.feed(delta_text):
+                        if kind == REASONING:
+                            yield self._reasoning_to_stream_response(piece)
+                            continue
 
-                    current_content = cast(str, self._task_state.llm_result.message.content)
-                    current_content += delta_text
-                    self._task_state.llm_result.message.content = current_content
+                        # handle output moderation chunk
+                        should_direct_answer = self._handle_output_moderation_chunk(piece)
+                        if should_direct_answer:
+                            continue
 
-                    # Determine the event type once, on first LLM chunk, and reuse for subsequent chunks
-                    if not hasattr(self, "_precomputed_event_type") or self._precomputed_event_type is None:
-                        self._precomputed_event_type = self._message_cycle_manager.get_message_event_type(
-                            message_id=self._message_id
+                        current_content = cast(str, self._task_state.llm_result.message.content)
+                        current_content += piece
+                        self._task_state.llm_result.message.content = current_content
+
+                        # Determine the event type once, on first LLM chunk, and reuse for subsequent chunks
+                        if not hasattr(self, "_precomputed_event_type") or self._precomputed_event_type is None:
+                            self._precomputed_event_type = self._message_cycle_manager.get_message_event_type(
+                                message_id=self._message_id
+                            )
+                        yield self._message_cycle_manager.message_to_stream_response(
+                            answer=piece,
+                            message_id=self._message_id,
+                            event_type=self._precomputed_event_type,
                         )
-                    yield self._message_cycle_manager.message_to_stream_response(
-                        answer=delta_text,
-                        message_id=self._message_id,
-                        event_type=self._precomputed_event_type,
-                    )
                 case QueueMessageReplaceEvent():
                     yield self._message_cycle_manager.message_replace_to_stream_response(answer=event.text)
                 case QueuePingEvent():
@@ -567,6 +597,18 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
             id=self._message_id,
             metadata=metadata_dict,
             files=files,
+        )
+
+    def _reasoning_to_stream_response(self, reasoning: str) -> ReasoningChunkStreamResponse:
+        """Publish reasoning on its own channel; it never enters the answer."""
+        return ReasoningChunkStreamResponse(
+            task_id=self._application_generate_entity.task_id,
+            data=ReasoningChunkStreamResponse.Data(
+                message_id=self._message_id,
+                reasoning=reasoning,
+                node_id=None,
+                is_final=False,
+            ),
         )
 
     def _agent_message_to_stream_response(self, answer: str, message_id: str) -> AgentMessageStreamResponse:
