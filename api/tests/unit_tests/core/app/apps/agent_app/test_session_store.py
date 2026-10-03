@@ -7,6 +7,8 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.app.apps.agent_app.session_store import AgentAppSessionScope, AgentAppWorkspaceStore
 from models.agent import (
     AgentConfigVersionKind,
+    AgentWorkingResourceStatus,
+    AgentWorkspace,
     AgentWorkspaceBinding,
     AgentWorkspaceOwnerType,
 )
@@ -47,6 +49,35 @@ def _binding() -> AgentWorkspaceBinding:
         pending_form_id=None,
         pending_tool_call_id=None,
     )
+
+
+def _persist_workspace_binding(
+    session: Session,
+    scope: AgentAppSessionScope,
+    *,
+    binding_id: str = "binding-1",
+    owner_id: str | None = None,
+) -> None:
+    owner = scope.workspace_owner
+    workspace = AgentWorkspace(
+        id="workspace-1",
+        tenant_id=scope.tenant_id,
+        app_id=scope.app_id,
+        owner_type=owner.owner_type,
+        owner_id=owner_id or owner.owner_id,
+        owner_scope_key=owner.owner_scope_key,
+        backend_workspace_ref="workspace-ref",
+        status=AgentWorkingResourceStatus.ACTIVE,
+        active_guard=1,
+    )
+    binding = _binding()
+    binding.id = binding_id
+    binding.workspace_id = workspace.id
+    binding.session_snapshot = CompositorSessionSnapshot(layers=[]).model_dump_json()
+    binding.pending_form_id = "form-1"
+    binding.pending_tool_call_id = "tool-call-1"
+    session.add_all([workspace, binding])
+    session.commit()
 
 
 def _persist_conversation(session: Session, *, binding_id: str | None = None) -> Conversation:
@@ -173,3 +204,44 @@ def test_save_snapshot_targets_binding(monkeypatch: pytest.MonkeyPatch) -> None:
 
     assert save.call_args.kwargs["binding_id"] == "binding-1"
     assert save.call_args.kwargs["session_snapshot"] == snapshot.model_dump_json()
+
+
+def test_load_existing_reads_the_callers_persisted_binding_without_creating(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+) -> None:
+    scope = _scope()
+    _persist_conversation(sqlite_session, binding_id="binding-1")
+    _persist_workspace_binding(sqlite_session, scope)
+    create = MagicMock()
+    monkeypatch.setattr(AgentWorkspaceService, "create_binding", create)
+
+    stored = AgentAppWorkspaceStore().load_existing(scope)
+
+    assert stored is not None
+    assert stored.binding_id == "binding-1"
+    assert stored.pending_form_id == "form-1"
+    assert stored.pending_tool_call_id == "tool-call-1"
+    assert stored.session_snapshot == CompositorSessionSnapshot(layers=[])
+    create.assert_not_called()
+
+
+def test_load_existing_returns_none_when_the_caller_has_no_binding(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+) -> None:
+    _persist_conversation(sqlite_session)
+    create = MagicMock()
+    monkeypatch.setattr(AgentWorkspaceService, "create_binding", create)
+
+    assert AgentAppWorkspaceStore().load_existing(_scope()) is None
+    create.assert_not_called()
+
+
+def test_load_existing_rejects_a_binding_owned_by_another_scope(sqlite_session: Session) -> None:
+    scope = _scope()
+    _persist_conversation(sqlite_session, binding_id="binding-1")
+    _persist_workspace_binding(sqlite_session, scope, owner_id="other-conversation")
+
+    with pytest.raises(AgentWorkspaceNotFoundError, match="Caller participant Binding is unavailable"):
+        AgentAppWorkspaceStore().load_existing(scope)

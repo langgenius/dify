@@ -62,6 +62,16 @@ class StoredAgentAppSession:
 class AgentAppWorkspaceStore:
     """Resolve Agent App sessions through a caller-owned Binding pointer."""
 
+    def load_existing(self, scope: AgentAppSessionScope) -> StoredAgentAppSession | None:
+        """Load only the caller's existing Binding; never allocate during a resume check."""
+        with session_factory.create_session() as session:
+            caller = self._load_caller(session=session, scope=scope)
+            binding_id = caller.agent_workspace_binding_id
+            if binding_id is None:
+                return None
+            binding = self._get_binding(session=session, scope=scope, binding_id=binding_id)
+            return self._stored(scope, binding)
+
     def load_or_create(self, scope: AgentAppSessionScope) -> StoredAgentAppSession:
         with session_factory.create_session() as session:
             caller = self._load_caller(session=session, scope=scope)

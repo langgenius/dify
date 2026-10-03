@@ -24,7 +24,12 @@ from clients.agent_backend import (
     AgentBackendValidationError,
 )
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
-from core.repositories.human_input_repository import HumanInputFormRepository, HumanInputFormRepositoryImpl
+from core.repositories.human_input_repository import (
+    HumanInputFormRepository,
+    HumanInputFormRepositoryImpl,
+    HumanInputFormSubmissionRepository,
+)
+from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.nodes.human_input.session_binding import default_session_binding
 from core.workflow.system_variables import SystemVariableKey, get_system_text
@@ -429,7 +434,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                         message=terminal_event.message
                         or "Agent backend run requested workflow pause for external input."
                     )
-                self._save_session_snapshot(
+                snapshot_persisted = self._save_session_snapshot(
                     session_scope=session_scope,
                     binding_id=stored_session.binding_id,
                     snapshot=terminal_event.session_snapshot,
@@ -437,6 +442,36 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                     pending_form_id=pending_form_id,
                     pending_tool_call_id=pending_tool_call_id,
                 )
+                if pause_request is not None and not snapshot_persisted:
+                    if terminal_event.session_snapshot is None:
+                        agent_backend = dict(metadata.get("agent_backend") or {})
+                        agent_backend["session_snapshot_persisted"] = False
+                        agent_backend["session_snapshot_persist_error"] = "workflow_agent_session_snapshot_missing"
+                        metadata["agent_backend"] = agent_backend
+                    try:
+                        HumanInputFormSubmissionRepository().mark_timeout(
+                            form_id=pause_request.form_id,
+                            timeout_status=HumanInputFormStatus.EXPIRED,
+                            reason="agent_continuation_persistence_failed",
+                        )
+                    except Exception:
+                        logger.warning(
+                            "Failed to expire non-resumable workflow Agent ask_human form: "
+                            "tenant_id=%s workflow_run_id=%s node_id=%s form_id=%s",
+                            session_scope.tenant_id,
+                            session_scope.workflow_run_id,
+                            session_scope.node_id,
+                            pending_form_id,
+                            exc_info=True,
+                        )
+                    yield self._failure_event(
+                        inputs=inputs,
+                        process_data=process_data,
+                        metadata=metadata,
+                        error="Agent session continuation could not be persisted; workflow was not paused.",
+                        error_type="workflow_agent_workspace_store_error",
+                    )
+                    return
                 yield self._pause_event(
                     reason=pause_reason,
                     inputs=inputs,
@@ -720,7 +755,12 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         metadata: dict[str, Any],
         pending_form_id: str | None = None,
         pending_tool_call_id: str | None = None,
-    ) -> None:
+    ) -> bool:
+        if snapshot is None:
+            agent_backend = dict(metadata.get("agent_backend") or {})
+            agent_backend["session_snapshot_persisted"] = False
+            metadata["agent_backend"] = agent_backend
+            return False
         try:
             self._session_store.save_active_snapshot(
                 scope=session_scope,
@@ -730,8 +770,9 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 pending_tool_call_id=pending_tool_call_id,
             )
             agent_backend = dict(metadata.get("agent_backend") or {})
-            agent_backend["session_snapshot_persisted"] = snapshot is not None
+            agent_backend["session_snapshot_persisted"] = True
             metadata["agent_backend"] = agent_backend
+            return True
         except Exception:
             logger.warning(
                 "Failed to persist workflow Agent Binding session snapshot: "
@@ -747,6 +788,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             agent_backend["session_snapshot_persisted"] = False
             agent_backend["session_snapshot_persist_error"] = "workflow_agent_workspace_store_error"
             metadata["agent_backend"] = agent_backend
+            return False
 
     @staticmethod
     def _patch_event_with_defaults(
