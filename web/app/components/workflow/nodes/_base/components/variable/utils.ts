@@ -557,16 +557,19 @@ const formatItem = (
       }
 
       const payload = data as AgentNodeType
-      const outputs: Var[] = []
+      const standardVarNames = new Set(AGENT_OUTPUT_STRUCT.map(({ variable }) => variable))
+      const schemaOutputs: Var[] = []
       const properties = payload.output_schema?.properties
       if (properties && typeof properties === 'object' && !Array.isArray(properties)) {
         Object.entries(properties).forEach(([variable, output]: [string, unknown]) => {
+          if (standardVarNames.has(variable)) return
+
           const schema =
             output && typeof output === 'object' && !Array.isArray(output) ? output : {}
-          outputs.push({ variable, type: resolveVarType(schema).type })
+          schemaOutputs.push({ variable, type: resolveVarType(schema).type })
         })
       }
-      res.vars = [...outputs, ...TOOL_OUTPUT_STRUCT, ...AGENT_OUTPUT_STRUCT]
+      res.vars = [...AGENT_OUTPUT_STRUCT, ...schemaOutputs]
       break
     }
 
