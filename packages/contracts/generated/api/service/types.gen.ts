@@ -2449,6 +2449,7 @@ export type GetAppFeedbacksData = {
 export type GetAppFeedbacksErrors = {
   401: unknown
   403: unknown
+  503: unknown
 }
 
 export type GetAppFeedbacksResponses = {
@@ -2469,6 +2470,7 @@ export type PostAppsAnnotationReplyByActionData = {
 export type PostAppsAnnotationReplyByActionErrors = {
   401: unknown
   403: unknown
+  503: unknown
 }
 
 export type PostAppsAnnotationReplyByActionResponses = {
@@ -2492,6 +2494,7 @@ export type GetAppsAnnotationReplyByActionStatusByJobIdErrors = {
   400: unknown
   401: unknown
   403: unknown
+  503: unknown
 }
 
 export type GetAppsAnnotationReplyByActionStatusByJobIdResponses = {
@@ -2515,6 +2518,7 @@ export type GetAppsAnnotationsData = {
 export type GetAppsAnnotationsErrors = {
   401: unknown
   403: unknown
+  503: unknown
 }
 
 export type GetAppsAnnotationsResponses = {
@@ -2534,6 +2538,7 @@ export type PostAppsAnnotationsData = {
 export type PostAppsAnnotationsErrors = {
   401: unknown
   403: unknown
+  503: unknown
 }
 
 export type PostAppsAnnotationsResponses = {
@@ -2556,6 +2561,7 @@ export type DeleteAppsAnnotationsByAnnotationIdErrors = {
   401: unknown
   403: unknown
   404: unknown
+  503: unknown
 }
 
 export type DeleteAppsAnnotationsByAnnotationIdResponses = {
@@ -2578,6 +2584,7 @@ export type PutAppsAnnotationsByAnnotationIdErrors = {
   401: unknown
   403: unknown
   404: unknown
+  503: unknown
 }
 
 export type PutAppsAnnotationsByAnnotationIdResponses = {
@@ -2604,6 +2611,7 @@ export type PostAudioToTextErrors = {
   413: unknown
   415: unknown
   500: unknown
+  503: unknown
 }
 
 export type PostAudioToTextResponses = {
@@ -2626,6 +2634,7 @@ export type PostChatMessagesErrors = {
   404: unknown
   429: unknown
   500: unknown
+  503: unknown
 }
 
 export type PostChatMessagesResponses = {
@@ -2647,6 +2656,7 @@ export type PostChatMessagesByTaskIdStopErrors = {
   400: unknown
   401: unknown
   403: unknown
+  503: unknown
 }
 
 export type PostChatMessagesByTaskIdStopResponses = {
@@ -2669,6 +2679,7 @@ export type PostCompletionMessagesErrors = {
   403: unknown
   429: unknown
   500: unknown
+  503: unknown
 }
 
 export type PostCompletionMessagesResponses = {
@@ -2691,6 +2702,7 @@ export type PostCompletionMessagesByTaskIdStopErrors = {
   400: unknown
   401: unknown
   403: unknown
+  503: unknown
 }
 
 export type PostCompletionMessagesByTaskIdStopResponses = {
@@ -2717,6 +2729,7 @@ export type GetConversationsErrors = {
   401: unknown
   403: unknown
   404: unknown
+  503: unknown
 }
 
 export type GetConversationsResponses = {
@@ -2739,6 +2752,7 @@ export type DeleteConversationsByConversationIdErrors = {
   401: unknown
   403: unknown
   404: unknown
+  503: unknown
 }
 
 export type DeleteConversationsByConversationIdResponses = {
@@ -2762,6 +2776,7 @@ export type PostConversationsByConversationIdNameErrors = {
   401: unknown
   403: unknown
   404: unknown
+  503: unknown
 }
 
 export type PostConversationsByConversationIdNameResponses = {
@@ -2790,6 +2805,7 @@ export type GetConversationsByConversationIdVariablesErrors = {
   401: unknown
   403: unknown
   404: unknown
+  503: unknown
 }
 
 export type GetConversationsByConversationIdVariablesResponses = {
@@ -2814,6 +2830,7 @@ export type PutConversationsByConversationIdVariablesByVariableIdErrors = {
   401: unknown
   403: unknown
   404: unknown
+  503: unknown
 }
 
 export type PutConversationsByConversationIdVariablesByVariableIdResponses = {
@@ -4045,6 +4062,7 @@ export type GetEndUsersByEndUserIdErrors = {
   401: unknown
   403: unknown
   404: unknown
+  503: unknown
 }
 
 export type GetEndUsersByEndUserIdResponses = {
@@ -4070,6 +4088,7 @@ export type PostFilesUploadErrors = {
   403: unknown
   413: unknown
   415: unknown
+  503: unknown
 }
 
 export type PostFilesUploadResponses = {
@@ -4094,6 +4113,7 @@ export type GetFilesByFileIdPreviewErrors = {
   401: unknown
   403: unknown
   404: unknown
+  503: unknown
 }
 
 export type GetFilesByFileIdPreviewResponses = {
@@ -4117,6 +4137,7 @@ export type GetFormHumanInputByFormTokenErrors = {
   403: unknown
   404: unknown
   412: unknown
+  503: unknown
 }
 
 export type GetFormHumanInputByFormTokenResponses = {
@@ -4141,6 +4162,7 @@ export type PostFormHumanInputByFormTokenErrors = {
   403: unknown
   404: unknown
   412: unknown
+  503: unknown
 }
 
 export type PostFormHumanInputByFormTokenResponses = {
@@ -4161,6 +4183,7 @@ export type GetInfoErrors = {
   400: unknown
   401: unknown
   403: unknown
+  503: unknown
 }
 
 export type GetInfoResponses = {
@@ -4186,6 +4209,7 @@ export type GetMessagesErrors = {
   401: unknown
   403: unknown
   404: unknown
+  503: unknown
 }
 
 export type GetMessagesResponses = {
@@ -4208,6 +4232,7 @@ export type PostMessagesByMessageIdFeedbacksErrors = {
   401: unknown
   403: unknown
   404: unknown
+  503: unknown
 }
 
 export type PostMessagesByMessageIdFeedbacksResponses = {
@@ -4234,6 +4259,7 @@ export type GetMessagesByMessageIdSuggestedErrors = {
   403: unknown
   404: unknown
   500: unknown
+  503: unknown
 }
 
 export type GetMessagesByMessageIdSuggestedResponses = {
@@ -4254,6 +4280,7 @@ export type GetMetaErrors = {
   400: unknown
   401: unknown
   403: unknown
+  503: unknown
 }
 
 export type GetMetaResponses = {
@@ -4273,6 +4300,7 @@ export type GetParametersErrors = {
   400: unknown
   401: unknown
   403: unknown
+  503: unknown
 }
 
 export type GetParametersResponses = {
@@ -4291,6 +4319,7 @@ export type GetSiteData = {
 export type GetSiteErrors = {
   401: unknown
   403: unknown
+  503: unknown
 }
 
 export type GetSiteResponses = {
@@ -4311,6 +4340,7 @@ export type PostTextToAudioErrors = {
   401: unknown
   403: unknown
   500: unknown
+  503: unknown
 }
 
 export type PostTextToAudioResponses = {
@@ -4337,6 +4367,7 @@ export type GetWorkflowByWorkflowRunIdEventsErrors = {
   401: unknown
   403: unknown
   404: unknown
+  503: unknown
 }
 
 export type GetWorkflowByWorkflowRunIdEventsResponses = {
@@ -4366,6 +4397,7 @@ export type GetWorkflowsLogsErrors = {
   400: unknown
   401: unknown
   403: unknown
+  503: unknown
 }
 
 export type GetWorkflowsLogsResponses = {
@@ -4387,6 +4419,7 @@ export type PostWorkflowsRunErrors = {
   403: unknown
   429: unknown
   500: unknown
+  503: unknown
 }
 
 export type PostWorkflowsRunResponses = {
@@ -4409,6 +4442,7 @@ export type GetWorkflowsRunByWorkflowRunIdErrors = {
   401: unknown
   403: unknown
   404: unknown
+  503: unknown
 }
 
 export type GetWorkflowsRunByWorkflowRunIdResponses = {
@@ -4431,6 +4465,7 @@ export type PostWorkflowsTasksByTaskIdStopErrors = {
   400: unknown
   401: unknown
   403: unknown
+  503: unknown
 }
 
 export type PostWorkflowsTasksByTaskIdStopResponses = {
@@ -4456,6 +4491,7 @@ export type PostWorkflowsByWorkflowIdRunErrors = {
   404: unknown
   429: unknown
   500: unknown
+  503: unknown
 }
 
 export type PostWorkflowsByWorkflowIdRunResponses = {
