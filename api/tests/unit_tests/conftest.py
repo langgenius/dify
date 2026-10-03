@@ -119,6 +119,18 @@ def _patch_redis_clients() -> Iterator[None]:
 def reset_redis_mock(_patch_redis_clients: None) -> None:
     """Reset the shared Redis mock after per-test client rebinding."""
     redis_mock.reset_mock()
+    # Restoring a monkeypatched method can leave it detached from the parent's reset traversal.
+    redis_mock.delete.reset_mock()
+    redis_mock.get.reset_mock()
+    redis_mock.setex.reset_mock()
+    redis_mock.setnx.reset_mock()
+    redis_mock.lock.reset_mock()
+    redis_mock.exists.reset_mock()
+    redis_mock.set.reset_mock()
+    redis_mock.expire.reset_mock()
+    redis_mock.hgetall.reset_mock()
+    redis_mock.hdel.reset_mock()
+    redis_mock.incr.reset_mock()
     redis_mock.get.return_value = None
     redis_mock.setex.return_value = None
     redis_mock.setnx.return_value = None
