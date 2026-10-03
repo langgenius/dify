@@ -1055,4 +1055,27 @@ describe('useEmbeddedChatbot', () => {
       })
     })
   })
+
+  // Scenario: a stale conversation_id that 404s is cleared only for the current
+  // user; other users' saved selections are preserved (issue #39484).
+  describe('Stale conversation recovery', () => {
+    it('clears only the current user conversationIdInfo when chat list returns 404', async () => {
+      mockStoreState.embeddedConversationId = null
+      localStorage.setItem(
+        CONVERSATION_ID_INFO,
+        JSON.stringify({
+          'app-1': { 'user-1': 'stale-conversation-id', 'user-2': 'valid-conversation-id' },
+        }),
+      )
+      mockFetchChatList.mockRejectedValue(new Response(null, { status: 404 }))
+
+      await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
+
+      await waitFor(() => {
+        const stored = JSON.parse(localStorage.getItem(CONVERSATION_ID_INFO)!)
+        expect(stored['app-1']['user-1']).toBe('')
+        expect(stored['app-1']['user-2']).toBe('valid-conversation-id')
+      })
+    })
+  })
 })
