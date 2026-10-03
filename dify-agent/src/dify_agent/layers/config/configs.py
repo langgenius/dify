@@ -61,6 +61,7 @@ class DifyConfigRuntimeState(BaseModel):
 
     ``config_cli_help`` stores pre-rendered shell-visible ``dify-agent`` help snippets
     for config commands and file upload/download commands.
+    ``skill_read_content`` keeps on-demand skill pages stable within a read.
 
     The ``push_spec_*`` fields are compatibility leftovers from the removed root
     JSON-spec config mutation workflow. This change keeps them in the runtime-state
@@ -69,6 +70,7 @@ class DifyConfigRuntimeState(BaseModel):
     """
 
     pulled_skill_outputs: dict[str, str] = Field(default_factory=dict)
+    skill_read_content: dict[str, str] = Field(default_factory=dict)
     pulled_file_outputs: dict[str, str] = Field(default_factory=dict)
     config_context_json: str = ""
     config_cli_help: dict[str, str] = Field(default_factory=dict)
