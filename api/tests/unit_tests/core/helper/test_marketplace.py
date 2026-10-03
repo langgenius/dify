@@ -1,6 +1,7 @@
 from collections.abc import Callable
 from types import SimpleNamespace
 from unittest.mock import MagicMock
+from urllib.parse import parse_qs, urlparse
 
 import pytest
 from pytest_mock import MockerFixture
@@ -18,8 +19,9 @@ from core.helper.marketplace import (
 def test_get_plugin_pkg_url_contains_unique_identifier() -> None:
     url = get_plugin_pkg_url("langgenius/openai:0.4.2@checksum")
 
-    assert "api/v1/plugins/download" in url
-    assert "unique_identifier=langgenius%2Fopenai%3A0.4.2%40checksum" in url
+    parsed = urlparse(url)
+    assert parsed.path.endswith("/api/v1/plugins/download-url")
+    assert parse_qs(parsed.query) == {"unique_identifier": ["langgenius/openai:0.4.2@checksum"]}
 
 
 def test_download_plugin_pkg_delegates_with_configured_size(
