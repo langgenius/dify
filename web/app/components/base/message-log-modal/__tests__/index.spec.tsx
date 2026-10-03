@@ -11,16 +11,19 @@ vi.mock('ahooks', () => ({
 
 vi.mock('@/app/components/workflow/run', () => ({
   default: ({
+    appId,
     activeTab,
     runDetailUrl,
     tracingListUrl,
   }: {
+    appId: string
     activeTab: string
     runDetailUrl: string
     tracingListUrl: string
   }) => (
     <div
       data-testid="workflow-run"
+      data-app-id={appId}
       data-active-tab={activeTab}
       data-run-detail-url={runDetailUrl}
       data-tracing-list-url={tracingListUrl}
@@ -73,10 +76,11 @@ describe('MessageLogModal', () => {
   })
 
   describe('Props', () => {
-    it('passes correct props to Run component', () => {
+    it.each([true, false])('passes the inspected app to Run with fixedWidth=%s', (fixedWidth) => {
       render(
         <MessageLogModal
           appId="inspected-app"
+          fixedWidth={fixedWidth}
           width={800}
           onCancel={onCancel}
           currentLogItem={mockLog}
@@ -84,6 +88,7 @@ describe('MessageLogModal', () => {
         />,
       )
       const runComponent = screen.getByTestId('workflow-run')
+      expect(runComponent.getAttribute('data-app-id')).toBe('inspected-app')
       expect(runComponent.getAttribute('data-active-tab')).toBe('TRACING')
       expect(runComponent.getAttribute('data-run-detail-url')).toBe(
         '/apps/inspected-app/workflow-runs/run-1',

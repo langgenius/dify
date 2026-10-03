@@ -24,8 +24,17 @@ vi.mock('@/next/navigation', () => ({
 
 // Mock the Run component as it has complex dependencies
 vi.mock('@/app/components/workflow/run', () => ({
-  default: ({ runDetailUrl, tracingListUrl }: { runDetailUrl: string; tracingListUrl: string }) => (
+  default: ({
+    appId,
+    runDetailUrl,
+    tracingListUrl,
+  }: {
+    appId: string
+    runDetailUrl: string
+    tracingListUrl: string
+  }) => (
     <div data-testid="workflow-run">
+      <span data-testid="run-app-id">{appId}</span>
       <span data-testid="run-detail-url">{runDetailUrl}</span>
       <span data-testid="tracing-list-url">{tracingListUrl}</span>
     </div>
@@ -82,6 +91,7 @@ describe('DetailPanel', () => {
       render(<DetailPanel appId={appId} runID="run-789" onClose={defaultOnClose} />)
 
       expect(screen.getByTestId('workflow-run')).toBeInTheDocument()
+      expect(screen.getByTestId('run-app-id')).toHaveTextContent('app-456')
       expect(screen.getByTestId('run-detail-url')).toHaveTextContent(
         '/apps/app-456/workflow-runs/run-789',
       )
