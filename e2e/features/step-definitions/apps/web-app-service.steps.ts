@@ -3,25 +3,33 @@ import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
 import { createTestApp } from '../../../support/api/apps.ts'
 import { getAppSiteURL } from '../../../support/api/web-apps.ts'
-import { syncRunnableWorkflowDraft } from '../../../support/api/workflows.ts'
+import {
+  syncRunnableChatflowDraft,
+  syncRunnableWorkflowDraft,
+} from '../../../support/api/workflows.ts'
 import { createE2EResourceName } from '../../../support/naming.ts'
 import { baseURL, defaultLocale } from '../../../test-env.ts'
 
-Given('a new runnable workflow app has been published', async function (this: DifyWorld) {
-  const client = this.getConsoleClient()
-  const app = await createTestApp(client, createE2EResourceName('App', 'WebApp'), 'workflow')
-  this.createdAppIds.push(app.id)
-  this.lastCreatedAppName = app.name
-  await syncRunnableWorkflowDraft(client, app.id)
-  await client.apps.byAppId.workflows.publish.post({
-    body: { marked_comment: '', marked_name: '' },
-    params: { app_id: app.id },
-  })
+Given(
+  /^a new runnable (workflow|chatflow) app has been published$/,
+  async function (this: DifyWorld, appType: 'workflow' | 'chatflow') {
+    const client = this.getConsoleClient()
+    const mode = appType === 'chatflow' ? 'advanced-chat' : 'workflow'
+    const app = await createTestApp(client, createE2EResourceName('App', 'WebApp'), mode)
+    this.createdAppIds.push(app.id)
+    this.lastCreatedAppName = app.name
+    if (appType === 'chatflow') await syncRunnableChatflowDraft(client, app.id)
+    else await syncRunnableWorkflowDraft(client, app.id)
+    await client.apps.byAppId.workflows.publish.post({
+      body: { marked_comment: '', marked_name: '' },
+      params: { app_id: app.id },
+    })
 
-  const appDetail = await client.apps.byAppId.get({ params: { app_id: app.id } })
-  expect(appDetail.enable_site).toBe(true)
-  this.shareURL = getAppSiteURL(appDetail)
-})
+    const appDetail = await client.apps.byAppId.get({ params: { app_id: app.id } })
+    expect(appDetail.enable_site).toBe(true)
+    this.shareURL = getAppSiteURL(appDetail)
+  },
+)
 
 const getWebAppSwitch = (world: DifyWorld) => {
   const webAppCard = world.getPage().getByRole('region', { name: 'Web App' })

@@ -4,8 +4,18 @@ import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
 import { act } from 'react'
-import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vite-plus/test'
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vite-plus/test'
 import { InputVarType } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import Embedded from '../index'
 
@@ -22,6 +32,7 @@ vi.mock('../style.module.css', () => ({
 vi.mock('copy-to-clipboard', () => ({
   default: vi.fn(),
 }))
+vi.mock('@/app/notifications', () => ({ toast: { error: vi.fn() } }))
 const mockWindowOpen = vi.spyOn(window, 'open').mockImplementation(() => null)
 const mockedCopy = vi.mocked(copy)
 const originalCompressionStream = globalThis.CompressionStream
@@ -60,6 +71,10 @@ describe('Embedded', () => {
     globalThis.CompressionStream = MockCompressionStream
   })
 
+  beforeEach(() => {
+    mockedCopy.mockReset().mockResolvedValue(true)
+  })
+
   afterEach(() => {
     vi.clearAllMocks()
     mockWindowOpen.mockClear()
@@ -92,6 +107,62 @@ describe('Embedded', () => {
     await waitFor(() => {
       expect(mockedCopy).toHaveBeenCalledWith(expect.stringContaining('/chatbot/token'))
     })
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'appOverview.overview.appInfo.embedded.copied',
+      ),
+    )
+    expect(copyButton).toHaveFocus()
+  })
+
+  it('waits for the clipboard result before announcing success', async () => {
+    const user = userEvent.setup()
+    let resolveCopy!: (success: boolean) => void
+    const clipboardWrite = new Promise<boolean>((resolve) => {
+      resolveCopy = resolve
+    })
+    mockedCopy.mockReturnValueOnce(clipboardWrite)
+    await act(async () => {
+      render(<Embedded {...baseProps} />)
+    })
+
+    const copyButton = getCopyButton()
+    await user.click(copyButton)
+    await waitFor(() => expect(mockedCopy).toHaveBeenCalled())
+    expect(screen.getByRole('status')).toBeEmptyDOMElement()
+
+    await act(async () => {
+      resolveCopy(true)
+    })
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'appOverview.overview.appInfo.embedded.copied',
+    )
+    expect(copyButton).toHaveFocus()
+  })
+
+  it('reports a failed copy without announcing success and allows a retry', async () => {
+    const user = userEvent.setup()
+    mockedCopy.mockResolvedValueOnce(false)
+    await act(async () => {
+      render(<Embedded {...baseProps} />)
+    })
+
+    const copyButton = getCopyButton()
+    await user.click(copyButton)
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith('common.operation.copyErrorFailed'),
+    )
+    expect(screen.getByRole('status')).toBeEmptyDOMElement()
+    expect(copyButton).toHaveFocus()
+    expect(copyButton).toHaveAccessibleName('appOverview.overview.appInfo.embedded.copy')
+
+    await user.click(copyButton)
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'appOverview.overview.appInfo.embedded.copied',
+      ),
+    )
+    expect(mockedCopy).toHaveBeenCalledTimes(2)
   })
 
   it('links each embed method tab to a panel and supports arrow key selection', async () => {
@@ -252,6 +323,46 @@ describe('Embedded', () => {
     await waitFor(() => {
       expect(mockedCopy).toHaveBeenCalledWith(expect.stringContaining("token: 'token'"))
     })
+  })
+
+  it('exposes hidden-input expansion and preserves values across keyboard collapse and expansion', async () => {
+    const user = userEvent.setup()
+    await act(async () => {
+      render(
+        <Embedded
+          {...baseProps}
+          hiddenInputs={[
+            {
+              variable: 'secret',
+              label: 'Secret',
+              type: InputVarType.textInput,
+              hide: true,
+              required: true,
+            },
+          ]}
+        />,
+      )
+    })
+    const disclosure = screen.getByRole('button', { name: /hiddenInputs.title/ })
+    expect(disclosure).toHaveAttribute('aria-expanded', 'false')
+    const content = document.getElementById(disclosure.getAttribute('aria-controls')!)
+    expect(content).not.toBeVisible()
+    expect(screen.queryByRole('textbox', { name: 'Secret' })).not.toBeInTheDocument()
+
+    disclosure.focus()
+    await user.keyboard('{Enter}')
+    expect(disclosure).toHaveAttribute('aria-expanded', 'true')
+    expect(content).toBeVisible()
+    const secret = screen.getByRole('textbox', { name: 'Secret' })
+    await user.tab()
+    expect(secret).toHaveFocus()
+    await user.type(secret, 'kept value')
+    await user.tab({ shift: true })
+    await user.keyboard(' ')
+    expect(disclosure).toHaveAttribute('aria-expanded', 'false')
+    expect(disclosure).toHaveFocus()
+    await user.keyboard('{Enter}')
+    expect(screen.getByRole('textbox', { name: 'Secret' })).toHaveValue('kept value')
   })
 
   it('copies chrome plugin URL (without prefix) when chromePlugin option is selected', async () => {

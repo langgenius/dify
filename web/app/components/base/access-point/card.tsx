@@ -46,6 +46,7 @@ export function AccessPointCard({
   title,
 }: AccessPointCardProps) {
   const titleId = useId()
+  const switchDisabledReasonId = useId()
   const isEnabled = status === 'inService'
   const isLoading = status === 'loading'
   const showSwitch = (status === 'disabled' || status === 'inService') && Boolean(onEnabledChange)
@@ -60,6 +61,7 @@ export function AccessPointCard({
         ? { readOnly: true, 'aria-disabled': true, 'data-disabled': '' }
         : {})}
       aria-label={switchLabel || title}
+      aria-describedby={hasSwitchDisabledReason ? switchDisabledReasonId : undefined}
       onCheckedChange={(enabled) => {
         if (!switchDisabled) onEnabledChange?.(enabled)
       }}
@@ -103,7 +105,7 @@ export function AccessPointCard({
               aria-live="polite"
               className={cn(
                 'flex shrink-0 items-center gap-1 system-xs-semibold-uppercase',
-                status === 'inService' ? 'text-text-success' : 'text-text-tertiary',
+                status === 'inService' ? 'text-util-colors-green-green-700' : 'text-text-tertiary',
               )}
             >
               {isLoading ? (
@@ -115,10 +117,15 @@ export function AccessPointCard({
             </span>
             {showSwitch &&
               (hasSwitchDisabledReason ? (
-                <Tooltip>
-                  <TooltipTrigger render={switchControl} />
-                  <TooltipContent>{switchDisabledReason}</TooltipContent>
-                </Tooltip>
+                <>
+                  <Tooltip>
+                    <TooltipTrigger render={switchControl} />
+                    <TooltipContent role="tooltip">{switchDisabledReason}</TooltipContent>
+                  </Tooltip>
+                  <span id={switchDisabledReasonId} className="sr-only">
+                    {switchDisabledReason}
+                  </span>
+                </>
               ) : (
                 switchControl
               ))}
@@ -173,7 +180,7 @@ export function AccessPointEndpoint({
             <span
               className={cn(
                 'truncate system-sm-regular text-text-secondary',
-                (dimmed || unavailable) && 'text-text-quaternary',
+                (dimmed || unavailable) && 'text-text-tertiary',
               )}
               translate="no"
             >

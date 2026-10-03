@@ -12,10 +12,11 @@ import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import copy from 'copy-to-clipboard'
-import { Suspense, use, useMemo, useRef, useState } from 'react'
+import { Suspense, use, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { createTheme } from '@/app/components/base/chat/embedded-chatbot/theme/theme'
 import { InputVarType } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { basePath } from '@/utils/var'
 import {
@@ -116,7 +117,7 @@ const EmbeddedContent = ({
   hiddenInputs,
 }: Required<Pick<Props, 'accessToken' | 'appBaseUrl'>> &
   Pick<Props, 'siteInfo' | 'webAppRoute' | 'hiddenInputs'>) => {
-  const { t } = useTranslation(['appOverview'])
+  const { t } = useTranslation(['appOverview', 'common'])
   const supportedHiddenInputs = useMemo<WorkflowHiddenStartVariable[]>(
     () => (hiddenInputs ?? []).filter(isWorkflowLaunchInputSupported),
     [hiddenInputs],
@@ -128,6 +129,7 @@ const EmbeddedContent = ({
   const [option, setOption] = useState<Option>('iframe')
   const [copiedOption, setCopiedOption] = useState<Option | null>(null)
   const [hiddenInputsCollapsed, setHiddenInputsCollapsed] = useState(true)
+  const hiddenInputsId = useId()
   const [hiddenInputValues, setHiddenInputValues] = useState<
     Record<string, WorkflowLaunchInputValue>
   >(() => initialHiddenInputValues)
@@ -184,6 +186,7 @@ const EmbeddedContent = ({
   )
 
   const onClickCopy = async (selectedOption: Option) => {
+    setCopiedOption(null)
     const latestIframeUrl = await buildEmbeddedIframeUrl({
       appBaseUrl,
       accessToken,
@@ -192,15 +195,14 @@ const EmbeddedContent = ({
       values: hiddenInputValues,
     })
 
-    if (selectedOption === 'chromePlugin') {
-      const splitUrl = getChromePluginContent(latestIframeUrl).split(': ')
-      if (splitUrl.length > 1) copy(splitUrl[1]!)
-    } else if (selectedOption === 'iframe') {
-      copy(getEmbeddedIframeSnippet(latestIframeUrl))
-    } else {
-      copy(scriptsContent)
-    }
-    setCopiedOption(selectedOption)
+    const content =
+      selectedOption === 'chromePlugin'
+        ? latestIframeUrl
+        : selectedOption === 'iframe'
+          ? getEmbeddedIframeSnippet(latestIframeUrl)
+          : scriptsContent
+    if (await copy(content)) setCopiedOption(selectedOption)
+    else toast.error(t(($) => $['operation.copyErrorFailed'], { ns: 'common' }))
   }
 
   const navigateToChromeUrl = () => {
@@ -220,7 +222,9 @@ const EmbeddedContent = ({
         <div className="mb-6 rounded-xl border-[0.5px] border-components-panel-border bg-background-section">
           <button
             type="button"
-            className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+            aria-expanded={!hiddenInputsCollapsed}
+            aria-controls={hiddenInputsId}
+            className="flex w-full items-center justify-between gap-3 rounded-xl px-4 py-3 text-left focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden"
             onClick={() => setHiddenInputsCollapsed((prev) => !prev)}
           >
             <div>
@@ -243,16 +247,20 @@ const EmbeddedContent = ({
               />
             )}
           </button>
-          {!hiddenInputsCollapsed && (
-            <div className="max-h-72 space-y-4 overflow-y-auto border-t-[0.5px] border-divider-subtle px-4 py-4">
+          <div
+            id={hiddenInputsId}
+            hidden={hiddenInputsCollapsed}
+            className="max-h-72 space-y-4 overflow-y-auto border-t-[0.5px] border-divider-subtle px-4 py-4"
+          >
+            {!hiddenInputsCollapsed && (
               <WorkflowHiddenInputFields
                 hiddenVariables={supportedHiddenInputs}
                 values={hiddenInputValues}
                 onValueChange={handleHiddenInputValueChange}
                 fieldIdPrefix="embedded-hidden-input"
               />
-            </div>
-          )}
+            )}
+          </div>
         </div>
       )}
       <Tabs
@@ -364,6 +372,9 @@ const EmbeddedContent = ({
           )
         })}
       </Tabs>
+      <span role="status" className="sr-only">
+        {copiedOption && t(($) => $[`${prefixEmbedded}.copied`], { ns: 'appOverview' })}
+      </span>
     </>
   )
 }

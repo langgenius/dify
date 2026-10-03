@@ -33,5 +33,17 @@ describe('CopyFeedback', () => {
     render(<CopyFeedback content="test content" />)
 
     expect(screen.getByRole('button', { name: 'common.operation.copied' })).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('common.operation.copied')
+  })
+
+  it('only announces success after the clipboard reports success', () => {
+    const { rerender } = render(<CopyFeedback content="test content" copiedLabel="URL copied" />)
+    expect(screen.getByRole('status')).toBeEmptyDOMElement()
+    mockCopied = true
+    rerender(<CopyFeedback content="test content" copiedLabel="URL copied" />)
+    expect(screen.getByRole('status')).toHaveTextContent('URL copied')
+    mockCopied = false
+    rerender(<CopyFeedback content="test content" copiedLabel="URL copied" />)
+    expect(screen.getByRole('status')).toBeEmptyDOMElement()
   })
 })

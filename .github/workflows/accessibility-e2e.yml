@@ -13,6 +13,7 @@ on:
           - home
           - sign-in
           - studio
+          - access-point
           - agents
           - knowledge
           - integrations
