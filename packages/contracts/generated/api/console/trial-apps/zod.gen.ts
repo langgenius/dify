@@ -1017,42 +1017,6 @@ export const zAgentTextToSpeechFeatureConfig = z.object({
 })
 
 /**
- * AgentEnvVariableConfig
- */
-export const zAgentEnvVariableConfig = z.object({
-  default: z
-    .union([
-      z.string(),
-      z.int(),
-      z.number(),
-      z.boolean(),
-      z.array(z.string()),
-      z.array(z.int()),
-      z.array(z.number()),
-      z.array(z.boolean()),
-    ])
-    .nullish(),
-  env_name: z.string().max(255).nullish(),
-  key: z.string().max(255).nullish(),
-  name: z.string().max(255).nullish(),
-  required: z.boolean().optional().default(false),
-  type: z.string().max(64).nullish(),
-  value: z
-    .union([
-      z.string(),
-      z.int(),
-      z.number(),
-      z.boolean(),
-      z.array(z.string()),
-      z.array(z.int()),
-      z.array(z.number()),
-      z.array(z.boolean()),
-    ])
-    .nullish(),
-  variable: z.string().max(255).nullish(),
-})
-
-/**
  * AgentHumanContactConfig
  */
 export const zAgentHumanContactConfig = z.object({
@@ -1112,24 +1076,6 @@ export const zAgentSoulModelCredentialRef = z.object({
   id: z.string().max(255).nullish(),
   provider: z.string().max(255).nullish(),
   type: z.string().min(1).max(64),
-})
-
-/**
- * AgentSandboxProviderConfig
- */
-export const zAgentSandboxProviderConfig = z.object({
-  cpu: z.int().gte(1).nullish(),
-  env: z.array(zAgentEnvVariableConfig).optional(),
-  image: z.string().nullish(),
-  working_dir: z.string().nullish(),
-})
-
-/**
- * AgentSoulSandboxConfig
- */
-export const zAgentSoulSandboxConfig = z.object({
-  config: zAgentSandboxProviderConfig.optional(),
-  provider: z.string().nullish(),
 })
 
 /**
@@ -1215,12 +1161,46 @@ export const zAgentSecretRefConfig = z.object({
   variable: z.string().max(255).nullish(),
 })
 
+export const zJsonValue = z.unknown()
+
+/**
+ * AgentEnvVariableConfig
+ */
+export const zAgentEnvVariableConfig = z.object({
+  default: zJsonValue.optional(),
+  env_name: z.string().max(255).nullish(),
+  key: z.string().max(255).nullish(),
+  name: z.string().max(255).nullish(),
+  required: z.boolean().optional().default(false),
+  type: z.string().max(64).nullish(),
+  value: zJsonValue.optional(),
+  variable: z.string().max(255).nullish(),
+})
+
 /**
  * AgentSoulEnvConfig
  */
 export const zAgentSoulEnvConfig = z.object({
   secret_refs: z.array(zAgentSecretRefConfig).optional(),
   variables: z.array(zAgentEnvVariableConfig).optional(),
+})
+
+/**
+ * AgentSandboxProviderConfig
+ */
+export const zAgentSandboxProviderConfig = z.object({
+  cpu: z.int().gte(1).nullish(),
+  env: z.array(zAgentEnvVariableConfig).optional(),
+  image: z.string().nullish(),
+  working_dir: z.string().nullish(),
+})
+
+/**
+ * AgentSoulSandboxConfig
+ */
+export const zAgentSoulSandboxConfig = z.object({
+  config: zAgentSandboxProviderConfig.optional(),
+  provider: z.string().nullish(),
 })
 
 /**
@@ -1391,23 +1371,7 @@ export const zAgentSoulDifyToolConfig = z.object({
   provider: z.string().max(255).nullish(),
   provider_id: z.string().max(255).nullish(),
   provider_type: zToolProviderType,
-  runtime_parameters: z
-    .record(
-      z.string(),
-      z
-        .union([
-          z.string(),
-          z.int(),
-          z.number(),
-          z.boolean(),
-          z.array(z.string()),
-          z.array(z.int()),
-          z.array(z.number()),
-          z.array(z.boolean()),
-        ])
-        .nullable(),
-    )
-    .optional(),
+  runtime_parameters: z.record(z.string(), zJsonValue).optional(),
   tool_name: z.string().min(1).max(255).nullish(),
 })
 
