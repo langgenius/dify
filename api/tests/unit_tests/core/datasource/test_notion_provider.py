@@ -15,7 +15,6 @@ Tests follow the Arrange-Act-Assert pattern for clarity.
 
 import json
 from collections.abc import Iterator
-from dataclasses import dataclass
 from typing import Any
 from unittest.mock import Mock, patch
 from uuid import uuid4
@@ -25,39 +24,38 @@ import pytest
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
-from core.datasource.entities.datasource_entities import DatasourceProviderType
+from core.datasource.entities.datasource_entities import (
+    DatasourceEntity,
+    DatasourceIdentity,
+    DatasourceProviderEntityWithPlugin,
+    DatasourceProviderIdentity,
+    DatasourceProviderType,
+)
 from core.datasource.online_document.online_document_provider import (
     OnlineDocumentDatasourcePluginProviderController,
 )
 from core.rag.extractor import notion_extractor as notion_extractor_module
 from core.rag.extractor.notion_extractor import NotionExtractor
 from core.rag.models.document import Document
+from core.tools.entities.common_entities import I18nObject
 from extensions.application_services.data_sources import build_data_source_credentials
 from models.base import TypeBase
 from models.dataset import Document as DocumentModel
 from models.enums import DataSourceType, DocumentCreatedFrom
 
 
-@dataclass(frozen=True)
-class _Database:
-    """Expose the real SQLite session used by the extractor update."""
-
-    session: Session
-
-
 @pytest.fixture
-def database(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator[_Database]:
+def database(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator[Session]:
     """Bind a real session for Notion document metadata persistence."""
 
     TypeBase.metadata.create_all(sqlite_engine, tables=[DocumentModel.__table__])
     with Session(sqlite_engine, expire_on_commit=False) as session:
-        database = _Database(session)
-        monkeypatch.setattr(notion_extractor_module, "db", database)
-        yield database
+        monkeypatch.setattr(notion_extractor_module.db, "session", session)
+        yield session
 
 
 @pytest.fixture
-def persisted_document(database: _Database) -> DocumentModel:
+def persisted_document(database: Session) -> DocumentModel:
     document = DocumentModel(
         id=str(uuid4()),
         tenant_id=str(uuid4()),
@@ -70,8 +68,8 @@ def persisted_document(database: _Database) -> DocumentModel:
         created_from=DocumentCreatedFrom.WEB,
         created_by=str(uuid4()),
     )
-    database.session.add(document)
-    database.session.commit()
+    database.add(document)
+    database.commit()
     return document
 
 
@@ -87,11 +85,11 @@ class TestNotionExtractorAuthentication:
 
     @pytest.fixture
     def mock_document_model(self):
-        """Mock DocumentModel for testing."""
-        mock_doc = Mock()
-        mock_doc.id = "test-doc-id"
-        mock_doc.data_source_info_dict = {"last_edited_time": "2024-01-01T00:00:00.000Z"}
-        return mock_doc
+        """Create a document with persisted-format Notion metadata."""
+        return DocumentModel(
+            id="test-doc-id",
+            data_source_info=json.dumps({"last_edited_time": "2024-01-01T00:00:00.000Z"}),
+        )
 
     def test_init_with_explicit_token(self, mock_document_model):
         """Test NotionExtractor initialization with explicit access token."""
@@ -112,11 +110,12 @@ class TestNotionExtractorAuthentication:
         assert extractor._notion_obj_id == "page-456"
         assert extractor._notion_page_type == "page"
 
-    def test_init_with_credential_id(self, mock_document_model):
+    @patch("services.data_source.provider_service.DatasourceProviderService.get_datasource_credentials")
+    def test_init_with_credential_id(self, get_credentials, mock_document_model, sqlite_session_factory):
         """Test NotionExtractor initialization with credential ID retrieval."""
         # Arrange
-        mock_service = Mock()
-        mock_service.get_stored_notion_access_token.return_value = "credential-token-xyz"
+        providers = build_data_source_credentials(database_client=sqlite_session_factory).providers
+        get_credentials.return_value = {"integration_secret": "credential-token-xyz"}
 
         # Act
         extractor = NotionExtractor(
@@ -126,16 +125,18 @@ class TestNotionExtractorAuthentication:
             tenant_id="tenant-789",
             credential_id="cred-123",
             document_model=mock_document_model,
-            notion_token_loader=lambda: mock_service.get_stored_notion_access_token(
+            notion_token_loader=lambda: providers.get_stored_notion_access_token(
                 tenant_id="tenant-789", credential_id="cred-123"
             ),
         )
 
         # Assert
         assert extractor._notion_access_token == "credential-token-xyz"
-        mock_service.get_stored_notion_access_token.assert_called_once_with(
+        get_credentials.assert_called_once_with(
             tenant_id="tenant-789",
             credential_id="cred-123",
+            provider="notion_datasource",
+            plugin_id="langgenius/notion_datasource",
         )
 
     @patch("services.data_source.provider_service.DatasourceProviderService.get_datasource_credentials")
@@ -747,11 +748,11 @@ class TestNotionExtractorLastEditedTime:
 
     @pytest.fixture
     def mock_document_model(self):
-        """Mock DocumentModel for testing."""
-        mock_doc = Mock()
-        mock_doc.id = "test-doc-id"
-        mock_doc.data_source_info_dict = {"last_edited_time": "2024-01-01T00:00:00.000Z"}
-        return mock_doc
+        """Create a document with persisted-format Notion metadata."""
+        return DocumentModel(
+            id="test-doc-id",
+            data_source_info=json.dumps({"last_edited_time": "2024-01-01T00:00:00.000Z"}),
+        )
 
     @pytest.fixture
     def extractor_page(self, mock_document_model):
@@ -826,7 +827,7 @@ class TestNotionExtractorLastEditedTime:
         self,
         mock_request: Mock,
         extractor_page: NotionExtractor,
-        database: _Database,
+        database: Session,
         persisted_document: DocumentModel,
     ):
         """Test updating document model with last edited time."""
@@ -843,7 +844,7 @@ class TestNotionExtractorLastEditedTime:
         extractor_page.update_last_edited_time(persisted_document)
 
         # Assert
-        database.session.expire(persisted_document)
+        database.expire(persisted_document)
         assert persisted_document.data_source_info_dict["last_edited_time"] == "2024-11-27T18:00:00.000Z"
 
     def test_update_last_edited_time_no_document(self, extractor_page):
@@ -864,15 +865,15 @@ class TestNotionExtractorIntegration:
 
     @pytest.fixture
     def mock_document_model(self):
-        """Mock DocumentModel for testing."""
-        mock_doc = Mock()
-        mock_doc.id = "test-doc-id"
-        mock_doc.data_source_info_dict = {"last_edited_time": "2024-01-01T00:00:00.000Z"}
-        return mock_doc
+        """Create a document with persisted-format Notion metadata."""
+        return DocumentModel(
+            id="test-doc-id",
+            data_source_info=json.dumps({"last_edited_time": "2024-01-01T00:00:00.000Z"}),
+        )
 
     @patch("httpx.request")
     def test_extract_page_complete_workflow(
-        self, mock_request: Mock, database: _Database, persisted_document: DocumentModel
+        self, mock_request: Mock, database: Session, persisted_document: DocumentModel
     ):
         """Test complete page extraction workflow."""
         # Arrange
@@ -933,7 +934,7 @@ class TestNotionExtractorIntegration:
         assert isinstance(documents[0], Document)
         assert "# Test Page" in documents[0].page_content
         assert "Test content" in documents[0].page_content
-        database.session.expire(persisted_document)
+        database.expire(persisted_document)
         assert persisted_document.data_source_info_dict["last_edited_time"] == "2024-11-27T20:00:00.000Z"
 
     @patch("httpx.post")
@@ -942,7 +943,7 @@ class TestNotionExtractorIntegration:
         self,
         mock_request: Mock,
         mock_post: Mock,
-        database: _Database,
+        database: Session,
         persisted_document: DocumentModel,
     ):
         """Test complete database extraction workflow."""
@@ -993,7 +994,7 @@ class TestNotionExtractorIntegration:
         assert isinstance(documents[0], Document)
         assert "Name:Item 1" in documents[0].page_content
         assert "Status:Active" in documents[0].page_content
-        database.session.expire(persisted_document)
+        database.expire(persisted_document)
         assert persisted_document.data_source_info_dict["last_edited_time"] == "2024-11-27T20:00:00.000Z"
 
     def test_extract_invalid_page_type(self):
@@ -1104,13 +1105,17 @@ class TestNotionProviderController:
 
     @pytest.fixture
     def mock_entity(self):
-        """Mock provider entity for testing."""
-        entity = Mock()
-        entity.identity.name = "notion_datasource"
-        entity.identity.icon = "notion-icon.png"
-        entity.credentials_schema = []
-        entity.datasources = []
-        return entity
+        """Create a validated Notion provider entity."""
+        return DatasourceProviderEntityWithPlugin(
+            identity=DatasourceProviderIdentity(
+                author="langgenius",
+                name="notion_datasource",
+                icon="notion-icon.png",
+                description=I18nObject(en_US="Notion documents"),
+                label=I18nObject(en_US="Notion"),
+            ),
+            provider_type=DatasourceProviderType.ONLINE_DOCUMENT,
+        )
 
     def test_provider_controller_initialization(self, mock_entity):
         """Test OnlineDocumentDatasourcePluginProviderController initialization."""
@@ -1131,8 +1136,15 @@ class TestNotionProviderController:
     def test_provider_controller_get_datasource(self, mock_entity):
         """Test retrieving datasource from controller."""
         # Arrange
-        mock_datasource_entity = Mock()
-        mock_datasource_entity.identity.name = "notion_datasource"
+        mock_datasource_entity = DatasourceEntity(
+            identity=DatasourceIdentity(
+                author="langgenius",
+                name="notion_datasource",
+                label=I18nObject(en_US="Notion"),
+                provider="notion_datasource",
+            ),
+            description=I18nObject(en_US="Notion documents"),
+        )
         mock_entity.datasources = [mock_datasource_entity]
 
         controller = OnlineDocumentDatasourcePluginProviderController(
