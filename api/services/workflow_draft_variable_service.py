@@ -7,7 +7,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any, ClassVar, NotRequired, TypedDict, cast, override
 
-from sqlalchemy import Engine, delete, orm, select
+from sqlalchemy import ColumnElement, Engine, delete, orm, select
 from sqlalchemy.dialects.mysql import insert as mysql_insert
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session, sessionmaker
@@ -374,7 +374,7 @@ class WorkflowDraftVariableService:
         conv_var = conv_var_by_name.get(variable.name)
 
         if conv_var is None:
-            self._session.delete(instance=variable)
+            self.delete_variable(variable)
             self._session.flush()
             logger.warning(
                 "Conversation variable not found for draft variable, id=%s, name=%s", variable.id, variable.name
@@ -395,7 +395,7 @@ class WorkflowDraftVariableService:
             return variable
         # No execution record for this variable, delete the variable instead.
         if variable.node_execution_id is None:
-            self._session.delete(instance=variable)
+            self.delete_variable(variable)
             self._session.flush()
             logger.warning("draft variable has no node_execution_id, id=%s, name=%s", variable.id, variable.name)
             return None
@@ -408,7 +408,7 @@ class WorkflowDraftVariableService:
                 variable.name,
                 variable.node_execution_id,
             )
-            self._session.delete(instance=variable)
+            self.delete_variable(variable)
             self._session.flush()
             return None
 
@@ -437,7 +437,7 @@ class WorkflowDraftVariableService:
         # the value of the output may be `None`.
         if output_value is absent:
             # If variable not found in execution data, delete the variable
-            self._session.delete(instance=variable)
+            self.delete_variable(variable)
             self._session.flush()
             return None
         value_seg = WorkflowDraftVariable.build_segment_with_type(variable.value_type, output_value)
@@ -457,69 +457,43 @@ class WorkflowDraftVariableService:
             return self._reset_node_var_or_sys_var(workflow, variable)
 
     def delete_variable(self, variable: WorkflowDraftVariable):
-        if not variable.is_truncated():
-            self._session.delete(variable)
-            return
-
-        variable_query = (
-            select(WorkflowDraftVariable)
-            .options(
-                orm.selectinload(WorkflowDraftVariable.variable_file).selectinload(
-                    WorkflowDraftVariableFile.upload_file
-                ),
+        if variable.file_id is not None:
+            self.delete_workflow_draft_variable_file(
+                [DraftVarFileDeletion(draft_var_id=variable.id, draft_var_file_id=variable.file_id)]
             )
-            .where(WorkflowDraftVariable.id == variable.id)
-        )
-        variable_reloaded = self._session.execute(variable_query).scalars().first()
-        if variable_reloaded is None:
-            logger.warning("Associated WorkflowDraftVariable not found, draft_var_id=%s", variable.id)
-            self._session.delete(variable)
-            return
-        variable_file = variable_reloaded.variable_file
-        if variable_file is None:
-            logger.warning(
-                "Associated WorkflowDraftVariableFile not found, draft_var_id=%s, file_id=%s",
-                variable_reloaded.id,
-                variable_reloaded.file_id,
-            )
-            self._session.delete(variable)
-            return
-
-        upload_file = variable_file.upload_file
-        if upload_file is None:
-            logger.warning(
-                "Associated UploadFile not found, draft_var_id=%s, file_id=%s, upload_file_id=%s",
-                variable_reloaded.id,
-                variable_reloaded.file_id,
-                variable_file.upload_file_id,
-            )
-            self._session.delete(variable)
-            self._session.delete(variable_file)
-            return
-
-        storage.delete(upload_file.key)
-        self._session.delete(upload_file)
-        self._session.delete(upload_file)
         self._session.delete(variable)
 
     def delete_user_workflow_variables(self, app_id: str, user_id: str):
-        self._session.execute(
-            delete(WorkflowDraftVariable)
-            .where(
-                WorkflowDraftVariable.app_id == app_id,
-                WorkflowDraftVariable.user_id == user_id,
-            )
-            .execution_options(synchronize_session=False)
+        self._delete_variables(
+            WorkflowDraftVariable.app_id == app_id,
+            WorkflowDraftVariable.user_id == user_id,
         )
 
     def delete_app_workflow_variables(self, app_id: str):
+        self._delete_variables(WorkflowDraftVariable.app_id == app_id)
+
+    def _delete_variables(self, *criteria: ColumnElement[bool]) -> None:
+        file_rows = self._session.execute(
+            select(WorkflowDraftVariable.id, WorkflowDraftVariable.file_id).where(
+                *criteria,
+                WorkflowDraftVariable.file_id.is_not(None),
+            )
+        ).all()
+        self.delete_workflow_draft_variable_file(
+            [
+                DraftVarFileDeletion(draft_var_id=row.id, draft_var_file_id=row.file_id)
+                for row in file_rows
+                if row.file_id is not None
+            ]
+        )
         self._session.execute(
-            delete(WorkflowDraftVariable)
-            .where(WorkflowDraftVariable.app_id == app_id)
-            .execution_options(synchronize_session=False)
+            delete(WorkflowDraftVariable).where(*criteria).execution_options(synchronize_session=False)
         )
 
     def delete_workflow_draft_variable_file(self, deletions: list[DraftVarFileDeletion]):
+        if not deletions:
+            return
+
         variable_files_query = (
             select(WorkflowDraftVariableFile)
             .options(orm.selectinload(WorkflowDraftVariableFile.upload_file))
@@ -555,14 +529,10 @@ class WorkflowDraftVariableService:
         return self._delete_node_variables(app_id, node_id, user_id=user_id)
 
     def _delete_node_variables(self, app_id: str, node_id: str, user_id: str):
-        self._session.execute(
-            delete(WorkflowDraftVariable)
-            .where(
-                WorkflowDraftVariable.app_id == app_id,
-                WorkflowDraftVariable.node_id == node_id,
-                WorkflowDraftVariable.user_id == user_id,
-            )
-            .execution_options(synchronize_session=False)
+        self._delete_variables(
+            WorkflowDraftVariable.app_id == app_id,
+            WorkflowDraftVariable.node_id == node_id,
+            WorkflowDraftVariable.user_id == user_id,
         )
 
     def _get_conversation_id_from_draft_variable(self, app_id: str, user_id: str) -> str | None:
