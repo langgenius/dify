@@ -131,8 +131,9 @@ def test_missing_template_preserves_method_specific_error(
     else:
         templates.get_yaml.side_effect = error
         args = (CONTEXT, "missing")
+    methods = {"patch": api.patch, "delete": api.delete, "post": api.post}
     with app.test_request_context("/"), pytest.raises(NotFound if method == "post" else ValueError):
-        unwrap(getattr(api, method))(api, *args)
+        unwrap(methods[method])(api, *args)
 
 
 def test_delete_and_yaml_export_contracts(app: Flask, templates: MagicMock) -> None:

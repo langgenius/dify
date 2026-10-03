@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from controllers.common.schema import JsonResponseWithStatus
 from controllers.console.datasets.rag_pipeline.rag_pipeline import CustomizedPipelineTemplateApi
+from machinery.context import RequestContext
 from models.dataset import PipelineCustomizedTemplate
 
 
@@ -35,8 +36,9 @@ def test_export_customized_pipeline_template_from_database(
     db_session_with_containers.commit()
     db_session_with_containers.expire_all()
 
+    context = RequestContext("test-request", None, template.created_by, template.tenant_id)
     with flask_app_with_containers.test_request_context("/"):
-        response, status = method(api, db_session_with_containers, template.tenant_id, template.id)
+        response, status = method(api, context, template.id)
 
     assert status == 200
     assert response == {"data": "yaml-data"}
