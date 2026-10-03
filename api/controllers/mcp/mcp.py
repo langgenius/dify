@@ -10,12 +10,14 @@ from controllers.common.schema import register_response_schema_models, register_
 from controllers.mcp import mcp_ns
 from core.mcp import types as mcp_types
 from core.mcp.server.streamable_http import handle_mcp_request, negotiate_protocol_version
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from graphon.variables.input_entities import VariableEntity, VariableEntityType
 from libs import helper
 from models.enums import EndUserType
 from models.model import App, AppMCPServer, AppMode, EndUser
 from services.app.mcp_server_service import AppMCPServerStatus
+from services.app_definition_query_service import AppDefinitionNotPublishedError, AppDefinitionUnavailableError
 
 
 class MCPRequestError(Exception):
@@ -186,7 +188,13 @@ class MCPAppApi(Resource):
     def _get_user_input_form(self, app: App, session: Session) -> list[VariableEntity]:
         """Get and convert user input form"""
         # Get raw user input form based on app mode
-        if app.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
+        if app.mode == AppMode.AGENT:
+            try:
+                parameters = application_services().app_definitions.get_public_parameters(app.id)
+            except (AppDefinitionNotPublishedError, AppDefinitionUnavailableError):
+                raise MCPRequestError(mcp_types.INVALID_REQUEST, "App is unavailable") from None
+            raw_user_input_form = parameters["user_input_form"]
+        elif app.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
             workflow = app.workflow_with_session(session=session)
             if not workflow:
                 raise MCPRequestError(mcp_types.INVALID_REQUEST, "App is unavailable")
