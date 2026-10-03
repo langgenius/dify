@@ -232,12 +232,33 @@ class WordExtractor(BaseExtractor):
 
     def _parse_cell(self, cell, image_map):
         cell_content = []
+        unique_image_content = set()
         for paragraph in cell.paragraphs:
             parsed_paragraph = self._parse_cell_paragraph(paragraph, image_map)
             if parsed_paragraph:
-                cell_content.append(parsed_paragraph)
-        unique_content = list(dict.fromkeys(cell_content))
-        return " ".join(unique_content)
+                has_image = self._cell_paragraph_has_extracted_image(paragraph, image_map)
+                if not has_image or parsed_paragraph not in unique_image_content:
+                    cell_content.append(parsed_paragraph)
+                if has_image:
+                    unique_image_content.add(parsed_paragraph)
+        return " ".join(cell_content)
+
+    @staticmethod
+    def _cell_paragraph_has_extracted_image(paragraph, image_map):
+        for child in paragraph._element:
+            if child.tag != qn("w:r"):
+                continue
+            for blip in child.xpath(".//a:blip"):
+                image_id = blip.get("{http://schemas.openxmlformats.org/officeDocument/2006/relationships}embed")
+                if not image_id:
+                    continue
+                rel = paragraph.part.rels.get(image_id)
+                if rel is None:
+                    continue
+                image_key = image_id if rel.is_external else rel.target_part
+                if image_key in image_map:
+                    return True
+        return False
 
     def _parse_cell_paragraph(self, paragraph, image_map):
         paragraph_content: list[str] = []
