@@ -13,6 +13,7 @@ from repositories.knowledge.dataset_api_key_repository import DatasetApiKeyRepos
 from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepository
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
 from repositories.knowledge.metadata_repository import SQLAlchemyMetadataRepository
+from repositories.knowledge.pipeline_template_repository import PipelineTemplateRepository
 from repositories.knowledge.segment_repository import SQLAlchemySegmentRepository
 from repositories.knowledge.upload_file_repository import SQLAlchemyKnowledgeUploadRepository
 from services.api_token_service import ApiTokenCache
@@ -42,6 +43,8 @@ from services.knowledge.indexing.adapters.sources import (
 )
 from services.knowledge.indexing.estimate import IndexingEstimateApplicationService
 from services.knowledge.metadata.application import MetadataService
+from services.knowledge.pipeline_templates.adapters import PipelineTemplateCatalogAdapter, PipelineTemplateDslExporter
+from services.knowledge.pipeline_templates.application import PipelineTemplateService
 from services.knowledge.segments.adapters import (
     CelerySegmentBatchImportDispatcher,
     ModelManagerSegmentGuard,
@@ -68,6 +71,7 @@ class KnowledgeServices:
     indexing_estimates: IndexingEstimateApplicationService
     segments: DatasetSegmentApplicationService
     pipeline_generator: PipelineGenerator
+    pipeline_templates: PipelineTemplateService
 
 
 def build_dataset_api_key_service(
@@ -121,6 +125,14 @@ def build_knowledge_services(
         disable_task=disable_segments_from_index_task.delay,
     )
     return KnowledgeServices(
+        pipeline_templates=PipelineTemplateService(
+            catalog=PipelineTemplateCatalogAdapter(
+                database_client, built_in_mode=dify_config.HOSTED_FETCH_PIPELINE_TEMPLATES_MODE
+            ),
+            store=PipelineTemplateRepository(database_client),
+            exporter=PipelineTemplateDslExporter(database_client),
+            dataset_access=dataset_access,
+        ),
         metadata=MetadataService(
             store=SQLAlchemyMetadataRepository(session_factory=database_client), dataset_access=dataset_access
         ),

@@ -208,14 +208,6 @@ class TestRagPipelineService:
         """Test RagPipelineService.run_datasource_workflow_node exists."""
         assert hasattr(RagPipelineService, "run_datasource_workflow_node")
 
-    def test_get_pipeline_templates_method_exists(self):
-        """Test RagPipelineService.get_pipeline_templates exists."""
-        assert hasattr(RagPipelineService, "get_pipeline_templates")
-
-    def test_get_pipeline_template_detail_method_exists(self):
-        """Test RagPipelineService.get_pipeline_template_detail exists."""
-        assert hasattr(RagPipelineService, "get_pipeline_template_detail")
-
 
 class TestInvokeFrom:
     """Test InvokeFrom enum for pipeline invocation."""
