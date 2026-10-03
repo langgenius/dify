@@ -18,7 +18,7 @@ const SummaryText = ({ value, onChange, disabled }: SummaryTextProps) => {
       </div>
       <Textarea
         aria-labelledby={labelId}
-        className="field-sizing-content min-h-6 w-full resize-none rounded-none border-none bg-transparent p-0 body-sm-regular leading-6 text-text-secondary hover:border-none hover:bg-transparent focus:border-none focus:bg-transparent focus:shadow-none focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset disabled:bg-transparent disabled:text-text-secondary disabled:hover:bg-transparent"
+        className="field-sizing-content max-h-36 min-h-6 w-full resize-none overflow-y-auto rounded-none border-none bg-transparent p-0 body-sm-regular leading-6 text-text-secondary hover:border-none hover:bg-transparent focus:border-none focus:bg-transparent focus:shadow-none focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset disabled:bg-transparent disabled:text-text-secondary disabled:hover:bg-transparent"
         placeholder={t(($) => $['segment.summaryPlaceholder'], { ns: 'datasetDocuments' })}
         rows={1}
         value={value ?? ''}
