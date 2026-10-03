@@ -16,16 +16,18 @@ from core.plugin.entities.plugin import PluginDependency, PluginInstallation
 from core.plugin.impl.plugin import PluginInstaller
 from enums import CloudPlan, DeploymentEdition
 from extensions.application_services.app import AppServices
-from machinery.context import RequestContext
+from machinery.context import AppRequestContext, RequestContext
 from models.account import Account, TenantAccountJoin, TenantAccountRole
 from models.model import App, AppMode, AppModelConfig, IconType
 from models.workflow import Workflow, WorkflowType
+from repositories.app.export_repository import AppExportRepository
 from services.agent.package_resource_exporter import AgentPackageResourceExporter
 from services.agent.roster_package_exporter import RosterAgentPackageExporter
 from services.agent.roster_package_importer import RosterAgentPackageImporter
 from services.agent.roster_service import AgentRosterService
 from services.app.console_gateway import AppTransferGateway, EnterpriseConsoleAppAccess
 from services.app.console_service import ConsoleAppNotFoundError, InvalidAppAccessModesError
+from services.app.export_service import AppExportService
 from services.app_dsl_service import AppDslService
 from services.app_package_service import AppPackageService, PreparedAppPackage
 from services.enterprise.enterprise_service import EnterpriseService, WebAppSettings
@@ -37,7 +39,6 @@ from services.entities.dsl_entities import AppDslExportData, AppImportPackage, A
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.recommended_app_package_service import RecommendedAppPackageService
 from services.system_feature_service import SystemFeatureService
-from services.workflow_service import WorkflowService
 from tests.unit_tests.model_factories import make_account, make_tenant, make_upload_file
 
 
@@ -263,7 +264,10 @@ def test_access_mode_batch_validates_completeness(
 @pytest.mark.parametrize(
     "mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT, AppMode.CHAT, AppMode.COMPLETION, AppMode.AGENT_CHAT]
 )
-def test_dsl_export_uses_owned_short_session_and_preserves_selectors(sqlite_engine: Engine, mode: AppMode) -> None:
+def test_dsl_export_uses_owned_short_session_and_preserves_selectors(
+    sqlite_engine: Engine,
+    mode: AppMode,
+) -> None:
     factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False, close_resets_only=False)
     app_id, workspace = str(uuid4()), str(uuid4())
     with factory.begin() as session:
@@ -283,6 +287,8 @@ def test_dsl_export_uses_owned_short_session_and_preserves_selectors(sqlite_engi
         @staticmethod
         def serialize_export_data(prepared: AppDslExportData) -> str:
             assert prepared.tenant_id == workspace
+            with pytest.raises(InvalidRequestError):
+                opened[-1].execute(select(App))
             return f"kind: app\napp: {{mode: {mode}}}"
 
     gateway = AppTransferGateway(
@@ -296,6 +302,7 @@ def test_dsl_export_uses_owned_short_session_and_preserves_selectors(sqlite_engi
     context = RequestContext("request", None, "actor", workspace)
     options = AppExportOptions(include_secret=True, workflow_id="workflow")
     dsl = gateway.export_dsl(context, app_id, options)
+    assert dsl == f"kind: app\napp: {{mode: {mode}}}"
     exported_app = calls[0]["app_model"]
     assert isinstance(exported_app, App)
     assert exported_app.id == app_id
@@ -313,8 +320,9 @@ def test_dsl_export_uses_owned_short_session_and_preserves_selectors(sqlite_engi
     [AppMode.CHAT, AppMode.COMPLETION, AppMode.AGENT_CHAT, AppMode.WORKFLOW, AppMode.ADVANCED_CHAT, AppMode.AGENT],
 )
 @pytest.mark.parametrize("remote_fails", [False, True])
+@pytest.mark.parametrize("surface", ["console", "openapi", "inner"])
 def test_real_dsl_export_releases_connection_before_plugin_request(
-    sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch, mode: AppMode, remote_fails: bool
+    sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch, mode: AppMode, remote_fails: bool, surface: str
 ) -> None:
     factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False, close_resets_only=False)
     app_id, workspace, actor = str(uuid4()), str(uuid4()), str(uuid4())
@@ -344,8 +352,6 @@ def test_real_dsl_export_releases_connection_before_plugin_request(
             session.flush()
             app.app_model_config_id = config.id
 
-    workflow_service = WorkflowService(session_maker=factory)
-    monkeypatch.setattr("services.app_dsl_service.WorkflowService", lambda: workflow_service)
     checked_out: set[object] = set()
     calls: list[list[str]] = []
 
@@ -372,15 +378,28 @@ def test_real_dsl_export_releases_connection_before_plugin_request(
         agent_importer=RosterAgentPackageImporter(),
         recommended_packages=RecommendedAppPackageService(sources=Mock(), exporter=Mock()),
     )
+    exports = AppExportService(
+        apps=AppExportRepository(session_factory=factory), serialize=AppDslService.serialize_export_data
+    )
+
+    def export() -> str:
+        if surface == "console":
+            return gateway.export_dsl(RequestContext("request", None, actor, workspace), app_id, AppExportOptions())
+        if surface == "openapi":
+            return exports.export_app(
+                AppRequestContext(tenant_id=workspace, app_id=app_id),
+                AppExportOptions(),
+            )
+        return exports.export_for_inner(app_id, AppExportOptions())
+
     event.listen(sqlite_engine, "checkout", checkout)
     event.listen(sqlite_engine, "checkin", checkin)
     try:
-        context = RequestContext("request", None, actor, workspace)
         if remote_fails:
             with pytest.raises(RuntimeError, match="Plugin daemon unavailable"):
-                gateway.export_dsl(context, app_id, AppExportOptions())
+                export()
         else:
-            exported = yaml.safe_load(gateway.export_dsl(context, app_id, AppExportOptions()))
+            exported = yaml.safe_load(export())
             assert exported["app"]["mode"] == mode
             assert exported["dependencies"] == []
         assert len(calls) == 1

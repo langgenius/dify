@@ -2,17 +2,13 @@
 
 from __future__ import annotations
 
-import json
-
 import pytest
-from sqlalchemy.orm import Session
 
-from controllers.openapi._input_schema import _form_to_jsonschema
-from models.model import App, AppMode, AppModelConfig
-from models.workflow import Workflow, WorkflowType
+from controllers.openapi._input_schema import _form_to_jsonschema, build_input_schema
+from models.model import AppMode
 
 
-def _wrap(component: dict) -> list[dict]:
+def _wrap(component: dict[str, object]) -> list[dict[str, object]]:
     """user_input_form rows are single-key dicts: {"text-input": {...}}."""
     return [component]
 
@@ -92,120 +88,26 @@ def test_max_length_omitted_when_zero() -> None:
     assert "maxLength" not in props["x"]
 
 
-from controllers.openapi._input_schema import EMPTY_INPUT_SCHEMA, build_input_schema
-from controllers.service_api.app.error import AppUnavailableError
-
-
-def _persist_app(
-    session: Session,
-    mode: AppMode,
-    *,
-    form: list[dict] | None = None,
-    has_config: bool = True,
-) -> App:
-    app = App(
-        id="00000000-0000-0000-0000-000000000001",
-        tenant_id="00000000-0000-0000-0000-000000000002",
-        name="Input schema app",
-        mode=mode,
-        enable_site=False,
-        enable_api=True,
-    )
-    if mode in (AppMode.WORKFLOW, AppMode.ADVANCED_CHAT):
-        if has_config:
-            variables = [body | {"type": row_type} for row in form or [] for row_type, body in row.items()]
-            workflow = Workflow(
-                id="00000000-0000-0000-0000-000000000004",
-                tenant_id=app.tenant_id,
-                app_id=app.id,
-                type=WorkflowType.CHAT,
-                version=Workflow.VERSION_DRAFT,
-                graph=json.dumps({"nodes": [{"id": "start", "data": {"type": "start", "variables": variables}}]}),
-                features="{}",
-                created_by="00000000-0000-0000-0000-000000000003",
-            )
-            app.workflow_id = workflow.id
-            session.add(workflow)
-    else:
-        if has_config:
-            app_model_config = AppModelConfig(app_id=app.id, user_input_form=json.dumps(form or []))
-            app.app_model_config_id = app_model_config.id
-            session.add(app_model_config)
-    session.add(app)
-    session.flush()
-    return app
-
-
-def test_chat_mode_includes_query(sqlite_session: Session) -> None:
-    app = _persist_app(
-        sqlite_session,
-        AppMode.CHAT,
-        form=[{"text-input": {"variable": "x", "label": "X", "required": True}}],
-    )
-    session = sqlite_session
-    schema = build_input_schema(app, session=session)
-    assert schema["$schema"] == "https://json-schema.org/draft/2020-12/schema"
-    assert "query" in schema["properties"]
-    assert schema["properties"]["query"]["type"] == "string"
-    assert schema["properties"]["query"]["minLength"] == 1
-    assert "query" in schema["required"]
-    assert "inputs" in schema["required"]
-    assert schema["properties"]["inputs"]["additionalProperties"] is False
-    assert session.get(AppModelConfig, app.app_model_config_id) is not None
-
-
-def test_agent_chat_mode_includes_query(sqlite_session: Session) -> None:
-    app = _persist_app(sqlite_session, AppMode.AGENT_CHAT, form=[])
-    schema = build_input_schema(app, session=sqlite_session)
-    assert "query" in schema["properties"]
-
-
-def test_advanced_chat_mode_includes_query(sqlite_session: Session) -> None:
-    app = _persist_app(sqlite_session, AppMode.ADVANCED_CHAT, form=[])
-    schema = build_input_schema(app, session=sqlite_session)
-    assert "query" in schema["properties"]
-
-
-def test_workflow_mode_omits_query(sqlite_session: Session) -> None:
-    app = _persist_app(sqlite_session, AppMode.WORKFLOW, form=[])
-    schema = build_input_schema(app, session=sqlite_session)
-    assert "query" not in schema["properties"]
-    assert schema["required"] == ["inputs"]
-
-
-def test_completion_mode_omits_query(sqlite_session: Session) -> None:
-    app = _persist_app(sqlite_session, AppMode.COMPLETION, form=[])
-    schema = build_input_schema(app, session=sqlite_session)
-    assert "query" not in schema["properties"]
-    assert schema["required"] == ["inputs"]
-
-
-def test_inputs_required_driven_by_form(sqlite_session: Session) -> None:
-    app = _persist_app(
-        sqlite_session,
-        AppMode.CHAT,
-        form=[
+@pytest.mark.parametrize(
+    ("mode", "has_query"),
+    [
+        (AppMode.CHAT, True),
+        (AppMode.AGENT_CHAT, True),
+        (AppMode.ADVANCED_CHAT, True),
+        (AppMode.WORKFLOW, False),
+        (AppMode.COMPLETION, False),
+    ],
+)
+def test_input_schema_depends_only_on_mode_and_materialized_form(mode: AppMode, has_query: bool) -> None:
+    schema = build_input_schema(
+        mode,
+        [
             {"text-input": {"variable": "industry", "label": "Industry", "required": True}},
             {"text-input": {"variable": "context", "label": "Context", "required": False}},
         ],
     )
-    schema = build_input_schema(app, session=sqlite_session)
+    assert schema["$schema"] == "https://json-schema.org/draft/2020-12/schema"
+    assert ("query" in schema["properties"]) == has_query
+    assert schema["required"] == (["query", "inputs"] if has_query else ["inputs"])
     assert schema["properties"]["inputs"]["required"] == ["industry"]
-
-
-def test_misconfigured_chat_raises_app_unavailable(sqlite_session: Session) -> None:
-    app = _persist_app(sqlite_session, AppMode.CHAT, has_config=False)
-    with pytest.raises(AppUnavailableError):
-        build_input_schema(app, session=sqlite_session)
-
-
-def test_misconfigured_workflow_raises_app_unavailable(sqlite_session: Session) -> None:
-    app = _persist_app(sqlite_session, AppMode.WORKFLOW, has_config=False)
-    with pytest.raises(AppUnavailableError):
-        build_input_schema(app, session=sqlite_session)
-
-
-def test_empty_input_schema_sentinel_shape() -> None:
-    assert EMPTY_INPUT_SCHEMA["type"] == "object"
-    assert EMPTY_INPUT_SCHEMA["properties"] == {}
-    assert EMPTY_INPUT_SCHEMA["required"] == []
+    assert schema["properties"]["inputs"]["additionalProperties"] is False

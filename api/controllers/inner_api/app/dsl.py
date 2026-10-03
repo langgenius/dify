@@ -12,18 +12,19 @@ from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, ValidationError, field_validator
 
+from controllers.common.fields import SimpleMessageResponse
 from controllers.common.schema import query_params_from_model, register_schema_model
-from controllers.console.wraps import model_validate, setup_required
+from controllers.console.wraps import setup_required, validate_request
 from controllers.inner_api import inner_api_ns
 from controllers.inner_api.wraps import enterprise_inner_api_only
 from core.logging.context import get_request_id, get_trace_id
 from extensions.ext_application_services import application_services
-from extensions.ext_database import db
+from fields.app_export_fields import AppExportResponse
+from fields.base import ResponseModel
 from libs.helper import dump_response
-from models import App
-from services.app_dsl_service import AppDslService
+from services.entities.app_entities import AppExportOptions
 from services.entities.dsl_entities import AppImportParams, Import, ImportMode, ImportStatus
-from services.errors.app import IsDraftWorkflowError, WorkflowNotFoundError
+from services.errors.app import AppDiscoveryNotFoundError, IsDraftWorkflowError, WorkflowNotFoundError
 
 
 class InnerAppDSLImportPayload(BaseModel):
@@ -45,6 +46,12 @@ class EnterpriseAppDSLExportQuery(BaseModel):
         return bool(value)
 
 
+class EnterpriseAppDSLWorkflowErrorResponse(ResponseModel):
+    code: str
+    message: str
+    status: int
+
+
 register_schema_model(inner_api_ns, InnerAppDSLImportPayload)
 
 
@@ -62,10 +69,9 @@ class EnterpriseAppDSLImport(Resource):
             HTTPStatus.NOT_FOUND: "Creator account not found or inactive",
         }
     )
-    @model_validate(InnerAppDSLImportPayload)
-    def post(self, args: InnerAppDSLImportPayload, workspace_id: str):
+    def post(self, workspace_id: str):
         """Import a DSL into a workspace on behalf of a specified creator."""
-
+        args = validate_request(InnerAppDSLImportPayload)
         result = application_services().apps.imports.import_as_creator(
             workspace_id=workspace_id,
             creator_email=args.creator_email,
@@ -79,7 +85,9 @@ class EnterpriseAppDSLImport(Resource):
             trace_id=get_trace_id(),
         )
         if result is None:
-            return {"message": f"account '{args.creator_email}' not found or inactive"}, HTTPStatus.NOT_FOUND
+            return dump_response(
+                SimpleMessageResponse, {"message": f"account '{args.creator_email}' not found or inactive"}
+            ), HTTPStatus.NOT_FOUND
 
         if result.status == ImportStatus.FAILED:
             return dump_response(Import, result), HTTPStatus.BAD_REQUEST
@@ -106,35 +114,36 @@ class EnterpriseAppDSLExport(Resource):
         try:
             query = EnterpriseAppDSLExportQuery.model_validate(request.args.to_dict(flat=True))
         except ValidationError:
-            return {
-                "code": "invalid_workflow_id",
-                "message": "workflow_id must be a valid UUID",
-                "status": 400,
-            }, 400
+            return dump_response(
+                EnterpriseAppDSLWorkflowErrorResponse,
+                {
+                    "code": "invalid_workflow_id",
+                    "message": "workflow_id must be a valid UUID",
+                    "status": HTTPStatus.BAD_REQUEST,
+                },
+            ), HTTPStatus.BAD_REQUEST
 
         workflow_id = str(query.workflow_id) if query.workflow_id else None
 
-        app_model = db.session.get(App, app_id)
-        if not app_model:
-            return {"message": "app not found"}, 404
-
-        if not workflow_id:
-            data = AppDslService.export_dsl(
-                app_model=app_model,
-                session=db.session(),
-                include_secret=query.include_secret,
+        try:
+            data = application_services().apps.exports.export_for_inner(
+                app_id, AppExportOptions(include_secret=query.include_secret, workflow_id=workflow_id)
             )
-        else:
-            try:
-                data = AppDslService.export_dsl(
-                    app_model=app_model,
-                    session=db.session(),
-                    include_secret=query.include_secret,
-                    workflow_id=workflow_id,
-                )
-            except WorkflowNotFoundError as exc:
-                return {"code": "workflow_version_not_found", "message": str(exc), "status": 404}, 404
-            except IsDraftWorkflowError as exc:
-                return {"code": "workflow_version_not_published", "message": str(exc), "status": 400}, 400
+        except AppDiscoveryNotFoundError:
+            return dump_response(SimpleMessageResponse, {"message": "app not found"}), HTTPStatus.NOT_FOUND
+        except WorkflowNotFoundError as exc:
+            if not workflow_id:
+                raise
+            return dump_response(
+                EnterpriseAppDSLWorkflowErrorResponse,
+                {"code": "workflow_version_not_found", "message": str(exc), "status": HTTPStatus.NOT_FOUND},
+            ), HTTPStatus.NOT_FOUND
+        except IsDraftWorkflowError as exc:
+            if not workflow_id:
+                raise
+            return dump_response(
+                EnterpriseAppDSLWorkflowErrorResponse,
+                {"code": "workflow_version_not_published", "message": str(exc), "status": HTTPStatus.BAD_REQUEST},
+            ), HTTPStatus.BAD_REQUEST
 
-        return {"data": data}, 200
+        return dump_response(AppExportResponse, {"data": data}), HTTPStatus.OK

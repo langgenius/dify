@@ -4,6 +4,14 @@ from dataclasses import dataclass
 from typing import NamedTuple
 
 
+@dataclass(frozen=True, slots=True, kw_only=True)
+class AppRequestContext:
+    """Tenant and app scope established by API admission."""
+
+    tenant_id: str
+    app_id: str
+
+
 class RequestContext(NamedTuple):
     """Framework-neutral request metadata and admitted identity.
 
@@ -15,14 +23,6 @@ class RequestContext(NamedTuple):
     account_id: str
     active_workspace_id: str
     remote_ip: str | None = None
-
-
-@dataclass(frozen=True, slots=True, kw_only=True)
-class ServiceApiRequestContext:
-    """Stable app scope admitted for a Service API request."""
-
-    tenant_id: str
-    app_id: str
 
 
 class AccountRequestContext(NamedTuple):

@@ -2,13 +2,38 @@
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Literal, NotRequired, TypedDict
+from enum import StrEnum
+from typing import Any, Final, Literal, NotRequired, TypedDict
 from uuid import UUID
 
 from pydantic import BaseModel, Field
 
 from models.model import AppMode, IconType
 from services.entities.dsl_entities import DslImportWarning
+
+
+class SupportedAppType(StrEnum):
+    """App types the ``app`` usage face (``get app``) lists and filters.
+
+    A curated subset of :class:`AppMode`: the real, user-facing app categories.
+    Excludes runtime-only mode tags that are not standalone apps
+    (``rag-pipeline`` is a knowledge ``Pipeline``; ``channel`` is unused) and the
+    roster-owned ``agent`` type (surfaced through the roster, not this list).
+
+    Members reference ``AppMode.*.value`` so the subset relationship is
+    type-checked: dropping a member from ``AppMode`` breaks this at import.
+    This is the single source for the listable set — params, filters, and the
+    generated CLI whitelist all derive from it.
+    """
+
+    COMPLETION = AppMode.COMPLETION.value
+    CHAT = AppMode.CHAT.value
+    ADVANCED_CHAT = AppMode.ADVANCED_CHAT.value
+    WORKFLOW = AppMode.WORKFLOW.value
+    AGENT_CHAT = AppMode.AGENT_CHAT.value
+
+
+SUPPORTED_APP_TYPES: Final[tuple[AppMode, ...]] = tuple(AppMode(t.value) for t in SupportedAppType)
 
 AppListSortBy = Literal["last_modified", "recently_created", "earliest_created"]
 RecentAppMode = Literal[
@@ -66,6 +91,13 @@ class AppSummary:
     status: str
     updated_at: datetime | None
     maintainer: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class PermittedAppsPage:
+    app_ids: list[str]
+    total: int
+    has_more: bool
 
 
 @dataclass(frozen=True)

@@ -32,7 +32,7 @@ from controllers.openapi._multipart import body_from_request
 from controllers.openapi._upload import file_fields
 from controllers.openapi.auth.requirements import Requirement
 from controllers.openapi.auth.router import subject_router
-from controllers.openapi.auth.spec import CatalogMeta, EndpointSpec, Example, Kind
+from controllers.openapi.auth.spec import AdmissionContext, CatalogMeta, EndpointSpec, Example, Kind
 from enums import DeploymentEdition
 
 __all__ = ["Example", "Kind", "accepts", "endpoint", "op_of", "paginated", "returns"]
@@ -154,7 +154,7 @@ def endpoint(
     body: type[BaseModel] | None = None,
     returns: ReturnSpec | Sequence[ReturnSpec] | None = None,
     edition: frozenset[DeploymentEdition] | None = None,
-    account_context: bool = False,
+    context: AdmissionContext | None = "orm",
     internal: bool = False,
     deprecated: bool = False,
     examples: Sequence[Example] = (),
@@ -164,10 +164,16 @@ def endpoint(
     ``view.__handler__`` (the bare handler) and ``view.__spec__`` (the exact
     `EndpointSpec` instance the router runs).
 
-    ``account_context=True`` supplies a framework-neutral ``RequestContext`` after
-    account/workspace admission and releases the authentication session before
-    the handler. It is for account endpoints whose application services own
-    persistence; other endpoints retain the lazy ORM-backed ``Context``.
+    ``context`` selects the handler's ``ctx`` argument and admission Session lifetime:
+
+    - ``"orm"`` (default): the authentication Context with ORM objects and an open Session.
+    - ``"workspace"``: a RequestContext with account and workspace identity.
+    - ``"app"``: an AppRequestContext with tenant and app identity.
+    - ``None``: no ``ctx`` argument; admission requirements still run.
+
+    For ``"workspace"``, ``"app"`` and ``None``, the pipeline commits and closes
+    the admission Session after preparing the arguments and before calling the
+    handler. Services called by these handlers own their persistence Sessions.
 
     ``returns`` takes one ``(code, model, description)`` or several; a route
     that stacked N ``@returns`` today declares them here in the same top-to-bottom
@@ -187,7 +193,7 @@ def endpoint(
     spec = EndpointSpec(
         requirements=requirements,
         edition=edition,
-        account_context=account_context,
+        context=context,
         catalog=CatalogMeta(
             op=op,
             kind=kind,
@@ -202,7 +208,7 @@ def endpoint(
     return_specs = _normalize_returns(returns)
 
     def decorator(view: Callable[..., Any]) -> Callable[..., Any]:
-        if "ctx" not in inspect.signature(view).parameters:
+        if context is not None and "ctx" not in inspect.signature(view).parameters:
             raise TypeError(f"{view.__qualname__} must declare a 'ctx' parameter")
 
         decorated = view

@@ -2,13 +2,13 @@ from datetime import datetime
 
 import pytest
 
-from machinery.context import ServiceApiRequestContext
+from machinery.context import AppRequestContext
 from services.app_scoped_end_user_query_service import AppScopedEndUserNotFoundError, AppScopedEndUserQueryService
 from services.entities.app_scoped_end_user_entities import AppScopedEndUserRecord
 
 
-def _context() -> ServiceApiRequestContext:
-    return ServiceApiRequestContext(
+def _context() -> AppRequestContext:
+    return AppRequestContext(
         tenant_id="workspace-1",
         app_id="app-1",
     )
