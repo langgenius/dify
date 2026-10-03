@@ -1,5 +1,6 @@
 from decimal import Decimal
-from unittest.mock import patch
+from unittest.mock import Mock, patch
+from uuid import uuid4
 
 import pytest
 from agenton.compositor import CompositorSessionSnapshot
@@ -12,6 +13,7 @@ from clients.agent_backend import (
 )
 from core.workflow.file_reference import build_file_reference
 from core.workflow.nodes.agent_v2.output_adapter import WorkflowAgentOutputAdapter
+from core.workflow.nodes.agent_v2.output_type_checker import OutputTypeCheckStatus, PerOutputTypeChecker
 from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.variables.segments import ArrayFileSegment, FileSegment
@@ -67,6 +69,7 @@ def test_minimal_id_file_output_is_rebacked_from_tool_file():
         inputs={},
         process_data={},
         metadata={},
+        declared_outputs=[DeclaredOutputConfig(name="report", type=DeclaredOutputType.FILE)],
         tenant_id="tenant-1",
     )
 
@@ -102,6 +105,65 @@ def test_invalid_minimal_id_stays_a_plain_object_without_reback():
     assert result.outputs["thing"] == {"id": 123}
 
 
+def test_typed_object_ids_pass_type_check_and_are_not_rebacked_as_files():
+    tool_file_id = str(uuid4())
+    raw_output = {
+        "meta": {"id": tool_file_id},
+        "items": [{"id": tool_file_id}],
+    }
+    declared_outputs = [
+        DeclaredOutputConfig(name="meta", type=DeclaredOutputType.OBJECT),
+        DeclaredOutputConfig(
+            name="items",
+            type=DeclaredOutputType.ARRAY,
+            array_item=DeclaredArrayItem(type=DeclaredOutputType.OBJECT),
+        ),
+    ]
+    file_validator = Mock()
+    type_check = PerOutputTypeChecker(file_validator=file_validator).check(
+        declared_outputs=declared_outputs,
+        raw_output=raw_output,
+        tenant_id="tenant-1",
+    )
+
+    assert [result.status for result in type_check.results] == [
+        OutputTypeCheckStatus.READY,
+        OutputTypeCheckStatus.READY,
+    ]
+
+    rebacker = Mock(return_value=_rebacked_tool_file(tool_file_id))
+    result = WorkflowAgentOutputAdapter(tool_file_rebacker=rebacker).build_success_result(
+        event=_succeeded(raw_output),
+        inputs={},
+        process_data={},
+        metadata={},
+        declared_outputs=declared_outputs,
+        tenant_id="tenant-1",
+    )
+
+    assert result.outputs == raw_output
+    rebacker.assert_not_called()
+    file_validator.assert_not_called()
+
+
+def test_declared_object_with_id_and_extra_keys_stays_a_plain_object():
+    tool_file_id = str(uuid4())
+    value = {"id": tool_file_id, "type": "summary"}
+    rebacker = Mock(return_value=_rebacked_tool_file(tool_file_id))
+
+    result = WorkflowAgentOutputAdapter(tool_file_rebacker=rebacker).build_success_result(
+        event=_succeeded({"meta": value}),
+        inputs={},
+        process_data={},
+        metadata={},
+        declared_outputs=[DeclaredOutputConfig(name="meta", type=DeclaredOutputType.OBJECT)],
+        tenant_id="tenant-1",
+    )
+
+    assert result.outputs["meta"] == value
+    rebacker.assert_not_called()
+
+
 def test_success_output_adapter_preserves_existing_file_segment():
     file = _rebacked_tool_file("tool-file-1")
     segment = FileSegment(value=file)
@@ -117,6 +179,13 @@ def test_array_of_minimal_id_file_outputs_rebacked():
         inputs={},
         process_data={},
         metadata={},
+        declared_outputs=[
+            DeclaredOutputConfig(
+                name="files",
+                type=DeclaredOutputType.ARRAY,
+                array_item=DeclaredArrayItem(type=DeclaredOutputType.FILE),
+            )
+        ],
         tenant_id="tenant-1",
     )
     files = result.outputs["files"]

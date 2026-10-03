@@ -34,9 +34,10 @@ class WorkflowAgentOutputAdapter:
     treating normal object fields as files. Plain runs provide a free-form
     string, which is mapped directly to the system ``text`` output. Older Agent
     backend builds may still return bare ToolFile ids (``{"id": "..."}``); when
-    a ``ToolFileRebacker`` is provided, those ids are treated as a
-    backwards-compatible fallback and hydrated from the server-side ToolFile
-    row instead of trusted from the sandbox payload.
+    a ``ToolFileRebacker`` is provided, those ids in declared ``FILE`` and
+    ``ARRAY[FILE]`` outputs are treated as a backwards-compatible fallback and
+    hydrated from the server-side ToolFile row instead of trusted from the
+    sandbox payload.
     """
 
     _tool_file_rebacker: ToolFileRebacker | None
@@ -176,7 +177,11 @@ class WorkflowAgentOutputAdapter:
     ) -> Any:
         if isinstance(value, File | FileSegment | ArrayFileSegment):
             return value
-        legacy_tool_file_value = self._normalize_legacy_tool_file_value(value, tenant_id=tenant_id)
+        legacy_tool_file_value = self._normalize_legacy_tool_file_value(
+            value,
+            declared_output=declared_output,
+            tenant_id=tenant_id,
+        )
         if legacy_tool_file_value is not None:
             return legacy_tool_file_value
         if declared_output is not None:
@@ -212,12 +217,25 @@ class WorkflowAgentOutputAdapter:
         self,
         value: Any,
         *,
+        declared_output: DeclaredOutputConfig | None,
         tenant_id: str | None,
     ) -> FileSegment | ArrayFileSegment | None:
-        if isinstance(value, Mapping):
+        if (
+            declared_output is not None
+            and declared_output.type == DeclaredOutputType.FILE
+            and isinstance(value, Mapping)
+        ):
             file = self._legacy_tool_file_from_payload(value, tenant_id=tenant_id)
             return FileSegment(value=file) if file is not None else None
-        if isinstance(value, list) and value and all(isinstance(item, Mapping) for item in value):
+        if (
+            declared_output is not None
+            and declared_output.type == DeclaredOutputType.ARRAY
+            and declared_output.array_item is not None
+            and declared_output.array_item.type == DeclaredOutputType.FILE
+            and isinstance(value, list)
+            and value
+            and all(isinstance(item, Mapping) for item in value)
+        ):
             files = [self._legacy_tool_file_from_payload(item, tenant_id=tenant_id) for item in value]
             if all(file is not None for file in files):
                 return ArrayFileSegment(value=[file for file in files if file is not None])
