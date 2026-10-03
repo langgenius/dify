@@ -65,7 +65,7 @@ from fields.agent_fields import (
     AgentRosterListResponse,
     AgentStatisticSummaryEnvelopeResponse,
 )
-from fields.api_key_fields import ApiKeyItem, ApiKeyList
+from fields.api_key_fields import ApiKeyItem, ApiKeyList, build_masked_api_key_list
 from fields.base import ResponseModel
 from libs.datetime_utils import parse_time_range
 from libs.helper import dump_response
@@ -1051,7 +1051,7 @@ class AgentApiKeyListApi(Resource):
     def get(self, request_context: RequestContext, agent_id: UUID) -> dict[str, object]:
         with api_key_errors():
             keys = application_services().app_api_keys.list_agent_keys(request_context, str(agent_id))
-        return dump_response(ApiKeyList, {"data": keys})
+        return dump_response(ApiKeyList, build_masked_api_key_list(keys))
 
     @console_ns.response(201, "Agent service API key created", console_ns.models[ApiKeyItem.__name__])
     @console_ns.response(400, "Maximum keys exceeded")
