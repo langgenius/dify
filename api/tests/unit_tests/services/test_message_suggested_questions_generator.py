@@ -8,14 +8,16 @@ import pytest
 
 from core.app.entities.app_invoke_entities import CreditUsageCreatedBy
 from core.model_context import get_credit_usage_metadata
-from core.model_manager import ModelInstance, ModelManager
+from core.model_manager import ModelManager
 from core.plugin.impl.base import _get_plugin_daemon_request_timeout
+from core.plugin.impl.model_runtime_factory import create_plugin_model_manager
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
-from graphon.model_runtime.entities.model_entities import ModelType, ParameterRule, ParameterType
+from graphon.model_runtime.entities.model_entities import ModelType, ParameterType
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from services.message_suggested_questions_generator import SuggestedQuestionsGenerator
 from services.message_suggested_questions_service import SuggestedQuestionsContext, SuggestedQuestionsEndUser
+from tests.unit_tests.core.model_fixtures import make_model_config, make_model_instance
 
 
 def _llm_result(content: str) -> LLMResult:
@@ -277,12 +279,15 @@ class TestSuggestedQuestionsGenerator:
     def test_prepared_suggested_questions_defer_provider_calls_without_resolving_again(
         self, monkeypatch: pytest.MonkeyPatch, use_configured_model: bool
     ) -> None:
-        model_instance = Mock(spec=ModelInstance)
-        parameter_rules: list[ParameterRule] = []
-        model_instance.get_model_schema.return_value.parameter_rules = parameter_rules
-        manager = Mock(spec=ModelManager)
-        manager.get_model_instance.return_value = model_instance
-        manager.get_default_model_instance.return_value = model_instance
+        model_instance = make_model_instance(provider="openai", model="custom-model")
+        schema = make_model_config(provider="openai", model="custom-model", mode="chat").model_schema
+        get_schema = Mock(return_value=schema)
+        invocation = Mock()
+        monkeypatch.setattr(model_instance, "get_model_schema", get_schema)
+        monkeypatch.setattr(model_instance, "invoke_llm", invocation)
+        manager = create_plugin_model_manager(tenant_id="tenant_id")
+        monkeypatch.setattr(manager, "get_model_instance", Mock(return_value=model_instance))
+        monkeypatch.setattr(manager, "get_default_model_instance", Mock(return_value=model_instance))
         resolve_manager = Mock(return_value=manager)
         monkeypatch.setattr(ModelManager, "for_tenant", resolve_manager)
         original_metadata = get_credit_usage_metadata()
@@ -297,7 +302,7 @@ class TestSuggestedQuestionsGenerator:
             assert timeout.read == 30.0
             return _llm_result('["Next question?"]')
 
-        model_instance.invoke_llm.side_effect = invoke
+        invocation.side_effect = invoke
         model_config = (
             {
                 "provider": "openai",
@@ -310,8 +315,8 @@ class TestSuggestedQuestionsGenerator:
         prepared_model = SuggestedQuestionsGenerator._prepare_model("tenant_id", model_config=model_config)
 
         assert prepared_model is not None
-        model_instance.get_model_schema.assert_not_called()
-        model_instance.invoke_llm.assert_not_called()
+        get_schema.assert_not_called()
+        invocation.assert_not_called()
         resolve_manager.side_effect = AssertionError("Model lookup must finish in the preparation phase")
 
         result = SuggestedQuestionsGenerator._invoke(
@@ -319,7 +324,7 @@ class TestSuggestedQuestionsGenerator:
         )
 
         assert result == ["Next question?"]
-        parameters = model_instance.invoke_llm.call_args.kwargs
+        parameters = invocation.call_args.kwargs
         assert parameters["model_parameters"] == (
             {"temperature": 0.2} if use_configured_model else {"max_tokens": 256, "temperature": 0.0}
         )
