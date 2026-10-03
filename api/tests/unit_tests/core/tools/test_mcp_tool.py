@@ -14,6 +14,7 @@ from core.mcp.types import (
     CallToolResult,
     EmbeddedResource,
     ImageContent,
+    ResourceLink,
     TextContent,
     TextResourceContents,
 )
@@ -22,6 +23,7 @@ from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolEntity, ToolIdentity, ToolInvokeMessage, ToolProviderType
 from core.tools.errors import ToolInvokeError
 from core.tools.mcp_tool.tool import MCPTool
+from core.tools.tool_engine import ToolEngine
 from enums import DeploymentEdition
 
 
@@ -136,6 +138,90 @@ def test_mcp_tool_invoke_handles_content_types_and_structured_output(sqlite_sess
     assert ToolInvokeMessage.MessageType.TEXT in types
     assert ToolInvokeMessage.MessageType.VARIABLE in types
     assert tool.latest_usage.total_tokens == 5
+
+
+@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+def test_mcp_tool_invoke_preserves_resource_link_without_structured_content(sqlite_session: Session):
+    tool = _build_mcp_tool(with_output_schema=False)
+    result = CallToolResult.model_validate(
+        {
+            "content": [
+                {
+                    "type": "resource_link",
+                    "uri": "file:///tmp/report.txt",
+                    "name": "report",
+                    "title": "Report",
+                    "description": "Generated report",
+                    "mimeType": "text/plain",
+                    "size": 123,
+                    "annotations": {"audience": ["assistant"], "priority": 0.5},
+                    "_meta": {"source": "mcp-server"},
+                }
+            ],
+            "structuredContent": None,
+        }
+    )
+    assert isinstance(result.content[0], ResourceLink)
+
+    with patch.object(MCPTool, "invoke_remote_mcp_tool", return_value=result):
+        messages = list(tool.invoke(session=sqlite_session, user_id="user-1", tool_parameters={}))
+
+    assert len(messages) == 1
+    assert messages[0].type == ToolInvokeMessage.MessageType.JSON
+    assert messages[0].message.json_object == {
+        "type": "resource_link",
+        "uri": "file:///tmp/report.txt",
+        "name": "report",
+        "title": "Report",
+        "description": "Generated report",
+        "mimeType": "text/plain",
+        "size": 123,
+        "annotations": {"audience": ["assistant"], "priority": 0.5},
+        "_meta": {"source": "mcp-server"},
+    }
+    observation = ToolEngine.tool_response_to_str(messages)
+    assert "file:///tmp/report.txt" in observation
+    assert "Generated report" in observation
+    assert "text/plain" in observation
+    assert "report" in observation
+    assert "Report" in observation
+    assert "assistant" in observation
+    assert "0.5" in observation
+    assert "_meta" in observation
+    assert "mcp-server" in observation
+
+
+@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+def test_mcp_tool_invoke_preserves_resource_link_with_mixed_content(sqlite_session: Session):
+    tool = _build_mcp_tool(with_output_schema=False)
+    result = CallToolResult.model_validate(
+        {
+            "content": [
+                {"type": "text", "text": "plain tool result"},
+                {
+                    "type": "resource_link",
+                    "uri": "file:///tmp/result.json",
+                    "name": "result",
+                    "description": "Structured result pointer",
+                    "mimeType": "application/json",
+                },
+            ],
+            "structuredContent": None,
+        }
+    )
+    assert isinstance(result.content[1], ResourceLink)
+
+    with patch.object(MCPTool, "invoke_remote_mcp_tool", return_value=result):
+        messages = list(tool.invoke(session=sqlite_session, user_id="user-1", tool_parameters={}))
+
+    assert [message.type for message in messages] == [
+        ToolInvokeMessage.MessageType.TEXT,
+        ToolInvokeMessage.MessageType.JSON,
+    ]
+    observation = ToolEngine.tool_response_to_str(messages)
+    assert "plain tool result" in observation
+    assert "file:///tmp/result.json" in observation
+    assert "Structured result pointer" in observation
 
 
 @pytest.mark.parametrize("sqlite_session", [()], indirect=True)

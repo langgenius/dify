@@ -18,6 +18,7 @@ from core.mcp.types import (
     CallToolResult,
     EmbeddedResource,
     ImageContent,
+    ResourceLink,
     TextContent,
     TextResourceContents,
 )
@@ -89,6 +90,8 @@ class MCPTool(Tool):
                     yield self.create_blob_message(
                         blob=base64.b64decode(content.data), meta={"mime_type": content.mimeType}
                     )
+                case ResourceLink():
+                    yield self.create_json_message(content.model_dump(mode="json", by_alias=True, exclude_none=True))
                 case EmbeddedResource():
                     resource = content.resource
                     match resource:
