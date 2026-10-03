@@ -6,7 +6,7 @@ from collections.abc import Callable, Iterator
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, create_autospec, patch
 
 import pytest
 from flask import Flask
@@ -315,7 +315,6 @@ def account_application_services(
     sqlite_session_factory: sessionmaker[Session], account_domain: AccountDomain
 ) -> ApplicationServices:
     from dataclasses import replace
-    from unittest.mock import Mock
 
     from enums import DeploymentEdition
     from extensions.ext_application_services import build_application_services
@@ -325,7 +324,7 @@ def account_application_services(
         database_client=sqlite_session_factory,
         deployment_edition=DeploymentEdition.COMMUNITY,
         initialization_password="",
-        redis=Mock(spec=RedisClientWrapper),
+        redis=create_autospec(RedisClientWrapper, instance=True),
     )
     return replace(
         services,
