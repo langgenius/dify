@@ -258,23 +258,23 @@ func (s *Service) RunJob(req *RunJobRequest) (*JobResult, error) {
 }
 
 func (s *Service) startJob(jobID, jobDir, cwd string, cols, rows int, mode jobmode.Mode) error {
-	log.Printf("startJob [%s]: creating tmux session", jobID)
-	if err := s.tmux.CreateJobSession(jobID, jobDir, cwd, cols, rows, mode); err != nil {
-		log.Printf("startJob [%s]: tmux session failed: %v", jobID, err)
-		return err
-	}
-
 	pipeReadyPath := filepath.Join(jobDir, ".pipe-ready")
 	if mode == jobmode.PTY {
-		log.Printf("startJob [%s]: enabling output pipe", jobID)
-		if err := s.tmux.EnableOutputPipe(jobID, jobDir, pipeReadyPath); err != nil {
-			log.Printf("startJob [%s]: pipe-pane failed: %v", jobID, err)
+		log.Printf("startJob [%s]: creating tmux session and output pipe", jobID)
+		if err := s.tmux.StartJob(jobID, jobDir, cwd, pipeReadyPath, cols, rows, mode); err != nil {
+			log.Printf("startJob [%s]: tmux startup failed: %v", jobID, err)
 			return err
 		}
 
 		// Wait for pipe ready handshake
 		if err := s.waitForPipeReady(jobID, pipeReadyPath); err != nil {
 			log.Printf("startJob [%s]: pipe-ready timeout: %v", jobID, err)
+			return err
+		}
+	} else {
+		log.Printf("startJob [%s]: creating tmux session", jobID)
+		if err := s.tmux.CreateJobSession(jobID, jobDir, cwd, cols, rows, mode); err != nil {
+			log.Printf("startJob [%s]: tmux session failed: %v", jobID, err)
 			return err
 		}
 	}
@@ -349,15 +349,46 @@ func (s *Service) WaitJob(jobID string, req *WaitJobRequest) (*JobResult, error)
 		lastGrowthAt = &now
 	}
 
-	// Poll with exponential backoff: start tight so short jobs return with low
-	// latency, then grow the interval up to MaxPollInterval so long/idle waits
-	// stop spawning a tmux liveness probe (fork) every few milliseconds.
-	pollInterval := s.config.PollInterval
+	// Output files and completion artifacts are local and cheap to inspect, so
+	// probe them frequently. Keep tmux subprocess probes on a separate
+	// exponential backoff: short jobs still get a prompt liveness check, while
+	// long or idle waits stop spawning a tmux process every few milliseconds.
+	view, err := s.GetJobStatus(jobID)
+	if err != nil {
+		return nil, err
+	}
+	runtimePollInterval := s.config.PollInterval
+	if runtimePollInterval <= 0 {
+		runtimePollInterval = DefaultPollInterval
+	}
+	maxRuntimePollInterval := s.config.MaxPollInterval
+	if maxRuntimePollInterval < runtimePollInterval {
+		maxRuntimePollInterval = runtimePollInterval
+	}
+	nextRuntimeProbe := time.Now().Add(runtimePollInterval)
+	outputPollInterval := s.config.OutputPollInterval
+	if outputPollInterval <= 0 {
+		outputPollInterval = DefaultOutputPollInterval
+	}
 
 	for {
-		view, err := s.GetJobStatus(jobID)
-		if err != nil {
-			return nil, err
+		now := time.Now()
+		if !view.Done {
+			if exit := s.completedExitMetadata(row); exit != nil {
+				if err := s.db.RecordRunnerExit(jobID, exit.exitCode, exit.endedAt); err == nil {
+					if refreshedRow, getErr := s.db.GetJob(jobID); getErr == nil {
+						row = refreshedRow
+						view = s.statusViewFromRow(refreshedRow)
+					}
+				}
+			} else if !now.Before(nextRuntimeProbe) {
+				view, err = s.GetJobStatus(jobID)
+				if err != nil {
+					return nil, err
+				}
+				runtimePollInterval = min(runtimePollInterval*2, maxRuntimePollInterval)
+				nextRuntimeProbe = now.Add(runtimePollInterval)
+			}
 		}
 
 		currentSize := fileSize(outputPath)
@@ -403,7 +434,7 @@ func (s *Service) WaitJob(jobID string, req *WaitJobRequest) (*JobResult, error)
 			}
 		}
 
-		if time.Now().After(deadline) {
+		if now.After(deadline) {
 			var window *OutputWindow
 			if currentSize > int64(req.Offset) {
 				window, err = ReadOutputWindow(outputPath, req.Offset, outputLimit)
@@ -416,8 +447,7 @@ func (s *Service) WaitJob(jobID string, req *WaitJobRequest) (*JobResult, error)
 			return s.jobResultFromView(view, row, window), nil
 		}
 
-		time.Sleep(pollInterval)
-		pollInterval = min(pollInterval*2, s.config.MaxPollInterval)
+		time.Sleep(outputPollInterval)
 	}
 }
 

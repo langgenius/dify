@@ -1,6 +1,8 @@
 # dify-agent-runtime
 
-Go implementation of the shellctl server and runtime utilities.
+Stable Go implementation of the shellctl server and runtime utilities. The
+opt-in Rust canary lives in [`rust/`](./rust/README.md); Go remains the default
+and rollback path while compatibility and production behavior are validated.
 
 ## Architecture
 

@@ -13,7 +13,7 @@ import re
 import shlex
 from dataclasses import dataclass
 
-from dify_agent.adapters.shell.protocols import ShellCommandProtocol
+from dify_agent.adapters.shell.protocols import ShellCommandProtocol, ShellProviderError
 from dify_agent.adapters.shell.shellctl import ShellctlClientFactory
 from dify_agent.runtime_backend.errors import (
     BindingAcquireError,
@@ -188,6 +188,8 @@ class LocalExecutionBindingBackend:
             await _close_best_effort(lease, resource_ref=binding_ref)
             if isinstance(exc, BindingLostError):
                 raise
+            if isinstance(exc, ShellProviderError) and exc.code == "invalid_cwd":
+                raise BindingLostError(f"Local Binding {binding_ref!r} no longer exists") from exc
             if isinstance(exc, Exception):
                 raise BindingAcquireError(str(exc)) from exc
             raise
