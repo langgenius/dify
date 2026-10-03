@@ -90,7 +90,7 @@ def harness(sqlite_session_factory: sessionmaker[Session]) -> _RuntimeHarness:
 def _patch_generation(
     monkeypatch: pytest.MonkeyPatch,
     harness: _RuntimeHarness,
-    generate: Callable[[Session], GenerationResponse | Generator[Mapping[str, object] | str, None, None]],
+    generate: Callable[[Session], GenerationResponse | Generator[Mapping[str, object] | str]],
     *,
     streaming: bool,
     more_like_this: bool = False,
@@ -102,7 +102,7 @@ def _patch_generation(
         user: Account,
         invoke_from: InvokeFrom,
         streaming: bool,
-    ) -> GenerationResponse | Generator[Mapping[str, object] | str, None, None]:
+    ) -> GenerationResponse | Generator[Mapping[str, object] | str]:
         assert len(harness.closed_sessions) == 1
         read_session = harness.closed_sessions[0]
         assert not read_session.in_transaction()
@@ -125,7 +125,7 @@ def _patch_generation(
         args: Mapping[str, object],
         invoke_from: InvokeFrom,
         streaming: bool,
-    ) -> GenerationResponse | Generator[Mapping[str, object] | str, None, None]:
+    ) -> GenerationResponse | Generator[Mapping[str, object] | str]:
         assert args == _ARGS
         return assert_context(
             session=session, app_model=app_model, user=user, invoke_from=invoke_from, streaming=streaming
@@ -139,7 +139,7 @@ def _patch_generation(
         message_id: str,
         invoke_from: InvokeFrom,
         streaming: bool,
-    ) -> GenerationResponse | Generator[Mapping[str, object] | str, None, None]:
+    ) -> GenerationResponse | Generator[Mapping[str, object] | str]:
         assert message_id == _MESSAGE_ID
         return assert_context(
             session=session, app_model=app_model, user=user, invoke_from=invoke_from, streaming=streaming
@@ -182,7 +182,7 @@ class _RateLimitExit:
             raise self.failure
 
 
-def _rate_limited_stream(source: Generator[str, None, None], rate: _RateLimitExit) -> RateLimitGenerator:
+def _rate_limited_stream(source: Generator[str], rate: _RateLimitExit) -> RateLimitGenerator:
     return RateLimitGenerator(rate_limit=cast(RateLimit, rate), generator=source, request_id="request-1")
 
 
@@ -220,7 +220,7 @@ def test_runtime_preserves_stream_identity_and_original_close_lifecycle(
     failure = RuntimeError("stream failed")
     rate = _RateLimitExit()
 
-    def source() -> Generator[str, None, None]:
+    def source() -> Generator[str]:
         assert len(harness.closed_sessions) == 2
         events.append("start")
         try:
@@ -262,7 +262,7 @@ def test_more_like_this_serializes_raw_events_and_closes_source(
     events: list[str] = []
     failure = RuntimeError("more-like-this stream failed")
 
-    def source() -> Generator[Mapping[str, object] | str, None, None]:
+    def source() -> Generator[Mapping[str, object] | str]:
         assert len(harness.closed_sessions) == 2
         events.append("start")
         try:
@@ -359,7 +359,7 @@ def test_failure_before_stream_handoff_closes_stream_without_masking_primary_err
     failure = RuntimeError(f"runtime {failure_phase} failed")
     rate = _RateLimitExit(failure=ValueError("stream close failed") if stream_close_fails else None)
 
-    def source() -> Generator[str, None, None]:
+    def source() -> Generator[str]:
         pytest.fail("A response that failed before handoff must not be consumed")
         yield "unreachable"
 
@@ -639,7 +639,7 @@ def test_visible_conversation_uses_shared_chat_dispatch_after_preflight_session_
         args: Mapping[str, object],
         invoke_from: InvokeFrom,
         streaming: bool,
-    ) -> Generator[Mapping[str, object] | str, None, None]:
+    ) -> Generator[Mapping[str, object] | str]:
         assert len(harness.closed_sessions) == 1
         assert not harness.closed_sessions[0].in_transaction()
         assert session is not harness.closed_sessions[0]
@@ -651,7 +651,7 @@ def test_visible_conversation_uses_shared_chat_dispatch_after_preflight_session_
         assert streaming is True
         calls.append(type(generator).__name__)
 
-        def chunks() -> Generator[Mapping[str, object] | str, None, None]:
+        def chunks() -> Generator[Mapping[str, object] | str]:
             assert len(harness.closed_sessions) == 2
             assert not session.in_transaction()
             yield {"event": "message", "answer": mode.value}

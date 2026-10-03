@@ -473,7 +473,7 @@ def _create_build_chat_finalization_message(
     return {"result": "success"}, 200
 
 
-def _drain_streaming_generate_response(response: RateLimitGenerator | Generator[str, None, None]) -> None:
+def _drain_streaming_generate_response(response: RateLimitGenerator | Generator[str]) -> None:
     """Consume a streamed app-generate response until a terminal message event arrives.
 
     Finalize keeps the normal Agent App streaming path so the existing queue,
@@ -631,7 +631,7 @@ def _raise_agent_stream_error_before_response(response):
         return _prepend_stream_chunks(buffered, chunk, iterator)
 
 
-def _prepend_stream_chunks(buffered: list[Any], first: Any, iterator: Iterator[Any]) -> Generator[Any, None, None]:
+def _prepend_stream_chunks(buffered: list[Any], first: Any, iterator: Iterator[Any]) -> Generator[Any]:
     yield from buffered
     yield first
     yield from iterator

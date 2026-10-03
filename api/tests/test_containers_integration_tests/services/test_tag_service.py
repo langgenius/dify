@@ -31,7 +31,7 @@ class _CurrentUserStub:
 
 
 @pytest.fixture
-def current_user_stub() -> Generator[_CurrentUserStub, None, None]:
+def current_user_stub() -> Generator[_CurrentUserStub]:
     current_user = _CurrentUserStub(id="test-user-id", current_tenant_id="test-tenant-id")
 
     with patch("services.tag_service.current_user", current_user):

@@ -120,7 +120,7 @@ shell_run script rules:
 
 Tips:
 
-- Python 3.12, uv, pip, Node.js, pnpm, and pnx are preinstalled in the local sandbox.
+- Python 3.13, uv, pip, Node.js, pnpm, and pnx are preinstalled in the local sandbox.
 - For one-off Python dependencies, prefer a uv script with a PEP 723 dependency header or:
   `uv run --with <package> python <script-or--c>`.
 - For reusable Python CLI tools, use `uv tool install <tool>`; installed commands land in `$HOME/.local/bin`.
@@ -139,7 +139,7 @@ Example shell_run script:
 [begin script]
 #!/usr/bin/env -S uv run --quiet --script
 # /// script
-# requires-python = ">=3.12"
+# requires-python = ">=3.13"
 # dependencies = [
 #   "httpx==0.28.1",
 #   "rich>=13.8.0",

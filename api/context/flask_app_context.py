@@ -42,7 +42,7 @@ class FlaskAppContext(AppContext):
 
     @contextmanager
     @override
-    def enter(self) -> Generator[None, None, None]:
+    def enter(self) -> Generator[None]:
         """Enter Flask app context."""
         with self._flask_app.app_context():
             yield
@@ -159,7 +159,7 @@ class FlaskExecutionContext:
             cm.__exit__(*args)
 
     @contextmanager
-    def enter(self) -> Generator[None, None, None]:
+    def enter(self) -> Generator[None]:
         """Enter Flask execution context as context manager."""
         # Restore non-Flask context variables to avoid leaking Flask tokens across threads
         for var, val in self._context_vars.items():

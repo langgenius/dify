@@ -13,7 +13,7 @@
 # base image
 # trixie (glibc 2.41): the `openshell` wheel bundles a Rust CLI binary and
 # only ships manylinux_2_39 wheels, which bookworm's glibc 2.36 cannot load.
-FROM python:3.12-slim-trixie AS base
+FROM python:3.13-slim-trixie AS base
 
 WORKDIR /app/api
 

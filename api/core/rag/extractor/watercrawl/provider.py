@@ -123,7 +123,7 @@ class WaterCrawlProvider:
 
     def _get_results(
         self, crawl_request_id: str, query_params: dict[str, Any] | None = None
-    ) -> Generator[WatercrawlDocumentData, None, None]:
+    ) -> Generator[WatercrawlDocumentData]:
         page = 0
         page_size = 100
 

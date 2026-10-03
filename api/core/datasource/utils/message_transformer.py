@@ -15,11 +15,11 @@ class DatasourceFileMessageTransformer:
     @classmethod
     def transform_datasource_invoke_messages(
         cls,
-        messages: Generator[DatasourceMessage, None, None],
+        messages: Generator[DatasourceMessage],
         user_id: str,
         tenant_id: str,
         conversation_id: str | None = None,
-    ) -> Generator[DatasourceMessage, None, None]:
+    ) -> Generator[DatasourceMessage]:
         """
         Transform datasource message and handle file download
         """

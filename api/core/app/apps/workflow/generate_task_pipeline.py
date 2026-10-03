@@ -124,9 +124,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
     def process(
         self,
-    ) -> Union[
-        WorkflowAppBlockingResponse, WorkflowAppPausedBlockingResponse, Generator[WorkflowAppStreamResponse, None, None]
-    ]:
+    ) -> Union[WorkflowAppBlockingResponse, WorkflowAppPausedBlockingResponse, Generator[WorkflowAppStreamResponse]]:
         """
         Process generate task pipeline.
         :return:
@@ -138,7 +136,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             return self._to_blocking_response(generator)
 
     def _to_blocking_response(
-        self, generator: Generator[StreamResponse, None, None]
+        self, generator: Generator[StreamResponse]
     ) -> Union[WorkflowAppBlockingResponse, WorkflowAppPausedBlockingResponse]:
         """
         To blocking response.
@@ -227,9 +225,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             ),
         )
 
-    def _to_stream_response(
-        self, generator: Generator[StreamResponse, None, None]
-    ) -> Generator[WorkflowAppStreamResponse, None, None]:
+    def _to_stream_response(self, generator: Generator[StreamResponse]) -> Generator[WorkflowAppStreamResponse]:
         """
         To stream response.
         :return:
@@ -255,7 +251,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
     def _wrapper_process_stream_response(
         self, trace_manager: TraceQueueManager | None = None
-    ) -> Generator[StreamResponse, None, None]:
+    ) -> Generator[StreamResponse]:
         tts_publisher = None
         task_id = self._application_generate_entity.task_id
         tenant_id = self._application_generate_entity.app_config.tenant_id
@@ -321,18 +317,16 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         if not self._workflow_execution_id:
             raise ValueError("workflow run not initialized.")
 
-    def _handle_ping_event(self, event: QueuePingEvent, **kwargs) -> Generator[PingStreamResponse, None, None]:
+    def _handle_ping_event(self, event: QueuePingEvent, **kwargs) -> Generator[PingStreamResponse]:
         """Handle ping events."""
         yield self._base_task_pipeline.ping_stream_response()
 
-    def _handle_error_event(self, event: QueueErrorEvent, **kwargs) -> Generator[ErrorStreamResponse, None, None]:
+    def _handle_error_event(self, event: QueueErrorEvent, **kwargs) -> Generator[ErrorStreamResponse]:
         """Handle error events."""
         err = self._base_task_pipeline.handle_error(event=event)
         yield self._base_task_pipeline.error_to_stream_response(err)
 
-    def _handle_workflow_started_event(
-        self, event: QueueWorkflowStartedEvent, **kwargs
-    ) -> Generator[StreamResponse, None, None]:
+    def _handle_workflow_started_event(self, event: QueueWorkflowStartedEvent, **kwargs) -> Generator[StreamResponse]:
         """Handle workflow started events."""
         runtime_state = self._resolve_graph_runtime_state()
 
@@ -351,7 +345,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         )
         yield start_resp
 
-    def _handle_node_retry_event(self, event: QueueNodeRetryEvent, **kwargs) -> Generator[StreamResponse, None, None]:
+    def _handle_node_retry_event(self, event: QueueNodeRetryEvent, **kwargs) -> Generator[StreamResponse]:
         """Handle node retry events."""
         self._ensure_workflow_initialized()
 
@@ -363,9 +357,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         if response:
             yield response
 
-    def _handle_node_started_event(
-        self, event: QueueNodeStartedEvent, **kwargs
-    ) -> Generator[StreamResponse, None, None]:
+    def _handle_node_started_event(self, event: QueueNodeStartedEvent, **kwargs) -> Generator[StreamResponse]:
         """Handle node started events."""
         self._ensure_workflow_initialized()
 
@@ -377,9 +369,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         if node_start_response:
             yield node_start_response
 
-    def _handle_node_succeeded_event(
-        self, event: QueueNodeSucceededEvent, **kwargs
-    ) -> Generator[StreamResponse, None, None]:
+    def _handle_node_succeeded_event(self, event: QueueNodeSucceededEvent, **kwargs) -> Generator[StreamResponse]:
         """Handle node succeeded events."""
         node_success_response = self._workflow_response_converter.workflow_node_finish_to_stream_response(
             event=event,
@@ -395,7 +385,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         self,
         event: Union[QueueNodeFailedEvent, QueueNodeExceptionEvent],
         **kwargs,
-    ) -> Generator[StreamResponse, None, None]:
+    ) -> Generator[StreamResponse]:
         """Handle various node failure events."""
         node_failed_response = self._workflow_response_converter.workflow_node_finish_to_stream_response(
             event=event,
@@ -408,9 +398,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         if node_failed_response:
             yield node_failed_response
 
-    def _handle_iteration_start_event(
-        self, event: QueueIterationStartEvent, **kwargs
-    ) -> Generator[StreamResponse, None, None]:
+    def _handle_iteration_start_event(self, event: QueueIterationStartEvent, **kwargs) -> Generator[StreamResponse]:
         """Handle iteration start events."""
         self._ensure_workflow_initialized()
 
@@ -421,9 +409,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         )
         yield iter_start_resp
 
-    def _handle_iteration_next_event(
-        self, event: QueueIterationNextEvent, **kwargs
-    ) -> Generator[StreamResponse, None, None]:
+    def _handle_iteration_next_event(self, event: QueueIterationNextEvent, **kwargs) -> Generator[StreamResponse]:
         """Handle iteration next events."""
         self._ensure_workflow_initialized()
 
@@ -436,7 +422,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
     def _handle_iteration_completed_event(
         self, event: QueueIterationCompletedEvent, **kwargs
-    ) -> Generator[StreamResponse, None, None]:
+    ) -> Generator[StreamResponse]:
         """Handle iteration completed events."""
         self._ensure_workflow_initialized()
 
@@ -447,7 +433,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         )
         yield iter_finish_resp
 
-    def _handle_loop_start_event(self, event: QueueLoopStartEvent, **kwargs) -> Generator[StreamResponse, None, None]:
+    def _handle_loop_start_event(self, event: QueueLoopStartEvent, **kwargs) -> Generator[StreamResponse]:
         """Handle loop start events."""
         self._ensure_workflow_initialized()
 
@@ -458,7 +444,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         )
         yield loop_start_resp
 
-    def _handle_loop_next_event(self, event: QueueLoopNextEvent, **kwargs) -> Generator[StreamResponse, None, None]:
+    def _handle_loop_next_event(self, event: QueueLoopNextEvent, **kwargs) -> Generator[StreamResponse]:
         """Handle loop next events."""
         self._ensure_workflow_initialized()
 
@@ -469,9 +455,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         )
         yield loop_next_resp
 
-    def _handle_loop_completed_event(
-        self, event: QueueLoopCompletedEvent, **kwargs
-    ) -> Generator[StreamResponse, None, None]:
+    def _handle_loop_completed_event(self, event: QueueLoopCompletedEvent, **kwargs) -> Generator[StreamResponse]:
         """Handle loop completed events."""
         self._ensure_workflow_initialized()
 
@@ -488,7 +472,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         *,
         trace_manager: TraceQueueManager | None = None,
         **kwargs,
-    ) -> Generator[StreamResponse, None, None]:
+    ) -> Generator[StreamResponse]:
         """Handle workflow succeeded events."""
         _ = trace_manager
         self._ensure_workflow_initialized()
@@ -508,7 +492,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         *,
         trace_manager: TraceQueueManager | None = None,
         **kwargs,
-    ) -> Generator[StreamResponse, None, None]:
+    ) -> Generator[StreamResponse]:
         """Handle workflow partial success events."""
         _ = trace_manager
         self._ensure_workflow_initialized()
@@ -526,7 +510,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         self,
         event: QueueWorkflowPausedEvent,
         **kwargs,
-    ) -> Generator[StreamResponse, None, None]:
+    ) -> Generator[StreamResponse]:
         """Handle workflow paused events."""
         self._ensure_workflow_initialized()
         validated_state = self._ensure_graph_runtime_initialized()
@@ -543,7 +527,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         *,
         trace_manager: TraceQueueManager | None = None,
         **kwargs,
-    ) -> Generator[StreamResponse, None, None]:
+    ) -> Generator[StreamResponse]:
         """Handle workflow failed and stop events."""
         _ = trace_manager
         self._ensure_workflow_initialized()
@@ -574,7 +558,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         tts_publisher: AppGeneratorTTSPublisher | None = None,
         queue_message: Union[WorkflowQueueMessage, MessageQueueMessage] | None = None,
         **kwargs,
-    ) -> Generator[StreamResponse, None, None]:
+    ) -> Generator[StreamResponse]:
         """Handle text chunk events."""
         delta_text = event.text
         if delta_text is None:
@@ -586,9 +570,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
         yield self._text_chunk_to_stream_response(delta_text, from_variable_selector=event.from_variable_selector)
 
-    def _handle_reasoning_chunk_event(
-        self, event: QueueReasoningChunkEvent, **kwargs
-    ) -> Generator[StreamResponse, None, None]:
+    def _handle_reasoning_chunk_event(self, event: QueueReasoningChunkEvent, **kwargs) -> Generator[StreamResponse]:
         """Handle reasoning chunk events."""
         # is_final with empty reasoning is still forwarded as the "thinking finished" signal
         if not event.reasoning and not event.is_final:
@@ -602,7 +584,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             ),
         )
 
-    def _handle_agent_log_event(self, event: QueueAgentLogEvent, **kwargs) -> Generator[StreamResponse, None, None]:
+    def _handle_agent_log_event(self, event: QueueAgentLogEvent, **kwargs) -> Generator[StreamResponse]:
         """Handle agent log events."""
         yield self._workflow_response_converter.handle_agent_log(
             task_id=self._application_generate_entity.task_id, event=event
@@ -610,7 +592,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
     def _handle_human_input_form_filled_event(
         self, event: QueueHumanInputFormFilledEvent, **kwargs
-    ) -> Generator[StreamResponse, None, None]:
+    ) -> Generator[StreamResponse]:
         """Handle human input form filled events."""
         yield self._workflow_response_converter.human_input_form_filled_to_stream_response(
             event=event, task_id=self._application_generate_entity.task_id
@@ -618,7 +600,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
     def _handle_human_input_form_timeout_event(
         self, event: QueueHumanInputFormTimeoutEvent, **kwargs
-    ) -> Generator[StreamResponse, None, None]:
+    ) -> Generator[StreamResponse]:
         """Handle human input form timeout events."""
         yield self._workflow_response_converter.human_input_form_timeout_to_stream_response(
             event=event, task_id=self._application_generate_entity.task_id
@@ -662,7 +644,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         tts_publisher: AppGeneratorTTSPublisher | None = None,
         trace_manager: TraceQueueManager | None = None,
         queue_message: Union[WorkflowQueueMessage, MessageQueueMessage] | None = None,
-    ) -> Generator[StreamResponse, None, None]:
+    ) -> Generator[StreamResponse]:
         """Dispatch events using elegant pattern matching."""
         handlers = self._get_event_handlers()
         event_type = type(event)
@@ -710,7 +692,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         self,
         tts_publisher: AppGeneratorTTSPublisher | None = None,
         trace_manager: TraceQueueManager | None = None,
-    ) -> Generator[StreamResponse, None, None]:
+    ) -> Generator[StreamResponse]:
         """
         Process stream response using elegant Fluent Python patterns.
         Maintains exact same functionality as original 44-if-statement version.

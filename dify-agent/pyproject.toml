@@ -3,7 +3,7 @@ name = "dify-agent"
 version = "1.17.1"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.12,<4.0"
+requires-python = ">=3.13,<4.0"
 dependencies = [
     "httpx==0.28.1",
     "httpx2>=2.5.0,<3.0.0",
@@ -47,7 +47,7 @@ project-includes = ["src", "examples"]
 project-excludes = [".venv", "tests/"]
 search-path = ["src", "examples/agenton", "examples/dify_agent"]
 python-platform = "linux"
-python-version = "3.12.0"
+python-version = "3.13.0"
 
 [tool.pytest.ini_options]
 # Several test modules share a basename across directories (test_layer.py,
