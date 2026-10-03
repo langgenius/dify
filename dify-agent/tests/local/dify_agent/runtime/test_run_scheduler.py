@@ -257,6 +257,29 @@ class FailingObserverStore(FakeStore):
             self.observer_finished.set()
 
 
+class RunStartedAppendFailureStore(FakeStore):
+    def __init__(self, *, cancel_on_start_failure: bool = False) -> None:
+        super().__init__()
+        self.cancel_on_start_failure = cancel_on_start_failure
+        self.append_attempts = 0
+        self.finalization_attempts = 0
+
+    async def append_event(self, event: NonTerminalRunEvent) -> str:
+        self.append_attempts += 1
+        if event.type == "run_started":
+            if self.cancel_on_start_failure:
+                _ = await self.request_cancellation(
+                    event.run_id,
+                    CancelRunRequest(reason="start_write_race", message="cancel accepted during start write"),
+                )
+            raise RuntimeError("one-shot run_started write failure")
+        return await super().append_event(event)
+
+    async def finalize_run(self, event: TerminalRunEvent) -> RunFinalizationResult:
+        self.finalization_attempts += 1
+        return await super().finalize_run(event)
+
+
 class CancellationDuringShutdownFailureStore(FakeStore):
     async def finalize_run(self, event: TerminalRunEvent) -> RunFinalizationResult:
         if isinstance(event, RunFailedEvent) and event.data.reason == "shutdown":
@@ -987,6 +1010,50 @@ def test_cancel_run_rejects_finished_run() -> None:
                 await scheduler.cancel_run(record.run_id, CancelRunRequest())
 
     asyncio.run(scenario())
+
+
+def test_run_started_append_failure_finalizes_failed_once_and_reaps_task(caplog: pytest.LogCaptureFixture) -> None:
+    async def scenario() -> tuple[RunScheduler, RunRecord, RunStartedAppendFailureStore]:
+        store = RunStartedAppendFailureStore()
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(store=store, plugin_daemon_http_client=client, dify_api_http_client=client)
+            record = await scheduler.create_run(_request())
+            await asyncio.wait_for(scheduler.active_tasks[record.run_id], timeout=1)
+            await asyncio.sleep(0)
+        return scheduler, record, store
+
+    scheduler, record, store = asyncio.run(scenario())
+
+    assert store.append_attempts == 1
+    assert store.finalization_attempts == 1
+    assert store.statuses[record.run_id] == "failed"
+    assert [event.type for event in store.events[record.run_id]] == ["run_failed"]
+    assert store.errors[record.run_id] == "one-shot run_started write failure"
+    assert scheduler.active_tasks == {}
+    assert "one-shot run_started write failure" in caplog.text
+
+
+def test_run_started_append_failure_preserves_an_accepted_cancellation() -> None:
+    async def scenario() -> tuple[RunRecord, RunStartedAppendFailureStore]:
+        store = RunStartedAppendFailureStore(cancel_on_start_failure=True)
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(store=store, plugin_daemon_http_client=client, dify_api_http_client=client)
+            record = await scheduler.create_run(_request())
+            await asyncio.wait_for(scheduler.active_tasks[record.run_id], timeout=1)
+            await asyncio.sleep(0)
+        return record, store
+
+    record, store = asyncio.run(scenario())
+
+    assert store.append_attempts == 1
+    assert store.finalization_attempts == 1
+    assert store.statuses[record.run_id] == "cancelled"
+    assert record.run_id not in store.cancellation_intents
+    assert [event.type for event in store.events[record.run_id]] == ["run_cancelled"]
+    terminal = store.events[record.run_id][0]
+    assert isinstance(terminal, RunCancelledEvent)
+    assert terminal.data.reason == "start_write_race"
+    assert terminal.data.message == "cancel accepted during start write"
 
 
 def test_create_run_accepts_blank_prompt_and_runner_fails_asynchronously() -> None:
