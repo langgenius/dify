@@ -25,9 +25,10 @@ const (
 
 // PtySanitizer incrementally converts PTY bytes into stable, readable UTF-8.
 type PtySanitizer struct {
-	lineBuffer []byte
-	pendingCR  bool
-	state      escapeState
+	lineBuffer  []byte
+	pendingUTF8 []byte
+	pendingCR   bool
+	state       escapeState
 }
 
 // New returns a fresh PtySanitizer.
@@ -35,10 +36,19 @@ func New() *PtySanitizer {
 	return &PtySanitizer{}
 }
 
-// Feed consumes one chunk of decoded text and returns newly stable output.
+// Feed consumes one chunk of PTY bytes and returns newly stable output.
 func (s *PtySanitizer) Feed(text []byte) []byte {
+	if len(s.pendingUTF8) > 0 {
+		text = append(s.pendingUTF8, text...)
+		s.pendingUTF8 = nil
+	}
 	var out []byte
 	for len(text) > 0 {
+		if !utf8.FullRune(text) {
+			// Copy the incomplete suffix because the caller may reuse its buffer.
+			s.pendingUTF8 = append(s.pendingUTF8, text...)
+			break
+		}
 		r, size := utf8.DecodeRune(text)
 		if r == utf8.RuneError && size <= 1 {
 			// Replace invalid byte with U+FFFD
@@ -54,6 +64,11 @@ func (s *PtySanitizer) Feed(text []byte) []byte {
 
 // Flush returns any remaining buffered content at end-of-stream.
 func (s *PtySanitizer) Flush() []byte {
+	// At EOF, replace each incomplete byte before resetting ANSI and CR state.
+	for range s.pendingUTF8 {
+		s.consumeRune(utf8.RuneError, nil)
+	}
+	s.pendingUTF8 = nil
 	s.state = stateNormal
 	s.pendingCR = false
 	result := s.lineBuffer
