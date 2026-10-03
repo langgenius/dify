@@ -24,7 +24,12 @@ from dify_agent.protocol.schemas import (
     RunEventsResponse,
     RunStatusResponse,
 )
-from dify_agent.runtime.run_scheduler import RunCancellationConflictError, RunScheduler, SchedulerStoppingError
+from dify_agent.runtime.run_scheduler import (
+    RunCancellationConflictError,
+    RunScheduler,
+    SchedulerOverloadedError,
+    SchedulerStoppingError,
+)
 from dify_agent.server.sse import sse_event_stream
 from dify_agent.storage.redis_run_store import RedisRunStore, RunNotFoundError
 
@@ -50,6 +55,12 @@ def create_runs_router(
             record = await scheduler.create_run(request)
         except SchedulerStoppingError as exc:
             raise HTTPException(status_code=503, detail="run scheduler is shutting down") from exc
+        except SchedulerOverloadedError as exc:
+            raise HTTPException(
+                status_code=429,
+                detail="active run limit reached",
+                headers={"Retry-After": "1"},
+            ) from exc
         return CreateRunResponse(run_id=record.run_id, status=record.status)
 
     @router.get("/{run_id}", response_model=RunStatusResponse)

@@ -1,7 +1,11 @@
 from fastapi.testclient import TestClient
 
 from dify_agent.protocol import CancelRunResponse, DIFY_AGENT_MODEL_LAYER_ID, RunFailureType
-from dify_agent.runtime.run_scheduler import RunCancellationConflictError, SchedulerStoppingError
+from dify_agent.runtime.run_scheduler import (
+    RunCancellationConflictError,
+    SchedulerOverloadedError,
+    SchedulerStoppingError,
+)
 from dify_agent.server.routes.runs import create_runs_router
 from dify_agent.server.schemas import RunRecord
 from dify_agent.storage.redis_run_store import RunNotFoundError
@@ -257,6 +261,35 @@ def test_create_run_accepts_closed_session_snapshot_request() -> None:
 
     assert response.status_code == 202
     assert response.json() == {"run_id": "run-1", "status": "running"}
+
+
+def test_create_run_returns_429_when_active_limit_is_reached() -> None:
+    from fastapi import FastAPI
+
+    class OverloadedScheduler:
+        async def create_run(self, request: object) -> RunRecord:
+            del request
+            raise SchedulerOverloadedError("active run limit reached")
+
+    app = FastAPI()
+    app.include_router(
+        create_runs_router(lambda: FakeStore(), lambda: OverloadedScheduler())  # pyright: ignore[reportArgumentType]
+    )
+    client = TestClient(app)
+
+    response = client.post(
+        "/runs",
+        json={
+            "composition": {
+                "schema_version": 1,
+                "layers": [{"name": "prompt", "type": "plain.prompt", "config": {"user": "hello"}}],
+            }
+        },
+    )
+
+    assert response.status_code == 429
+    assert response.json()["detail"] == "active run limit reached"
+    assert response.headers["Retry-After"] == "1"
 
 
 def test_create_run_returns_503_when_scheduler_is_stopping() -> None:

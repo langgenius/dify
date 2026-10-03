@@ -36,7 +36,12 @@ from dify_agent.runtime.event_sink import (
     emit_run_succeeded,
     terminal_event_status_fields,
 )
-from dify_agent.runtime.run_scheduler import RunCancellationConflictError, RunScheduler, SchedulerStoppingError
+from dify_agent.runtime.run_scheduler import (
+    RunCancellationConflictError,
+    RunScheduler,
+    SchedulerOverloadedError,
+    SchedulerStoppingError,
+)
 from dify_agent.runtime.runner import AgentRunRunner
 from dify_agent.server.schemas import RunRecord
 
@@ -1084,6 +1089,126 @@ def test_create_run_accepts_closed_session_snapshot_and_runner_fails_asynchronou
         assert [event.type for event in store.events[record.run_id]] == ["run_started", "run_failed"]
         assert store.statuses[record.run_id] == "failed"
         assert "CLOSED snapshots cannot be entered" in (store.errors[record.run_id] or "")
+
+    asyncio.run(scenario())
+
+
+def test_max_active_runs_rejects_before_persisting() -> None:
+    async def scenario() -> None:
+        store = FakeStore()
+        started = asyncio.Event()
+        release = asyncio.Event()
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(
+                store=store,
+                plugin_daemon_http_client=client,
+                dify_api_http_client=client,
+                max_active_runs=1,
+                runner_factory=lambda _record, _request: ControlledRunner(started=started, release=release),
+            )
+            record = await scheduler.create_run(_request())
+            await asyncio.wait_for(started.wait(), timeout=1)
+
+            with pytest.raises(SchedulerOverloadedError):
+                await scheduler.create_run(_request())
+
+            assert list(store.records) == [record.run_id]
+            assert list(scheduler.active_tasks) == [record.run_id]
+
+            _ = release.set()
+            await asyncio.wait_for(scheduler.active_tasks[record.run_id], timeout=1)
+        await asyncio.sleep(0)
+
+    asyncio.run(scenario())
+
+
+def test_max_active_runs_ignores_completed_task_before_callback_removal() -> None:
+    async def scenario() -> None:
+        store = FakeStore()
+        first_started = asyncio.Event()
+        first_release = asyncio.Event()
+        second_started = asyncio.Event()
+        second_release = asyncio.Event()
+        async with httpx.AsyncClient() as client:
+            runners = iter(
+                (
+                    ControlledRunner(started=first_started, release=first_release),
+                    ControlledRunner(started=second_started, release=second_release),
+                )
+            )
+            scheduler = RunScheduler(
+                store=store,
+                plugin_daemon_http_client=client,
+                dify_api_http_client=client,
+                max_active_runs=1,
+                runner_factory=lambda _record, _request: next(runners),
+            )
+
+            completed_task = asyncio.create_task(asyncio.sleep(0))
+            await asyncio.wait_for(completed_task, timeout=1)
+            scheduler.active_tasks["completed"] = completed_task
+
+            first = await scheduler.create_run(_request())
+            assert list(store.records) == [first.run_id]
+
+    asyncio.run(scenario())
+
+
+def test_finished_run_releases_max_active_capacity() -> None:
+    async def scenario() -> None:
+        store = FakeStore()
+        first_started = asyncio.Event()
+        first_release = asyncio.Event()
+        second_started = asyncio.Event()
+        second_release = asyncio.Event()
+        async with httpx.AsyncClient() as client:
+            runners = iter(
+                (
+                    ControlledRunner(started=first_started, release=first_release),
+                    ControlledRunner(started=second_started, release=second_release),
+                )
+            )
+            scheduler = RunScheduler(
+                store=store,
+                plugin_daemon_http_client=client,
+                dify_api_http_client=client,
+                max_active_runs=1,
+                runner_factory=lambda _record, _request: next(runners),
+            )
+
+            first = await scheduler.create_run(_request())
+            await asyncio.wait_for(first_started.wait(), timeout=1)
+            _ = first_release.set()
+            await asyncio.wait_for(scheduler.active_tasks[first.run_id], timeout=1)
+            await asyncio.sleep(0)
+
+            second = await scheduler.create_run(_request())
+            await asyncio.wait_for(second_started.wait(), timeout=1)
+            assert first.run_id != second.run_id
+
+            _ = second_release.set()
+            await asyncio.wait_for(scheduler.active_tasks[second.run_id], timeout=1)
+        await asyncio.sleep(0)
+
+    asyncio.run(scenario())
+
+
+def test_shutdown_takes_precedence_over_capacity_limit() -> None:
+    async def scenario() -> None:
+        store = FakeStore()
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(
+                store=store,
+                plugin_daemon_http_client=client,
+                dify_api_http_client=client,
+                max_active_runs=1,
+            )
+            await scheduler.shutdown()
+
+            with pytest.raises(SchedulerStoppingError):
+                await scheduler.create_run(_request())
+
+        assert store.records == {}
 
     asyncio.run(scenario())
 

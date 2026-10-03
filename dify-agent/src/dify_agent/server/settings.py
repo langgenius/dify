@@ -56,6 +56,7 @@ class ServerSettings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
     redis_prefix: str = "dify-agent"
     shutdown_grace_seconds: float = 30
+    max_active_runs: int | None = Field(default=None, ge=1)
     run_retention_seconds: int = Field(default=DEFAULT_RUN_RETENTION_SECONDS, ge=1)
     run_event_stream_max_length: int = Field(default=DEFAULT_RUN_EVENT_STREAM_MAX_LENGTH, ge=1)
     stream_text_delta_coalescing_enabled: bool = True
