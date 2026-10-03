@@ -9,6 +9,7 @@ import pytest
 
 import core.rag.extractor.csv_extractor as csv_module
 from core.rag.extractor.csv_extractor import CSVExtractor
+from core.rag.extractor.helpers import CSV_DELIMITER_SAMPLE_CHARS
 
 
 class _ManagedStringIO(io.StringIO):
@@ -117,3 +118,84 @@ class TestCSVExtractor:
 
         with pytest.raises(csv.Error, match="bad csv"):
             extractor._read_from_file(io.StringIO("x"))
+
+
+class TestCSVSeparatorDetection:
+    """A file named .csv is not always comma separated.
+
+    Excel writes the list separator of the machine's locale -- a semicolon
+    across most of Europe -- and a tab separated export is routinely saved as
+    .csv. `pandas.read_csv` defaults to a comma, so such a file was read as a
+    single column holding the whole row.
+    """
+
+    ROWS = ["name;region;units", "widget;EU;12", "gadget;US;7"]
+    EXPECTED = ["name: widget;region: EU;units: 12", "name: gadget;region: US;units: 7"]
+
+    def _extract(self, tmp_path: Path, text: str, **kwargs) -> list[str]:
+        file_path = tmp_path / "data.csv"
+        file_path.write_text(text, encoding="utf-8")
+        docs = CSVExtractor(str(file_path), encoding="utf-8", **kwargs).extract()
+        return [doc.page_content for doc in docs]
+
+    @pytest.mark.parametrize("separator", [",", ";", "\t", "|"])
+    def test_reads_the_separator_the_file_was_written_with(self, tmp_path: Path, separator: str) -> None:
+        text = "\n".join(row.replace(";", separator) for row in self.ROWS) + "\n"
+
+        assert self._extract(tmp_path, text) == self.EXPECTED
+
+    def test_a_whitespace_only_line_is_not_a_row(self, tmp_path: Path) -> None:
+        text = "name;region;units\nwidget;EU;12\n   \ngadget;US;7\n"
+
+        assert self._extract(tmp_path, text) == self.EXPECTED
+
+    def test_a_single_column_file_stays_a_single_column(self, tmp_path: Path) -> None:
+        """Guard: a separator that does not line up across the rows is not one."""
+        text = "note\na; b\nc; d\n"
+
+        assert self._extract(tmp_path, text) == ["note: a; b", "note: c; d"]
+
+    def test_a_separator_inside_a_quoted_field_is_not_a_separator(self, tmp_path: Path) -> None:
+        text = 'name,note\nwidget,"a; b"\ngadget,"c; d"\n'
+
+        assert self._extract(tmp_path, text) == ["name: widget;note: a; b", "name: gadget;note: c; d"]
+
+    def test_long_rows_cut_by_the_detection_sample_keep_their_separator(self, tmp_path: Path) -> None:
+        """Fewer than CSV_DELIMITER_SAMPLE_ROWS rows fit in the sample, so it ends inside a row.
+
+        That row is cut short, not written with fewer columns.
+        """
+        cell = "x" * 4000
+        text = "a;b;c\n" + "".join(f"{i};{cell};{cell}\n" for i in range(60))
+        assert not text[:CSV_DELIMITER_SAMPLE_CHARS].endswith("\n")
+
+        docs = self._extract(tmp_path, text)
+
+        assert len(docs) == 60
+        assert docs[0].startswith("a: 0;b: xxx")
+
+    def test_a_sample_that_ends_inside_a_quoted_line_break_keeps_its_separator(self, tmp_path: Path) -> None:
+        """Trimming the sample to its last line break is not enough when that line break is inside a quoted field."""
+        cell = '"' + ("y" * 70 + "\n") * 60 + '"'
+        text = "a;b;c\n" + "".join(f"{i};{cell};end\n" for i in range(40))
+        assert text[:CSV_DELIMITER_SAMPLE_CHARS].count('"') % 2 == 1
+
+        docs = self._extract(tmp_path, text)
+
+        assert len(docs) == 40
+        assert docs[0].startswith("a: 0;b: yyy")
+        assert docs[0].endswith(";c: end")
+
+    def test_the_last_row_of_a_complete_file_still_counts(self, tmp_path: Path) -> None:
+        """Guard: only a sample cut from a longer file leaves its last row out."""
+        text = "x;1\ny;2\nz\n"
+
+        assert self._extract(tmp_path, text) == ["x;1: y;2", "x;1: z"]
+
+    def test_an_explicit_separator_is_not_overridden(self, tmp_path: Path) -> None:
+        """A `sep` in csv_args wins, and no detection runs."""
+        text = "name,region\nwidget;EU\n"
+
+        # With the comma forced, the semicolon is ordinary text and the second
+        # column is empty -- detection would have picked the semicolon instead.
+        assert self._extract(tmp_path, text, csv_args={"sep": ","}) == ["name: widget;EU;region: "]
