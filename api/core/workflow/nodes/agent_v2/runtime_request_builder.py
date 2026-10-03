@@ -762,6 +762,8 @@ def build_knowledge_layer_config(agent_soul: AgentSoulConfig) -> DifyKnowledgeBa
         return None
 
     return DifyKnowledgeBaseLayerConfig(
+        max_result_content_chars=dify_config.AGENT_KNOWLEDGE_MAX_RESULT_CONTENT_CHARS,
+        max_observation_chars=dify_config.AGENT_KNOWLEDGE_MAX_OBSERVATION_CHARS,
         sets=[
             DifyKnowledgeSetConfig(
                 id=knowledge_set.id,

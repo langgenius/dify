@@ -17,6 +17,7 @@ from clients.agent_backend import (
     DIFY_PLUGIN_TOOLS_LAYER_ID,
 )
 from clients.agent_backend.request_builder import DIFY_SHELL_LAYER_ID
+from configs.extra.agent_backend_config import AgentBackendConfig
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
 from core.workflow.file_reference import build_file_reference
 from core.workflow.nodes.agent_v2.dify_tools_builder import WorkflowAgentDifyToolsBuilder
@@ -727,7 +728,18 @@ def test_builds_workflow_run_request_with_dify_plugin_tools_layer(monkeypatch: p
     assert dify_tools_builder.last_invoke_from == context.dify_context.invoke_from
 
 
-def test_build_maps_agent_soul_knowledge_to_knowledge_layer_config():
+@pytest.mark.parametrize(("content_limit", "observation_limit"), [(2000, 12000), (8000, 48000)])
+def test_build_maps_agent_soul_knowledge_to_knowledge_layer_config(
+    monkeypatch: pytest.MonkeyPatch, content_limit: int, observation_limit: int
+):
+    monkeypatch.setenv("AGENT_KNOWLEDGE_MAX_RESULT_CONTENT_CHARS", str(content_limit))
+    monkeypatch.setenv("AGENT_KNOWLEDGE_MAX_OBSERVATION_CHARS", str(observation_limit))
+    settings = AgentBackendConfig()
+    apply_config_overrides(
+        monkeypatch,
+        AGENT_KNOWLEDGE_MAX_RESULT_CONTENT_CHARS=settings.AGENT_KNOWLEDGE_MAX_RESULT_CONTENT_CHARS,
+        AGENT_KNOWLEDGE_MAX_OBSERVATION_CHARS=settings.AGENT_KNOWLEDGE_MAX_OBSERVATION_CHARS,
+    )
     context = _context()
     snapshot = AgentConfigSnapshot(
         id="snapshot-1",
@@ -880,8 +892,8 @@ def test_build_maps_agent_soul_knowledge_to_knowledge_layer_config():
             },
         },
     ]
-    assert knowledge_layer["config"]["max_result_content_chars"] == 2000
-    assert knowledge_layer["config"]["max_observation_chars"] == 12000
+    assert knowledge_layer["config"]["max_result_content_chars"] == content_limit
+    assert knowledge_layer["config"]["max_observation_chars"] == observation_limit
 
 
 def test_build_knowledge_layer_maps_disabled_score_threshold_to_zero():
