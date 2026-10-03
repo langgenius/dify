@@ -76,6 +76,50 @@ def test_parse_row():
         assert extractor._parse_row(row, {}, 3) == gt[idx]
 
 
+def _tiny_png_bytes() -> bytes:
+    """Minimal valid 1x1 PNG for embedding in test documents."""
+    import struct
+    import zlib
+
+    signature = b"\x89PNG\r\n\x1a\n"
+    ihdr = struct.pack(">IIBBBBB", 1, 1, 8, 2, 0, 0, 0)
+
+    def chunk(tag: bytes, data: bytes) -> bytes:
+        return struct.pack(">I", len(data)) + tag + data + struct.pack(">I", zlib.crc32(tag + data) & 0xFFFFFFFF)
+
+    return signature + chunk(b"IHDR", ihdr) + chunk(b"IDAT", zlib.compress(b"\x00\xff\x00\x00")) + chunk(b"IEND", b"")
+
+
+def test_parse_cell_includes_images_from_nested_tables():
+    """Images inside nested tables must appear in the parsed cell markdown."""
+    from docx.shared import Inches
+
+    doc = Document()
+    outer = doc.add_table(rows=1, cols=1)
+    outer_cell = outer.cell(0, 0)
+    outer_cell.text = "before-nested"
+    nested = outer_cell.add_table(rows=1, cols=2)
+    nested.cell(0, 0).text = "n1"
+    nested_image_cell = nested.cell(0, 1)
+    nested_image_cell.text = "n2"
+    nested_image_cell.paragraphs[0].add_run().add_picture(io.BytesIO(_tiny_png_bytes()), width=Inches(0.2))
+
+    # Match production image_map: internal images are keyed by target_part.
+    image_map: dict[object, str] = {}
+    for rel in doc.part.rels.values():
+        if "image" in rel.reltype and not rel.is_external:
+            image_map[rel.target_part] = "![image](http://files.local/files/x/file-preview)"
+
+    assert image_map, "test setup must embed at least one image relationship"
+
+    extractor = object.__new__(WordExtractor)
+    parsed = extractor._parse_cell(outer_cell, image_map)
+
+    assert "before-nested" in parsed
+    assert "n1" in parsed
+    assert "![image](" in parsed
+
+
 def test_init_downloads_via_remote_fetcher(monkeypatch: pytest.MonkeyPatch):
     doc = Document()
     doc.add_paragraph("hello")
@@ -536,8 +580,15 @@ def test_table_to_markdown_and_parse_helpers(monkeypatch: pytest.MonkeyPatch):
     image_map = {"ext": "EXT-IMG", image_part: "INT-IMG"}
     assert extractor._parse_cell_paragraph(paragraph, image_map) == "EXT-IMGINT-IMGplain"
 
-    cell = SimpleNamespace(paragraphs=[paragraph, paragraph])
-    assert extractor._parse_cell(cell, image_map) == "EXT-IMGINT-IMGplain"
+    # _parse_cell matches on real python-docx Paragraph/Table types from
+    # iter_inner_content; exercise that path with a real cell and a stub parser.
+    real_doc = Document()
+    real_cell = real_doc.add_table(rows=1, cols=1).cell(0, 0)
+    real_cell.text = "ignored"
+    monkeypatch.setattr(
+        extractor, "_parse_cell_paragraph", lambda p, m: "EXT-IMGINT-IMGplain"
+    )
+    assert extractor._parse_cell(real_cell, image_map) == "EXT-IMGINT-IMGplain"
 
 
 def test_parse_docx_reads_real_paragraph_table_order(monkeypatch: pytest.MonkeyPatch):
