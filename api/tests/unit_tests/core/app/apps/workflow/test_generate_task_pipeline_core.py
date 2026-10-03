@@ -178,6 +178,71 @@ class TestWorkflowGenerateTaskPipeline:
 
         assert response.data.outputs == {"ok": True}
 
+    def test_to_blocking_response_includes_full_llm_usage(self):
+        from decimal import Decimal
+
+        from graphon.model_runtime.entities.llm_entities import LLMUsage
+
+        pipeline = _make_pipeline()
+        llm_usage = LLMUsage.empty_usage()
+        llm_usage.prompt_tokens = 3
+        llm_usage.completion_tokens = 2
+        llm_usage.total_tokens = 5
+        llm_usage.prompt_price = Decimal("0.003")
+        llm_usage.completion_price = Decimal("0.004")
+        llm_usage.total_price = Decimal("0.007")
+        pipeline._graph_runtime_state = SimpleNamespace(llm_usage=llm_usage)
+
+        def _gen():
+            yield WorkflowFinishStreamResponse(
+                task_id="task",
+                workflow_run_id="run",
+                data=WorkflowFinishStreamResponse.Data(
+                    id="run",
+                    workflow_id="workflow-id",
+                    status=WorkflowExecutionStatus.SUCCEEDED,
+                    outputs={"ok": True},
+                    error=None,
+                    elapsed_time=1.0,
+                    total_tokens=5,
+                    total_steps=2,
+                    created_at=1,
+                    finished_at=2,
+                ),
+            )
+
+        response = pipeline._to_blocking_response(_gen())
+
+        assert response.data.usage is not None
+        assert response.data.usage["prompt_tokens"] == 3
+        assert response.data.usage["completion_tokens"] == 2
+        assert response.data.usage["total_price"] == "0.007"
+
+    def test_to_blocking_response_usage_is_none_without_runtime_state(self):
+        pipeline = _make_pipeline()
+
+        def _gen():
+            yield WorkflowFinishStreamResponse(
+                task_id="task",
+                workflow_run_id="run",
+                data=WorkflowFinishStreamResponse.Data(
+                    id="run",
+                    workflow_id="workflow-id",
+                    status=WorkflowExecutionStatus.SUCCEEDED,
+                    outputs={},
+                    error=None,
+                    elapsed_time=1.0,
+                    total_tokens=0,
+                    total_steps=1,
+                    created_at=1,
+                    finished_at=2,
+                ),
+            )
+
+        response = pipeline._to_blocking_response(_gen())
+
+        assert response.data.usage is None
+
     def test_listen_audio_msg_returns_audio_stream(self):
         pipeline = _make_pipeline()
         publisher = SimpleNamespace(check_and_get_audio=lambda: AudioTrunk(status="responding", audio="data"))
