@@ -8,7 +8,15 @@ import 'server-only'
 const getRequestQueryClient = cache(getQueryClient)
 
 const systemFeaturesServerQueryOptions = () =>
-  consoleQuery.systemFeatures.get.queryOptions({ staleTime: 'static' })
+  consoleQuery.systemFeatures.get.queryOptions({
+    staleTime: 'static',
+    context: {
+      server: {
+        forwardIdentity: false,
+        revalidate: 600,
+      },
+    },
+  })
 
 export const getOptionalSystemFeatures = async () => {
   await connection()
