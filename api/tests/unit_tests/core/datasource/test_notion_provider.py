@@ -212,13 +212,9 @@ class TestNotionExtractorPageRetrieval:
             notion_token_loader=lambda: "token",
         )
 
-    def _create_mock_response(self, data: dict[str, Any], status_code: int = 200) -> Mock:
-        """Helper to create mock HTTP response."""
-        response = Mock()
-        response.status_code = status_code
-        response.json.return_value = data
-        response.text = json.dumps(data)
-        return response
+    def _create_response(self, data: dict[str, Any], status_code: int = 200) -> httpx.Response:
+        """Build an HTTP response with serialized JSON for the extractor to parse."""
+        return httpx.Response(status_code, json=data)
 
     def _create_block(
         self, block_id: str, block_type: str, text_content: str, has_children: bool = False
@@ -253,7 +249,7 @@ class TestNotionExtractorPageRetrieval:
             "next_cursor": None,
             "has_more": False,
         }
-        mock_request.return_value = self._create_mock_response(mock_data)
+        mock_request.return_value = self._create_response(mock_data)
 
         # Act
         result = extractor._get_notion_block_data("page-456")
@@ -279,7 +275,7 @@ class TestNotionExtractorPageRetrieval:
             "next_cursor": None,
             "has_more": False,
         }
-        mock_request.return_value = self._create_mock_response(mock_data)
+        mock_request.return_value = self._create_response(mock_data)
 
         # Act
         result = extractor._get_notion_block_data("page-456")
@@ -308,8 +304,8 @@ class TestNotionExtractorPageRetrieval:
             "has_more": False,
         }
         mock_request.side_effect = [
-            self._create_mock_response(first_page),
-            self._create_mock_response(second_page),
+            self._create_response(first_page),
+            self._create_response(second_page),
         ]
 
         # Act
@@ -344,8 +340,8 @@ class TestNotionExtractorPageRetrieval:
             "has_more": False,
         }
         mock_request.side_effect = [
-            self._create_mock_response(parent_data),
-            self._create_mock_response(child_data),
+            self._create_response(parent_data),
+            self._create_response(child_data),
         ]
 
         # Act
@@ -361,7 +357,7 @@ class TestNotionExtractorPageRetrieval:
     def test_get_notion_block_data_error_handling(self, mock_request, extractor: NotionExtractor):
         """Test error handling for failed API requests."""
         # Arrange
-        mock_request.return_value = self._create_mock_response({}, status_code=404)
+        mock_request.return_value = self._create_response({}, status_code=404)
 
         # Act & Assert
         with pytest.raises(ValueError) as exc_info:
@@ -372,7 +368,7 @@ class TestNotionExtractorPageRetrieval:
     def test_get_notion_block_data_invalid_response(self, mock_request, extractor: NotionExtractor):
         """Test handling of invalid API response structure."""
         # Arrange
-        mock_request.return_value = self._create_mock_response({"invalid": "structure"})
+        mock_request.return_value = self._create_response({"invalid": "structure"})
 
         # Act & Assert
         with pytest.raises(ValueError) as exc_info:
@@ -430,8 +426,7 @@ class TestNotionExtractorDatabaseRetrieval:
     def test_get_notion_database_data_simple(self, mock_post, extractor: NotionExtractor):
         """Test retrieving simple database with basic properties."""
         # Arrange
-        mock_response = Mock()
-        mock_response.json.return_value = {
+        mock_response_data = {
             "object": "list",
             "results": [
                 self._create_database_page(
@@ -452,6 +447,7 @@ class TestNotionExtractorDatabaseRetrieval:
             "has_more": False,
             "next_cursor": None,
         }
+        mock_response = httpx.Response(200, json=mock_response_data)
         mock_post.return_value = mock_response
 
         # Act
@@ -469,8 +465,7 @@ class TestNotionExtractorDatabaseRetrieval:
     def test_get_notion_database_data_with_pagination(self, mock_post, extractor: NotionExtractor):
         """Test retrieving database with paginated results."""
         # Arrange
-        first_response = Mock()
-        first_response.json.return_value = {
+        first_response_data = {
             "object": "list",
             "results": [
                 self._create_database_page("page-1", {"Title": {"type": "title", "value": [{"plain_text": "Page 1"}]}}),
@@ -478,8 +473,8 @@ class TestNotionExtractorDatabaseRetrieval:
             "has_more": True,
             "next_cursor": "cursor-xyz",
         }
-        second_response = Mock()
-        second_response.json.return_value = {
+        first_response = httpx.Response(200, json=first_response_data)
+        second_response_data = {
             "object": "list",
             "results": [
                 self._create_database_page("page-2", {"Title": {"type": "title", "value": [{"plain_text": "Page 2"}]}}),
@@ -487,6 +482,7 @@ class TestNotionExtractorDatabaseRetrieval:
             "has_more": False,
             "next_cursor": None,
         }
+        second_response = httpx.Response(200, json=second_response_data)
         mock_post.side_effect = [first_response, second_response]
 
         # Act
@@ -503,8 +499,7 @@ class TestNotionExtractorDatabaseRetrieval:
     def test_get_notion_database_data_multi_select(self, mock_post, extractor: NotionExtractor):
         """Test database with multi_select property type."""
         # Arrange
-        mock_response = Mock()
-        mock_response.json.return_value = {
+        mock_response_data = {
             "object": "list",
             "results": [
                 self._create_database_page(
@@ -521,6 +516,7 @@ class TestNotionExtractorDatabaseRetrieval:
             "has_more": False,
             "next_cursor": None,
         }
+        mock_response = httpx.Response(200, json=mock_response_data)
         mock_post.return_value = mock_response
 
         # Act
@@ -536,8 +532,7 @@ class TestNotionExtractorDatabaseRetrieval:
     def test_get_notion_database_data_empty_properties(self, mock_post, extractor: NotionExtractor):
         """Test database with empty property values."""
         # Arrange
-        mock_response = Mock()
-        mock_response.json.return_value = {
+        mock_response_data = {
             "object": "list",
             "results": [
                 self._create_database_page(
@@ -551,6 +546,7 @@ class TestNotionExtractorDatabaseRetrieval:
             "has_more": False,
             "next_cursor": None,
         }
+        mock_response = httpx.Response(200, json=mock_response_data)
         mock_post.return_value = mock_response
 
         # Act
@@ -566,13 +562,13 @@ class TestNotionExtractorDatabaseRetrieval:
     def test_get_notion_database_data_empty_results(self, mock_post, extractor: NotionExtractor):
         """Test handling of empty database."""
         # Arrange
-        mock_response = Mock()
-        mock_response.json.return_value = {
+        mock_response_data = {
             "object": "list",
             "results": [],
             "has_more": False,
             "next_cursor": None,
         }
+        mock_response = httpx.Response(200, json=mock_response_data)
         mock_post.return_value = mock_response
 
         # Act
@@ -585,8 +581,8 @@ class TestNotionExtractorDatabaseRetrieval:
     def test_get_notion_database_data_missing_results(self, mock_post, extractor: NotionExtractor):
         """Test handling of malformed API response."""
         # Arrange
-        mock_response = Mock()
-        mock_response.json.return_value = {"object": "list"}
+        mock_response_data = {"object": "list"}
+        mock_response = httpx.Response(200, json=mock_response_data)
         mock_post.return_value = mock_response
 
         # Act
@@ -659,7 +655,7 @@ class TestNotionExtractorTableParsing:
             "next_cursor": None,
             "has_more": False,
         }
-        mock_request.return_value = Mock(json=lambda: mock_data)
+        mock_request.return_value = httpx.Response(200, json=mock_data)
 
         # Act
         result = extractor._read_table_rows("table-block-123")
@@ -691,7 +687,7 @@ class TestNotionExtractorTableParsing:
             "next_cursor": None,
             "has_more": False,
         }
-        mock_request.return_value = Mock(json=lambda: mock_data)
+        mock_request.return_value = httpx.Response(200, json=mock_data)
 
         # Act
         result = extractor._read_table_rows("table-block-123")
@@ -730,7 +726,7 @@ class TestNotionExtractorTableParsing:
             "next_cursor": None,
             "has_more": False,
         }
-        mock_request.side_effect = [Mock(json=lambda: first_page), Mock(json=lambda: second_page)]
+        mock_request.side_effect = [httpx.Response(200, json=first_page), httpx.Response(200, json=second_page)]
 
         # Act
         result = extractor._read_table_rows("table-block-123")
@@ -787,12 +783,12 @@ class TestNotionExtractorLastEditedTime:
     def test_get_notion_last_edited_time_page(self, mock_request, extractor_page):
         """Test retrieving last edited time for a page."""
         # Arrange
-        mock_response = Mock()
-        mock_response.json.return_value = {
+        mock_response_data = {
             "object": "page",
             "id": "page-456",
             "last_edited_time": "2024-11-27T12:00:00.000Z",
         }
+        mock_response = httpx.Response(200, json=mock_response_data)
         mock_request.return_value = mock_response
 
         # Act
@@ -808,12 +804,12 @@ class TestNotionExtractorLastEditedTime:
     def test_get_notion_last_edited_time_database(self, mock_request, extractor_database):
         """Test retrieving last edited time for a database."""
         # Arrange
-        mock_response = Mock()
-        mock_response.json.return_value = {
+        mock_response_data = {
             "object": "database",
             "id": "database-789",
             "last_edited_time": "2024-11-27T15:30:00.000Z",
         }
+        mock_response = httpx.Response(200, json=mock_response_data)
         mock_request.return_value = mock_response
 
         # Act
@@ -835,12 +831,12 @@ class TestNotionExtractorLastEditedTime:
     ):
         """Test updating document model with last edited time."""
         # Arrange
-        mock_response = Mock()
-        mock_response.json.return_value = {
+        mock_response_data = {
             "object": "page",
             "id": "page-456",
             "last_edited_time": "2024-11-27T18:00:00.000Z",
         }
+        mock_response = httpx.Response(200, json=mock_response_data)
         mock_request.return_value = mock_response
 
         # Act
@@ -891,16 +887,14 @@ class TestNotionExtractorIntegration:
         )
 
         # Mock last edited time request
-        last_edited_response = Mock()
-        last_edited_response.json.return_value = {
+        last_edited_response_data = {
             "object": "page",
             "last_edited_time": "2024-11-27T20:00:00.000Z",
         }
+        last_edited_response = httpx.Response(200, json=last_edited_response_data)
 
         # Mock block data request
-        block_response = Mock()
-        block_response.status_code = 200
-        block_response.json.return_value = {
+        block_response_data = {
             "object": "list",
             "results": [
                 {
@@ -927,6 +921,7 @@ class TestNotionExtractorIntegration:
             "next_cursor": None,
             "has_more": False,
         }
+        block_response = httpx.Response(200, json=block_response_data)
 
         mock_request.side_effect = [last_edited_response, block_response]
 
@@ -963,16 +958,15 @@ class TestNotionExtractorIntegration:
         )
 
         # Mock last edited time request
-        last_edited_response = Mock()
-        last_edited_response.json.return_value = {
+        last_edited_response_data = {
             "object": "database",
             "last_edited_time": "2024-11-27T20:00:00.000Z",
         }
+        last_edited_response = httpx.Response(200, json=last_edited_response_data)
         mock_request.return_value = last_edited_response
 
         # Mock database query request
-        database_response = Mock()
-        database_response.json.return_value = {
+        database_response_data = {
             "object": "list",
             "results": [
                 {
@@ -988,6 +982,7 @@ class TestNotionExtractorIntegration:
             "has_more": False,
             "next_cursor": None,
         }
+        database_response = httpx.Response(200, json=database_response_data)
         mock_post.return_value = database_response
 
         # Act
@@ -1062,7 +1057,7 @@ class TestNotionExtractorReadBlock:
             "next_cursor": None,
             "has_more": False,
         }
-        mock_request.return_value = Mock(json=lambda: mock_data)
+        mock_request.return_value = httpx.Response(200, json=mock_data)
 
         # Act
         result = extractor._read_block("block-parent", num_tabs=2)
@@ -1088,7 +1083,7 @@ class TestNotionExtractorReadBlock:
             "next_cursor": None,
             "has_more": False,
         }
-        mock_request.return_value = Mock(json=lambda: mock_data)
+        mock_request.return_value = httpx.Response(200, json=mock_data)
 
         # Act
         result = extractor._read_block("block-parent")
@@ -1236,7 +1231,7 @@ class TestNotionExtractorAdvancedBlockTypes:
             "next_cursor": None,
             "has_more": False,
         }
-        mock_request.return_value = Mock(status_code=200, json=lambda: mock_data)
+        mock_request.return_value = httpx.Response(200, json=mock_data)
 
         # Act
         result = extractor._get_notion_block_data("page-456")
@@ -1263,7 +1258,7 @@ class TestNotionExtractorAdvancedBlockTypes:
             "next_cursor": None,
             "has_more": False,
         }
-        mock_request.return_value = Mock(status_code=200, json=lambda: mock_data)
+        mock_request.return_value = httpx.Response(200, json=mock_data)
 
         # Act
         result = extractor._get_notion_block_data("page-456")
@@ -1298,8 +1293,8 @@ class TestNotionExtractorAdvancedBlockTypes:
             "has_more": False,
         }
         mock_request.side_effect = [
-            Mock(status_code=200, json=lambda: parent_data),
-            Mock(status_code=200, json=lambda: child_data),
+            httpx.Response(200, json=parent_data),
+            httpx.Response(200, json=child_data),
         ]
 
         # Act
@@ -1330,7 +1325,7 @@ class TestNotionExtractorAdvancedBlockTypes:
             "next_cursor": None,
             "has_more": False,
         }
-        mock_request.return_value = Mock(status_code=200, json=lambda: mock_data)
+        mock_request.return_value = httpx.Response(200, json=mock_data)
 
         # Act
         result = extractor._get_notion_block_data("page-456")
@@ -1398,8 +1393,7 @@ class TestNotionExtractorDatabaseAdvanced:
         All property types should be extracted correctly.
         """
         # Arrange
-        mock_response = Mock()
-        mock_response.json.return_value = {
+        mock_response_data = {
             "object": "list",
             "results": [
                 self._create_database_page_with_properties(
@@ -1419,6 +1413,7 @@ class TestNotionExtractorDatabaseAdvanced:
             "has_more": False,
             "next_cursor": None,
         }
+        mock_response = httpx.Response(200, json=mock_response_data)
         mock_post.return_value = mock_response
 
         # Act
@@ -1444,8 +1439,7 @@ class TestNotionExtractorDatabaseAdvanced:
         This tests that all pages are retrieved correctly.
         """
         # Arrange - Create 3 pages of results
-        page1_response = Mock()
-        page1_response.json.return_value = {
+        page1_response_data = {
             "object": "list",
             "results": [
                 self._create_database_page_with_properties(
@@ -1456,9 +1450,9 @@ class TestNotionExtractorDatabaseAdvanced:
             "has_more": True,
             "next_cursor": "cursor-1",
         }
+        page1_response = httpx.Response(200, json=page1_response_data)
 
-        page2_response = Mock()
-        page2_response.json.return_value = {
+        page2_response_data = {
             "object": "list",
             "results": [
                 self._create_database_page_with_properties(
@@ -1469,9 +1463,9 @@ class TestNotionExtractorDatabaseAdvanced:
             "has_more": True,
             "next_cursor": "cursor-2",
         }
+        page2_response = httpx.Response(200, json=page2_response_data)
 
-        page3_response = Mock()
-        page3_response.json.return_value = {
+        page3_response_data = {
             "object": "list",
             "results": [
                 self._create_database_page_with_properties(
@@ -1482,6 +1476,7 @@ class TestNotionExtractorDatabaseAdvanced:
             "has_more": False,
             "next_cursor": None,
         }
+        page3_response = httpx.Response(200, json=page3_response_data)
 
         mock_post.side_effect = [page1_response, page2_response, page3_response]
 
@@ -1504,8 +1499,7 @@ class TestNotionExtractorDatabaseAdvanced:
         Rich text properties can contain formatted text and should be extracted.
         """
         # Arrange
-        mock_response = Mock()
-        mock_response.json.return_value = {
+        mock_response_data = {
             "object": "list",
             "results": [
                 self._create_database_page_with_properties(
@@ -1522,6 +1516,7 @@ class TestNotionExtractorDatabaseAdvanced:
             "has_more": False,
             "next_cursor": None,
         }
+        mock_response = httpx.Response(200, json=mock_response_data)
         mock_post.return_value = mock_response
 
         # Act
@@ -1603,9 +1598,7 @@ class TestNotionExtractorErrorScenarios:
         Different HTTP error codes (401, 403, 404, 429) should be handled appropriately.
         """
         # Arrange
-        mock_response = Mock()
-        mock_response.status_code = status_code
-        mock_response.text = description
+        mock_response = httpx.Response(status_code, text=description)
         mock_request.return_value = mock_response
 
         # Act & Assert
@@ -1630,9 +1623,7 @@ class TestNotionExtractorErrorScenarios:
         Various malformed responses should be handled gracefully.
         """
         # Arrange
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = response_data
+        mock_response = httpx.Response(200, json=response_data)
         mock_request.return_value = mock_response
 
         # Act & Assert
@@ -1647,8 +1638,7 @@ class TestNotionExtractorErrorScenarios:
         Databases can be queried with filters to retrieve specific rows.
         """
         # Arrange
-        mock_response = Mock()
-        mock_response.json.return_value = {
+        mock_response_data = {
             "object": "list",
             "results": [
                 {
@@ -1664,6 +1654,7 @@ class TestNotionExtractorErrorScenarios:
             "has_more": False,
             "next_cursor": None,
         }
+        mock_response = httpx.Response(200, json=mock_response_data)
         mock_post.return_value = mock_response
 
         # Create a custom query filter
@@ -1735,7 +1726,7 @@ class TestNotionExtractorTableAdvanced:
             "next_cursor": None,
             "has_more": False,
         }
-        mock_request.return_value = Mock(json=lambda: mock_data)
+        mock_request.return_value = httpx.Response(200, json=mock_data)
 
         # Act
         result = extractor._read_table_rows("table-block-123")
