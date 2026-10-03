@@ -622,16 +622,13 @@ class TestMessageClassifiers:
 class TestMaybeExtractSessionIdNew:
     def test_extracts_session_id_when_present(self):
         t = _new_transport()
-        resp = MagicMock()
-        resp.headers = {MCP_SESSION_ID: "new-session-99"}
+        resp = httpx.Response(200, headers={MCP_SESSION_ID: "new-session-99"})
         t._maybe_extract_session_id_from_response(resp)
         assert t.session_id == "new-session-99"
 
     def test_no_session_id_header_leaves_none(self):
         t = _new_transport()
-        resp = MagicMock()
-        resp.headers = MagicMock()
-        resp.headers.get = MagicMock(return_value=None)
+        resp = httpx.Response(200)
         t._maybe_extract_session_id_from_response(resp)
         assert t.session_id is None
 
@@ -691,18 +688,18 @@ class TestHandleSseEventNew:
         q: queue.Queue = queue.Queue()
         data = json.dumps({"jsonrpc": "2.0", "id": 1, "result": {}})
         sse = _make_sse_mock("message", data, sse_id="token-abc")
-        callback = MagicMock()
-        t._handle_sse_event(sse, q, resumption_callback=callback)
-        callback.assert_called_once_with("token-abc")
+        tokens: list[str] = []
+        t._handle_sse_event(sse, q, resumption_callback=tokens.append)
+        assert tokens == ["token-abc"]
 
     def test_message_event_no_callback_when_no_sse_id(self):
         t = _new_transport()
         q: queue.Queue = queue.Queue()
         data = json.dumps({"jsonrpc": "2.0", "id": 1, "result": {}})
         sse = _make_sse_mock("message", data, sse_id="")
-        callback = MagicMock()
-        t._handle_sse_event(sse, q, resumption_callback=callback)
-        callback.assert_not_called()
+        tokens: list[str] = []
+        t._handle_sse_event(sse, q, resumption_callback=tokens.append)
+        assert tokens == []
 
     def test_ping_event_returns_false(self):
         t = _new_transport()
@@ -1081,17 +1078,15 @@ class TestHandleJsonResponseNew:
         t = _new_transport()
         q: queue.Queue = queue.Queue()
         data = json.dumps({"jsonrpc": "2.0", "id": 1, "result": {}}).encode()
-        mock_response = MagicMock()
-        mock_response.read.return_value = data
-        t._handle_json_response(mock_response, q)
+        response = httpx.Response(200, content=data)
+        t._handle_json_response(response, q)
         assert isinstance(q.get_nowait(), SessionMessage)
 
     def test_invalid_json_puts_exception(self):
         t = _new_transport()
         q: queue.Queue = queue.Queue()
-        mock_response = MagicMock()
-        mock_response.read.return_value = b"{ invalid }"
-        t._handle_json_response(mock_response, q)
+        response = httpx.Response(200, content=b"{ invalid }")
+        t._handle_json_response(response, q)
         assert isinstance(q.get_nowait(), Exception)
 
 
@@ -1099,9 +1094,14 @@ class TestHandleJsonResponseNew:
 
 
 class TestHandleSseResponseNew:
-    def _ctx(self, transport, q) -> RequestContext:
+    @pytest.fixture
+    def client(self):
+        with httpx.Client(transport=httpx.MockTransport(lambda _request: httpx.Response(500))) as client:
+            yield client
+
+    def _ctx(self, transport, q, client: httpx.Client) -> RequestContext:
         return RequestContext(
-            client=MagicMock(),
+            client=client,
             headers=transport.request_headers,
             session_id=None,
             session_message=SessionMessage(_make_request_msg()),
@@ -1110,94 +1110,71 @@ class TestHandleSseResponseNew:
             sse_read_timeout=60,
         )
 
-    def test_processes_sse_events(self):
+    def test_processes_sse_events(self, client: httpx.Client):
         t = _new_transport()
         q: queue.Queue = queue.Queue()
-        ctx = self._ctx(t, q)
+        ctx = self._ctx(t, q, client)
 
         data = json.dumps({"jsonrpc": "2.0", "id": 1, "result": {}})
-        mock_sse_event = _make_sse_mock("message", data)
-        mock_response = MagicMock()
-
-        with patch("core.mcp.client.streamable_client.EventSource") as MockEventSource:
-            mock_es_instance = MagicMock()
-            mock_es_instance.iter_sse.return_value = [mock_sse_event]
-            MockEventSource.return_value = mock_es_instance
-            t._handle_sse_response(mock_response, ctx)
+        response = httpx.Response(200, headers={"content-type": "text/event-stream"}, content=f"data: {data}\n\n")
+        t._handle_sse_response(response, ctx)
 
         assert isinstance(q.get_nowait(), SessionMessage)
 
-    def test_stops_when_stop_event_set(self):
+    def test_stops_when_stop_event_set(self, client: httpx.Client):
         t = _new_transport()
         t.stop_event.set()
         q: queue.Queue = queue.Queue()
-        ctx = self._ctx(t, q)
+        ctx = self._ctx(t, q, client)
 
         data = json.dumps({"jsonrpc": "2.0", "id": 1, "result": {}})
-        mock_sse_event = _make_sse_mock("message", data)
-        mock_response = MagicMock()
-
-        with patch("core.mcp.client.streamable_client.EventSource") as MockEventSource:
-            mock_es_instance = MagicMock()
-            mock_es_instance.iter_sse.return_value = [mock_sse_event]
-            MockEventSource.return_value = mock_es_instance
-            t._handle_sse_response(mock_response, ctx)
+        response = httpx.Response(200, headers={"content-type": "text/event-stream"}, content=f"data: {data}\n\n")
+        t._handle_sse_response(response, ctx)
 
         assert q.empty()
 
-    def test_stops_when_complete(self):
+    def test_stops_when_complete(self, client: httpx.Client):
         t = _new_transport()
         q: queue.Queue = queue.Queue()
-        ctx = self._ctx(t, q)
+        ctx = self._ctx(t, q, client)
 
         data1 = json.dumps({"jsonrpc": "2.0", "id": 1, "result": {}})
         data2 = json.dumps({"jsonrpc": "2.0", "id": 2, "result": {}})
-        sse1 = _make_sse_mock("message", data1)
-        sse2 = _make_sse_mock("message", data2)
-        mock_response = MagicMock()
-
-        with patch("core.mcp.client.streamable_client.EventSource") as MockEventSource:
-            mock_es_instance = MagicMock()
-            mock_es_instance.iter_sse.return_value = [sse1, sse2]
-            MockEventSource.return_value = mock_es_instance
-            t._handle_sse_response(mock_response, ctx)
+        response = httpx.Response(
+            200, headers={"content-type": "text/event-stream"}, content=f"data: {data1}\n\ndata: {data2}\n\n"
+        )
+        t._handle_sse_response(response, ctx)
 
         assert q.qsize() == 1  # Only the first completion item
 
-    def test_exception_outside_stop_puts_to_queue(self):
+    def test_exception_outside_stop_puts_to_queue(self, client: httpx.Client):
         t = _new_transport()
         q: queue.Queue = queue.Queue()
-        ctx = self._ctx(t, q)
-        mock_response = MagicMock()
-
-        with patch("core.mcp.client.streamable_client.EventSource") as MockEventSource:
-            MockEventSource.side_effect = RuntimeError("EventSource error")
-            t._handle_sse_response(mock_response, ctx)
+        ctx = self._ctx(t, q, client)
+        response = httpx.Response(200, headers={"content-type": "application/json"}, content="{}")
+        t._handle_sse_response(response, ctx)
 
         assert isinstance(q.get_nowait(), Exception)
 
-    def test_exception_suppressed_when_stopped(self):
+    def test_exception_suppressed_when_stopped(self, client: httpx.Client):
         t = _new_transport()
         t.stop_event.set()
         q: queue.Queue = queue.Queue()
-        ctx = self._ctx(t, q)
-        mock_response = MagicMock()
-
-        with patch("core.mcp.client.streamable_client.EventSource") as MockEventSource:
-            MockEventSource.side_effect = RuntimeError("EventSource error")
-            t._handle_sse_response(mock_response, ctx)
+        ctx = self._ctx(t, q, client)
+        response = httpx.Response(200, headers={"content-type": "application/json"}, content="{}")
+        t._handle_sse_response(response, ctx)
 
         assert q.empty()
 
-    def test_with_metadata_resumption_callback(self):
+    def test_with_metadata_resumption_callback(self, client: httpx.Client):
         t = _new_transport()
         q: queue.Queue = queue.Queue()
         metadata = ClientMessageMetadata()
-        callback = MagicMock()
-        metadata.on_resumption_token_update = callback
+        tokens: list[str] = []
+        metadata.on_resumption_token_update = tokens.append
 
         ctx = RequestContext(
-            client=MagicMock(),
+            client=client,
             headers=t.request_headers,
             session_id=None,
             session_message=SessionMessage(_make_request_msg()),
@@ -1207,16 +1184,12 @@ class TestHandleSseResponseNew:
         )
 
         data = json.dumps({"jsonrpc": "2.0", "id": 1, "result": {}})
-        sse = _make_sse_mock("message", data, sse_id="resume-token")
-        mock_response = MagicMock()
+        response = httpx.Response(
+            200, headers={"content-type": "text/event-stream"}, content=f"id: resume-token\ndata: {data}\n\n"
+        )
+        t._handle_sse_response(response, ctx)
 
-        with patch("core.mcp.client.streamable_client.EventSource") as MockEventSource:
-            mock_es_instance = MagicMock()
-            mock_es_instance.iter_sse.return_value = [sse]
-            MockEventSource.return_value = mock_es_instance
-            t._handle_sse_response(mock_response, ctx)
-
-        callback.assert_called_once_with("resume-token")
+        assert tokens == ["resume-token"]
 
 
 # ── _handle_unexpected_content_type ──────────────────────────────────────────
@@ -1388,44 +1361,41 @@ class TestTerminateSessionNew:
     def test_no_session_id_skips(self):
         t = _new_transport()
         t.session_id = None
-        mock_client = MagicMock()
-        t.terminate_session(mock_client)
-        mock_client.delete.assert_not_called()
+        requests: list[httpx.Request] = []
 
-    def test_200_response_is_success(self):
+        def respond(request: httpx.Request) -> httpx.Response:
+            requests.append(request)
+            return httpx.Response(200)
+
+        with httpx.Client(transport=httpx.MockTransport(respond)) as client:
+            t.terminate_session(client)
+        assert requests == []
+
+    @pytest.mark.parametrize("status_code", [200, 405, 500])
+    def test_server_response_does_not_raise(self, status_code: int):
         t = _new_transport()
         t.session_id = "sess-1"
-        mock_client = MagicMock()
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_client.delete.return_value = mock_response
-        t.terminate_session(mock_client)
-        mock_client.delete.assert_called_once()
+        requests: list[httpx.Request] = []
 
-    def test_405_does_not_raise(self):
-        t = _new_transport()
-        t.session_id = "sess-1"
-        mock_client = MagicMock()
-        mock_response = MagicMock()
-        mock_response.status_code = 405
-        mock_client.delete.return_value = mock_response
-        t.terminate_session(mock_client)  # Should not raise
+        def respond(request: httpx.Request) -> httpx.Response:
+            requests.append(request)
+            return httpx.Response(status_code)
 
-    def test_non_200_logs_warning_does_not_raise(self):
-        t = _new_transport()
-        t.session_id = "sess-1"
-        mock_client = MagicMock()
-        mock_response = MagicMock()
-        mock_response.status_code = 500
-        mock_client.delete.return_value = mock_response
-        t.terminate_session(mock_client)  # Should not raise
+        with httpx.Client(transport=httpx.MockTransport(respond)) as client:
+            t.terminate_session(client)
+        assert len(requests) == 1
+        assert requests[0].method == "DELETE"
+        assert requests[0].headers[MCP_SESSION_ID] == "sess-1"
 
     def test_exception_is_swallowed(self):
         t = _new_transport()
         t.session_id = "sess-1"
-        mock_client = MagicMock()
-        mock_client.delete.side_effect = httpx.ConnectError("refused")
-        t.terminate_session(mock_client)  # Should not raise
+
+        def refuse(request: httpx.Request) -> httpx.Response:
+            raise httpx.ConnectError("refused", request=request)
+
+        with httpx.Client(transport=httpx.MockTransport(refuse)) as client:
+            t.terminate_session(client)
 
 
 # ── get_session_id ────────────────────────────────────────────────────────────
