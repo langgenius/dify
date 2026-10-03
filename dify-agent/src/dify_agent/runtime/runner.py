@@ -254,9 +254,8 @@ class AgentRunRunner:
         self._terminal_usage = None
         if self.is_cancelled():
             return
-        _ = await emit_run_started(self.sink, run_id=self.run_id)
-
         try:
+            _ = await emit_run_started(self.sink, run_id=self.run_id)
             outcome = await self._run_agent()
         except Exception as exc:
             if self.is_cancelled():
