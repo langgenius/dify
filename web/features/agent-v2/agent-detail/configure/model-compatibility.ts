@@ -2,6 +2,13 @@ import type {
   ModelSelectorModel,
   ModelSelectorProvider,
 } from '@/app/components/header/account-setting/model-provider-page/model-selector/types'
+import { ConfigurationMethodEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { supportFunctionCall } from '@/utils/tool-call'
+
+/** Local to Agent V2: runtime entities carry web `ConfigurationMethodEnum`, not API `FetchFrom`. */
+type AgentCompatibilityModel = ModelSelectorModel & {
+  fetch_from?: ConfigurationMethodEnum
+}
 
 const agentIncompatibleModelPatterns: RegExp[] = [
   // openai
@@ -95,16 +102,25 @@ const agentSuggestedModelPatterns: RegExp[] = [
   /^glm[ .-]5\.1$/i,
 ]
 
+function isPredefinedModelBlacklisted(modelItem: ModelSelectorModel) {
+  return agentIncompatibleModelPatterns.some((pattern) => pattern.test(modelItem.label.en_US))
+}
+
 export function isAgentCompatibleModel(
   _provider: ModelSelectorProvider,
-  modelItem: ModelSelectorModel,
+  modelItem: AgentCompatibilityModel,
 ) {
-  return !agentIncompatibleModelPatterns.some((pattern) => pattern.test(modelItem.label.en_US))
+  if (modelItem.fetch_from === ConfigurationMethodEnum.customizableModel)
+    return supportFunctionCall(modelItem.features)
+
+  return !isPredefinedModelBlacklisted(modelItem)
 }
 
 export function isAgentSuggestedModel(
   _provider: ModelSelectorProvider,
-  modelItem: ModelSelectorModel,
+  modelItem: AgentCompatibilityModel,
 ) {
+  if (modelItem.fetch_from === ConfigurationMethodEnum.customizableModel) return false
+
   return agentSuggestedModelPatterns.some((pattern) => pattern.test(modelItem.label.en_US))
 }
