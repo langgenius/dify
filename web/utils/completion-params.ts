@@ -33,7 +33,11 @@ export const mergeValidCompletionParams = (
     switch (rule.type) {
       case 'int':
       case 'float': {
-        if (typeof value !== 'number') {
+        if (
+          typeof value !== 'number' ||
+          !Number.isFinite(value) ||
+          (rule.type === 'int' && !Number.isInteger(value))
+        ) {
           removedDetails[key] = 'invalid type'
           return
         }
