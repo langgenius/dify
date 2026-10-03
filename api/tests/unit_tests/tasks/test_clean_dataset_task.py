@@ -26,6 +26,7 @@ from extensions.storage.storage_type import StorageType
 from models.base import TypeBase
 from models.dataset import (
     AppDatasetJoin,
+    ChildChunk,
     DatasetMetadata,
     DatasetMetadataBinding,
     DatasetProcessRule,
@@ -76,6 +77,7 @@ def orm_session_maker(
 ) -> sessionmaker[Session]:
     """Create the cleanup tables and return the suite's real SQLite session factory."""
     models = (
+        ChildChunk,
         Document,
         DocumentSegment,
         SegmentAttachmentBinding,
@@ -216,6 +218,27 @@ def _persist_attachment(
     with session_maker.begin() as session:
         session.add_all([attachment_file, binding])
     return binding, attachment_file
+
+
+def _persist_child_chunk(
+    session_maker: sessionmaker[Session],
+    *,
+    dataset_id: str,
+    tenant_id: str,
+) -> ChildChunk:
+    child_chunk = ChildChunk(
+        tenant_id=tenant_id,
+        dataset_id=dataset_id,
+        document_id=str(uuid.uuid4()),
+        segment_id=str(uuid.uuid4()),
+        position=1,
+        content="child",
+        word_count=1,
+        created_by=str(uuid.uuid4()),
+    )
+    with session_maker.begin() as session:
+        session.add(child_chunk)
+    return child_chunk
 
 
 # ============================================================================
@@ -579,3 +602,62 @@ class TestIndexProcessorParameters:
             )
 
         schedule_refresh.assert_not_called()
+
+
+# ============================================================================
+# Test Child Chunk Cleanup
+# ============================================================================
+
+
+class TestChildChunkCleanup:
+    """Child chunks the index processor does not reach must still be deleted."""
+
+    def test_clean_dataset_task_deletes_child_chunks_left_by_the_index_processor(
+        self,
+        orm_session_maker: sessionmaker[Session],
+        dataset_id: str,
+        tenant_id: str,
+        collection_binding_id: str,
+        mock_storage: MagicMock,
+        mock_index_processor_factory: dict[str, MagicMock],
+        mock_get_image_upload_file_ids: MagicMock,
+    ):
+        """ParentChildIndexProcessor.clean() only deletes child chunks when the dataset's
+        indexing_technique is high quality, and clean_dataset_task deliberately continues
+        when that cleanup raises. In both cases nothing else removes the rows, so the task
+        itself has to. The mocked index processor here stands in for exactly that: a clean()
+        that deletes no child chunks."""
+        child_chunk = _persist_child_chunk(orm_session_maker, dataset_id=dataset_id, tenant_id=tenant_id)
+
+        _run_clean_dataset(
+            dataset_id=dataset_id,
+            tenant_id=tenant_id,
+            collection_binding_id=collection_binding_id,
+        )
+
+        with orm_session_maker() as session:
+            remaining = session.get(ChildChunk, child_chunk.id)
+        assert remaining is None, f"Child chunk {child_chunk.id} outlived its dataset; nothing else ever deletes it"
+
+    def test_clean_dataset_task_leaves_child_chunks_of_other_datasets(
+        self,
+        orm_session_maker: sessionmaker[Session],
+        dataset_id: str,
+        tenant_id: str,
+        collection_binding_id: str,
+        mock_storage: MagicMock,
+        mock_index_processor_factory: dict[str, MagicMock],
+        mock_get_image_upload_file_ids: MagicMock,
+    ):
+        """The delete is scoped by both tenant_id and dataset_id."""
+        other = _persist_child_chunk(orm_session_maker, dataset_id=str(uuid.uuid4()), tenant_id=tenant_id)
+
+        _run_clean_dataset(
+            dataset_id=dataset_id,
+            tenant_id=tenant_id,
+            collection_binding_id=collection_binding_id,
+        )
+
+        with orm_session_maker() as session:
+            survivor = session.get(ChildChunk, other.id)
+        assert survivor is not None, "Deleting one dataset must not touch another dataset's child chunks"
