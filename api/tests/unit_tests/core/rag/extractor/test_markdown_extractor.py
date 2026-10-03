@@ -47,6 +47,37 @@ after
         assert tups[1][0] == "Header"
         assert "# this is not a heading" in tups[1][1]
 
+    @pytest.mark.parametrize(
+        "fence",
+        [
+            "~~~python\n# example comment\n~~~~ \t",
+            "  ```python\n# example comment\n  ```",
+            "````python\n```\n# example comment\n````",
+            "~~~python\n```\n# example comment\n~~~",
+        ],
+    )
+    def test_extract_ignores_headings_inside_fenced_code(self, fence: str, tmp_path: Path):
+        markdown = f"# Intro\nbefore\n{fence}\n# Next\nafter"
+        markdown_file = tmp_path / "example.md"
+        markdown_file.write_text(markdown, encoding="utf-8")
+
+        documents = MarkdownExtractor(
+            file_path=str(markdown_file), encoding="utf-8", autodetect_encoding=False
+        ).extract()
+        nonempty_documents = [document.page_content for document in documents if document.page_content]
+
+        assert len(nonempty_documents) == 2
+        assert nonempty_documents[0].startswith("\n\nIntro\n")
+        assert "# example comment" in nonempty_documents[0]
+        assert nonempty_documents[1].startswith("\n\nNext\n")
+
+    def test_markdown_to_tups_does_not_open_backtick_fence_with_backtick_in_info(self):
+        markdown = "# Intro\n```py`thon\n# Next\nafter"
+
+        tups = MarkdownExtractor(file_path="dummy_path").markdown_to_tups(markdown)
+
+        assert [header for header, _ in tups if header is not None] == ["Intro", "Next"]
+
     def test_remove_images_and_hyperlinks(self):
         extractor = MarkdownExtractor(file_path="dummy_path")
 
