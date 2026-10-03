@@ -2,16 +2,64 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"syscall"
 	"testing"
 	"time"
 
 	"github.com/langgenius/dify/dify-agent-runtime/internal/jobmode"
+	"github.com/langgenius/dify/dify-agent-runtime/internal/server"
 )
+
+func TestLoadEnvJSONHelperProcess(t *testing.T) {
+	if os.Getenv("SHELLCTL_TEST_LOAD_ENV_JSON") != "1" {
+		return
+	}
+	loaded := loadEnvJSON(os.Getenv("SHELLCTL_TEST_ENV_JSON_PATH"))
+	if err := json.NewEncoder(os.Stdout).Encode(loaded); err != nil {
+		os.Exit(126)
+	}
+	os.Exit(0)
+}
+
+func TestLoadEnvJSONFromServerProducer(t *testing.T) {
+	want := map[string]string{
+		"ANSI_COLOR":          "\x1b[31mred\x1b[0m",
+		"CONTROL_VALUE":       "start\x01\tmiddle\nend",
+		"QUOTE\"_BACKSLASH\\": "quote=\" and path C:\\work\\file",
+		"变量":                  "中文 😀",
+	}
+	payload, err := server.MarshalJobEnv(want)
+	if err != nil {
+		t.Fatalf("MarshalJobEnv: %v", err)
+	}
+	envPath := filepath.Join(t.TempDir(), ".job-env.json")
+	if err := os.WriteFile(envPath, payload, 0600); err != nil {
+		t.Fatalf("write producer output: %v", err)
+	}
+
+	cmd := exec.Command(os.Args[0], "-test.run=^TestLoadEnvJSONHelperProcess$")
+	cmd.Env = mergeEnv(os.Environ(), map[string]string{
+		"SHELLCTL_TEST_LOAD_ENV_JSON": "1",
+		"SHELLCTL_TEST_ENV_JSON_PATH": envPath,
+	})
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("runner rejected server-produced env JSON: %v: %s", err, bytes.TrimSpace(output))
+	}
+	var got map[string]string
+	if err := json.Unmarshal(output, &got); err != nil {
+		t.Fatalf("decode runner helper output: %v; output=%q", err, output)
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("runner env = %#v, want %#v", got, want)
+	}
+}
 
 func TestRunStdioCapturesCompleteSeparatedStreams(t *testing.T) {
 	jobDir := t.TempDir()

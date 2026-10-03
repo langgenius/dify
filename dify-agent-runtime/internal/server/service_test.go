@@ -8,6 +8,27 @@ import (
 	"github.com/langgenius/dify/dify-agent-runtime/internal/jobmode"
 )
 
+func TestMarshalJobEnvPreservesNilAndEmptyObjects(t *testing.T) {
+	tests := []struct {
+		name string
+		env  map[string]string
+	}{
+		{name: "nil"},
+		{name: "empty", env: map[string]string{}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := MarshalJobEnv(tt.env)
+			if err != nil {
+				t.Fatalf("MarshalJobEnv: %v", err)
+			}
+			if string(got) != "{}" {
+				t.Errorf("encoded env = %q, want {}", got)
+			}
+		})
+	}
+}
+
 func TestMaterializeStdioStatusDoesNotRequirePanePipe(t *testing.T) {
 	service, row := setupModeTestService(t, jobmode.Stdio, StatusRunning)
 	pipeInactive := false
