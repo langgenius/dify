@@ -56,6 +56,10 @@ from tasks.delete_segment_from_index_task import delete_segment_from_index_task
 from tasks.disable_segments_from_index_task import disable_segments_from_index_task
 from tasks.document_indexing_sync_task import document_indexing_sync_task
 from tasks.enable_segments_to_index_task import enable_segments_to_index_task
+from tasks.regenerate_segment_summary_task import (
+    cancel_segment_summary_regeneration,
+    schedule_segment_summary_regeneration,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -119,6 +123,10 @@ def build_knowledge_services(
         delete_task=delete_segment_from_index_task.delay,
         enable_task=enable_segments_to_index_task.delay,
         disable_task=disable_segments_from_index_task.delay,
+        schedule_summary_regeneration=lambda ref, expected_hash: schedule_segment_summary_regeneration(
+            ref, expected_hash, new_session=database_client
+        ),
+        cancel_summary_regeneration=cancel_segment_summary_regeneration,
     )
     return KnowledgeServices(
         metadata=MetadataService(

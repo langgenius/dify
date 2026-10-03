@@ -4,13 +4,14 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Protocol
-from unittest.mock import create_autospec, patch
+from unittest.mock import MagicMock, create_autospec, patch
 
 import pytest
 from sqlalchemy import event, select
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.engine import Connection
 from sqlalchemy.orm import Session, sessionmaker
+from typing_extensions import TypedDict
 
 from core.credit_usage import CreditUsageCreatedBy
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
@@ -436,20 +437,46 @@ def test_child_chunk_mutations_preserve_explicit_actors(
 
 @dataclass
 class IndexRedisStub:
-    def get(self, name: str | bytes) -> None:
-        del name
+    tokens: dict[str | bytes, str] = field(default_factory=dict)
+
+    def get(self, name: str | bytes) -> bytes | None:
+        token = self.tokens.get(name)
+        return token.encode() if token is not None else None
 
     def setnx(self, name: str | bytes, value: object) -> bool:
         del name, value
         return True
 
     def setex(self, name: str, time: int, value: object) -> bool:
-        del name, time, value
+        del time
+        self.tokens[name] = str(value)
         return True
 
-    def lock(self, name: str, timeout: int) -> nullcontext[None]:
-        del name, timeout
+    def lock(self, name: str, timeout: int, blocking_timeout: int = 30) -> nullcontext[None]:
+        del name, timeout, blocking_timeout
         return nullcontext()
+
+    def delete(self, name: str) -> None:
+        self.tokens.pop(name, None)
+
+    def eval(self, script: str, numkeys: int, name: str, token: str, *replacement: str) -> int:
+        del script, numkeys
+        if self.tokens.get(name) != token:
+            return 0
+        if replacement:
+            self.tokens[name] = replacement[0]
+        else:
+            self.tokens.pop(name)
+        return 1
+
+
+class SummaryJob(TypedDict, closed=True):
+    tenant_id: str
+    dataset_id: str
+    document_id: str
+    segment_id: str
+    expected_index_node_hash: str | None
+    token: str
 
 
 @dataclass
@@ -460,6 +487,7 @@ class VectorProbe:
     deleted_ids: list[str] = field(default_factory=list)
     tasks: list[tuple[str, tuple[object, ...]]] = field(default_factory=list)
     batches: list[tuple[str, ...]] = field(default_factory=list)
+    summary_jobs: list[SummaryJob] = field(default_factory=list)
 
     def add_texts(self, documents: Sequence[IndexDocument], **_kwargs: object) -> None:
         assert not self.active_transactions, "Index I/O must not hold a DB transaction"
@@ -492,6 +520,8 @@ def indexing_probe(
     sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
 ) -> Iterator[IndexingProbe]:
     from services.knowledge.segments import indexing as indexing_module
+    from services.knowledge.summaries import adapters as summary_module
+    from tasks import regenerate_segment_summary_task as summary_task_module
 
     with sqlite_session_factory.begin() as session:
         dataset = _dataset("dataset-1", "workspace-1")
@@ -527,8 +557,20 @@ def indexing_probe(
             return TokenModel()
 
     monkeypatch.setattr(indexing_module, "Vector", vector)
+    summary_vector = MagicMock(side_effect=vector)
+    summary_vector.resolve_vector_type.return_value = "qdrant"
+    monkeypatch.setattr(summary_module, "Vector", summary_vector)
     monkeypatch.setattr(indexing_module.ModelManager, "for_tenant", lambda **_kwargs: ModelLookup())
     repository = SQLAlchemySegmentRepository(session_factory=sqlite_session_factory)
+    summary_redis = IndexRedisStub()
+    monkeypatch.setattr(summary_task_module, "redis_client", summary_redis)
+
+    def enqueue(*, kwargs: SummaryJob, countdown: int) -> None:
+        assert not active
+        assert countdown == 600
+        probe.summary_jobs.append(kwargs)
+
+    monkeypatch.setattr(summary_task_module.regenerate_segment_summary_task, "apply_async", enqueue)
 
     def dispatch(kind: str, *args: object) -> None:
         assert not active
@@ -542,6 +584,12 @@ def indexing_probe(
         delete_task=lambda *args: dispatch("delete", *args),
         enable_task=lambda *args: dispatch("enable", *args),
         disable_task=lambda *args: dispatch("disable", *args),
+        schedule_summary_regeneration=lambda ref, expected_hash: (
+            summary_task_module.schedule_segment_summary_regeneration(
+                ref, expected_hash, new_session=sqlite_session_factory
+            )
+        ),
+        cancel_summary_regeneration=summary_task_module.cancel_segment_summary_regeneration,
     )
     yield _application(sqlite_session_factory, indexing=gateway), repository, probe
     event.remove(engine, "begin", begin)
@@ -990,8 +1038,8 @@ def test_child_regeneration_reuses_splitter_outside_transaction(
 @pytest.mark.parametrize(
     ("content", "submitted_summary", "summary_enabled", "expected_summary", "generated"),
     [
-        ("new text", "old summary", True, "new summary", True),
-        ("new text", None, True, "new summary", True),
+        ("new text", "old summary", True, "old summary", True),
+        ("new text", None, True, "old summary", True),
         ("old text", "old summary", True, "old summary", False),
         ("new text", "manual summary", True, "manual summary", False),
         ("new text", "", True, None, False),
@@ -1011,7 +1059,7 @@ def test_summary_updates_preserve_generation_and_manual_edit_rules(
     expected_summary: str | None,
     generated: bool,
 ) -> None:
-    app, repository, _ = indexing_probe
+    app, repository, probe = indexing_probe
     context = RequestContext("request", None, "author", "workspace-1")
     created = app.create_segment(
         context, dataset_id="dataset-1", document_id="document-1", values={"content": "old text"}
@@ -1040,8 +1088,62 @@ def test_summary_updates_preserve_generation_and_manual_edit_rules(
         segment_id=created.data.id,
         values={"content": content, "summary": submitted_summary},
     )
-    assert calls == ([content] if generated else [])
+    assert calls == []
+    assert len(probe.summary_jobs) == int(generated)
     assert updated.data.summary == expected_summary
+
+
+@pytest.mark.parametrize("manual_summary", ["manual summary", ""])
+def test_manual_summary_save_cancels_a_previously_queued_regeneration(
+    segment_update: SegmentUpdateEntry,
+    indexing_probe: IndexingProbe,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    manual_summary: str,
+) -> None:
+    from tasks.regenerate_segment_summary_task import regenerate_segment_summary_task
+
+    app, repository, probe = indexing_probe
+    context = RequestContext("request", None, "author", "workspace-1")
+    created = app.create_segment(
+        context, dataset_id="dataset-1", document_id="document-1", values={"content": "original"}
+    )
+    reference = DatasetRef("workspace-1", "dataset-1").document("document-1").segment(created.data.id)
+    repository.save_summary(reference, "old summary")
+    with sqlite_session_factory.begin() as session:
+        dataset = session.get(Dataset, "dataset-1")
+        assert dataset is not None
+        dataset.summary_index_setting = {"enable": True, "model_name": "model", "model_provider_name": "provider"}
+    segment_update(
+        context,
+        dataset_id="dataset-1",
+        document_id="document-1",
+        segment_id=created.data.id,
+        values={"content": "replacement"},
+    )
+    assert len(probe.summary_jobs) == 1
+    updated = segment_update(
+        context,
+        dataset_id="dataset-1",
+        document_id="document-1",
+        segment_id=created.data.id,
+        values={"content": "replacement", "summary": manual_summary},
+    )
+    generate = MagicMock()
+    monkeypatch.setattr(ParagraphIndexProcessor, "generate_summary_from_inputs", generate)
+    writes_after_manual_save = probe.writes
+    regenerate_segment_summary_task.run(**probe.summary_jobs[0])
+    generate.assert_not_called()
+    assert probe.writes == writes_after_manual_save
+    summary = repository.get_indexing_snapshot(reference).summary
+    if manual_summary:
+        assert updated.data.summary == manual_summary
+        assert summary is not None
+        assert summary.summary_content == manual_summary
+        assert summary.status == SummaryStatus.COMPLETED
+    else:
+        assert updated.data.summary is None
+        assert summary is None
 
 
 def test_automatic_summary_keeps_knowledge_credit_attribution(
@@ -1049,7 +1151,7 @@ def test_automatic_summary_keeps_knowledge_credit_attribution(
     sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    app, repository, _ = indexing_probe
+    app, repository, probe = indexing_probe
     context = RequestContext("request", None, "author", "workspace-1")
     created = app.create_segment(
         context, dataset_id="dataset-1", document_id="document-1", values={"content": "old text"}
@@ -1097,7 +1199,14 @@ def test_automatic_summary_keeps_knowledge_credit_attribution(
         segment_id=created.data.id,
         values={"content": "new text"},
     )
-    assert updated.data.summary == "new summary"
+    assert updated.data.summary == "old summary"
+    assert metadata == []
+    from tasks.regenerate_segment_summary_task import regenerate_segment_summary_task
+
+    regenerate_segment_summary_task.run(**probe.summary_jobs[0])
+    summary = repository.get_indexing_snapshot(reference).summary
+    assert summary is not None
+    assert summary.summary_content == "new summary"
     assert metadata == [{"created_by": CreditUsageCreatedBy.KNOWLEDGE_INDEXING}]
     assert get_credit_usage_metadata() is None
 
@@ -1266,6 +1375,9 @@ def test_summary_generation_failure_preserves_the_completed_segment(
     assert updated.data.status == "completed"
     assert updated.data.summary == "original summary"
     assert "original-summary-node" not in probe.deleted_ids
+    from tasks.regenerate_segment_summary_task import regenerate_segment_summary_task
+
+    regenerate_segment_summary_task.run(**probe.summary_jobs[0])
     with sqlite_session_factory() as session:
         summary = session.scalar(select(DocumentSegmentSummary))
         assert summary is not None
@@ -1354,6 +1466,8 @@ def test_summary_noop_does_not_open_a_database_transaction(
         delete_task=lambda *_args: None,
         enable_task=lambda *_args: None,
         disable_task=lambda *_args: None,
+        schedule_summary_regeneration=lambda *_args: None,
+        cancel_summary_regeneration=lambda *_args: None,
     )
     engine = sqlite_session_factory.kw["bind"]
     connections: list[Connection] = []
