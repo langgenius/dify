@@ -82,7 +82,9 @@ def _message() -> Message:
 
 @pytest.fixture
 def generator(mocker: MockerFixture):
-    gen = AgentChatAppGenerator()
+    from services.workflow_run_agg import WorkflowRunAgg
+
+    gen = AgentChatAppGenerator(execution_driver=WorkflowRunAgg.run)
     mocker.patch(
         "core.app.apps.agent_chat.app_generator.current_app",
         new=mocker.MagicMock(_get_current_object=mocker.MagicMock()),

@@ -1,31 +1,29 @@
 import logging
 import time
-from typing import Protocol, cast
+from typing import Protocol, cast, override
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.pipeline.pipeline_config_manager import PipelineConfig
-from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
+from core.app.apps.workflow_app_runner import PreparedWorkflowRun, WorkflowBasedAppRunner, WorkflowRunDriver
 from core.app.entities.app_invoke_entities import (
     InvokeFrom,
     RagPipelineGenerateEntity,
     UserFrom,
     build_dify_run_context,
 )
-from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from core.credit_usage import CreditUsageAppType
 from core.db.session_factory import create_session
-from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.workflow.node_factory import DifyGraphInitContext, DifyNodeFactory, get_default_root_node_id
 from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
+from graphon.engine_events import EngineEvent, GraphRunFailedEvent
 from graphon.enums import WorkflowType
 from graphon.graph import Graph
-from graphon.graph_events import GraphEngineEvent, GraphRunFailedEvent
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from graphon.variable_loader import VariableLoader
 from graphon.variables.variables import RAGPipelineVariable, RAGPipelineVariableInput
 from models.dataset import Dataset, Pipeline
@@ -57,10 +55,9 @@ class PipelineRunner(WorkflowBasedAppRunner):
         variable_loader: VariableLoader,
         workflow: Workflow,
         system_user_id: str,
-        workflow_execution_repository: WorkflowExecutionRepository,
-        workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         documents: PipelineDocumentStore,
         workflow_thread_pool_id: str | None = None,
+        execution_driver: WorkflowRunDriver | None = None,
     ) -> None:
         """
         :param application_generate_entity: application generate entity
@@ -69,6 +66,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
         """
         super().__init__(
             queue_manager=queue_manager,
+            execution_driver=execution_driver,
             variable_loader=variable_loader,
             app_id=application_generate_entity.app_config.app_id,
         )
@@ -76,17 +74,14 @@ class PipelineRunner(WorkflowBasedAppRunner):
         self.workflow_thread_pool_id = workflow_thread_pool_id
         self._workflow = workflow
         self._sys_user_id = system_user_id
-        self._workflow_execution_repository = workflow_execution_repository
-        self._workflow_node_execution_repository = workflow_node_execution_repository
         self._documents = documents
 
     def _get_app_id(self) -> str:
         return self.application_generate_entity.app_config.app_id
 
-    def run(self) -> None:
-        """
-        Run application
-        """
+    @override
+    def prepare(self) -> PreparedWorkflowRun:
+        """Prepare graph execution and passive application observers."""
         app_config = self.application_generate_entity.app_config
         app_config = cast(PipelineConfig, app_config)
         invoke_from = self.application_generate_entity.invoke_from
@@ -199,7 +194,9 @@ class PipelineRunner(WorkflowBasedAppRunner):
                 workflow.graph_dict
             )
             add_node_inputs_to_pool(variable_pool, node_id=root_node_id, inputs=inputs)
-            graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+            graph_runtime_state = RuntimeState(
+                workflow_id=workflow.id, variable_pool=variable_pool, start_at=time.perf_counter()
+            )
 
             # init graph
             graph = self._init_rag_pipeline_graph(
@@ -227,31 +224,26 @@ class PipelineRunner(WorkflowBasedAppRunner):
 
         self._queue_manager.graph_runtime_state = graph_runtime_state
 
-        persistence_layer = WorkflowPersistenceLayer(
-            application_generate_entity=self.application_generate_entity,
-            workflow_info=PersistenceWorkflowInfo(
-                workflow_id=workflow.id,
-                workflow_type=WorkflowType(workflow.type),
-                version=workflow.version,
-                graph_data=workflow.graph_dict,
-            ),
-            workflow_execution_repository=self._workflow_execution_repository,
-            workflow_node_execution_repository=self._workflow_node_execution_repository,
-            trace_manager=self.application_generate_entity.trace_manager,
+        self._dataset_workspace_id = dataset_workspace_id
+        self._dataset_id = dataset_id
+        self._document_id = document_id
+        return PreparedWorkflowRun(
+            entry=workflow_entry,
+            application_layers=self._graph_engine_layers,
+            generate_entity=self.application_generate_entity,
+            workflow_type=WorkflowType(workflow.type),
+            workflow_version=workflow.version,
         )
 
-        workflow_entry.graph_engine.layer(persistence_layer)
-
-        generator = workflow_entry.run()
-
-        for event in generator:
-            self._update_document_status(
-                event,
-                workspace_id=dataset_workspace_id,
-                dataset_id=dataset_id,
-                document_id=document_id,
-            )
-            self._handle_event(workflow_entry, event)
+    @override
+    def handle_event(self, workflow_entry: WorkflowEntry, event: EngineEvent, **kwargs) -> None:
+        self._update_document_status(
+            event,
+            workspace_id=self._dataset_workspace_id,
+            dataset_id=self._dataset_id,
+            document_id=self._document_id,
+        )
+        super().handle_event(workflow_entry, event, **kwargs)
 
     def get_workflow(self, session: Session, pipeline: Pipeline, workflow_id: str) -> Workflow | None:
         """
@@ -270,7 +262,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
     def _init_rag_pipeline_graph(
         self,
         workflow: Workflow,
-        graph_runtime_state: GraphRuntimeState,
+        graph_runtime_state: RuntimeState,
         start_node_id: str | None = None,
         user_from: UserFrom = UserFrom.ACCOUNT,
         invoke_from: InvokeFrom = InvokeFrom.SERVICE_API,
@@ -319,6 +311,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
             app_type=CreditUsageAppType.RAG_PIPELINE,
         )
         graph_init_context = DifyGraphInitContext(
+            execution_driver=self._execution_driver,
             workflow_id=workflow.id,
             graph_config=graph_config,
             run_context=run_context,
@@ -327,7 +320,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
 
         node_factory = DifyNodeFactory.from_graph_init_context(
             graph_init_context=graph_init_context,
-            graph_runtime_state=graph_runtime_state,
+            runtime_state=graph_runtime_state,
         )
         if start_node_id is None:
             start_node_id = get_default_root_node_id(graph_config)
@@ -340,7 +333,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
 
     def _update_document_status(
         self,
-        event: GraphEngineEvent,
+        event: EngineEvent,
         *,
         workspace_id: str,
         dataset_id: str,

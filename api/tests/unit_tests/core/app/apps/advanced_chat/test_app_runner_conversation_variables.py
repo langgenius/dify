@@ -54,8 +54,6 @@ def _runner(workflow_variables: list[object]) -> AdvancedChatAppRunner:
         workflow=workflow,
         system_user_id="44444444-4444-4444-4444-444444444444",
         app=App(id=APP_ID, tenant_id=workflow.tenant_id),
-        workflow_execution_repository=MagicMock(),
-        workflow_node_execution_repository=MagicMock(),
     )
 
 

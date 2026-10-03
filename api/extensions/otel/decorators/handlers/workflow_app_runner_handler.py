@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 class WorkflowAppRunnerHandler(SpanHandler):
-    """Span handler for ``WorkflowAppRunner.run``."""
+    """Trace the workflow driver's full execution, including graph preparation."""
 
     @override
     def wrapper[**P, R](
@@ -27,7 +27,7 @@ class WorkflowAppRunnerHandler(SpanHandler):
             if not arguments:
                 return wrapped(*args, **kwargs)
 
-            runner = arguments.get("self")
+            runner = arguments.get("runner", arguments.get("self"))
             if runner is None or not hasattr(runner, "application_generate_entity"):
                 return wrapped(*args, **kwargs)
 
@@ -52,7 +52,7 @@ class WorkflowAppRunnerHandler(SpanHandler):
 
             span_name = self._build_span_name(wrapped)
         except Exception as exc:
-            logger.warning("Failed to prepare span attributes for WorkflowAppRunner.run: %s", exc, exc_info=True)
+            logger.warning("Failed to prepare workflow execution span attributes: %s", exc, exc_info=True)
             return wrapped(*args, **kwargs)
 
         with tracer.start_as_current_span(span_name, kind=SpanKind.INTERNAL, attributes=attributes) as span:

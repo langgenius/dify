@@ -2,7 +2,6 @@ import json
 import logging
 import time
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, NewType, TypedDict, Union
 
@@ -11,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
+    NodeExecutionSnapshot,
     QueueAgentLogEvent,
     QueueHumanInputFormFilledEvent,
     QueueHumanInputFormTimeoutEvent,
@@ -72,7 +72,7 @@ from graphon.enums import (
     WorkflowNodeExecutionStatus,
 )
 from graphon.file import FILE_MODEL_IDENTITY, File
-from graphon.runtime import GraphRuntimeState
+from graphon.runtime import RuntimeState
 from graphon.variables.segments import ArrayFileSegment, FileSegment, Segment
 from graphon.variables.variables import Variable
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
@@ -108,19 +108,6 @@ class EndUserCreatedByDict(TypedDict):
 CreatedByDict = AccountCreatedByDict | EndUserCreatedByDict
 
 
-@dataclass(slots=True)
-class _NodeSnapshot:
-    """In-memory cache for node metadata between start and completion events."""
-
-    title: str
-    index: int
-    start_at: datetime
-    iteration_id: str = ""
-    """Empty string means the node is not executing inside an iteration."""
-    loop_id: str = ""
-    """Empty string means the node is not executing inside a loop."""
-
-
 class WorkflowResponseConverter:
     _truncator: BaseTruncator
 
@@ -142,7 +129,7 @@ class WorkflowResponseConverter:
         else:
             self._truncator = VariableTruncator.default()
 
-        self._node_snapshots: dict[NodeExecutionId, _NodeSnapshot] = {}
+        self._node_snapshots: dict[NodeExecutionId, NodeExecutionSnapshot] = {}
         self._workflow_execution_id: str | None = None
         self._workflow_started_at: datetime | None = None
 
@@ -173,8 +160,14 @@ class WorkflowResponseConverter:
     # ------------------------------------------------------------------
     # Node snapshot helpers
     # ------------------------------------------------------------------
-    def _store_snapshot(self, event: QueueNodeStartedEvent) -> _NodeSnapshot:
-        snapshot = _NodeSnapshot(
+    def _store_snapshot(self, event: QueueNodeStartedEvent) -> NodeExecutionSnapshot:
+        # The engine may have persisted this start before resumption metadata was loaded.
+        snapshot = self._get_snapshot(event.node_execution_id)
+        if snapshot is not None:
+            return snapshot
+
+        snapshot = NodeExecutionSnapshot(
+            execution_id=event.node_execution_id,
             title=event.node_title,
             index=event.node_run_index,
             start_at=event.start_at,
@@ -185,16 +178,16 @@ class WorkflowResponseConverter:
         self._node_snapshots[node_execution_id] = snapshot
         return snapshot
 
-    def _get_snapshot(self, node_execution_id: str) -> _NodeSnapshot | None:
+    def _get_snapshot(self, node_execution_id: str) -> NodeExecutionSnapshot | None:
         return self._node_snapshots.get(NodeExecutionId(node_execution_id))
 
-    def _pop_snapshot(self, node_execution_id: str) -> _NodeSnapshot | None:
+    def _pop_snapshot(self, node_execution_id: str) -> NodeExecutionSnapshot | None:
         return self._node_snapshots.pop(NodeExecutionId(node_execution_id), None)
 
     @staticmethod
     def _merge_metadata(
         base_metadata: Mapping[WorkflowNodeExecutionMetadataKey, Any] | None,
-        snapshot: _NodeSnapshot | None,
+        snapshot: NodeExecutionSnapshot | None,
     ) -> Mapping[WorkflowNodeExecutionMetadataKey, Any] | None:
         if not base_metadata and not snapshot:
             return base_metadata
@@ -241,10 +234,15 @@ class WorkflowResponseConverter:
         workflow_run_id: str,
         workflow_id: str,
         reason: WorkflowStartReason,
+        node_execution_snapshots: Sequence[NodeExecutionSnapshot] = (),
     ) -> WorkflowStartStreamResponse:
         run_id = self._ensure_workflow_run_id(workflow_run_id)
         started_at = naive_utc_now()
         self._workflow_started_at = started_at
+        if reason == WorkflowStartReason.RESUMPTION:
+            self._node_snapshots.update(
+                (NodeExecutionId(snapshot.execution_id), snapshot) for snapshot in node_execution_snapshots
+            )
 
         return WorkflowStartStreamResponse(
             task_id=task_id,
@@ -264,7 +262,7 @@ class WorkflowResponseConverter:
         task_id: str,
         workflow_id: str,
         status: WorkflowExecutionStatus,
-        graph_runtime_state: GraphRuntimeState,
+        graph_runtime_state: RuntimeState,
         error: str | None = None,
         exceptions_count: int = 0,
     ) -> WorkflowFinishStreamResponse:
@@ -321,7 +319,7 @@ class WorkflowResponseConverter:
         *,
         event: QueueWorkflowPausedEvent,
         task_id: str,
-        graph_runtime_state: GraphRuntimeState,
+        graph_runtime_state: RuntimeState,
     ) -> list[StreamResponse]:
         run_id = self._ensure_workflow_run_id()
         started_at = self._workflow_started_at
@@ -429,6 +427,7 @@ class WorkflowResponseConverter:
     ) -> HumanInputFormFilledResponse:
         run_id = self._ensure_workflow_run_id()
         data = HumanInputFormFilledResponse.Data(
+            form_id=event.form_id,
             node_id=event.node_id,
             node_title=event.node_title,
             rendered_content=event.rendered_content,
@@ -450,6 +449,7 @@ class WorkflowResponseConverter:
             task_id=task_id,
             workflow_run_id=run_id,
             data=HumanInputFormTimeoutResponse.Data(
+                form_id=event.form_id,
                 node_id=event.node_id,
                 node_title=event.node_title,
                 expiration_time=to_utc_timestamp(event.expiration_time),
@@ -512,10 +512,10 @@ class WorkflowResponseConverter:
         event: QueueNodeStartedEvent,
         task_id: str,
     ) -> NodeStartStreamResponse | None:
+        snapshot = self._store_snapshot(event)
         if event.node_type in {BuiltinNodeTypes.ITERATION, BuiltinNodeTypes.LOOP}:
             return None
         run_id = self._ensure_workflow_run_id()
-        snapshot = self._store_snapshot(event)
 
         response = NodeStartStreamResponse(
             task_id=task_id,

@@ -29,7 +29,6 @@ class HumanInputRequired(BaseModel):
     actions: list[UserActionConfig] = Field(default_factory=list[UserActionConfig])
     node_id: str
     node_title: str
-
     # The `resolved_default_values` stores the resolved values of variable
     # defaults. It's a mapping from `output_variable_name` to their
     # resolved values.

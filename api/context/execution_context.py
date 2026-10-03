@@ -13,6 +13,8 @@ from typing import Any, Protocol, final, override, runtime_checkable
 
 from pydantic import BaseModel
 
+from libs.contextvars import use_contextvars
+
 
 class AppContext(Protocol):
     """
@@ -63,8 +65,9 @@ class ExecutionContext:
     """
     Generic execution context used by application-layer adapters.
 
-    It restores captured `contextvars` and optionally enters an application
-    context before the worker executes graph logic.
+    It applies captured `contextvars` and optionally enters an application
+    context before the worker executes graph logic, then restores the caller's
+    bindings after application-context cleanup.
     """
 
     def __init__(
@@ -96,28 +99,27 @@ class ExecutionContext:
     @contextmanager
     def enter(self) -> Generator[None, None, None]:
         """Enter this execution context."""
-        if self._context_vars:
-            for var, val in self._context_vars.items():
-                var.set(val)
-
-        if self._app_context is not None:
-            with self._app_context.enter():
+        with use_contextvars(self._context_vars):
+            if self._app_context is not None:
+                with self._app_context.enter():
+                    yield
+            else:
                 yield
-        else:
-            yield
 
     def __enter__(self) -> "ExecutionContext":
         """Enter the execution context."""
         cm = self.enter()
-        self._local.cm = cm
         cm.__enter__()
+        if not hasattr(self._local, "stack"):
+            self._local.stack = []
+        self._local.stack.append(cm)
         return self
 
     def __exit__(self, *args: Any) -> None:
         """Exit the execution context."""
-        cm = getattr(self._local, "cm", None)
-        if cm is not None:
-            cm.__exit__(*args)
+        stack = getattr(self._local, "stack", None)
+        if stack:
+            stack.pop().__exit__(*args)
 
 
 class NullAppContext(AppContext):

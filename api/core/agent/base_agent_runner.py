@@ -2,7 +2,7 @@ import json
 import logging
 import uuid
 from decimal import Decimal
-from typing import Union, cast
+from typing import TYPE_CHECKING, Union, cast
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -44,6 +44,9 @@ from graphon.model_runtime.model_providers.base.large_language_model import Larg
 from models.enums import CreatorUserRole
 from models.model import Conversation, Message, MessageAgentThought, MessageFile, load_annotation_reply_config
 
+if TYPE_CHECKING:
+    from core.app.apps.workflow_app_runner import WorkflowRunDriver
+
 logger = logging.getLogger(__name__)
 _file_access_controller = DatabaseFileAccessController()
 
@@ -52,6 +55,7 @@ class BaseAgentRunner(AppRunner):
     def __init__(
         self,
         *,
+        execution_driver: "WorkflowRunDriver",
         session: Session,
         tenant_id: str,
         application_generate_entity: AgentChatAppGenerateEntity,
@@ -66,6 +70,7 @@ class BaseAgentRunner(AppRunner):
         memory: TokenBufferMemory | None = None,
         prompt_messages: list[PromptMessage] | None = None,
     ):
+        self._execution_driver = execution_driver
         self.tenant_id = tenant_id
         self.application_generate_entity = application_generate_entity
         self.conversation = conversation
@@ -143,6 +148,7 @@ class BaseAgentRunner(AppRunner):
         convert tool to prompt message tool
         """
         tool_entity = ToolManager.get_agent_tool_runtime(
+            execution_driver=self._execution_driver,
             tenant_id=self.tenant_id,
             app_id=self.app_config.app_id,
             agent_tool=tool,

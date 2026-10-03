@@ -121,7 +121,7 @@ class TestOpenApiWorkflowEventsApi:
         module = sys.modules["controllers.openapi.workflow_events"]
         generator_mock = Mock()
         generator_mock.convert_to_event_stream.return_value = iter([])
-        monkeypatch.setattr(module, "WorkflowAppGenerator", lambda: generator_mock)
+        monkeypatch.setattr(module, "WorkflowAppGenerator", lambda *, execution_driver: generator_mock)
         msg_gen_mock = Mock()
         msg_gen_mock.retrieve_events.return_value = iter([])
         monkeypatch.setattr(module, "MessageGenerator", lambda: msg_gen_mock)
@@ -245,7 +245,7 @@ class TestOpenApiWorkflowEventsApi:
 
         generator_mock = Mock()
         generator_mock.convert_to_event_stream.return_value = iter(["event: a\n\n", "event: b\n\n"])
-        monkeypatch.setattr(module, "WorkflowAppGenerator", lambda: generator_mock)
+        monkeypatch.setattr(module, "WorkflowAppGenerator", lambda *, execution_driver: generator_mock)
         msg_gen_mock = Mock()
         msg_gen_mock.retrieve_events.return_value = iter([])
         monkeypatch.setattr(module, "MessageGenerator", lambda: msg_gen_mock)
@@ -270,7 +270,7 @@ class TestOpenApiWorkflowEventsApi:
         self._bind_repo(monkeypatch, _make_workflow_run(created_by_role=CreatorUserRole.ACCOUNT, created_by="acct-1"))
         generator_mock = Mock()
         generator_mock.convert_to_event_stream.return_value = iter([])
-        monkeypatch.setattr(module, "WorkflowAppGenerator", lambda: generator_mock)
+        monkeypatch.setattr(module, "WorkflowAppGenerator", lambda *, execution_driver: generator_mock)
         msg_gen_mock = Mock()
         msg_gen_mock.retrieve_events.return_value = iter([])
         monkeypatch.setattr(module, "MessageGenerator", lambda: msg_gen_mock)
