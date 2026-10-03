@@ -233,11 +233,15 @@ class FileService:
         override.
         """
 
-        if extension in IMAGE_EXTENSIONS:
+        # Extensions may arrive dotted (e.g. ".mp4" from remote uploads) or in
+        # mixed case; normalize so both forms match the extension sets below.
+        normalized_extension = extension.lstrip(".").lower() if extension else extension
+
+        if normalized_extension in IMAGE_EXTENSIONS:
             file_size_limit = dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT
-        elif extension in VIDEO_EXTENSIONS:
+        elif normalized_extension in VIDEO_EXTENSIONS:
             file_size_limit = dify_config.UPLOAD_VIDEO_FILE_SIZE_LIMIT
-        elif extension in AUDIO_EXTENSIONS:
+        elif normalized_extension in AUDIO_EXTENSIONS:
             file_size_limit = dify_config.UPLOAD_AUDIO_FILE_SIZE_LIMIT
         else:
             # Context-specific uploads may override the default limit without changing media-specific limits.
