@@ -23,6 +23,7 @@ from core.workflow.node_factory import (
     resolve_workflow_node_class,
 )
 from core.workflow.nodes.human_input.boundary import HumanInputFormEventFilter
+from core.workflow.response_stream_filter import DifyResponseStreamFilter
 from core.workflow.system_variables import (
     default_system_variables,
     get_node_creation_preload_selectors,
@@ -74,7 +75,7 @@ def iter_dify_graph_engine_events(
         context=GraphEventFilterContext.from_engine(engine),
         filters=[
             HumanInputFormEventFilter(form_repository=HumanInputFormSubmissionRepository()),
-            response_stream_filter or ResponseStreamFilter(),
+            response_stream_filter or DifyResponseStreamFilter(),
         ],
     )
 
@@ -145,7 +146,7 @@ class WorkflowEntry:
             command_channel = InMemoryChannel()
 
         self.command_channel = command_channel
-        self._response_stream_filter = response_stream_filter or ResponseStreamFilter()
+        self._response_stream_filter = response_stream_filter or DifyResponseStreamFilter()
         execution_context = capture_current_context()
         # ponytail: Graphon snapshots omit process-local context; use a public rebind API when Graphon exposes one.
         graph_runtime_state._execution_context = execution_context
