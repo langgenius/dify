@@ -54,3 +54,38 @@ def test_api_tool() -> None:
     assert response.request.headers.get("content-type") == "application/json"
     assert response.request.headers.get("cookie") == "cookie_param=c_param"
     assert "b_param" in response.content.decode()
+
+
+@pytest.mark.usefixtures("setup_http_mock")
+def test_api_tool_substitutes_path_level_parameter() -> None:
+    from flask import Flask
+
+    from core.tools.utils.parser import ApiBasedToolSchemaParser
+
+    openapi = {
+        "openapi": "3.0.0",
+        "info": {"title": "API", "version": "1.0.0"},
+        "servers": [{"url": "http://www.example.com"}],
+        "paths": {
+            "/users/{user_id}": {
+                "parameters": [{"name": "user_id", "in": "path", "required": True, "schema": {"type": "string"}}],
+                "get": {"operationId": "getUser"},
+            }
+        },
+    }
+    with Flask(__name__).test_request_context():
+        (bundle,) = ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(openapi)
+
+    tool = ApiTool(
+        entity=ToolEntity(
+            identity=ToolIdentity(provider="", author="", name="", label=I18nObject(en_US="test tool")),
+        ),
+        api_bundle=bundle,
+        runtime=ToolRuntime(tenant_id="", credentials={"auth_type": "none"}),
+        provider_id="test_tool",
+    )
+    tool_parameters = {"user_id": "42"}
+    headers = tool.assembling_request(tool_parameters)
+    response = tool.do_http_request(tool.api_bundle.server_url, tool.api_bundle.method, headers, tool_parameters)
+
+    assert response.request.url.path == "/users/42"
