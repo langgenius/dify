@@ -147,6 +147,12 @@ class CodeExecutionSandboxConfig(BaseSettings):
         default=5.0,
     )
 
+    CODE_EXECUTION_POOL_TIMEOUT: PositiveFloat = Field(
+        description="Maximum time in seconds to wait for a connection from the code execution HTTP pool",
+        default=10.0,
+        allow_inf_nan=False,
+    )
+
     CODE_MAX_NUMBER: PositiveInt = Field(
         description="Maximum allowed numeric value in code execution",
         default=9223372036854775807,
