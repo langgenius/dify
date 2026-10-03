@@ -4,7 +4,6 @@ from uuid import UUID
 
 from flask_restx import Resource
 from pydantic import BaseModel, Field, TypeAdapter, WithJsonSchema, field_validator
-from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadRequest, NotFound
 
 import services
@@ -16,6 +15,7 @@ from controllers.service_api.app.error import NotChatAppError
 from controllers.service_api.schema import expect_user_json, expect_with_user
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.db.session_factory import session_factory
 from extensions.ext_database import db
 from fields._value_type_serializer import serialize_value_type
 from fields.base import ResponseModel
@@ -197,7 +197,7 @@ class ConversationApi(Resource):
         last_id = query_args.last_id or None
 
         try:
-            with sessionmaker(db.engine).begin() as session:
+            with session_factory.get_session_maker().begin() as session:
                 pagination = ConversationService.pagination_by_last_id(
                     session=session,
                     app_model=app_model,

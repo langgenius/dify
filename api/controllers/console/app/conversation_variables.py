@@ -6,7 +6,6 @@ from typing import Any
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
-from sqlalchemy.orm import sessionmaker
 
 from controllers.common.rbac import PlainApp, RBACCheck
 from controllers.common.schema import query_params_from_model, register_schema_models
@@ -19,7 +18,7 @@ from controllers.console.wraps import (
     rbac_permission_required,
     setup_required,
 )
-from extensions.ext_database import db
+from core.db.session_factory import session_factory
 from fields._value_type_serializer import serialize_value_type
 from fields.base import ResponseModel
 from libs.helper import dump_response, to_timestamp
@@ -116,7 +115,7 @@ class ConversationVariablesApi(Resource):
         page_size = 100
         stmt = stmt.limit(page_size).offset((page - 1) * page_size)
 
-        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
+        with session_factory.get_session_maker().begin() as session:
             rows = session.scalars(stmt).all()
 
         return dump_response(
