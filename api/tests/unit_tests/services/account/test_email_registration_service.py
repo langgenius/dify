@@ -75,7 +75,8 @@ def test_send_code_uses_case_fallback_account_and_existing_account_notification(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     with sqlite_session_factory.begin() as session:
-        account = make_account(email="stored@example.com", name="Stored Account")
+        # Stored casing differs from both the request and its normalized address.
+        account = make_account(email="Stored@example.com", name="Stored Account")
         account.normalized_email = "stored@example.com"
         session.add(account)
 
@@ -88,14 +89,14 @@ def test_send_code_uses_case_fallback_account_and_existing_account_notification(
     assert token == "token-1"
     boundaries["find_by_email"].assert_called_once_with("Stored@Example.com")
     boundaries["issue"].assert_called_once_with(
-        AccountEmailRegistrationToken(email="stored@example.com", code="123456")
+        AccountEmailRegistrationToken(email="Stored@example.com", code="123456")
     )
     boundaries["send_account_exists"].assert_called_once_with(
-        email="stored@example.com",
+        email="Stored@example.com",
         account_name="Stored Account",
         language="zh-Hans",
     )
-    boundaries["record"].assert_called_once_with("stored@example.com")
+    boundaries["record"].assert_called_once_with("Stored@example.com")
 
 
 def test_send_code_normalizes_new_account_email_and_language(
