@@ -3,6 +3,7 @@ import logging
 import queue
 import re
 import threading
+from contextlib import closing
 
 from core.app.entities.queue_entities import (
     MessageQueueMessage,
@@ -75,7 +76,7 @@ class AppGeneratorTTSPublisher:
         self._cancelled.set()
         self._msg_queue.put(None)
 
-    def _runtime(self):
+    def _runtime(self) -> None:
         audio_type = self._declared_audio_mime_type or DEFAULT_TTS_AUDIO_MIME_TYPE
         resolved_audio_type: str | None = None
         try:
@@ -121,29 +122,30 @@ class AppGeneratorTTSPublisher:
                 if text_content and not text_content.isspace():
                     invoke_result = self.model_instance.invoke_tts(content_text=text_content.strip(), voice=self.voice)
                     audio_stream, next_audio_type = inspect_audio_stream(invoke_result, self._declared_audio_mime_type)
-                    if self._cancelled.is_set():
-                        return
-                    if incremental_request and next_audio_type != DEFAULT_TTS_AUDIO_MIME_TYPE:
-                        raise InvokeBadRequestError(
-                            "The TTS model declared MP3 but returned a format that cannot be played incrementally"
-                        )
-                    if resolved_audio_type and resolved_audio_type != next_audio_type:
-                        raise InvokeBadRequestError(
-                            "TTS provider changed MIME type between audio responses: "
-                            f"{resolved_audio_type} then {next_audio_type}"
-                        )
-                    resolved_audio_type = audio_type = next_audio_type
-                    for audio in audio_stream:
-                        # ponytail: reads stop at the next chunk; add transport cancellation when Graphon exposes it.
+                    with closing(audio_stream):
                         if self._cancelled.is_set():
                             return
-                        self._audio_queue.put(
-                            AudioTrunk(
-                                "responding",
-                                audio=base64.b64encode(audio),
-                                audio_type=audio_type,
+                        if incremental_request and next_audio_type != DEFAULT_TTS_AUDIO_MIME_TYPE:
+                            raise InvokeBadRequestError(
+                                "The TTS model declared MP3 but returned a format that cannot be played incrementally"
                             )
-                        )
+                        if resolved_audio_type and resolved_audio_type != next_audio_type:
+                            raise InvokeBadRequestError(
+                                "TTS provider changed MIME type between audio responses: "
+                                f"{resolved_audio_type} then {next_audio_type}"
+                            )
+                        resolved_audio_type = audio_type = next_audio_type
+                        for audio in audio_stream:
+                            # ponytail: stop at the next chunk; add transport cancellation when Graphon exposes it.
+                            if self._cancelled.is_set():
+                                return
+                            self._audio_queue.put(
+                                AudioTrunk(
+                                    "responding",
+                                    audio=base64.b64encode(audio),
+                                    audio_type=audio_type,
+                                )
+                            )
 
                 if message is None:
                     break

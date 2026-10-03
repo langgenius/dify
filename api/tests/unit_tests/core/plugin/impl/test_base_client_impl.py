@@ -1,7 +1,9 @@
 import json
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from typing import override
 from urllib.parse import quote
 
+import httpx
 import pytest
 from pytest_mock import MockerFixture
 
@@ -40,6 +42,23 @@ class _StreamContext:
 
     def iter_lines(self):
         return self._lines
+
+
+class _TrackedHTTPStream(httpx.SyncByteStream):
+    def __init__(self, chunks: list[bytes], *, fail_close: bool = False) -> None:
+        self._chunks: list[bytes] = chunks
+        self._fail_close: bool = fail_close
+        self.close_calls: int = 0
+
+    @override
+    def __iter__(self) -> Iterator[bytes]:
+        yield from self._chunks
+
+    @override
+    def close(self) -> None:
+        self.close_calls += 1
+        if self._fail_close:
+            raise RuntimeError("HTTP close failed")
 
 
 class TestBasePluginClientImpl:
@@ -172,6 +191,48 @@ class TestBasePluginClientImpl:
 
         with pytest.raises(ValueError, match="got empty data"):
             list(client._request_with_plugin_daemon_response_stream("GET", "p", bool))
+
+    @pytest.mark.parametrize("consume_all", [False, True])
+    def test_response_decoder_closes_retained_http_stream(self, mocker: MockerFixture, consume_all: bool) -> None:
+        client = BasePluginClient()
+        transport_stream = _TrackedHTTPStream(
+            [b'{"code":0,"message":"","data":true}\n', b'{"code":0,"message":"","data":false}\n']
+        )
+        transport = httpx.MockTransport(lambda _: httpx.Response(200, stream=transport_stream))
+
+        with httpx.Client(transport=transport) as http_client:
+            mocker.patch("core.plugin.impl.base._httpx_client", http_client)
+            # Keep the live transport generator referenced so GC cannot hide a missing close.
+            request_stream = client._stream_request("GET", "plugin/tenant/stream")
+            mocker.patch.object(client, "_stream_request", return_value=request_stream)
+            response = client._request_with_plugin_daemon_response_stream("GET", "plugin/tenant/stream", bool)
+            assert next(response) is True
+            assert transport_stream.close_calls == 0
+            if consume_all:
+                assert list(response) == [False]
+            response.close()
+            response.close()
+
+            assert transport_stream.close_calls == 1
+
+    @pytest.mark.parametrize("valid_first_chunk", [False, True])
+    @pytest.mark.parametrize("fail_close", [False, True])
+    def test_response_decoder_preserves_invalid_frame_error_when_http_cleanup_fails(
+        self, mocker: MockerFixture, valid_first_chunk: bool, fail_close: bool
+    ) -> None:
+        client = BasePluginClient()
+        chunks = [b'{"code":0,"message":"","data":true}\n'] if valid_first_chunk else []
+        transport_stream = _TrackedHTTPStream([*chunks, b"broken-json\n"], fail_close=fail_close)
+        transport = httpx.MockTransport(lambda _: httpx.Response(200, stream=transport_stream))
+
+        with httpx.Client(transport=transport) as http_client:
+            mocker.patch("core.plugin.impl.base._httpx_client", http_client)
+            request_stream = client._stream_request("GET", "plugin/tenant/stream")
+            mocker.patch.object(client, "_stream_request", return_value=request_stream)
+            with pytest.raises(ValueError, match="^broken-json$"):
+                list(client._request_with_plugin_daemon_response_stream("GET", "plugin/tenant/stream", bool))
+
+            assert transport_stream.close_calls == 1
 
     @pytest.mark.parametrize(
         ("error_type", "expected"),

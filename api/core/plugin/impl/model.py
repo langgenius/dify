@@ -24,6 +24,7 @@ from graphon.model_runtime.entities.rerank_entities import MultimodalRerankInput
 from graphon.model_runtime.entities.text_embedding_entities import EmbeddingResult
 from graphon.model_runtime.protocols.tts_runtime import TTSModelVoice
 from graphon.model_runtime.utils.encoders import jsonable_encoder
+from libs.stream import close_stream
 
 _POLLING_UNSUPPORTED_INVOKE_ERROR_TYPES = frozenset((NotImplementedError.__name__,))
 _POLLING_UNSUPPORTED_ERROR_MESSAGE = "does not support polling"
@@ -616,6 +617,8 @@ class PluginModelClient(BasePluginClient):
                 yield TTSAudioChunk(binascii.unhexlify(hex_str), mime_type=result.mime_type)
         except PluginDaemonInnerError as e:
             raise ValueError(e.message + str(e.code))
+        finally:
+            close_stream(response)
 
     def get_tts_model_voices(
         self,
