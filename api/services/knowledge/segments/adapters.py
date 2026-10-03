@@ -8,10 +8,15 @@ from typing import Any, Protocol
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from graphon.model_runtime.entities.model_entities import ModelType
+from services.knowledge.resource_scope import DatasetRef
 from services.knowledge.segments.application import (
     SegmentDatasetRecord,
     SegmentModelProviderError,
 )
+
+
+def segment_batch_import_status_key(dataset_ref: DatasetRef, job_id: str) -> str:
+    return f"segment_batch_import_{dataset_ref.tenant_id}_{dataset_ref.dataset_id}_{job_id}"
 
 
 class RedisSegmentClient(Protocol):
@@ -55,11 +60,11 @@ class RedisSegmentIndexingState:
     def is_document_indexing(self, document_id: str) -> bool:
         return self._redis.get(f"document_{document_id}_indexing") is not None
 
-    def set_batch_waiting(self, job_id: str) -> None:
-        self._redis.setnx(f"segment_batch_import_{job_id}", "waiting")
+    def set_batch_waiting(self, dataset_ref: DatasetRef, job_id: str) -> None:
+        self._redis.setnx(segment_batch_import_status_key(dataset_ref, job_id), "waiting")
 
-    def get_batch_status(self, job_id: str) -> str | None:
-        value = self._redis.get(f"segment_batch_import_{job_id}")
+    def get_batch_status(self, dataset_ref: DatasetRef, job_id: str) -> str | None:
+        value = self._redis.get(segment_batch_import_status_key(dataset_ref, job_id))
         if value is None:
             return None
         return value.decode() if isinstance(value, bytes) else value

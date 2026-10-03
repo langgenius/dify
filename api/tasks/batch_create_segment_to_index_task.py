@@ -24,6 +24,7 @@ from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import SegmentStatus
 from models.model import UploadFile
 from services.knowledge.resource_scope import DatasetRef
+from services.knowledge.segments.adapters import segment_batch_import_status_key
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +53,7 @@ def batch_create_segment_to_index_task(
     logger.info(click.style(f"Start batch create segment jobId: {job_id}", fg="green"))
     start_at = time.perf_counter()
 
-    indexing_cache_key = f"segment_batch_import_{job_id}"
+    indexing_cache_key = segment_batch_import_status_key(DatasetRef(tenant_id, dataset_id), job_id)
 
     # Initialize variables with default values
     upload_file_key: str | None = None

@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import create_autospec, patch
 from uuid import uuid4
 
 import pytest
@@ -14,6 +14,7 @@ from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
 from models.model import UploadFile
 from services.knowledge.resource_scope import DatasetRef, DocumentRef
+from services.knowledge.segments.adapters import RedisSegmentClient, RedisSegmentIndexingState
 from tasks.batch_create_segment_to_index_task import batch_create_segment_to_index_task
 
 
@@ -104,13 +105,23 @@ def test_batch_create_segment_to_index_task_validates_scope_and_indexes_committe
             max_position_queries.append(statement)
 
     event.listen(sqlite_engine, "before_cursor_execute", count_max_position_query)
+    job_id = str(uuid4())
+    values: dict[str, bytes] = {}
+    redis = create_autospec(RedisSegmentClient, instance=True, spec_set=True)
+    redis.get.side_effect = values.get
+
+    def set_status(key: str, _ttl: int, status: str) -> None:
+        values[key] = status.encode()
+
+    redis.setex.side_effect = set_status
     try:
         with (
             patch("tasks.batch_create_segment_to_index_task.storage.download", side_effect=mock_download) as download,
             patch("extensions.ext_application_services.application_services") as services,
+            patch("tasks.batch_create_segment_to_index_task.redis_client", redis),
         ):
             batch_create_segment_to_index_task(
-                job_id=str(uuid4()),
+                job_id=job_id,
                 upload_file_id=upload_file.id,
                 dataset_id=dataset.id,
                 document_id=document.id,
@@ -119,6 +130,13 @@ def test_batch_create_segment_to_index_task_validates_scope_and_indexes_committe
             )
     finally:
         event.remove(sqlite_engine, "before_cursor_execute", count_max_position_query)
+
+    status_reader = RedisSegmentIndexingState(redis)
+    assert status_reader.get_batch_status(DatasetRef(tenant_id, dataset.id), job_id) == (
+        "error" if foreign_owner else "completed"
+    )
+    assert status_reader.get_batch_status(DatasetRef("another-workspace", dataset.id), job_id) is None
+    assert status_reader.get_batch_status(DatasetRef(tenant_id, "another-dataset"), job_id) is None
 
     if foreign_owner is not None:
         download.assert_not_called()
