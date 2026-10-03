@@ -1,8 +1,7 @@
 import type { FileUpload } from '@/app/components/base/features/types'
-import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
-import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { useFile } from './hooks'
 import { useStore } from './store'
+import { getSupportFileExtensionList } from './utils'
 
 type FileInputProps = {
   fileConfig: FileUpload
@@ -25,12 +24,12 @@ const FileInput = ({ fileConfig }: FileInputProps) => {
     }
   }
 
-  const allowedFileTypes = fileConfig.allowed_file_types
-  const isCustom = allowedFileTypes?.includes(SupportUploadFileTypes.custom)
-  const exts = isCustom
-    ? fileConfig.allowed_file_extensions || []
-    : (allowedFileTypes?.map((type) => FILE_EXTS[type]) || []).flat().map((item) => `.${item}`)
-  const accept = exts.join(',')
+  const accept = getSupportFileExtensionList(
+    fileConfig.allowed_file_types || [],
+    fileConfig.allowed_file_extensions || [],
+  )
+    .map((item) => `.${item}`)
+    .join(',')
 
   return (
     <input
