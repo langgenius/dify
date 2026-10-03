@@ -28,6 +28,8 @@
   "menus.plugins": "Entegrasyonlar",
   "menus.status": "beta",
   "menus.tools": "Araçlar",
+  "settings.accessToken": "Erişim belirteçleri",
+  "settings.accessTokenDescription": "Yalnızca seçilen uygulamalara ve bilgi tabanlarına erişim sağlayan Service API belirteçleri oluşturun.",
   "settings.agentStrategy": "Agent strategy",
   "settings.billing": "Faturalandırma",
   "settings.customEndpoint": "Özel Uç Nokta",

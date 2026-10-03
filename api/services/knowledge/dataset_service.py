@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
 from configs import dify_config
+from constants.resource_access_token import ResourceAccessTokenResourceType
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.helper.name_generator import generate_incremental_name
 from core.model_manager import ModelManager
@@ -26,6 +27,7 @@ from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from enums import CloudPlan, DeploymentEdition
 from events.dataset_event import dataset_was_deleted
 from events.document_event import document_was_deleted
+from extensions.application_services.resource_access_token import build_resource_access_token_cleanup_service
 from extensions.ext_redis import redis_client
 from graphon.file import helpers as file_helpers
 from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
@@ -1256,6 +1258,11 @@ class DatasetService:
         # silently degrade to unrestricted (access-all) once its last binding is gone.
         dataset_api_key_bindings.delete_keys_scoped_only_to(session, str(dataset.id))
 
+        build_resource_access_token_cleanup_service(session=session).delete_resource_relations(
+            tenant_id=dataset.tenant_id,
+            resource_type=ResourceAccessTokenResourceType.KNOWLEDGE,
+            resource_id=dataset.id,
+        )
         session.delete(dataset)
         session.commit()
         return True

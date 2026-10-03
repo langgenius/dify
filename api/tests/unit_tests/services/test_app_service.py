@@ -73,6 +73,16 @@ def _persist_app(session: Session, *, tenant_id: str, name: str = "Visible App")
     return app
 
 
+@pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
+def test_get_app_in_workspace_enforces_ownership(sqlite_session: Session) -> None:
+    tenant_id = str(uuid4())
+    app = _persist_app(sqlite_session, tenant_id=tenant_id)
+
+    assert AppService.get_app_in_workspace(tenant_id=tenant_id, app_id=app.id, session=sqlite_session) is app
+    assert AppService.get_app_in_workspace(tenant_id=str(uuid4()), app_id=app.id, session=sqlite_session) is None
+    assert AppService.get_app_in_workspace(tenant_id=tenant_id, app_id=str(uuid4()), session=sqlite_session) is None
+
+
 def _persist_agent_app(
     session: Session,
     *,

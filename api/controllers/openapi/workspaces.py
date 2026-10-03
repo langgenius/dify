@@ -3,7 +3,8 @@
 Bearer-authed counterparts to the cookie-authed /console/api/workspaces
 endpoints. Account bearers (dfoa_) see every tenant they're a member of.
 External SSO bearers (dfoe_) have no account_id and so see an empty list —
-that matches /openapi/v1/account.
+that matches /openapi/v1/account. Resource access bearers may list only their
+own tenant, without inheriting any account membership or role.
 
 Member management declares both authorization arms; ``RBAC_ENABLED`` picks one.
 ``GET /workspaces/<workspace_id>`` deliberately declares neither: it admits any
@@ -45,7 +46,7 @@ from controllers.openapi.auth.requirements import (
     CheckWorkspaceMember,
     CheckWorkspaceRole,
 )
-from controllers.openapi.auth.subjects import AccountSubject
+from controllers.openapi.auth.subjects import AccountSubject, ResourceAccessSubject
 from enums.account import TenantAccountRole
 from extensions.ext_application_services import application_services
 from services.account_errors import AccountNotFoundError, AccountRegisterError, SeatsLimitExceededError
@@ -79,11 +80,17 @@ class WorkspacesApi(Resource):
         kind=Kind.LIST,
         summary="List workspaces of the current account",
         examples=(Example(title="List my workspaces, first page", input={"page": 1, "limit": 20}),),
-        requirements=(CheckSubject(allowed=(AccountSubject,)), CheckScope(Scope.WORKSPACE_READ)),
+        requirements=(CheckSubject(allowed=(AccountSubject, ResourceAccessSubject)), CheckScope(Scope.WORKSPACE_READ)),
         query=WorkspaceListQuery,
         returns=(200, WorkspaceListResponse, "Workspace list"),
     )
     def get(self, ctx: Context, *, query: WorkspaceListQuery):
+        if isinstance(ctx.subject, ResourceAccessSubject):
+            tenant = ctx.workspace
+            item = WorkspaceSummaryResponse(
+                id=str(tenant.id), name=tenant.name, role="", status=tenant.status, current=True
+            )
+            return WorkspaceListResponse.page_of([item], query=query)
         rows = application_services().workspaces.management.list_memberships(str(ctx.subject.account_id))
         return WorkspaceListResponse.page_of([_workspace_summary(row) for row in rows], query=query)
 

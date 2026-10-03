@@ -28,6 +28,8 @@
   "menus.plugins": "Integrazione",
   "menus.status": "beta",
   "menus.tools": "Strumenti",
+  "settings.accessToken": "Token di accesso",
+  "settings.accessTokenDescription": "Crea token per le API di servizio che consentono l’accesso solo alle app e alle basi di conoscenza selezionate.",
   "settings.agentStrategy": "Agent strategy",
   "settings.billing": "Fatturazione",
   "settings.customEndpoint": "Endpoint personalizzato",

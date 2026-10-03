@@ -3165,6 +3165,7 @@ export const zGetAgentQuery = z.object({
     .optional()
     .default('all'),
   name: z.string().optional(),
+  openapi_visible: z.boolean().optional().default(false),
   page: z.int().gte(1).lte(99999).optional().default(1),
   publication_status: z.enum(['drafts', 'published']).optional(),
   sort_by: z

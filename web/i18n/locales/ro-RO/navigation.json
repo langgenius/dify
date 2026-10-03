@@ -28,6 +28,8 @@
   "menus.plugins": "Integrare-uri",
   "menus.status": "beta",
   "menus.tools": "Instrumente",
+  "settings.accessToken": "Tokenuri de acces",
+  "settings.accessTokenDescription": "Creează tokenuri API de serviciu care oferă acces numai la aplicațiile și bazele de cunoștințe selectate.",
   "settings.agentStrategy": "Agent strategy",
   "settings.billing": "Facturare",
   "settings.customEndpoint": "Endpoint personalizat",

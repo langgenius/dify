@@ -109,6 +109,7 @@ class AppListBaseQuery(BaseModel):
         description="Sort apps by last modified, recently created, or earliest created",
     )
     name: str | None = Field(default=None, description="Filter by app name")
+    openapi_visible: bool = Field(default=False, description="Only return apps with API access enabled")
     tag_ids: list[str] | None = Field(default=None, description="Filter by tag IDs")
     creator_ids: list[str] | None = Field(default=None, description="Filter by creator account IDs")
     is_created_by_me: bool | None = Field(default=None, description="Filter by creator")
