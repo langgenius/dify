@@ -5,17 +5,16 @@ This module validates core control-flow outcomes for
 initialization guards, invoke-source to user-source resolution, and failed-run
 event handling. Invariants asserted here include strict graph-config
 validation, correct ``InvokeFrom`` to ``UserFrom`` mapping, and publishing
-error paths driven by ``GraphRunFailedEvent`` through mocked collaborators.
+error paths driven by ``GraphRunFailedEvent`` through real document persistence.
 Primary collaborators include ``PipelineRunner``,
 ``core.app.entities.app_invoke_entities.InvokeFrom``, ``GraphRunFailedEvent``,
-``UserFrom``, and patched DB/runtime dependencies used by the runner.
+``UserFrom``, and real ORM, graph, and runtime dependencies used by the runner.
 """
 
 import json
-from unittest.mock import MagicMock
+from collections.abc import Generator
 
 import pytest
-from pytest_mock import MockerFixture
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
@@ -24,10 +23,13 @@ import core.app.apps.pipeline.pipeline_runner as module
 from core.app.apps.pipeline.pipeline_config_manager import PipelineConfig
 from core.app.apps.pipeline.pipeline_queue_manager import PipelineQueueManager
 from core.app.apps.pipeline.pipeline_runner import PipelineRunner
-from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerateEntity, UserFrom
+from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerateEntity
+from core.app.entities.queue_entities import AppQueueEvent, QueueWorkflowFailedEvent
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
-from graphon.graph_events import GraphRunFailedEvent
+from core.workflow.workflow_entry import WorkflowEntry
+from graphon.graph import Graph
+from graphon.graph_events import GraphEngineEvent, GraphRunFailedEvent
 from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER
 from models.account import Account
@@ -288,6 +290,10 @@ def test_run_pipeline_from_other_tenant_is_not_found(runner: PipelineRunner, sql
         runner.run()
 
 
+def _unexpected_workflow_lookup(session: Session, pipeline: Pipeline, workflow_id: str) -> Workflow | None:
+    pytest.fail("Workflow lookup must follow successful dataset and document ownership checks")
+
+
 @pytest.mark.parametrize(
     "dataset",
     [
@@ -297,6 +303,7 @@ def test_run_pipeline_from_other_tenant_is_not_found(runner: PipelineRunner, sql
     ],
 )
 def test_run_rejects_unowned_pipeline_dataset(
+    monkeypatch: pytest.MonkeyPatch,
     runner: PipelineRunner,
     dataset: Dataset | None,
     sqlite_session: Session,
@@ -306,42 +313,38 @@ def test_run_rejects_unowned_pipeline_dataset(
     if dataset is not None:
         sqlite_session.add(dataset)
     sqlite_session.commit()
-    runner.get_workflow = MagicMock()
+    monkeypatch.setattr(runner, "get_workflow", _unexpected_workflow_lookup)
 
     with pytest.raises(ValueError, match="Pipeline dataset not found"):
         runner.run()
 
-    runner.get_workflow.assert_not_called()
-
 
 def test_run_rejects_document_outside_pipeline_dataset_after_async_boundary(
+    monkeypatch: pytest.MonkeyPatch,
     runner: PipelineRunner,
     sqlite_session: Session,
 ):
     runner.application_generate_entity.document_id = "foreign-doc"
     runner.application_generate_entity.original_document_id = "foreign-doc"
     _persist_scope(sqlite_session)
-    runner.get_workflow = MagicMock()
+    monkeypatch.setattr(runner, "get_workflow", _unexpected_workflow_lookup)
 
     with pytest.raises(ValueError, match="Pipeline document not found"):
         runner.run()
 
-    runner.get_workflow.assert_not_called()
-
 
 def test_run_rejects_original_document_outside_pipeline_dataset_after_async_boundary(
+    monkeypatch: pytest.MonkeyPatch,
     runner: PipelineRunner,
     sqlite_session: Session,
 ):
     runner.application_generate_entity.document_id = "doc"
     runner.application_generate_entity.original_document_id = "foreign-doc"
     _persist_scope(sqlite_session, documents=(_document(),))
-    runner.get_workflow = MagicMock()
+    monkeypatch.setattr(runner, "get_workflow", _unexpected_workflow_lookup)
 
     with pytest.raises(ValueError, match="Pipeline original document not found"):
         runner.run()
-
-    runner.get_workflow.assert_not_called()
 
 
 def test_run_workflow_not_initialized(sqlite_session: Session, sqlite_engine: Engine):
@@ -358,74 +361,77 @@ def test_run_workflow_not_initialized(sqlite_session: Session, sqlite_engine: En
         runner.run()
 
 
-def test_run_single_iteration_path(mocker: MockerFixture, sqlite_session: Session, sqlite_engine: Engine):
+def _start_workflow() -> Workflow:
+    return _workflow(
+        graph={"nodes": [{"id": "start", "data": {"type": "start", "title": "Start", "variables": []}}], "edges": []}
+    )
+
+
+def test_run_single_iteration_path(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, sqlite_engine: Engine):
     app_generate_entity = _build_app_generate_entity()
     app_generate_entity.single_iteration_run = RagPipelineGenerateEntity.SingleIterationRunEntity(
         node_id="start", inputs={}
     )
+    _, dataset, workflow = _persist_scope(sqlite_session, workflow=_start_workflow(), documents=(_document(),))
+    runner = _build_runner(app_generate_entity, sqlite_engine, workflow)
+    prepared = []
+    published: list[AppQueueEvent] = []
+    failure = GraphRunFailedEvent(error="iteration failed")
+    variable_pool = VariablePool()
+    state = GraphRuntimeState(variable_pool=variable_pool, start_at=0)
 
-    _, dataset, _ = _persist_scope(sqlite_session, documents=(_document(),))
+    def prepare_single_node_execution(
+        *,
+        workflow: Workflow,
+        single_iteration_run: RagPipelineGenerateEntity.SingleIterationRunEntity | None,
+        single_loop_run: RagPipelineGenerateEntity.SingleLoopRunEntity | None,
+        user_id: str,
+    ) -> tuple[Graph, VariablePool, GraphRuntimeState]:
+        prepared.append((workflow.id, single_iteration_run, single_loop_run, user_id))
+        graph = runner._init_rag_pipeline_graph(workflow=workflow, graph_runtime_state=state, start_node_id="start")
+        return graph, variable_pool, state
 
-    runner = _build_runner(app_generate_entity, sqlite_engine, _workflow())
+    def run_workflow(entry: WorkflowEntry) -> Generator[GraphEngineEvent, None, None]:
+        assert entry.graph_engine.graph_runtime_state is state
+        yield failure
 
-    runner._resolve_user_from = MagicMock(return_value=UserFrom.ACCOUNT)
-    runner._prepare_single_node_execution = MagicMock(return_value=("graph", "pool", "state"))
-    runner._update_document_status = MagicMock()
-    runner._handle_event = MagicMock()
-
-    event = MagicMock()
-    workflow_entry = MagicMock()
-    workflow_entry.graph_engine = MagicMock()
-    workflow_entry.run.return_value = [event]
-    mocker.patch.object(module, "WorkflowEntry", return_value=workflow_entry)
-
-    mocker.patch.object(module, "WorkflowPersistenceLayer", return_value=MagicMock())
+    monkeypatch.setattr(runner, "_prepare_single_node_execution", prepare_single_node_execution)
+    monkeypatch.setattr(runner, "_publish_event", published.append)
+    monkeypatch.setattr(WorkflowEntry, "run", run_workflow)
 
     runner.run()
 
-    runner._prepare_single_node_execution.assert_called_once()
-    runner._update_document_status.assert_called_once_with(
-        event,
-        workspace_id=dataset.tenant_id,
-        dataset_id=dataset.id,
-        document_id="doc",
-    )
-    runner._handle_event.assert_called()
+    assert prepared == [("wf", app_generate_entity.single_iteration_run, None, "user")]
+    assert runner._queue_manager.graph_runtime_state is state
+    sqlite_session.expire_all()
+    document = sqlite_session.get(Document, "doc")
+    assert document is not None
+    assert document.tenant_id == dataset.tenant_id
+    assert document.dataset_id == dataset.id
+    assert document.indexing_status == "error"
+    assert document.error == failure.error
+    assert len(published) == 1
+    assert isinstance(published[0], QueueWorkflowFailedEvent)
+    assert published[0].error == failure.error
 
 
-def test_run_normal_path_builds_graph(mocker: MockerFixture, sqlite_session: Session, sqlite_engine: Engine):
+def test_run_normal_path_builds_graph(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, sqlite_engine: Engine):
     app_generate_entity = _build_app_generate_entity()
-
-    events = []
-    workflow = _workflow()
+    events: list[str] = []
+    workflow = _start_workflow()
     workflow.rag_pipeline_variables = [
-        {
-            "variable": "input1",
-            "belong_to_node_id": "start",
-            "type": "text-input",
-            "label": "Input",
-        }
+        {"variable": "input1", "belong_to_node_id": "start", "type": "text-input", "label": "Input"}
     ]
-    workflow.id = "wf"
-    _persist_scope(
-        sqlite_session,
-        workflow=workflow,
-        end_user=_end_user(),
-        documents=(_document(),),
-    )
-
+    _persist_scope(sqlite_session, workflow=workflow, end_user=_end_user(), documents=(_document(),))
     runner = _build_runner(app_generate_entity, sqlite_engine, workflow)
+    entries: list[WorkflowEntry] = []
 
-    runner._resolve_user_from = MagicMock(return_value=UserFrom.ACCOUNT)
-    runner._init_rag_pipeline_graph = MagicMock(return_value="graph")
-    runner._update_document_status = MagicMock()
-    runner._handle_event = MagicMock()
+    def run_workflow(entry: WorkflowEntry) -> Generator[GraphEngineEvent, None, None]:
+        events.append("workflow_run")
+        entries.append(entry)
+        yield from ()
 
-    workflow_entry = MagicMock()
-    workflow_entry.graph_engine = MagicMock()
-    workflow_entry.run.side_effect = lambda: events.append("workflow_run") or []
-    mocker.patch.object(module, "WorkflowEntry", return_value=workflow_entry)
-    mocker.patch.object(module, "WorkflowPersistenceLayer", return_value=MagicMock())
+    monkeypatch.setattr(WorkflowEntry, "run", run_workflow)
 
     def record_checkin(*_args) -> None:
         events.append("session_checkin")
@@ -438,4 +444,10 @@ def test_run_normal_path_builds_graph(mocker: MockerFixture, sqlite_session: Ses
 
     assert events[-1] == "workflow_run"
     assert "session_checkin" in events[:-1]
-    runner._init_rag_pipeline_graph.assert_called_once()
+    assert len(entries) == 1
+    graph_engine = entries[0].graph_engine
+    assert graph_engine.graph.root_node.id == "start"
+    assert graph_engine.graph_runtime_state is runner._queue_manager.graph_runtime_state
+    input_variable = graph_engine.graph_runtime_state.variable_pool.get(["start", "input1"])
+    assert input_variable is not None
+    assert input_variable.value == "v1"
