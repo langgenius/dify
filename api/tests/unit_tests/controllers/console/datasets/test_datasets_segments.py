@@ -298,8 +298,21 @@ def test_batch_import_status_preserves_missing_job_contract(app: Flask) -> None:
     assert response == {"job_id": "job-1", "job_status": "completed"}
 
 
-@pytest.mark.parametrize("allowed", [True, False])
-def test_batch_import_status_requires_dataset_read_permission(monkeypatch: pytest.MonkeyPatch, allowed: bool) -> None:
+@pytest.mark.parametrize(
+    ("allowed", "service_error", "expected_status"),
+    [
+        (True, None, 200),
+        (False, None, 403),
+        (True, SegmentDatasetNotFoundError(), 404),
+        (True, SegmentPermissionDeniedError("Dataset access denied."), 403),
+    ],
+)
+def test_batch_import_status_requires_dataset_read_permission(
+    monkeypatch: pytest.MonkeyPatch,
+    allowed: bool,
+    service_error: Exception | None,
+    expected_status: int,
+) -> None:
     dataset_id = UUID("11111111-1111-1111-1111-111111111111")
     job_id = UUID("22222222-2222-2222-2222-222222222222")
     account = make_account()
@@ -315,6 +328,7 @@ def test_batch_import_status_requires_dataset_read_permission(monkeypatch: pytes
     monkeypatch.setattr(RBACService.CheckAccess, "check", check_access)
     segments = create_autospec(DatasetSegmentApplicationService, instance=True, spec_set=True)
     segments.get_batch_import_status.return_value = SegmentBatchImport(job_id=str(job_id), job_status="completed")
+    segments.get_batch_import_status.side_effect = service_error
     resource = next(r for r in console_ns.resources if r.resource is DatasetDocumentSegmentBatchImportStatusApi)
     http_app = Flask(__name__)
     Api(http_app).add_resource(DatasetDocumentSegmentBatchImportStatusApi, *resource.urls)
@@ -323,9 +337,14 @@ def test_batch_import_status_requires_dataset_read_permission(monkeypatch: pytes
     with _patch_services(segments):
         response = http_app.test_client().get(url)
 
-    assert response.status_code == (200 if allowed else 403)
-    if allowed:
+    assert response.status_code == expected_status
+    if expected_status == 200:
         assert response.json == {"job_id": str(job_id), "job_status": "completed"}
+    elif service_error is not None:
+        assert response.json == {
+            "message": "Dataset not found." if expected_status == 404 else "Dataset access denied.",
+        }
+    if allowed:
         assert segments.get_batch_import_status.call_args.kwargs == {
             "dataset_id": str(dataset_id),
             "job_id": str(job_id),
