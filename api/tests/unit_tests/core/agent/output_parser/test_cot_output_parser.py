@@ -2,29 +2,18 @@
 
 Verifies expected parsing behavior for streaming content and JSON payloads,
 including edge cases such as empty/non-string content and malformed JSON.
-Assumes lightweight fixtures (SimpleNamespace/MagicMock) stand in for real
-model output structures. Implementation under test:
+Uses production model chunks and scratchpad actions. Implementation under test:
 core.agent.output_parser.cot_output_parser.CotAgentOutputParser.
 """
 
 import json
-from types import SimpleNamespace
-from unittest.mock import MagicMock
 
 import pytest
-from pytest_mock import MockerFixture
 
+from core.agent.entities import AgentScratchpadUnit
 from core.agent.output_parser.cot_output_parser import CotAgentOutputParser
-
-
-@pytest.fixture
-def mock_action_class(mocker: MockerFixture):
-    mock_action = MagicMock()
-    mocker.patch(
-        "core.agent.output_parser.cot_output_parser.AgentScratchpadUnit.Action",
-        mock_action,
-    )
-    return mock_action
+from graphon.model_runtime.entities.llm_entities import LLMResultChunk, LLMResultChunkDelta, LLMUsage
+from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 
 
 @pytest.fixture
@@ -34,12 +23,11 @@ def usage_dict():
 
 @pytest.fixture
 def make_chunk():
-    def _make_chunk(content=None, usage=None):
-        delta = SimpleNamespace(
-            message=SimpleNamespace(content=content),
-            usage=usage,
+    def _make_chunk(content: str | None = None, usage: LLMUsage | None = None) -> LLMResultChunk:
+        return LLMResultChunk(
+            model="test-model",
+            delta=LLMResultChunkDelta(index=0, message=AssistantPromptMessage(content=content), usage=usage),
         )
-        return SimpleNamespace(delta=delta)
 
     return _make_chunk
 
@@ -53,7 +41,7 @@ class TestCotAgentOutputParser:
     """Validate CotAgentOutputParser streaming + JSON parsing behavior.
 
     Lifecycle: no explicit setup/teardown; relies on pytest fixtures for
-    lightweight chunk/action doubles. Invariants: non-string/empty content
+    production chunk/action models. Invariants: non-string/empty content
     yields no output, usage gets recorded when provided, and valid action JSON
     results in Action instantiation. Usage: invoke via pytest (e.g.,
     `pytest -k TestCotAgentOutputParser`).
@@ -80,12 +68,15 @@ class TestCotAgentOutputParser:
 
     @pytest.mark.parametrize("content", [123, 12.5, [], {}, object()])
     def test_non_string_content(self, make_chunk, usage_dict, content) -> None:
-        chunks = [make_chunk(content)]
-        result = list(CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict))
+        # Deliberately corrupt only the message content to exercise the parser's
+        # defensive handling of malformed provider output.
+        chunk = make_chunk()
+        chunk.delta.message = chunk.delta.message.model_copy(update={"content": content})
+        result = list(CotAgentOutputParser.handle_react_stream_output([chunk], usage_dict))
         assert result == []
 
     def test_usage_update(self, make_chunk, usage_dict) -> None:
-        usage_data = {"tokens": 99}
+        usage_data = LLMUsage.empty_usage().model_copy(update={"total_tokens": 99})
         chunks = [make_chunk("abc", usage=usage_data)]
         list(CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict))
         assert usage_dict["usage"] == usage_data
@@ -94,17 +85,19 @@ class TestCotAgentOutputParser:
     # JSON parsing (direct + streaming)
     # --------------------------------------------------------
 
-    def test_single_json_action_valid(self, make_chunk, usage_dict, mock_action_class) -> None:
+    def test_single_json_action_valid(self, make_chunk, usage_dict) -> None:
         content = '{"action": "search", "input": "query"}'
         chunks = [make_chunk(content)]
-        list(CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict))
-        mock_action_class.assert_called_once_with(action_name="search", action_input="query")
+        result = list(CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict))
+        assert result == [AgentScratchpadUnit.Action(action_name="search", action_input="query")]
 
-    def test_json_list_unwrap(self, make_chunk, usage_dict, mock_action_class) -> None:
+    def test_json_list_unwrap(self, make_chunk, usage_dict) -> None:
         content = '[{"action": "lookup", "input": "abc"}]'
         chunks = [make_chunk(content)]
-        list(CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict))
-        mock_action_class.assert_called_once_with(action_name="lookup", action_input="abc")
+        result = list(CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict))
+        assert [item for item in result if isinstance(item, AgentScratchpadUnit.Action)] == [
+            AgentScratchpadUnit.Action(action_name="lookup", action_input="abc")
+        ]
 
     def test_json_missing_fields_returns_string(self, make_chunk, usage_dict) -> None:
         content = '{"foo": "bar"}'
@@ -119,14 +112,14 @@ class TestCotAgentOutputParser:
         result = list(CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict))
         assert any("invalid json" in str(r) for r in result)
 
-    def test_json_split_across_chunks(self, make_chunk, usage_dict, mock_action_class) -> None:
+    def test_json_split_across_chunks(self, make_chunk, usage_dict) -> None:
         chunks = [
             make_chunk('{"action": '),
             make_chunk('"multi", '),
             make_chunk('"input": "step"}'),
         ]
-        list(CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict))
-        mock_action_class.assert_called_once_with(action_name="multi", action_input="step")
+        result = list(CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict))
+        assert result == [AgentScratchpadUnit.Action(action_name="multi", action_input="step")]
 
     def test_unclosed_json_at_end(self, make_chunk, usage_dict) -> None:
         chunks = [make_chunk('{"foo": "bar"')]
@@ -138,15 +131,17 @@ class TestCotAgentOutputParser:
     # Code block JSON extraction
     # --------------------------------------------------------
 
-    def test_code_block_json_valid(self, make_chunk, usage_dict, mock_action_class) -> None:
+    def test_code_block_json_valid(self, make_chunk, usage_dict) -> None:
         content = """```json
 {"action": "lookup", "input": "abc"}
 ```"""
         chunks = [make_chunk(content)]
-        list(CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict))
-        mock_action_class.assert_called_once_with(action_name="lookup", action_input="abc")
+        result = list(CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict))
+        assert [item for item in result if isinstance(item, AgentScratchpadUnit.Action)] == [
+            AgentScratchpadUnit.Action(action_name="lookup", action_input="abc")
+        ]
 
-    def test_code_block_multiple_json(self, make_chunk, usage_dict, mock_action_class) -> None:
+    def test_code_block_multiple_json(self, make_chunk, usage_dict) -> None:
         # Multiple JSON objects inside single code fence (invalid combined JSON)
         # Parser should safely ignore invalid combined block
         content = """```json
@@ -156,7 +151,7 @@ class TestCotAgentOutputParser:
         chunks = [make_chunk(content)]
         result = list(CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict))
         # No valid parsed action expected due to invalid combined JSON
-        assert mock_action_class.call_count == 0
+        assert not any(isinstance(item, AgentScratchpadUnit.Action) for item in result)
         assert isinstance(result, list)
 
     def test_code_block_invalid_json(self, make_chunk, usage_dict) -> None:
@@ -204,22 +199,27 @@ class TestCotAgentOutputParser:
     # Mixed streaming scenarios
     # --------------------------------------------------------
 
-    def test_text_json_text_mix(self, make_chunk, usage_dict, mock_action_class) -> None:
+    def test_text_json_text_mix(self, make_chunk, usage_dict) -> None:
         content = 'start {"action": "mix", "input": "1"} end'
         chunks = [make_chunk(content)]
         result = list(CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict))
         # JSON action should be parsed
-        mock_action_class.assert_called_once()
+        assert [item for item in result if isinstance(item, AgentScratchpadUnit.Action)] == [
+            AgentScratchpadUnit.Action(action_name="mix", action_input="1")
+        ]
         # Ensure surrounding text is streamed (character-level)
-        joined = "".join(str(r) for r in result if not isinstance(r, MagicMock))
+        joined = "".join(str(r) for r in result if isinstance(r, str))
         assert "start" in joined
         assert "end" in joined
 
-    def test_multiple_code_blocks_in_stream(self, make_chunk, usage_dict, mock_action_class) -> None:
+    def test_multiple_code_blocks_in_stream(self, make_chunk, usage_dict) -> None:
         content = '```json\n{"action":"a1","input":"x"}\n```middle```json\n{"action":"a2","input":"y"}\n```'
         chunks = [make_chunk(content)]
-        list(CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict))
-        assert mock_action_class.call_count == 2
+        result = list(CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict))
+        assert [item for item in result if isinstance(item, AgentScratchpadUnit.Action)] == [
+            AgentScratchpadUnit.Action(action_name="a1", action_input="x"),
+            AgentScratchpadUnit.Action(action_name="a2", action_input="y"),
+        ]
 
     def test_backtick_noise(self, make_chunk, usage_dict) -> None:
         chunks = [make_chunk("text with ` random ` backticks")]
