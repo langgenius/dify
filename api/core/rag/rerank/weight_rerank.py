@@ -67,7 +67,7 @@ class WeightRerankRunner(BaseRerankRunner):
                 self.weights.vector_setting.vector_weight * query_vector_score
                 + self.weights.keyword_setting.keyword_weight * query_score
             )
-            if score_threshold and score < score_threshold:
+            if score_threshold is not None and score < score_threshold:
                 continue
             if document.metadata is not None:
                 document.metadata["score"] = score

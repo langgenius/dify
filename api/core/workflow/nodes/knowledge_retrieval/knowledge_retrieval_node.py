@@ -277,9 +277,7 @@ class KnowledgeRetrievalNode(Node[KnowledgeRetrievalNodeData]):
                     query=query,
                     retrieval_mode=DatasetRetrieveConfigEntity.RetrieveStrategy.MULTIPLE.value,
                     top_k=node_data.multiple_retrieval_config.top_k,
-                    score_threshold=node_data.multiple_retrieval_config.score_threshold
-                    if node_data.multiple_retrieval_config.score_threshold is not None
-                    else 0.0,
+                    score_threshold=node_data.multiple_retrieval_config.score_threshold,
                     reranking_mode=node_data.multiple_retrieval_config.reranking_mode,
                     reranking_model=reranking_model,
                     weights=weights,
