@@ -115,7 +115,7 @@ def _safe_console_redirect_target(redirect_url: str | None) -> str:
     parsed_url = urllib.parse.urlsplit(redirect_url)
     normalized_path = redirect_url.lstrip().replace("\\", "/")
     if not parsed_url.scheme and not parsed_url.netloc and not normalized_path.startswith("//"):
-        return redirect_url
+        return urllib.parse.urljoin(dify_config.CONSOLE_WEB_URL, redirect_url)
 
     redirect_origin = _url_origin(redirect_url)
     if redirect_origin is not None and redirect_origin == _url_origin(dify_config.CONSOLE_WEB_URL):
