@@ -745,3 +745,80 @@ class TestPreparedHistory:
         assert repository.get_workflow_run_by_id.call_count == 2
         assert len(history.prompts) == 4
         assert [len(prompt.files) for prompt in history.prompts] == [1, 0, 1, 0]
+
+    @staticmethod
+    def _history_with_one_rendered_image(
+        database: Database, mode: AppMode, model: MagicMock
+    ) -> Sequence[PromptMessage]:
+        """Persist one user message with one image attachment and render it through history."""
+        conversation = _persist_conversation(database, mode)
+        _enable_file_uploads(database, conversation)
+        message = _persist_message(database, conversation.id, query="question", answer="answer")
+        _persist_message_file(database, message, belongs_to=MessageFileBelongsTo.USER)
+        app = database.session.get(App, conversation.app_id)
+        assert app is not None
+        restored = File(
+            filename="image.png",
+            file_type=FileType.IMAGE,
+            transfer_method=FileTransferMethod.REMOTE_URL,
+            remote_url="https://example.com/image.png",
+            mime_type="image/png",
+            extension=".png",
+            size=42,
+        )
+        rendered = ImagePromptMessageContent(url="https://example.com/image.png", format="png", mime_type="image/png")
+        with (
+            patch.object(memory_module.file_factory, "build_from_mapping", return_value=restored),
+            patch.object(memory_module.file_manager, "to_prompt_message_content", return_value=rendered),
+        ):
+            history = TokenBufferMemory.load_history(
+                conversation=conversation, app_record=app, session=database.session, message_limit=3
+            )
+            return history.get_prompt_messages(model_instance=model, max_token_limit=3000)
+
+    @pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION])
+    def test_unsupported_content_type_is_replaced_by_text(self, database: Database, mode: AppMode) -> None:
+        """A part the target model cannot consume becomes a text note (issue #41059)."""
+        model = _make_model_instance()
+        schema = MagicMock()
+        schema.supports_prompt_content_type.return_value = False
+        model.get_model_schema.return_value = schema
+
+        prompts = self._history_with_one_rendered_image(database, mode, model)
+
+        user, assistant = prompts[0], prompts[1]
+        assert isinstance(user.content, list)
+        assert not any(isinstance(part, ImagePromptMessageContent) for part in user.content)
+        assert any(
+            isinstance(part, TextPromptMessageContent) and part.data == "[Unsupported file type: image]"
+            for part in user.content
+        )
+        assert user.content[-1] == TextPromptMessageContent(data="question")
+        assert assistant.content == "answer"
+
+    @pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION])
+    def test_supported_content_type_is_kept(self, database: Database, mode: AppMode) -> None:
+        model = _make_model_instance()
+        schema = MagicMock()
+        schema.supports_prompt_content_type.return_value = True
+        model.get_model_schema.return_value = schema
+
+        prompts = self._history_with_one_rendered_image(database, mode, model)
+
+        user = prompts[0]
+        assert isinstance(user.content, list)
+        assert any(isinstance(part, ImagePromptMessageContent) for part in user.content)
+        assert not any(
+            isinstance(part, TextPromptMessageContent) and part.data.startswith("[Unsupported file type:")
+            for part in user.content
+        )
+
+    @pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION])
+    def test_unresolved_model_schema_keeps_parts(self, database: Database, mode: AppMode) -> None:
+        """An unresolvable schema keeps today's send-anyway behavior."""
+        model = _make_model_instance()
+        model.get_model_schema.side_effect = ValueError("model schema not found")
+
+        prompts = self._history_with_one_rendered_image(database, mode, model)
+
+        assert any(isinstance(part, ImagePromptMessageContent) for part in prompts[0].content)
