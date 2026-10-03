@@ -513,6 +513,19 @@ def test_agent_node_run_maps_successful_agent_backend_run_to_node_result():
     assert "output_type_check" not in agent_log
 
 
+def test_agent_node_stops_before_binding_resolution_when_caller_persistence_failed():
+    resolver = FakeBindingResolver()
+    session_store = FakeSessionStore()
+    node = _node(binding_resolver=resolver, session_store=session_store)
+    node.record_caller_persistence_result(error=RuntimeError("caller commit failed"))
+
+    with pytest.raises(RuntimeError, match="caller commit failed"):
+        list(node._run())
+
+    assert resolver.calls == []
+    assert session_store.existing_scope_lookups == []
+
+
 def test_agent_node_structured_success_preserves_text_and_checks_only_custom_outputs():
     events = list(
         _node(
