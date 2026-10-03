@@ -14,7 +14,7 @@ class TestClickzettaVector(AbstractVectorTest):
     """
 
     @pytest.fixture
-    def vector_store(self, setup_mock_redis):
+    def vector_store(self, setup_real_redis):
         """Create a Clickzetta vector store instance for testing."""
         if not os.getenv("CLICKZETTA_USERNAME"):
             pytest.skip("CLICKZETTA_USERNAME is not configured")

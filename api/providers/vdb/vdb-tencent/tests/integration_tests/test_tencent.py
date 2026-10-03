@@ -1,12 +1,8 @@
 from typing import override
-from unittest.mock import MagicMock
 
 from dify_vdb_tencent.tencent_vector import TencentConfig, TencentVector
 
 from core.rag.datasource.vdb.vector_integration_test_support import AbstractVectorTest, get_example_text
-
-mock_client = MagicMock()
-mock_client.list_databases.return_value = [{"name": "test"}]
 
 
 class TencentVectorTest(AbstractVectorTest):
@@ -37,5 +33,5 @@ class TencentVectorTest(AbstractVectorTest):
         assert len(hits_by_full_text) >= 0
 
 
-def test_tencent_vector(setup_mock_redis, setup_tcvectordb_mock):
+def test_tencent_vector(setup_real_redis, setup_tcvectordb_mock):
     TencentVectorTest().run_all_tests()

@@ -36,5 +36,5 @@ class OpenGaussTest(AbstractVectorTest):
         )
 
 
-def test_opengauss(setup_mock_redis):
+def test_opengauss(setup_real_redis):
     OpenGaussTest().run_all_tests()
