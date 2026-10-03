@@ -388,12 +388,13 @@ def _service(
     provisioning: WorkspaceProvisioningStore,
     effects: WorkspaceProvisioningEffects | None = None,
 ) -> WorkspaceProvisioningService:
+    """Use the supplied effects, or prepare autospecced effects when omitted or None."""
     policy = create_autospec(WorkspaceCreationPolicy, instance=True)
     policy.has_workspace_capacity.return_value = True
     if effects is None:
         prepared = create_autospec(WorkspaceProvisioningEffects, instance=True)
         prepared.prepare.return_value = WorkspaceCreation("w", "Test", "key", 123, 0, {})
-        effects = prepared
+        effects = cast(WorkspaceProvisioningEffects, prepared)
     return WorkspaceProvisioningService(
         effects=effects,
         owners=owners,
