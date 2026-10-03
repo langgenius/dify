@@ -262,7 +262,12 @@ class MessageSuggestedApi(Resource):
             ),
             HTTPStatus.UNAUTHORIZED: "Unauthorized - invalid API token",
             HTTPStatus.FORBIDDEN: (
-                "- `forbidden` : Token, app, or workspace access denied.\n"
+                "- `forbidden` : Token scope does not allow access.\n"
+                "- `app_not_found` : The token's app no longer exists.\n"
+                "- `app_abnormal_status` : App status does not allow API access.\n"
+                "- `app_api_disabled` : The app's API service has been disabled.\n"
+                "- `workspace_not_found` : The app's workspace no longer exists.\n"
+                "- `workspace_archived` : The app's workspace is archived.\n"
                 "- `app_suggested_questions_after_answer_disabled` : Suggested questions feature is disabled."
             ),
             HTTPStatus.NOT_FOUND: (

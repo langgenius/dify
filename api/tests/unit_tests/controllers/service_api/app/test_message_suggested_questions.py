@@ -10,7 +10,7 @@ from uuid import uuid4
 import pytest
 from flask import Flask
 from flask_login import LoginManager, current_user
-from sqlalchemy import Connection, Engine, event, select
+from sqlalchemy import Connection, Engine, event, select, text
 from sqlalchemy.orm import Session, SessionTransaction, object_session, sessionmaker
 from werkzeug.test import TestResponse
 
@@ -36,8 +36,10 @@ from models.workflow import Workflow, WorkflowType
 from repositories.app_definition_query_repository import AppDefinitionQueryRepository
 from repositories.app_scoped_end_user_repository import AppScopedEndUserRepo
 from repositories.message_suggested_questions_repository import SuggestedQuestionsRepository
-from services.app_definition_query_service import AppDefinitionQueryService
+from services.app_definition_query_service import AppDefinitionQueryService, AppDefinitionUnavailableError
 from services.app_scoped_end_user_service import AppScopedEndUserService
+from services.errors.app import AppAbnormalStatusError, AppApiDisabledError
+from services.errors.workspace import WorkspaceArchivedError, WorkspaceNotFoundError
 from services.message_suggested_questions_generator import SuggestedQuestionsGenerator
 from services.message_suggested_questions_queries import SuggestedQuestionsQuery
 from services.message_suggested_questions_service import (
@@ -363,18 +365,30 @@ def test_required_user_rejected_before_provisioning(harness: _Harness, user: str
 
 
 @pytest.mark.parametrize(
-    ("failure", "status", "message"),
+    ("failure", "domain_error", "code", "message"),
     [
-        ("missing_app", 403, "The app no longer exists."),
-        ("disabled_api", 403, "The app's API service has been disabled."),
-        ("archived_tenant", 403, "The workspace's status is archived."),
-        ("missing_tenant", 400, "Tenant does not exist."),
+        ("missing_app", AppDefinitionUnavailableError, "app_not_found", "The app no longer exists."),
+        ("null_app", AppDefinitionUnavailableError, "app_not_found", "The app no longer exists."),
+        ("abnormal_app", AppAbnormalStatusError, "app_abnormal_status", "The app's status is abnormal."),
+        ("empty_app_status", AppAbnormalStatusError, "app_abnormal_status", "The app's status is abnormal."),
+        ("disabled_api", AppApiDisabledError, "app_api_disabled", "The app's API service has been disabled."),
+        ("archived_tenant", WorkspaceArchivedError, "workspace_archived", "The workspace's status is archived."),
+        ("missing_tenant", WorkspaceNotFoundError, "workspace_not_found", "Tenant does not exist."),
     ],
 )
 def test_app_and_workspace_admission(
     harness: _Harness,
-    failure: Literal["missing_app", "disabled_api", "archived_tenant", "missing_tenant"],
-    status: int,
+    failure: Literal[
+        "missing_app",
+        "null_app",
+        "abnormal_app",
+        "empty_app_status",
+        "disabled_api",
+        "archived_tenant",
+        "missing_tenant",
+    ],
+    domain_error: type[Exception],
+    code: str,
     message: str,
 ) -> None:
     with harness.factory.begin() as session:
@@ -386,17 +400,34 @@ def test_app_and_workspace_admission(
             case "missing_app":
                 session.add(make_app(app_id=str(uuid4()), tenant_id=tenant.id))
                 session.delete(target)
+            case "null_app":
+                token = session.scalar(select(ApiToken).where(ApiToken.token == "test-token"))
+                assert token is not None
+                token.app_id = None
+            case "abnormal_app" | "empty_app_status":
+                # Bypass EnumText validation to exercise malformed persisted status values.
+                session.execute(
+                    text("UPDATE apps SET status = :status WHERE id = :app_id"),
+                    {"status": "disabled" if failure == "abnormal_app" else "", "app_id": target.id},
+                )
             case "disabled_api":
                 target.enable_api = False
             case "archived_tenant":
                 tenant.status = TenantStatus.ARCHIVE
             case "missing_tenant":
                 session.delete(tenant)
-    response = harness.get()
-    assert response.status_code == status
-    assert response.json is not None
-    assert response.json["message"] == message
-    assert harness.provisions == harness.queries == harness.model_calls.prompts == []
+    services = harness.app.extensions["application_services"]
+    assert isinstance(services, _Services)
+    with pytest.raises(domain_error):
+        services.app_definitions.get_service_api_app(None if failure == "null_app" else harness.target.id)
+    harness.assert_closed()
+
+    response = harness.get(user="new-user")
+    assert response.status_code == 403
+    assert response.json == {"code": code, "message": message, "status": 403}
+    assert harness.provisions == harness.queries == harness.model_calls.stages == []
+    with harness.factory() as session:
+        assert session.scalars(select(EndUser.id)).all() == [harness.end_user.id]
     harness.assert_closed()
 
 

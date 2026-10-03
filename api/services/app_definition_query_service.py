@@ -6,6 +6,8 @@ from typing import Any, NamedTuple, Protocol
 
 from core.app.app_config.common.parameters_mapping import AppParametersDict, get_parameters_from_feature_dict
 from core.app.apps.agent_app.errors import AgentAppGeneratorError, AgentAppNotPublishedError
+from services.errors.app import AppAbnormalStatusError, AppApiDisabledError
+from services.errors.workspace import WorkspaceArchivedError, WorkspaceNotFoundError
 
 
 class AppParameterConfig(NamedTuple):
@@ -97,9 +99,26 @@ class AppDefinitionQueryService:
         self._definitions = definitions
         self._builtin_icon_url_prefix = builtin_icon_url_prefix
 
-    def get_service_api_record(self, app_id: str) -> ServiceApiAppRecord | None:
-        """Return current Service API admission state, or None if the app is missing."""
-        return self._definitions.get_service_api_record(app_id)
+    def get_service_api_app(self, app_id: str | None) -> ServiceApiAppRecord:
+        """Return an app admitted for Service API access, or raise a domain error.
+
+        ``None`` means the API token no longer references an app. The repository
+        closes its read session before this policy runs or an end user is provisioned.
+        """
+        if app_id is None:
+            raise AppDefinitionUnavailableError("The app no longer exists.")
+        app = self._definitions.get_service_api_record(app_id)
+        if app is None:
+            raise AppDefinitionUnavailableError("The app no longer exists.")
+        if app.status != "normal":
+            raise AppAbnormalStatusError("The app's status is abnormal.")
+        if not app.enable_api:
+            raise AppApiDisabledError("The app's API service has been disabled.")
+        if app.tenant_status is None:
+            raise WorkspaceNotFoundError("Tenant does not exist.")
+        if app.tenant_status == "archive":
+            raise WorkspaceArchivedError("The workspace's status is archived.")
+        return app
 
     def get_mode(self, app_id: str) -> str:
         mode = self._definitions.get_mode(app_id)
