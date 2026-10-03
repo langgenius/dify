@@ -18,12 +18,20 @@ const VALID_BUTTON_SIZES: ReadonlySet<string> = new Set([
   'large',
 ] satisfies Array<NonNullable<ButtonProps['size']>>)
 
+const VALID_BUTTON_TONES: ReadonlySet<string> = new Set(['default', 'destructive'] satisfies Array<
+  NonNullable<ButtonProps['tone']>
+>)
+
 function isMarkdownButtonVariant(value: string): value is keyof typeof MARKDOWN_BUTTON_APPEARANCES {
   return Object.hasOwn(MARKDOWN_BUTTON_APPEARANCES, value)
 }
 
 function isButtonSize(value: string): value is NonNullable<ButtonProps['size']> {
   return VALID_BUTTON_SIZES.has(value)
+}
+
+function isButtonTone(value: string): value is NonNullable<ButtonProps['tone']> {
+  return VALID_BUTTON_TONES.has(value)
 }
 
 function normalizeAttribute(value: unknown) {
@@ -33,12 +41,15 @@ function normalizeAttribute(value: unknown) {
 function getMarkdownButtonAppearance(
   dataVariant: unknown,
   dataSize: unknown,
+  dataTone?: unknown,
 ): MarkdownButtonAppearance {
   const variant = normalizeAttribute(dataVariant)
   const size = normalizeAttribute(dataSize)
+  const tone = normalizeAttribute(dataTone)
 
   return {
     ...(isMarkdownButtonVariant(variant) ? MARKDOWN_BUTTON_APPEARANCES[variant] : undefined),
+    ...(isButtonTone(tone) ? { tone } : undefined),
     size: isButtonSize(size) ? size : undefined,
   }
 }
