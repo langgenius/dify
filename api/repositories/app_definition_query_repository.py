@@ -2,7 +2,8 @@
 
 from typing import Any, cast, override
 
-from sqlalchemy import select
+from sqlalchemy import String, select
+from sqlalchemy import cast as sql_cast
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.agent.publish_visibility import agent_has_workflow_callable_active_snapshot
@@ -86,7 +87,9 @@ class AppDefinitionQueryRepository(AppDefinitionQuery):
     def get_service_api_record(self, app_id: str) -> ServiceApiAppRecord | None:
         with self._session_factory() as session:
             row = session.execute(
-                select(App.id, App.tenant_id, App.mode, App.status, App.enable_api, Tenant.status)
+                # Let admission reject abnormal historical statuses with a domain
+                # error instead of failing enum deserialization before policy runs.
+                select(App.id, App.tenant_id, App.mode, sql_cast(App.status, String), App.enable_api, Tenant.status)
                 .outerjoin(Tenant, Tenant.id == App.tenant_id)
                 .where(App.id == app_id)
             ).one_or_none()
@@ -97,7 +100,7 @@ class AppDefinitionQueryRepository(AppDefinitionQuery):
                 app_id=resolved_id,
                 tenant_id=tenant_id,
                 mode=mode.value,
-                status=status.value,
+                status=status,
                 enable_api=enable_api,
                 tenant_status=tenant_status.value if tenant_status is not None else None,
             )

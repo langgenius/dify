@@ -386,7 +386,7 @@ Get next question suggestions for the current message. If no usable model can be
 | 200 | Suggested questions retrieved successfully | **application/json**: [SimpleResultStringListResponse](#simpleresultstringlistresponse)<br> |
 | 400 | - `not_chat_app` : App mode does not match the API route. - `app_unavailable` : App is no longer available. - `completion_request_error` : Model invocation failed while counting history tokens. |  |
 | 401 | Unauthorized - invalid API token |  |
-| 403 | - `forbidden` : Token, app, or workspace access denied. - `app_suggested_questions_after_answer_disabled` : Suggested questions feature is disabled. |  |
+| 403 | - `forbidden` : Token scope does not allow access. - `app_not_found` : The token's app no longer exists. - `app_abnormal_status` : App status does not allow API access. - `app_api_disabled` : The app's API service has been disabled. - `workspace_not_found` : The app's workspace no longer exists. - `workspace_archived` : The app's workspace is archived. - `app_suggested_questions_after_answer_disabled` : Suggested questions feature is disabled. |  |
 | 404 | - `not_found` : End user, message, or conversation does not exist. - `agent_version_not_found_error` : Agent config version does not exist. |  |
 | 500 | `internal_server_error` : Internal server error. |  |
 
@@ -533,7 +533,7 @@ Get next question suggestions for the current message. If no usable model can be
 | 200 | Suggested questions retrieved successfully | **application/json**: [SimpleResultStringListResponse](#simpleresultstringlistresponse)<br> |
 | 400 | - `not_chat_app` : App mode does not match the API route. - `app_unavailable` : App is no longer available. - `completion_request_error` : Model invocation failed while counting history tokens. |  |
 | 401 | Unauthorized - invalid API token |  |
-| 403 | - `forbidden` : Token, app, or workspace access denied. - `app_suggested_questions_after_answer_disabled` : Suggested questions feature is disabled. |  |
+| 403 | - `forbidden` : Token scope does not allow access. - `app_not_found` : The token's app no longer exists. - `app_abnormal_status` : App status does not allow API access. - `app_api_disabled` : The app's API service has been disabled. - `workspace_not_found` : The app's workspace no longer exists. - `workspace_archived` : The app's workspace is archived. - `app_suggested_questions_after_answer_disabled` : Suggested questions feature is disabled. |  |
 | 404 | - `not_found` : End user, message, or conversation does not exist. - `agent_version_not_found_error` : Agent config version does not exist. |  |
 | 500 | `internal_server_error` : Internal server error. |  |
 

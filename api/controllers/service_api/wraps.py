@@ -111,6 +111,11 @@ def validate_app_token[**P, R](
         def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R:
             api_token = validate_and_get_api_token("app")
 
+            # TODO: Remove these duplicate app/workspace checks when all legacy
+            # ORM App/EndUser handlers (including account-only endpoints) migrate
+            # to scalar admission. New end-user handlers use
+            # service_api_end_user_admission and AppDefinitionQueryService.get_service_api_app;
+            # keep the policies aligned until then. Retain the shared token/user helpers.
             app_model = db.session.get(App, api_token.app_id)
             if not app_model:
                 raise Forbidden("The app no longer exists.")
