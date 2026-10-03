@@ -7,7 +7,7 @@ from sqlalchemy import select
 
 import app
 from configs import dify_config
-from extensions.ext_database import db
+from core.db.session_factory import session_factory
 from models.dataset import TidbAuthBinding
 from models.enums import TidbAuthBindingStatus
 
@@ -17,16 +17,21 @@ def update_tidb_serverless_status_task():
     click.echo(click.style("Update tidb serverless status task.", fg="green"))
     start_at = time.perf_counter()
     try:
-        # check the number of idle tidb serverless
-        tidb_serverless_list = db.session.scalars(
-            select(TidbAuthBinding).where(
-                TidbAuthBinding.active == False,
-                TidbAuthBinding.status == TidbAuthBindingStatus.CREATING,
-            )
-        ).all()
+        # Narrow session to the read query; release the connection before the
+        # external TiDB API call so we don't hold it open during network I/O.
+        with session_factory.create_session() as session:
+            tidb_serverless_list = session.scalars(
+                select(TidbAuthBinding).where(
+                    TidbAuthBinding.active == False,
+                    TidbAuthBinding.status == TidbAuthBindingStatus.CREATING,
+                )
+            ).all()
+            # Detach so column attributes remain accessible after session closes.
+            for item in tidb_serverless_list:
+                session.expunge(item)
         if len(tidb_serverless_list) == 0:
             return
-        # update tidb serverless status
+        # update tidb serverless status after the read session is closed
         update_clusters(tidb_serverless_list)
 
     except Exception as e:
