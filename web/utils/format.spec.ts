@@ -20,6 +20,9 @@ describe('formatFileSize', () => {
   ])('formats %s bytes as %s', (input, expected) => {
     expect(formatFileSize(input)).toBe(expected)
   })
+  it('should clamp to PB instead of an undefined unit for very large sizes', () => {
+    expect(formatFileSize(1024 ** 6)).toBe('1024.00 PB')
+  })
 })
 
 describe('formatTime', () => {
@@ -29,6 +32,9 @@ describe('formatTime', () => {
     [3600, '1.00 h'],
   ])('formats %s seconds as %s', (input, expected) => {
     expect(formatTime(input)).toBe(expected)
+  })
+  it('should clamp to hours instead of an undefined unit for very large durations', () => {
+    expect(formatTime(216000)).toBe('60.00 h')
   })
 })
 
