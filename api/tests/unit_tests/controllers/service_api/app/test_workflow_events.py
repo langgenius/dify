@@ -11,7 +11,6 @@ from unittest.mock import Mock
 
 import pytest
 from flask import Flask
-from sqlalchemy.engine import Engine
 from werkzeug.exceptions import NotFound
 
 from controllers.service_api.app.error import NotWorkflowAppError
@@ -70,7 +69,7 @@ def _workflow_run(*, created_by_role: CreatorUserRole = CreatorUserRole.END_USER
     )
 
 
-def _mock_repo_for_run(monkeypatch: pytest.MonkeyPatch, workflow_run, sqlite_engine: Engine):
+def _mock_repo_for_run(monkeypatch: pytest.MonkeyPatch, workflow_run):
     workflow_events_module = sys.modules["controllers.service_api.app.workflow_events"]
     repo = SimpleNamespace(get_workflow_run_by_id_and_tenant_id=lambda **_kwargs: workflow_run)
     monkeypatch.setattr(
@@ -78,7 +77,6 @@ def _mock_repo_for_run(monkeypatch: pytest.MonkeyPatch, workflow_run, sqlite_eng
         "create_api_workflow_run_repository",
         lambda *_args, **_kwargs: repo,
     )
-    monkeypatch.setattr(workflow_events_module, "db", SimpleNamespace(engine=sqlite_engine))
     return workflow_events_module
 
 
@@ -93,8 +91,8 @@ class TestWorkflowEventsApi:
             with pytest.raises(NotWorkflowAppError):
                 handler(api, app_model=app_model, end_user=end_user, workflow_run_id="run-1")
 
-    def test_workflow_run_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> None:
-        _mock_repo_for_run(monkeypatch, workflow_run=None, sqlite_engine=sqlite_engine)
+    def test_workflow_run_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+        _mock_repo_for_run(monkeypatch, workflow_run=None)
         api = WorkflowEventsApi()
         handler = unwrap(api.get)
         app_model = _app()
@@ -104,11 +102,9 @@ class TestWorkflowEventsApi:
             with pytest.raises(NotFound):
                 handler(api, app_model=app_model, end_user=end_user, workflow_run_id="run-1")
 
-    def test_workflow_run_permission_denied(
-        self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
-    ) -> None:
+    def test_workflow_run_permission_denied(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         workflow_run = _workflow_run(created_by_role=CreatorUserRole.ACCOUNT)
-        _mock_repo_for_run(monkeypatch, workflow_run=workflow_run, sqlite_engine=sqlite_engine)
+        _mock_repo_for_run(monkeypatch, workflow_run=workflow_run)
         api = WorkflowEventsApi()
         handler = unwrap(api.get)
         app_model = _app()
@@ -118,10 +114,10 @@ class TestWorkflowEventsApi:
             with pytest.raises(NotFound):
                 handler(api, app_model=app_model, end_user=end_user, workflow_run_id="run-1")
 
-    def test_finished_run_returns_sse(self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> None:
+    def test_finished_run_returns_sse(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         workflow_run = _workflow_run()
         workflow_run.finished_at = datetime(2099, 1, 1, tzinfo=UTC)
-        workflow_events_module = _mock_repo_for_run(monkeypatch, workflow_run=workflow_run, sqlite_engine=sqlite_engine)
+        workflow_events_module = _mock_repo_for_run(monkeypatch, workflow_run=workflow_run)
         monkeypatch.setattr(
             workflow_events_module.WorkflowResponseConverter,
             "workflow_run_result_to_finish_response",
@@ -146,11 +142,9 @@ class TestWorkflowEventsApi:
         assert payload["task_id"] == "run-1"
         assert payload["event"] == "workflow_finished"
 
-    def test_running_run_streams_events(
-        self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
-    ) -> None:
+    def test_running_run_streams_events(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         workflow_run = _workflow_run()
-        workflow_events_module = _mock_repo_for_run(monkeypatch, workflow_run=workflow_run, sqlite_engine=sqlite_engine)
+        workflow_events_module = _mock_repo_for_run(monkeypatch, workflow_run=workflow_run)
         msg_generator = Mock()
         msg_generator.retrieve_events.return_value = ["raw-event"]
         workflow_generator = Mock()
@@ -174,11 +168,9 @@ class TestWorkflowEventsApi:
         )
         workflow_generator.convert_to_event_stream.assert_called_once_with(["raw-event"])
 
-    def test_running_run_with_snapshot(
-        self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
-    ) -> None:
+    def test_running_run_with_snapshot(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         workflow_run = _workflow_run()
-        workflow_events_module = _mock_repo_for_run(monkeypatch, workflow_run=workflow_run, sqlite_engine=sqlite_engine)
+        workflow_events_module = _mock_repo_for_run(monkeypatch, workflow_run=workflow_run)
         msg_generator = Mock()
         workflow_generator = Mock()
         workflow_generator.convert_to_event_stream.return_value = iter(["data: snapshot\n\n"])

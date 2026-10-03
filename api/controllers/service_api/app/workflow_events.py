@@ -8,7 +8,6 @@ from collections.abc import Generator
 from flask import Response, request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import NotFound
 
 from controllers.common.fields import EventStreamResponse
@@ -23,8 +22,8 @@ from core.app.apps.common.workflow_response_converter import WorkflowResponseCon
 from core.app.apps.message_generator import MessageGenerator
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.task_entities import StreamEvent
+from core.db.session_factory import session_factory
 from core.workflow.human_input_policy import HumanInputSurface
-from extensions.ext_database import db
 from models.enums import CreatorUserRole
 from models.model import App, AppMode, EndUser
 from repositories.factory import DifyAPIRepositoryFactory
@@ -97,7 +96,7 @@ class WorkflowEventsApi(Resource):
         if app_mode not in {AppMode.WORKFLOW, AppMode.ADVANCED_CHAT}:
             raise NotWorkflowAppError()
 
-        session_maker = sessionmaker(db.engine)
+        session_maker = session_factory.get_session_maker()
         repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
         workflow_run = repo.get_workflow_run_by_id_and_tenant_id(
             tenant_id=app_model.tenant_id,
