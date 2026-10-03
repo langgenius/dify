@@ -88,6 +88,8 @@ from services.account.oauth_adapters import (
     WorkspaceProvisioningOAuthGateway,
 )
 from services.account_avatar_file_gateway import SQLAlchemyAccountAvatarFileGateway
+from services.api_based_extension_adapters import APIBasedExtensionPingProbe, WorkspaceTokenCipher
+from services.api_based_extension_application_service import APIBasedExtensionApplicationService
 from services.app.api_key_service import AppApiKeyService
 from services.app.creators_platform_gateway import CreatorsPlatformGateway
 from services.app_generate_service import AppGenerateService
@@ -352,6 +354,21 @@ def test_build_application_services_wires_tag_boundary(
     )
 
     assert isinstance(services.tags, TagApplicationService)
+
+
+def test_build_application_services_wires_api_based_extension_boundary(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=_redis(),
+    )
+
+    assert isinstance(services.api_based_extensions, APIBasedExtensionApplicationService)
+    assert isinstance(services.api_based_extensions._secrets, WorkspaceTokenCipher)
+    assert isinstance(services.api_based_extensions._probe, APIBasedExtensionPingProbe)
 
 
 def test_build_application_services_reuses_file_service(
