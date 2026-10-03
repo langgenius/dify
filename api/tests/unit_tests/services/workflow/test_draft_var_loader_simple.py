@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from core.workflow.file_reference import build_file_reference
 from extensions.storage.storage_type import StorageType
 from graphon.file import File, FileTransferMethod, FileType
-from graphon.variables.segments import StringSegment
+from graphon.variables.segments import ArrayFileSegment, FileSegment, StringSegment
 from graphon.variables.types import SegmentType
 from models.enums import CreatorUserRole
 from models.model import UploadFile
@@ -158,6 +158,70 @@ class TestDraftVarLoaderSimple:
 
         with pytest.raises(AssertionError):
             draft_var_loader._load_offloaded_variable(draft_var)
+
+    @pytest.mark.parametrize(
+        "sqlite_session",
+        [(WorkflowDraftVariable, WorkflowDraftVariableFile, UploadFile)],
+        indirect=True,
+    )
+    def test_load_variables_collects_file_values_for_storage_key_loading(
+        self,
+        draft_var_loader: DraftVarLoader,
+        sqlite_session: Session,
+    ):
+        """File and array-file variables surface their File objects to the storage-key loader."""
+
+        def _make_file(index: int) -> File:
+            return File(
+                file_id=f"file-{index}",
+                file_type=FileType.DOCUMENT,
+                transfer_method=FileTransferMethod.LOCAL_FILE,
+                reference=build_file_reference(record_id=f"upload-{index}", storage_key="legacy-storage-key"),
+                filename=f"test_{index}.txt",
+                extension=".txt",
+                mime_type="text/plain",
+                size=12,
+            )
+
+        single_file = _make_file(0)
+        array_files = [_make_file(1), _make_file(2)]
+        file_var = WorkflowDraftVariable.new_node_variable(
+            app_id="test-app-id",
+            user_id="test-user-id",
+            node_id="node1",
+            name="file_var",
+            value=FileSegment(value=single_file),
+            node_execution_id="execution-node1",
+        )
+        array_var = WorkflowDraftVariable.new_node_variable(
+            app_id="test-app-id",
+            user_id="test-user-id",
+            node_id="node1",
+            name="array_var",
+            value=ArrayFileSegment(value=array_files),
+            node_execution_id="execution-node1",
+        )
+        sqlite_session.add_all([file_var, array_var])
+        sqlite_session.commit()
+
+        rebuilt = {
+            file.id: file.model_copy(update={"storage_key": "canonical"}, deep=True)
+            for file in [single_file, *array_files]
+        }
+
+        with (
+            patch("models.workflow._resolve_workflow_app_tenant_id", return_value="test-tenant-id"),
+            patch(
+                "models.workflow.build_file_from_stored_mapping",
+                side_effect=lambda **kwargs: rebuilt[kwargs["file_mapping"]["id"]],
+            ),
+            patch("services.workflow_draft_variable_service.StorageKeyLoader") as storage_key_loader_cls,
+        ):
+            result = draft_var_loader.load_variables([["node1", "file_var"], ["node1", "array_var"]])
+
+        loaded_files = storage_key_loader_cls.return_value.load_storage_keys.call_args.args[0]
+        assert {file.id for file in loaded_files} == {"file-0", "file-1", "file-2"}
+        assert {variable.name for variable in result} == {"file_var", "array_var"}
 
     def test_load_variables_empty_selectors_unit(self, draft_var_loader):
         """Test load_variables returns empty list for empty selectors."""

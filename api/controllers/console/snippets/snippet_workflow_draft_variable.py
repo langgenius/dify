@@ -48,6 +48,8 @@ from fields.workflow_draft_variable_fields import (
     WorkflowDraftVariableListResponse,
     WorkflowDraftVariableListWithoutValueResponse,
     WorkflowDraftVariableResponse,
+    draft_variable_list_response_source,
+    draft_variable_response_source,
 )
 from graphon.variables.types import SegmentType
 from libs.helper import dump_response
@@ -158,7 +160,9 @@ class SnippetNodeVariableCollectionApi(Resource):
         draft_var_srv = WorkflowDraftVariableService(session=session)
         node_vars = draft_var_srv.list_node_variables(snippet.id, node_id, user_id=current_user.id)
 
-        return dump_response(WorkflowDraftVariableListResponse, node_vars)
+        return dump_response(
+            WorkflowDraftVariableListResponse, draft_variable_list_response_source(node_vars, session=session)
+        )
 
     @console_ns.doc("delete_snippet_node_variables")
     @console_ns.doc(description="Delete all variables for a specific node (snippet draft workflow)")
@@ -195,7 +199,7 @@ class SnippetVariableApi(Resource):
             current_user_id=current_user.id,
         )
         _ensure_snippet_draft_variable_row_allowed(variable=variable, variable_id=variable_id)
-        return dump_response(WorkflowDraftVariableResponse, variable)
+        return dump_response(WorkflowDraftVariableResponse, draft_variable_response_source(variable, session=session))
 
     @console_ns.doc("update_snippet_workflow_variable")
     @console_ns.doc(description="Update a draft workflow variable (snippet scope)")
@@ -230,7 +234,9 @@ class SnippetVariableApi(Resource):
         new_name = req_data.name
         raw_value = req_data.value
         if new_name is None and raw_value is None:
-            return dump_response(WorkflowDraftVariableResponse, variable)
+            return dump_response(
+                WorkflowDraftVariableResponse, draft_variable_response_source(variable, session=session)
+            )
 
         new_value = None
         if raw_value is not None:
@@ -254,7 +260,7 @@ class SnippetVariableApi(Resource):
                 )
             new_value = build_segment_with_type(variable.value_type, raw_value)
         draft_var_srv.update_variable(variable, name=new_name, value=new_value)
-        return dump_response(WorkflowDraftVariableResponse, variable)
+        return dump_response(WorkflowDraftVariableResponse, draft_variable_response_source(variable, session=session))
 
     @console_ns.doc("delete_snippet_workflow_variable")
     @console_ns.doc(description="Delete a draft workflow variable (snippet scope)")
@@ -309,7 +315,7 @@ class SnippetVariableResetApi(Resource):
         resetted = draft_var_srv.reset_variable(draft_workflow, variable)
         if resetted is None:
             return Response("", 204)
-        return dump_response(WorkflowDraftVariableResponse, resetted)
+        return dump_response(WorkflowDraftVariableResponse, draft_variable_response_source(resetted, session=session))
 
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/draft/conversation-variables")

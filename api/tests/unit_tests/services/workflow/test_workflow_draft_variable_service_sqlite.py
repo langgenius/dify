@@ -160,7 +160,7 @@ class TestWorkflowDraftVariableService(unittest.TestCase):
         assert node_var is not None
         assert node_var.id == self._node1_str_var_id
         assert node_var.name == "str_var"
-        assert node_var.get_value() == build_segment("str_value")
+        assert node_var.get_value(session=self._session) == build_segment("str_value")
 
     def test_get_system_variable(self) -> None:
         srv = self._get_test_srv()
@@ -168,7 +168,7 @@ class TestWorkflowDraftVariableService(unittest.TestCase):
         assert sys_var is not None
         assert sys_var.id == self._sys_var_id
         assert sys_var.name == "sys_var"
-        assert sys_var.get_value() == build_segment("sys_value")
+        assert sys_var.get_value(session=self._session) == build_segment("sys_value")
 
     def test_get_conversation_variable(self) -> None:
         srv = self._get_test_srv()
@@ -176,7 +176,7 @@ class TestWorkflowDraftVariableService(unittest.TestCase):
         assert conv_var is not None
         assert conv_var.id == self._conv_var_id
         assert conv_var.name == "conv_var"
-        assert conv_var.get_value() == build_segment("conv_value")
+        assert conv_var.get_value(session=self._session) == build_segment("conv_value")
 
     def test_delete_node_variables(self) -> None:
         srv = self._get_test_srv()
