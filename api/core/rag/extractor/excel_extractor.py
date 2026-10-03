@@ -136,20 +136,30 @@ class ExcelExtractor(BaseExtractor):
         elif file_extension == ".xls":
             excel_file = pd.ExcelFile(self._file_path, engine="xlrd")
             for excel_sheet_name in excel_file.sheet_names:
-                df = excel_file.parse(sheet_name=excel_sheet_name)
+                # keep_default_na=False: pandas reads the literal strings "N/A",
+                # "NA", "n/a", "NULL", "None", "NaN" and "nan" as missing values,
+                # so a cell that says any of them would be dropped along with its
+                # column name. The .xlsx branch above keeps such a cell, because
+                # openpyxl hands over the string itself.
+                df = excel_file.parse(sheet_name=excel_sheet_name, keep_default_na=False)
                 df.dropna(how="all", inplace=True)
 
                 for _, series_row in df.iterrows():
                     page_content = []
                     for k, v in series_row.items():
-                        if pd.notna(v):
+                        # A blank cell now arrives as "" rather than NaN, and is
+                        # skipped the same way.
+                        if pd.notna(v) and str(v) != "":
                             # Escape embedded double quotes like the .xlsx branch
                             # does, so quoted cell values do not corrupt the row.
                             value = str(v).replace('"', '\\"')
                             page_content.append(f'"{k}":"{value}"')
-                    documents.append(
-                        Document(page_content=";".join(page_content), metadata={"source": self._file_path})
-                    )
+                    # dropna no longer sees an all-blank row, so an empty row is
+                    # skipped here instead of becoming an empty Document.
+                    if page_content:
+                        documents.append(
+                            Document(page_content=";".join(page_content), metadata={"source": self._file_path})
+                        )
         else:
             raise ValueError(f"Unsupported file extension: {file_extension}")
 
