@@ -6,6 +6,7 @@ from types import TracebackType
 from typing import Any
 from urllib.parse import urlparse
 
+import httpx
 from flask import has_request_context, request
 
 from core.mcp.client.sse_client import sse_client
@@ -71,18 +72,24 @@ class MCPClient:
             client_factory = connection_methods[method_name]
             self.connect_server(client_factory, method_name)
         else:
+            # Try streamable-http first — it is the MCP default transport.
+            # SSE is the fallback for servers that only support the older transport.
+            # We try streamable-http first because a streamable-http server does not
+            # respond to the SSE GET, causing httpx.ReadTimeout (which the previous
+            # except clause did not catch, blocking for sse_read_timeout ~300s). (#39301)
             try:
-                logger.debug("Not supported method %s found in URL path, trying default 'mcp' method.", method_name)
-                self.connect_server(sse_client, "sse")
-            except (MCPConnectionError, ValueError):
-                logger.debug("MCP connection failed with 'sse', falling back to 'mcp' method.")
-                # The SSE transport and ClientSession can already be entered when
-                # the handshake fails. Close that partial connection before
-                # opening the fallback so both transports are never live at once.
+                logger.debug("Not supported method %s found in URL path, trying streamable-http first.", method_name)
+                self.connect_server(streamablehttp_client, "mcp")
+            except (MCPConnectionError, ValueError, httpx.TimeoutException, httpx.ConnectError) as e:
+                logger.debug("MCP connection failed with streamable-http, falling back to 'sse' method: %s", e)
+                # The streamable-http transport and ClientSession can already be
+                # entered when the handshake fails. Close that partial connection
+                # before opening the fallback so both transports are never live
+                # at once. (Same hygiene as #42761 on the original SSE-first path.)
                 self._exit_stack.close()
                 self._exit_stack = ExitStack()
                 self._session = None
-                self.connect_server(streamablehttp_client, "mcp")
+                self.connect_server(sse_client, "sse")
 
     def connect_server(self, client_factory: Callable[..., AbstractContextManager[Any]], method_name: str) -> None:
         """
