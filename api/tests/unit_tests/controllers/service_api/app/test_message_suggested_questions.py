@@ -1,10 +1,10 @@
 """Service API suggested questions with real admission, end-user provisioning, and SQLite."""
 
+import json
 from collections.abc import Iterator, Sequence
-from dataclasses import FrozenInstanceError, asdict, dataclass, field, replace
+from dataclasses import FrozenInstanceError, asdict, dataclass, field
 from decimal import Decimal
 from typing import Literal
-from unittest.mock import Mock
 from uuid import uuid4
 
 import pytest
@@ -14,69 +14,48 @@ from sqlalchemy import Connection, Engine, event, select
 from sqlalchemy.orm import Session, SessionTransaction, object_session, sessionmaker
 from werkzeug.test import TestResponse
 
-import services.message_suggested_questions_generator as generator_module
-from controllers.service_api import wraps as api_wraps
 from controllers.service_api.app.message import MessageSuggestedApi
 from controllers.service_api.flask_admission import service_api_end_user_admission
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from core.errors.error import ProviderTokenNotInitError
 from core.model_manager import ModelInstance, ModelManager
+from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
+from core.plugin.impl.model_runtime_factory import create_plugin_model_manager
 from extensions.ext_database import db
-from graphon.model_runtime.entities.message_entities import PromptMessage
+from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage
 from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelType
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs.external_api import ExternalApi
 from machinery.context import ServiceApiEndUserContext
 from models import Tenant, TenantStatus
+from models.agent import Agent, AgentScope, AgentSource
 from models.enums import ConversationFromSource, EndUserType
-from models.model import App, AppMode, AppModelConfig, EndUser
+from models.model import ApiToken, App, AppMode, AppModelConfig, Conversation, EndUser, Message
+from models.workflow import Workflow, WorkflowType
 from repositories.app_definition_query_repository import AppDefinitionQueryRepository
 from repositories.app_scoped_end_user_repository import AppScopedEndUserRepo
 from repositories.message_suggested_questions_repository import SuggestedQuestionsRepository
-from services.agent.errors import AgentVersionNotFoundError
-from services.api_token_service import CachedApiToken
-from services.app_definition_query_service import AppDefinitionQueryService, AppDefinitionUnavailableError
+from services.app_definition_query_service import AppDefinitionQueryService
 from services.app_scoped_end_user_service import AppScopedEndUserService
-from services.errors.conversation import ConversationNotExistsError
-from services.errors.message import MessageNotExistsError, SuggestedQuestionsAfterAnswerDisabledError
 from services.message_suggested_questions_generator import SuggestedQuestionsGenerator
 from services.message_suggested_questions_queries import SuggestedQuestionsQuery
 from services.message_suggested_questions_service import (
     MessageSuggestedQuestions,
     MessageSuggestedQuestionsService,
-    SuggestedQuestionsActor,
-    SuggestedQuestionsActorNotFoundError,
-    SuggestedQuestionsEndUser,
 )
+from tests.unit_tests.core.model_fixtures import make_model_config, make_model_instance
 from tests.unit_tests.model_factories import make_app, make_conversation, make_end_user, make_message
 
 
 @dataclass
-class _Questions:
-    sessions: list[Session]
+class _ModelCalls:
     questions: list[str] = field(default_factory=lambda: ["What next?"])
-    error: Exception | None = None
-    calls: list[tuple[str, str, str, SuggestedQuestionsActor, str]] = field(default_factory=list)
-
-    def get_suggested_questions(
-        self,
-        *,
-        app_id: str,
-        app_owner_tenant_id: str,
-        expected_app_mode: str,
-        actor: SuggestedQuestionsActor,
-        message_id: str,
-    ) -> list[str]:
-        assert self.sessions
-        assert all(not session.in_transaction() and not session.identity_map for session in self.sessions)
-        assert isinstance(actor, SuggestedQuestionsEndUser)
-        assert current_user.id == actor.end_user_id
-        assert current_user.app_id == app_id
-        assert current_user.tenant_id == app_owner_tenant_id
-        self.calls.append((app_id, app_owner_tenant_id, expected_app_mode, actor, message_id))
-        if self.error is not None:
-            raise self.error
-        return self.questions
+    failure: Literal["history_model", "generation_model", "invoke", "tokens"] | None = None
+    prompts: list[str] = field(default_factory=list)
+    traces: list[TraceTask] = field(default_factory=list)
+    sessions: list[Session] = field(default_factory=list)
+    stages: list[tuple[str, bool]] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -96,21 +75,30 @@ class _Harness:
     app: Flask
     target: App
     tenant: Tenant
-    questions: _Questions
+    end_user: EndUser
+    conversation: Conversation
+    config: AppModelConfig
+    provision_factory: sessionmaker[Session]
+    model_calls: _ModelCalls
     factory: sessionmaker[Session]
     message_id: str
     admissions: list[Session]
     provisions: list[Session]
+    queries: list[Session]
+    scoped_sessions: list[Session]
 
     def get(self, *, user: str | None = "alice", authorization: str | None = "Bearer test-token") -> TestResponse:
         headers: dict[str, str] = {"Authorization": authorization} if authorization is not None else {}
         query: dict[str, str] = {"user": user} if user is not None else {}
         return self.app.test_client().get(f"/messages/{self.message_id}/suggested", query_string=query, headers=headers)
 
-    def assert_closed(self) -> None:
+    def assert_closed(self, *, caller: Session | None = None) -> None:
         assert all(
-            not session.in_transaction() and not session.identity_map for session in self.admissions + self.provisions
+            not session.in_transaction() and not session.identity_map
+            for session in self.admissions + self.provisions + self.queries + self.scoped_sessions
+            if session is not caller
         )
+        assert all(closed for _stage, closed in self.model_calls.stages), self.model_calls.stages
 
 
 @pytest.fixture
@@ -121,8 +109,42 @@ def harness(
 ) -> Iterator[_Harness]:
     tenant = Tenant(name="API workspace")
     target = make_app(app_id=str(uuid4()), tenant_id=tenant.id)
+    end_user = make_end_user(
+        end_user_id=str(uuid4()),
+        tenant_id=tenant.id,
+        app_id=target.id,
+        end_user_type=EndUserType.SERVICE_API,
+        session_id="alice",
+        external_user_id="alice",
+    )
+    config = AppModelConfig(app_id=target.id, suggested_questions_after_answer='{"enabled": true}')
+    config.id = str(uuid4())
+    target.app_model_config_id = config.id
+    conversation = make_conversation(
+        conversation_id=str(uuid4()),
+        app_id=target.id,
+        inputs={},
+        from_source=ConversationFromSource.API,
+        from_end_user_id=end_user.id,
+    )
+    conversation.app_model_config_id = config.id
+    message = make_message(
+        message_id=str(uuid4()),
+        app_id=target.id,
+        conversation_id=conversation.id,
+        inputs={},
+        query="How does this work?",
+        message={},
+        answer="Like this.",
+        message_unit_price=Decimal(0),
+        answer_unit_price=Decimal(0),
+        currency="USD",
+        from_source=ConversationFromSource.API,
+        from_end_user_id=end_user.id,
+    )
+    token = ApiToken(app_id=target.id, tenant_id=tenant.id, type="app", token="test-token")
     with sqlite_session_factory.begin() as session:
-        session.add_all([tenant, target])
+        session.add_all([tenant, target, end_user, config, conversation, message, token])
 
     app = Flask(__name__)
     app.config.update(TESTING=True, RESTX_ERROR_404_HELP=False, SQLALCHEMY_DATABASE_URI=str(sqlite_engine.url))
@@ -130,66 +152,155 @@ def harness(
     LoginManager(app)
     admissions: list[Session] = []
     provisions: list[Session] = []
-    sessions: list[Session] = []
+    query_sessions: list[Session] = []
+    scoped_sessions: list[Session] = []
     admission_factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
     provision_factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
+    query_factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
 
     def track_admission(session: Session, _transaction: SessionTransaction, _connection: Connection) -> None:
         admissions.append(session)
-        sessions.append(session)
 
     def track_provision(session: Session, _transaction: SessionTransaction, _connection: Connection) -> None:
         # End-user lookup/creation must not overlap the admission transaction.
         assert all(not admission.in_transaction() and not admission.identity_map for admission in admissions)
         provisions.append(session)
-        sessions.append(session)
+
+    def track_query(session: Session, _transaction: SessionTransaction, _connection: Connection) -> None:
+        query_sessions.append(session)
+
+    def track_scoped(session: Session, _transaction: SessionTransaction, _connection: Connection) -> None:
+        scoped_sessions.append(session)
 
     event.listen(admission_factory, "after_begin", track_admission)
     event.listen(provision_factory, "after_begin", track_provision)
+    event.listen(query_factory, "after_begin", track_query)
+    event.listen(db.session.session_factory, "after_begin", track_scoped)
 
-    token = CachedApiToken(
-        id=str(uuid4()),
-        app_id=target.id,
-        tenant_id=tenant.id,
-        type="app",
-        token="test-token",
-        last_used_at=None,
-        created_at=None,
-    )
+    model_calls = _ModelCalls()
+    model = make_model_instance(provider="openai", model="question-model")
+    schema = make_model_config(provider="openai", model="question-model", mode="chat").model_schema
+    manager = create_plugin_model_manager(tenant_id=tenant.id)
 
-    def cached_token(auth_token: str, scope: str | None = None) -> CachedApiToken:
-        assert auth_token == "test-token"
-        assert scope == "app"
-        return token
+    def record_sessions(stage: str) -> None:
+        sessions = admissions + provisions + query_sessions + model_calls.sessions
+        model_calls.stages.append(
+            (stage, all(not session.in_transaction() and not session.identity_map for session in sessions))
+        )
 
-    monkeypatch.setattr(api_wraps.ApiTokenCache, "get", cached_token)
-    monkeypatch.setattr(api_wraps, "record_token_usage", lambda _token, _scope: None)
-    questions = _Questions(sessions)
+    def resolve_model(*, tenant_id: str, model_type: ModelType) -> ModelInstance:
+        assert tenant_id == tenant.id
+        assert model_type == ModelType.LLM
+        stage = "generation_model" if model_calls.sessions else "history_model"
+        record_sessions(stage)
+        # Credential lookup may leave a scoped transaction for the generator to release.
+        session = db.session()
+        session.get(App, target.id)
+        model_calls.sessions.append(session)
+        if model_calls.failure == stage:
+            raise ProviderTokenNotInitError("Credential unavailable")
+        return model
+
+    def model_manager(*, tenant_id: str) -> ModelManager:
+        assert tenant_id == tenant.id
+        return manager
+
+    def count_tokens(*, prompt_messages: Sequence[PromptMessage], **_kwargs: object) -> int:
+        record_sessions("tokens")
+        if model_calls.failure == "tokens":
+            raise InvokeError("Token counting failed")
+        return len(prompt_messages)
+
+    def model_schema(**_kwargs: object) -> AIModelEntity:
+        record_sessions("schema")
+        return schema
+
+    def invoke(*, prompt_messages: Sequence[PromptMessage], stream: bool, **_kwargs: object) -> LLMResult:
+        record_sessions("invoke")
+        assert stream is False
+        model_calls.prompts.append(prompt_messages[0].get_text_content())
+        if model_calls.failure == "invoke":
+            raise InvokeError("Provider timed out")
+        return LLMResult(
+            model=model.model_name,
+            message=AssistantPromptMessage(content=json.dumps(model_calls.questions)),
+            usage=LLMUsage.empty_usage(),
+        )
+
+    original_add_trace = TraceQueueManager.add_trace_task
+
+    def record_trace(queue: TraceQueueManager, task: TraceTask) -> None:
+        record_sessions("trace")
+        assert queue.app_id == target.id
+        model_calls.traces.append(task)
+        original_add_trace(queue, task)
+
+    monkeypatch.setattr(ModelManager, "for_tenant", model_manager)
+    monkeypatch.setattr(manager, "get_default_model_instance", resolve_model)
+    runtime = model.model_type_instance.model_runtime
+    monkeypatch.setattr(runtime, "get_llm_num_tokens", count_tokens)
+    monkeypatch.setattr(runtime, "get_model_schema", model_schema)
+    monkeypatch.setattr(runtime, "invoke_llm", invoke)
+    monkeypatch.setattr(TraceQueueManager, "start_timer", lambda _self: None)
+    monkeypatch.setattr(TraceQueueManager, "add_trace_task", record_trace)
+
+    queries = SuggestedQuestionsQuery(session_factory=query_factory, repository_factory=SuggestedQuestionsRepository)
+    service = MessageSuggestedQuestionsService(queries=queries, generator=SuggestedQuestionsGenerator())
     app.extensions["application_services"] = _Services(
         app_definitions=AppDefinitionQueryService(
             definitions=AppDefinitionQueryRepository(session_factory=admission_factory), builtin_icon_url_prefix=""
         ),
-        message_suggested_questions=questions,
+        message_suggested_questions=service,
         app_scoped_end_users=_EndUsers(
             AppScopedEndUserService(end_users=AppScopedEndUserRepo(session_factory=provision_factory))
         ),
     )
     api = ExternalApi(app)
     api.add_resource(MessageSuggestedApi, "/messages/<uuid:message_id>/suggested")
-    yield _Harness(app, target, tenant, questions, sqlite_session_factory, str(uuid4()), admissions, provisions)
+    yield _Harness(
+        app,
+        target,
+        tenant,
+        end_user,
+        conversation,
+        config,
+        provision_factory,
+        model_calls,
+        sqlite_session_factory,
+        message.id,
+        admissions,
+        provisions,
+        query_sessions,
+        scoped_sessions,
+    )
     event.remove(admission_factory, "after_begin", track_admission)
     event.remove(provision_factory, "after_begin", track_provision)
+    event.remove(query_factory, "after_begin", track_query)
+    event.remove(db.session.session_factory, "after_begin", track_scoped)
     with app.app_context():
         db.session.remove()
         db.engine.dispose()
 
 
 @pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
-def test_admitted_identity_and_mode_are_forwarded(harness: _Harness, mode: AppMode) -> None:
+def test_admitted_identity_and_mode_generate_owned_questions(harness: _Harness, mode: AppMode) -> None:
     with harness.factory.begin() as session:
         target = session.get(App, harness.target.id)
         assert target is not None
         target.mode = mode
+        if mode == AppMode.ADVANCED_CHAT:
+            workflow = Workflow(
+                tenant_id=harness.tenant.id,
+                app_id=target.id,
+                type=WorkflowType.CHAT,
+                version="published",
+                graph='{"nodes":[],"edges":[]}',
+                features='{"suggested_questions_after_answer":{"enabled":true}}',
+                created_by=str(uuid4()),
+            )
+            session.add(workflow)
+            session.flush()
+            target.workflow_id = workflow.id
     response = harness.get()
     assert response.status_code == 200
     assert response.json == {"result": "success", "data": ["What next?"]}
@@ -199,27 +310,13 @@ def test_admitted_identity_and_mode_are_forwarded(harness: _Harness, mode: AppMo
         assert end_user is not None
         assert end_user.type == EndUserType.SERVICE_API
         assert end_user.external_user_id == "alice"
-        assert harness.questions.calls == [
-            (
-                harness.target.id,
-                harness.tenant.id,
-                mode,
-                SuggestedQuestionsEndUser(end_user_id=end_user.id, invoke_from="service-api"),
-                harness.message_id,
-            )
-        ]
+        assert end_user.id == harness.end_user.id
+    assert len(harness.model_calls.prompts) == 1
+    assert "Human: How does this work?\nAssistant: Like this." in harness.model_calls.prompts[0]
     harness.assert_closed()
 
 
 def test_existing_user_is_reused_within_the_token_app_only(harness: _Harness) -> None:
-    existing = make_end_user(
-        end_user_id=str(uuid4()),
-        tenant_id=harness.tenant.id,
-        app_id=harness.target.id,
-        end_user_type=EndUserType.SERVICE_API,
-        session_id="alice",
-        external_user_id="alice",
-    )
     decoy = make_end_user(
         end_user_id=str(uuid4()),
         tenant_id=str(uuid4()),
@@ -229,18 +326,16 @@ def test_existing_user_is_reused_within_the_token_app_only(harness: _Harness) ->
         external_user_id="alice",
     )
     with harness.factory.begin() as session:
-        session.add_all([existing, decoy])
+        session.add(decoy)
     assert harness.get().status_code == 200
-    assert harness.questions.calls[0][3] == SuggestedQuestionsEndUser(
-        end_user_id=existing.id, invoke_from="service-api"
-    )
+    assert len(harness.model_calls.prompts) == 1
     with harness.factory() as session:
         assert len(session.scalars(select(EndUser)).all()) == 2
 
 
 @pytest.mark.parametrize("questions", [[], ["One?", "Two?"]])
 def test_response_preserves_question_lists(harness: _Harness, questions: list[str]) -> None:
-    harness.questions.questions = questions
+    harness.model_calls.questions = questions
     response = harness.get()
     assert response.status_code == 200
     assert response.json == {"result": "success", "data": questions}
@@ -253,7 +348,7 @@ def test_invalid_authorization_stops_before_database_admission(harness: _Harness
     assert response.json is not None
     assert response.json["code"] == "unauthorized"
     assert response.headers["WWW-Authenticate"] == 'Bearer realm="api"'
-    assert harness.admissions == harness.provisions == harness.questions.calls == []
+    assert harness.admissions == harness.provisions == harness.queries == harness.model_calls.prompts == []
 
 
 @pytest.mark.parametrize("user", [None, ""])
@@ -263,7 +358,7 @@ def test_required_user_rejected_before_provisioning(harness: _Harness, user: str
     assert response.json is not None
     assert response.json["code"] == "invalid_param"
     assert response.json["message"] == "Arg user must be provided."
-    assert harness.provisions == harness.questions.calls == []
+    assert harness.provisions == harness.queries == harness.model_calls.prompts == []
     harness.assert_closed()
 
 
@@ -301,7 +396,7 @@ def test_app_and_workspace_admission(
     assert response.status_code == status
     assert response.json is not None
     assert response.json["message"] == message
-    assert harness.provisions == harness.questions.calls == []
+    assert harness.provisions == harness.queries == harness.model_calls.prompts == []
     harness.assert_closed()
 
 
@@ -315,30 +410,54 @@ def test_unsupported_mode_does_not_invoke_questions(harness: _Harness, mode: App
     assert response.status_code == 400
     assert response.json is not None
     assert response.json["code"] == "not_chat_app"
-    assert harness.questions.calls == []
+    assert harness.queries == harness.model_calls.prompts == []
     harness.assert_closed()
 
 
 @pytest.mark.parametrize(
-    ("error", "status", "code", "message"),
+    ("failure", "status", "code", "message"),
     [
-        (AppDefinitionUnavailableError(), 400, "app_unavailable", ""),
-        (SuggestedQuestionsActorNotFoundError(), 404, "not_found", "End user not found"),
-        (MessageNotExistsError(), 404, "not_found", "Message Not Exists."),
-        (ConversationNotExistsError(), 404, "not_found", "Conversation not found"),
-        (AgentVersionNotFoundError(), 404, "agent_version_not_found_error", "Agent config version not found."),
-        (SuggestedQuestionsAfterAnswerDisabledError(), 403, "app_suggested_questions_after_answer_disabled", ""),
-        (RuntimeError("private diagnostic"), 500, "internal_server_error", ""),
+        ("message", 404, "not_found", "Message Not Exists."),
+        ("conversation", 404, "not_found", "Conversation not found"),
+        ("agent_version", 404, "agent_version_not_found_error", "Agent config version not found."),
+        ("disabled", 403, "app_suggested_questions_after_answer_disabled", ""),
     ],
 )
 def test_domain_errors_have_specific_http_codes(
     harness: _Harness,
-    error: Exception,
+    failure: Literal["message", "conversation", "agent_version", "disabled"],
     status: int,
     code: str,
     message: str,
 ) -> None:
-    harness.questions.error = error
+    with harness.factory.begin() as session:
+        match failure:
+            case "message":
+                message_record = session.get(Message, harness.message_id)
+                assert message_record is not None
+                session.delete(message_record)
+            case "conversation":
+                conversation = session.get(Conversation, harness.conversation.id)
+                assert conversation is not None
+                session.delete(conversation)
+            case "disabled":
+                config = session.get(AppModelConfig, harness.config.id)
+                assert config is not None
+                config.suggested_questions_after_answer = '{"enabled":false}'
+            case "agent_version":
+                target = session.get(App, harness.target.id)
+                assert target is not None
+                target.mode = AppMode.AGENT
+                session.add(
+                    Agent(
+                        tenant_id=harness.tenant.id,
+                        app_id=target.id,
+                        name="Missing published version",
+                        scope=AgentScope.ROSTER,
+                        source=AgentSource.AGENT_APP,
+                        active_config_snapshot_id=str(uuid4()),
+                    )
+                )
     response = harness.get()
     assert response.status_code == status
     assert response.headers["Content-Type"] == "application/json"
@@ -347,7 +466,64 @@ def test_domain_errors_have_specific_http_codes(
     assert response.json["status"] == status
     if message:
         assert response.json["message"] == message
+    assert harness.model_calls.prompts == []
+    harness.assert_closed()
+
+
+@pytest.mark.parametrize(
+    ("change", "status", "code", "message"),
+    [
+        ("app_mode", 400, "app_unavailable", ""),
+        ("end_user_tenant", 404, "not_found", "End user not found"),
+    ],
+)
+def test_scope_changes_after_admission_have_specific_http_codes(
+    harness: _Harness,
+    change: Literal["app_mode", "end_user_tenant"],
+    status: int,
+    code: str,
+    message: str,
+) -> None:
+    def change_scope(_session: Session, _transaction: SessionTransaction) -> None:
+        with harness.factory.begin() as session:
+            if change == "app_mode":
+                target = session.get(App, harness.target.id)
+                assert target is not None
+                target.mode = AppMode.ADVANCED_CHAT
+            else:
+                end_user = session.get(EndUser, harness.end_user.id)
+                assert end_user is not None
+                end_user.tenant_id = str(uuid4())
+
+    event.listen(harness.provision_factory, "after_transaction_end", change_scope, once=True)
+    try:
+        response = harness.get()
+    finally:
+        event.remove(harness.provision_factory, "after_transaction_end", change_scope)
+    assert response.status_code == status
+    assert response.headers["Content-Type"] == "application/json"
+    assert response.json is not None
+    assert response.json["code"] == code
+    assert response.json["status"] == status
+    if message:
+        assert response.json["message"] == message
+    assert harness.model_calls.prompts == []
+    harness.assert_closed()
+
+
+def test_malformed_configuration_returns_an_opaque_internal_error(harness: _Harness) -> None:
+    with harness.factory.begin() as session:
+        config = session.get(AppModelConfig, harness.config.id)
+        assert config is not None
+        config.suggested_questions_after_answer = "private diagnostic: invalid JSON"
+    response = harness.get()
+    assert response.status_code == 500
+    assert response.headers["Content-Type"] == "application/json"
+    assert response.json is not None
+    assert response.json["code"] == "internal_server_error"
+    assert response.json["status"] == 500
     assert "private diagnostic" not in response.get_data(as_text=True)
+    assert harness.model_calls.prompts == []
     harness.assert_closed()
 
 
@@ -362,108 +538,11 @@ def test_domain_errors_have_specific_http_codes(
 )
 def test_real_generation_preserves_stage_specific_failure_responses(
     harness: _Harness,
-    monkeypatch: pytest.MonkeyPatch,
-    sqlite_engine: Engine,
     failure: Literal["history_model", "generation_model", "invoke", "tokens"],
     expected_status: int,
     expected_stages: list[str],
 ) -> None:
-    end_user = make_end_user(
-        end_user_id=str(uuid4()),
-        tenant_id=harness.tenant.id,
-        app_id=harness.target.id,
-        end_user_type=EndUserType.SERVICE_API,
-        session_id="alice",
-        external_user_id="alice",
-    )
-    config = AppModelConfig(app_id=harness.target.id, suggested_questions_after_answer='{"enabled": true}')
-    config.id = str(uuid4())
-    conversation = make_conversation(
-        conversation_id=str(uuid4()),
-        app_id=harness.target.id,
-        inputs={},
-        from_source=ConversationFromSource.API,
-        from_end_user_id=end_user.id,
-    )
-    conversation.app_model_config_id = config.id
-    message = make_message(
-        message_id=harness.message_id,
-        app_id=harness.target.id,
-        conversation_id=conversation.id,
-        inputs={},
-        query="How does this work?",
-        message={},
-        answer="Like this.",
-        message_unit_price=Decimal(0),
-        answer_unit_price=Decimal(0),
-        currency="USD",
-        from_source=ConversationFromSource.API,
-        from_end_user_id=end_user.id,
-    )
-    with harness.factory.begin() as session:
-        session.add_all([end_user, config, conversation, message])
-
-    query_factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
-    query_sessions: list[Session] = []
-    model_sessions: list[Session] = []
-    closed_at_stage: list[tuple[str, bool]] = []
-
-    @event.listens_for(query_factory, "after_begin")
-    def track_query(session: Session, _transaction: SessionTransaction, _connection: Connection) -> None:
-        query_sessions.append(session)
-
-    def record_sessions(stage: str) -> None:
-        sessions = harness.admissions + harness.provisions + query_sessions + model_sessions
-        closed_at_stage.append(
-            (stage, all(not session.in_transaction() and not session.identity_map for session in sessions))
-        )
-
-    model = Mock(spec=ModelInstance)
-
-    def resolve_model(**_kwargs: object) -> Mock:
-        stage = "generation_model" if model_sessions else "history_model"
-        record_sessions(stage)
-        # Real model resolution can leave a scoped read transaction behind.
-        session = db.session()
-        session.get(App, harness.target.id)
-        model_sessions.append(session)
-        if failure == stage:
-            raise ProviderTokenNotInitError("Credential unavailable")
-        return model
-
-    def count_tokens(prompt_messages: Sequence[PromptMessage]) -> int:
-        record_sessions("tokens")
-        if failure == "tokens":
-            raise InvokeError("Token counting failed")
-        return len(prompt_messages)
-
-    def model_schema() -> AIModelEntity:
-        record_sessions("schema")
-        return AIModelEntity.model_construct(parameter_rules=[])
-
-    def invoke(**_kwargs: object) -> None:
-        record_sessions("invoke")
-        raise InvokeError("Provider timed out")
-
-    model.get_llm_num_tokens.side_effect = count_tokens
-    model.get_model_schema.side_effect = model_schema
-    model.invoke_llm.side_effect = invoke
-    manager = Mock(spec=ModelManager)
-    manager.get_default_model_instance.side_effect = resolve_model
-    for_tenant = Mock(return_value=manager)
-    monkeypatch.setattr(generator_module.ModelManager, "for_tenant", for_tenant)
-    trace = Mock(spec=generator_module.TraceQueueManager)
-    trace.add_trace_task.side_effect = lambda _task: record_sessions("trace")
-    monkeypatch.setattr(generator_module, "TraceQueueManager", Mock(return_value=trace))
-
-    queries = SuggestedQuestionsQuery(session_factory=query_factory, repository_factory=SuggestedQuestionsRepository)
-    services: _Services = harness.app.extensions["application_services"]
-    harness.app.extensions["application_services"] = replace(
-        services,
-        message_suggested_questions=MessageSuggestedQuestionsService(
-            queries=queries, generator=SuggestedQuestionsGenerator()
-        ),
-    )
+    harness.model_calls.failure = failure
     response = harness.get()
 
     assert response.status_code == expected_status
@@ -476,14 +555,8 @@ def test_real_generation_preserves_stage_specific_failure_responses(
             "status": 400,
         }
     assert response.headers["Content-Type"] == "application/json"
-    assert closed_at_stage == [(stage, True) for stage in expected_stages]
-    assert len(query_sessions) == (1 if failure == "history_model" else 2)
-    assert for_tenant.call_count == len(model_sessions)
-    for call in for_tenant.call_args_list:
-        assert call.kwargs == {"tenant_id": harness.tenant.id}
-    for call in manager.get_default_model_instance.call_args_list:
-        assert call.kwargs == {"tenant_id": harness.tenant.id, "model_type": ModelType.LLM}
-    assert all(not session.in_transaction() and not session.identity_map for session in query_sessions + model_sessions)
+    assert harness.model_calls.stages == [(stage, True) for stage in expected_stages]
+    assert len(harness.queries) == (1 if failure == "history_model" else 2)
     harness.assert_closed()
 
 
@@ -496,10 +569,12 @@ def test_caller_session_and_pending_edits_are_preserved(harness: _Harness) -> No
         transaction = caller.get_transaction()
         response = harness.get()
         assert response.status_code == 200
+        assert response.json == {"result": "success", "data": ["What next?"]}
         assert db.session() is caller
         assert caller.get_transaction() is transaction
         assert target in caller.dirty
         assert target.name == "Pending caller change"
+        harness.assert_closed(caller=caller)
         caller.rollback()
     with harness.factory() as session:
         target = session.get(App, harness.target.id)
@@ -528,10 +603,10 @@ def test_request_identity_remains_installed_after_generation(harness: _Harness) 
             f"/messages/{harness.message_id}/suggested?user=alice", headers={"Authorization": "Bearer test-token"}
         )
         assert response.status_code == 200
-        actor = harness.questions.calls[0][3]
-        assert isinstance(actor, SuggestedQuestionsEndUser)
-        assert current_user.id == actor.end_user_id
+        assert response.json == {"result": "success", "data": ["What next?"]}
+        assert current_user.id == harness.end_user.id
         assert current_user.app_id == harness.target.id
+        assert current_user.tenant_id == harness.tenant.id
 
 
 @pytest.mark.parametrize("fetch_from", [WhereisUserArg.QUERY, WhereisUserArg.JSON, WhereisUserArg.FORM])
@@ -556,16 +631,18 @@ def test_admission_injects_immutable_scope_and_provisions_request_user(
     headers = {"Authorization": "Bearer test-token"}
     match fetch_from:
         case WhereisUserArg.QUERY:
-            response = client.get("/admitted?user=alice", headers=headers)
+            response = client.get("/admitted?user=bob", headers=headers)
         case WhereisUserArg.JSON:
-            response = client.post("/admitted", json={"user": "alice"}, headers=headers)
+            response = client.post("/admitted", json={"user": "bob"}, headers=headers)
         case WhereisUserArg.FORM:
-            response = client.post("/admitted", data={"user": "alice"}, headers=headers)
+            response = client.post("/admitted", data={"user": "bob"}, headers=headers)
     assert response.status_code == 200
     with harness.factory() as session:
-        end_user = session.scalar(select(EndUser).where(EndUser.app_id == harness.target.id))
+        end_user = session.scalar(
+            select(EndUser).where(EndUser.app_id == harness.target.id, EndUser.external_user_id == "bob")
+        )
         assert end_user is not None
-        assert end_user.session_id == "alice"
+        assert end_user.session_id == "bob"
         assert response.json == {
             "app_id": harness.target.id,
             "tenant_id": harness.tenant.id,
