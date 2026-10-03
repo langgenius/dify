@@ -10,11 +10,15 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import Chat from '@/app/components/base/chat/chat'
+import { AgentRosterResponseContent } from '@/app/components/base/chat/chat/answer/agent-roster-response-content'
 import CopyIcon from '@/app/components/base/copy-icon'
+import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import { toast } from '@/app/notifications'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/console'
+import { toAgentMessageFileResponse, toAgentThoughtItem } from '../../agent-thoughts'
 
 export function AgentLogDetailPanel({
   agentId,
@@ -146,6 +150,7 @@ export function AgentLogDetailPanel({
                 } as ChatConfig
               }
               chatList={chatList}
+              renderAgentContent={(props) => <AgentRosterResponseContent {...props} showThoughts />}
               noChatInput
               hideProcessDetail
               chatContainerInnerClassName="px-3"
@@ -172,15 +177,34 @@ function formatAgentLogMessages({
   messages.forEach((message) => {
     const userFeedback = message.feedbacks?.find((feedback) => feedback.from_source === 'user')
     const adminFeedback = message.feedbacks?.find((feedback) => feedback.from_source === 'admin')
+    const messageFiles = message.message_files ?? []
+    const questionFiles = getProcessedFilesFromResponse(
+      messageFiles.filter((file) => file.belongs_to === 'user').map(toAgentMessageFileResponse),
+    )
+    const answerFiles = getProcessedFilesFromResponse(
+      messageFiles
+        .filter((file) => file.belongs_to === 'assistant')
+        .map(toAgentMessageFileResponse),
+    )
     chatList.push({
       id: `question-${message.id}`,
       content: message.query,
       isAnswer: false,
+      message_files: questionFiles,
       parentMessageId: undefined,
     })
     chatList.push({
       id: message.id,
       content: message.answer || message.error || '',
+      agent_thoughts: addFileInfos(
+        sortAgentSorts(
+          (message.agent_thoughts ?? []).map((thought) =>
+            toAgentThoughtItem(thought, conversationId),
+          ),
+        ),
+        getProcessedFilesFromResponse(messageFiles.map(toAgentMessageFileResponse)),
+      ),
+      message_files: answerFiles,
       conversationId,
       feedback: userFeedback,
       adminFeedback,
@@ -193,8 +217,8 @@ function formatAgentLogMessages({
       },
       isAnswer: true,
       log: [
-        { role: 'user', text: message.query },
-        { role: 'assistant', text: message.answer || message.error || '' },
+        { role: 'user', text: message.query, files: questionFiles },
+        { role: 'assistant', text: message.answer || message.error || '', files: answerFiles },
       ],
       more: {
         latency: message.latency.toFixed(2),

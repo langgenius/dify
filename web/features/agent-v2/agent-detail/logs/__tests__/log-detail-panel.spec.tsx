@@ -2,6 +2,7 @@ import type {
   AgentLogConversationItemResponse,
   AgentLogMessageListResponse,
 } from '@dify/contracts/api/console/agent/types.gen'
+import type { ChatProps } from '@/app/components/base/chat/chat'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { OnFeedback } from '@/app/components/base/chat/types'
 import { Drawer } from '@langgenius/dify-ui/drawer'
@@ -24,12 +25,14 @@ vi.mock('@/app/components/base/chat/chat', () => ({
     chatList,
     config,
     onFeedback,
+    renderAgentContent,
   }: {
     chatList: IChatItem[]
     config?: { supportFeedback?: boolean }
     onFeedback?: OnFeedback
+    renderAgentContent?: ChatProps['renderAgentContent']
   }) => {
-    mocks.chatProps({ chatList, config, onFeedback })
+    mocks.chatProps({ chatList, config, onFeedback, renderAgentContent })
     return (
       <button
         onClick={() => void onFeedback?.('message-1', { rating: 'like' }).catch(() => undefined)}
@@ -141,6 +144,57 @@ const webappMessages: AgentLogMessageListResponse = {
   total: 1,
 }
 
+const thoughtMessages: AgentLogMessageListResponse = {
+  ...webappMessages,
+  data: [
+    {
+      ...webappMessages.data[0]!,
+      agent_thoughts: [
+        {
+          id: 'tool-1',
+          message_id: 'message-1',
+          position: 2,
+          thought: 'Inspect the workspace',
+          answer: 'Progress update',
+          tool: 'shell_run',
+          tool_input: 'ls /workspace',
+          observation: 'report.txt',
+          tool_labels: { shell_run: { en_US: 'List workspace', zh_Hans: '列出工作区' } },
+          files: ['tool-file'],
+        },
+        {
+          id: 'thought-1',
+          message_id: 'message-1',
+          position: 1,
+          thought: '# Plan the response',
+          tool_labels: null,
+          files: [],
+        },
+      ],
+      message_files: [
+        {
+          id: 'input-file',
+          filename: 'brief.txt',
+          belongs_to: 'user',
+          type: 'document',
+          transfer_method: 'local_file',
+          url: '/files/brief',
+          mime_type: 'text/plain',
+        },
+        {
+          id: 'tool-file',
+          filename: 'report.txt',
+          belongs_to: 'assistant',
+          type: 'document',
+          transfer_method: 'tool_file',
+          url: '/files/report',
+          mime_type: 'text/plain',
+        },
+      ],
+    },
+  ],
+}
+
 function renderPanel(log: AgentLogConversationItemResponse, messages: AgentLogMessageListResponse) {
   mocks.messagesQueryFn.mockResolvedValue(messages)
   const queryClient = new QueryClient({
@@ -160,6 +214,12 @@ function renderPanel(log: AgentLogConversationItemResponse, messages: AgentLogMe
 }
 
 describe('AgentLogDetailPanel', () => {
+  // Markdown reaches the DOM through next/dynamic; warm the chunk so lazy
+  // resolution does not race the thought assertions.
+  beforeAll(async () => {
+    await import('@/app/components/base/markdown/streamdown-wrapper')
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.feedbackMutationFn.mockResolvedValue({ result: 'success' })
@@ -235,5 +295,46 @@ describe('AgentLogDetailPanel', () => {
         ]),
       }),
     )
+  })
+
+  it('maps persisted thoughts and attachments onto the answer chat item', async () => {
+    renderPanel(webappLog, thoughtMessages)
+
+    await screen.findByRole('button', { name: 'submit-feedback' })
+
+    const { chatList } = mocks.chatProps.mock.calls.at(-1)![0]
+    const [question, answer] = chatList as IChatItem[]
+    expect(question?.message_files?.map((file) => file.name)).toEqual(['brief.txt'])
+    expect(answer?.agent_thoughts?.map((thought) => thought.id)).toEqual(['thought-1', 'tool-1'])
+    expect(answer?.agent_thoughts?.[1]?.tool_labels).toEqual({
+      shell_run: { en_US: 'List workspace', zh_Hans: '列出工作区' },
+    })
+    expect(answer?.message_files?.map((file) => file.name)).toEqual(['report.txt'])
+  })
+
+  it('renders persisted thoughts through the agent content renderer', async () => {
+    const user = userEvent.setup()
+    renderPanel(webappLog, thoughtMessages)
+    await screen.findByRole('button', { name: 'submit-feedback' })
+
+    const { chatList, renderAgentContent } = mocks.chatProps.mock.calls.at(-1)![0]
+    const answer = (chatList as IChatItem[]).find((item) => item.isAnswer)!
+    render(<>{renderAgentContent?.({ item: answer, content: answer.content })}</>)
+
+    const toggle = screen.getByRole('button', { name: /thinking/i })
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByText('Inspect the workspace')).not.toBeInTheDocument()
+
+    await user.click(toggle)
+
+    expect(
+      await screen.findByRole(
+        'heading',
+        { name: 'Plan the response', level: 1 },
+        { timeout: 5000 },
+      ),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Inspect the workspace')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /List workspace/ })).toBeInTheDocument()
   })
 })
