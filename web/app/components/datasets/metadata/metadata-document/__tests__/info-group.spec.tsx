@@ -1,6 +1,8 @@
+import type { ReactElement } from 'react'
 import type { MetadataItemWithValue } from '../../types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen, render as testingLibraryRender } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createMetadataQueryWrapper } from '../../__tests__/query-wrapper'
 import { DataType } from '../../types'
 import InfoGroup from '../info-group'
 
@@ -18,14 +20,6 @@ const { mockRouterPush } = vi.hoisted(() => ({
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: mockRouterPush,
-  }),
-}))
-
-vi.mock('@/service/knowledge/use-metadata', () => ({
-  useDatasetMetaData: () => ({
-    data: {
-      doc_metadata: [{ id: '1', name: 'test', type: DataType.string }],
-    },
   }),
 }))
 
@@ -50,6 +44,13 @@ vi.mock('../../edit-metadata-batch/input-combined', () => ({
     />
   ),
 }))
+
+const render = (ui: ReactElement) =>
+  testingLibraryRender(ui, {
+    wrapper: createMetadataQueryWrapper({
+      fields: [{ id: '1', name: 'test', type: 'string', count: 0 }],
+    }).wrapper,
+  })
 
 describe('InfoGroup', () => {
   const mockList: MetadataItemWithValue[] = [

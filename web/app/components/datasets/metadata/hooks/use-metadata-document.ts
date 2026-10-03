@@ -1,18 +1,15 @@
 import type { BuiltInMetadataItem, MetadataItemWithValue } from '../types'
 import type { FullDocumentDetail } from '@/models/datasets'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { get } from 'es-toolkit/compat'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { useDatasetDetailContext } from '@/context/dataset-detail'
 import { useLanguages, useMetadataMap } from '@/hooks/use-metadata'
-import {
-  useBatchUpdateDocMetadata,
-  useCreateMetaData,
-  useDatasetMetaData,
-  useDocumentMetaData,
-} from '@/service/knowledge/use-metadata'
+import { consoleQuery } from '@/service/console'
 import { DataType } from '../types'
+import { toMetadataDetail } from '../utils/to-metadata-detail'
 import useCheckMetadataName from './use-check-metadata-name'
 
 type Props = Readonly<{
@@ -24,18 +21,26 @@ const useMetadataDocument = ({ datasetId, documentId, docDetail }: Props) => {
   const { t } = useTranslation(['common'])
   const { dataset } = useDatasetDetailContext()
   const embeddingAvailable = !!dataset?.embedding_available
-  const { mutateAsync } = useBatchUpdateDocMetadata()
+  const { mutateAsync } = useMutation(
+    consoleQuery.datasets.byDatasetId.documents.metadata.post.mutationOptions(),
+  )
   const { checkName } = useCheckMetadataName()
   const [isEdit, setIsEdit] = useState(false)
-  const { data: documentDetail } = useDocumentMetaData({
-    datasetId,
-    documentId,
-  })
+  const { data: documentDetail } = useQuery(
+    consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.queryOptions({
+      input: {
+        params: { dataset_id: datasetId, document_id: documentId },
+        query: { metadata: 'only' },
+      },
+    }),
+  )
   const allList = documentDetail?.doc_metadata || []
   const list = allList.filter((item) => item.id !== 'built-in')
   const builtList = allList.filter((item) => item.id === 'built-in')
   const [tempList, setTempList] = useState<MetadataItemWithValue[]>(list)
-  const { mutateAsync: doAddMetaData } = useCreateMetaData(datasetId)
+  const { mutateAsync: doAddMetaData } = useMutation(
+    consoleQuery.datasets.byDatasetId.metadata.post.mutationOptions(),
+  )
   const handleSelectMetaData = useCallback((metaData: MetadataItemWithValue) => {
     setTempList((prev) => {
       const index = prev.findIndex((item) => item.id === metaData.id)
@@ -50,21 +55,20 @@ const useMetadataDocument = ({ datasetId, documentId, docDetail }: Props) => {
         toast.error(errorMsg)
         return Promise.reject(new Error(errorMsg))
       }
-      await doAddMetaData(payload)
+      await doAddMetaData({ params: { dataset_id: datasetId }, body: payload })
       toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
     },
-    [checkName, doAddMetaData, t],
+    [checkName, doAddMetaData, t, datasetId],
   )
   const hasData = list.length > 0
   const handleSave = async () => {
     await mutateAsync({
-      dataset_id: datasetId,
-      metadata_list: [
-        {
-          document_id: documentId,
-          metadata_list: tempList,
-        },
-      ],
+      params: { dataset_id: datasetId },
+      body: {
+        operation_data: [
+          { document_id: documentId, metadata_list: tempList.map(toMetadataDetail) },
+        ],
+      },
     })
     setIsEdit(false)
     toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
@@ -78,7 +82,11 @@ const useMetadataDocument = ({ datasetId, documentId, docDetail }: Props) => {
     setIsEdit(true)
   }
   // built in enabled is set in dataset
-  const { data: datasetMetaData } = useDatasetMetaData(datasetId)
+  const { data: datasetMetaData } = useQuery(
+    consoleQuery.datasets.byDatasetId.metadata.get.queryOptions({
+      input: { params: { dataset_id: datasetId } },
+    }),
+  )
   const builtInEnabled = datasetMetaData?.built_in_field_enabled
   // old metadata and technical params
   const metadataMap = useMetadataMap()
