@@ -84,6 +84,19 @@ describe('document metadata editing', () => {
     expect(result.current.tempList).toEqual([field])
   })
 
+  it('creates a metadata field in the current dataset', async () => {
+    const { result } = renderEditor()
+
+    await act(async () => {
+      await result.current.handleAddMetaData({ name: 'priority', type: 'number' })
+    })
+
+    const sent = request.mock.calls[0]![2].request
+    expect(sent.method).toBe('POST')
+    expect(new URL(sent.url).pathname).toBe('/console/api/datasets/ds-1/metadata')
+    expect(await sent.json()).toEqual({ name: 'priority', type: 'number' })
+  })
+
   it('writes only editable fields while preserving empty values and legacy boolean coercion', async () => {
     const { result } = renderEditor()
     act(() => result.current.startToEdit())
