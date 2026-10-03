@@ -1,5 +1,4 @@
-from unittest.mock import MagicMock
-
+import httpx
 import pytest
 from pytest_mock import MockerFixture
 
@@ -9,7 +8,7 @@ from core.plugin.impl.asset import PluginAssetManager
 class TestPluginAssetManager:
     def test_fetch_asset_success(self, mocker: MockerFixture):
         manager = PluginAssetManager()
-        response = MagicMock(status_code=200, content=b"asset-bytes")
+        response = httpx.Response(status_code=200, content=b"asset-bytes")
         request_mock = mocker.patch.object(manager, "_request", return_value=response)
 
         result = manager.fetch_asset("tenant-1", "asset-1")
@@ -19,14 +18,14 @@ class TestPluginAssetManager:
 
     def test_fetch_asset_not_found_raises(self, mocker: MockerFixture):
         manager = PluginAssetManager()
-        mocker.patch.object(manager, "_request", return_value=MagicMock(status_code=404, content=b""))
+        mocker.patch.object(manager, "_request", return_value=httpx.Response(status_code=404, content=b""))
 
         with pytest.raises(ValueError, match="can not found asset asset-1"):
             manager.fetch_asset("tenant-1", "asset-1")
 
     def test_extract_asset_success(self, mocker: MockerFixture):
         manager = PluginAssetManager()
-        response = MagicMock(status_code=200, content=b"file-content")
+        response = httpx.Response(status_code=200, content=b"file-content")
         request_mock = mocker.patch.object(manager, "_request", return_value=response)
 
         result = manager.extract_asset("tenant-1", "org/plugin:1", "README.md")
@@ -40,7 +39,7 @@ class TestPluginAssetManager:
 
     def test_extract_asset_not_found_raises(self, mocker: MockerFixture):
         manager = PluginAssetManager()
-        mocker.patch.object(manager, "_request", return_value=MagicMock(status_code=404, content=b""))
+        mocker.patch.object(manager, "_request", return_value=httpx.Response(status_code=404, content=b""))
 
         with pytest.raises(ValueError, match="can not found asset org/plugin:1, 404"):
             manager.extract_asset("tenant-1", "org/plugin:1", "README.md")
