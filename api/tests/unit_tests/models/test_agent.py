@@ -12,16 +12,43 @@ from models.agent import (
     AgentConfigRevision,
     AgentConfigRevisionOperation,
     AgentConfigSnapshot,
+    AgentDebugConversation,
+    AgentHomeSnapshot,
     AgentIconType,
     AgentKind,
     AgentScope,
     AgentSource,
     AgentStatus,
+    AgentWorkspace,
+    AgentWorkspaceBinding,
     WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
 from models.agent_config_entities import AgentSoulConfig
+from models.base import Base, TypeBase
 from models.types import JSONModelColumn, LongText
+
+
+def test_all_agent_models_use_typebase_registry_and_generated_ids() -> None:
+    models = (
+        Agent,
+        AgentHomeSnapshot,
+        AgentDebugConversation,
+        AgentConfigDraft,
+        AgentConfigSnapshot,
+        AgentConfigRevision,
+        WorkflowAgentNodeBinding,
+        AgentWorkspace,
+        AgentWorkspaceBinding,
+    )
+    typebase_models = {mapper.class_ for mapper in TypeBase.registry.mappers}
+    base_models = {mapper.class_ for mapper in Base.registry.mappers}
+
+    assert all(model in typebase_models for model in models)
+    assert all(model not in base_models for model in models)
+    assert Agent().id
+    assert AgentHomeSnapshot().id
+    assert AgentConfigRevision().id
 
 
 def test_agent_enums_match_prd_boundaries():
