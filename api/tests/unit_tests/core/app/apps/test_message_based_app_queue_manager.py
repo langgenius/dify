@@ -116,3 +116,37 @@ class TestMessageBasedAppQueueManager:
             assert manager.execution_state is AppExecutionState.PAUSED
             execution_redis.setex.assert_not_called()
             graph_engine_manager.return_value.send_stop_command.assert_not_called()
+
+    def test_listen_timeout_uses_workflow_max_execution_time_for_advanced_chat(self, config_overrides):
+        # #39602: Advanced Chat runs a workflow under the hood, so it must
+        # follow WORKFLOW_MAX_EXECUTION_TIME rather than the chat default.
+        config_overrides(WORKFLOW_MAX_EXECUTION_TIME=3600, APP_MAX_EXECUTION_TIME=1200)
+        with patch("core.app.apps.base_app_queue_manager.redis_client"):
+            manager = MessageBasedAppQueueManager(
+                task_id="t1",
+                user_id="u1",
+                invoke_from=InvokeFrom.SERVICE_API,
+                conversation_id="c1",
+                app_mode="advanced-chat",
+                message_id="m1",
+            )
+
+        assert manager._listen_timeout == 3600
+        assert manager._execution_coordinator._timeout_seconds == 3600
+
+    def test_listen_timeout_falls_back_to_app_max_for_basic_chat(self, config_overrides):
+        # #39602: Basic Chat / Completion / Agent Chat are NOT workflows and
+        # keep the chat-style APP_MAX_EXECUTION_TIME default.
+        config_overrides(WORKFLOW_MAX_EXECUTION_TIME=3600, APP_MAX_EXECUTION_TIME=1200)
+        with patch("core.app.apps.base_app_queue_manager.redis_client"):
+            manager = MessageBasedAppQueueManager(
+                task_id="t1",
+                user_id="u1",
+                invoke_from=InvokeFrom.SERVICE_API,
+                conversation_id="c1",
+                app_mode="chat",
+                message_id="m1",
+            )
+
+        assert manager._listen_timeout == 1200
+        assert manager._execution_coordinator._timeout_seconds == 1200
