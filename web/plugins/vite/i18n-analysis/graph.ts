@@ -591,7 +591,7 @@ export function checkTranslationGraph(
           record([{ text: node.text }], { namespaces, prefix: '', argument: 0 })
       }
     }
-    if (ts.isCallExpression(node)) {
+    if (ts.isCallExpression(node) && node.arguments.length) {
       currentSite = node
       const api = translationApi(node.expression)
       if (api?.kind === 'translation') {
@@ -614,9 +614,7 @@ export function checkTranslationGraph(
               prefix: '',
               argument: api.selectorArgument,
             }
-          : node.arguments.length
-            ? translation(node.expression, node)
-            : undefined
+          : translation(node.expression, node)
       const argument = info && node.arguments[info.argument]
       if (info && argument) {
         const options =

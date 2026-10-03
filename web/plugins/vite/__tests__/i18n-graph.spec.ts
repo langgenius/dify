@@ -283,6 +283,39 @@ describe('translation graph analysis', () => {
       expect(result.unused).toEqual({ app: ['unused'] })
     })
 
+    it('retains translation usage nested inside calls without arguments', () => {
+      writeJson('i18n/locales/en-US/app.json', { used: 'Used', unused: 'Unused' })
+      writeJson('i18n/locales/en-US/login.json', { unused: 'Unused' })
+      writeSource(
+        'src/empty-calls.ts',
+        `
+        import { useTranslation } from 'react-i18next'
+
+        export function label() {
+          const { t } = useTranslation()
+          useTranslation('login').i18n.cloneInstance()
+          return (() => t('used'))()
+        }
+        `,
+      )
+
+      const result = checkTranslationGraph(webRoot, modules)
+
+      expect(result.moduleNamespaces.get(path.join(webRoot, 'src/empty-calls.ts'))).toEqual(
+        new Set(['app', 'login']),
+      )
+      expect(result.unused).toEqual({ app: ['unused'], login: ['unused'] })
+      expect(result.evidence).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            kind: 'usage',
+            namespaces: ['login'],
+            message: 'Explicit namespace load.',
+          }),
+        ]),
+      )
+    })
+
     it('resolves const strings but keeps bound arrays and cyclic values unknown', () => {
       writeJson('i18n/locales/en-US/workflow.json', { unused: 'Unused' })
       writeSource(
