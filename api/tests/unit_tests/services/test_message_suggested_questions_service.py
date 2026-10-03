@@ -1,0 +1,1010 @@
+"""Shared service ownership, configuration selection, and session lifecycle."""
+
+import json
+from collections.abc import Iterator, Mapping, Sequence
+from dataclasses import dataclass, field
+from decimal import Decimal
+from typing import Literal
+from uuid import uuid4
+
+import httpx
+import pytest
+from flask import Flask, g
+from sqlalchemy import Connection, Engine, event, update
+from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
+
+import services.message_suggested_questions_generator as generator_module
+from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
+from core.file import remote_fetcher
+from core.memory.token_buffer_memory import PreparedHistory
+from core.model_context import get_credit_usage_metadata, use_credit_usage_metadata
+from core.model_manager import ModelInstance, ModelManager
+from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
+from core.plugin.impl.model_runtime_factory import create_plugin_model_manager
+from extensions.ext_database import db
+from graphon.file import FileTransferMethod, FileType
+from graphon.model_runtime.entities import AssistantPromptMessage, PromptMessage, PromptMessageTool
+from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelType
+from models import Account, App, AppMode, Conversation, Message
+from models.agent import (
+    Agent,
+    AgentConfigDraft,
+    AgentConfigDraftType,
+    AgentConfigSnapshot,
+    AgentConfigVersionKind,
+    AgentDebugConversation,
+    AgentScope,
+    AgentSource,
+    AgentWorkspaceBinding,
+)
+from models.agent_config_entities import AgentSoulConfig
+from models.enums import ConversationFromSource, CreatorUserRole, EndUserType
+from models.model import AppModelConfig, EndUser, MessageFile
+from models.workflow import Workflow, WorkflowType
+from repositories.message_suggested_questions_repository import SuggestedQuestionsRepository
+from services.app_definition_query_service import AppDefinitionUnavailableError
+from services.errors.conversation import ConversationNotExistsError
+from services.errors.message import MessageNotExistsError, SuggestedQuestionsAfterAnswerDisabledError
+from services.message_suggested_questions_generator import SuggestedQuestionsGenerator
+from services.message_suggested_questions_queries import SuggestedQuestionsQuery
+from services.message_suggested_questions_service import (
+    MessageSuggestedQuestionsService,
+    SuggestedQuestionsAccount,
+    SuggestedQuestionsActor,
+    SuggestedQuestionsActorNotFoundError,
+    SuggestedQuestionsEndUser,
+)
+from tests.unit_tests.core.model_fixtures import make_model_config, make_model_instance
+
+type _InvokeFrom = Literal["debugger", "explore", "web-app", "service-api"]
+
+
+@dataclass
+class _GenerationCalls:
+    read_sessions: list[Session]
+    prompts: list[str] = field(default_factory=list)
+    model_requests: list[tuple[str, str]] = field(default_factory=list)
+    invocation_parameters: list[Mapping[str, object]] = field(default_factory=list)
+    metadata: list[Mapping[str, object] | None] = field(default_factory=list)
+    traces: list[TraceTask] = field(default_factory=list)
+    model_sessions: list[Session] = field(default_factory=list)
+    io_sessions: list[tuple[str, bool]] = field(default_factory=list)
+    failure: Exception | None = None
+    token_failure: Exception | None = None
+    history_model_failure: bool = False
+    generation_model_failure: bool = False
+
+    def record_io(self, stage: str) -> None:
+        self.io_sessions.append(
+            (
+                stage,
+                all(
+                    not session.in_transaction() and not session.identity_map
+                    for session in self.read_sessions + self.model_sessions
+                ),
+            )
+        )
+
+
+@dataclass(frozen=True)
+class _Harness:
+    flask_app: Flask
+    target: App
+    account: Account
+    end_user: EndUser
+    conversation: Conversation
+    message: Message
+    factory: sessionmaker[Session]
+    queries: SuggestedQuestionsQuery
+    service: MessageSuggestedQuestionsService[PreparedHistory]
+    model_manager: ModelManager
+    model_instance: ModelInstance
+    calls: _GenerationCalls
+    scoped_sessions: list[Session]
+
+    def actor(self, invoke_from: _InvokeFrom) -> SuggestedQuestionsActor:
+        if invoke_from in {"explore", "debugger"}:
+            with self.factory.begin() as session:
+                for model, record_id in ((Message, self.message.id), (Conversation, self.conversation.id)):
+                    session.execute(
+                        update(model)
+                        .where(model.id == record_id)
+                        .values(
+                            from_source=ConversationFromSource.CONSOLE,
+                            from_account_id=self.account.id,
+                            from_end_user_id=None,
+                        )
+                    )
+            return SuggestedQuestionsAccount(account_id=self.account.id, invoke_from=invoke_from)
+        return SuggestedQuestionsEndUser(end_user_id=self.end_user.id, invoke_from=invoke_from)
+
+    def get(self, actor: SuggestedQuestionsActor) -> list[str]:
+        return self.service.get_suggested_questions(
+            app_id=self.target.id,
+            app_owner_tenant_id=self.target.tenant_id,
+            expected_app_mode=self.target.mode,
+            actor=actor,
+            message_id=self.message.id,
+        )
+
+    def set_mode(self, mode: AppMode) -> None:
+        with self.factory.begin() as session:
+            session.execute(update(App).where(App.id == self.target.id).values(mode=mode))
+            session.execute(update(Conversation).where(Conversation.id == self.conversation.id).values(mode=mode))
+        self.target.mode = mode
+
+    def assert_closed(self) -> None:
+        assert all(
+            not session.in_transaction() and not session.identity_map
+            for session in self.calls.read_sessions + self.scoped_sessions
+        )
+        assert all(closed for _stage, closed in self.calls.io_sessions), self.calls.io_sessions
+
+
+@pytest.fixture
+def harness(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_engine: Engine,
+    sqlite_session_factory: sessionmaker[Session],
+) -> Iterator[_Harness]:
+    target = App(
+        id=str(uuid4()), tenant_id=str(uuid4()), name="Shared", mode=AppMode.CHAT, enable_site=True, enable_api=True
+    )
+    account = Account(name="Debugger", email="debugger@example.com")
+    end_user = EndUser(
+        tenant_id=target.tenant_id, app_id=target.id, type=EndUserType.SERVICE_API, session_id=str(uuid4())
+    )
+    config = AppModelConfig(
+        app_id=target.id, suggested_questions_after_answer='{"enabled":true,"prompt":"Published questions"}'
+    )
+    with sqlite_session_factory.begin() as session:
+        session.add_all([target, account, end_user, config])
+        session.flush()
+        target.app_model_config_id = config.id
+        conversation = Conversation(
+            app_id=target.id,
+            app_model_config_id=config.id,
+            mode=AppMode.CHAT,
+            name="End-user conversation",
+            inputs={},
+            from_source=ConversationFromSource.API,
+            from_end_user_id=end_user.id,
+        )
+        session.add(conversation)
+        session.flush()
+        message = Message(
+            app_id=target.id,
+            conversation_id=conversation.id,
+            inputs={},
+            query="How does this work?",
+            message={},
+            message_unit_price=Decimal(0),
+            answer="Like this.",
+            answer_unit_price=Decimal(0),
+            currency="USD",
+            from_source=ConversationFromSource.API,
+            from_end_user_id=end_user.id,
+        )
+        session.add(message)
+
+    read_factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
+    read_sessions: list[Session] = []
+
+    @event.listens_for(read_factory, "after_begin")
+    def track_read(session: Session, _transaction: SessionTransaction, _connection: Connection) -> None:
+        read_sessions.append(session)
+
+    calls = _GenerationCalls(read_sessions)
+    model_config = make_model_config(provider="vendor", model="question-model", mode="chat")
+    model_instance = make_model_instance(provider="vendor", model="question-model")
+    model_manager = create_plugin_model_manager(tenant_id=target.tenant_id)
+    runtime = model_instance.model_type_instance.model_runtime
+
+    def resolve_model(*, tenant_id: str, model_type: ModelType) -> ModelInstance:
+        assert tenant_id == target.tenant_id
+        assert model_type == ModelType.LLM
+        assert calls.read_sessions
+        assert all(not session.in_transaction() and not session.identity_map for session in calls.read_sessions)
+        # Retain a real scoped read at the credential-resolution boundary so
+        # both stages must dispose their sessions before provider I/O.
+        session = db.session()
+        assert session.get(App, target.id) is not None
+        calls.model_sessions.append(session)
+        if calls.history_model_failure or (calls.generation_model_failure and len(calls.model_sessions) > 1):
+            raise RuntimeError("No model available")
+        return model_instance
+
+    def get_default_model(*, tenant_id: str, model_type: ModelType) -> ModelInstance:
+        calls.model_requests.append(("default", "default"))
+        return resolve_model(tenant_id=tenant_id, model_type=model_type)
+
+    def get_configured_model(*, tenant_id: str, model_type: ModelType, provider: str, model: str) -> ModelInstance:
+        calls.model_requests.append((provider, model))
+        return resolve_model(tenant_id=tenant_id, model_type=model_type)
+
+    def model_manager_for_tenant(*, tenant_id: str) -> ModelManager:
+        assert tenant_id == target.tenant_id
+        return model_manager
+
+    def count_tokens(
+        *,
+        provider: str,
+        model_type: ModelType,
+        model: str,
+        credentials: dict[str, object],
+        prompt_messages: Sequence[PromptMessage],
+        tools: Sequence[PromptMessageTool] | None,
+    ) -> int:
+        assert (provider, model_type, model, credentials, tools) == (
+            "vendor",
+            ModelType.LLM,
+            "question-model",
+            {},
+            None,
+        )
+        calls.record_io("tokens")
+        if calls.token_failure is not None:
+            raise calls.token_failure
+        return len(prompt_messages)
+
+    def get_model_schema(
+        *, provider: str, model_type: ModelType, model: str, credentials: dict[str, object]
+    ) -> AIModelEntity:
+        assert (provider, model_type, model, credentials) == ("vendor", ModelType.LLM, "question-model", {})
+        calls.record_io("schema")
+        return model_config.model_schema
+
+    def invoke_llm(
+        *,
+        provider: str,
+        model: str,
+        credentials: dict[str, object],
+        prompt_messages: Sequence[PromptMessage],
+        model_parameters: Mapping[str, object],
+        tools: list[PromptMessageTool] | None,
+        stop: Sequence[str] | None,
+        stream: bool,
+        request_metadata: Mapping[str, object] | None,
+    ) -> LLMResult:
+        assert (provider, model, credentials, tools) == ("vendor", "question-model", {}, None)
+        calls.record_io("invoke")
+        assert stream is False
+        assert stop is None
+        calls.invocation_parameters.append(model_parameters)
+        calls.prompts.append(prompt_messages[0].get_text_content())
+        calls.metadata.append(request_metadata)
+        if calls.failure is not None:
+            raise calls.failure
+        return LLMResult(
+            model="question-model",
+            message=AssistantPromptMessage(content='["What next?"]'),
+            usage=LLMUsage.empty_usage(),
+        )
+
+    def record_trace(manager: TraceQueueManager, task: TraceTask) -> None:
+        assert manager.app_id == target.id
+        calls.traces.append(task)
+
+    monkeypatch.setattr(generator_module.ModelManager, "for_tenant", model_manager_for_tenant)
+    monkeypatch.setattr(model_manager, "get_default_model_instance", get_default_model)
+    monkeypatch.setattr(model_manager, "get_model_instance", get_configured_model)
+    monkeypatch.setattr(runtime, "get_llm_num_tokens", count_tokens)
+    monkeypatch.setattr(runtime, "get_model_schema", get_model_schema)
+    monkeypatch.setattr(runtime, "invoke_llm", invoke_llm)
+    # Keep trace configuration lookup real; replace only enqueue and the timer.
+    monkeypatch.setattr(TraceQueueManager, "add_trace_task", record_trace)
+    monkeypatch.setattr(TraceQueueManager, "start_timer", lambda _self: None)
+    flask_app = Flask(__name__)
+    flask_app.config.update(TESTING=True, SQLALCHEMY_DATABASE_URI=str(sqlite_engine.url))
+    db.init_app(flask_app)
+    scoped_sessions: list[Session] = []
+
+    def track_scoped(session: Session, _transaction: SessionTransaction, _connection: Connection) -> None:
+        scoped_sessions.append(session)
+
+    event.listen(db.session.session_factory, "after_begin", track_scoped)
+    queries = SuggestedQuestionsQuery(session_factory=read_factory, repository_factory=SuggestedQuestionsRepository)
+    yield _Harness(
+        flask_app,
+        target,
+        account,
+        end_user,
+        conversation,
+        message,
+        sqlite_session_factory,
+        queries,
+        MessageSuggestedQuestionsService(queries=queries, generator=SuggestedQuestionsGenerator()),
+        model_manager,
+        model_instance,
+        calls,
+        scoped_sessions,
+    )
+    event.remove(db.session.session_factory, "after_begin", track_scoped)
+    with flask_app.app_context():
+        db.session.remove()
+        db.engine.dispose()
+
+
+@pytest.mark.parametrize("change", ["app_id", "tenant", "mode", "account"])
+def test_service_rejects_stale_reference_before_model_queries(
+    harness: _Harness, change: Literal["app_id", "tenant", "mode", "account"]
+) -> None:
+    account_id = str(uuid4()) if change == "account" else harness.account.id
+    app_id = str(uuid4()) if change == "app_id" else harness.target.id
+    error_type = SuggestedQuestionsActorNotFoundError if change == "account" else AppDefinitionUnavailableError
+    with pytest.raises(error_type, match=account_id if change == "account" else app_id):
+        harness.service.get_suggested_questions(
+            app_id=app_id,
+            app_owner_tenant_id=str(uuid4()) if change == "tenant" else harness.target.tenant_id,
+            expected_app_mode=AppMode.ADVANCED_CHAT if change == "mode" else harness.target.mode,
+            actor=SuggestedQuestionsAccount(account_id=account_id, invoke_from="explore"),
+            message_id=harness.message.id,
+        )
+    assert len(harness.calls.read_sessions) == 1
+    assert not harness.scoped_sessions
+    harness.assert_closed()
+
+
+@pytest.mark.parametrize("change", ["missing", "tenant", "app"])
+def test_end_user_reload_requires_the_admitted_app_owner(
+    harness: _Harness, change: Literal["missing", "tenant", "app"]
+) -> None:
+    end_user_id = str(uuid4()) if change == "missing" else harness.end_user.id
+    if change != "missing":
+        values = {"tenant_id" if change == "tenant" else "app_id": str(uuid4())}
+        with harness.factory.begin() as session:
+            session.execute(update(EndUser).where(EndUser.id == end_user_id).values(values))
+    with pytest.raises(SuggestedQuestionsActorNotFoundError, match=end_user_id):
+        harness.get(SuggestedQuestionsEndUser(end_user_id=end_user_id, invoke_from="service-api"))
+    assert not harness.scoped_sessions
+    harness.assert_closed()
+
+
+@pytest.mark.parametrize("invoke_from", ["debugger", "explore", "web-app", "service-api"])
+@pytest.mark.parametrize("provider_failure", [False, True])
+def test_service_preserves_history_configuration_credit_context_and_caller_session(
+    harness: _Harness, invoke_from: _InvokeFrom, provider_failure: bool
+) -> None:
+    if provider_failure:
+        harness.calls.failure = RuntimeError("Provider unavailable")
+    actor = harness.actor(invoke_from)
+    model_config = {"provider": "vendor", "name": "question-model"}
+    with harness.factory.begin() as session:
+        session.execute(
+            update(AppModelConfig)
+            .where(AppModelConfig.id == harness.target.app_model_config_id)
+            .values(
+                suggested_questions_after_answer=json.dumps(
+                    {"enabled": True, "prompt": "Published questions", "model": model_config}
+                )
+            )
+        )
+    with harness.flask_app.app_context():
+        caller_session = db.session()
+        caller_app = caller_session.get(App, harness.target.id)
+        assert caller_app is not None
+        caller_app.name = "Pending caller edit"
+        harness.scoped_sessions.clear()
+        original_metadata = get_credit_usage_metadata()
+        with use_credit_usage_metadata({"request_id": "suggestions-request"}):
+            inherited_metadata = get_credit_usage_metadata()
+            assert harness.get(actor) == ([] if provider_failure else ["What next?"])
+            assert get_credit_usage_metadata() == inherited_metadata
+            assert harness.calls.metadata == [
+                {
+                    **(inherited_metadata or {}),
+                    "app_type": CreditUsageAppType.CHATBOT,
+                    "created_by": CreditUsageCreatedBy.SUGGESTED_QUESTIONS,
+                }
+            ]
+        assert get_credit_usage_metadata() == original_metadata
+        assert db.session() is caller_session
+        assert caller_session.in_transaction()
+        assert caller_app in caller_session.dirty
+        assert caller_app.name == "Pending caller edit"
+        assert len(harness.calls.model_sessions) == 2
+        assert harness.calls.model_sessions[0] is not harness.calls.model_sessions[1]
+        assert all(session is not caller_session for session in harness.scoped_sessions)
+        harness.assert_closed()
+    assert len(harness.calls.prompts) == 1
+    assert harness.calls.prompts[0].startswith(
+        "Human: How does this work?\nAssistant: Like this.\nPublished questions\n"
+    )
+    assert harness.calls.model_requests == [("default", "default"), ("vendor", "question-model")]
+    assert [stage for stage, _closed in harness.calls.io_sessions] == ["tokens", "invoke"]
+    assert harness.calls.invocation_parameters == [{}]
+    assert len(harness.calls.traces) == 1
+
+
+@pytest.mark.parametrize("invoke_from", ["explore", "service-api"])
+@pytest.mark.parametrize("entity", ["message", "conversation"])
+@pytest.mark.parametrize("change", ["id", "app_id", "from_account_id", "from_end_user_id", "from_source"])
+def test_message_and_conversation_ownership_are_enforced(
+    harness: _Harness,
+    invoke_from: Literal["explore", "service-api"],
+    entity: Literal["message", "conversation"],
+    change: Literal["id", "app_id", "from_account_id", "from_end_user_id", "from_source"],
+) -> None:
+    actor = harness.actor(invoke_from)
+    model = Message if entity == "message" else Conversation
+    record_id = harness.message.id if entity == "message" else harness.conversation.id
+    if change == "from_source":
+        value = ConversationFromSource.API if invoke_from == "explore" else ConversationFromSource.CONSOLE
+    else:
+        value = str(uuid4())
+    with harness.factory.begin() as session:
+        session.execute(update(model).where(model.id == record_id).values({change: value}))
+    error_type = MessageNotExistsError if entity == "message" else ConversationNotExistsError
+    with harness.flask_app.app_context(), pytest.raises(error_type):
+        harness.get(actor)
+    assert not harness.calls.prompts
+    harness.assert_closed()
+
+
+@pytest.mark.parametrize("invoke_from", ["explore", "web-app"])
+def test_actor_cannot_read_a_deleted_conversation(
+    harness: _Harness, invoke_from: Literal["explore", "web-app"]
+) -> None:
+    actor = harness.actor(invoke_from)
+    with harness.factory.begin() as session:
+        session.execute(update(Conversation).where(Conversation.id == harness.conversation.id).values(is_deleted=True))
+    with harness.flask_app.app_context(), pytest.raises(ConversationNotExistsError):
+        harness.get(actor)
+    assert not harness.calls.prompts
+    harness.assert_closed()
+
+
+@pytest.mark.parametrize("invoke_from", ["explore", "service-api"])
+@pytest.mark.parametrize(
+    "change", ["tenant", "mode", "app_id", "from_account_id", "from_end_user_id", "from_source", "deleted"]
+)
+def test_history_revalidates_app_and_conversation_after_preparing_context(
+    harness: _Harness,
+    invoke_from: Literal["explore", "service-api"],
+    change: Literal["tenant", "mode", "app_id", "from_account_id", "from_end_user_id", "from_source", "deleted"],
+) -> None:
+    context = harness.queries.prepare(
+        app_id=harness.target.id,
+        app_owner_tenant_id=harness.target.tenant_id,
+        expected_app_mode=harness.target.mode,
+        actor=harness.actor(invoke_from),
+        message_id=harness.message.id,
+    )
+    assert context is not None
+    harness.assert_closed()
+
+    with harness.factory.begin() as session:
+        if change in {"tenant", "mode"}:
+            values = {"tenant_id": str(uuid4())} if change == "tenant" else {"mode": AppMode.ADVANCED_CHAT}
+            session.execute(update(App).where(App.id == harness.target.id).values(values))
+        else:
+            conversation_values: dict[str, object]
+            if change == "deleted":
+                conversation_values = {"is_deleted": True}
+            elif change == "from_source":
+                conversation_values = {
+                    "from_source": ConversationFromSource.API
+                    if invoke_from == "explore"
+                    else ConversationFromSource.CONSOLE
+                }
+            else:
+                conversation_values = {change: str(uuid4())}
+            session.execute(
+                update(Conversation).where(Conversation.id == harness.conversation.id).values(conversation_values)
+            )
+
+    error_type = AppDefinitionUnavailableError if change in {"tenant", "mode"} else ConversationNotExistsError
+    with pytest.raises(error_type):
+        harness.queries.load_history(context)
+    assert not harness.calls.model_sessions
+    assert not harness.calls.prompts
+    harness.assert_closed()
+
+
+@pytest.mark.parametrize("case", ["disabled", "missing_workflow", "history_provider_failure"])
+def test_account_preserves_disabled_feature_and_missing_workflow_or_model_behavior(
+    harness: _Harness, case: Literal["disabled", "missing_workflow", "history_provider_failure"]
+) -> None:
+    actor = harness.actor("explore")
+    with harness.factory.begin() as session:
+        if case == "disabled":
+            session.execute(
+                update(AppModelConfig)
+                .where(AppModelConfig.id == harness.target.app_model_config_id)
+                .values(suggested_questions_after_answer='{"enabled":false}')
+            )
+        elif case == "missing_workflow":
+            session.execute(update(App).where(App.id == harness.target.id).values(mode=AppMode.ADVANCED_CHAT))
+            # Admit the new mode so this covers missing workflow, not a stale reference.
+            harness.target.mode = AppMode.ADVANCED_CHAT
+        else:
+            harness.calls.history_model_failure = True
+    with harness.flask_app.app_context():
+        if case == "disabled":
+            with pytest.raises(SuggestedQuestionsAfterAnswerDisabledError):
+                harness.get(actor)
+        else:
+            assert harness.get(actor) == []
+    assert len(harness.scoped_sessions) == (1 if case == "history_provider_failure" else 0)
+    # Only configuration was read. A missing history model must not begin the
+    # separate history query, render attachments, or produce a trace.
+    assert len(harness.calls.read_sessions) == 1
+    assert harness.calls.model_requests == ([("default", "default")] if case == "history_provider_failure" else [])
+    assert not harness.calls.io_sessions
+    assert not harness.calls.prompts
+    assert not harness.calls.traces
+    harness.assert_closed()
+
+
+@pytest.mark.parametrize("invoke_from", ["debugger", "explore"])
+def test_advanced_chat_debugger_uses_draft_while_explore_uses_published_workflow(
+    harness: _Harness, invoke_from: Literal["debugger", "explore"]
+) -> None:
+    actor = harness.actor(invoke_from)
+    with harness.factory.begin() as session:
+        for version, prompt in ((Workflow.VERSION_DRAFT, "Draft questions"), ("published", "Published questions")):
+            workflow = Workflow(
+                tenant_id=harness.target.tenant_id,
+                app_id=harness.target.id,
+                type=WorkflowType.CHAT,
+                version=version,
+                graph='{"nodes":[],"edges":[]}',
+                features=json.dumps({"suggested_questions_after_answer": {"enabled": True, "prompt": prompt}}),
+                created_by=harness.account.id,
+            )
+            session.add(workflow)
+            session.flush()
+            if version != Workflow.VERSION_DRAFT:
+                session.execute(update(App).where(App.id == harness.target.id).values({App.workflow_id: workflow.id}))
+        session.execute(update(App).where(App.id == harness.target.id).values(mode=AppMode.ADVANCED_CHAT))
+        session.execute(
+            update(Conversation).where(Conversation.id == harness.conversation.id).values(mode=AppMode.ADVANCED_CHAT)
+        )
+    with harness.flask_app.app_context():
+        assert harness.service.get_suggested_questions(
+            app_id=harness.target.id,
+            app_owner_tenant_id=harness.target.tenant_id,
+            expected_app_mode=AppMode.ADVANCED_CHAT,
+            actor=actor,
+            message_id=harness.message.id,
+        ) == ["What next?"]
+    expected_prompt = "Draft questions" if invoke_from == "debugger" else "Published questions"
+    assert len(harness.calls.prompts) == 1
+    assert expected_prompt in harness.calls.prompts[0]
+    assert harness.calls.model_requests == [("default", "default"), ("default", "default")]
+    assert [stage for stage, _closed in harness.calls.io_sessions] == ["tokens", "schema", "invoke"]
+    harness.assert_closed()
+
+
+@pytest.mark.parametrize("failure_stage", ["tokens", "generation_model"])
+def test_service_releases_sessions_when_history_or_second_model_stage_fails(
+    harness: _Harness, failure_stage: Literal["tokens", "generation_model"]
+) -> None:
+    actor = harness.actor("explore")
+    if failure_stage == "tokens":
+        harness.calls.token_failure = RuntimeError("Token counter unavailable")
+    else:
+        harness.calls.generation_model_failure = True
+    with harness.flask_app.app_context():
+        if failure_stage == "tokens":
+            with pytest.raises(RuntimeError, match="Token counter unavailable"):
+                harness.get(actor)
+        else:
+            assert harness.get(actor) == []
+    assert len(harness.calls.model_sessions) == (1 if failure_stage == "tokens" else 2)
+    assert not harness.calls.prompts
+    assert len(harness.calls.traces) == (0 if failure_stage == "tokens" else 1)
+    harness.assert_closed()
+
+
+@pytest.mark.parametrize("remote_failure", [False, True])
+def test_remote_attachment_is_loaded_after_history_and_model_sessions_close(
+    harness: _Harness, monkeypatch: pytest.MonkeyPatch, remote_failure: bool
+) -> None:
+    actor = harness.actor("explore")
+    with harness.factory.begin() as session:
+        session.execute(
+            update(AppModelConfig)
+            .where(AppModelConfig.id == harness.target.app_model_config_id)
+            .values(
+                file_upload=json.dumps(
+                    {"enabled": True, "allowed_file_types": ["image"], "allowed_file_upload_methods": ["remote_url"]}
+                )
+            )
+        )
+        session.add(
+            MessageFile(
+                message_id=harness.message.id,
+                type=FileType.IMAGE,
+                transfer_method=FileTransferMethod.REMOTE_URL,
+                url="https://example.com/history.png",
+                created_by_role=CreatorUserRole.ACCOUNT,
+                created_by=harness.account.id,
+            )
+        )
+    requests: list[str] = []
+
+    def fetch(method: str, url: str, **_kwargs: object) -> httpx.Response:
+        harness.calls.record_io("attachment")
+        requests.append(method)
+        assert url == "https://example.com/history.png"
+        if remote_failure:
+            raise RuntimeError("Attachment unavailable")
+        return httpx.Response(
+            200,
+            headers={"content-type": "image/png", "content-length": "3"},
+            content=b"png",
+            request=httpx.Request(method, url),
+        )
+
+    monkeypatch.setattr(remote_fetcher, "make_request", fetch)
+    with harness.flask_app.app_context():
+        if remote_failure:
+            with pytest.raises(RuntimeError, match="Attachment unavailable"):
+                harness.get(actor)
+        else:
+            assert harness.get(actor) == ["What next?"]
+    assert requests
+    assert requests[0] == "HEAD"
+    if remote_failure:
+        assert not harness.calls.prompts
+        assert not harness.calls.traces
+    else:
+        assert harness.calls.prompts[0].startswith("Human: [image]\nHow does this work?\nAssistant: Like this.")
+    harness.assert_closed()
+
+
+@pytest.mark.parametrize("failure_stage", [None, "history_query", "provider_sql", "trace"])
+def test_service_keeps_its_context_state_while_releasing_sessions_and_preserving_the_caller(
+    harness: _Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    failure_stage: Literal["history_query", "provider_sql", "trace"] | None,
+) -> None:
+    actor = harness.actor("explore")
+    generation_steps: list[str] = []
+    invocation_sessions: list[Session] = []
+    trace_sessions: list[Session] = []
+    resolve_model = harness.model_manager.get_default_model_instance
+    count_tokens = harness.model_instance.get_llm_num_tokens
+    invoke_llm = harness.model_instance.invoke_llm
+
+    def resolve(*, tenant_id: str, model_type: ModelType) -> ModelInstance:
+        assert g.get("caller_marker") is None
+        if not generation_steps:
+            g.suggested_question_steps = generation_steps
+        assert g.get("suggested_question_steps") is generation_steps
+        generation_steps.append("model")
+        model = resolve_model(tenant_id=tenant_id, model_type=model_type)
+        if failure_stage == "history_query":
+            # Change persisted ownership after preparation so the real history
+            # query fails while the generator's isolated context is active.
+            with harness.factory.begin() as session:
+                session.execute(
+                    update(Conversation).where(Conversation.id == harness.conversation.id).values(is_deleted=True)
+                )
+        return model
+
+    def tokens(prompt_messages: Sequence[PromptMessage]) -> int:
+        assert g.get("suggested_question_steps") is generation_steps
+        generation_steps.append("tokens")
+        return count_tokens(prompt_messages)
+
+    def invoke(
+        *, prompt_messages: list[PromptMessage], model_parameters: Mapping[str, object], stop: list[str], stream: bool
+    ) -> LLMResult:
+        assert g.get("suggested_question_steps") is generation_steps
+        generation_steps.append("invoke")
+        if failure_stage == "provider_sql":
+            # A real failed flush poisons this scoped session. The generator
+            # catches the error, so tracing must receive a fresh session.
+            session = db.session()
+            invocation_sessions.append(session)
+            session.add(
+                App(id=harness.target.id, tenant_id=harness.target.tenant_id, name="Duplicate", mode=AppMode.CHAT)
+            )
+            try:
+                session.flush()
+            finally:
+                assert not session.is_active
+        assert stream is False
+        return invoke_llm(
+            prompt_messages=prompt_messages, model_parameters=dict(model_parameters), stop=stop, stream=False
+        )
+
+    def trace(_manager: TraceQueueManager, task: TraceTask) -> None:
+        assert g.get("suggested_question_steps") is generation_steps
+        generation_steps.append("trace")
+        session = db.session()
+        trace_sessions.append(session)
+        app = session.get(App, harness.target.id)
+        assert app is not None
+        assert app.name == "Shared"
+        if failure_stage == "trace":
+            raise RuntimeError("Trace backend unavailable")
+        harness.calls.traces.append(task)
+
+    monkeypatch.setattr(harness.model_manager, "get_default_model_instance", resolve)
+    monkeypatch.setattr(harness.model_instance, "get_llm_num_tokens", tokens)
+    monkeypatch.setattr(harness.model_instance, "invoke_llm", invoke)
+    monkeypatch.setattr(TraceQueueManager, "add_trace_task", trace)
+    with harness.flask_app.app_context():
+        caller_marker = object()
+        g.caller_marker = caller_marker
+        caller_session = db.session()
+        caller_app = caller_session.get(App, harness.target.id)
+        assert caller_app is not None
+        caller_app.name = "Pending caller edit"
+        harness.scoped_sessions.clear()
+        if failure_stage == "history_query":
+            with pytest.raises(ConversationNotExistsError):
+                harness.get(actor)
+        elif failure_stage == "trace":
+            with pytest.raises(RuntimeError, match="Trace backend unavailable"):
+                harness.get(actor)
+        else:
+            assert harness.get(actor) == ([] if failure_stage == "provider_sql" else ["What next?"])
+        assert g.caller_marker is caller_marker
+        assert g.get("suggested_question_steps") is None
+        assert db.session() is caller_session
+        assert caller_session.in_transaction()
+        assert caller_app in caller_session.dirty
+        assert caller_app.name == "Pending caller edit"
+        assert all(session is not caller_session for session in harness.scoped_sessions)
+        harness.assert_closed()
+
+    if failure_stage == "history_query":
+        assert generation_steps == ["model"]
+        assert len(harness.calls.read_sessions) == 2
+        assert not trace_sessions
+        assert not harness.calls.traces
+    else:
+        assert generation_steps == ["model", "tokens", "model", "invoke", "trace"]
+        assert len(trace_sessions) == 1
+        assert not trace_sessions[0].in_transaction()
+    if failure_stage == "provider_sql":
+        assert len(invocation_sessions) == 1
+        assert trace_sessions[0] is not invocation_sessions[0]
+    with harness.factory() as session:
+        persisted_app = session.get(App, harness.target.id)
+        assert persisted_app is not None
+        assert persisted_app.name == "Shared"
+
+
+def _agent_soul(prompt: str, *, enabled: bool = True, model: dict[str, object] | None = None) -> AgentSoulConfig:
+    feature: dict[str, object] = {"enabled": enabled, "prompt": prompt}
+    if model is not None:
+        feature["model"] = model
+    return AgentSoulConfig.model_validate({"app_features": {"suggested_questions_after_answer": feature}})
+
+
+def _published_agent(harness: _Harness, *, enabled: bool = True) -> Agent:
+    agent = Agent(
+        tenant_id=harness.target.tenant_id,
+        app_id=harness.target.id,
+        name="Published agent",
+        scope=AgentScope.ROSTER,
+        source=AgentSource.AGENT_APP,
+    )
+    with harness.factory.begin() as session:
+        session.add(agent)
+        session.flush()
+        snapshot = AgentConfigSnapshot(
+            tenant_id=agent.tenant_id,
+            agent_id=agent.id,
+            version=1,
+            config_snapshot=_agent_soul("Current agent questions", enabled=enabled),
+        )
+        session.add(snapshot)
+        session.flush()
+        agent.active_config_snapshot_id = snapshot.id
+    return agent
+
+
+@pytest.mark.parametrize("draft_type", [AgentConfigDraftType.DRAFT, AgentConfigDraftType.DEBUG_BUILD])
+def test_agent_debugger_uses_matching_draft_with_custom_model(
+    harness: _Harness, draft_type: AgentConfigDraftType
+) -> None:
+    harness.set_mode(AppMode.AGENT)
+    actor = harness.actor("debugger")
+    agent = _published_agent(harness)
+    model: dict[str, object] = {"provider": "vendor", "name": "draft-model", "completion_params": {"temperature": 0.1}}
+    with harness.factory.begin() as session:
+        session.add_all(
+            [
+                AgentConfigDraft(
+                    tenant_id=harness.target.tenant_id,
+                    agent_id=agent.id,
+                    draft_type=draft_type,
+                    account_id=harness.account.id if draft_type == AgentConfigDraftType.DEBUG_BUILD else None,
+                    draft_owner_key=harness.account.id if draft_type == AgentConfigDraftType.DEBUG_BUILD else "",
+                    config_snapshot=_agent_soul("Matching draft questions", model=model),
+                ),
+                AgentDebugConversation(
+                    tenant_id=harness.target.tenant_id,
+                    agent_id=agent.id,
+                    app_id=harness.target.id,
+                    account_id=harness.account.id,
+                    draft_type=draft_type,
+                    conversation_id=harness.conversation.id,
+                ),
+            ]
+        )
+        session.execute(
+            update(AppModelConfig)
+            .where(AppModelConfig.id == harness.target.app_model_config_id)
+            .values(suggested_questions_after_answer='{"enabled":false}')
+        )
+    with harness.flask_app.app_context():
+        assert harness.get(actor) == ["What next?"]
+    assert "Matching draft questions" in harness.calls.prompts[0]
+    assert "Current agent questions" not in harness.calls.prompts[0]
+    assert harness.calls.model_requests == [("default", "default"), ("vendor", "draft-model")]
+    assert harness.calls.invocation_parameters == [{"temperature": 0.1}]
+    harness.assert_closed()
+
+
+@pytest.mark.parametrize("version_kind", [AgentConfigVersionKind.SNAPSHOT, AgentConfigVersionKind.DRAFT])
+def test_agent_conversation_uses_bound_config_before_current_published_config(
+    harness: _Harness, version_kind: AgentConfigVersionKind
+) -> None:
+    harness.set_mode(AppMode.AGENT)
+    agent = _published_agent(harness)
+    with harness.factory.begin() as session:
+        config: AgentConfigSnapshot | AgentConfigDraft
+        if version_kind == AgentConfigVersionKind.SNAPSHOT:
+            config = AgentConfigSnapshot(
+                tenant_id=harness.target.tenant_id,
+                agent_id=agent.id,
+                version=2,
+                config_snapshot=_agent_soul("Bound agent questions"),
+            )
+        else:
+            config = AgentConfigDraft(
+                tenant_id=harness.target.tenant_id,
+                agent_id=agent.id,
+                draft_type=AgentConfigDraftType.DRAFT,
+                config_snapshot=_agent_soul("Bound agent questions"),
+            )
+        session.add(config)
+        session.flush()
+        binding = AgentWorkspaceBinding(
+            tenant_id=harness.target.tenant_id,
+            app_id=harness.target.id,
+            workspace_id=str(uuid4()),
+            agent_id=agent.id,
+            agent_config_version_id=config.id,
+            agent_config_version_kind=version_kind,
+            backend_binding_ref="bound-agent",
+        )
+        session.add(binding)
+        session.flush()
+        session.execute(
+            update(Conversation)
+            .where(Conversation.id == harness.conversation.id)
+            .values(agent_workspace_binding_id=binding.id)
+        )
+    with harness.flask_app.app_context():
+        assert harness.get(harness.actor("service-api")) == ["What next?"]
+    assert "Bound agent questions" in harness.calls.prompts[0]
+    assert "Current agent questions" not in harness.calls.prompts[0]
+    harness.assert_closed()
+
+
+@pytest.mark.parametrize("case", ["published", "legacy", "disabled", "history_model_failure"])
+def test_agent_published_config_and_legacy_fallback(
+    harness: _Harness, case: Literal["published", "legacy", "disabled", "history_model_failure"]
+) -> None:
+    harness.set_mode(AppMode.AGENT)
+    if case != "legacy":
+        _published_agent(harness, enabled=case != "disabled")
+    harness.calls.history_model_failure = case == "history_model_failure"
+    with harness.flask_app.app_context():
+        if case == "disabled":
+            with pytest.raises(SuggestedQuestionsAfterAnswerDisabledError):
+                harness.get(harness.actor("service-api"))
+        else:
+            assert harness.get(harness.actor("service-api")) == (
+                [] if case == "history_model_failure" else ["What next?"]
+            )
+    if case in {"disabled", "history_model_failure"}:
+        assert not harness.calls.prompts
+        assert not harness.calls.traces
+    else:
+        expected_prompt = "Published questions" if case == "legacy" else "Current agent questions"
+        assert expected_prompt in harness.calls.prompts[0]
+    harness.assert_closed()
+
+
+@pytest.mark.parametrize("use_override", [False, True])
+def test_chat_uses_conversation_config_and_custom_completion_parameters(harness: _Harness, use_override: bool) -> None:
+    feature = {
+        "enabled": True,
+        "prompt": "Conversation questions",
+        "model": {"provider": "vendor", "name": "conversation-model", "completion_params": {"temperature": 0.2}},
+    }
+    with harness.factory.begin() as session:
+        if use_override:
+            override = {
+                "model": {"provider": "vendor", "name": "chat-model", "mode": "chat"},
+                "suggested_questions_after_answer": feature,
+            }
+            session.execute(
+                update(Conversation)
+                .where(Conversation.id == harness.conversation.id)
+                .values({Conversation.override_model_configs: json.dumps(override)})
+            )
+        else:
+            session.execute(
+                update(AppModelConfig)
+                .where(AppModelConfig.id == harness.target.app_model_config_id)
+                .values(suggested_questions_after_answer=json.dumps(feature))
+            )
+        current_config = AppModelConfig(app_id=harness.target.id, suggested_questions_after_answer='{"enabled":false}')
+        session.add(current_config)
+        session.flush()
+        session.execute(
+            update(App).where(App.id == harness.target.id).values({App.app_model_config_id: current_config.id})
+        )
+    with harness.flask_app.app_context():
+        assert harness.get(harness.actor("web-app")) == ["What next?"]
+    assert "Conversation questions" in harness.calls.prompts[0]
+    assert harness.calls.model_requests == [("default", "default"), ("vendor", "conversation-model")]
+    assert harness.calls.invocation_parameters == [{"temperature": 0.2}]
+    harness.assert_closed()
+
+
+@pytest.mark.parametrize(
+    "file_upload",
+    [
+        None,
+        {"image": None},
+        {"image": {"enabled": False}},
+        {"image": {"enabled": True, "number_limits": 3, "transfer_methods": ["remote_url"]}},
+    ],
+    ids=["null-upload", "null-image", "disabled-image", "legacy-image"],
+)
+def test_workflow_compatibility_normalization_does_not_dirty_or_write_rows(
+    harness: _Harness, file_upload: dict[str, object] | None
+) -> None:
+    harness.set_mode(AppMode.ADVANCED_CHAT)
+    actor = harness.actor("explore")
+    features = json.dumps(
+        {
+            "suggested_questions_after_answer": {"enabled": True, "prompt": "Legacy workflow questions"},
+            "file_upload": file_upload,
+        }
+    )
+    with harness.factory.begin() as session:
+        workflow = Workflow(
+            tenant_id=harness.target.tenant_id,
+            app_id=harness.target.id,
+            type=WorkflowType.CHAT,
+            version="published",
+            graph='{"nodes":[],"edges":[]}',
+            features=features,
+            created_by=harness.account.id,
+        )
+        session.add(workflow)
+        session.flush()
+        session.execute(update(App).where(App.id == harness.target.id).values({App.workflow_id: workflow.id}))
+
+    dirty_workflows: list[str] = []
+
+    def record_changes(workflow: Workflow, _value: object, _old_value: object, _initiator: object) -> None:
+        dirty_workflows.append(workflow.id)
+
+    # Even a rolled-back assignment would leave a supposedly read-only query dirty.
+    event.listen(Workflow._features, "set", record_changes)
+    try:
+        with harness.flask_app.app_context():
+            assert harness.get(actor) == ["What next?"]
+    finally:
+        event.remove(Workflow._features, "set", record_changes)
+    assert not dirty_workflows
+    with harness.factory() as session:
+        persisted = session.get(Workflow, workflow.id)
+        assert persisted is not None
+        assert persisted.serialized_features == features
+    assert "Legacy workflow questions" in harness.calls.prompts[0]
+    harness.assert_closed()

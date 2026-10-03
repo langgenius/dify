@@ -17,8 +17,9 @@ import controllers.console.explore.trial as trial_module
 import controllers.console.explore.trial_app_admission as admission_module
 import controllers.console.wraps as console_wraps
 import libs.login as login_module
-import services.message_service as message_module
+import services.message_suggested_questions_generator as generator_module
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from core.memory.token_buffer_memory import PreparedHistory
 from core.model_context import get_credit_usage_metadata
 from core.model_manager import ModelInstance
 from core.ops.ops_trace_manager import TraceTask
@@ -34,10 +35,14 @@ from models import Account, AccountTrialAppRecord, App, AppMode, Conversation, M
 from models.account import AccountStatus
 from models.enums import ConversationFromSource
 from models.model import AppModelConfig
+from repositories.message_suggested_questions_repository import SuggestedQuestionsRepository
 from repositories.trial_app_repository import TrialAppRepository
+from services.agent.errors import AgentVersionNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
-from services.message_suggested_questions_adapters import MessageSuggestedQuestionsRuntime
+from services.message_suggested_questions_generator import SuggestedQuestionsGenerator
+from services.message_suggested_questions_queries import SuggestedQuestionsQuery
 from services.message_suggested_questions_service import (
+    MessageSuggestedQuestionsService,
     SuggestedQuestionsAccount,
     SuggestedQuestionsActor,
     SuggestedQuestionsActorNotFoundError,
@@ -133,7 +138,7 @@ class _TrialAppServices:
 class _ApplicationServices:
     trial_apps: _TrialAppServices
     recommended_app_queries: _Features
-    message_suggested_questions: MessageSuggestedQuestionsRuntime
+    message_suggested_questions: MessageSuggestedQuestionsService[PreparedHistory]
 
 
 @dataclass(frozen=True)
@@ -227,12 +232,15 @@ def harness(
         read_sessions.append(session)
 
     provider = _Provider(read_sessions, target.id)
+    queries = SuggestedQuestionsQuery(session_factory=read_factory, repository_factory=SuggestedQuestionsRepository)
     services = _ApplicationServices(
         trial_apps=_TrialAppServices(
             access=TrialAppAccessService(apps=TrialAppRepository(session_factory=read_factory))
         ),
         recommended_app_queries=features,
-        message_suggested_questions=MessageSuggestedQuestionsRuntime(session_factory=read_factory),
+        message_suggested_questions=MessageSuggestedQuestionsService(
+            queries=queries, generator=SuggestedQuestionsGenerator()
+        ),
     )
 
     def setup_completed() -> bool:
@@ -257,8 +265,8 @@ def harness(
         assert app_id == target.id
         return provider
 
-    monkeypatch.setattr(message_module.ModelManager, "for_tenant", model_manager)
-    monkeypatch.setattr(message_module, "TraceQueueManager", trace_manager)
+    monkeypatch.setattr(generator_module.ModelManager, "for_tenant", model_manager)
+    monkeypatch.setattr(generator_module, "TraceQueueManager", trace_manager)
 
     app = Flask(__name__)
     app.config.update(TESTING=True, RESTX_ERROR_404_HELP=False, SQLALCHEMY_DATABASE_URI=str(sqlite_engine.url))
@@ -529,6 +537,7 @@ def test_advanced_chat_without_published_workflow_keeps_empty_success(harness: _
     [
         (AppDefinitionUnavailableError("App changed after admission"), 400, "app_unavailable", None),
         (SuggestedQuestionsActorNotFoundError("Account disappeared"), 401, "unauthorized", "Account no longer exists."),
+        (AgentVersionNotFoundError(), 404, "agent_version_not_found_error", "Agent config version not found."),
     ],
 )
 def test_reload_errors_have_explicit_http_mapping(
@@ -540,7 +549,7 @@ def test_reload_errors_have_explicit_http_mapping(
     message: str | None,
 ) -> None:
     def reject_reload(
-        _self: MessageSuggestedQuestionsRuntime,
+        _self: MessageSuggestedQuestionsService[PreparedHistory],
         *,
         app_id: str,
         app_owner_tenant_id: str,
@@ -557,7 +566,7 @@ def test_reload_errors_have_explicit_http_mapping(
         assert actor == SuggestedQuestionsAccount(account_id=harness.account.id, invoke_from="explore")
         raise failure
 
-    monkeypatch.setattr(MessageSuggestedQuestionsRuntime, "get_suggested_questions", reject_reload)
+    monkeypatch.setattr(MessageSuggestedQuestionsService, "get_suggested_questions", reject_reload)
     _assert_error(harness.get(), status, code, message)
     assert harness.provider.prompts == []
     assert harness.usage() is None

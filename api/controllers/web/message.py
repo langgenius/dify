@@ -1,10 +1,11 @@
 import logging
+from http import HTTPStatus
 from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field, TypeAdapter
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import InternalServerError, NotFound
+from werkzeug.exceptions import HTTPException, InternalServerError, NotFound
 
 from controllers.common.controller_schemas import MessageFeedbackPayload, MessageListQuery
 from controllers.common.fields import GeneratedAppResponse
@@ -15,6 +16,7 @@ from controllers.web import web_ns
 from controllers.web.error import (
     AppMoreLikeThisDisabledError,
     AppSuggestedQuestionsAfterAnswerDisabledError,
+    AppUnavailableError,
     CompletionRequestError,
     NotChatAppError,
     NotCompletionAppError,
@@ -25,6 +27,7 @@ from controllers.web.error import (
 from controllers.web.wraps import WebApiResource
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from fields.conversation_fields import MessageResponseSource, ResultResponse
 from fields.message_fields import SuggestedQuestionsResponse, WebMessageInfiniteScrollPagination, WebMessageListItem
@@ -32,6 +35,7 @@ from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from models.enums import FeedbackRating
 from models.model import App, AppMode, EndUser
+from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.app_generate_service import AppGenerateService
 from services.errors.app import MoreLikeThisDisabledError
 from services.errors.conversation import ConversationNotExistsError
@@ -41,6 +45,7 @@ from services.errors.message import (
     SuggestedQuestionsAfterAnswerDisabledError,
 )
 from services.message_service import MessageService
+from services.message_suggested_questions_service import SuggestedQuestionsActorNotFoundError, SuggestedQuestionsEndUser
 
 logger = logging.getLogger(__name__)
 
@@ -217,21 +222,32 @@ class MessageMoreLikeThisApi(WebApiResource):
 
 @web_ns.route("/messages/<uuid:message_id>/suggested-questions")
 class MessageSuggestedQuestionApi(WebApiResource):
-    @web_ns.response(200, "Success", web_ns.models[SuggestedQuestionsResponse.__name__])
+    @web_ns.response(HTTPStatus.OK, "Success", web_ns.models[SuggestedQuestionsResponse.__name__])
     @web_ns.doc("Get Suggested Questions")
-    @web_ns.doc(description="Get suggested follow-up questions after a message (chat apps only).")
+    @web_ns.doc(
+        description=(
+            "Get suggested follow-up questions after a message (chat apps only). "
+            "If no usable model can be resolved or the model call to generate questions fails, "
+            "the response is HTTP 200 with an empty data list. "
+            "Model invocation failures during history token counting instead return "
+            "HTTP 400 with `completion_request_error`."
+        )
+    )
     @web_ns.doc(params={"message_id": {"description": "Message UUID", "type": "string", "required": True}})
     @web_ns.doc(
         responses={
-            200: "Success",
-            400: "Bad Request - Not a chat app or feature disabled",
-            401: "Unauthorized",
-            403: "Forbidden",
-            404: "Message Not Found or Conversation Not Found",
-            500: "Internal Server Error",
+            HTTPStatus.OK: "Success",
+            HTTPStatus.BAD_REQUEST: (
+                "Bad Request - Not a chat app or app unavailable; "
+                "`completion_request_error` when model invocation fails while counting history tokens."
+            ),
+            HTTPStatus.UNAUTHORIZED: "Unauthorized",
+            HTTPStatus.FORBIDDEN: "Forbidden - Access denied or suggested questions disabled",
+            HTTPStatus.NOT_FOUND: "App, End User, Message, or Conversation Not Found",
+            HTTPStatus.INTERNAL_SERVER_ERROR: "Internal Server Error",
         }
     )
-    def get(self, app_model: App, end_user: EndUser, message_id: UUID):
+    def get(self, app_model: App, end_user: EndUser, message_id: UUID) -> dict[str, object]:
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
@@ -239,14 +255,17 @@ class MessageSuggestedQuestionApi(WebApiResource):
         message_id_str = str(message_id)
 
         try:
-            questions = MessageService.get_suggested_questions_after_answer(
-                app_model=app_model,
-                user=end_user,
+            questions = application_services().message_suggested_questions.get_suggested_questions(
+                app_id=app_model.id,
+                app_owner_tenant_id=app_model.tenant_id,
+                expected_app_mode=app_model.mode,
+                actor=SuggestedQuestionsEndUser(end_user_id=end_user.id, invoke_from="web-app"),
                 message_id=message_id_str,
-                invoke_from=InvokeFrom.WEB_APP,
-                session=db.session(),
             )
-            # questions is a list of strings, not a list of Message objects
+        except AppDefinitionUnavailableError:
+            raise AppUnavailableError() from None
+        except SuggestedQuestionsActorNotFoundError:
+            raise NotFound("End user not found") from None
         except MessageNotExistsError:
             raise NotFound("Message not found")
         except ConversationNotExistsError:
@@ -261,8 +280,10 @@ class MessageSuggestedQuestionApi(WebApiResource):
             raise ProviderModelCurrentlyNotSupportError()
         except InvokeError as e:
             raise CompletionRequestError(e.description)
+        except HTTPException:
+            raise
         except Exception:
             logger.exception("internal server error.")
             raise InternalServerError()
 
-        return SuggestedQuestionsResponse(data=questions).model_dump(mode="json")
+        return helper.dump_response(SuggestedQuestionsResponse, {"data": questions})

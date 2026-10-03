@@ -2198,11 +2198,12 @@ export const feedbacks2 = {
 /**
  * Get Next Suggested Questions
  *
- * Get next questions suggestions for the current message.
+ * Get next question suggestions for the current message. If no usable model can be resolved or the model call to generate questions fails, the response is HTTP 200 with an empty data list. Model invocation failures during history token counting instead return HTTP 400 with `completion_request_error`.
  */
 export const get25 = oc
   .route({
-    description: 'Get next questions suggestions for the current message.',
+    description:
+      'Get next question suggestions for the current message. If no usable model can be resolved or the model call to generate questions fails, the response is HTTP 200 with an empty data list. Model invocation failures during history token counting instead return HTTP 400 with `completion_request_error`.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getMessagesByMessageIdSuggested',
