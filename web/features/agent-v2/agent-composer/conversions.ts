@@ -16,6 +16,8 @@ import type {
   AgentSkill,
   AgentSoulConfigFormState,
   AgentTool,
+  AppVariable,
+  AppVariableType,
   EnvVariable,
 } from './form-state'
 import type {
@@ -456,6 +458,67 @@ const toEnvConfig = (variables: EnvVariable[]): AgentSoulConfig['env'] => ({
   })),
 })
 
+const toAppVariableType = (type: string): AppVariableType => {
+  const normalized = type.trim().toLowerCase()
+  if (normalized === 'paragraph' || normalized === 'long_text' || normalized === 'multiline')
+    return 'paragraph'
+  if (normalized === 'select') return 'select'
+  if (normalized === 'number' || normalized === 'integer' || normalized === 'float') return 'number'
+  if (normalized === 'json' || normalized === 'json_object') return 'json'
+
+  return 'text-input'
+}
+
+const toAppVariableDefault = (variable: AppVariable) => {
+  if (variable.type === 'number') {
+    const parsed = Number(variable.default)
+    return Number.isFinite(parsed) ? parsed : undefined
+  }
+
+  if (variable.type === 'json') {
+    const trimmed = variable.default.trim()
+    if (!trimmed) return undefined
+
+    try {
+      return JSON.parse(trimmed)
+    } catch {
+      return variable.default
+    }
+  }
+
+  return variable.default || undefined
+}
+
+const toAppVariableConfigs = (variables: AppVariable[]): AgentSoulConfig['app_variables'] =>
+  variables
+    .filter((variable) => variable.name.trim())
+    .map((variable) => ({
+      name: variable.name.trim(),
+      type: variable.type,
+      required: variable.required,
+      hide: variable.hide,
+      default: toAppVariableDefault(variable),
+      ...(variable.type === 'select' && variable.options?.length
+        ? { options: variable.options }
+        : {}),
+    }))
+
+const toAppVariableFormState = (config?: AgentSoulConfig): AppVariable[] =>
+  (config?.app_variables ?? []).map((variable) => ({
+    id: globalThis.crypto?.randomUUID?.() ?? `${variable.name}-${Math.random()}`,
+    name: variable.name,
+    type: toAppVariableType(variable.type),
+    required: variable.required ?? false,
+    hide: Boolean(variable.hide),
+    default:
+      variable.default === undefined || variable.default === null
+        ? ''
+        : typeof variable.default === 'string'
+          ? variable.default
+          : JSON.stringify(variable.default),
+    options: variable.options,
+  }))
+
 const toConfigSkillConfigs = (
   skills: AgentSkill[],
   baseConfig?: AgentSoulConfig,
@@ -604,6 +667,7 @@ export const formStateToAgentSoulConfig = ({
     app_features: formState.appFeatures ?? baseConfig?.app_features,
     knowledge: toKnowledgeConfig(formState.knowledgeRetrievals),
     env: toEnvConfig(formState.envVariables),
+    app_variables: toAppVariableConfigs(formState.appVariables),
     config_skills: toConfigSkillConfigs(formState.skills, baseConfig),
     config_files: toConfigFileConfigs(formState.files, baseConfig),
     config_note: formState.configNote,
@@ -627,6 +691,7 @@ export const agentSoulConfigToFormState = (
     tools: [...providerToolState.tools, ...toCliToolFormState(config)],
     knowledgeRetrievals: toKnowledgeRetrievalFormState(config),
     envVariables: toEnvVariableFormState(config),
+    appVariables: toAppVariableFormState(config),
     toolSettings: providerToolState.toolSettings,
   }
 }

@@ -2872,7 +2872,9 @@ export type AgentSoulAppFeaturesConfig = {
 
 export type AppVariableConfig = {
   default?: unknown
+  hide?: boolean
   name: string
+  options?: Array<string> | null
   required?: boolean
   type: string
 }
