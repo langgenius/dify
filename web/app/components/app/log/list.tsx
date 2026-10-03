@@ -68,6 +68,7 @@ import {
   applyAnnotationEdited,
   applyAnnotationRemoved,
   buildChatThreadState,
+  getAllChatItemIndex,
   getCompletionMessageFiles,
   getConversationRowValues,
   getDetailVarList,
@@ -263,29 +264,36 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
 
   const handleAnnotationEdited = useCallback(
     (query: string, answer: string, index: number) => {
-      setAllChatItems(applyAnnotationEdited(allChatItems, query, answer, index))
+      const itemIndex = getAllChatItemIndex(allChatItems, threadChatItems, index)
+      if (itemIndex < 0) return
+      setAllChatItems(applyAnnotationEdited(allChatItems, query, answer, itemIndex))
     },
-    [allChatItems],
+    [allChatItems, threadChatItems],
   )
   const handleAnnotationAdded = useCallback(
     (annotationId: string, authorName: string, query: string, answer: string, index: number) => {
+      const itemIndex = getAllChatItemIndex(allChatItems, threadChatItems, index)
+      if (itemIndex < 0) return
       setAllChatItems(
-        applyAnnotationAdded(allChatItems, annotationId, authorName, query, answer, index),
+        applyAnnotationAdded(allChatItems, annotationId, authorName, query, answer, itemIndex),
       )
     },
-    [allChatItems],
+    [allChatItems, threadChatItems],
   )
   const handleAnnotationRemoved = useCallback(
     async (index: number): Promise<boolean> => {
-      const annotation = allChatItems[index]?.annotation
+      const itemIndex = getAllChatItemIndex(allChatItems, threadChatItems, index)
+      const annotation = allChatItems[itemIndex]?.annotation
+      if (!annotation?.id) {
+        toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+        return false
+      }
 
       try {
-        if (annotation?.id) {
-          const { delAnnotation } = await import('@/service/annotation')
-          await delAnnotation(appDetail.id, annotation.id)
-        }
+        const { delAnnotation } = await import('@/service/annotation')
+        await delAnnotation(appDetail.id, annotation.id)
 
-        setAllChatItems(applyAnnotationRemoved(allChatItems, index))
+        setAllChatItems(applyAnnotationRemoved(allChatItems, itemIndex))
 
         toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
         return true
@@ -294,7 +302,7 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
         return false
       }
     },
-    [allChatItems, appDetail.id, t],
+    [allChatItems, appDetail.id, t, threadChatItems],
   )
 
   const fetchInitiated = useRef(false)

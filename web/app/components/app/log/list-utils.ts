@@ -283,6 +283,19 @@ export const applyAnnotationRemoved = (items: IChatItem[], index: number) =>
 
     return item
   })
+
+// The chat reports indexes within the displayed thread, which can differ from
+// allChatItems when a conversation has regenerated branches or an opening statement.
+export const getAllChatItemIndex = (
+  allChatItems: IChatItem[],
+  threadChatItems: IChatItem[],
+  threadIndex: number,
+) => {
+  const itemId = threadChatItems[threadIndex]?.id
+  if (!itemId) return -1
+  return allChatItems.findIndex((item) => item.id === itemId)
+}
+
 export const isNearTopLoadMore = ({
   clientHeight,
   scrollHeight,
