@@ -144,7 +144,16 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
 
     @override
     def on_graph_end(self, error: Exception | None) -> None:
-        return
+        execution = self._workflow_execution
+        if execution is None or execution.status != WorkflowExecutionStatus.RUNNING:
+            return
+
+        if error is not None:
+            message = str(error).strip() or type(error).__name__
+            self._handle_graph_run_failed(GraphRunFailedEvent(error=message))
+            return
+
+        self._handle_graph_run_failed(GraphRunFailedEvent(error="Workflow execution ended before a terminal event"))
 
     # ------------------------------------------------------------------
     # Graph-level handlers
