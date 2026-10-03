@@ -35,6 +35,8 @@ const ChatWrapper = () => {
     appParams,
     appPrevChatTree,
     currentConversationId,
+    chatInputDraftKey,
+    migrateChatInputDraft,
     currentConversationItem,
     currentConversationInputs,
     inputsForms,
@@ -214,7 +216,7 @@ const ChatWrapper = () => {
         parent_message_id: (isRegenerate ? parentAnswer?.id : getLastAnswer(chatList)?.id) || null,
       }
 
-      handleSend(getUrl('chat-messages', appSourceType, appId || ''), data, {
+      const sendResult = handleSend(getUrl('chat-messages', appSourceType, appId || ''), data, {
         onGetConversationMessages: isNewAgent
           ? (conversationId) => fetchChatList(conversationId, appSourceType, appId)
           : undefined,
@@ -226,6 +228,7 @@ const ChatWrapper = () => {
       const appMode = isNewAgent ? 'agent-v2' : appData?.mode
       if (appSourceType === AppSourceType.webApp && appMode)
         trackWebAppEvent('webapp_run', { app_mode: appMode })
+      return sendResult
     },
     [
       inputsForms,
@@ -463,6 +466,8 @@ const ChatWrapper = () => {
         switchSibling={doSwitchSibling}
         inputDisabled={inputDisabled}
         sidebarCollapseState={sidebarCollapseState}
+        chatInputDraftKey={chatInputDraftKey}
+        migrateChatInputDraft={migrateChatInputDraft}
         renderAgentContent={renderAgentContent}
         questionIcon={
           initUserVariables?.avatar_url ? (

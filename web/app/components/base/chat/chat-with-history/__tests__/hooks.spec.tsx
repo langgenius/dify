@@ -344,6 +344,66 @@ describe('useChatWithHistory', () => {
 
   // Scenario: the active conversation is tab-scoped while the last selection is cross-tab.
   describe('Conversation id persistence', () => {
+    it('should scope composer drafts to the current EndUser and conversation', async () => {
+      mockStoreState.appInfo = { ...mockStoreState.appInfo!, end_user_id: 'authenticated-end-user' }
+      localStorage.setItem(
+        CONVERSATION_ID_INFO,
+        JSON.stringify({ 'app-1': { 'authenticated-end-user': 'authenticated-conversation' } }),
+      )
+      mockFetchConversations.mockResolvedValue(createConversationData())
+      mockFetchChatList.mockResolvedValue({ data: [] })
+
+      const { result } = await renderWithClient(() => useChatWithHistory())
+
+      expect(result!.current.chatInputDraftKey).toBe(
+        `chat-input-draft:${JSON.stringify([
+          AppSourceType.webApp,
+          'app-1',
+          'authenticated-end-user',
+          'authenticated-conversation',
+        ])}`,
+      )
+
+      act(() => result!.current.handleChangeConversation('conversation-2'))
+
+      expect(result!.current.chatInputDraftKey).toBe(
+        `chat-input-draft:${JSON.stringify([
+          AppSourceType.webApp,
+          'app-1',
+          'authenticated-end-user',
+          'conversation-2',
+        ])}`,
+      )
+    })
+
+    it('should isolate Environment composer drafts from the built-in WebApp', async () => {
+      window.history.replaceState({}, '', '/environment/chat/environment-code')
+      mockFetchConversations.mockResolvedValue(createConversationData())
+      mockFetchChatList.mockResolvedValue({ data: [] })
+
+      const { result } = await renderWithClient(() => useChatWithHistory())
+
+      expect(result!.current.chatInputDraftKey).toBe(
+        `chat-input-draft:${JSON.stringify([
+          AppSourceType.webApp,
+          'environment:environment-code',
+          'user-1',
+          'NEW',
+        ])}`,
+      )
+    })
+
+    it('should wait for EndUser resolution before creating a composer draft key', async () => {
+      mockStoreState.appInfo = { ...mockStoreState.appInfo!, end_user_id: undefined }
+      mockFetchConversations.mockResolvedValue(createConversationData())
+      mockFetchChatList.mockResolvedValue({ data: [] })
+
+      const { result } = await renderWithClient(() => useChatWithHistory())
+
+      expect(result!.current.chatInputDraftKey).toBeUndefined()
+      expect(result!.current.isUserIdResolved).toBe(false)
+    })
+
     it('should prefer the current tab conversation over the last conversation', async () => {
       // Arrange
       sessionStorage.setItem(

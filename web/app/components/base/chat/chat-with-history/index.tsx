@@ -19,8 +19,14 @@ type ChatWithHistoryProps = {
   className?: string
 }
 const ChatWithHistory: FC<ChatWithHistoryProps> = ({ className }) => {
-  const { appData, appChatListDataLoading, chatShouldReloadKey, isMobile, sidebarCollapseState } =
-    useChatWithHistoryContext()
+  const {
+    appData,
+    appChatListDataLoading,
+    chatShouldReloadKey,
+    isUserIdResolved = true,
+    isMobile,
+    sidebarCollapseState,
+  } = useChatWithHistoryContext()
   const isSidebarCollapsed = sidebarCollapseState
   const site = appData?.site
 
@@ -110,8 +116,14 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({ className }) => {
           {!isMobile && (
             <Header toggleButtonRef={isSidebarCollapsed ? sidebarToggleRef : undefined} />
           )}
-          {appChatListDataLoading && <LoadingPlaceholder className="h-full" />}
-          {!appChatListDataLoading && <ChatWrapper key={chatShouldReloadKey} />}
+          {(appChatListDataLoading || !isUserIdResolved) && (
+            <LoadingPlaceholder className="h-full" />
+          )}
+          {!appChatListDataLoading && isUserIdResolved && (
+            <ChatWrapper
+              key={JSON.stringify([appData?.app_id, appData?.end_user_id, chatShouldReloadKey])}
+            />
+          )}
         </div>
       </div>
     </div>
@@ -139,6 +151,8 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
     appMeta,
     appChatListDataLoading,
     currentConversationId,
+    chatInputDraftKey,
+    migrateChatInputDraft,
     currentConversationItem,
     appPrevChatTree,
     pinnedConversationList,
@@ -158,6 +172,7 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
     handleNewConversationCompleted,
     chatShouldReloadKey,
     isInstalledApp,
+    isUserIdResolved,
     appId,
     handleFeedback,
     currentChatInstanceRef,
@@ -185,6 +200,8 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
         appMeta,
         appChatListDataLoading,
         currentConversationId,
+        chatInputDraftKey,
+        migrateChatInputDraft,
         currentConversationItem,
         appPrevChatTree,
         pinnedConversationList,
@@ -205,6 +222,7 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
         chatShouldReloadKey,
         isMobile,
         isInstalledApp,
+        isUserIdResolved,
         appId,
         handleFeedback,
         currentChatInstanceRef,

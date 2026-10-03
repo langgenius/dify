@@ -8,9 +8,10 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { noop } from 'es-toolkit/function'
 import { decode } from 'html-entities'
-import { useCallback, useId, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Textarea from 'react-textarea-autosize'
+import { getChatInputDraft, setChatInputDraft } from '@/app/components/base/chat/storage'
 import FeatureBar from '@/app/components/base/features/new-feature-panel/feature-bar'
 import { FileListInChatInput } from '@/app/components/base/file-uploader'
 import { useFile } from '@/app/components/base/file-uploader/hooks'
@@ -23,6 +24,8 @@ import { useTextAreaHeight } from './hooks'
 import Operation from './operation'
 
 type SendAcceptance = void | boolean | Promise<void | boolean>
+
+const DRAFT_PERSISTENCE_DELAY = 300
 
 function isMicrophonePermissionDenied(error: unknown) {
   return error instanceof DOMException && error.name === 'NotAllowedError'
@@ -53,6 +56,8 @@ type ChatInputAreaProps = {
   footerNotice?: ReactNode
   footerNoticeTooltip?: ReactNode
   autoFocus?: boolean
+  draftKey?: string
+  migrateDraft?: boolean
   /**
    * Controls whether pressing Enter sends the message.
    * - true (default): Enter sends, Shift+Enter inserts newline
@@ -86,6 +91,8 @@ const ChatInputArea = ({
   footerNotice,
   footerNoticeTooltip,
   autoFocus = true,
+  draftKey,
+  migrateDraft = false,
   sendOnEnter = true,
 }: ChatInputAreaProps) => {
   const footerNoticeLabelId = useId()
@@ -100,7 +107,10 @@ const ChatInputArea = ({
     handleTextareaResize,
     isMultipleLine,
   } = useTextAreaHeight()
-  const [query, setQuery] = useState('')
+  const [query, setQuery] = useState(() => getChatInputDraft(draftKey))
+  const queryRef = useRef(query)
+  const previousDraftKeyRef = useRef(draftKey)
+  const draftPersistenceTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const canSend = !!query.trim()
   const [showVoiceInput, setShowVoiceInput] = useState(false)
   const filesStore = useFileStore()
@@ -116,25 +126,75 @@ const ChatInputArea = ({
   const historyRef = useRef([''])
   const [currentIndex, setCurrentIndex] = useState(-1)
   const isComposingRef = useRef(false)
-  const queryRef = useRef('')
   const voiceInputRef = useRef<HTMLDivElement>(null)
   const voiceInputReturnFocusRef = useRef<HTMLElement | null>(null)
   const voiceInputCompletedRef = useRef(false)
+  const clearDraftPersistenceTimer = useCallback(() => {
+    if (draftPersistenceTimerRef.current === undefined) return
+
+    clearTimeout(draftPersistenceTimerRef.current)
+    draftPersistenceTimerRef.current = undefined
+  }, [])
+  const persistDraft = useCallback(
+    (draft: string) => {
+      clearDraftPersistenceTimer()
+      setChatInputDraft(draftKey, draft)
+    },
+    [clearDraftPersistenceTimer, draftKey],
+  )
+  const scheduleDraftPersistence = useCallback(
+    (draft: string) => {
+      clearDraftPersistenceTimer()
+      if (!draftKey) return
+
+      draftPersistenceTimerRef.current = setTimeout(() => {
+        draftPersistenceTimerRef.current = undefined
+        setChatInputDraft(draftKey, draft)
+      }, DRAFT_PERSISTENCE_DELAY)
+    },
+    [clearDraftPersistenceTimer, draftKey],
+  )
   const handleQueryChange = useCallback(
     (value: string) => {
       queryRef.current = value
       setQuery(value)
+      scheduleDraftPersistence(value)
       setTimeout(handleTextareaResize, 0)
     },
-    [handleTextareaResize],
+    [handleTextareaResize, scheduleDraftPersistence],
   )
+  useEffect(() => {
+    const previousDraftKey = previousDraftKeyRef.current
+    if (previousDraftKey !== draftKey) {
+      if (migrateDraft) {
+        setChatInputDraft(previousDraftKey, '')
+        persistDraft(queryRef.current)
+      } else {
+        const draft = getChatInputDraft(draftKey)
+        queryRef.current = draft
+        setQuery(draft)
+        filesStore.getState().setFiles([])
+      }
+      previousDraftKeyRef.current = draftKey
+    }
+    const handlePageHide = () => persistDraft(queryRef.current)
+    window.addEventListener('pagehide', handlePageHide)
+
+    return () => {
+      window.removeEventListener('pagehide', handlePageHide)
+      persistDraft(queryRef.current)
+    }
+  }, [draftKey, filesStore, migrateDraft, persistDraft])
   const resetAcceptedMessage = useCallback(
     (acceptedQuery: string, acceptedFiles: ReturnType<typeof filesStore.getState>['files']) => {
       const { files, setFiles } = filesStore.getState()
-      if (queryRef.current === acceptedQuery) handleQueryChange('')
+      if (queryRef.current === acceptedQuery) {
+        handleQueryChange('')
+        persistDraft('')
+      }
       if (files === acceptedFiles) setFiles([])
     },
-    [filesStore, handleQueryChange],
+    [filesStore, handleQueryChange, persistDraft],
   )
   const handleSend = () => {
     if (!canSend) return
@@ -188,7 +248,7 @@ const ChatInputArea = ({
       // if isComposing, exit
       if (isComposingRef.current) return
       e.preventDefault()
-      setQuery(query.replace(/\n$/, ''))
+      handleQueryChange(query.replace(/\n$/, ''))
       historyRef.current.push(query)
       setCurrentIndex(historyRef.current.length)
       handleSend()
