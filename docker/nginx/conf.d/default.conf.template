@@ -5,6 +5,13 @@ server {
     server_name ${NGINX_SERVER_NAME};
     resolver 127.0.0.11 valid=30s ipv6=off;
 
+    # Docker DNS resolver — re-resolves the upstream hostname every 30s so a
+    # container restart that frees/reassigns the cached IP doesn't leave
+    # nginx forwarding to a stale address. Required for partial restarts
+    # (`docker compose up -d api`, Watchtower/Diun image updates, etc.) to
+    # not produce 502 Connection Refused errors.
+    resolver 127.0.0.11 valid=30s ipv6=off;
+
     location /console/api {
       set $api_upstream api:5001;
       proxy_pass http://$api_upstream;
@@ -74,7 +81,7 @@ server {
       proxy_pass http://$api_upstream;
       include proxy.conf;
     }
-    
+
     # placeholder for acme challenge location
     ${ACME_CHALLENGE_LOCATION}
 
