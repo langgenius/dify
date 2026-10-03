@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -127,6 +128,15 @@ func (s *Service) StartBackgroundPipeMonitor() {
 	}()
 }
 
+// MarshalJobEnv serializes a job environment for the runner's JSON loader.
+// A nil environment is encoded as an empty object to preserve the runner contract.
+func MarshalJobEnv(env map[string]string) ([]byte, error) {
+	if env == nil {
+		return []byte("{}"), nil
+	}
+	return json.Marshal(env)
+}
+
 // RunJob creates and starts a new tmux-backed job, then waits for initial output.
 func (s *Service) RunJob(req *RunJobRequest) (*JobResult, error) {
 	log.Printf("RunJob: script=%d bytes, cwd=%v, env_keys=%d", len(req.Script), req.Cwd, len(req.Env))
@@ -177,15 +187,12 @@ func (s *Service) RunJob(req *RunJobRequest) (*JobResult, error) {
 		s.cleanupStarting(jobID, jobDir)
 		return nil, err
 	}
-	envJSON := "{}"
-	if req.Env != nil {
-		pairs := make([]string, 0, len(req.Env))
-		for k, v := range req.Env {
-			pairs = append(pairs, fmt.Sprintf("%q:%q", k, v))
-		}
-		envJSON = "{" + strings.Join(pairs, ",") + "}"
+	envJSON, err := MarshalJobEnv(req.Env)
+	if err != nil {
+		s.cleanupStarting(jobID, jobDir)
+		return nil, err
 	}
-	if err := os.WriteFile(envPath, []byte(envJSON), 0600); err != nil {
+	if err := os.WriteFile(envPath, envJSON, 0600); err != nil {
 		s.cleanupStarting(jobID, jobDir)
 		return nil, err
 	}
