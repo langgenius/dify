@@ -49,6 +49,53 @@ describe('useCheckInputsForms', () => {
     )
   })
 
+  describe('required number inputs', () => {
+    const inputsForm: InputForm[] = [
+      {
+        variable: 'count',
+        label: 'Count',
+        required: true,
+        type: InputVarType.number,
+        hide: false,
+      },
+    ]
+
+    it.each([0, 1, -1, '0'])('should accept %j without a required-input error', (value) => {
+      const { result } = renderHook(() => useCheckInputsForms())
+
+      expect(result.current.checkInputsForm({ count: value }, inputsForm)).toBe(true)
+      expect(mockNotify).not.toHaveBeenCalled()
+    })
+
+    it.each([undefined, null, ''])('should reject an empty number value (%j)', (value) => {
+      const { result } = renderHook(() => useCheckInputsForms())
+
+      expect(result.current.checkInputsForm({ count: value }, inputsForm)).toBe(false)
+      expect(mockNotify).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'error',
+          message: expect.stringContaining('appDebug.errorMessage.valueOfVarRequired'),
+        }),
+      )
+    })
+  })
+
+  it('should allow an unchecked required checkbox without a notification', () => {
+    const { result } = renderHook(() => useCheckInputsForms())
+    const inputsForm: InputForm[] = [
+      {
+        variable: 'enabled',
+        label: 'Enabled',
+        required: true,
+        type: InputVarType.checkbox,
+        hide: false,
+      },
+    ]
+
+    expect(result.current.checkInputsForm({ enabled: false }, inputsForm)).toBe(true)
+    expect(mockNotify).not.toHaveBeenCalled()
+  })
+
   it('should ignore missing but not required inputs', () => {
     const { result } = renderHook(() => useCheckInputsForms())
     const inputsForm = [
