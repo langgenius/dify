@@ -7,6 +7,7 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.db.session_factory import session_factory
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from models.dataset import ChildChunk, Dataset, DatasetKeywordTable, Document, DocumentSegment, DocumentSegmentSummary
 from models.enums import DataSourceType, DocumentCreatedFrom
@@ -277,3 +278,66 @@ def test_empty_document_selection_does_not_clear_the_dataset_index(
     assert sqlite_session.get(DocumentSegment, segment.id) is not None
     assert sqlite_session.get(DocumentSegmentSummary, summary.id) is not None
     assert sqlite_session.get(ChildChunk, child.id) is not None
+
+
+def test_extra_node_ids_join_the_vector_deletion(
+    graph: tuple[Dataset, Document, DocumentSegment, DocumentSegmentSummary, ChildChunk],
+    vector: MagicMock,
+) -> None:
+    """调用方传入的附件向量 id 必须和派生出来的节点一起删掉。"""
+    dataset, document, _, _, _ = graph
+    cleanup.clean_document_indexes(
+        dataset_id=dataset.id,
+        document_ids=[document.id],
+        doc_form="text_model",
+        new_session=session_factory.create_session,
+        extra_node_ids=["attachment-node"],
+    )
+    vector.delete_by_ids.assert_called_once_with(["summary-node", "body-node", "attachment-node"])
+
+
+def test_extra_node_ids_alone_still_reach_the_vector_backend(
+    graph: tuple[Dataset, Document, DocumentSegment, DocumentSegmentSummary, ChildChunk],
+    sqlite_session: Session,
+    vector: MagicMock,
+) -> None:
+    """文档已无任何分段/摘要/子块时，只剩附件向量也必须被清理。"""
+    dataset, document, segment, summary, child = graph
+    sqlite_session.delete(child)
+    sqlite_session.delete(summary)
+    sqlite_session.delete(segment)
+    sqlite_session.commit()
+    cleanup.clean_document_indexes(
+        dataset_id=dataset.id,
+        document_ids=[document.id],
+        doc_form="text_model",
+        new_session=session_factory.create_session,
+        extra_node_ids=["attachment-node"],
+    )
+    vector.delete_by_ids.assert_called_once_with(["attachment-node"])
+
+
+def test_extra_node_ids_never_reach_the_keyword_index(
+    graph: tuple[Dataset, Document, DocumentSegment, DocumentSegmentSummary, ChildChunk],
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    """经济模式下附件向量不属于关键词索引，不能被当成关键词条目删掉。"""
+    dataset, document, _, _, _ = graph
+    dataset.indexing_technique = IndexTechniqueType.ECONOMY
+    keyword_table = DatasetKeywordTable(
+        dataset_id=dataset.id,
+        keyword_table=json.dumps({"__data__": {"table": {"term": ["body-node", "attachment-node"]}}}),
+    )
+    sqlite_session.add(keyword_table)
+    sqlite_session.commit()
+    cleanup.clean_document_indexes(
+        dataset_id=dataset.id,
+        document_ids=[document.id],
+        doc_form="text_model",
+        new_session=sqlite_session_factory,
+        extra_node_ids=["attachment-node"],
+    )
+    sqlite_session.refresh(keyword_table)
+    # body-node 被删（它是分段的），attachment-node 必须原样留在关键词表里。
+    assert json.loads(keyword_table.keyword_table)["__data__"]["table"] == {"term": ["attachment-node"]}
