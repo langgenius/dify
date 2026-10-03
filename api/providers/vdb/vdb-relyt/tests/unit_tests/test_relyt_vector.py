@@ -320,3 +320,27 @@ def test_relyt_factory_existing_and_generated_collection(relyt_module, monkeypat
     assert vector_cls.call_args_list[0].kwargs["collection_name"] == "EXISTING_COLLECTION"
     assert vector_cls.call_args_list[1].kwargs["collection_name"] == "AUTO_COLLECTION"
     assert dataset_without_index.index_struct is not None
+
+
+def test_similarity_search_emits_well_formed_metadata_filter(relyt_module):
+    vector = relyt_module.RelytVector.__new__(relyt_module.RelytVector)
+    vector._collection_name = "collection_1"
+    vector.client = MagicMock()
+
+    conn = MagicMock()
+    conn.__enter__.return_value = conn
+    conn.__exit__.return_value = None
+    conn.execute.return_value.fetchall.return_value = []
+    vector.client.connect.return_value = conn
+
+    vector.similarity_search_with_score_by_vector(
+        embedding=[0.1, 0.2, 0.3],
+        k=1,
+        filter={"document_id": ["doc-1", "doc-2"], "group_id": ["g-1"]},
+    )
+
+    executed_sql = str(conn.execute.call_args.args[0])
+    assert "metadata->>'document_id' in ('doc-1', 'doc-2')" in executed_sql
+    assert "metadata->>'group_id' in ('g-1')" in executed_sql
+    assert "''document_id''" not in executed_sql
+    assert "''group_id''" not in executed_sql
