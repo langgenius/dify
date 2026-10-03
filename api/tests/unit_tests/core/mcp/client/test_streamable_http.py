@@ -10,7 +10,7 @@ import threading
 import time
 from datetime import timedelta
 from typing import Any
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 import httpx
 import pytest
@@ -135,56 +135,34 @@ def test_streamablehttp_client_message_id_handling():
     assert message.message.root.id == 789  # ID should be coerced to int due to union_mode="left_to_right"
 
 
-def test_streamablehttp_client_connection_validation():
-    """Test StreamableHTTP client validates connections properly."""
-    test_url = "http://test.example/mcp"
-
-    with patch("core.mcp.client.streamable_client.create_ssrf_proxy_mcp_http_client") as mock_client_factory:
-        # Mock the HTTP client
-        mock_client = Mock()
-        mock_client_factory.return_value.__enter__.return_value = mock_client
-
-        # Mock successful response
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.headers = {"content-type": "application/json"}
-        mock_response.raise_for_status.return_value = None
-        mock_client.post.return_value = mock_response
-
-        # Test connection
-        try:
-            with streamablehttp_client(test_url) as (read_queue, write_queue, get_session_id):
-                assert read_queue is not None
-                assert write_queue is not None
-                assert get_session_id is not None
-        except Exception:
-            # Connection might fail due to mocking, but we're testing the validation logic
-            pass
+def test_streamablehttp_client_connection_validation(monkeypatch: pytest.MonkeyPatch):
+    """Validate connection setup and cleanup with a real HTTP client."""
+    client = httpx.Client(transport=httpx.MockTransport(lambda _request: httpx.Response(200)))
+    monkeypatch.setattr("core.mcp.client.streamable_client.create_ssrf_proxy_mcp_http_client", lambda **_kwargs: client)
+    with streamablehttp_client("http://test.example/mcp") as (read_queue, write_queue, get_session_id):
+        assert isinstance(read_queue, queue.Queue)
+        assert isinstance(write_queue, queue.Queue)
+        assert get_session_id() is None
+    assert client.is_closed
 
 
-def test_streamablehttp_client_timeout_configuration():
-    """Test StreamableHTTP client timeout configuration."""
-    test_url = "http://test.example/mcp"
+def test_streamablehttp_client_timeout_configuration(monkeypatch: pytest.MonkeyPatch):
+    """Pass configured timeouts and authorization to the HTTP client factory."""
     custom_headers = {"Authorization": "Bearer test-token"}
+    configurations: list[tuple[dict[str, str], httpx.Timeout]] = []
 
-    with patch("core.mcp.client.streamable_client.create_ssrf_proxy_mcp_http_client") as mock_client_factory:
-        # Mock successful connection
-        mock_client = Mock()
-        mock_client_factory.return_value.__enter__.return_value = mock_client
+    def create_client(*, headers: dict[str, str], timeout: httpx.Timeout) -> httpx.Client:
+        configurations.append((headers, timeout))
+        return httpx.Client(
+            headers=headers, timeout=timeout, transport=httpx.MockTransport(lambda _r: httpx.Response(200))
+        )
 
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.headers = {"content-type": "application/json"}
-        mock_response.raise_for_status.return_value = None
-        mock_client.post.return_value = mock_response
-
-        try:
-            with streamablehttp_client(test_url, headers=custom_headers) as (read_queue, write_queue, get_session_id):
-                # Verify the configuration was passed correctly
-                mock_client_factory.assert_called_with(headers=custom_headers)
-        except Exception:
-            # Connection might fail due to mocking, but we tested the configuration
-            pass
+    monkeypatch.setattr("core.mcp.client.streamable_client.create_ssrf_proxy_mcp_http_client", create_client)
+    with streamablehttp_client("http://test.example/mcp", headers=custom_headers, timeout=12, sse_read_timeout=34):
+        assert len(configurations) == 1
+        headers, timeout = configurations[0]
+        assert headers["Authorization"] == "Bearer test-token"
+        assert timeout == httpx.Timeout(12, read=34)
 
 
 def test_streamablehttp_client_session_id_handling():
@@ -245,43 +223,29 @@ def test_streamablehttp_client_queue_cleanup():
         # Note: In real implementation, cleanup should put None to signal shutdown
 
 
-def test_streamablehttp_client_headers_propagation():
-    """Test that custom headers are properly propagated in StreamableHTTP client."""
-    test_url = "http://test.example/mcp"
+def test_streamablehttp_client_headers_propagation(monkeypatch: pytest.MonkeyPatch):
+    """Send custom headers on an actual serialized HTTP request."""
     custom_headers = {
         "Authorization": "Bearer test-token",
         "X-Custom-Header": "test-value",
         "User-Agent": "test-client/1.0",
     }
+    requests: list[httpx.Request] = []
 
-    with patch("core.mcp.client.streamable_client.create_ssrf_proxy_mcp_http_client") as mock_client_factory:
-        # Mock the client factory to capture headers
-        mock_client = Mock()
-        mock_client_factory.return_value.__enter__.return_value = mock_client
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json={"jsonrpc": "2.0", "id": 1, "result": {}})
 
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.headers = {"content-type": "application/json"}
-        mock_response.raise_for_status.return_value = None
-        mock_client.post.return_value = mock_response
+    def create_client(*, headers: dict[str, str], timeout: httpx.Timeout) -> httpx.Client:
+        return httpx.Client(headers=headers, timeout=timeout, transport=httpx.MockTransport(respond))
 
-        try:
-            with streamablehttp_client(test_url, headers=custom_headers):
-                pass
-        except Exception:
-            pass  # Expected due to mocking
-
-        # Verify headers were passed to client factory
-        # Check that the call was made with headers that include our custom headers
-        mock_client_factory.assert_called_once()
-        call_args = mock_client_factory.call_args
-        assert "headers" in call_args.kwargs
-        passed_headers = call_args.kwargs["headers"]
-
-        # Verify all custom headers are present
-        for key, value in custom_headers.items():
-            assert key in passed_headers
-            assert passed_headers[key] == value
+    monkeypatch.setattr("core.mcp.client.streamable_client.create_ssrf_proxy_mcp_http_client", create_client)
+    with streamablehttp_client("http://test.example/mcp", headers=custom_headers) as (read_queue, write_queue, _):
+        write_queue.put(SessionMessage(_make_request_msg()))
+        assert isinstance(read_queue.get(timeout=2), SessionMessage)
+    assert len(requests) == 1
+    for key, value in custom_headers.items():
+        assert requests[0].headers[key] == value
 
 
 def test_streamablehttp_client_concurrent_access():
@@ -321,78 +285,50 @@ def test_streamablehttp_client_concurrent_access():
         assert f"message_{i}" in received_messages
 
 
-def test_streamablehttp_client_json_vs_sse_mode():
-    """Test StreamableHTTP client handling of JSON vs SSE response modes."""
-    test_url = "http://test.example/mcp"
-
-    with patch("core.mcp.client.streamable_client.create_ssrf_proxy_mcp_http_client") as mock_client_factory:
-        mock_client = Mock()
-        mock_client_factory.return_value.__enter__.return_value = mock_client
-
-        # Mock JSON response
-        mock_json_response = Mock()
-        mock_json_response.status_code = 200
-        mock_json_response.headers = {"content-type": "application/json"}
-        mock_json_response.json.return_value = {"result": "json_mode"}
-        mock_json_response.raise_for_status.return_value = None
-
-        # Mock SSE response
-        mock_sse_response = Mock()
-        mock_sse_response.status_code = 200
-        mock_sse_response.headers = {"content-type": "text/event-stream"}
-        mock_sse_response.raise_for_status.return_value = None
-
-        # Test JSON mode
-        mock_client.post.return_value = mock_json_response
-
-        try:
-            with streamablehttp_client(test_url) as (read_queue, write_queue, get_session_id):
-                # Should handle JSON responses
-                assert read_queue is not None
-                assert write_queue is not None
-        except Exception:
-            pass  # Expected due to mocking
-
-        # Test SSE mode
-        mock_client.post.return_value = mock_sse_response
-
-        try:
-            with streamablehttp_client(test_url) as (read_queue, write_queue, get_session_id):
-                # Should handle SSE responses
-                assert read_queue is not None
-                assert write_queue is not None
-        except Exception:
-            pass  # Expected due to mocking
+@pytest.mark.parametrize("content_type", ["application/json", "text/event-stream"])
+def test_streamablehttp_client_json_vs_sse_mode(monkeypatch: pytest.MonkeyPatch, content_type: str):
+    """Decode JSON and SSE responses through the real writer and HTTP client."""
+    payload = {"jsonrpc": "2.0", "id": 1, "result": {"mode": content_type}}
+    data = json.dumps(payload)
+    response = httpx.Response(
+        200,
+        headers={"content-type": content_type},
+        content=f"data: {data}\n\n" if content_type == "text/event-stream" else data,
+    )
+    client = httpx.Client(transport=httpx.MockTransport(lambda _request: response))
+    monkeypatch.setattr("core.mcp.client.streamable_client.create_ssrf_proxy_mcp_http_client", lambda **_kwargs: client)
+    with streamablehttp_client("http://test.example/mcp") as (read_queue, write_queue, _):
+        write_queue.put(SessionMessage(_make_request_msg()))
+        message = read_queue.get(timeout=2)
+        assert isinstance(message, SessionMessage)
+        assert isinstance(message.message.root, JSONRPCResponse)
+        assert message.message.root.result == {"mode": content_type}
 
 
-def test_streamablehttp_client_terminate_on_close():
-    """Test StreamableHTTP client terminate_on_close parameter."""
-    test_url = "http://test.example/mcp"
+@pytest.mark.parametrize("terminate_on_close", [True, False])
+def test_streamablehttp_client_terminate_on_close(monkeypatch: pytest.MonkeyPatch, terminate_on_close: bool):
+    """Delete initialized sessions on close only when termination is enabled."""
+    requests: list[httpx.Request] = []
 
-    with patch("core.mcp.client.streamable_client.create_ssrf_proxy_mcp_http_client") as mock_client_factory:
-        mock_client = Mock()
-        mock_client_factory.return_value.__enter__.return_value = mock_client
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(
+            200, headers={MCP_SESSION_ID: TEST_SESSION_ID}, json={"jsonrpc": "2.0", "id": 1, "result": {}}
+        )
 
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.headers = {"content-type": "application/json"}
-        mock_response.raise_for_status.return_value = None
-        mock_client.post.return_value = mock_response
-        mock_client.delete.return_value = mock_response
-
-        # Test with terminate_on_close=True (default)
-        try:
-            with streamablehttp_client(test_url, terminate_on_close=True) as (read_queue, write_queue, get_session_id):
-                pass
-        except Exception:
-            pass  # Expected due to mocking
-
-        # Test with terminate_on_close=False
-        try:
-            with streamablehttp_client(test_url, terminate_on_close=False) as (read_queue, write_queue, get_session_id):
-                pass
-        except Exception:
-            pass  # Expected due to mocking
+    client = httpx.Client(transport=httpx.MockTransport(respond))
+    monkeypatch.setattr("core.mcp.client.streamable_client.create_ssrf_proxy_mcp_http_client", lambda **_kwargs: client)
+    with streamablehttp_client("http://test.example/mcp", terminate_on_close=terminate_on_close) as (
+        rq,
+        wq,
+        session_id,
+    ):
+        wq.put(SessionMessage(_make_request_msg("initialize")))
+        assert isinstance(rq.get(timeout=2), SessionMessage)
+        assert session_id() == TEST_SESSION_ID
+    assert [request.method for request in requests] == (["POST", "DELETE"] if terminate_on_close else ["POST"])
+    if terminate_on_close:
+        assert requests[-1].headers[MCP_SESSION_ID] == TEST_SESSION_ID
 
 
 def test_streamablehttp_client_protocol_version_handling():
@@ -450,28 +386,21 @@ def test_streamablehttp_client_error_response_handling():
     assert message.message.root.error.message == "Method not found"
 
 
-def test_streamablehttp_client_resumption_token_handling():
-    """Test StreamableHTTP client resumption token functionality."""
-    test_url = "http://test.example/mcp"
-    test_resumption_token = "resume-token-123"
-
-    with patch("core.mcp.client.streamable_client.create_ssrf_proxy_mcp_http_client") as mock_client_factory:
-        mock_client = Mock()
-        mock_client_factory.return_value.__enter__.return_value = mock_client
-
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.headers = {"content-type": "application/json", "last-event-id": test_resumption_token}
-        mock_response.raise_for_status.return_value = None
-        mock_client.post.return_value = mock_response
-
-        try:
-            with streamablehttp_client(test_url) as (read_queue, write_queue, get_session_id):
-                # Test that resumption token can be captured from headers
-                assert read_queue is not None
-                assert write_queue is not None
-        except Exception:
-            pass  # Expected due to mocking
+def test_streamablehttp_client_resumption_token_handling(monkeypatch: pytest.MonkeyPatch):
+    """Deliver SSE event IDs to the caller's resumption callback."""
+    tokens: queue.Queue[str] = queue.Queue()
+    response = httpx.Response(
+        200,
+        headers={"content-type": "text/event-stream"},
+        content='id: resume-token-123\ndata: {"jsonrpc":"2.0","id":1,"result":{}}\n\n',
+    )
+    client = httpx.Client(transport=httpx.MockTransport(lambda _request: response))
+    monkeypatch.setattr("core.mcp.client.streamable_client.create_ssrf_proxy_mcp_http_client", lambda **_kwargs: client)
+    with streamablehttp_client("http://test.example/mcp") as (read_queue, write_queue, _):
+        metadata = ClientMessageMetadata(on_resumption_token_update=tokens.put)
+        write_queue.put(SessionMessage(_make_request_msg(), metadata=metadata))
+        assert isinstance(read_queue.get(timeout=2), SessionMessage)
+        assert tokens.get(timeout=2) == "resume-token-123"
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
