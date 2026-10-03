@@ -344,8 +344,11 @@ def _get_retry_policy() -> Retry:
     )
 
 
-def _get_connection_health_params() -> RedisHealthParamsDict:
-    """Get connection health and retry parameters for standalone and Sentinel Redis clients."""
+def get_socket_keepalive_options() -> dict[int, int]:
+    """Get platform-specific TCP keepalive tuning for Redis sockets.
+
+    Linux exposes per-probe knobs, macOS only the idle time; other platforms get none.
+    """
     socket_keepalive_options: dict[int, int] = {}
     if sys.platform == "linux":
         socket_keepalive_options[socket.TCP_KEEPIDLE] = dify_config.REDIS_KEEPALIVE_IDLE
@@ -353,14 +356,18 @@ def _get_connection_health_params() -> RedisHealthParamsDict:
         socket_keepalive_options[socket.TCP_KEEPCNT] = dify_config.REDIS_KEEPALIVE_COUNT
     elif sys.platform == "darwin":
         socket_keepalive_options[socket.TCP_KEEPALIVE] = dify_config.REDIS_KEEPALIVE_IDLE
+    return socket_keepalive_options
 
+
+def _get_connection_health_params() -> RedisHealthParamsDict:
+    """Get connection health and retry parameters for standalone and Sentinel Redis clients."""
     return RedisHealthParamsDict(
         retry=_get_retry_policy(),
         socket_timeout=dify_config.REDIS_SOCKET_TIMEOUT,
         socket_connect_timeout=dify_config.REDIS_SOCKET_CONNECT_TIMEOUT,
         health_check_interval=dify_config.REDIS_HEALTH_CHECK_INTERVAL,
         socket_keepalive=dify_config.REDIS_KEEPALIVE,
-        socket_keepalive_options=socket_keepalive_options,
+        socket_keepalive_options=get_socket_keepalive_options(),
     )
 
 

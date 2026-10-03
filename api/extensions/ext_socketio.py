@@ -5,6 +5,7 @@ from urllib.parse import urlparse
 import socketio  # type: ignore[reportMissingTypeStubs]
 
 from configs import dify_config
+from extensions.ext_redis import get_socket_keepalive_options
 from extensions.redis_names import serialize_redis_name
 
 SOCKETIO_REDIS_CHANNEL = "socketio"
@@ -25,12 +26,16 @@ def _build_redis_options(redis_url: str) -> dict[str, Any]:
     Note: ``socket_timeout`` is intentionally omitted. The RedisManager runs a
     blocking ``pubsub.listen()`` loop that idles indefinitely between messages;
     applying a read timeout there causes a reconnect storm (issue #39423).
-    ``socket_connect_timeout`` still guards connection establishment.
+    ``socket_connect_timeout`` still guards connection establishment, and TCP
+    keepalive (shared with the regular Redis clients) stops middleboxes from
+    silently dropping the idle listener connection (issue #39812).
     """
     options: dict[str, Any] = {
         "socket_connect_timeout": dify_config.REDIS_SOCKET_CONNECT_TIMEOUT,
         "health_check_interval": dify_config.REDIS_HEALTH_CHECK_INTERVAL,
         "protocol": dify_config.REDIS_SERIALIZATION_PROTOCOL,
+        "socket_keepalive": dify_config.REDIS_KEEPALIVE,
+        "socket_keepalive_options": get_socket_keepalive_options(),
     }
 
     if dify_config.REDIS_MAX_CONNECTIONS:
