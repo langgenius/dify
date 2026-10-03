@@ -187,6 +187,70 @@ def test_retry_filters_missing_archived_completed_and_duplicate_documents(
     operations.retry_documents.assert_called_once_with(DATASET, ["error"], actor_id="actor-1")
 
 
+def test_retry_failed_documents_preserves_order_and_deduplicates(
+    service: DatasetDocumentApplicationService, operations: MagicMock, access: MagicMock
+) -> None:
+    operations.get_states.return_value = [
+        replace(STATE, id="second", indexing_status="error"),
+        replace(STATE, id="first", indexing_status="error"),
+    ]
+
+    service.retry_failed_documents(CONTEXT, dataset_id="dataset-1", document_ids=["first", "second", "first"])
+
+    access.require_accessible.assert_called_once_with(CONTEXT, "dataset-1")
+    operations.retry_documents.assert_called_once_with(DATASET, ["first", "second"], actor_id="actor-1")
+
+
+@pytest.mark.parametrize("status", ["waiting", "parsing", "cleaning", "splitting", "indexing", "completed"])
+def test_retry_failed_documents_rejects_non_failed_batch_without_scheduling(
+    service: DatasetDocumentApplicationService, operations: MagicMock, status: str
+) -> None:
+    operations.get_states.return_value = [
+        replace(STATE, id="failed", indexing_status="error"),
+        replace(STATE, id="other", indexing_status=status),
+    ]
+
+    with pytest.raises(DocumentIndexingStateError, match="Only failed documents"):
+        service.retry_failed_documents(CONTEXT, dataset_id="dataset-1", document_ids=["failed", "other"])
+
+    operations.retry_documents.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("state", "error"),
+    [
+        (None, DocumentNotFoundError),
+        (replace(STATE, indexing_status="error", archived=True), DocumentArchivedError),
+        (replace(STATE, indexing_status="error", is_paused=True), DocumentIndexingStateError),
+    ],
+)
+def test_retry_failed_documents_rejects_unavailable_batch_without_scheduling(
+    service: DatasetDocumentApplicationService,
+    operations: MagicMock,
+    state: DocumentState | None,
+    error: type[Exception],
+) -> None:
+    operations.get_states.return_value = [replace(STATE, id="failed", indexing_status="error")]
+    if state is not None:
+        operations.get_states.return_value.append(state)
+
+    with pytest.raises(error):
+        service.retry_failed_documents(CONTEXT, dataset_id="dataset-1", document_ids=["failed", "document-1"])
+
+    operations.retry_documents.assert_not_called()
+
+
+def test_retry_failed_documents_checks_dataset_access_before_loading_documents(
+    service: DatasetDocumentApplicationService, access: MagicMock, operations: MagicMock
+) -> None:
+    access.require_accessible.side_effect = DatasetAccessDeniedError()
+
+    with pytest.raises(DatasetAccessDeniedError):
+        service.retry_failed_documents(CONTEXT, dataset_id="dataset-1", document_ids=["document-1"])
+
+    assert operations.mock_calls == []
+
+
 def test_summary_skips_qa_and_enables_summary_before_dispatch(
     service: DatasetDocumentApplicationService, operations: MagicMock
 ) -> None:
