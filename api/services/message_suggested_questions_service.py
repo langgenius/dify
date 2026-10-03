@@ -4,7 +4,8 @@ Callers own access admission, supported app modes, quotas and HTTP errors.
 The app owner tenant is independent of an account's active workspace.
 """
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
+from contextlib import AbstractContextManager
 from dataclasses import dataclass
 from typing import Literal, Protocol
 
@@ -55,7 +56,7 @@ class SuggestedQuestionsContext:
     config: Mapping[str, object]
 
 
-class SuggestedQuestionsContextQuery(Protocol):
+class SuggestedQuestionsContextQuery[HistoryT](Protocol):
     def prepare(
         self,
         *,
@@ -68,25 +69,39 @@ class SuggestedQuestionsContextQuery(Protocol):
         """Return message configuration, or None when there is no selected workflow."""
         ...
 
+    def load_history(self, *, context: SuggestedQuestionsContext) -> HistoryT:
+        """Return detached history after closing its query session."""
+        ...
 
-class SuggestedQuestionsGeneration(Protocol):
-    def generate(
+
+class SuggestedQuestionsGeneration[HistoryT](Protocol):
+    def prepare(
         self,
         *,
         context: SuggestedQuestionsContext,
         instruction_prompt: str | None,
         model_config: object | None,
-    ) -> list[str]:
-        """Generate questions; None selects the built-in prompt or default model."""
+    ) -> AbstractContextManager[Callable[[HistoryT], list[str]] | None]:
+        """Isolate one generation attempt and resolve its history model.
+
+        Yield None when no history model is available; otherwise yield a
+        generator accepting detached history. None prompt/model inputs select
+        the built-in prompt and default model.
+        """
         ...
 
 
-class MessageSuggestedQuestionsService:
+class MessageSuggestedQuestionsService[HistoryT]:
     """Apply the feature policy shared by every message suggested-question endpoint."""
 
-    def __init__(self, *, queries: SuggestedQuestionsContextQuery, generator: SuggestedQuestionsGeneration) -> None:
-        self._queries: SuggestedQuestionsContextQuery = queries
-        self._generator: SuggestedQuestionsGeneration = generator
+    def __init__(
+        self,
+        *,
+        queries: SuggestedQuestionsContextQuery[HistoryT],
+        generator: SuggestedQuestionsGeneration[HistoryT],
+    ) -> None:
+        self._queries: SuggestedQuestionsContextQuery[HistoryT] = queries
+        self._generator: SuggestedQuestionsGeneration[HistoryT] = generator
 
     def get_suggested_questions(
         self,
@@ -116,8 +131,12 @@ class MessageSuggestedQuestionsService:
 
         prompt = context.config.get("prompt")
         instruction_prompt = prompt if isinstance(prompt, str) and prompt.strip() else None
-        return self._generator.generate(
+        with self._generator.prepare(
             context=context,
             instruction_prompt=instruction_prompt,
             model_config=context.config.get("model"),
-        )
+        ) as generate:
+            if generate is None:
+                return []
+            history = self._queries.load_history(context=context)
+            return generate(history)

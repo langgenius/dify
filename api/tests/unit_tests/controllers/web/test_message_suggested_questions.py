@@ -226,9 +226,7 @@ def harness(
     db.init_app(app)
     event.listen(db.session.session_factory, "after_begin", track_session)
     queries = SuggestedQuestionsQuery(session_factory=read_factory, repository_factory=SuggestedQuestionsRepository)
-    services = _Services(
-        MessageSuggestedQuestionsService(queries=queries, generator=SuggestedQuestionsGenerator(queries=queries))
-    )
+    services = _Services(MessageSuggestedQuestionsService(queries=queries, generator=SuggestedQuestionsGenerator()))
     app.extensions["application_services"] = services
     api = ExternalApi(app)
     api.add_resource(message_controller.MessageSuggestedQuestionApi, "/messages/<uuid:message_id>/suggested-questions")

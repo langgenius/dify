@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
 import services.message_suggested_questions_generator as generator_module
 from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
 from core.file import remote_fetcher
+from core.memory.token_buffer_memory import PreparedHistory
 from core.model_context import get_credit_usage_metadata, use_credit_usage_metadata
 from core.model_manager import ModelInstance
 from core.ops.ops_trace_manager import TraceTask
@@ -153,7 +154,7 @@ class _Harness:
     message: Message
     factory: sessionmaker[Session]
     queries: SuggestedQuestionsQuery
-    service: MessageSuggestedQuestionsService
+    service: MessageSuggestedQuestionsService[PreparedHistory]
     provider: _Provider
     scoped_sessions: list[Session]
 
@@ -280,7 +281,7 @@ def harness(
         message,
         sqlite_session_factory,
         queries,
-        MessageSuggestedQuestionsService(queries=queries, generator=SuggestedQuestionsGenerator(queries=queries)),
+        MessageSuggestedQuestionsService(queries=queries, generator=SuggestedQuestionsGenerator()),
         provider,
         scoped_sessions,
     )
@@ -491,6 +492,11 @@ def test_account_preserves_disabled_feature_and_missing_workflow_or_model_behavi
         else:
             assert harness.get(actor) == []
     assert len(harness.scoped_sessions) == (1 if case == "history_provider_failure" else 0)
+    # Only configuration was read. A missing history model must not begin the
+    # separate history query, render attachments, or produce a trace.
+    assert len(harness.provider.read_sessions) == 1
+    assert harness.provider.model_requests == ([("default", "default")] if case == "history_provider_failure" else [])
+    assert not harness.provider.io_sessions
     assert not harness.provider.prompts
     assert not harness.provider.traces
     harness.assert_closed()
@@ -614,9 +620,11 @@ def test_remote_attachment_is_loaded_after_history_and_model_sessions_close(
     harness.assert_closed()
 
 
-@pytest.mark.parametrize("failure_stage", [None, "provider_sql", "trace"])
+@pytest.mark.parametrize("failure_stage", [None, "history_query", "provider_sql", "trace"])
 def test_service_keeps_its_context_state_while_releasing_sessions_and_preserving_the_caller(
-    harness: _Harness, monkeypatch: pytest.MonkeyPatch, failure_stage: Literal["provider_sql", "trace"] | None
+    harness: _Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    failure_stage: Literal["history_query", "provider_sql", "trace"] | None,
 ) -> None:
     actor = harness.actor("explore")
     generation_steps: list[str] = []
@@ -632,7 +640,15 @@ def test_service_keeps_its_context_state_while_releasing_sessions_and_preserving
             g.suggested_question_steps = generation_steps
         assert g.get("suggested_question_steps") is generation_steps
         generation_steps.append("model")
-        return resolve_model(tenant_id=tenant_id, model_type=model_type)
+        model = resolve_model(tenant_id=tenant_id, model_type=model_type)
+        if failure_stage == "history_query":
+            # Change persisted ownership after preparation so the real history
+            # query fails while the generator's isolated context is active.
+            with harness.factory.begin() as session:
+                session.execute(
+                    update(Conversation).where(Conversation.id == harness.conversation.id).values(is_deleted=True)
+                )
+        return model
 
     def tokens(prompt_messages: Sequence[PromptMessage]) -> int:
         assert g.get("suggested_question_steps") is generation_steps
@@ -682,7 +698,10 @@ def test_service_keeps_its_context_state_while_releasing_sessions_and_preserving
         assert caller_app is not None
         caller_app.name = "Pending caller edit"
         harness.scoped_sessions.clear()
-        if failure_stage == "trace":
+        if failure_stage == "history_query":
+            with pytest.raises(ConversationNotExistsError):
+                harness.get(actor)
+        elif failure_stage == "trace":
             with pytest.raises(RuntimeError, match="Trace backend unavailable"):
                 harness.get(actor)
         else:
@@ -696,9 +715,15 @@ def test_service_keeps_its_context_state_while_releasing_sessions_and_preserving
         assert all(session is not caller_session for session in harness.scoped_sessions)
         harness.assert_closed()
 
-    assert generation_steps == ["model", "tokens", "model", "invoke", "trace"]
-    assert len(trace_sessions) == 1
-    assert not trace_sessions[0].in_transaction()
+    if failure_stage == "history_query":
+        assert generation_steps == ["model"]
+        assert len(harness.provider.read_sessions) == 2
+        assert not trace_sessions
+        assert not harness.provider.traces
+    else:
+        assert generation_steps == ["model", "tokens", "model", "invoke", "trace"]
+        assert len(trace_sessions) == 1
+        assert not trace_sessions[0].in_transaction()
     if failure_stage == "provider_sql":
         assert len(invocation_sessions) == 1
         assert trace_sessions[0] is not invocation_sessions[0]

@@ -29,6 +29,17 @@ from services.workflow_service import WorkflowService
 
 
 class SuggestedQuestionsQuery:
+    """Coordinate repository reads with the existing ORM-based config readers.
+
+    This query owns each short session because AgentRuntimeConfigService,
+    WorkflowService and conversation config helpers still need a caller session.
+    The composition root supplies repository_factory to select the repository;
+    it borrows that same session rather than opening another one.
+
+    TODO: Move session ownership into repositories once those config readers
+    expose detached results, keeping their configuration policies in services.
+    """
+
     def __init__(
         self,
         *,

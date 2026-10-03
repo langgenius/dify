@@ -245,7 +245,7 @@ def harness(
     services = _Services(
         app_services,
         _Agents(AgentAppAccessService(references=AgentAppRepository(session_factory=sqlite_session_factory))),
-        MessageSuggestedQuestionsService(queries=queries, generator=SuggestedQuestionsGenerator(queries=queries)),
+        MessageSuggestedQuestionsService(queries=queries, generator=SuggestedQuestionsGenerator()),
     )
     flask_app.extensions["application_services"] = services
     api = ExternalApi(flask_app)

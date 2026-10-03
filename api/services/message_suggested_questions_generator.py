@@ -1,8 +1,10 @@
 """Generate suggested questions after all conversation query sessions close."""
 
 import logging
-from collections.abc import Sequence
+from collections.abc import Callable, Generator, Sequence
+from contextlib import contextmanager
 from dataclasses import dataclass
+from functools import partial
 from typing import TYPE_CHECKING, cast
 
 from flask import current_app
@@ -23,7 +25,7 @@ from graphon.model_runtime.entities.message_entities import PromptMessage, UserP
 from graphon.model_runtime.entities.model_entities import ModelType, ParameterType
 
 if TYPE_CHECKING:
-    from services.message_suggested_questions_queries import SuggestedQuestionsQuery
+    from core.memory.token_buffer_memory import PreparedHistory
     from services.message_suggested_questions_service import SuggestedQuestionsContext
 
 logger = logging.getLogger(__name__)
@@ -77,52 +79,67 @@ def _default_suggested_questions_model_parameters(model_instance: ModelInstance)
 class SuggestedQuestionsGenerator:
     """Own model resolution, detached-history rendering, generation and tracing."""
 
-    def __init__(self, *, queries: "SuggestedQuestionsQuery") -> None:
-        self._queries = queries
-
-    def generate(
+    @contextmanager
+    def prepare(
         self,
         *,
         context: "SuggestedQuestionsContext",
         instruction_prompt: str | None,
         model_config: object | None,
-    ) -> list[str]:
+    ) -> Generator[Callable[["PreparedHistory"], list[str]] | None, None, None]:
+        """Yield a request-local generator, or None if its history model is unavailable."""
         # Model resolution and tracing may use or commit the scoped session.
         # Isolate them from the caller, retaining one app context across phases.
         with current_app.app_context():
             history_model = self._get_history_model(tenant_id=context.tenant_id)
             db.session.remove()
             if history_model is None:
-                return []
-
-            # Preserve the no-model fallback before inspecting historical files.
-            history = self._queries.load_history(context=context)
-            histories = history.get_prompt_text(model_instance=history_model, max_token_limit=3000)
-
-            with (
-                measure_time() as timer,
-                use_credit_usage_metadata({"app_type": get_credit_usage_app_type(context.app_mode)}),
-            ):
-                model = self._prepare_model(tenant_id=context.tenant_id, model_config=model_config)
-                db.session.remove()
-                questions = (
-                    list(self._invoke(prepared_model=model, histories=histories, instruction_prompt=instruction_prompt))
-                    if model is not None
-                    else []
+                yield None
+            else:
+                yield partial(
+                    self.generate,
+                    history_model=history_model,
+                    context=context,
+                    instruction_prompt=instruction_prompt,
+                    model_config=model_config,
                 )
 
-            # Invocation catches provider failures, including failed database
-            # transactions. Tracing always starts with a fresh scoped session.
+    def generate(
+        self,
+        history: "PreparedHistory",
+        *,
+        history_model: ModelInstance,
+        context: "SuggestedQuestionsContext",
+        instruction_prompt: str | None,
+        model_config: object | None,
+    ) -> list[str]:
+        """Consume detached history within the isolation scope opened by prepare()."""
+        histories = history.get_prompt_text(model_instance=history_model, max_token_limit=3000)
+
+        with (
+            measure_time() as timer,
+            use_credit_usage_metadata({"app_type": get_credit_usage_app_type(context.app_mode)}),
+        ):
+            model = self._prepare_model(tenant_id=context.tenant_id, model_config=model_config)
             db.session.remove()
-            TraceQueueManager(app_id=context.app_id).add_trace_task(
-                TraceTask(
-                    TraceTaskName.SUGGESTED_QUESTION_TRACE,
-                    message_id=context.message_id,
-                    suggested_question=questions,
-                    timer=timer,
-                )
+            questions = (
+                list(self._invoke(prepared_model=model, histories=histories, instruction_prompt=instruction_prompt))
+                if model is not None
+                else []
             )
-            return questions
+
+        # Invocation catches provider failures, including failed database
+        # transactions. Tracing always starts with a fresh scoped session.
+        db.session.remove()
+        TraceQueueManager(app_id=context.app_id).add_trace_task(
+            TraceTask(
+                TraceTaskName.SUGGESTED_QUESTION_TRACE,
+                message_id=context.message_id,
+                suggested_question=questions,
+                timer=timer,
+            )
+        )
+        return questions
 
     @staticmethod
     def _get_history_model(*, tenant_id: str) -> ModelInstance | None:

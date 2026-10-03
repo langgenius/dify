@@ -247,15 +247,18 @@ class MessageSuggestedApi(Resource):
         summary="Get Next Suggested Questions",
         description=(
             "Get next question suggestions for the current message. "
-            "If no usable model can be resolved or question generation fails, "
-            "the response is successful with an empty data list."
+            "If no usable model can be resolved or the model call to generate questions fails, "
+            "the response is HTTP 200 with an empty data list. "
+            "Model invocation failures during history token counting instead return "
+            "HTTP 400 with `completion_request_error`."
         ),
         tags=["Chats", "Chatflows"],
         responses={
             HTTPStatus.OK: "Suggested questions retrieved successfully",
             HTTPStatus.BAD_REQUEST: (
                 "- `not_chat_app` : App mode does not match the API route.\n"
-                "- `app_unavailable` : App is no longer available."
+                "- `app_unavailable` : App is no longer available.\n"
+                "- `completion_request_error` : Model invocation failed while counting history tokens."
             ),
             HTTPStatus.UNAUTHORIZED: "Unauthorized - invalid API token",
             HTTPStatus.FORBIDDEN: (
@@ -279,7 +282,9 @@ class MessageSuggestedApi(Resource):
     def get(self, context: ServiceApiEndUserContext, message_id: UUID) -> dict[str, object]:
         """Get suggested follow-up questions for a message.
 
-        Returns an empty list when model resolution or question generation fails.
+        Returns an empty list when model resolution or the question-generation
+        model call fails. History token-counting invocation failures return
+        HTTP 400 with completion_request_error.
         """
         message_id_str = str(message_id)
         app_mode = AppMode.value_of(context.app_mode)
