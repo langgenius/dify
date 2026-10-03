@@ -227,15 +227,20 @@ class MessageSuggestedQuestionApi(WebApiResource):
     @web_ns.doc(
         description=(
             "Get suggested follow-up questions after a message (chat apps only). "
-            "If no usable model can be resolved or question generation fails, "
-            "the response is successful with an empty data list."
+            "If no usable model can be resolved or the model call to generate questions fails, "
+            "the response is HTTP 200 with an empty data list. "
+            "Model invocation failures during history token counting instead return "
+            "HTTP 400 with `completion_request_error`."
         )
     )
     @web_ns.doc(params={"message_id": {"description": "Message UUID", "type": "string", "required": True}})
     @web_ns.doc(
         responses={
             HTTPStatus.OK: "Success",
-            HTTPStatus.BAD_REQUEST: "Bad Request - Not a chat app or app unavailable",
+            HTTPStatus.BAD_REQUEST: (
+                "Bad Request - Not a chat app or app unavailable; "
+                "`completion_request_error` when model invocation fails while counting history tokens."
+            ),
             HTTPStatus.UNAUTHORIZED: "Unauthorized",
             HTTPStatus.FORBIDDEN: "Forbidden - Access denied or suggested questions disabled",
             HTTPStatus.NOT_FOUND: "App, End User, Message, or Conversation Not Found",

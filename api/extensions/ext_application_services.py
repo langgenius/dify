@@ -615,7 +615,7 @@ def build_application_services(
         ),
         message_suggested_questions=MessageSuggestedQuestionsService(
             queries=suggested_questions,
-            generator=SuggestedQuestionsGenerator(queries=suggested_questions),
+            generator=SuggestedQuestionsGenerator(),
         ),
         plugin_file_uploads=PluginFileUploadService(
             owners=SQLAlchemyPluginFileUploadOwnerRepository(session_factory=database_client),

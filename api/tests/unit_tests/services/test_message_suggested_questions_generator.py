@@ -331,9 +331,7 @@ class TestSuggestedQuestionsGenerator:
         assert _get_plugin_daemon_request_timeout() == original_timeout
 
 
-def test_missing_history_model_returns_before_loading_history() -> None:
-    queries = Mock()
-    queries.load_history.side_effect = AssertionError("History must remain unread without a token-counting model")
+def test_prepare_without_history_model_yields_none_without_tracing() -> None:
     context = SuggestedQuestionsContext(
         app_id="app-id",
         tenant_id="tenant-id",
@@ -348,10 +346,9 @@ def test_missing_history_model_returns_before_loading_history() -> None:
         patch("services.message_suggested_questions_generator.TraceQueueManager") as traces,
     ):
         manager.return_value.get_default_model_instance.side_effect = ValueError("No default model")
-        result = SuggestedQuestionsGenerator(queries=queries).generate(
+        with SuggestedQuestionsGenerator().prepare(
             context=context, instruction_prompt=None, model_config=None
-        )
+        ) as generate:
+            assert generate is None
 
-    assert result == []
-    queries.load_history.assert_not_called()
     traces.assert_not_called()

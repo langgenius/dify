@@ -19,6 +19,7 @@ import controllers.console.wraps as console_wraps
 import libs.login as login_module
 import services.message_suggested_questions_generator as generator_module
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from core.memory.token_buffer_memory import PreparedHistory
 from core.model_context import get_credit_usage_metadata
 from core.model_manager import ModelInstance
 from core.ops.ops_trace_manager import TraceTask
@@ -137,7 +138,7 @@ class _TrialAppServices:
 class _ApplicationServices:
     trial_apps: _TrialAppServices
     recommended_app_queries: _Features
-    message_suggested_questions: MessageSuggestedQuestionsService
+    message_suggested_questions: MessageSuggestedQuestionsService[PreparedHistory]
 
 
 @dataclass(frozen=True)
@@ -238,7 +239,7 @@ def harness(
         ),
         recommended_app_queries=features,
         message_suggested_questions=MessageSuggestedQuestionsService(
-            queries=queries, generator=SuggestedQuestionsGenerator(queries=queries)
+            queries=queries, generator=SuggestedQuestionsGenerator()
         ),
     )
 
@@ -548,7 +549,7 @@ def test_reload_errors_have_explicit_http_mapping(
     message: str | None,
 ) -> None:
     def reject_reload(
-        _self: MessageSuggestedQuestionsService,
+        _self: MessageSuggestedQuestionsService[PreparedHistory],
         *,
         app_id: str,
         app_owner_tenant_id: str,

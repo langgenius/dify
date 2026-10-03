@@ -296,7 +296,7 @@ def real_questions(
     messages.services = replace(
         messages.services,
         message_suggested_questions=MessageSuggestedQuestionsService(
-            queries=queries, generator=SuggestedQuestionsGenerator(queries=queries)
+            queries=queries, generator=SuggestedQuestionsGenerator()
         ),
     )
     messages.harness.app.config["SQLALCHEMY_DATABASE_URI"] = str(sqlite_engine.url)

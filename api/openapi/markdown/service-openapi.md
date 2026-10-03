@@ -370,7 +370,7 @@ Stops a chat message generation task. Only supported in `streaming` mode.
 ### [GET] /messages/{message_id}/suggested
 **Get Next Suggested Questions**
 
-Get next question suggestions for the current message. If no usable model can be resolved or question generation fails, the response is successful with an empty data list.
+Get next question suggestions for the current message. If no usable model can be resolved or the model call to generate questions fails, the response is HTTP 200 with an empty data list. Model invocation failures during history token counting instead return HTTP 400 with `completion_request_error`.
 
 #### Parameters
 
@@ -384,7 +384,7 @@ Get next question suggestions for the current message. If no usable model can be
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Suggested questions retrieved successfully | **application/json**: [SimpleResultStringListResponse](#simpleresultstringlistresponse)<br> |
-| 400 | - `not_chat_app` : App mode does not match the API route. - `app_unavailable` : App is no longer available. |  |
+| 400 | - `not_chat_app` : App mode does not match the API route. - `app_unavailable` : App is no longer available. - `completion_request_error` : Model invocation failed while counting history tokens. |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | - `forbidden` : Token, app, or workspace access denied. - `app_suggested_questions_after_answer_disabled` : Suggested questions feature is disabled. |  |
 | 404 | - `not_found` : End user, message, or conversation does not exist. - `agent_version_not_found_error` : Agent config version does not exist. |  |
@@ -517,7 +517,7 @@ Stops a chat message generation task. Only supported in `streaming` mode.
 ### [GET] /messages/{message_id}/suggested
 **Get Next Suggested Questions**
 
-Get next question suggestions for the current message. If no usable model can be resolved or question generation fails, the response is successful with an empty data list.
+Get next question suggestions for the current message. If no usable model can be resolved or the model call to generate questions fails, the response is HTTP 200 with an empty data list. Model invocation failures during history token counting instead return HTTP 400 with `completion_request_error`.
 
 #### Parameters
 
@@ -531,7 +531,7 @@ Get next question suggestions for the current message. If no usable model can be
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Suggested questions retrieved successfully | **application/json**: [SimpleResultStringListResponse](#simpleresultstringlistresponse)<br> |
-| 400 | - `not_chat_app` : App mode does not match the API route. - `app_unavailable` : App is no longer available. |  |
+| 400 | - `not_chat_app` : App mode does not match the API route. - `app_unavailable` : App is no longer available. - `completion_request_error` : Model invocation failed while counting history tokens. |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | - `forbidden` : Token, app, or workspace access denied. - `app_suggested_questions_after_answer_disabled` : Suggested questions feature is disabled. |  |
 | 404 | - `not_found` : End user, message, or conversation does not exist. - `agent_version_not_found_error` : Agent config version does not exist. |  |

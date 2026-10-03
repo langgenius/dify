@@ -461,7 +461,7 @@ def test_real_generation_preserves_stage_specific_failure_responses(
     harness.app.extensions["application_services"] = replace(
         services,
         message_suggested_questions=MessageSuggestedQuestionsService(
-            queries=queries, generator=SuggestedQuestionsGenerator(queries=queries)
+            queries=queries, generator=SuggestedQuestionsGenerator()
         ),
     )
     response = harness.get()

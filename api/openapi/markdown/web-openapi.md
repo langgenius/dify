@@ -551,7 +551,7 @@ Generate a new completion similar to an existing message (completion apps only).
 | 500 | Internal Server Error |  |
 
 ### [GET] /messages/{message_id}/suggested-questions
-Get suggested follow-up questions after a message (chat apps only). If no usable model can be resolved or question generation fails, the response is successful with an empty data list.
+Get suggested follow-up questions after a message (chat apps only). If no usable model can be resolved or the model call to generate questions fails, the response is HTTP 200 with an empty data list. Model invocation failures during history token counting instead return HTTP 400 with `completion_request_error`.
 
 #### Parameters
 
@@ -564,7 +564,7 @@ Get suggested follow-up questions after a message (chat apps only). If no usable
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SuggestedQuestionsResponse](#suggestedquestionsresponse)<br> |
-| 400 | Bad Request - Not a chat app or app unavailable |  |
+| 400 | Bad Request - Not a chat app or app unavailable; `completion_request_error` when model invocation fails while counting history tokens. |  |
 | 401 | Unauthorized |  |
 | 403 | Forbidden - Access denied or suggested questions disabled |  |
 | 404 | App, End User, Message, or Conversation Not Found |  |
