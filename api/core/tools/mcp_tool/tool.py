@@ -10,7 +10,6 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.entities.mcp_provider import IdentityMode
-from core.mcp.auth_client import MCPClientWithAuthRetry
 from core.mcp.error import MCPConnectionError
 from core.mcp.types import (
     AudioContent,
@@ -322,18 +321,29 @@ class MCPTool(Tool):
             self._inject_forwarded_identity(headers, user_id=user_id, app_id=app_id, audience=server_url)
             forward_identity_active = True
 
-        # Step 2: Session is now closed, perform network operations without holding database connection
-        # MCPClientWithAuthRetry will create a new session lazily only if auth retry is needed
+        # Step 2: Session is now closed, perform network operations without holding database connection.
+        # The pooled manager reuses one connection per stable scope (tenant,
+        # end user, provider config, server) so stateful MCP servers (e.g.
+        # Playwright) keep their session state between calls without sharing
+        # it across users; per-call credentials are used to connect but not
+        # to key the pool. It reconnects once when a pooled connection has
+        # died, and auth retries are handled inside the pooled client.
+        from core.mcp.client_manager import get_mcp_client_manager
+
         try:
-            with MCPClientWithAuthRetry(
+            return get_mcp_client_manager().invoke_tool(
+                tenant_id=self.tenant_id,
+                user_id=user_id,
                 server_url=server_url,
+                provider_id=provider_entity.id,
                 headers=headers,
                 timeout=self.timeout,
                 sse_read_timeout=self.sse_read_timeout,
                 provider_entity=provider_entity,
                 forward_identity_active=forward_identity_active,
-            ) as mcp_client:
-                return mcp_client.invoke_tool(tool_name=self.entity.identity.name, tool_args=tool_parameters)
+                tool_name=self.entity.identity.name,
+                tool_args=tool_parameters,
+            )
         except MCPConnectionError as e:
             raise ToolInvokeError(f"Failed to connect to MCP server: {e}") from e
         except Exception as e:
