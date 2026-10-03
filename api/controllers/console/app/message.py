@@ -5,7 +5,7 @@ from uuid import UUID
 
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import exists, func, select
+from sqlalchemy import and_, exists, func, or_, select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import HTTPException, InternalServerError, NotFound, Unauthorized
 
@@ -476,17 +476,19 @@ def _list_chat_messages(
             select(Message)
             .where(
                 Message.conversation_id == conversation.id,
-                Message.created_at < first_message.created_at,
-                Message.id != first_message.id,
+                or_(
+                    Message.created_at < first_message.created_at,
+                    and_(Message.created_at == first_message.created_at, Message.id < first_message.id),
+                ),
             )
-            .order_by(Message.created_at.desc())
+            .order_by(Message.created_at.desc(), Message.id.desc())
             .limit(args.limit)
         ).all()
     else:
         history_messages = session.scalars(
             select(Message)
             .where(Message.conversation_id == conversation.id)
-            .order_by(Message.created_at.desc())
+            .order_by(Message.created_at.desc(), Message.id.desc())
             .limit(args.limit)
         ).all()
 
@@ -498,8 +500,13 @@ def _list_chat_messages(
             select(
                 exists().where(
                     Message.conversation_id == conversation.id,
-                    Message.created_at < current_page_first_message.created_at,
-                    Message.id != current_page_first_message.id,
+                    or_(
+                        Message.created_at < current_page_first_message.created_at,
+                        and_(
+                            Message.created_at == current_page_first_message.created_at,
+                            Message.id < current_page_first_message.id,
+                        ),
+                    ),
                 )
             )
         )
