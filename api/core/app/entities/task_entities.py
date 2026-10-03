@@ -248,6 +248,7 @@ class WorkflowFinishStreamResponse(StreamResponse):
         finished_at: int | None
         exceptions_count: int = 0
         files: Sequence[Mapping[str, Any]] | None = []
+        usage: LLMUsage | None = None
 
     event: StreamEvent = StreamEvent.WORKFLOW_FINISHED
     workflow_run_id: str
@@ -910,6 +911,7 @@ class WorkflowAppBlockingResponse(AppBlockingResponse):
         total_steps: int
         created_at: int
         finished_at: int | None
+        usage: LLMUsage | None = None
 
     workflow_run_id: str
     data: Data

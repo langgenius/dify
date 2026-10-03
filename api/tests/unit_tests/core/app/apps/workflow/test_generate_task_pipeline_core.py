@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from decimal import Decimal
 from types import SimpleNamespace
 
 import pytest
@@ -7,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import AppAdditionalFeatures, WorkflowUIBasedAppConfig
+from core.app.apps.workflow.generate_response_converter import WorkflowAppGenerateResponseConverter
 from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
@@ -47,7 +49,9 @@ from core.app.entities.task_entities import (
     WorkflowStartStreamResponse,
 )
 from core.base.tts.app_generator_tts_publisher import AudioTrunk
+from core.tools.workflow_as_tool.tool import WorkflowTool
 from core.workflow.system_variables import build_system_variables, system_variables_to_mapping
+from graphon.entities import WorkflowStartReason
 from graphon.enums import BuiltinNodeTypes, WorkflowExecutionStatus
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.runtime import GraphRuntimeState, VariablePool
@@ -177,6 +181,53 @@ class TestWorkflowGenerateTaskPipeline:
         response = pipeline._to_blocking_response(_gen())
 
         assert response.data.outputs == {"ok": True}
+
+    def test_to_blocking_response_preserves_llm_usage_breakdown(self):
+        pipeline = _make_pipeline()
+        converter = pipeline._workflow_response_converter
+        converter.workflow_start_to_stream_response(
+            task_id="task",
+            workflow_run_id="run-id",
+            workflow_id="workflow-id",
+            reason=WorkflowStartReason.INITIAL,
+        )
+        llm_usage = LLMUsage.empty_usage().model_copy(
+            update={
+                "prompt_tokens": 12,
+                "completion_tokens": 8,
+                "total_tokens": 20,
+                "prompt_price": Decimal("0.12"),
+                "completion_price": Decimal("0.08"),
+                "total_price": Decimal("0.2"),
+            }
+        )
+        finish_response = converter.workflow_finish_to_stream_response(
+            task_id="task",
+            workflow_id="workflow-id",
+            status=WorkflowExecutionStatus.SUCCEEDED,
+            graph_runtime_state=GraphRuntimeState(
+                variable_pool=build_test_variable_pool(
+                    variables=build_system_variables(workflow_execution_id="run-id"),
+                ),
+                start_at=0.0,
+                llm_usage=llm_usage,
+                node_run_steps=1,
+            ),
+        )
+
+        def _gen():
+            yield finish_response
+
+        blocking_response = pipeline._to_blocking_response(_gen())
+        payload = WorkflowAppGenerateResponseConverter.convert_blocking_full_response(blocking_response)
+
+        derived = WorkflowTool._derive_usage_from_result(payload["data"])
+        assert derived.prompt_tokens == 12
+        assert derived.completion_tokens == 8
+        assert derived.total_tokens == 20
+        assert derived.prompt_price == Decimal("0.12")
+        assert derived.completion_price == Decimal("0.08")
+        assert derived.total_price == Decimal("0.2")
 
     def test_listen_audio_msg_returns_audio_stream(self):
         pipeline = _make_pipeline()

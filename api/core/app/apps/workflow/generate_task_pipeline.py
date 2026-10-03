@@ -187,6 +187,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                             finished_at=int(stream_response.data.finished_at)
                             if stream_response.data.finished_at
                             else None,
+                            usage=stream_response.data.usage,
                         ),
                     )
                 case _:
