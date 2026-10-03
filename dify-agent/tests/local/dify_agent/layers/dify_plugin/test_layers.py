@@ -10,6 +10,7 @@ from agenton.compositor import Compositor, LayerNode, LayerProvider
 from dify_agent.adapters.llm import DifyLLMAdapterModel
 from dify_agent.layers.dify_plugin.configs import (
     DIFY_PLUGIN_LLM_LAYER_TYPE_ID,
+    DIFY_PLUGIN_TOOL_FILES_METADATA_KEY,
     DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID,
     DifyPluginLLMLayerConfig,
     DifyPluginToolConfig,
@@ -334,6 +335,62 @@ def test_dify_plugin_tools_layer_uses_prepared_tool_definition_and_invokes_daemo
                 assert tool_def.parameters_json_schema == _prepared_tool_schema()
                 assert tool_def.strict is False
                 assert result == 'found {"count": 1}'
+
+    asyncio.run(scenario())
+
+
+def test_dify_plugin_tools_layer_reports_image_urls_via_tool_return_metadata() -> None:
+    # Issue #40425: the observation text intentionally replaces image messages
+    # with a fixed instruction, so the created file's URL must survive on the
+    # application-only ToolReturn metadata channel for the API to render it.
+    from pydantic_ai import ToolReturn
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/dispatch/tool/invoke"):
+            stream_payload = "\n".join(
+                [
+                    f"data: {json.dumps({'code': 0, 'message': 'ok', 'data': {'type': 'image_link', 'message': {'text': 'https://tools.example/generated/cat.png'}, 'meta': {'mime_type': 'image/png'}}})}",
+                    "",
+                ]
+            )
+            return httpx.Response(200, text=stream_payload)
+
+        raise AssertionError(f"Unexpected request path: {request.url.path}")
+
+    async def scenario() -> None:
+        compositor = Compositor(
+            [
+                LayerNode("execution_context", _execution_context_provider()),
+                LayerNode("tools", _tools_provider(), deps={"execution_context": "execution_context"}),
+            ]
+        )
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            async with compositor.enter(
+                configs={"execution_context": _execution_context_config(), "tools": _tools_config()}
+            ) as run:
+                tools_layer = run.get_layer("tools", DifyPluginToolsLayer)
+                tool = (await tools_layer.get_tools(http_client=client, dify_api_http_client=client))[0]
+
+                result = await tool.function_schema.call(
+                    {"query": "dify", "region": "global"},
+                    None,  # pyright: ignore[reportArgumentType]
+                )
+
+                assert isinstance(result, ToolReturn)
+                # The LLM-facing observation is byte-identical to the pre-fix text.
+                assert result.return_value == (
+                    "image has been created and sent to user already, "
+                    "you do not need to create it, just tell the user to check it now."
+                )
+                assert result.metadata == {
+                    DIFY_PLUGIN_TOOL_FILES_METADATA_KEY: [
+                        {
+                            "type": "image",
+                            "url": "https://tools.example/generated/cat.png",
+                            "mime_type": "image/png",
+                        }
+                    ]
+                }
 
     asyncio.run(scenario())
 

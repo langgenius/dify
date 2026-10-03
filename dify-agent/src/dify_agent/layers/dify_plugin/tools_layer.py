@@ -23,12 +23,13 @@ from urllib.parse import urlparse
 
 import httpx
 from pydantic import BaseModel, ConfigDict, JsonValue, ValidationError
-from pydantic_ai import RunContext, Tool
+from pydantic_ai import RunContext, Tool, ToolReturn
 from pydantic_ai.tools import ToolDefinition
 from typing_extensions import Self, override
 
 from agenton.layers import LayerDeps, PlainLayer
 from dify_agent.layers.dify_plugin.configs import (
+    DIFY_PLUGIN_TOOL_FILES_METADATA_KEY,
     DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID,
     DifyPluginToolConfig,
     DifyPluginToolParameter,
@@ -259,7 +260,7 @@ def _build_pydantic_ai_tool(
     tool_description = tool_config.description or tool_name
     tool_schema = deepcopy(tool_config.parameters_json_schema)
 
-    async def invoke_tool(_ctx: RunContext[object], **tool_arguments: object) -> str:
+    async def invoke_tool(_ctx: RunContext[object], **tool_arguments: object) -> str | ToolReturn:
         try:
             merged_arguments = await _prepare_tool_arguments(
                 effective_parameters,
@@ -274,7 +275,14 @@ def _build_pydantic_ai_tool(
                 credentials=dict(tool_config.credentials),
                 tool_parameters=merged_arguments,
             )
-            return _convert_tool_response_to_text(messages)
+            observation = _convert_tool_response_to_text(messages)
+            file_references = _extract_tool_file_references(messages)
+            if file_references:
+                return ToolReturn(
+                    return_value=observation,
+                    metadata={DIFY_PLUGIN_TOOL_FILES_METADATA_KEY: file_references},
+                )
+            return observation
         except DifyPluginToolClientError as exc:
             return _tool_error_text(tool_name=tool_name, error=exc)
         except ValueError as exc:
@@ -676,6 +684,35 @@ def _convert_tool_response_to_text(tool_response: Sequence[DifyPluginToolInvokeM
         existing_parts = set(parts)
         parts.extend(part for part in json_parts if part not in existing_parts)
     return "".join(parts)
+
+
+def _extract_tool_file_references(
+    tool_response: Sequence[DifyPluginToolInvokeMessage],
+) -> list[dict[str, object]]:
+    """Collect URL-bearing file messages the text conversion cannot represent.
+
+    ``IMAGE`` / ``IMAGE_LINK`` daemon messages carry the created file's URL in
+    ``message.text``. The observation text intentionally replaces them with a
+    fixed instruction, so without this side channel the URL is unrecoverable
+    downstream. Blob-type messages are not collected: the daemon stream client
+    delivers them as raw bytes, which do not belong in event metadata.
+    """
+    references: list[dict[str, object]] = []
+    for response in tool_response:
+        if response.type not in {
+            DifyPluginToolInvokeMessage.MessageType.IMAGE,
+            DifyPluginToolInvokeMessage.MessageType.IMAGE_LINK,
+        }:
+            continue
+        message = response.message
+        if not isinstance(message, DifyPluginToolInvokeMessage.TextMessage) or not message.text:
+            continue
+        reference: dict[str, object] = {"type": "image", "url": message.text}
+        mime_type = (response.meta or {}).get("mime_type")
+        if isinstance(mime_type, str) and mime_type:
+            reference["mime_type"] = mime_type
+        references.append(reference)
+    return references
 
 
 __all__ = ["DifyPluginToolsDeps", "DifyPluginToolsLayer"]
