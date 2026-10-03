@@ -177,8 +177,12 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
 
     @override
     def save(self, execution: WorkflowExecution):
+        self.save_synchronously(execution)
+
+    @override
+    def save_synchronously(self, execution: WorkflowExecution) -> None:
         """
-        Save or update a WorkflowExecution domain entity to the database.
+        Save or update a WorkflowExecution domain entity to the database synchronously.
 
         This method serves as a domain-to-database adapter that:
         1. Converts the domain entity to its database representation
