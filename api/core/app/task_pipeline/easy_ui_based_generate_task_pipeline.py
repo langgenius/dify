@@ -8,6 +8,7 @@ from typing import Any, cast
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from core.app.apps.agent_app.human_input_sse import build_human_input_required_stream_response_from_queue_event
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.app_invoke_entities import (
     AgentChatAppGenerateEntity,
@@ -20,6 +21,7 @@ from core.app.entities.queue_entities import (
     QueueAgentThoughtEvent,
     QueueAnnotationReplyEvent,
     QueueErrorEvent,
+    QueueHumanInputRequiredEvent,
     QueueLLMChunkEvent,
     QueueMessageEndEvent,
     QueueMessageFileEvent,
@@ -37,6 +39,7 @@ from core.app.entities.task_entities import (
     CompletionAppStreamResponse,
     EasyUITaskState,
     ErrorStreamResponse,
+    HumanInputRequiredResponse,
     MessageAudioEndStreamResponse,
     MessageAudioStreamResponse,
     MessageEndStreamResponse,
@@ -62,7 +65,9 @@ from graphon.model_runtime.entities.message_entities import (
 )
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from libs.datetime_utils import naive_utc_now
-from models.model import AppMode, Conversation, Message, MessageAgentThought, MessageFile, UploadFile
+from models.enums import MessageStatus
+from models.execution_extra_content import HumanInputContent, UploadFile
+from models.model import AppMode, Conversation, Message, MessageAgentThought, MessageFile
 
 logger = logging.getLogger(__name__)
 
@@ -389,6 +394,8 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                     )
                 case QueueMessageReplaceEvent():
                     yield self._message_cycle_manager.message_replace_to_stream_response(answer=event.text)
+                case QueueHumanInputRequiredEvent():
+                    yield self._human_input_required_to_stream_response(event)
                 case QueuePingEvent():
                     yield self.ping_stream_response()
                 case _:
@@ -568,6 +575,41 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
             metadata=metadata_dict,
             files=files,
         )
+
+    def _human_input_required_to_stream_response(
+        self, event: QueueHumanInputRequiredEvent
+    ) -> HumanInputRequiredResponse:
+        response = build_human_input_required_stream_response_from_queue_event(
+            task_id=self._application_generate_entity.task_id,
+            message_id=self._message_id,
+            event=event,
+            invoke_from=self._application_generate_entity.invoke_from,
+        )
+        self._persist_human_input_extra_content(form_id=event.form_id)
+        return response
+
+    def _persist_human_input_extra_content(self, *, form_id: str) -> None:
+        """Persist pending ask_human form metadata for reconnect/replay."""
+        with session_factory.create_session() as session:
+            exists_stmt = select(HumanInputContent).where(
+                HumanInputContent.workflow_run_id == self._message_id,
+                HumanInputContent.message_id == self._message_id,
+                HumanInputContent.form_id == form_id,
+            )
+            if session.scalar(exists_stmt) is not None:
+                return
+
+            session.add(
+                HumanInputContent.new(
+                    workflow_run_id=self._message_id,
+                    form_id=form_id,
+                    message_id=self._message_id,
+                )
+            )
+            message = session.get(Message, self._message_id)
+            if message is not None:
+                message.status = MessageStatus.PAUSED
+            session.commit()
 
     def _agent_message_to_stream_response(self, answer: str, message_id: str) -> AgentMessageStreamResponse:
         """
