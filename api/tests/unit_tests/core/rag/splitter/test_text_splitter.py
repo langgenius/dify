@@ -935,6 +935,81 @@ class TestFixedRecursiveCharacterTextSplitter:
         for chunk in result:
             assert len(chunk) <= 12  # chunk_size + some tolerance for overlap
 
+    @pytest.mark.parametrize("chunk_overlap", [0, 5, 25, 30], ids=["zero", "ordinary", "half", "greater-than-half"])
+    def test_character_level_splitting_preserves_requested_overlap(self, chunk_overlap: int):
+        """Keep the configured overlap consistent across every character chunk."""
+        text = "".join(chr(0x4E00 + i) for i in range(180))
+        chunk_size = 50
+        splitter = FixedRecursiveCharacterTextSplitter(
+            fixed_separator="", separators=[""], chunk_size=chunk_size, chunk_overlap=chunk_overlap
+        )
+
+        chunks = splitter.split_text(text)
+
+        assert len(chunks) >= 4
+        assert all(len(chunk) <= chunk_size for chunk in chunks)
+        starts = [text.index(chunk) for chunk in chunks]
+        assert starts[0] == 0
+        for previous, current, previous_start, current_start in zip(chunks, chunks[1:], starts, starts[1:]):
+            assert text[previous_start : previous_start + len(previous)] == previous
+            assert text[current_start : current_start + len(current)] == current
+            assert current_start == previous_start + len(previous) - chunk_overlap
+            if chunk_overlap:
+                assert previous[-chunk_overlap:] == current[:chunk_overlap]
+        assert starts[-1] + len(chunks[-1]) == len(text)
+
+    def test_character_level_splitting_uses_custom_lengths_for_overlap(self):
+        """Use the configured length function when retaining overlap characters."""
+        text = "".join(chr(0x4E00 + i) for i in range(180))
+
+        def doubled_character_length(texts: list[str]) -> list[int]:
+            return [2 * len(value) for value in texts]
+
+        splitter = FixedRecursiveCharacterTextSplitter(
+            fixed_separator="",
+            separators=[""],
+            chunk_size=100,
+            chunk_overlap=60,
+            length_function=doubled_character_length,
+        )
+
+        chunks = splitter.split_text(text)
+
+        assert all(doubled_character_length([chunk])[0] <= splitter._chunk_size for chunk in chunks)
+        starts = [text.index(chunk) for chunk in chunks]
+        assert all(
+            current_start == previous_start + len(previous) - 30
+            for previous, current_start, previous_start in zip(chunks, starts[1:], starts)
+        )
+
+    def test_character_level_splitting_keeps_variable_length_chunks_within_limit(self):
+        """Trim overlap further when the next character has a larger custom length."""
+        text = "abcdefghij"
+        character_lengths: dict[str, int] = dict.fromkeys(text, 2)
+        character_lengths["f"] = 5
+
+        def variable_character_length(texts: list[str]) -> list[int]:
+            return [sum(character_lengths[character] for character in value) for value in texts]
+
+        splitter = FixedRecursiveCharacterTextSplitter(
+            fixed_separator="",
+            separators=[""],
+            chunk_size=10,
+            chunk_overlap=8,
+            length_function=variable_character_length,
+        )
+
+        chunks = splitter.split_text(text)
+
+        assert all(variable_character_length([chunk])[0] <= 10 for chunk in chunks)
+        starts = [text.index(chunk) for chunk in chunks]
+        assert starts[0] == 0
+        for previous, current, previous_start, current_start in zip(chunks, chunks[1:], starts, starts[1:]):
+            assert text[previous_start : previous_start + len(previous)] == previous
+            assert text[current_start : current_start + len(current)] == current
+            assert current_start <= previous_start + len(previous)
+        assert starts[-1] + len(chunks[-1]) == len(text)
+
     def test_overlap_in_character_splitting(self):
         """Test that overlap is correctly applied in character-level splitting."""
         text = string.ascii_uppercase
