@@ -193,7 +193,19 @@ class DifyLLMAdapterModel(Model[DifyLLMClient]):
             response_model_name=self.model_name,
             provider_name_value=self.system,
         )
-        yield response
+        primary_error: BaseException | None = None
+        try:
+            yield response
+        except BaseException as exc:
+            primary_error = exc
+            raise
+        finally:
+            try:
+                await response.chunks.aclose()
+            except BaseException as close_error:
+                if primary_error is None:
+                    raise
+                primary_error.add_note(f"Closing the Dify LLM stream also failed: {close_error!r}")
         self._record_usage(response.dify_usage)
 
     def _record_usage(self, usage: LLMUsage | None) -> None:
@@ -227,7 +239,7 @@ class DifyStreamedResponse(StreamedResponse):
     payload lets the owning model count each request exactly once instead of summing stream chunks.
     """
 
-    chunks: AsyncIterator[LLMResultChunk]
+    chunks: AsyncGenerator[LLMResultChunk, None]
     response_model_name: str
     provider_name_value: str
     _timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
