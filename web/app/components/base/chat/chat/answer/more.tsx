@@ -12,7 +12,7 @@ const More: FC<MoreProps> = ({ more }) => {
 
   return (
     <div
-      className="mt-1 flex items-center system-xs-regular text-text-quaternary opacity-0 group-hover:opacity-100"
+      className="mt-1 flex items-center system-xs-regular text-text-quaternary opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100"
       data-testid="more-container"
     >
       {more && (
