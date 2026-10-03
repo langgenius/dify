@@ -3,6 +3,7 @@ import type { InputVar } from '@/app/components/workflow/types'
 import { DEFAULT_FILE_UPLOAD_SETTING } from '@/app/components/workflow/constants'
 import { ChangeType, InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { withSelectorKey } from '@/test/i18n-mock'
+import { TransferMethod } from '@/types/app'
 import {
   buildSelectOptions,
   createPayloadForType,
@@ -59,8 +60,51 @@ describe('config-modal utils', () => {
       expect(nextPayload.hide).toBe(false)
       expect(nextPayload.max_length).toBe(DEFAULT_FILE_UPLOAD_SETTING.max_length)
       expect(nextPayload.allowed_file_types).toEqual(DEFAULT_FILE_UPLOAD_SETTING.allowed_file_types)
-      expect(nextPayload.default).toBe('hello')
+      expect(nextPayload.default).toBeUndefined()
     })
+
+    it.each([
+      { sourceType: InputVarType.number, defaultValue: 7 },
+      { sourceType: InputVarType.textInput, defaultValue: 'hello' },
+      { sourceType: InputVarType.checkbox, defaultValue: true },
+    ])(
+      'should discard the $sourceType default when switching to a file input',
+      ({ sourceType, defaultValue }) => {
+        for (const type of [InputVarType.singleFile, InputVarType.multiFiles]) {
+          const nextPayload = createPayloadForType(
+            createInputVar({ type: sourceType, default: defaultValue }),
+            type,
+          )
+
+          expect(nextPayload.default).toBeUndefined()
+        }
+      },
+    )
+
+    it.each([InputVarType.singleFile, InputVarType.multiFiles])(
+      'should preserve an existing default when keeping the %s input type',
+      (type) => {
+        const file = {
+          id: 'file-1',
+          name: 'example.txt',
+          size: 10,
+          type: 'text/plain',
+          progress: 100,
+          transferMethod: TransferMethod.local_file,
+          supportFileType: SupportUploadFileTypes.document,
+        }
+        // File defaults are supported by the editor despite the legacy scalar InputVar type.
+        const defaultValue = (type === InputVarType.singleFile
+          ? file
+          : [file]) as unknown as InputVar['default']
+        const nextPayload = createPayloadForType(
+          createInputVar({ type, default: defaultValue }),
+          type,
+        )
+
+        expect(nextPayload.default).toEqual(defaultValue)
+      },
+    )
 
     it('should clear the default value when switching to a select input type', () => {
       const payload = createInputVar({

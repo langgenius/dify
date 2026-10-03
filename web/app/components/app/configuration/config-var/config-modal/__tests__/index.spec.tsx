@@ -252,6 +252,34 @@ describe('ConfigModal', () => {
     },
   )
 
+  it('should discard a numeric default when changing to File List and save the configuration', async () => {
+    const user = userEvent.setup()
+    const onConfirm = vi.fn()
+    render(
+      <ConfigModal
+        isShow
+        supportFile
+        payload={createPayload({ type: InputVarType.number, label: 'Attachment', default: 7 })}
+        onClose={vi.fn()}
+        onConfirm={onConfirm}
+      />,
+    )
+
+    await user.click(screen.getByRole('combobox', { name: 'appDebug.variableConfig.fieldType' }))
+    await user.click(
+      await screen.findByRole('option', { name: /appDebug.variableConfig.multi-files/ }),
+    )
+    expect(
+      screen.getByRole('button', { name: 'common.fileUploader.uploadFromComputer' }),
+    ).toBeEnabled()
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+    expect(onConfirm).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ type: InputVarType.multiFiles, default: undefined }),
+      undefined,
+    )
+  })
+
   it.each([InputVarType.textInput, InputVarType.number])(
     'should save an absent %s default after clearing it',
     async (type) => {
