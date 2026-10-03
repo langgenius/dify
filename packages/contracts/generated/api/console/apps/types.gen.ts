@@ -537,6 +537,7 @@ export type MessageDetailResponse = {
   provider_response_latency: number
   query: string
   status: string
+  workflow_run_elapsed_time?: number | null
   workflow_run_id?: string | null
 }
 
@@ -1544,6 +1545,7 @@ export type MessageDetail = {
   provider_response_latency: number
   query: string
   status: string
+  workflow_run_elapsed_time?: number | null
   workflow_run_id?: string | null
 }
 

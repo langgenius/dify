@@ -17,5 +17,7 @@
   "resultPanel.status": "STATUS",
   "resultPanel.time": "ELAPSED TIME",
   "resultPanel.tokens": "TOTAL TOKENS",
-  "tracing": "TRACING"
+  "tracing": "TRACING",
+  "tracing.totalTime": "Total workflow time",
+  "tracing.totalTimeTip": "Wall-clock workflow duration. Summing individual node times may be higher (parallel branches, retries) or lower (collapsed iteration/loop details)."
 }

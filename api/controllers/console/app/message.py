@@ -61,7 +61,10 @@ from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.conversation_service import ConversationService
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError, SuggestedQuestionsAfterAnswerDisabledError
-from services.message_service import attach_message_extra_contents
+from services.message_service import (
+    attach_message_extra_contents,
+    get_workflow_run_elapsed_times_for_messages,
+)
 from services.message_suggested_questions_service import SuggestedQuestionsAccount, SuggestedQuestionsActorNotFoundError
 
 logger = logging.getLogger(__name__)
@@ -509,11 +512,19 @@ def _list_chat_messages(
 
     history_messages = list(reversed(history_messages))
     attach_message_extra_contents(history_messages)
+    workflow_run_elapsed_times = get_workflow_run_elapsed_times_for_messages(session, history_messages)
 
     return dump_response(
         MessageInfiniteScrollPaginationResponse,
         InfiniteScrollPagination(
-            data=[MessageResponseSource(message, session=session) for message in history_messages],
+            data=[
+                MessageResponseSource(
+                    message,
+                    session=session,
+                    workflow_run_elapsed_time=workflow_run_elapsed_times.get(message.workflow_run_id or ""),
+                )
+                for message in history_messages
+            ],
             limit=args.limit,
             has_more=has_more,
         ),
