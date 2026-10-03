@@ -224,6 +224,7 @@ def make_request(
         send_kwargs["follow_redirects"] = kwargs.pop("follow_redirects")
 
     retries = 0
+    last_failure_detail: str | None = None
     while retries <= max_retries:
         try:
             # Preserve the user-provided Host header
@@ -271,17 +272,20 @@ def make_request(
                     response.status_code,
                     url,
                 )
+                last_failure_detail = f"last response status was HTTP {response.status_code}"
                 response.close()
 
         except httpx.RequestError as e:
             logger.warning("Request to URL %s failed on attempt %s: %s", url, retries + 1, e)
             if max_retries == 0:
                 raise
+            last_failure_detail = f"last attempt failed with {e}"
 
         retries += 1
         if retries <= max_retries:
             time.sleep(BACKOFF_FACTOR * (2 ** (retries - 1)))
-    raise MaxRetriesExceededError(f"Reached maximum retries ({max_retries}) for URL {url}")
+    detail_suffix = f" ({last_failure_detail})" if last_failure_detail else ""
+    raise MaxRetriesExceededError(f"Reached maximum retries ({max_retries}) for URL {url}{detail_suffix}")
 
 
 def buffer_response(response: httpx.Response, *, max_response_bytes: int) -> httpx.Response:
