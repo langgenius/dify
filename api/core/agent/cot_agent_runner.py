@@ -11,6 +11,7 @@ from core.agent.entities import AgentScratchpadUnit
 from core.agent.errors import AgentMaxIterationError
 from core.agent.output_parser.cot_output_parser import CotAgentOutputParser
 from core.app.apps.base_app_queue_manager import PublishFrom
+from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.queue_entities import QueueAgentThoughtEvent, QueueMessageEndEvent, QueueMessageFileEvent
 from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
 from core.model_context import use_credit_usage_metadata
@@ -170,6 +171,17 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                 )
 
             for chunk in react_chunks:
+                # Stop button: check between parsed agent chunks. Without
+                # this, an in-flight LLM stream keeps producing tokens for a
+                # request the user has already abandoned. The outer
+                # base_app_runner.is_stopped() check only fires AFTER this
+                # agent runner yields, which is too late when the parser is
+                # buffering many raw upstream chunks before yielding. Raising
+                # GenerateTaskStoppedError here short-circuits the inner loop;
+                # the except handler in base_app_runner._handle_invoke_result_stream
+                # then calls invoke_result.close() to cancel the upstream stream.
+                if self.queue_manager.is_stopped():
+                    raise GenerateTaskStoppedError()
                 if isinstance(chunk, AgentScratchpadUnit.Action):
                     action = chunk
                     # detect action
