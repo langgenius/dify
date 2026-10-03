@@ -858,7 +858,7 @@ def test_detail_tool_enrichment_releases_database_before_plugin_io(
         event.remove(sqlite_engine, "checkin", checkin)
 
 
-@pytest.mark.parametrize("operation", ["rename", "icon", "site"])
+@pytest.mark.parametrize("operation", ["rename", "icon", "site", "api"])
 @pytest.mark.parametrize("commit_fails", [False, True])
 def test_app_mutations_publish_only_after_commit(sqlite_engine: Engine, operation: str, commit_fails: bool) -> None:
     factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False, close_resets_only=False)
@@ -903,6 +903,7 @@ def test_app_mutations_publish_only_after_commit(sqlite_engine: Engine, operatio
                 "new" if operation == "icon" else "old",
                 operation == "site",
             )
+            assert persisted.enable_api is (operation == "api")
             assert persisted.icon_type == "image"
         signals.append("updated")
 
@@ -914,6 +915,8 @@ def test_app_mutations_publish_only_after_commit(sqlite_engine: Engine, operatio
             return service.rename(context, app.id, "After")
         if operation == "icon":
             return service.update_icon(context, app.id, icon="new", icon_background="#000", icon_type=None)
+        if operation == "api":
+            return service.set_api_enabled(context, app.id, True)
         return service.set_site_enabled(context, app.id, True)
 
     app_was_updated.connect(after_update)
@@ -929,12 +932,15 @@ def test_app_mutations_publish_only_after_commit(sqlite_engine: Engine, operatio
                 persisted = read.get(App, app.id)
                 assert persisted is not None
                 assert (persisted.name, persisted.icon, persisted.enable_site) == ("Before", "old", False)
+                assert persisted.enable_api is False
             assert signals == []
         else:
             result = update()
             assert result.updated_by == context.account_id
             if operation == "site":
                 assert service.set_site_enabled(context, app.id, True).enable_site
+            if operation == "api":
+                assert service.set_api_enabled(context, app.id, True).enable_api
             assert signals == ["updated"]
         assert not checked_out
     finally:
