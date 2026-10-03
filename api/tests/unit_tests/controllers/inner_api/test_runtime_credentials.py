@@ -6,7 +6,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
-from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import UnprocessableEntity
 
@@ -39,15 +38,11 @@ def test_runtime_credentials_payload_accepts_items():
 
 
 @patch("controllers.inner_api.runtime_credentials.encrypter.decrypt_token")
-@patch("controllers.inner_api.runtime_credentials.db")
 @patch("controllers.inner_api.runtime_credentials.create_plugin_provider_manager")
-@pytest.mark.parametrize("sqlite_session", [(ProviderCredential,)], indirect=True)
 def test_runtime_model_credentials_resolve_returns_decrypted_values(
     mock_provider_manager_factory,
-    mock_db,
     mock_decrypt_token,
     app: Flask,
-    sqlite_engine: Engine,
     sqlite_session: Session,
 ):
     provider_configuration = MagicMock()
@@ -70,7 +65,6 @@ def test_runtime_model_credentials_resolve_returns_decrypted_values(
     credential.id = "credential-1"
     sqlite_session.add(credential)
     sqlite_session.commit()
-    mock_db.engine = sqlite_engine
     mock_decrypt_token.return_value = "sk-test"
 
     handler = EnterpriseRuntimeCredentialsResolve()
@@ -118,16 +112,12 @@ def test_runtime_model_credentials_resolve_rejects_unknown_provider(mock_provide
 
 @patch("controllers.inner_api.runtime_credentials.create_provider_encrypter")
 @patch("controllers.inner_api.runtime_credentials.ToolProviderCredentialsCache")
-@patch("controllers.inner_api.runtime_credentials.db")
 @patch("controllers.inner_api.runtime_credentials.ToolManager")
-@pytest.mark.parametrize("sqlite_session", [(BuiltinToolProvider,)], indirect=True)
 def test_runtime_tool_credentials_resolve_returns_decrypted_values(
     mock_tool_manager,
-    mock_db,
     mock_cache_cls,
     mock_create_encrypter,
     app: Flask,
-    sqlite_engine: Engine,
     sqlite_session: Session,
 ):
     provider_controller = MagicMock()
@@ -144,7 +134,6 @@ def test_runtime_tool_credentials_resolve_returns_decrypted_values(
     builtin_provider.id = "credential-1"
     sqlite_session.add(builtin_provider)
     sqlite_session.commit()
-    mock_db.engine = sqlite_engine
 
     provider_encrypter = MagicMock()
     provider_encrypter.decrypt.return_value = {"tavily_api_key": "tvly-secret"}
@@ -172,14 +161,10 @@ def test_runtime_tool_credentials_resolve_returns_decrypted_values(
     provider_encrypter.decrypt.assert_called_once_with({"tavily_api_key": "encrypted"})
 
 
-@patch("controllers.inner_api.runtime_credentials.db")
 @patch("controllers.inner_api.runtime_credentials.ToolManager")
-@pytest.mark.parametrize("sqlite_session", [(BuiltinToolProvider,)], indirect=True)
 def test_runtime_tool_credentials_resolve_rejects_unknown_credential(
     mock_tool_manager,
-    mock_db,
     app: Flask,
-    sqlite_engine: Engine,
     sqlite_session: Session,
 ):
     mock_tool_manager.get_builtin_provider.return_value = MagicMock()
@@ -196,7 +181,6 @@ def test_runtime_tool_credentials_resolve_rejects_unknown_credential(
     builtin_provider.id = "missing"
     sqlite_session.add(builtin_provider)
     sqlite_session.commit()
-    mock_db.engine = sqlite_engine
 
     handler = EnterpriseRuntimeCredentialsResolve()
     unwrapped = inspect.unwrap(handler.post)
