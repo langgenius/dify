@@ -75,7 +75,7 @@ class TestCompletionAppGenerateResponseConverter:
 
         result = CompletionAppGenerateResponseConverter.convert_blocking_simple_response(blocking)
 
-        assert "annotation_reply" not in result["metadata"]
+        assert result["metadata"]["annotation_reply"] == {"a": 1}
         assert "usage" not in result["metadata"]
         assert result["metadata"]["retriever_resources"][0]["dataset_id"] == "dataset-1"
         assert result["metadata"]["retriever_resources"][0]["document_id"] == "document-1"
@@ -164,6 +164,6 @@ class TestCompletionAppGenerateResponseConverter:
 
         assert result[0] == "ping"
         assert result[1]["event"] == "message_end"
-        assert "annotation_reply" not in result[1]["metadata"]
+        assert result[1]["metadata"]["annotation_reply"] == {"a": 1}
         assert "usage" not in result[1]["metadata"]
         assert result[2]["event"] == "error"
