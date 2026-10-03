@@ -8,8 +8,13 @@ from pydantic_settings import BaseSettings, PydanticBaseSettingsSource
 from yarl import URL
 
 from configs.app_config import DifyConfig
-from configs.feature import OpsTraceConfig
+from configs.feature import FeatureConfig, OpsTraceConfig
 from enums import DeploymentEdition
+
+
+def test_code_execution_pool_timeout_rejects_infinity() -> None:
+    with pytest.raises(ValidationError):
+        FeatureConfig(CODE_EXECUTION_POOL_TIMEOUT=float("inf"))
 
 
 def test_ops_trace_config_rejects_parent_context_ttl_shorter_than_retry_window() -> None:
