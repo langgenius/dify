@@ -17,7 +17,7 @@ import {
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useBoolean } from 'ahooks'
-import { useCallback, useId, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -32,10 +32,13 @@ import VarReferencePicker from '@/app/components/workflow/nodes/_base/components
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import MixedVariableTextInput from '@/app/components/workflow/nodes/tool/components/mixed-variable-text-input'
+import { isReasoningConfigShowOnSatisfied } from '../utils/show-on'
 import {
+  coerceReasoningScalarDefault,
   createPickerProps,
   getFieldFlags,
   getFieldTitle,
+  getVarKindType,
   mergeReasoningValue,
   resolveTargetVarType,
   updateInputAutoState,
@@ -68,6 +71,49 @@ const ReasoningConfigForm: React.FC<Props> = ({
 
   const { t } = useTranslation(['plugin', 'tools', 'workflowAgent'])
   const language = useLanguage()
+
+  const visibleSchemas = useMemo(
+    () => schemas.filter((s) => isReasoningConfigShowOnSatisfied(s.show_on, value)),
+    [schemas, value],
+  )
+
+  const schemasVarsKey = useMemo(() => schemas.map((s) => s.variable).join('\0'), [schemas])
+  const prevVisibleVarsRef = useRef<Set<string> | null>(null)
+
+  useEffect(() => {
+    prevVisibleVarsRef.current = null
+  }, [schemasVarsKey])
+
+  useEffect(() => {
+    const currentVisible = new Set(visibleSchemas.map((s) => s.variable))
+    if (prevVisibleVarsRef.current === null) {
+      prevVisibleVarsRef.current = currentVisible
+      return
+    }
+    const prevVisible = prevVisibleVarsRef.current
+    let patch: ReasoningConfigValue | null = null
+    for (const s of schemas) {
+      const variable = s.variable
+      const wasVisible = prevVisible.has(variable)
+      const nowVisible = currentVisible.has(variable)
+      if (wasVisible && !nowVisible) {
+        patch ??= { ...value }
+        const prevEntry = value[variable]
+        patch[variable] = {
+          auto: prevEntry?.auto ?? 0,
+          value:
+            prevEntry?.auto === 1
+              ? null
+              : {
+                  type: getVarKindType(s.type),
+                  value: coerceReasoningScalarDefault(s),
+                },
+        }
+      }
+    }
+    prevVisibleVarsRef.current = currentVisible
+    if (patch) onChange(patch)
+  }, [visibleSchemas, schemas, schemasVarsKey, value, onChange])
 
   const handleAutomatic = (key: string, val: boolean, type: string) => {
     onChange(updateInputAutoState(value, key, val, type))
@@ -140,7 +186,9 @@ const ReasoningConfigForm: React.FC<Props> = ({
       placeholder,
       options,
     } = schema
-    const auto = value[variable]?.auto
+    const entry = value[variable]
+    if (!entry) return null
+    const auto = entry.auto
     const fieldTitle = getFieldTitle(label, language)
     const tooltipText = tooltip?.[language] || tooltip?.en_US
     const tooltipContent = tooltipText && (
@@ -151,7 +199,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
         </InfotipContent>
       </Infotip>
     )
-    const varInput = value[variable]!.value
+    const varInput = entry.value
     const {
       isString,
       isNumber,
@@ -372,7 +420,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
   return (
     <div className="space-y-3 px-4 py-2">
       {!isShowSchema &&
-        schemas.map((schema) =>
+        visibleSchemas.map((schema) =>
           renderField(schema, (s: SchemaRoot, rootName: string) => {
             setSchema(s)
             setSchemaRootName(rootName)

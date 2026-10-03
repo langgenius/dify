@@ -3,6 +3,7 @@ import type { ToolFormSchema } from '@/app/components/tools/utils/to-form-schema
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import { produce } from 'immer'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { reasoningShowOnConditionMet } from '@/app/components/plugins/plugin-detail-panel/tool-selector/utils/show-on'
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { VarType } from '@/app/components/workflow/types'
 
@@ -89,6 +90,26 @@ export const createFilterVar = (type: string) => {
   return undefined
 }
 
+export const coerceReasoningScalarDefault = (schema: ToolFormSchema): unknown => {
+  const raw = schema.default
+  const formType = schema.type
+  if (
+    schema._type === 'boolean' ||
+    formType === FormTypeEnum.checkbox ||
+    formType === FormTypeEnum.boolean
+  ) {
+    if (typeof raw === 'string') return raw === 'true' || raw === '1'
+    if (typeof raw === 'boolean') return raw
+    return false
+  }
+  if (formType === FormTypeEnum.textNumber) {
+    if (typeof raw === 'string' && raw !== '') return Number.parseFloat(raw)
+    if (typeof raw === 'number') return raw
+    return ''
+  }
+  return raw ?? null
+}
+
 export const getVisibleSelectOptions = (
   options: NonNullable<ToolFormSchema['options']>,
   value: ReasoningConfigValue,
@@ -96,10 +117,8 @@ export const getVisibleSelectOptions = (
 ) => {
   return options
     .filter((option) => {
-      if (option.show_on.length)
-        return option.show_on.every(
-          (showOnItem) => value[showOnItem.variable]?.value?.value === showOnItem.value,
-        )
+      if (option.show_on?.length)
+        return option.show_on.every((showOnItem) => reasoningShowOnConditionMet(value, showOnItem))
 
       return true
     })
