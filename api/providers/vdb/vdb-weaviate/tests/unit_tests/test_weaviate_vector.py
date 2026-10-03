@@ -597,7 +597,7 @@ class TestWeaviateVector(unittest.TestCase):
 
         mock_obj = MagicMock()
         mock_obj.properties = {"text": "bm25 result", "doc_id": "segment-1"}
-        mock_obj.vector = [0.3, 0.4]
+        mock_obj.vector = None
 
         mock_result = MagicMock()
         mock_result.objects = [mock_obj]
@@ -611,8 +611,9 @@ class TestWeaviateVector(unittest.TestCase):
         docs = wv.search_by_full_text(query="bm25", document_ids_filter=["doc-1"])
 
         assert len(docs) == 1
-        assert docs[0].vector == [0.3, 0.4]
+        assert docs[0].vector is None
         assert mock_col.query.bm25.call_args.kwargs["filters"] is not None
+        assert mock_col.query.bm25.call_args.kwargs["include_vector"] is False
 
     @patch("dify_vdb_weaviate.weaviate_vector.weaviate")
     def test_search_by_full_text_returns_empty_when_collection_is_missing(self, mock_weaviate_module):
@@ -678,6 +679,34 @@ class TestWeaviateVector(unittest.TestCase):
         assert mock_col.query.bm25.call_count == 2
         assert len(docs) == 1
         assert docs[0].page_content == "retry bm25 result"
+        for call in mock_col.query.bm25.call_args_list:
+            assert call.kwargs["include_vector"] is False
+
+    @patch("dify_vdb_weaviate.weaviate_vector.weaviate")
+    def test_search_by_full_text_returns_empty_when_bm25_fails_after_retry(self, mock_weaviate_module):
+        """Hybrid retrieval must not abort when the BM25 leg fails on self-provided vector collections."""
+        from weaviate.exceptions import WeaviateQueryError
+
+        mock_client = MagicMock()
+        mock_client.is_ready.return_value = True
+        mock_weaviate_module.connect_to_custom.return_value = mock_client
+        mock_client.collections.exists.return_value = True
+        mock_col = MagicMock()
+        mock_client.collections.use.return_value = mock_col
+        mock_col.query.bm25.side_effect = WeaviateQueryError("bm25 unavailable", "gRPC")
+
+        mock_cfg = MagicMock()
+        mock_cfg.properties = [SimpleNamespace(name="text")]
+        mock_col.config.get.return_value = mock_cfg
+
+        wv = WeaviateVector(
+            collection_name=self.collection_name,
+            config=self.config,
+            attributes=self.attributes,
+        )
+
+        assert wv.search_by_full_text(query="hybrid", top_k=3) == []
+        assert mock_col.query.bm25.call_count == 2
 
     @patch("dify_vdb_weaviate.weaviate_vector.weaviate")
     def test_add_texts_stores_doc_type_in_properties(self, mock_weaviate_module):
