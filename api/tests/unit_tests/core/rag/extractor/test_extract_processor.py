@@ -121,6 +121,23 @@ class TestExtractProcessorLoaders:
                 "",
             ),
             ("https://example.com/no_suffix", {}, ""),
+            # Query strings and fragments are not part of the file name and must
+            # not leak into the derived suffix (see issue #43333).
+            (
+                "https://example.com/file.pdf?token=abc",
+                {"Content-Type": "application/pdf"},
+                ".pdf",
+            ),
+            (
+                "https://example.com/file.pdf#page=2",
+                {"Content-Type": "application/pdf"},
+                ".pdf",
+            ),
+            (
+                "https://example.com/file.pdf?token=abc#page=2",
+                {"Content-Type": "application/pdf"},
+                ".pdf",
+            ),
         ],
     )
     def test_load_from_url_builds_temp_file_with_correct_suffix(
