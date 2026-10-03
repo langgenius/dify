@@ -1,4 +1,5 @@
 import { act, fireEvent, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import { DatasetACLPermission } from '@/utils/permission'
@@ -20,7 +21,7 @@ const mocks = vi.hoisted(() => {
     state,
     push: vi.fn(),
     detailRefetch: vi.fn(),
-    checkProgress: vi.fn(),
+    statusRequest: vi.fn(),
     batchImport: vi.fn(),
     invalidDocumentList: vi.fn(),
     invalidSegmentList: vi.fn(),
@@ -70,14 +71,15 @@ vi.mock('@/service/knowledge/use-document', () => ({
 }))
 
 vi.mock('@/service/knowledge/use-segment', () => ({
-  useCheckSegmentBatchImportProgress: () => ({
-    mutateAsync: mocks.checkProgress,
-  }),
   useSegmentBatchImport: () => ({
     mutateAsync: mocks.batchImport,
   }),
   useSegmentListKey: ['segment-list'],
   useChildSegmentListKey: ['child-segment-list'],
+}))
+
+vi.mock('@/service/base', () => ({
+  request: mocks.statusRequest,
 }))
 
 vi.mock('@/service/use-base', () => ({
@@ -91,6 +93,7 @@ vi.mock('@/service/use-base', () => ({
 
 vi.mock('@/app/notifications', () => ({
   default: { notify: mocks.toastNotify },
+  toast: { error: mocks.toastNotify },
 }))
 
 // --- Child component mocks ---
@@ -284,6 +287,8 @@ vi.mock('@/context/permission-state', async () => {
 describe('DocumentDetail', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.batchImport.mockReset()
+    mocks.statusRequest.mockReset()
     vi.useFakeTimers()
     mocks.state.dataset = {
       embedding_available: true,
@@ -509,6 +514,37 @@ describe('DocumentDetail', () => {
   })
 
   describe('Batch Import', () => {
+    it('polls the importing dataset until the job completes', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+      mocks.batchImport.mockImplementation(async (_payload, { onSuccess }) => {
+        onSuccess({ job_id: 'job-1', job_status: 'waiting' })
+      })
+      mocks.statusRequest
+        .mockResolvedValueOnce(Response.json({ job_id: 'job-1', job_status: 'waiting' }))
+        .mockResolvedValueOnce(Response.json({ job_id: 'job-1', job_status: 'completed' }))
+      render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
+
+      await user.click(screen.getByRole('button', { name: 'Batch Import' }))
+      await user.click(screen.getByRole('button', { name: 'Confirm' }))
+      await act(async () => {
+        await vi.dynamicImportSettled()
+        await vi.advanceTimersByTimeAsync(0)
+      })
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2500)
+      })
+
+      expect(mocks.statusRequest).toHaveBeenCalledTimes(2)
+      for (const [url] of mocks.statusRequest.mock.calls)
+        expect(new URL(url).pathname).toBe('/console/api/datasets/ds-1/batch_import_status/job-1')
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(5000)
+      })
+      expect(mocks.statusRequest).toHaveBeenCalledTimes(2)
+    })
+
     it('should open batch modal when batch button clicked', () => {
       render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
       expect(screen.queryByTestId('batch-modal')).not.toBeInTheDocument()

@@ -13,6 +13,7 @@ from services.knowledge.dataset_access import (
     DatasetAccessDeniedError,
     DatasetAccessRecord,
     DatasetAccessSnapshot,
+    DatasetNotFoundError,
 )
 from services.knowledge.entities.segments import SegmentRecord, SegmentUpdateArgs
 from services.knowledge.resource_scope import DatasetRef
@@ -110,6 +111,7 @@ type ServiceFixture = tuple[DatasetSegmentApplicationService, Mock, Mock, Mock, 
 def _service(scope: SegmentScope | None = None, *, uploads: SegmentUploadCatalog | None = None) -> ServiceFixture:
     dataset_access = create_autospec(DatasetAccess, instance=True, spec_set=True)
     dataset_access.check_access.return_value = AccessibleDataset(id="dataset-1", workspace_id="workspace-1")
+    dataset_access.require_accessible.return_value = AccessibleDataset(id="dataset-1", workspace_id="workspace-1")
     store = create_autospec(SegmentStore, instance=True, spec_set=True)
     scopes = create_autospec(SegmentScopeReader, instance=True, spec_set=True)
     scopes.get_segment_scope.return_value = scope or _scope()
@@ -329,7 +331,7 @@ def test_batch_import_records_status_before_dispatch() -> None:
     uploads.get_file_name.return_value = "segments.CSV"
     service, _, store, scopes, _, state, dispatcher = _service(uploads=uploads)
     calls: list[str] = []
-    state.set_batch_waiting.side_effect = lambda _job_id: calls.append("status")
+    state.set_batch_waiting.side_effect = lambda _dataset_ref, _job_id: calls.append("status")
     dispatcher.dispatch.side_effect = lambda **_kwargs: calls.append("dispatch")
 
     result = service.start_batch_import(
@@ -341,6 +343,7 @@ def test_batch_import_records_status_before_dispatch() -> None:
 
     assert result.job_id == "job-1"
     assert calls == ["status", "dispatch"]
+    state.set_batch_waiting.assert_called_once_with(DatasetRef("workspace-1", "dataset-1"), "job-1")
     dispatcher.dispatch.assert_called_once_with(
         job_id="job-1",
         upload_file_id="file-1",
@@ -367,13 +370,31 @@ def test_batch_import_translates_dispatch_failure() -> None:
 
 
 def test_batch_import_status_distinguishes_unknown_job() -> None:
-    service, _, _, scopes, _, state, _ = _service()
+    service, access, _, _, _, state, _ = _service()
     state.get_batch_status.return_value = None
     with pytest.raises(SegmentBatchImportNotFoundError):
-        service.get_batch_import_status("missing")
+        service.get_batch_import_status(_context(), dataset_id="dataset-1", job_id="missing")
 
     state.get_batch_status.return_value = "completed"
-    assert service.get_batch_import_status("job-1").job_status == "completed"
+    assert service.get_batch_import_status(_context(), dataset_id="dataset-1", job_id="job-1").job_status == "completed"
+    access.require_accessible.assert_called_with(_context(), "dataset-1")
+    state.get_batch_status.assert_called_with(DatasetRef("workspace-1", "dataset-1"), "job-1")
+
+
+@pytest.mark.parametrize(
+    ("access_error", "expected"),
+    [(DatasetNotFoundError(), SegmentDatasetNotFoundError), (DatasetAccessDeniedError(), SegmentPermissionDeniedError)],
+)
+def test_batch_import_status_rejects_inaccessible_dataset_before_reading_job(
+    access_error: Exception, expected: type[Exception]
+) -> None:
+    service, access, _, _, _, state, _ = _service()
+    access.require_accessible.side_effect = access_error
+
+    with pytest.raises(expected):
+        service.get_batch_import_status(_context(), dataset_id="dataset-1", job_id="job-1")
+
+    state.get_batch_status.assert_not_called()
 
 
 def test_child_chunk_update_distinguishes_missing_parent_and_child() -> None:
