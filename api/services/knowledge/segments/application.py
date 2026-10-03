@@ -793,6 +793,10 @@ class SegmentMutationService:
             if scope.document.doc_form == "hierarchical_model":
                 if args.regenerate_child_chunks:
                     self._index.update(segment_ref, keywords=args.keywords, regenerate_children=True)
+            elif not previous.enabled and scope.dataset.indexing_technique == _HIGH_QUALITY:
+                # Disabling already removed the vectors, so restore them without deleting them again.
+                self._index.create_many(segment_ref.document, segment_ids=[segment_id], keywords_list=[args.keywords])
+                self._store.save_segment(segment_ref, {"status": "completed", "error": None})
             elif content_changed or args.enabled or keyword_changed:
                 self._index.update(segment_ref, keywords=args.keywords, regenerate_children=False)
             if scope.dataset.indexing_technique == _HIGH_QUALITY:
