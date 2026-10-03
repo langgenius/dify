@@ -300,6 +300,8 @@ class ConsoleAppService:
         if isinstance(params, AppListParams):
             permissions = self._access.permissions(context)
             params = permissions.filter_list(params)
+        elif isinstance(params, StarredAppListParams):
+            permissions = self._access.permissions(context)
         page = self._apps.list_apps(context, params)
         if not page.data:
             return page
