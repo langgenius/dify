@@ -910,6 +910,10 @@ class WorkflowAppBlockingResponse(AppBlockingResponse):
         total_steps: int
         created_at: int
         finished_at: int | None
+        # Serialized LLMUsage of the whole run (token split, unit prices and
+        # total_price). Lets callers such as WorkflowTool report the full cost
+        # instead of only total_tokens.
+        usage: Mapping[str, Any] | None = None
 
     workflow_run_id: str
     data: Data
