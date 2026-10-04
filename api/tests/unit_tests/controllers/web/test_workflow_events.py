@@ -60,9 +60,7 @@ def _workflow_run(
 # ---------------------------------------------------------------------------
 class TestWorkflowEventsApi:
     @patch("controllers.web.workflow_events.DifyAPIRepositoryFactory")
-    @patch("controllers.web.workflow_events.db")
-    def test_workflow_run_not_found(self, mock_db: MagicMock, mock_factory: MagicMock, app: Flask) -> None:
-        mock_db.engine = "engine"
+    def test_workflow_run_not_found(self, mock_factory: MagicMock, app: Flask) -> None:
         mock_repo = MagicMock()
         mock_repo.get_workflow_run_by_id_and_tenant_id.return_value = None
         mock_factory.create_api_workflow_run_repository.return_value = mock_repo
@@ -72,9 +70,7 @@ class TestWorkflowEventsApi:
                 WorkflowEventsApi().get(_workflow_app(), _end_user(), "run-1")
 
     @patch("controllers.web.workflow_events.DifyAPIRepositoryFactory")
-    @patch("controllers.web.workflow_events.db")
-    def test_workflow_run_wrong_app(self, mock_db: MagicMock, mock_factory: MagicMock, app: Flask) -> None:
-        mock_db.engine = "engine"
+    def test_workflow_run_wrong_app(self, mock_factory: MagicMock, app: Flask) -> None:
         run = _workflow_run(app_id="other-app")
         mock_repo = MagicMock()
         mock_repo.get_workflow_run_by_id_and_tenant_id.return_value = run
@@ -85,11 +81,7 @@ class TestWorkflowEventsApi:
                 WorkflowEventsApi().get(_workflow_app(), _end_user(), "run-1")
 
     @patch("controllers.web.workflow_events.DifyAPIRepositoryFactory")
-    @patch("controllers.web.workflow_events.db")
-    def test_workflow_run_not_created_by_end_user(
-        self, mock_db: MagicMock, mock_factory: MagicMock, app: Flask
-    ) -> None:
-        mock_db.engine = "engine"
+    def test_workflow_run_not_created_by_end_user(self, mock_factory: MagicMock, app: Flask) -> None:
         run = _workflow_run(created_by_role=CreatorUserRole.ACCOUNT)
         mock_repo = MagicMock()
         mock_repo.get_workflow_run_by_id_and_tenant_id.return_value = run
@@ -100,9 +92,7 @@ class TestWorkflowEventsApi:
                 WorkflowEventsApi().get(_workflow_app(), _end_user(), "run-1")
 
     @patch("controllers.web.workflow_events.DifyAPIRepositoryFactory")
-    @patch("controllers.web.workflow_events.db")
-    def test_workflow_run_wrong_end_user(self, mock_db: MagicMock, mock_factory: MagicMock, app: Flask) -> None:
-        mock_db.engine = "engine"
+    def test_workflow_run_wrong_end_user(self, mock_factory: MagicMock, app: Flask) -> None:
         run = _workflow_run(created_by="other-user")
         mock_repo = MagicMock()
         mock_repo.get_workflow_run_by_id_and_tenant_id.return_value = run
@@ -114,11 +104,9 @@ class TestWorkflowEventsApi:
 
     @patch("controllers.web.workflow_events.WorkflowResponseConverter")
     @patch("controllers.web.workflow_events.DifyAPIRepositoryFactory")
-    @patch("controllers.web.workflow_events.db")
     def test_finished_run_returns_sse_response(
-        self, mock_db: MagicMock, mock_factory: MagicMock, mock_converter: MagicMock, app: Flask
+        self, mock_factory: MagicMock, mock_converter: MagicMock, app: Flask
     ) -> None:
-        mock_db.engine = "engine"
         run = _workflow_run(finished_at=datetime(2024, 1, 1))
         mock_repo = MagicMock()
         mock_repo.get_workflow_run_by_id_and_tenant_id.return_value = run
@@ -135,11 +123,9 @@ class TestWorkflowEventsApi:
         assert response.mimetype == "text/event-stream"
 
     @patch("controllers.web.workflow_events.DifyAPIRepositoryFactory")
-    @patch("controllers.web.workflow_events.db")
     def test_snapshot_stream_can_continue_across_pauses(
-        self, mock_db: MagicMock, mock_factory: MagicMock, app: Flask, monkeypatch: pytest.MonkeyPatch
+        self, mock_factory: MagicMock, app: Flask, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        mock_db.engine = "engine"
         run = _workflow_run()
         mock_repo = MagicMock()
         mock_repo.get_workflow_run_by_id_and_tenant_id.return_value = run
