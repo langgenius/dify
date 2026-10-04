@@ -62,10 +62,10 @@ def dirty_fixture(sqlite_engine: sa.Engine) -> DirtyDataFixture:
 @pytest.fixture
 def command_module() -> ModuleType:
     try:
-        return importlib.import_module("commands.data_migrate")
+        return importlib.import_module("commands.data_migration")
     except ModuleNotFoundError as exc:  # pragma: no cover - explicit TDD failure path
         pytest.fail(
-            "commands.data_migrate is missing. "
+            "commands.data_migration is missing. "
             "Implement the `flask data-migrate legacy-model-types` command group before running these tests."
         )
 
@@ -823,7 +823,7 @@ def test_data_migrate_command_defaults_concurrency_from_cpu_count_or_falls_back_
     expected_concurrency: int,
 ) -> None:
     service_calls: list[dict[str, object]] = []
-    command_module = importlib.import_module("commands.data_migrate")
+    command_module = importlib.import_module("commands.data_migration")
 
     class FakeService:
         def __init__(
