@@ -9,8 +9,7 @@ marks only the legacy paths as deprecated.
 from datetime import datetime
 from enum import StrEnum
 from http import HTTPStatus
-from typing import Any, Literal
-
+from typing import Any, Literal , Annotated
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 
@@ -38,6 +37,9 @@ from fields.base import ResponseModel
 from libs.login import login_required
 from services.plugin.endpoint_service import EndpointService
 
+EndpointName=Annotated[str, Field(min_length=1, description="Endpoint name")]
+
+
 
 class EndpointMutationResponse(ResponseModel):
     success: Literal[True] = Field(description="Always true on success. Failures are returned as HTTP errors.")
@@ -46,7 +48,7 @@ class EndpointMutationResponse(ResponseModel):
 class EndpointCreatePayload(BaseModel):
     plugin_unique_identifier: str
     settings: dict[str, Any]
-    name: str = Field(min_length=1)
+    name: EndpointName
 
 
 class EndpointIdPayload(BaseModel):
@@ -55,7 +57,7 @@ class EndpointIdPayload(BaseModel):
 
 class EndpointSettingsPayload(BaseModel):
     settings: dict[str, Any]
-    name: str = Field(min_length=1)
+    name: EndpointName
 
 
 class EndpointUpdatePayload(EndpointSettingsPayload):
@@ -137,7 +139,7 @@ class EndpointListItemResponse(ResponseModel):
     settings: dict[str, Any]
     expired_at: datetime
     declaration: EndpointProviderDeclarationResponse = Field(default_factory=EndpointProviderDeclarationResponse)
-    name: str
+    name: EndpointName
     enabled: bool
     url: str
     hook_id: str
@@ -228,11 +230,11 @@ class EndpointCollectionApi(Resource):
 
     @console_ns.doc("create_endpoint")
     @console_ns.doc(description="Create a new plugin endpoint")
-    @console_ns.expect(console_ns.models[EndpointCreatePayload.__name__])
+    @console_ns.expect(console_basemodel[EndpointCreatePayload.__name__])
     @console_ns.response(
         HTTPStatus.OK,
         "Endpoint created successfully",
-        console_ns.models[EndpointMutationResponse.__name__],
+        console_basemodel[EndpointMutationResponse.__name__],
     )
     @console_ns.response(HTTPStatus.FORBIDDEN, "Admin privileges required")
     @setup_required
@@ -260,11 +262,11 @@ class DeprecatedEndpointCreateApi(Resource):
             "Deprecated legacy alias for creating a plugin endpoint. Use POST /workspaces/current/endpoints instead."
         )
     )
-    @console_ns.expect(console_ns.models[EndpointCreatePayload.__name__])
+    @console_ns.expect(console_basemodel[EndpointCreatePayload.__name__])
     @console_ns.response(
         HTTPStatus.OK,
         "Endpoint created successfully",
-        console_ns.models[EndpointMutationResponse.__name__],
+        console_basemodel[EndpointMutationResponse.__name__],
     )
     @console_ns.response(HTTPStatus.FORBIDDEN, "Admin privileges required")
     @setup_required
@@ -289,7 +291,7 @@ class EndpointListApi(Resource):
     @console_ns.response(
         HTTPStatus.OK,
         "Success",
-        console_ns.models[EndpointListResponse.__name__],
+        console_basemodel[EndpointListResponse.__name__],
     )
     @setup_required
     @login_required
@@ -319,7 +321,7 @@ class EndpointListForSinglePluginApi(Resource):
     @console_ns.response(
         HTTPStatus.OK,
         "Success",
-        console_ns.models[EndpointListResponse.__name__],
+        console_basemodel[EndpointListResponse.__name__],
     )
     @setup_required
     @login_required
@@ -352,7 +354,7 @@ class EndpointItemApi(Resource):
     @console_ns.response(
         HTTPStatus.OK,
         "Endpoint deleted successfully",
-        console_ns.models[EndpointMutationResponse.__name__],
+        console_basemodel[EndpointMutationResponse.__name__],
     )
     @console_ns.response(HTTPStatus.FORBIDDEN, "Admin privileges required")
     @setup_required
@@ -369,12 +371,12 @@ class EndpointItemApi(Resource):
 
     @console_ns.doc("update_endpoint")
     @console_ns.doc(description="Update a plugin endpoint")
-    @console_ns.expect(console_ns.models[EndpointUpdatePayload.__name__])
+    @console_ns.expect(console_basemodel[EndpointUpdatePayload.__name__])
     @console_ns.doc(params={"id": {"description": "Endpoint ID", "type": "string", "required": True}})
     @console_ns.response(
         HTTPStatus.OK,
         "Endpoint updated successfully",
-        console_ns.models[EndpointMutationResponse.__name__],
+        console_basemodel[EndpointMutationResponse.__name__],
     )
     @console_ns.response(HTTPStatus.FORBIDDEN, "Admin privileges required")
     @setup_required
@@ -403,11 +405,11 @@ class DeprecatedEndpointDeleteApi(Resource):
             "Use DELETE /workspaces/current/endpoints/{id} instead."
         )
     )
-    @console_ns.expect(console_ns.models[EndpointIdPayload.__name__])
+    @console_ns.expect(console_basemodel[EndpointIdPayload.__name__])
     @console_ns.response(
         HTTPStatus.OK,
         "Endpoint deleted successfully",
-        console_ns.models[EndpointMutationResponse.__name__],
+        console_basemodel[EndpointMutationResponse.__name__],
     )
     @console_ns.response(HTTPStatus.FORBIDDEN, "Admin privileges required")
     @setup_required
@@ -436,11 +438,11 @@ class DeprecatedEndpointUpdateApi(Resource):
             "Use PATCH /workspaces/current/endpoints/{id} instead."
         )
     )
-    @console_ns.expect(console_ns.models[LegacyEndpointUpdatePayload.__name__])
+    @console_ns.expect(console_basemodel[LegacyEndpointUpdatePayload.__name__])
     @console_ns.response(
         HTTPStatus.OK,
         "Endpoint updated successfully",
-        console_ns.models[EndpointMutationResponse.__name__],
+        console_basemodel[EndpointMutationResponse.__name__],
     )
     @console_ns.response(HTTPStatus.FORBIDDEN, "Admin privileges required")
     @setup_required
@@ -461,11 +463,11 @@ class DeprecatedEndpointUpdateApi(Resource):
 class EndpointEnableApi(Resource):
     @console_ns.doc("enable_endpoint")
     @console_ns.doc(description="Enable a plugin endpoint")
-    @console_ns.expect(console_ns.models[EndpointIdPayload.__name__])
+    @console_ns.expect(console_basemodel[EndpointIdPayload.__name__])
     @console_ns.response(
         HTTPStatus.OK,
         "Endpoint enabled successfully",
-        console_ns.models[EndpointMutationResponse.__name__],
+        console_basemodel[EndpointMutationResponse.__name__],
     )
     @console_ns.response(HTTPStatus.FORBIDDEN, "Admin privileges required")
     @setup_required
@@ -486,11 +488,11 @@ class EndpointEnableApi(Resource):
 class EndpointDisableApi(Resource):
     @console_ns.doc("disable_endpoint")
     @console_ns.doc(description="Disable a plugin endpoint")
-    @console_ns.expect(console_ns.models[EndpointIdPayload.__name__])
+    @console_ns.expect(console_basemodel[EndpointIdPayload.__name__])
     @console_ns.response(
         HTTPStatus.OK,
         "Endpoint disabled successfully",
-        console_ns.models[EndpointMutationResponse.__name__],
+        console_basemodel[EndpointMutationResponse.__name__],
     )
     @console_ns.response(HTTPStatus.FORBIDDEN, "Admin privileges required")
     @setup_required

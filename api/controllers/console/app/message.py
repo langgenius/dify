@@ -1,6 +1,6 @@
 import logging
 from http import HTTPStatus
-from typing import Literal
+from typing import Literal , Annotated
 from uuid import UUID
 
 from flask_restx import Resource
@@ -157,7 +157,7 @@ class ChatMessageListApi(Resource):
     @console_ns.doc("list_chat_messages")
     @console_ns.doc(description="Get chat messages for a conversation with pagination")
     @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(ChatMessagesQuery)})
-    @console_ns.response(200, "Success", console_ns.models[MessageInfiniteScrollPaginationResponse.__name__])
+    @console_ns.response(200, "Success", console_basemodel[MessageInfiniteScrollPaginationResponse.__name__])
     @console_ns.response(404, "Conversation not found")
     @login_required
     @account_initialization_required
@@ -183,7 +183,7 @@ class AgentChatMessageListApi(Resource):
     @console_ns.doc(description="Get Agent App chat messages for a conversation with pagination")
     @console_ns.doc(params={"agent_id": "Agent ID"})
     @console_ns.doc(params=query_params_from_model(ChatMessagesQuery))
-    @console_ns.response(200, "Success", console_ns.models[MessageInfiniteScrollPaginationResponse.__name__])
+    @console_ns.response(200, "Success", console_basemodel[MessageInfiniteScrollPaginationResponse.__name__])
     @console_ns.response(404, "Agent or conversation not found")
     @login_required
     @account_initialization_required
@@ -220,8 +220,8 @@ class MessageFeedbackApi(Resource):
     @console_ns.doc("create_message_feedback")
     @console_ns.doc(description="Create or update message feedback (like/dislike)")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[MessageFeedbackPayload.__name__])
-    @console_ns.response(200, "Feedback updated successfully", console_ns.models[SimpleResultResponse.__name__])
+    @console_ns.expect(console_basemodel[MessageFeedbackPayload.__name__])
+    @console_ns.response(200, "Feedback updated successfully", console_basemodel[SimpleResultResponse.__name__])
     @console_ns.response(404, "Message not found")
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
@@ -245,8 +245,8 @@ class AgentMessageFeedbackApi(Resource):
     @console_ns.doc("create_agent_message_feedback")
     @console_ns.doc(description="Create or update Agent App message feedback")
     @console_ns.doc(params={"agent_id": "Agent ID"})
-    @console_ns.expect(console_ns.models[MessageFeedbackPayload.__name__])
-    @console_ns.response(200, "Feedback updated successfully", console_ns.models[SimpleResultResponse.__name__])
+    @console_ns.expect(console_basemodel[MessageFeedbackPayload.__name__])
+    @console_ns.response(200, "Feedback updated successfully", console_basemodel[SimpleResultResponse.__name__])
     @console_ns.response(404, "Agent or message not found")
     @setup_required
     @login_required
@@ -285,7 +285,7 @@ class MessageAnnotationCountApi(Resource):
     @console_ns.response(
         200,
         "Annotation count retrieved successfully",
-        console_ns.models[AnnotationCountResponse.__name__],
+        console_basemodel[AnnotationCountResponse.__name__],
     )
     @setup_required
     @login_required
@@ -308,7 +308,7 @@ class MessageSuggestedQuestionApi(Resource):
     @console_ns.response(
         HTTPStatus.OK,
         "Suggested questions retrieved successfully",
-        console_ns.models[SuggestedQuestionsResponse.__name__],
+        console_basemodel[SuggestedQuestionsResponse.__name__],
     )
     @console_ns.response(HTTPStatus.BAD_REQUEST, "App or model provider unavailable, or generation failed")
     @console_ns.response(HTTPStatus.UNAUTHORIZED, "Account authentication required")
@@ -336,7 +336,7 @@ class AgentMessageSuggestedQuestionApi(Resource):
     @console_ns.response(
         HTTPStatus.OK,
         "Suggested questions retrieved successfully",
-        console_ns.models[SuggestedQuestionsResponse.__name__],
+        console_basemodel[SuggestedQuestionsResponse.__name__],
     )
     @console_ns.response(HTTPStatus.BAD_REQUEST, "App or model provider unavailable, or generation failed")
     @console_ns.response(HTTPStatus.UNAUTHORIZED, "Account authentication required")
@@ -361,7 +361,7 @@ class MessageFeedbackExportApi(Resource):
     @console_ns.response(
         200,
         "Feedback data exported successfully",
-        console_ns.models[TextFileResponse.__name__],
+        console_basemodel[TextFileResponse.__name__],
     )
     @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(FeedbackExportQuery)})
     @console_ns.response(400, "Invalid parameters")
@@ -403,7 +403,7 @@ class MessageApi(Resource):
     @console_ns.doc("get_message")
     @console_ns.doc(description="Get message details by ID")
     @console_ns.doc(params={"app_id": "Application ID", "message_id": "Message ID"})
-    @console_ns.response(200, "Message retrieved successfully", console_ns.models[MessageDetailResponse.__name__])
+    @console_ns.response(200, "Message retrieved successfully", console_basemodel[MessageDetailResponse.__name__])
     @console_ns.response(404, "Message not found")
     @setup_required
     @login_required
@@ -420,7 +420,7 @@ class AgentMessageApi(Resource):
     @console_ns.doc("get_agent_message")
     @console_ns.doc(description="Get Agent App message details by ID")
     @console_ns.doc(params={"agent_id": "Agent ID", "message_id": "Message ID"})
-    @console_ns.response(200, "Message retrieved successfully", console_ns.models[MessageDetailResponse.__name__])
+    @console_ns.response(200, "Message retrieved successfully", console_basemodel[MessageDetailResponse.__name__])
     @console_ns.response(404, "Agent or message not found")
     @setup_required
     @login_required
