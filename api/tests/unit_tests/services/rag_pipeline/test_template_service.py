@@ -242,6 +242,26 @@ def test_publication_rejects_legacy_role_and_dataset_acl_before_export(
     assert exporter.calls == []
 
 
+@pytest.mark.parametrize("attribute", ["tenant_id", "pipeline_id"])
+def test_publication_validation_rechecks_dataset_ownership(
+    sqlite_session_factory: sessionmaker[Session],
+    sqlite_engine: Engine,
+    attribute: str,
+) -> None:
+    # Dataset access may succeed before another transaction changes the owner chain.
+    with sqlite_session_factory.begin() as session:
+        dataset = session.get(Dataset, "dataset-1")
+        assert dataset is not None
+        setattr(dataset, attribute, "foreign")
+
+    store = PipelineTemplateRepository(sqlite_session_factory)
+    with pytest.raises(PipelineTemplateNotFoundError, match="Dataset not found"):
+        store.validate_publication("tenant-1", "pipeline-1", TEMPLATE.name)
+
+    assert isinstance(sqlite_engine.pool, QueuePool)
+    assert sqlite_engine.pool.checkedout() == 0
+
+
 def test_export_failure_leaves_no_template(
     service: PipelineTemplateService,
     exporter: Exporter,
