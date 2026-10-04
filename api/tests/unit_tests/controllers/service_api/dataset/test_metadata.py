@@ -19,7 +19,7 @@ Decorator strategy:
 
 import uuid
 from inspect import unwrap
-from unittest.mock import ANY, Mock, patch
+from unittest.mock import ANY, Mock, create_autospec, patch
 
 import pytest
 from flask import Flask, request
@@ -69,14 +69,16 @@ def test_metadata_permission_error_http_contract(
     monkeypatch.setattr(
         metadata_module.DatasetService,
         "get_dataset_for_tenant",
-        Mock(spec=metadata_module.DatasetService.get_dataset_for_tenant, return_value=mock_dataset),
+        create_autospec(
+            metadata_module.DatasetService.get_dataset_for_tenant, return_value=mock_dataset, instance=True
+        ),
     )
     monkeypatch.setattr(
         metadata_module.DatasetService,
         "check_dataset_permission",
-        Mock(spec=metadata_module.DatasetService.check_dataset_permission, side_effect=error),
+        create_autospec(metadata_module.DatasetService.check_dataset_permission, side_effect=error, instance=True),
     )
-    metadata = Mock(spec=MetadataService)
+    metadata = create_autospec(MetadataService, instance=True)
     services = Mock()
     services.knowledge.metadata = metadata
     monkeypatch.setattr(metadata_module, "application_services", lambda: services)
