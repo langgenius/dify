@@ -21,6 +21,8 @@ from models.dataset import Dataset, Document, RateLimitLog
 from models.enums import ApiTokenType, DataSourceType, DocumentCreatedFrom, IndexingStatus
 from models.model import ApiToken, DatasetApiTokenBinding
 from services.entities.feature_entities import KnowledgeRateLimitModel
+from services.knowledge.dataset_access import DatasetAccessDeniedError
+from services.knowledge.documents.application import DatasetDocumentApplicationService
 
 
 @dataclass
@@ -195,6 +197,23 @@ def test_retry_respects_existing_retry_lock(
         lock.return_value.acquire.return_value = False
         response = client.post(records.path, headers=records.headers, json={"document_ids": [records.document.id]})
     assert response.status_code == 400
+    dispatch.assert_not_called()
+    sqlite_session.refresh(records.document)
+    assert records.document.indexing_status == IndexingStatus.ERROR
+
+
+def test_retry_translates_application_access_denial(
+    client: FlaskClient, records: RetryRecords, dispatch: Mock, sqlite_session: Session
+) -> None:
+    with patch.object(
+        DatasetDocumentApplicationService, "retry_failed_documents", side_effect=DatasetAccessDeniedError()
+    ):
+        response = client.post(records.path, headers=records.headers, json={"document_ids": [records.document.id]})
+
+    assert response.status_code == 403
+    assert response.json is not None
+    assert response.json["code"] == "forbidden"
+    assert response.json["message"] == "You do not have permission to access this dataset"
     dispatch.assert_not_called()
     sqlite_session.refresh(records.document)
     assert records.document.indexing_status == IndexingStatus.ERROR
