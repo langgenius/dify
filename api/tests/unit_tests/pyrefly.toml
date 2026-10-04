@@ -190,7 +190,6 @@ project-excludes = [
   "controllers/service_api/dataset/rag_pipeline/test_rag_pipeline_workflow.py",
   "controllers/service_api/dataset/test_dataset_segment.py",
   "controllers/service_api/dataset/test_document.py",
-  "controllers/service_api/dataset/test_hit_testing.py",
   "controllers/service_api/dataset/test_metadata.py",
   "controllers/service_api/dataset/test_rag_pipeline_file_upload_serialization.py",
   "controllers/service_api/dataset/test_rag_pipeline_route_registration.py",
