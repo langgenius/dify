@@ -3,7 +3,7 @@ from datetime import datetime
 from http import HTTPStatus
 from inspect import unwrap
 from typing import NamedTuple, override
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, create_autospec, patch
 
 import pytest
 from flask import Flask
@@ -145,13 +145,13 @@ def services(monkeypatch: pytest.MonkeyPatch) -> Mock:
     from extensions.ext_application_services import AccountServices, ApplicationServices
     from services.workspace.member_service import WorkspaceInvitationService, WorkspaceOwnerTransferService
 
-    services = Mock(spec=ApplicationServices)
-    services.accounts = Mock(spec=AccountServices)
-    services.workspaces = Mock(spec=WorkspaceServices)
-    services.workspaces.invitations = Mock(spec=WorkspaceInvitationService)
-    services.workspaces.owner_transfer = Mock(spec=WorkspaceOwnerTransferService)
-    services.workspaces.members = Mock(spec=WorkspaceMemberService)
-    services.workspaces.member_queries = Mock(spec=WorkspaceMemberQueryService)
+    services = create_autospec(ApplicationServices, instance=True)
+    services.accounts = create_autospec(AccountServices, instance=True)
+    services.workspaces = create_autospec(WorkspaceServices, instance=True)
+    services.workspaces.invitations = create_autospec(WorkspaceInvitationService, instance=True)
+    services.workspaces.owner_transfer = create_autospec(WorkspaceOwnerTransferService, instance=True)
+    services.workspaces.members = create_autospec(WorkspaceMemberService, instance=True)
+    services.workspaces.member_queries = create_autospec(WorkspaceMemberQueryService, instance=True)
     import importlib
 
     monkeypatch.setattr(

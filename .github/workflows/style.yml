@@ -93,6 +93,10 @@ jobs:
         if: inputs.run-python-style
         run: uv run --project api python scripts/check_no_new_session_mock.py --base-rev "${{ inputs.base-rev }}"
 
+      - name: Run No Spec Mock Guard
+        if: inputs.run-python-style
+        run: uv run --project api python scripts/check_no_spec_mock.py
+
       - name: Run Type Checks
         if: inputs.run-python-style
         env:
