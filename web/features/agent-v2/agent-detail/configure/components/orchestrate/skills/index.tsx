@@ -356,7 +356,6 @@ function WorkspaceAgentSkillItem({
 }) {
   const { t } = useTranslation(['agentV2'])
   const readOnly = useAgentOrchestrateReadOnly()
-  const [isActionsOpen, setIsActionsOpen] = useState(false)
   const [isRemoveHighlighted, setIsRemoveHighlighted] = useState(false)
   const displayName = skill.display_name || skill.name
   const handleOpenInLibrary = useCallback(() => {
@@ -395,7 +394,7 @@ function WorkspaceAgentSkillItem({
           className={cn(
             'shrink-0 system-xs-regular text-text-tertiary',
             !readOnly && 'group-focus-within:opacity-0 group-hover:opacity-0',
-            isActionsOpen && 'opacity-0',
+            'group-has-data-popup-open:opacity-0',
           )}
         >
           {skill.name}
@@ -404,7 +403,6 @@ function WorkspaceAgentSkillItem({
       <DropdownMenu
         modal={false}
         onOpenChange={(open) => {
-          setIsActionsOpen(open)
           if (!open) setIsRemoveHighlighted(false)
         }}
       >

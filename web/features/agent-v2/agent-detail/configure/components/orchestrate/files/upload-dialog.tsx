@@ -175,7 +175,7 @@ function AgentFileUploader({ file, onChange }: { file?: File; onChange: (file?: 
         </div>
       )}
       {file && (
-        <div className="group flex items-center rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs hover:bg-components-panel-on-panel-item-bg-hover">
+        <div className="flex items-center rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs hover:bg-components-panel-on-panel-item-bg-hover">
           <div className="flex items-center justify-center p-3">
             <FileTreeIcon type={getFileIconType(file.name, file.type)} />
           </div>
@@ -189,7 +189,7 @@ function AgentFileUploader({ file, onChange }: { file?: File; onChange: (file?: 
               <span>{formatFileSize(file.size)}</span>
             </div>
           </div>
-          <div className="hidden items-center pr-3 group-hover:flex">
+          <div className="flex items-center pr-3">
             <IconButton
               aria-label={tCommon(($) => $['operation.remove'])}
               onClick={() => onChange(undefined)}

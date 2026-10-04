@@ -1,6 +1,6 @@
 # Configuration avancée
 
-Si vous devez personnaliser la configuration, veuillez vous référer aux commentaires dans notre fichier [.env.example](../../docker/.env.example) et mettre à jour les valeurs correspondantes dans votre fichier `.env`. De plus, vous devrez peut-être apporter des modifications au fichier `docker-compose.yaml` lui-même, comme changer les versions d'image, les mappages de ports ou les montages de volumes, en fonction de votre environnement de déploiement et de vos exigences spécifiques. Après avoir effectué des modifications, veuillez réexécuter `docker-compose up -d`. Vous pouvez trouver la liste complète des variables d'environnement disponibles [ici](https://docs.dify.ai/getting-started/install-self-hosted/environments).
+Configurez votre installation dans `docker/.env`. [`.env.example`](../../docker/.env.example) contient les paramètres nécessaires au déploiement par défaut ; les options avancées et propres aux services sont dans [`docker/envs/`](../../docker/envs/). Copiez les modèles nécessaires sans le suffixe `.example`. Les valeurs de `.env` sont prioritaires. Après modification, exécutez `docker compose up -d` depuis `docker/`. Consultez le [guide Docker](../../docker/README.md).
 
 ## Surveillance des Métriques avec Grafana
 

@@ -680,7 +680,7 @@ export function AgentWorkingDirectoryPanel({
                 : paths.filter((path) => path !== file.id),
             )
           },
-          onFolderDoubleClick: ({ file }) => handleDirectoryPathChange(file.id),
+          onFolderEnter: ({ file }) => handleDirectoryPathChange(file.id),
           onSelectFile: (selectedFile) => setSelectedFileId(selectedFile.id),
           renderFolderSuffix: ({ file }) =>
             loadingFolderPaths.has(file.id) ? (

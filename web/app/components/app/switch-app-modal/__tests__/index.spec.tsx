@@ -3,7 +3,6 @@ import type { ReactElement } from 'react'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { mockEmojiData } from '@/test/emoji-picker'
 import { AppModeEnum } from '@/types/app'
@@ -127,7 +126,7 @@ const renderComponent = (overrides: Partial<React.ComponentProps<typeof SwitchAp
   const appDetail = createMockApp()
 
   const utils = render(
-    <SwitchAppModal show appDetail={appDetail} onClose={onClose} {...overrides} />,
+    <SwitchAppModal show sourceApp={appDetail} onClose={onClose} {...overrides} />,
   )
 
   return {
@@ -137,8 +136,6 @@ const renderComponent = (overrides: Partial<React.ComponentProps<typeof SwitchAp
     appDetail,
   }
 }
-
-const setAppDetailSpy = vi.fn()
 
 function render(ui: ReactElement) {
   return renderWithConsoleQuery(ui, {
@@ -152,12 +149,6 @@ describe('SwitchAppModal', () => {
     vi.clearAllMocks()
     mockConvertToWorkflow.mockReset()
     mockDeleteOriginalApp.mockReset()
-    // Spy on setAppDetail
-    const originalSetAppDetail = useAppStore.getState().setAppDetail
-    setAppDetailSpy.mockImplementation((...args: Parameters<typeof originalSetAppDetail>) => {
-      originalSetAppDetail(...args)
-    })
-    useAppStore.setState({ setAppDetail: setAppDetailSpy as typeof originalSetAppDetail })
     deploymentEdition = 'COMMUNITY'
     mockPlan = {
       type: 'sandbox',
@@ -359,7 +350,7 @@ describe('SwitchAppModal', () => {
     it('should delete the original app and use replace when remove original is confirmed', async () => {
       const user = userEvent.setup()
       // Arrange
-      const { appDetail } = renderComponent({ inAppDetail: true })
+      const { appDetail } = renderComponent()
       mockConvertToWorkflow.mockResolvedValueOnce({
         new_app_id: 'new-app-002',
         permission_keys: ['app.acl.view_layout'],
@@ -379,7 +370,6 @@ describe('SwitchAppModal', () => {
       })
       expect(mockReplace).toHaveBeenCalledWith('/app/new-app-002/workflow')
       expect(mockPush).not.toHaveBeenCalled()
-      expect(setAppDetailSpy).toHaveBeenCalledTimes(1)
     })
 
     it('should notify error when switch app fails', async () => {

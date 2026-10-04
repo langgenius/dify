@@ -261,13 +261,17 @@ def test_mint_rejects_a_run_deadline_without_produce_scope(app: Flask) -> None:
 
 
 @pytest.mark.usefixtures("granted_config", "seeded_app", "sqlite_db")
-def test_mint_rejects_a_run_deadline_beyond_the_workflow_limit(app: Flask) -> None:
+def test_mint_rejects_a_run_deadline_beyond_the_workflow_limit(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    now = 1_700_000_000
+    # Keep the one-second boundary fixed between payload construction and validation.
+    monkeypatch.setattr("extensions.ext_application_services.time", SimpleNamespace(time=lambda: now))
+
     with pytest.raises(InvalidGrantRequestError):
         _mint(
             app,
             _payload(
                 scopes=["resolve", "produce"],
-                run_deadline=int(time.time()) + MAX_WORKFLOW_EXECUTION_SECONDS + 1,
+                run_deadline=now + MAX_WORKFLOW_EXECUTION_SECONDS + 1,
             ),
         )
 

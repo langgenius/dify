@@ -27,7 +27,7 @@ class TestTriggerProviderService:
             patch("services.trigger.trigger_provider_service.TriggerManager") as mock_trigger_manager,
             patch("services.trigger.trigger_provider_service.redis_client") as mock_redis_client,
             patch("services.trigger.trigger_provider_service.delete_cache_for_subscription") as mock_delete_cache,
-            patch("services.account_service.SystemFeatureService") as mock_account_feature_service,
+            patch("services.account.login_adapters.SystemFeatureService") as mock_account_feature_service,
         ):
             # Setup default mock returns
             mock_provider_controller = MagicMock()
@@ -68,7 +68,7 @@ class TestTriggerProviderService:
         """
         fake = Faker()
 
-        from services.account_service import AccountService, TenantService
+        from tests.test_containers_integration_tests.helpers import accounts as account_fixtures
 
         # Setup mocks for account creation
         mock_external_service_dependencies["account_feature_service"].is_registration_allowed.return_value = True
@@ -77,14 +77,14 @@ class TestTriggerProviderService:
         ].get_trigger_provider.return_value = mock_external_service_dependencies["provider_controller"]
 
         # Create account and tenant
-        account = AccountService.create_account(
+        account = account_fixtures.create_account(
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
             session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
+        account_fixtures.create_owner_workspace(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
         assert tenant is not None
 

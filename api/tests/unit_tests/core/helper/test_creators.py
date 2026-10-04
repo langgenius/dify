@@ -1,6 +1,6 @@
 """Tests for the Creators Platform helper module."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import httpx
 import pytest
@@ -19,10 +19,11 @@ def _patch_creators_url(monkeypatch: pytest.MonkeyPatch):
 class TestUploadDSL:
     @patch("core.helper.creators.httpx.post")
     def test_returns_claim_code(self, mock_post):
-        mock_response = MagicMock(spec=httpx.Response)
-        mock_response.json.return_value = {"data": {"claim_code": "abc123"}}
-        mock_response.raise_for_status = MagicMock()
-        mock_post.return_value = mock_response
+        mock_post.return_value = httpx.Response(
+            200,
+            request=httpx.Request("POST", "https://creators.example.com/api/v1/templates/anonymous-upload"),
+            json={"data": {"claim_code": "abc123"}},
+        )
 
         from core.helper.creators import upload_dsl
 
@@ -46,10 +47,11 @@ class TestUploadDSL:
 
     @patch("core.helper.creators.httpx.post")
     def test_raises_on_missing_claim_code(self, mock_post):
-        mock_response = MagicMock(spec=httpx.Response)
-        mock_response.json.return_value = {"data": {}}
-        mock_response.raise_for_status = MagicMock()
-        mock_post.return_value = mock_response
+        mock_post.return_value = httpx.Response(
+            200,
+            request=httpx.Request("POST", "https://creators.example.com/api/v1/templates/anonymous-upload"),
+            json={"data": {}},
+        )
 
         from core.helper.creators import upload_dsl
 
@@ -58,10 +60,11 @@ class TestUploadDSL:
 
     @patch("core.helper.creators.httpx.post")
     def test_raises_on_non_string_claim_code(self, mock_post):
-        mock_response = MagicMock(spec=httpx.Response)
-        mock_response.json.return_value = {"data": {"claim_code": 123}}
-        mock_response.raise_for_status = MagicMock()
-        mock_post.return_value = mock_response
+        mock_post.return_value = httpx.Response(
+            200,
+            request=httpx.Request("POST", "https://creators.example.com/api/v1/templates/anonymous-upload"),
+            json={"data": {"claim_code": 123}},
+        )
 
         from core.helper.creators import upload_dsl
 
@@ -70,18 +73,16 @@ class TestUploadDSL:
 
     @patch("core.helper.creators.httpx.post")
     def test_raises_on_http_error(self, mock_post):
-        mock_response = MagicMock(spec=httpx.Response)
-        mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
-            "Server Error",
-            request=MagicMock(),
-            response=MagicMock(),
+        mock_post.return_value = httpx.Response(
+            500,
+            request=httpx.Request("POST", "https://creators.example.com/api/v1/templates/anonymous-upload"),
         )
-        mock_post.return_value = mock_response
 
         from core.helper.creators import upload_dsl
 
-        with pytest.raises(httpx.HTTPStatusError):
+        with pytest.raises(httpx.HTTPStatusError) as caught:
             upload_dsl(b"app: demo")
+        assert caught.value.response is mock_post.return_value
 
 
 class TestGetRedirectUrl:

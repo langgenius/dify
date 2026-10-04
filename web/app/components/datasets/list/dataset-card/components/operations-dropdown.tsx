@@ -3,11 +3,14 @@ import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   getStepByStepTourDropdownMenuContentProps,
   useStepByStepTourControlledDropdown,
@@ -16,7 +19,6 @@ import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { getDatasetACLCapabilities } from '@/utils/permission'
-import Operations from '../operations'
 
 type OperationsDropdownProps = {
   dataset: DataSet
@@ -43,6 +45,7 @@ const OperationsDropdown = ({
   })
   const open = operationsMenu.open
   const setOpen = operationsMenu.onOpenChange
+  const { t } = useTranslation(['common', 'datasetPipeline', 'navigation'])
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.id,
@@ -106,18 +109,33 @@ const OperationsDropdown = ({
             className: 'min-w-[186px]',
           })}
         >
-          <Operations
-            showEdit={datasetACLCapabilities.canEdit}
-            showDelete={datasetACLCapabilities.canDelete}
-            showExportPipeline={
-              dataset.runtime_mode === 'rag_pipeline' && datasetACLCapabilities.canImportExportDSL
-            }
-            showAccessConfig={datasetACLCapabilities.canAccessConfig}
-            openRenameModal={openRenameModal}
-            handleExportPipeline={handleExportPipeline}
-            detectIsUsedByApp={detectIsUsedByApp}
-            openAccessConfig={openAccessConfig}
-          />
+          {datasetACLCapabilities.canEdit && (
+            <DropdownMenuItem className="gap-2" onClick={openRenameModal}>
+              <span aria-hidden className="i-ri-edit-line size-4 text-text-tertiary" />
+              {t(($) => $['operation.edit'], { ns: 'common' })}
+            </DropdownMenuItem>
+          )}
+          {dataset.runtime_mode === 'rag_pipeline' && datasetACLCapabilities.canImportExportDSL && (
+            <DropdownMenuItem className="gap-2" onClick={() => handleExportPipeline()}>
+              <span aria-hidden className="i-ri-file-download-line size-4 text-text-tertiary" />
+              {t(($) => $['operations.exportPipeline'], { ns: 'datasetPipeline' })}
+            </DropdownMenuItem>
+          )}
+          {datasetACLCapabilities.canAccessConfig && (
+            <DropdownMenuItem className="gap-2" onClick={openAccessConfig}>
+              <span aria-hidden className="i-ri-lock-line size-4 text-text-tertiary" />
+              {t(($) => $['settings.resourceAccess'], { ns: 'navigation' })}
+            </DropdownMenuItem>
+          )}
+          {datasetACLCapabilities.canDelete && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="gap-2" variant="destructive" onClick={detectIsUsedByApp}>
+                <span aria-hidden className="i-ri-delete-bin-line size-4" />
+                {t(($) => $['operation.delete'], { ns: 'common' })}
+              </DropdownMenuItem>
+            </>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
