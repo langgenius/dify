@@ -53,10 +53,12 @@ def localize_datetime(dt: datetime.datetime, tz: datetime.tzinfo) -> datetime.da
 
     An ambiguous time (clocks set back) resolves to its later occurrence, and a
     non-existent time (clocks set forward) is shifted forward by the size of the
-    gap. Both are the later of the two instants that ``fold`` can select.
+    gap. Both are the later of the two instants that ``fold`` can select. The
+    result is round-tripped through UTC so a shifted time also reports its real
+    wall-clock value.
     """
     candidates = (dt.replace(tzinfo=tz, fold=0), dt.replace(tzinfo=tz, fold=1))
-    return max(candidates, key=datetime.datetime.timestamp)
+    return max(candidates, key=datetime.datetime.timestamp).astimezone(datetime.UTC).astimezone(tz)
 
 
 def parse_time_range(

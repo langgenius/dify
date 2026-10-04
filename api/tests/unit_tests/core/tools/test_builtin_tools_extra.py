@@ -125,21 +125,24 @@ def test_timezone_conversion_tool(sqlite_session: Session):
 
 
 @pytest.mark.parametrize(
-    ("localtime", "expected_timestamp", "expected_utc"),
+    ("localtime", "expected_timestamp", "expected_utc", "expected_local"),
     [
         # Ambiguous (fall back): the later occurrence, 01:30 EST
-        ("2024-11-03 01:30:00", 1730615400, "2024-11-03 06:30:00"),
+        ("2024-11-03 01:30:00", 1730615400, "2024-11-03 06:30:00", "2024-11-03 01:30:00"),
         # Nonexistent (spring forward): shifted past the gap, 03:30 EDT
-        ("2024-03-10 02:30:00", 1710055800, "2024-03-10 07:30:00"),
+        ("2024-03-10 02:30:00", 1710055800, "2024-03-10 07:30:00", "2024-03-10 03:30:00"),
     ],
 )
-def test_time_tools_resolve_dst_transitions(localtime: str, expected_timestamp: int, expected_utc: str):
+def test_time_tools_resolve_dst_transitions(
+    localtime: str, expected_timestamp: int, expected_utc: str, expected_local: str
+):
     timezone = "America/New_York"
 
     assert (
         LocaltimeToTimestampTool.localtime_to_timestamp(localtime, "%Y-%m-%d %H:%M:%S", timezone) == expected_timestamp
     )
     assert TimezoneConversionTool.timezone_convert(localtime, timezone, "UTC") == expected_utc
+    assert TimezoneConversionTool.timezone_convert(localtime, timezone, timezone) == expected_local
 
 
 def test_time_tools_reject_unknown_timezone():

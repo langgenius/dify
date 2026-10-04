@@ -54,20 +54,38 @@ def test_to_utc_timestamp(value: datetime.datetime):
 
 
 @pytest.mark.parametrize(
-    ("naive", "tzname", "expected_utc"),
+    ("naive", "tzname", "expected_local", "expected_utc"),
     [
         # Unambiguous wall time
-        (datetime.datetime(2024, 1, 1, 10, 0), "Asia/Shanghai", datetime.datetime(2024, 1, 1, 2, 0)),
+        (
+            datetime.datetime(2024, 1, 1, 10, 0),
+            "Asia/Shanghai",
+            datetime.datetime(2024, 1, 1, 10, 0),
+            datetime.datetime(2024, 1, 1, 2, 0),
+        ),
         # Ambiguous (fall back): later occurrence, 01:30 EST
-        (datetime.datetime(2024, 11, 3, 1, 30), "America/New_York", datetime.datetime(2024, 11, 3, 6, 30)),
+        (
+            datetime.datetime(2024, 11, 3, 1, 30),
+            "America/New_York",
+            datetime.datetime(2024, 11, 3, 1, 30),
+            datetime.datetime(2024, 11, 3, 6, 30),
+        ),
         # Nonexistent (spring forward): shifted past the gap, 03:30 EDT
-        (datetime.datetime(2024, 3, 10, 2, 30), "America/New_York", datetime.datetime(2024, 3, 10, 7, 30)),
+        (
+            datetime.datetime(2024, 3, 10, 2, 30),
+            "America/New_York",
+            datetime.datetime(2024, 3, 10, 3, 30),
+            datetime.datetime(2024, 3, 10, 7, 30),
+        ),
     ],
 )
-def test_localize_datetime(naive: datetime.datetime, tzname: str, expected_utc: datetime.datetime):
+def test_localize_datetime(
+    naive: datetime.datetime, tzname: str, expected_local: datetime.datetime, expected_utc: datetime.datetime
+):
     localized = localize_datetime(naive, ZoneInfo(tzname))
 
     assert localized.tzinfo == ZoneInfo(tzname)
+    assert localized.replace(tzinfo=None) == expected_local
     assert localized.astimezone(datetime.UTC) == expected_utc.replace(tzinfo=datetime.UTC)
 
 
