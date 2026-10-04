@@ -47,7 +47,11 @@ class LocaltimeToTimestampTool(BuiltinTool):
                 case None:
                     converted_localtime = local_time.astimezone()
                 case str() as timezone_name:
-                    converted_localtime = localize_datetime(local_time, ZoneInfo(timezone_name))
+                    try:
+                        zone = ZoneInfo(timezone_name)
+                    except Exception as e:
+                        raise ToolInvokeError(f"Invalid timezone: {timezone_name}") from e
+                    converted_localtime = localize_datetime(local_time, zone)
                 case tzinfo():
                     localize = getattr(local_tz, "localize", None)
                     if callable(localize):

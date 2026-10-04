@@ -145,13 +145,23 @@ def test_time_tools_resolve_dst_transitions(
     assert TimezoneConversionTool.timezone_convert(localtime, timezone, timezone) == expected_local
 
 
-def test_time_tools_reject_unknown_timezone():
-    with pytest.raises(ToolInvokeError):
-        LocaltimeToTimestampTool.localtime_to_timestamp("2024-01-01 10:00:00", "%Y-%m-%d %H:%M:%S", "Invalid/TZ")
-    with pytest.raises(ToolInvokeError):
-        TimestampToLocaltimeTool.timestamp_to_localtime(1704067200, "Invalid/TZ")
-    with pytest.raises(ToolInvokeError):
-        TimezoneConversionTool.timezone_convert("2024-01-01 10:00:00", "Invalid/TZ", "UTC")
+# "America" is a directory in the tz database, so the lookup error carries a filesystem path
+@pytest.mark.parametrize("timezone", ["Invalid/TZ", "America"])
+def test_time_tools_reject_unknown_timezone(timezone: str):
+    expected = f"Invalid timezone: {timezone}"
+
+    with pytest.raises(ToolInvokeError) as exc_info:
+        LocaltimeToTimestampTool.localtime_to_timestamp("2024-01-01 10:00:00", "%Y-%m-%d %H:%M:%S", timezone)
+    assert str(exc_info.value) == expected
+    with pytest.raises(ToolInvokeError) as exc_info:
+        TimestampToLocaltimeTool.timestamp_to_localtime(1704067200, timezone)
+    assert str(exc_info.value) == expected
+    with pytest.raises(ToolInvokeError) as exc_info:
+        TimezoneConversionTool.timezone_convert("2024-01-01 10:00:00", timezone, "UTC")
+    assert str(exc_info.value) == expected
+    with pytest.raises(ToolInvokeError) as exc_info:
+        TimezoneConversionTool.timezone_convert("2024-01-01 10:00:00", "UTC", timezone)
+    assert str(exc_info.value) == expected
 
 
 def test_weekday_tool(sqlite_session: Session):

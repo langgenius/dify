@@ -45,9 +45,15 @@ class TimezoneConversionTool(BuiltinTool):
         time_format = "%Y-%m-%d %H:%M:%S"
         try:
             # get source timezone
-            input_timezone = ZoneInfo(source_timezone)
+            try:
+                input_timezone = ZoneInfo(source_timezone)
+            except Exception as e:
+                raise ToolInvokeError(f"Invalid timezone: {source_timezone}") from e
             # get target timezone
-            output_timezone = ZoneInfo(target_timezone)
+            try:
+                output_timezone = ZoneInfo(target_timezone)
+            except Exception as e:
+                raise ToolInvokeError(f"Invalid timezone: {target_timezone}") from e
             local_time = datetime.strptime(current_time, time_format)
             datetime_with_tz = localize_datetime(local_time, input_timezone)
             # timezone convert
