@@ -12,18 +12,17 @@ from typing import Any
 from flask_restx import Resource
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 from controllers.common.schema import register_schema_model
 from controllers.console.wraps import model_validate, setup_required
 from controllers.inner_api import inner_api_ns
 from controllers.inner_api.wraps import enterprise_inner_api_only
+from core.db.session_factory import session_factory
 from core.helper import encrypter
 from core.helper.provider_cache import ToolProviderCredentialsCache
 from core.helper.provider_encryption import create_provider_encrypter
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 from core.tools.tool_manager import ToolManager
-from extensions.ext_database import db
 from models.provider import ProviderCredential
 from models.tools import BuiltinToolProvider
 
@@ -114,7 +113,7 @@ def _resolve_model(
         provider_schema.credential_form_schemas if provider_schema else []
     )
 
-    with Session(db.engine) as session:
+    with session_factory.create_session() as session:
         stmt = select(ProviderCredential).where(
             ProviderCredential.id == item.credential_id,
             ProviderCredential.tenant_id == tenant_id,
@@ -165,7 +164,7 @@ def _resolve_tool(
         )
         return None, ({"message": f"tool provider '{item.provider}' not found"}, 404)
 
-    with Session(db.engine) as session:
+    with session_factory.create_session() as session:
         stmt = select(BuiltinToolProvider).where(
             BuiltinToolProvider.id == item.credential_id,
             BuiltinToolProvider.provider == item.provider,
