@@ -5,10 +5,10 @@ from uuid import UUID
 
 from flask_restx import Resource
 from pydantic import BaseModel, Field, TypeAdapter, WithJsonSchema
-from werkzeug.exceptions import HTTPException, InternalServerError, NotFound
 
 import services
 from controllers.common.controller_schemas import MessageFeedbackPayload, MessageListQuery
+from controllers.common.errors import InternalServerError, NotFoundError
 from controllers.common.fields import SimpleResultStringListResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console.wraps import model_validate
@@ -36,6 +36,7 @@ from libs.helper import dump_response
 from machinery.context import ServiceApiEndUserContext
 from models.enums import FeedbackRating
 from models.model import App, AppMode, EndUser
+from services.agent.errors import AgentVersionNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import (
@@ -145,9 +146,9 @@ class MessageListApi(Resource):
                 limit=pagination.limit, has_more=pagination.has_more, data=items
             ).model_dump(mode="json")
         except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFoundError("Conversation Not Exists.")
         except FirstMessageNotExistsError:
-            raise NotFound("First Message Not Exists.")
+            raise NotFoundError("First Message Not Exists.")
 
 
 @service_api_ns.route("/messages/<uuid:message_id>/feedbacks")
@@ -195,7 +196,7 @@ class MessageFeedbackApi(Resource):
                 session=db.session(),
             )
         except MessageNotExistsError:
-            raise NotFound("Message Not Exists.")
+            raise NotFoundError("Message Not Exists.")
 
         return ResultResponse(result="success").model_dump(mode="json")
 
@@ -307,11 +308,11 @@ class MessageSuggestedApi(Resource):
         except AppDefinitionUnavailableError:
             raise AppUnavailableError() from None
         except SuggestedQuestionsActorNotFoundError:
-            raise NotFound("End user not found") from None
+            raise NotFoundError("End user not found") from None
         except MessageNotExistsError:
-            raise NotFound("Message Not Exists.")
+            raise NotFoundError("Message Not Exists.")
         except ConversationNotExistsError:
-            raise NotFound("Conversation not found") from None
+            raise NotFoundError("Conversation not found") from None
         except SuggestedQuestionsAfterAnswerDisabledError:
             raise AppSuggestedQuestionsAfterAnswerDisabledError() from None
         except ProviderTokenNotInitError as error:
@@ -322,7 +323,9 @@ class MessageSuggestedApi(Resource):
             raise ProviderModelCurrentlyNotSupportError() from None
         except InvokeError as error:
             raise CompletionRequestError(error.description) from error
-        except HTTPException:
+        except AgentVersionNotFoundError:
+            # The legacy Agent config reader still owns this HTTP error.
+            # Remove this compatibility case when it exposes a domain error.
             raise
         except Exception:
             logger.exception("internal server error.")

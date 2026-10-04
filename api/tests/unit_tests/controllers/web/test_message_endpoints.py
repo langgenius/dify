@@ -8,9 +8,9 @@ from uuid import uuid4
 
 import pytest
 from flask import Flask
-from werkzeug.exceptions import NotFound
 
 from controllers.common.controller_schemas import MessageFeedbackPayload
+from controllers.common.errors import NotFoundError
 from controllers.web.error import (
     AppMoreLikeThisDisabledError,
     NotCompletionAppError,
@@ -79,7 +79,7 @@ class TestMessageFeedbackApi:
         msg_id = uuid4()
 
         with app.test_request_context(f"/messages/{msg_id}/feedbacks", method="POST"):
-            with pytest.raises(NotFound, match="Message Not Exists"):
+            with pytest.raises(NotFoundError, match="Message Not Exists"):
                 _feedback_post(MessageFeedbackApi(), payload, _chat_app(), _end_user(), msg_id)
 
 
@@ -119,7 +119,7 @@ class TestMessageMoreLikeThisApi:
         query = MessageMoreLikeThisQuery.model_validate({"response_mode": "blocking"})
         session = MagicMock()
         with app.test_request_context(f"/messages/{msg_id}/more-like-this?response_mode=blocking"):
-            with pytest.raises(NotFound, match="Message Not Exists"):
+            with pytest.raises(NotFoundError, match="Message Not Exists"):
                 _more_like_this_get(MessageMoreLikeThisApi(), query, session, _completion_app(), _end_user(), msg_id)
 
     @patch(

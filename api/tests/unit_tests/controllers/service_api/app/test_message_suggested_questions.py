@@ -12,6 +12,7 @@ from flask import Flask
 from flask_login import LoginManager, current_user
 from sqlalchemy import Connection, Engine, event, select, text
 from sqlalchemy.orm import Session, SessionTransaction, object_session, sessionmaker
+from werkzeug.exceptions import Forbidden
 from werkzeug.test import TestResponse
 
 from controllers.service_api.app.message import MessageSuggestedApi
@@ -53,7 +54,7 @@ from tests.unit_tests.model_factories import make_app, make_conversation, make_e
 @dataclass
 class _ModelCalls:
     questions: list[str] = field(default_factory=lambda: ["What next?"])
-    failure: Literal["history_model", "generation_model", "invoke", "tokens"] | None = None
+    failure: Literal["history_model", "generation_model", "invoke", "tokens", "tokens_http"] | None = None
     prompts: list[str] = field(default_factory=list)
     traces: list[TraceTask] = field(default_factory=list)
     sessions: list[Session] = field(default_factory=list)
@@ -211,6 +212,8 @@ def harness(
         record_sessions("tokens")
         if model_calls.failure == "tokens":
             raise InvokeError("Token counting failed")
+        if model_calls.failure == "tokens_http":
+            raise Forbidden("private provider failure")
         return len(prompt_messages)
 
     def model_schema(**_kwargs: object) -> AIModelEntity:
@@ -554,6 +557,19 @@ def test_malformed_configuration_returns_an_opaque_internal_error(harness: _Harn
     assert response.json["code"] == "internal_server_error"
     assert response.json["status"] == 500
     assert "private diagnostic" not in response.get_data(as_text=True)
+    assert harness.model_calls.prompts == []
+    harness.assert_closed()
+
+
+def test_unexpected_provider_http_error_does_not_escape_as_an_admission_error(harness: _Harness) -> None:
+    harness.model_calls.failure = "tokens_http"
+    response = harness.get()
+    assert response.status_code == 500
+    assert response.headers["Content-Type"] == "application/json"
+    assert response.json is not None
+    assert response.json["code"] == "internal_server_error"
+    assert response.json["status"] == 500
+    assert "private provider failure" not in response.get_data(as_text=True)
     assert harness.model_calls.prompts == []
     harness.assert_closed()
 

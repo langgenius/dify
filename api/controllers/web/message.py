@@ -5,9 +5,9 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, TypeAdapter
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import HTTPException, InternalServerError, NotFound
 
 from controllers.common.controller_schemas import MessageFeedbackPayload, MessageListQuery
+from controllers.common.errors import InternalServerError, NotFoundError
 from controllers.common.fields import GeneratedAppResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console.app.wraps import with_session
@@ -35,6 +35,7 @@ from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from models.enums import FeedbackRating
 from models.model import App, AppMode, EndUser
+from services.agent.errors import AgentVersionNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.app_generate_service import AppGenerateService
 from services.errors.app import MoreLikeThisDisabledError
@@ -104,9 +105,9 @@ class MessageListApi(WebApiResource):
                 data=items,
             ).model_dump(mode="json")
         except ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFoundError("Conversation Not Exists.")
         except FirstMessageNotExistsError:
-            raise NotFound("First Message Not Exists.")
+            raise NotFoundError("First Message Not Exists.")
 
 
 @web_ns.route("/messages/<uuid:message_id>/feedbacks")
@@ -151,7 +152,7 @@ class MessageFeedbackApi(WebApiResource):
                 session=db.session(),
             )
         except MessageNotExistsError:
-            raise NotFound("Message Not Exists.")
+            raise NotFoundError("Message Not Exists.")
 
         return ResultResponse(result="success").model_dump(mode="json")
 
@@ -202,7 +203,7 @@ class MessageMoreLikeThisApi(WebApiResource):
             # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
         except MessageNotExistsError:
-            raise NotFound("Message Not Exists.")
+            raise NotFoundError("Message Not Exists.")
         except MoreLikeThisDisabledError:
             raise AppMoreLikeThisDisabledError()
         except ProviderTokenNotInitError as ex:
@@ -265,11 +266,11 @@ class MessageSuggestedQuestionApi(WebApiResource):
         except AppDefinitionUnavailableError:
             raise AppUnavailableError() from None
         except SuggestedQuestionsActorNotFoundError:
-            raise NotFound("End user not found") from None
+            raise NotFoundError("End user not found") from None
         except MessageNotExistsError:
-            raise NotFound("Message not found")
+            raise NotFoundError("Message not found")
         except ConversationNotExistsError:
-            raise NotFound("Conversation not found")
+            raise NotFoundError("Conversation not found")
         except SuggestedQuestionsAfterAnswerDisabledError:
             raise AppSuggestedQuestionsAfterAnswerDisabledError()
         except ProviderTokenNotInitError as ex:
@@ -280,7 +281,9 @@ class MessageSuggestedQuestionApi(WebApiResource):
             raise ProviderModelCurrentlyNotSupportError()
         except InvokeError as e:
             raise CompletionRequestError(e.description)
-        except HTTPException:
+        except AgentVersionNotFoundError:
+            # The legacy Agent config reader still owns this HTTP error.
+            # Remove this compatibility case when it exposes a domain error.
             raise
         except Exception:
             logger.exception("internal server error.")

@@ -23,8 +23,8 @@ import pytest
 from flask import Flask, request
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import NotFound
 
+from controllers.common.errors import NotFoundError
 from controllers.service_api.app.error import NotChatAppError
 from controllers.service_api.app.message import (
     AppGetFeedbacksApi,
@@ -415,7 +415,7 @@ class TestMessageListApi:
             "/messages?conversation_id=00000000-0000-0000-0000-000000000001",
             method="GET",
         ):
-            with pytest.raises(NotFound):
+            with pytest.raises(NotFoundError):
                 handler(
                     api,
                     MessageListQuery.model_validate(request.args.to_dict(flat=True)),
@@ -439,7 +439,7 @@ class TestMessageListApi:
             "/messages?conversation_id=00000000-0000-0000-0000-000000000001&first_id=00000000-0000-0000-0000-000000000002",
             method="GET",
         ):
-            with pytest.raises(NotFound):
+            with pytest.raises(NotFoundError):
                 handler(
                     api,
                     MessageListQuery.model_validate(request.args.to_dict(flat=True)),
@@ -467,7 +467,7 @@ class TestMessageFeedbackApi:
             json={"rating": "like", "content": "ok"},
         ):
             payload = MessageFeedbackPayload.model_validate(request.get_json() or {})
-            with pytest.raises(NotFound):
+            with pytest.raises(NotFoundError):
                 handler(api, payload, app_model=app_model, end_user=end_user, message_id="m1")
 
 

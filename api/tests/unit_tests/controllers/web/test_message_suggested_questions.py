@@ -12,6 +12,7 @@ import pytest
 from flask import Flask
 from sqlalchemy import Connection, Engine, delete, event, update
 from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
+from werkzeug.exceptions import Forbidden
 from werkzeug.test import TestResponse
 
 import controllers.web.message as message_controller
@@ -365,6 +366,7 @@ def test_resource_errors_keep_specific_http_codes(
         (ModelCurrentlyNotSupportError(), 400, "model_currently_not_support", "not support"),
         (InvokeError("Provider invocation failed"), 400, "completion_request_error", "Provider invocation failed"),
         (RuntimeError("private failure detail"), 500, "internal_server_error", "internal error"),
+        (Forbidden("private failure detail"), 500, "internal_server_error", "internal error"),
     ],
 )
 def test_history_token_errors_keep_specific_http_codes(
