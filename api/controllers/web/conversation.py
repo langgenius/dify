@@ -3,7 +3,6 @@ from uuid import UUID
 
 from flask import request
 from pydantic import BaseModel, Field, TypeAdapter, field_validator
-from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import NotFound
 
 from controllers.common.controller_schemas import ConversationRenamePayload
@@ -13,6 +12,7 @@ from controllers.web import web_ns
 from controllers.web.error import NotChatAppError
 from controllers.web.wraps import WebApiResource
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.db.session_factory import session_factory
 from extensions.ext_database import db
 from fields.conversation_fields import (
     ConversationInfiniteScrollPagination,
@@ -70,7 +70,7 @@ class ConversationListApi(WebApiResource):
         query = ConversationListQuery.model_validate(raw_args)
 
         try:
-            with sessionmaker(db.engine).begin() as session:
+            with session_factory.get_session_maker().begin() as session:
                 pagination = WebConversationService.pagination_by_last_id(
                     session=session,
                     app_model=app_model,
