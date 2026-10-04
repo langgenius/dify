@@ -12,6 +12,7 @@ import pytest
 from flask import Flask
 from sqlalchemy import Connection, Engine, event, func, select, text, update
 from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
+from werkzeug.exceptions import Forbidden
 from werkzeug.test import TestResponse
 
 import controllers.console.wraps as console_wraps
@@ -433,6 +434,48 @@ def test_precise_errors_are_translated_at_http_boundary(
     assert response.status_code == status
     assert response.get_json()["code"] == code
     assert "private credentials" not in response.get_data(as_text=True)
+    if status == HTTPStatus.UNAUTHORIZED:
+        assert response.headers["WWW-Authenticate"] == 'Bearer realm="api"'
+        assert response.get_json()["message"] == "Account no longer exists"
+
+
+def test_unexpected_provider_http_error_returns_an_opaque_internal_error(
+    harness: _Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def fail_token_count(_self: _Provider, _prompt_messages: Sequence[PromptMessage]) -> int:
+        raise Forbidden("private provider failure")
+
+    monkeypatch.setattr(_Provider, "get_llm_num_tokens", fail_token_count)
+    response = harness.get()
+    assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
+    assert response.headers["Content-Type"] == "application/json"
+    body = response.get_json()
+    assert body["code"] == "internal_server_error"
+    assert body["status"] == HTTPStatus.INTERNAL_SERVER_ERROR
+    assert "private provider failure" not in response.get_data(as_text=True)
+    assert not harness.provider.prompts
+    assert not harness.provider.traces
+    assert all(
+        not session.in_transaction() and not session.identity_map for session in harness.provider.admission_sessions
+    )
+
+
+@pytest.mark.parametrize("route", ["app", "agent"])
+def test_missing_published_agent_version_preserves_specific_http_error(harness: _Harness, route: str) -> None:
+    harness.add_agent()
+    response = harness.get(route)
+    assert response.status_code == HTTPStatus.NOT_FOUND
+    assert response.headers["Content-Type"] == "application/json"
+    assert response.get_json() == {
+        "code": "agent_version_not_found_error",
+        "message": "Agent config version not found.",
+        "status": HTTPStatus.NOT_FOUND,
+    }
+    assert not harness.provider.prompts
+    assert not harness.provider.traces
+    assert all(
+        not session.in_transaction() and not session.identity_map for session in harness.provider.admission_sessions
+    )
 
 
 def test_chat_runtime_uses_console_history_after_reference_session_closed(harness: _Harness) -> None:

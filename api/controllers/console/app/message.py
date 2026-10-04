@@ -7,9 +7,11 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import exists, func, select
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import HTTPException, InternalServerError, NotFound, Unauthorized
+from werkzeug.exceptions import InternalServerError, NotFound
 
 from controllers.common.controller_schemas import MessageFeedbackPayload as _MessageFeedbackPayloadBase
+from controllers.common.errors import InternalServerError as InternalServerHTTPError
+from controllers.common.errors import NotFoundError, UnauthorizedError
 from controllers.common.fields import SimpleResultResponse, TextFileResponse
 from controllers.common.rbac import AgentId, PlainApp, RBACCheck
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
@@ -54,7 +56,7 @@ from machinery.context import RequestContext
 from models.account import Account
 from models.enums import FeedbackFromSource, FeedbackRating
 from models.model import App, AppMode, Conversation, Message, MessageAnnotation, MessageFeedback
-from services.agent.errors import AgentNotFoundError
+from services.agent.errors import AgentNotFoundError, AgentVersionNotFoundError
 from services.app.agent_app_contracts import AgentAppNotFoundError
 from services.app.console_service import ConsoleAppNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
@@ -578,11 +580,11 @@ def _get_message_suggested_questions(
     except AppDefinitionUnavailableError as exc:
         raise AppUnavailableError() from exc
     except SuggestedQuestionsActorNotFoundError as exc:
-        raise Unauthorized("Account no longer exists") from exc
+        raise UnauthorizedError("Account no longer exists") from exc
     except MessageNotExistsError:
-        raise NotFound("Message not found")
+        raise NotFoundError("Message not found")
     except ConversationNotExistsError:
-        raise NotFound("Conversation not found")
+        raise NotFoundError("Conversation not found")
     except ProviderTokenNotInitError as ex:
         raise ProviderNotInitializeError(ex.description)
     except QuotaExceededError:
@@ -593,11 +595,13 @@ def _get_message_suggested_questions(
         raise CompletionRequestError(e.description)
     except SuggestedQuestionsAfterAnswerDisabledError:
         raise AppSuggestedQuestionsAfterAnswerDisabledError()
-    except HTTPException:
+    except AgentVersionNotFoundError:
+        # The legacy Agent config reader still owns this HTTP error.
+        # Remove this compatibility case when it exposes a domain error.
         raise
     except Exception:
         logger.exception("internal server error.")
-        raise InternalServerError()
+        raise InternalServerHTTPError()
 
     return dump_response(SuggestedQuestionsResponse, {"data": questions})
 
