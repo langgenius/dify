@@ -47,8 +47,8 @@ class TimestampToLocaltimeTool(BuiltinTool):
             if isinstance(local_tz, str):
                 try:
                     local_tz = ZoneInfo(local_tz)
-                except Exception as e:
-                    raise ToolInvokeError(f"Invalid timezone: {local_tz}") from e
+                except Exception:
+                    raise ToolInvokeError(f"Invalid timezone: {local_tz!r}") from None
             local_time = datetime.fromtimestamp(timestamp, local_tz)
             return local_time
         except Exception as e:

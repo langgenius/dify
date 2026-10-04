@@ -146,9 +146,9 @@ def test_time_tools_resolve_dst_transitions(
 
 
 # "America" is a directory in the tz database, so the lookup error carries a filesystem path
-@pytest.mark.parametrize("timezone", ["Invalid/TZ", "America"])
+@pytest.mark.parametrize("timezone", ["Invalid/TZ", "America", "Bad\nTZ"])
 def test_time_tools_reject_unknown_timezone(timezone: str):
-    expected = f"Invalid timezone: {timezone}"
+    expected = f"Invalid timezone: {timezone!r}"
 
     with pytest.raises(ToolInvokeError) as exc_info:
         LocaltimeToTimestampTool.localtime_to_timestamp("2024-01-01 10:00:00", "%Y-%m-%d %H:%M:%S", timezone)

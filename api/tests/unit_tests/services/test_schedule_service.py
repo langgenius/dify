@@ -76,6 +76,17 @@ class TestScheduleService(unittest.TestCase):
         with pytest.raises(ZoneInfoNotFoundError):
             calculate_next_run_at(cron_expr, timezone)
 
+    def test_calculate_next_run_at_malformed_timezone(self):
+        """Test that a malformed timezone raises ValueError with the value escaped."""
+        cron_expr = "30 10 * * *"
+
+        # "America" is a directory in the tz database; the other name is not a normalized key
+        for timezone in ["America", "A/../B\nINJECTED"]:
+            with self.subTest(timezone=timezone):
+                with pytest.raises(ValueError) as exc_info:
+                    calculate_next_run_at(cron_expr, timezone)
+                assert str(exc_info.value) == f"Invalid timezone: {timezone!r}"
+
 
 class TestVisualToCron(unittest.TestCase):
     """Test cases for visual configuration to cron conversion."""

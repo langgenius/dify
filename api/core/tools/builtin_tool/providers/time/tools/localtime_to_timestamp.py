@@ -49,8 +49,8 @@ class LocaltimeToTimestampTool(BuiltinTool):
                 case str() as timezone_name:
                     try:
                         zone = ZoneInfo(timezone_name)
-                    except Exception as e:
-                        raise ToolInvokeError(f"Invalid timezone: {timezone_name}") from e
+                    except Exception:
+                        raise ToolInvokeError(f"Invalid timezone: {timezone_name!r}") from None
                     converted_localtime = localize_datetime(local_time, zone)
                 case tzinfo():
                     localize = getattr(local_tz, "localize", None)

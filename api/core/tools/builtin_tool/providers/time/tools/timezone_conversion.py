@@ -47,13 +47,13 @@ class TimezoneConversionTool(BuiltinTool):
             # get source timezone
             try:
                 input_timezone = ZoneInfo(source_timezone)
-            except Exception as e:
-                raise ToolInvokeError(f"Invalid timezone: {source_timezone}") from e
+            except Exception:
+                raise ToolInvokeError(f"Invalid timezone: {source_timezone!r}") from None
             # get target timezone
             try:
                 output_timezone = ZoneInfo(target_timezone)
-            except Exception as e:
-                raise ToolInvokeError(f"Invalid timezone: {target_timezone}") from e
+            except Exception:
+                raise ToolInvokeError(f"Invalid timezone: {target_timezone!r}") from None
             local_time = datetime.strptime(current_time, time_format)
             datetime_with_tz = localize_datetime(local_time, input_timezone)
             # timezone convert

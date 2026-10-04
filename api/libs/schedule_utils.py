@@ -38,7 +38,10 @@ def calculate_next_run_at(
             f"(@daily, @weekly, etc.). Got {len(parts)} fields: '{cron_expression}'"
         )
 
-    tz = ZoneInfo(timezone)
+    try:
+        tz = ZoneInfo(timezone)
+    except (ValueError, OSError):
+        raise ValueError(f"Invalid timezone: {timezone!r}") from None
 
     if base_time is None:
         base_time = datetime.now(UTC)
