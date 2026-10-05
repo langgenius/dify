@@ -35,5 +35,6 @@ class APIBasedExtensionPingProbe(APIBasedExtensionEndpointProbe):
             )
         except Exception as error:
             raise APIBasedExtensionConnectionError(str(error)) from error
-        if response.get("result") != "pong":
+        # The requestor only promises JSON; an endpoint may answer with a list or null instead of an object.
+        if not isinstance(response, dict) or response.get("result") != "pong":
             raise APIBasedExtensionConnectionError(str(response))

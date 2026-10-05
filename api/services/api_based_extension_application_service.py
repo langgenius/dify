@@ -152,9 +152,8 @@ class APIBasedExtensionApplicationService:
         return stored._replace(api_key=api_key)
 
     def delete_extension(self, context: RequestContext, extension_id: str) -> None:
-        workspace_id = context.active_workspace_id
-        self._require_extension(workspace_id, extension_id)
-        self._extensions.delete_extension(workspace_id, extension_id)
+        # The store raises APIBasedExtensionNotFoundError itself, so no separate existence read is needed.
+        self._extensions.delete_extension(context.active_workspace_id, extension_id)
 
     def _require_extension(self, workspace_id: str, extension_id: str) -> APIBasedExtensionRecord:
         record = self._extensions.find_extension(workspace_id, extension_id)

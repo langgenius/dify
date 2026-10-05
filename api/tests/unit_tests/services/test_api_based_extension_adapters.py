@@ -41,6 +41,16 @@ def test_ping_probe_rejects_unexpected_replies(monkeypatch: pytest.MonkeyPatch) 
         APIBasedExtensionPingProbe().ping("https://ext.example.com", "secret")
 
 
+@pytest.mark.parametrize("reply", [[], None, "pong", 0])
+def test_ping_probe_rejects_non_object_replies(monkeypatch: pytest.MonkeyPatch, reply: object) -> None:
+    requestor = MagicMock()
+    requestor.return_value.request.return_value = reply
+    monkeypatch.setattr(module, "APIBasedExtensionRequestor", requestor)
+
+    with pytest.raises(APIBasedExtensionConnectionError, match="connection error: "):
+        APIBasedExtensionPingProbe().ping("https://ext.example.com", "secret")
+
+
 def test_ping_probe_wraps_transport_failures(monkeypatch: pytest.MonkeyPatch) -> None:
     requestor = MagicMock()
     requestor.return_value.request.side_effect = ValueError("request timeout")

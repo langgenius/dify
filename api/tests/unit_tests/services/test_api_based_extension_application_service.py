@@ -132,6 +132,39 @@ def test_create_extension_rejects_invalid_fields_before_pinging(
     store.create_extension.assert_not_called()
 
 
+@pytest.mark.parametrize("api_key", ["abcde", "12345", "a-b-c"])
+def test_create_extension_accepts_a_five_character_key(
+    service: APIBasedExtensionApplicationService,
+    store: MagicMock,
+    probe: MagicMock,
+    context: RequestContext,
+    api_key: str,
+) -> None:
+    store.create_extension.return_value = _record(api_key=f"enc:{api_key}")
+    extension = APIBasedExtensionInput(name="Docs", api_endpoint="https://docs.example.com", api_key=api_key)
+
+    created = service.create_extension(context, extension)
+
+    probe.ping.assert_called_once_with("https://docs.example.com", api_key)
+    store.create_extension.assert_called_once_with("workspace-1", extension._replace(api_key=f"enc:{api_key}"))
+    assert created.api_key == api_key
+
+
+def test_update_extension_accepts_a_five_character_key(
+    service: APIBasedExtensionApplicationService, store: MagicMock, probe: MagicMock, context: RequestContext
+) -> None:
+    store.find_extension.return_value = _record(api_key="enc:old-secret")
+    store.update_extension.return_value = _record(api_key="enc:abcde")
+
+    updated = service.update_extension(
+        context, "ext-1", APIBasedExtensionUpdate(name="Docs", api_endpoint="https://docs.example.com", api_key="abcde")
+    )
+
+    probe.ping.assert_called_once_with("https://docs.example.com", "abcde")
+    assert store.update_extension.call_args.args[2].api_key == "enc:abcde"
+    assert updated.api_key == "abcde"
+
+
 def test_create_extension_rejects_duplicate_names_and_unreachable_endpoints(
     service: APIBasedExtensionApplicationService, store: MagicMock, probe: MagicMock, context: RequestContext
 ) -> None:
@@ -187,7 +220,7 @@ def test_update_extension_encrypts_a_new_key(
     assert updated.api_key == "new-secret"
 
 
-def test_update_and_delete_require_an_existing_extension(
+def test_update_requires_an_existing_extension(
     service: APIBasedExtensionApplicationService, store: MagicMock, context: RequestContext
 ) -> None:
     store.find_extension.return_value = None
@@ -196,18 +229,18 @@ def test_update_and_delete_require_an_existing_extension(
         service.update_extension(
             context, "missing", APIBasedExtensionUpdate(name="x", api_endpoint="https://x.example.com", api_key="y")
         )
-    with pytest.raises(APIBasedExtensionNotFoundError):
-        service.delete_extension(context, "missing")
 
     store.update_extension.assert_not_called()
-    store.delete_extension.assert_not_called()
 
 
-def test_delete_extension_passes_stable_identity_to_store(
+def test_delete_extension_delegates_existence_to_the_store(
     service: APIBasedExtensionApplicationService, store: MagicMock, context: RequestContext
 ) -> None:
-    store.find_extension.return_value = _record()
-
     service.delete_extension(context, "ext-1")
 
     store.delete_extension.assert_called_once_with("workspace-1", "ext-1")
+    store.find_extension.assert_not_called()
+
+    store.delete_extension.side_effect = APIBasedExtensionNotFoundError()
+    with pytest.raises(APIBasedExtensionNotFoundError):
+        service.delete_extension(context, "missing")
