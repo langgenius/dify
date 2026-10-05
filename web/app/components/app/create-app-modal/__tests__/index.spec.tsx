@@ -1,5 +1,6 @@
 import type { AppDetail } from '@dify/contracts/api/console/apps/types.gen'
 import type { ReactElement } from 'react'
+import { HotkeyManager } from '@tanstack/react-hotkeys'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
@@ -124,6 +125,7 @@ function render(ui: ReactElement) {
 describe('CreateAppModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    HotkeyManager.resetInstance()
     mockUseRouter.mockReturnValue({ push: mockPush } as unknown as ReturnType<typeof useRouter>)
     appQuota = { size: 0, limit: 1 }
     mockConsoleStateReader.mockReturnValue({
@@ -242,49 +244,91 @@ describe('CreateAppModal', () => {
     expect(onCreateFromTemplate).toHaveBeenCalled()
   })
 
-  it('creates a beginner chat app with the keyboard shortcut and selected icon style', async () => {
-    mockCreateApp.mockResolvedValue(
-      createAppDetailFixture({ id: 'chat-app', mode: AppModeEnum.CHAT }),
-    )
-    renderModal()
+  it.each([
+    { platform: 'Win32', modifier: { ctrlKey: true } },
+    { platform: 'MacIntel', modifier: { metaKey: true } },
+  ])(
+    'creates a beginner chat app from its scoped $platform shortcut and selected icon style',
+    async ({ platform, modifier }) => {
+      vi.spyOn(navigator, 'platform', 'get').mockReturnValue(platform)
+      mockCreateApp.mockResolvedValue(
+        createAppDetailFixture({ id: 'chat-app', mode: AppModeEnum.CHAT }),
+      )
+      renderModal()
 
-    fireEvent.click(screen.getByText('app.newApp.forBeginners'))
-    fireEvent.click(screen.getByText('app.types.chatbot'))
-    fireEvent.change(screen.getByPlaceholderText('app.newApp.appNamePlaceholder'), {
-      target: { value: 'Keyboard App' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: 'app.iconPicker.title' }))
-    await waitFor(() => {
-      expect(screen.getByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
-    })
-    const pickerSearch = screen.getByPlaceholderText('app.iconPicker.search')
-    fireEvent.keyDown(pickerSearch, { key: 'Enter', code: 'Enter', ctrlKey: true })
-    fireEvent.keyUp(pickerSearch, { key: 'Enter', code: 'Enter', ctrlKey: true })
-    expect(mockCreateApp).not.toHaveBeenCalled()
-    fireEvent.click(screen.getByRole('radio', { name: 'app.iconPicker.color.green' }))
-    fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
-    await waitFor(() => {
-      expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
-    })
-    fireEvent.change(screen.getByPlaceholderText('app.newApp.appDescriptionPlaceholder'), {
-      target: { value: 'Created from shortcut' },
-    })
-
-    const nameInput = screen.getByPlaceholderText('app.newApp.appNamePlaceholder')
-    fireEvent.keyDown(nameInput, { key: 'Enter', code: 'Enter', ctrlKey: true })
-    fireEvent.keyUp(nameInput, { key: 'Enter', code: 'Enter', ctrlKey: true })
-
-    await waitFor(() => {
-      expect(mockCreateApp).toHaveBeenCalledWith({
-        name: 'Keyboard App',
-        description: 'Created from shortcut',
-        icon_type: 'emoji',
-        icon: '🤖',
-        icon_background: '#F3FEE7',
-        mode: AppModeEnum.CHAT,
+      fireEvent.click(screen.getByText('app.newApp.forBeginners'))
+      fireEvent.click(screen.getByText('app.types.chatbot'))
+      fireEvent.change(screen.getByPlaceholderText('app.newApp.appNamePlaceholder'), {
+        target: { value: 'Keyboard App' },
       })
-    })
-  })
+      fireEvent.click(screen.getByRole('button', { name: 'app.iconPicker.title' }))
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
+      })
+      const pickerSearch = screen.getByPlaceholderText('app.iconPicker.search')
+      fireEvent.keyDown(pickerSearch, { key: 'Enter', code: 'Enter', ...modifier })
+      fireEvent.keyUp(pickerSearch, { key: 'Enter', code: 'Enter', ...modifier })
+      expect(mockCreateApp).not.toHaveBeenCalled()
+      fireEvent.click(screen.getByRole('radio', { name: 'app.iconPicker.color.green' }))
+      fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
+      await waitFor(() => {
+        expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
+      })
+      fireEvent.change(screen.getByPlaceholderText('app.newApp.appDescriptionPlaceholder'), {
+        target: { value: 'Created from shortcut' },
+      })
+
+      const nameInput = screen.getByPlaceholderText('app.newApp.appNamePlaceholder')
+      fireEvent.keyDown(nameInput, { key: 'Enter', code: 'Enter', ...modifier })
+      fireEvent.keyUp(nameInput, { key: 'Enter', code: 'Enter', ...modifier })
+
+      await waitFor(() => {
+        expect(mockCreateApp).toHaveBeenCalledWith({
+          name: 'Keyboard App',
+          description: 'Created from shortcut',
+          icon_type: 'emoji',
+          icon: '🤖',
+          icon_background: '#F3FEE7',
+          mode: AppModeEnum.CHAT,
+        })
+      })
+    },
+  )
+
+  it.each([
+    { platform: 'Win32', modifier: { ctrlKey: true } },
+    { platform: 'MacIntel', modifier: { metaKey: true } },
+  ])(
+    're-registers the $platform shortcut after the outer dialog remounts its content',
+    async ({ platform, modifier }) => {
+      vi.spyOn(navigator, 'platform', 'get').mockReturnValue(platform)
+      mockCreateApp.mockResolvedValue(
+        createAppDetailFixture({ id: 'reopened-app', mode: AppModeEnum.ADVANCED_CHAT }),
+      )
+      const onClose = vi.fn()
+      const modal = (show: boolean) => (
+        <CreateAppModal
+          show={show}
+          onClose={onClose}
+          onCreateFromTemplate={vi.fn()}
+          defaultAppMode={AppModeEnum.ADVANCED_CHAT}
+        />
+      )
+      const { rerender } = render(modal(true))
+      await userEvent.setup().click(screen.getByRole('button', { name: 'app.iconPicker.title' }))
+      const picker = screen.getByRole('dialog', { name: 'app.iconPicker.title' })
+      rerender(modal(false))
+      await waitFor(() => expect(picker).not.toBeInTheDocument())
+      rerender(modal(true))
+      const nameInput = screen.getByPlaceholderText('app.newApp.appNamePlaceholder')
+      fireEvent.change(nameInput, { target: { value: 'Reopened App' } })
+      fireEvent.keyDown(nameInput, { key: 'Enter', code: 'Enter', ...modifier })
+      fireEvent.keyUp(nameInput, { key: 'Enter', code: 'Enter', ...modifier })
+      await waitFor(() => expect(mockCreateApp).toHaveBeenCalledOnce())
+      expect(mockCreateApp).toHaveBeenCalledWith(expect.objectContaining({ name: 'Reopened App' }))
+      expect(onClose).toHaveBeenCalledOnce()
+    },
+  )
 
   it('keeps creation unavailable from both the button and shortcut without a name', () => {
     renderModal()

@@ -97,7 +97,6 @@ const CreateAppModal = ({
     icon: currentIconValue,
     icon_background: currentIconBackground,
   } = currentIcon
-  const [showIconPicker, setShowIconPicker] = useState(false)
   const [description, setDescription] = useState(appDescription || '')
   const [useIconAsAnswerIcon, setUseIconAsAnswerIcon] = useState(appUseIconAsAnswerIcon || false)
 
@@ -183,7 +182,6 @@ const CreateAppModal = ({
               !show ||
               submitDisabled ||
               confirmLoading ||
-              showIconPicker ||
               event.defaultPrevented ||
               event.nativeEvent.isComposing ||
               !(event.target instanceof Node) ||
@@ -230,12 +228,7 @@ const CreateAppModal = ({
                 {t(($) => $['newApp.captionName'], { ns: 'app' })}
               </label>
               <div className="flex items-center justify-between space-x-2">
-                <IconPickerDialog
-                  value={pickerValue}
-                  onConfirm={setSelectedIcon}
-                  onOpenChange={setShowIconPicker}
-                  size="large"
-                />
+                <IconPickerDialog value={pickerValue} onConfirm={setSelectedIcon} size="large" />
                 <Input
                   id={nameInputId}
                   value={name}

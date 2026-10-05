@@ -13,7 +13,7 @@ import {
 } from '@langgenius/dify-ui/dialog'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { useMutation } from '@tanstack/react-query'
-import { useCallback, useEffect, useEffectEvent, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { DISABLE_UPLOAD_IMAGE_AS_ICON } from '@/config'
@@ -52,7 +52,6 @@ export type IconPickerDialogProps = Pick<
   value?: IconPickerInputValue
   /** Receives the confirmed value after any image upload; does not await consumer persistence. */
   onConfirm: (value: IconPickerValue) => void
-  onOpenChange?: (open: boolean) => void
   enableImageUpload?: boolean
   disabled?: boolean
   'aria-label'?: string
@@ -63,7 +62,6 @@ export type IconPickerDialogProps = Pick<
 export function IconPickerDialog({
   value,
   onConfirm,
-  onOpenChange,
   enableImageUpload,
   disabled,
   'aria-label': ariaLabel,
@@ -76,21 +74,13 @@ export function IconPickerDialog({
 }: IconPickerDialogProps) {
   const { t } = useTranslation(['app'])
   const [open, setOpen] = useState(false)
-  const handleOpenChange = (nextOpen: boolean) => {
-    setOpen(nextOpen)
-    onOpenChange?.(nextOpen)
-  }
-  const notifyUnmount = useEffectEvent(() => {
-    if (open) onOpenChange?.(false)
-  })
-  useEffect(() => () => notifyUnmount(), [])
   const popupRef = useRef<HTMLDivElement>(null)
   const focusTargetRef = useRef<HTMLElement | null>(null)
   const setFocusTarget = useCallback((element: HTMLElement | null) => {
     focusTargetRef.current = element
   }, [])
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger
         disabled={disabled}
         aria-label={ariaLabel ?? t(($) => $['iconPicker.title'], { ns: 'app' })}
@@ -129,7 +119,7 @@ export function IconPickerDialog({
           onConfirm={onConfirm}
           enableImageUpload={enableImageUpload}
           open={open}
-          onOpenChange={handleOpenChange}
+          onOpenChange={setOpen}
           initialFocusRef={setFocusTarget}
         />
       </DialogContent>

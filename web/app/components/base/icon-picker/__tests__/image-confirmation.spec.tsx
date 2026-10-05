@@ -33,27 +33,25 @@ async function selectImage(defaultValue?: IconPickerInputValue) {
   const client = new QueryClient()
   client.setQueryData(emojiCatalogOptions.queryKey, [])
   const onConfirm = vi.fn()
-  const onOpenChange = vi.fn()
   const view = render(
     <QueryClientProvider client={client}>
-      <IconPickerDialog value={defaultValue} onConfirm={onConfirm} onOpenChange={onOpenChange} />
+      <IconPickerDialog value={defaultValue} onConfirm={onConfirm} />
     </QueryClientProvider>,
   )
   await user.click(screen.getByRole('button', { name: 'app.iconPicker.title' }))
-  onOpenChange.mockClear()
   await user.click(screen.getByRole('tab', { name: 'app.iconPicker.image' }))
   if (defaultValue?.type === 'image')
     await user.click(screen.getByRole('button', { name: 'common.operation.change' }))
   const file = new File(['GIF89a'], 'icon.gif', { type: 'image/gif' })
   await user.upload(screen.getByTestId('image-input'), file)
   const confirm = await screen.findByRole('button', { name: 'app.iconPicker.ok' })
-  return { ...view, user, client, file, confirm, onConfirm, onOpenChange }
+  return { ...view, user, client, file, confirm, onConfirm }
 }
 
 it('keeps the image draft after an upload failure and confirms the retried upload', async () => {
   uploadImage.mockRejectedValueOnce(new Error('Upload failed'))
   uploadImage.mockResolvedValueOnce({ id: 'uploaded-image', name: 'icon.gif', size: 6 })
-  const { user, client, file, confirm, onConfirm, onOpenChange } = await selectImage()
+  const { user, client, file, confirm, onConfirm } = await selectImage()
   await user.click(confirm)
   await waitFor(() => expect(uploadImage).toHaveBeenCalledOnce())
   expect(uploadImage.mock.calls[0]![0].body.file).toBe(file)
@@ -69,7 +67,7 @@ it('keeps the image draft after an upload failure and confirms the retried uploa
     fileId: 'uploaded-image',
     url: expect.stringContaining('data:image/gif;base64,'),
   })
-  expect(onOpenChange).toHaveBeenCalledExactlyOnceWith(false)
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   client.clear()
 })
 
@@ -80,7 +78,7 @@ it('does not confirm an upload that finishes after the picker is unmounted', asy
       finishUpload = resolve
     }),
   )
-  const { user, client, confirm, onConfirm, onOpenChange, unmount } = await selectImage()
+  const { user, client, confirm, onConfirm, unmount } = await selectImage()
   await user.click(confirm)
   await waitFor(() => expect(uploadImage).toHaveBeenCalledOnce())
   unmount()
@@ -88,7 +86,6 @@ it('does not confirm an upload that finishes after the picker is unmounted', asy
     finishUpload({ id: 'late-image', name: 'icon.gif', size: 6 })
   })
   expect(onConfirm).not.toHaveBeenCalled()
-  expect(onOpenChange).toHaveBeenCalledExactlyOnceWith(false)
   expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:preview')
   client.clear()
 })
@@ -101,7 +98,7 @@ it('opens the file input directly and preserves the existing image on cancellati
   const value = { type: 'image' as const, fileId: 'existing', url: '/existing.png' }
   render(
     <QueryClientProvider client={client}>
-      <IconPickerDialog value={value} onConfirm={onConfirm} onOpenChange={() => {}} />
+      <IconPickerDialog value={value} onConfirm={onConfirm} />
     </QueryClientProvider>,
   )
   await user.click(screen.getByRole('button', { name: 'app.iconPicker.title' }))
@@ -157,11 +154,7 @@ it.each([undefined, null])(
     const onConfirm = vi.fn()
     render(
       <QueryClientProvider client={client}>
-        <IconPickerDialog
-          value={{ type: 'emoji', icon: '😀', background }}
-          onConfirm={onConfirm}
-          onOpenChange={() => {}}
-        />
+        <IconPickerDialog value={{ type: 'emoji', icon: '😀', background }} onConfirm={onConfirm} />
       </QueryClientProvider>,
     )
     await user.click(screen.getByRole('button', { name: 'app.iconPicker.title' }))
@@ -183,7 +176,7 @@ it('keeps open-session edits and reads the latest default when reopened', async 
   const onConfirm = vi.fn()
   const picker = (value: IconPickerInputValue) => (
     <QueryClientProvider client={client}>
-      <IconPickerDialog value={value} onConfirm={onConfirm} onOpenChange={() => {}} />
+      <IconPickerDialog value={value} onConfirm={onConfirm} />
     </QueryClientProvider>
   )
   const view = render(picker({ type: 'emoji', icon: '😀', background: '#FEF3F2' }))

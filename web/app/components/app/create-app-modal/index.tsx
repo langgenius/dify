@@ -59,7 +59,6 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
     icon: '🤖',
     background: '#FFEAD5',
   })
-  const [showIconPicker, setShowIconPicker] = useState(false)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [isAppTypeExpanded, setIsAppTypeExpanded] = useState(() =>
@@ -177,7 +176,7 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
     },
     {
       target: contentRef,
-      enabled: !createDisabled && !isCreating && !showIconPicker,
+      enabled: !createDisabled && !isCreating,
       ignoreInputs: false,
       preventDefault: false,
       stopPropagation: false,
@@ -327,7 +326,6 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
                   value={appIcon}
                   size="xxl"
                   iconClassName="rounded-2xl"
-                  onOpenChange={setShowIconPicker}
                   onConfirm={(payload) => {
                     setAppIcon(payload)
                   }}
