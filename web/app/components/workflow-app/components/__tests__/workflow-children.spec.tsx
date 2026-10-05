@@ -1,6 +1,6 @@
+import type { DynamicOptions, Loader } from 'next/dynamic'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import * as React from 'react'
 import { DSL_EXPORT_CHECK } from '@/app/components/workflow/constants'
 import { BlockEnum } from '@/app/components/workflow/types'
 import WorkflowChildren from '../workflow-children'
@@ -46,11 +46,17 @@ const mockExportCheck = vi.fn()
 const mockAutoGenerateWebhookUrl = vi.fn()
 
 let workflowStoreState: WorkflowStoreState
+const workflowStoreListeners = new Set<() => void>()
 let mockCanEdit = true
 let eventSubscription:
   | ((value: { type: string; payload: { data: Array<Record<string, unknown>> } }) => void)
   | null = null
 let lastGenerateNodeInput: Record<string, unknown> | null = null
+
+const { loadDynamic, observeImportOpen } = vi.hoisted(() => ({
+  loadDynamic: vi.fn(),
+  observeImportOpen: vi.fn(),
+}))
 
 vi.mock('reactflow', () => ({
   useStoreApi: () => ({
@@ -61,9 +67,19 @@ vi.mock('reactflow', () => ({
   }),
 }))
 
-vi.mock('@/app/components/workflow/store', () => ({
-  useStore: <T,>(selector: (state: WorkflowStoreState) => T) => selector(workflowStoreState),
-}))
+vi.mock('@/app/components/workflow/store', async () => {
+  const { useSyncExternalStore } = await import('react')
+  return {
+    useStore: <T,>(selector: (state: WorkflowStoreState) => T) =>
+      useSyncExternalStore(
+        (listener) => {
+          workflowStoreListeners.add(listener)
+          return () => workflowStoreListeners.delete(listener)
+        },
+        () => selector(workflowStoreState),
+      ),
+  }
+})
 
 vi.mock('@/app/components/workflow/hooks-store', () => ({
   useHooksStore: <T,>(
@@ -178,30 +194,19 @@ vi.mock('@/app/components/workflow-app/components/workflow-panel', () => ({
   default: () => <div data-testid="workflow-panel">workflow-panel</div>,
 }))
 
-vi.mock('next/dynamic', async () => {
-  const ReactModule = await import('react')
-
+vi.mock('next/dynamic', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('next/dynamic')>()
   return {
-    default: (loader: () => Promise<{ default: React.ComponentType<Record<string, unknown>> }>) => {
-      const DynamicComponent = (props: Record<string, unknown>) => {
-        const [Loaded, setLoaded] = ReactModule.useState<React.ComponentType<
-          Record<string, unknown>
-        > | null>(null)
-
-        ReactModule.useEffect(() => {
-          let mounted = true
-          loader().then((mod) => {
-            if (mounted) setLoaded(() => (typeof mod === 'function' ? mod : mod.default))
-          })
-          return () => {
-            mounted = false
-          }
-        }, [])
-
-        return Loaded ? <Loaded {...props} /> : null
-      }
-
-      return DynamicComponent
+    ...actual,
+    default: <Props,>(
+      loader: DynamicOptions<Props> | Loader<Props>,
+      options?: DynamicOptions<Props>,
+    ) => {
+      if (typeof loader !== 'function') return actual.default(loader, options)
+      return actual.default(() => {
+        loadDynamic()
+        return loader()
+      }, options)
     },
   }
 })
@@ -221,8 +226,9 @@ vi.mock('@/app/components/workflow/update-dsl-modal', () => ({
     onOpenChange: (open: boolean) => void
     onBackup: () => void
     onImport: () => void
-  }) =>
-    open ? (
+  }) => {
+    observeImportOpen(open)
+    return open ? (
       <div data-testid="update-dsl-modal">
         <button type="button" onClick={() => onOpenChange(false)}>
           cancel-import-dsl
@@ -234,7 +240,8 @@ vi.mock('@/app/components/workflow/update-dsl-modal', () => ({
           import-dsl
         </button>
       </div>
-    ) : null,
+    ) : null
+  },
 }))
 
 vi.mock('@/app/components/app/export-confirm-modal', () => ({
@@ -355,6 +362,30 @@ describe('WorkflowChildren', () => {
         callback?.onSuccess?.()
       },
     )
+  })
+
+  it('loads import only after an eligible activation and keeps the closed owner mounted', async () => {
+    render(<WorkflowChildren />)
+    expect(loadDynamic).not.toHaveBeenCalled()
+    expect(observeImportOpen).not.toHaveBeenCalled()
+
+    workflowStoreState = { ...workflowStoreState, appId: undefined, showImportDSLModal: true }
+    act(() => workflowStoreListeners.forEach((listener) => listener()))
+    expect(loadDynamic).not.toHaveBeenCalled()
+
+    workflowStoreState = { ...workflowStoreState, appId: 'app-1' }
+    act(() => workflowStoreListeners.forEach((listener) => listener()))
+    expect(await screen.findByTestId('update-dsl-modal')).toBeInTheDocument()
+    expect(loadDynamic).toHaveBeenCalledTimes(1)
+
+    workflowStoreState = { ...workflowStoreState, showImportDSLModal: false }
+    act(() => workflowStoreListeners.forEach((listener) => listener()))
+    expect(observeImportOpen).toHaveBeenLastCalledWith(false)
+
+    workflowStoreState = { ...workflowStoreState, showImportDSLModal: true }
+    act(() => workflowStoreListeners.forEach((listener) => listener()))
+    expect(await screen.findByTestId('update-dsl-modal')).toBeInTheDocument()
+    expect(loadDynamic).toHaveBeenCalledTimes(1)
   })
 
   it('should render feature panel, import modal actions, and default workflow chrome', async () => {

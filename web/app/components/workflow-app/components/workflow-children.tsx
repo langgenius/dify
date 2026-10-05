@@ -76,6 +76,11 @@ const WorkflowChildren = () => {
   const setShowImportDSLModal = useStore((s) => s.setShowImportDSLModal)
   const showOnboarding = useStore((s) => s.showOnboarding)
   const canImportExportDSL = useHooksStore((s) => s.accessControl.canImportExportDSL)
+  const [hasActivatedImportDialog, setHasActivatedImportDialog] = useState(() =>
+    Boolean(appId && canImportExportDSL && showImportDSLModal),
+  )
+  if (appId && canImportExportDSL && showImportDSLModal && !hasActivatedImportDialog)
+    setHasActivatedImportDialog(true)
   const canEdit = useHooksStore((s) => s.accessControl.canEdit)
   const setShowOnboarding = useStore((s) => s.setShowOnboarding)
   const setHasSelectedStartNode = useStore((s) => s.setHasSelectedStartNode)
@@ -177,7 +182,7 @@ const WorkflowChildren = () => {
           onSelectStartNode={handleSelectStartNode}
         />
       )}
-      {appId && canImportExportDSL && (
+      {appId && canImportExportDSL && hasActivatedImportDialog && (
         <UpdateDSLDialog
           key={appId}
           open={showImportDSLModal}

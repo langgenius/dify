@@ -71,6 +71,10 @@ const AppInfoModals = ({
 }: AppInfoModalsProps) => {
   const { t } = useTranslation(['app', 'common', 'workflow'])
   const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
+  const [hasActivatedImportDialog, setHasActivatedImportDialog] = useState(
+    () => activeModal === 'importDSL',
+  )
+  if (activeModal === 'importDSL' && !hasActivatedImportDialog) setHasActivatedImportDialog(true)
   const exportConfirmLabelId = React.useId()
   const isDeleteConfirmDisabled = confirmDeleteInput !== appDetail.name
   const exportDialogMode =
@@ -200,15 +204,17 @@ const AppInfoModals = ({
           </form>
         </AlertDialogContent>
       </AlertDialog>
-      <UpdateDSLDialog
-        open={activeModal === 'importDSL'}
-        onOpenChange={(open) => {
-          if (!open) closeModal()
-        }}
-        appId={appDetail.id}
-        appMode={appDetail.mode}
-        onBackup={exportCheck}
-      />
+      {hasActivatedImportDialog && (
+        <UpdateDSLDialog
+          open={activeModal === 'importDSL'}
+          onOpenChange={(open) => {
+            if (!open) closeModal()
+          }}
+          appId={appDetail.id}
+          appMode={appDetail.mode}
+          onBackup={exportCheck}
+        />
+      )}
       <AlertDialog open={isExportDialogOpen} onOpenChange={handleExportDialogOpenChange}>
         {exportDialogMode === 'secret' ? (
           <AppExportConfirmContent

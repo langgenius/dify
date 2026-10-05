@@ -101,7 +101,18 @@ it('returns to the actual menu trigger after idle or nested cancellation and reo
   const screen = await renderOwner()
   const menuTrigger = screen.getByRole('button', { name: /common.operation.moreActionsFor/ })
   let dialog = await openImport(screen)
+  const popup = dialog.element()
+  await expect.poll(() => getComputedStyle(popup).opacity).toBe('1')
+  const exitFrame = new Promise<boolean>((resolve) => {
+    const onTransition = (event: Event) => {
+      if (event.target !== popup || (event as TransitionEvent).propertyName !== 'opacity') return
+      popup.removeEventListener('transitionrun', onTransition)
+      resolve(popup.isConnected && Number(getComputedStyle(popup).opacity) > 0)
+    }
+    popup.addEventListener('transitionrun', onTransition)
+  })
   await userEvent.keyboard('{Escape}')
+  expect(await exitFrame).toBe(true)
   await expect.element(dialog).not.toBeInTheDocument()
   await expect.element(menuTrigger).toHaveFocus()
 
