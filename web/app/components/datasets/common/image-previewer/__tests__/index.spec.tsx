@@ -1,186 +1,177 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import type { ImageInfo, ImagePreviewPayload } from '../index'
+import { createDialogHandle, DialogTrigger } from '@langgenius/dify-ui/dialog'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import ImagePreviewer from '../index'
+import { useState } from 'react'
+import { ImagePreviewer } from '../index'
 
-const mockFetch = vi.fn<typeof fetch>()
-const mockRevokeObjectURL = vi.fn()
-const mockCreateObjectURL = vi.fn(() => 'blob:mock-url')
-
-class MockImage {
-  naturalWidth = 800
-  naturalHeight = 600
-  onload: (() => void) | null = null
-  onerror: (() => void) | null = null
-  private source = ''
-
-  get src() {
-    return this.source
-  }
-
-  set src(value: string) {
-    this.source = value
-    queueMicrotask(() => this.onload?.())
-  }
-}
-
-const images = [
+const images: ImageInfo[] = [
   { url: 'https://example.com/image1.png', name: 'image1.png', size: 1024 },
   { url: 'https://example.com/image2.png', name: 'image2.png', size: 2048 },
   { url: 'https://example.com/image3.png', name: 'image3.png', size: 3072 },
 ]
 
-const successfulResponse = () => new Response(new Blob(['test'], { type: 'image/png' }))
+function Gallery({ items = images }: { items?: readonly ImageInfo[] }) {
+  const [handle] = useState(() => createDialogHandle<ImagePreviewPayload>())
+  return (
+    <>
+      {items.map((image, initialIndex) => (
+        <DialogTrigger key={image.url} handle={handle} payload={{ images: items, initialIndex }}>
+          Preview {image.name || 'unnamed image'}
+        </DialogTrigger>
+      ))}
+      <ImagePreviewer handle={handle} />
+    </>
+  )
+}
 
-const getPreviewButtons = () => ({
-  closeButton: screen.getByRole('button', { name: 'common.operation.close' }),
-  previousButton: screen.getByRole('button', { name: 'common.pagination.previous' }),
-  nextButton: screen.getByRole('button', { name: 'common.pagination.next' }),
+function finishImageLoad(image: HTMLElement, width = 800, height = 600) {
+  Object.defineProperties(image, {
+    naturalWidth: { configurable: true, value: width },
+    naturalHeight: { configurable: true, value: height },
+  })
+  fireEvent.load(image)
+}
+
+const getNavigation = (dialog: HTMLElement) => ({
+  previous: within(dialog).getByRole('button', { name: 'common.pagination.previous' }),
+  next: within(dialog).getByRole('button', { name: 'common.pagination.next' }),
 })
 
 describe('ImagePreviewer', () => {
-  beforeEach(() => {
-    mockFetch.mockReset().mockImplementation(async () => successfulResponse())
-    mockCreateObjectURL.mockClear()
-    mockRevokeObjectURL.mockClear()
-    vi.stubGlobal('fetch', mockFetch)
-    vi.stubGlobal('Image', MockImage)
-    vi.spyOn(URL, 'createObjectURL').mockImplementation(mockCreateObjectURL)
-    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(mockRevokeObjectURL)
-  })
-
-  afterEach(() => {
-    vi.unstubAllGlobals()
-    vi.restoreAllMocks()
-  })
-
-  it('shows the preview and loading state while images are loading', () => {
-    mockFetch.mockImplementation(() => new Promise(() => {}))
-
-    render(<ImagePreviewer images={images} onClose={vi.fn()} />)
-
-    expect(screen.getByRole('dialog', { name: 'image1.png' })).toBeInTheDocument()
-    expect(screen.getByRole('progressbar')).toBeInTheDocument()
-    expect(screen.getByText('Esc')).toBeInTheDocument()
-  })
-
-  it('loads every image and displays the first image metadata by default', async () => {
-    render(<ImagePreviewer images={images} onClose={vi.fn()} />)
-
-    expect(await screen.findByRole('img', { name: 'image1.png' })).toHaveAttribute(
-      'src',
-      'blob:mock-url',
-    )
-    expect(screen.getByRole('dialog', { name: 'image1.png' })).toBeInTheDocument()
-    expect(screen.getByText(/800.*600/)).toBeInTheDocument()
-    expect(screen.getByText('1.00 KB')).toBeInTheDocument()
-    expect(mockFetch).toHaveBeenCalledTimes(3)
-    expect(mockFetch.mock.calls.map(([url]) => url)).toEqual(images.map(({ url }) => url))
-  })
-
-  it('keeps a localized dialog name when the image name is empty', async () => {
-    render(<ImagePreviewer images={[{ ...images[0]!, name: '' }]} onClose={vi.fn()} />)
-
-    expect(screen.getByRole('dialog', { name: 'workflow.common.preview' })).toBeInTheDocument()
-    await waitFor(() => expect(screen.queryByRole('progressbar')).not.toBeInTheDocument())
-    expect(screen.getByRole('dialog', { name: 'workflow.common.preview' })).toBeInTheDocument()
-  })
-
-  it('starts from the requested image', async () => {
-    render(<ImagePreviewer images={images} initialIndex={1} onClose={vi.fn()} />)
-
-    expect(await screen.findByRole('img', { name: 'image2.png' })).toBeInTheDocument()
-  })
-
-  it('navigates between images and disables navigation at the boundaries', async () => {
+  it('loads the selected native image and displays its dimensions and file size', async () => {
     const user = userEvent.setup()
-    render(<ImagePreviewer images={images} onClose={vi.fn()} />)
-    await screen.findByRole('img', { name: 'image1.png' })
-    const { previousButton, nextButton } = getPreviewButtons()
-
-    expect(previousButton).toBeDisabled()
-    expect(nextButton).toBeEnabled()
-
-    await user.click(nextButton)
-    expect(screen.getByRole('img', { name: 'image2.png' })).toBeInTheDocument()
-    expect(screen.getByRole('dialog', { name: 'image2.png' })).toBeInTheDocument()
-    expect(previousButton).toBeEnabled()
-
-    await user.click(nextButton)
-    expect(screen.getByRole('img', { name: 'image3.png' })).toBeInTheDocument()
-    expect(nextButton).toBeDisabled()
-
-    await user.click(previousButton)
-    expect(screen.getByRole('img', { name: 'image2.png' })).toBeInTheDocument()
+    render(<Gallery />)
+    await user.click(screen.getByRole('button', { name: 'Preview image2.png' }))
+    const dialog = await screen.findByRole('dialog', { name: 'image2.png' })
+    expect(within(dialog).getByRole('progressbar')).toBeInTheDocument()
+    const image = within(dialog).getByAltText('image2.png')
+    expect(image).toHaveAttribute('src', images[1]?.url)
+    expect(within(dialog).queryByAltText('image1.png')).not.toBeInTheDocument()
+    finishImageLoad(image)
+    expect(within(dialog).queryByRole('progressbar')).not.toBeInTheDocument()
+    expect(within(dialog).getByRole('img', { name: 'image2.png' })).toBeVisible()
+    expect(within(dialog).getByText(/800.*600/)).toBeInTheDocument()
+    expect(within(dialog).getByText('2.00 KB')).toBeInTheDocument()
   })
 
-  it('changes images once per held arrow and resumes navigation after reaching a boundary', async () => {
+  it('handles decoding failure and retries the same native source', async () => {
     const user = userEvent.setup()
-    render(<ImagePreviewer images={images} onClose={vi.fn()} />)
-    await screen.findByRole('img', { name: 'image1.png' })
-    const { closeButton, nextButton } = getPreviewButtons()
-    expect(closeButton).toHaveFocus()
+    render(<Gallery />)
+    await user.click(screen.getByRole('button', { name: 'Preview image1.png' }))
+    const dialog = await screen.findByRole('dialog', { name: 'image1.png' })
+    fireEvent.error(within(dialog).getByAltText('image1.png'))
+    expect(
+      within(dialog).getByText('common.imageUploader.uploadFromComputerReadError'),
+    ).toBeInTheDocument()
+    expect(within(dialog).queryByAltText('image1.png')).not.toBeInTheDocument()
+    expect(within(dialog).queryByRole('progressbar')).not.toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.retry' }))
+    expect(within(dialog).getByRole('progressbar')).toBeInTheDocument()
+    const image = within(dialog).getByAltText('image1.png')
+    expect(image).toHaveAttribute('src', images[0]?.url)
+    finishImageLoad(image, 320, 240)
+    expect(within(dialog).getByText(/320.*240/)).toBeInTheDocument()
+    expect(
+      within(dialog).queryByRole('button', { name: 'common.operation.retry' }),
+    ).not.toBeInTheDocument()
+  })
 
+  it('loads a local data image and keeps a localized name for an unnamed image', async () => {
+    const user = userEvent.setup()
+    const url = 'data:image/png;base64,iVBORw0KGgo='
+    render(<Gallery items={[{ url, name: '', size: 50 }]} />)
+    await user.click(screen.getByRole('button', { name: 'Preview unnamed image' }))
+    const dialog = await screen.findByRole('dialog', { name: 'workflow.common.preview' })
+    const image = within(dialog).getByAltText('')
+    expect(image).toHaveAttribute('src', url)
+    finishImageLoad(image)
+    const { previous, next } = getNavigation(dialog)
+    expect(previous).toBeDisabled()
+    expect(next).toBeDisabled()
+  })
+
+  it('navigates the session with buttons and one step per held arrow', async () => {
+    const user = userEvent.setup()
+    render(<Gallery />)
+    await user.click(screen.getByRole('button', { name: 'Preview image1.png' }))
+    const dialog = await screen.findByRole('dialog', { name: 'image1.png' })
+    const { previous, next } = getNavigation(dialog)
+    expect(previous).toBeDisabled()
+    expect(within(dialog).getByRole('button', { name: 'common.operation.close' })).toHaveFocus()
     await user.keyboard('{ArrowRight>3/}')
-    expect(screen.getByRole('img', { name: 'image2.png' })).toBeInTheDocument()
+    expect(dialog).toHaveAccessibleName('image2.png')
     await user.keyboard('{ArrowRight}')
-    expect(screen.getByRole('img', { name: 'image3.png' })).toBeInTheDocument()
-    expect(nextButton).toBeDisabled()
-
+    expect(dialog).toHaveAccessibleName('image3.png')
+    expect(next).toBeDisabled()
     await user.keyboard('{ArrowRight>3/}')
-    expect(screen.getByRole('img', { name: 'image3.png' })).toBeInTheDocument()
+    expect(dialog).toHaveAccessibleName('image3.png')
     await user.keyboard('{ArrowLeft}')
-    expect(screen.getByRole('img', { name: 'image2.png' })).toBeInTheDocument()
-    expect(nextButton).toBeEnabled()
-    await user.keyboard('{ArrowRight}')
-    expect(screen.getByRole('img', { name: 'image3.png' })).toBeInTheDocument()
+    expect(dialog).toHaveAccessibleName('image2.png')
+    await user.click(previous)
+    expect(dialog).toHaveAccessibleName('image1.png')
+    expect(previous).toBeDisabled()
+    await user.click(next)
+    expect(dialog).toHaveAccessibleName('image2.png')
   })
 
-  it('disables both navigation buttons for a single image', async () => {
-    render(<ImagePreviewer images={[images[0]!]} onClose={vi.fn()} />)
-    await screen.findByRole('img', { name: 'image1.png' })
-    const { previousButton, nextButton } = getPreviewButtons()
-
-    expect(previousButton).toBeDisabled()
-    expect(nextButton).toBeDisabled()
-  })
-
-  it('keeps the preview open on content clicks and closes from the close button', async () => {
+  it('keeps the opened image list when an active trigger receives a shorter live payload', async () => {
     const user = userEvent.setup()
-    const onClose = vi.fn()
-    render(<ImagePreviewer images={images} onClose={onClose} />)
-    await screen.findByRole('img', { name: 'image1.png' })
-    const { closeButton } = getPreviewButtons()
-
-    await user.click(screen.getByRole('dialog'))
-    expect(onClose).not.toHaveBeenCalled()
-
-    await user.click(closeButton)
-    expect(onClose).toHaveBeenCalledOnce()
+    const { rerender } = render(<Gallery />)
+    await user.click(screen.getByRole('button', { name: 'Preview image1.png' }))
+    const dialog = await screen.findByRole('dialog', { name: 'image1.png' })
+    await user.click(getNavigation(dialog).next)
+    await user.click(getNavigation(dialog).next)
+    expect(dialog).toHaveAccessibleName('image3.png')
+    rerender(<Gallery items={images.slice(0, 1)} />)
+    expect(dialog).toHaveAccessibleName('image3.png')
+    await user.click(getNavigation(dialog).previous)
+    expect(dialog).toHaveAccessibleName('image2.png')
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await user.click(screen.getByRole('button', { name: 'Preview image1.png' }))
+    const reopened = await screen.findByRole('dialog', { name: 'image1.png' })
+    expect(getNavigation(reopened).next).toBeDisabled()
   })
 
-  it('shows an error and retries the failed image', async () => {
+  it('does not dismiss from content clicks and restores the actual detached trigger', async () => {
     const user = userEvent.setup()
-    mockFetch.mockRejectedValueOnce(new Error('Network error'))
-    render(<ImagePreviewer images={images} onClose={vi.fn()} />)
-
-    expect(await screen.findByText(/Failed to load image/)).toHaveTextContent(images[0]!.url)
-    expect(screen.getByRole('dialog', { name: 'image1.png' })).toBeInTheDocument()
-    const retryButton = screen.getByRole('button', { name: 'common.operation.retry' })
-
-    await user.click(retryButton)
-
-    expect(await screen.findByRole('img', { name: 'image1.png' })).toBeInTheDocument()
-    expect(mockFetch).toHaveBeenCalledTimes(4)
-    expect(mockFetch).toHaveBeenLastCalledWith(images[0]!.url)
+    render(<Gallery />)
+    const trigger = screen.getByRole('button', { name: 'Preview image2.png' })
+    await user.click(trigger)
+    const dialog = await screen.findByRole('dialog', { name: 'image2.png' })
+    await user.click(dialog)
+    expect(dialog).toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await waitFor(() => expect(trigger).toHaveFocus())
+    await user.keyboard('{Enter}')
+    await screen.findByRole('dialog', { name: 'image2.png' })
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await waitFor(() => expect(trigger).toHaveFocus())
   })
 
-  it('revokes loaded blob URLs on unmount', async () => {
-    const { unmount } = render(<ImagePreviewer images={images} onClose={vi.fn()} />)
-    await screen.findByRole('img', { name: 'image1.png' })
-
-    unmount()
-
-    await waitFor(() => expect(mockRevokeObjectURL).toHaveBeenCalledTimes(3))
+  it('keeps independent galleries separate when one is closed', async () => {
+    const user = userEvent.setup()
+    render(
+      <>
+        <Gallery items={images.slice(0, 1)} />
+        <Gallery items={images.slice(1, 2)} />
+      </>,
+    )
+    await user.click(screen.getByRole('button', { name: 'Preview image1.png' }))
+    const first = await screen.findByRole('dialog', { name: 'image1.png' })
+    finishImageLoad(within(first).getByAltText('image1.png'))
+    await user.click(within(first).getByRole('button', { name: 'common.operation.close' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await user.click(screen.getByRole('button', { name: 'Preview image2.png' }))
+    const second = await screen.findByRole('dialog', { name: 'image2.png' })
+    finishImageLoad(within(second).getByAltText('image2.png'), 640, 480)
+    expect(within(second).getByText(/640.*480/)).toBeInTheDocument()
+    expect(within(second).getByRole('img', { name: 'image2.png' })).toHaveAttribute(
+      'src',
+      images[1]?.url,
+    )
   })
 })

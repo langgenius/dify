@@ -1,13 +1,14 @@
 import type { FileEntity } from '../types'
-import type { ImageInfo } from '@/app/components/datasets/common/image-previewer'
+import type { ImagePreviewPayload } from '@/app/components/datasets/common/image-previewer'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useCallback, useState } from 'react'
+import { createDialogHandle } from '@langgenius/dify-ui/dialog'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ImagePreviewer from '@/app/components/datasets/common/image-previewer'
+import { ImagePreviewer } from '@/app/components/datasets/common/image-previewer'
 import { useUpload } from '../hooks/use-upload'
 import { FileContextProvider, useFileStoreWithSelector } from '../store'
 import ImageInput from './image-input'
-import ImageItem from './image-item'
+import { ImageItem } from './image-item'
 
 type ImageUploaderInRetrievalTestingProps = {
   textArea: React.ReactNode
@@ -16,7 +17,7 @@ type ImageUploaderInRetrievalTestingProps = {
   className?: string
   actionAreaClassName?: string
 }
-const ImageUploaderInRetrievalTesting = ({
+const ImageUploaderInRetrievalTestingContent = ({
   textArea,
   actionButton,
   showUploader = true,
@@ -25,29 +26,15 @@ const ImageUploaderInRetrievalTesting = ({
 }: ImageUploaderInRetrievalTestingProps) => {
   const { t } = useTranslation(['datasetHitTesting'])
   const files = useFileStoreWithSelector((s) => s.files)
-  const [previewIndex, setPreviewIndex] = useState(0)
-  const [previewImages, setPreviewImages] = useState<ImageInfo[]>([])
+  const [previewHandle] = useState(createDialogHandle<ImagePreviewPayload>)
   const { dragging, dragRef, dropRef, handleRemoveFile, handleReUploadFile } = useUpload()
 
-  const handleImagePreview = useCallback(
-    (fileId: string) => {
-      const index = files.findIndex((item) => item.id === fileId)
-      if (index === -1) return
-      setPreviewIndex(index)
-      setPreviewImages(
-        files.map((item) => ({
-          url: item.base64Url || item.sourceUrl || '',
-          name: item.name,
-          size: item.size,
-        })),
-      )
-    },
-    [files],
-  )
-
-  const handleClosePreview = useCallback(() => {
-    setPreviewImages([])
-  }, [])
+  const previewFiles = files.filter((file) => file.base64Url || file.sourceUrl)
+  const previewImages = previewFiles.map((file) => ({
+    url: file.base64Url || file.sourceUrl || '',
+    name: file.name,
+    size: file.size,
+  }))
 
   return (
     <div ref={dropRef} className={cn('relative flex w-full flex-col', className)}>
@@ -67,7 +54,15 @@ const ImageUploaderInRetrievalTesting = ({
               showDeleteAction
               onRemove={handleRemoveFile}
               onReUpload={handleReUploadFile}
-              onPreview={handleImagePreview}
+              previewHandle={previewHandle}
+              previewPayload={
+                file.base64Url || file.sourceUrl
+                  ? {
+                      images: previewImages,
+                      initialIndex: previewFiles.findIndex((item) => item.id === file.id),
+                    }
+                  : undefined
+              }
             />
           ))}
         </div>
@@ -82,13 +77,7 @@ const ImageUploaderInRetrievalTesting = ({
         {showUploader && <ImageInput />}
         {actionButton}
       </div>
-      {previewImages.length > 0 && (
-        <ImagePreviewer
-          images={previewImages}
-          initialIndex={previewIndex}
-          onClose={handleClosePreview}
-        />
-      )}
+      <ImagePreviewer handle={previewHandle} />
     </div>
   )
 }
@@ -98,16 +87,14 @@ type ImageUploaderInRetrievalTestingWrapperProps = {
   onChange: (files: FileEntity[]) => void
 } & ImageUploaderInRetrievalTestingProps
 
-const ImageUploaderInRetrievalTestingWrapper = ({
+export function ImageUploaderInRetrievalTesting({
   value,
   onChange,
   ...props
-}: ImageUploaderInRetrievalTestingWrapperProps) => {
+}: ImageUploaderInRetrievalTestingWrapperProps) {
   return (
     <FileContextProvider value={value} onChange={onChange}>
-      <ImageUploaderInRetrievalTesting {...props} />
+      <ImageUploaderInRetrievalTestingContent {...props} />
     </FileContextProvider>
   )
 }
-
-export default ImageUploaderInRetrievalTestingWrapper

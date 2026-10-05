@@ -163,7 +163,7 @@ vi.mock('../completed/common/segment-index-tag', () => ({
 }))
 
 vi.mock('@/app/components/datasets/common/image-uploader/image-uploader-in-chunk', () => ({
-  default: ({
+  ImageUploaderInChunk: ({
     onChange,
   }: {
     value?: unknown[]
