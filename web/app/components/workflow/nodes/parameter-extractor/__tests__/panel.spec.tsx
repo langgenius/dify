@@ -98,13 +98,11 @@ vi.mock('../components/extract-parameter/import-from-tool', () => ({
 }))
 
 vi.mock('../components/extract-parameter/list', () => ({
-  __esModule: true,
-  default: () => <div>extract-parameter-list</div>,
+  ExtractParameterList: () => <div>extract-parameter-list</div>,
 }))
 
 vi.mock('../components/extract-parameter/update', () => ({
-  __esModule: true,
-  default: ({ onSave }: { onSave: (value: unknown) => void }) => (
+  ParameterDialog: ({ onSave }: { onSave: (value: unknown) => void }) => (
     <button type="button" onClick={() => onSave({ name: 'city' })}>
       add-parameter
     </button>

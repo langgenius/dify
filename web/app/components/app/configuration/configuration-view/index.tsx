@@ -30,7 +30,7 @@ import { useTranslation } from 'react-i18next'
 import AppPublisher from '@/app/components/app/app-publisher/features-wrapper'
 import Config from '@/app/components/app/configuration/config'
 import EditHistoryModal from '@/app/components/app/configuration/config-prompt/conversation-history/edit-modal'
-import AgentSettingButton from '@/app/components/app/configuration/config/agent-setting-button'
+import { AgentSettingDialog } from '@/app/components/app/configuration/config/agent/agent-setting'
 import SelectDataSet from '@/app/components/app/configuration/dataset-config/select-dataset'
 import Debug from '@/app/components/app/configuration/debug'
 import { FeaturesProvider } from '@/app/components/base/features'
@@ -129,12 +129,12 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
                   </div>
                   <div className="flex items-center">
                     {isAgent && (
-                      <AgentSettingButton
+                      <AgentSettingDialog
                         isChatModel={contextValue.modelModeType === ModelModeType.chat}
-                        agentConfig={modelConfig.agentConfig}
+                        payload={modelConfig.agentConfig}
                         isFunctionCall={contextValue.isFunctionCall}
                         disabled={contextValue.readonly}
-                        onAgentSettingChange={onAgentSettingChange}
+                        onSave={onAgentSettingChange}
                       />
                     )}
                     {!debugWithMultipleModel && (
