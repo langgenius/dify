@@ -90,7 +90,6 @@ project-excludes = [
   "controllers/console/datasets/test_hit_testing_base.py",
   "controllers/console/datasets/test_metadata.py",
   "controllers/console/datasets/test_website.py",
-  "controllers/console/datasets/test_wraps.py",
   "controllers/console/explore/test_audio.py",
   "controllers/console/explore/test_banner.py",
   "controllers/console/explore/test_completion.py",
