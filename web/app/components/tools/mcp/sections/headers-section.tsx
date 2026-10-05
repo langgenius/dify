@@ -5,12 +5,18 @@ import { useTranslation } from 'react-i18next'
 import HeadersInput from '../headers-input'
 
 type HeadersSectionProps = {
+  readOnly?: boolean
   headers: HeaderItem[]
   onHeadersChange: (headers: HeaderItem[]) => void
   isCreate: boolean
 }
 
-const HeadersSection: FC<HeadersSectionProps> = ({ headers, onHeadersChange, isCreate }) => {
+const HeadersSection: FC<HeadersSectionProps> = ({
+  headers,
+  onHeadersChange,
+  isCreate,
+  readOnly = false,
+}) => {
   const { t } = useTranslation(['tools'])
 
   return (
@@ -26,7 +32,7 @@ const HeadersSection: FC<HeadersSectionProps> = ({ headers, onHeadersChange, isC
       <HeadersInput
         headersItems={headers}
         onChange={onHeadersChange}
-        readonly={false}
+        readonly={readOnly}
         isMasked={!isCreate && headers.filter((item) => item.key.trim()).length > 0}
       />
     </div>

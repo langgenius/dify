@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { API_PREFIX } from '@/config'
 
 type AuthenticationSectionProps = {
+  readOnly?: boolean
   isDynamicRegistration: boolean
   onDynamicRegistrationChange: (value: boolean) => void
   clientID: string
@@ -17,6 +18,7 @@ type AuthenticationSectionProps = {
 }
 
 const AuthenticationSection: FC<AuthenticationSectionProps> = ({
+  readOnly = false,
   isDynamicRegistration,
   onDynamicRegistrationChange,
   clientID,
@@ -34,6 +36,7 @@ const AuthenticationSection: FC<AuthenticationSectionProps> = ({
       <div>
         <div className="mb-1 flex h-6 items-center">
           <Switch
+            readOnly={readOnly}
             aria-labelledby={dynamicRegistrationLabelId}
             className="mr-2"
             checked={isDynamicRegistration}
@@ -67,6 +70,7 @@ const AuthenticationSection: FC<AuthenticationSectionProps> = ({
           </label>
         </div>
         <Input
+          readOnly={readOnly}
           id={clientIdInputId}
           value={clientID}
           onChange={(e) => onClientIDChange(e.target.value)}
@@ -81,6 +85,7 @@ const AuthenticationSection: FC<AuthenticationSectionProps> = ({
           </label>
         </div>
         <Input
+          readOnly={readOnly}
           id={clientSecretInputId}
           value={credentials}
           onChange={(e) => onCredentialsChange(e.target.value)}

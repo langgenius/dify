@@ -5,6 +5,7 @@ import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 
 type ConfigurationsSectionProps = {
+  readOnly?: boolean
   timeout: number
   onTimeoutChange: (timeout: number) => void
   sseReadTimeout: number
@@ -12,6 +13,7 @@ type ConfigurationsSectionProps = {
 }
 
 const ConfigurationsSection: FC<ConfigurationsSectionProps> = ({
+  readOnly = false,
   timeout,
   onTimeoutChange,
   sseReadTimeout,
@@ -29,7 +31,12 @@ const ConfigurationsSection: FC<ConfigurationsSectionProps> = ({
             {t(($) => $['mcp.modal.timeout'], { ns: 'tools' })}
           </label>
         </div>
-        <NumberField value={timeout} min={0} onValueChange={(value) => onTimeoutChange(value ?? 0)}>
+        <NumberField
+          readOnly={readOnly}
+          value={timeout}
+          min={0}
+          onValueChange={(value) => onTimeoutChange(value ?? 0)}
+        >
           <NumberFieldGroup>
             <NumberFieldInput
               id={timeoutInputId}
@@ -45,6 +52,7 @@ const ConfigurationsSection: FC<ConfigurationsSectionProps> = ({
           </label>
         </div>
         <NumberField
+          readOnly={readOnly}
           value={sseReadTimeout}
           min={0}
           onValueChange={(value) => onSseReadTimeoutChange(value ?? 0)}

@@ -1,13 +1,25 @@
+import type { ReactElement } from 'react'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { act, fireEvent, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { render } from '@/test/console/render'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { renderWithEmoji } from '@/test/emoji-picker'
 import MCPList from '../index'
+
+const render = (ui: ReactElement) =>
+  renderWithEmoji(ui, { wrapper: createConsoleQueryWrapper().wrapper })
+
+vi.mock('@/service/common', () => ({
+  uploadRemoteFileInfo: vi.fn().mockResolvedValue({ url: 'https://example.com/icon.png' }),
+}))
 
 type MockProvider = {
   id: string
   name: string
   type: string
+  server_url?: string
+  server_identifier?: string
+  icon?: { content: string; background: string }
 }
 
 type MockDetail = MockProvider | undefined
@@ -65,17 +77,20 @@ vi.mock('@/app/components/tools/provider/tool-card-skeleton', () => ({
 vi.mock('../create-card', () => ({
   default: ({
     handleCreate,
+    showEntry = true,
   }: {
+    showEntry?: boolean
     handleCreate: (provider: { id: string; name: string }) => void
-  }) => (
-    <button
-      data-testid="create-card"
-      type="button"
-      onClick={() => handleCreate({ id: 'new-id', name: 'New Provider' })}
-    >
-      Create Card
-    </button>
-  ),
+  }) =>
+    showEntry ? (
+      <button
+        data-testid="create-card"
+        type="button"
+        onClick={() => handleCreate({ id: 'new-id', name: 'New Provider' })}
+      >
+        Create Card
+      </button>
+    ) : null,
 }))
 
 vi.mock('../provider-card', () => ({
@@ -147,34 +162,6 @@ vi.mock('../detail/provider-detail', () => ({
       </div>
     )
   },
-}))
-
-vi.mock('../modal', () => ({
-  default: ({
-    show,
-    data,
-    onConfirm,
-    onHide,
-  }: {
-    show: boolean
-    data?: MockProvider
-    onConfirm: (form: { name: string; server_url: string }) => void
-    onHide: () => void
-  }) =>
-    show ? (
-      <div role="dialog" aria-label="Edit MCP">
-        <div>{data?.name as string}</div>
-        <button
-          type="button"
-          onClick={() => onConfirm({ name: 'Updated MCP', server_url: 'https://updated.com' })}
-        >
-          Save
-        </button>
-        <button type="button" onClick={onHide}>
-          Cancel
-        </button>
-      </div>
-    ) : null,
 }))
 
 describe('MCPList', () => {
@@ -434,7 +421,16 @@ describe('MCPList', () => {
 
   describe('Update Provider', () => {
     beforeEach(() => {
-      mockProviders = [{ id: '1', name: 'Provider 1', type: 'mcp' }]
+      mockProviders = [
+        {
+          id: '1',
+          name: 'Provider 1',
+          type: 'mcp',
+          server_url: 'https://existing.com',
+          server_identifier: 'existing-server',
+          icon: { content: '🔗', background: '#6366F1' },
+        },
+      ]
     })
 
     it('should open only the edit dialog when edit is selected from a card', async () => {
@@ -442,7 +438,7 @@ describe('MCPList', () => {
 
       fireEvent.click(screen.getByTestId('edit-btn-1'))
 
-      expect(screen.getByRole('dialog', { name: 'Edit MCP' })).toBeInTheDocument()
+      expect(screen.getByRole('dialog', { name: 'tools.mcp.modal.editTitle' })).toBeInTheDocument()
       expect(screen.queryByTestId('detail-panel')).not.toBeInTheDocument()
     })
 
@@ -453,12 +449,31 @@ describe('MCPList', () => {
       expect(screen.getByTestId('detail-panel')).toBeInTheDocument()
 
       fireEvent.click(screen.getByTestId('edit-detail'))
-      expect(screen.getByRole('dialog', { name: 'Edit MCP' })).toBeInTheDocument()
+      expect(screen.getByRole('dialog', { name: 'tools.mcp.modal.editTitle' })).toBeInTheDocument()
       expect(screen.queryByTestId('detail-panel')).not.toBeInTheDocument()
 
-      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
-      expect(screen.queryByRole('dialog', { name: 'Edit MCP' })).not.toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: 'tools.mcp.modal.cancel' }))
+      expect(
+        screen.queryByRole('dialog', { name: 'tools.mcp.modal.editTitle' }),
+      ).not.toBeInTheDocument()
       expect(screen.getByTestId('detail-panel')).toBeInTheDocument()
+    })
+
+    it('keeps an edit draft when the fulfilled update response is not successful', async () => {
+      mockUpdateMCP.mockResolvedValueOnce({ result: 'fail' })
+      render(<MCPList searchText="" />)
+      fireEvent.click(screen.getByTestId('edit-btn-1'))
+      fireEvent.change(screen.getByLabelText('tools.mcp.modal.name'), {
+        target: { value: 'Unsaved name' },
+      })
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'tools.mcp.modal.save' }))
+      })
+      expect(mockUpdateMCP).toHaveBeenCalledTimes(1)
+      expect(mockRefetch).not.toHaveBeenCalled()
+      expect(screen.getByRole('dialog', { name: 'tools.mcp.modal.editTitle' })).toBeInTheDocument()
+      expect(screen.getByLabelText('tools.mcp.modal.name')).toHaveValue('Unsaved name')
+      expect(screen.queryByTestId('detail-panel')).not.toBeInTheDocument()
     })
 
     it('should show detail panel with trigger authorize after update', async () => {
@@ -469,16 +484,18 @@ describe('MCPList', () => {
       fireEvent.click(updateBtn)
 
       await act(async () => {
-        fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+        fireEvent.click(screen.getByRole('button', { name: 'tools.mcp.modal.save' }))
         vi.advanceTimersByTime(10)
         await Promise.resolve()
       })
 
-      expect(mockUpdateMCP).toHaveBeenCalledWith({
-        name: 'Updated MCP',
-        server_url: 'https://updated.com',
-        provider_id: '1',
-      })
+      expect(mockUpdateMCP).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'Provider 1',
+          server_url: '[__HIDDEN__]',
+          provider_id: '1',
+        }),
+      )
       expect(mockRefetch).toHaveBeenCalled()
       expect(screen.getByTestId('detail-panel')).toBeInTheDocument()
       expect(screen.getByTestId('trigger-authorize')).toHaveTextContent('true')
