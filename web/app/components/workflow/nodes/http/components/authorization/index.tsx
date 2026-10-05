@@ -1,5 +1,5 @@
 'use client'
-import type { DialogProps } from '@langgenius/dify-ui/dialog'
+import type { DialogActions } from '@langgenius/dify-ui/dialog'
 import type { ReactElement } from 'react'
 import type { Authorization as AuthorizationPayloadType } from '../../types'
 import type { Var } from '@/app/components/workflow/types'
@@ -255,7 +255,7 @@ export function AuthorizationDialog({
   readOnly,
 }: AuthorizationDialogProps) {
   const { t } = useTranslation(['workflowIntegrations'])
-  const actionsRef: DialogProps['actionsRef'] = useRef(null)
+  const actionsRef = useRef<DialogActions>(null)
   const label = (
     <span className="text-xs font-medium text-text-tertiary">
       {t(($) => $[`${i18nPrefix}.authorization`])}

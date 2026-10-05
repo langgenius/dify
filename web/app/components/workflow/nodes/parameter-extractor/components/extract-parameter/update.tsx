@@ -1,5 +1,5 @@
 'use client'
-import type { DialogProps } from '@langgenius/dify-ui/dialog'
+import type { DialogActions } from '@langgenius/dify-ui/dialog'
 import type { Param } from '../../types'
 import type { MoreInfo } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
@@ -59,7 +59,7 @@ const TYPES = [
 
 export function ParameterDialog(props: Props) {
   const { t } = useTranslation(['common', 'workflowModels'])
-  const actionsRef: DialogProps['actionsRef'] = useRef(null)
+  const actionsRef = useRef<DialogActions>(null)
   const isAdd = props.type === 'add'
   const triggerLabel = isAdd
     ? t(($) => $[`${i18nPrefix}.addExtractParameter`], { ns: 'workflowModels' })

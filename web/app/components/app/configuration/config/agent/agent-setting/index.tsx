@@ -1,5 +1,5 @@
 'use client'
-import type { DialogProps } from '@langgenius/dify-ui/dialog'
+import type { DialogActions } from '@langgenius/dify-ui/dialog'
 import type { AgentConfig } from '@/models/debug'
 import { Button } from '@langgenius/dify-ui/button'
 import {
@@ -36,7 +36,7 @@ const maxIterationsMin = 1
 
 export function AgentSettingDialog({ disabled, onSave, ...props }: Props) {
   const { t } = useTranslation(['appDebug'])
-  const actionsRef: DialogProps['actionsRef'] = useRef(null)
+  const actionsRef = useRef<DialogActions>(null)
 
   return (
     <Dialog actionsRef={actionsRef}>

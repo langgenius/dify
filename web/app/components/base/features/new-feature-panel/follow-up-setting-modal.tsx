@@ -1,5 +1,5 @@
 import type { AppModelSelectionResponse } from '@dify/contracts/api/console/apps/types.gen'
-import type { DialogProps } from '@langgenius/dify-ui/dialog'
+import type { DialogActions } from '@langgenius/dify-ui/dialog'
 import type { SuggestedQuestionsAfterAnswer } from '@/app/components/base/features/types'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { CompletionParams, ModelModeType } from '@/types/app'
@@ -62,7 +62,7 @@ type PromptMode = (typeof PROMPT_MODE)[keyof typeof PROMPT_MODE]
 
 export function FollowUpSettingsDialog({ data, onSave, disabled }: FollowUpSettingsDialogProps) {
   const { t } = useTranslation(['appDebug', 'common'])
-  const actionsRef: DialogProps['actionsRef'] = useRef(null)
+  const actionsRef = useRef<DialogActions>(null)
 
   return (
     <Dialog actionsRef={actionsRef}>
