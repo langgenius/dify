@@ -89,12 +89,15 @@ const {
   mockCheckInputsFormResult: { value: true },
 }))
 
-vi.mock('@/app/components/base/file-uploader/store', () => ({
-  useFileStore: () => ({ getState: () => mockFileStore }),
-  useStore: (selector: (s: typeof mockFileStore) => unknown) => selector(mockFileStore),
-  FileContextProvider: ({ children }: { children: React.ReactNode }) =>
-    React.createElement(React.Fragment, null, children),
-}))
+vi.mock('@/app/components/base/file-uploader/store', () => {
+  const store = { getState: () => mockFileStore }
+  return {
+    useFileStore: () => store,
+    useStore: (selector: (s: typeof mockFileStore) => unknown) => selector(mockFileStore),
+    FileContextProvider: ({ children }: { children: React.ReactNode }) =>
+      React.createElement(React.Fragment, null, children),
+  }
+})
 
 // ---------------------------------------------------------------------------
 // File-uploader hooks
@@ -411,11 +414,19 @@ describe('ChatInputArea', () => {
         const textarea = getTextarea()!
 
         fireEvent.change(textarea, { target: { value: 'First draft' } })
-        act(() => vi.advanceTimersByTime(300))
-        expect(sessionStorage.getItem(draftKey)).toBe('First draft')
+        act(() => vi.advanceTimersByTime(299))
+        expect(sessionStorage.getItem(draftKey)).toBeNull()
+
+        fireEvent.change(textarea, { target: { value: 'Settled draft' } })
+        act(() => vi.advanceTimersByTime(299))
+        expect(sessionStorage.getItem(draftKey)).toBeNull()
+        act(() => vi.advanceTimersByTime(1))
+        expect(sessionStorage.getItem(draftKey)).toBe('Settled draft')
 
         fireEvent.change(textarea, { target: { value: 'Latest draft' } })
         window.dispatchEvent(new Event('pagehide'))
+        expect(sessionStorage.getItem(draftKey)).toBe('Latest draft')
+        act(() => vi.advanceTimersByTime(300))
         expect(sessionStorage.getItem(draftKey)).toBe('Latest draft')
 
         view.unmount()
