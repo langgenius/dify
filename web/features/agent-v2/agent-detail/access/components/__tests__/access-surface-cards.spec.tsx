@@ -830,59 +830,75 @@ describe('Agent access surface cards', () => {
       })
       expect(mocks.siteMutation.mock.calls[0]?.[0].body).not.toHaveProperty('enable_sso')
       await waitFor(() => {
-        expect(invalidateSpy).toHaveBeenCalledWith(
-          { queryKey: ['agent-detail', 'agent-1'] },
-          { throwOnError: true },
-        )
+        expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['agent-detail', 'agent-1'] })
       })
     })
 
-    it.each(['post', 'refresh'])(
-      'keeps settings after %s failure and waits for the real refreshed source on retry',
-      async (stage) => {
-        const user = userEvent.setup()
-        const refreshed = createDeferredPromise<AgentAppDetailWithSite>()
-        mocks.siteMutation.mockResolvedValue({})
-        if (stage === 'post') mocks.siteMutation.mockRejectedValueOnce(new Error('Save failed'))
-        else mocks.agentDetailQueryFn.mockRejectedValueOnce(new Error('Refresh failed'))
-        const queryClient = renderWithQueryClient(<QueryOwnedWebAppCard />)
-        const trigger = screen.getByRole('button', {
+    it('preserves the draft after POST failure and closes on retry before detail refresh completes', async () => {
+      const user = userEvent.setup()
+      const refreshed = createDeferredPromise<AgentAppDetailWithSite>()
+      mocks.siteMutation.mockResolvedValue({}).mockRejectedValueOnce(new Error('Save failed'))
+      const queryClient = renderWithQueryClient(<QueryOwnedWebAppCard />)
+      const trigger = screen.getByRole('button', {
+        name: 'agentV2.agentDetail.access.webApp.actions.settings',
+      })
+      await user.click(trigger)
+      const dialog = await screen.findByRole('dialog', {
+        name: 'appOverview.overview.appInfo.settings.title',
+      })
+      const name = within(dialog).getByPlaceholderText('app.appNamePlaceholder')
+      await user.clear(name)
+      await user.type(name, 'Committed portal')
+      await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
+      await waitFor(() => expect(toast.error).toHaveBeenCalledTimes(1))
+      expect(dialog).toBeInTheDocument()
+      expect(name).toHaveValue('Committed portal')
+      expect(mocks.agentDetailQueryFn).not.toHaveBeenCalled()
+
+      mocks.agentDetailQueryFn.mockReturnValueOnce(refreshed.promise)
+      await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      expect(toast.success).toHaveBeenCalledTimes(1)
+      expect(mocks.agentDetailQueryFn).toHaveBeenCalledTimes(1)
+      const updated = createAgent({
+        site: { ...createAgent().site!, title: 'Committed portal', chat_color_theme: '#123456' },
+      })
+      await act(async () => refreshed.resolve(updated))
+      await waitFor(() =>
+        expect(queryClient.getQueryData(['agent-detail', 'agent-1'])).toEqual(updated),
+      )
+      await user.click(trigger)
+      const reopened = await screen.findByRole('dialog', {
+        name: 'appOverview.overview.appInfo.settings.title',
+      })
+      expect(within(reopened).getByPlaceholderText('app.appNamePlaceholder')).toHaveValue(
+        'Committed portal',
+      )
+      expect(within(reopened).getByPlaceholderText('E.g #A020F0')).toHaveValue('#123456')
+    })
+
+    it('closes after a successful POST even when background agent refresh fails', async () => {
+      const user = userEvent.setup()
+      mocks.siteMutation.mockResolvedValue({})
+      mocks.agentDetailQueryFn.mockRejectedValueOnce(new Error('Refresh failed'))
+      const queryClient = renderWithQueryClient(<QueryOwnedWebAppCard />)
+      await user.click(
+        screen.getByRole('button', {
           name: 'agentV2.agentDetail.access.webApp.actions.settings',
-        })
-        await user.click(trigger)
-        const dialog = await screen.findByRole('dialog', {
-          name: 'appOverview.overview.appInfo.settings.title',
-        })
-        const name = within(dialog).getByPlaceholderText('app.appNamePlaceholder')
-        await user.clear(name)
-        await user.type(name, 'Committed portal')
-        await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
-        await waitFor(() => expect(toast.error).toHaveBeenCalled())
-        expect(dialog).toBeInTheDocument()
-        expect(name).toHaveValue('Committed portal')
-        mocks.agentDetailQueryFn.mockReturnValueOnce(refreshed.promise)
-        await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
-        await waitFor(() =>
-          expect(mocks.agentDetailQueryFn).toHaveBeenCalledTimes(stage === 'post' ? 1 : 2),
-        )
-        expect(dialog).toBeInTheDocument()
-        expect(toast.success).not.toHaveBeenCalled()
-        const updated = createAgent({
-          site: { ...createAgent().site!, title: 'Committed portal', chat_color_theme: '#123456' },
-        })
-        await act(async () => refreshed.resolve(updated))
-        await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-        expect(queryClient.getQueryData(['agent-detail', 'agent-1'])).toEqual(updated)
-        await user.click(trigger)
-        const reopened = await screen.findByRole('dialog', {
-          name: 'appOverview.overview.appInfo.settings.title',
-        })
-        expect(within(reopened).getByPlaceholderText('app.appNamePlaceholder')).toHaveValue(
-          'Committed portal',
-        )
-        expect(within(reopened).getByPlaceholderText('E.g #A020F0')).toHaveValue('#123456')
-      },
-    )
+        }),
+      )
+      const dialog = await screen.findByRole('dialog', {
+        name: 'appOverview.overview.appInfo.settings.title',
+      })
+      await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
+
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      await waitFor(() =>
+        expect(queryClient.getQueryState(['agent-detail', 'agent-1'])?.status).toBe('error'),
+      )
+      expect(toast.success).toHaveBeenCalledTimes(1)
+      expect(toast.error).not.toHaveBeenCalled()
+    })
 
     it('should fall back to the Agent icon tuple when WebApp site icon data is missing', async () => {
       const user = userEvent.setup()

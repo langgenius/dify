@@ -104,7 +104,7 @@ afterEach(() => {
   useAppStore.setState({ appDetail: undefined })
 })
 
-it('retains a failed save draft and keeps the retry pending until the refreshed owner data arrives', async () => {
+it('retains a failed save draft and closes a successful retry before the background refresh finishes', async () => {
   let rejectSave!: (error: Error) => void
   saveSite.mockReturnValueOnce(
     new Promise((_, reject) => {
@@ -147,21 +147,43 @@ it('retains a failed save draft and keeps the retry pending until the refreshed 
 
   await save.click()
   await expect.poll(() => fetchApp.mock.calls.length).toBe(1)
-  await expect.element(save).toHaveAttribute('aria-disabled', 'true')
-  await expect.element(save).toHaveFocus()
-  await userEvent.keyboard('{Enter}{Escape}')
-  await expect.element(dialog).toBeVisible()
-  expect(saveSite).toHaveBeenCalledTimes(2)
-  const refreshed = createApp('Saved after retry')
-  finishRefresh(refreshed)
   await expect.element(dialog).not.toBeInTheDocument()
   await expect.element(trigger).toHaveFocus()
-  expect(useAppStore.getState().appDetail).toEqual(refreshed)
+  expect(saveSite).toHaveBeenCalledTimes(2)
+  expect(useAppStore.getState().appDetail?.site?.title).toBe('Original app')
+  const refreshed = createApp('Saved after retry')
+  finishRefresh(refreshed)
+  await expect.poll(() => useAppStore.getState().appDetail).toEqual(refreshed)
+  await trigger.click()
+  await expect.element(title).toHaveValue('Saved after retry')
+  await dialog.getByRole('button', { name: 'common.operation.close' }).click()
+  await expect.element(dialog).not.toBeInTheDocument()
   expect(saveSite).toHaveBeenLastCalledWith({
     params: { app_id: 'settings-app' },
     body: expect.objectContaining({ title: 'Saved after retry' }),
   })
   client.clear()
+})
+
+it('closes after a successful POST even when the background detail refresh fails', async () => {
+  saveSite.mockResolvedValueOnce({})
+  fetchApp.mockRejectedValueOnce(new Error('Refresh failed'))
+  const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+  const { screen, client } = await renderSettings()
+  const trigger = screen.getByRole('button', { name: triggerLabel })
+  await trigger.click()
+  const dialog = screen.getByRole('dialog', { name: settingsTitle })
+  await dialog.getByRole('textbox', { name: titleLabel }).fill('Saved remotely')
+  await dialog.getByRole('button', { name: 'common.operation.save' }).click()
+  await expect.element(dialog).not.toBeInTheDocument()
+  await expect.element(trigger).toHaveFocus()
+  await expect.poll(() => fetchApp.mock.calls.length).toBe(1)
+  expect(notify).toHaveBeenCalledExactlyOnceWith('common.actionMsg.modifiedSuccessfully', {
+    type: 'success',
+  })
+  expect(saveSite).toHaveBeenCalledTimes(1)
+  client.clear()
+  consoleError.mockRestore()
 })
 
 it('keeps the draft through the exit animation and reopens with the latest owner metadata', async () => {
