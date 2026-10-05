@@ -218,11 +218,16 @@ def inject_default_system_variable_mappings(
 ) -> Mapping[str, Sequence[str]]:
     """Add workflow-owned implicit sys mappings that `graphon` should not know about."""
 
-    if node_type != BuiltinNodeTypes.LLM or getattr(node_data, "memory", None) is None:
+    memory = getattr(node_data, "memory", None)
+    if node_type != BuiltinNodeTypes.LLM or memory is None:
         return variable_mapping
 
     query_mapping_key = f"{node_id}.#sys.query#"
     if query_mapping_key in variable_mapping:
+        return variable_mapping
+
+    query_prompt_template = getattr(memory, "query_prompt_template", None) or ""
+    if "{{#sys.query#}}" not in query_prompt_template and "{{#sys,query#}}" not in query_prompt_template:
         return variable_mapping
 
     augmented_mapping = dict(variable_mapping)
