@@ -143,4 +143,3 @@ class TestCSVExtractor:
         assert len(docs) == 1
         assert docs[0].page_content == "10: source-1;20: hello"
         assert docs[0].metadata == {"source": "source-1", "row": 0}
-
