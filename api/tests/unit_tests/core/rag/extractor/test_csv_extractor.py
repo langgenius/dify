@@ -43,6 +43,37 @@ class TestCSVExtractor:
         assert docs[0].page_content == "value: 123.0;body: nan"
         assert csv_args == {"sep": ";", "dtype": {"value": int}, "keep_default_na": True}
 
+    @pytest.mark.parametrize("policy", ["skip", "warn", "error"])
+    def test_extract_honors_on_bad_lines_policy(self, tmp_path: Path, policy: str) -> None:
+        file_path = tmp_path / "data.csv"
+        file_path.write_text("id,body\n00123,NA\nbad,extra,field\n00456,NULL\n", encoding="utf-8")
+        csv_args = {"on_bad_lines": policy}
+        extractor = CSVExtractor(str(file_path), encoding="utf-8", source_column="id", csv_args=csv_args)
+
+        if policy == "error":
+            with pytest.raises(pd.errors.ParserError):
+                extractor.extract()
+        elif policy == "warn":
+            with pytest.warns(pd.errors.ParserWarning):
+                docs = extractor.extract()
+            assert [doc.page_content for doc in docs] == ["id: 00123;body: NA", "id: 00456;body: NULL"]
+            assert [doc.metadata["source"] for doc in docs] == ["00123", "00456"]
+        else:
+            docs = extractor.extract()
+            assert [doc.page_content for doc in docs] == ["id: 00123;body: NA", "id: 00456;body: NULL"]
+            assert [doc.metadata["source"] for doc in docs] == ["00123", "00456"]
+
+        assert csv_args == {"on_bad_lines": policy}
+
+    def test_extract_defaults_to_skipping_bad_lines(self, tmp_path: Path) -> None:
+        file_path = tmp_path / "data.csv"
+        file_path.write_text("id,body\n00123,NA\nbad,extra,field\n00456,NULL\n", encoding="utf-8")
+
+        docs = CSVExtractor(str(file_path), encoding="utf-8", source_column="id").extract()
+
+        assert [doc.page_content for doc in docs] == ["id: 00123;body: NA", "id: 00456;body: NULL"]
+        assert [doc.metadata["source"] for doc in docs] == ["00123", "00456"]
+
     def test_extract_success_with_source_column(self, tmp_path: Path):
         file_path = tmp_path / "data.csv"
         file_path.write_text("id,body\nsource-1,hello\n", encoding="utf-8")
