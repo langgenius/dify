@@ -137,9 +137,6 @@ const useConfig = (id: string, payload: HttpNodeType) => {
     return textVariableTypes.includes(varPayload.type)
   }, [])
 
-  // curl import panel
-  const [isShowCurlPanel, setIsShowCurlPanel] = useState(false)
-
   const handleCurlImport = useCallback(
     (newNode: HttpNodeType) => {
       const newInputs = produce(inputs, (draft: HttpNodeType) => {
@@ -193,9 +190,6 @@ const useConfig = (id: string, payload: HttpNodeType) => {
     setAuthorization,
     setTimeout,
     // curl import
-    isShowCurlPanel,
-    showCurlPanel: () => setIsShowCurlPanel(true),
-    hideCurlPanel: () => setIsShowCurlPanel(false),
     handleCurlImport,
   }
 }

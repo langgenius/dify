@@ -1,77 +1,79 @@
 'use client'
+import type { DialogActions } from '@langgenius/dify-ui/dialog'
 import type { SchemaRoot, StructuredOutput } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useState } from 'react'
+import { Dialog, DialogContent, DialogTrigger } from '@langgenius/dify-ui/dialog'
+import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import ShowPanel from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/show'
-import { Type } from '../types'
-import { JsonSchemaConfigModal } from './json-schema-config-modal'
+import { JsonSchemaConfig } from './json-schema-config-modal/json-schema-config'
 
 type Props = Readonly<{
   className?: string
   value?: StructuredOutput
   onChange: (value: StructuredOutput) => void
+  readOnly: boolean
 }>
 
-export function StructureOutput({ className, value, onChange }: Props) {
+export function StructureOutput({ className, value, onChange, readOnly }: Props) {
   const { t } = useTranslation(['app'])
-  const [showConfig, setShowConfig] = useState(false)
+  const actionsRef = useRef<DialogActions>(null)
+  const configureButtonRef = useRef<HTMLButtonElement>(null)
+  const hasSchema = !!value?.schema.properties && Object.keys(value.schema.properties).length > 0
 
   function handleChange(value: SchemaRoot) {
     onChange({
       schema: value,
     })
+    actionsRef?.current?.close()
   }
 
-  return (
+  const summary = (
     <div className={cn(className)}>
       <div className="flex justify-between">
         <div className="flex items-center leading-4.5">
           <div className="code-sm-semibold text-text-secondary">structured_output</div>
           <div className="ml-2 system-xs-regular text-text-tertiary">object</div>
         </div>
-        <Button
-          size="small"
-          variant="secondary"
-          className="flex"
-          onClick={() => setShowConfig(true)}
-        >
-          <i className="i-ri-edit-line size-3.5" aria-hidden="true" />
-          <div className="system-xs-medium text-components-button-secondary-text">
-            {t(($) => $['structOutput.configure'], { ns: 'app' })}
-          </div>
-        </Button>
+        {!readOnly && (
+          <DialogTrigger
+            render={
+              <Button ref={configureButtonRef} size="small" variant="secondary" className="flex" />
+            }
+          >
+            <i className="i-ri-edit-line size-3.5" aria-hidden="true" />
+            <span className="system-xs-medium text-components-button-secondary-text">
+              {t(($) => $['structOutput.configure'], { ns: 'app' })}
+            </span>
+          </DialogTrigger>
+        )}
       </div>
-      {value?.schema &&
-      value.schema.properties &&
-      Object.keys(value.schema.properties).length > 0 ? (
+      {hasSchema ? (
         <ShowPanel payload={value} />
-      ) : (
-        <button
-          type="button"
-          className="mt-1.5 flex h-10 w-full cursor-pointer items-center justify-center rounded-[10px] bg-background-section system-xs-regular text-text-tertiary"
-          onClick={() => setShowConfig(true)}
-        >
+      ) : readOnly ? (
+        <div className="mt-1.5 flex h-10 w-full items-center justify-center rounded-[10px] bg-background-section system-xs-regular text-text-tertiary">
           {t(($) => $['structOutput.notConfiguredTip'], { ns: 'app' })}
-        </button>
-      )}
-
-      {showConfig && (
-        <JsonSchemaConfigModal
-          isShow
-          defaultSchema={
-            (value?.schema || {
-              type: Type.object,
-              properties: {},
-              required: [],
-              additionalProperties: false,
-            }) as any
-          } // wait for types change
-          onSave={handleChange as any} // wait for types change
-          onClose={() => setShowConfig(false)}
-        />
+        </div>
+      ) : (
+        <DialogTrigger className="mt-1.5 flex h-10 w-full cursor-pointer items-center justify-center rounded-[10px] bg-background-section system-xs-regular text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden">
+          {t(($) => $['structOutput.notConfiguredTip'], { ns: 'app' })}
+        </DialogTrigger>
       )}
     </div>
+  )
+
+  if (readOnly) return summary
+
+  return (
+    <Dialog actionsRef={actionsRef}>
+      {summary}
+      <DialogContent
+        className="h-[calc(100dvh-32px)] max-h-200 w-full max-w-240 overflow-hidden! border-none p-0 text-left align-middle"
+        finalFocus={hasSchema ? configureButtonRef : undefined}
+      >
+        <JsonSchemaConfig defaultSchema={value?.schema} onSave={handleChange} />
+      </DialogContent>
+    </Dialog>
   )
 }

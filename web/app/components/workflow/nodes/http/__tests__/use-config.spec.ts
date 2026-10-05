@@ -234,17 +234,19 @@ describe('http/use-config', () => {
         },
       })
       result.current.setTimeout({ connect: 30, read: 40, write: 50 })
-      result.current.showCurlPanel()
     })
 
-    expect(result.current.isShowCurlPanel).toBe(true)
-
     act(() => {
-      result.current.hideCurlPanel()
       result.current.handleCurlImport(
         createPayload({
           method: Method.patch,
           url: 'https://imported.example.com',
+          authorization: {
+            type: AuthorizationType.apiKey,
+            config: { type: APIType.bearer, api_key: 'imported' },
+          },
+          timeout: { connect: 99, read: 99, write: 99 },
+          ssl_verify: false,
           headers: 'authorization:Bearer imported',
           params: 'debug:true',
           body: {
@@ -256,7 +258,6 @@ describe('http/use-config', () => {
       result.current.handleSSLVerifyChange(false)
     })
 
-    expect(result.current.isShowCurlPanel).toBe(false)
     expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({ method: Method.delete }))
     expect(mockSetInputs).toHaveBeenCalledWith(
       expect.objectContaining({ url: 'https://changed.example.com' }),
@@ -284,6 +285,9 @@ describe('http/use-config', () => {
       expect.objectContaining({
         method: Method.patch,
         url: 'https://imported.example.com',
+        authorization: currentInputs.authorization,
+        timeout: currentInputs.timeout,
+        ssl_verify: currentInputs.ssl_verify,
         headers: 'authorization:Bearer imported',
         params: 'debug:true',
         body: {
