@@ -233,11 +233,6 @@
       "count": 2
     }
   },
-  "web/app/components/app/configuration/config-prompt/conversation-history/edit-modal.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/components/app/configuration/config-prompt/message-type-selector.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 2
@@ -289,7 +284,7 @@
       "count": 1
     },
     "typescript/no-explicit-any": {
-      "count": 4
+      "count": 3
     }
   },
   "web/app/components/app/configuration/config-var/index.tsx": {

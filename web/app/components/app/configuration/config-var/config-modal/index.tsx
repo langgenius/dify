@@ -1,10 +1,12 @@
 'use client'
-import type { ChangeEvent, FC } from 'react'
+import type { DialogContentProps } from '@langgenius/dify-ui/dialog'
+import type { ChangeEvent, RefObject } from 'react'
 import type { Item as SelectItem } from './type-select'
 import type { ConfigModalValidationError } from './utils'
 import type { InputVar, InputVarType, MoreInfo } from '@/app/components/workflow/types'
 import type { FileUploadConfigResponse } from '@/models/common'
-import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Button } from '@langgenius/dify-ui/button'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -20,7 +22,6 @@ import {
   getNewVarInWorkflow,
   replaceSpaceWithUnderscoreInVarNameInput,
 } from '@/utils/var'
-import ModalFoot from '../modal-foot'
 import ConfigModalFormFields from './form-fields'
 import {
   buildSelectOptions,
@@ -33,35 +34,54 @@ import {
   validateConfigModalPayload,
 } from './utils'
 
-type IConfigModalProps = {
+type ConfigModalProps = {
   isCreate?: boolean
   payload?: InputVar
-  isShow: boolean
-  varKeys?: string[]
-  onClose: () => void
+  open: boolean
+  finalFocus?: DialogContentProps['finalFocus']
+  onOpenChange: (open: boolean) => void
   onConfirm: (newValue: InputVar, moreInfo?: MoreInfo) => void
   supportFile?: boolean
   showHiddenField?: boolean
 }
 
-const ConfigModal: FC<IConfigModalProps> = ({
+export const ConfigModal = React.memo(
+  ({ open, onOpenChange, finalFocus, ...formProps }: ConfigModalProps) => {
+    const scrollAreaRef = useRef<HTMLDivElement>(null)
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent
+          initialFocus={scrollAreaRef}
+          finalFocus={finalFocus}
+          className="flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden! border-none p-0! text-left align-middle"
+        >
+          <ConfigModalForm {...formProps} scrollAreaRef={scrollAreaRef} />
+        </DialogContent>
+      </Dialog>
+    )
+  },
+)
+
+function ConfigModalForm({
   isCreate,
   payload,
-  isShow,
-  onClose,
   onConfirm,
   showHiddenField,
   supportFile,
-}) => {
+  scrollAreaRef,
+}: Omit<ConfigModalProps, 'open' | 'onOpenChange' | 'finalFocus'> & {
+  scrollAreaRef: RefObject<HTMLDivElement | null>
+}) {
+  const [initialPayload] = useState(() => payload)
   const { modelConfig } = useContext(ConfigContext)
   const { t } = useTranslation(['appDebug', 'workflow'])
+  const { t: tCommon } = useTranslation(['common'])
   const [tempPayload, setTempPayload] = useState<InputVar>(() =>
-    normalizeSelectDefaultValue(payload || (getNewVarInWorkflow('') as any)),
+    normalizeSelectDefaultValue(initialPayload || getNewVarInWorkflow('')),
   )
   const [validationError, setValidationError] = useState<ConfigModalValidationError>()
   const queryClient = useQueryClient()
   const { type, options, max_length } = tempPayload
-  const modalRef = useRef<HTMLDivElement>(null)
   const appDetail = useAppStore((state) => state.appDetail)
   const isBasicApp =
     appDetail?.mode !== AppModeEnum.ADVANCED_CHAT && appDetail?.mode !== AppModeEnum.WORKFLOW
@@ -70,13 +90,9 @@ const ConfigModal: FC<IConfigModalProps> = ({
     [tempPayload.json_schema, type],
   )
   useEffect(() => {
-    // To fix the first input element auto focus, then directly close modal will raise error
-    if (isShow) modalRef.current?.focus()
-  }, [isShow])
-  useEffect(() => {
     if (validationError)
-      modalRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus()
-  }, [validationError])
+      scrollAreaRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus()
+  }, [scrollAreaRef, validationError])
 
   const isStringInput = isStringInputType(type)
   const checkVariableName = useCallback(
@@ -177,7 +193,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
     )
     const { errorMessage, errorField, moreInfo, payloadToSave } = validateConfigModalPayload({
       tempPayload,
-      payload,
+      payload: initialPayload,
       maxFileUploadLimit: Number(fileUploadConfig?.workflow_file_upload_limit) || undefined,
       t,
     })
@@ -195,69 +211,64 @@ const ConfigModal: FC<IConfigModalProps> = ({
   }
 
   return (
-    <Dialog
-      open={isShow}
-      onOpenChange={(open) => {
-        if (!open) onClose()
+    <form
+      noValidate
+      className="flex min-h-0 flex-col"
+      onSubmit={(event) => {
+        event.preventDefault()
+        handleConfirm()
       }}
     >
-      <DialogContent className="flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden! border-none p-0! text-left align-middle">
-        <form
-          noValidate
-          className="flex min-h-0 flex-col"
-          onSubmit={(event) => {
-            event.preventDefault()
-            handleConfirm()
-          }}
-        >
-          <DialogTitle className="shrink-0 px-6 pt-6 title-2xl-semi-bold text-text-primary">
-            {t(($) => $[`variableConfig.${isCreate ? 'addModalTitle' : 'editModalTitle'}`], {
-              ns: 'appDebug',
-            })}
-          </DialogTitle>
+      <DialogTitle className="shrink-0 px-6 pt-6 title-2xl-semi-bold text-text-primary">
+        {t(($) => $[`variableConfig.${isCreate ? 'addModalTitle' : 'editModalTitle'}`], {
+          ns: 'appDebug',
+        })}
+      </DialogTitle>
 
-          <div
-            ref={modalRef}
-            tabIndex={-1}
-            data-testid="config-modal-scroll-area"
-            className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-6 py-4 pb-8"
-          >
-            <ConfigModalFormFields
-              checkboxDefaultSelectValue={checkboxDefaultSelectValue}
-              isStringInput={isStringInput}
-              jsonSchemaStr={jsonSchemaStr}
-              maxLength={max_length}
-              modelId={modelConfig.model_id}
-              onFilePayloadChange={(nextPayload) => {
-                if (
-                  validationError &&
-                  (validationError.field === 'allowed_file_types' ||
-                    validationError.field === 'allowed_file_extensions') &&
-                  (nextPayload[validationError.field] !== tempPayload[validationError.field] ||
-                    nextPayload.allowed_file_types !== tempPayload.allowed_file_types)
-                )
-                  setValidationError(undefined)
-                setTempPayload(nextPayload as InputVar)
-              }}
-              onJSONSchemaChange={handleJSONSchemaChange}
-              onPayloadChange={handlePayloadChange}
-              onTypeChange={handleTypeChange}
-              onVarKeyBlur={handleVarKeyBlur}
-              onVarNameChange={handleVarNameChange}
-              options={options}
-              selectOptions={selectOptions}
-              showHiddenField={showHiddenField}
-              tempPayload={tempPayload}
-              validationError={validationError}
-              t={t}
-            />
-          </div>
-          <div className="shrink-0 px-6 pt-2 pb-6">
-            <ModalFoot confirmType="submit" onCancel={onClose} />
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
+      <div
+        ref={scrollAreaRef}
+        tabIndex={-1}
+        data-testid="config-modal-scroll-area"
+        className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-6 py-4 pb-8"
+      >
+        <ConfigModalFormFields
+          checkboxDefaultSelectValue={checkboxDefaultSelectValue}
+          isStringInput={isStringInput}
+          jsonSchemaStr={jsonSchemaStr}
+          maxLength={max_length}
+          modelId={modelConfig.model_id}
+          onFilePayloadChange={(nextPayload) => {
+            if (
+              validationError &&
+              (validationError.field === 'allowed_file_types' ||
+                validationError.field === 'allowed_file_extensions') &&
+              (nextPayload[validationError.field] !== tempPayload[validationError.field] ||
+                nextPayload.allowed_file_types !== tempPayload.allowed_file_types)
+            )
+              setValidationError(undefined)
+            setTempPayload(nextPayload as InputVar)
+          }}
+          onJSONSchemaChange={handleJSONSchemaChange}
+          onPayloadChange={handlePayloadChange}
+          onTypeChange={handleTypeChange}
+          onVarKeyBlur={handleVarKeyBlur}
+          onVarNameChange={handleVarNameChange}
+          options={options}
+          selectOptions={selectOptions}
+          showHiddenField={showHiddenField}
+          tempPayload={tempPayload}
+          validationError={validationError}
+          t={t}
+        />
+      </div>
+      <div className="shrink-0 px-6 pt-2 pb-6">
+        <div className="flex justify-end gap-2">
+          <DialogClose render={<Button />}>{tCommon(($) => $['operation.cancel'])}</DialogClose>
+          <Button type="submit" variant="primary">
+            {tCommon(($) => $['operation.save'])}
+          </Button>
+        </div>
+      </div>
+    </form>
   )
 }
-export default React.memo(ConfigModal)

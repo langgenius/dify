@@ -1,5 +1,5 @@
 import type { InputVar } from '@/app/components/workflow/types'
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { toast } from '@/app/components/app/configuration/toast'
@@ -9,7 +9,7 @@ import { commonQueryKeys } from '@/service/use-common'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppModeEnum, TransferMethod } from '@/types/app'
-import ConfigModal from '../index'
+import { ConfigModal } from '../index'
 
 vi.mock('next/navigation', async () => ({
   ...(await vi.importActual<typeof import('next/navigation')>('next/navigation')),
@@ -60,13 +60,68 @@ describe('ConfigModal', () => {
     })
   })
 
+  it('focuses the scroll area and resets cancelled draft and validation on a fresh opening', async () => {
+    const user = userEvent.setup()
+    const onConfirm = vi.fn()
+    const payload = createPayload({ label: 'Question' })
+    function Owner() {
+      const [open, setOpen] = React.useState(false)
+      return (
+        <>
+          <button type="button" onClick={() => setOpen(true)}>
+            Edit variable
+          </button>
+          <ConfigModal open={open} onOpenChange={setOpen} payload={payload} onConfirm={onConfirm} />
+        </>
+      )
+    }
+    render(<Owner />)
+    await user.click(screen.getByRole('button', { name: 'Edit variable' }))
+    await waitFor(() => expect(screen.getByTestId('config-modal-scroll-area')).toHaveFocus())
+    expect(toastErrorSpy).not.toHaveBeenCalled()
+    await user.clear(screen.getByRole('textbox', { name: 'appDebug.variableConfig.labelName' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    expect(screen.getByRole('textbox', { name: 'appDebug.variableConfig.labelName' })).toBeInvalid()
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await user.click(screen.getByRole('button', { name: 'Edit variable' }))
+    expect(screen.getByRole('textbox', { name: 'appDebug.variableConfig.labelName' })).toHaveValue(
+      'Question',
+    )
+    expect(
+      screen.getByRole('textbox', { name: 'appDebug.variableConfig.labelName' }),
+    ).not.toBeInvalid()
+    expect(onConfirm).not.toHaveBeenCalled()
+  })
+
+  it('keeps the original rename basis for the mounted editing session', async () => {
+    const user = userEvent.setup()
+    const onConfirm = vi.fn()
+    const props = { open: true, onOpenChange: vi.fn(), onConfirm }
+    const view = render(<ConfigModal {...props} payload={createPayload({ label: 'Question' })} />)
+    const input = screen.getByRole('textbox', { name: 'appDebug.variableConfig.varName' })
+    await user.clear(input)
+    await user.type(input, 'renamed')
+    view.rerender(
+      <ConfigModal
+        {...props}
+        payload={createPayload({ variable: 'external', label: 'External' })}
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    expect(onConfirm).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ variable: 'renamed' }),
+      expect.objectContaining({ payload: { beforeKey: 'question', afterKey: 'renamed' } }),
+    )
+  })
+
   it('should copy the variable name into the label when the label is empty', () => {
     render(
       <ConfigModal
         isCreate
-        isShow
+        open
         payload={createPayload()}
-        onClose={vi.fn()}
+        onOpenChange={vi.fn()}
         onConfirm={vi.fn()}
       />,
     )
@@ -82,9 +137,9 @@ describe('ConfigModal', () => {
     render(
       <ConfigModal
         isCreate
-        isShow
+        open
         payload={createPayload({ label: 'Question' })}
-        onClose={vi.fn()}
+        onOpenChange={vi.fn()}
         onConfirm={onConfirm}
       />,
     )
@@ -108,9 +163,9 @@ describe('ConfigModal', () => {
     render(
       <ConfigModal
         isCreate
-        isShow
+        open
         payload={createPayload({ label: 'Question' })}
-        onClose={vi.fn()}
+        onOpenChange={vi.fn()}
         onConfirm={onConfirm}
       />,
     )
@@ -138,9 +193,9 @@ describe('ConfigModal', () => {
     const user = userEvent.setup()
     render(
       <ConfigModal
-        isShow
+        open
         payload={createPayload({ variable: '', label: '' })}
-        onClose={vi.fn()}
+        onOpenChange={vi.fn()}
         onConfirm={vi.fn()}
       />,
     )
@@ -162,13 +217,13 @@ describe('ConfigModal', () => {
       const onConfirm = vi.fn()
       render(
         <ConfigModal
-          isShow
+          open
           payload={createPayload({
             type: InputVarType.number,
             label: 'Amount',
             default: initialDefault,
           })}
-          onClose={vi.fn()}
+          onOpenChange={vi.fn()}
           onConfirm={onConfirm}
         />,
       )
@@ -199,9 +254,9 @@ describe('ConfigModal', () => {
     const onConfirm = vi.fn()
     render(
       <ConfigModal
-        isShow
+        open
         payload={createPayload({ type: InputVarType.number, label: 'Amount', default: -7.123456 })}
-        onClose={vi.fn()}
+        onOpenChange={vi.fn()}
         onConfirm={onConfirm}
       />,
     )
@@ -229,9 +284,9 @@ describe('ConfigModal', () => {
       const onConfirm = vi.fn()
       render(
         <ConfigModal
-          isShow
+          open
           payload={createPayload({ label: 'Question', default: initialDefault })}
-          onClose={vi.fn()}
+          onOpenChange={vi.fn()}
           onConfirm={onConfirm}
         />,
       )
@@ -259,13 +314,13 @@ describe('ConfigModal', () => {
       const onConfirm = vi.fn()
       render(
         <ConfigModal
-          isShow
+          open
           payload={createPayload({
             type,
             label: 'Question',
             default: type === InputVarType.number ? 9 : 'hello',
           })}
-          onClose={vi.fn()}
+          onOpenChange={vi.fn()}
           onConfirm={onConfirm}
         />,
       )
@@ -291,7 +346,7 @@ describe('ConfigModal', () => {
       const onClose = vi.fn()
       render(
         <ConfigModal
-          isShow
+          open
           supportFile
           payload={createPayload({
             type,
@@ -302,7 +357,7 @@ describe('ConfigModal', () => {
             allowed_file_extensions: ['.txt'],
             allowed_file_upload_methods: [TransferMethod.local_file],
           })}
-          onClose={onClose}
+          onOpenChange={onClose}
           onConfirm={onConfirm}
         />,
       )
@@ -337,7 +392,7 @@ describe('ConfigModal', () => {
       const onConfirm = vi.fn()
       render(
         <ConfigModal
-          isShow
+          open
           supportFile
           payload={createPayload({
             type: InputVarType.multiFiles,
@@ -347,7 +402,7 @@ describe('ConfigModal', () => {
             allowed_file_types: [SupportUploadFileTypes.document],
             allowed_file_upload_methods: [TransferMethod.local_file],
           })}
-          onClose={vi.fn()}
+          onOpenChange={vi.fn()}
           onConfirm={onConfirm}
         />,
       )
@@ -373,7 +428,7 @@ describe('ConfigModal', () => {
     const onConfirm = vi.fn()
     const { queryClient } = render(
       <ConfigModal
-        isShow
+        open
         supportFile
         payload={createPayload({
           type: InputVarType.multiFiles,
@@ -383,7 +438,7 @@ describe('ConfigModal', () => {
           allowed_file_types: [SupportUploadFileTypes.document],
           allowed_file_upload_methods: [TransferMethod.local_file],
         })}
-        onClose={vi.fn()}
+        onOpenChange={vi.fn()}
         onConfirm={onConfirm}
       />,
     )
@@ -415,9 +470,9 @@ describe('ConfigModal', () => {
       const onConfirm = vi.fn()
       render(
         <ConfigModal
-          isShow
+          open
           payload={createPayload({ label: field === 'variable' ? '' : 'Question', [field]: '' })}
-          onClose={vi.fn()}
+          onOpenChange={vi.fn()}
           onConfirm={onConfirm}
         />,
       )
@@ -448,14 +503,14 @@ describe('ConfigModal', () => {
       const onConfirm = vi.fn()
       render(
         <ConfigModal
-          isShow
+          open
           payload={createPayload({
             type: InputVarType.select,
             label: 'Question',
             options,
             default: undefined,
           })}
-          onClose={vi.fn()}
+          onOpenChange={vi.fn()}
           onConfirm={onConfirm}
         />,
       )
@@ -485,7 +540,7 @@ describe('ConfigModal', () => {
       const onConfirm = vi.fn()
       render(
         <ConfigModal
-          isShow
+          open
           supportFile
           payload={createPayload({
             type: InputVarType.singleFile,
@@ -495,7 +550,7 @@ describe('ConfigModal', () => {
             allowed_file_extensions: [],
             allowed_file_upload_methods: [TransferMethod.local_file],
           })}
-          onClose={vi.fn()}
+          onOpenChange={vi.fn()}
           onConfirm={onConfirm}
         />,
       )
@@ -520,13 +575,13 @@ describe('ConfigModal', () => {
     const onConfirm = vi.fn()
     render(
       <ConfigModal
-        isShow
+        open
         payload={createPayload({
           type: InputVarType.jsonObject,
           label: 'Question',
           json_schema: '{"type":"object"}',
         })}
-        onClose={vi.fn()}
+        onOpenChange={vi.fn()}
         onConfirm={onConfirm}
       />,
     )
@@ -559,14 +614,14 @@ describe('ConfigModal', () => {
     (type) => {
       render(
         <ConfigModal
-          isShow
+          open
           payload={createPayload({
             type,
             label: 'Question',
             options: ['alpha'],
             default: undefined,
           })}
-          onClose={vi.fn()}
+          onOpenChange={vi.fn()}
           onConfirm={vi.fn()}
         />,
       )
@@ -586,9 +641,9 @@ describe('ConfigModal', () => {
     const onClose = vi.fn()
     render(
       <ConfigModal
-        isShow
+        open
         payload={createPayload({ label: 'Question' })}
-        onClose={onClose}
+        onOpenChange={onClose}
         onConfirm={onConfirm}
       />,
     )
@@ -603,9 +658,9 @@ describe('ConfigModal', () => {
     render(
       <ConfigModal
         isCreate
-        isShow
+        open
         payload={createPayload({ label: 'Question' })}
-        onClose={vi.fn()}
+        onOpenChange={vi.fn()}
         onConfirm={vi.fn()}
       />,
     )
@@ -622,9 +677,9 @@ describe('ConfigModal', () => {
     render(
       <ConfigModal
         isCreate
-        isShow
+        open
         payload={createPayload({ label: '' })}
-        onClose={vi.fn()}
+        onOpenChange={vi.fn()}
         onConfirm={vi.fn()}
       />,
     )

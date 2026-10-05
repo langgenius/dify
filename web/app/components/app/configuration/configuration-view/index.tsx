@@ -29,7 +29,7 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import AppPublisher from '@/app/components/app/app-publisher/features-wrapper'
 import Config from '@/app/components/app/configuration/config'
-import EditHistoryModal from '@/app/components/app/configuration/config-prompt/conversation-history/edit-modal'
+import { EditModal as EditHistoryModal } from '@/app/components/app/configuration/config-prompt/conversation-history/edit-modal'
 import { AgentSettingDialog } from '@/app/components/app/configuration/config/agent/agent-setting'
 import { SelectDataSet } from '@/app/components/app/configuration/dataset-config/select-dataset'
 import Debug from '@/app/components/app/configuration/debug'
@@ -230,15 +230,12 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
             onSelect={onSelectDataSets}
           />
 
-          {isShowHistoryModal && (
-            <EditHistoryModal
-              isShow={isShowHistoryModal}
-              saveLoading={false}
-              onClose={onCloseHistoryModal}
-              data={contextValue.completionPromptConfig.conversation_histories_role}
-              onSave={onSaveHistory}
-            />
-          )}
+          <EditHistoryModal
+            open={isShowHistoryModal}
+            onOpenChange={(open) => !open && onCloseHistoryModal()}
+            data={contextValue.completionPromptConfig.conversation_histories_role}
+            onSave={onSaveHistory}
+          />
 
           {isMobile && (
             <Drawer
