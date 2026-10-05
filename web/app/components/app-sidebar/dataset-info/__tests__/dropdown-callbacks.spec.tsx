@@ -136,22 +136,22 @@ vi.mock('@/app/notifications', () => ({
 }))
 
 vi.mock('@/app/components/datasets/rename-modal', () => ({
-  default: ({
-    show,
-    onClose,
+  RenameDatasetModal: ({
+    open,
+    onOpenChange,
     onSuccess,
   }: {
-    show: boolean
-    onClose: () => void
+    open: boolean
+    onOpenChange: (open: boolean) => void
     onSuccess?: () => void
   }) => {
-    if (!show) return null
+    if (!open) return null
     return (
       <div data-testid="rename-modal">
         <button type="button" onClick={onSuccess}>
           Success
         </button>
-        <button type="button" onClick={onClose}>
+        <button type="button" onClick={() => onOpenChange(false)}>
           Close
         </button>
       </div>

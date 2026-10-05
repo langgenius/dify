@@ -34,7 +34,7 @@ import { useInvalid } from '@/service/use-base'
 import { useExportPipelineDSL } from '@/service/use-pipeline'
 import { downloadBlob } from '@/utils/download'
 import { getDatasetACLCapabilities } from '@/utils/permission'
-import RenameDatasetModal from '../../datasets/rename-modal'
+import { RenameDatasetModal } from '../../datasets/rename-modal'
 
 type DropDownProps = {
   expand: boolean
@@ -217,14 +217,12 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
           </>
         )}
       </DropdownMenuContent>
-      {showRenameModal && (
-        <RenameDatasetModal
-          show={showRenameModal}
-          dataset={dataset!}
-          onClose={() => setShowRenameModal(false)}
-          onSuccess={refreshDataset}
-        />
-      )}
+      <RenameDatasetModal
+        open={showRenameModal}
+        dataset={dataset!}
+        onOpenChange={setShowRenameModal}
+        onSuccess={refreshDataset}
+      />
       <AlertDialog
         open={showConfirmDelete}
         onOpenChange={(open) => !open && setShowConfirmDelete(false)}

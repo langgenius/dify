@@ -1,6 +1,7 @@
 import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import * as datasetsService from '@/service/datasets'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import Operations from '../operations'
 
@@ -448,6 +449,32 @@ describe('Operations', () => {
 
       const renameInput = await screen.findByRole('textbox')
       expect(renameInput)!.toHaveValue('Test Document')
+    })
+
+    it('saves a name from the detail menu and closes after notifying the owner', async () => {
+      const user = userEvent.setup()
+      const rename = vi
+        .spyOn(datasetsService, 'renameDocumentName')
+        .mockResolvedValue({ result: 'success' })
+      const view = render(<Operations {...defaultProps} />)
+      try {
+        await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+        await user.click(
+          await screen.findByRole('menuitem', { name: 'datasetDocuments.list.table.rename' }),
+        )
+        await user.clear(screen.getByRole('textbox'))
+        await user.type(screen.getByRole('textbox'), 'Detail name{Enter}')
+        await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+        expect(rename).toHaveBeenCalledWith({
+          datasetId: 'dataset-1',
+          documentId: 'doc-1',
+          name: 'Detail name',
+        })
+        expect(mockOnUpdate).toHaveBeenCalledTimes(1)
+      } finally {
+        view.unmount()
+        rename.mockRestore()
+      }
     })
 
     it('should call sync for notion data source', async () => {

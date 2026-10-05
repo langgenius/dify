@@ -84,17 +84,6 @@ vi.mock('../actions', () => ({
   },
 }))
 
-// Mock EditPipelineInfo component
-vi.mock('../edit-pipeline-info', () => ({
-  default: ({ onClose }: { onClose: () => void }) => (
-    <div data-testid="edit-pipeline-info">
-      <button data-testid="edit-close" onClick={onClose}>
-        Close
-      </button>
-    </div>
-  ),
-}))
-
 vi.mock('@/app/components/workflow/workflow-preview', () => ({
   default: () => <div>Workflow preview</div>,
 }))
@@ -121,6 +110,7 @@ vi.mock('@/service/knowledge/use-dataset', () => ({
 }))
 
 vi.mock('@/service/use-pipeline', () => ({
+  useUpdateTemplateInfo: () => ({ mutateAsync: vi.fn(), isPending: false }),
   usePipelineTemplateById: () => ({
     data: {
       name: 'Test Pipeline',
@@ -608,7 +598,9 @@ describe('TemplateCard', () => {
       fireEvent.click(editButton)
 
       await waitFor(() => {
-        expect(screen.getByTestId('edit-pipeline-info')).toBeInTheDocument()
+        expect(
+          screen.getByRole('dialog', { name: 'datasetPipeline.editPipelineInfo' }),
+        ).toBeInTheDocument()
       })
     })
 
@@ -618,14 +610,18 @@ describe('TemplateCard', () => {
       fireEvent.click(editButton)
 
       await waitFor(() => {
-        expect(screen.getByTestId('edit-pipeline-info')).toBeInTheDocument()
+        expect(
+          screen.getByRole('dialog', { name: 'datasetPipeline.editPipelineInfo' }),
+        ).toBeInTheDocument()
       })
 
-      const closeButton = screen.getByTestId('edit-close')
+      const closeButton = screen.getByRole('button', { name: 'common.operation.close' })
       fireEvent.click(closeButton)
 
       await waitFor(() => {
-        expect(screen.queryByTestId('edit-pipeline-info')).not.toBeInTheDocument()
+        expect(
+          screen.queryByRole('dialog', { name: 'datasetPipeline.editPipelineInfo' }),
+        ).not.toBeInTheDocument()
       })
     })
 
@@ -634,13 +630,17 @@ describe('TemplateCard', () => {
       fireEvent.click(screen.getByTestId('action-edit'))
 
       await waitFor(() => {
-        expect(screen.getByTestId('edit-pipeline-info')).toBeInTheDocument()
+        expect(
+          screen.getByRole('dialog', { name: 'datasetPipeline.editPipelineInfo' }),
+        ).toBeInTheDocument()
       })
 
       fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
 
       await waitFor(() => {
-        expect(screen.queryByTestId('edit-pipeline-info')).not.toBeInTheDocument()
+        expect(
+          screen.queryByRole('dialog', { name: 'datasetPipeline.editPipelineInfo' }),
+        ).not.toBeInTheDocument()
       })
     })
   })

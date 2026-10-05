@@ -7,18 +7,18 @@ import DatasetCardModals from '../dataset-card-modals'
 
 // Mock RenameDatasetModal since it's from a different feature folder
 vi.mock('../../../../rename-modal', () => ({
-  default: ({
-    show,
-    onClose,
+  RenameDatasetModal: ({
+    open,
+    onOpenChange,
     onSuccess,
   }: {
-    show: boolean
-    onClose: () => void
+    open: boolean
+    onOpenChange: (open: boolean) => void
     onSuccess?: () => void
   }) =>
-    show ? (
+    open ? (
       <div data-testid="rename-modal">
-        <button onClick={onClose}>Close Rename</button>
+        <button onClick={() => onOpenChange(false)}>Close Rename</button>
         <button onClick={onSuccess}>Success</button>
       </div>
     ) : null,
