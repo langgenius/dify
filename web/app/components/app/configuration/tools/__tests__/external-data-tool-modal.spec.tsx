@@ -1,6 +1,7 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { mockEmojiData, renderWithEmoji as render } from '@/test/emoji-picker'
-import ExternalDataToolModal from '../external-data-tool-modal'
+import { ExternalDataToolModal } from '../external-data-tool-modal'
 
 const mockToastError = vi.fn()
 
@@ -50,15 +51,11 @@ vi.mock('@/service/use-common', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/app-icon', () => ({
-  default: ({ onClick }: { onClick: () => void }) => (
-    <button onClick={onClick}>open-emoji-picker</button>
-  ),
-}))
-
 vi.mock('@/app/components/base/features/new-feature-panel/moderation/form-generation', () => ({
   default: ({ onChange }: { onChange: (value: Record<string, string>) => void }) => (
-    <button onClick={() => onChange({ api_key: 'secret-key' })}>fill-form</button>
+    <button type="button" onClick={() => onChange({ api_key: 'secret-key' })}>
+      fill-form
+    </button>
   ),
 }))
 
@@ -69,7 +66,11 @@ vi.mock('@/app/components/header/account-setting/api-based-extension-page/select
   }: {
     onChange: (value: string) => void
     value: string
-  }) => <button onClick={() => onChange('extension-1')}>{value || 'pick-extension'}</button>,
+  }) => (
+    <button type="button" onClick={() => onChange('extension-1')}>
+      {value || 'pick-extension'}
+    </button>
+  ),
 }))
 
 describe('ExternalDataToolModal', () => {
@@ -83,7 +84,7 @@ describe('ExternalDataToolModal', () => {
   })
 
   it('should require an API extension before saving api-based tools', () => {
-    render(<ExternalDataToolModal data={{}} onCancel={mockOnCancel} onSave={mockOnSave} />)
+    render(<ExternalDataToolModal open data={{}} onOpenChange={mockOnCancel} onSave={mockOnSave} />)
 
     fireEvent.change(
       screen.getByPlaceholderText(/(?:^|\.)feature\.tools\.modal\.name\.placeholder(?=$|:)/),
@@ -112,8 +113,9 @@ describe('ExternalDataToolModal', () => {
 
     render(
       <ExternalDataToolModal
+        open
         data={{}}
-        onCancel={mockOnCancel}
+        onOpenChange={mockOnCancel}
         onSave={mockOnSave}
         onValidateBeforeSave={mockOnValidateBeforeSave}
       />,
@@ -134,7 +136,7 @@ describe('ExternalDataToolModal', () => {
       },
     )
     fireEvent.click(screen.getByText('pick-extension'))
-    fireEvent.click(screen.getByText('open-emoji-picker'))
+    fireEvent.click(screen.getByRole('button', { name: 'app.iconPicker.title' }))
     await waitFor(() => {
       expect(screen.getByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
     })
@@ -143,6 +145,7 @@ describe('ExternalDataToolModal', () => {
     fireEvent.click(emojiButton!)
     fireEvent.click(screen.getByRole('radio', { name: 'app.iconPicker.color.green' }))
     fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
+    expect(mockOnSave).not.toHaveBeenCalled()
     fireEvent.click(screen.getByText(/(?:^|\.)operation\.save(?=$|:)/))
 
     await waitFor(() => {
@@ -186,6 +189,7 @@ describe('ExternalDataToolModal', () => {
   it('should save code-based tools with schema values and support cancel', async () => {
     render(
       <ExternalDataToolModal
+        open
         data={{
           type: 'code-tool',
           enabled: false,
@@ -193,7 +197,7 @@ describe('ExternalDataToolModal', () => {
             api_key: 'default-key',
           },
         }}
-        onCancel={mockOnCancel}
+        onOpenChange={mockOnCancel}
         onSave={mockOnSave}
       />,
     )
@@ -235,3 +239,37 @@ describe('ExternalDataToolModal', () => {
 })
 
 mockEmojiData()
+
+it('discards cancelled tool edits and submits a fresh session with Enter', async () => {
+  const user = userEvent.setup()
+  const data = {
+    type: 'api',
+    label: 'Original',
+    variable: 'original',
+    config: { api_based_extension_id: 'extension-1' },
+  }
+  const onOpenChange = vi.fn()
+  const onSave = vi.fn()
+  const view = render(
+    <ExternalDataToolModal open data={data} onOpenChange={onOpenChange} onSave={onSave} />,
+  )
+  const name = screen.getByRole('textbox', { name: 'appDebug.feature.tools.modal.name.title' })
+  await user.clear(name)
+  await user.type(name, 'Discard')
+  await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+  expect(onOpenChange).toHaveBeenCalledWith(false, expect.anything())
+  view.rerender(
+    <ExternalDataToolModal open={false} data={data} onOpenChange={onOpenChange} onSave={onSave} />,
+  )
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  view.rerender(
+    <ExternalDataToolModal open data={data} onOpenChange={onOpenChange} onSave={onSave} />,
+  )
+  const freshName = screen.getByRole('textbox', { name: 'appDebug.feature.tools.modal.name.title' })
+  expect(freshName).toHaveValue('Original')
+  await user.clear(freshName)
+  await user.type(freshName, 'Saved{Enter}')
+  expect(onSave).toHaveBeenCalledExactlyOnceWith(
+    expect.objectContaining({ label: 'Saved', variable: 'original' }),
+  )
+})

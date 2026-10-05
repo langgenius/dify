@@ -2,7 +2,7 @@ import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { RiEqualizer2Line } from '@remixicon/react'
 import { produce } from 'immer'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
@@ -23,7 +23,6 @@ const Moderation = ({ disabled, onChange }: Props) => {
   const featuresStore = useFeaturesStore()
   const moderation = useFeatures((s) => s.features.moderation)
   const { data: codeBasedExtensionList } = useCodeBasedExtensions('moderation')
-  const [isHovering, setIsHovering] = useState(false)
 
   const handleOpenModerationSettingModal = () => {
     /* v8 ignore next -- guarded path is not reachable in tests with a real disabled button because click is prevented at DOM level. @preserve */
@@ -127,8 +126,6 @@ const Moderation = ({ disabled, onChange }: Props) => {
       title={t(($) => $['feature.moderation.title'], { ns: 'appDebug' })}
       value={!!moderation?.enabled}
       onChange={(state) => handleChange(FeatureEnum.moderation, state)}
-      onMouseEnter={() => setIsHovering(true)}
-      onMouseLeave={() => setIsHovering(false)}
       disabled={disabled}
     >
       <>
@@ -139,33 +136,29 @@ const Moderation = ({ disabled, onChange }: Props) => {
         )}
         {!!moderation?.enabled && (
           <>
-            {!isHovering && (
-              <div className="flex items-center gap-4 pt-0.5">
-                <div className="">
-                  <div className="mb-0.5 system-2xs-medium-uppercase text-text-tertiary">
-                    {t(($) => $['feature.moderation.modal.provider.title'], { ns: 'appDebug' })}
-                  </div>
-                  <div className="system-xs-regular text-text-secondary">{providerContent}</div>
+            <div className="flex items-center gap-4 pt-0.5 group-focus-within/feature:invisible group-hover/feature:invisible">
+              <div className="">
+                <div className="mb-0.5 system-2xs-medium-uppercase text-text-tertiary">
+                  {t(($) => $['feature.moderation.modal.provider.title'], { ns: 'appDebug' })}
                 </div>
-                <div className="h-6.75 w-px rotate-12 bg-divider-subtle"></div>
-                <div className="">
-                  <div className="mb-0.5 system-2xs-medium-uppercase text-text-tertiary">
-                    {t(($) => $['feature.moderation.contentEnableLabel'], { ns: 'appDebug' })}
-                  </div>
-                  <div className="system-xs-regular text-text-secondary">{enableContent}</div>
-                </div>
+                <div className="system-xs-regular text-text-secondary">{providerContent}</div>
               </div>
-            )}
-            {isHovering && (
-              <Button
-                className="w-full"
-                onClick={handleOpenModerationSettingModal}
-                disabled={disabled}
-              >
-                <RiEqualizer2Line className="size-4" />
-                {t(($) => $['operation.settings'], { ns: 'common' })}
-              </Button>
-            )}
+              <div className="h-6.75 w-px rotate-12 bg-divider-subtle"></div>
+              <div className="">
+                <div className="mb-0.5 system-2xs-medium-uppercase text-text-tertiary">
+                  {t(($) => $['feature.moderation.contentEnableLabel'], { ns: 'appDebug' })}
+                </div>
+                <div className="system-xs-regular text-text-secondary">{enableContent}</div>
+              </div>
+            </div>
+            <Button
+              className="pointer-events-none absolute right-3 bottom-3 left-3 opacity-0 group-focus-within/feature:pointer-events-auto group-focus-within/feature:opacity-100 group-hover/feature:pointer-events-auto group-hover/feature:opacity-100"
+              onClick={handleOpenModerationSettingModal}
+              disabled={disabled}
+            >
+              <RiEqualizer2Line className="size-4" />
+              {t(($) => $['operation.settings'], { ns: 'common' })}
+            </Button>
           </>
         )}
       </>

@@ -163,7 +163,7 @@ describe('Moderation', () => {
     expect(screen.getByText(/feature\.moderation\.outputEnabled/))!.toBeInTheDocument()
   })
 
-  it('should show settings button when hovering over enabled feature', () => {
+  it('should show settings button for an enabled feature without a pointer hover', () => {
     renderWithProvider(
       {},
       {
@@ -176,9 +176,6 @@ describe('Moderation', () => {
         },
       },
     )
-
-    const card = screen.getByText(/feature\.moderation\.title/).closest('[class]')!
-    fireEvent.mouseEnter(card)
 
     expect(screen.getByText(/operation\.settings/))!.toBeInTheDocument()
   })
@@ -197,8 +194,6 @@ describe('Moderation', () => {
       },
     )
 
-    const card = screen.getByText(/feature\.moderation\.title/).closest('[class]')!
-    fireEvent.mouseEnter(card)
     fireEvent.click(screen.getByText(/operation\.settings/))
 
     expect(mockSetShowModerationSettingModal).toHaveBeenCalled()
@@ -218,8 +213,6 @@ describe('Moderation', () => {
       },
     )
 
-    const card = screen.getByText(/feature\.moderation\.title/).closest('[class]')!
-    fireEvent.mouseEnter(card)
     fireEvent.click(screen.getByText(/operation\.settings/))
 
     expect(mockSetShowModerationSettingModal).not.toHaveBeenCalled()
@@ -304,8 +297,6 @@ describe('Moderation', () => {
       },
     )
 
-    const card = screen.getByText(/feature\.moderation\.title/).closest('[class]')!
-    fireEvent.mouseEnter(card)
     fireEvent.click(screen.getByText(/operation\.settings/))
 
     const modalCall = mockSetShowModerationSettingModal.mock.calls[0]![0]
@@ -328,8 +319,6 @@ describe('Moderation', () => {
       },
     )
 
-    const card = screen.getByText(/feature\.moderation\.title/).closest('[class]')!
-    fireEvent.mouseEnter(card)
     fireEvent.click(screen.getByText(/operation\.settings/))
 
     const modalCall = mockSetShowModerationSettingModal.mock.calls[0]![0]
@@ -351,8 +340,6 @@ describe('Moderation', () => {
       },
     )
 
-    const card = screen.getByText(/feature\.moderation\.title/).closest('[class]')!
-    fireEvent.mouseEnter(card)
     fireEvent.click(screen.getByText(/operation\.settings/))
 
     const modalCall = mockSetShowModerationSettingModal.mock.calls[0]![0]
@@ -375,8 +362,6 @@ describe('Moderation', () => {
       },
     )
 
-    const card = screen.getByText(/feature\.moderation\.title/).closest('[class]')!
-    fireEvent.mouseEnter(card)
     fireEvent.click(screen.getByText(/operation\.settings/))
 
     const modalCall = mockSetShowModerationSettingModal.mock.calls[0]![0]
@@ -461,8 +446,6 @@ describe('Moderation', () => {
       },
     )
 
-    const card = screen.getByText(/feature\.moderation\.title/).closest('[class]')!
-    fireEvent.mouseEnter(card)
     fireEvent.click(screen.getByText(/operation\.settings/))
 
     // disabled check in handleOpenModerationSettingModal should prevent call
@@ -554,55 +537,5 @@ describe('Moderation', () => {
     // because features.moderation.type is already 'keywords'
     // It should NOT call setShowModerationSettingModal for init
     expect(mockSetShowModerationSettingModal).not.toHaveBeenCalled()
-  })
-
-  it('should hide info display when hovering over enabled feature', () => {
-    renderWithProvider(
-      {},
-      {
-        moderation: {
-          enabled: true,
-          type: 'keywords',
-          config: {
-            inputs_config: { enabled: true, preset_response: '' },
-            outputs_config: { enabled: false, preset_response: '' },
-          },
-        },
-      },
-    )
-
-    const card = screen.getByText(/feature\.moderation\.title/).closest('[class]')!
-
-    // Info is visible before hover
-    // Info is visible before hover
-    expect(screen.getByText(/feature\.moderation\.modal\.provider\.keywords/))!.toBeInTheDocument()
-
-    fireEvent.mouseEnter(card)
-
-    // Info hidden, settings button shown
-    // Info hidden, settings button shown
-    expect(screen.getByText(/operation\.settings/))!.toBeInTheDocument()
-  })
-
-  it('should show info display again when mouse leaves', () => {
-    renderWithProvider(
-      {},
-      {
-        moderation: {
-          enabled: true,
-          type: 'keywords',
-          config: {
-            inputs_config: { enabled: true, preset_response: '' },
-            outputs_config: { enabled: false, preset_response: '' },
-          },
-        },
-      },
-    )
-
-    const card = screen.getByText(/feature\.moderation\.title/).closest('[class]')!
-    fireEvent.mouseEnter(card)
-    fireEvent.mouseLeave(card)
-
-    expect(screen.getByText(/feature\.moderation\.modal\.provider\.keywords/))!.toBeInTheDocument()
   })
 })

@@ -66,7 +66,7 @@ describe('ConversationOpener', () => {
     expect(onChange).toHaveBeenCalled()
   })
 
-  it('should show opening statement when enabled and not hovering', () => {
+  it('should show opening statement when enabled', () => {
     renderWithProvider(
       {},
       {
@@ -88,16 +88,13 @@ describe('ConversationOpener', () => {
     expect(screen.getByText(/openingStatement\.placeholder/))!.toBeInTheDocument()
   })
 
-  it('should show edit button when hovering over enabled feature', () => {
+  it('should show edit button for an enabled feature without a pointer hover', () => {
     renderWithProvider(
       {},
       {
         opening: { enabled: true, opening_statement: 'Hello' },
       },
     )
-
-    const card = screen.getByText(/feature\.conversationOpener\.title/).closest('[class]')!
-    fireEvent.mouseEnter(card)
 
     expect(screen.getByText(/openingStatement\.writeOpener/))!.toBeInTheDocument()
   })
@@ -110,8 +107,6 @@ describe('ConversationOpener', () => {
       },
     )
 
-    const card = screen.getByText(/feature\.conversationOpener\.title/).closest('[class]')!
-    fireEvent.mouseEnter(card)
     fireEvent.click(screen.getByText(/openingStatement\.writeOpener/))
 
     expect(mockSetShowOpeningModal).toHaveBeenCalled()
@@ -125,8 +120,6 @@ describe('ConversationOpener', () => {
       },
     )
 
-    const card = screen.getByText(/feature\.conversationOpener\.title/).closest('[class]')!
-    fireEvent.mouseEnter(card)
     fireEvent.click(screen.getByText(/openingStatement\.writeOpener/))
 
     expect(mockSetShowOpeningModal).not.toHaveBeenCalled()
@@ -140,8 +133,6 @@ describe('ConversationOpener', () => {
       },
     )
 
-    const card = screen.getByText(/feature\.conversationOpener\.title/).closest('[class]')!
-    fireEvent.mouseEnter(card)
     fireEvent.click(screen.getByText(/openingStatement\.writeOpener/))
 
     const modalCall = mockSetShowOpeningModal.mock.calls[0]![0]
@@ -159,8 +150,6 @@ describe('ConversationOpener', () => {
       },
     )
 
-    const card = screen.getByText(/feature\.conversationOpener\.title/).closest('[class]')!
-    fireEvent.mouseEnter(card)
     fireEvent.click(screen.getByText(/openingStatement\.writeOpener/))
 
     const modalCall = mockSetShowOpeningModal.mock.calls[0]![0]
@@ -180,8 +169,6 @@ describe('ConversationOpener', () => {
       },
     )
 
-    const card = screen.getByText(/feature\.conversationOpener\.title/).closest('[class]')!
-    fireEvent.mouseEnter(card)
     fireEvent.click(screen.getByText(/openingStatement\.writeOpener/))
 
     const modalCall = mockSetShowOpeningModal.mock.calls[0]![0]
@@ -190,33 +177,7 @@ describe('ConversationOpener', () => {
     expect(onChange).toHaveBeenCalled()
   })
 
-  it('should show info and hide when hovering over enabled feature', () => {
-    renderWithProvider(
-      {},
-      {
-        opening: { enabled: true, opening_statement: 'Welcome!' },
-      },
-    )
-
-    // Before hover, opening statement visible
-    // Before hover, opening statement visible
-    expect(screen.getByText('Welcome!'))!.toBeInTheDocument()
-
-    const card = screen.getByText(/feature\.conversationOpener\.title/).closest('[class]')!
-    fireEvent.mouseEnter(card)
-
-    // After hover, button visible, statement hidden
-    // After hover, button visible, statement hidden
-    expect(screen.getByText(/openingStatement\.writeOpener/))!.toBeInTheDocument()
-
-    fireEvent.mouseLeave(card)
-
-    // After leave, statement visible again
-    // After leave, statement visible again
-    expect(screen.getByText('Welcome!'))!.toBeInTheDocument()
-  })
-
-  it('should return early from opener handler when disabled and hovered', () => {
+  it('should return early from opener handler when disabled', () => {
     renderWithProvider(
       { disabled: true },
       {
@@ -224,8 +185,6 @@ describe('ConversationOpener', () => {
       },
     )
 
-    const card = screen.getByText(/feature\.conversationOpener\.title/).closest('[class]')!
-    fireEvent.mouseEnter(card)
     fireEvent.click(screen.getByText(/openingStatement\.writeOpener/))
 
     expect(mockSetShowOpeningModal).not.toHaveBeenCalled()
@@ -239,8 +198,6 @@ describe('ConversationOpener', () => {
       },
     )
 
-    const card = screen.getByText(/feature\.conversationOpener\.title/).closest('[class]')!
-    fireEvent.mouseEnter(card)
     fireEvent.click(screen.getByText(/openingStatement\.writeOpener/))
 
     const modalCall = mockSetShowOpeningModal.mock.calls[0]![0]

@@ -1,7 +1,7 @@
 import type { AppConfigJsonValue } from '@dify/contracts/api/console/apps/types.gen'
 import type { TFunction } from 'i18next'
 import type { ModerationConfig } from '@/models/debug'
-import { act, fireEvent, screen } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as i18n from 'react-i18next'
 import { buildConfigurationDatasetConfigs } from '@/app/components/app/configuration/hooks/configuration-lifecycle/dataset'
@@ -12,7 +12,7 @@ import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { createAppModelConfigFixture } from '@/test/fixtures/app'
 import { withSelectorKey } from '@/test/i18n-mock'
 import { AppModeEnum, ModelModeType } from '@/types/app'
-import ModerationSettingModal from '../moderation-setting-modal'
+import { ModerationSettingModal } from '../moderation-setting-modal'
 
 const mockNotify = vi.fn()
 vi.mock('@/app/notifications', () => ({
@@ -116,7 +116,7 @@ describe('ModerationSettingModal', () => {
 
   it('should render the modal title', async () => {
     await renderModal(
-      <ModerationSettingModal data={defaultData} onCancel={vi.fn()} onSave={onSave} />,
+      <ModerationSettingModal open data={defaultData} onOpenChange={vi.fn()} onSave={onSave} />,
     )
 
     expect(screen.getByText(/feature\.moderation\.modal\.title/))!.toBeInTheDocument()
@@ -124,7 +124,7 @@ describe('ModerationSettingModal', () => {
 
   it('should render provider options', async () => {
     await renderModal(
-      <ModerationSettingModal data={defaultData} onCancel={vi.fn()} onSave={onSave} />,
+      <ModerationSettingModal open data={defaultData} onOpenChange={vi.fn()} onSave={onSave} />,
     )
 
     expect(screen.getByText(/feature\.moderation\.modal\.provider\.openai/))!.toBeInTheDocument()
@@ -137,7 +137,7 @@ describe('ModerationSettingModal', () => {
 
   it('should show keywords textarea when keywords type is selected', async () => {
     await renderModal(
-      <ModerationSettingModal data={defaultData} onCancel={vi.fn()} onSave={onSave} />,
+      <ModerationSettingModal open data={defaultData} onOpenChange={vi.fn()} onSave={onSave} />,
     )
 
     const textarea = screen.getByPlaceholderText(
@@ -149,7 +149,7 @@ describe('ModerationSettingModal', () => {
 
   it('should render cancel and save buttons', async () => {
     await renderModal(
-      <ModerationSettingModal data={defaultData} onCancel={vi.fn()} onSave={onSave} />,
+      <ModerationSettingModal open data={defaultData} onOpenChange={vi.fn()} onSave={onSave} />,
     )
 
     expect(screen.getByText(/operation\.cancel/))!.toBeInTheDocument()
@@ -159,7 +159,7 @@ describe('ModerationSettingModal', () => {
   it('should call onCancel when cancel is clicked', async () => {
     const onCancel = vi.fn()
     await renderModal(
-      <ModerationSettingModal data={defaultData} onCancel={onCancel} onSave={onSave} />,
+      <ModerationSettingModal open data={defaultData} onOpenChange={onCancel} onSave={onSave} />,
     )
 
     fireEvent.click(screen.getByText(/operation\.cancel/))
@@ -170,7 +170,7 @@ describe('ModerationSettingModal', () => {
   it('should call onCancel when close icon receives Enter key', async () => {
     const onCancel = vi.fn()
     await renderModal(
-      <ModerationSettingModal data={defaultData} onCancel={onCancel} onSave={onSave} />,
+      <ModerationSettingModal open data={defaultData} onOpenChange={onCancel} onSave={onSave} />,
     )
 
     const user = userEvent.setup()
@@ -184,7 +184,7 @@ describe('ModerationSettingModal', () => {
   it('should call onCancel when close icon receives Space key', async () => {
     const onCancel = vi.fn()
     await renderModal(
-      <ModerationSettingModal data={defaultData} onCancel={onCancel} onSave={onSave} />,
+      <ModerationSettingModal open data={defaultData} onOpenChange={onCancel} onSave={onSave} />,
     )
 
     const user = userEvent.setup()
@@ -195,17 +195,17 @@ describe('ModerationSettingModal', () => {
     expect(onCancel).toHaveBeenCalledTimes(1)
   })
 
-  it('should not call onCancel when close icon receives non-action key', async () => {
+  it('should request cancellation when Escape is pressed', async () => {
     const onCancel = vi.fn()
     await renderModal(
-      <ModerationSettingModal data={defaultData} onCancel={onCancel} onSave={onSave} />,
+      <ModerationSettingModal open data={defaultData} onOpenChange={onCancel} onSave={onSave} />,
     )
 
     const closeButton = screen.getByRole('button', { name: 'common.operation.close' })
     closeButton.focus()
     fireEvent.keyDown(closeButton, { key: 'Escape' })
 
-    expect(onCancel).not.toHaveBeenCalled()
+    expect(onCancel).toHaveBeenCalledExactlyOnceWith(false, expect.anything())
   })
 
   it('should show error when saving without inputs or outputs enabled', async () => {
@@ -217,7 +217,9 @@ describe('ModerationSettingModal', () => {
         outputs_config: { enabled: false, preset_response: '' },
       },
     }
-    await renderModal(<ModerationSettingModal data={data} onCancel={vi.fn()} onSave={onSave} />)
+    await renderModal(
+      <ModerationSettingModal open data={data} onOpenChange={vi.fn()} onSave={onSave} />,
+    )
 
     fireEvent.click(screen.getByText(/operation\.save/))
 
@@ -233,7 +235,9 @@ describe('ModerationSettingModal', () => {
         outputs_config: { enabled: false, preset_response: '' },
       },
     }
-    await renderModal(<ModerationSettingModal data={data} onCancel={vi.fn()} onSave={onSave} />)
+    await renderModal(
+      <ModerationSettingModal open data={data} onOpenChange={vi.fn()} onSave={onSave} />,
+    )
 
     fireEvent.click(screen.getByText(/operation\.save/))
 
@@ -249,7 +253,9 @@ describe('ModerationSettingModal', () => {
         outputs_config: { enabled: false, preset_response: '' },
       },
     }
-    await renderModal(<ModerationSettingModal data={data} onCancel={vi.fn()} onSave={onSave} />)
+    await renderModal(
+      <ModerationSettingModal open data={data} onOpenChange={vi.fn()} onSave={onSave} />,
+    )
 
     fireEvent.click(screen.getByText(/operation\.save/))
 
@@ -274,7 +280,9 @@ describe('ModerationSettingModal', () => {
         outputs_config: { enabled: false, preset_response: '' },
       },
     }
-    await renderModal(<ModerationSettingModal data={data} onCancel={vi.fn()} onSave={onSave} />)
+    await renderModal(
+      <ModerationSettingModal open data={data} onOpenChange={vi.fn()} onSave={onSave} />,
+    )
 
     fireEvent.change(
       screen.getByRole('textbox', { name: /feature\.moderation\.modal\.content\.preset/ }),
@@ -298,12 +306,13 @@ describe('ModerationSettingModal', () => {
   it('should show api selector when api type is selected', async () => {
     await renderModal(
       <ModerationSettingModal
+        open
         data={{
           ...defaultData,
           type: 'api',
           config: { inputs_config: { enabled: true, preset_response: '' } },
         }}
-        onCancel={vi.fn()}
+        onOpenChange={vi.fn()}
         onSave={onSave}
       />,
     )
@@ -313,7 +322,7 @@ describe('ModerationSettingModal', () => {
 
   it('should switch provider type when clicked', async () => {
     await renderModal(
-      <ModerationSettingModal data={defaultData} onCancel={vi.fn()} onSave={onSave} />,
+      <ModerationSettingModal open data={defaultData} onOpenChange={vi.fn()} onSave={onSave} />,
     )
 
     // Click on openai_moderation provider
@@ -358,7 +367,7 @@ describe('ModerationSettingModal', () => {
 
   it('should update keywords on textarea change', async () => {
     await renderModal(
-      <ModerationSettingModal data={defaultData} onCancel={vi.fn()} onSave={onSave} />,
+      <ModerationSettingModal open data={defaultData} onOpenChange={vi.fn()} onSave={onSave} />,
     )
 
     const textarea = screen.getByPlaceholderText(
@@ -371,7 +380,7 @@ describe('ModerationSettingModal', () => {
 
   it('should render moderation content sections', async () => {
     await renderModal(
-      <ModerationSettingModal data={defaultData} onCancel={vi.fn()} onSave={onSave} />,
+      <ModerationSettingModal open data={defaultData} onOpenChange={vi.fn()} onSave={onSave} />,
     )
 
     expect(screen.getByText(/feature\.moderation\.modal\.content\.input/))!.toBeInTheDocument()
@@ -387,7 +396,9 @@ describe('ModerationSettingModal', () => {
         outputs_config: { enabled: false, preset_response: '' },
       },
     }
-    await renderModal(<ModerationSettingModal data={data} onCancel={vi.fn()} onSave={onSave} />)
+    await renderModal(
+      <ModerationSettingModal open data={data} onOpenChange={vi.fn()} onSave={onSave} />,
+    )
 
     fireEvent.click(screen.getByText(/operation\.save/))
 
@@ -403,7 +414,9 @@ describe('ModerationSettingModal', () => {
         outputs_config: { enabled: false, preset_response: '' },
       },
     }
-    await renderModal(<ModerationSettingModal data={data} onCancel={vi.fn()} onSave={onSave} />)
+    await renderModal(
+      <ModerationSettingModal open data={data} onOpenChange={vi.fn()} onSave={onSave} />,
+    )
 
     fireEvent.click(screen.getByText(/operation\.save/))
 
@@ -420,7 +433,9 @@ describe('ModerationSettingModal', () => {
         outputs_config: { enabled: false, preset_response: '' },
       },
     }
-    await renderModal(<ModerationSettingModal data={data} onCancel={vi.fn()} onSave={onSave} />)
+    await renderModal(
+      <ModerationSettingModal open data={data} onOpenChange={vi.fn()} onSave={onSave} />,
+    )
 
     // api type doesn't require preset_response, so save should succeed
     fireEvent.click(screen.getByText(/operation\.save/))
@@ -444,7 +459,9 @@ describe('ModerationSettingModal', () => {
         outputs_config: { enabled: true, preset_response: '' },
       },
     }
-    await renderModal(<ModerationSettingModal data={data} onCancel={vi.fn()} onSave={onSave} />)
+    await renderModal(
+      <ModerationSettingModal open data={data} onOpenChange={vi.fn()} onSave={onSave} />,
+    )
 
     fireEvent.click(screen.getByText(/operation\.save/))
 
@@ -453,7 +470,7 @@ describe('ModerationSettingModal', () => {
 
   it('should toggle input moderation content', async () => {
     await renderModal(
-      <ModerationSettingModal data={defaultData} onCancel={vi.fn()} onSave={onSave} />,
+      <ModerationSettingModal open data={defaultData} onOpenChange={vi.fn()} onSave={onSave} />,
     )
 
     const switches = screen.getAllByRole('switch')
@@ -470,7 +487,7 @@ describe('ModerationSettingModal', () => {
 
   it('should toggle output moderation content', async () => {
     await renderModal(
-      <ModerationSettingModal data={defaultData} onCancel={vi.fn()} onSave={onSave} />,
+      <ModerationSettingModal open data={defaultData} onOpenChange={vi.fn()} onSave={onSave} />,
     )
 
     const switches = screen.getAllByRole('switch')
@@ -488,12 +505,13 @@ describe('ModerationSettingModal', () => {
   it('should select api extension via api selector', async () => {
     await renderModal(
       <ModerationSettingModal
+        open
         data={{
           ...defaultData,
           type: 'api',
           config: { inputs_config: { enabled: true, preset_response: '' } },
         }}
-        onCancel={vi.fn()}
+        onOpenChange={vi.fn()}
         onSave={onSave}
       />,
     )
@@ -512,6 +530,7 @@ describe('ModerationSettingModal', () => {
   it('should save with openai_moderation type when configured', async () => {
     await renderModal(
       <ModerationSettingModal
+        open
         data={{
           enabled: true,
           type: 'openai_moderation',
@@ -520,7 +539,7 @@ describe('ModerationSettingModal', () => {
             outputs_config: { enabled: false, preset_response: '' },
           },
         }}
-        onCancel={vi.fn()}
+        onOpenChange={vi.fn()}
         onSave={onSave}
       />,
     )
@@ -536,7 +555,7 @@ describe('ModerationSettingModal', () => {
 
   it('should handle keyword truncation to 100 chars per line and 100 lines', async () => {
     await renderModal(
-      <ModerationSettingModal data={defaultData} onCancel={vi.fn()} onSave={onSave} />,
+      <ModerationSettingModal open data={defaultData} onOpenChange={vi.fn()} onSave={onSave} />,
     )
 
     const textarea = screen.getByPlaceholderText(
@@ -559,7 +578,9 @@ describe('ModerationSettingModal', () => {
         outputs_config: { enabled: true, preset_response: 'output blocked' },
       },
     }
-    await renderModal(<ModerationSettingModal data={data} onCancel={vi.fn()} onSave={onSave} />)
+    await renderModal(
+      <ModerationSettingModal open data={data} onOpenChange={vi.fn()} onSave={onSave} />,
+    )
 
     fireEvent.click(screen.getByText(/operation\.save/))
 
@@ -575,7 +596,7 @@ describe('ModerationSettingModal', () => {
 
   it('should switch from keywords to api type', async () => {
     await renderModal(
-      <ModerationSettingModal data={defaultData} onCancel={vi.fn()} onSave={onSave} />,
+      <ModerationSettingModal open data={defaultData} onOpenChange={vi.fn()} onSave={onSave} />,
     )
 
     // Click api provider
@@ -591,7 +612,7 @@ describe('ModerationSettingModal', () => {
 
   it('should handle empty lines in keywords', async () => {
     await renderModal(
-      <ModerationSettingModal data={defaultData} onCancel={vi.fn()} onSave={onSave} />,
+      <ModerationSettingModal open data={defaultData} onOpenChange={vi.fn()} onSave={onSave} />,
     )
 
     const textarea = screen.getByPlaceholderText(
@@ -623,12 +644,13 @@ describe('ModerationSettingModal', () => {
 
     await renderModal(
       <ModerationSettingModal
+        open
         data={{
           ...defaultData,
           type: 'openai_moderation',
           config: { inputs_config: { enabled: true, preset_response: '' } },
         }}
-        onCancel={vi.fn()}
+        onOpenChange={vi.fn()}
         onSave={onSave}
       />,
     )
@@ -659,12 +681,13 @@ describe('ModerationSettingModal', () => {
 
     await renderModal(
       <ModerationSettingModal
+        open
         data={{
           ...defaultData,
           type: 'openai_moderation',
           config: { inputs_config: { enabled: true, preset_response: '' } },
         }}
-        onCancel={vi.fn()}
+        onOpenChange={vi.fn()}
         onSave={onSave}
       />,
     )
@@ -695,6 +718,7 @@ describe('ModerationSettingModal', () => {
 
     await renderModal(
       <ModerationSettingModal
+        open
         data={{
           ...defaultData,
           type: 'openai_moderation',
@@ -703,7 +727,7 @@ describe('ModerationSettingModal', () => {
             outputs_config: { enabled: false, preset_response: '' },
           },
         }}
-        onCancel={vi.fn()}
+        onOpenChange={vi.fn()}
         onSave={onSave}
       />,
     )
@@ -738,7 +762,7 @@ describe('ModerationSettingModal', () => {
     }
 
     await renderModal(
-      <ModerationSettingModal data={defaultData} onCancel={vi.fn()} onSave={onSave} />,
+      <ModerationSettingModal open data={defaultData} onOpenChange={vi.fn()} onSave={onSave} />,
     )
 
     expect(screen.getByText('Custom Extension'))!.toBeInTheDocument()
@@ -770,12 +794,13 @@ describe('ModerationSettingModal', () => {
 
     await renderModal(
       <ModerationSettingModal
+        open
         data={{
           ...defaultData,
           type: 'custom-ext',
           config: { inputs_config: { enabled: true, preset_response: '' } },
         }}
-        onCancel={vi.fn()}
+        onOpenChange={vi.fn()}
         onSave={onSave}
       />,
     )
@@ -809,7 +834,7 @@ describe('ModerationSettingModal', () => {
     }
 
     await renderModal(
-      <ModerationSettingModal data={defaultData} onCancel={vi.fn()} onSave={onSave} />,
+      <ModerationSettingModal open data={defaultData} onOpenChange={vi.fn()} onSave={onSave} />,
     )
 
     // Click on the custom extension provider
@@ -846,12 +871,13 @@ describe('ModerationSettingModal', () => {
 
     await renderModal(
       <ModerationSettingModal
+        open
         data={{
           ...defaultData,
           type: 'custom-ext',
           config: { inputs_config: { enabled: true, preset_response: 'blocked' } },
         }}
-        onCancel={vi.fn()}
+        onOpenChange={vi.fn()}
         onSave={onSave}
       />,
     )
@@ -887,6 +913,7 @@ describe('ModerationSettingModal', () => {
 
     await renderModal(
       <ModerationSettingModal
+        open
         data={{
           ...defaultData,
           type: 'custom-ext',
@@ -896,7 +923,7 @@ describe('ModerationSettingModal', () => {
             outputs_config: { enabled: false, preset_response: '' },
           },
         }}
-        onCancel={vi.fn()}
+        onOpenChange={vi.fn()}
         onSave={onSave}
       />,
     )
@@ -939,6 +966,7 @@ describe('ModerationSettingModal', () => {
 
     await renderModal(
       <ModerationSettingModal
+        open
         data={{
           ...defaultData,
           type: 'custom-ext',
@@ -947,7 +975,7 @@ describe('ModerationSettingModal', () => {
             outputs_config: { enabled: false, preset_response: '' },
           },
         }}
-        onCancel={vi.fn()}
+        onOpenChange={vi.fn()}
         onSave={onSave}
       />,
     )
@@ -970,12 +998,13 @@ describe('ModerationSettingModal', () => {
   it('should show doc link for api type', async () => {
     await renderModal(
       <ModerationSettingModal
+        open
         data={{
           ...defaultData,
           type: 'api',
           config: { inputs_config: { enabled: true, preset_response: '' } },
         }}
-        onCancel={vi.fn()}
+        onOpenChange={vi.fn()}
         onSave={onSave}
       />,
     )
@@ -1051,6 +1080,7 @@ describe('ModerationSettingModal', () => {
       const featuresStore = createFeaturesStore()
       await renderModal(
         <ModerationSettingModal
+          open
           data={{
             enabled: true,
             type: 'custom-ext',
@@ -1060,7 +1090,7 @@ describe('ModerationSettingModal', () => {
               outputs_config: { enabled: false },
             },
           }}
-          onCancel={vi.fn()}
+          onOpenChange={vi.fn()}
           onSave={(moderation) => {
             const { features, setFeatures } = featuresStore.getState()
             setFeatures({ ...features, moderation })
@@ -1124,6 +1154,7 @@ describe('ModerationSettingModal', () => {
   it('should fallback missing inputs_config to disabled in formatted save data', async () => {
     await renderModal(
       <ModerationSettingModal
+        open
         data={{
           enabled: true,
           type: 'api',
@@ -1132,7 +1163,7 @@ describe('ModerationSettingModal', () => {
             outputs_config: { enabled: true, preset_response: '' },
           },
         }}
-        onCancel={vi.fn()}
+        onOpenChange={vi.fn()}
         onSave={onSave}
       />,
     )
@@ -1165,11 +1196,43 @@ describe('ModerationSettingModal', () => {
     } as unknown as ReturnType<typeof i18n.useTranslation>)
 
     await renderModal(
-      <ModerationSettingModal data={defaultData} onCancel={vi.fn()} onSave={onSave} />,
+      <ModerationSettingModal open data={defaultData} onOpenChange={vi.fn()} onSave={onSave} />,
     )
 
     const textarea = screen.getAllByRole('textbox')[0]
     expect(textarea)!.toHaveAttribute('placeholder', '')
     useTranslationSpy.mockRestore()
   })
+})
+
+it('starts with saved moderation values after cancelling a mounted draft', async () => {
+  const user = userEvent.setup()
+  const onSave = vi.fn()
+  const onOpenChange = vi.fn()
+  const view = render(
+    <ModerationSettingModal open data={defaultData} onSave={onSave} onOpenChange={onOpenChange} />,
+  )
+  const keywords = screen.getByRole('textbox', {
+    name: 'appDebug.feature.moderation.modal.provider.keywords',
+  })
+  await user.clear(keywords)
+  await user.type(keywords, 'discarded')
+  await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+  expect(onOpenChange).toHaveBeenCalledWith(false, expect.anything())
+  view.rerender(
+    <ModerationSettingModal
+      open={false}
+      data={defaultData}
+      onSave={onSave}
+      onOpenChange={onOpenChange}
+    />,
+  )
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  view.rerender(
+    <ModerationSettingModal open data={defaultData} onSave={onSave} onOpenChange={onOpenChange} />,
+  )
+  expect(
+    screen.getByRole('textbox', { name: 'appDebug.feature.moderation.modal.provider.keywords' }),
+  ).toHaveValue('bad\nword')
+  expect(onSave).not.toHaveBeenCalled()
 })

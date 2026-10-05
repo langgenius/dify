@@ -5,7 +5,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { RiEditLine } from '@remixicon/react'
 import { produce } from 'immer'
 import * as React from 'react'
-import { useCallback, useState } from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
@@ -31,7 +31,6 @@ const ConversationOpener = ({
   const { setShowOpeningModal } = useModalContext()
   const opening = useFeatures((s) => s.features.opening)
   const featuresStore = useFeaturesStore()
-  const [isHovering, setIsHovering] = useState(false)
   const handleOpenOpeningModal = useCallback(() => {
     /* v8 ignore next -- guarded path is not reachable in tests with a real disabled button because click is prevented at DOM level. @preserve */
     if (disabled) return
@@ -93,8 +92,6 @@ const ConversationOpener = ({
       title={t(($) => $['feature.conversationOpener.title'], { ns: 'appDebug' })}
       value={!!opening?.enabled}
       onChange={(state) => handleChange(FeatureEnum.opening, state)}
-      onMouseEnter={() => setIsHovering(true)}
-      onMouseLeave={() => setIsHovering(false)}
       disabled={disabled}
     >
       <>
@@ -105,18 +102,18 @@ const ConversationOpener = ({
         )}
         {!!opening?.enabled && (
           <>
-            {!isHovering && (
-              <div className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary">
-                {opening.opening_statement ||
-                  t(($) => $['openingStatement.placeholderLine1'], { ns: 'appDebug' })}
-              </div>
-            )}
-            {isHovering && (
-              <Button className="w-full" onClick={handleOpenOpeningModal} disabled={disabled}>
-                <RiEditLine className="size-4" />
-                {t(($) => $['openingStatement.writeOpener'], { ns: 'appDebug' })}
-              </Button>
-            )}
+            <div className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary group-focus-within/feature:invisible group-hover/feature:invisible">
+              {opening.opening_statement ||
+                t(($) => $['openingStatement.placeholderLine1'], { ns: 'appDebug' })}
+            </div>
+            <Button
+              className="pointer-events-none absolute right-3 bottom-3 left-3 opacity-0 group-focus-within/feature:pointer-events-auto group-focus-within/feature:opacity-100 group-hover/feature:pointer-events-auto group-hover/feature:opacity-100"
+              onClick={handleOpenOpeningModal}
+              disabled={disabled}
+            >
+              <RiEditLine className="size-4" />
+              {t(($) => $['openingStatement.writeOpener'], { ns: 'appDebug' })}
+            </Button>
           </>
         )}
       </>
