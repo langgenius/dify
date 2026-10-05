@@ -5,7 +5,7 @@ import Chat from '../index'
 
 // Keep the Chat/context/Operation/Log capability path real while omitting rich answer rendering.
 vi.mock('../answer', async () => {
-  const { default: Operation } = await import('../answer/operation')
+  const { Operation } = await import('../answer/operation')
   return {
     default: ({ item }: { item: ChatItem }) => (
       <Operation

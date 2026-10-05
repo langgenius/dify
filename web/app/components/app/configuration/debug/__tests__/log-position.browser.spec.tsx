@@ -51,7 +51,7 @@ vi.mock('../debug-with-single-model', () => ({
   ),
 }))
 vi.mock('@/app/components/base/chat/chat/answer', async () => {
-  const { default: Operation } = await import('@/app/components/base/chat/chat/answer/operation')
+  const { Operation } = await import('@/app/components/base/chat/chat/answer/operation')
   return {
     default: ({ item }: { item: ChatItem }) => (
       <div className="group">

@@ -761,7 +761,7 @@
   },
   "web/app/components/base/chat/chat/type.ts": {
     "typescript/no-explicit-any": {
-      "count": 5
+      "count": 4
     }
   },
   "web/app/components/base/chat/chat/utils.ts": {

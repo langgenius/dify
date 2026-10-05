@@ -78,4 +78,4 @@ export type Feedback = {
   content?: string | null
 }
 
-export type OnFeedback = (messageId: string, feedback: Feedback) => Promise<void>
+export type OnFeedback = (messageId: string, feedback: Feedback) => Promise<void | boolean>
