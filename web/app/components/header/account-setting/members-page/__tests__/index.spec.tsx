@@ -2,11 +2,11 @@ import type { Role } from '@/models/access-control'
 import type { Member } from '@/models/common'
 import type { ConsoleQueryTestOptions } from '@/test/console/query-data'
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
-import { screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vite-plus/test'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
-import { useUpdateRolesOfMember } from '@/service/access-control/use-member-roles'
+import { useRolesOfMember, useUpdateRolesOfMember } from '@/service/access-control/use-member-roles'
 import { useWorkspaceRoleList } from '@/service/access-control/use-workspace-roles'
 import { useMembers } from '@/service/use-common'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
@@ -132,36 +132,6 @@ vi.mock('../transfer-ownership-modal', () => ({
     </div>
   ),
 }))
-vi.mock('../member-details-modal', () => ({
-  default: ({
-    member,
-    onClose,
-    canAssignRoles,
-    onAssignSubmit,
-  }: {
-    member: Member
-    onClose: () => void
-    canAssignRoles?: boolean
-    onAssignSubmit?: (roles: Role[]) => void
-  }) => (
-    <div>
-      <div>Member Details Modal</div>
-      <div data-testid="details-member-name">{member.name}</div>
-      <div data-testid="details-can-assign">{String(canAssignRoles)}</div>
-      <button
-        onClick={() =>
-          onAssignSubmit?.([
-            createRole({ id: 'role-next', name: 'Next role' }),
-            createRole({ id: 'role-extra', name: 'Extra role' }),
-          ])
-        }
-      >
-        Submit Member Roles
-      </button>
-      <button onClick={onClose}>Close Member Details Modal</button>
-    </div>
-  ),
-}))
 vi.mock('@/app/components/billing/upgrade-btn', () => ({
   default: () => <div>Upgrade Button</div>,
 }))
@@ -222,6 +192,10 @@ describe('MembersPage', () => {
     vi.mocked(useUpdateRolesOfMember).mockReturnValue({
       mutateAsync: mockUpdateRolesOfMember,
     } as unknown as ReturnType<typeof useUpdateRolesOfMember>)
+    vi.mocked(useRolesOfMember).mockReturnValue({
+      data: { account_id: '2', roles: [createRole({ id: 'admin', name: 'Admin' })] },
+      isLoading: false,
+    } as ReturnType<typeof useRolesOfMember>)
 
     inviteMember.mockResolvedValue({
       result: 'success',
@@ -231,7 +205,17 @@ describe('MembersPage', () => {
       ],
     })
     vi.mocked(useWorkspaceRoleList).mockReturnValue({
-      data: { pages: [{ data: [createRole({ id: 'admin', name: 'Admin' })] }] },
+      data: {
+        pages: [
+          {
+            data: [
+              createRole({ id: 'admin', name: 'Admin' }),
+              createRole({ id: 'role-next', name: 'Next role' }),
+              createRole({ id: 'role-extra', name: 'Extra role' }),
+            ],
+          },
+        ],
+      },
       isLoading: false,
       error: null,
       hasNextPage: false,
@@ -598,11 +582,13 @@ describe('MembersPage', () => {
 
     await user.click(getMemberDetailsButton('2'))
 
-    expect(screen.getByText('Member Details Modal'))!.toBeInTheDocument()
-    expect(screen.getByTestId('details-member-name'))!.toHaveTextContent('Admin User')
+    expect(
+      screen.getByRole('dialog', { name: /members\.memberDetails\.title/ }),
+    ).toBeInTheDocument()
+    expect(within(screen.getByRole('dialog')).getByText('Admin User')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Close Member Details Modal' }))
-    expect(screen.queryByText('Member Details Modal')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
   it('should open member details modal via keyboard Enter', async () => {
@@ -614,7 +600,9 @@ describe('MembersPage', () => {
     detailsButton.focus()
     await user.keyboard('{Enter}')
 
-    expect(screen.getByText('Member Details Modal'))!.toBeInTheDocument()
+    expect(
+      screen.getByRole('dialog', { name: /members\.memberDetails\.title/ }),
+    ).toBeInTheDocument()
   })
 
   it('should not allow assigning roles from member details when target is owner', async () => {
@@ -624,7 +612,12 @@ describe('MembersPage', () => {
 
     await user.click(getMemberDetailsButton('1'))
 
-    expect(screen.getByTestId('details-can-assign'))!.toHaveTextContent('false')
+    expect(
+      within(screen.getByRole('dialog')).queryByRole('button', { name: 'common.operation.edit' }),
+    ).not.toBeInTheDocument()
+    expect(
+      within(screen.getByRole('dialog')).queryByRole('button', { name: 'common.operation.save' }),
+    ).not.toBeInTheDocument()
   })
 
   it('should not allow assigning roles from member details when target is current user', async () => {
@@ -641,32 +634,51 @@ describe('MembersPage', () => {
 
     await user.click(getMemberDetailsButton('2'))
 
-    expect(screen.getByTestId('details-can-assign'))!.toHaveTextContent('false')
+    expect(
+      within(screen.getByRole('dialog')).queryByRole('button', { name: 'common.operation.edit' }),
+    ).not.toBeInTheDocument()
+    expect(
+      within(screen.getByRole('dialog')).queryByRole('button', { name: 'common.operation.save' }),
+    ).not.toBeInTheDocument()
   })
 
-  it('should submit only one member role when RBAC is disabled', async () => {
+  it('submits the selected single role and immediately closes while the request remains pending', async () => {
     const user = userEvent.setup()
-
+    let resolveRequest!: () => void
+    const request = new Promise<void>((resolve) => {
+      resolveRequest = resolve
+    })
+    mockUpdateRolesOfMember.mockImplementationOnce(async (_payload, options) => {
+      await request
+      options?.onSuccess?.()
+    })
     renderMembersPage()
-
     await user.click(getMemberDetailsButton('2'))
-    await user.click(screen.getByRole('button', { name: 'Submit Member Roles' }))
-
-    expect(mockUpdateRolesOfMember).toHaveBeenCalledWith(
-      {
-        memberId: '2',
-        roleIds: ['role-next'],
-      },
+    await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
+    const chooser = screen.getByRole('dialog', { name: /members\.editRole/ })
+    await user.click(within(chooser).getByRole('radio', { name: /Next role/ }))
+    await user.click(within(chooser).getByRole('button', { name: 'common.operation.confirm' }))
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: /members\.editRole/ })).not.toBeInTheDocument(),
+    )
+    expect(mockUpdateRolesOfMember).not.toHaveBeenCalled()
+    const details = screen.getByRole('dialog', { name: /members\.memberDetails\.title/ })
+    expect(within(details).getByText('Next role')).toBeInTheDocument()
+    await user.click(within(details).getByRole('button', { name: 'common.operation.save' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(mockUpdateRolesOfMember).toHaveBeenCalledExactlyOnceWith(
+      { memberId: '2', roleIds: ['role-next'] },
       expect.any(Object),
     )
-    expect(mockRefetch).toHaveBeenCalled()
-    expect(screen.getByText('Member Details Modal')).toBeInTheDocument()
-    expect(screen.getByTestId('details-member-name')).toHaveTextContent('Admin User')
+    expect(mockRefetch).not.toHaveBeenCalled()
+    await act(async () => {
+      resolveRequest()
+    })
+    expect(mockRefetch).toHaveBeenCalledTimes(1)
   })
 
-  it('should submit multiple member roles when RBAC is enabled', async () => {
+  it('submits multiple roles accepted in the nested chooser when RBAC is enabled', async () => {
     const user = userEvent.setup()
-
     renderWithConsoleQuery(<MembersPage />, {
       features: memberFeatures,
       systemFeatures: {
@@ -675,15 +687,23 @@ describe('MembersPage', () => {
         rbac_enabled: true,
       },
     })
-
     await user.click(getMemberDetailsButton('2'))
-    await user.click(screen.getByRole('button', { name: 'Submit Member Roles' }))
-
-    expect(mockUpdateRolesOfMember).toHaveBeenCalledWith(
-      {
-        memberId: '2',
-        roleIds: ['role-next', 'role-extra'],
-      },
+    await user.click(screen.getByRole('button', { name: /members\.memberDetails\.assign/ }))
+    const chooser = screen.getByRole('dialog', { name: /members\.assignRolesModal\.title/ })
+    await user.click(within(chooser).getByRole('checkbox', { name: /Admin/ }))
+    await user.click(within(chooser).getByRole('checkbox', { name: /Next role/ }))
+    await user.click(within(chooser).getByRole('checkbox', { name: /Extra role/ }))
+    await user.click(within(chooser).getByRole('button', { name: 'common.operation.confirm' }))
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: /members\.assignRolesModal\.title/ }),
+      ).not.toBeInTheDocument(),
+    )
+    expect(mockUpdateRolesOfMember).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(mockUpdateRolesOfMember).toHaveBeenCalledExactlyOnceWith(
+      { memberId: '2', roleIds: ['role-next', 'role-extra'] },
       expect.any(Object),
     )
   })
@@ -695,7 +715,9 @@ describe('MembersPage', () => {
 
     await user.click(screen.getByRole('button', { name: /transfer ownership/i }))
 
-    expect(screen.queryByText('Member Details Modal')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('dialog', { name: /members\.memberDetails\.title/ }),
+    ).not.toBeInTheDocument()
   })
 
   it('should show the upgrade action without blocking the backend-authoritative invite flow', async () => {

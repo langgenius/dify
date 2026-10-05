@@ -16,16 +16,17 @@ import WorkspaceRoleCheckboxList from '../../workspace-role-checkbox-list'
 type AssignRolesModalProps = {
   selectedRoles: Role[]
   allowMultipleRoles?: boolean
-  onClose: () => void
+  open: boolean
+  onOpenChange: (open: boolean) => void
   onSubmit: (roles: Role[]) => void
 }
 
-type AssignRolesModalBodyProps = AssignRolesModalProps
+type AssignRolesModalBodyProps = Omit<AssignRolesModalProps, 'open'>
 
 const AssignRolesModalBody = ({
   selectedRoles,
   allowMultipleRoles = true,
-  onClose,
+  onOpenChange,
   onSubmit,
 }: AssignRolesModalBodyProps) => {
   const { t } = useTranslation(['common', 'workspaceMembers'])
@@ -53,14 +54,11 @@ const AssignRolesModalBody = ({
     if (isConfirmDisabled) return
 
     onSubmit(selected)
-    onClose()
+    onOpenChange(false)
   }
 
   return (
-    <DialogContent
-      className="flex h-121 w-120 flex-col overflow-hidden p-0"
-      backdropProps={{ forceRender: true }}
-    >
+    <div className="flex min-h-0 flex-1 flex-col">
       <div className="relative shrink-0 px-6 pt-6 pb-4">
         <DialogClose
           render={
@@ -98,39 +96,27 @@ const AssignRolesModalBody = ({
           </div>
         )}
         <div className="ml-auto flex items-center gap-2">
-          <Button variant="secondary" onClick={onClose}>
+          <DialogClose render={<Button variant="secondary" />}>
             {t(($) => $['operation.cancel'], { ns: 'common' })}
-          </Button>
+          </DialogClose>
           <Button variant="primary" disabled={isConfirmDisabled} onClick={handleConfirm}>
             {t(($) => $['operation.confirm'], { ns: 'common' })}
           </Button>
         </div>
       </div>
-    </DialogContent>
+    </div>
   )
 }
 
-const AssignRolesModal = ({
-  selectedRoles,
-  allowMultipleRoles = true,
-  onClose,
-  onSubmit,
-}: AssignRolesModalProps) => {
+export function AssignRolesModal({ open, onOpenChange, ...props }: AssignRolesModalProps) {
   return (
-    <Dialog
-      open
-      onOpenChange={(nextOpen) => {
-        if (!nextOpen) onClose()
-      }}
-    >
-      <AssignRolesModalBody
-        selectedRoles={selectedRoles}
-        allowMultipleRoles={allowMultipleRoles}
-        onClose={onClose}
-        onSubmit={onSubmit}
-      />
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        className="flex h-121 w-120 flex-col overflow-hidden p-0"
+        backdropProps={{ forceRender: true }}
+      >
+        <AssignRolesModalBody {...props} onOpenChange={onOpenChange} />
+      </DialogContent>
     </Dialog>
   )
 }
-
-export default AssignRolesModal

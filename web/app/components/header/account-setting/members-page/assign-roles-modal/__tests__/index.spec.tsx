@@ -1,8 +1,8 @@
 import type { Role } from '@/models/access-control'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useWorkspaceRoleList } from '@/service/access-control/use-workspace-roles'
-import AssignRolesModal from '../index'
+import { AssignRolesModal } from '../index'
 
 vi.mock('@/service/access-control/use-workspace-roles')
 
@@ -54,9 +54,10 @@ describe('AssignRolesModal', () => {
     it('should hide selected count when multiple roles are disabled', () => {
       render(
         <AssignRolesModal
+          open
           selectedRoles={[roles[0]!]}
           allowMultipleRoles={false}
-          onClose={vi.fn()}
+          onOpenChange={vi.fn()}
           onSubmit={vi.fn()}
         />,
       )
@@ -69,9 +70,10 @@ describe('AssignRolesModal', () => {
     it('should show single-role description when multiple roles are disabled', () => {
       render(
         <AssignRolesModal
+          open
           selectedRoles={[roles[0]!]}
           allowMultipleRoles={false}
-          onClose={vi.fn()}
+          onOpenChange={vi.fn()}
           onSubmit={vi.fn()}
         />,
       )
@@ -87,7 +89,14 @@ describe('AssignRolesModal', () => {
     it('should disable confirm when the last selected role is unchecked', async () => {
       const user = userEvent.setup()
 
-      render(<AssignRolesModal selectedRoles={[roles[0]!]} onClose={vi.fn()} onSubmit={vi.fn()} />)
+      render(
+        <AssignRolesModal
+          open
+          selectedRoles={[roles[0]!]}
+          onOpenChange={vi.fn()}
+          onSubmit={vi.fn()}
+        />,
+      )
 
       const confirmButton = screen.getByRole('button', { name: /common\.operation\.confirm/i })
 
@@ -96,6 +105,79 @@ describe('AssignRolesModal', () => {
       await user.click(screen.getByRole('checkbox', { name: /First role/i }))
 
       expect(confirmButton).toBeDisabled()
+    })
+  })
+  describe('Dialog sessions', () => {
+    it('keeps search Enter local and confirms without waiting for the callback', async () => {
+      const user = userEvent.setup()
+      let finishSubmit: () => void = () => {}
+      const onSubmit = vi.fn(
+        () =>
+          new Promise<void>((resolve) => {
+            finishSubmit = resolve
+          }),
+      )
+      const onOpenChange = vi.fn()
+      render(
+        <AssignRolesModal
+          open
+          selectedRoles={[roles[0]!]}
+          onOpenChange={onOpenChange}
+          onSubmit={onSubmit}
+        />,
+      )
+
+      await user.click(screen.getByRole('checkbox', { name: /Second role/i }))
+      await user.click(screen.getByRole('searchbox', { name: /role.searchPlaceholder/i }))
+      await user.keyboard('{Enter}')
+      expect(onSubmit).not.toHaveBeenCalled()
+      expect(onOpenChange).not.toHaveBeenCalled()
+      await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+
+      expect(onSubmit).toHaveBeenCalledExactlyOnceWith(roles)
+      expect(onOpenChange).toHaveBeenCalledExactlyOnceWith(false)
+      finishSubmit()
+    })
+
+    it('discards canceled selections and search when the next session opens', async () => {
+      const user = userEvent.setup()
+      const onSubmit = vi.fn()
+      const onOpenChange = vi.fn()
+      const { rerender } = render(
+        <AssignRolesModal
+          open
+          selectedRoles={[roles[0]!]}
+          onOpenChange={onOpenChange}
+          onSubmit={onSubmit}
+        />,
+      )
+
+      await user.click(screen.getByRole('checkbox', { name: /Second role/i }))
+      await user.type(screen.getByRole('searchbox', { name: /role.searchPlaceholder/i }), 'Second')
+      await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+      expect(onSubmit).not.toHaveBeenCalled()
+      expect(onOpenChange).toHaveBeenCalledWith(false, expect.anything())
+      rerender(
+        <AssignRolesModal
+          open={false}
+          selectedRoles={[roles[0]!]}
+          onOpenChange={onOpenChange}
+          onSubmit={onSubmit}
+        />,
+      )
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      rerender(
+        <AssignRolesModal
+          open
+          selectedRoles={[roles[1]!]}
+          onOpenChange={onOpenChange}
+          onSubmit={onSubmit}
+        />,
+      )
+
+      expect(screen.getByRole('searchbox', { name: /role.searchPlaceholder/i })).toHaveValue('')
+      expect(screen.getByRole('checkbox', { name: /First role/i })).not.toBeChecked()
+      expect(screen.getByRole('checkbox', { name: /Second role/i })).toBeChecked()
     })
   })
 })
