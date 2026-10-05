@@ -1,6 +1,5 @@
-import type { ImagePreviewPayload } from '../image-previewer'
 import { cn } from '@langgenius/dify-ui/cn'
-import { createDialogHandle, DialogTrigger } from '@langgenius/dify-ui/dialog'
+import { DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { useCallback, useMemo, useState } from 'react'
 import { FileThumb } from '@/app/components/base/file-thumb'
 import { ImagePreviewer } from '../image-previewer'
@@ -23,7 +22,6 @@ type ImageListProps = {
 
 export function ImageList({ images, size, limit = 9, className }: ImageListProps) {
   const [showMore, setShowMore] = useState(false)
-  const [previewHandle] = useState(createDialogHandle<ImagePreviewPayload>)
 
   const limitedImages = useMemo(() => {
     return showMore ? images : images.slice(0, limit)
@@ -42,12 +40,11 @@ export function ImageList({ images, size, limit = 9, className }: ImageListProps
     }))
 
   return (
-    <>
+    <ImagePreviewer>
       <div className={cn('flex flex-wrap gap-1', className)}>
         {limitedImages.map((image) => (
           <DialogTrigger
             key={image.sourceUrl || image.name}
-            handle={previewHandle}
             payload={{
               images: previewImages,
               initialIndex: previewImages.findIndex((item) => item.url === image.sourceUrl),
@@ -61,7 +58,6 @@ export function ImageList({ images, size, limit = 9, className }: ImageListProps
           <More count={images.length - limitedImages.length} onClick={handleShowMore} />
         )}
       </div>
-      <ImagePreviewer handle={previewHandle} />
-    </>
+    </ImagePreviewer>
   )
 }

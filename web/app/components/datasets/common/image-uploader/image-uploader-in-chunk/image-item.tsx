@@ -1,4 +1,3 @@
-import type { DialogHandle } from '@langgenius/dify-ui/dialog'
 import type { ImagePreviewPayload } from '../../image-previewer'
 import type { FileEntity } from '../types'
 import { DialogTrigger } from '@langgenius/dify-ui/dialog'
@@ -14,19 +13,10 @@ type ImageItemProps = {
   onRemove?: (fileId: string) => void
   onReUpload?: (fileId: string) => void
   disabled?: boolean
-  previewHandle: DialogHandle<ImagePreviewPayload>
   previewPayload?: ImagePreviewPayload
 }
 export const ImageItem = memo(
-  ({
-    file,
-    showDeleteAction,
-    onRemove,
-    onReUpload,
-    disabled,
-    previewHandle,
-    previewPayload,
-  }: ImageItemProps) => {
+  ({ file, showDeleteAction, onRemove, onReUpload, disabled, previewPayload }: ImageItemProps) => {
     const { t } = useTranslation(['common', 'custom'])
     const { id, progress, base64Url, sourceUrl } = file
 
@@ -51,7 +41,6 @@ export const ImageItem = memo(
     return (
       <div className="group/file-image relative">
         <DialogTrigger
-          handle={previewHandle}
           payload={previewPayload}
           disabled={!previewPayload}
           aria-label={file.name}

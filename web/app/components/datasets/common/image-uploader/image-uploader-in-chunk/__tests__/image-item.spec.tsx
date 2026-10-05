@@ -1,9 +1,6 @@
-import type { ImagePreviewPayload } from '../../../image-previewer'
 import type { FileEntity } from '../../types'
-import { createDialogHandle } from '@langgenius/dify-ui/dialog'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useState } from 'react'
 import { ImagePreviewer } from '../../../image-previewer'
 import { ImageItem } from '../image-item'
 
@@ -19,23 +16,20 @@ const file: FileEntity = {
 }
 
 function Fixture({ progress = 50, disabled = false, onRemove = vi.fn(), onReUpload = vi.fn() }) {
-  const [handle] = useState(createDialogHandle<ImagePreviewPayload>)
   return (
-    <>
+    <ImagePreviewer>
       <ImageItem
         file={{ ...file, progress }}
         showDeleteAction
         disabled={disabled}
         onRemove={onRemove}
         onReUpload={onReUpload}
-        previewHandle={handle}
         previewPayload={{
           images: [{ name: file.name, url: file.base64Url!, size: file.size }],
           initialIndex: 0,
         }}
       />
-      <ImagePreviewer handle={handle} />
-    </>
+    </ImagePreviewer>
   )
 }
 
