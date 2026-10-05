@@ -1,16 +1,19 @@
 """Exercise workflow comment persistence with real short-lived Sessions."""
 
 from datetime import datetime
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from machinery.context import RequestContext
 from models import App, TenantAccountJoin, WorkflowComment, WorkflowCommentMention, WorkflowCommentReply
 from models.account import Account, TenantAccountRole
 from models.model import AppMode
 from repositories.app.workflow_comment_repository import WorkflowCommentRepository
+from services.app import workflow_comment_mention_gateway
+from services.app.workflow_comment_mention_gateway import CeleryWorkflowCommentMentionNotifier
 from services.app.workflow_comment_service import (
     MentionContext,
     MentionRecipient,
@@ -20,6 +23,7 @@ from services.app.workflow_comment_service import (
     WorkflowCommentPermissionError,
     WorkflowCommentReplyDraft,
     WorkflowCommentReplyNotFoundError,
+    WorkflowCommentService,
 )
 from tests.unit_tests.model_factories import make_account, make_app
 from tests.unit_tests.repositories.app.console_visibility import UNADDRESSABLE_IN_WORKSPACE, MakeUnaddressable
@@ -33,6 +37,28 @@ USER_2_ID = "33333333-3333-3333-3333-333333333334"
 USER_3_ID = "33333333-3333-3333-3333-333333333335"
 USER_4_ID = "33333333-3333-3333-3333-333333333336"
 OUTSIDER_ID = "33333333-3333-3333-3333-333333333337"
+
+
+@pytest.fixture
+def delay_mock(monkeypatch: pytest.MonkeyPatch) -> Mock:
+    """Stand in for the Celery broker at the mention email task boundary."""
+    mock = Mock()
+    monkeypatch.setattr(workflow_comment_mention_gateway.send_workflow_comment_mention_email_task, "delay", mock)
+    return mock
+
+
+@pytest.fixture
+def comment_service(repository: WorkflowCommentRepository) -> WorkflowCommentService:
+    """The production composition: real repository and Celery notifier, with only task delivery mocked."""
+    return WorkflowCommentService(
+        comments=repository,
+        notifier=CeleryWorkflowCommentMentionNotifier(),
+        console_web_url="https://console.example.com",
+    )
+
+
+def _context(account_id: str) -> RequestContext:
+    return RequestContext(request_id="request", trace_id=None, account_id=account_id, active_workspace_id=TENANT_ID)
 
 
 @pytest.fixture
@@ -616,3 +642,125 @@ def test_delete_reply_removes_its_mentions(sqlite_session: Session, repository: 
     assert sqlite_session.get(WorkflowCommentReply, reply_id) is None
     assert _mention_user_ids(sqlite_session, comment.id, reply_id=reply_id) == []
     assert _mention_user_ids(sqlite_session, comment.id) == [USER_2_ID]
+
+
+def test_update_comment_enqueues_mention_email_only_for_new_mentions(
+    sqlite_session: Session, comment_service: WorkflowCommentService, delay_mock: Mock
+) -> None:
+    comment = _comment()
+    _persist(
+        sqlite_session,
+        _app(name="Canvas"),
+        _account(OWNER_ID, name="Owner", email="owner@example.com"),
+        _account(USER_2_ID, name="Existing", email="existing@example.com"),
+        _account(USER_3_ID, name="New User", email="new@example.com", interface_language="zh-Hans"),
+        _membership(USER_2_ID),
+        _membership(USER_3_ID),
+        comment,
+    )
+    _persist(sqlite_session, WorkflowCommentMention(comment_id=comment.id, mentioned_user_id=USER_2_ID))
+
+    comment_service.update_comment(
+        _context(OWNER_ID),
+        APP_ID,
+        comment.id,
+        WorkflowCommentEdit(
+            content="updated", position_x=None, position_y=None, mentioned_user_ids=(USER_2_ID, USER_3_ID)
+        ),
+    )
+
+    delay_mock.assert_called_once_with(
+        language="zh-Hans",
+        to="new@example.com",
+        mentioned_name="New User",
+        commenter_name="Owner",
+        app_name="Canvas",
+        comment_content="updated",
+        app_url=f"https://console.example.com/app/{APP_ID}/workflow",
+    )
+    assert sorted(_mention_user_ids(sqlite_session, comment.id)) == [USER_2_ID, USER_3_ID]
+
+
+def test_update_comment_without_mention_list_enqueues_nothing(
+    sqlite_session: Session, comment_service: WorkflowCommentService, delay_mock: Mock
+) -> None:
+    comment = _comment()
+    _persist(sqlite_session, _app(), _account(USER_2_ID, email="existing@example.com"), _membership(USER_2_ID), comment)
+    _persist(sqlite_session, WorkflowCommentMention(comment_id=comment.id, mentioned_user_id=USER_2_ID))
+
+    comment_service.update_comment(
+        _context(OWNER_ID),
+        APP_ID,
+        comment.id,
+        WorkflowCommentEdit(content="updated", position_x=None, position_y=None, mentioned_user_ids=None),
+    )
+
+    delay_mock.assert_not_called()
+
+
+def test_create_comment_and_reply_enqueue_mention_emails_after_commit(
+    sqlite_session: Session, comment_service: WorkflowCommentService, delay_mock: Mock
+) -> None:
+    _persist(
+        sqlite_session,
+        _app(),
+        _account(OWNER_ID, name="Owner"),
+        _account(USER_2_ID, name="Member", email="member@example.com"),
+        _membership(OWNER_ID),
+        _membership(USER_2_ID),
+    )
+
+    def committed_mentions(**_kwargs: str) -> None:
+        # The email is enqueued only once the mention row is visible to other sessions.
+        with Session(sqlite_session.get_bind()) as other_session:
+            assert (other_session.scalar(select(func.count(WorkflowCommentMention.id))) or 0) > 0
+
+    delay_mock.side_effect = committed_mentions
+
+    created = comment_service.create_comment(
+        _context(OWNER_ID),
+        APP_ID,
+        WorkflowCommentDraft(content="hello", position_x=0, position_y=0, mentioned_user_ids=(OWNER_ID, USER_2_ID)),
+    )
+    comment_service.create_reply(
+        _context(OWNER_ID),
+        APP_ID,
+        created.id,
+        WorkflowCommentReplyDraft(content="reply", mentioned_user_ids=(USER_2_ID,)),
+    )
+
+    # The self-mention is stored but never emailed.
+    assert [call.kwargs["to"] for call in delay_mock.call_args_list] == ["member@example.com", "member@example.com"]
+    assert [call.kwargs["comment_content"] for call in delay_mock.call_args_list] == ["hello", "reply"]
+
+
+def test_update_reply_enqueues_mention_email_only_for_new_mentions(
+    sqlite_session: Session, comment_service: WorkflowCommentService, delay_mock: Mock
+) -> None:
+    comment = _comment()
+    _persist(
+        sqlite_session,
+        _app(),
+        _account(OWNER_ID),
+        _account(USER_2_ID, email="existing@example.com"),
+        _account(USER_3_ID, email="new@example.com"),
+        _membership(USER_2_ID),
+        _membership(USER_3_ID),
+        comment,
+    )
+    reply = WorkflowCommentReply(comment_id=comment.id, content="old", created_by=OWNER_ID)
+    _persist(sqlite_session, reply)
+    _persist(
+        sqlite_session,
+        WorkflowCommentMention(comment_id=comment.id, reply_id=reply.id, mentioned_user_id=USER_2_ID),
+    )
+
+    comment_service.update_reply(
+        _context(OWNER_ID),
+        APP_ID,
+        comment.id,
+        reply.id,
+        WorkflowCommentReplyDraft(content="new", mentioned_user_ids=(USER_2_ID, USER_3_ID)),
+    )
+
+    assert [call.kwargs["to"] for call in delay_mock.call_args_list] == ["new@example.com"]

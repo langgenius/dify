@@ -4,9 +4,9 @@ from datetime import datetime
 from uuid import UUID
 
 from flask_restx import Resource
-from pydantic import BaseModel, Field, TypeAdapter, computed_field, field_validator
-from werkzeug.exceptions import Forbidden, NotFound
+from pydantic import BaseModel, Field, computed_field, field_validator
 
+from controllers.common.errors import ForbiddenError, InvalidArgumentError, NotFoundError
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import AppNotFoundError
@@ -224,12 +224,11 @@ def _translate_errors() -> Generator[None]:
     except WorkflowCommentAppNotFoundError as error:
         raise AppNotFoundError() from error
     except (WorkflowCommentNotFoundError, WorkflowCommentReplyNotFoundError) as error:
-        raise NotFound(str(error)) from error
+        raise NotFoundError(str(error)) from error
     except WorkflowCommentPermissionError as error:
-        raise Forbidden(str(error)) from error
+        raise ForbiddenError(str(error)) from error
     except (InvalidWorkflowCommentContentError, InvalidMentionedUserIdError) as error:
-        # Content and mention ID failures have always surfaced as 400 `invalid_param`.
-        raise ValueError(str(error)) from error
+        raise InvalidArgumentError(str(error)) from error
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflow/comments")
@@ -437,6 +436,4 @@ class WorkflowCommentMentionUsersApi(Resource):
         with _translate_errors():
             services.workflow_comments.ensure_app(request_context, str(app_id))
         members = services.workspaces.member_queries.list_members(request_context.active_workspace_id)
-        users = TypeAdapter(list[AccountWithRole]).validate_python(members, from_attributes=True)
-        response = WorkflowCommentMentionUsersPayload(users=users)
-        return response.model_dump(mode="json"), 200
+        return dump_response(WorkflowCommentMentionUsersPayload, {"users": members}), 200

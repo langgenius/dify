@@ -13,8 +13,9 @@ from uuid import UUID
 
 import pytest
 from flask import Flask
-from werkzeug.exceptions import Forbidden, NotFound
+from werkzeug.exceptions import Forbidden, HTTPException
 
+from controllers.common.errors import ForbiddenError, InvalidArgumentError, NotFoundError
 from controllers.console import console_ns, flask_admission
 from controllers.console.app import workflow_comment as workflow_comment_module
 from controllers.console.app.error import AppNotFoundError
@@ -114,7 +115,7 @@ class WriteCase:
     method: Callable[..., object]
     http_method: str
     kwargs: dict[str, object]
-    service_method: str
+    service: Callable[[MagicMock], MagicMock]
     service_return: object = None
     payload: dict[str, object] | None = None
 
@@ -123,7 +124,7 @@ CREATE_COMMENT = WriteCase(
     WorkflowCommentListApi.post,
     "POST",
     {"app_id": APP_ID},
-    "create_comment",
+    lambda comments: comments.create_comment,
     WorkflowCommentCreated(id="comment-1", created_at=JAN_1_2024_NOON),
     {"content": "hello", "position_x": 1.0, "position_y": 2.0, "mentioned_user_ids": []},
 )
@@ -131,25 +132,28 @@ UPDATE_COMMENT = WriteCase(
     WorkflowCommentDetailApi.put,
     "PUT",
     {"app_id": APP_ID, "comment_id": "comment-1"},
-    "update_comment",
+    lambda comments: comments.update_comment,
     WorkflowCommentUpdated(id="comment-1", updated_at=JAN_1_2024_NOON),
     {"content": "hello"},
 )
 DELETE_COMMENT = WriteCase(
-    WorkflowCommentDetailApi.delete, "DELETE", {"app_id": APP_ID, "comment_id": "comment-1"}, "delete_comment"
+    WorkflowCommentDetailApi.delete,
+    "DELETE",
+    {"app_id": APP_ID, "comment_id": "comment-1"},
+    lambda comments: comments.delete_comment,
 )
 RESOLVE_COMMENT = WriteCase(
     WorkflowCommentResolveApi.post,
     "POST",
     {"app_id": APP_ID, "comment_id": "comment-1"},
-    "resolve_comment",
+    lambda comments: comments.resolve_comment,
     WorkflowCommentResolved(id="comment-1", resolved=True, resolved_at=JAN_1_2024_NOON, resolved_by="account-123"),
 )
 CREATE_REPLY = WriteCase(
     WorkflowCommentReplyApi.post,
     "POST",
     {"app_id": APP_ID, "comment_id": "comment-1"},
-    "create_reply",
+    lambda comments: comments.create_reply,
     WorkflowCommentCreated(id="reply-1", created_at=JAN_1_2024_NOON),
     {"content": "reply", "mentioned_user_ids": []},
 )
@@ -157,7 +161,7 @@ UPDATE_REPLY = WriteCase(
     WorkflowCommentReplyDetailApi.put,
     "PUT",
     {"app_id": APP_ID, "comment_id": "comment-1", "reply_id": "reply-1"},
-    "update_reply",
+    lambda comments: comments.update_reply,
     WorkflowCommentUpdated(id="reply-1", updated_at=JAN_1_2024_NOON),
     {"content": "reply", "mentioned_user_ids": []},
 )
@@ -165,7 +169,7 @@ DELETE_REPLY = WriteCase(
     WorkflowCommentReplyDetailApi.delete,
     "DELETE",
     {"app_id": APP_ID, "comment_id": "comment-1", "reply_id": "reply-1"},
-    "delete_reply",
+    lambda comments: comments.delete_reply,
 )
 WRITE_CASES = [
     pytest.param(CREATE_COMMENT, id="create-comment"),
@@ -193,7 +197,7 @@ def test_write_endpoints_reject_read_only_roles(
     with pytest.raises(Forbidden):
         _call(app, case)
 
-    getattr(comments, case.service_method).assert_not_called()
+    case.service(comments).assert_not_called()
 
 
 @pytest.mark.parametrize("case", WRITE_CASES)
@@ -202,11 +206,11 @@ def test_write_endpoints_admit_edit_roles(
     app: Flask, monkeypatch: pytest.MonkeyPatch, comments: MagicMock, case: WriteCase, role: TenantAccountRole
 ) -> None:
     _admit(monkeypatch, role)
-    getattr(comments, case.service_method).return_value = case.service_return
+    case.service(comments).return_value = case.service_return
 
     _call(app, case)
 
-    getattr(comments, case.service_method).assert_called_once()
+    case.service(comments).assert_called_once()
 
 
 @pytest.mark.parametrize("case", WRITE_CASES)
@@ -215,11 +219,11 @@ def test_rbac_replaces_the_legacy_role_gate(
 ) -> None:
     # Like `edit_permission_required`, the role gate is skipped under RBAC; these routes declare no RBAC checks.
     _admit(monkeypatch, TenantAccountRole.NORMAL, rbac_enabled=True)
-    getattr(comments, case.service_method).return_value = case.service_return
+    case.service(comments).return_value = case.service_return
 
     _call(app, case)
 
-    getattr(comments, case.service_method).assert_called_once()
+    case.service(comments).assert_called_once()
 
 
 def test_create_comment_passes_request_context_and_typed_draft(
@@ -296,7 +300,7 @@ def test_mutation_endpoints_serialize_responses(
     app: Flask, monkeypatch: pytest.MonkeyPatch, comments: MagicMock, case: WriteCase, expected: object
 ) -> None:
     _admit(monkeypatch, TenantAccountRole.EDITOR)
-    getattr(comments, case.service_method).return_value = case.service_return
+    case.service(comments).return_value = case.service_return
 
     assert _call(app, case) == expected
 
@@ -463,21 +467,23 @@ def test_mention_users_rejects_unaddressable_app(
     ("error", "expected_type", "expected_message"),
     [
         pytest.param(WorkflowCommentAppNotFoundError(), AppNotFoundError, "App not found.", id="app"),
-        pytest.param(WorkflowCommentNotFoundError(), NotFound, "Comment not found", id="comment"),
-        pytest.param(WorkflowCommentReplyNotFoundError(), NotFound, "Reply not found", id="reply"),
+        pytest.param(WorkflowCommentNotFoundError(), NotFoundError, "Comment not found", id="comment"),
+        pytest.param(WorkflowCommentReplyNotFoundError(), NotFoundError, "Reply not found", id="reply"),
         pytest.param(
             WorkflowCommentPermissionError("Only the comment creator can update it"),
-            Forbidden,
+            ForbiddenError,
             "Only the comment creator can update it",
             id="permission",
         ),
         pytest.param(
             InvalidWorkflowCommentContentError("Comment content cannot be empty"),
-            ValueError,
+            InvalidArgumentError,
             "Comment content cannot be empty",
             id="content",
         ),
-        pytest.param(InvalidMentionedUserIdError("bad"), ValueError, "bad is not a valid uuid.", id="mention-id"),
+        pytest.param(
+            InvalidMentionedUserIdError("bad"), InvalidArgumentError, "bad is not a valid uuid.", id="mention-id"
+        ),
     ],
 )
 def test_domain_errors_map_to_existing_transport_errors(
@@ -495,9 +501,7 @@ def test_domain_errors_map_to_existing_transport_errors(
         _call(app, UPDATE_COMMENT)
 
     exception = raised.value
-    message = (
-        exception.description if isinstance(exception, NotFound | Forbidden | AppNotFoundError) else str(exception)
-    )
+    message = exception.description if isinstance(exception, HTTPException) else str(exception)
     assert message == expected_message
 
 
