@@ -29,7 +29,6 @@ import { produce } from 'immer'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import AppIcon from '@/app/components/base/app-icon'
 import { IconPickerDialog } from '@/app/components/base/icon-picker'
 import LabelSelector from '@/app/components/tools/labels/selector'
 import ConfirmModal from '@/app/components/tools/workflow-tool/confirm-modal'
@@ -239,7 +238,6 @@ export function WorkflowToolDrawer({
   const parameterId = React.useId()
   const toolNameLabelId = React.useId()
 
-  const [showEmojiPicker, setShowEmojiPicker] = useState<boolean>(false)
   const [emoji, setEmoji] = useState<Emoji>(payload.icon)
   const [label, setLabel] = useState<string>(payload.label)
   const [name, setName] = useState(payload.name)
@@ -339,36 +337,37 @@ export function WorkflowToolDrawer({
         >
           <div className="h-0 grow space-y-4 overflow-y-auto px-6 py-3">
             {/* name & icon */}
-            <Field name="label" className="gap-0">
-              <FieldLabel className="py-2 text-text-primary">
-                {t(($) => $['createTool.name'], { ns: 'tools' })}{' '}
-                <span aria-hidden className="ml-1 text-text-destructive">
-                  *
-                </span>
-              </FieldLabel>
-              <div className="flex items-center justify-between gap-3">
-                <button
-                  type="button"
-                  aria-label={t(($) => $['createTool.changeIcon'], { ns: 'tools' })}
-                  className="shrink-0 cursor-pointer rounded-[10px] focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-                  onClick={() => setShowEmojiPicker(true)}
-                >
-                  <AppIcon
-                    decorative
-                    size="large"
-                    iconType="emoji"
-                    icon={emoji.content}
-                    background={emoji.background}
-                  />
-                </button>
+            <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3">
+              <IconPickerDialog
+                className="col-start-1 row-start-2"
+                aria-label={t(($) => $['createTool.changeIcon'], { ns: 'tools' })}
+                size="large"
+                enableImageUpload={false}
+                value={{
+                  type: 'emoji',
+                  icon: emoji.content,
+                  background: emoji.background,
+                }}
+                onConfirm={(payload) => {
+                  if (payload.type === 'emoji')
+                    setEmoji({ content: payload.icon, background: payload.background })
+                }}
+              />
+              <Field name="label" className="contents">
+                <FieldLabel className="col-span-2 row-start-1 py-2 text-text-primary">
+                  {t(($) => $['createTool.name'], { ns: 'tools' })}{' '}
+                  <span aria-hidden className="ml-1 text-text-destructive">
+                    *
+                  </span>
+                </FieldLabel>
                 <Input
-                  className="h-10 min-w-0 flex-1"
+                  className="col-start-2 row-start-2 h-10 min-w-0 flex-1"
                   placeholder={t(($) => $['createTool.toolNamePlaceHolder'], { ns: 'tools' })!}
                   value={label}
                   onValueChange={(value) => setLabel(value)}
                 />
-              </div>
-            </Field>
+              </Field>
+            </div>
             {/* name for tool call */}
             <Field name="name" className="gap-0" invalid={!isWorkflowToolNameValid(name)}>
               <div className="flex items-center py-2 system-sm-medium text-text-primary">
@@ -590,20 +589,7 @@ export function WorkflowToolDrawer({
           </div>
         </form>
       </WorkflowToolDrawerFrame>
-      <IconPickerDialog
-        open={showEmojiPicker}
-        enableImageUpload={false}
-        defaultValue={{
-          type: 'emoji',
-          icon: emoji.content,
-          background: emoji.background,
-        }}
-        onOpenChange={setShowEmojiPicker}
-        onConfirm={(payload) => {
-          if (payload.type === 'emoji')
-            setEmoji({ content: payload.icon, background: payload.background })
-        }}
-      />
+
       {confirmModalOpen && (
         <ConfirmModal
           show={confirmModalOpen}

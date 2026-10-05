@@ -1,16 +1,17 @@
 import type { Ref } from 'react'
 import type { AgentFormValues, AgentIconSelection } from './agent-form'
+import type { IconPickerValue } from '@/app/components/base/icon-picker'
 import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useTranslation } from 'react-i18next'
-import AppIcon from '@/app/components/base/app-icon'
+import { IconPickerDialog } from '@/app/components/base/icon-picker'
 
 type AgentFormFieldsProps = {
   defaultValues: AgentFormValues
   icon: AgentIconSelection
   iconAriaLabel: string
-  onIconClick: () => void
+  onIconChange: (value: IconPickerValue) => void
   ref: Ref<HTMLInputElement>
 }
 
@@ -18,7 +19,7 @@ export function AgentFormFields({
   defaultValues,
   icon,
   iconAriaLabel,
-  onIconClick,
+  onIconChange,
   ref,
 }: AgentFormFieldsProps) {
   const { t } = useTranslation(['agentRoster'])
@@ -27,22 +28,14 @@ export function AgentFormFields({
   return (
     <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-6 py-3">
       <div className="flex items-start gap-4">
-        <button
-          type="button"
+        <IconPickerDialog
+          value={icon}
+          onConfirm={onIconChange}
           aria-label={iconAriaLabel}
-          className="shrink-0 rounded-full focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-          onClick={onIconClick}
-        >
-          <AppIcon
-            size="xxl"
-            rounded
-            className="size-16 cursor-pointer"
-            iconType={icon.type === 'link' ? 'image' : icon.type}
-            icon={icon.type === 'emoji' ? icon.icon : undefined}
-            background={icon.type === 'emoji' ? icon.background : undefined}
-            imageUrl={icon.type === 'emoji' ? undefined : icon.url}
-          />
-        </button>
+          size="xxl"
+          rounded
+          iconClassName="size-16"
+        />
         <div className="flex min-w-0 flex-1 flex-col items-start gap-3 pb-1 sm:flex-row">
           <Field
             name="name"

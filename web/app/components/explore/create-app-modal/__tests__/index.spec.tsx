@@ -234,8 +234,22 @@ describe('CreateAppModal', () => {
       vi.useRealTimers()
     })
 
-    it('should submit when Mod+Enter is pressed while visible', async () => {
+    it('suspends Mod+Enter while the picker is open and resumes after it closes', async () => {
       const { onConfirm, onHide } = await setup()
+      const picker = openAppIconPicker()
+      const pickerSearch = within(picker).getByPlaceholderText('app.iconPicker.search')
+      fireEvent.keyDown(pickerSearch, { key: 'Enter', ctrlKey: true })
+      fireEvent.keyUp(pickerSearch, { key: 'Enter', ctrlKey: true })
+      await act(async () => {
+        vi.advanceTimersByTime(300)
+      })
+      expect(onConfirm).not.toHaveBeenCalled()
+      expect(onHide).not.toHaveBeenCalled()
+      fireEvent.keyDown(pickerSearch, { key: 'Escape' })
+      await act(async () => {
+        vi.advanceTimersByTime(300)
+      })
+      expect(picker).not.toBeInTheDocument()
 
       submitWithKeyboard()
       await act(async () => {

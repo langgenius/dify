@@ -16,7 +16,6 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useMutation } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { IconPickerDialog } from '@/app/components/base/icon-picker'
 import { AgentScope } from '@/features/agent-v2/analytics'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
@@ -52,7 +51,6 @@ function CreateAgentFormSession({
   const { t } = useTranslation(['agentRoster'])
   const { t: tCommon } = useTranslation(['common'])
   const [agentIcon, setAgentIcon] = useState<AgentIconSelection>(defaultAgentIcon)
-  const [iconPickerOpen, setIconPickerOpen] = useState(false)
 
   return (
     <>
@@ -73,10 +71,10 @@ function CreateAgentFormSession({
           defaultValues={createAgentDefaultValues}
           icon={agentIcon}
           iconAriaLabel={t(($) => $['roster.createForm.changeIcon'], { ns: 'agentRoster' })}
-          onIconClick={() => setIconPickerOpen(true)}
+          onIconChange={setAgentIcon}
         />
         <div className="flex shrink-0 justify-end gap-2 px-6 pt-5 pb-6">
-          <Button type="button" className="min-w-18" onClick={onCancel} disabled={pending}>
+          <Button className="min-w-18" onClick={onCancel} disabled={pending}>
             {tCommon(($) => $['operation.cancel'])}
           </Button>
           <Button type="submit" variant="primary" className="min-w-18" loading={pending}>
@@ -84,12 +82,6 @@ function CreateAgentFormSession({
           </Button>
         </div>
       </Form>
-      <IconPickerDialog
-        open={iconPickerOpen}
-        defaultValue={agentIcon.type === 'link' ? undefined : agentIcon}
-        onOpenChange={setIconPickerOpen}
-        onConfirm={setAgentIcon}
-      />
     </>
   )
 }

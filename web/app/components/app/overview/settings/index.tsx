@@ -40,7 +40,6 @@ import { useQueryState } from 'nuqs'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import AppIcon from '@/app/components/base/app-icon'
 import { IconPickerDialog } from '@/app/components/base/icon-picker'
 import { PremiumBadgeButton } from '@/app/components/base/premium-badge'
 import {
@@ -193,7 +192,6 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   const [saveLoading, setSaveLoading] = useState(false)
   const { t } = useTranslation(['app', 'appOverview', 'billing', 'common'])
 
-  const [showIconPicker, setShowIconPicker] = useState(false)
   const [appIcon, setAppIcon] = useState<SettingsAppIconSelection>(nextAppIcon)
   const [previousIsShow, setPreviousIsShow] = useState(isShow)
   const [previousSettingsResetKey, setPreviousSettingsResetKey] = useState(settingsResetKey)
@@ -441,39 +439,21 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                         placeholder={t(($) => $.appNamePlaceholder, { ns: 'app' }) || ''}
                       />
                     </Field>
-                    <button
-                      type="button"
-                      aria-label={t(($) => $['iconPicker.title'], { ns: 'app' })}
-                      className="mt-2 shrink-0 cursor-pointer rounded-2xl focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-                      onClick={() => setShowIconPicker(true)}
-                    >
-                      <AppIcon
-                        decorative
-                        size="xxl"
-                        iconType={
-                          appIcon
-                            ? appIcon.type === 'link'
-                              ? 'image'
-                              : appIcon.type
-                            : appInfo.site.icon_type
-                        }
-                        icon={
-                          appIcon
-                            ? appIcon.type === 'image'
-                              ? appIcon.fileId
-                              : appIcon.icon
-                            : (appInfo.site.icon ?? undefined)
-                        }
-                        background={
-                          appIcon?.type === 'emoji'
-                            ? appIcon.background
-                            : appInfo.site.icon_background
-                        }
-                        imageUrl={
-                          appIcon && appIcon.type !== 'emoji' ? appIcon.url : appInfo.site.icon_url
-                        }
-                      />
-                    </button>
+                    <IconPickerDialog
+                      value={
+                        appIcon ??
+                        (appInfo.site.icon_type === 'emoji' && appInfo.site.icon
+                          ? {
+                              type: 'emoji',
+                              icon: appInfo.site.icon,
+                              background: appInfo.site.icon_background,
+                            }
+                          : undefined)
+                      }
+                      onConfirm={setAppIcon}
+                      size="xxl"
+                      className="mt-2"
+                    />
                   </div>
                   {/* description */}
                   <Field name="description">
@@ -816,7 +796,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
             </ScrollArea>
             {/* footer */}
             <div className="row-start-3 flex shrink-0 justify-end p-6 pt-5">
-              <Button type="button" className="mr-2" onClick={handleClose}>
+              <Button className="mr-2" onClick={handleClose}>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </Button>
               <Button type="submit" variant="primary" loading={saveLoading}>
@@ -826,12 +806,6 @@ const SettingsModal: FC<ISettingsModalProps> = ({
           </Form>
         </DialogContent>
       </Dialog>
-      <IconPickerDialog
-        open={showIconPicker}
-        defaultValue={appIcon?.type === 'link' ? undefined : (appIcon ?? undefined)}
-        onOpenChange={setShowIconPicker}
-        onConfirm={setAppIcon}
-      />
     </>
   )
 }

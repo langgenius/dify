@@ -21,7 +21,6 @@ import { produce } from 'immer'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import AppIcon from '@/app/components/base/app-icon'
 import { IconPickerDialog } from '@/app/components/base/icon-picker'
 import LabelSelector from '@/app/components/tools/labels/selector'
 import { toast } from '@/app/notifications'
@@ -91,7 +90,6 @@ const EditCustomCollectionModal: FC<Props> = ({
     }
   }, [isEdit, payload])
 
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const emoji = customCollection.icon
   const setEmoji = (emoji: Emoji) => {
     const newCollection = produce(customCollection, (draft) => {
@@ -256,20 +254,21 @@ const EditCustomCollectionModal: FC<Props> = ({
                           <span className="ml-1 text-red-500">*</span>
                         </label>
                         <div className="flex items-center justify-between gap-3">
-                          <IconButton
+                          <IconPickerDialog
                             aria-label={t(($) => $['createTool.changeIcon'], { ns: 'tools' })}
-                            className="size-10 rounded-[10px] p-0"
-                            onClick={() => {
-                              setShowEmojiPicker(true)
+                            size="large"
+                            enableImageUpload={false}
+                            value={{
+                              type: 'emoji',
+                              icon: emoji.content,
+                              background: emoji.background,
                             }}
-                          >
-                            <AppIcon
-                              decorative
-                              size="large"
-                              icon={emoji.content}
-                              background={emoji.background}
-                            />
-                          </IconButton>
+                            onConfirm={(value) => {
+                              if (value.type !== 'emoji') return
+                              const { icon, background: icon_background } = value
+                              setEmoji({ content: icon, background: icon_background })
+                            }}
+                          />
                           <Input
                             id={providerNameInputId}
                             className="h-10 grow"
@@ -487,21 +486,6 @@ const EditCustomCollectionModal: FC<Props> = ({
                         </Button>
                       </div>
                     </div>
-                    <IconPickerDialog
-                      enableImageUpload={false}
-                      defaultValue={{
-                        type: 'emoji',
-                        icon: emoji.content,
-                        background: emoji.background,
-                      }}
-                      open={showEmojiPicker}
-                      onOpenChange={setShowEmojiPicker}
-                      onConfirm={(value) => {
-                        if (value.type !== 'emoji') return
-                        const { icon, background: icon_background } = value
-                        setEmoji({ content: icon, background: icon_background })
-                      }}
-                    />
                     {credentialsModalShow && (
                       <ConfigCredentials
                         positionCenter={isAdd}

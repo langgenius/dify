@@ -250,17 +250,21 @@ describe('CreateAppModal', () => {
 
     fireEvent.click(screen.getByText('app.newApp.forBeginners'))
     fireEvent.click(screen.getByText('app.types.chatbot'))
+    fireEvent.change(screen.getByPlaceholderText('app.newApp.appNamePlaceholder'), {
+      target: { value: 'Keyboard App' },
+    })
     fireEvent.click(screen.getByRole('button', { name: 'app.iconPicker.title' }))
     await waitFor(() => {
       expect(screen.getByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
     })
+    const pickerSearch = screen.getByPlaceholderText('app.iconPicker.search')
+    fireEvent.keyDown(pickerSearch, { key: 'Enter', code: 'Enter', ctrlKey: true })
+    fireEvent.keyUp(pickerSearch, { key: 'Enter', code: 'Enter', ctrlKey: true })
+    expect(mockCreateApp).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole('radio', { name: 'app.iconPicker.color.green' }))
     fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
     await waitFor(() => {
       expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
-    })
-    fireEvent.change(screen.getByPlaceholderText('app.newApp.appNamePlaceholder'), {
-      target: { value: 'Keyboard App' },
     })
     fireEvent.change(screen.getByPlaceholderText('app.newApp.appDescriptionPlaceholder'), {
       target: { value: 'Created from shortcut' },

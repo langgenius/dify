@@ -16,7 +16,6 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { toast } from '@/app/components/app/configuration/toast'
-import AppIcon from '@/app/components/base/app-icon'
 import FormGeneration from '@/app/components/base/features/new-feature-panel/moderation/form-generation'
 import { IconPickerDialog } from '@/app/components/base/icon-picker'
 import { ApiBasedExtensionSelector } from '@/app/components/header/account-setting/api-based-extension-page/selector'
@@ -45,7 +44,6 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
   const docLink = useDocLink()
   const locale = useLocale()
   const [localeData, setLocaleData] = useState(data.type ? data : { ...data, type: 'api' })
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const { data: codeBasedExtensionList } = useCodeBasedExtensions('external_data_tool')
 
   const providers = buildProviders({
@@ -156,20 +154,26 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
                 t(($) => $['feature.tools.modal.name.placeholder'], { ns: 'appDebug' }) || ''
               }
             />
-            <button
-              type="button"
+            <IconPickerDialog
               aria-label={t(($) => $['iconPicker.title'], { ns: 'app' })}
-              className="shrink-0 cursor-pointer rounded-lg focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-              onClick={() => setShowEmojiPicker(true)}
-            >
-              <AppIcon
-                decorative
-                size="large"
-                className="h-9! w-9! rounded-lg border-[0.5px] border-components-panel-border"
-                icon={localeData.icon}
-                background={localeData.icon_background}
-              />
-            </button>
+              size="large"
+              iconClassName="h-9! w-9! rounded-lg border-[0.5px] border-components-panel-border"
+              enableImageUpload={false}
+              value={
+                localeData.icon
+                  ? {
+                      type: 'emoji',
+                      icon: localeData.icon,
+                      background: localeData.icon_background,
+                    }
+                  : undefined
+              }
+              onConfirm={(value) => {
+                if (value.type !== 'emoji') return
+                const { icon, background: icon_background } = value
+                handleValueChange({ icon, icon_background })
+              }}
+            />
           </div>
         </div>
         <div className="py-2">
@@ -223,25 +227,6 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
             {t(($) => $['operation.save'], { ns: 'common' })}
           </Button>
         </div>
-        <IconPickerDialog
-          enableImageUpload={false}
-          defaultValue={
-            localeData.icon
-              ? {
-                  type: 'emoji',
-                  icon: localeData.icon,
-                  background: localeData.icon_background,
-                }
-              : undefined
-          }
-          open={showEmojiPicker}
-          onOpenChange={setShowEmojiPicker}
-          onConfirm={(value) => {
-            if (value.type !== 'emoji') return
-            const { icon, background: icon_background } = value
-            handleValueChange({ icon, icon_background })
-          }}
-        />
       </DialogContent>
     </Dialog>
   )

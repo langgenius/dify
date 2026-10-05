@@ -15,7 +15,6 @@ import { useDebounceFn } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import { useCallback, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import AppIcon from '@/app/components/base/app-icon'
 import { IconPickerDialog } from '@/app/components/base/icon-picker'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { toast } from '@/app/notifications'
@@ -324,25 +323,10 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
                     placeholder={t(($) => $['newApp.appNamePlaceholder'], { ns: 'app' }) || ''}
                   />
                 </div>
-                <button
-                  type="button"
-                  aria-label={t(($) => $['iconPicker.title'], { ns: 'app' })}
-                  className="shrink-0 cursor-pointer rounded-2xl focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-                  onClick={() => setShowIconPicker(true)}
-                >
-                  <AppIcon
-                    decorative
-                    iconType={appIcon.type}
-                    icon={appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId}
-                    background={appIcon.type === 'emoji' ? appIcon.background : undefined}
-                    imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
-                    size="xxl"
-                    className="rounded-2xl"
-                  />
-                </button>
                 <IconPickerDialog
-                  open={showIconPicker}
-                  defaultValue={appIcon}
+                  value={appIcon}
+                  size="xxl"
+                  iconClassName="rounded-2xl"
                   onOpenChange={setShowIconPicker}
                   onConfirm={(payload) => {
                     setAppIcon(payload)

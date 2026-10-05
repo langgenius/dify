@@ -2,13 +2,10 @@
 import type { IconPickerValue } from '@/app/components/base/icon-picker'
 import type { Member } from '@/models/common'
 import type { DataSet, DatasetPermission, IconInfo } from '@/models/datasets'
-import type { AppIconType } from '@/types/app'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
-import AppIcon from '@/app/components/base/app-icon'
 import { IconPickerDialog } from '@/app/components/base/icon-picker'
 import PermissionSelector from '../../permission-selector'
 
@@ -22,10 +19,7 @@ type BasicInfoSectionProps = {
   description: string
   setDescription: (value: string) => void
   iconInfo: IconInfo
-  showIconPicker: boolean
-  handleOpenAppIconPicker: () => void
   handleSelectAppIcon: (icon: IconPickerValue) => void
-  setShowIconPicker: (show: boolean) => void
   permission: DatasetPermission | undefined
   setPermission: (value: DatasetPermission | undefined) => void
   selectedMemberIDs: string[]
@@ -41,10 +35,7 @@ const BasicInfoSection = ({
   description,
   setDescription,
   iconInfo,
-  showIconPicker,
-  handleOpenAppIconPicker,
   handleSelectAppIcon,
-  setShowIconPicker,
   permission,
   setPermission,
   selectedMemberIDs,
@@ -65,23 +56,21 @@ const BasicInfoSection = ({
           </div>
         </div>
         <div className="flex min-w-0 grow items-center gap-x-2">
-          <IconButton
-            size="lg"
+          <IconPickerDialog
             aria-label={t(($) => $['form.changeIcon'], { ns: 'datasetSettings' })}
+            size="small"
             disabled={readonly}
-            onClick={handleOpenAppIconPicker}
-          >
-            <span aria-hidden="true">
-              <AppIcon
-                size="small"
-                decorative
-                iconType={iconInfo.icon_type as AppIconType}
-                icon={iconInfo.icon}
-                background={iconInfo.icon_background}
-                imageUrl={iconInfo.icon_url}
-              />
-            </span>
-          </IconButton>
+            value={
+              iconInfo.icon_type === 'emoji'
+                ? {
+                    type: 'emoji',
+                    icon: iconInfo.icon,
+                    background: iconInfo.icon_background,
+                  }
+                : { type: 'image', fileId: iconInfo.icon, url: iconInfo.icon_url || '' }
+            }
+            onConfirm={handleSelectAppIcon}
+          />
           <Input
             aria-label={t(($) => $['form.name'], { ns: 'datasetSettings' })}
             disabled={!currentDataset?.embedding_available || readonly}
@@ -129,21 +118,6 @@ const BasicInfoSection = ({
           />
         </div>
       </div>
-
-      <IconPickerDialog
-        open={showIconPicker}
-        defaultValue={
-          iconInfo.icon_type === 'emoji'
-            ? {
-                type: 'emoji',
-                icon: iconInfo.icon,
-                background: iconInfo.icon_background,
-              }
-            : { type: 'image', fileId: iconInfo.icon, url: iconInfo.icon_url || '' }
-        }
-        onOpenChange={setShowIconPicker}
-        onConfirm={handleSelectAppIcon}
-      />
     </>
   )
 }

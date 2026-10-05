@@ -19,7 +19,6 @@ import { Input } from '@langgenius/dify-ui/input'
 import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import AppIcon from '@/app/components/base/app-icon'
 import { IconPickerDialog } from '@/app/components/base/icon-picker'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { toast } from '@/app/notifications'
@@ -60,7 +59,6 @@ const SwitchAppModal = ({ show, sourceApp, onClose }: SwitchAppModalProps) => {
     appQuota.limit > 0 &&
     appQuota.size >= appQuota.limit
 
-  const [showIconPicker, setShowIconPicker] = useState(false)
   const appIconType = zIconType.safeParse(sourceApp.icon_type).data
   const [appIcon, setAppIcon] = useState(
     appIconType === 'image'
@@ -165,21 +163,7 @@ const SwitchAppModal = ({ show, sourceApp, onClose }: SwitchAppModalProps) => {
               {t(($) => $.switchLabel, { ns: 'app' })}
             </label>
             <div className="flex items-center justify-between space-x-2">
-              <button
-                type="button"
-                aria-label={t(($) => $['iconPicker.title'], { ns: 'app' })}
-                className="shrink-0 cursor-pointer rounded-[10px] focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-                onClick={() => setShowIconPicker(true)}
-              >
-                <AppIcon
-                  decorative
-                  size="large"
-                  iconType={appIcon.type}
-                  icon={appIcon.type === 'image' ? appIcon.fileId : appIcon.icon}
-                  background={appIcon.type === 'image' ? undefined : appIcon.background}
-                  imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
-                />
-              </button>
+              <IconPickerDialog value={appIcon} onConfirm={setAppIcon} size="large" />
               <Input
                 id={nameInputId}
                 value={name}
@@ -188,14 +172,6 @@ const SwitchAppModal = ({ show, sourceApp, onClose }: SwitchAppModalProps) => {
                 className="h-10 grow"
               />
             </div>
-            <IconPickerDialog
-              open={showIconPicker}
-              defaultValue={appIcon}
-              onOpenChange={setShowIconPicker}
-              onConfirm={(payload) => {
-                setAppIcon(payload)
-              }}
-            />
           </div>
           {isAppsFull && <AppsFull loc="app-switch" />}
           <div className="flex items-center justify-between pt-6">

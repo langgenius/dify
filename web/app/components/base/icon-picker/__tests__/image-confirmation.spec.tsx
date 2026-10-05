@@ -2,7 +2,7 @@ import type {
   PostFilesUploadData,
   PostFilesUploadResponse,
 } from '@dify/contracts/api/console/files/types.gen'
-import type { IconPickerDefaultValue } from '..'
+import type { IconPickerInputValue } from '..'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -28,7 +28,7 @@ beforeEach(() => {
 
 afterEach(() => vi.restoreAllMocks())
 
-async function selectImage(defaultValue?: IconPickerDefaultValue) {
+async function selectImage(defaultValue?: IconPickerInputValue) {
   const user = userEvent.setup()
   const client = new QueryClient()
   client.setQueryData(emojiCatalogOptions.queryKey, [])
@@ -36,14 +36,11 @@ async function selectImage(defaultValue?: IconPickerDefaultValue) {
   const onOpenChange = vi.fn()
   const view = render(
     <QueryClientProvider client={client}>
-      <IconPickerDialog
-        open
-        defaultValue={defaultValue}
-        onConfirm={onConfirm}
-        onOpenChange={onOpenChange}
-      />
+      <IconPickerDialog value={defaultValue} onConfirm={onConfirm} onOpenChange={onOpenChange} />
     </QueryClientProvider>,
   )
+  await user.click(screen.getByRole('button', { name: 'app.iconPicker.title' }))
+  onOpenChange.mockClear()
   await user.click(screen.getByRole('tab', { name: 'app.iconPicker.image' }))
   if (defaultValue?.type === 'image')
     await user.click(screen.getByRole('button', { name: 'common.operation.change' }))
@@ -91,7 +88,7 @@ it('does not confirm an upload that finishes after the picker is unmounted', asy
     finishUpload({ id: 'late-image', name: 'icon.gif', size: 6 })
   })
   expect(onConfirm).not.toHaveBeenCalled()
-  expect(onOpenChange).not.toHaveBeenCalled()
+  expect(onOpenChange).toHaveBeenCalledExactlyOnceWith(false)
   expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:preview')
   client.clear()
 })
@@ -104,9 +101,10 @@ it('opens the file input directly and preserves the existing image on cancellati
   const value = { type: 'image' as const, fileId: 'existing', url: '/existing.png' }
   render(
     <QueryClientProvider client={client}>
-      <IconPickerDialog open defaultValue={value} onConfirm={onConfirm} onOpenChange={() => {}} />
+      <IconPickerDialog value={value} onConfirm={onConfirm} onOpenChange={() => {}} />
     </QueryClientProvider>,
   )
+  await user.click(screen.getByRole('button', { name: 'app.iconPicker.title' }))
   const input = screen.getByTestId('image-input')
   const openFilePicker = vi.spyOn(input, 'click')
   await user.click(screen.getByRole('button', { name: 'common.operation.change' }))
@@ -160,13 +158,13 @@ it.each([undefined, null])(
     render(
       <QueryClientProvider client={client}>
         <IconPickerDialog
-          open
-          defaultValue={{ type: 'emoji', icon: '😀', background }}
+          value={{ type: 'emoji', icon: '😀', background }}
           onConfirm={onConfirm}
           onOpenChange={() => {}}
         />
       </QueryClientProvider>,
     )
+    await user.click(screen.getByRole('button', { name: 'app.iconPicker.title' }))
     expect(onConfirm).not.toHaveBeenCalled()
     await user.click(screen.getByRole('button', { name: 'app.iconPicker.ok' }))
     expect(onConfirm).toHaveBeenCalledExactlyOnceWith({
@@ -183,25 +181,20 @@ it('keeps open-session edits and reads the latest default when reopened', async 
   const client = new QueryClient()
   client.setQueryData(emojiCatalogOptions.queryKey, [])
   const onConfirm = vi.fn()
-  const picker = (open: boolean, defaultValue: IconPickerDefaultValue) => (
+  const picker = (value: IconPickerInputValue) => (
     <QueryClientProvider client={client}>
-      <IconPickerDialog
-        open={open}
-        defaultValue={defaultValue}
-        onConfirm={onConfirm}
-        onOpenChange={() => {}}
-      />
+      <IconPickerDialog value={value} onConfirm={onConfirm} onOpenChange={() => {}} />
     </QueryClientProvider>
   )
-  const view = render(picker(true, { type: 'emoji', icon: '😀', background: '#FEF3F2' }))
+  const view = render(picker({ type: 'emoji', icon: '😀', background: '#FEF3F2' }))
+  await user.click(screen.getByRole('button', { name: 'app.iconPicker.title' }))
   await user.click(screen.getByRole('radio', { name: 'app.iconPicker.color.green' }))
   const nextDefault = { type: 'image' as const, fileId: 'new-image', url: '/new-image.png' }
-  view.rerender(picker(true, nextDefault))
+  view.rerender(picker(nextDefault))
   await user.click(screen.getByRole('button', { name: 'app.iconPicker.ok' }))
   expect(onConfirm).toHaveBeenLastCalledWith({ type: 'emoji', icon: '😀', background: '#F3FEE7' })
-  view.rerender(picker(false, nextDefault))
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-  view.rerender(picker(true, nextDefault))
+  await user.click(screen.getByRole('button', { name: 'app.iconPicker.title' }))
   await user.click(screen.getByRole('button', { name: 'app.iconPicker.ok' }))
   expect(onConfirm).toHaveBeenLastCalledWith(nextDefault)
   expect(uploadImage).not.toHaveBeenCalled()
@@ -287,5 +280,68 @@ it('replaces an existing image only after selecting a file and confirms the new 
   expect(onConfirm).toHaveBeenCalledWith(
     expect.objectContaining({ type: 'image', fileId: 'replacement' }),
   )
+  client.clear()
+})
+
+it('preserves a linked icon on cancellation and only replaces it after confirmation', async () => {
+  const user = userEvent.setup()
+  const client = new QueryClient()
+  client.setQueryData(emojiCatalogOptions.queryKey, [])
+  const onConfirm = vi.fn()
+  const value = { type: 'link' as const, url: '/linked-icon.png' }
+  render(
+    <QueryClientProvider client={client}>
+      <IconPickerDialog value={value} onConfirm={onConfirm} />
+    </QueryClientProvider>,
+  )
+  const trigger = screen.getByRole('button', { name: 'app.iconPicker.title' })
+  expect(trigger.querySelector('img')).toHaveAttribute('src', value.url)
+  await user.click(trigger)
+  expect(screen.getByRole('tab', { name: 'app.iconPicker.emoji' })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  )
+  await user.click(screen.getByRole('button', { name: 'app.iconPicker.tryYourLuck' }))
+  await user.keyboard('{Escape}')
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  expect(onConfirm).not.toHaveBeenCalled()
+  expect(trigger.querySelector('img')).toHaveAttribute('src', value.url)
+  await user.click(trigger)
+  await user.click(screen.getByRole('button', { name: 'app.iconPicker.tryYourLuck' }))
+  await user.click(screen.getByRole('button', { name: 'app.iconPicker.ok' }))
+  expect(onConfirm).toHaveBeenCalledWith(expect.objectContaining({ type: 'emoji' }))
+  expect(uploadImage).not.toHaveBeenCalled()
+  client.clear()
+})
+
+it('keeps an unavailable icon entry disabled', async () => {
+  const user = userEvent.setup()
+  render(<IconPickerDialog disabled onConfirm={vi.fn()} />)
+  const trigger = screen.getByRole('button', { name: 'app.iconPicker.title' })
+  expect(trigger).toBeDisabled()
+  await user.click(trigger)
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+})
+
+it('keeps emoji-only consumers out of image upload', async () => {
+  const user = userEvent.setup()
+  const client = new QueryClient()
+  client.setQueryData(emojiCatalogOptions.queryKey, [])
+  const onConfirm = vi.fn()
+  render(
+    <QueryClientProvider client={client}>
+      <IconPickerDialog
+        enableImageUpload={false}
+        value={{ type: 'emoji', icon: '😀', background: '#FEF3F2' }}
+        onConfirm={onConfirm}
+      />
+    </QueryClientProvider>,
+  )
+  await user.click(screen.getByRole('button', { name: 'app.iconPicker.title' }))
+  expect(screen.queryByRole('tab', { name: 'app.iconPicker.image' })).not.toBeInTheDocument()
+  expect(screen.queryByTestId('image-input')).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'app.iconPicker.ok' }))
+  expect(onConfirm).toHaveBeenCalledWith(expect.objectContaining({ type: 'emoji' }))
+  expect(uploadImage).not.toHaveBeenCalled()
   client.clear()
 })

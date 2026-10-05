@@ -1,6 +1,6 @@
 'use client'
 import type { AppDetailWithSite, CopyAppPayload } from '@dify/contracts/api/console/apps/types.gen'
-import type { IconPickerDefaultValue, IconPickerValue } from '@/app/components/base/icon-picker'
+import type { IconPickerInputValue, IconPickerValue } from '@/app/components/base/icon-picker'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
@@ -11,7 +11,6 @@ import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import AppIcon from '@/app/components/base/app-icon'
 import { IconPickerDialog } from '@/app/components/base/icon-picker'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { toast } from '@/app/notifications'
@@ -43,15 +42,16 @@ const DuplicateAppModal = ({
 
   const [name, setName] = React.useState(appName)
 
-  const [showIconPicker, setShowIconPicker] = useState(false)
   const [selectedIcon, setSelectedIcon] = useState<IconPickerValue | null>(null)
-  const pickerDefaultValue: IconPickerDefaultValue | undefined =
+  const pickerValue: IconPickerInputValue | undefined =
     selectedIcon ??
     (icon_type === 'image' && icon
       ? { type: 'image', url: icon_url ?? '', fileId: icon }
       : icon_type === 'emoji' && icon
         ? { type: 'emoji', icon, background: icon_background }
-        : undefined)
+        : icon_type === 'link' && icon
+          ? { type: 'link', url: icon }
+          : undefined)
   const currentIcon = selectedIcon
     ? {
         icon_type: selectedIcon.type,
@@ -119,38 +119,27 @@ const DuplicateAppModal = ({
             }}
           >
             <div className="mb-9 system-sm-regular text-text-secondary">
-              <Field name="name">
-                <FieldLabel className="system-md-medium">
-                  {t(($) => $['appCustomize.subTitle'], { ns: 'explore' })}
-                </FieldLabel>
-                <div className="flex items-center justify-between space-x-2">
-                  <button
-                    type="button"
-                    aria-label={`${t(($) => $['operation.edit'], { ns: 'common' })} ${t(($) => $['appCustomize.subTitle'], { ns: 'explore' })}`}
-                    onClick={() => {
-                      setShowIconPicker(true)
-                    }}
-                    className="shrink-0 cursor-pointer rounded-[10px] focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-                  >
-                    <AppIcon
-                      size="large"
-                      iconType={currentIcon.icon_type === 'link' ? 'image' : currentIcon.icon_type}
-                      icon={currentIcon.icon ?? undefined}
-                      background={currentIcon.icon_background}
-                      imageUrl={
-                        currentIcon.icon_type === 'link' ? currentIcon.icon : currentIcon.icon_url
-                      }
-                    />
-                  </button>
+              <div className="grid grid-cols-[auto_1fr] items-center gap-x-2 gap-y-1">
+                <IconPickerDialog
+                  value={pickerValue}
+                  onConfirm={setSelectedIcon}
+                  size="large"
+                  className="col-start-1 row-start-2"
+                  aria-label={`${t(($) => $['operation.edit'], { ns: 'common' })} ${t(($) => $['appCustomize.subTitle'], { ns: 'explore' })}`}
+                />
+                <Field name="name" className="contents">
+                  <FieldLabel className="col-span-2 row-start-1 system-md-medium">
+                    {t(($) => $['appCustomize.subTitle'], { ns: 'explore' })}
+                  </FieldLabel>
                   <Input
                     autoComplete="off"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="h-10"
+                    className="col-start-2 row-start-2 h-10"
                     placeholder={t(($) => $['placeholder.input'], { ns: 'common' }) || ''}
                   />
-                </div>
-              </Field>
+                </Field>
+              </div>
               {isAppsFull && <AppsFull className="mt-4" loc="app-duplicate-create" />}
             </div>
             <div className="flex flex-row-reverse">
@@ -162,19 +151,13 @@ const DuplicateAppModal = ({
               >
                 {t(($) => $.duplicate, { ns: 'app' })}
               </Button>
-              <Button type="button" className="w-24" onClick={onHide}>
+              <Button className="w-24" onClick={onHide}>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </Button>
             </div>
           </form>
         </DialogContent>
       </Dialog>
-      <IconPickerDialog
-        open={showIconPicker}
-        defaultValue={pickerDefaultValue}
-        onOpenChange={setShowIconPicker}
-        onConfirm={setSelectedIcon}
-      />
     </>
   )
 }

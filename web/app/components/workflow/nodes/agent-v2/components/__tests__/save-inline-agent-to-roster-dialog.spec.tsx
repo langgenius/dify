@@ -1,6 +1,8 @@
 import type { AgentComposerAgentResponse } from '@dify/contracts/api/console/apps/types.gen'
+import type { IconPickerInputValue, IconPickerValue } from '@/app/components/base/icon-picker'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { FlowType } from '@/types/common'
 import { SaveInlineAgentToRosterDialog } from '../save-inline-agent-to-roster-dialog'
 
@@ -25,27 +27,37 @@ vi.mock('@/app/notifications', () => ({
 }))
 
 vi.mock('@/app/components/base/icon-picker', () => ({
-  __esModule: true,
-  IconPickerDialog: ({
-    defaultValue,
+  IconPickerDialog: function Picker({
+    value,
     onConfirm,
-    open,
+    'aria-label': label,
   }: {
-    defaultValue?: { icon: string; background: string }
-    onConfirm: (payload: { type: 'emoji'; icon: string; background: string }) => void
-    open: boolean
-  }) =>
-    open ? (
-      <div>
-        <span>{`${defaultValue?.icon}:${defaultValue?.background}`}</span>
-        <button
-          type="button"
-          onClick={() => onConfirm({ type: 'emoji', icon: '🧠', background: '#E0F2FE' })}
-        >
-          Select brain icon
+    value?: IconPickerInputValue
+    onConfirm: (value: IconPickerValue) => void
+    'aria-label'?: string
+  }) {
+    const [open, setOpen] = useState(false)
+    return (
+      <>
+        <button type="button" aria-label={label} onClick={() => setOpen(true)}>
+          {value?.type === 'emoji' ? `${value.icon}:${value.background}` : value?.type}
         </button>
-      </div>
-    ) : null,
+        {open && (
+          <div>
+            <button
+              type="button"
+              onClick={() => {
+                onConfirm({ type: 'emoji', icon: '🧠', background: '#E0F2FE' })
+                setOpen(false)
+              }}
+            >
+              Select brain icon
+            </button>
+          </div>
+        )}
+      </>
+    )
+  },
 }))
 
 vi.mock('@/service/console', () => ({
