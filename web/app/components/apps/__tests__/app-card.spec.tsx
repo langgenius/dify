@@ -1,6 +1,6 @@
 import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
 import type { InstalledAppListResponse } from '@dify/contracts/api/console/installed-apps/types.gen'
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
@@ -247,138 +247,86 @@ vi.mock('@/utils/time', () => ({
 }))
 
 // Mock dynamic imports
-vi.mock('next/dynamic', () => ({
-  default: (importFn: () => Promise<unknown>) => {
-    void importFn().catch(() => {})
-    const fnString = importFn.toString()
+vi.mock('next/dynamic', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('next/dynamic')>()
+  return {
+    default: (importFn: () => Promise<React.ComponentType<Record<string, unknown>>>) => {
+      const fnString = importFn.toString()
 
-    if (fnString.includes('create-app-modal') || fnString.includes('explore/create-app-modal')) {
-      return function MockEditAppModal({
-        show,
-        onHide,
-        onConfirm,
-      }: {
-        show: boolean
-        onHide: () => void
-        onConfirm?: (data: Record<string, unknown>) => void
-      }) {
-        if (!show) return null
-        return React.createElement(
-          'div',
-          { 'data-testid': 'edit-app-modal' },
-          React.createElement(
-            'button',
-            { onClick: onHide, 'data-testid': 'close-edit-modal' },
-            'Close',
-          ),
-          React.createElement(
-            'button',
-            {
-              onClick: () =>
-                onConfirm?.({
-                  name: 'Updated App',
-                  icon_type: 'emoji',
-                  icon: '🎯',
-                  icon_background: '#FFEAD5',
-                  description: 'Updated description',
-                  use_icon_as_answer_icon: false,
-                  max_active_requests: null,
-                }),
-              'data-testid': 'confirm-edit-modal',
-            },
-            'Confirm',
-          ),
-        )
+      if (fnString.includes('create-app-modal') || fnString.includes('explore/create-app-modal')) {
+        return function MockEditAppModal({
+          show,
+          onHide,
+          onConfirm,
+        }: {
+          show: boolean
+          onHide: () => void
+          onConfirm?: (data: Record<string, unknown>) => void
+        }) {
+          if (!show) return null
+          return React.createElement(
+            'div',
+            { 'data-testid': 'edit-app-modal' },
+            React.createElement(
+              'button',
+              { onClick: onHide, 'data-testid': 'close-edit-modal' },
+              'Close',
+            ),
+            React.createElement(
+              'button',
+              {
+                onClick: () =>
+                  onConfirm?.({
+                    name: 'Updated App',
+                    icon_type: 'emoji',
+                    icon: '🎯',
+                    icon_background: '#FFEAD5',
+                    description: 'Updated description',
+                    use_icon_as_answer_icon: false,
+                    max_active_requests: null,
+                  }),
+                'data-testid': 'confirm-edit-modal',
+              },
+              'Confirm',
+            ),
+          )
+        }
       }
-    }
-    if (fnString.includes('duplicate-modal')) {
-      return function MockDuplicateAppModal({
-        show,
-        onHide,
-        onConfirm,
-      }: {
-        show: boolean
-        onHide: () => void
-        onConfirm?: (data: Record<string, unknown>) => void
-      }) {
-        if (!show) return null
-        return React.createElement(
-          'div',
-          { 'data-testid': 'duplicate-modal' },
-          React.createElement(
-            'button',
-            { onClick: onHide, 'data-testid': 'close-duplicate-modal' },
-            'Close',
-          ),
-          React.createElement(
-            'button',
-            {
-              onClick: () =>
-                onConfirm?.({
-                  name: 'Copied App',
-                  icon_type: 'emoji',
-                  icon: '📋',
-                  icon_background: '#E4FBCC',
-                }),
-              'data-testid': 'confirm-duplicate-modal',
-            },
-            'Confirm',
-          ),
-        )
+      if (fnString.includes('duplicate-modal') || fnString.includes('switch-app-modal'))
+        return actual.default(importFn, { ssr: false })
+      if (fnString.includes('app/export-confirm-modal')) {
+        return function MockDSLExportModal({
+          onClose,
+          onConfirm,
+        }: {
+          onClose?: () => void
+          onConfirm?: (withSecrets: boolean) => void
+        }) {
+          return React.createElement(
+            'div',
+            { 'data-testid': 'dsl-export-modal' },
+            React.createElement(
+              'button',
+              { onClick: () => onClose?.(), 'data-testid': 'close-dsl-export' },
+              'Close',
+            ),
+            React.createElement(
+              'button',
+              { onClick: () => onConfirm?.(true), 'data-testid': 'confirm-dsl-export' },
+              'Export with secrets',
+            ),
+            React.createElement(
+              'button',
+              { onClick: () => onConfirm?.(false), 'data-testid': 'confirm-dsl-export-no-secrets' },
+              'Export without secrets',
+            ),
+          )
+        }
       }
-    }
-    if (fnString.includes('switch-app-modal')) {
-      return function MockSwitchAppModal({
-        show,
-        onClose,
-      }: {
-        show: boolean
-        onClose: () => void
-      }) {
-        if (!show) return null
-        return React.createElement(
-          'div',
-          { 'data-testid': 'switch-modal' },
-          React.createElement(
-            'button',
-            { onClick: onClose, 'data-testid': 'close-switch-modal' },
-            'Close',
-          ),
-        )
-      }
-    }
-    if (fnString.includes('app/export-confirm-modal')) {
-      return function MockDSLExportModal({
-        onClose,
-        onConfirm,
-      }: {
-        onClose?: () => void
-        onConfirm?: (withSecrets: boolean) => void
-      }) {
-        return React.createElement(
-          'div',
-          { 'data-testid': 'dsl-export-modal' },
-          React.createElement(
-            'button',
-            { onClick: () => onClose?.(), 'data-testid': 'close-dsl-export' },
-            'Close',
-          ),
-          React.createElement(
-            'button',
-            { onClick: () => onConfirm?.(true), 'data-testid': 'confirm-dsl-export' },
-            'Export with secrets',
-          ),
-          React.createElement(
-            'button',
-            { onClick: () => onConfirm?.(false), 'data-testid': 'confirm-dsl-export-no-secrets' },
-            'Export without secrets',
-          ),
-        )
-      }
-    }
-    return () => null
-  },
-}))
+      return () => null
+    },
+  }
+})
 
 // AppCardTags has tag API dependencies - mock for isolated testing
 vi.mock('@/features/tag-management/components/app-card-tags', () => ({
@@ -955,7 +903,7 @@ describe('AppCard', () => {
       })
 
       await waitFor(() => {
-        expect(screen.getByTestId('duplicate-modal')).toBeInTheDocument()
+        expect(screen.getByRole('dialog', { name: 'app.duplicateTitle' })).toBeInTheDocument()
       })
     })
 
@@ -1039,14 +987,14 @@ describe('AppCard', () => {
       })
 
       await waitFor(() => {
-        expect(screen.getByTestId('duplicate-modal')).toBeInTheDocument()
+        expect(screen.getByRole('dialog', { name: 'app.duplicateTitle' })).toBeInTheDocument()
       })
 
       // Click close button to trigger onHide
-      fireEvent.click(screen.getByTestId('close-duplicate-modal'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
       await waitFor(() => {
-        expect(screen.queryByTestId('duplicate-modal')).not.toBeInTheDocument()
+        expect(screen.queryByRole('dialog', { name: 'app.duplicateTitle' })).not.toBeInTheDocument()
       })
     })
 
@@ -1169,48 +1117,57 @@ describe('AppCard', () => {
       })
     })
 
-    it('should call copyApp API when duplicating app', async () => {
+    it('keeps a pending or failed copy session open and closes only after the retry succeeds', async () => {
+      const user = userEvent.setup()
+      let rejectCopy!: (reason: Error) => void
+      mockCopyApp.mockImplementationOnce(
+        () =>
+          new Promise((_, reject) => {
+            rejectCopy = reject
+          }),
+      )
       render(<AppCard app={mockApp} />)
+      await user.click(getOperationsTrigger())
+      await user.click(await screen.findByRole('menuitem', { name: 'app.duplicate' }))
+      const dialog = await screen.findByRole('dialog', { name: 'app.duplicateTitle' })
+      const input = within(dialog).getByRole('textbox', { name: 'explore.appCustomize.subTitle' })
+      await user.clear(input)
+      await user.type(input, 'Retry copy')
+      await user.keyboard('{Enter}')
+      await waitFor(() => expect(mockCopyApp).toHaveBeenCalledTimes(1))
+      expect(input).toHaveAttribute('readonly')
+      await user.keyboard('{Enter}{Escape}')
+      expect(mockCopyApp).toHaveBeenCalledTimes(1)
+      expect(dialog).toBeInTheDocument()
+      expect(within(dialog).getByRole('button', { name: 'common.operation.cancel' })).toBeDisabled()
+      expect(within(dialog).getByRole('button', { name: 'common.operation.close' })).toBeDisabled()
 
-      fireEvent.click(getOperationsTrigger())
-      await waitFor(() => {
-        fireEvent.click(screen.getByText('app.duplicate'))
+      await act(async () => rejectCopy(new Error('Copy failed')))
+      await waitFor(() => expect(input).not.toHaveAttribute('readonly'))
+      expect(input).toHaveValue('Retry copy')
+      expect(dialog).toBeInTheDocument()
+      expect(toastMocks.record).toHaveBeenCalledWith({
+        type: 'error',
+        message: 'app.newApp.appCreateFailed',
       })
+      expect(mockGetRedirection).not.toHaveBeenCalled()
 
-      await waitFor(() => {
-        expect(screen.getByTestId('duplicate-modal')).toBeInTheDocument()
+      await user.click(within(dialog).getByRole('button', { name: 'app.duplicate' }))
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('dialog', { name: 'app.duplicateTitle' }),
+        ).not.toBeInTheDocument(),
+      )
+      expect(mockCopyApp).toHaveBeenCalledTimes(2)
+      expect(mockCopyApp).toHaveBeenLastCalledWith({
+        params: { app_id: mockApp.id },
+        body: { name: 'Retry copy', icon_type: 'emoji', icon: '🤖', icon_background: '#FFEAD5' },
       })
-
-      fireEvent.click(screen.getByTestId('confirm-duplicate-modal'))
-
-      await waitFor(() => {
-        expect(mockCopyApp).toHaveBeenCalled()
+      expect(toastMocks.record).toHaveBeenCalledWith({
+        type: 'success',
+        message: 'app.newApp.appCreated',
       })
-    })
-
-    it('should handle copy failure', async () => {
-      mockCopyApp.mockRejectedValueOnce(new Error('Copy failed'))
-
-      render(<AppCard app={mockApp} />)
-
-      fireEvent.click(getOperationsTrigger())
-      await waitFor(() => {
-        fireEvent.click(screen.getByText('app.duplicate'))
-      })
-
-      await waitFor(() => {
-        expect(screen.getByTestId('duplicate-modal')).toBeInTheDocument()
-      })
-
-      fireEvent.click(screen.getByTestId('confirm-duplicate-modal'))
-
-      await waitFor(() => {
-        expect(mockCopyApp).toHaveBeenCalled()
-        expect(toastMocks.record).toHaveBeenCalledWith({
-          type: 'error',
-          message: 'app.newApp.appCreateFailed',
-        })
-      })
+      expect(mockGetRedirection).toHaveBeenCalledTimes(1)
     })
 
     it('should export the app DSL when exporting', async () => {
@@ -1248,7 +1205,7 @@ describe('AppCard', () => {
       })
 
       await waitFor(() => {
-        expect(screen.getByTestId('switch-modal')).toBeInTheDocument()
+        expect(screen.getByRole('dialog', { name: 'app.switch' })).toBeInTheDocument()
       })
     })
 
@@ -1262,13 +1219,13 @@ describe('AppCard', () => {
       })
 
       await waitFor(() => {
-        expect(screen.getByTestId('switch-modal')).toBeInTheDocument()
+        expect(screen.getByRole('dialog', { name: 'app.switch' })).toBeInTheDocument()
       })
 
-      fireEvent.click(screen.getByTestId('close-switch-modal'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
       await waitFor(() => {
-        expect(screen.queryByTestId('switch-modal')).not.toBeInTheDocument()
+        expect(screen.queryByRole('dialog', { name: 'app.switch' })).not.toBeInTheDocument()
       })
     })
 
@@ -1282,7 +1239,7 @@ describe('AppCard', () => {
       })
 
       await waitFor(() => {
-        expect(screen.getByTestId('switch-modal')).toBeInTheDocument()
+        expect(screen.getByRole('dialog', { name: 'app.switch' })).toBeInTheDocument()
       })
     })
   })

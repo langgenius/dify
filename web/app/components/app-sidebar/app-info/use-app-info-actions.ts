@@ -2,7 +2,7 @@ import type {
   AppDetailWithSite,
   EnvironmentVariableItemResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
-import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
+import type { DuplicateAppDialogProps } from '@/app/components/app/duplicate-modal'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useState } from 'react'
@@ -194,7 +194,7 @@ export function useAppInfoActions({
     [appId, closeModal, t, emitAppMetaUpdate, queryClient],
   )
 
-  const onCopy: DuplicateAppModalProps['onConfirm'] = useCallback(
+  const onCopy: DuplicateAppDialogProps['onConfirm'] = useCallback(
     async ({ name, icon_type, icon, icon_background }) => {
       try {
         const newApp = await copyApp({

@@ -1,10 +1,16 @@
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { DynamicOptions, Loader } from 'next/dynamic'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import type { ComponentProps } from 'react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppModeEnum } from '@/types/app'
 import AppInfoModals from '../app-info-modals'
+
+vi.mock('@/next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+}))
 
 const { loadDynamic, observeImportOpen } = vi.hoisted(() => ({
   loadDynamic: vi.fn(),
@@ -28,17 +34,6 @@ vi.mock('next/dynamic', async (importOriginal) => {
   }
 })
 
-vi.mock('@/app/components/app/switch-app-modal', () => ({
-  default: ({ show, onClose }: { show: boolean; onClose: () => void }) =>
-    show ? (
-      <div data-testid="switch-modal">
-        <button type="button" onClick={onClose}>
-          Close Switch
-        </button>
-      </div>
-    ) : null,
-}))
-
 vi.mock('@/app/components/explore/create-app-modal', () => ({
   default: ({
     show,
@@ -53,17 +48,6 @@ vi.mock('@/app/components/explore/create-app-modal', () => ({
       <div data-testid={isEditModal ? 'edit-modal' : 'create-modal'}>
         <button type="button" onClick={onHide}>
           Close Edit
-        </button>
-      </div>
-    ) : null,
-}))
-
-vi.mock('@/app/components/app/duplicate-modal', () => ({
-  default: ({ show, onHide }: { show: boolean; onHide: () => void }) =>
-    show ? (
-      <div data-testid="duplicate-modal">
-        <button type="button" onClick={onHide}>
-          Close Dup
         </button>
       </div>
     ) : null,
@@ -149,7 +133,7 @@ const defaultProps = {
   secretEnvList: [] as never[],
   setSecretEnvList: vi.fn(),
   onEdit: vi.fn(),
-  onCopy: vi.fn(),
+  onCopy: vi.fn(async () => {}),
   onExport: vi.fn(async () => true),
   isExporting: false,
   exportCheck: vi.fn(),
@@ -188,17 +172,25 @@ describe('AppInfoModals', () => {
     await act(async () => {
       render(<AppInfoModals {...defaultProps} activeModal={null} />)
     })
-    expect(screen.queryByTestId('switch-modal')).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: 'app.switch' })).not.toBeInTheDocument()
     expect(screen.queryByText('app.deleteAppConfirmTitle')).not.toBeInTheDocument()
   })
 
-  it('should render SwitchAppModal when activeModal is switch', async () => {
-    await act(async () => {
-      render(<AppInfoModals {...defaultProps} activeModal="switch" />)
-    })
-    await waitFor(() => {
-      expect(screen.getByTestId('switch-modal')).toBeInTheDocument()
-    })
+  it('loads the switch module only when its command is first activated', async () => {
+    const { rerender } = render(<AppInfoModals {...defaultProps} activeModal={null} />)
+    expect(loadDynamic).not.toHaveBeenCalled()
+
+    rerender(<AppInfoModals {...defaultProps} activeModal="switch" />)
+    expect(await screen.findByRole('dialog', { name: 'app.switch' })).toBeInTheDocument()
+    expect(loadDynamic).toHaveBeenCalledTimes(1)
+
+    rerender(<AppInfoModals {...defaultProps} activeModal={null} />)
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: 'app.switch' })).not.toBeInTheDocument(),
+    )
+    rerender(<AppInfoModals {...defaultProps} activeModal="switch" />)
+    expect(await screen.findByRole('dialog', { name: 'app.switch' })).toBeInTheDocument()
+    expect(loadDynamic).toHaveBeenCalledTimes(1)
   })
 
   it('should render CreateAppModal in edit mode when activeModal is edit', async () => {
@@ -210,13 +202,72 @@ describe('AppInfoModals', () => {
     })
   })
 
-  it('should render DuplicateAppModal when activeModal is duplicate', async () => {
-    await act(async () => {
-      render(<AppInfoModals {...defaultProps} activeModal="duplicate" />)
+  it('loads the duplicate module on first activation and creates a fresh draft after closing', async () => {
+    const user = userEvent.setup()
+    const { rerender } = render(<AppInfoModals {...defaultProps} activeModal={null} />)
+    expect(loadDynamic).not.toHaveBeenCalled()
+
+    rerender(<AppInfoModals {...defaultProps} activeModal="duplicate" />)
+    const dialog = await screen.findByRole('dialog', { name: 'app.duplicateTitle' })
+    expect(loadDynamic).toHaveBeenCalledTimes(1)
+    const input = within(dialog).getByRole('textbox', { name: 'explore.appCustomize.subTitle' })
+    await user.clear(input)
+    await user.type(input, 'Unsubmitted copy')
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.cancel' }))
+    expect(defaultProps.closeModal).toHaveBeenCalledTimes(1)
+
+    rerender(<AppInfoModals {...defaultProps} activeModal={null} />)
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: 'app.duplicateTitle' })).not.toBeInTheDocument(),
+    )
+    rerender(<AppInfoModals {...defaultProps} activeModal="duplicate" />)
+    const reopened = await screen.findByRole('dialog', { name: 'app.duplicateTitle' })
+    expect(
+      within(reopened).getByRole('textbox', { name: 'explore.appCustomize.subTitle' }),
+    ).not.toHaveValue('Unsubmitted copy')
+    expect(loadDynamic).toHaveBeenCalledTimes(1)
+  })
+
+  it('awaits the copy callback, retains a failed draft, and leaves successful closing to the owner', async () => {
+    const user = userEvent.setup()
+    let rejectCopy!: (reason: Error) => void
+    const onCopy = vi
+      .fn<ComponentProps<typeof AppInfoModals>['onCopy']>()
+      .mockImplementationOnce(
+        () =>
+          new Promise((_, reject) => {
+            rejectCopy = reject
+          }),
+      )
+      .mockResolvedValue(undefined)
+    render(<AppInfoModals {...defaultProps} onCopy={onCopy} activeModal="duplicate" />)
+    const dialog = await screen.findByRole('dialog', { name: 'app.duplicateTitle' })
+    const input = within(dialog).getByRole('textbox', { name: 'explore.appCustomize.subTitle' })
+    await user.clear(input)
+    await user.type(input, 'Retry copy{Enter}')
+    await waitFor(() => expect(onCopy).toHaveBeenCalledTimes(1))
+    expect(input).toHaveAttribute('readonly')
+    await user.keyboard('{Enter}{Escape}')
+    expect(onCopy).toHaveBeenCalledTimes(1)
+    expect(defaultProps.closeModal).not.toHaveBeenCalled()
+    expect(within(dialog).getByRole('button', { name: 'common.operation.cancel' })).toBeDisabled()
+
+    await act(async () => rejectCopy(new Error('Copy failed')))
+    await waitFor(() => expect(input).not.toHaveAttribute('readonly'))
+    expect(input).toHaveValue('Retry copy')
+    expect(dialog).toBeInTheDocument()
+
+    await user.click(within(dialog).getByRole('button', { name: 'app.duplicate' }))
+    await waitFor(() => expect(onCopy).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(input).not.toHaveAttribute('readonly'))
+    expect(onCopy).toHaveBeenLastCalledWith({
+      name: 'Retry copy',
+      icon_type: 'emoji',
+      icon: '🤖',
+      icon_background: '#FFEAD5',
     })
-    await waitFor(() => {
-      expect(screen.getByTestId('duplicate-modal')).toBeInTheDocument()
-    })
+    expect(defaultProps.closeModal).not.toHaveBeenCalled()
+    expect(dialog).toBeInTheDocument()
   })
 
   it('should render delete alert dialog when activeModal is delete', async () => {
