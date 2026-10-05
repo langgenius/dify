@@ -15,6 +15,7 @@ from core.plugin.entities.plugin_daemon import (
     PluginTTSResultResponse,
     PluginVoiceEntity,
     PluginVoicesResponse,
+    TTSAudioChunk,
 )
 from core.plugin.impl.model import PluginModelClient
 from core.plugin.impl.model_runtime import PluginModelRuntime
@@ -148,7 +149,9 @@ def audio_runtime(monkeypatch: pytest.MonkeyPatch) -> Iterator[AudioRuntimeObser
             response = observed.tts_responses.pop(0) if observed.tts_responses else observed.tts_result
             chunks = [response] if isinstance(response, bytes) else response
             for chunk in chunks:
-                yield PluginTTSResultResponse(result=chunk.hex(), mime_type=getattr(chunk, "mime_type", None))
+                yield PluginTTSResultResponse(
+                    result=chunk.hex(), mime_type=chunk.mime_type if isinstance(chunk, TTSAudioChunk) else None
+                )
 
     monkeypatch.setattr(ProviderManager, "get_default_model", default_model)
     monkeypatch.setattr(ProviderManager, "get_provider_model_bundle", bundle)
