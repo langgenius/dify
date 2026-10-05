@@ -80,15 +80,6 @@ vi.mock('../../detail/completed/common/batch-action', () => ({
   ),
 }))
 
-vi.mock('../../rename-modal', () => ({
-  default: ({ name, onClose }: { name: string; onClose: () => void }) => (
-    <div data-testid="rename-modal">
-      <span>{name}</span>
-      <button onClick={onClose}>Close</button>
-    </div>
-  ),
-}))
-
 vi.mock('@/app/components/datasets/metadata/edit-metadata-batch/modal', () => ({
   default: ({ onHide }: { onHide: () => void }) => (
     <div data-testid="edit-metadata-modal">

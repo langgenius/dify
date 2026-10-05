@@ -65,10 +65,6 @@ vi.mock('../dataset-card/hooks/use-dataset-card-state', () => ({
   }),
 }))
 
-vi.mock('../../rename-modal', () => ({
-  default: () => null,
-}))
-
 vi.mock('../dataset-card', () => ({
   default: ({
     dataset,
