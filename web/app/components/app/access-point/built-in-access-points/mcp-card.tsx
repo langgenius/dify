@@ -17,7 +17,7 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AccessPointCard } from '@/app/components/base/access-point/card'
 import { AccessPointUrl } from '@/app/components/base/access-point/url'
-import MCPServerModal from '@/app/components/tools/mcp/mcp-server-modal'
+import { MCPServerModal } from '@/app/components/tools/mcp/mcp-server-modal'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
@@ -199,19 +199,17 @@ export function MCPAccessPointCard({
         />
       </AccessPointCard>
 
-      {showServerModal && (
-        <MCPServerModal
-          show
-          appID={appInfo.id}
-          data={serverPublished ? detail : undefined}
-          latestParams={latestParams}
-          onHide={() => {
-            setShowServerModal(false)
-            invalidateServerDetail(appInfo.id)
-          }}
-          appInfo={appInfo}
-        />
-      )}
+      <MCPServerModal
+        open={showServerModal}
+        appID={appInfo.id}
+        data={serverPublished ? detail : undefined}
+        latestParams={latestParams}
+        onOpenChange={(open) => {
+          setShowServerModal(open)
+          if (!open) invalidateServerDetail(appInfo.id)
+        }}
+        appInfo={appInfo}
+      />
 
       <AlertDialog open={showRegenerate} onOpenChange={(open) => !open && setShowRegenerate(false)}>
         <AlertDialogContent>

@@ -1,7 +1,7 @@
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { PublishedWorkflow } from '../shared/utils'
 import { QueryClientProvider } from '@tanstack/react-query'
-import { screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
@@ -12,13 +12,21 @@ import { AppModeEnum } from '@/types/app'
 import { MCPAccessPointCard } from '../built-in-access-points/mcp-card'
 
 const mocks = vi.hoisted(() => ({
-  invalidateServerDetail: vi.fn(),
+  getServer: vi.fn(),
+  createServer: vi.fn(),
+  saveServer: vi.fn(),
   serverDetail: {
-    data: undefined as undefined | { id: string; server_code: string; status: string },
+    data: undefined as
+      | undefined
+      | {
+          id: string
+          server_code: string
+          status: string
+          description?: string
+          parameters?: Record<string, string>
+        },
     isPending: false,
   },
-  modalProps: vi.fn(),
-  refreshServerCode: vi.fn(),
   updateServer: vi.fn(),
 }))
 
@@ -29,37 +37,19 @@ vi.mock('@/app/notifications', () => ({
   },
 }))
 
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    apps: {
-      byAppId: {
-        server: {
-          put: {
-            mutationOptions: (options = {}) => ({
-              mutationFn: mocks.updateServer,
-              ...options,
-            }),
-          },
-        },
-      },
+vi.mock('@/service/console/browser', () => ({
+  consoleBrowserLink: {
+    call: (path: string[], input: unknown) => {
+      if (path.join('.') === 'apps.byAppId.server.put') return mocks.updateServer(input)
+      throw new Error(`Unexpected console request: ${path.join('.')}`)
     },
   },
 }))
 
-vi.mock('@/service/use-tools', () => ({
-  useInvalidateMCPServerDetail: () => mocks.invalidateServerDetail,
-  useMCPServerDetail: () => mocks.serverDetail,
-  useRefreshMCPServerCode: () => ({
-    isPending: false,
-    mutateAsync: mocks.refreshServerCode,
-  }),
-}))
-
-vi.mock('@/app/components/tools/mcp/mcp-server-modal', () => ({
-  default: (props: Record<string, unknown>) => {
-    mocks.modalProps(props)
-    return <div role="dialog" aria-label="MCP server settings" />
-  },
+vi.mock('@/service/base', () => ({
+  get: (url: string) => mocks.getServer(url),
+  post: (url: string, options: unknown) => mocks.createServer(url, options),
+  put: (url: string, options: unknown) => mocks.saveServer(url, options),
 }))
 
 const appInfo = createAppDetailFixture({
@@ -113,7 +103,7 @@ function createDeferredPromise<T>() {
 function renderCard(cardAppInfo: AppDetailWithSite = appInfo, workflow?: PublishedWorkflow) {
   const queryClient = createTestQueryClient()
 
-  return render(
+  const result = render(
     <QueryClientProvider client={queryClient}>
       <MCPAccessPointCard
         appInfo={cardAppInfo}
@@ -124,6 +114,7 @@ function renderCard(cardAppInfo: AppDetailWithSite = appInfo, workflow?: Publish
       />
     </QueryClientProvider>,
   )
+  return { ...result, queryClient }
 }
 
 describe('MCPAccessPointCard', () => {
@@ -132,6 +123,13 @@ describe('MCPAccessPointCard', () => {
     mocks.serverDetail.data = undefined
     mocks.serverDetail.isPending = false
     mocks.updateServer.mockResolvedValue(undefined)
+    mocks.getServer.mockImplementation(() =>
+      mocks.serverDetail.isPending
+        ? new Promise(() => {})
+        : Promise.resolve(mocks.serverDetail.data ?? {}),
+    )
+    mocks.createServer.mockResolvedValue({})
+    mocks.saveServer.mockResolvedValue({})
   })
 
   afterEach(() => {
@@ -146,21 +144,11 @@ describe('MCPAccessPointCard', () => {
 
     renderCard()
 
-    await user.click(screen.getByRole('button', { name: /addDescription/ }))
+    const configure = screen.getByRole('button', { name: /addDescription/ })
+    await waitFor(() => expect(configure).toBeEnabled())
+    await user.click(configure)
 
-    expect(screen.getByRole('dialog', { name: 'MCP server settings' })).toBeInTheDocument()
-    expect(mocks.modalProps).toHaveBeenCalledWith(
-      expect.objectContaining({
-        latestParams: [
-          {
-            label: 'Question',
-            required: true,
-            type: 'text-input',
-            variable: 'question',
-          },
-        ],
-      }),
-    )
+    expect(screen.getByRole('textbox', { name: 'Question' })).toBeInTheDocument()
     expect(fetchSpy).not.toHaveBeenCalled()
   })
 
@@ -169,13 +157,11 @@ describe('MCPAccessPointCard', () => {
 
     renderCard(workflowAppInfo, publishedWorkflow)
 
-    await user.click(screen.getByRole('button', { name: /addDescription/ }))
+    const configure = screen.getByRole('button', { name: /addDescription/ })
+    await waitFor(() => expect(configure).toBeEnabled())
+    await user.click(configure)
 
-    expect(mocks.modalProps).toHaveBeenCalledWith(
-      expect.objectContaining({
-        latestParams: [{ label: 'Query', variable: 'query' }],
-      }),
-    )
+    expect(screen.getByRole('textbox', { name: 'Query' })).toBeInTheDocument()
   })
 
   it('shows loading without reporting an environment failure', () => {
@@ -202,7 +188,8 @@ describe('MCPAccessPointCard', () => {
     mocks.updateServer.mockReturnValueOnce(toggle.promise)
     renderCard()
 
-    const accessSwitch = screen.getByRole('switch')
+    const accessSwitch = await screen.findByRole('switch')
+    await waitFor(() => expect(accessSwitch).toHaveAttribute('aria-checked', 'true'))
     await user.click(accessSwitch)
 
     expect(accessSwitch).toHaveAttribute('aria-checked', 'false')
@@ -230,7 +217,8 @@ describe('MCPAccessPointCard', () => {
       .mockReturnValueOnce(secondToggle.promise)
     renderCard()
 
-    const accessSwitch = screen.getByRole('switch')
+    const accessSwitch = await screen.findByRole('switch')
+    await waitFor(() => expect(accessSwitch).toHaveAttribute('aria-checked', 'true'))
     await user.click(accessSwitch)
 
     expect(accessSwitch).toHaveAttribute('aria-checked', 'false')
@@ -250,8 +238,86 @@ describe('MCPAccessPointCard', () => {
     secondToggle.resolve()
 
     await waitFor(() => {
-      expect(mocks.invalidateServerDetail).toHaveBeenCalledTimes(2)
+      expect(mocks.getServer).toHaveBeenCalledTimes(3)
     })
     expect(accessSwitch).toHaveAttribute('aria-checked', 'true')
+  })
+  it('opens first-time configuration from the switch without changing server status', async () => {
+    const user = userEvent.setup()
+    renderCard()
+    const configure = screen.getByRole('button', { name: /addDescription/ })
+    await waitFor(() => expect(configure).toBeEnabled())
+    const accessSwitch = await screen.findByRole('switch')
+    await user.click(accessSwitch)
+    expect(
+      screen.getByRole('dialog', { name: 'tools.mcp.server.modal.addTitle' }),
+    ).toBeInTheDocument()
+    expect(mocks.updateServer).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'tools.mcp.modal.cancel' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(accessSwitch).toHaveAttribute('aria-checked', 'false')
+  })
+
+  it('keeps pending and failed creation open, retries its exact draft, and closes without awaiting refresh', async () => {
+    const user = userEvent.setup()
+    const pending = createDeferredPromise<unknown>()
+    const refresh = createDeferredPromise<unknown>()
+    mocks.createServer.mockReturnValueOnce(pending.promise)
+    const { queryClient } = renderCard()
+    const configure = screen.getByRole('button', { name: /addDescription/ })
+    await waitFor(() => expect(configure).toBeEnabled())
+    await user.click(configure)
+    const description = screen.getByRole('textbox', { name: 'tools.mcp.server.modal.description' })
+    const parameter = screen.getByRole('textbox', { name: 'Question' })
+    await user.clear(description)
+    await user.type(description, 'Server draft')
+    await user.type(parameter, 'Question hint')
+    const submit = screen.getByRole('button', { name: 'tools.mcp.server.modal.confirm' })
+    await user.click(submit)
+    await waitFor(() => expect(submit).toHaveAttribute('aria-disabled', 'true'))
+    expect(description).toHaveAttribute('readonly')
+    expect(parameter).toHaveAttribute('readonly')
+    expect(screen.getByRole('button', { name: 'common.operation.close' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'tools.mcp.modal.cancel' })).toBeDisabled()
+    await user.keyboard('{Escape}')
+    await user.click(submit)
+    expect(mocks.createServer).toHaveBeenCalledTimes(1)
+    await act(async () => pending.reject(new Error('Save failed')))
+    await waitFor(() => expect(submit).not.toHaveAttribute('aria-disabled', 'true'))
+    expect(description).toHaveValue('Server draft')
+    mocks.getServer.mockReturnValue(refresh.promise)
+    await user.click(submit)
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(mocks.createServer).toHaveBeenNthCalledWith(2, 'apps/app-1/server', {
+      body: { description: 'Server draft', parameters: { question: 'Question hint' } },
+    })
+    expect(queryClient.isFetching()).toBeGreaterThan(0)
+    await act(async () =>
+      refresh.resolve({ id: 'server-1', status: 'active', server_code: 'server-code' }),
+    )
+  })
+
+  it('updates existing configuration with the server id and only current parameter values', async () => {
+    mocks.serverDetail.data = {
+      id: 'server-1',
+      server_code: 'server-code',
+      status: 'active',
+      description: 'Existing',
+      parameters: { question: 'Old hint', removed: 'Do not send' },
+    }
+    const user = userEvent.setup()
+    renderCard()
+    await user.click(await screen.findByRole('button', { name: 'tools.mcp.server.edit' }))
+    const description = screen.getByRole('textbox', { name: 'tools.mcp.server.modal.description' })
+    const parameter = screen.getByRole('textbox', { name: 'Question' })
+    await user.clear(description)
+    await user.type(description, 'Updated')
+    await user.clear(parameter)
+    await user.click(screen.getByRole('button', { name: 'tools.mcp.modal.save' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(mocks.saveServer).toHaveBeenCalledWith('apps/app-1/server', {
+      body: { id: 'server-1', description: 'Updated', parameters: { question: '' } },
+    })
+    expect(mocks.createServer).not.toHaveBeenCalled()
   })
 })
