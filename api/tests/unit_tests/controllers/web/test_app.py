@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from importlib import import_module
 
+import jwt
 import pytest
 from flask import Flask
-from werkzeug.exceptions import Unauthorized
 
 from controllers.common.errors import InvalidArgumentError
 from controllers.web.app import AppAccessMode, AppMeta, AppParameterApi, AppWebAuthPermission
@@ -20,6 +19,8 @@ from controllers.web.error import (
 )
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from enums import WebAppAccessMode
+from extensions.ext_application_services import ApplicationServices
+from libs.passport import PassportService
 from models.enums import EndUserType
 from models.model import App, AppMode, EndUser
 from services.app_definition_query_service import AppDefinitionNotPublishedError, AppDefinitionUnavailableError
@@ -28,6 +29,10 @@ from services.webapp_access_query_service import (
     WebAppAccessReferenceRequiredError,
     WebAppAccessUnavailableError,
 )
+from tests.unit_tests.config_override import config_overrides_context
+
+PASSPORT_SECRET = "test-secret-that-is-at-least-32-bytes"
+OTHER_PASSPORT_SECRET = "other-secret-that-is-at-least-32-bytes"
 
 
 def _make_app() -> App:
@@ -51,25 +56,48 @@ def _make_end_user() -> EndUser:
     )
 
 
+@pytest.fixture
+def real_application_services(
+    monkeypatch: pytest.MonkeyPatch,
+    account_application_services: ApplicationServices,
+) -> ApplicationServices:
+    """Route the web controllers through the real application-service graph."""
+    app_module = import_module("controllers.web.app")
+    monkeypatch.setattr(app_module, "application_services", lambda: account_application_services)
+    return account_application_services
+
+
 # ---------------------------------------------------------------------------
 # AppParameterApi
 # ---------------------------------------------------------------------------
 class TestAppParameterApi:
-    @patch("controllers.web.app.application_services")
-    def test_get_returns_public_parameters(self, application_services: MagicMock, app: Flask) -> None:
-        app_definitions = MagicMock()
-        app_definitions.get_public_parameters.return_value = get_parameters_from_feature_dict(
-            features_dict={"opening_statement": "Hello"},
-            user_input_form=[],
+    def test_get_returns_public_parameters(
+        self,
+        real_application_services: ApplicationServices,
+        monkeypatch: pytest.MonkeyPatch,
+        app: Flask,
+    ) -> None:
+        calls: list[str] = []
+
+        def get_public_parameters(app_id: str):
+            calls.append(app_id)
+            return get_parameters_from_feature_dict(
+                features_dict={"opening_statement": "Hello"},
+                user_input_form=[],
+            )
+
+        monkeypatch.setattr(
+            real_application_services.app_definitions,
+            "get_public_parameters",
+            get_public_parameters,
         )
-        application_services.return_value = SimpleNamespace(app_definitions=app_definitions)
         app_model = _make_app()
 
         with app.test_request_context("/parameters"):
             result = AppParameterApi().get(app_model, _make_end_user())
 
         assert result["opening_statement"] == "Hello"
-        app_definitions.get_public_parameters.assert_called_once_with("app-1")
+        assert calls == ["app-1"]
 
     @pytest.mark.parametrize(
         ("service_error", "http_error"),
@@ -78,17 +106,23 @@ class TestAppParameterApi:
             pytest.param(AppDefinitionUnavailableError(), AppUnavailableError, id="unavailable"),
         ],
     )
-    @patch("controllers.web.app.application_services")
     def test_get_maps_query_errors(
         self,
-        application_services: MagicMock,
+        real_application_services: ApplicationServices,
+        monkeypatch: pytest.MonkeyPatch,
         service_error: Exception,
         http_error: type[Exception],
         app: Flask,
     ) -> None:
-        app_definitions = MagicMock()
-        app_definitions.get_public_parameters.side_effect = service_error
-        application_services.return_value = SimpleNamespace(app_definitions=app_definitions)
+        def get_public_parameters(app_id: str) -> None:
+            _ = app_id
+            raise service_error
+
+        monkeypatch.setattr(
+            real_application_services.app_definitions,
+            "get_public_parameters",
+            get_public_parameters,
+        )
 
         with app.test_request_context("/parameters"):
             with pytest.raises(http_error):
@@ -99,24 +133,38 @@ class TestAppParameterApi:
 # AppMeta
 # ---------------------------------------------------------------------------
 class TestAppMeta:
-    @patch("controllers.web.app.application_services")
-    def test_get_returns_meta(self, application_services: MagicMock, app: Flask) -> None:
-        app_definitions = MagicMock()
-        app_definitions.get_tool_icons.return_value = {}
-        application_services.return_value = SimpleNamespace(app_definitions=app_definitions)
+    def test_get_returns_meta(
+        self,
+        real_application_services: ApplicationServices,
+        monkeypatch: pytest.MonkeyPatch,
+        app: Flask,
+    ) -> None:
+        calls: list[str] = []
+
+        def get_tool_icons(app_id: str) -> dict[str, object]:
+            calls.append(app_id)
+            return {}
+
+        monkeypatch.setattr(real_application_services.app_definitions, "get_tool_icons", get_tool_icons)
         app_model = _make_app()
 
         with app.test_request_context("/meta"):
             result = AppMeta().get(app_model, _make_end_user())
 
         assert result == {"tool_icons": {}}
-        app_definitions.get_tool_icons.assert_called_once_with("app-1")
+        assert calls == ["app-1"]
 
-    @patch("controllers.web.app.application_services")
-    def test_maps_unavailable_definition_to_app_unavailable(self, application_services: MagicMock, app: Flask) -> None:
-        app_definitions = MagicMock()
-        app_definitions.get_tool_icons.side_effect = AppDefinitionUnavailableError
-        application_services.return_value = SimpleNamespace(app_definitions=app_definitions)
+    def test_maps_unavailable_definition_to_app_unavailable(
+        self,
+        real_application_services: ApplicationServices,
+        monkeypatch: pytest.MonkeyPatch,
+        app: Flask,
+    ) -> None:
+        def get_tool_icons(app_id: str) -> None:
+            _ = app_id
+            raise AppDefinitionUnavailableError
+
+        monkeypatch.setattr(real_application_services.app_definitions, "get_tool_icons", get_tool_icons)
 
         with app.test_request_context("/meta"):
             with pytest.raises(AppUnavailableError) as raised:
@@ -133,17 +181,25 @@ class TestAppMeta:
 # AppAccessMode
 # ---------------------------------------------------------------------------
 class TestAppAccessMode:
-    @patch("controllers.web.app.application_services")
-    def test_delegates_validated_app_references(self, application_services: MagicMock, app: Flask) -> None:
-        webapp_access = MagicMock()
-        webapp_access.get_access_mode.return_value = WebAppAccessMode.SSO_VERIFIED
-        application_services.return_value = SimpleNamespace(webapp_access=webapp_access)
+    def test_delegates_validated_app_references(
+        self,
+        real_application_services: ApplicationServices,
+        monkeypatch: pytest.MonkeyPatch,
+        app: Flask,
+    ) -> None:
+        calls: list[dict[str, str | None]] = []
+
+        def get_access_mode(*, app_id: str | None, app_code: str | None) -> WebAppAccessMode:
+            calls.append({"app_id": app_id, "app_code": app_code})
+            return WebAppAccessMode.SSO_VERIFIED
+
+        monkeypatch.setattr(real_application_services.webapp_access, "get_access_mode", get_access_mode)
 
         with app.test_request_context("/webapp/access-mode?appId=app-1&appCode=code-1"):
             result = AppAccessMode().get()
 
         assert result == {"accessMode": "sso_verified"}
-        webapp_access.get_access_mode.assert_called_once_with(app_id="app-1", app_code="code-1")
+        assert calls == [{"app_id": "app-1", "app_code": "code-1"}]
 
     @pytest.mark.parametrize(
         ("service_error", "http_error", "expected_data"),
@@ -172,18 +228,20 @@ class TestAppAccessMode:
             ),
         ],
     )
-    @patch("controllers.web.app.application_services")
     def test_maps_query_errors(
         self,
-        application_services: MagicMock,
+        real_application_services: ApplicationServices,
+        monkeypatch: pytest.MonkeyPatch,
         service_error: Exception,
         http_error: type[Exception],
         expected_data: dict[str, object],
         app: Flask,
     ) -> None:
-        webapp_access = MagicMock()
-        webapp_access.get_access_mode.side_effect = service_error
-        application_services.return_value = SimpleNamespace(webapp_access=webapp_access)
+        def get_access_mode(*, app_id: str | None, app_code: str | None) -> None:
+            _ = app_id, app_code
+            raise service_error
+
+        monkeypatch.setattr(real_application_services.webapp_access, "get_access_mode", get_access_mode)
 
         with app.test_request_context("/webapp/access-mode?appCode=code-1"):
             with pytest.raises(http_error) as raised:
@@ -196,24 +254,34 @@ class TestAppAccessMode:
 # AppWebAuthPermission
 # ---------------------------------------------------------------------------
 class TestAppWebAuthPermission:
-    @patch("controllers.web.app.application_services")
     def test_returns_true_without_reading_passport_when_no_permission_check_required(
-        self, application_services: MagicMock, app: Flask
+        self,
+        real_application_services: ApplicationServices,
+        monkeypatch: pytest.MonkeyPatch,
+        app: Flask,
     ) -> None:
-        webapp_access = MagicMock()
-        webapp_access.requires_permission_check.return_value = False
-        application_services.return_value = SimpleNamespace(webapp_access=webapp_access)
+        permission_checks: list[str] = []
 
-        with (
-            app.test_request_context("/webapp/permission?appId=app-1", headers={"X-App-Code": "code1"}),
-            patch("controllers.web.app.extract_webapp_passport") as extract_passport,
-        ):
+        def requires_permission_check(app_id: str) -> bool:
+            permission_checks.append(app_id)
+            return False
+
+        def unexpected_call(*_args: object, **_kwargs: object) -> None:
+            raise AssertionError("passport or user-permission lookup must not run")
+
+        monkeypatch.setattr(
+            real_application_services.webapp_access,
+            "requires_permission_check",
+            requires_permission_check,
+        )
+        monkeypatch.setattr(real_application_services.webapp_access, "is_user_allowed", unexpected_call)
+        monkeypatch.setattr(import_module("controllers.web.app"), "extract_webapp_passport", unexpected_call)
+
+        with app.test_request_context("/webapp/permission?appId=app-1", headers={"X-App-Code": "code1"}):
             result = AppWebAuthPermission().get()
 
         assert result == {"result": True}
-        webapp_access.requires_permission_check.assert_called_once_with("app-1")
-        webapp_access.is_user_allowed.assert_not_called()
-        extract_passport.assert_not_called()
+        assert permission_checks == ["app-1"]
 
     @pytest.mark.parametrize(
         ("user_id", "allowed"),
@@ -222,32 +290,45 @@ class TestAppWebAuthPermission:
             pytest.param("user-2", False, id="denied-user"),
         ],
     )
-    @patch("controllers.web.app.application_services")
     def test_checks_private_app_permission(
         self,
-        application_services: MagicMock,
+        real_application_services: ApplicationServices,
+        monkeypatch: pytest.MonkeyPatch,
         user_id: str,
         allowed: bool,
         app: Flask,
     ) -> None:
-        webapp_access = MagicMock()
-        webapp_access.requires_permission_check.return_value = True
-        webapp_access.is_user_allowed.return_value = allowed
-        application_services.return_value = SimpleNamespace(webapp_access=webapp_access)
+        permission_checks: list[str] = []
+        access_checks: list[tuple[str, str]] = []
 
-        with (
-            app.test_request_context("/webapp/permission?appId=app-1", headers={"X-App-Code": "code1"}),
-            patch("controllers.web.app.extract_webapp_passport", return_value="passport") as extract_passport,
-            patch("controllers.web.app.PassportService") as passport_service,
-        ):
-            passport_service.return_value.verify.return_value = {"user_id": user_id, "auth_type": "internal"}
-            result = AppWebAuthPermission().get()
+        def requires_permission_check(app_id: str) -> bool:
+            permission_checks.append(app_id)
+            return True
+
+        def is_user_allowed(*, user_id: str, app_id: str) -> bool:
+            access_checks.append((user_id, app_id))
+            return allowed
+
+        monkeypatch.setattr(
+            real_application_services.webapp_access,
+            "requires_permission_check",
+            requires_permission_check,
+        )
+        monkeypatch.setattr(real_application_services.webapp_access, "is_user_allowed", is_user_allowed)
+
+        with config_overrides_context(SECRET_KEY=PASSPORT_SECRET):
+            passport = PassportService().issue({"user_id": user_id, "auth_type": "internal"})
+            monkeypatch.setattr(
+                import_module("controllers.web.app"),
+                "extract_webapp_passport",
+                lambda app_code, request: passport,
+            )
+            with app.test_request_context("/webapp/permission?appId=app-1", headers={"X-App-Code": "code1"}):
+                result = AppWebAuthPermission().get()
 
         assert result == {"result": allowed}
-        webapp_access.requires_permission_check.assert_called_once_with("app-1")
-        extract_passport.assert_called_once()
-        passport_service.return_value.verify.assert_called_once_with("passport")
-        webapp_access.is_user_allowed.assert_called_once_with(user_id=user_id, app_id="app-1")
+        assert permission_checks == ["app-1"]
+        assert access_checks == [(user_id, "app-1")]
 
     @pytest.mark.parametrize(
         "decoded",
@@ -257,47 +338,77 @@ class TestAppWebAuthPermission:
             pytest.param({"user_id": "sso_external_user", "auth_type": "external"}, id="external-auth-type"),
         ],
     )
-    @patch("controllers.web.app.application_services")
     def test_private_app_requires_internal_identity(
-        self, application_services: MagicMock, decoded: dict[str, str], app: Flask
+        self,
+        real_application_services: ApplicationServices,
+        monkeypatch: pytest.MonkeyPatch,
+        decoded: dict[str, str],
+        app: Flask,
     ) -> None:
-        webapp_access = MagicMock()
-        webapp_access.requires_permission_check.return_value = True
-        application_services.return_value = SimpleNamespace(webapp_access=webapp_access)
+        access_checks: list[tuple[str, str]] = []
+        monkeypatch.setattr(
+            real_application_services.webapp_access,
+            "requires_permission_check",
+            lambda app_id: True,
+        )
+        monkeypatch.setattr(
+            real_application_services.webapp_access,
+            "is_user_allowed",
+            lambda *, user_id, app_id: access_checks.append((user_id, app_id)),
+        )
 
-        with (
-            app.test_request_context("/webapp/permission?appId=app-1", headers={"X-App-Code": "code1"}),
-            patch("controllers.web.app.extract_webapp_passport", return_value="passport"),
-            patch("controllers.web.app.PassportService") as passport_service,
-        ):
-            passport_service.return_value.verify.return_value = decoded
-            with pytest.raises(WebAppAuthRequiredError):
-                AppWebAuthPermission().get()
+        with config_overrides_context(SECRET_KEY=PASSPORT_SECRET):
+            passport = PassportService().issue(decoded)
+            monkeypatch.setattr(
+                import_module("controllers.web.app"),
+                "extract_webapp_passport",
+                lambda app_code, request: passport,
+            )
+            with app.test_request_context("/webapp/permission?appId=app-1", headers={"X-App-Code": "code1"}):
+                with pytest.raises(WebAppAuthRequiredError):
+                    AppWebAuthPermission().get()
 
-        webapp_access.is_user_allowed.assert_not_called()
+        assert access_checks == []
 
     @pytest.mark.parametrize("failing_method", ["requires_permission_check", "is_user_allowed"])
-    @patch("controllers.web.app.application_services")
     def test_maps_access_dependency_failure_to_service_unavailable(
-        self, application_services: MagicMock, failing_method: str, app: Flask
+        self,
+        real_application_services: ApplicationServices,
+        monkeypatch: pytest.MonkeyPatch,
+        failing_method: str,
+        app: Flask,
     ) -> None:
-        webapp_access = MagicMock()
-        webapp_access.requires_permission_check.return_value = True
-        if failing_method == "requires_permission_check":
-            webapp_access.requires_permission_check.side_effect = WebAppAccessUnavailableError()
-        else:
-            webapp_access.is_user_allowed.side_effect = WebAppAccessUnavailableError()
-        application_services.return_value = SimpleNamespace(webapp_access=webapp_access)
+        def requires_permission_check(app_id: str) -> bool:
+            _ = app_id
+            if failing_method == "requires_permission_check":
+                raise WebAppAccessUnavailableError
+            return True
 
-        passport_service = MagicMock()
-        passport_service.return_value.verify.return_value = {"user_id": "user-1", "auth_type": "internal"}
-        with (
-            app.test_request_context("/webapp/permission?appId=app-1", headers={"X-App-Code": "code1"}),
-            patch("controllers.web.app.extract_webapp_passport", return_value="passport"),
-            patch("controllers.web.app.PassportService", passport_service),
-            pytest.raises(WebAppAccessServiceUnavailableError) as raised,
-        ):
-            AppWebAuthPermission().get()
+        def is_user_allowed(*, user_id: str, app_id: str) -> bool:
+            _ = user_id, app_id
+            if failing_method == "is_user_allowed":
+                raise WebAppAccessUnavailableError
+            return True
+
+        monkeypatch.setattr(
+            real_application_services.webapp_access,
+            "requires_permission_check",
+            requires_permission_check,
+        )
+        monkeypatch.setattr(real_application_services.webapp_access, "is_user_allowed", is_user_allowed)
+
+        with config_overrides_context(SECRET_KEY=PASSPORT_SECRET):
+            passport = PassportService().issue({"user_id": "user-1", "auth_type": "internal"})
+            monkeypatch.setattr(
+                import_module("controllers.web.app"),
+                "extract_webapp_passport",
+                lambda app_code, request: passport,
+            )
+            with (
+                app.test_request_context("/webapp/permission?appId=app-1", headers={"X-App-Code": "code1"}),
+                pytest.raises(WebAppAccessServiceUnavailableError) as raised,
+            ):
+                AppWebAuthPermission().get()
 
         assert raised.value.data == {
             "code": "web_app_access_unavailable",
@@ -305,15 +416,31 @@ class TestAppWebAuthPermission:
             "status": 503,
         }
 
-    @patch("controllers.web.app.application_services")
-    def test_private_app_requires_passport(self, application_services: MagicMock, app: Flask) -> None:
-        webapp_access = MagicMock()
-        webapp_access.requires_permission_check.return_value = True
-        application_services.return_value = SimpleNamespace(webapp_access=webapp_access)
+    def test_private_app_requires_passport(
+        self,
+        real_application_services: ApplicationServices,
+        monkeypatch: pytest.MonkeyPatch,
+        app: Flask,
+    ) -> None:
+        access_checks: list[tuple[str, str]] = []
+        monkeypatch.setattr(
+            real_application_services.webapp_access,
+            "requires_permission_check",
+            lambda app_id: True,
+        )
+        monkeypatch.setattr(
+            real_application_services.webapp_access,
+            "is_user_allowed",
+            lambda *, user_id, app_id: access_checks.append((user_id, app_id)),
+        )
+        monkeypatch.setattr(
+            import_module("controllers.web.app"),
+            "extract_webapp_passport",
+            lambda app_code, request: None,
+        )
 
         with (
             app.test_request_context("/webapp/permission?appId=app-1", headers={"X-App-Code": "code1"}),
-            patch("controllers.web.app.extract_webapp_passport", return_value=None),
             pytest.raises(WebAppAuthRequiredError) as raised,
         ):
             AppWebAuthPermission().get()
@@ -323,36 +450,54 @@ class TestAppWebAuthPermission:
             "message": "Web app authentication required.",
             "status": 401,
         }
-        webapp_access.is_user_allowed.assert_not_called()
+        assert access_checks == []
 
     @pytest.mark.parametrize(
         "description",
         ["Token has expired.", "Invalid token signature.", "Invalid token."],
     )
-    @patch("controllers.web.app.application_services")
     def test_invalid_passport_is_normalized_to_web_app_auth_required(
-        self, application_services: MagicMock, description: str, app: Flask
+        self,
+        real_application_services: ApplicationServices,
+        monkeypatch: pytest.MonkeyPatch,
+        description: str,
+        app: Flask,
     ) -> None:
-        webapp_access = MagicMock()
-        webapp_access.requires_permission_check.return_value = True
-        application_services.return_value = SimpleNamespace(webapp_access=webapp_access)
-        invalid_passport = Unauthorized(description)
+        access_checks: list[tuple[str, str]] = []
+        monkeypatch.setattr(
+            real_application_services.webapp_access,
+            "requires_permission_check",
+            lambda app_id: True,
+        )
+        monkeypatch.setattr(
+            real_application_services.webapp_access,
+            "is_user_allowed",
+            lambda *, user_id, app_id: access_checks.append((user_id, app_id)),
+        )
 
-        with (
-            app.test_request_context("/webapp/permission?appId=app-1", headers={"X-App-Code": "code1"}),
-            patch("controllers.web.app.extract_webapp_passport", return_value="passport"),
-            patch("controllers.web.app.PassportService") as passport_service,
-        ):
-            passport_service.return_value.verify.side_effect = invalid_passport
-            with pytest.raises(WebAppAuthRequiredError) as raised:
-                AppWebAuthPermission().get()
+        with config_overrides_context(SECRET_KEY=PASSPORT_SECRET):
+            if description == "Token has expired.":
+                passport = jwt.encode({"exp": 0}, PASSPORT_SECRET, algorithm="HS256")
+            elif description == "Invalid token signature.":
+                passport = jwt.encode({"user_id": "user-1"}, OTHER_PASSPORT_SECRET, algorithm="HS256")
+            else:
+                passport = "not-a-jwt"
+            monkeypatch.setattr(
+                import_module("controllers.web.app"),
+                "extract_webapp_passport",
+                lambda app_code, request: passport,
+            )
+
+            with app.test_request_context("/webapp/permission?appId=app-1", headers={"X-App-Code": "code1"}):
+                with pytest.raises(WebAppAuthRequiredError) as raised:
+                    AppWebAuthPermission().get()
 
         assert raised.value.data == {
             "code": "web_sso_auth_required",
             "message": "Web app authentication required.",
             "status": 401,
         }
-        webapp_access.is_user_allowed.assert_not_called()
+        assert access_checks == []
 
     @pytest.mark.parametrize(
         ("path", "headers"),
@@ -361,12 +506,21 @@ class TestAppWebAuthPermission:
             pytest.param("/webapp/permission?appId=app-1", {}, id="missing-app-code"),
         ],
     )
-    @patch("controllers.web.app.application_services")
     def test_raises_when_app_reference_is_missing(
-        self, application_services: MagicMock, path: str, headers: dict[str, str], app: Flask
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        path: str,
+        headers: dict[str, str],
+        app: Flask,
     ) -> None:
+        def unexpected_application_services() -> None:
+            raise AssertionError("application services must not be loaded")
+
+        monkeypatch.setattr(
+            import_module("controllers.web.app"),
+            "application_services",
+            unexpected_application_services,
+        )
         with app.test_request_context(path, headers=headers):
             with pytest.raises(ValueError, match="appId"):
                 AppWebAuthPermission().get()
-
-        application_services.assert_not_called()
