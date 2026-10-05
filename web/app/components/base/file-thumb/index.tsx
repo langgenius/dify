@@ -20,7 +20,7 @@ const FileThumbVariants = cva('flex cursor-pointer items-center justify-center',
   },
 })
 
-export type FileEntity = {
+type FileEntity = {
   name: string
   size: number
   extension: string
