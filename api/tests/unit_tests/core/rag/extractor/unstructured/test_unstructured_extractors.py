@@ -3,9 +3,9 @@
 import base64
 import sys
 import types
-from types import SimpleNamespace
 
 import pytest
+from unstructured.documents.elements import ElementMetadata, Text
 
 import core.rag.extractor.unstructured.unstructured_epub_extractor as epub_module
 from core.rag.extractor.unstructured.unstructured_doc_extractor import UnstructuredWordExtractor
@@ -33,12 +33,10 @@ def _register_unstructured_packages(monkeypatch: pytest.MonkeyPatch) -> None:
     _register_module(monkeypatch, "unstructured.file_utils", __path__=[])
 
 
-def _install_chunk_by_title(monkeypatch: pytest.MonkeyPatch, chunks: list[SimpleNamespace]) -> None:
+def _install_chunk_by_title(monkeypatch: pytest.MonkeyPatch, chunks: list[Text]) -> None:
     _register_unstructured_packages(monkeypatch)
 
-    def chunk_by_title(
-        elements: list[SimpleNamespace], max_characters: int, combine_text_under_n_chars: int
-    ) -> list[SimpleNamespace]:
+    def chunk_by_title(elements: list[Text], max_characters: int, combine_text_under_n_chars: int) -> list[Text]:
         return chunks
 
     _register_module(monkeypatch, "unstructured.chunking.title", chunk_by_title=chunk_by_title)
@@ -46,22 +44,20 @@ def _install_chunk_by_title(monkeypatch: pytest.MonkeyPatch, chunks: list[Simple
 
 class TestUnstructuredMarkdownMsgXml:
     def test_markdown_extractor_without_api(self, monkeypatch: pytest.MonkeyPatch):
-        _install_chunk_by_title(monkeypatch, [SimpleNamespace(text=" chunk-1 "), SimpleNamespace(text=" chunk-2 ")])
-        _register_module(
-            monkeypatch, "unstructured.partition.md", partition_md=lambda filename: [SimpleNamespace(text="x")]
-        )
+        _install_chunk_by_title(monkeypatch, [Text(text=" chunk-1 "), Text(text=" chunk-2 ")])
+        _register_module(monkeypatch, "unstructured.partition.md", partition_md=lambda filename: [Text(text="x")])
 
         docs = UnstructuredMarkdownExtractor("/tmp/file.md").extract()
 
         assert [doc.page_content for doc in docs] == ["chunk-1", "chunk-2"]
 
     def test_markdown_extractor_with_api(self, monkeypatch: pytest.MonkeyPatch):
-        _install_chunk_by_title(monkeypatch, [SimpleNamespace(text=" via-api ")])
+        _install_chunk_by_title(monkeypatch, [Text(text=" via-api ")])
         calls = {}
 
         def partition_via_api(filename, api_url, api_key):
             calls.update({"filename": filename, "api_url": api_url, "api_key": api_key})
-            return [SimpleNamespace(text="ignored")]
+            return [Text(text="ignored")]
 
         _register_module(monkeypatch, "unstructured.partition.api", partition_via_api=partition_via_api)
 
@@ -71,20 +67,18 @@ class TestUnstructuredMarkdownMsgXml:
         assert calls == {"filename": "/tmp/file.md", "api_url": "https://u", "api_key": "k"}
 
     def test_msg_extractor_local(self, monkeypatch: pytest.MonkeyPatch):
-        _install_chunk_by_title(monkeypatch, [SimpleNamespace(text="msg-doc")])
-        _register_module(
-            monkeypatch, "unstructured.partition.msg", partition_msg=lambda filename: [SimpleNamespace(text="x")]
-        )
+        _install_chunk_by_title(monkeypatch, [Text(text="msg-doc")])
+        _register_module(monkeypatch, "unstructured.partition.msg", partition_msg=lambda filename: [Text(text="x")])
 
         assert UnstructuredMsgExtractor("/tmp/file.msg").extract()[0].page_content == "msg-doc"
 
     def test_msg_extractor_with_api(self, monkeypatch: pytest.MonkeyPatch):
-        _install_chunk_by_title(monkeypatch, [SimpleNamespace(text="msg-doc")])
+        _install_chunk_by_title(monkeypatch, [Text(text="msg-doc")])
         calls = {}
 
         def partition_via_api(filename, api_url, api_key):
             calls.update({"filename": filename, "api_url": api_url, "api_key": api_key})
-            return [SimpleNamespace(text="x")]
+            return [Text(text="x")]
 
         _register_module(monkeypatch, "unstructured.partition.api", partition_via_api=partition_via_api)
 
@@ -95,13 +89,13 @@ class TestUnstructuredMarkdownMsgXml:
         assert calls["filename"] == "/tmp/file.msg"
 
     def test_xml_extractor_local_and_api(self, monkeypatch: pytest.MonkeyPatch):
-        _install_chunk_by_title(monkeypatch, [SimpleNamespace(text="xml-doc")])
+        _install_chunk_by_title(monkeypatch, [Text(text="xml-doc")])
 
         xml_calls = {}
 
         def partition_xml(filename, xml_keep_tags):
             xml_calls.update({"filename": filename, "xml_keep_tags": xml_keep_tags})
-            return [SimpleNamespace(text="x")]
+            return [Text(text="x")]
 
         _register_module(monkeypatch, "unstructured.partition.xml", partition_xml=partition_xml)
 
@@ -112,7 +106,7 @@ class TestUnstructuredMarkdownMsgXml:
 
         def partition_via_api(filename, api_url, api_key):
             api_calls.update({"filename": filename, "api_url": api_url, "api_key": api_key})
-            return [SimpleNamespace(text="x")]
+            return [Text(text="x")]
 
         _register_module(monkeypatch, "unstructured.partition.api", partition_via_api=partition_via_api)
 
@@ -128,11 +122,9 @@ class TestUnstructuredEmailAndEpub:
         _register_unstructured_packages(monkeypatch)
         captured = {}
 
-        def chunk_by_title(
-            elements: list[SimpleNamespace], max_characters: int, combine_text_under_n_chars: int
-        ) -> list[SimpleNamespace]:
+        def chunk_by_title(elements: list[Text], max_characters: int, combine_text_under_n_chars: int) -> list[Text]:
             captured["elements"] = list(elements)
-            return [SimpleNamespace(text=" chunked-email ")]
+            return [Text(text=" chunked-email ")]
 
         _register_module(monkeypatch, "unstructured.chunking.title", chunk_by_title=chunk_by_title)
 
@@ -140,7 +132,7 @@ class TestUnstructuredEmailAndEpub:
         encoded_html = base64.b64encode(html.encode("utf-8")).decode("utf-8")
         bad_base64 = "not-base64"
 
-        elements = [SimpleNamespace(text=encoded_html), SimpleNamespace(text=bad_base64)]
+        elements = [Text(text=encoded_html), Text(text=bad_base64)]
         _register_module(monkeypatch, "unstructured.partition.email", partition_email=lambda filename: elements)
 
         docs = UnstructuredEmailExtractor("/tmp/file.eml").extract()
@@ -151,11 +143,11 @@ class TestUnstructuredEmailAndEpub:
         assert chunk_elements[1].text == bad_base64
 
     def test_email_extractor_with_api(self, monkeypatch: pytest.MonkeyPatch):
-        _install_chunk_by_title(monkeypatch, [SimpleNamespace(text="api-email")])
+        _install_chunk_by_title(monkeypatch, [Text(text="api-email")])
         _register_module(
             monkeypatch,
             "unstructured.partition.api",
-            partition_via_api=lambda filename, api_url, api_key: [SimpleNamespace(text="abc")],
+            partition_via_api=lambda filename, api_url, api_key: [Text(text="abc")],
         )
 
         docs = UnstructuredEmailExtractor("/tmp/file.eml", api_url="https://u", api_key="k").extract()
@@ -163,7 +155,7 @@ class TestUnstructuredEmailAndEpub:
         assert docs[0].page_content == "api-email"
 
     def test_epub_extractor_local_and_api(self, monkeypatch: pytest.MonkeyPatch):
-        _install_chunk_by_title(monkeypatch, [SimpleNamespace(text="epub-doc")])
+        _install_chunk_by_title(monkeypatch, [Text(text="epub-doc")])
 
         calls = {"download": 0, "partition": 0}
 
@@ -173,7 +165,7 @@ class TestUnstructuredEmailAndEpub:
         def partition_epub(filename, xml_keep_tags):
             calls["partition"] += 1
             assert xml_keep_tags is True
-            return [SimpleNamespace(text="x")]
+            return [Text(text="x")]
 
         monkeypatch.setattr(epub_module.pypandoc, "download_pandoc", fake_download_pandoc)
         _register_module(monkeypatch, "unstructured.partition.epub", partition_epub=partition_epub)
@@ -186,7 +178,7 @@ class TestUnstructuredEmailAndEpub:
         _register_module(
             monkeypatch,
             "unstructured.partition.api",
-            partition_via_api=lambda filename, api_url, api_key: [SimpleNamespace(text="x")],
+            partition_via_api=lambda filename, api_url, api_key: [Text(text="x")],
         )
 
         docs = UnstructuredEpubExtractor("/tmp/file.epub", api_url="https://u", api_key="k").extract()
@@ -204,10 +196,10 @@ class TestUnstructuredPPTAndPPTX:
             monkeypatch,
             "unstructured.partition.api",
             partition_via_api=lambda filename, api_url, api_key: [
-                SimpleNamespace(text="A", metadata=SimpleNamespace(page_number=1)),
-                SimpleNamespace(text="B", metadata=SimpleNamespace(page_number=1)),
-                SimpleNamespace(text="skip", metadata=SimpleNamespace(page_number=None)),
-                SimpleNamespace(text="C", metadata=SimpleNamespace(page_number=2)),
+                Text(text="A", metadata=ElementMetadata(page_number=1)),
+                Text(text="B", metadata=ElementMetadata(page_number=1)),
+                Text(text="skip", metadata=ElementMetadata(page_number=None)),
+                Text(text="C", metadata=ElementMetadata(page_number=2)),
             ],
         )
 
@@ -221,9 +213,9 @@ class TestUnstructuredPPTAndPPTX:
             monkeypatch,
             "unstructured.partition.pptx",
             partition_pptx=lambda filename: [
-                SimpleNamespace(text="P1", metadata=SimpleNamespace(page_number=1)),
-                SimpleNamespace(text="P2", metadata=SimpleNamespace(page_number=2)),
-                SimpleNamespace(text="Skip", metadata=SimpleNamespace(page_number=None)),
+                Text(text="P1", metadata=ElementMetadata(page_number=1)),
+                Text(text="P2", metadata=ElementMetadata(page_number=2)),
+                Text(text="Skip", metadata=ElementMetadata(page_number=None)),
             ],
         )
 
@@ -234,8 +226,8 @@ class TestUnstructuredPPTAndPPTX:
             monkeypatch,
             "unstructured.partition.api",
             partition_via_api=lambda filename, api_url, api_key: [
-                SimpleNamespace(text="X", metadata=SimpleNamespace(page_number=1)),
-                SimpleNamespace(text="Y", metadata=SimpleNamespace(page_number=1)),
+                Text(text="X", metadata=ElementMetadata(page_number=1)),
+                Text(text="Y", metadata=ElementMetadata(page_number=1)),
             ],
         )
 
@@ -260,19 +252,19 @@ class TestUnstructuredWord:
         _register_module(
             monkeypatch,
             "unstructured.partition.api",
-            partition_via_api=lambda filename, api_url, api_key: [SimpleNamespace(text="api-doc")],
+            partition_via_api=lambda filename, api_url, api_key: [Text(text="api-doc")],
         )
         _register_module(
             monkeypatch,
             "unstructured.partition.docx",
-            partition_docx=lambda filename: [SimpleNamespace(text="docx-doc")],
+            partition_docx=lambda filename: [Text(text="docx-doc")],
         )
         _register_module(
             monkeypatch,
             "unstructured.chunking.title",
             chunk_by_title=lambda elements, max_characters, combine_text_under_n_chars: [
-                SimpleNamespace(text="chunk-1"),
-                SimpleNamespace(text="chunk-2"),
+                Text(text="chunk-1"),
+                Text(text="chunk-2"),
             ],
         )
 
