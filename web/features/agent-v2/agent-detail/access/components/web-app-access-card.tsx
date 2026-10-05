@@ -14,7 +14,7 @@ import {
   WebAppAccessControlEntrySkeleton,
 } from '@/app/components/app/access-point/shared/web-app-access-control'
 import { CustomizeDialog } from '@/app/components/app/overview/customize'
-import EmbeddedModal from '@/app/components/app/overview/embedded'
+import { EmbeddedDialog } from '@/app/components/app/overview/embedded'
 import SettingsModal from '@/app/components/app/overview/settings'
 import { AccessPointCard } from '@/app/components/base/access-point/card'
 import { AccessPointUrl } from '@/app/components/base/access-point/url'
@@ -73,7 +73,6 @@ export function WebAppAccessCard({
           appId,
         }
       : null
-  const [showEmbeddedModal, setShowEmbeddedModal] = useState(false)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
   const [showAccessControl, setShowAccessControl] = useState(false)
   const accessControl = useWebAppAccessControl(agent, isLoading)
@@ -232,15 +231,14 @@ export function WebAppAccessCard({
         onEnabledChange={handleEnabledChange}
         actions={
           <>
-            <Button
-              variant="secondary"
+            <EmbeddedDialog
+              appBaseUrl={embeddedConfig?.appBaseUrl}
+              accessToken={embeddedConfig?.accessToken}
+              siteInfo={embeddedConfig?.siteInfo}
+              webAppRoute="agent"
               disabled={!canUseIntegrationActions || !embeddedConfig}
-              onClick={() => setShowEmbeddedModal(true)}
-              className="flex items-center gap-1 px-3"
-            >
-              <span aria-hidden className="i-ri-window-line size-4" />
-              {t(($) => $['agentDetail.access.webApp.actions.embedIntoSite'])}
-            </Button>
+              triggerLabel={t(($) => $['agentDetail.access.webApp.actions.embedIntoSite'])}
+            />
             {canManageWebApp && customizeConfig ? (
               <CustomizeDialog
                 appId={customizeConfig.appId}
@@ -315,16 +313,6 @@ export function WebAppAccessCard({
           isShow={showSettingsModal}
           onClose={() => setShowSettingsModal(false)}
           onSave={handleSaveSettings}
-        />
-      )}
-      {canManageWebApp && embeddedConfig && (
-        <EmbeddedModal
-          isShow={showEmbeddedModal}
-          onClose={() => setShowEmbeddedModal(false)}
-          appBaseUrl={embeddedConfig.appBaseUrl}
-          accessToken={embeddedConfig.accessToken}
-          siteInfo={embeddedConfig.siteInfo}
-          webAppRoute="agent"
         />
       )}
       {canManageAccessPoint && showAccessControl && accessControl.state === 'ready' && (

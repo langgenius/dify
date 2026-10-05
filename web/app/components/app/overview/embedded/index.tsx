@@ -5,8 +5,16 @@ import type {
   WorkflowHiddenStartVariable,
   WorkflowLaunchInputValue,
 } from '../app-card-utils'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+  DialogTrigger,
+} from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
@@ -29,15 +37,14 @@ import {
 import WorkflowHiddenInputFields from '../workflow-hidden-input-fields'
 import style from './style.module.css'
 
-type Props = Readonly<{
+type EmbeddedDialogProps = Readonly<{
   siteInfo?: Partial<Pick<AppDetailSiteResponse, 'chat_color_theme' | 'chat_color_theme_inverted'>>
-  isShow: boolean
-  onClose: () => void
+  disabled?: boolean
+  triggerLabel?: string
   accessToken?: string
   appBaseUrl?: string
   webAppRoute?: EmbeddedWebAppRoute
   hiddenInputs?: WorkflowHiddenStartVariable[]
-  className?: string
 }>
 
 const OPTION_KEYS = ['iframe', 'scripts', 'chromePlugin'] as const
@@ -114,8 +121,8 @@ const EmbeddedContent = ({
   accessToken,
   webAppRoute = 'chatbot',
   hiddenInputs,
-}: Required<Pick<Props, 'accessToken' | 'appBaseUrl'>> &
-  Pick<Props, 'siteInfo' | 'webAppRoute' | 'hiddenInputs'>) => {
+}: Required<Pick<EmbeddedDialogProps, 'accessToken' | 'appBaseUrl'>> &
+  Pick<EmbeddedDialogProps, 'siteInfo' | 'webAppRoute' | 'hiddenInputs'>) => {
   const { t } = useTranslation(['appOverview'])
   const supportedHiddenInputs = useMemo<WorkflowHiddenStartVariable[]>(
     () => (hiddenInputs ?? []).filter(isWorkflowLaunchInputSupported),
@@ -213,14 +220,15 @@ const EmbeddedContent = ({
 
   return (
     <>
-      <div className="mt-8 mb-4 system-sm-medium text-text-primary">
+      <DialogDescription className="mt-8 mb-4 system-sm-medium text-text-primary">
         {t(($) => $[`${prefixEmbedded}.explanation`], { ns: 'appOverview' })}
-      </div>
+      </DialogDescription>
       {supportedHiddenInputs.length > 0 && (
         <div className="mb-6 rounded-xl border-[0.5px] border-components-panel-border bg-background-section">
           <button
             type="button"
-            className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+            aria-expanded={!hiddenInputsCollapsed}
+            className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-components-input-border-active"
             onClick={() => setHiddenInputsCollapsed((prev) => !prev)}
           >
             <div>
@@ -368,29 +376,30 @@ const EmbeddedContent = ({
   )
 }
 
-const Embedded = ({
+export function EmbeddedDialog({
   siteInfo,
-  isShow,
-  onClose,
+  disabled,
+  triggerLabel,
   appBaseUrl,
   accessToken,
   webAppRoute = 'chatbot',
   hiddenInputs,
-  className,
-}: Props) => {
-  const { t } = useTranslation(['appOverview', 'common'])
+}: EmbeddedDialogProps) {
+  const { t } = useTranslation(['appOverview', 'common', 'deployments'])
+  const unavailable = disabled || !accessToken
+  const trigger = (
+    <Button variant="secondary" disabled={unavailable} className="px-3">
+      <span aria-hidden className="i-ri-window-line size-4" />
+      {triggerLabel ?? t(($) => $['studio.accessPoint.embedIntoSite'], { ns: 'deployments' })}
+    </Button>
+  )
+
+  if (unavailable) return trigger
 
   return (
-    <Dialog
-      open={isShow}
-      onOpenChange={(open) => {
-        if (open) return
-        onClose()
-      }}
-    >
-      <DialogContent
-        className={cn('flex max-h-[calc(100dvh-2rem)] w-160 flex-col overflow-hidden!', className)}
-      >
+    <Dialog>
+      <DialogTrigger render={trigger} />
+      <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-160 flex-col overflow-hidden!">
         <DialogTitle className="shrink-0 title-2xl-semi-bold text-text-primary">
           {t(($) => $[`${prefixEmbedded}.title`], { ns: 'appOverview' })}
         </DialogTitle>
@@ -406,20 +415,22 @@ const Embedded = ({
           }
         />
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-          {isShow && (
+          <Suspense
+            fallback={
+              <div className="py-8 text-text-tertiary">{t(($) => $.loading, { ns: 'common' })}</div>
+            }
+          >
             <EmbeddedContent
-              key={`${appBaseUrl ?? ''}:${accessToken ?? ''}:${webAppRoute}:${JSON.stringify(hiddenInputs ?? [])}`}
+              key={`${appBaseUrl ?? ''}:${accessToken}:${webAppRoute}:${JSON.stringify(hiddenInputs ?? [])}`}
               siteInfo={siteInfo}
               appBaseUrl={appBaseUrl ?? ''}
-              accessToken={accessToken ?? ''}
+              accessToken={accessToken}
               webAppRoute={webAppRoute}
               hiddenInputs={hiddenInputs}
             />
-          )}
+          </Suspense>
         </div>
       </DialogContent>
     </Dialog>
   )
 }
-
-export default Embedded

@@ -7,7 +7,7 @@ import { act } from 'react'
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vite-plus/test'
 import { InputVarType } from '@/app/components/workflow/types'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
-import Embedded from '../index'
+import { EmbeddedDialog } from '../index'
 
 vi.mock('../style.module.css', () => ({
   default: {
@@ -33,17 +33,14 @@ const siteInfo: SiteInfo = {
 }
 
 const baseProps = {
-  isShow: true,
   siteInfo,
-  onClose: vi.fn(),
   appBaseUrl: 'https://app.example.com',
   accessToken: 'token',
-  className: 'custom-modal',
 }
 
 const getCopyButton = () => screen.getByRole('button', { name: /copy/i })
 
-describe('Embedded', () => {
+describe('EmbeddedDialog', () => {
   beforeAll(() => {
     class MockCompressionStream {
       readable: ReadableStream<Uint8Array>
@@ -74,8 +71,9 @@ describe('Embedded', () => {
     const user = userEvent.setup()
 
     await act(async () => {
-      render(<Embedded {...baseProps} />)
+      render(<EmbeddedDialog {...baseProps} />)
     })
+    await user.click(screen.getByRole('button', { name: /embedIntoSite/ }))
 
     await waitFor(() => {
       expect(
@@ -97,8 +95,9 @@ describe('Embedded', () => {
   it('links each embed method tab to a panel and supports arrow key selection', async () => {
     const user = userEvent.setup()
     await act(async () => {
-      render(<Embedded {...baseProps} />)
+      render(<EmbeddedDialog {...baseProps} />)
     })
+    await user.click(screen.getByRole('button', { name: /embedIntoSite/ }))
 
     const iframe = screen.getByRole('tab', {
       name: 'appOverview.overview.appInfo.embedded.iframe',
@@ -135,8 +134,9 @@ describe('Embedded', () => {
   it('opens chrome plugin store link when chrome option selected', async () => {
     const user = userEvent.setup()
     await act(async () => {
-      render(<Embedded {...baseProps} />)
+      render(<EmbeddedDialog {...baseProps} />)
     })
+    await user.click(screen.getByRole('button', { name: /embedIntoSite/ }))
 
     await user.click(
       screen.getByRole('tab', {
@@ -157,23 +157,46 @@ describe('Embedded', () => {
     )
   })
 
-  it('calls onClose when the close button is clicked', async () => {
+  it('starts a fresh tab session after closing and reopening', async () => {
     const user = userEvent.setup()
-    const onClose = vi.fn()
-
-    await act(async () => {
-      render(<Embedded {...baseProps} onClose={onClose} />)
-    })
-
+    render(<EmbeddedDialog {...baseProps} />)
+    const trigger = screen.getByRole('button', { name: /embedIntoSite/ })
+    await user.click(trigger)
+    await user.click(screen.getByRole('tab', { name: /embedded.scripts/ }))
     await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
-
-    expect(onClose).toHaveBeenCalledTimes(1)
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await user.click(trigger)
+    expect(screen.getByRole('tab', { name: /embedded.iframe/ })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
   })
+
+  it.each(['disabled', 'missing-token'] as const)(
+    'keeps a visible unavailable trigger for %s and ends its session',
+    async (reason) => {
+      const user = userEvent.setup()
+      const { rerender } = render(<EmbeddedDialog {...baseProps} />)
+      await user.click(screen.getByRole('button', { name: /embedIntoSite/ }))
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
+      rerender(
+        <EmbeddedDialog
+          {...baseProps}
+          disabled={reason === 'disabled'}
+          accessToken={reason === 'missing-token' ? undefined : baseProps.accessToken}
+        />,
+      )
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /embedIntoSite/ })).toBeDisabled()
+      rerender(<EmbeddedDialog {...baseProps} />)
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    },
+  )
 
   it('keeps hidden inputs collapsed by default and updates iframe and script content when values change', async () => {
     const user = userEvent.setup()
     render(
-      <Embedded
+      <EmbeddedDialog
         {...baseProps}
         hiddenInputs={[
           {
@@ -187,6 +210,8 @@ describe('Embedded', () => {
         ]}
       />,
     )
+
+    await user.click(screen.getByRole('button', { name: /embedIntoSite/ }))
 
     expect(screen.queryByLabelText('Secret')).not.toBeInTheDocument()
 
@@ -231,8 +256,9 @@ describe('Embedded', () => {
     const user = userEvent.setup()
 
     await act(async () => {
-      render(<Embedded {...baseProps} />)
+      render(<EmbeddedDialog {...baseProps} />)
     })
+    await user.click(screen.getByRole('button', { name: /embedIntoSite/ }))
 
     await user.click(
       screen.getByRole('tab', {
@@ -258,8 +284,9 @@ describe('Embedded', () => {
     const user = userEvent.setup()
 
     await act(async () => {
-      render(<Embedded {...baseProps} />)
+      render(<EmbeddedDialog {...baseProps} />)
     })
+    await user.click(screen.getByRole('button', { name: /embedIntoSite/ }))
 
     await user.click(
       screen.getByRole('tab', {
