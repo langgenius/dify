@@ -6,6 +6,7 @@ from packaging import version
 from pydantic import BaseModel, model_validator
 from pymilvus import MilvusClient, MilvusException  # type: ignore
 from pymilvus.milvus_client import IndexParams  # type: ignore
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.rag.datasource.vdb.field import Field
@@ -422,7 +423,9 @@ class MilvusVectorFactory(AbstractVectorFactory):
     """
 
     @override
-    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> MilvusVector:
+    def init_vector(
+        self, dataset: Dataset, attributes: list, embeddings: Embeddings, *, session: Session | None
+    ) -> MilvusVector:
         """
         Initialize a MilvusVector instance for the given dataset.
         """

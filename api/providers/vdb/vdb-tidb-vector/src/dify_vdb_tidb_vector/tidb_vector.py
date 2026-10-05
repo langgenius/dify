@@ -356,7 +356,9 @@ class TiDBVector(BaseVector):
 
 class TiDBVectorFactory(AbstractVectorFactory):
     @override
-    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> TiDBVector:
+    def init_vector(
+        self, dataset: Dataset, attributes: list, embeddings: Embeddings, *, session: Session | None
+    ) -> TiDBVector:
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]
             collection_name = class_prefix.lower()
