@@ -91,9 +91,7 @@ def test_workflow_tool_tracing_survives_worker_handoff(
         tool, _, _ = _workflow_tool_node(state)
         original_resume = tool._resume_container_events
 
-        def instrument_resume(
-            *, result: ContainerRunResult
-        ) -> Generator[NodeEventPayload | ContainerAwaitRequest, None, None]:
+        def instrument_resume(*, result: ContainerRunResult) -> Generator[NodeEventPayload | ContainerAwaitRequest]:
             with tracer.start_as_current_span("resume-operation"):
                 yield from original_resume(result=result)
 
@@ -170,7 +168,7 @@ def test_interleaved_snippets_restore_caller_flask_context(
             tool, _, _ = _workflow_tool_node()
             node = _outer_graph(tool).root_node
 
-            def run_node() -> Generator[MagicMock, None, None]:
+            def run_node() -> Generator[MagicMock]:
                 observed.append((current_app.name, g._login_user, request_id.get()))
                 yield MagicMock()
                 observed.append((current_app.name, g._login_user, request_id.get()))

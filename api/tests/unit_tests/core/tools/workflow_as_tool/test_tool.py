@@ -295,7 +295,7 @@ def test_workflow_tool_rejects_paused_generator_result(
 ):
     tool = _build_tool()
     user = make_account(account_id="test_user")
-    generate_mock = MagicMock(
+    generate, generate_calls = _record_calls(
         return_value={
             "data": {
                 "status": WorkflowExecutionStatus.PAUSED,
@@ -307,12 +307,12 @@ def test_workflow_tool_rejects_paused_generator_result(
     monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
     monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: _workflow_stub())
     monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: user)
-    monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppGenerator.generate", generate_mock)
+    monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppGenerator.generate", generate)
 
     with pytest.raises(ToolInvokeError, match="requires Engine-managed container execution"):
         list(tool.invoke(sqlite_session, "test_user", {}))
 
-    generate_mock.assert_called_once()
+    assert len(generate_calls) == 1
 
 
 def test_legacy_tool_disables_human_input(
