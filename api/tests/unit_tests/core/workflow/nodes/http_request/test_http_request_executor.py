@@ -200,6 +200,50 @@ def test_executor_with_json_body_and_nested_object_variable():
     assert '"email": "john@example.com"' in raw_request
 
 
+def test_executor_with_json_body_and_array_object_variable():
+    # Prepare the variable pool
+    variable_pool = VariablePool.from_bootstrap(
+        system_variables=default_system_variables(),
+        user_inputs={},
+    )
+    variable_pool.add(["pre_node_id", "array_object"], [{"name": "John Doe", "age": 30}, {"name": "Jane", "age": 25}])
+
+    # Prepare the node data
+    node_data = HttpRequestNodeData(
+        title="Test JSON Body with Array Object Variable",
+        method="post",
+        url="https://api.example.com/data",
+        authorization=HttpRequestNodeAuthorization(type="no-auth"),
+        headers="Content-Type: application/json",
+        params="",
+        body=HttpRequestNodeBody(
+            type="json",
+            data=[
+                BodyData(
+                    key="",
+                    type="text",
+                    value='{"students": {{#pre_node_id.array_object#}}}',
+                )
+            ],
+        ),
+    )
+
+    # Initialize the Executor
+    executor = Executor(
+        node_data=node_data,
+        timeout=HttpRequestNodeTimeout(connect=10, read=30, write=30),
+        http_request_config=HTTP_REQUEST_CONFIG,
+        variable_pool=variable_pool,
+        http_client=ssrf_proxy,
+        file_manager=file_manager,
+    )
+
+    # Check the executor's data
+    assert executor.json == {"students": [{"name": "John Doe", "age": 30}, {"name": "Jane", "age": 25}]}
+    assert type(executor.json["students"]) is list
+
+
+
 def test_extract_selectors_from_template_with_newline():
     variable_pool = VariablePool.from_bootstrap(system_variables=default_system_variables())
     variable_pool.add(("node_id", "custom_query"), "line1\nline2")

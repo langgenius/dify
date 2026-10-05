@@ -1,0 +1,5 @@
+[33m7a87df960b[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mBUG-annotationlist[m[33m)[m HEAD@{0}: reset: moving to HEAD~1
+[33m631a1ec181[m[33m ([m[1;31morigin/BUG-annotationlist[m[33m, [m[1;32m41907[m[33m)[m HEAD@{1}: checkout: moving from BUG-annotationlist to BUG-annotationlist
+[33m631a1ec181[m[33m ([m[1;31morigin/BUG-annotationlist[m[33m, [m[1;32m41907[m[33m)[m HEAD@{2}: checkout: moving from BUG-annotationlist to BUG-annotationlist
+[33m631a1ec181[m[33m ([m[1;31morigin/BUG-annotationlist[m[33m, [m[1;32m41907[m[33m)[m HEAD@{3}: commit: Markdown knowledge import removes literal hashes from headings
+[33m7a87df960b[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mBUG-annotationlist[m[33m)[m HEAD@{4}: commit: [Bug]: annotation list / hit-history has_more uses raw limit while query caps at 100 (missed sibling of #41780/#41776)
