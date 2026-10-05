@@ -15,7 +15,7 @@ from core.helper.marketplace import (
 from core.plugin.entities.marketplace import MarketplacePluginSnapshot
 
 
-def _response(payload: dict) -> httpx.Response:
+def _response(payload: dict[str, object]) -> httpx.Response:
     return httpx.Response(200, json=payload, request=httpx.Request("POST", "https://marketplace.test"))
 
 
