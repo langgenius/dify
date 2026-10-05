@@ -27,7 +27,7 @@ import {
 } from '@langgenius/dify-ui/scroll-area'
 import { useEffect, useId, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
-import UpdateSettingDialog from '@/app/components/header/account-setting/update-setting-dialog'
+import { UpdateSettingDialog } from '@/app/components/header/account-setting/update-setting-dialog'
 import {
   buildIntegrationPath,
   buildMarketplaceUrlPathByIntegrationSection,
@@ -214,7 +214,7 @@ export default function IntegrationsPage({
           section === 'builtin' ? STEP_BY_STEP_TOUR_TARGETS.integrationUpdateSettings : undefined
         }
       >
-        <UpdateSettingDialog category={pluginSettingCategory} />
+        <UpdateSettingDialog key={pluginSettingCategory} category={pluginSettingCategory} />
       </div>
     ) : undefined
   const marketplaceUrlPath = buildMarketplaceUrlPathByIntegrationSection(section)
