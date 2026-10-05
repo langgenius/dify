@@ -22,16 +22,26 @@ from core.app.llm.quota import (
 )
 from core.credit_usage import CreditUsageAppType
 from core.entities.model_entities import ModelStatus
-from core.entities.provider_entities import ProviderQuotaType, QuotaConfiguration, QuotaUnit, SystemConfiguration
+from core.entities.provider_configuration import ProviderConfiguration, ProviderConfigurations
+from core.entities.provider_entities import (
+    ProviderQuotaType,
+    QuotaConfiguration,
+    QuotaUnit,
+    RestrictModel,
+    SystemConfiguration,
+)
 from core.errors.error import QuotaExceededError
 from core.model_manager import ModelInstance
 from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
+from core.provider_manager import ProviderManager
+from extensions.ext_database import db
 from graphon.model_runtime.entities.llm_entities import LLMUsage
-from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
 from graphon.model_runtime.model_providers.base.text_embedding_model import TextEmbeddingModel
 from models import TenantCreditPool
 from models.enums import ProviderQuotaType as ModelProviderQuotaType
 from models.provider import Provider, ProviderType
+from models.provider_ids import ModelProviderID
 from services.credit_pool_service import CreditPoolReservation, CreditPoolReservationState
 from tests.unit_tests.core.model_fixtures import make_model_config
 
@@ -51,6 +61,43 @@ def _model_instance(model_type: ModelType) -> ModelInstance:
     return ModelInstance(provider_model_bundle=bundle, model=model_name, credentials={})
 
 
+def _provider_configuration(
+    *,
+    using_provider_type: ProviderType,
+    system_configuration: SystemConfiguration,
+) -> ProviderConfiguration:
+    """Build a provider catalog whose availability is resolved by production code."""
+    config = make_model_config(provider="openai", model="gpt-4o", mode="chat")
+    configuration = config.provider_model_bundle.configuration
+    configuration.tenant_id = "tenant-id"
+    configuration.preferred_provider_type = using_provider_type
+    configuration.using_provider_type = using_provider_type
+    configuration.system_configuration = system_configuration
+    configuration.provider.supported_model_types = [ModelType.LLM, ModelType.TEXT_EMBEDDING]
+    configuration.provider.models = [
+        config.model_schema,
+        AIModelEntity(
+            model="text-embedding-3-small",
+            label=config.model_schema.label,
+            model_type=ModelType.TEXT_EMBEDDING,
+            fetch_from=FetchFrom.PREDEFINED_MODEL,
+            model_properties={},
+        ),
+    ]
+    return configuration
+
+
+def _provider_manager(configuration: ProviderConfiguration | None) -> ProviderManager:
+    """Seed a tenant catalog; None represents a catalog with no installed providers."""
+    configurations = ProviderConfigurations(tenant_id="tenant-id")
+    if configuration is not None:
+        configurations[str(ModelProviderID(configuration.provider.provider))] = configuration
+    manager = ProviderManager(model_runtime=create_plugin_model_runtime(tenant_id="tenant-id"))
+    # Exercise the documented per-manager cache and the real normalized provider lookup.
+    manager._configurations_cache["tenant-id"] = configurations
+    return manager
+
+
 @contextmanager
 def _patched_credit_pool_session_factory(engine: Engine) -> Generator[None, None, None]:
     session_maker = sessionmaker(bind=engine, expire_on_commit=False)
@@ -61,7 +108,7 @@ def _patched_credit_pool_session_factory(engine: Engine) -> Generator[None, None
         sessions.append(session)
         return session
 
-    with patch("core.app.llm.quota.db", SimpleNamespace(session=_session)):
+    with patch.object(db, "session", _session):
         try:
             yield
         finally:
@@ -70,12 +117,24 @@ def _patched_credit_pool_session_factory(engine: Engine) -> Generator[None, None
 
 
 def test_ensure_llm_quota_available_for_model_raises_when_system_model_is_exhausted() -> None:
-    provider_configuration = SimpleNamespace(
+    provider_configuration = _provider_configuration(
         using_provider_type=ProviderType.SYSTEM,
-        get_provider_model=MagicMock(return_value=SimpleNamespace(status=ModelStatus.QUOTA_EXCEEDED)),
+        system_configuration=SystemConfiguration(
+            enabled=True,
+            current_quota_type=ProviderQuotaType.TRIAL,
+            quota_configurations=[
+                QuotaConfiguration(
+                    quota_type=ProviderQuotaType.TRIAL,
+                    quota_unit=QuotaUnit.CREDITS,
+                    quota_limit=100,
+                    quota_used=100,
+                    is_valid=False,
+                    restrict_models=[RestrictModel(model="gpt-4o", model_type=ModelType.LLM)],
+                )
+            ],
+        ),
     )
-    provider_manager = MagicMock()
-    provider_manager.get_configurations.return_value.get.return_value = provider_configuration
+    provider_manager = _provider_manager(provider_configuration)
 
     with (
         patch("core.app.llm.quota.create_plugin_provider_manager", return_value=provider_manager),
@@ -87,15 +146,13 @@ def test_ensure_llm_quota_available_for_model_raises_when_system_model_is_exhaus
             model="gpt-4o",
         )
 
-    provider_configuration.get_provider_model.assert_called_once_with(
-        model_type=ModelType.LLM,
-        model="gpt-4o",
-    )
+    provider_model = provider_configuration.get_provider_model(model_type=ModelType.LLM, model="gpt-4o")
+    assert provider_model is not None
+    assert provider_model.status == ModelStatus.QUOTA_EXCEEDED
 
 
 def test_ensure_llm_quota_available_for_model_raises_when_provider_is_missing() -> None:
-    provider_manager = MagicMock()
-    provider_manager.get_configurations.return_value.get.return_value = None
+    provider_manager = _provider_manager(None)
 
     with (
         patch("core.app.llm.quota.create_plugin_provider_manager", return_value=provider_manager),
@@ -134,9 +191,8 @@ def test_reserve_llm_quota_uses_exact_credit_pool_reservation() -> None:
         request_id="11111111-1111-5111-8111-111111111111",
         reservation_id=None,
     )
-    provider_configuration = SimpleNamespace(
+    provider_configuration = _provider_configuration(
         using_provider_type=ProviderType.SYSTEM,
-        get_provider_model=MagicMock(return_value=SimpleNamespace(status=ModelStatus.ACTIVE)),
         system_configuration=SystemConfiguration(
             enabled=True,
             current_quota_type=ProviderQuotaType.TRIAL,
@@ -151,8 +207,7 @@ def test_reserve_llm_quota_uses_exact_credit_pool_reservation() -> None:
             ],
         ),
     )
-    provider_manager = MagicMock()
-    provider_manager.get_configurations.return_value.get.return_value = provider_configuration
+    provider_manager = _provider_manager(provider_configuration)
 
     with (
         patch("core.app.llm.quota.create_plugin_provider_manager", return_value=provider_manager),
@@ -197,9 +252,8 @@ def test_reserve_llm_quota_generates_request_id_when_not_supplied() -> None:
         request_id="11111111-1111-5111-8111-111111111111",
         reservation_id=None,
     )
-    provider_configuration = SimpleNamespace(
+    provider_configuration = _provider_configuration(
         using_provider_type=ProviderType.SYSTEM,
-        get_provider_model=MagicMock(return_value=SimpleNamespace(status=ModelStatus.ACTIVE)),
         system_configuration=SystemConfiguration(
             enabled=True,
             current_quota_type=ProviderQuotaType.TRIAL,
@@ -214,8 +268,7 @@ def test_reserve_llm_quota_generates_request_id_when_not_supplied() -> None:
             ],
         ),
     )
-    provider_manager = MagicMock()
-    provider_manager.get_configurations.return_value.get.return_value = provider_configuration
+    provider_manager = _provider_manager(provider_configuration)
 
     with (
         patch("core.app.llm.quota.create_plugin_provider_manager", return_value=provider_manager),
@@ -236,9 +289,8 @@ def test_reserve_non_llm_quota_uses_model_type_and_credit_pool_reservation() -> 
         request_id="11111111-1111-5111-8111-111111111111",
         reservation_id=None,
     )
-    provider_configuration = SimpleNamespace(
+    provider_configuration = _provider_configuration(
         using_provider_type=ProviderType.SYSTEM,
-        get_provider_model=MagicMock(return_value=SimpleNamespace(status=ModelStatus.ACTIVE)),
         system_configuration=SystemConfiguration(
             enabled=True,
             current_quota_type=ProviderQuotaType.TRIAL,
@@ -253,8 +305,7 @@ def test_reserve_non_llm_quota_uses_model_type_and_credit_pool_reservation() -> 
             ],
         ),
     )
-    provider_manager = MagicMock()
-    provider_manager.get_configurations.return_value.get.return_value = provider_configuration
+    provider_manager = _provider_manager(provider_configuration)
 
     with (
         patch("core.app.llm.quota.create_plugin_provider_manager", return_value=provider_manager),
@@ -269,10 +320,12 @@ def test_reserve_non_llm_quota_uses_model_type_and_credit_pool_reservation() -> 
         )
         reservation.commit()
 
-    provider_configuration.get_provider_model.assert_called_once_with(
-        model_type=ModelType.TEXT_EMBEDDING,
-        model="text-embedding-3-small",
+    assert reservation.model_type == ModelType.TEXT_EMBEDDING
+    provider_model = provider_configuration.get_provider_model(
+        model_type=ModelType.TEXT_EMBEDDING, model="text-embedding-3-small"
     )
+    assert provider_model is not None
+    assert provider_model.status == ModelStatus.ACTIVE
     reserve.assert_called_once_with(
         tenant_id="tenant-id",
         credits_required=3,
@@ -292,9 +345,8 @@ def test_reserve_non_llm_quota_uses_model_type_and_credit_pool_reservation() -> 
 
 
 def test_reserve_non_llm_quota_rejects_free_token_settlement() -> None:
-    provider_configuration = SimpleNamespace(
+    provider_configuration = _provider_configuration(
         using_provider_type=ProviderType.SYSTEM,
-        get_provider_model=MagicMock(return_value=SimpleNamespace(status=ModelStatus.ACTIVE)),
         system_configuration=SystemConfiguration(
             enabled=True,
             current_quota_type=ProviderQuotaType.FREE,
@@ -309,8 +361,7 @@ def test_reserve_non_llm_quota_rejects_free_token_settlement() -> None:
             ],
         ),
     )
-    provider_manager = MagicMock()
-    provider_manager.get_configurations.return_value.get.return_value = provider_configuration
+    provider_manager = _provider_manager(provider_configuration)
 
     with (
         patch("core.app.llm.quota.create_plugin_provider_manager", return_value=provider_manager),
@@ -325,9 +376,8 @@ def test_reserve_non_llm_quota_rejects_free_token_settlement() -> None:
 
 
 def test_reserve_llm_quota_requires_accurate_usage_for_free_tokens() -> None:
-    provider_configuration = SimpleNamespace(
+    provider_configuration = _provider_configuration(
         using_provider_type=ProviderType.SYSTEM,
-        get_provider_model=MagicMock(return_value=SimpleNamespace(status=ModelStatus.ACTIVE)),
         system_configuration=SystemConfiguration(
             enabled=True,
             current_quota_type=ProviderQuotaType.FREE,
@@ -342,8 +392,7 @@ def test_reserve_llm_quota_requires_accurate_usage_for_free_tokens() -> None:
             ],
         ),
     )
-    provider_manager = MagicMock()
-    provider_manager.get_configurations.return_value.get.return_value = provider_configuration
+    provider_manager = _provider_manager(provider_configuration)
 
     with patch("core.app.llm.quota.create_plugin_provider_manager", return_value=provider_manager):
         reservation = reserve_llm_quota_for_model(
@@ -358,9 +407,8 @@ def test_reserve_llm_quota_requires_accurate_usage_for_free_tokens() -> None:
 
 
 def test_reserve_llm_quota_rejects_token_based_credit_pool() -> None:
-    provider_configuration = SimpleNamespace(
+    provider_configuration = _provider_configuration(
         using_provider_type=ProviderType.SYSTEM,
-        get_provider_model=MagicMock(return_value=SimpleNamespace(status=ModelStatus.ACTIVE)),
         system_configuration=SystemConfiguration(
             enabled=True,
             current_quota_type=ProviderQuotaType.TRIAL,
@@ -375,8 +423,7 @@ def test_reserve_llm_quota_rejects_token_based_credit_pool() -> None:
             ],
         ),
     )
-    provider_manager = MagicMock()
-    provider_manager.get_configurations.return_value.get.return_value = provider_configuration
+    provider_manager = _provider_manager(provider_configuration)
 
     with (
         patch("core.app.llm.quota.create_plugin_provider_manager", return_value=provider_manager),
@@ -392,7 +439,7 @@ def test_reserve_llm_quota_rejects_token_based_credit_pool() -> None:
 def test_deduct_llm_quota_for_model_uses_identity_based_trial_billing() -> None:
     usage = LLMUsage.empty_usage()
     usage.total_tokens = 42
-    provider_configuration = SimpleNamespace(
+    provider_configuration = _provider_configuration(
         using_provider_type=ProviderType.SYSTEM,
         system_configuration=SystemConfiguration(
             enabled=True,
@@ -408,8 +455,7 @@ def test_deduct_llm_quota_for_model_uses_identity_based_trial_billing() -> None:
             ],
         ),
     )
-    provider_manager = MagicMock()
-    provider_manager.get_configurations.return_value.get.return_value = provider_configuration
+    provider_manager = _provider_manager(provider_configuration)
 
     with (
         patch("core.app.llm.quota.create_plugin_provider_manager", return_value=provider_manager),
@@ -439,7 +485,7 @@ def test_deduct_llm_quota_for_model_uses_identity_based_trial_billing() -> None:
 def test_deduct_llm_quota_for_model_caps_trial_pool_when_usage_exceeds_remaining() -> None:
     usage = LLMUsage.empty_usage()
     usage.total_tokens = 3
-    provider_configuration = SimpleNamespace(
+    provider_configuration = _provider_configuration(
         using_provider_type=ProviderType.SYSTEM,
         system_configuration=SystemConfiguration(
             enabled=True,
@@ -455,8 +501,7 @@ def test_deduct_llm_quota_for_model_caps_trial_pool_when_usage_exceeds_remaining
             ],
         ),
     )
-    provider_manager = MagicMock()
-    provider_manager.get_configurations.return_value.get.return_value = provider_configuration
+    provider_manager = _provider_manager(provider_configuration)
     engine = create_engine("sqlite:///:memory:")
     TenantCreditPool.__table__.create(engine)
     with engine.begin() as connection:
@@ -491,7 +536,7 @@ def test_deduct_llm_quota_for_model_caps_trial_pool_when_usage_exceeds_remaining
 def test_deduct_llm_quota_for_model_returns_for_unbounded_quota() -> None:
     usage = LLMUsage.empty_usage()
     usage.total_tokens = 42
-    provider_configuration = SimpleNamespace(
+    provider_configuration = _provider_configuration(
         using_provider_type=ProviderType.SYSTEM,
         system_configuration=SystemConfiguration(
             enabled=True,
@@ -507,8 +552,7 @@ def test_deduct_llm_quota_for_model_returns_for_unbounded_quota() -> None:
             ],
         ),
     )
-    provider_manager = MagicMock()
-    provider_manager.get_configurations.return_value.get.return_value = provider_configuration
+    provider_manager = _provider_manager(provider_configuration)
 
     with (
         patch("core.app.llm.quota.create_plugin_provider_manager", return_value=provider_manager),
@@ -526,7 +570,7 @@ def test_deduct_llm_quota_for_model_returns_for_unbounded_quota() -> None:
 
 def test_deduct_llm_quota_for_model_uses_credit_configuration() -> None:
     usage = LLMUsage.empty_usage()
-    provider_configuration = SimpleNamespace(
+    provider_configuration = _provider_configuration(
         using_provider_type=ProviderType.SYSTEM,
         system_configuration=SystemConfiguration(
             enabled=True,
@@ -542,8 +586,7 @@ def test_deduct_llm_quota_for_model_uses_credit_configuration() -> None:
             ],
         ),
     )
-    provider_manager = MagicMock()
-    provider_manager.get_configurations.return_value.get.return_value = provider_configuration
+    provider_manager = _provider_manager(provider_configuration)
 
     with (
         patch("core.app.llm.quota.create_plugin_provider_manager", return_value=provider_manager),
@@ -574,7 +617,7 @@ def test_deduct_llm_quota_for_model_uses_credit_configuration() -> None:
 
 def test_deduct_llm_quota_for_model_uses_single_charge_for_times_quota() -> None:
     usage = LLMUsage.empty_usage()
-    provider_configuration = SimpleNamespace(
+    provider_configuration = _provider_configuration(
         using_provider_type=ProviderType.SYSTEM,
         system_configuration=SystemConfiguration(
             enabled=True,
@@ -590,8 +633,7 @@ def test_deduct_llm_quota_for_model_uses_single_charge_for_times_quota() -> None
             ],
         ),
     )
-    provider_manager = MagicMock()
-    provider_manager.get_configurations.return_value.get.return_value = provider_configuration
+    provider_manager = _provider_manager(provider_configuration)
 
     with (
         patch("core.app.llm.quota.create_plugin_provider_manager", return_value=provider_manager),
@@ -621,7 +663,7 @@ def test_deduct_llm_quota_for_model_uses_single_charge_for_times_quota() -> None
 def test_deduct_llm_quota_for_model_uses_paid_billing_pool() -> None:
     usage = LLMUsage.empty_usage()
     usage.total_tokens = 5
-    provider_configuration = SimpleNamespace(
+    provider_configuration = _provider_configuration(
         using_provider_type=ProviderType.SYSTEM,
         system_configuration=SystemConfiguration(
             enabled=True,
@@ -637,8 +679,7 @@ def test_deduct_llm_quota_for_model_uses_paid_billing_pool() -> None:
             ],
         ),
     )
-    provider_manager = MagicMock()
-    provider_manager.get_configurations.return_value.get.return_value = provider_configuration
+    provider_manager = _provider_manager(provider_configuration)
 
     with (
         patch("core.app.llm.quota.create_plugin_provider_manager", return_value=provider_manager),
@@ -669,7 +710,7 @@ def test_deduct_llm_quota_for_model_uses_paid_billing_pool() -> None:
 def test_deduct_llm_quota_for_model_updates_free_quota_usage() -> None:
     usage = LLMUsage.empty_usage()
     usage.total_tokens = 3
-    provider_configuration = SimpleNamespace(
+    provider_configuration = _provider_configuration(
         using_provider_type=ProviderType.SYSTEM,
         system_configuration=SystemConfiguration(
             enabled=True,
@@ -685,8 +726,7 @@ def test_deduct_llm_quota_for_model_updates_free_quota_usage() -> None:
             ],
         ),
     )
-    provider_manager = MagicMock()
-    provider_manager.get_configurations.return_value.get.return_value = provider_configuration
+    provider_manager = _provider_manager(provider_configuration)
     engine = create_engine("sqlite:///:memory:")
     Provider.__table__.create(engine)
     with engine.begin() as connection:
@@ -783,7 +823,7 @@ def test_deduct_llm_quota_for_model_updates_free_quota_usage() -> None:
 def test_deduct_llm_quota_for_model_caps_free_quota_and_raises_when_usage_exceeds_remaining() -> None:
     usage = LLMUsage.empty_usage()
     usage.total_tokens = 3
-    provider_configuration = SimpleNamespace(
+    provider_configuration = _provider_configuration(
         using_provider_type=ProviderType.SYSTEM,
         system_configuration=SystemConfiguration(
             enabled=True,
@@ -799,8 +839,7 @@ def test_deduct_llm_quota_for_model_caps_free_quota_and_raises_when_usage_exceed
             ],
         ),
     )
-    provider_manager = MagicMock()
-    provider_manager.get_configurations.return_value.get.return_value = provider_configuration
+    provider_manager = _provider_manager(provider_configuration)
     engine = create_engine("sqlite:///:memory:")
     Provider.__table__.create(engine)
     with engine.begin() as connection:
@@ -839,7 +878,7 @@ def test_deduct_llm_quota_for_model_caps_free_quota_and_raises_when_usage_exceed
 def test_deduct_llm_quota_for_model_ignores_unknown_quota_type() -> None:
     usage = LLMUsage.empty_usage()
     usage.total_tokens = 2
-    provider_configuration = SimpleNamespace(
+    provider_configuration = _provider_configuration(
         using_provider_type=ProviderType.SYSTEM,
         # Bypass validation only to exercise defensive handling of an invalid quota type.
         system_configuration=SystemConfiguration.model_construct(
@@ -856,8 +895,7 @@ def test_deduct_llm_quota_for_model_ignores_unknown_quota_type() -> None:
             ],
         ),
     )
-    provider_manager = MagicMock()
-    provider_manager.get_configurations.return_value.get.return_value = provider_configuration
+    provider_manager = _provider_manager(provider_configuration)
 
     with (
         patch("core.app.llm.quota.create_plugin_provider_manager", return_value=provider_manager),
@@ -876,7 +914,7 @@ def test_deduct_llm_quota_for_model_ignores_unknown_quota_type() -> None:
 def test_deduct_llm_quota_for_model_ignores_custom_provider_configuration() -> None:
     usage = LLMUsage.empty_usage()
     usage.total_tokens = 2
-    provider_configuration = SimpleNamespace(
+    provider_configuration = _provider_configuration(
         using_provider_type=ProviderType.CUSTOM,
         system_configuration=SystemConfiguration(
             enabled=True,
@@ -884,8 +922,7 @@ def test_deduct_llm_quota_for_model_ignores_custom_provider_configuration() -> N
             quota_configurations=[],
         ),
     )
-    provider_manager = MagicMock()
-    provider_manager.get_configurations.return_value.get.return_value = provider_configuration
+    provider_manager = _provider_manager(provider_configuration)
 
     with (
         patch("core.app.llm.quota.create_plugin_provider_manager", return_value=provider_manager),
