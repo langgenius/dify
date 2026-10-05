@@ -195,7 +195,7 @@ it('retries a failed resource request, decodes its Blob and keeps Close availabl
   expect((loadedImage.element() as HTMLImageElement).src).toMatch(/^blob:/)
   expect(close.element()).toBe(originalClose)
   await userEvent.tab()
-  expect(preview.element().contains(document.activeElement)).toBe(true)
+  await expect.element(close).toHaveFocus()
   await userEvent.keyboard('{Escape}')
   await expect.element(preview).not.toBeInTheDocument()
   await expect.element(trigger).toHaveFocus()
