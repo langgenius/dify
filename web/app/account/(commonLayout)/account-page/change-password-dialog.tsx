@@ -1,7 +1,7 @@
 'use client'
 
 import type { AccountPasswordPayload } from '@dify/contracts/api/console/account/types.gen'
-import type { DialogProps } from '@langgenius/dify-ui/dialog'
+import type { DialogActions } from '@langgenius/dify-ui/dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
@@ -167,7 +167,7 @@ function ChangePasswordForm({ isPasswordSet, isPending, onSave }: ChangePassword
 
 export function ChangePasswordDialog({ isPasswordSet }: { isPasswordSet: boolean }) {
   const { t } = useTranslation(['common', 'accountSettings'])
-  const actionsRef: DialogProps['actionsRef'] = useRef(null)
+  const actionsRef = useRef<DialogActions>(null)
   const queryClient = useQueryClient()
   const updatePassword = useMutation(
     consoleQuery.account.password.post.mutationOptions({

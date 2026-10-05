@@ -1,6 +1,6 @@
 'use client'
 
-import type { DialogProps } from '@langgenius/dify-ui/dialog'
+import type { DialogActions } from '@langgenius/dify-ui/dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
@@ -62,7 +62,7 @@ function EditAccountNameForm({ name, isPending, onSave }: EditAccountNameFormPro
 
 export function EditAccountNameDialog({ name }: { name: string }) {
   const { t } = useTranslation(['common'])
-  const actionsRef: DialogProps['actionsRef'] = useRef(null)
+  const actionsRef = useRef<DialogActions>(null)
   const updateProfile = useMutation(consoleQuery.account.profile.patch.mutationOptions())
 
   const handleSave = async (name: string) => {
