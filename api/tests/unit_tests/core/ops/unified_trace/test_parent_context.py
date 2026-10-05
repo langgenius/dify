@@ -1,4 +1,5 @@
 import json
+from collections.abc import Callable
 
 import pytest
 
@@ -76,13 +77,10 @@ def test_parent_destination_uses_non_secret_provider_scope() -> None:
     assert "secret" not in destination.scope
 
 
-def test_publish_uses_unified_namespace_and_configured_ttl(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_publish_uses_unified_namespace_and_configured_ttl(config_overrides: Callable[..., None]) -> None:
     redis = InMemoryParentContextStore()
     value = context()
-    monkeypatch.setattr(
-        "core.ops.unified_trace.parent_context.dify_config.OPS_TRACE_PARENT_CONTEXT_TTL_SECONDS",
-        1_800,
-    )
+    config_overrides(OPS_TRACE_PARENT_CONTEXT_TTL_SECONDS=1_800)
 
     coordinator(redis, None).publish("outer-tool", value)
 
