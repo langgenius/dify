@@ -112,6 +112,21 @@ export async function createDiffyAgent(
   return data.agent
 }
 
+export async function updateDiffyAgent(
+  token: string,
+  id: string,
+  input: DiffyAgentInput,
+): Promise<DiffyAgent> {
+  const res = await apiFetch(
+    `/admin/diffy-agents/${encodeURIComponent(id)}`,
+    token,
+    { method: 'PUT', body: JSON.stringify(input) },
+    'Failed to update agent',
+  )
+  const data = await res.json()
+  return data.agent
+}
+
 export async function deleteDiffyAgent(token: string, id: string): Promise<void> {
   await apiFetch(
     `/admin/diffy-agents/${encodeURIComponent(id)}`,
