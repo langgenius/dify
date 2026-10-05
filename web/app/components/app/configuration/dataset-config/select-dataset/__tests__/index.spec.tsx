@@ -6,20 +6,20 @@ import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { DatasetPermission } from '@/models/datasets'
 import { render } from '@/test/console/render'
 import { RETRIEVE_METHOD } from '@/types/app'
-import SelectDataSet from '../index'
+import { SelectDataSet } from '../index'
 
 const mockUseInfiniteScroll = vi.fn()
 vi.mock('ahooks', async (importOriginal) => {
   const actual = await importOriginal()
   return {
     ...(typeof actual === 'object' && actual !== null ? actual : {}),
-    useInfiniteScroll: (...args: any[]) => mockUseInfiniteScroll(...args),
+    useInfiniteScroll: (...args: unknown[]) => mockUseInfiniteScroll(...args),
   }
 })
 
 const mockUseInfiniteDatasets = vi.fn()
 vi.mock('@/service/knowledge/use-dataset', () => ({
-  useInfiniteDatasets: (...args: any[]) => mockUseInfiniteDatasets(...args),
+  useInfiniteDatasets: (...args: unknown[]) => mockUseInfiniteDatasets(...args),
 }))
 
 let mockWorkspacePermissionKeys = ['dataset.create_and_management']
@@ -38,8 +38,8 @@ vi.mock('@/hooks/use-knowledge', () => ({
 }))
 
 const baseProps = {
-  isShow: true,
-  onClose: vi.fn(),
+  open: true,
+  onOpenChange: vi.fn(),
   selectedIds: [] as string[],
   onSelect: vi.fn(),
 }
@@ -277,5 +277,30 @@ describe('SelectDataSet', () => {
     })
 
     expect(fetchNextPage).not.toHaveBeenCalled()
+  })
+  it('reads the latest persisted selection after close and ignores source changes within the open session', async () => {
+    const first = makeDataset({ id: 'set-1', name: 'Dataset One' })
+    const second = makeDataset({ id: 'set-2', name: 'Dataset Two' })
+    mockUseInfiniteDatasets.mockReturnValue({
+      data: { pages: [{ data: [first, second] }] },
+      isLoading: false,
+      isFetchingNextPage: false,
+      fetchNextPage: vi.fn(),
+      hasNextPage: false,
+    })
+    const onSelect = vi.fn()
+    const { rerender } = render(
+      <SelectDataSet {...baseProps} selectedIds={['set-1', 'set-2']} onSelect={onSelect} />,
+    )
+    rerender(<SelectDataSet {...baseProps} selectedIds={['set-1']} onSelect={onSelect} />)
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.add' }))
+    expect(onSelect).toHaveBeenLastCalledWith([first, second])
+    rerender(
+      <SelectDataSet {...baseProps} open={false} selectedIds={['set-1']} onSelect={onSelect} />,
+    )
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    rerender(<SelectDataSet {...baseProps} selectedIds={['set-1']} onSelect={onSelect} />)
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.add' }))
+    expect(onSelect).toHaveBeenLastCalledWith([first])
   })
 })

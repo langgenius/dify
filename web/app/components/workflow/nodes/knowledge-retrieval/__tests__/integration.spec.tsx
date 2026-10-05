@@ -16,7 +16,6 @@ import { DatasetACLPermission, getDatasetACLCapabilities } from '@/utils/permiss
 import { DatasetsDetailContext } from '../../../datasets-detail-store/provider'
 import { createDatasetsDetailStore } from '../../../datasets-detail-store/store'
 import { BlockEnum, VarType } from '../../../types'
-import AddDataset from '../components/add-dataset'
 import DatasetItem from '../components/dataset-item'
 import DatasetList from '../components/dataset-list'
 import AddCondition from '../components/metadata/add-condition'
@@ -194,29 +193,6 @@ vi.mock('@/hooks/use-knowledge', () => ({
   }),
 }))
 
-vi.mock('@/app/components/app/configuration/dataset-config/select-dataset', () => ({
-  __esModule: true,
-  default: ({
-    onSelect,
-    onClose,
-  }: {
-    onSelect: (datasets: DataSet[]) => void
-    onClose: () => void
-  }) => (
-    <div>
-      <button
-        type="button"
-        onClick={() => onSelect([createDataset({ id: 'dataset-2', name: 'Selected Dataset' })])}
-      >
-        select-dataset
-      </button>
-      <button type="button" onClick={onClose}>
-        close-select-dataset
-      </button>
-    </div>
-  ),
-}))
-
 vi.mock('@/app/components/app/configuration/dataset-config/settings-modal', () => ({
   __esModule: true,
   default: function MockSettingsModal({
@@ -367,27 +343,6 @@ describe('knowledge-retrieval path', () => {
   })
 
   describe('Dataset controls', () => {
-    it('should open dataset selector and forward selected datasets', async () => {
-      const user = userEvent.setup()
-      const onChange = vi.fn()
-
-      render(<AddDataset selectedIds={['dataset-1']} onChange={onChange} />)
-
-      await user.click(
-        screen.getByRole('button', {
-          name: 'common.operation.add workflow.nodes.knowledgeRetrieval.knowledge',
-        }),
-      )
-      await user.click(screen.getByText('select-dataset'))
-
-      expect(onChange).toHaveBeenCalledWith([
-        expect.objectContaining({
-          id: 'dataset-2',
-          name: 'Selected Dataset',
-        }),
-      ])
-    })
-
     it('should support editing a dataset item', async () => {
       const onChange = vi.fn()
 

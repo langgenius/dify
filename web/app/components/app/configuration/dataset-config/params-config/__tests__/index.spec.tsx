@@ -11,7 +11,7 @@ import {
 import ConfigContext from '@/context/debug-configuration'
 import { RerankingModeEnum } from '@/models/datasets'
 import { RETRIEVE_TYPE } from '@/types/app'
-import ParamsConfig from '../index'
+import { ParamsConfig } from '../index'
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useModelListAndDefaultModelAndCurrentProviderAndModel: vi.fn(),
@@ -207,6 +207,46 @@ describe('dataset-config/params-config', () => {
       // Assert
       // Assert
       expect(reopenedTopKInput)!.toHaveValue('4')
+    })
+
+    it('discards changes after Escape and starts the next session from persisted config', async () => {
+      const user = userEvent.setup()
+      renderParamsConfig()
+      await user.click(screen.getByRole('button', { name: 'dataset.retrievalSettings' }))
+      await user.click(
+        within(screen.getByRole('dialog')).getAllByRole('button', { name: /increment/i })[0]!,
+      )
+      await user.keyboard('{Escape}')
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      await user.click(screen.getByRole('button', { name: 'dataset.retrievalSettings' }))
+      expect(within(screen.getByRole('dialog')).getAllByRole('textbox')[0]).toHaveValue('4')
+    })
+
+    it('accepts external source changes while open without replacing the focused input', async () => {
+      const user = userEvent.setup()
+      const baseContext = {
+        datasetConfigs: createDatasetConfigs(),
+        setDatasetConfigs: vi.fn(),
+        rerankSettingModalOpen: true,
+        setRerankSettingModalOpen: vi.fn(),
+      } as unknown as React.ComponentProps<typeof ConfigContext.Provider>['value']
+      const { rerender } = render(
+        <ConfigContext.Provider value={baseContext}>
+          <ParamsConfig selectedDatasets={[]} />
+        </ConfigContext.Provider>,
+      )
+      const input = within(screen.getByRole('dialog')).getAllByRole('textbox')[0]!
+      await user.click(input)
+      const nextConfig = createDatasetConfigs({ top_k: 7 })
+      rerender(
+        <ConfigContext.Provider value={{ ...baseContext, datasetConfigs: nextConfig }}>
+          <ParamsConfig selectedDatasets={[]} />
+        </ConfigContext.Provider>,
+      )
+      expect(input).toHaveValue('7')
+      expect(input).toHaveFocus()
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+      expect(baseContext.setDatasetConfigs).toHaveBeenCalledWith(nextConfig)
     })
 
     it('should prevent saving when rerank model is required but invalid', async () => {

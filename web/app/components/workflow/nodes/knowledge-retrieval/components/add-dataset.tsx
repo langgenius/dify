@@ -4,7 +4,7 @@ import type { DataSet } from '@/models/datasets'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import SelectDataset from '@/app/components/app/configuration/dataset-config/select-dataset'
+import { SelectDataSet } from '@/app/components/app/configuration/dataset-config/select-dataset'
 
 type Props = Readonly<{
   selectedIds: string[]
@@ -33,10 +33,10 @@ const AddDataset: FC<Props> = ({ selectedIds, modal, onChange }) => {
       >
         <span aria-hidden="true" className="i-ri-add-line size-4 text-text-tertiary" />
       </button>
-      <SelectDataset
-        isShow={isShowModal}
+      <SelectDataSet
+        open={isShowModal}
         modal={modal}
-        onClose={() => setIsShowModal(false)}
+        onOpenChange={setIsShowModal}
         selectedIds={selectedIds}
         onSelect={handleSelect}
       />

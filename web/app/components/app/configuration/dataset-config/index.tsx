@@ -41,7 +41,7 @@ import { OperationButton } from '../base/operation-button'
 import { useFormattingChangedDispatcher } from '../debug/hooks'
 import CardItem from './card-item'
 import ContextVar from './context-var'
-import ParamsConfig from './params-config'
+import { ParamsConfig } from './params-config'
 
 type Props = Readonly<{
   readonly?: boolean

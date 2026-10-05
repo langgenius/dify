@@ -1,5 +1,4 @@
 'use client'
-import type { FC } from 'react'
 import type { DataSet } from '@/models/datasets'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -7,8 +6,7 @@ import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dif
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useInfiniteScroll } from 'ahooks'
 import { useAtomValue } from 'jotai'
-import * as React from 'react'
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { memo, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import Badge from '@/app/components/base/badge'
@@ -21,21 +19,19 @@ import Link from '@/next/link'
 import { useInfiniteDatasets } from '@/service/knowledge/use-dataset'
 import { hasPermission } from '@/utils/permission'
 
-type ISelectDataSetProps = {
-  isShow: boolean
+type SelectDataSetProps = {
+  open: boolean
   modal?: boolean
-  onClose: () => void
+  onOpenChange: (open: boolean) => void
   selectedIds: string[]
   onSelect: (dataSet: DataSet[]) => void
 }
 
-const SelectDataSet: FC<ISelectDataSetProps> = ({
-  isShow,
-  modal,
-  onClose,
+function SelectDataSetContent({
+  open,
   selectedIds,
   onSelect,
-}) => {
+}: Pick<SelectDataSetProps, 'open' | 'selectedIds' | 'onSelect'>) {
   const { t } = useTranslation(['appDebug', 'common', 'dataset'])
   const [selectedIdsInModal, setSelectedIdsInModal] = useState(() => selectedIds)
   const canSelectMulti = true
@@ -44,7 +40,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
   const canCreateDataset = hasPermission(workspacePermissionKeys, 'dataset.create_and_management')
   const { data, isLoading, isFetchingNextPage, fetchNextPage, hasNextPage } = useInfiniteDatasets(
     { page: 1 },
-    { enabled: isShow, staleTime: 0, refetchOnMount: 'always' },
+    { enabled: open, staleTime: 0, refetchOnMount: 'always' },
   )
   const datasets = useMemo(() => {
     const pages = data?.pages || []
@@ -63,8 +59,8 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
 
   useInfiniteScroll(
     async () => {
-      if (!hasNextPage || isFetchingNextPage) return { list: [] }
-      await fetchNextPage()
+      if (!open || !hasNextPage || isFetchingNextPage) return { list: [] }
+      await fetchNextPage({ cancelRefetch: false })
       return { list: [] }
     },
     {
@@ -87,142 +83,137 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
     onSelect(selected)
   }
 
-  const handleClose = useCallback(() => {
-    setSelectedIdsInModal(selectedIds)
-    onClose()
-  }, [onClose, selectedIds])
-
-  const handleOpenChange = useCallback(
-    (open: boolean) => {
-      if (!open) handleClose()
-    },
-    [handleClose],
-  )
-
   return (
-    <Dialog modal={modal} open={isShow} onOpenChange={handleOpenChange}>
-      <DialogContent backdropProps={{ forceRender: true }} className="w-100 overflow-hidden">
-        <DialogTitle className="title-2xl-semi-bold text-text-primary">
-          {t(($) => $['feature.dataSet.selectTitle'], { ns: 'appDebug' })}
-        </DialogTitle>
-        <DialogClose
-          render={
-            <IconButton
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              size="lg"
-              className="absolute inset-e-6 top-6"
-            >
-              <span aria-hidden className="i-ri-close-line size-4" />
-            </IconButton>
-          }
-        />
-        {isLoading && datasets.length === 0 && (
-          <div className="flex h-50">
-            <LoadingPlaceholder />
-          </div>
-        )}
+    <>
+      <DialogTitle className="title-2xl-semi-bold text-text-primary">
+        {t(($) => $['feature.dataSet.selectTitle'], { ns: 'appDebug' })}
+      </DialogTitle>
+      <DialogClose
+        render={
+          <IconButton
+            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+            size="lg"
+            className="absolute inset-e-6 top-6"
+          >
+            <span aria-hidden className="i-ri-close-line size-4" />
+          </IconButton>
+        }
+      />
+      {isLoading && datasets.length === 0 && (
+        <div className="flex h-50">
+          <LoadingPlaceholder />
+        </div>
+      )}
 
-        {hasNoData && (
-          <div className="mt-6 flex h-32 items-center justify-center space-x-1 rounded-lg border border-divider-subtle bg-components-panel-on-panel-item-bg text-[13px]">
-            <span className="text-text-tertiary">
-              {t(($) => $['feature.dataSet.noDataSet'], { ns: 'appDebug' })}
-            </span>
-            {canCreateDataset && (
-              <Link href="/datasets/create" className="font-normal text-text-accent">
-                {t(($) => $['feature.dataSet.toCreate'], { ns: 'appDebug' })}
-              </Link>
-            )}
-          </div>
-        )}
+      {hasNoData && (
+        <div className="mt-6 flex h-32 items-center justify-center space-x-1 rounded-lg border border-divider-subtle bg-components-panel-on-panel-item-bg text-[13px]">
+          <span className="text-text-tertiary">
+            {t(($) => $['feature.dataSet.noDataSet'], { ns: 'appDebug' })}
+          </span>
+          {canCreateDataset && (
+            <Link href="/datasets/create" className="font-normal text-text-accent">
+              {t(($) => $['feature.dataSet.toCreate'], { ns: 'appDebug' })}
+            </Link>
+          )}
+        </div>
+      )}
 
-        {datasets.length > 0 && (
-          <>
-            <div ref={listRef} className="mt-7 max-h-71.5 space-y-1 overflow-y-auto">
-              {datasets.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  disabled={!item.embedding_available}
-                  className={cn(
-                    'flex h-10 w-full cursor-pointer items-center rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg px-2 text-left shadow-xs outline-hidden hover:border-components-panel-border hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm focus-visible:ring-2 focus-visible:ring-state-accent-solid',
-                    selectedIdsInModal.includes(item.id) &&
-                      'border-[1.5px] border-components-option-card-option-selected-border bg-state-accent-hover shadow-xs hover:border-components-option-card-option-selected-border hover:bg-state-accent-hover hover:shadow-xs',
-                    !item.embedding_available &&
-                      'cursor-default hover:border-components-panel-border-subtle hover:bg-components-panel-on-panel-item-bg hover:shadow-xs',
-                  )}
-                  onClick={() => toggleSelect(item)}
-                >
-                  <div className="mr-1 flex grow items-center overflow-hidden">
-                    <div className={cn('mr-2', !item.embedding_available && 'opacity-30')}>
-                      <AppIcon
-                        size="tiny"
-                        iconType={item.icon_info.icon_type}
-                        icon={item.icon_info.icon}
-                        background={
-                          item.icon_info.icon_type === 'image'
-                            ? undefined
-                            : item.icon_info.icon_background
-                        }
-                        imageUrl={
-                          item.icon_info.icon_type === 'image' ? item.icon_info.icon_url : undefined
-                        }
-                      />
-                    </div>
-                    <div
-                      className={cn(
-                        'max-w-50 truncate text-[13px] font-medium text-text-secondary',
-                        !item.embedding_available && 'max-w-30! opacity-30',
-                      )}
-                    >
-                      {item.name}
-                    </div>
-                    {!item.embedding_available && (
-                      <span className="ml-1 shrink-0 rounded-md border border-divider-deep px-1 text-xs leading-4.5 font-normal text-text-tertiary">
-                        {t(($) => $.unavailable, { ns: 'dataset' })}
-                      </span>
-                    )}
-                  </div>
-                  {item.is_multimodal && (
-                    <div className="mr-1 shrink-0">
-                      <FeatureIcon feature={ModelFeatureEnum.vision} />
-                    </div>
-                  )}
-                  {!!item.indexing_technique && (
-                    <Badge
-                      className="shrink-0"
-                      text={formatIndexingTechniqueAndMethod(
-                        item.indexing_technique,
-                        item.retrieval_model_dict?.search_method,
-                      )}
+      {datasets.length > 0 && (
+        <>
+          <div ref={listRef} className="mt-7 max-h-71.5 space-y-1 overflow-y-auto">
+            {datasets.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                disabled={!item.embedding_available}
+                className={cn(
+                  'flex h-10 w-full cursor-pointer items-center rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg px-2 text-left shadow-xs outline-hidden hover:border-components-panel-border hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+                  selectedIdsInModal.includes(item.id) &&
+                    'border-[1.5px] border-components-option-card-option-selected-border bg-state-accent-hover shadow-xs hover:border-components-option-card-option-selected-border hover:bg-state-accent-hover hover:shadow-xs',
+                  !item.embedding_available &&
+                    'cursor-default hover:border-components-panel-border-subtle hover:bg-components-panel-on-panel-item-bg hover:shadow-xs',
+                )}
+                onClick={() => toggleSelect(item)}
+              >
+                <div className="mr-1 flex grow items-center overflow-hidden">
+                  <div className={cn('mr-2', !item.embedding_available && 'opacity-30')}>
+                    <AppIcon
+                      size="tiny"
+                      iconType={item.icon_info.icon_type}
+                      icon={item.icon_info.icon}
+                      background={
+                        item.icon_info.icon_type === 'image'
+                          ? undefined
+                          : item.icon_info.icon_background
+                      }
+                      imageUrl={
+                        item.icon_info.icon_type === 'image' ? item.icon_info.icon_url : undefined
+                      }
                     />
+                  </div>
+                  <div
+                    className={cn(
+                      'max-w-50 truncate text-[13px] font-medium text-text-secondary',
+                      !item.embedding_available && 'max-w-30! opacity-30',
+                    )}
+                  >
+                    {item.name}
+                  </div>
+                  {!item.embedding_available && (
+                    <span className="ml-1 shrink-0 rounded-md border border-divider-deep px-1 text-xs leading-4.5 font-normal text-text-tertiary">
+                      {t(($) => $.unavailable, { ns: 'dataset' })}
+                    </span>
                   )}
-                  {item.provider === 'external' && (
-                    <Badge className="shrink-0" text={t(($) => $.externalTag, { ns: 'dataset' })} />
-                  )}
-                </button>
-              ))}
-              {isFetchingNextPage && <LoadingPlaceholder />}
-            </div>
-          </>
-        )}
-        {!isLoading && (
-          <div className="mt-8 flex items-center justify-between">
-            <div className="text-sm font-medium text-text-secondary">
-              {selected.length > 0 &&
-                `${selected.length} ${t(($) => $['feature.dataSet.selected'], { ns: 'appDebug' })}`}
-            </div>
-            <div className="flex space-x-2">
-              <Button onClick={handleClose}>
-                {t(($) => $['operation.cancel'], { ns: 'common' })}
-              </Button>
-              <Button variant="primary" onClick={handleSelect} disabled={hasNoData}>
-                {t(($) => $['operation.add'], { ns: 'common' })}
-              </Button>
-            </div>
+                </div>
+                {item.is_multimodal && (
+                  <div className="mr-1 shrink-0">
+                    <FeatureIcon feature={ModelFeatureEnum.vision} />
+                  </div>
+                )}
+                {!!item.indexing_technique && (
+                  <Badge
+                    className="shrink-0"
+                    text={formatIndexingTechniqueAndMethod(
+                      item.indexing_technique,
+                      item.retrieval_model_dict?.search_method,
+                    )}
+                  />
+                )}
+                {item.provider === 'external' && (
+                  <Badge className="shrink-0" text={t(($) => $.externalTag, { ns: 'dataset' })} />
+                )}
+              </button>
+            ))}
+            {isFetchingNextPage && <LoadingPlaceholder />}
           </div>
-        )}
-      </DialogContent>
-    </Dialog>
+        </>
+      )}
+      {!isLoading && (
+        <div className="mt-8 flex items-center justify-between">
+          <div className="text-sm font-medium text-text-secondary">
+            {selected.length > 0 &&
+              `${selected.length} ${t(($) => $['feature.dataSet.selected'], { ns: 'appDebug' })}`}
+          </div>
+          <div className="flex space-x-2">
+            <DialogClose render={<Button />}>
+              {t(($) => $['operation.cancel'], { ns: 'common' })}
+            </DialogClose>
+            <Button variant="primary" onClick={handleSelect} disabled={hasNoData}>
+              {t(($) => $['operation.add'], { ns: 'common' })}
+            </Button>
+          </div>
+        </div>
+      )}
+    </>
   )
 }
-export default React.memo(SelectDataSet)
+
+export const SelectDataSet = memo(
+  ({ open, modal, onOpenChange, selectedIds, onSelect }: SelectDataSetProps) => (
+    <Dialog modal={modal} open={open} onOpenChange={onOpenChange}>
+      <DialogContent backdropProps={{ forceRender: true }} className="w-100 overflow-hidden">
+        <SelectDataSetContent open={open} selectedIds={selectedIds} onSelect={onSelect} />
+      </DialogContent>
+    </Dialog>
+  ),
+)
