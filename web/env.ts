@@ -128,7 +128,7 @@ const clientSchema = {
    * Hours of inactivity after which a web app chat starts a fresh conversation.
    * 0 disables the reset. Counted from the last message sent.
    */
-  NEXT_PUBLIC_CHAT_SESSION_RESET_HOURS: coercedNumber.default(0),
+  NEXT_PUBLIC_CHAT_SESSION_RESET_HOURS: coercedNumber.default(24),
   /**
    * The maximum number of tree node depth for workflow
    */
