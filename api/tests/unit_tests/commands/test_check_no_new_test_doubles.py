@@ -238,6 +238,33 @@ def test_staged_mode_does_not_read_unstaged_content(repo: Path) -> None:
     assert result.returncode == 0, result.stderr
 
 
+@pytest.mark.parametrize("mode", ["staged", "base"])
+@pytest.mark.parametrize("kind", ["mock", "subclass"])
+@pytest.mark.parametrize("add_violation", [False, True])
+@pytest.mark.parametrize("filename", ["test_renamed.py", "test renamed.py"])
+def test_renamed_files_keep_baseline_but_reject_new_violations(
+    repo: Path, mode: str, kind: str, add_violation: bool, filename: str
+) -> None:
+    legacy = "value = Mock()\n" if kind == "mock" else "class Legacy(ModelInstance):\n    def __init__(self): pass\n"
+    added = "another = MagicMock()\n" if kind == "mock" else "class New(ModelInstance):\n    def __init__(self): pass\n"
+    source = "".join(f"# unchanged context {index}\n" for index in range(40)) + legacy
+    write_source(repo, source)
+    baseline = commit(repo)
+    destination = f"api/tests/unit_tests/{filename}"
+    git(repo, "mv", TEST_PATH, destination)
+    write_source(repo, source + (added if add_violation else ""), destination)
+    git(repo, "add", ".")
+    assert git(repo, "diff", "--cached", "--name-status", "--find-renames").startswith("R")
+    if mode == "base":
+        commit(repo)
+        result = run_guard(repo, "--base-rev", baseline)
+    else:
+        result = run_guard(repo, "--staged")
+    assert result.returncode == int(add_violation), result.stderr
+    if add_violation:
+        assert destination in result.stderr
+
+
 def test_invalid_revision_fails_closed(repo: Path) -> None:
     result = run_guard(repo, "--base-rev", "missing-revision")
     assert result.returncode == 2

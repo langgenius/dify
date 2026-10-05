@@ -13,8 +13,9 @@ Protocol and Pydantic model implementations are not targeted.
 
 Both rules retain the provided Git baseline. Identical mock calls are counted
 per file: an additional copy or a different constructor call is rejected.
-Subclass matches are compared by
-class name within each changed file, not only by the line of the class header:
+Git-detected renames retain the source file's baseline, including paths with
+spaces. Subclass matches are compared by class name within each changed file,
+not only by the line of the class header:
 removing a super call or adding a dataclass decorator must still be detected.
 An existing offending class can be edited or removed without adding another.
 For a justified subclass exception only, add
@@ -29,15 +30,12 @@ from collections import Counter
 from pathlib import Path
 
 from ast_grep_guard import (
-    Hunk,
     Match,
     Violation,
-    collect_diff_text,
+    git_output,
     has_reasoned_guard_ignore,
     is_python_source_path,
-    load_file_versions,
     parse_args,
-    parse_changed_hunks,
     print_violations,
     rule_path,
     run_ast_grep,
@@ -46,13 +44,35 @@ from ast_grep_guard import (
 STUB_RULE_ID = "no-new-stub-subclass"
 
 
-def find_new_mock_calls(changed: dict[str, list[Hunk]], args: argparse.Namespace) -> list[Violation]:
-    """Keep identical baseline calls, but catch alias changes outside their hunks."""
-    violations: list[Violation] = []
-    for path in changed:
+def changed_file_versions(args: argparse.Namespace) -> dict[str, tuple[str, str]]:
+    """Read Git blobs, preserving rename baselines and NUL-delimited filenames."""
+    revisions = ["--cached"] if args.staged else [f"{args.base_rev}..HEAD"]
+    status_text = git_output(
+        "diff", "--name-status", "-z", "--find-renames", "--diff-filter=AMR", "--no-ext-diff", *revisions
+    )
+    if not status_text:
+        return {}
+    fields = iter(status_text.rstrip("\0").split("\0"))
+    old_revision = "HEAD" if args.staged else args.base_rev
+    new_revision = "" if args.staged else "HEAD"
+    versions: dict[str, tuple[str, str]] = {}
+    for status in fields:
+        try:
+            old_path = next(fields)
+            path = next(fields) if status.startswith("R") else old_path
+        except StopIteration as exc:
+            raise RuntimeError("Incomplete Git name-status output") from exc
         if not is_python_source_path(path):
             continue
-        old_source, new_source = load_file_versions(path, args)
+        old_source = "" if status == "A" else git_output("show", f"{old_revision}:{old_path}")
+        versions[path] = (old_source, git_output("show", f"{new_revision}:{path}"))
+    return versions
+
+
+def find_new_mock_calls(changed: dict[str, tuple[str, str]]) -> list[Violation]:
+    """Keep identical baseline calls, but catch alias changes outside their hunks."""
+    violations: list[Violation] = []
+    for path, (old_source, new_source) in changed.items():
         old_calls = Counter(match.text for match in run_ast_grep(old_source, rule=rule_path("no_new_mock.yml")))
         for match in run_ast_grep(new_source, rule=rule_path("no_new_mock.yml")):
             if old_calls[match.text]:
@@ -72,12 +92,11 @@ def is_reportable_subclass(match: Match) -> bool:
     return not has_reasoned_guard_ignore(match.source_line, STUB_RULE_ID)
 
 
-def find_new_stub_subclasses(changed: dict[str, list[Hunk]], args: argparse.Namespace) -> list[Violation]:
+def find_new_stub_subclasses(changed: dict[str, tuple[str, str]]) -> list[Violation]:
     violations: list[Violation] = []
-    for path in changed:
-        if not is_python_source_path(path) or not Path(path).is_relative_to("api/tests"):
+    for path, (old_source, new_source) in changed.items():
+        if not Path(path).is_relative_to("api/tests"):
             continue
-        old_source, new_source = load_file_versions(path, args)
         old_matches = run_ast_grep(old_source, rule=rule_path("no_new_stub_subclass.yml"))
         new_matches = run_ast_grep(new_source, rule=rule_path("no_new_stub_subclass.yml"))
         old_names = Counter(match.meta_variables["NAME"] for match in old_matches if is_reportable_subclass(match))
@@ -101,9 +120,9 @@ def find_new_stub_subclasses(changed: dict[str, list[Hunk]], args: argparse.Name
 def main() -> int:
     try:
         args = parse_args(__doc__)
-        changed = parse_changed_hunks(collect_diff_text(args))
-        violations = find_new_mock_calls(changed, args)
-        violations.extend(find_new_stub_subclasses(changed, args))
+        changed = changed_file_versions(args)
+        violations = find_new_mock_calls(changed)
+        violations.extend(find_new_stub_subclasses(changed))
     except (OSError, RuntimeError) as exc:
         print(str(exc), file=sys.stderr)
         return 2
