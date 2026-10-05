@@ -4,8 +4,9 @@ import userEvent from '@testing-library/user-event'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import ModelList from '../model-list'
 
-const { mockToastError } = vi.hoisted(() => ({
+const { mockToastError, loadModule } = vi.hoisted(() => ({
   mockToastError: vi.fn(),
+  loadModule: vi.fn(),
 }))
 
 vi.mock('@/context/permission-state', async () => {
@@ -28,6 +29,7 @@ vi.mock('@/app/notifications', () => ({
 }))
 
 vi.mock('../model-load-balancing-modal', () => {
+  loadModule()
   throw new Error('Failed to load model load balancing modal')
 })
 
@@ -70,6 +72,11 @@ describe('ModelList dynamic import failure', () => {
       expect(mockToastError).toHaveBeenCalledWith('common.api.actionFailed')
     })
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(loadModule).toHaveBeenCalledOnce()
+    await user.click(screen.getByRole('button', { name: 'gpt-4' }))
+    await waitFor(() => expect(mockToastError).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(loadModule).toHaveBeenCalledOnce()
   })
 })

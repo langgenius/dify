@@ -1,8 +1,9 @@
 import type { ModelItem, ModelProvider } from '../../declarations'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ConfigurationMethodEnum } from '../../declarations'
-import ModelLoadBalancingModal from '../model-load-balancing-modal'
+import { ModelLoadBalancingContent } from '../model-load-balancing-modal'
 
 type CredentialData = {
   load_balancing: {
@@ -146,7 +147,7 @@ vi.mock('../../model-name', () => ({
   default: () => <div>model-name</div>,
 }))
 
-describe('ModelLoadBalancingModal', () => {
+describe('ModelLoadBalancingContent', () => {
   let user: ReturnType<typeof userEvent.setup>
 
   const mockProvider = {
@@ -165,7 +166,12 @@ describe('ModelLoadBalancingModal', () => {
     fetch_from: 'predefined-model',
   } as unknown as ModelItem
 
-  const renderModal = (node: Parameters<typeof render>[0]) => render(<>{node}</>)
+  const renderModal = (node: Parameters<typeof render>[0]) =>
+    render(
+      <Dialog defaultOpen>
+        <DialogContent>{node}</DialogContent>
+      </Dialog>,
+    )
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -206,11 +212,10 @@ describe('ModelLoadBalancingModal', () => {
     mockCredentialData = undefined
 
     renderModal(
-      <ModelLoadBalancingModal
+      <ModelLoadBalancingContent
         provider={mockProvider}
         configurateMethod={ConfigurationMethodEnum.predefinedModel}
         model={mockModel}
-        open
       />,
     )
 
@@ -219,11 +224,10 @@ describe('ModelLoadBalancingModal', () => {
 
   it('should render predefined model content', () => {
     renderModal(
-      <ModelLoadBalancingModal
+      <ModelLoadBalancingContent
         provider={mockProvider}
         configurateMethod={ConfigurationMethodEnum.predefinedModel}
         model={mockModel}
-        open
       />,
     )
 
@@ -236,11 +240,10 @@ describe('ModelLoadBalancingModal', () => {
     const onClose = vi.fn()
     mockRefetch.mockResolvedValue({ data: { available_credentials: [] } })
     renderModal(
-      <ModelLoadBalancingModal
+      <ModelLoadBalancingContent
         provider={mockProvider}
         configurateMethod={ConfigurationMethodEnum.customizableModel}
         model={mockModel}
-        open
         onClose={onClose}
       />,
     )
@@ -258,11 +261,10 @@ describe('ModelLoadBalancingModal', () => {
     const onClose = vi.fn()
 
     renderModal(
-      <ModelLoadBalancingModal
+      <ModelLoadBalancingContent
         provider={mockProvider}
         configurateMethod={ConfigurationMethodEnum.predefinedModel}
         model={mockModel}
-        open
         onSave={onSave}
         onClose={onClose}
       />,
@@ -291,11 +293,10 @@ describe('ModelLoadBalancingModal', () => {
     mockRefetch.mockResolvedValue({ data: { available_credentials: [] } })
 
     renderModal(
-      <ModelLoadBalancingModal
+      <ModelLoadBalancingContent
         provider={mockProvider}
         configurateMethod={ConfigurationMethodEnum.customizableModel}
         model={mockModel}
-        open
         onClose={onClose}
       />,
     )
@@ -311,11 +312,10 @@ describe('ModelLoadBalancingModal', () => {
     mockDeleteModel = { model: 'gpt-4' }
 
     renderModal(
-      <ModelLoadBalancingModal
+      <ModelLoadBalancingContent
         provider={mockProvider}
         configurateMethod={ConfigurationMethodEnum.customizableModel}
         model={mockModel}
-        open
         onClose={onClose}
       />,
     )
@@ -341,39 +341,23 @@ describe('ModelLoadBalancingModal', () => {
     }
 
     renderModal(
-      <ModelLoadBalancingModal
+      <ModelLoadBalancingContent
         provider={mockProvider}
         configurateMethod={ConfigurationMethodEnum.predefinedModel}
         model={mockModel}
-        open
       />,
     )
 
     expect(screen.getByText(/modelProvider\.auth\.configModel/))!.toBeInTheDocument()
   })
 
-  // Modal hidden when open=false
-  it('should not render modal content when open is false', () => {
-    renderModal(
-      <ModelLoadBalancingModal
-        provider={mockProvider}
-        configurateMethod={ConfigurationMethodEnum.predefinedModel}
-        model={mockModel}
-        open={false}
-      />,
-    )
-
-    expect(screen.queryByText(/modelProvider\.auth\.configLoadBalancing/)).not.toBeInTheDocument()
-  })
-
   // Config rename: updates name in draft config
   it('should rename credential in draft config', async () => {
     renderModal(
-      <ModelLoadBalancingModal
+      <ModelLoadBalancingContent
         provider={mockProvider}
         configurateMethod={ConfigurationMethodEnum.predefinedModel}
         model={mockModel}
-        open
         onSave={vi.fn()}
         onClose={vi.fn()}
       />,
@@ -390,11 +374,10 @@ describe('ModelLoadBalancingModal', () => {
   // Config remove: removes credential from draft
   it('should remove credential from draft config', async () => {
     renderModal(
-      <ModelLoadBalancingModal
+      <ModelLoadBalancingContent
         provider={mockProvider}
         configurateMethod={ConfigurationMethodEnum.predefinedModel}
         model={mockModel}
-        open
         onSave={vi.fn()}
         onClose={vi.fn()}
       />,
@@ -408,26 +391,36 @@ describe('ModelLoadBalancingModal', () => {
     })
   })
 
-  // Save error: shows error toast
-  it('should show error toast when save fails', async () => {
-    mockMutateAsync.mockResolvedValue({ result: 'error' })
-
-    renderModal(
-      <ModelLoadBalancingModal
-        provider={mockProvider}
-        configurateMethod={ConfigurationMethodEnum.predefinedModel}
-        model={mockModel}
-        open
-      />,
-    )
-
-    await user.click(screen.getByText(/operation\.save/))
-
-    await waitFor(() => {
-      expect(mockMutateAsync).toHaveBeenCalled()
-      expect(mockNotify).toHaveBeenCalled()
-    })
-  })
+  it.each(['non-success response', 'rejection'])(
+    'keeps the configuration after %s and closes only after a successful retry',
+    async (failure) => {
+      if (failure === 'rejection') mockMutateAsync.mockRejectedValueOnce(new Error('Save failed'))
+      else mockMutateAsync.mockResolvedValueOnce({ result: 'error' })
+      const onClose = vi.fn()
+      const onSave = vi.fn()
+      renderModal(
+        <ModelLoadBalancingContent
+          provider={mockProvider}
+          configurateMethod={ConfigurationMethodEnum.predefinedModel}
+          model={mockModel}
+          onClose={onClose}
+          onSave={onSave}
+        />,
+      )
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+      await waitFor(() =>
+        expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' })),
+      )
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
+      expect(onSave).not.toHaveBeenCalled()
+      expect(onClose).not.toHaveBeenCalled()
+      expect(mockHandleRefreshModel).not.toHaveBeenCalled()
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+      await waitFor(() => expect(onClose).toHaveBeenCalledOnce())
+      expect(onSave).toHaveBeenCalledExactlyOnceWith('test-provider')
+      expect(mockHandleRefreshModel).toHaveBeenCalledOnce()
+    },
+  )
 
   // No current_credential_id: modelCredential is undefined
   it('should handle missing current_credential_id', () => {
@@ -437,11 +430,10 @@ describe('ModelLoadBalancingModal', () => {
     }
 
     renderModal(
-      <ModelLoadBalancingModal
+      <ModelLoadBalancingContent
         provider={mockProvider}
         configurateMethod={ConfigurationMethodEnum.customizableModel}
         model={mockModel}
-        open
       />,
     )
 
@@ -473,11 +465,10 @@ describe('ModelLoadBalancingModal', () => {
     }
 
     renderModal(
-      <ModelLoadBalancingModal
+      <ModelLoadBalancingContent
         provider={mockProvider}
         configurateMethod={ConfigurationMethodEnum.predefinedModel}
         model={mockModel}
-        open
       />,
     )
 
@@ -509,11 +500,10 @@ describe('ModelLoadBalancingModal', () => {
     }
 
     renderModal(
-      <ModelLoadBalancingModal
+      <ModelLoadBalancingContent
         provider={mockProvider}
         configurateMethod={ConfigurationMethodEnum.predefinedModel}
         model={mockModel}
-        open
         onSave={vi.fn()}
         onClose={vi.fn()}
       />,
@@ -539,11 +529,10 @@ describe('ModelLoadBalancingModal', () => {
     })
 
     renderModal(
-      <ModelLoadBalancingModal
+      <ModelLoadBalancingContent
         provider={mockProvider}
         configurateMethod={ConfigurationMethodEnum.predefinedModel}
         model={mockModel}
-        open
         onSave={vi.fn()}
         onClose={vi.fn()}
       />,
@@ -571,11 +560,10 @@ describe('ModelLoadBalancingModal', () => {
     })
 
     renderModal(
-      <ModelLoadBalancingModal
+      <ModelLoadBalancingContent
         provider={mockProvider}
         configurateMethod={ConfigurationMethodEnum.predefinedModel}
         model={mockModel}
-        open
         onSave={vi.fn()}
         onClose={vi.fn()}
       />,
@@ -603,11 +591,10 @@ describe('ModelLoadBalancingModal', () => {
 
   it('should toggle to model credentials from the named mode button with the keyboard', async () => {
     renderModal(
-      <ModelLoadBalancingModal
+      <ModelLoadBalancingContent
         provider={mockProvider}
         configurateMethod={ConfigurationMethodEnum.predefinedModel}
         model={mockModel}
-        open
       />,
     )
 
@@ -637,16 +624,15 @@ describe('ModelLoadBalancingModal', () => {
     const onClose = vi.fn()
 
     renderModal(
-      <ModelLoadBalancingModal
+      <ModelLoadBalancingContent
         provider={mockProvider}
         configurateMethod={ConfigurationMethodEnum.customizableModel}
         model={mockModel}
-        open
         onSave={onSave}
         onClose={onClose}
         credential={
           { credential_id: 'cred-1', credential_name: 'Default' } as unknown as Parameters<
-            typeof ModelLoadBalancingModal
+            typeof ModelLoadBalancingContent
           >[0]['credential']
         }
       />,
@@ -669,11 +655,10 @@ describe('ModelLoadBalancingModal', () => {
     mockRefetch.mockResolvedValue({ data: undefined })
 
     renderModal(
-      <ModelLoadBalancingModal
+      <ModelLoadBalancingContent
         provider={mockProvider}
         configurateMethod={ConfigurationMethodEnum.predefinedModel}
         model={mockModel}
-        open
         onClose={onClose}
       />,
     )
@@ -693,11 +678,10 @@ describe('ModelLoadBalancingModal', () => {
     mockRefetch.mockResolvedValue({ data: undefined })
 
     renderModal(
-      <ModelLoadBalancingModal
+      <ModelLoadBalancingContent
         provider={mockProvider}
         configurateMethod={ConfigurationMethodEnum.customizableModel}
         model={mockModel}
-        open
         onClose={onClose}
       />,
     )
@@ -724,11 +708,10 @@ describe('ModelLoadBalancingModal', () => {
     } as unknown as ModelProvider
 
     renderModal(
-      <ModelLoadBalancingModal
+      <ModelLoadBalancingContent
         provider={providerWithoutSchemas}
         configurateMethod={ConfigurationMethodEnum.predefinedModel}
         model={mockModel}
-        open
       />,
     )
 
@@ -750,11 +733,10 @@ describe('ModelLoadBalancingModal', () => {
     } as unknown as ModelProvider
 
     renderModal(
-      <ModelLoadBalancingModal
+      <ModelLoadBalancingContent
         provider={providerWithoutModelSchemas}
         configurateMethod={ConfigurationMethodEnum.customizableModel}
         model={mockModel}
-        open
       />,
     )
 
@@ -773,11 +755,10 @@ describe('ModelLoadBalancingModal', () => {
     })
 
     renderModal(
-      <ModelLoadBalancingModal
+      <ModelLoadBalancingContent
         provider={mockProvider}
         configurateMethod={ConfigurationMethodEnum.predefinedModel}
         model={mockModel}
-        open
         onSave={vi.fn()}
         onClose={vi.fn()}
       />,
@@ -816,11 +797,10 @@ describe('ModelLoadBalancingModal', () => {
     })
 
     renderModal(
-      <ModelLoadBalancingModal
+      <ModelLoadBalancingContent
         provider={mockProvider}
         configurateMethod={ConfigurationMethodEnum.predefinedModel}
         model={mockModel}
-        open
         onSave={vi.fn()}
         onClose={vi.fn()}
       />,

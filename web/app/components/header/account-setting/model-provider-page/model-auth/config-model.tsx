@@ -45,7 +45,10 @@ const ConfigModel = ({
       size="small"
       loading={loading}
       disabled={disabled}
-      className={cn('hidden shrink-0 group-hover:flex', credentialRemoved && 'flex')}
+      className={cn(
+        'pointer-events-none absolute shrink-0 opacity-0 group-focus-within:pointer-events-auto group-focus-within:static group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:static group-hover:opacity-100',
+        credentialRemoved && 'pointer-events-auto static opacity-100',
+      )}
       onClick={onClick}
     >
       {credentialRemoved && (
