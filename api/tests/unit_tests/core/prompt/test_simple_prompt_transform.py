@@ -1,8 +1,8 @@
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
 
+from core.app.app_config.entities import PromptTemplateEntity
 from core.prompt.prompt_templates.advanced_prompt_templates import (
     CHAT_APP_CHAT_PROMPT_CONFIG,
     CHAT_APP_COMPLETION_PROMPT_CONFIG,
@@ -11,6 +11,7 @@ from core.prompt.prompt_templates.advanced_prompt_templates import (
     CONTEXT,
 )
 from core.prompt.simple_prompt_transform import SimplePromptTransform
+from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     ImagePromptMessageContent,
@@ -204,7 +205,9 @@ def test_get_prompt_dispatches_chat_and_completion():
     transform = SimplePromptTransform()
     model_config_chat = make_model_config(provider="openai", model="gpt-4", mode="chat")
     model_config_completion = make_model_config(provider="openai", model="gpt-3.5-turbo-instruct", mode="completion")
-    prompt_entity = SimpleNamespace(simple_prompt_template="hello")
+    prompt_entity = PromptTemplateEntity(
+        prompt_type=PromptTemplateEntity.PromptType.SIMPLE, simple_prompt_template="hello"
+    )
 
     transform._get_chat_model_prompt_messages = MagicMock(return_value=(["chat-msg"], None))
     transform._get_completion_model_prompt_messages = MagicMock(return_value=(["completion-msg"], ["stop"]))
@@ -326,8 +329,12 @@ def test_completion_model_prompt_messages_empty_stops_becomes_none():
 
 def test_get_last_user_message_with_files_and_context_files():
     transform = SimplePromptTransform()
-    file = SimpleNamespace()
-    context_file = SimpleNamespace()
+    file = File(
+        type=FileType.IMAGE, transfer_method=FileTransferMethod.REMOTE_URL, remote_url="https://example.com/a.jpg"
+    )
+    context_file = File(
+        type=FileType.IMAGE, transfer_method=FileTransferMethod.REMOTE_URL, remote_url="https://example.com/b.jpg"
+    )
 
     with patch("core.prompt.simple_prompt_transform.file_manager.to_prompt_message_content") as to_content:
         to_content.side_effect = [
