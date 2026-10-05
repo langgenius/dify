@@ -27,6 +27,7 @@ from graphon.engine.event.stream import EventStream
 from graphon.engine.frame import ExecutionFrame, FrameRegistry
 from graphon.engine.worker import NodeEventTask
 from graphon.engine_events import (
+    EngineEvent,
     GraphRunAbortedEvent,
     GraphRunFailedEvent,
     GraphRunPartialSucceededEvent,
@@ -391,6 +392,7 @@ def test_root_resume_isolates_same_app_workflow_tool_origin(sqlite_session_facto
 
 def test_workflow_tool_retry_starts_preserve_original_execution_and_attempt_history(
     sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     layer = _make_sql_layer(sqlite_session_factory, node_run_indices={"retry-exec": 1})
     listen = layer.create_workflow_tool_event_listener(_tool_source(), "workflow-id", "caller-exec")
@@ -408,8 +410,16 @@ def test_workflow_tool_retry_starts_preserve_original_execution_and_attempt_hist
             failure_handler=MagicMock(),
         )
     )
-    event_stream = MagicMock(spec=EventStream)
-    event_stream.collect.side_effect = listen
+
+    event_stream = EventStream(layers=[])
+    collect = event_stream.collect
+
+    def collect_source_event(event: EngineEvent) -> None:
+        assert isinstance(event, NodeEvent)
+        listen(event)
+        collect(event)
+
+    monkeypatch.setattr(event_stream, "collect", collect_source_event)
     processor = NodeEventProcessor(state.graph_execution, event_stream, frames, {})
 
     def dispatch(event: NodeEvent) -> None:

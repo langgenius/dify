@@ -291,9 +291,10 @@ def test_workflow_tool_should_raise_tool_invoke_error_when_result_has_error_fiel
 
 def test_workflow_tool_rejects_paused_generator_result(
     monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
 ):
     tool = _build_tool()
-    user = MagicMock(spec=Account)
+    user = make_account(account_id="test_user")
     generate_mock = MagicMock(
         return_value={
             "data": {
@@ -309,7 +310,7 @@ def test_workflow_tool_rejects_paused_generator_result(
     monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppGenerator.generate", generate_mock)
 
     with pytest.raises(ToolInvokeError, match="requires Engine-managed container execution"):
-        list(tool.invoke(MagicMock(spec=Session), "test_user", {}))
+        list(tool.invoke(sqlite_session, "test_user", {}))
 
     generate_mock.assert_called_once()
 

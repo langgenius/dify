@@ -200,7 +200,7 @@ def test_workflow_tool_persists_loop_outputs_after_graphon_normalizes_them() -> 
     frame.state.variable_pool.add(("loop", "counter"), 2)
     processor = NodeEventProcessor(
         graph_execution=state.graph_execution,
-        event_stream=MagicMock(spec=EventStream),
+        event_stream=EventStream(layers=[]),
         frame_registry=frames,
         container_handlers={BuiltinNodeTypes.TOOL: handler},
     )
