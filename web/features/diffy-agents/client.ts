@@ -61,6 +61,20 @@ export async function createDiffyAgent(token: string, input: DiffyAgentInput): P
   return data.agent
 }
 
+export async function updateDiffyAgent(token: string, id: string, input: DiffyAgentInput): Promise<DiffyAgent> {
+  const res = await fetch(`${backendUrl()}/admin/diffy-agents/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    headers: { ...authHeaders(token), 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  })
+
+  if (!res.ok)
+    throw new Error(await readErrorMessage(res, 'Failed to update agent'))
+
+  const data = await res.json()
+  return data.agent
+}
+
 export async function deleteDiffyAgent(token: string, id: string): Promise<void> {
   const res = await fetch(`${backendUrl()}/admin/diffy-agents/${encodeURIComponent(id)}`, {
     method: 'DELETE',

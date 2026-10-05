@@ -6,10 +6,11 @@ import { InputGroup, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
 import useDocumentTitle from '@/hooks/use-document-title'
-import { createDiffyAgent, deleteDiffyAgent, fetchDiffyAgents } from './client'
+import type { DiffyAgent } from './client'
+import { createDiffyAgent, deleteDiffyAgent, fetchDiffyAgents, updateDiffyAgent } from './client'
 
 const TOKEN_STORAGE_KEY = 'diffy_agents_admin_token'
 
@@ -189,8 +190,58 @@ function AddAgentForm({ token, onAdded }: { token: string; onAdded: () => void }
   )
 }
 
+const PAGE_SIZE = 10
+
+function EditAgentRow({ token, agent, onDone }: { token: string; agent: DiffyAgent; onDone: () => void }) {
+  const queryClient = useQueryClient()
+  const [name, setName] = useState(agent.name)
+  const [hostname, setHostname] = useState(agent.hostname)
+  const [iframeUrl, setIframeUrl] = useState(agent.iframe_url)
+
+  const updateMutation = useMutation({
+    mutationFn: () => updateDiffyAgent(token, agent.id, { name: name.trim(), hostname: hostname.trim(), iframe_url: iframeUrl.trim() }),
+    onSuccess: () => {
+      toast.success('Agent updated')
+      void queryClient.invalidateQueries({ queryKey: ['diffy-agents', token] })
+      onDone()
+    },
+    onError: (err: Error) => {
+      toast.error(err.message)
+    },
+  })
+
+  const canSave = !!name.trim() && !!hostname.trim() && !!iframeUrl.trim()
+
+  return (
+    <tr className="border-b border-divider-regular last:border-b-0">
+      <td className="px-4 py-2.5">
+        <InputGroup><InputGroupInput type="text" value={name} onValueChange={setName} /></InputGroup>
+      </td>
+      <td className="px-4 py-2.5">
+        <InputGroup><InputGroupInput type="text" value={hostname} onValueChange={setHostname} /></InputGroup>
+      </td>
+      <td className="px-4 py-2.5">
+        <InputGroup><InputGroupInput type="text" value={iframeUrl} onValueChange={setIframeUrl} /></InputGroup>
+      </td>
+      <td className="px-4 py-2.5 text-right whitespace-nowrap">
+        <div className="flex justify-end gap-2">
+          <Button size="small" variant="primary" disabled={!canSave} loading={updateMutation.isPending} onClick={() => updateMutation.mutate()}>
+            Save
+          </Button>
+          <Button size="small" variant="secondary" disabled={updateMutation.isPending} onClick={onDone}>
+            Cancel
+          </Button>
+        </div>
+      </td>
+    </tr>
+  )
+}
+
 function AgentsTable({ token }: { token: string }) {
   const queryClient = useQueryClient()
+  const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const agentsQuery = useQuery({
     queryKey: ['diffy-agents', token],
     queryFn: () => fetchDiffyAgents(token),
@@ -207,6 +258,18 @@ function AgentsTable({ token }: { token: string }) {
     },
   })
 
+  const allAgents = agentsQuery.data
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    const list = allAgents ?? []
+    if (!q) return list
+    return list.filter(a =>
+      a.name.toLowerCase().includes(q)
+      || a.hostname.toLowerCase().includes(q)
+      || a.iframe_url.toLowerCase().includes(q),
+    )
+  }, [allAgents, search])
+
   if (agentsQuery.isPending) {
     return <p className="system-sm-regular text-text-tertiary">Loading agents…</p>
   }
@@ -222,51 +285,101 @@ function AgentsTable({ token }: { token: string }) {
     )
   }
 
-  const agents = agentsQuery.data ?? []
-
-  if (agents.length === 0) {
+  if ((allAgents ?? []).length === 0) {
     return <p className="system-sm-regular text-text-tertiary">No agents configured yet.</p>
   }
 
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const currentPage = Math.min(page, totalPages)
+  const pageStart = (currentPage - 1) * PAGE_SIZE
+  const pageAgents = filtered.slice(pageStart, pageStart + PAGE_SIZE)
+
   return (
-    <div className="overflow-hidden rounded-xl border-[0.5px] border-divider-regular bg-components-card-bg shadow-xs shadow-shadow-shadow-3">
-      <table className="w-full border-collapse">
-        <thead>
-          <tr className="border-b border-divider-regular text-left">
-            <th className="px-4 py-2.5 system-xs-medium-uppercase text-text-tertiary">Name</th>
-            <th className="px-4 py-2.5 system-xs-medium-uppercase text-text-tertiary">Hostname</th>
-            <th className="px-4 py-2.5 system-xs-medium-uppercase text-text-tertiary">Iframe URL</th>
-            <th className="px-4 py-2.5" />
-          </tr>
-        </thead>
-        <tbody>
-          {agents.map(agent => (
-            <tr key={agent.id} className="border-b border-divider-regular last:border-b-0">
-              <td className="max-w-40 truncate px-4 py-2.5 system-sm-regular text-text-primary">
-                {agent.name}
-              </td>
-              <td className="max-w-60 truncate px-4 py-2.5 system-sm-regular text-text-secondary">
-                {agent.hostname}
-              </td>
-              <td className="max-w-80 truncate px-4 py-2.5 system-sm-regular text-text-secondary">
-                {agent.iframe_url}
-              </td>
-              <td className="px-4 py-2.5 text-right">
-                <Button
-                  size="small"
-                  variant="secondary"
-                  loading={deleteMutation.isPending && deleteMutation.variables === agent.id}
-                  onClick={() => {
-                    if (confirm(`Delete "${agent.name}"?`)) deleteMutation.mutate(agent.id)
-                  }}
-                >
-                  Delete
-                </Button>
-              </td>
+    <div className="flex flex-col gap-3">
+      <InputGroup className="max-w-80">
+        <InputGroupInput
+          type="text"
+          placeholder="Search by name, hostname or iframe URL"
+          value={search}
+          onValueChange={(value) => {
+            setSearch(value)
+            setPage(1)
+          }}
+        />
+      </InputGroup>
+      <div className="overflow-hidden rounded-xl border-[0.5px] border-divider-regular bg-components-card-bg shadow-xs shadow-shadow-shadow-3">
+        <table className="w-full border-collapse">
+          <thead>
+            <tr className="border-b border-divider-regular text-left">
+              <th className="px-4 py-2.5 system-xs-medium-uppercase text-text-tertiary">Name</th>
+              <th className="px-4 py-2.5 system-xs-medium-uppercase text-text-tertiary">Hostname</th>
+              <th className="px-4 py-2.5 system-xs-medium-uppercase text-text-tertiary">Iframe URL</th>
+              <th className="px-4 py-2.5" />
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {pageAgents.length === 0 && (
+              <tr>
+                <td colSpan={4} className="px-4 py-6 text-center system-sm-regular text-text-tertiary">
+                  No agents match "{search}".
+                </td>
+              </tr>
+            )}
+            {pageAgents.map(agent => (
+              editingId === agent.id
+                ? <EditAgentRow key={agent.id} token={token} agent={agent} onDone={() => setEditingId(null)} />
+                : (
+                    <tr key={agent.id} className="border-b border-divider-regular last:border-b-0">
+                      <td className="max-w-40 truncate px-4 py-2.5 system-sm-regular text-text-primary">
+                        {agent.name}
+                      </td>
+                      <td className="max-w-60 truncate px-4 py-2.5 system-sm-regular text-text-secondary">
+                        {agent.hostname}
+                      </td>
+                      <td className="max-w-80 truncate px-4 py-2.5 system-sm-regular text-text-secondary">
+                        {agent.iframe_url}
+                      </td>
+                      <td className="px-4 py-2.5 text-right whitespace-nowrap">
+                        <div className="flex justify-end gap-2">
+                          <Button size="small" variant="secondary" onClick={() => setEditingId(agent.id)}>
+                            Edit
+                          </Button>
+                          <Button
+                            size="small"
+                            variant="secondary"
+                            loading={deleteMutation.isPending && deleteMutation.variables === agent.id}
+                            onClick={() => {
+                              if (confirm(`Delete "${agent.name}"?`)) deleteMutation.mutate(agent.id)
+                            }}
+                          >
+                            Delete
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {filtered.length > PAGE_SIZE && (
+        <div className="flex items-center justify-between">
+          <span className="system-xs-regular text-text-tertiary">
+            {pageStart + 1}–{Math.min(pageStart + PAGE_SIZE, filtered.length)} of {filtered.length}
+          </span>
+          <div className="flex items-center gap-2">
+            <Button size="small" variant="secondary" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)}>
+              Previous
+            </Button>
+            <span className="system-xs-regular text-text-secondary">
+              Page {currentPage} of {totalPages}
+            </span>
+            <Button size="small" variant="secondary" disabled={currentPage >= totalPages} onClick={() => setPage(currentPage + 1)}>
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
