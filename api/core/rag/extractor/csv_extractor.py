@@ -63,14 +63,26 @@ class CSVExtractor(BaseExtractor):
             df = pd.read_csv(csvfile, on_bad_lines="skip", **self.csv_args)
 
             # check source column exists
-            if self.source_column and self.source_column not in df.columns:
-                raise ValueError(f"Source column '{self.source_column}' not found in CSV file.")
+            source_column_key = self.source_column
+            if self.source_column is not None:
+                if self.source_column in df.columns:
+                    source_column_key = self.source_column
+                elif (
+                    isinstance(self.source_column, str)
+                    and self.source_column.isdigit()
+                    and int(self.source_column) in df.columns
+                ):
+                    source_column_key = int(self.source_column)
+                elif str(self.source_column) in df.columns:
+                    source_column_key = str(self.source_column)
+                else:
+                    raise ValueError(f"Source column '{self.source_column}' not found in CSV file.")
 
             # create document objects
 
             for i, row in df.iterrows():
-                content = ";".join(f"{col.strip()}: {str(row[col]).strip()}" for col in df.columns)
-                source = row[self.source_column] if self.source_column else ""
+                content = ";".join(f"{str(col).strip()}: {str(row[col]).strip()}" for col in df.columns)
+                source = row[source_column_key] if source_column_key is not None else ""
                 metadata = {"source": source, "row": i}
                 doc = Document(page_content=content, metadata=metadata)
                 docs.append(doc)

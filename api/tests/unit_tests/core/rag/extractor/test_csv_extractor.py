@@ -117,3 +117,30 @@ class TestCSVExtractor:
 
         with pytest.raises(csv.Error, match="bad csv"):
             extractor._read_from_file(io.StringIO("x"))
+
+    def test_extract_with_header_none(self, tmp_path: Path):
+        file_path = tmp_path / "data.csv"
+        file_path.write_text("source-1,hello\n", encoding="utf-8")
+
+        extractor = CSVExtractor(str(file_path), csv_args={"header": None})
+        docs = extractor.extract()
+
+        assert len(docs) == 1
+        assert docs[0].page_content == "0: source-1;1: hello"
+        assert docs[0].metadata == {"source": "", "row": 0}
+
+    def test_extract_with_integer_column_names(self, tmp_path: Path):
+        file_path = tmp_path / "data.csv"
+        file_path.write_text("source-1,hello\n", encoding="utf-8")
+
+        extractor = CSVExtractor(
+            str(file_path),
+            source_column="10",
+            csv_args={"header": None, "names": [10, 20]},
+        )
+        docs = extractor.extract()
+
+        assert len(docs) == 1
+        assert docs[0].page_content == "10: source-1;20: hello"
+        assert docs[0].metadata == {"source": "source-1", "row": 0}
+
