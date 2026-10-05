@@ -1,6 +1,38 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ImageList } from '../index'
+
+const fetchImage = vi.fn<typeof fetch>()
+
+beforeEach(() => {
+  fetchImage.mockImplementation(
+    async () => new Response(new Blob(['image'], { type: 'image/png' })),
+  )
+  vi.stubGlobal('fetch', fetchImage)
+  vi.stubGlobal(
+    'Image',
+    class {
+      constructor() {
+        const image = document.createElement('img')
+        Object.defineProperties(image, {
+          naturalWidth: { value: 80 },
+          naturalHeight: { value: 60 },
+        })
+        queueMicrotask(() => image.dispatchEvent(new Event('load')))
+        return image
+      }
+    },
+  )
+  let resourceId = 0
+  vi.spyOn(URL, 'createObjectURL').mockImplementation(() => `blob:preview-${++resourceId}`)
+  vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
+})
+
+afterEach(() => {
+  cleanup()
+  vi.unstubAllGlobals()
+  vi.restoreAllMocks()
+})
 
 const images = [1, 2, 3].map((index) => ({
   name: `image-${index}.png`,
@@ -21,11 +53,19 @@ it('opens the clicked image, navigates the visible list, and returns focus witho
   const trigger = screen.getByRole('button', { name: 'image-2.png' })
   await user.click(trigger)
   let dialog = screen.getByRole('dialog', { name: 'image-2.png' })
-  expect(within(dialog).getByAltText('image-2.png')).toHaveAttribute('src', images[1]!.sourceUrl)
+  expect(await within(dialog).findByRole('img', { name: 'image-2.png' })).toHaveAttribute(
+    'src',
+    expect.stringMatching(/^blob:/),
+  )
+  expect(fetchImage).toHaveBeenCalledWith(images[1]!.sourceUrl)
   expect(within(dialog).getByRole('button', { name: 'common.pagination.next' })).toBeDisabled()
   await user.click(within(dialog).getByRole('button', { name: 'common.pagination.previous' }))
   dialog = screen.getByRole('dialog', { name: 'image-1.png' })
-  expect(within(dialog).getByAltText('image-1.png')).toHaveAttribute('src', images[0]!.sourceUrl)
+  expect(await within(dialog).findByRole('img', { name: 'image-1.png' })).toHaveAttribute(
+    'src',
+    expect.stringMatching(/^blob:/),
+  )
+  expect(fetchImage).toHaveBeenCalledWith(images[0]!.sourceUrl)
   await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   expect(trigger).toHaveFocus()
