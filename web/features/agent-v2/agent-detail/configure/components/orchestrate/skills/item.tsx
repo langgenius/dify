@@ -211,7 +211,7 @@ export function AgentSkillItem({
           </DropdownMenu>
         )}
       </div>
-      {isPreviewOpen && <AgentSkillDetailDialog skillName={skill.name} detail={detail} />}
+      <AgentSkillDetailDialog skillName={skill.name} detail={detail} />
     </Dialog>
   )
 }

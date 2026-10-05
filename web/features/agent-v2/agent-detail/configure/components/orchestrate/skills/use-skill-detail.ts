@@ -304,7 +304,8 @@ export function useAgentSkillDetail({
       ? workflowPreviewQuery
       : agentPreviewQuery
   const isImagePreviewFile = selectedFile?.icon === 'image'
-  const shouldLoadImagePreview = isOpen && !!selectedPreviewPath && isImagePreviewFile
+  const hasImagePreview = !!selectedPreviewPath && isImagePreviewFile
+  const shouldLoadImagePreview = isOpen && hasImagePreview
   const agentDownloadQuery = useQuery({
     ...consoleQuery.agent.byAgentId.config.skills.byName.files.download.get.queryOptions({
       input: {
@@ -481,10 +482,9 @@ export function useAgentSkillDetail({
       downloadActionLoadingTarget,
       fileName: selectedFile?.name,
       imageData: imageContentQuery.isFetching ? undefined : imageContentQuery.data,
-      isDownloadError:
-        shouldLoadImagePreview && (downloadQuery.isError || imageContentQuery.isError),
+      isDownloadError: hasImagePreview && (downloadQuery.isError || imageContentQuery.isError),
       isDownloadLoading:
-        shouldLoadImagePreview && (downloadQuery.isFetching || imageContentQuery.isFetching),
+        hasImagePreview && (downloadQuery.isFetching || imageContentQuery.isFetching),
       isError: isSkillMdSelected
         ? inspectQuery.isError
         : !!selectedPreviewPath && previewQuery.isError,
