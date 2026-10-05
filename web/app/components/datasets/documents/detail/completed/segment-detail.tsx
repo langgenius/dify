@@ -6,7 +6,7 @@ import { RiCloseLine, RiCollapseDiagonalLine, RiExpandDiagonalLine } from '@remi
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { v4 as uuid4 } from 'uuid'
-import ImageUploaderInChunk from '@/app/components/datasets/common/image-uploader/image-uploader-in-chunk'
+import { ImageUploaderInChunk } from '@/app/components/datasets/common/image-uploader/image-uploader-in-chunk'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useEventEmitterContextContext } from '@/context/event-emitter'

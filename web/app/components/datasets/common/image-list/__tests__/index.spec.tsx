@@ -1,345 +1,61 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import ImageList from '../index'
+import { render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { ImageList } from '../index'
 
-// Track handleImageClick calls for testing
-type FileEntity = {
-  sourceUrl: string
-  name: string
-  mimeType?: string
-  size?: number
-  extension?: string
-}
-
-let capturedOnClick: ((file: FileEntity) => void) | null = null
-
-// Mock FileThumb to capture click handler
-vi.mock('@/app/components/base/file-thumb', () => ({
-  default: ({ file, onClick }: { file: FileEntity; onClick?: (file: FileEntity) => void }) => {
-    // Capture the onClick for testing
-    capturedOnClick = onClick ?? null
-    return (
-      <button
-        type="button"
-        data-testid={`file-thumb-${file.sourceUrl}`}
-        className="cursor-pointer"
-        onClick={() => onClick?.(file)}
-      >
-        {file.name}
-      </button>
-    )
-  },
+const images = [1, 2, 3].map((index) => ({
+  name: `image-${index}.png`,
+  mimeType: 'image/png',
+  sourceUrl: `https://example.com/${index}.png`,
+  size: 1024,
+  extension: 'png',
 }))
 
-type ImagePreviewerProps = {
-  images: ImageInfo[]
-  initialIndex: number
-  onClose: () => void
-}
+it('opens the clicked image, navigates the visible list, and returns focus without card bubbling', async () => {
+  const user = userEvent.setup()
+  const onCardClick = vi.fn()
+  render(
+    <div role="presentation" onClick={onCardClick}>
+      <ImageList images={images} size="md" limit={2} />
+    </div>,
+  )
+  const trigger = screen.getByRole('button', { name: 'image-2.png' })
+  await user.click(trigger)
+  let dialog = screen.getByRole('dialog', { name: 'image-2.png' })
+  expect(within(dialog).getByAltText('image-2.png')).toHaveAttribute('src', images[1]!.sourceUrl)
+  expect(within(dialog).getByRole('button', { name: 'common.pagination.next' })).toBeDisabled()
+  await user.click(within(dialog).getByRole('button', { name: 'common.pagination.previous' }))
+  dialog = screen.getByRole('dialog', { name: 'image-1.png' })
+  expect(within(dialog).getByAltText('image-1.png')).toHaveAttribute('src', images[0]!.sourceUrl)
+  await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  expect(trigger).toHaveFocus()
+  expect(onCardClick).not.toHaveBeenCalled()
+  await user.click(screen.getByRole('button', { name: '+1' }))
+  await user.click(screen.getByRole('button', { name: 'image-3.png' }))
+  expect(screen.getByRole('dialog', { name: 'image-3.png' })).toBeInTheDocument()
+  expect(onCardClick).not.toHaveBeenCalled()
+})
 
-type ImageInfo = {
-  url: string
-  name: string
-  size: number
-}
-
-// Mock ImagePreviewer since it renders through a Dialog portal
-vi.mock('../../image-previewer', () => ({
-  default: ({ images, initialIndex, onClose }: ImagePreviewerProps) => (
-    <div data-testid="image-previewer">
-      <span data-testid="preview-count">{images.length}</span>
-      <span data-testid="preview-index">{initialIndex}</span>
-      <button data-testid="close-preview" onClick={onClose}>
-        Close
-      </button>
-    </div>
-  ),
-}))
-
-const createMockImages = (count: number) => {
-  return Array.from({ length: count }, (_, i) => ({
-    name: `image-${i + 1}.png`,
-    mimeType: 'image/png',
-    sourceUrl: `https://example.com/image-${i + 1}.png`,
-    size: 1024 * (i + 1),
-    extension: 'png',
-  }))
-}
-
-describe('ImageList', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  describe('Rendering', () => {
-    it('should render all images when count is below limit', () => {
-      const images = createMockImages(5)
-      render(<ImageList images={images} size="md" limit={9} />)
-      // Each image renders a FileThumb component
-      const thumbnails = document.querySelectorAll('[class*="cursor-pointer"]')
-      expect(thumbnails.length).toBeGreaterThanOrEqual(5)
-    })
-
-    it('should render limited images when count exceeds limit', () => {
-      const images = createMockImages(15)
-      render(<ImageList images={images} size="md" limit={9} />)
-      // More button should be visible
-      // More button should be visible
-      expect(screen.getByText(/\+6/))!.toBeInTheDocument()
-    })
-  })
-
-  describe('Props', () => {
-    it('should use default limit of 9', () => {
-      const images = createMockImages(12)
-      render(<ImageList images={images} size="md" />)
-      // Should show "+3" for remaining images
-      // Should show "+3" for remaining images
-      expect(screen.getByText(/\+3/))!.toBeInTheDocument()
-    })
-
-    it('should respect custom limit', () => {
-      const images = createMockImages(10)
-      render(<ImageList images={images} size="md" limit={5} />)
-      // Should show "+5" for remaining images
-      // Should show "+5" for remaining images
-      expect(screen.getByText(/\+5/))!.toBeInTheDocument()
-    })
-  })
-
-  describe('User Interactions', () => {
-    it('should show all images when More button is clicked', () => {
-      const images = createMockImages(15)
-      render(<ImageList images={images} size="md" limit={9} />)
-
-      const moreButton = screen.getByRole('button', { name: '+6' })
-      fireEvent.click(moreButton)
-
-      // More button should disappear
-      // More button should disappear
-      // More button should disappear
-      // More button should disappear
-      // More button should disappear
-      // More button should disappear
-      // More button should disappear
-      // More button should disappear
-      // More button should disappear
-      // More button should disappear
-      // More button should disappear
-      // More button should disappear
-      // More button should disappear
-      // More button should disappear
-      // More button should disappear
-      // More button should disappear
-      // More button should disappear
-      // More button should disappear
-      // More button should disappear
-      // More button should disappear
-      // More button should disappear
-      // More button should disappear
-      // More button should disappear
-      // More button should disappear
-      // More button should disappear
-      // More button should disappear
-      // More button should disappear
-      // More button should disappear
-      // More button should disappear
-      // More button should disappear
-      // More button should disappear
-      // More button should disappear
-      expect(screen.queryByText(/\+6/)).not.toBeInTheDocument()
-    })
-
-    it('should open preview when image is clicked', () => {
-      const images = createMockImages(3)
-      render(<ImageList images={images} size="md" />)
-
-      // Find and click an image thumbnail
-      const thumbnails = document.querySelectorAll('[class*="cursor-pointer"]')
-      if (thumbnails.length > 0) {
-        fireEvent.click(thumbnails[0]!)
-        // Preview should open
-        // Preview should open
-        expect(screen.getByTestId('image-previewer'))!.toBeInTheDocument()
-      }
-    })
-
-    it('should close preview when close button is clicked', () => {
-      const images = createMockImages(3)
-      render(<ImageList images={images} size="md" />)
-
-      // Open preview
-      const thumbnails = document.querySelectorAll('[class*="cursor-pointer"]')
-      if (thumbnails.length > 0) {
-        fireEvent.click(thumbnails[0]!)
-
-        // Close preview
-        const closeButton = screen.getByTestId('close-preview')
-        fireEvent.click(closeButton)
-
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        expect(screen.queryByTestId('image-previewer')).not.toBeInTheDocument()
-      }
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should not open preview when clicked image not found in list (index === -1)', () => {
-      const images = createMockImages(3)
-      const { rerender } = render(<ImageList images={images} size="md" />)
-
-      const firstThumb = screen.getByTestId('file-thumb-https://example.com/image-1.png')
-      fireEvent.click(firstThumb)
-
-      // Preview should open for valid image
-      // Preview should open for valid image
-      expect(screen.getByTestId('image-previewer'))!.toBeInTheDocument()
-
-      // Close preview
-      fireEvent.click(screen.getByTestId('close-preview'))
-      expect(screen.queryByTestId('image-previewer')).not.toBeInTheDocument()
-
-      // Now render with images that don't include the previously clicked one
-      const newImages = createMockImages(2) // Only 2 images
-      rerender(<ImageList images={newImages} size="md" />)
-
-      const validThumb = screen.getByTestId('file-thumb-https://example.com/image-1.png')
-      fireEvent.click(validThumb)
-      expect(screen.getByTestId('image-previewer'))!.toBeInTheDocument()
-    })
-
-    it('should return early when file sourceUrl is not found in limitedImages (index === -1)', () => {
-      const images = createMockImages(3)
-      render(<ImageList images={images} size="md" />)
-
-      // Call the captured onClick with a file that has a non-matching sourceUrl
-      // This triggers the index === -1 branch (line 44-45)
-      if (capturedOnClick) {
-        capturedOnClick({
-          name: 'nonexistent.png',
-          mimeType: 'image/png',
-          sourceUrl: 'https://example.com/nonexistent.png', // Not in the list
-          size: 1024,
-          extension: 'png',
-        })
-      }
-
-      // Preview should NOT open because the file was not found in limitedImages
-      // Preview should NOT open because the file was not found in limitedImages
-      // Preview should NOT open because the file was not found in limitedImages
-      // Preview should NOT open because the file was not found in limitedImages
-      // Preview should NOT open because the file was not found in limitedImages
-      // Preview should NOT open because the file was not found in limitedImages
-      // Preview should NOT open because the file was not found in limitedImages
-      // Preview should NOT open because the file was not found in limitedImages
-      // Preview should NOT open because the file was not found in limitedImages
-      // Preview should NOT open because the file was not found in limitedImages
-      // Preview should NOT open because the file was not found in limitedImages
-      // Preview should NOT open because the file was not found in limitedImages
-      // Preview should NOT open because the file was not found in limitedImages
-      // Preview should NOT open because the file was not found in limitedImages
-      // Preview should NOT open because the file was not found in limitedImages
-      // Preview should NOT open because the file was not found in limitedImages
-      // Preview should NOT open because the file was not found in limitedImages
-      // Preview should NOT open because the file was not found in limitedImages
-      // Preview should NOT open because the file was not found in limitedImages
-      // Preview should NOT open because the file was not found in limitedImages
-      // Preview should NOT open because the file was not found in limitedImages
-      // Preview should NOT open because the file was not found in limitedImages
-      // Preview should NOT open because the file was not found in limitedImages
-      // Preview should NOT open because the file was not found in limitedImages
-      // Preview should NOT open because the file was not found in limitedImages
-      // Preview should NOT open because the file was not found in limitedImages
-      // Preview should NOT open because the file was not found in limitedImages
-      // Preview should NOT open because the file was not found in limitedImages
-      // Preview should NOT open because the file was not found in limitedImages
-      // Preview should NOT open because the file was not found in limitedImages
-      // Preview should NOT open because the file was not found in limitedImages
-      // Preview should NOT open because the file was not found in limitedImages
-      expect(screen.queryByTestId('image-previewer')).not.toBeInTheDocument()
-    })
-
-    it('should not show More button when images count equals limit', () => {
-      const images = createMockImages(9)
-      render(<ImageList images={images} size="md" limit={9} />)
-      expect(screen.queryByText(/\+/)).not.toBeInTheDocument()
-    })
-
-    it('should handle limit of 0', () => {
-      const images = createMockImages(5)
-      render(<ImageList images={images} size="md" limit={0} />)
-      // Should show "+5" for all images
-      // Should show "+5" for all images
-      expect(screen.getByText(/\+5/))!.toBeInTheDocument()
-    })
-
-    it('should handle limit larger than images count', () => {
-      const images = createMockImages(5)
-      render(<ImageList images={images} size="md" limit={100} />)
-      // Should not show More button
-      // Should not show More button
-      // Should not show More button
-      // Should not show More button
-      // Should not show More button
-      // Should not show More button
-      // Should not show More button
-      // Should not show More button
-      // Should not show More button
-      // Should not show More button
-      // Should not show More button
-      // Should not show More button
-      // Should not show More button
-      // Should not show More button
-      // Should not show More button
-      // Should not show More button
-      // Should not show More button
-      // Should not show More button
-      // Should not show More button
-      // Should not show More button
-      // Should not show More button
-      // Should not show More button
-      // Should not show More button
-      // Should not show More button
-      // Should not show More button
-      // Should not show More button
-      // Should not show More button
-      // Should not show More button
-      // Should not show More button
-      // Should not show More button
-      // Should not show More button
-      // Should not show More button
-      expect(screen.queryByText(/\+/)).not.toBeInTheDocument()
-    })
-  })
+it('keeps galleries independent and disabled placeholders outside navigation', async () => {
+  const user = userEvent.setup()
+  render(
+    <>
+      <ImageList
+        images={[{ ...images[0]!, name: 'Pending', sourceUrl: '' }, images[1]!]}
+        size="md"
+      />
+      <ImageList images={[images[2]!]} size="md" />
+    </>,
+  )
+  const pending = screen.getByRole('button', { name: 'Pending' })
+  expect(pending).toBeDisabled()
+  expect(within(pending).getByRole('img')).not.toHaveAttribute('src')
+  await user.click(screen.getByRole('button', { name: 'image-2.png' }))
+  const dialog = screen.getByRole('dialog', { name: 'image-2.png' })
+  expect(within(dialog).getByRole('button', { name: 'common.pagination.previous' })).toBeDisabled()
+  expect(within(dialog).getByRole('button', { name: 'common.pagination.next' })).toBeDisabled()
+  await user.keyboard('{Escape}')
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  await user.click(screen.getByRole('button', { name: 'image-3.png' }))
+  expect(screen.getByRole('dialog', { name: 'image-3.png' })).toBeInTheDocument()
 })

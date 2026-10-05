@@ -1,174 +1,79 @@
+import type { ImagePreviewPayload } from '../../../image-previewer'
 import type { FileEntity } from '../../types'
-import { fireEvent, render } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vite-plus/test'
-import ImageItem from '../image-item'
+import { createDialogHandle } from '@langgenius/dify-ui/dialog'
+import { render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
+import { ImagePreviewer } from '../../../image-previewer'
+import { ImageItem } from '../image-item'
 
-const createMockFile = (overrides: Partial<FileEntity> = {}): FileEntity =>
-  ({
-    id: 'test-id',
-    name: 'test.png',
-    progress: 100,
-    base64Url: 'data:image/png;base64,test',
-    sourceUrl: 'https://example.com/test.png',
-    size: 1024,
-    ...overrides,
-  }) as FileEntity
+const file: FileEntity = {
+  id: 'one',
+  name: 'local.png',
+  progress: 50,
+  base64Url: 'data:image/png;base64,local',
+  sourceUrl: 'https://example.com/remote.png',
+  size: 10,
+  extension: 'png',
+  mimeType: 'image/png',
+}
 
-describe('ImageItem (image-uploader-in-chunk)', () => {
-  describe('Rendering', () => {
-    it('should render image preview', () => {
-      const file = createMockFile()
-      const { container } = render(<ImageItem file={file} />)
-      // FileImageRender component should be present
-      expect(container.querySelector('.group\\/file-image')).toBeInTheDocument()
-    })
-  })
+function Fixture({ progress = 50, disabled = false, onRemove = vi.fn(), onReUpload = vi.fn() }) {
+  const [handle] = useState(createDialogHandle<ImagePreviewPayload>)
+  return (
+    <>
+      <ImageItem
+        file={{ ...file, progress }}
+        showDeleteAction
+        disabled={disabled}
+        onRemove={onRemove}
+        onReUpload={onReUpload}
+        previewHandle={handle}
+        previewPayload={{
+          images: [{ name: file.name, url: file.base64Url!, size: file.size }],
+          initialIndex: 0,
+        }}
+      />
+      <ImagePreviewer handle={handle} />
+    </>
+  )
+}
 
-  describe('Props', () => {
-    it('should show delete button when showDeleteAction is true', () => {
-      const file = createMockFile()
-      const { container } = render(<ImageItem file={file} showDeleteAction onRemove={() => {}} />)
-      // Delete button has RiCloseLine icon
-      const deleteButton = container.querySelector('button')
-      expect(deleteButton).toBeInTheDocument()
-    })
+it('previews local images during upload by keyboard and returns to the same entry', async () => {
+  const user = userEvent.setup()
+  render(<Fixture />)
+  const trigger = screen.getByRole('button', { name: file.name })
+  trigger.focus()
+  await user.keyboard('{Enter}')
+  const dialog = screen.getByRole('dialog', { name: file.name })
+  expect(within(dialog).getByAltText(file.name)).toHaveAttribute('src', file.base64Url)
+  await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  expect(trigger).toHaveFocus()
+})
 
-    it('should not show delete button when showDeleteAction is false', () => {
-      const file = createMockFile()
-      const { container } = render(<ImageItem file={file} showDeleteAction={false} />)
-      const deleteButton = container.querySelector('button')
-      expect(deleteButton).not.toBeInTheDocument()
-    })
-  })
+it('keeps removal and retry separate from the preview action', async () => {
+  const user = userEvent.setup()
+  const onRemove = vi.fn()
+  const onReUpload = vi.fn()
+  render(<Fixture progress={-1} onRemove={onRemove} onReUpload={onReUpload} />)
+  await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
+  expect(onRemove).toHaveBeenCalledWith('one')
+  screen.getByRole('button', { name: 'common.operation.retry' }).focus()
+  await user.keyboard('{Enter}')
+  expect(onReUpload).toHaveBeenCalledWith('one')
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+})
 
-  describe('Progress States', () => {
-    it('should show progress indicator when progress is between 0 and 99', () => {
-      const file = createMockFile({ progress: 50, uploadedId: undefined })
-      const { container } = render(<ImageItem file={file} />)
-      // Progress circle should be visible
-      expect(container.querySelector('.bg-background-overlay-alt')).toBeInTheDocument()
-    })
-
-    it('should not show progress indicator when upload is complete', () => {
-      const file = createMockFile({ progress: 100, uploadedId: 'uploaded-123' })
-      const { container } = render(<ImageItem file={file} />)
-      expect(container.querySelector('.bg-background-overlay-alt')).not.toBeInTheDocument()
-    })
-
-    it('should show retry button when progress is -1 (error)', () => {
-      const file = createMockFile({ progress: -1 })
-      const { container } = render(<ImageItem file={file} />)
-      // Error state shows destructive overlay
-      expect(container.querySelector('.bg-background-overlay-destructive')).toBeInTheDocument()
-    })
-  })
-
-  describe('User Interactions', () => {
-    it('should call onPreview when image is clicked', () => {
-      const onPreview = vi.fn()
-      const file = createMockFile()
-      const { container } = render(<ImageItem file={file} onPreview={onPreview} />)
-
-      const imageContainer = container.querySelector('.group\\/file-image')
-      if (imageContainer) {
-        fireEvent.click(imageContainer)
-        expect(onPreview).toHaveBeenCalledWith('test-id')
-      }
-    })
-
-    it('should call onRemove when delete button is clicked', () => {
-      const onRemove = vi.fn()
-      const file = createMockFile()
-      const { container } = render(<ImageItem file={file} showDeleteAction onRemove={onRemove} />)
-
-      const deleteButton = container.querySelector('button')
-      if (deleteButton) {
-        fireEvent.click(deleteButton)
-        expect(onRemove).toHaveBeenCalledWith('test-id')
-      }
-    })
-
-    it('should call onReUpload when error overlay is clicked', () => {
-      const onReUpload = vi.fn()
-      const file = createMockFile({ progress: -1 })
-      const { container } = render(<ImageItem file={file} onReUpload={onReUpload} />)
-
-      const errorOverlay = container.querySelector('.bg-background-overlay-destructive')
-      if (errorOverlay) {
-        fireEvent.click(errorOverlay)
-        expect(onReUpload).toHaveBeenCalledWith('test-id')
-      }
-    })
-
-    it('should stop event propagation on delete button click', () => {
-      const onRemove = vi.fn()
-      const onPreview = vi.fn()
-      const file = createMockFile()
-      const { container } = render(
-        <ImageItem file={file} showDeleteAction onRemove={onRemove} onPreview={onPreview} />,
-      )
-
-      const deleteButton = container.querySelector('button')
-      if (deleteButton) {
-        fireEvent.click(deleteButton)
-        expect(onRemove).toHaveBeenCalled()
-        expect(onPreview).not.toHaveBeenCalled()
-      }
-    })
-
-    it('should stop event propagation on retry click', () => {
-      const onReUpload = vi.fn()
-      const onPreview = vi.fn()
-      const file = createMockFile({ progress: -1 })
-      const { container } = render(
-        <ImageItem file={file} onReUpload={onReUpload} onPreview={onPreview} />,
-      )
-
-      const errorOverlay = container.querySelector('.bg-background-overlay-destructive')
-      if (errorOverlay) {
-        fireEvent.click(errorOverlay)
-        expect(onReUpload).toHaveBeenCalled()
-        // onPreview should not be called due to stopPropagation
-      }
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should handle missing onPreview callback', () => {
-      const file = createMockFile()
-      const { container } = render(<ImageItem file={file} />)
-
-      const imageContainer = container.querySelector('.group\\/file-image')
-      expect(() => {
-        if (imageContainer) fireEvent.click(imageContainer)
-      }).not.toThrow()
-    })
-
-    it('should handle missing onRemove callback', () => {
-      const file = createMockFile()
-      const { container } = render(<ImageItem file={file} showDeleteAction />)
-
-      const deleteButton = container.querySelector('button')
-      expect(() => {
-        if (deleteButton) fireEvent.click(deleteButton)
-      }).not.toThrow()
-    })
-
-    it('should handle missing onReUpload callback', () => {
-      const file = createMockFile({ progress: -1 })
-      const { container } = render(<ImageItem file={file} />)
-
-      const errorOverlay = container.querySelector('.bg-background-overlay-destructive')
-      expect(() => {
-        if (errorOverlay) fireEvent.click(errorOverlay)
-      }).not.toThrow()
-    })
-
-    it('should handle progress of 0', () => {
-      const file = createMockFile({ progress: 0 })
-      const { container } = render(<ImageItem file={file} />)
-      // Progress overlay should be visible at 0%
-      expect(container.querySelector('.bg-background-overlay-alt')).toBeInTheDocument()
-    })
-  })
+it('blocks mutations when disabled while retaining read-only preview', async () => {
+  const user = userEvent.setup()
+  const onRemove = vi.fn()
+  const onReUpload = vi.fn()
+  render(<Fixture progress={-1} disabled onRemove={onRemove} onReUpload={onReUpload} />)
+  await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+  await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
+  expect(onRemove).not.toHaveBeenCalled()
+  expect(onReUpload).not.toHaveBeenCalled()
+  await user.click(screen.getByRole('button', { name: file.name }))
+  expect(screen.getByRole('dialog', { name: file.name })).toBeInTheDocument()
 })

@@ -66,7 +66,7 @@ vi.mock('../../../../status-item', () => ({
 
 // ImageList has deep dependency: FileThumb → file-uploader → react-pdf-highlighter (ESM)
 vi.mock('@/app/components/datasets/common/image-list', () => ({
-  default: ({
+  ImageList: ({
     images,
     size,
     className,
