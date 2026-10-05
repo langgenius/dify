@@ -182,7 +182,13 @@ vi.mock('@/app/components/app/text-generate/item', () => ({
 }))
 
 vi.mock('@/app/components/base/agent-log-modal', () => ({
-  default: ({ onCancel, currentLogItem }: { onCancel: () => void; currentLogItem: IChatItem }) => (
+  AgentLogModal: ({
+    onCancel,
+    currentLogItem,
+  }: {
+    onCancel: () => void
+    currentLogItem: IChatItem
+  }) => (
     <div data-testid="agent-log-modal" role="dialog" aria-label="Agent log">
       {currentLogItem.content}
       <button type="button" data-testid="agent-log-cancel" onClick={onCancel}>

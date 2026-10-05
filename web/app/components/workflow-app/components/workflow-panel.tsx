@@ -7,9 +7,12 @@ import CommentsPanel from '@/app/components/workflow/panel/comments-panel'
 import { useStore } from '@/app/components/workflow/store'
 import { useIsChatMode } from '../hooks/use-is-chat-mode'
 
-const MessageLogModal = dynamic(() => import('@/app/components/base/message-log-modal'), {
-  ssr: false,
-})
+const MessageLogModal = dynamic(
+  () => import('@/app/components/base/message-log-modal').then((module) => module.MessageLogModal),
+  {
+    ssr: false,
+  },
+)
 const Record = dynamic(() => import('@/app/components/workflow/panel/record'), {
   ssr: false,
 })

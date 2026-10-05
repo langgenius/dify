@@ -1,33 +1,31 @@
-import type { FC } from 'react'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { RiCloseLine } from '@remixicon/react'
 import { useClickAway } from 'ahooks'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AgentLogDetail from './detail'
 
-type AgentLogModalProps = Readonly<{
-  appId: string
-  currentLogItem?: IChatItem
-  width: number
-  floating?: boolean
-  onCancel: () => void
-}>
-const AgentLogModal: FC<AgentLogModalProps> = ({
-  appId,
-  currentLogItem,
-  width,
-  floating,
-  onCancel,
-}) => {
+type AgentLogModalProps = Readonly<
+  {
+    appId: string
+    currentLogItem?: IChatItem
+    width: number
+  } & (
+    | { floating: true; open: boolean; onOpenChange: (open: boolean) => void }
+    | { floating?: false; onCancel: () => void }
+  )
+>
+
+export function AgentLogModal(props: AgentLogModalProps) {
+  const { appId, currentLogItem, width } = props
   const { t } = useTranslation(['appLog', 'common'])
   const ref = useRef(null)
   const [mounted, setMounted] = useState(false)
 
   useClickAway(() => {
-    if (mounted && !floating) onCancel()
+    if (mounted && !props.floating) props.onCancel()
   }, ref)
 
   useEffect(() => {
@@ -47,14 +45,9 @@ const AgentLogModal: FC<AgentLogModalProps> = ({
     </>
   )
 
-  if (floating) {
+  if (props.floating) {
     return (
-      <Dialog
-        open
-        onOpenChange={(open) => {
-          if (!open) onCancel()
-        }}
-      >
+      <Dialog open={props.open} onOpenChange={props.onOpenChange}>
         <DialogContent
           backdropProps={{ className: 'bg-transparent!' }}
           className="top-16! bottom-4! left-[max(8px,calc(100vw-1136px))]! flex max-h-none! w-120! max-w-[calc(100vw-16px)]! translate-x-0! translate-y-0! flex-col overflow-hidden! rounded-xl! border-[0.5px]! border-components-panel-border! bg-components-panel-bg! p-0! pt-3! pb-3! shadow-xl!"
@@ -62,14 +55,12 @@ const AgentLogModal: FC<AgentLogModalProps> = ({
           <DialogTitle className="text-md shrink-0 px-4 py-1 font-semibold text-text-primary">
             {t(($) => $['runDetail.workflowTitle'], { ns: 'appLog' })}
           </DialogTitle>
-          <button
-            type="button"
+          <DialogClose
             aria-label={t(($) => $['operation.close'], { ns: 'common' })}
             className="absolute top-4 right-3 z-20 cursor-pointer border-none bg-transparent p-1 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-            onClick={onCancel}
           >
             <RiCloseLine className="size-4 text-text-tertiary" aria-hidden="true" />
-          </button>
+          </DialogClose>
           {detailContent}
         </DialogContent>
       </Dialog>
@@ -97,7 +88,7 @@ const AgentLogModal: FC<AgentLogModalProps> = ({
         type="button"
         aria-label={t(($) => $['operation.close'], { ns: 'common' })}
         className="absolute top-4 right-3 z-20 cursor-pointer border-none bg-transparent p-1 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-        onClick={onCancel}
+        onClick={props.onCancel}
       >
         <RiCloseLine className="size-4 text-text-tertiary" aria-hidden="true" />
       </button>
@@ -105,5 +96,3 @@ const AgentLogModal: FC<AgentLogModalProps> = ({
     </div>
   )
 }
-
-export default AgentLogModal

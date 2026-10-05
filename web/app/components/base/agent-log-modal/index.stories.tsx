@@ -3,7 +3,7 @@ import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { AgentLogDetailResponse } from '@/models/log'
 import { useEffect, useRef } from 'react'
 import { AppToastHost } from '@/app/notifications/host'
-import AgentLogModal from '.'
+import { AgentLogModal } from '.'
 
 const MOCK_RESPONSE: AgentLogDetailResponse = {
   meta: {

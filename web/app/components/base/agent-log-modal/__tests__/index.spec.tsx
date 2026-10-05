@@ -1,8 +1,9 @@
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { useClickAway } from 'ahooks'
 import { fetchAgentLogDetail } from '@/service/log'
-import AgentLogModal from '../index'
+import { AgentLogModal } from '../index'
 
 const { mockToast } = vi.hoisted(() => {
   const mockToast = Object.assign(vi.fn(), {
@@ -148,12 +149,45 @@ describe('AgentLogModal', () => {
   it('should render the floating modal through a dialog portal', () => {
     vi.mocked(fetchAgentLogDetail).mockReturnValue(new Promise(() => {}))
 
-    const { container } = render(<AgentLogModal appId="app-id" {...mockProps} floating />)
+    const { container } = render(
+      <AgentLogModal appId="app-id" {...mockProps} floating open onOpenChange={vi.fn()} />,
+    )
 
     const modal = screen.getByRole('dialog')
     expect(container).not.toContainElement(modal)
     expect(document.body).toContainElement(modal)
     expect(modal).toHaveClass('fixed', 'z-50', 'w-120!', 'left-[max(8px,calc(100vw-1136px))]!')
+  })
+
+  it('mounts floating details only while open and starts a fresh tab session on reopen', async () => {
+    const user = userEvent.setup()
+    const onOpenChange = vi.fn()
+    const props = {
+      appId: 'app-id',
+      currentLogItem: mockLog,
+      width: 1000,
+      floating: true as const,
+      onOpenChange,
+    }
+    const { rerender } = render(<AgentLogModal {...props} open={false} />)
+    expect(fetchAgentLogDetail).not.toHaveBeenCalled()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+    rerender(<AgentLogModal {...props} open />)
+    await screen.findByText('User')
+    await user.click(screen.getByRole('button', { name: 'runLog.tracing' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+    expect(onOpenChange).toHaveBeenCalledWith(false, expect.anything())
+    rerender(<AgentLogModal {...props} open={false} />)
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+
+    rerender(<AgentLogModal {...props} open />)
+    await screen.findByText('User')
+    expect(screen.getByRole('button', { name: 'runLog.detail' })).toHaveAttribute(
+      'data-active',
+      'true',
+    )
+    expect(fetchAgentLogDetail).toHaveBeenCalledTimes(2)
   })
 
   it('should call onCancel when close button is clicked', () => {
@@ -204,7 +238,7 @@ describe('AgentLogModal', () => {
       clickAwayHandler = callback
     })
 
-    render(<AgentLogModal appId="app-id" {...mockProps} floating />)
+    render(<AgentLogModal appId="app-id" {...mockProps} floating open onOpenChange={vi.fn()} />)
     clickAwayHandler(new Event('click'))
 
     expect(mockProps.onCancel).not.toHaveBeenCalled()

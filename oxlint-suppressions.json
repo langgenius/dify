@@ -1136,11 +1136,6 @@
       "count": 4
     }
   },
-  "web/app/components/base/message-log-modal/index.stories.tsx": {
-    "no-console": {
-      "count": 1
-    }
-  },
   "web/app/components/base/new-audio-button/index.tsx": {
     "typescript/no-explicit-any": {
       "count": 1
