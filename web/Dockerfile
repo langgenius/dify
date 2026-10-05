@@ -41,6 +41,10 @@ COPY --from=packages /app/ .
 COPY . .
 
 WORKDIR /app/web
+# NEXT_PUBLIC_* values are inlined into the client bundle at build time, and
+# web/.env* is excluded from the build context, so set them here.
+ARG NEXT_PUBLIC_DIFFY_BACKEND_URL=/diffy-backend
+ENV NEXT_PUBLIC_DIFFY_BACKEND_URL=$NEXT_PUBLIC_DIFFY_BACKEND_URL
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 ENV pnpm_config_verify_deps_before_run=false
 RUN pnpm build && pnpm build:vinext

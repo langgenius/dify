@@ -1,5 +1,7 @@
 'use client'
 
+import type { ReactNode } from 'react'
+import type { DiffyAgent } from './client'
 import { Button } from '@langgenius/dify-ui/button'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { InputGroup, InputGroupInput } from '@langgenius/dify-ui/input-group'
@@ -9,17 +11,24 @@ import { useAtomValue } from 'jotai'
 import { useMemo, useState } from 'react'
 import { isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
 import useDocumentTitle from '@/hooks/use-document-title'
-import type { DiffyAgent } from './client'
-import { createDiffyAgent, deleteDiffyAgent, fetchDiffyAgents, updateDiffyAgent } from './client'
+import {
+  createDiffyAgent,
+  deleteDiffyAgent,
+  fetchDiffyAgents,
+  isUnauthorizedError,
+  updateDiffyAgent,
+} from './client'
+import { EmbedGuide } from './embed-guide'
 
+// Only used when signing in with the Dify account is not possible (for example
+// the backend has no DIFY_INTERNAL_API_URL): an optional admin password.
 const TOKEN_STORAGE_KEY = 'diffy_agents_admin_token'
 
 function readStoredToken() {
   if (typeof window === 'undefined') return ''
   try {
     return sessionStorage.getItem(TOKEN_STORAGE_KEY) ?? ''
-  }
-  catch {
+  } catch {
     return ''
   }
 }
@@ -27,28 +36,24 @@ function readStoredToken() {
 function storeToken(token: string) {
   try {
     sessionStorage.setItem(TOKEN_STORAGE_KEY, token)
-  }
-  catch {
-    // sessionStorage unavailable (private mode, etc.) — token just won't persist across reloads.
+  } catch {
+    // sessionStorage unavailable (private mode, etc.): the password just won't persist.
   }
 }
 
 function clearStoredToken() {
   try {
     sessionStorage.removeItem(TOKEN_STORAGE_KEY)
-  }
-  catch {
+  } catch {
     // ignore
   }
 }
 
-function UnauthorizedState() {
+function CenteredMessage({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div className="flex h-0 min-w-0 grow flex-col items-center justify-center gap-2 bg-background-body">
-      <h1 className="system-md-semibold text-text-primary">Diffy Agents</h1>
-      <p className="system-sm-regular text-text-tertiary">
-        Only the workspace owner can manage Diffy agent mappings.
-      </p>
+      <h1 className="system-md-semibold text-text-primary">{title}</h1>
+      {children}
     </div>
   )
 }
@@ -67,11 +72,11 @@ function PasswordGate({ onUnlock }: { onUnlock: (token: string) => void }) {
       await fetchDiffyAgents(password)
       storeToken(password)
       onUnlock(password)
-    }
-    catch {
-      setError('Invalid backend admin password')
-    }
-    finally {
+    } catch (err) {
+      setError(
+        isUnauthorizedError(err) ? 'Invalid backend admin password' : 'Could not reach the backend',
+      )
+    } finally {
       setChecking(false)
     }
   }
@@ -81,7 +86,8 @@ function PasswordGate({ onUnlock }: { onUnlock: (token: string) => void }) {
       <div className="flex w-80 max-w-full flex-col gap-3 rounded-xl border-[0.5px] border-divider-regular bg-components-card-bg p-6 shadow-xs shadow-shadow-shadow-3">
         <h1 className="system-md-semibold text-text-primary">Diffy Agents</h1>
         <p className="system-xs-regular text-text-tertiary">
-          Enter the chatkit-backend admin password to manage hostname → Diffy iframe mappings.
+          Signing in with your Dify account did not work here, so the backend needs its admin
+          password instead.
         </p>
         <Field name="backend-admin-password">
           <FieldLabel className="system-xs-medium text-text-secondary">Admin password</FieldLabel>
@@ -98,7 +104,12 @@ function PasswordGate({ onUnlock }: { onUnlock: (token: string) => void }) {
           </InputGroup>
         </Field>
         {error && <p className="system-xs-regular text-text-destructive">{error}</p>}
-        <Button variant="primary" size="medium" loading={checking} onClick={() => void handleSubmit()}>
+        <Button
+          variant="primary"
+          size="medium"
+          loading={checking}
+          onClick={() => void handleSubmit()}
+        >
           Unlock
         </Button>
       </div>
@@ -157,7 +168,7 @@ function AddAgentForm({ token, onAdded }: { token: string; onAdded: () => void }
           <InputGroup>
             <InputGroupInput
               type="text"
-              placeholder="chat.example.com or https://chat.example.com/support"
+              placeholder="https://chat.example.com or https://chat.example.com/support"
               value={hostname}
               onValueChange={setHostname}
             />
@@ -169,7 +180,7 @@ function AddAgentForm({ token, onAdded }: { token: string; onAdded: () => void }
         <InputGroup>
           <InputGroupInput
             type="text"
-            placeholder="https://udify.app/chatbot/..."
+            placeholder="https://your-dify-domain/chatbot/..."
             value={iframeUrl}
             onValueChange={setIframeUrl}
           />
@@ -192,18 +203,31 @@ function AddAgentForm({ token, onAdded }: { token: string; onAdded: () => void }
 
 const PAGE_SIZE = 10
 
-function EditAgentRow({ token, agent, onDone }: { token: string; agent: DiffyAgent; onDone: () => void }) {
-  const queryClient = useQueryClient()
+function EditAgentRow({
+  token,
+  agent,
+  onSaved,
+  onCancel,
+}: {
+  token: string
+  agent: DiffyAgent
+  onSaved: () => void
+  onCancel: () => void
+}) {
   const [name, setName] = useState(agent.name)
   const [hostname, setHostname] = useState(agent.hostname)
   const [iframeUrl, setIframeUrl] = useState(agent.iframe_url)
 
   const updateMutation = useMutation({
-    mutationFn: () => updateDiffyAgent(token, agent.id, { name: name.trim(), hostname: hostname.trim(), iframe_url: iframeUrl.trim() }),
+    mutationFn: () =>
+      updateDiffyAgent(token, agent.id, {
+        name: name.trim(),
+        hostname: hostname.trim(),
+        iframe_url: iframeUrl.trim(),
+      }),
     onSuccess: () => {
       toast.success('Agent updated')
-      void queryClient.invalidateQueries({ queryKey: ['diffy-agents', token] })
-      onDone()
+      onSaved()
     },
     onError: (err: Error) => {
       toast.error(err.message)
@@ -215,20 +239,37 @@ function EditAgentRow({ token, agent, onDone }: { token: string; agent: DiffyAge
   return (
     <tr className="border-b border-divider-regular last:border-b-0">
       <td className="px-4 py-2.5">
-        <InputGroup><InputGroupInput type="text" value={name} onValueChange={setName} /></InputGroup>
+        <InputGroup>
+          <InputGroupInput type="text" value={name} onValueChange={setName} />
+        </InputGroup>
       </td>
       <td className="px-4 py-2.5">
-        <InputGroup><InputGroupInput type="text" value={hostname} onValueChange={setHostname} /></InputGroup>
+        <InputGroup>
+          <InputGroupInput type="text" value={hostname} onValueChange={setHostname} />
+        </InputGroup>
       </td>
       <td className="px-4 py-2.5">
-        <InputGroup><InputGroupInput type="text" value={iframeUrl} onValueChange={setIframeUrl} /></InputGroup>
+        <InputGroup>
+          <InputGroupInput type="text" value={iframeUrl} onValueChange={setIframeUrl} />
+        </InputGroup>
       </td>
       <td className="px-4 py-2.5 text-right whitespace-nowrap">
         <div className="flex justify-end gap-2">
-          <Button size="small" variant="primary" disabled={!canSave} loading={updateMutation.isPending} onClick={() => updateMutation.mutate()}>
+          <Button
+            size="small"
+            variant="primary"
+            disabled={!canSave}
+            loading={updateMutation.isPending}
+            onClick={() => updateMutation.mutate()}
+          >
             Save
           </Button>
-          <Button size="small" variant="secondary" disabled={updateMutation.isPending} onClick={onDone}>
+          <Button
+            size="small"
+            variant="secondary"
+            disabled={updateMutation.isPending}
+            onClick={onCancel}
+          >
             Cancel
           </Button>
         </div>
@@ -237,55 +278,42 @@ function EditAgentRow({ token, agent, onDone }: { token: string; agent: DiffyAge
   )
 }
 
-function AgentsTable({ token }: { token: string }) {
-  const queryClient = useQueryClient()
+function AgentsTable({
+  agents,
+  token,
+  onChanged,
+}: {
+  agents: DiffyAgent[]
+  token: string
+  onChanged: () => void
+}) {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const agentsQuery = useQuery({
-    queryKey: ['diffy-agents', token],
-    queryFn: () => fetchDiffyAgents(token),
-  })
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteDiffyAgent(token, id),
     onSuccess: () => {
       toast.success('Agent deleted')
-      void queryClient.invalidateQueries({ queryKey: ['diffy-agents', token] })
+      onChanged()
     },
     onError: () => {
       toast.error('Failed to delete agent')
     },
   })
 
-  const allAgents = agentsQuery.data
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
-    const list = allAgents ?? []
-    if (!q) return list
-    return list.filter(a =>
-      a.name.toLowerCase().includes(q)
-      || a.hostname.toLowerCase().includes(q)
-      || a.iframe_url.toLowerCase().includes(q),
+    if (!q) return agents
+    return agents.filter(
+      (a) =>
+        a.name.toLowerCase().includes(q) ||
+        a.hostname.toLowerCase().includes(q) ||
+        a.iframe_url.toLowerCase().includes(q),
     )
-  }, [allAgents, search])
+  }, [agents, search])
 
-  if (agentsQuery.isPending) {
-    return <p className="system-sm-regular text-text-tertiary">Loading agents…</p>
-  }
-
-  if (agentsQuery.isError) {
-    return (
-      <div className="flex items-center gap-3">
-        <p className="system-sm-regular text-text-destructive">Failed to load agents.</p>
-        <Button size="small" variant="secondary" onClick={() => void agentsQuery.refetch()}>
-          Retry
-        </Button>
-      </div>
-    )
-  }
-
-  if ((allAgents ?? []).length === 0) {
+  if (agents.length === 0) {
     return <p className="system-sm-regular text-text-tertiary">No agents configured yet.</p>
   }
 
@@ -312,53 +340,69 @@ function AgentsTable({ token }: { token: string }) {
           <thead>
             <tr className="border-b border-divider-regular text-left">
               <th className="px-4 py-2.5 system-xs-medium-uppercase text-text-tertiary">Name</th>
-              <th className="px-4 py-2.5 system-xs-medium-uppercase text-text-tertiary">Hostname</th>
-              <th className="px-4 py-2.5 system-xs-medium-uppercase text-text-tertiary">Iframe URL</th>
+              <th className="px-4 py-2.5 system-xs-medium-uppercase text-text-tertiary">
+                Hostname
+              </th>
+              <th className="px-4 py-2.5 system-xs-medium-uppercase text-text-tertiary">
+                Iframe URL
+              </th>
               <th className="px-4 py-2.5" />
             </tr>
           </thead>
           <tbody>
             {pageAgents.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-4 py-6 text-center system-sm-regular text-text-tertiary">
+                <td
+                  colSpan={4}
+                  className="px-4 py-6 text-center system-sm-regular text-text-tertiary"
+                >
                   No agents match "{search}".
                 </td>
               </tr>
             )}
-            {pageAgents.map(agent => (
-              editingId === agent.id
-                ? <EditAgentRow key={agent.id} token={token} agent={agent} onDone={() => setEditingId(null)} />
-                : (
-                    <tr key={agent.id} className="border-b border-divider-regular last:border-b-0">
-                      <td className="max-w-40 truncate px-4 py-2.5 system-sm-regular text-text-primary">
-                        {agent.name}
-                      </td>
-                      <td className="max-w-60 truncate px-4 py-2.5 system-sm-regular text-text-secondary">
-                        {agent.hostname}
-                      </td>
-                      <td className="max-w-80 truncate px-4 py-2.5 system-sm-regular text-text-secondary">
-                        {agent.iframe_url}
-                      </td>
-                      <td className="px-4 py-2.5 text-right whitespace-nowrap">
-                        <div className="flex justify-end gap-2">
-                          <Button size="small" variant="secondary" onClick={() => setEditingId(agent.id)}>
-                            Edit
-                          </Button>
-                          <Button
-                            size="small"
-                            variant="secondary"
-                            loading={deleteMutation.isPending && deleteMutation.variables === agent.id}
-                            onClick={() => {
-                              if (confirm(`Delete "${agent.name}"?`)) deleteMutation.mutate(agent.id)
-                            }}
-                          >
-                            Delete
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-            ))}
+            {pageAgents.map((agent) =>
+              editingId === agent.id ? (
+                <EditAgentRow
+                  key={agent.id}
+                  token={token}
+                  agent={agent}
+                  onSaved={() => {
+                    setEditingId(null)
+                    onChanged()
+                  }}
+                  onCancel={() => setEditingId(null)}
+                />
+              ) : (
+                <tr key={agent.id} className="border-b border-divider-regular last:border-b-0">
+                  <td className="max-w-40 truncate px-4 py-2.5 system-sm-regular text-text-primary">
+                    {agent.name}
+                  </td>
+                  <td className="max-w-60 truncate px-4 py-2.5 system-sm-regular text-text-secondary">
+                    {agent.hostname}
+                  </td>
+                  <td className="max-w-80 truncate px-4 py-2.5 system-sm-regular text-text-secondary">
+                    {agent.iframe_url}
+                  </td>
+                  <td className="px-4 py-2.5 text-right whitespace-nowrap">
+                    <div className="flex justify-end gap-2">
+                      <Button size="small" variant="secondary" onClick={() => setEditingId(agent.id)}>
+                        Edit
+                      </Button>
+                      <Button
+                        size="small"
+                        variant="secondary"
+                        loading={deleteMutation.isPending && deleteMutation.variables === agent.id}
+                        onClick={() => {
+                          if (confirm(`Delete ${agent.name}?`)) deleteMutation.mutate(agent.id)
+                        }}
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ),
+            )}
           </tbody>
         </table>
       </div>
@@ -368,13 +412,23 @@ function AgentsTable({ token }: { token: string }) {
             {pageStart + 1}–{Math.min(pageStart + PAGE_SIZE, filtered.length)} of {filtered.length}
           </span>
           <div className="flex items-center gap-2">
-            <Button size="small" variant="secondary" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)}>
+            <Button
+              size="small"
+              variant="secondary"
+              disabled={currentPage <= 1}
+              onClick={() => setPage(currentPage - 1)}
+            >
               Previous
             </Button>
             <span className="system-xs-regular text-text-secondary">
               Page {currentPage} of {totalPages}
             </span>
-            <Button size="small" variant="secondary" disabled={currentPage >= totalPages} onClick={() => setPage(currentPage + 1)}>
+            <Button
+              size="small"
+              variant="secondary"
+              disabled={currentPage >= totalPages}
+              onClick={() => setPage(currentPage + 1)}
+            >
               Next
             </Button>
           </div>
@@ -384,45 +438,99 @@ function AgentsTable({ token }: { token: string }) {
   )
 }
 
-function DiffyAgentsManager({ token }: { token: string }) {
-  const queryClient = useQueryClient()
-
+function DiffyAgentsManager({
+  token,
+  agents,
+  onChanged,
+}: {
+  token: string
+  agents: DiffyAgent[]
+  onChanged: () => void
+}) {
   return (
-    <div className="flex h-0 min-w-0 grow flex-col gap-5 overflow-y-auto bg-background-body p-8">
+    <div className="flex h-0 min-w-0 grow flex-col gap-5 overflow-y-auto bg-background-body p-8 *:shrink-0">
       <div className="flex items-center justify-between">
         <h1 className="text-[18px]/[21.6px] font-semibold text-text-primary">Diffy Agents</h1>
-        <Button
-          size="small"
-          variant="ghost"
-          onClick={() => {
-            clearStoredToken()
-            window.location.reload()
-          }}
-        >
-          Lock
-        </Button>
+        {token && (
+          <Button
+            size="small"
+            variant="ghost"
+            onClick={() => {
+              clearStoredToken()
+              window.location.reload()
+            }}
+          >
+            Lock
+          </Button>
+        )}
       </div>
       <p className="system-sm-regular text-text-tertiary">
-        Maps a website's hostname to the Diffy iframe embed URL your chat widget shows on that
-        site. Backed by a separate chatkit-backend service, not Dify's own database.
+        Maps the address of a website to the Diffy chat shown on it. The list is kept by the
+        diffy-backend service, not in Dify.
       </p>
-      <AddAgentForm
-        token={token}
-        onAdded={() => void queryClient.invalidateQueries({ queryKey: ['diffy-agents', token] })}
-      />
-      <AgentsTable token={token} />
+      <EmbedGuide agents={agents} />
+      <AddAgentForm token={token} onAdded={onChanged} />
+      <AgentsTable agents={agents} token={token} onChanged={onChanged} />
     </div>
+  )
+}
+
+// Signs in with the Dify console session first (no password). Only if the
+// backend rejects that does it fall back to asking for the admin password.
+function DiffyAgentsAccess() {
+  const queryClient = useQueryClient()
+  const [token, setToken] = useState(readStoredToken)
+  const agentsQuery = useQuery({
+    queryKey: ['diffy-agents', token],
+    queryFn: () => fetchDiffyAgents(token),
+    retry: false,
+  })
+
+  if (agentsQuery.isPending) {
+    return (
+      <CenteredMessage title="Diffy Agents">
+        <p className="system-sm-regular text-text-tertiary">Loading agents…</p>
+      </CenteredMessage>
+    )
+  }
+
+  if (agentsQuery.isError) {
+    if (isUnauthorizedError(agentsQuery.error)) return <PasswordGate onUnlock={setToken} />
+
+    return (
+      <CenteredMessage title="Diffy Agents">
+        <p className="system-sm-regular text-text-destructive">
+          Could not reach the Diffy backend.
+        </p>
+        <Button size="small" variant="secondary" onClick={() => void agentsQuery.refetch()}>
+          Retry
+        </Button>
+      </CenteredMessage>
+    )
+  }
+
+  return (
+    <DiffyAgentsManager
+      token={token}
+      agents={agentsQuery.data}
+      onChanged={() => void queryClient.invalidateQueries({ queryKey: ['diffy-agents', token] })}
+    />
   )
 }
 
 export default function DiffyAgentsPage() {
   useDocumentTitle('Diffy Agents')
   const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
-  const [token, setToken] = useState(readStoredToken)
 
-  if (!isCurrentWorkspaceOwner) return <UnauthorizedState />
+  if (!isCurrentWorkspaceOwner) {
+    return (
+      <CenteredMessage title="Diffy Agents">
+        <p className="system-sm-regular text-text-tertiary">
+          Only the workspace owner can manage Diffy agent mappings.
+        </p>
+      </CenteredMessage>
+    )
+  }
 
-  if (!token) return <PasswordGate onUnlock={setToken} />
-
-  return <DiffyAgentsManager token={token} />
+  return <DiffyAgentsAccess />
 }
