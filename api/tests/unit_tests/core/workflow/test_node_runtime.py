@@ -892,17 +892,38 @@ def test_dify_tool_node_runtime_does_not_inject_outer_workflow_run_id_for_non_wo
     get_runtime.assert_called_once()
 
 
-def test_dify_tool_node_runtime_builds_workflow_tool_container_payload() -> None:
+def test_dify_tool_node_runtime_builds_workflow_tool_container_payload(monkeypatch: pytest.MonkeyPatch) -> None:
+    from core.tools.__base.tool_runtime import ToolRuntime
+    from core.tools.entities.common_entities import I18nObject
+    from core.tools.entities.tool_entities import ToolEntity, ToolIdentity
     from core.tools.workflow_as_tool.tool import WorkflowTool
 
-    tool = MagicMock(spec=WorkflowTool)
-    tool.workflow_app_id = uuid4()
-    tool.workflow_id = uuid4()
-    tool.version = "published-version"
-    tool.prepare_container_inputs.return_value = (
-        {"amount": Decimal("1.25")},
-        [{"id": "file-id", "name": "input.txt"}],
+    tool = WorkflowTool(
+        workflow_app_id=str(uuid4()),
+        workflow_id=str(uuid4()),
+        workflow_as_tool_id="workflow-tool-id",
+        version="published-version",
+        workflow_call_depth=2,
+        entity=ToolEntity(
+            identity=ToolIdentity(
+                author="test",
+                name="workflow-tool",
+                label=I18nObject(en_US="Workflow Tool"),
+                provider="workflow-provider",
+            ),
+            parameters=[],
+            description=None,
+            has_runtime_parameters=False,
+        ),
+        runtime=ToolRuntime(tenant_id="tenant-id", invoke_from=InvokeFrom.DEBUGGER),
     )
+    prepare_container_inputs = MagicMock(
+        return_value=(
+            {"amount": Decimal("1.25")},
+            [{"id": "file-id", "name": "input.txt"}],
+        )
+    )
+    monkeypatch.setattr(tool, "prepare_container_inputs", prepare_container_inputs)
     runtime = DifyToolNodeRuntime(_build_run_context())
 
     payload = runtime.build_workflow_tool_container_payload(
@@ -922,7 +943,7 @@ def test_dify_tool_node_runtime_builds_workflow_tool_container_payload() -> None
         "inputs_for_log": {"amount": 1.25},
         "call_depth": 3,
     }
-    tool.prepare_container_inputs.assert_called_once_with({"amount": "1.25"})
+    prepare_container_inputs.assert_called_once_with({"amount": "1.25"})
 
 
 def test_dify_tool_node_runtime_rejects_non_workflow_tool_container_payload() -> None:

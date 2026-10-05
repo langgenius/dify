@@ -3,26 +3,26 @@ from __future__ import annotations
 import json
 from collections.abc import Callable
 from dataclasses import replace
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from functools import partial
 from types import SimpleNamespace
 from typing import cast
 from unittest.mock import MagicMock
 
 import pytest
+from pytest_mock import MockerFixture
 
 from core.helper.code_executor.code_executor import CodeExecutionError
 from core.repositories.human_input_repository import (
-    FormCreateParams,
-    HumanInputFormEntity,
-    HumanInputFormRepository,
+    HumanInputFormRepositoryImpl,
+    HumanInputFormSubmissionRepository,
 )
 from core.tools.workflow_as_tool.repository import WorkflowToolSource
 from core.workflow.node_factory import DifyNodeFactory
+from core.workflow.node_runtime import DifyToolFileManager
 from core.workflow.nodes.human_input.boundary import resolve_human_input_node_id
 from core.workflow.nodes.human_input.callback import DifyHITLCallback
 from core.workflow.nodes.human_input.entities import HumanInputNodeData, UserActionConfig
-from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from core.workflow.system_variables import SystemVariableKey, system_variable_selector
 from core.workflow.workflow_tool_container_handler import (
     WorkflowToolContainerHandler,
@@ -67,7 +67,6 @@ from graphon.nodes.container_effects import (
 )
 from graphon.nodes.end.end_node import EndNode
 from graphon.nodes.end.entities import EndNodeData
-from graphon.nodes.protocols import ToolFileManagerProtocol
 from graphon.nodes.start.entities import StartNodeData
 from graphon.nodes.start.start_node import StartNode
 from graphon.nodes.tool.entities import ToolNodeData, ToolProviderType
@@ -137,7 +136,7 @@ def _workflow_tool_node(
         data=ToolNodeData.model_validate(graph_config["nodes"][0]["data"]),
         init_params=init_params,
         runtime_state=runtime_state,
-        tool_file_manager=MagicMock(spec=ToolFileManagerProtocol),
+        tool_file_manager=DifyToolFileManager(init_params.run_context),
         runtime=runtime,
     )
     node.bind_execution_id("tool-execution")
@@ -507,7 +506,7 @@ def test_workflow_tool_handler_runs_child_graph_with_internal_name_collision() -
         ("__workflow_tool_container__", "failure"),
         {"legitimate": True},
     )
-    event_stream = MagicMock(spec=EventStream)
+    event_stream = EventStream(layers=[])
     processor = NodeEventProcessor(
         graph_execution=runtime_state.graph_execution,
         event_stream=event_stream,
@@ -539,7 +538,8 @@ def test_workflow_tool_handler_runs_child_graph_with_internal_name_collision() -
         "files": [],
         "json": [{"answer": "ok"}],
     }
-    assert not any(isinstance(call.args[0], NodeEvent) for call in event_stream.collect.call_args_list)
+    event_stream.mark_complete()
+    assert not any(isinstance(event, NodeEvent) for event in event_stream.emit_events())
     with pytest.raises(KeyError):
         frame_registry["invocation:workflow-tool"]
     with pytest.raises(KeyError):
@@ -876,6 +876,7 @@ def test_workflow_tool_failure_accounting_uses_outer_tool_policy(
 @pytest.mark.parametrize("outcome", ["paused", "resumed", "abort-on-resume", "stopped"])
 def test_workflow_tool_human_input_pauses_and_resumes_without_duplicate_form(
     monkeypatch: pytest.MonkeyPatch,
+    mocker: MockerFixture,
     outcome: str,
 ) -> None:
     command_channel = InMemoryChannel()
@@ -890,15 +891,10 @@ def test_workflow_tool_human_input_pauses_and_resumes_without_duplicate_form(
         sources=source_repository,
         hidden_event_listener=partial(stop_on_human_input, channel=command_channel, should_stop=outcome == "stopped"),
     )
-    form_repository = MagicMock(spec=HumanInputFormRepository)
-    form_repository.get_form.return_value = None
-    form = MagicMock(spec=HumanInputFormEntity)
-
-    def create_form(params: FormCreateParams) -> HumanInputFormEntity:
-        form.id = params.form_id
-        return form
-
-    form_repository.create_form.side_effect = create_form
+    form_repository = HumanInputFormRepositoryImpl(
+        tenant_id="tenant", app_id="outer-app", workflow_execution_id="outer-execution"
+    )
+    create_form_spy = mocker.spy(form_repository, "create_form")
     human_input_app_ids: list[str] = []
 
     def build_human_input_callback(
@@ -958,8 +954,8 @@ def test_workflow_tool_human_input_pauses_and_resumes_without_duplicate_form(
         not isinstance(event, NodeEvent) or event.node_id not in {"source-start", "source-human"}
         for event in initial_events
     )
-    form_repository.create_form.assert_called_once()
-    create_params = form_repository.create_form.call_args.args[0]
+    create_form_spy.assert_called_once()
+    create_params = create_form_spy.call_args.args[0]
     assert create_params.node_id == "source-human"
     assert create_params.workflow_execution_id == "outer-execution"
     child_frames = list(initial_state.container_frames())
@@ -987,14 +983,15 @@ def test_workflow_tool_human_input_pauses_and_resumes_without_duplicate_form(
     restored_owner_factory.workflow_tools = {}
     restored_owner_factory._human_input_run_context = initial_owner_factory.human_input_run_context
     restored_graph.node_factory = restored_owner_factory
-    form.status = HumanInputFormStatus.WAITING if outcome == "abort-on-resume" else HumanInputFormStatus.SUBMITTED
-    form.submitted = outcome != "abort-on-resume"
-    form.created_at = datetime.now(UTC).replace(tzinfo=None)
-    form.expiration_time = form.created_at + timedelta(hours=1)
-    form.selected_action_id = "approve"
-    form.submitted_data = dict[str, object]()
-    form.rendered_content = "Approve this run?"
-    form_repository.get_form.side_effect = lambda _node_id, *, form_id: form if form_id == form.id else None
+    if outcome == "resumed":
+        HumanInputFormSubmissionRepository().mark_submitted(
+            form_id=reason.session_id,
+            recipient_id=None,
+            selected_action_id="approve",
+            form_data={},
+            submission_user_id="user",
+            submission_end_user_id=None,
+        )
     resumed_channel = InMemoryChannel()
     resumed_handler_factory = partial(
         WorkflowToolContainerHandler,
@@ -1022,7 +1019,7 @@ def test_workflow_tool_human_input_pauses_and_resumes_without_duplicate_form(
     )
     assert tool_succeeded.node_run_result.outputs["decision"] == "approve"
     assert json.loads(tool_succeeded.node_run_result.outputs["text"]) == {"decision": "approve"}
-    form_repository.create_form.assert_called_once()
+    create_form_spy.assert_called_once()
     assert human_input_app_ids == ["outer-app", "outer-app"]
     assert all(
         not isinstance(event, NodeEvent) or event.node_id not in {"source-human", "source-end"}
