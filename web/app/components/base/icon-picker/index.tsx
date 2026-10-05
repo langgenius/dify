@@ -11,6 +11,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { useMutation } from '@tanstack/react-query'
 import { useCallback, useLayoutEffect, useRef, useState } from 'react'
@@ -265,16 +266,16 @@ function IconPickerSession({
           : 'max-h-[calc(100dvh-2rem)]',
       )}
     >
-      {imageEnabled && (
-        <div
-          className={cn(
-            'shrink-0 px-3 pt-3 pb-2',
-            activeTab === 'image' && 'border-b border-divider-subtle',
-          )}
-        >
+      <div
+        className={cn(
+          'flex shrink-0 items-center gap-2 px-3 pt-3 pb-2',
+          activeTab === 'image' && 'border-b border-divider-subtle',
+        )}
+      >
+        {imageEnabled && (
           <TabsList
             aria-label={t(($) => $['iconPicker.title'], { ns: 'app' })}
-            className="gap-px rounded-[10px] bg-components-segmented-control-bg-normal p-0.5"
+            className="min-w-0 flex-1 gap-px rounded-[10px] bg-components-segmented-control-bg-normal p-0.5"
           >
             {(['emoji', 'image'] as const).map((kind) => (
               <TabsTab
@@ -295,8 +296,19 @@ function IconPickerSession({
               </TabsTab>
             ))}
           </TabsList>
-        </div>
-      )}
+        )}
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              size="lg"
+              className="ml-auto shrink-0"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
+      </div>
       {imageEnabled ? (
         <TabsPanel
           keepMounted
@@ -312,7 +324,7 @@ function IconPickerSession({
           />
         </TabsPanel>
       ) : (
-        <div className="flex min-h-0 flex-1 flex-col pt-3">
+        <div className="flex min-h-0 flex-1 flex-col">
           <EmojiIconEditor
             inputRef={activeTab === 'emoji' ? initialFocusRef : undefined}
             value={emoji}

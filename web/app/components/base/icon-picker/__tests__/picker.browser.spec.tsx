@@ -59,6 +59,34 @@ function Harness() {
   )
 }
 
+it('reaches Close from the keyboard without choosing an emoji when confirmation is disabled', async () => {
+  const client = new QueryClient()
+  client.setQueryData(emojiCatalogOptions.queryKey, [])
+  const onConfirm = vi.fn()
+  const screen = await render(
+    <QueryClientProvider client={client}>
+      <IconPickerDialog aria-label="Choose icon" onConfirm={onConfirm} />
+    </QueryClientProvider>,
+  )
+  const trigger = screen.getByRole('button', { name: 'Choose icon' })
+  await userEvent.tab()
+  await expect.element(trigger).toHaveFocus()
+  await userEvent.keyboard('{Enter}')
+  const dialog = screen.getByRole('dialog', { name: 'app.iconPicker.title' })
+  await expect
+    .element(dialog.getByRole('combobox', { name: 'app.iconPicker.search' }))
+    .toHaveFocus()
+  await expect.element(dialog.getByRole('button', { name: 'app.iconPicker.ok' })).toBeDisabled()
+  await userEvent.tab({ shift: true })
+  const close = dialog.getByRole('button', { name: 'common.operation.close' })
+  await expect.element(close).toHaveFocus()
+  await userEvent.keyboard('{Enter}')
+  await expect.element(dialog).not.toBeInTheDocument()
+  await expect.element(trigger).toHaveFocus()
+  expect(onConfirm).not.toHaveBeenCalled()
+  client.clear()
+})
+
 it('navigates a visible candidate after filtering, confirms with Enter, and discards cancelled drafts', async () => {
   const client = new QueryClient()
   client.setQueryData(emojiCatalogOptions.queryKey, [
