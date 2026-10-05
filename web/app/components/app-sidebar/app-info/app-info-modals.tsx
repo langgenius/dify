@@ -32,9 +32,13 @@ const CreateAppModal = dynamic(() => import('@/app/components/explore/create-app
 const DuplicateAppModal = dynamic(() => import('@/app/components/app/duplicate-modal'), {
   ssr: false,
 })
-const UpdateDSLModal = dynamic(() => import('@/app/components/workflow/update-dsl-modal'), {
-  ssr: false,
-})
+const UpdateDSLDialog = dynamic(
+  () =>
+    import('@/app/components/workflow/update-dsl-modal').then((module) => module.UpdateDSLDialog),
+  {
+    ssr: false,
+  },
+)
 
 type AppInfoModalsProps = {
   appDetail: AppDetailWithSite
@@ -196,14 +200,15 @@ const AppInfoModals = ({
           </form>
         </AlertDialogContent>
       </AlertDialog>
-      {activeModal === 'importDSL' && (
-        <UpdateDSLModal
-          appId={appDetail.id}
-          appMode={appDetail.mode}
-          onCancel={closeModal}
-          onBackup={exportCheck}
-        />
-      )}
+      <UpdateDSLDialog
+        open={activeModal === 'importDSL'}
+        onOpenChange={(open) => {
+          if (!open) closeModal()
+        }}
+        appId={appDetail.id}
+        appMode={appDetail.mode}
+        onBackup={exportCheck}
+      />
       <AlertDialog open={isExportDialogOpen} onOpenChange={handleExportDialogOpenChange}>
         {exportDialogMode === 'secret' ? (
           <AppExportConfirmContent

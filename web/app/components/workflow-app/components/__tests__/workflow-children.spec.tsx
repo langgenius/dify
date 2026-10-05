@@ -191,7 +191,7 @@ vi.mock('next/dynamic', async () => {
         ReactModule.useEffect(() => {
           let mounted = true
           loader().then((mod) => {
-            if (mounted) setLoaded(() => mod.default)
+            if (mounted) setLoaded(() => (typeof mod === 'function' ? mod : mod.default))
           })
           return () => {
             mounted = false
@@ -211,27 +211,30 @@ vi.mock('@/app/components/workflow/features', () => ({
 }))
 
 vi.mock('@/app/components/workflow/update-dsl-modal', () => ({
-  default: ({
-    onCancel,
+  UpdateDSLDialog: ({
+    open,
+    onOpenChange,
     onBackup,
     onImport,
   }: {
-    onCancel: () => void
+    open: boolean
+    onOpenChange: (open: boolean) => void
     onBackup: () => void
     onImport: () => void
-  }) => (
-    <div data-testid="update-dsl-modal">
-      <button type="button" onClick={onCancel}>
-        cancel-import-dsl
-      </button>
-      <button type="button" onClick={onBackup}>
-        backup-dsl
-      </button>
-      <button type="button" onClick={onImport}>
-        import-dsl
-      </button>
-    </div>
-  ),
+  }) =>
+    open ? (
+      <div data-testid="update-dsl-modal">
+        <button type="button" onClick={() => onOpenChange(false)}>
+          cancel-import-dsl
+        </button>
+        <button type="button" onClick={onBackup}>
+          backup-dsl
+        </button>
+        <button type="button" onClick={onImport}>
+          import-dsl
+        </button>
+      </div>
+    ) : null,
 }))
 
 vi.mock('@/app/components/app/export-confirm-modal', () => ({

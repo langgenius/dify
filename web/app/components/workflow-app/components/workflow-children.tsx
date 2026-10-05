@@ -27,9 +27,13 @@ import WorkflowPanel from './workflow-panel'
 const Features = dynamic(() => import('@/app/components/workflow/features'), {
   ssr: false,
 })
-const UpdateDSLModal = dynamic(() => import('@/app/components/workflow/update-dsl-modal'), {
-  ssr: false,
-})
+const UpdateDSLDialog = dynamic(
+  () =>
+    import('@/app/components/workflow/update-dsl-modal').then((module) => module.UpdateDSLDialog),
+  {
+    ssr: false,
+  },
+)
 const AppExportConfirmModal = dynamic(() => import('@/app/components/app/export-confirm-modal'), {
   ssr: false,
 })
@@ -173,11 +177,13 @@ const WorkflowChildren = () => {
           onSelectStartNode={handleSelectStartNode}
         />
       )}
-      {appId && canImportExportDSL && showImportDSLModal && (
-        <UpdateDSLModal
+      {appId && canImportExportDSL && (
+        <UpdateDSLDialog
+          key={appId}
+          open={showImportDSLModal}
+          onOpenChange={setShowImportDSLModal}
           appId={appId}
           appMode={isChatMode ? 'advanced-chat' : 'workflow'}
-          onCancel={() => setShowImportDSLModal(false)}
           onBackup={exportCheck!}
           onImport={handlePaneContextmenuCancel}
         />

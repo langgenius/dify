@@ -8,7 +8,10 @@ import AppInfoModals from '../app-info-modals'
 
 vi.mock('next/dynamic', () => ({
   default: (loader: () => Promise<{ default: React.ComponentType }>) => {
-    const LazyComp = React.lazy(loader)
+    const LazyComp = React.lazy(async () => {
+      const loaded = await loader()
+      return typeof loaded === 'function' ? { default: loaded } : loaded
+    })
     return function DynamicWrapper(props: Record<string, unknown>) {
       return React.createElement(
         React.Suspense,
@@ -61,16 +64,25 @@ vi.mock('@/app/components/app/duplicate-modal', () => ({
 }))
 
 vi.mock('@/app/components/workflow/update-dsl-modal', () => ({
-  default: ({ onCancel, onBackup }: { onCancel: () => void; onBackup: () => void }) => (
-    <div data-testid="import-dsl-modal">
-      <button type="button" onClick={onCancel}>
-        Cancel Import
-      </button>
-      <button type="button" onClick={onBackup}>
-        Backup
-      </button>
-    </div>
-  ),
+  UpdateDSLDialog: ({
+    open,
+    onOpenChange,
+    onBackup,
+  }: {
+    open: boolean
+    onOpenChange: (open: boolean) => void
+    onBackup: () => void
+  }) =>
+    open ? (
+      <div data-testid="import-dsl-modal">
+        <button type="button" onClick={() => onOpenChange(false)}>
+          Cancel Import
+        </button>
+        <button type="button" onClick={onBackup}>
+          Backup
+        </button>
+      </div>
+    ) : null,
 }))
 
 vi.mock('@/app/components/app/export-confirm-modal', () => ({
