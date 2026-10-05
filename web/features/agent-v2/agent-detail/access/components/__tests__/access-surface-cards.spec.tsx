@@ -1,6 +1,7 @@
 import type {
   AgentApiAccessResponse,
   AgentAppDetailWithSite,
+  ApiKeyItem,
 } from '@dify/contracts/api/console/agent/types.gen'
 import type { AppDetail } from '@dify/contracts/api/console/apps/types.gen'
 import type React from 'react'
@@ -1244,6 +1245,141 @@ describe('Agent access surface cards', () => {
           },
         })
       })
+    })
+
+    it('keeps key generation in its manager while pending, retries failure, and returns focus after acknowledging the generated key', async () => {
+      const user = userEvent.setup()
+      const copy = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue(undefined)
+      const first = createDeferredPromise<ApiKeyItem>()
+      const retry = createDeferredPromise<ApiKeyItem>()
+      const createdKey: ApiKeyItem = {
+        id: 'created-key',
+        token: 'app-generated-secret-token',
+        type: 'app',
+        created_at: 1781660000,
+        last_used_at: null,
+      }
+      mocks.apiAccessQueryFn.mockResolvedValue(createAgentApiAccessResponse({ api_key_count: 1 }))
+      mocks.apiKeysQueryFn.mockResolvedValue({
+        data: [{ ...createdKey, id: 'existing-key', token: 'app-existing-secret-token' }],
+      })
+      mocks.createApiKeyMutation
+        .mockImplementationOnce(() => first.promise)
+        .mockImplementationOnce(() => retry.promise)
+      renderWithQueryClient(<ServiceApiAccessCard agentId="agent-1" />)
+      const entry = await screen.findByRole('button', { name: /serviceApi.actions.apiKey/ })
+      await user.click(entry)
+      const manager = await screen.findByRole('dialog', { name: 'appApi.apiKeyModal.apiSecretKey' })
+      const create = within(manager).getByRole('button', {
+        name: 'appApi.apiKeyModal.createNewSecretKey',
+      })
+      await user.click(create)
+      await waitFor(() => expect(mocks.createApiKeyMutation).toHaveBeenCalledTimes(1))
+      expect(create).toHaveFocus()
+      expect(within(manager).getByRole('button', { name: 'common.operation.close' })).toBeDisabled()
+      expect(
+        within(manager).getByRole('button', { name: 'common.operation.delete' }),
+      ).toBeDisabled()
+      await user.keyboard('{Enter}{Escape}')
+      expect(mocks.createApiKeyMutation).toHaveBeenCalledTimes(1)
+      expect(manager).toBeInTheDocument()
+      await act(async () => first.reject(new Error('Create failed')))
+      await waitFor(() =>
+        expect(
+          within(manager).getByRole('button', { name: 'common.operation.close' }),
+        ).toBeEnabled(),
+      )
+      expect(screen.queryByText('appApi.apiKeyModal.generateTips')).not.toBeInTheDocument()
+      expect(toast.error).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully')
+      await user.click(create)
+      await waitFor(() => expect(mocks.createApiKeyMutation).toHaveBeenCalledTimes(2))
+      await act(async () => retry.resolve(createdKey))
+      const result = await screen.findByRole('dialog', {
+        description: 'appApi.apiKeyModal.generateTips',
+      })
+      expect(within(result).getByText(createdKey.token)).toBeInTheDocument()
+      await user.click(within(result).getByRole('button', { name: 'common.operation.copy' }))
+      await waitFor(() => expect(copy).toHaveBeenCalledWith(createdKey.token))
+      await user.click(within(result).getByRole('button', { name: 'appApi.actionMsg.ok' }))
+      await waitFor(() => expect(result).not.toBeInTheDocument())
+      await waitFor(() => expect(create).toHaveFocus())
+      expect(manager).toBeInTheDocument()
+      await user.keyboard('{Escape}')
+      await waitFor(() => expect(manager).not.toBeInTheDocument())
+      await waitFor(() => expect(entry).toHaveFocus())
+    })
+
+    it('blocks deletion cancellation and duplicate confirmation while pending, and permits retry after failure', async () => {
+      const user = userEvent.setup()
+      const first = createDeferredPromise<void>()
+      const retry = createDeferredPromise<void>()
+      mocks.apiAccessQueryFn.mockResolvedValue(createAgentApiAccessResponse({ api_key_count: 1 }))
+      mocks.apiKeysQueryFn.mockResolvedValue({
+        data: [
+          {
+            id: 'existing-key',
+            token: 'app-existing-secret-token',
+            type: 'app',
+            created_at: 1781660000,
+            last_used_at: null,
+          },
+        ],
+      })
+      mocks.deleteApiKeyMutation
+        .mockImplementationOnce(() => first.promise)
+        .mockImplementationOnce(() => retry.promise)
+      renderWithQueryClient(<ServiceApiAccessCard agentId="agent-1" />)
+      await user.click(await screen.findByRole('button', { name: /serviceApi.actions.apiKey/ }))
+      const manager = await screen.findByRole('dialog', { name: 'appApi.apiKeyModal.apiSecretKey' })
+      const remove = await within(manager).findByRole('button', { name: 'common.operation.delete' })
+      await user.click(remove)
+      let confirmation = await screen.findByRole('alertdialog')
+      await user.click(
+        within(confirmation).getByRole('button', { name: 'common.operation.cancel' }),
+      )
+      await waitFor(() => expect(confirmation).not.toBeInTheDocument())
+      await waitFor(() => expect(remove).toHaveFocus())
+      await user.click(remove)
+      confirmation = await screen.findByRole('alertdialog')
+      const confirm = within(confirmation).getByRole('button', { name: 'common.operation.confirm' })
+      await user.click(confirm)
+      await waitFor(() => expect(mocks.deleteApiKeyMutation).toHaveBeenCalledTimes(1))
+      expect(confirm).toHaveFocus()
+      expect(
+        within(confirmation).getByRole('button', { name: 'common.operation.cancel' }),
+      ).toBeDisabled()
+      await user.keyboard('{Enter}{Escape}')
+      expect(mocks.deleteApiKeyMutation).toHaveBeenCalledTimes(1)
+      expect(confirmation).toBeInTheDocument()
+      await act(async () => first.reject(new Error('Delete failed')))
+      await waitFor(() =>
+        expect(
+          within(confirmation).getByRole('button', { name: 'common.operation.cancel' }),
+        ).toBeEnabled(),
+      )
+      expect(confirmation).toBeInTheDocument()
+      expect(toast.error).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully')
+      await user.click(confirm)
+      await waitFor(() => expect(mocks.deleteApiKeyMutation).toHaveBeenCalledTimes(2))
+      const refreshedKeys = createDeferredPromise<{ data: ApiKeyItem[] }>()
+      mocks.apiKeysQueryFn.mockReturnValueOnce(refreshedKeys.promise)
+      await act(async () => retry.resolve())
+      await waitFor(() => expect(confirmation).not.toBeInTheDocument())
+      expect(remove).toBeInTheDocument()
+      await waitFor(() =>
+        expect(
+          within(manager).getByRole('button', { name: 'appApi.apiKeyModal.createNewSecretKey' }),
+        ).toHaveFocus(),
+      )
+      await act(async () => refreshedKeys.resolve({ data: [] }))
+      expect(await within(manager).findByText('common.noData')).toBeInTheDocument()
+      expect(
+        within(manager).getByRole('button', { name: 'appApi.apiKeyModal.createNewSecretKey' }),
+      ).toHaveFocus()
+      expect(mocks.deleteApiKeyMutation.mock.calls[1]?.[0]).toEqual({
+        params: { agent_id: 'agent-1', api_key_id: 'existing-key' },
+      })
+      expect(mocks.createApiKeyMutation).not.toHaveBeenCalled()
     })
 
     it('should explain that publishing enables the Service API switch', async () => {

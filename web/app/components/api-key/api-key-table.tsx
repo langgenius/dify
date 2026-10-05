@@ -8,14 +8,16 @@ import useTimestamp from '@/hooks/use-timestamp'
 type ApiKeyTableProps = {
   apiKeys: Array<ApiKeyItem | EnvironmentApiKey>
   canManage: boolean
+  disabled?: boolean
   // Dataset keys carry a knowledge-base scope; enable the SCOPE column to surface it.
   showScope?: boolean
-  onDeleteRequest: (apiKeyId: string) => void
+  onDeleteRequest: (apiKeyId: string, trigger: HTMLButtonElement) => void
 }
 
 export function ApiKeyTable({
   apiKeys,
   canManage,
+  disabled,
   showScope = false,
   onDeleteRequest,
 }: ApiKeyTableProps) {
@@ -79,8 +81,9 @@ export function ApiKeyTable({
                   <CopyFeedback content={apiKey.token} />
                   {canManage && (
                     <IconButton
+                      disabled={disabled}
                       aria-label={`${t(($) => $['operation.delete'], { ns: 'common' })} ${maskToken(apiKey.token)}`}
-                      onClick={() => onDeleteRequest(apiKey.id)}
+                      onClick={(event) => onDeleteRequest(apiKey.id, event.currentTarget)}
                     >
                       <span aria-hidden className="i-ri-delete-bin-line size-4" />
                     </IconButton>
