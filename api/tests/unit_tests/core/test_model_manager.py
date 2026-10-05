@@ -17,10 +17,13 @@ from core.entities.provider_entities import (
 )
 from core.errors.error import ModelCurrentlyNotSupportError
 from core.model_manager import LBModelManager, ModelInstance, ModelManager, QuotaManagedModelInstance
+from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
 from extensions.ext_redis import redis_client
+from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.provider_entities import ProviderEntity
 from graphon.model_runtime.model_providers.base.tts_model import TTSModel
 from graphon.model_runtime.protocols.tts_runtime import TTSChunk
 from models.provider import ProviderType
@@ -443,13 +446,22 @@ def test_model_instance_adapts_tts_chunks_to_audio_bytes() -> None:
         restrict_models=[],
         model_type=ModelType.TTS,
     )
-    tts_model = MagicMock(spec=TTSModel)
-    tts_model.model_type = ModelType.TTS
-    tts_model.invoke.return_value = iter([TTSChunk(data=b"audio", mime_type="audio/wav")])
+    tts_model = TTSModel(
+        provider_schema=ProviderEntity(
+            provider="openai",
+            label=I18nObject(en_US="OpenAI"),
+            supported_model_types=[ModelType.TTS],
+            configurate_methods=[],
+        ),
+        model_runtime=create_plugin_model_runtime(tenant_id="tenant-1"),
+    )
     bundle.model_type_instance = tts_model
     model_instance = manager.get_model_instance("tenant-1", "openai", ModelType.TTS, "tts-model")
 
-    assert list(model_instance.invoke_tts(content_text="hello", voice="voice")) == [b"audio"]
+    with patch.object(
+        tts_model.model_runtime, "invoke_tts", return_value=iter([TTSChunk(data=b"audio", mime_type="audio/wav")])
+    ):
+        assert list(model_instance.invoke_tts(content_text="hello", voice="voice")) == [b"audio"]
 
 
 def test_quota_managed_tts_releases_when_provider_fails_before_first_chunk() -> None:

@@ -7,13 +7,15 @@ from unittest.mock import MagicMock
 from urllib.parse import parse_qs, urlparse
 
 import pytest
+from pytest_mock import MockerFixture
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
-from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
+from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.apps.common import workflow_response_converter
+from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
 from core.app.apps.workflow_app_runner import PreparedWorkflowRun, WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
@@ -62,6 +64,12 @@ from services.workflow_run_agg import WorkflowRunAgg
 from tests.unit_tests.core.app.apps.advanced_chat.test_generate_task_pipeline import _build_pipeline
 from tests.unit_tests.core.app.apps.common.test_workflow_response_converter_human_input import _build_converter
 from tests.workflow_test_utils import build_test_graph_init_params, build_test_run_context
+
+
+@pytest.fixture
+def workflow_queue(mocker: MockerFixture) -> tuple[WorkflowAppQueueManager, MagicMock]:
+    queue = WorkflowAppQueueManager("task", "user", InvokeFrom.DEBUGGER, AppMode.WORKFLOW)
+    return queue, mocker.spy(queue, "publish")
 
 
 def _save_form(
@@ -216,13 +224,16 @@ def _resume_events(runner: WorkflowBasedAppRunner, entry: WorkflowEntry) -> Gene
 @pytest.mark.parametrize("status", [HumanInputFormStatus.SUBMITTED, HumanInputFormStatus.TIMEOUT])
 @pytest.mark.parametrize("runs_human_input_node", [False, True], ids=["hidden-form", "direct-completion"])
 def test_resume_publishes_only_the_completed_form_among_repeated_node_invocations(
-    sqlite_session: Session, status: HumanInputFormStatus, runs_human_input_node: bool
+    sqlite_session: Session,
+    workflow_queue: tuple[WorkflowAppQueueManager, MagicMock],
+    status: HumanInputFormStatus,
+    runs_human_input_node: bool,
 ) -> None:
     selected = _save_form(sqlite_session, status=status)
     waiting = _save_form(sqlite_session, status=HumanInputFormStatus.WAITING)
     expired = _save_form(sqlite_session, status=HumanInputFormStatus.EXPIRED)
     _save_form(sqlite_session, status=HumanInputFormStatus.SUBMITTED)
-    queue = MagicMock(spec=AppQueueManager)
+    queue, publish_spy = workflow_queue
     runner = WorkflowBasedAppRunner(queue_manager=queue, app_id="app")
     entry = _make_paused_workflow(
         runner, [selected, waiting, selected, expired], human_input_form=selected if runs_human_input_node else None
@@ -232,7 +243,7 @@ def test_resume_publishes_only_the_completed_form_among_repeated_node_invocation
     for event in _resume_events(runner, entry):
         runner.handle_event(entry, event)
 
-    published = [call.args[0] for call in queue.publish.call_args_list]
+    published = [call.args[0] for call in publish_spy.call_args_list]
     assert isinstance(published[0], QueueWorkflowStartedEvent)
     completions = [
         item for item in published if isinstance(item, QueueHumanInputFormFilledEvent | QueueHumanInputFormTimeoutEvent)
@@ -258,11 +269,13 @@ def test_resume_publishes_only_the_completed_form_among_repeated_node_invocation
 
 
 @pytest.mark.parametrize("owner_field", ["tenant_id", "app_id", "workflow_run_id"])
-def test_resume_rejects_form_outside_the_trusted_execution_owner(sqlite_session: Session, owner_field: str) -> None:
+def test_resume_rejects_form_outside_the_trusted_execution_owner(
+    sqlite_session: Session, workflow_queue: tuple[WorkflowAppQueueManager, MagicMock], owner_field: str
+) -> None:
     form = _save_form(sqlite_session, status=HumanInputFormStatus.SUBMITTED)
     setattr(form, owner_field, "another-owner")
     sqlite_session.commit()
-    queue = MagicMock(spec=AppQueueManager)
+    queue, publish_spy = workflow_queue
     runner = WorkflowBasedAppRunner(queue_manager=queue, app_id="app")
     entry = _make_paused_workflow(runner, [form])
 
@@ -270,11 +283,13 @@ def test_resume_rejects_form_outside_the_trusted_execution_owner(sqlite_session:
     assert isinstance(events[-1], GraphRunFailedEvent)
     assert "does not belong" in events[-1].error
 
-    assert not any(isinstance(call.args[0], QueueHumanInputFormFilledEvent) for call in queue.publish.call_args_list)
+    assert not any(isinstance(call.args[0], QueueHumanInputFormFilledEvent) for call in publish_spy.call_args_list)
 
 
 def test_resume_refreshes_expired_file_and_file_list_urls_before_form_completion(
-    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+    sqlite_session: Session,
+    workflow_queue: tuple[WorkflowAppQueueManager, MagicMock],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(workflow_response_converter, "db", SimpleNamespace(engine=sqlite_session.get_bind()))
     submitted_at = 1_700_000_000
@@ -327,16 +342,14 @@ def test_resume_refreshes_expired_file_and_file_list_urls_before_form_completion
         "core.app.workflow.file_runtime.time.time", lambda: submitted_at + dify_config.FILES_ACCESS_TIMEOUT + 1
     )
     assert not any(url_is_valid(file) for file in saved_files)
-    queue = MagicMock(spec=AppQueueManager)
+    queue, publish_spy = workflow_queue
     runner = WorkflowBasedAppRunner(queue_manager=queue, app_id="app")
     entry = _make_paused_workflow(runner, [form])
     for event in _resume_events(runner, entry):
         runner.handle_event(entry, event)
 
     completions = [
-        call.args[0]
-        for call in queue.publish.call_args_list
-        if isinstance(call.args[0], QueueHumanInputFormFilledEvent)
+        call.args[0] for call in publish_spy.call_args_list if isinstance(call.args[0], QueueHumanInputFormFilledEvent)
     ]
     assert len(completions) == 1
     converter = _build_converter()
@@ -356,15 +369,18 @@ def test_resume_refreshes_expired_file_and_file_list_urls_before_form_completion
 
 @pytest.mark.parametrize("late_status", [HumanInputFormStatus.SUBMITTED, HumanInputFormStatus.TIMEOUT])
 def test_form_completed_during_resume_is_published_once_before_the_terminal_event(
-    sqlite_session: Session, late_status: HumanInputFormStatus
+    sqlite_session: Session,
+    workflow_queue: tuple[WorkflowAppQueueManager, MagicMock],
+    late_status: HumanInputFormStatus,
 ) -> None:
     first = _save_form(sqlite_session, status=HumanInputFormStatus.SUBMITTED)
     second = _save_form(sqlite_session, status=HumanInputFormStatus.WAITING)
-    queue = MagicMock(spec=AppQueueManager)
+    queue, publish_spy = workflow_queue
     runner = WorkflowBasedAppRunner(queue_manager=queue, app_id="app")
     entry = _make_paused_workflow(runner, [first, second])
 
-    def complete_second_form_during_execution(event: AppQueueEvent, _publish_from: PublishFrom) -> None:
+    def complete_second_form_during_execution(event: AppQueueEvent, publish_from: PublishFrom) -> None:
+        WorkflowAppQueueManager.publish(queue, event, publish_from)
         # The second submission arrives after the initial completion query,
         # while this real Engine attempt is already processing node events.
         if not isinstance(event, QueueNodeStartedEvent):
@@ -382,11 +398,11 @@ def test_form_completed_during_resume_is_published_once_before_the_terminal_even
         else:
             repository.mark_timeout(form_id=second.id, timeout_status=late_status)
 
-    queue.publish.side_effect = complete_second_form_during_execution
+    publish_spy.side_effect = complete_second_form_during_execution
     for event in _resume_events(runner, entry):
         runner.handle_event(entry, event)
 
-    published = [call.args[0] for call in queue.publish.call_args_list]
+    published = [call.args[0] for call in publish_spy.call_args_list]
     completions = [
         event
         for event in published
@@ -398,18 +414,20 @@ def test_form_completed_during_resume_is_published_once_before_the_terminal_even
     assert published.index(completions[-1]) < len(published) - 1
 
 
-def test_waiting_form_expiring_during_resume_publishes_timeout_before_success(sqlite_session: Session) -> None:
+def test_waiting_form_expiring_during_resume_publishes_timeout_before_success(
+    sqlite_session: Session, workflow_queue: tuple[WorkflowAppQueueManager, MagicMock]
+) -> None:
     form = _save_form(sqlite_session, status=HumanInputFormStatus.WAITING)
     form.expiration_time = datetime.now(UTC) - timedelta(seconds=1)
     sqlite_session.commit()
-    queue = MagicMock(spec=AppQueueManager)
+    queue, publish_spy = workflow_queue
     runner = WorkflowBasedAppRunner(queue_manager=queue, app_id="app")
     entry = _make_paused_workflow(runner, [form], human_input_form=form)
 
     for event in _resume_events(runner, entry):
         runner.handle_event(entry, event)
 
-    published = [call.args[0] for call in queue.publish.call_args_list]
+    published = [call.args[0] for call in publish_spy.call_args_list]
     assert isinstance(published[-1], QueueWorkflowSucceededEvent)
     timeouts = [event for event in published if isinstance(event, QueueHumanInputFormTimeoutEvent)]
     assert [event.form_id for event in timeouts] == [form.id]
