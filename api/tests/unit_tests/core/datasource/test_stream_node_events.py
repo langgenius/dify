@@ -5,7 +5,8 @@ from collections.abc import Generator
 from pytest_mock import MockerFixture
 
 from core.datasource.datasource_manager import DatasourceManager
-from core.datasource.entities.datasource_entities import DatasourceMessage, GetOnlineDocumentPageContentRequest
+from core.datasource.entities.datasource_entities import DatasourceMessage
+from core.workflow.nodes.datasource.entities import DatasourceParameter
 from graphon.node_events import StreamCompletedEvent
 from graphon.runtime import VariablePool
 
@@ -37,7 +38,7 @@ def test_stream_node_events_accumulates_variables(mocker: MockerFixture) -> None
             parameters_for_log={},
             datasource_info={"user_id": "u"},
             variable_pool=VariablePool(),
-            datasource_param=GetOnlineDocumentPageContentRequest(workspace_id="w", page_id="pg", type="t"),
+            datasource_param=DatasourceParameter(workspace_id="w", page_id="pg", type="t"),
             online_drive_request=None,
             credentials={},
         )
