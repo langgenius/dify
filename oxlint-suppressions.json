@@ -880,25 +880,17 @@
       "count": 1
     }
   },
-  "web/app/components/base/file-uploader/audio-preview.tsx": {
-    "jsx-a11y/media-has-caption": {
-      "count": 1
-    }
-  },
   "web/app/components/base/file-uploader/file-list-in-log.tsx": {
     "eslint-react/no-missing-key": {
       "count": 1
     }
   },
-  "web/app/components/base/file-uploader/file-uploader-in-attachment/file-item.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
+  "web/app/components/base/file-uploader/file-preview-dialog.tsx": {
+    "jsx-a11y/media-has-caption": {
+      "count": 2
     }
   },
-  "web/app/components/base/file-uploader/file-uploader-in-chat-input/file-item.tsx": {
+  "web/app/components/base/file-uploader/file-uploader-in-attachment/file-item.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
     },
@@ -932,11 +924,6 @@
     },
     "typescript/no-explicit-any": {
       "count": 3
-    }
-  },
-  "web/app/components/base/file-uploader/video-preview.tsx": {
-    "jsx-a11y/media-has-caption": {
-      "count": 1
     }
   },
   "web/app/components/base/form/components/base/base-form.tsx": {
