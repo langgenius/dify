@@ -5,7 +5,13 @@ import type {
   MemberInviteSuccessResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
@@ -13,17 +19,23 @@ import { useTranslation } from 'react-i18next'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import InvitationLink from './invitation-link'
 
-type IInvitedModalProps = {
+type InvitedDialogProps = {
   invitationResults: MemberInviteResponse['invitation_results']
-  onCancel: () => void
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onOpenChangeComplete: (open: boolean) => void
 }
-const InvitedModal = ({ invitationResults, onCancel }: IInvitedModalProps) => {
+export function InvitedDialog({
+  invitationResults,
+  open,
+  onOpenChange,
+  onOpenChangeComplete,
+}: InvitedDialogProps) {
   const { t } = useTranslation(['common', 'workspaceMembers'])
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
   })
-  const isCloudEdition = deploymentEdition === 'CLOUD'
   const isNonCloudEdition = deploymentEdition === 'COMMUNITY' || deploymentEdition === 'ENTERPRISE'
 
   const successInvitationResults = invitationResults.filter(
@@ -45,12 +57,7 @@ const InvitedModal = ({ invitationResults, onCancel }: IInvitedModalProps) => {
   )
 
   return (
-    <Dialog
-      open
-      onOpenChange={(open) => {
-        if (!open) onCancel()
-      }}
-    >
+    <Dialog open={open} onOpenChange={onOpenChange} onOpenChangeComplete={onOpenChangeComplete}>
       <DialogContent backdropProps={{ forceRender: true }} className="w-120 p-8">
         <DialogClose
           render={
@@ -75,12 +82,11 @@ const InvitedModal = ({ invitationResults, onCancel }: IInvitedModalProps) => {
             { ns: 'workspaceMembers' },
           )}
         </DialogTitle>
-        {isCloudEdition && <div className="mb-5 text-sm text-text-tertiary">{description}</div>}
+        <DialogDescription className="mb-5 text-sm text-text-tertiary">
+          {description}
+        </DialogDescription>
         {(isNonCloudEdition || !!alreadyMemberInvitationResults.length) && (
           <>
-            {isNonCloudEdition && (
-              <div className="mb-5 text-sm text-text-tertiary">{description}</div>
-            )}
             <div className="mb-9 flex flex-col gap-2">
               {isNonCloudEdition && !!successInvitationResults.length && (
                 <>
@@ -145,13 +151,11 @@ const InvitedModal = ({ invitationResults, onCancel }: IInvitedModalProps) => {
           </>
         )}
         <div className="flex justify-end">
-          <Button className="w-24" onClick={onCancel} variant="primary">
+          <DialogClose render={<Button className="w-24" variant="primary" />}>
             {t(($) => $['members.ok'], { ns: 'workspaceMembers' })}
-          </Button>
+          </DialogClose>
         </div>
       </DialogContent>
     </Dialog>
   )
 }
-
-export default InvitedModal

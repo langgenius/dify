@@ -2,7 +2,6 @@
 import type { MemberInviteResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { Role } from '@/models/access-control'
 import type { Member } from '@/models/common'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useState } from 'react'
@@ -20,15 +19,15 @@ import { useUpdateRolesOfMember } from '@/service/access-control/use-member-role
 import { consoleQuery } from '@/service/console'
 import { useMembers } from '@/service/use-common'
 import { hasPermission } from '@/utils/permission'
-import EditWorkspaceModal from './edit-workspace-modal'
+import { EditWorkspaceDialog } from './edit-workspace-modal'
 import { InviteModal } from './invite-modal'
-import InvitedModal from './invited-modal'
+import { InvitedDialog } from './invited-modal'
 import MemberDetailsModal from './member-details-modal'
 import MemberRow from './member-row'
 import TransferOwnershipModal from './transfer-ownership-modal'
 
 const MembersPage = () => {
-  const { t } = useTranslation(['billing', 'common', 'workspaceMembers', 'accountSettings'])
+  const { t } = useTranslation(['billing', 'common', 'workspaceMembers'])
   const locale = useLocale()
   const language = getAccessControlTemplateLanguage(locale)
 
@@ -41,9 +40,10 @@ const MembersPage = () => {
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { data, refetch } = useMembers(language)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const [invitationResults, setInvitationResults] = useState<
-    MemberInviteResponse['invitation_results'] | null
-  >(null)
+  const [invitationSession, setInvitationSession] = useState<{
+    results: MemberInviteResponse['invitation_results']
+    open: boolean
+  } | null>(null)
   const accounts = data?.accounts || []
   const deploymentEdition = systemFeatures.deployment_edition
   const { data: features } = useQuery(
@@ -63,7 +63,6 @@ const MembersPage = () => {
     isNotUnlimitedMemberPlan &&
     features.members.limit > 0 &&
     accounts.length >= features.members.limit
-  const [editWorkspaceModalVisible, setEditWorkspaceModalVisible] = useState(false)
   const [showTransferOwnershipModal, setShowTransferOwnershipModal] = useState(false)
   const [detailsMember, setDetailsMember] = useState<Member | null>(null)
 
@@ -113,34 +112,7 @@ const MembersPage = () => {
           <div className="grow">
             <div className="flex items-center gap-1 system-md-semibold text-text-secondary">
               <span>{currentWorkspace?.name}</span>
-              {isCurrentWorkspaceOwner && (
-                <span>
-                  <Tooltip>
-                    <TooltipTrigger
-                      render={
-                        <button
-                          type="button"
-                          aria-label={t(($) => $['account.editWorkspaceInfo'], {
-                            ns: 'accountSettings',
-                          })}
-                          className="cursor-pointer rounded-md border-none bg-transparent p-1 hover:bg-black/5"
-                          onClick={() => {
-                            setEditWorkspaceModalVisible(true)
-                          }}
-                        >
-                          <span
-                            aria-hidden="true"
-                            className="i-ri-pencil-line size-4 text-text-tertiary"
-                          />
-                        </button>
-                      }
-                    />
-                    <TooltipContent>
-                      {t(($) => $['account.editWorkspaceInfo'], { ns: 'accountSettings' })}
-                    </TooltipContent>
-                  </Tooltip>
-                </span>
-              )}
+              {isCurrentWorkspaceOwner && <EditWorkspaceDialog />}
             </div>
             <div className="mt-1 system-xs-medium text-text-tertiary">
               {isNotUnlimitedMemberPlan ? (
@@ -173,7 +145,7 @@ const MembersPage = () => {
             {canManageMembers && (
               <InviteModal
                 isEmailSetup={systemFeatures.is_email_setup}
-                onSend={setInvitationResults}
+                onSend={(results) => setInvitationSession({ results, open: true })}
               />
             )}
           </div>
@@ -220,14 +192,21 @@ const MembersPage = () => {
           </table>
         </div>
       </div>
-      {invitationResults && (
-        <InvitedModal
-          invitationResults={invitationResults}
-          onCancel={() => setInvitationResults(null)}
+      {invitationSession && (
+        <InvitedDialog
+          invitationResults={invitationSession.results}
+          open={invitationSession.open}
+          onOpenChange={(open) =>
+            setInvitationSession((session) => session && { ...session, open })
+          }
+          onOpenChangeComplete={(open) => {
+            if (!open) {
+              setInvitationSession((session) =>
+                session?.open === false && session === invitationSession ? null : session,
+              )
+            }
+          }}
         />
-      )}
-      {editWorkspaceModalVisible && (
-        <EditWorkspaceModal onCancel={() => setEditWorkspaceModalVisible(false)} />
       )}
       {showTransferOwnershipModal && (
         <TransferOwnershipModal
