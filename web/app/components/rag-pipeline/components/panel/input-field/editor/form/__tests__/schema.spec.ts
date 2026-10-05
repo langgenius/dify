@@ -7,7 +7,7 @@ vi.mock('@/config', () => ({
   MAX_VAR_KEY_LENGTH: 30,
 }))
 
-const t: TFunction = ((key: string) => key) as unknown as TFunction
+const t: TFunction<['appDebug']> = ((key: string) => key) as unknown as TFunction<['appDebug']>
 
 const defaultOptions = { maxFileUploadLimit: 10 }
 

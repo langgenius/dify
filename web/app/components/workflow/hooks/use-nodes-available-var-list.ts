@@ -50,7 +50,7 @@ const useNodesAvailableVarList = (
     filterVar: () => true,
   },
 ) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['snippet'])
   const snippetInputFields = useSnippetDraftStore((s) => s.inputFields)
   const { getTreeLeafNodes, getBeforeNodesInSameBranchIncludeParent } = useWorkflow()
   const { getNodeAvailableVars } = useWorkflowVariables()
@@ -101,7 +101,7 @@ const useNodesAvailableVarList = (
 }
 
 export const useGetNodesAvailableVarList = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['snippet'])
   const snippetInputFields = useSnippetDraftStore((s) => s.inputFields)
   const { getTreeLeafNodes, getBeforeNodesInSameBranchIncludeParent } = useWorkflow()
   const { getNodeAvailableVars } = useWorkflowVariables()

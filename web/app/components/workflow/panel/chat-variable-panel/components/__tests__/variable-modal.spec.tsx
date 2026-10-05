@@ -1,8 +1,8 @@
-import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { toast } from '@/app/notifications'
 import { ChatVarType } from '../../type'
 import VariableModal from '../variable-modal'
 
@@ -10,7 +10,7 @@ vi.mock('uuid', () => ({
   v4: () => 'generated-id',
 }))
 
-vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => ({
+vi.mock('@/app/notifications', async (importOriginal) => ({
   ...(await importOriginal()),
   toast: {
     error: vi.fn(),

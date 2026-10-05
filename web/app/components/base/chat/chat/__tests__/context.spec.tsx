@@ -31,7 +31,6 @@ describe('ChatContextProvider', () => {
     config: {} as ChatContextValue['config'],
     isResponding: false,
     chatList: [{ id: '1', content: 'hello' } as ChatItem],
-    showPromptLog: false,
     questionIcon: <span data-testid="custom-icon">Icon</span>,
     answerIcon: null,
     onSend: mockOnSend,

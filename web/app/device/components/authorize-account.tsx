@@ -35,7 +35,7 @@ const AuthorizeAccount: FC<Props> = ({
   onDenied,
   onError,
 }) => {
-  const { t } = useTranslation('deviceFlow')
+  const { t } = useTranslation(['deviceFlow', 'common'])
   const [busy, setBusy] = useState(false)
 
   const approve = async () => {

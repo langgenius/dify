@@ -12,7 +12,6 @@ from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInput
 from graphon.file import FileTransferMethod, FileType
 from models import (
     AgentDebugConversation,
-    AppMode,
     Conversation,
     ConversationVariable,
     HumanInputForm,
@@ -39,6 +38,7 @@ from models.enums import (
 from models.human_input import HumanInputDelivery, HumanInputFormRecipient, RecipientType
 from models.tools import ToolConversationVariables, ToolFile
 from tasks.delete_conversation_task import _cleanup_conversation_related_data, sweep_deleted_conversations
+from tests.unit_tests.model_factories import make_conversation, make_message
 
 TENANT_ID = "11111111-1111-1111-1111-111111111111"
 APP_ID = "22222222-2222-2222-2222-222222222222"
@@ -50,10 +50,9 @@ AGENT_ID = "77777777-7777-7777-7777-777777777777"
 
 
 def _conversation(conversation_id: str, *, deleted: bool) -> Conversation:
-    return Conversation(
-        id=conversation_id,
+    return make_conversation(
+        conversation_id=conversation_id,
         app_id=APP_ID,
-        mode=AppMode.CHAT,
         name="Test conversation",
         inputs={},
         status=ConversationStatus.NORMAL,
@@ -64,8 +63,8 @@ def _conversation(conversation_id: str, *, deleted: bool) -> Conversation:
 
 
 def _message() -> Message:
-    return Message(
-        id=MESSAGE_ID,
+    return make_message(
+        message_id=MESSAGE_ID,
         app_id=APP_ID,
         conversation_id=CONVERSATION_ID,
         inputs={},

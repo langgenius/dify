@@ -70,7 +70,7 @@ describe('AudioBtn', () => {
     })
   })
 
-  // URL path resolution for app/public audio endpoints.
+  // URL path resolution for app, agent, and public audio endpoints.
   describe('URL routing', () => {
     it('should call public text-to-audio endpoint when token exists', async () => {
       mockUseParams({ token: 'public-token' })
@@ -109,6 +109,25 @@ describe('AudioBtn', () => {
       expect(call![0]).toBe('/installed-apps/456/text-to-audio')
       expect(call![1]).toBe(false)
     })
+
+    it('should play the selected voice preview through the agent endpoint', async () => {
+      const user = userEvent.setup()
+      mockUseParams({ agentId: 'agent-123' })
+      mockUsePathname('/agents/agent-123/configure')
+
+      render(<AudioBtn isAudition value="This is a voice preview." voice="alloy" />)
+      await user.click(screen.getByRole('button', { name: 'play' }))
+
+      expect(mockGetAudioPlayer).toHaveBeenCalledWith(
+        '/agent/agent-123/text-to-audio',
+        false,
+        undefined,
+        'This is a voice preview.',
+        'alloy',
+        expect.any(Function),
+      )
+      expect(mockPlayAudio).toHaveBeenCalledTimes(1)
+    })
   })
 
   // User-visible playback state transitions.
@@ -121,7 +140,7 @@ describe('AudioBtn', () => {
         expect(mockPlayAudio).toHaveBeenCalledTimes(1)
         expect(getButton())!.toBeDisabled()
       })
-      expect(screen.getByRole('status'))!.toBeInTheDocument()
+      expect(getButton()).toHaveAccessibleName('loading')
       await hoverAndCheckTooltip('loading')
     })
 
@@ -184,7 +203,7 @@ describe('AudioBtn', () => {
       expect(call![4]).toBe('en-US')
     })
 
-    it('should keep empty route when neither token nor appId is present', async () => {
+    it('should keep empty route when no token, appId, or agentId is present', async () => {
       render(<AudioBtn />)
       await userEvent.click(getButton())
 

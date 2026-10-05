@@ -9,23 +9,18 @@ from uuid import UUID
 
 from flask_restx import Resource
 from pydantic import Field
-from sqlalchemy.orm import Session
 
 from controllers.common.rbac import AgentId, RBACCheck
 from controllers.common.schema import register_response_schema_models
-from controllers.common.session import with_session
 from controllers.console import console_ns
-from controllers.console.agent.app_helpers import resolve_agent_app_model
-from controllers.console.wraps import (
-    RBACPermission,
-    account_initialization_required,
-    rbac_permission_required,
-    setup_required,
-    with_current_tenant_id,
-)
+from controllers.console.flask_admission import console_account_admission
+from controllers.console.wraps import RBACPermission
+from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
-from libs.login import login_required
-from services.agent.roster_service import AgentRosterService
+from libs.helper import dump_response
+from machinery.context import RequestContext
+from services.agent.errors import AgentNotFoundError
+from services.app.agent_app_contracts import AgentAppNotFoundError
 
 
 class AgentReferencingWorkflowResponse(ResponseModel):
@@ -59,17 +54,10 @@ class AgentAppReferencingWorkflowsResource(Resource):
         console_ns.models[AgentReferencingWorkflowsResponse.__name__],
     )
     @console_ns.response(404, "Agent not found")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId()))
-    @with_current_tenant_id
-    @with_session(write=False)
-    def get(self, session: Session, tenant_id: str, agent_id: UUID):
-        app_model = resolve_agent_app_model(session=session, tenant_id=tenant_id, agent_id=agent_id)
-        workflows = AgentRosterService(session).list_workflows_referencing_app_agent(
-            tenant_id=tenant_id, app_id=app_model.id
-        )
-        return AgentReferencingWorkflowsResponse(
-            data=[AgentReferencingWorkflowResponse.model_validate(workflow) for workflow in workflows]
-        ).model_dump(mode="json")
+    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId()),))
+    def get(self, context: RequestContext, agent_id: UUID):
+        try:
+            workflows = application_services().agent_apps.access.list_referencing_workflows(context, str(agent_id))
+        except AgentAppNotFoundError as exc:
+            raise AgentNotFoundError from exc
+        return dump_response(AgentReferencingWorkflowsResponse, {"data": workflows})

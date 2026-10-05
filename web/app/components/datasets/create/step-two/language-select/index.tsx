@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from '@langgenius/dify-ui/select'
 import * as React from 'react'
-import { languages } from '@/i18n-config/language'
+import { languages } from '@/i18n/language'
 
 export type ILanguageSelectProps = {
   currentLanguage: string

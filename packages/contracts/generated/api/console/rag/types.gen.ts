@@ -89,7 +89,7 @@ export type PipelineTemplateDetailResponse = {
   name: string
 }
 
-export type RagPipelineOpaqueResponse = unknown
+export type RagPipelineDatasourceListResponse = Array<RagPipelineDatasourceProviderResponse>
 
 export type RagPipelineImportPayload = {
   description?: string | null
@@ -106,6 +106,8 @@ export type RagPipelineImportPayload = {
 export type RagPipelineImportCheckDependenciesResponse = {
   leaked_dependencies?: Array<PluginDependency>
 }
+
+export type RagPipelineOpaqueResponse = unknown
 
 export type WorkflowRunPaginationResponse = {
   data: Array<WorkflowRunForListResponse>
@@ -373,6 +375,14 @@ export type PipelineTemplateItemResponse = {
   privacy_policy?: string | null
 }
 
+export type RagPipelineDatasourceProviderResponse = {
+  declaration: DatasourceProviderEntityWithPlugin
+  is_authorized?: boolean
+  plugin_id: string
+  plugin_unique_identifier: string
+  provider: string
+}
+
 export type PluginDependency = {
   current_identifier?: string | null
   type: PluginDependencyType
@@ -493,6 +503,14 @@ export type DatasetWeightedScoreResponse = {
   weight_type?: string | null
 }
 
+export type DatasourceProviderEntityWithPlugin = {
+  credentials_schema?: Array<ProviderConfig>
+  datasources?: Array<DatasourceEntity>
+  identity: DatasourceProviderIdentity
+  oauth_schema?: OAuthSchema | null
+  provider_type: DatasourceProviderType
+}
+
 export type PluginDependencyType = 'github' | 'marketplace' | 'package'
 
 export type Github = {
@@ -521,6 +539,169 @@ export type DatasetVectorSettingResponse = {
   embedding_provider_name?: string | null
   vector_weight?: number | null
 }
+
+export type ProviderConfig = {
+  default?: number | string | number | boolean | null
+  help?: I18nObject | null
+  label?: I18nObject | null
+  multiple?: boolean
+  name: string
+  options?: Array<Option> | null
+  placeholder?: I18nObject | null
+  required?: boolean
+  scope?: AppSelectorScope | ModelSelectorScope | ToolSelectorScope | null
+  type: ProviderConfigType
+  url?: string | null
+}
+
+export type DatasourceEntity = {
+  description: I18nObject
+  identity: DatasourceIdentity
+  output_schema?: {
+    [key: string]: unknown
+  } | null
+  parameters?: Array<DatasourceParameter>
+}
+
+export type DatasourceProviderIdentity = {
+  author: string
+  description: CoreToolsEntitiesCommonEntitiesI18nObject
+  icon: string
+  label: CoreToolsEntitiesCommonEntitiesI18nObject
+  name: string
+  tags?: Array<ToolLabelEnum> | null
+}
+
+export type OAuthSchema = {
+  client_schema?: Array<ProviderConfig>
+  credentials_schema?: Array<ProviderConfig>
+}
+
+export type DatasourceProviderType =
+  | 'local_file'
+  | 'online_document'
+  | 'online_drive'
+  | 'website_crawl'
+
+export type I18nObject = {
+  en_US: string
+  ja_JP?: string | null
+  pt_BR?: string | null
+  zh_Hans?: string | null
+}
+
+export type Option = {
+  label: I18nObject
+  value: string
+}
+
+export type AppSelectorScope = 'all' | 'chat' | 'completion' | 'workflow'
+
+export type ModelSelectorScope =
+  | 'llm'
+  | 'moderation'
+  | 'rerank'
+  | 'speech2text'
+  | 'text-embedding'
+  | 'tts'
+  | 'vision'
+
+export type ToolSelectorScope = 'all' | 'builtin' | 'custom' | 'workflow'
+
+export type ProviderConfigType =
+  | 'app-selector'
+  | 'array[tools]'
+  | 'boolean'
+  | 'model-selector'
+  | 'secret-input'
+  | 'select'
+  | 'text-input'
+
+export type DatasourceIdentity = {
+  author: string
+  icon?: string | null
+  label: I18nObject
+  name: string
+  provider: string
+}
+
+export type DatasourceParameter = {
+  auto_generate?: PluginParameterAutoGenerate | null
+  default?:
+    | number
+    | number
+    | string
+    | boolean
+    | Array<unknown>
+    | {
+        [key: string]: unknown
+      }
+    | null
+  description: I18nObject
+  label: I18nObject
+  max?: number | number | null
+  min?: number | number | null
+  name: string
+  options?: Array<PluginParameterOption>
+  placeholder?: I18nObject | null
+  precision?: number | null
+  required?: boolean
+  scope?: string | null
+  template?: PluginParameterTemplate | null
+  type: DatasourceParameterType
+}
+
+export type CoreToolsEntitiesCommonEntitiesI18nObject = {
+  en_US: string
+  ja_JP?: string | null
+  pt_BR?: string | null
+  zh_Hans?: string | null
+}
+
+export type ToolLabelEnum =
+  | 'business'
+  | 'design'
+  | 'education'
+  | 'entertainment'
+  | 'finance'
+  | 'image'
+  | 'medical'
+  | 'news'
+  | 'other'
+  | 'productivity'
+  | 'rag'
+  | 'search'
+  | 'social'
+  | 'travel'
+  | 'utilities'
+  | 'videos'
+  | 'weather'
+
+export type PluginParameterAutoGenerate = {
+  type: PluginParameterAutoGenerateType
+}
+
+export type PluginParameterOption = {
+  icon?: string | null
+  label: I18nObject
+  value: string
+}
+
+export type PluginParameterTemplate = {
+  enabled?: boolean
+}
+
+export type DatasourceParameterType =
+  | 'boolean'
+  | 'file'
+  | 'files'
+  | 'number'
+  | 'secret-input'
+  | 'select'
+  | 'string'
+  | 'system-files'
+
+export type PluginParameterAutoGenerateType = 'prompt_instruction'
 
 export type DeleteRagPipelineCustomizedTemplatesByTemplateIdData = {
   body?: never
@@ -649,7 +830,7 @@ export type GetRagPipelinesDatasourcePluginsData = {
 }
 
 export type GetRagPipelinesDatasourcePluginsResponses = {
-  200: RagPipelineOpaqueResponse
+  200: RagPipelineDatasourceListResponse
 }
 
 export type GetRagPipelinesDatasourcePluginsResponse =

@@ -1,11 +1,11 @@
 'use client'
 import type { CustomCollectionBackend } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
 import { useCanManageTools } from '@/app/components/tools/hooks/use-tool-permissions'
+import { toast } from '@/app/notifications'
 import { useDocLink } from '@/context/i18n'
 import { createCustomCollection } from '@/service/tools'
 import CreateEntryCard from './create-entry-card'
@@ -16,7 +16,7 @@ type Props = Readonly<{
 }>
 
 function useCustomToolCreateAction({ onRefreshData }: Props) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const canManageTools = useCanManageTools()
   const [isShowEditCustomCollectionModal, setIsShowEditCustomCollectionModal] = useState(false)
 
@@ -38,7 +38,7 @@ function useCustomToolCreateAction({ onRefreshData }: Props) {
 }
 
 export const NewCustomToolButton = ({ onRefreshData }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['tools'])
   const addSwaggerAPIAsToolLabel = t(($) => $.addSwaggerAPIAsTool, { ns: 'tools' })
   const {
     canManageTools,
@@ -72,7 +72,7 @@ export const NewCustomToolButton = ({ onRefreshData }: Props) => {
 }
 
 const Contribute = ({ onRefreshData, stepByStepTourTarget }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['tools'])
   const docLink = useDocLink()
   const {
     canManageTools,

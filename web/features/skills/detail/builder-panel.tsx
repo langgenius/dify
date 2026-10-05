@@ -6,9 +6,8 @@ import type {
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { BuilderChatMessage, SkillBuilderAttachment, SkillBuilderModel } from './shared'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -20,6 +19,8 @@ import {
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import { ModelSelector } from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { toast } from '@/app/notifications'
+import { useRefWithInit } from '@/hooks/use-ref-with-init'
 import { consoleQuery } from '@/service/console'
 import { sendSkillAssistMessage, uploadSkillFile } from '../client'
 import { SkillBuilderGridTexture } from './builder-grid-texture'
@@ -53,7 +54,7 @@ function isSkillBuilderProgressStage(stage: unknown): stage is SkillBuilderProgr
 }
 
 function SkillBuilderProgressStageLabel({ stage }: { stage: SkillBuilderProgressStage }) {
-  const { t } = useTranslation('skill')
+  const { t } = useTranslation(['skill'])
 
   if (stage === 'reading_draft')
     return <>{t(($) => $['skillManagement.detail.builder.progress.readingDraft'])}</>
@@ -75,7 +76,7 @@ function BuilderModelSelector({
   selectedModel: SkillBuilderModel | undefined
   onSelect: (model: SkillBuilderModel) => void
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['modelProvider'])
 
   return (
     <div className="flex w-fit max-w-full min-w-0 items-center gap-px">
@@ -115,7 +116,7 @@ function BuilderModelSelector({
           trigger={
             <button
               type="button"
-              aria-label={t(($) => $['modelProvider.modelSettings'], { ns: 'common' })}
+              aria-label={t(($) => $['modelProvider.modelSettings'], { ns: 'modelProvider' })}
               className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
             >
               <span aria-hidden className="i-ri-equalizer-2-line size-4" />
@@ -150,7 +151,7 @@ function SkillBuilderThinkingMessage({
   reasoningContent?: string
   seconds: number
 }) {
-  const { t } = useTranslation('skill')
+  const { t } = useTranslation(['skill'])
   const minutes = Math.floor(seconds / 60)
   const remainingSeconds = seconds % 60
   const duration = minutes > 0 ? `${minutes}m${remainingSeconds}s` : `${remainingSeconds}s`
@@ -295,7 +296,7 @@ export function SkillBuilderPanel({
   selectedFile: SkillFileResponse | undefined
   skillId: string
 }) {
-  const { t } = useTranslation('skill')
+  const { t } = useTranslation(['skill'])
   const queryClient = useQueryClient()
   const titleId = useId()
   const [prompt, setPrompt] = useState('')
@@ -325,7 +326,7 @@ export function SkillBuilderPanel({
   )
   const [messages, setMessages] = useState<BuilderChatMessage[]>(initialMessages)
   const messagesRef = useRef<BuilderChatMessage[]>(initialMessages)
-  const rawAssistantMessagesRef = useRef(new Map<string, string>())
+  const rawAssistantMessagesRef = useRefWithInit(() => new Map<string, string>())
   const [attachments, setAttachments] = useState<SkillBuilderAttachment[]>([])
   const [isUploadingAttachment, setIsUploadingAttachment] = useState(false)
   const attachmentInputRef = useRef<HTMLInputElement>(null)
@@ -370,7 +371,18 @@ export function SkillBuilderPanel({
       }
     : undefined
   const [selectedModel, setSelectedModel] = useState<SkillBuilderModel | undefined>()
-  const activeSelectedModel = selectedModel ?? defaultBuilderModel ?? fallbackModel
+  const activeSelectedModel = [selectedModel, defaultBuilderModel, fallbackModel].find(
+    (candidate) =>
+      candidate &&
+      textGenerationModelList.some(
+        (provider) =>
+          provider.provider === candidate.provider &&
+          provider.status === ModelStatusEnum.active &&
+          provider.models.some(
+            (model) => model.model === candidate.model && model.status === ModelStatusEnum.active,
+          ),
+      ),
+  )
   const canSendBuilderMessage = !!activeSelectedModel?.provider && !!activeSelectedModel?.model
   const suggestions = [
     t(($) => $['skillManagement.detail.builder.exampleIssueTriage']),
@@ -419,7 +431,7 @@ export function SkillBuilderPanel({
     messagesRef.current = initialMessages
     rawAssistantMessagesRef.current.clear()
     setMessages(initialMessages)
-  }, [initialMessages])
+  }, [initialMessages, rawAssistantMessagesRef])
 
   useEffect(() => {
     messagesRef.current = messages
@@ -1094,10 +1106,11 @@ export function SkillBuilderPanel({
                       />
                     </button>
                   </div>
-                  <Button
+                  <IconButton
                     aria-label={t(($) => $['skillManagement.detail.builder.send'])}
                     variant="primary"
-                    className="size-8 px-0 focus-visible:ring-inset"
+                    size="lg"
+                    className="focus-visible:ring-inset"
                     disabled={
                       !canSendBuilderMessage ||
                       (!prompt.trim() && attachments.length === 0) ||
@@ -1115,7 +1128,7 @@ export function SkillBuilderPanel({
                         'size-4',
                       )}
                     />
-                  </Button>
+                  </IconButton>
                 </div>
               </div>
             </div>

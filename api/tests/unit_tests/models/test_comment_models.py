@@ -5,12 +5,11 @@ from sqlalchemy.orm import Session
 
 from models.account import Account
 from models.comment import WorkflowComment, WorkflowCommentMention, WorkflowCommentReply
+from tests.unit_tests.model_factories import make_account
 
 
 def _account(name: str) -> Account:
-    account = Account(name=name, email=f"{name.lower()}@example.com")
-    account.id = str(uuid4())
-    return account
+    return make_account(account_id=str(uuid4()), name=name, email=f"{name.lower()}@example.com")
 
 
 def _comment(created_by: str, resolved_by: str | None = None) -> WorkflowComment:

@@ -5,8 +5,6 @@ Tests cover all public methods and error paths of the DatasetDocumentStore class
 which provides document storage and retrieval functionality for datasets in the RAG system.
 """
 
-from unittest.mock import MagicMock
-
 import pytest
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -14,6 +12,7 @@ from sqlalchemy.orm import Session
 from core.rag.docstore.dataset_docstore import DatasetDocumentStore, DocumentSegment
 from core.rag.models.document import AttachmentDocument, ChildDocument, Document
 from models.dataset import ChildChunk, Dataset, SegmentAttachmentBinding
+from tests.unit_tests.model_factories import make_dataset
 
 TENANT_ID = "00000000-0000-0000-0000-000000000001"
 DATASET_ID = "00000000-0000-0000-0000-000000000002"
@@ -23,11 +22,7 @@ ATTACHMENT_ID = "00000000-0000-0000-0000-000000000005"
 
 
 def _dataset() -> Dataset:
-    dataset = Dataset(
-        id=DATASET_ID,
-        tenant_id=TENANT_ID,
-    )
-    return dataset
+    return make_dataset(dataset_id=DATASET_ID, tenant_id=TENANT_ID)
 
 
 def _persist_segment(
@@ -287,8 +282,8 @@ class TestDatasetDocumentStoreAddDocuments(_UsesSQLiteSession):
     def test_add_documents_with_none_metadata(self, sqlite_session: Session):
         """Test that document with None metadata raises ValueError."""
 
-        document = MagicMock(spec=Document)
-        document.metadata = None
+        # Bypass model validation to exercise the store's legacy malformed-metadata guard.
+        document = Document.model_construct(page_content="Test content", metadata=None)
         store = DatasetDocumentStore(dataset=_dataset(), user_id=USER_ID, document_id=DOCUMENT_ID)
 
         with pytest.raises(ValueError, match="metadata must be a dict"):

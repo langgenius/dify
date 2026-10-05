@@ -83,7 +83,7 @@ docker compose up -d
 
 Po zagonu lahko dostopate do nadzorne plošče Dify v brskalniku na [http://localhost/install](http://localhost/install) in začnete postopek inicializacije.
 
-#### Iskanje pomoči
+### Iskanje pomoči
 
 Prosimo, glejte naša pogosta vprašanja [FAQ](https://docs.dify.ai/getting-started/install-self-hosted/faqs) če naletite na težave pri nastavitvi Dify. Če imate še vedno težave, se obrnite na [skupnost ali nas](#skupnost-in-stik).
 
@@ -117,7 +117,7 @@ AVse ponudbe Difyja so opremljene z ustreznimi API-ji, tako da lahko Dify brez t
 ## Uporaba Dify
 
 - **Cloud </br>**
-  Gostimo storitev Dify Cloud za vsakogar, ki jo lahko preizkusite brez nastavitev. Zagotavlja vse zmožnosti različice za samostojno namestitev in vključuje 200 brezplačnih klicev GPT-4 v načrtu peskovnika.
+  Preizkusite [Dify Cloud](https://cloud.dify.ai) brez upravljanja strežnika. Trenutne pakete in omejitve uporabe najdete na [strani s cenami](https://dify.ai/pricing).
 
 - **Self-hosting Dify Community Edition</br>**
   Hitro zaženite Dify v svojem okolju s tem [začetnim vodnikom](#hitri-začetek) . Za dodatne reference in podrobnejša navodila uporabite našo [dokumentacijo](https://docs.dify.ai) .
@@ -141,7 +141,7 @@ Dify pozdravlja vse vrste prispevkov:
 
 - **Koda**: preberite [vodnik za prispevke](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md), nato pa preglejte [naloge za nove sodelavce](https://github.com/langgenius/dify/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22).
 - **Ideje in povratne informacije**: začnite ali se pridružite [razpravi na GitHubu](https://github.com/langgenius/dify/discussions).
-- **Prevodi**: sledite [vodniku za internacionalizacijo](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md), da dodate ali posodobite jezik.
+- **Prevodi**: sledite [vodniku za internacionalizacijo](https://github.com/langgenius/dify/blob/main/web/i18n/README.md), da dodate ali posodobite jezik.
 - **Skupnost**: delite ustvarjene aplikacije, pomagajte drugim uporabnikom in razširite glas o Difyju.
 
 ### Sodelavci
@@ -164,7 +164,7 @@ Izberite kanal, ki najbolj ustreza vašemu vprašanju:
 
 ## Varnostno razkritje
 
-Zaradi zaščite vaše zasebnosti se izogibajte objavljanju varnostnih vprašanj na GitHub. Namesto tega pošljite vprašanja na security@dify.ai in zagotovili vam bomo podrobnejši odgovor.
+Ranljivosti prijavite zasebno prek GitHub Security Advisories v skladu z našo [varnostno politiko](../../SECURITY.md). Ne razkrivajte jih v javnih prijavah težav, razpravah ali zahtevkih za združitev.
 
 ## Licenca
 

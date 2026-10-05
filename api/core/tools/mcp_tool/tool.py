@@ -44,7 +44,7 @@ class MCPTool(Tool):
         tenant_id: str,
         icon: str,
         server_url: str,
-        provider_id: str,
+        server_identifier: str,
         headers: dict[str, str] | None = None,
         timeout: float | None = None,
         sse_read_timeout: float | None = None,
@@ -54,7 +54,7 @@ class MCPTool(Tool):
         self.tenant_id = tenant_id
         self.icon = icon
         self.server_url = server_url
-        self.provider_id = provider_id
+        self.server_identifier = server_identifier
         self.headers = headers or {}
         self.timeout = timeout
         self.sse_read_timeout = sse_read_timeout
@@ -250,7 +250,7 @@ class MCPTool(Tool):
             tenant_id=self.tenant_id,
             icon=self.icon,
             server_url=self.server_url,
-            provider_id=self.provider_id,
+            server_identifier=self.server_identifier,
             headers=self.headers,
             timeout=self.timeout,
             sse_read_timeout=self.sse_read_timeout,
@@ -299,7 +299,9 @@ class MCPTool(Tool):
         # This minimizes database connection hold time
         with Session(db.engine, expire_on_commit=False) as session:
             mcp_service = MCPToolManageService(session=session)
-            provider_entity = mcp_service.get_provider_entity(self.provider_id, self.tenant_id, by_server_id=True)
+            provider_entity = mcp_service.get_provider_entity_by_server_identifier(
+                server_identifier=self.server_identifier, tenant_id=self.tenant_id
+            )
 
             # Decrypt and prepare all credentials before closing session
             server_url = provider_entity.decrypt_server_url()

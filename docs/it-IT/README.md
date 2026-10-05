@@ -86,9 +86,9 @@ docker compose up -d
 
 Dopo aver avviato il server, potete accedere al dashboard di Dify tramite il vostro browser all'indirizzo [http://localhost/install](http://localhost/install) e avviare il processo di inizializzazione.
 
-#### Richiedere Aiuto
+### Richiedere Aiuto
 
-Consultate le nostre [FAQ](https://docs.dify.ai/getting-started/install-self-hosted/faqs) se riscontrate problemi durante la configurazione di Dify. Contattateci [tramite la community](#community--contatti) se continuano a verificarsi difficoltà.
+Consultate le nostre [FAQ](https://docs.dify.ai/getting-started/install-self-hosted/faqs) se riscontrate problemi durante la configurazione di Dify. Contattateci [tramite la community](#community-e-contatti) se continuano a verificarsi difficoltà.
 
 > Se desiderate contribuire a Dify o effettuare ulteriori sviluppi, consultate la nostra [guida al deployment dal codice sorgente](https://docs.dify.ai/getting-started/install-self-hosted/local-source-code).
 
@@ -120,7 +120,7 @@ Tutte le offerte di Dify sono dotate di API corrispondenti, permettendovi di int
 ## Utilizzo di Dify
 
 - **Cloud <br/>**
-  Ospitiamo un servizio [Dify Cloud](https://dify.ai) che chiunque può provare senza configurazione. Offre tutte le funzionalità della versione self-hosted e include 200 chiamate GPT-4 gratuite nel piano sandbox.
+  Prova [Dify Cloud](https://cloud.dify.ai) senza gestire un server. Consulta la [pagina dei prezzi](https://dify.ai/pricing) per i piani e i limiti di utilizzo attuali.
 
 - **Dify Community Edition Self-Hosted<br/>**
   Avviate rapidamente Dify nel vostro ambiente con questa [guida di avvio rapido](#avvio-rapido). Utilizzate la nostra [documentazione](https://docs.dify.ai) per ulteriori informazioni e istruzioni dettagliate.
@@ -144,7 +144,7 @@ Dify accoglie contributi di ogni tipo:
 
 - **Codice**: leggi la [Guida ai contributi](../../CONTRIBUTING.md), quindi consulta le [issue adatte ai nuovi contributori](https://github.com/langgenius/dify/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22).
 - **Idee e feedback**: avvia o partecipa a una [discussione su GitHub](https://github.com/langgenius/dify/discussions).
-- **Traduzioni**: segui la [guida all’internazionalizzazione](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md) per aggiungere o aggiornare una lingua.
+- **Traduzioni**: segui la [guida all’internazionalizzazione](https://github.com/langgenius/dify/blob/main/web/i18n/README.md) per aggiungere o aggiornare una lingua.
 - **Community**: condividi le app che crei, aiuta gli altri utenti e fai conoscere Dify.
 
 ### Collaboratori
@@ -167,7 +167,7 @@ Scegli il canale più adatto alla tua richiesta:
 
 ## Divulgazione sulla Sicurezza
 
-Per proteggere la vostra privacy, evitate di pubblicare problemi di sicurezza su GitHub. Inviate invece le vostre domande a security@dify.ai e vi forniremo una risposta più dettagliata.
+Segnala le vulnerabilità in privato tramite GitHub Security Advisories, seguendo la nostra [politica di sicurezza](../../SECURITY.md). Non divulgarle in issue, discussioni o pull request pubbliche.
 
 ## Licenza
 

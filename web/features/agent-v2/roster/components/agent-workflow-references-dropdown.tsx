@@ -6,7 +6,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
-  DropdownMenuLabel,
+  DropdownMenuGroupLabel,
   DropdownMenuLinkItem,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
@@ -36,7 +36,7 @@ export function AgentWorkflowReferencesDropdown({
   publishedReferences: AgentAppPublishedReferenceResponse[]
   referenceCount: number
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentRoster'])
 
   return (
     <DropdownMenu modal={false}>
@@ -46,15 +46,15 @@ export function AgentWorkflowReferencesDropdown({
           className="i-custom-vender-agent-v2-plan size-3 shrink-0 text-text-tertiary"
         />
         <span className="sr-only">
-          {t(($) => $['roster.references.trigger'], { name: agentName })}:{' '}
+          {t(($) => $['roster.references.trigger'], { ns: 'agentRoster', name: agentName })}:{' '}
         </span>
         <span className="system-xs-regular text-text-tertiary">{referenceCount}</span>
       </DropdownMenuTrigger>
       <DropdownMenuContent placement="bottom-start" sideOffset={4} className="w-66 p-1">
         <DropdownMenuGroup>
-          <DropdownMenuLabel className="flex w-full min-w-0 truncate pt-2 pr-3 pb-1.5 pl-2 system-xs-medium text-text-tertiary normal-case">
-            {t(($) => $['roster.references.label'], { name: agentName })}
-          </DropdownMenuLabel>
+          <DropdownMenuGroupLabel className="flex w-full min-w-0 truncate pt-2 pr-3 pb-1.5 pl-2 system-xs-medium normal-case">
+            {t(($) => $['roster.references.label'], { ns: 'agentRoster', name: agentName })}
+          </DropdownMenuGroupLabel>
           {publishedReferences.map((reference) => {
             const { iconType, imageUrl } = getWorkflowReferenceIcon(reference)
 
@@ -68,7 +68,7 @@ export function AgentWorkflowReferencesDropdown({
                     rel="noopener noreferrer"
                   />
                 }
-                className="group mx-0 h-8 gap-2 px-2 py-1 pr-2.5 system-md-regular text-text-secondary"
+                className="group mx-0 gap-2 py-1 pr-2.5 system-md-regular text-text-secondary"
               >
                 <span aria-hidden className="shrink-0">
                   <AppIcon

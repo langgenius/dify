@@ -9,6 +9,7 @@ from controllers.service_api.app import workflow as workflow_module
 from core.helper.trace_id_helper import get_trace_session_id
 from models.enums import EndUserType
 from models.model import App, AppMode, EndUser
+from tests.unit_tests.model_factories import make_app, make_end_user
 
 
 class _Request:
@@ -41,16 +42,11 @@ def test_trace_session_id_invalid_highest_priority_raises_bad_request():
 
 
 def _app(mode: AppMode) -> App:
-    return App(id="app-1", mode=mode, tenant_id="tenant-1")
+    return make_app(mode=mode, icon_type=None)
 
 
 def _end_user() -> EndUser:
-    return EndUser(
-        id="user-1",
-        tenant_id="tenant-1",
-        type=EndUserType.SERVICE_API,
-        session_id="session-1",
-    )
+    return make_end_user(end_user_id="user-1", end_user_type=EndUserType.SERVICE_API)
 
 
 def _assert_generate_trace_session_id(mock_generate_service: MagicMock, expected: str) -> None:

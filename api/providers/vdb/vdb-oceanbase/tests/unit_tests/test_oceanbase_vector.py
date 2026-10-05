@@ -273,6 +273,54 @@ def test_create_collection_happy_path_with_hybrid_and_index(oceanbase_module, mo
     oceanbase_module.redis_client.set.assert_called_once()
 
 
+class _ParamRow:
+    """Row-like object mimicking SQLAlchemy's Row, which exposes columns via ``_mapping``."""
+
+    def __init__(self, **columns):
+        self._mapping = columns
+
+
+def _seekdb_param_row(value: str) -> _ParamRow:
+    # SeekDB 1.4 drops svr_ip/svr_port, so the value column no longer sits at index 6.
+    return _ParamRow(name="ob_vector_memory_limit_percentage", data_type="INT", value=value)
+
+
+def test_create_collection_resolves_parameter_value_by_column_name(oceanbase_module, monkeypatch: pytest.MonkeyPatch):
+    lock = MagicMock()
+    lock.__enter__.return_value = None
+    lock.__exit__.return_value = None
+    monkeypatch.setattr(oceanbase_module.redis_client, "lock", MagicMock(return_value=lock))
+    monkeypatch.setattr(oceanbase_module.redis_client, "get", MagicMock(return_value=None))
+    monkeypatch.setattr(oceanbase_module.redis_client, "set", MagicMock())
+    monkeypatch.setattr(oceanbase_module, "Column", lambda *args, **kwargs: SimpleNamespace(args=args, kwargs=kwargs))
+    monkeypatch.setattr(oceanbase_module, "VECTOR", lambda dim: SimpleNamespace(dim=dim))
+
+    def _build(rows):
+        vector = oceanbase_module.OceanBaseVector.__new__(oceanbase_module.OceanBaseVector)
+        vector._collection_name = "collection_1"
+        vector._vec_dim = 2
+        vector._hybrid_search_enabled = False
+        vector._config = SimpleNamespace(metric_type="cosine", hnsw_m=16, hnsw_ef_construction=64)
+        vector._client = MagicMock()
+        vector._client.check_table_exists.return_value = False
+        vector._client.perform_raw_text_sql.side_effect = rows
+        vector.delete = MagicMock()
+        vector._load_collection_fields = MagicMock()
+        return vector
+
+    vector = _build([[_seekdb_param_row("30")], None])
+    vector._create_collection()
+    assert vector._client.perform_raw_text_sql.call_count == 2
+    assert "ALTER SYSTEM" not in vector._client.perform_raw_text_sql.call_args_list[0].args[0]
+
+    vector = _build([[_seekdb_param_row("0"), _seekdb_param_row("30")], None, None])
+    vector._create_collection()
+    assert (
+        vector._client.perform_raw_text_sql.call_args_list[1].args[0]
+        == "ALTER SYSTEM SET ob_vector_memory_limit_percentage = 30"
+    )
+
+
 def test_create_collection_error_paths(oceanbase_module, monkeypatch: pytest.MonkeyPatch):
     lock = MagicMock()
     lock.__enter__.return_value = None

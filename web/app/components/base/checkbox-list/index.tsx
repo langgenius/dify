@@ -54,7 +54,7 @@ export const CheckboxList = ({
   showSearch = true,
   maxHeight,
 }: CheckboxListProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [searchQuery, setSearchQuery] = useState('')
 
   const filteredOptions = useMemo(() => {

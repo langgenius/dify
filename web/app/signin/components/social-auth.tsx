@@ -1,15 +1,15 @@
 import { buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '#i18n'
 import { API_PREFIX } from '@/config'
-import { useLocale } from '@/context/i18n'
 import { useSearchParams } from '@/next/navigation'
 import { getPurifyHref } from '@/utils'
 import { getBrowserTimezone } from '@/utils/timezone'
 import style from '../page.module.css'
 
 export default function SocialAuth() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['login'])
   const searchParams = useSearchParams()
   const locale = useLocale()
 

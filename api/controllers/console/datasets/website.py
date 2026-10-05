@@ -7,8 +7,9 @@ from controllers.common.schema import query_params_from_model, register_response
 from controllers.console import console_ns
 from controllers.console.datasets.error import WebsiteCrawlError
 from controllers.console.wraps import account_initialization_required, model_validate, setup_required
+from extensions.ext_application_services import application_services
 from libs.login import login_required
-from services.website_service import WebsiteCrawlApiRequest, WebsiteCrawlStatusApiRequest, WebsiteService
+from services.data_source.website_service import WebsiteCrawlApiRequest, WebsiteCrawlStatusApiRequest, WebsiteService
 
 
 class WebsiteCrawlPayload(BaseModel):
@@ -49,7 +50,7 @@ class WebsiteCrawlApi(Resource):
 
         # Crawl URL using typed request
         try:
-            result = WebsiteService.crawl_url(api_request)
+            result = WebsiteService(providers=application_services().data_sources.providers).crawl_url(api_request)
         except Exception as e:
             raise WebsiteCrawlError(str(e))
         return result, 200
@@ -77,7 +78,9 @@ class WebsiteCrawlStatusApi(Resource):
 
         # Get crawl status using typed request
         try:
-            result = WebsiteService.get_crawl_status_typed(api_request)
+            result = WebsiteService(providers=application_services().data_sources.providers).get_crawl_status_typed(
+                api_request
+            )
         except Exception as e:
             raise WebsiteCrawlError(str(e))
         return result, 200

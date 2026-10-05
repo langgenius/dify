@@ -13,7 +13,7 @@ export type Tag = {
 }
 
 export const useTags = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['pluginTags'])
 
   const tags = useMemo(() => {
     return tagKeys.map((tag) => {
@@ -54,7 +54,7 @@ type Category = {
 }
 
 export const useCategories = (isSingle?: boolean) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
 
   const categories = useMemo(() => {
     return categoryKeys.map((category) => {
@@ -97,12 +97,15 @@ export const PLUGIN_PAGE_TABS_MAP = {
 }
 
 export const usePluginPageTabs = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['navigation'])
   const tabs = [
-    { value: PLUGIN_PAGE_TABS_MAP.plugins, text: t(($) => $['menus.plugins'], { ns: 'common' }) },
+    {
+      value: PLUGIN_PAGE_TABS_MAP.plugins,
+      text: t(($) => $['menus.plugins'], { ns: 'navigation' }),
+    },
     {
       value: PLUGIN_PAGE_TABS_MAP.marketplace,
-      text: t(($) => $['menus.exploreMarketplace'], { ns: 'common' }),
+      text: t(($) => $['menus.exploreMarketplace'], { ns: 'navigation' }),
     },
   ]
   return tabs

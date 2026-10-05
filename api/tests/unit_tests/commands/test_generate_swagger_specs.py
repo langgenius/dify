@@ -687,6 +687,22 @@ def test_generate_specs_include_console_contract_shapes_for_schema_migration(tmp
     assert file_upload_schema["properties"]["file"]["type"] == "string"
     assert file_upload_schema["properties"]["source"]["enum"] == ["datasets"]
 
+    package_import = paths["/apps/imports"]["post"]
+    assert _request_schema(package_import, "multipart/form-data")["required"] == ["file"]
+    assert _request_schema(package_import, "multipart/form-data")["properties"]["app_id"]["type"] == "string"
+    assert _request_schema(package_import, "application/json")["$ref"] == "#/components/schemas/AppImportPayload"
+    assert "mode" in schemas["AppImportPayload"]["required"]
+    assert "403" in package_import["responses"]
+    export = paths["/apps/{app_id}/export"]["get"]
+    assert export["responses"]["200"]["content"]["application/zip"]["schema"] == {"type": "string", "format": "binary"}
+    assert export["responses"]["200"]["content"]["application/json"]["schema"]["$ref"] == (
+        "#/components/schemas/AppExportResponse"
+    )
+    export_format = next(param for param in export["parameters"] if param["name"] == "format")
+    assert set(export_format["schema"]["enum"]) == {"yaml", "ifpkg"}
+    assert export_format["schema"].get("default") is None
+    assert "defaults to ifpkg for all Apps" in export_format["description"]
+
     api_key_auth_binding_schema = _request_schema(paths["/api-key-auth/data-source/binding"]["post"])
     assert api_key_auth_binding_schema["$ref"] == "#/components/schemas/ApiKeyAuthBindingPayload"
     assert schemas["ApiKeyAuthBindingPayload"]["properties"]["credentials"]["$ref"] == (
@@ -793,6 +809,14 @@ def test_generate_specs_include_console_contract_shapes_for_schema_migration(tmp
     )
     assert {"enabled", "model", "prompt"} <= set(schemas["WorkflowSuggestedQuestionsAfterAnswerPayload"]["properties"])
     assert {"enabled", "language", "voice", "autoPlay"} <= set(schemas["WorkflowTextToSpeechPayload"]["properties"])
+    assert schemas["WorkflowTextToSpeechPayload"]["properties"]["autoPlay"]["anyOf"][0]["enum"] == [
+        "disabled",
+        "enabled",
+    ]
+    assert schemas["AgentTextToSpeechFeatureConfig"]["properties"]["autoPlay"]["anyOf"][0]["enum"] == [
+        "disabled",
+        "enabled",
+    ]
     assert {"enabled", "type", "config"} <= set(schemas["WorkflowSensitiveWordAvoidancePayload"]["properties"])
     file_upload = schemas["WorkflowFileUploadPayload"]["properties"]
     assert {"document", "audio", "video", "custom", "preview_config"} <= set(file_upload)

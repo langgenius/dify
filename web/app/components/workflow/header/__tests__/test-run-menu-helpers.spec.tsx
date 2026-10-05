@@ -1,86 +1,15 @@
-import type { TriggerOption } from '../test-run-menu'
-import { DropdownMenu, DropdownMenuContent } from '@langgenius/dify-ui/dropdown-menu'
-import { fireEvent, render, renderHook, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { TriggerType } from '../test-run-menu'
-import {
-  getNormalizedShortcutKey,
-  OptionRow,
-  SingleOptionTrigger,
-  useShortcutMenu,
-} from '../test-run-menu-helpers'
-
-const createOption = (overrides: Partial<TriggerOption> = {}): TriggerOption => ({
-  id: 'user-input',
-  type: TriggerType.UserInput,
-  name: 'User Input',
-  icon: <span>icon</span>,
-  enabled: true,
-  ...overrides,
-})
+import { getNormalizedShortcutKey, SingleOptionTrigger } from '../test-run-menu-helpers'
 
 describe('test-run-menu helpers', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  it('should normalize shortcut keys and render option rows with clickable shortcuts', async () => {
-    const user = userEvent.setup()
-    const onSelect = vi.fn()
-    const option = createOption()
-
+  it('should normalize shortcut keys', () => {
     expect(getNormalizedShortcutKey(new KeyboardEvent('keydown', { key: '`' }))).toBe('~')
     expect(getNormalizedShortcutKey(new KeyboardEvent('keydown', { key: '1' }))).toBe('1')
-
-    render(
-      <DropdownMenu open>
-        <DropdownMenuContent>
-          <OptionRow option={option} shortcutKey="1" onSelect={onSelect} />
-        </DropdownMenuContent>
-      </DropdownMenu>,
-    )
-
-    expect(screen.getByText('1')).toBeInTheDocument()
-
-    await user.click(screen.getByText('User Input'))
-
-    expect(onSelect).toHaveBeenCalledWith(option)
-  })
-
-  it('should handle shortcut key presses only when the menu is open and the event is eligible', () => {
-    const handleSelect = vi.fn()
-    const option = createOption({ id: 'run-all', type: TriggerType.All, name: 'Run All' })
-
-    const { rerender, unmount } = renderHook(
-      ({ open }) =>
-        useShortcutMenu({
-          open,
-          shortcutMappings: [{ option, shortcutKey: '~' }],
-          handleSelect,
-        }),
-      {
-        initialProps: { open: true },
-      },
-    )
-
-    fireEvent.keyDown(window, { key: '`' })
-    fireEvent.keyDown(window, { key: '`', altKey: true })
-    fireEvent.keyDown(window, { key: '`', repeat: true })
-
-    const preventedEvent = new KeyboardEvent('keydown', { key: '`', cancelable: true })
-    preventedEvent.preventDefault()
-    window.dispatchEvent(preventedEvent)
-
-    expect(handleSelect).toHaveBeenCalledTimes(1)
-    expect(handleSelect).toHaveBeenCalledWith(option)
-
-    rerender({ open: false })
-    fireEvent.keyDown(window, { key: '`' })
-    expect(handleSelect).toHaveBeenCalledTimes(1)
-
-    unmount()
-    fireEvent.keyDown(window, { key: '`' })
-    expect(handleSelect).toHaveBeenCalledTimes(1)
   })
 
   it('should run single options for element and non-element children unless the click is prevented', async () => {

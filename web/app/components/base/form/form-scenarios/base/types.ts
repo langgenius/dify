@@ -1,15 +1,17 @@
 import type { Option } from '../../components/field/select'
 import type { TransferMethod } from '@/types/app'
 
-export enum BaseFieldType {
-  textInput = 'text-input',
-  paragraph = 'paragraph',
-  numberInput = 'number-input',
-  checkbox = 'checkbox',
-  select = 'select',
-  file = 'file',
-  fileList = 'file-list',
-}
+export const BaseFieldType = {
+  textInput: 'text-input',
+  paragraph: 'paragraph',
+  numberInput: 'number-input',
+  checkbox: 'checkbox',
+  select: 'select',
+  file: 'file',
+  fileList: 'file-list',
+} as const
+
+export type BaseFieldType = (typeof BaseFieldType)[keyof typeof BaseFieldType]
 
 export type ShowCondition = {
   variable: string

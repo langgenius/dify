@@ -1,5 +1,6 @@
 import type { InputVar } from '@/models/pipeline'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { PipelineInputVarType } from '@/models/pipeline'
 import FieldItem from '../field-item'
 
@@ -35,10 +36,11 @@ describe('FieldItem', () => {
     expect(screen.getByText('workflow.nodes.start.required'))!.toBeInTheDocument()
   })
 
-  it('should show edit and delete controls on hover and trigger both callbacks', () => {
+  it('supports editing and deleting using the keyboard without hovering the row', async () => {
+    const user = userEvent.setup()
     const onClickEdit = vi.fn()
     const onRemove = vi.fn()
-    const { container } = render(
+    render(
       <FieldItem
         payload={createInputVar({ variable: 'custom_field' })}
         index={2}
@@ -47,10 +49,12 @@ describe('FieldItem', () => {
       />,
     )
 
-    fireEvent.mouseEnter(container.firstChild!)
-    const buttons = screen.getAllByRole('button')
-    fireEvent.click(buttons[0]!)
-    fireEvent.click(buttons[1]!)
+    await user.tab()
+    expect(screen.getByRole('button', { name: 'common.operation.edit' })).toHaveFocus()
+    await user.keyboard('{Enter}')
+    await user.tab()
+    expect(screen.getByRole('button', { name: 'common.operation.remove' })).toHaveFocus()
+    await user.keyboard(' ')
 
     expect(onClickEdit).toHaveBeenCalledWith('custom_field')
     expect(onRemove).toHaveBeenCalledWith(2)
@@ -59,7 +63,7 @@ describe('FieldItem', () => {
   it('should keep the row readonly when readonly is enabled', () => {
     const onClickEdit = vi.fn()
     const onRemove = vi.fn()
-    const { container } = render(
+    render(
       <FieldItem
         readonly
         payload={createInputVar()}
@@ -68,8 +72,6 @@ describe('FieldItem', () => {
         onRemove={onRemove}
       />,
     )
-
-    fireEvent.mouseEnter(container.firstChild!)
 
     expect(screen.queryAllByRole('button')).toHaveLength(0)
     expect(onClickEdit).not.toHaveBeenCalled()

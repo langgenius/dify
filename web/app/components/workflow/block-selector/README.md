@@ -51,4 +51,6 @@ Tests protect observable behavior through public interfaces:
 - independent per-tab session state and reset after close;
 - disabled behavior and selection side effects.
 
-Do not assert utility classes, child indexes, component implementation details, or third-party primitive internals. Use `userEvent` and semantic queries. Verify geometry, clipped focus indicators, hover/focus reveal, and real browser focus order in Browser Mode or E2E rather than happy-dom.
+Do not assert utility classes, child indexes, component implementation details, or third-party primitive internals. Use `userEvent` and semantic queries. Follow the [Web testing policy] when deciding whether browser verification needs permanent coverage.
+
+[Web testing policy]: ../../../../docs/test.md#browser-mode-admission

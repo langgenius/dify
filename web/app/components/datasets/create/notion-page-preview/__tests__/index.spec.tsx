@@ -1,6 +1,6 @@
 import type { MockedFunction } from 'vite-plus/test'
 import type { NotionPage } from '@/models/common'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { fetchNotionPagePreview } from '@/service/datasets'
 import NotionPagePreview from '../index'
 
@@ -78,7 +78,7 @@ const renderNotionPagePreview = async (
   if (waitForContent && defaultProps.currentPage) {
     await waitFor(() => {
       // Wait for loading to finish
-      expect(result.container.querySelector('.spin-animation')).not.toBeInTheDocument()
+      expect(within(result.container).queryByRole('progressbar')).not.toBeInTheDocument()
     })
   }
 
@@ -90,7 +90,7 @@ const renderNotionPagePreview = async (
 
 // Helper to find the loading spinner element
 const findLoadingSpinner = (container: HTMLElement) => {
-  return container.querySelector('.spin-animation')
+  return within(container).queryByRole('progressbar')
 }
 
 // NotionPagePreview Component Tests

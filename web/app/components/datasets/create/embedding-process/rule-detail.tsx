@@ -33,7 +33,12 @@ const RETRIEVAL_ICON_MAP: Partial<Record<RETRIEVE_METHOD, string>> = {
 const isNumber = (value: unknown): value is number => typeof value === 'number'
 
 const RuleDetail: FC<RuleDetailProps> = ({ sourceData, indexingType, retrievalMethod }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation([
+    'dataset',
+    'datasetCreation',
+    'datasetDocuments',
+    'datasetSettings',
+  ])
 
   const segmentationRuleLabels = {
     mode: t(($) => $['embedding.mode'], { ns: 'datasetDocuments' }),

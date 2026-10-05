@@ -12,7 +12,7 @@ type PluginSidecarPanelProps = {
 }
 
 export function PluginSidecarPanel({ children, footer, title }: PluginSidecarPanelProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
     <div className="flex w-90 flex-col items-start overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl shadow-shadow-shadow-9">

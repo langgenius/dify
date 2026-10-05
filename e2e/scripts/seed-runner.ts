@@ -1,9 +1,9 @@
 import { chromium } from '@playwright/test'
-import { createAgentV2SeedTasks } from '../features/agent-v2/support/seed'
-import { ensureAuthenticatedState } from '../fixtures/auth'
-import { createStandaloneConsoleSession } from '../support/api/console-session'
-import { runSeedTasks, writeSeedReport } from '../support/seed'
-import { baseURL } from '../test-env'
+import { createAgentV2SeedTasks } from '../features/agent-v2/support/seed.ts'
+import { ensureAuthenticatedState } from '../fixtures/auth.ts'
+import { createStandaloneConsoleSession } from '../support/api/console-session.ts'
+import { runSeedTasks, writeSeedReport } from '../support/seed.ts'
+import { baseURL } from '../test-env.ts'
 
 export type SeedOptions = {
   allowBlocked: boolean

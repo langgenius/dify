@@ -2,20 +2,20 @@
 import type { MemberInviteResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { Role } from '@/models/access-control'
 import type { Member } from '@/models/common'
-import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '#i18n'
 import { WorkspaceAvatar } from '@/app/components/base/workspace-avatar'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
-import { useLocale } from '@/context/i18n'
+import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { currentWorkspaceAtom, isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { getAccessControlTemplateLanguage, LanguagesSupported } from '@/i18n-config/language'
+import { getAccessControlTemplateLanguage, LanguagesSupported } from '@/i18n/language'
 import { useUpdateRolesOfMember } from '@/service/access-control/use-member-roles'
 import { consoleQuery } from '@/service/console'
 import { useMembers } from '@/service/use-common'
@@ -29,7 +29,7 @@ import MemberRow from './member-row'
 import TransferOwnershipModal from './transfer-ownership-modal'
 
 const MembersPage = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['billing', 'common', 'workspaceMembers', 'accountSettings'])
   const locale = useLocale()
   const language = getAccessControlTemplateLanguage(locale)
 
@@ -71,8 +71,8 @@ const MembersPage = () => {
 
   const canManageMembers = hasPermission(workspacePermissionKeys, 'workspace.member.manage')
   const roleColumnLabel = systemFeatures.rbac_enabled
-    ? t(($) => $['members.roles'], { ns: 'common' })
-    : t(($) => $['members.role'], { ns: 'common' })
+    ? t(($) => $['members.roles'], { ns: 'workspaceMembers' })
+    : t(($) => $['members.role'], { ns: 'workspaceMembers' })
 
   const handleOpenDetails = useCallback((member: Member) => {
     setDetailsMember(member)
@@ -122,7 +122,9 @@ const MembersPage = () => {
                       render={
                         <button
                           type="button"
-                          aria-label={t(($) => $['account.editWorkspaceInfo'], { ns: 'common' })}
+                          aria-label={t(($) => $['account.editWorkspaceInfo'], {
+                            ns: 'accountSettings',
+                          })}
                           className="cursor-pointer rounded-md border-none bg-transparent p-1 hover:bg-black/5"
                           onClick={() => {
                             setEditWorkspaceModalVisible(true)
@@ -136,7 +138,7 @@ const MembersPage = () => {
                       }
                     />
                     <TooltipContent>
-                      {t(($) => $['account.editWorkspaceInfo'], { ns: 'common' })}
+                      {t(($) => $['account.editWorkspaceInfo'], { ns: 'accountSettings' })}
                     </TooltipContent>
                   </Tooltip>
                 </span>
@@ -192,10 +194,10 @@ const MembersPage = () => {
             <thead>
               <tr className="border-b border-divider-regular">
                 <th className="px-3 py-1.75 text-left system-xs-medium-uppercase text-text-tertiary">
-                  {t(($) => $['members.name'], { ns: 'common' })}
+                  {t(($) => $['members.name'], { ns: 'workspaceMembers' })}
                 </th>
                 <th className="py-1.75 text-left system-xs-medium-uppercase text-text-tertiary">
-                  {t(($) => $['members.lastActive'], { ns: 'common' })}
+                  {t(($) => $['members.lastActive'], { ns: 'workspaceMembers' })}
                 </th>
                 <th className="px-3 py-1.75 text-left system-xs-medium-uppercase text-text-tertiary">
                   {roleColumnLabel}

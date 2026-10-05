@@ -27,7 +27,7 @@ const FileListInLog = ({
   noBorder = false,
   noPadding = false,
 }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appLog'])
   const [expanded, setExpanded] = useState(isExpanded)
   const fullList = useMemo(() => {
     return fileList.reduce((acc: FileEntity[], { list }) => {

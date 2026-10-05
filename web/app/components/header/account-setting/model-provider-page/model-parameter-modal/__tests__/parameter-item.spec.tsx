@@ -64,6 +64,29 @@ describe('ParameterItem', () => {
     capturedWorkflowNodesMap = undefined
   })
 
+  it.each([
+    { type: 'text', name: 'json_schema', label: 'JSON Schema' },
+    { type: 'string', name: 'system_prompt', label: 'System prompt' },
+  ])(
+    'should name the $type input after its visible parameter label',
+    async ({ type, name, label }) => {
+      const user = userEvent.setup()
+      const onChange = vi.fn()
+      render(
+        <ParameterItem
+          parameterRule={createRule({ type, name, label: { en_US: label, zh_Hans: label } })}
+          value=""
+          onChange={onChange}
+        />,
+      )
+
+      await user.type(screen.getByRole('textbox', { name: label }), 'x')
+
+      expect(onChange).toHaveBeenCalledWith('x')
+      expect(screen.getByRole('switch', { name: label })).toBeChecked()
+    },
+  )
+
   it('should render float controls and clamp numeric input to max', () => {
     const onChange = vi.fn()
     render(

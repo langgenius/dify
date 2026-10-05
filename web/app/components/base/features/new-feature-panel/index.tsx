@@ -2,7 +2,8 @@ import type { ReactNode } from 'react'
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { PromptVariable } from '@/models/debug'
-import { DrawerCloseButton } from '@langgenius/dify-ui/drawer'
+import { DrawerClose, DrawerTitle } from '@langgenius/dify-ui/drawer'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useQueryState } from 'nuqs'
 import { useTranslation } from 'react-i18next'
 import AnnotationReply from '@/app/components/base/features/new-feature-panel/annotation-reply'
@@ -60,7 +61,7 @@ const NewFeaturePanel = ({
   drawerClassName,
 }: Props) => {
   const [pricing] = useQueryState(pricingQueryParamName, pricingQueryParser)
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const { data: speech2textDefaultModel } = useDefaultModel(ModelTypeEnum.speech2text)
   const { data: text2speechDefaultModel } = useDefaultModel(ModelTypeEnum.tts)
   const { hasBlockingModalOpen } = useModalContext()
@@ -76,16 +77,19 @@ const NewFeaturePanel = ({
         {/* header */}
         <div className="flex shrink-0 justify-between p-4 pb-3">
           <div>
-            <div className="system-xl-semibold text-text-primary">
+            <DrawerTitle className="system-xl-semibold text-text-primary">
               {title ?? t(($) => $['common.features'], { ns: 'workflow' })}
-            </div>
+            </DrawerTitle>
             <div className="body-xs-regular text-text-tertiary">
               {description ?? t(($) => $['common.featuresDescription'], { ns: 'workflow' })}
             </div>
           </div>
-          <DrawerCloseButton
-            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-            className="size-8 p-2"
+          <DrawerClose
+            render={
+              <IconButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} size="lg">
+                <span aria-hidden="true" className="i-ri-close-line size-4" />
+              </IconButton>
+            }
           />
         </div>
         {/* list */}
