@@ -1,11 +1,17 @@
 'use client'
+import type { DialogProps } from '@langgenius/dify-ui/dialog'
 import type { FileAppearanceTypeEnum } from '@/app/components/base/file-uploader/types'
 import type { HitTesting } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogTitle,
+  DialogTrigger,
+} from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import * as React from 'react'
-import { useMemo } from 'react'
+import { useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import FileIcon from '@/app/components/base/file-uploader/file-type-icon'
 import { Markdown } from '@/app/components/base/markdown'
@@ -14,18 +20,22 @@ import ImageList from '../../common/image-list'
 import Dot from '../../documents/detail/completed/common/dot'
 import { SegmentIndexTag } from '../../documents/detail/completed/common/segment-index-tag'
 import SummaryText from '../../documents/detail/completed/common/summary-text'
+import { extensionToFileType } from '../utils/extension-to-file-type'
 import ChildChunksItem from './child-chunks-item'
 import Mask from './mask'
-import Score from './score'
+import { ResultItemFooter } from './result-item-footer'
+import { Score } from './score'
 
 const i18nPrefix = ''
 
-type ChunkDetailModalProps = {
+type ChunkDetailDialogProps = {
   payload: HitTesting
-  onHide: () => void
+  open: boolean
+  onOpenChange: DialogProps['onOpenChange']
 }
 
-const ChunkDetailModal = ({ payload, onHide }: ChunkDetailModalProps) => {
+export function ChunkDetailDialog({ payload, open, onOpenChange }: ChunkDetailDialogProps) {
+  const triggerRef = useRef<HTMLButtonElement>(null)
   const { t } = useTranslation(['common', 'datasetDocuments', 'datasetHitTesting'])
   const { segment, score, child_chunks, files, summary } = payload
   const { position, content, sign_content, keywords, document, answer } = segment
@@ -53,13 +63,17 @@ const ChunkDetailModal = ({ payload, onHide }: ChunkDetailModalProps) => {
   const showKeywords = !isParentChildRetrieval && keywords && keywords.length > 0
 
   return (
-    <Dialog
-      open
-      onOpenChange={(open) => {
-        if (!open) onHide()
-      }}
-    >
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogTrigger
+        ref={triggerRef}
+        type="button"
+        aria-label={`${t(($) => $.open, { ns: 'datasetHitTesting' })} ${document.name}`}
+        className="block w-full cursor-pointer rounded-b-xl text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-state-accent-solid"
+      >
+        <ResultItemFooter docType={extensionToFileType(extension)} docTitle={document.name} />
+      </DialogTrigger>
       <DialogContent
+        finalFocus={triggerRef}
         className={cn(
           'max-h-[calc(100dvh-2rem)] min-w-0 overflow-y-auto! border-none p-6 text-left align-middle',
           isParentChildRetrieval ? 'w-300' : 'w-200',
@@ -71,9 +85,6 @@ const ChunkDetailModal = ({ payload, onHide }: ChunkDetailModalProps) => {
               aria-label={t(($) => $['operation.close'], { ns: 'common' })}
               size="lg"
               className="absolute inset-e-6 top-6"
-              onClick={(e) => {
-                e.stopPropagation()
-              }}
             >
               <span aria-hidden className="i-ri-close-line size-4" />
             </IconButton>
@@ -175,5 +186,3 @@ const ChunkDetailModal = ({ payload, onHide }: ChunkDetailModalProps) => {
     </Dialog>
   )
 }
-
-export default React.memo(ChunkDetailModal)

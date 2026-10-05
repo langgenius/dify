@@ -1,40 +1,34 @@
 'use client'
-import type { FileAppearanceTypeEnum } from '@/app/components/base/file-uploader/types'
 import type { HitTesting } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
-import * as React from 'react'
-import { useMemo } from 'react'
+import { memo, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Markdown } from '@/app/components/base/markdown'
 import SummaryLabel from '@/app/components/datasets/documents/detail/completed/common/summary-label'
 import Tag from '@/app/components/datasets/documents/detail/completed/common/tag'
-import { extensionToFileType } from '@/app/components/datasets/hit-testing/utils/extension-to-file-type'
 import ImageList from '../../common/image-list'
 import ChildChunkItem from './child-chunks-item'
-import ChunkDetailModal from './chunk-detail-modal'
-import ResultItemFooter from './result-item-footer'
-import ResultItemMeta from './result-item-meta'
+import { ChunkDetailDialog } from './chunk-detail-dialog'
+import { ResultItemMeta } from './result-item-meta'
 
 const i18nPrefix = ''
 type ResultItemProps = {
   payload: HitTesting
 }
 
-const ResultItem = ({ payload }: ResultItemProps) => {
+export const ResultItem = memo(({ payload }: ResultItemProps) => {
   const { t } = useTranslation(['datasetHitTesting'])
   const { segment, score, child_chunks, files, summary } = payload
   const data = segment
-  const { position, word_count, content, sign_content, keywords, document } = data
+  const { position, word_count, content, sign_content, keywords } = data
   const isParentChildRetrieval = !!(child_chunks && child_chunks.length > 0)
-  const extension = document.name.split('.').slice(-1)[0] as FileAppearanceTypeEnum
-  const fileType = extensionToFileType(extension)
   const [isFold, { toggle: toggleFold }] = useBoolean(false)
   const Icon = isFold ? RiArrowRightSLine : RiArrowDownSLine
 
-  const [isShowDetailModal, { setTrue: showDetailModal, setFalse: hideDetailModal }] =
-    useBoolean(false)
+  const [open, setOpen] = useState(false)
+  const richPreviewRef = useRef<HTMLDivElement>(null)
 
   const images = useMemo(() => {
     if (!files) return []
@@ -50,7 +44,15 @@ const ResultItem = ({ payload }: ResultItemProps) => {
   return (
     <div
       className={cn('cursor-pointer rounded-xl bg-chat-bubble-bg pt-3 hover:shadow-lg')}
-      onClick={showDetailModal}
+      onClick={(event) => {
+        if (
+          !(event.target instanceof Node) ||
+          !event.currentTarget.contains(event.target) ||
+          richPreviewRef.current?.contains(event.target)
+        )
+          return
+        setOpen(true)
+      }}
     >
       {/* Meta info */}
       <ResultItemMeta
@@ -63,17 +65,21 @@ const ResultItem = ({ payload }: ResultItemProps) => {
 
       {/* Main */}
       <div className="mt-1 px-3">
-        <Markdown
-          className="line-clamp-2"
-          content={sign_content || content}
-          customDisallowedElements={['input']}
-        />
+        <div ref={richPreviewRef} className="cursor-auto">
+          <Markdown
+            className="line-clamp-2"
+            content={sign_content || content}
+            customDisallowedElements={['input']}
+          />
+        </div>
         {images.length > 0 && <ImageList images={images} size="md" className="py-1" />}
         {isParentChildRetrieval && (
           <div className="mt-1">
-            <div
+            <button
+              type="button"
+              aria-expanded={!isFold}
               className={cn(
-                'inline-flex h-6 cursor-pointer items-center space-x-0.5 rounded-lg text-text-secondary select-none',
+                'inline-flex h-6 cursor-pointer items-center space-x-0.5 rounded-lg text-text-secondary select-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-state-accent-solid',
                 isFold && 'bg-workflow-process-bg pl-1',
               )}
               onClick={(e) => {
@@ -82,13 +88,13 @@ const ResultItem = ({ payload }: ResultItemProps) => {
               }}
             >
               <Icon className={cn('size-4', isFold && 'opacity-50')} />
-              <div className="text-xs font-semibold uppercase">
+              <span className="text-xs font-semibold uppercase">
                 {t(($) => $[`${i18nPrefix}hitChunks`], {
                   ns: 'datasetHitTesting',
                   num: child_chunks.length,
                 })}
-              </div>
-            </div>
+              </span>
+            </button>
             {!isFold && (
               <div className="space-y-2">
                 {child_chunks.map((item) => (
@@ -112,15 +118,7 @@ const ResultItem = ({ payload }: ResultItemProps) => {
         )}
         {summary && <SummaryLabel summary={summary} className="mt-2" />}
       </div>
-      {/* Foot */}
-      <ResultItemFooter
-        docType={fileType}
-        docTitle={document.name}
-        showDetailModal={showDetailModal}
-      />
-
-      {isShowDetailModal && <ChunkDetailModal payload={payload} onHide={hideDetailModal} />}
+      <ChunkDetailDialog payload={payload} open={open} onOpenChange={setOpen} />
     </div>
   )
-}
-export default React.memo(ResultItem)
+})
