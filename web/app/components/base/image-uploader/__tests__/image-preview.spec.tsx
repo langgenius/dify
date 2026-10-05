@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import ImagePreview from '../image-preview'
+import { ImagePreview } from '../image-preview'
 
 type _HotkeyHandler = () => void
 
@@ -103,9 +103,10 @@ describe('ImagePreview', () => {
     it('should render preview in portal with image from url', () => {
       render(
         <ImagePreview
+          open
           url="https://example.com/image.png"
           title="Preview Image"
-          onCancel={vi.fn()}
+          onOpenChange={vi.fn()}
         />,
       )
 
@@ -121,13 +122,13 @@ describe('ImagePreview', () => {
     })
 
     it.each(['', '   '])('names the dialog when the image title is %j', (title) => {
-      render(<ImagePreview url={dataImage} title={title} onCancel={vi.fn()} />)
+      render(<ImagePreview open url={dataImage} title={title} onOpenChange={vi.fn()} />)
 
       expect(screen.getByRole('dialog', { name: 'workflow.common.preview' })).toBeInTheDocument()
     })
 
     it('should convert plain base64 string into data image src', () => {
-      render(<ImagePreview url={base64Image} title="Preview Image" onCancel={vi.fn()} />)
+      render(<ImagePreview open url={base64Image} title="Preview Image" onOpenChange={vi.fn()} />)
 
       expect(screen.getByRole('img', { name: 'Preview Image' })).toHaveAttribute('src', dataImage)
     })
@@ -135,14 +136,15 @@ describe('ImagePreview', () => {
 
   describe('Hotkeys', () => {
     it('should trigger esc/left/right handlers from keyboard', async () => {
-      const onCancel = vi.fn()
+      const onOpenChange = vi.fn()
       const onPrev = vi.fn()
       const onNext = vi.fn()
       render(
         <ImagePreview
+          open
           url="https://example.com/image.png"
           title="Preview Image"
-          onCancel={onCancel}
+          onOpenChange={onOpenChange}
           onPrev={onPrev}
           onNext={onNext}
         />,
@@ -152,14 +154,19 @@ describe('ImagePreview', () => {
       fireEvent.keyDown(screen.getByRole('dialog'), { key: 'ArrowLeft', code: 'ArrowLeft' })
       fireEvent.keyDown(screen.getByRole('dialog'), { key: 'ArrowRight', code: 'ArrowRight' })
 
-      expect(onCancel).toHaveBeenCalledTimes(1)
+      expect(onOpenChange).toHaveBeenCalledTimes(1)
       expect(onPrev).toHaveBeenCalledTimes(1)
       expect(onNext).toHaveBeenCalledTimes(1)
     })
 
     it('leaves outside arrows and unavailable image navigation unclaimed', () => {
       render(
-        <ImagePreview url="https://example.com/image.png" title="Preview" onCancel={vi.fn()} />,
+        <ImagePreview
+          open
+          url="https://example.com/image.png"
+          title="Preview"
+          onOpenChange={vi.fn()}
+        />,
       )
       const outside = new KeyboardEvent('keydown', {
         key: 'ArrowUp',
@@ -180,9 +187,10 @@ describe('ImagePreview', () => {
     it('should zoom in and out from keyboard up/down hotkeys', async () => {
       render(
         <ImagePreview
+          open
           url="https://example.com/image.png"
           title="Preview Image"
-          onCancel={vi.fn()}
+          onOpenChange={vi.fn()}
         />,
       )
       const image = screen.getByRole('img', { name: 'Preview Image' })
@@ -201,43 +209,46 @@ describe('ImagePreview', () => {
 
   describe('User Interactions', () => {
     it('should not close when image content is clicked', () => {
-      const onCancel = vi.fn()
+      const onOpenChange = vi.fn()
       render(
         <ImagePreview
+          open
           url="https://example.com/image.png"
           title="Preview Image"
-          onCancel={onCancel}
+          onOpenChange={onOpenChange}
         />,
       )
 
       fireEvent.click(screen.getByRole('img', { name: 'Preview Image' }))
 
-      expect(onCancel).not.toHaveBeenCalled()
+      expect(onOpenChange).not.toHaveBeenCalled()
     })
 
-    it('should call onCancel when close button is clicked', async () => {
+    it('should call onOpenChange when close button is clicked', async () => {
       const user = userEvent.setup()
-      const onCancel = vi.fn()
+      const onOpenChange = vi.fn()
       render(
         <ImagePreview
+          open
           url="https://example.com/image.png"
           title="Preview Image"
-          onCancel={onCancel}
+          onOpenChange={onOpenChange}
         />,
       )
 
       const closeButton = getCloseButton()
       await user.click(closeButton)
 
-      expect(onCancel).toHaveBeenCalledTimes(1)
+      expect(onOpenChange).toHaveBeenCalledTimes(1)
     })
 
     it('should zoom in and out with wheel interactions', async () => {
       render(
         <ImagePreview
+          open
           url="https://example.com/image.png"
           title="Preview Image"
-          onCancel={vi.fn()}
+          onOpenChange={vi.fn()}
         />,
       )
       const overlay = getOverlay()
@@ -262,9 +273,10 @@ describe('ImagePreview', () => {
       const user = userEvent.setup()
       render(
         <ImagePreview
+          open
           url="https://example.com/image.png"
           title="Preview Image"
-          onCancel={vi.fn()}
+          onOpenChange={vi.fn()}
         />,
       )
 
@@ -332,7 +344,7 @@ describe('ImagePreview', () => {
       'should open valid url %s in new tab',
       async (url) => {
         const user = userEvent.setup()
-        render(<ImagePreview url={url} title="Preview Image" onCancel={vi.fn()} />)
+        render(<ImagePreview open url={url} title="Preview Image" onOpenChange={vi.fn()} />)
 
         const openInTabButton = getOpenInTabButton()
         await user.click(openInTabButton)
@@ -350,7 +362,7 @@ describe('ImagePreview', () => {
         },
       } as unknown as Window)
 
-      render(<ImagePreview url={dataImage} title="Preview Image" onCancel={vi.fn()} />)
+      render(<ImagePreview open url={dataImage} title="Preview Image" onOpenChange={vi.fn()} />)
 
       const openInTabButton = getOpenInTabButton()
       await user.click(openInTabButton)
@@ -361,7 +373,14 @@ describe('ImagePreview', () => {
 
     it('should show error toast when opening unsupported url', async () => {
       const user = userEvent.setup()
-      render(<ImagePreview url="file:///tmp/image.png" title="Preview Image" onCancel={vi.fn()} />)
+      render(
+        <ImagePreview
+          open
+          url="file:///tmp/image.png"
+          title="Preview Image"
+          onOpenChange={vi.fn()}
+        />,
+      )
 
       const openInTabButton = getOpenInTabButton()
       await user.click(openInTabButton)
@@ -377,7 +396,7 @@ describe('ImagePreview', () => {
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
       mocks.clipboardWrite.mockRejectedValue(new Error('copy failed'))
 
-      render(<ImagePreview url={dataImage} title="Preview Image" onCancel={vi.fn()} />)
+      render(<ImagePreview open url={dataImage} title="Preview Image" onOpenChange={vi.fn()} />)
 
       const copyButton = getCopyButton()
       await user.click(copyButton)
@@ -414,9 +433,10 @@ describe('ImagePreview', () => {
       })
       render(
         <ImagePreview
+          open
           url="https://example.com/image.png"
           title="Preview Image"
-          onCancel={vi.fn()}
+          onOpenChange={vi.fn()}
         />,
       )
 
@@ -454,9 +474,10 @@ describe('ImagePreview', () => {
       })
       render(
         <ImagePreview
+          open
           url="https://example.com/image.jpg"
           title="Preview Image"
-          onCancel={vi.fn()}
+          onOpenChange={vi.fn()}
         />,
       )
 
@@ -476,9 +497,10 @@ describe('ImagePreview', () => {
       })
       render(
         <ImagePreview
+          open
           url="https://example.com/image.png"
           title="Preview Image"
-          onCancel={vi.fn()}
+          onOpenChange={vi.fn()}
         />,
       )
 
@@ -495,7 +517,7 @@ describe('ImagePreview', () => {
     it('should copy image and show success toast', async () => {
       const user = userEvent.setup()
       mocks.clipboardWrite.mockResolvedValue()
-      render(<ImagePreview url={dataImage} title="Preview Image" onCancel={vi.fn()} />)
+      render(<ImagePreview open url={dataImage} title="Preview Image" onOpenChange={vi.fn()} />)
 
       const copyButton = getCopyButton()
       await user.click(copyButton)
@@ -526,7 +548,7 @@ describe('ImagePreview', () => {
       ) {
         downloads.push({ href: this.href, name: this.download, target: this.target })
       })
-      render(<ImagePreview url={url} title={title} onCancel={vi.fn()} />)
+      render(<ImagePreview open url={url} title={title} onOpenChange={vi.fn()} />)
       await user.click(getDownloadButton())
 
       await waitFor(() =>
@@ -554,7 +576,9 @@ describe('ImagePreview', () => {
           vi.mocked(fetch).mockRejectedValue(new TypeError('Failed to fetch'))
         else vi.mocked(fetch).mockResolvedValue(new Response(null, { status: 403 }))
         const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
-        render(<ImagePreview url="https://example.com/image.png" title="" onCancel={vi.fn()} />)
+        render(
+          <ImagePreview open url="https://example.com/image.png" title="" onOpenChange={vi.fn()} />,
+        )
         await user.click(getDownloadButton())
 
         await waitFor(() =>
@@ -573,9 +597,10 @@ describe('ImagePreview', () => {
       const user = userEvent.setup()
       render(
         <ImagePreview
+          open
           url="https://example.com/image.png"
           title="Preview Image"
-          onCancel={vi.fn()}
+          onOpenChange={vi.fn()}
         />,
       )
       const image = screen.getByRole('img', { name: 'Preview Image' })
@@ -597,9 +622,10 @@ describe('ImagePreview', () => {
       const user = userEvent.setup()
       render(
         <ImagePreview
+          open
           url="https://example.com/image.png"
           title="Preview Image"
-          onCancel={vi.fn()}
+          onOpenChange={vi.fn()}
         />,
       )
       const image = screen.getByRole('img', { name: 'Preview Image' })
@@ -614,9 +640,10 @@ describe('ImagePreview', () => {
       const user = userEvent.setup()
       render(
         <ImagePreview
+          open
           url="https://example.com/image.png"
           title="Preview Image"
-          onCancel={vi.fn()}
+          onOpenChange={vi.fn()}
         />,
       )
 

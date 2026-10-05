@@ -2,12 +2,12 @@ import { SVG } from '@svgdotjs/svg.js'
 import DOMPurify from 'dompurify'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ImagePreview from '@/app/components/base/image-uploader/image-preview'
+import { ImagePreview } from '@/app/components/base/image-uploader/image-preview'
 
 const SVGRenderer = ({ content }: { content: string }) => {
   const { t } = useTranslation(['common'])
   const svgRef = useRef<HTMLDivElement>(null)
-  const [imagePreview, setImagePreview] = useState('')
+  const [imagePreview, setImagePreview] = useState({ url: '', open: false })
 
   const svgToDataURL = (svgElement: Element): string => {
     const svgString = new XMLSerializer().serializeToString(svgElement)
@@ -39,7 +39,7 @@ const SVGRenderer = ({ content }: { content: string }) => {
       const rootElement = draw.svg(DOMPurify.sanitize(content))
 
       rootElement.click(() => {
-        setImagePreview(svgToDataURL(svgElement as Element))
+        setImagePreview({ url: svgToDataURL(svgElement as Element), open: true })
       })
     } catch {
       /* v8 ignore next 2 -- if unmounted while handling parser/render errors, ref becomes null; guard avoids writing to a detached node. @preserve */
@@ -66,8 +66,13 @@ const SVGRenderer = ({ content }: { content: string }) => {
           margin: '0 auto',
         }}
       />
-      {imagePreview && (
-        <ImagePreview url={imagePreview} title="Preview" onCancel={() => setImagePreview('')} />
+      {imagePreview.url && (
+        <ImagePreview
+          url={imagePreview.url}
+          title="Preview"
+          open={imagePreview.open}
+          onOpenChange={(open) => setImagePreview((previous) => ({ ...previous, open }))}
+        />
       )}
     </>
   )

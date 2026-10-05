@@ -6,7 +6,7 @@ import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ImagePreview from '@/app/components/base/image-uploader/image-preview'
+import { ImagePreview } from '@/app/components/base/image-uploader/image-preview'
 
 type Props = Readonly<{
   varList: { label: string; value: string }[]
@@ -14,9 +14,9 @@ type Props = Readonly<{
 }>
 
 const VarPanel: FC<Props> = ({ varList, message_files }) => {
-  const { t } = useTranslation(['appLog'])
+  const { t } = useTranslation(['appLog', 'common'])
   const [isCollapse, { toggle: toggleCollapse }] = useBoolean(false)
-  const [imagePreviewUrl, setImagePreviewUrl] = useState('')
+  const [imagePreview, setImagePreview] = useState({ url: '', open: false })
 
   return (
     <div className="rounded-[10px] border border-divider-subtle bg-chat-bubble-bg">
@@ -57,11 +57,17 @@ const VarPanel: FC<Props> = ({ varList, message_files }) => {
               </div>
               <div className="flex space-x-2">
                 {message_files.map((url, index) => (
-                  <div
+                  <button
+                    type="button"
                     key={index}
-                    className="ml-2.5 size-16 cursor-pointer rounded-lg bg-cover bg-center bg-no-repeat"
+                    aria-label={t(($) => $['imageGallery.previewImage'], {
+                      ns: 'common',
+                      index: index + 1,
+                      total: message_files.length,
+                    })}
+                    className="ml-2.5 size-16 cursor-pointer rounded-lg border-0 bg-cover bg-center bg-no-repeat p-0 focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
                     style={{ backgroundImage: `url(${url})` }}
-                    onClick={() => setImagePreviewUrl(url)}
+                    onClick={() => setImagePreview({ url, open: true })}
                   />
                 ))}
               </div>
@@ -69,11 +75,12 @@ const VarPanel: FC<Props> = ({ varList, message_files }) => {
           )}
         </div>
       )}
-      {imagePreviewUrl && (
+      {imagePreview.url && (
         <ImagePreview
-          url={imagePreviewUrl}
-          title={imagePreviewUrl}
-          onCancel={() => setImagePreviewUrl('')}
+          url={imagePreview.url}
+          title={imagePreview.url}
+          open={imagePreview.open}
+          onOpenChange={(open) => setImagePreview((previous) => ({ ...previous, open }))}
         />
       )}
     </div>

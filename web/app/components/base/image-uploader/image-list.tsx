@@ -4,7 +4,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ImagePreview from '@/app/components/base/image-uploader/image-preview'
+import { ImagePreview } from '@/app/components/base/image-uploader/image-preview'
 import { TransferMethod } from '@/types/app'
 
 type ImageListProps = {
@@ -25,7 +25,7 @@ const ImageList: FC<ImageListProps> = ({
   onImageLinkLoadError,
 }) => {
   const { t } = useTranslation(['common'])
-  const [imagePreviewUrl, setImagePreviewUrl] = useState('')
+  const [preview, setPreview] = useState({ url: '', open: false })
 
   const handleImageLinkLoadSuccess = (item: ImageFile) => {
     if (item.type === TransferMethod.remote_url && onImageLinkLoadSuccess && item.progress !== -1) {
@@ -129,9 +129,12 @@ const ImageList: FC<ImageListProps> = ({
                 })}
                 className="block cursor-pointer appearance-none rounded-lg border-0 bg-transparent p-0 leading-none"
                 onClick={() =>
-                  setImagePreviewUrl(
-                    (item.type === TransferMethod.remote_url ? item.url : item.base64Url) as string,
-                  )
+                  setPreview({
+                    url: (item.type === TransferMethod.remote_url
+                      ? item.url
+                      : item.base64Url) as string,
+                    open: true,
+                  })
                 }
               >
                 {renderImage(item)}
@@ -156,8 +159,13 @@ const ImageList: FC<ImageListProps> = ({
           </li>
         ))}
       </ul>
-      {imagePreviewUrl && (
-        <ImagePreview url={imagePreviewUrl} onCancel={() => setImagePreviewUrl('')} title="" />
+      {preview.url && (
+        <ImagePreview
+          url={preview.url}
+          open={preview.open}
+          onOpenChange={(open) => setPreview((current) => ({ ...current, open }))}
+          title=""
+        />
       )}
     </>
   )

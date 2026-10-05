@@ -82,15 +82,17 @@ describe('FileImageItem', () => {
     expect(onReUpload).toHaveBeenCalledWith('file-1')
   })
 
-  it('should show image preview when clicked and canPreview is true', () => {
+  it('previews the local image before the remote URL when preview is allowed', async () => {
+    const user = userEvent.setup()
     render(<FileImageItem file={createFile()} canPreview />)
 
-    // Click the wrapper div (parent of the img element)
-    const img = screen.getByRole('img')
-    fireEvent.click(img.parentElement!)
+    await user.click(screen.getByRole('button', { name: 'common.operation.view photo.png' }))
 
-    // ImagePreview renders through Dialog with class "image-preview-container"
-    expect(document.querySelector('.image-preview-container'))!.toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'photo.png' })).toBeInTheDocument()
+    expect(screen.getByTestId('image-preview-image')).toHaveAttribute(
+      'src',
+      'data:image/png;base64,abc',
+    )
   })
 
   it('should not show image preview when canPreview is false', () => {
