@@ -11,7 +11,9 @@ checks explicit __init__ overrides and dataclass-generated initializers. This
 is a syntactic guard, not general Python inheritance or execution analysis.
 Protocol and Pydantic model implementations are not targeted.
 
-Both rules retain the provided Git baseline. Subclass matches are compared by
+Both rules retain the provided Git baseline. Identical mock calls are counted
+per file: an additional copy or a different constructor call is rejected.
+Subclass matches are compared by
 class name within each changed file, not only by the line of the class header:
 removing a super call or adding a dataclass decorator must still be detected.
 An existing offending class can be edited or removed without adding another.
