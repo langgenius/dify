@@ -38,7 +38,7 @@ class DifyWorkflowToolNode(ToolNode):
     # subclasses use the broader Node contract.
     def _run(  # type: ignore[override]  # pyrefly: ignore[bad-override]
         self,
-    ) -> Generator[NodeEventPayload | ContainerAwaitRequest, None, None]:
+    ) -> Generator[NodeEventPayload | ContainerAwaitRequest]:
         tool_info = self._tool_info()
         try:
             variable_pool = None
@@ -93,7 +93,7 @@ class DifyWorkflowToolNode(ToolNode):
         self,
         *,
         result: ContainerRunResult,
-    ) -> Generator[NodeEventPayload | ContainerAwaitRequest, None, None]:
+    ) -> Generator[NodeEventPayload | ContainerAwaitRequest]:
         if not isinstance(result, ContainerExecutionResult):
             raise TypeError(f"Unsupported Workflow Tool container result {type(result).__name__}")
 
