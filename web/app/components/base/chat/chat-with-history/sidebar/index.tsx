@@ -17,7 +17,7 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import List from '@/app/components/base/chat/chat-with-history/sidebar/list'
-import RenameModal from '@/app/components/base/chat/chat-with-history/sidebar/rename-modal'
+import { RenameConversationDialog } from '@/app/components/base/chat/chat-with-history/sidebar/rename-modal'
 import { DifyLogo } from '@/app/components/base/logo/dify-logo'
 import MenuDropdown from '@/app/components/share/text-generation/menu-dropdown'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -213,15 +213,15 @@ const Sidebar = ({ isPanel, toggleButtonRef }: Props) => {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-        {showRename && (
-          <RenameModal
-            isShow
-            onClose={handleCancelRename}
-            saveLoading={conversationRenaming}
-            name={showRename?.name || ''}
-            onSave={handleRename}
-          />
-        )}
+        <RenameConversationDialog
+          open={!!showRename}
+          onOpenChange={(open) => {
+            if (!open) handleCancelRename()
+          }}
+          saveLoading={conversationRenaming}
+          name={showRename?.name || ''}
+          onSave={handleRename}
+        />
       </div>
     </div>
   )

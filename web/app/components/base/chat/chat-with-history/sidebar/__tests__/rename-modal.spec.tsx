@@ -1,16 +1,16 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as ReactI18next from 'react-i18next'
 import { expectLoadingButton } from '@/test/button'
 import { withSelectorKey } from '@/test/i18n-mock'
-import RenameModal from '../rename-modal'
+import { RenameConversationDialog } from '../rename-modal'
 
-describe('RenameModal', () => {
+describe('RenameConversationDialog', () => {
   const defaultProps = {
-    isShow: true,
+    open: true,
     saveLoading: false,
     name: 'Original Name',
-    onClose: vi.fn(),
+    onOpenChange: vi.fn(),
     onSave: vi.fn(),
   }
 
@@ -19,7 +19,7 @@ describe('RenameModal', () => {
   })
 
   it('renders title, label, input and action buttons', () => {
-    render(<RenameModal {...defaultProps} />)
+    render(<RenameConversationDialog {...defaultProps} />)
 
     expect(screen.getByText('common.chat.renameConversation')).toBeInTheDocument()
     expect(screen.getByRole('textbox', { name: 'common.chat.conversationName' })).toHaveValue(
@@ -29,22 +29,22 @@ describe('RenameModal', () => {
     expect(screen.getByText('common.operation.save')).toBeInTheDocument()
   })
 
-  it('does not render when isShow is false', () => {
-    render(<RenameModal {...defaultProps} isShow={false} />)
+  it('does not render when open is false', () => {
+    render(<RenameConversationDialog {...defaultProps} open={false} />)
     expect(screen.queryByText('common.chat.renameConversation')).not.toBeInTheDocument()
   })
 
-  it('calls onClose when cancel is clicked', async () => {
+  it('calls onOpenChange when cancel is clicked', async () => {
     const user = userEvent.setup()
-    render(<RenameModal {...defaultProps} />)
+    render(<RenameConversationDialog {...defaultProps} />)
 
     await user.click(screen.getByText('common.operation.cancel'))
-    expect(defaultProps.onClose).toHaveBeenCalled()
+    expect(defaultProps.onOpenChange).toHaveBeenCalled()
   })
 
   it('calls onSave with updated name', async () => {
     const user = userEvent.setup()
-    render(<RenameModal {...defaultProps} />)
+    render(<RenameConversationDialog {...defaultProps} />)
 
     const input = screen.getByRole('textbox')
     await user.clear(input)
@@ -54,33 +54,51 @@ describe('RenameModal', () => {
     expect(defaultProps.onSave).toHaveBeenCalledWith('Updated Name')
   })
 
-  it('does not resubmit while save is pending', async () => {
+  it('keeps the draft read-only and blocks dismissal and resubmission while saving, then allows retry', async () => {
     const user = userEvent.setup()
-    render(<RenameModal {...defaultProps} saveLoading />)
+    const view = render(<RenameConversationDialog {...defaultProps} />)
+    const input = screen.getByRole('textbox', { name: 'common.chat.conversationName' })
+    await user.clear(input)
+    await user.type(input, 'Draft name')
+    const save = screen.getByRole('button', { name: 'common.operation.save' })
+    await user.click(save)
+    expect(defaultProps.onSave).toHaveBeenCalledExactlyOnceWith('Draft name')
 
-    await user.click(screen.getByRole('textbox', { name: 'common.chat.conversationName' }))
-    await user.keyboard('{Enter}')
+    view.rerender(<RenameConversationDialog {...defaultProps} saveLoading />)
+    expect(input).toHaveAttribute('readonly')
+    expect(save).toHaveFocus()
+    await user.type(input, 'ignored')
+    await user.click(save)
+    await user.keyboard('{Enter}{Escape}')
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    expect(defaultProps.onSave).toHaveBeenCalledTimes(1)
+    expect(defaultProps.onOpenChange).not.toHaveBeenCalled()
+    expect(input).toHaveValue('Draft name')
 
-    expect(defaultProps.onSave).not.toHaveBeenCalled()
+    view.rerender(<RenameConversationDialog {...defaultProps} />)
+    expect(input).not.toHaveAttribute('readonly')
+    await user.click(save)
+    expect(defaultProps.onSave).toHaveBeenCalledTimes(2)
+    expect(defaultProps.onSave).toHaveBeenLastCalledWith('Draft name')
   })
 
   it('calls onSave with initial name when unchanged', async () => {
     const user = userEvent.setup()
-    render(<RenameModal {...defaultProps} />)
+    render(<RenameConversationDialog {...defaultProps} />)
 
     await user.click(screen.getByText('common.operation.save'))
     expect(defaultProps.onSave).toHaveBeenCalledWith('Original Name')
   })
 
   it('shows loading state when saveLoading is true', () => {
-    render(<RenameModal {...defaultProps} saveLoading />)
+    render(<RenameConversationDialog {...defaultProps} saveLoading />)
     const saveButton = screen.getByRole('button', { name: 'common.operation.save' })
     expectLoadingButton(saveButton)
     expect(saveButton.querySelector('.animate-spin')).toBeInTheDocument()
   })
 
   it('hides loading state when saveLoading is false', () => {
-    render(<RenameModal {...defaultProps} saveLoading={false} />)
+    render(<RenameConversationDialog {...defaultProps} saveLoading={false} />)
     const saveButton = screen.getByRole('button', { name: 'common.operation.save' })
     expect(saveButton).not.toBeDisabled()
     expect(saveButton).not.toHaveAttribute('aria-busy')
@@ -89,28 +107,29 @@ describe('RenameModal', () => {
 
   it('keeps edited name when parent rerenders with different name prop', async () => {
     const user = userEvent.setup()
-    const { rerender } = render(<RenameModal {...defaultProps} name="First" />)
+    const { rerender } = render(<RenameConversationDialog {...defaultProps} name="First" />)
 
     const input = screen.getByRole('textbox')
     await user.clear(input)
     await user.type(input, 'Edited')
 
-    rerender(<RenameModal {...defaultProps} name="Second" />)
+    rerender(<RenameConversationDialog {...defaultProps} name="Second" />)
     expect(screen.getByRole('textbox')).toHaveValue('Edited')
   })
 
-  it('retains typed state after isShow false then true on same component instance', async () => {
+  it('starts a fresh draft after closing finishes and the dialog opens again', async () => {
     const user = userEvent.setup()
-    const { rerender } = render(<RenameModal {...defaultProps} isShow />)
+    const { rerender } = render(<RenameConversationDialog {...defaultProps} open />)
 
     const input = screen.getByRole('textbox')
     await user.clear(input)
     await user.type(input, 'Changed')
 
-    rerender(<RenameModal {...defaultProps} isShow={false} />)
-    rerender(<RenameModal {...defaultProps} isShow />)
+    rerender(<RenameConversationDialog {...defaultProps} open={false} />)
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    rerender(<RenameConversationDialog {...defaultProps} name="Latest name" open />)
 
-    expect(screen.getByRole('textbox')).toHaveValue('Changed')
+    expect(screen.getByRole('textbox')).toHaveValue('Latest name')
   })
 
   it('uses empty placeholder fallback when translation returns empty string', () => {
@@ -130,7 +149,7 @@ describe('RenameModal', () => {
       })
 
     try {
-      render(<RenameModal {...defaultProps} />)
+      render(<RenameConversationDialog {...defaultProps} />)
       expect(screen.getByPlaceholderText('')).toBeInTheDocument()
     } finally {
       useTranslationSpy.mockRestore()

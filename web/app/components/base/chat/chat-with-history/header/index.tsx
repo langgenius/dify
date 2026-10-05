@@ -17,7 +17,7 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import ViewFormDropdown from '@/app/components/base/chat/chat-with-history/inputs-form/view-form-dropdown'
-import RenameModal from '@/app/components/base/chat/chat-with-history/sidebar/rename-modal'
+import { RenameConversationDialog } from '@/app/components/base/chat/chat-with-history/sidebar/rename-modal'
 import { useChatWithHistoryContext } from '../context'
 import Operation from './operation'
 
@@ -193,15 +193,15 @@ const Header = ({ toggleButtonRef }: { toggleButtonRef?: Ref<HTMLButtonElement> 
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      {showRename && (
-        <RenameModal
-          isShow
-          onClose={handleCancelRename}
-          saveLoading={conversationRenaming}
-          name={showRename?.name || ''}
-          onSave={handleRename}
-        />
-      )}
+      <RenameConversationDialog
+        open={!!showRename}
+        onOpenChange={(open) => {
+          if (!open) handleCancelRename()
+        }}
+        saveLoading={conversationRenaming}
+        name={showRename?.name || ''}
+        onSave={handleRename}
+      />
     </>
   )
 }

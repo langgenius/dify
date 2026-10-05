@@ -1,37 +1,45 @@
 'use client'
-import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
-import * as React from 'react'
-import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-type IRenameModalProps = {
-  isShow: boolean
+type RenameConversationDialogProps = {
+  open: boolean
   saveLoading: boolean
   name: string
-  onClose: () => void
+  onOpenChange: (open: boolean) => void
   onSave: (name: string) => void
 }
 
-const RenameModal: FC<IRenameModalProps> = ({ isShow, saveLoading, name, onClose, onSave }) => {
+export function RenameConversationDialog({
+  open,
+  saveLoading,
+  name,
+  onOpenChange,
+  onSave,
+}: RenameConversationDialogProps) {
   const { t } = useTranslation(['common'])
-  const [tempName, setTempName] = useState(name)
   const conversationNamePlaceholder =
     t(($) => $['chat.conversationNamePlaceholder'], { ns: 'common' }) || ''
 
   return (
-    <Dialog open={isShow} onOpenChange={(open) => !open && onClose()}>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen, details) => {
+        if (saveLoading) details.cancel()
+        else onOpenChange(nextOpen)
+      }}
+    >
       <DialogContent>
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
           {t(($) => $['chat.renameConversation'], { ns: 'common' })}
         </DialogTitle>
-        <Form
-          onFormSubmit={() => {
-            if (!saveLoading) onSave(tempName)
+        <Form<{ conversationName: string }>
+          onFormSubmit={({ conversationName }) => {
+            if (!saveLoading) onSave(conversationName)
           }}
         >
           <Field name="conversationName" className="mt-6">
@@ -40,16 +48,16 @@ const RenameModal: FC<IRenameModalProps> = ({ isShow, saveLoading, name, onClose
             </FieldLabel>
             <Input
               className="h-10"
-              value={tempName}
-              onValueChange={setTempName}
+              defaultValue={name}
+              readOnly={saveLoading}
               placeholder={conversationNamePlaceholder}
             />
           </Field>
 
           <div className="mt-10 flex justify-end">
-            <Button type="button" className="mr-2 shrink-0" onClick={onClose}>
+            <DialogClose disabled={saveLoading} render={<Button className="mr-2 shrink-0" />}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
-            </Button>
+            </DialogClose>
             <Button type="submit" variant="primary" className="shrink-0" loading={saveLoading}>
               {t(($) => $['operation.save'], { ns: 'common' })}
             </Button>
@@ -59,4 +67,3 @@ const RenameModal: FC<IRenameModalProps> = ({ isShow, saveLoading, name, onClose
     </Dialog>
   )
 }
-export default React.memo(RenameModal)

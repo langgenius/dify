@@ -23,7 +23,7 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import InputsFormContent from '@/app/components/base/chat/chat-with-history/inputs-form/content'
-import RenameModal from '@/app/components/base/chat/chat-with-history/sidebar/rename-modal'
+import { RenameConversationDialog } from '@/app/components/base/chat/chat-with-history/sidebar/rename-modal'
 import { useChatWithHistoryContext } from './context'
 import MobileOperationDropdown from './header/mobile-operation-dropdown'
 import Operation from './header/operation'
@@ -205,15 +205,15 @@ const HeaderInMobile = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      {showRename && (
-        <RenameModal
-          isShow
-          onClose={handleCancelRename}
-          saveLoading={conversationRenaming}
-          name={showRename?.name || ''}
-          onSave={handleRename}
-        />
-      )}
+      <RenameConversationDialog
+        open={!!showRename}
+        onOpenChange={(open) => {
+          if (!open) handleCancelRename()
+        }}
+        saveLoading={conversationRenaming}
+        name={showRename?.name || ''}
+        onSave={handleRename}
+      />
     </>
   )
 }
