@@ -1,11 +1,11 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vite-plus/test'
-import ConfirmModal from '../index'
+import { ConfirmModal } from '../index'
 
 describe('ConfirmModal', () => {
   it('does not expose the dialog while hidden', () => {
-    render(<ConfirmModal show={false} onClose={vi.fn()} />)
+    render(<ConfirmModal open={false} onOpenChange={vi.fn()} />)
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
@@ -14,20 +14,23 @@ describe('ConfirmModal', () => {
     ['common.operation.close', 'close button'],
     ['common.operation.cancel', 'cancel button'],
   ])('closes from the %s action', async (name) => {
-    const onClose = vi.fn()
-    render(<ConfirmModal show onClose={onClose} />)
+    const onOpenChange = vi.fn()
+    render(<ConfirmModal open onOpenChange={onOpenChange} />)
 
     await userEvent.click(screen.getByRole('button', { name }))
 
-    expect(onClose).toHaveBeenCalledOnce()
+    expect(onOpenChange).toHaveBeenCalledWith(false, expect.anything())
   })
 
   it('confirms the destructive update', async () => {
     const onConfirm = vi.fn()
-    render(<ConfirmModal show onClose={vi.fn()} onConfirm={onConfirm} />)
+    const onOpenChange = vi.fn()
+    render(<ConfirmModal open onOpenChange={onOpenChange} onConfirm={onConfirm} />)
 
     await userEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
     expect(onConfirm).toHaveBeenCalledOnce()
+    expect(onOpenChange).not.toHaveBeenCalled()
+    expect(screen.getByRole('dialog')).toHaveAccessibleDescription('tools.createTool.confirmTip')
   })
 })
