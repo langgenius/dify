@@ -14,7 +14,7 @@ import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { ADD_EXTERNAL_DATA_TOOL } from '@/app/components/app/configuration/config-var'
 import AutomaticBtn from '@/app/components/app/configuration/config/automatic/automatic-btn'
-import GetAutomaticResModal from '@/app/components/app/configuration/config/automatic/get-automatic-res'
+import { GetAutomaticRes } from '@/app/components/app/configuration/config/automatic/get-automatic-res'
 import { toast } from '@/app/components/app/configuration/toast'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import PromptEditor from '@/app/components/base/prompt-editor'
@@ -156,8 +156,10 @@ const Prompt: FC<ISimplePromptInput> = ({
     }
   }
 
-  const [showAutomatic, { setTrue: showAutomaticTrue, setFalse: showAutomaticFalse }] =
-    useBoolean(false)
+  const [
+    showAutomatic,
+    { setTrue: showAutomaticTrue, setFalse: showAutomaticFalse, set: setShowAutomatic },
+  ] = useBoolean(false)
   const handleAutomaticRes = (res: GenRes) => {
     // put eventEmitter in first place to prevent overwrite the configs.prompt_variables.But another problem is that prompt won't hight the prompt_variables.
     eventEmitter?.emit({
@@ -311,17 +313,15 @@ const Prompt: FC<ISimplePromptInput> = ({
         />
       )}
 
-      {showAutomatic && (
-        <GetAutomaticResModal
-          flowId={appId}
-          mode={mode as AppModeEnum}
-          isShow={showAutomatic}
-          onClose={showAutomaticFalse}
-          onFinished={handleAutomaticRes}
-          currentPrompt={promptTemplate}
-          isBasicMode
-        />
-      )}
+      <GetAutomaticRes
+        flowId={appId}
+        mode={mode as AppModeEnum}
+        open={showAutomatic}
+        onOpenChange={setShowAutomatic}
+        onFinished={handleAutomaticRes}
+        currentPrompt={promptTemplate}
+        isBasicMode
+      />
     </div>
   )
 }

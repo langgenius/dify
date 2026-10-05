@@ -7,7 +7,7 @@ import { useBoolean } from 'ahooks'
 import { produce } from 'immer'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import GetAutomaticResModal from '@/app/components/app/configuration/config/automatic/get-automatic-res'
+import { GetAutomaticRes } from '@/app/components/app/configuration/config/automatic/get-automatic-res'
 import Badge from '@/app/components/base/badge'
 import { CopyFeedback } from '@/app/components/base/copy-feedback'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
@@ -16,7 +16,7 @@ import { VariableIconWithColor } from '@/app/components/workflow/nodes/_base/com
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { AppModeEnum } from '@/types/app'
 import { VarInInspectType } from '@/types/workflow'
-import GetCodeGeneratorResModal from '../../app/configuration/config/code-generator/get-code-generator-res'
+import { GetCodeGeneratorResModal } from '../../app/configuration/config/code-generator/get-code-generator-res'
 import { PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER } from '../../base/prompt-editor/plugins/update-block'
 import { useHooksStore } from '../hooks-store'
 import useCurrentVars from '../hooks/use-inspect-vars-crud'
@@ -95,7 +95,11 @@ const Right = ({ nodeId, currentNodeVar, handleOpenMenu, isValueFetching }: Prop
 
   const [
     isShowPromptGenerator,
-    { setTrue: doShowPromptGenerator, setFalse: handleHidePromptGenerator },
+    {
+      setTrue: doShowPromptGenerator,
+      setFalse: handleHidePromptGenerator,
+      set: setShowPromptGenerator,
+    },
   ] = useBoolean(false)
   const handleShowPromptGenerator = useCallback(() => {
     handleNodeSelect(nodeId)
@@ -205,7 +209,10 @@ const Right = ({ nodeId, currentNodeVar, handleOpenMenu, isValueFetching }: Prop
                 <Tooltip>
                   <TooltipTrigger
                     render={
-                      <div
+                      <IconButton
+                        aria-label={t(($) => $['generate.optimizePromptTooltip'], {
+                          ns: 'appGeneration',
+                        })}
                         className="cursor-pointer rounded-md p-1 hover:bg-state-accent-active"
                         onClick={handleShowPromptGenerator}
                       >
@@ -213,7 +220,7 @@ const Right = ({ nodeId, currentNodeVar, handleOpenMenu, isValueFetching }: Prop
                           aria-hidden
                           className="i-ri-sparkling-fill size-4 text-components-input-border-active-prompt-1"
                         />
-                      </div>
+                      </IconButton>
                     }
                   />
                   <TooltipContent>
@@ -325,29 +332,28 @@ const Right = ({ nodeId, currentNodeVar, handleOpenMenu, isValueFetching }: Prop
           />
         )}
       </div>
-      {isShowPromptGenerator &&
-        (isCodeBlock ? (
-          <GetCodeGeneratorResModal
-            isShow
-            mode={AppModeEnum.CHAT}
-            onClose={handleHidePromptGenerator}
-            flowId={configsMap?.flowId || ''}
-            nodeId={nodeId}
-            currentCode={currentPrompt}
-            codeLanguages={node?.data?.code_languages || CodeLanguage.python3}
-            onFinished={handleUpdatePrompt}
-          />
-        ) : (
-          <GetAutomaticResModal
-            mode={AppModeEnum.CHAT}
-            isShow
-            onClose={handleHidePromptGenerator}
-            onFinished={handleUpdatePrompt}
-            flowId={configsMap?.flowId || ''}
-            nodeId={nodeId}
-            currentPrompt={currentPrompt}
-          />
-        ))}
+      {isCodeBlock ? (
+        <GetCodeGeneratorResModal
+          open={isShowPromptGenerator}
+          mode={AppModeEnum.CHAT}
+          onOpenChange={setShowPromptGenerator}
+          flowId={configsMap?.flowId || ''}
+          nodeId={nodeId}
+          currentCode={currentPrompt}
+          codeLanguages={node?.data?.code_languages || CodeLanguage.python3}
+          onFinished={handleUpdatePrompt}
+        />
+      ) : (
+        <GetAutomaticRes
+          mode={AppModeEnum.CHAT}
+          open={isShowPromptGenerator}
+          onOpenChange={setShowPromptGenerator}
+          onFinished={handleUpdatePrompt}
+          flowId={configsMap?.flowId || ''}
+          nodeId={nodeId}
+          currentPrompt={currentPrompt}
+        />
+      )}
     </div>
   )
 }

@@ -1,7 +1,7 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { AppModeEnum } from '@/types/app'
-import GetCodeGeneratorResModal from '../get-code-generator-res'
+import { GetCodeGeneratorResModal } from '../get-code-generator-res'
 
 const mockGenerateRule = vi.fn()
 const mockToastError = vi.fn()
@@ -128,9 +128,9 @@ describe('GetCodeGeneratorResModal', () => {
         nodeId="node-1"
         currentCode="print(1)"
         mode={AppModeEnum.CHAT}
-        isShow
+        open
         codeLanguages={CodeLanguage.python3}
-        onClose={mockOnClose}
+        onOpenChange={mockOnClose}
         onFinished={mockOnFinished}
       />,
     )
@@ -155,9 +155,9 @@ describe('GetCodeGeneratorResModal', () => {
         nodeId="node-1"
         currentCode="print(1)"
         mode={AppModeEnum.CHAT}
-        isShow
+        open
         codeLanguages={CodeLanguage.python3}
-        onClose={mockOnClose}
+        onOpenChange={mockOnClose}
         onFinished={mockOnFinished}
       />,
     )
@@ -182,9 +182,9 @@ describe('GetCodeGeneratorResModal', () => {
         nodeId="node-1"
         currentCode="print(1)"
         mode={AppModeEnum.CHAT}
-        isShow
+        open
         codeLanguages={CodeLanguage.python3}
-        onClose={mockOnClose}
+        onOpenChange={mockOnClose}
         onFinished={mockOnFinished}
       />,
     )
@@ -209,9 +209,9 @@ describe('GetCodeGeneratorResModal', () => {
         nodeId="node-1"
         currentCode="print(1)"
         mode={AppModeEnum.CHAT}
-        isShow
+        open
         codeLanguages={CodeLanguage.python3}
-        onClose={mockOnClose}
+        onOpenChange={mockOnClose}
         onFinished={mockOnFinished}
       />,
     )
@@ -264,9 +264,9 @@ describe('GetCodeGeneratorResModal', () => {
         nodeId="node-1"
         currentCode="print(1)"
         mode={AppModeEnum.CHAT}
-        isShow
+        open
         codeLanguages={CodeLanguage.python3}
-        onClose={mockOnClose}
+        onOpenChange={mockOnClose}
         onFinished={mockOnFinished}
       />,
     )
@@ -304,9 +304,9 @@ describe('GetCodeGeneratorResModal', () => {
         nodeId="node-1"
         currentCode="print(1)"
         mode={AppModeEnum.CHAT}
-        isShow
+        open
         codeLanguages={CodeLanguage.javascript}
-        onClose={mockOnClose}
+        onOpenChange={mockOnClose}
         onFinished={mockOnFinished}
       />,
     )
@@ -319,5 +319,71 @@ describe('GetCodeGeneratorResModal', () => {
     })
 
     expect(screen.queryByTestId('code-result-panel')).not.toBeInTheDocument()
+  })
+  it('allows pending generation to close and restores persisted results in the next session', async () => {
+    let resolveGeneration: (value: { code: string }) => void = () => {}
+    mockGenerateRule.mockReturnValue(
+      new Promise((resolve) => {
+        resolveGeneration = resolve
+      }),
+    )
+    const props = {
+      flowId: 'session-flow',
+      nodeId: 'node-1',
+      mode: AppModeEnum.CHAT,
+      codeLanguages: CodeLanguage.python3,
+      onOpenChange: mockOnClose,
+      onFinished: mockOnFinished,
+    }
+    const { rerender } = render(<GetCodeGeneratorResModal {...props} open />)
+    fireEvent.click(screen.getByText('set-code-instruction'))
+    fireEvent.click(screen.getByText('set-code-output'))
+    fireEvent.click(screen.getByRole('button', { name: 'appGeneration.codegen.generate' }))
+    expect(mockGenerateRule).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole('button', { name: 'appGeneration.codegen.generate' })).toBeDisabled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'appGeneration.generate.dismiss' }))
+    expect(mockOnClose).toHaveBeenCalledWith(false, expect.anything())
+    rerender(<GetCodeGeneratorResModal {...props} open={false} />)
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await act(async () => resolveGeneration({ code: 'late generated code' }))
+    expect(sessionStorage.getItem('gen-data-session-flow-node-1-versions')).toContain(
+      'late generated code',
+    )
+    expect(mockOnFinished).not.toHaveBeenCalled()
+
+    rerender(<GetCodeGeneratorResModal {...props} open />)
+    expect(screen.getByTestId('workflow-editor')).toHaveTextContent('code instruction')
+    expect(screen.getByTestId('idea-output')).toBeEmptyDOMElement()
+    expect(screen.getByTestId('code-result-panel')).toHaveTextContent('late generated code')
+    expect(screen.getByRole('button', { name: 'appGeneration.codegen.generate' })).toBeEnabled()
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+  })
+
+  it('restores the stored version index and delegates Apply closure to its owner', async () => {
+    sessionStorage.setItem(
+      'gen-data-session-flow-node-1-versions',
+      JSON.stringify([{ modified: 'older version' }, { modified: 'selected version' }]),
+    )
+    sessionStorage.setItem('gen-data-session-flow-node-1-version-index', '1')
+    render(
+      <GetCodeGeneratorResModal
+        codeLanguages={CodeLanguage.python3}
+        nodeId="node-1"
+        flowId="session-flow"
+        mode={AppModeEnum.CHAT}
+        open
+        onOpenChange={mockOnClose}
+        onFinished={mockOnFinished}
+      />,
+    )
+    expect(screen.getByTestId('code-result-panel')).toHaveTextContent('selected version')
+    fireEvent.click(screen.getByText('apply-code-result'))
+    const confirmation = screen.getByRole('alertdialog')
+    fireEvent.click(within(confirmation).getByRole('button', { name: 'common.operation.confirm' }))
+    expect(mockOnFinished).toHaveBeenCalledExactlyOnceWith({ modified: 'selected version' })
+    expect(mockOnClose).not.toHaveBeenCalled()
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
 })

@@ -7,7 +7,7 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import GetAutomaticResModal from '@/app/components/app/configuration/config/automatic/get-automatic-res'
+import { GetAutomaticRes } from '@/app/components/app/configuration/config/automatic/get-automatic-res'
 import { AppModeEnum } from '@/types/app'
 import { useHooksStore } from '../../../hooks-store'
 
@@ -46,18 +46,16 @@ const PromptGeneratorBtn: FC<Props> = ({
       >
         <span aria-hidden className="i-custom-vender-other-generator size-4 text-primary-600" />
       </IconButton>
-      {showAutomatic && (
-        <GetAutomaticResModal
-          mode={AppModeEnum.CHAT}
-          isShow={showAutomatic}
-          onClose={() => setShowAutomatic(false)}
-          onFinished={handleAutomaticRes}
-          flowId={configsMap?.flowId || ''}
-          nodeId={nodeId}
-          editorId={editorId}
-          currentPrompt={currentPrompt}
-        />
-      )}
+      <GetAutomaticRes
+        mode={AppModeEnum.CHAT}
+        open={showAutomatic}
+        onOpenChange={setShowAutomatic}
+        onFinished={handleAutomaticRes}
+        flowId={configsMap?.flowId || ''}
+        nodeId={nodeId}
+        editorId={editorId}
+        currentPrompt={currentPrompt}
+      />
     </div>
   )
 }

@@ -1,4 +1,3 @@
-import type { FC } from 'react'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import type { GenRes } from '@/service/debug'
@@ -13,11 +12,17 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { useQuery } from '@tanstack/react-query'
 import { useBoolean, useSessionStorageState } from 'ahooks'
 import * as React from 'react'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/components/app/configuration/toast'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
@@ -52,23 +57,22 @@ type IGetCodeGeneratorResProps = {
   nodeId: string
   currentCode?: string
   mode: AppModeEnum
-  isShow: boolean
+  open: boolean
   codeLanguages: CodeLanguage
-  onClose: () => void
+  onOpenChange: (open: boolean) => void
   onFinished: (res: GenRes) => void
 }
 
-export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = ({
+const GetCodeGeneratorResModalContent = ({
   flowId,
   nodeId,
   currentCode,
   mode,
-  isShow,
   codeLanguages,
-  onClose,
   onFinished,
-}) => {
+}: Omit<IGetCodeGeneratorResProps, 'open' | 'onOpenChange'>) => {
   const { t } = useTranslation(['appDebug', 'common', 'appGeneration'])
+  const instructionLabelId = useId()
   const [storedModel, setStoredModel] = useAutoGenModel()
   const [selectedModel, setSelectedModel] = React.useState<Model>()
   const { defaultModel } = useModelListAndDefaultModelAndCurrentProviderAndModel(
@@ -188,7 +192,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = ({
   ] = useBoolean(false)
 
   const renderLoading = (
-    <div className="flex h-full w-0 grow flex-col items-center justify-center space-y-3">
+    <div className="flex min-w-0 flex-col items-center justify-center space-y-3 xl:h-full xl:flex-1">
       <LoadingPlaceholder />
       <div className="text-[13px] text-text-tertiary">
         {t(($) => $['codegen.loading'], { ns: 'appGeneration' })}
@@ -197,115 +201,115 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = ({
   )
 
   return (
-    <Dialog
-      open={isShow}
-      onOpenChange={(open) => {
-        if (!open) onClose()
-      }}
-    >
-      <DialogContent className="h-[min(680px,calc(100dvh-2rem))] max-h-none! w-full min-w-285 overflow-hidden! border-none p-0! text-left align-middle">
-        <div className="relative flex h-full min-h-0 flex-wrap">
-          <div className="h-full w-142.5 shrink-0 overflow-y-auto border-r border-divider-regular p-6">
-            <div className="mb-5">
-              <div className={`text-lg leading-7 font-bold ${s.textGradient}`}>
-                {t(($) => $['codegen.title'], { ns: 'appGeneration' })}
+    <>
+      <div className="relative flex min-h-0 flex-col xl:h-full xl:flex-row">
+        <div className="min-w-0 border-divider-regular p-6 xl:h-full xl:flex-1 xl:overflow-y-auto xl:border-r">
+          <div className="mb-5">
+            <DialogTitle className={`text-lg leading-7 font-bold ${s.textGradient}`}>
+              {t(($) => $['codegen.title'], { ns: 'appGeneration' })}
+            </DialogTitle>
+            <DialogDescription className="mt-1 text-[13px] font-normal text-text-tertiary">
+              {t(($) => $['codegen.description'], { ns: 'appGeneration' })}
+            </DialogDescription>
+          </div>
+          <div className="mb-4">
+            <ModelParameterModal
+              popupClassName="w-130! max-w-[calc(100vw-2rem)]"
+              isAdvancedMode={true}
+              provider={model.provider}
+              completionParams={model.completion_params}
+              modelId={model.name}
+              setModel={handleModelChange}
+              onCompletionParamsChange={handleCompletionParamsChange}
+              hideDebugWithMultipleModel
+            />
+          </div>
+          <div>
+            <div className="text-[0px]">
+              <div
+                id={instructionLabelId}
+                className="mb-1.5 system-sm-semibold-uppercase text-text-secondary"
+              >
+                {t(($) => $['codegen.instruction'], { ns: 'appGeneration' })}
               </div>
-              <div className="mt-1 text-[13px] font-normal text-text-tertiary">
-                {t(($) => $['codegen.description'], { ns: 'appGeneration' })}
-              </div>
-            </div>
-            <div className="mb-4">
-              <ModelParameterModal
-                popupClassName="w-[520px]!"
-                isAdvancedMode={true}
-                provider={model.provider}
-                completionParams={model.completion_params}
-                modelId={model.name}
-                setModel={handleModelChange}
-                onCompletionParamsChange={handleCompletionParamsChange}
-                hideDebugWithMultipleModel
+              <InstructionEditor
+                aria-labelledby={instructionLabelId}
+                editorKey={instructionEditorKey}
+                value={instruction}
+                onChange={setInstructionFromSessionStorage}
+                nodeId={nodeId}
+                generatorType={GeneratorType.code}
+                isShowCurrentBlock={!!currentCode}
               />
             </div>
-            <div>
-              <div className="text-[0px]">
-                <div className="mb-1.5 system-sm-semibold-uppercase text-text-secondary">
-                  {t(($) => $['codegen.instruction'], { ns: 'appGeneration' })}
-                </div>
-                <InstructionEditor
-                  editorKey={instructionEditorKey}
-                  value={instruction}
-                  onChange={setInstructionFromSessionStorage}
-                  nodeId={nodeId}
-                  generatorType={GeneratorType.code}
-                  isShowCurrentBlock={!!currentCode}
-                />
-              </div>
-              <IdeaOutput value={ideaOutput} onChange={setIdeaOutput} />
+            <IdeaOutput value={ideaOutput} onChange={setIdeaOutput} />
 
-              <div className="mt-7 flex justify-end space-x-2">
-                <Button onClick={onClose}>
-                  {t(($) => $[`${i18nPrefix}.dismiss`], { ns: 'appGeneration' })}
-                </Button>
-                <Button
-                  className="flex"
-                  variant="primary"
-                  onClick={onGenerate}
-                  disabled={isLoading}
-                >
-                  <span aria-hidden className="i-custom-vender-other-generator size-4" />
-                  <span className="text-xs font-semibold">
-                    {t(($) => $['codegen.generate'], { ns: 'appGeneration' })}
-                  </span>
-                </Button>
-              </div>
+            <div className="mt-7 flex flex-wrap justify-end gap-2">
+              <DialogClose render={<Button />}>
+                {t(($) => $[`${i18nPrefix}.dismiss`], { ns: 'appGeneration' })}
+              </DialogClose>
+              <Button className="flex" variant="primary" onClick={onGenerate} disabled={isLoading}>
+                <span aria-hidden className="i-custom-vender-other-generator size-4" />
+                <span className="text-xs font-semibold">
+                  {t(($) => $['codegen.generate'], { ns: 'appGeneration' })}
+                </span>
+              </Button>
             </div>
           </div>
-          {isLoading && renderLoading}
-          {!isLoading && !current && <ResPlaceholder />}
-          {!isLoading && current && (
-            <div className="h-full w-0 grow bg-background-default-subtle p-6 pb-0">
-              <Result
-                current={current!}
-                currentVersionIndex={currentVersionIndex || 0}
-                setCurrentVersionIndex={setCurrentVersionIndex}
-                versions={versions || []}
-                onApply={showConfirmOverwrite}
-                generatorType={GeneratorType.code}
-              />
-            </div>
-          )}
         </div>
-        <AlertDialog
-          open={isShowConfirmOverwrite}
-          onOpenChange={(open) => !open && hideShowConfirmOverwrite()}
-        >
-          <AlertDialogContent>
-            <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-              <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-                {t(($) => $['codegen.overwriteConfirmTitle'], { ns: 'appGeneration' })}
-              </AlertDialogTitle>
-              <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-                {t(($) => $['codegen.overwriteConfirmMessage'], { ns: 'appGeneration' })}
-              </AlertDialogDescription>
-            </div>
-            <AlertDialogFooter>
-              <AlertDialogCancelButton>
-                {t(($) => $['operation.cancel'], { ns: 'common' })}
-              </AlertDialogCancelButton>
-              <AlertDialogConfirmButton
-                onClick={() => {
-                  hideShowConfirmOverwrite()
-                  onFinished(current!)
-                }}
-              >
-                {t(($) => $['operation.confirm'], { ns: 'common' })}
-              </AlertDialogConfirmButton>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </DialogContent>
-    </Dialog>
+        {isLoading && renderLoading}
+        {!isLoading && !current && <ResPlaceholder />}
+        {!isLoading && current && (
+          <div className="min-w-0 bg-background-default-subtle p-6 pb-0 xl:h-full xl:flex-1">
+            <Result
+              current={current!}
+              currentVersionIndex={currentVersionIndex || 0}
+              setCurrentVersionIndex={setCurrentVersionIndex}
+              versions={versions || []}
+              onApply={showConfirmOverwrite}
+              generatorType={GeneratorType.code}
+            />
+          </div>
+        )}
+      </div>
+      <AlertDialog
+        open={isShowConfirmOverwrite}
+        onOpenChange={(open) => !open && hideShowConfirmOverwrite()}
+      >
+        <AlertDialogContent>
+          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+              {t(($) => $['codegen.overwriteConfirmTitle'], { ns: 'appGeneration' })}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+              {t(($) => $['codegen.overwriteConfirmMessage'], { ns: 'appGeneration' })}
+            </AlertDialogDescription>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancelButton>
+              {t(($) => $['operation.cancel'], { ns: 'common' })}
+            </AlertDialogCancelButton>
+            <AlertDialogConfirmButton
+              onClick={() => {
+                hideShowConfirmOverwrite()
+                onFinished(current!)
+              }}
+            >
+              {t(($) => $['operation.confirm'], { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }
 
-export default React.memo(GetCodeGeneratorResModal)
+export const GetCodeGeneratorResModal = React.memo(
+  ({ open, onOpenChange, ...props }: IGetCodeGeneratorResProps) => (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[calc(100dvh-2rem)] w-285 overflow-y-auto border-none p-0! text-left align-middle xl:h-[min(680px,calc(100dvh-2rem))] xl:overflow-hidden">
+        <GetCodeGeneratorResModalContent {...props} />
+      </DialogContent>
+    </Dialog>
+  ),
+)

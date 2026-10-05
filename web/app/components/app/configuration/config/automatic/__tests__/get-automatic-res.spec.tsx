@@ -1,6 +1,6 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { AppModeEnum } from '@/types/app'
-import GetAutomaticRes from '../get-automatic-res'
+import { GetAutomaticRes } from '../get-automatic-res'
 
 const mockGenerateBasicAppFirstTimeRule = vi.fn()
 const mockGenerateRule = vi.fn()
@@ -133,8 +133,8 @@ describe('GetAutomaticRes', () => {
     render(
       <GetAutomaticRes
         mode={AppModeEnum.CHAT}
-        isShow
-        onClose={mockOnClose}
+        open
+        onOpenChange={mockOnClose}
         onFinished={mockOnFinished}
         flowId="flow-1"
         isBasicMode
@@ -164,8 +164,8 @@ describe('GetAutomaticRes', () => {
     render(
       <GetAutomaticRes
         mode={AppModeEnum.CHAT}
-        isShow
-        onClose={mockOnClose}
+        open
+        onOpenChange={mockOnClose}
         onFinished={mockOnFinished}
         flowId="flow-1"
       />,
@@ -188,8 +188,8 @@ describe('GetAutomaticRes', () => {
     render(
       <GetAutomaticRes
         mode={AppModeEnum.CHAT}
-        isShow
-        onClose={mockOnClose}
+        open
+        onOpenChange={mockOnClose}
         onFinished={mockOnFinished}
         flowId="flow-1"
         isBasicMode
@@ -215,8 +215,8 @@ describe('GetAutomaticRes', () => {
     render(
       <GetAutomaticRes
         mode={AppModeEnum.CHAT}
-        isShow
-        onClose={mockOnClose}
+        open
+        onOpenChange={mockOnClose}
         onFinished={mockOnFinished}
         flowId="flow-1"
         isBasicMode
@@ -266,8 +266,8 @@ describe('GetAutomaticRes', () => {
     render(
       <GetAutomaticRes
         mode={AppModeEnum.CHAT}
-        isShow
-        onClose={mockOnClose}
+        open
+        onOpenChange={mockOnClose}
         onFinished={mockOnFinished}
         flowId="flow-1"
         isBasicMode
@@ -303,8 +303,8 @@ describe('GetAutomaticRes', () => {
     render(
       <GetAutomaticRes
         mode={AppModeEnum.ADVANCED_CHAT}
-        isShow
-        onClose={mockOnClose}
+        open
+        onOpenChange={mockOnClose}
         onFinished={mockOnFinished}
         flowId="flow-1"
         nodeId="node-1"
@@ -335,5 +335,75 @@ describe('GetAutomaticRes', () => {
     })
 
     expect(screen.queryByTestId('result-panel')).not.toBeInTheDocument()
+  })
+  it('allows pending generation to close and restores persisted results in the next session', async () => {
+    let resolveGeneration: (value: {
+      prompt: string
+      variables: string[]
+      opening_statement: string
+    }) => void = () => {}
+    mockGenerateBasicAppFirstTimeRule.mockReturnValue(
+      new Promise((resolve) => {
+        resolveGeneration = resolve
+      }),
+    )
+    const props = {
+      flowId: 'session-flow',
+      mode: AppModeEnum.CHAT,
+      isBasicMode: true,
+      onOpenChange: mockOnClose,
+      onFinished: mockOnFinished,
+    }
+    const { rerender } = render(<GetAutomaticRes {...props} open />)
+    fireEvent.click(screen.getByText('set-basic-instruction'))
+    fireEvent.click(screen.getByText('set-idea-output'))
+    fireEvent.click(screen.getByRole('button', { name: 'appGeneration.generate.generate' }))
+    expect(mockGenerateBasicAppFirstTimeRule).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole('button', { name: 'appGeneration.generate.generate' })).toBeDisabled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'appGeneration.generate.dismiss' }))
+    expect(mockOnClose).toHaveBeenCalledWith(false, expect.anything())
+    rerender(<GetAutomaticRes {...props} open={false} />)
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await act(async () =>
+      resolveGeneration({ prompt: 'late generated prompt', variables: [], opening_statement: '' }),
+    )
+    expect(sessionStorage.getItem('gen-data-session-flow-versions')).toContain(
+      'late generated prompt',
+    )
+    expect(mockOnFinished).not.toHaveBeenCalled()
+
+    rerender(<GetAutomaticRes {...props} open />)
+    expect(screen.getByTestId('basic-editor')).toHaveTextContent('basic instruction')
+    expect(screen.getByTestId('idea-output')).toBeEmptyDOMElement()
+    expect(screen.getByTestId('result-panel')).toHaveTextContent('late generated prompt')
+    expect(screen.getByRole('button', { name: 'appGeneration.generate.generate' })).toBeEnabled()
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+  })
+
+  it('restores the stored version index and delegates Apply closure to its owner', async () => {
+    sessionStorage.setItem(
+      'gen-data-session-flow-versions',
+      JSON.stringify([{ modified: 'older version' }, { modified: 'selected version' }]),
+    )
+    sessionStorage.setItem('gen-data-session-flow-version-index', '1')
+    render(
+      <GetAutomaticRes
+        isBasicMode
+        flowId="session-flow"
+        mode={AppModeEnum.CHAT}
+        open
+        onOpenChange={mockOnClose}
+        onFinished={mockOnFinished}
+      />,
+    )
+    expect(screen.getByTestId('result-panel')).toHaveTextContent('selected version')
+    fireEvent.click(screen.getByText('apply-result'))
+    const confirmation = screen.getByRole('alertdialog')
+    fireEvent.click(within(confirmation).getByRole('button', { name: 'common.operation.confirm' }))
+    expect(mockOnFinished).toHaveBeenCalledExactlyOnceWith({ modified: 'selected version' })
+    expect(mockOnClose).not.toHaveBeenCalled()
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
 })

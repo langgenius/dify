@@ -4039,12 +4039,6 @@
     }
   },
   "web/app/components/workflow/variable-inspect/right.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    },
     "typescript/no-explicit-any": {
       "count": 3
     }

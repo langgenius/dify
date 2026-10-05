@@ -1,7 +1,15 @@
 import type { currentVarType } from '../panel'
 import type { VarInInspect } from '@/types/workflow'
-import { screen } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { useNodes } from 'reactflow'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { consoleQuery } from '@/service/console'
+import { commonQueryKeys } from '@/service/use-common'
+import { seedAccountProfileQuery } from '@/test/console/account-profile'
+import { seedAppDslVersion, seedSystemFeatures } from '@/test/console/query-data'
 import { VarInInspectType } from '@/types/workflow'
 import { renderWorkflowFlowComponent } from '../../__tests__/workflow-test-env'
 import { BlockEnum, VarType } from '../../types'
@@ -20,31 +28,8 @@ vi.mock('../../hooks/use-inspect-vars-crud', () => ({
   }),
 }))
 
-vi.mock('../../hooks/use-nodes-interactions', () => ({
-  useNodesInteractions: () => ({
-    handleNodeSelect: vi.fn(),
-  }),
-}))
-
 vi.mock('../../hooks/use-tool-icon', () => ({
   useToolIcon: () => '',
-}))
-
-vi.mock('../../hooks-store', () => ({
-  useHooksStore: <T,>(selector: (state: { configsMap?: { flowId: string } }) => T) =>
-    selector({ configsMap: { flowId: 'flow-1' } }),
-}))
-
-vi.mock('../../nodes/_base/hooks/use-node-crud', () => ({
-  default: () => ({ setInputs: vi.fn() }),
-}))
-
-vi.mock('../../nodes/_base/hooks/use-node-info', () => ({
-  default: () => ({ node: undefined }),
-}))
-
-vi.mock('@/context/event-emitter', () => ({
-  useEventEmitterContextContext: () => ({ eventEmitter: undefined }),
 }))
 
 vi.mock('../value-content', () => ({
@@ -99,6 +84,21 @@ const renderRight = (
 
   return { ...result, handleOpenMenu }
 }
+
+beforeEach(() => {
+  vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+    const url = input instanceof Request ? input.url : String(input)
+    if (url.includes('/default-model?')) return Response.json({ data: null })
+    if (
+      url.includes('/spec/schema-definitions') ||
+      /\/tools\/(?:builtin|api|workflow|mcp)$/.test(url)
+    )
+      return Response.json([])
+    throw new Error(`Unexpected request: ${url}`)
+  })
+})
+
+afterEach(() => vi.restoreAllMocks())
 
 describe('VariableInspect Right', () => {
   beforeEach(() => {
@@ -163,3 +163,89 @@ describe('VariableInspect Right', () => {
     expect(mockResetConversationVar).toHaveBeenCalledWith('var-1')
   })
 })
+
+function NodeValue() {
+  const nodes = useNodes<{ code?: string; prompt_template?: { text: string }[] }>()
+  const node = nodes.find((node) => node.id === 'node-1')
+  return (
+    <output aria-label="Node source">
+      {node?.data.code ?? node?.data.prompt_template?.[0]?.text}
+    </output>
+  )
+}
+
+it.each([BlockEnum.Code, BlockEnum.LLM])(
+  'applies generated %s to the inspected node and closes the real dialog',
+  async (type) => {
+    sessionStorage.clear()
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false, staleTime: Infinity } },
+    })
+    seedAccountProfileQuery(client)
+    seedSystemFeatures(client)
+    seedAppDslVersion(client)
+    client.setQueryData(
+      consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+        input: { params: { model_type: ModelTypeEnum.textGeneration } },
+      }).queryKey,
+      { data: [] },
+    )
+    client.setQueryData(commonQueryKeys.defaultModel(ModelTypeEnum.textGeneration), { data: null })
+    client.setQueryData(
+      consoleQuery.instructionGenerate.template.post.queryOptions({
+        input: { body: { type: type === BlockEnum.Code ? 'code' : 'prompt' } },
+      }).queryKey,
+      { data: 'Describe a task' },
+    )
+    sessionStorage.setItem(
+      'gen-data-flow-1-node-1-versions',
+      JSON.stringify([{ modified: 'Generated source', prompt: 'Existing source' }]),
+    )
+    const data = {
+      type,
+      title: 'Node',
+      desc: '',
+      ...(type === BlockEnum.Code
+        ? { code: 'Existing source', code_language: 'python3' }
+        : { prompt_template: [{ role: 'system', text: 'Existing source' }] }),
+    }
+    const user = userEvent.setup()
+    const view = renderWorkflowFlowComponent(
+      <QueryClientProvider client={client}>
+        <NuqsTestingAdapter>
+          <Right
+            nodeId="node-1"
+            currentNodeVar={{ ...createCurrentNodeVar(), nodeType: type, nodeData: data }}
+            handleOpenMenu={vi.fn()}
+          />
+          <NodeValue />
+        </NuqsTestingAdapter>
+      </QueryClientProvider>,
+      {
+        nodes: [{ id: 'node-1', position: { x: 0, y: 0 }, data }],
+        edges: [],
+        hooksStoreProps: {
+          configsMap: { flowId: 'flow-1', flowType: 'appFlow', fileSettings: { enabled: false } },
+          doSyncWorkflowDraft: vi.fn(),
+        },
+      },
+    )
+    try {
+      await user.click(
+        screen.getByRole('button', { name: 'appGeneration.generate.optimizePromptTooltip' }),
+      )
+      await user.click(await screen.findByRole('button', { name: 'appGeneration.generate.apply' }))
+      expect(screen.getByLabelText('Node source')).toHaveTextContent('Existing source')
+      await user.click(
+        within(screen.getByRole('alertdialog')).getByRole('button', {
+          name: 'common.operation.confirm',
+        }),
+      )
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      expect(screen.getByLabelText('Node source')).toHaveTextContent('Generated source')
+    } finally {
+      view.unmount()
+      client.clear()
+    }
+  },
+)
