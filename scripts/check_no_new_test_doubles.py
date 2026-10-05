@@ -44,19 +44,14 @@ from ast_grep_guard import (
 STUB_RULE_ID = "no-new-stub-subclass"
 
 
-def find_new_mock_calls(
-    changed: dict[str, list[Hunk]], args: argparse.Namespace
-) -> list[Violation]:
+def find_new_mock_calls(changed: dict[str, list[Hunk]], args: argparse.Namespace) -> list[Violation]:
     """Keep identical baseline calls, but catch alias changes outside their hunks."""
     violations: list[Violation] = []
     for path in changed:
         if not is_python_source_path(path):
             continue
         old_source, new_source = load_file_versions(path, args)
-        old_calls = Counter(
-            match.text
-            for match in run_ast_grep(old_source, rule=rule_path("no_new_mock.yml"))
-        )
+        old_calls = Counter(match.text for match in run_ast_grep(old_source, rule=rule_path("no_new_mock.yml")))
         for match in run_ast_grep(new_source, rule=rule_path("no_new_mock.yml")):
             if old_calls[match.text]:
                 old_calls[match.text] -= 1
@@ -75,27 +70,15 @@ def is_reportable_subclass(match: Match) -> bool:
     return not has_reasoned_guard_ignore(match.source_line, STUB_RULE_ID)
 
 
-def find_new_stub_subclasses(
-    changed: dict[str, list[Hunk]], args: argparse.Namespace
-) -> list[Violation]:
+def find_new_stub_subclasses(changed: dict[str, list[Hunk]], args: argparse.Namespace) -> list[Violation]:
     violations: list[Violation] = []
     for path in changed:
-        if not is_python_source_path(path) or not Path(path).is_relative_to(
-            "api/tests"
-        ):
+        if not is_python_source_path(path) or not Path(path).is_relative_to("api/tests"):
             continue
         old_source, new_source = load_file_versions(path, args)
-        old_matches = run_ast_grep(
-            old_source, rule=rule_path("no_new_stub_subclass.yml")
-        )
-        new_matches = run_ast_grep(
-            new_source, rule=rule_path("no_new_stub_subclass.yml")
-        )
-        old_names = Counter(
-            match.meta_variables["NAME"]
-            for match in old_matches
-            if is_reportable_subclass(match)
-        )
+        old_matches = run_ast_grep(old_source, rule=rule_path("no_new_stub_subclass.yml"))
+        new_matches = run_ast_grep(new_source, rule=rule_path("no_new_stub_subclass.yml"))
+        old_names = Counter(match.meta_variables["NAME"] for match in old_matches if is_reportable_subclass(match))
         for match in new_matches:
             if not is_reportable_subclass(match):
                 continue
