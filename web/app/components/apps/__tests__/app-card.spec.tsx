@@ -253,46 +253,11 @@ vi.mock('next/dynamic', async (importOriginal) => {
     default: (importFn: () => Promise<React.ComponentType<Record<string, unknown>>>) => {
       const fnString = importFn.toString()
 
-      if (fnString.includes('create-app-modal') || fnString.includes('explore/create-app-modal')) {
-        return function MockEditAppModal({
-          show,
-          onHide,
-          onConfirm,
-        }: {
-          show: boolean
-          onHide: () => void
-          onConfirm?: (data: Record<string, unknown>) => void
-        }) {
-          if (!show) return null
-          return React.createElement(
-            'div',
-            { 'data-testid': 'edit-app-modal' },
-            React.createElement(
-              'button',
-              { onClick: onHide, 'data-testid': 'close-edit-modal' },
-              'Close',
-            ),
-            React.createElement(
-              'button',
-              {
-                onClick: () =>
-                  onConfirm?.({
-                    name: 'Updated App',
-                    icon_type: 'emoji',
-                    icon: '🎯',
-                    icon_background: '#FFEAD5',
-                    description: 'Updated description',
-                    use_icon_as_answer_icon: false,
-                    max_active_requests: null,
-                  }),
-                'data-testid': 'confirm-edit-modal',
-              },
-              'Confirm',
-            ),
-          )
-        }
-      }
-      if (fnString.includes('duplicate-modal') || fnString.includes('switch-app-modal'))
+      if (
+        fnString.includes('create-app-modal') ||
+        fnString.includes('duplicate-modal') ||
+        fnString.includes('switch-app-modal')
+      )
         return actual.default(importFn, { ssr: false })
       if (fnString.includes('app/export-confirm-modal')) {
         return function MockDSLExportModal({
@@ -888,7 +853,7 @@ describe('AppCard', () => {
       })
 
       await waitFor(() => {
-        expect(screen.getByTestId('edit-app-modal')).toBeInTheDocument()
+        expect(screen.getByRole('dialog', { name: 'app.editAppTitle' })).toBeInTheDocument()
       })
     })
 
@@ -958,7 +923,7 @@ describe('AppCard', () => {
       expect(mockDeleteAppMutation).not.toHaveBeenCalled()
     })
 
-    it('should close edit modal when onHide is called', async () => {
+    it('closes the edit dialog through its Close control', async () => {
       render(<AppCard app={mockApp} />)
 
       fireEvent.click(getOperationsTrigger())
@@ -967,14 +932,13 @@ describe('AppCard', () => {
       })
 
       await waitFor(() => {
-        expect(screen.getByTestId('edit-app-modal')).toBeInTheDocument()
+        expect(screen.getByRole('dialog', { name: 'app.editAppTitle' })).toBeInTheDocument()
       })
 
-      // Click close button to trigger onHide
-      fireEvent.click(screen.getByTestId('close-edit-modal'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
       await waitFor(() => {
-        expect(screen.queryByTestId('edit-app-modal')).not.toBeInTheDocument()
+        expect(screen.queryByRole('dialog', { name: 'app.editAppTitle' })).not.toBeInTheDocument()
       })
     })
 
@@ -990,7 +954,6 @@ describe('AppCard', () => {
         expect(screen.getByRole('dialog', { name: 'app.duplicateTitle' })).toBeInTheDocument()
       })
 
-      // Click close button to trigger onHide
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
       await waitFor(() => {
@@ -1086,35 +1049,61 @@ describe('AppCard', () => {
       })
     })
 
-    it('should update the app and close the edit modal', async () => {
+    it('retains an edit while pending or failed and closes only after a successful retry', async () => {
+      const user = userEvent.setup()
+      let rejectEdit!: (reason: Error) => void
+      mockUpdateAppMutation.mockImplementationOnce(
+        () =>
+          new Promise((_, reject) => {
+            rejectEdit = reject
+          }),
+      )
       render(<AppCard app={mockApp} />)
-
-      fireEvent.click(getOperationsTrigger())
-      await waitFor(() => {
-        fireEvent.click(screen.getByText('app.editApp'))
+      const trigger = getOperationsTrigger()
+      await user.click(trigger)
+      await user.click(await screen.findByRole('menuitem', { name: 'app.editApp' }))
+      const dialog = await screen.findByRole('dialog', { name: 'app.editAppTitle' })
+      const name = within(dialog).getByRole('textbox', { name: 'app.newApp.captionName' })
+      await user.clear(name)
+      await user.type(name, 'Updated App')
+      const description = within(dialog).getByRole('textbox', {
+        name: 'app.newApp.captionDescription',
       })
+      await user.clear(description)
+      await user.type(description, 'Updated description')
+      await user.click(within(dialog).getByRole('button', { name: /common.operation.save/ }))
+      await waitFor(() => expect(mockUpdateAppMutation).toHaveBeenCalledTimes(1))
+      expect(name).toHaveAttribute('readonly')
+      await user.keyboard('{Escape}')
+      expect(dialog).toBeInTheDocument()
+      expect(within(dialog).getByRole('button', { name: 'common.operation.cancel' })).toBeDisabled()
+      expect(within(dialog).getByRole('button', { name: 'common.operation.close' })).toBeDisabled()
 
-      await waitFor(() => {
-        expect(screen.getByTestId('edit-app-modal')).toBeInTheDocument()
+      await act(async () => rejectEdit(new Error('Edit failed')))
+      await waitFor(() => expect(name).not.toHaveAttribute('readonly'))
+      expect(name).toHaveValue('Updated App')
+      expect(description).toHaveValue('Updated description')
+      expect(dialog).toBeInTheDocument()
+      expect(toastMocks.record).toHaveBeenCalledWith({ type: 'error', message: 'Edit failed' })
+      await user.click(within(dialog).getByRole('button', { name: /common.operation.save/ }))
+      await waitFor(() =>
+        expect(screen.queryByRole('dialog', { name: 'app.editAppTitle' })).not.toBeInTheDocument(),
+      )
+      expect(mockUpdateAppMutation).toHaveBeenCalledTimes(2)
+      expect(mockUpdateAppMutation).toHaveBeenLastCalledWith({
+        params: { app_id: mockApp.id },
+        body: {
+          name: 'Updated App',
+          icon_type: 'emoji',
+          icon: '🤖',
+          icon_background: '#FFEAD5',
+          description: 'Updated description',
+          use_icon_as_answer_icon: false,
+          max_active_requests: undefined,
+        },
       })
-
-      fireEvent.click(screen.getByTestId('confirm-edit-modal'))
-
-      await waitFor(() => {
-        expect(mockUpdateAppMutation).toHaveBeenCalledWith({
-          params: { app_id: mockApp.id },
-          body: {
-            name: 'Updated App',
-            icon_type: 'emoji',
-            icon: '🎯',
-            icon_background: '#FFEAD5',
-            description: 'Updated description',
-            use_icon_as_answer_icon: false,
-            max_active_requests: null,
-          },
-        })
-        expect(screen.queryByTestId('edit-app-modal')).not.toBeInTheDocument()
-      })
+      expect(toastMocks.record).toHaveBeenCalledWith({ type: 'success', message: 'app.editDone' })
+      await waitFor(() => expect(trigger).toHaveFocus())
     })
 
     it('keeps a pending or failed copy session open and closes only after the retry succeeds', async () => {
@@ -1373,31 +1362,6 @@ describe('AppCard', () => {
   })
 
   describe('Edit mutation', () => {
-    it('should handle edit failure', async () => {
-      mockUpdateAppMutation.mockRejectedValueOnce(new Error('Edit failed'))
-
-      render(<AppCard app={mockApp} />)
-
-      fireEvent.click(getOperationsTrigger())
-      await waitFor(() => {
-        fireEvent.click(screen.getByText('app.editApp'))
-      })
-
-      await waitFor(() => {
-        expect(screen.getByTestId('edit-app-modal')).toBeInTheDocument()
-      })
-
-      fireEvent.click(screen.getByTestId('confirm-edit-modal'))
-
-      await waitFor(() => {
-        expect(mockUpdateAppMutation).toHaveBeenCalled()
-        expect(toastMocks.record).toHaveBeenCalledWith({
-          type: 'error',
-          message: expect.stringContaining('Edit failed'),
-        })
-      })
-    })
-
     it('should fall back to the default edit failure message', async () => {
       mockUpdateAppMutation.mockRejectedValueOnce({ message: '' })
 
@@ -1409,10 +1373,10 @@ describe('AppCard', () => {
       })
 
       await waitFor(() => {
-        expect(screen.getByTestId('edit-app-modal')).toBeInTheDocument()
+        expect(screen.getByRole('dialog', { name: 'app.editAppTitle' })).toBeInTheDocument()
       })
 
-      fireEvent.click(screen.getByTestId('confirm-edit-modal'))
+      fireEvent.click(screen.getByRole('button', { name: /common.operation.save/ }))
 
       await waitFor(() => {
         expect(mockUpdateAppMutation).toHaveBeenCalled()
@@ -1425,12 +1389,13 @@ describe('AppCard', () => {
     it('should close operations menu after selecting an item', async () => {
       render(<AppCard app={mockApp} />)
 
-      fireEvent.click(getOperationsTrigger())
+      const trigger = getOperationsTrigger()
+      fireEvent.click(trigger)
       fireEvent.click(await screen.findByRole('menuitem', { name: 'app.editApp' }))
 
       await waitFor(() => {
-        expect(getOperationsTrigger()).toHaveAttribute('aria-expanded', 'false')
-        expect(screen.getByTestId('edit-app-modal')).toBeInTheDocument()
+        expect(trigger).toHaveAttribute('aria-expanded', 'false')
+        expect(screen.getByRole('dialog', { name: 'app.editAppTitle' })).toBeInTheDocument()
       })
     })
 

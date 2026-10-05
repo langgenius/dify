@@ -4,7 +4,7 @@ import type {
   RecommendedAppDetailResponse,
   RecommendedAppResponse,
 } from '@dify/contracts/api/console/explore/types.gen'
-import { act, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
 import {
@@ -253,7 +253,7 @@ it('fetches fresh detail by canonical app_id and submits the actual form with an
   )
 })
 
-it('closes the submitted modal immediately and reports detail failure without import or navigation', async () => {
+it('blocks dismissal through detail fetching and keeps the draft for a successful retry', async () => {
   const user = userEvent.setup()
   let rejectDetail: ((reason: Error) => void) | undefined
   request.mockImplementation(
@@ -263,16 +263,66 @@ it('closes the submitted modal immediately and reports detail failure without im
       }),
   )
   const { onClose } = renderApps()
-  await openFirst(user)
+  const dialog = await openFirst(user)
+  const input = within(dialog).getByPlaceholderText('app.newApp.appNamePlaceholder')
+  await user.clear(input)
+  await user.type(input, 'Retried template')
   await user.click(screen.getByRole('button', { name: /common\.operation\.create/ }))
   await waitFor(() => expect(request).toHaveBeenCalledOnce())
-  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  expect(input).toHaveAttribute('readonly')
+  expect(within(dialog).getByRole('button', { name: 'common.operation.close' })).toBeDisabled()
+  expect(within(dialog).getByRole('button', { name: 'common.operation.cancel' })).toBeDisabled()
+  await user.keyboard('{Escape}')
+  expect(dialog).toBeInTheDocument()
   await act(async () => rejectDetail?.(new Error('Unavailable')))
   await waitFor(() => expect(toast.error).toHaveBeenCalledWith('app.newApp.appCreateFailed'))
   expect(request).toHaveBeenCalledOnce()
   expect(onClose).not.toHaveBeenCalled()
   expect(trackCreateApp).not.toHaveBeenCalled()
   expect(redirect).not.toHaveBeenCalled()
+  await waitFor(() => expect(input).not.toHaveAttribute('readonly'))
+  expect(input).toHaveValue('Retried template')
+  request.mockImplementation(async (url: string) => {
+    const path = new URL(url).pathname
+    if (path.endsWith('/explore/apps/catalog-Alpha')) return Response.json(detail)
+    if (path.endsWith('/apps/imports')) return Response.json(imported)
+    throw new Error(`Unexpected request: ${url}`)
+  })
+  await user.click(within(dialog).getByRole('button', { name: /common\.operation\.create/ }))
+  await waitFor(() => expect(onClose).toHaveBeenCalledOnce())
+  expect(request).toHaveBeenCalledTimes(3)
+  expect(await request.mock.calls[2]?.[2].request.json()).toMatchObject({
+    name: 'Retried template',
+  })
+})
+
+it('hands a pending import to version confirmation and does not restore the old draft on cancel', async () => {
+  const user = userEvent.setup()
+  request.mockImplementation(async (url: string) => {
+    const path = new URL(url).pathname
+    if (path.endsWith('/explore/apps/catalog-Alpha')) return Response.json(detail)
+    if (path.endsWith('/apps/imports'))
+      return Response.json({
+        id: 'import-1',
+        status: 'pending',
+        imported_dsl_version: '0.8.0',
+        current_dsl_version: '0.6.0',
+      })
+    throw new Error(`Unexpected request: ${url}`)
+  })
+  const { onClose } = renderApps()
+  await openFirst(user)
+  await user.click(screen.getByRole('button', { name: /common\.operation\.create/ }))
+  const confirmation = await screen.findByRole('alertdialog')
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  expect(within(confirmation).getByText('0.8.0')).toBeInTheDocument()
+  expect(onClose).not.toHaveBeenCalled()
+  await user.click(within(confirmation).getByRole('button', { name: 'app.newApp.Cancel' }))
+  await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  expect(onClose).not.toHaveBeenCalled()
+  expect(redirect).not.toHaveBeenCalled()
+  expect(trackCreateApp).not.toHaveBeenCalled()
 })
 
 it('does not import an Agent detail through the Studio App template picker', async () => {

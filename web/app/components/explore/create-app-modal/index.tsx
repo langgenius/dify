@@ -14,10 +14,9 @@ import { Switch } from '@langgenius/dify-ui/switch'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { formatForDisplay, matchesKeyboardEvent } from '@tanstack/react-hotkeys'
 import { useQuery } from '@tanstack/react-query'
-import { useDebounceFn } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
-import { useCallback, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   IconPicker,
@@ -32,7 +31,7 @@ import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
 
 export type CreateAppModalProps = {
-  show: boolean
+  open: boolean
   isEditModal?: boolean
   appName: string
   appDescription: string
@@ -45,14 +44,13 @@ export type CreateAppModalProps = {
   max_active_requests?: number | null
   onConfirm: (info: UpdateAppPayload) => Promise<void>
   confirmDisabled?: boolean
-  confirmLoading?: boolean
-  onHide: () => void
+  onOpenChange: (open: boolean) => void
 }
 
 const SUBMIT_APP_HOTKEY = 'Mod+Enter' satisfies Hotkey
 
-const CreateAppModal = ({
-  show = false,
+function CreateAppForm({
+  open,
   isEditModal = false,
   appIconType,
   appIcon: _appIcon,
@@ -65,24 +63,29 @@ const CreateAppModal = ({
   max_active_requests,
   onConfirm,
   confirmDisabled,
-  confirmLoading,
-  onHide,
-}: CreateAppModalProps) => {
+  isPending,
+}: Omit<CreateAppModalProps, 'onOpenChange'> & { isPending: boolean }) {
   const nameInputId = React.useId()
   const descriptionInputId = React.useId()
   const maxActiveRequestsInputId = React.useId()
   const { t } = useTranslation(['app', 'common', 'explore'])
 
   const [name, setName] = React.useState(appName)
+  const [initialIcon] = useState(() => ({
+    icon_type: appIconType,
+    icon: _appIcon,
+    icon_background: appIconBackground,
+    icon_url: appIconUrl,
+  }))
   const [selectedIcon, setSelectedIcon] = useState<IconPickerValue | null>(null)
   const pickerValue: IconPickerInputValue | undefined =
     selectedIcon ??
-    (appIconType === 'image' && _appIcon
-      ? { type: 'image', fileId: _appIcon, url: appIconUrl ?? '' }
-      : appIconType === 'emoji' && _appIcon
-        ? { type: 'emoji', icon: _appIcon, background: appIconBackground }
-        : appIconType === 'link' && _appIcon
-          ? { type: 'link', url: _appIcon }
+    (initialIcon.icon_type === 'image' && initialIcon.icon
+      ? { type: 'image', fileId: initialIcon.icon, url: initialIcon.icon_url ?? '' }
+      : initialIcon.icon_type === 'emoji' && initialIcon.icon
+        ? { type: 'emoji', icon: initialIcon.icon, background: initialIcon.icon_background }
+        : initialIcon.icon_type === 'link' && initialIcon.icon
+          ? { type: 'link', url: initialIcon.icon }
           : undefined)
   const currentIcon = selectedIcon
     ? {
@@ -91,12 +94,7 @@ const CreateAppModal = ({
         icon_background: selectedIcon.type === 'emoji' ? selectedIcon.background : undefined,
         icon_url: selectedIcon.type === 'image' ? selectedIcon.url : undefined,
       }
-    : {
-        icon_type: appIconType,
-        icon: _appIcon,
-        icon_background: appIconBackground,
-        icon_url: appIconUrl,
-      }
+    : initialIcon
   const {
     icon_type: currentIconType,
     icon: currentIconValue,
@@ -127,12 +125,8 @@ const CreateAppModal = ({
     appQuota.limit > 0 &&
     appQuota.size >= appQuota.limit
 
-  const submit = useCallback(() => {
-    if (
-      confirmLoading ||
-      confirmDisabled ||
-      (!isEditModal && (isAppQuotaUnavailable || isAppsFull))
-    )
+  const submit = () => {
+    if (isPending || confirmDisabled || (!isEditModal && (isAppQuotaUnavailable || isAppsFull)))
       return
     if (!name.trim()) {
       toast(
@@ -153,195 +147,217 @@ const CreateAppModal = ({
     }
     if (isValid) payload.max_active_requests = parsedMaxActiveRequests
 
-    onConfirm(payload)
-    onHide()
-  }, [
-    confirmLoading,
-    confirmDisabled,
-    isEditModal,
-    isAppQuotaUnavailable,
-    isAppsFull,
-    name,
-    currentIconType,
-    currentIconValue,
-    currentIconBackground,
-    description,
-    useIconAsAnswerIcon,
-    onConfirm,
-    onHide,
-    t,
-    maxActiveRequestsInput,
-  ])
-
-  const { run: handleSubmit } = useDebounceFn(submit, { wait: 300 })
+    void onConfirm(payload)
+  }
 
   const submitDisabled =
     isAppQuotaUnavailable || (!isEditModal && isAppsFull) || !name.trim() || !!confirmDisabled
 
   return (
-    <>
-      <Dialog open={show} onOpenChange={(open) => !open && onHide()} disablePointerDismissal>
-        <DialogContent
-          onKeyDown={(event) => {
-            if (
-              !show ||
-              submitDisabled ||
-              confirmLoading ||
-              event.defaultPrevented ||
-              event.nativeEvent.isComposing ||
-              !(event.target instanceof Node) ||
-              !event.currentTarget.contains(event.target) ||
-              !matchesKeyboardEvent(event.nativeEvent, SUBMIT_APP_HOTKEY)
-            )
-              return
-            event.preventDefault()
-            event.stopPropagation()
-            if (event.repeat) return
-            handleSubmit()
-          }}
-          backdropProps={{ forceRender: true }}
-          className="px-8"
-        >
-          <DialogClose
-            render={
-              <IconButton
-                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                size="lg"
-                className="absolute inset-e-6 top-6"
+    // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- The form handles its submit shortcut after child controls, excluding nested portals.
+    <form
+      noValidate
+      onSubmit={(event) => {
+        if (event.target !== event.currentTarget) return
+        event.preventDefault()
+        submit()
+      }}
+      onKeyDown={(event) => {
+        if (
+          !open ||
+          submitDisabled ||
+          isPending ||
+          event.defaultPrevented ||
+          event.nativeEvent.isComposing ||
+          !(event.target instanceof Node) ||
+          !event.currentTarget.contains(event.target) ||
+          !matchesKeyboardEvent(event.nativeEvent, SUBMIT_APP_HOTKEY)
+        )
+          return
+        event.preventDefault()
+        event.stopPropagation()
+        if (event.repeat) return
+        submit()
+      }}
+    >
+      <DialogClose
+        disabled={isPending}
+        render={
+          <IconButton
+            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+            size="lg"
+            className="absolute inset-e-6 top-6"
+          >
+            <span aria-hidden className="i-ri-close-line size-4" />
+          </IconButton>
+        }
+      />
+      {isEditModal && (
+        <DialogTitle className="text-xl leading-7.5 font-semibold text-text-primary">
+          {t(($) => $.editAppTitle, { ns: 'app' })}
+        </DialogTitle>
+      )}
+      {!isEditModal && (
+        <DialogTitle className="text-xl leading-7.5 font-semibold text-text-primary">
+          {t(($) => $['appCustomize.title'], { ns: 'explore', name: appName })}
+        </DialogTitle>
+      )}
+      <div className="mb-9">
+        {/* icon & name */}
+        <div className="pt-2">
+          <label
+            htmlFor={nameInputId}
+            className="block py-2 text-sm leading-5 font-medium text-text-primary"
+          >
+            {t(($) => $['newApp.captionName'], { ns: 'app' })}
+          </label>
+          <div className="flex items-center justify-between space-x-2">
+            <IconPicker value={pickerValue} onValueChange={setSelectedIcon}>
+              <IconPickerTrigger
+                disabled={isPending}
+                aria-label={t(($) => $['iconPicker.title'], { ns: 'app' })}
+                className="shrink-0 cursor-pointer rounded-[10px]"
               >
-                <span aria-hidden className="i-ri-close-line size-4" />
-              </IconButton>
-            }
+                <IconPickerIcon size="large" />
+              </IconPickerTrigger>
+              <IconPickerContent />
+            </IconPicker>
+            <Input
+              id={nameInputId}
+              value={name}
+              readOnly={isPending}
+              onChange={(e) => setName(e.target.value)}
+              placeholder={t(($) => $['newApp.appNamePlaceholder'], { ns: 'app' }) || ''}
+              className="h-10 grow"
+            />
+          </div>
+        </div>
+        {/* description */}
+        <div className="pt-2">
+          <label
+            htmlFor={descriptionInputId}
+            className="block py-2 text-sm leading-5 font-medium text-text-primary"
+          >
+            {t(($) => $['newApp.captionDescription'], { ns: 'app' })}
+          </label>
+          <Textarea
+            id={descriptionInputId}
+            className="resize-none"
+            placeholder={t(($) => $['newApp.appDescriptionPlaceholder'], { ns: 'app' }) || ''}
+            value={description}
+            readOnly={isPending}
+            onValueChange={(value) => setDescription(value)}
           />
-          {isEditModal && (
-            <DialogTitle className="text-xl leading-7.5 font-semibold text-text-primary">
-              {t(($) => $.editAppTitle, { ns: 'app' })}
-            </DialogTitle>
-          )}
-          {!isEditModal && (
-            <DialogTitle className="text-xl leading-7.5 font-semibold text-text-primary">
-              {t(($) => $['appCustomize.title'], { ns: 'explore', name: appName })}
-            </DialogTitle>
-          )}
-          <div className="mb-9">
-            {/* icon & name */}
+        </div>
+        {/* answer icon */}
+        {isEditModal &&
+          (appMode === AppModeEnum.CHAT ||
+            appMode === AppModeEnum.ADVANCED_CHAT ||
+            appMode === AppModeEnum.AGENT_CHAT) && (
             <div className="pt-2">
-              <label
-                htmlFor={nameInputId}
-                className="block py-2 text-sm leading-5 font-medium text-text-primary"
-              >
-                {t(($) => $['newApp.captionName'], { ns: 'app' })}
-              </label>
-              <div className="flex items-center justify-between space-x-2">
-                <IconPicker value={pickerValue} onValueChange={setSelectedIcon}>
-                  <IconPickerTrigger
-                    aria-label={t(($) => $['iconPicker.title'], { ns: 'app' })}
-                    className="shrink-0 cursor-pointer rounded-[10px]"
-                  >
-                    <IconPickerIcon size="large" />
-                  </IconPickerTrigger>
-                  <IconPickerContent />
-                </IconPicker>
-                <Input
-                  id={nameInputId}
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder={t(($) => $['newApp.appNamePlaceholder'], { ns: 'app' }) || ''}
-                  className="h-10 grow"
-                />
-              </div>
-            </div>
-            {/* description */}
-            <div className="pt-2">
-              <label
-                htmlFor={descriptionInputId}
-                className="block py-2 text-sm leading-5 font-medium text-text-primary"
-              >
-                {t(($) => $['newApp.captionDescription'], { ns: 'app' })}
-              </label>
-              <Textarea
-                id={descriptionInputId}
-                className="resize-none"
-                placeholder={t(($) => $['newApp.appDescriptionPlaceholder'], { ns: 'app' }) || ''}
-                value={description}
-                onValueChange={(value) => setDescription(value)}
-              />
-            </div>
-            {/* answer icon */}
-            {isEditModal &&
-              (appMode === AppModeEnum.CHAT ||
-                appMode === AppModeEnum.ADVANCED_CHAT ||
-                appMode === AppModeEnum.AGENT_CHAT) && (
-                <div className="pt-2">
-                  <div className="flex items-center justify-between">
-                    <div className="py-2 text-sm leading-5 font-medium text-text-primary">
-                      {t(($) => $['answerIcon.title'], { ns: 'app' })}
-                    </div>
-                    <Switch
-                      checked={useIconAsAnswerIcon}
-                      onCheckedChange={(v) => setUseIconAsAnswerIcon(v)}
-                    />
-                  </div>
-                  <p className="body-xs-regular text-text-tertiary">
-                    {t(($) => $['answerIcon.descriptionInExplore'], { ns: 'app' })}
-                  </p>
+              <div className="flex items-center justify-between">
+                <div className="py-2 text-sm leading-5 font-medium text-text-primary">
+                  {t(($) => $['answerIcon.title'], { ns: 'app' })}
                 </div>
-              )}
-            {isEditModal && (
-              <div className="pt-2">
-                <label
-                  htmlFor={maxActiveRequestsInputId}
-                  className="mt-2 mb-2 block text-sm leading-5 font-medium text-text-primary"
-                >
-                  {t(($) => $.maxActiveRequests, { ns: 'app' })}
-                </label>
-                <Input
-                  id={maxActiveRequestsInputId}
-                  type="number"
-                  min={1}
-                  placeholder={t(($) => $.maxActiveRequestsPlaceholder, { ns: 'app' })}
-                  value={maxActiveRequestsInput}
-                  onChange={(e) => {
-                    setMaxActiveRequestsInput(e.target.value)
-                  }}
-                  className="h-10 w-full"
+                <Switch
+                  checked={useIconAsAnswerIcon}
+                  readOnly={isPending}
+                  aria-label={t(($) => $['answerIcon.title'], { ns: 'app' })}
+                  onCheckedChange={(v) => setUseIconAsAnswerIcon(v)}
                 />
-                <p className="mt-2 mb-0 body-xs-regular text-text-tertiary">
-                  {t(($) => $.maxActiveRequestsTip, { ns: 'app' })}
-                </p>
               </div>
-            )}
-            {!isEditModal && isAppsFull && <AppsFull className="mt-4" loc="app-explore-create" />}
-          </div>
-          <div className="flex flex-row-reverse">
-            <Button
-              loading={confirmLoading}
-              disabled={submitDisabled}
-              className="ml-2 w-24"
-              variant="primary"
-              onClick={handleSubmit}
+              <p className="body-xs-regular text-text-tertiary">
+                {t(($) => $['answerIcon.descriptionInExplore'], { ns: 'app' })}
+              </p>
+            </div>
+          )}
+        {isEditModal && (
+          <div className="pt-2">
+            <label
+              htmlFor={maxActiveRequestsInputId}
+              className="mt-2 mb-2 block text-sm leading-5 font-medium text-text-primary"
             >
-              <span>
-                {!isEditModal
-                  ? t(($) => $['operation.create'], { ns: 'common' })
-                  : t(($) => $['operation.save'], { ns: 'common' })}
-              </span>
-              <KbdGroup>
-                {formatForDisplay(SUBMIT_APP_HOTKEY, { parts: true }).map((key) => (
-                  <Kbd key={key} color="white">
-                    {key}
-                  </Kbd>
-                ))}
-              </KbdGroup>
-            </Button>
-            <Button className="w-24" onClick={onHide}>
-              {t(($) => $['operation.cancel'], { ns: 'common' })}
-            </Button>
+              {t(($) => $.maxActiveRequests, { ns: 'app' })}
+            </label>
+            <Input
+              id={maxActiveRequestsInputId}
+              type="number"
+              min={1}
+              placeholder={t(($) => $.maxActiveRequestsPlaceholder, { ns: 'app' })}
+              value={maxActiveRequestsInput}
+              readOnly={isPending}
+              onChange={(e) => {
+                setMaxActiveRequestsInput(e.target.value)
+              }}
+              className="h-10 w-full"
+            />
+            <p className="mt-2 mb-0 body-xs-regular text-text-tertiary">
+              {t(($) => $.maxActiveRequestsTip, { ns: 'app' })}
+            </p>
           </div>
-        </DialogContent>
-      </Dialog>
-    </>
+        )}
+        {!isEditModal && isAppsFull && <AppsFull className="mt-4" loc="app-explore-create" />}
+      </div>
+      <div className="flex flex-row-reverse">
+        <Button
+          loading={isPending}
+          disabled={submitDisabled}
+          className="ml-2 w-24"
+          variant="primary"
+          type="submit"
+        >
+          <span>
+            {!isEditModal
+              ? t(($) => $['operation.create'], { ns: 'common' })
+              : t(($) => $['operation.save'], { ns: 'common' })}
+          </span>
+          <KbdGroup>
+            {formatForDisplay(SUBMIT_APP_HOTKEY, { parts: true }).map((key) => (
+              <Kbd key={key} color="white">
+                {key}
+              </Kbd>
+            ))}
+          </KbdGroup>
+        </Button>
+        <DialogClose disabled={isPending} render={<Button className="w-24" />}>
+          {t(($) => $['operation.cancel'], { ns: 'common' })}
+        </DialogClose>
+      </div>
+    </form>
   )
 }
 
-export default CreateAppModal
+export default function CreateAppModal({
+  open,
+  onOpenChange,
+  onConfirm,
+  ...props
+}: CreateAppModalProps) {
+  const [isPending, setIsPending] = useState(false)
+  const handleConfirm = async (info: UpdateAppPayload) => {
+    if (isPending) return
+    setIsPending(true)
+    try {
+      await onConfirm(info)
+    } catch {
+      // The caller owns request feedback and closes after its successful operation.
+    } finally {
+      setIsPending(false)
+    }
+  }
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen, details) => {
+        if (!nextOpen && isPending) details.cancel()
+        else onOpenChange(nextOpen)
+      }}
+      disablePointerDismissal
+    >
+      <DialogContent backdropProps={{ forceRender: true }} className="px-8">
+        <CreateAppForm {...props} open={open} onConfirm={handleConfirm} isPending={isPending} />
+      </DialogContent>
+    </Dialog>
+  )
+}

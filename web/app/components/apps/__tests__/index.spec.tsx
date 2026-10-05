@@ -224,20 +224,33 @@ it('tracks successful preview creation and closes the preview', async () => {
   expect(screen.queryByRole('region', { name: 'Template preview' })).not.toBeInTheDocument()
 })
 
-it('handles detail rejection once without import, navigation, or reopening the submitted modal', async () => {
+it('retains the draft after detail rejection and imports it when retried', async () => {
   const user = userEvent.setup()
   detailFails = true
   setup()
-  await openCreate(user)
+  const dialog = await openCreate(user)
+  const name = within(dialog).getByPlaceholderText('app.newApp.appNamePlaceholder')
+  await user.clear(name)
+  await user.type(name, 'Retry template')
   await submit(user)
   await waitFor(() => expect(toast.error).toHaveBeenCalledWith('app.newApp.appCreateFailed'))
-  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  await waitFor(() => expect(name).not.toHaveAttribute('readonly'))
+  expect(name).toHaveValue('Retry template')
+  expect(dialog).toBeInTheDocument()
   const paths = request.mock.calls.map(([url]) => new URL(url).pathname.replace('/console/api', ''))
   expect(paths.filter((path) => path === '/explore/apps/canonical-template')).toHaveLength(1)
   expect(paths.some((path) => path.startsWith('/apps/imports'))).toBe(false)
   expect(toast.error).toHaveBeenCalledOnce()
   expect(redirect).not.toHaveBeenCalled()
   expect(trackCreateApp).not.toHaveBeenCalled()
+  detailFails = false
+  await submit(user)
+  await waitFor(() => expect(redirect).toHaveBeenCalledOnce())
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  const importedRequest = request.mock.calls.find(([url]) =>
+    new URL(url).pathname.endsWith('/apps/imports'),
+  )
+  expect(await importedRequest?.[2].request.json()).toMatchObject({ name: 'Retry template' })
 })
 
 it('keeps the pending import confirmation and tracks only after successful confirmation', async () => {
@@ -252,6 +265,7 @@ it('keeps the pending import confirmation and tracks only after successful confi
   await openCreate(user, true)
   await submit(user)
   const dialog = await screen.findByRole('alertdialog')
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   expect(within(dialog).getByText('0.8.0')).toBeInTheDocument()
   expect(trackCreateApp).not.toHaveBeenCalled()
   await user.click(within(dialog).getByRole('button', { name: 'app.newApp.Confirm' }))
@@ -266,6 +280,21 @@ it('keeps the pending import confirmation and tracks only after successful confi
     templateId: 'canonical-template',
     appMode: 'chat',
   })
+})
+
+it('does not reopen the submitted draft when the DSL handoff is cancelled', async () => {
+  const user = userEvent.setup()
+  importResponse = { id: 'import-1', status: 'pending' }
+  setup()
+  await openCreate(user)
+  await submit(user)
+  const confirmation = await screen.findByRole('alertdialog')
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  await user.click(within(confirmation).getByRole('button', { name: 'app.newApp.Cancel' }))
+  await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  expect(redirect).not.toHaveBeenCalled()
+  expect(trackCreateApp).not.toHaveBeenCalled()
 })
 
 it.each([undefined, 'Missing app data in YAML content'])(

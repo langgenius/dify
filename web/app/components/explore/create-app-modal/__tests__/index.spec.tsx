@@ -18,10 +18,10 @@ type ConfirmPayload = Parameters<CreateAppModalProps['onConfirm']>[0]
 
 const setup = async (overrides: Partial<CreateAppModalProps> = {}) => {
   const onConfirm = vi.fn<(payload: ConfirmPayload) => Promise<void>>().mockResolvedValue(undefined)
-  const onHide = vi.fn()
+  const onOpenChange = vi.fn()
 
   const props: CreateAppModalProps = {
-    show: true,
+    open: true,
     isEditModal: false,
     appName: 'Test App',
     appDescription: 'Test description',
@@ -34,14 +34,14 @@ const setup = async (overrides: Partial<CreateAppModalProps> = {}) => {
     max_active_requests: null,
     onConfirm,
     confirmDisabled: false,
-    onHide,
+    onOpenChange,
     ...overrides,
   }
 
   await act(async () => {
     render(<CreateAppModal {...props} />)
   })
-  return { onConfirm, onHide }
+  return { onConfirm, onOpenChange }
 }
 
 const getAppIconTrigger = () => screen.getByRole('button', { name: 'app.iconPicker.title' })
@@ -64,12 +64,14 @@ function render(ui: ReactElement) {
 
 vi.mock('@/next/navigation', () => ({ useParams: () => ({}) }))
 
-function submitWithKeyboard(
+async function submitWithKeyboard(
   modifier: Pick<KeyboardEventInit, 'ctrlKey' | 'metaKey'> = { ctrlKey: true },
 ) {
   const target = screen.queryByPlaceholderText('app.newApp.appNamePlaceholder') ?? document.body
-  fireEvent.keyDown(target, { key: 'Enter', ...modifier })
-  fireEvent.keyUp(target, { key: 'Enter', ...modifier })
+  await act(async () => {
+    fireEvent.keyDown(target, { key: 'Enter', ...modifier })
+    fireEvent.keyUp(target, { key: 'Enter', ...modifier })
+  })
 }
 
 describe('CreateAppModal', () => {
@@ -148,7 +150,7 @@ describe('CreateAppModal', () => {
     })
 
     it('should not render modal content when hidden', async () => {
-      await setup({ show: false })
+      await setup({ open: false })
 
       expect(
         screen.queryByRole('button', { name: /common\.operation\.create/ }),
@@ -193,12 +195,12 @@ describe('CreateAppModal', () => {
   })
 
   describe('User Interactions', () => {
-    it('should call onHide when cancel button is clicked', async () => {
-      const { onConfirm, onHide } = await setup()
+    it('should call onOpenChange when cancel button is clicked', async () => {
+      const { onConfirm, onOpenChange } = await setup()
 
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
-      expect(onHide).toHaveBeenCalledTimes(1)
+      expect(onOpenChange).toHaveBeenCalledExactlyOnceWith(false)
       expect(onConfirm).not.toHaveBeenCalled()
     })
   })
@@ -228,14 +230,6 @@ describe('CreateAppModal', () => {
   })
 
   describe('Keyboard Shortcuts', () => {
-    beforeEach(() => {
-      vi.useFakeTimers()
-    })
-
-    afterEach(() => {
-      vi.useRealTimers()
-    })
-
     it.each([
       { platform: 'Win32', modifier: { ctrlKey: true } },
       { platform: 'MacIntel', modifier: { metaKey: true } },
@@ -243,29 +237,20 @@ describe('CreateAppModal', () => {
       'suspends Mod+Enter while the picker is open and resumes after it closes on $platform',
       async ({ platform, modifier }) => {
         vi.spyOn(navigator, 'platform', 'get').mockReturnValue(platform)
-        const { onConfirm, onHide } = await setup()
+        const { onConfirm, onOpenChange } = await setup()
         const picker = openAppIconPicker()
         const pickerSearch = within(picker).getByPlaceholderText('app.iconPicker.search')
         fireEvent.keyDown(pickerSearch, { key: 'Enter', ...modifier })
         fireEvent.keyUp(pickerSearch, { key: 'Enter', ...modifier })
-        await act(async () => {
-          vi.advanceTimersByTime(300)
-        })
         expect(onConfirm).not.toHaveBeenCalled()
-        expect(onHide).not.toHaveBeenCalled()
+        expect(onOpenChange).not.toHaveBeenCalled()
         fireEvent.keyDown(pickerSearch, { key: 'Escape' })
-        await act(async () => {
-          vi.advanceTimersByTime(300)
-        })
-        expect(picker).not.toBeInTheDocument()
+        await waitFor(() => expect(picker).not.toBeInTheDocument())
 
-        submitWithKeyboard(modifier)
-        await act(async () => {
-          vi.advanceTimersByTime(300)
-        })
+        await submitWithKeyboard(modifier)
 
         expect(onConfirm).toHaveBeenCalledTimes(1)
-        expect(onHide).toHaveBeenCalledTimes(1)
+        expect(onOpenChange).not.toHaveBeenCalled()
       },
     )
 
@@ -277,38 +262,32 @@ describe('CreateAppModal', () => {
       async ({ platform, modifier }) => {
         vi.spyOn(navigator, 'platform', 'get').mockReturnValue(platform)
         const onConfirm = vi.fn().mockResolvedValue(undefined)
-        const onHide = vi.fn()
-        const modal = (show: boolean) => (
+        const onOpenChange = vi.fn()
+        const modal = (open: boolean) => (
           <CreateAppModal
-            show={show}
+            open={open}
             appName="Reopened App"
             appDescription=""
             appIconType="emoji"
             appIcon="🤖"
             onConfirm={onConfirm}
-            onHide={onHide}
+            onOpenChange={onOpenChange}
           />
         )
         const { rerender } = render(modal(true))
         const picker = openAppIconPicker()
 
         rerender(modal(false))
-        await act(async () => {
-          vi.advanceTimersByTime(300)
-        })
-        expect(picker).not.toBeInTheDocument()
+        await waitFor(() => expect(picker).not.toBeInTheDocument())
         rerender(modal(true))
         expect(
           screen.queryByRole('dialog', { name: 'app.iconPicker.title' }),
         ).not.toBeInTheDocument()
-        submitWithKeyboard(modifier)
-        await act(async () => {
-          vi.advanceTimersByTime(300)
-        })
+        await submitWithKeyboard(modifier)
 
         expect(onConfirm).toHaveBeenCalledOnce()
         expect(onConfirm).toHaveBeenCalledWith(expect.objectContaining({ name: 'Reopened App' }))
-        expect(onHide).toHaveBeenCalledOnce()
+        expect(onOpenChange).not.toHaveBeenCalled()
       },
     )
 
@@ -319,28 +298,17 @@ describe('CreateAppModal', () => {
 
       fireEvent.keyDown(iconTrigger, { key: 'Enter', ctrlKey: true })
       fireEvent.keyUp(iconTrigger, { key: 'Enter', ctrlKey: true })
-      await act(async () => {
-        vi.advanceTimersByTime(300)
-      })
 
       expect(onConfirm).toHaveBeenCalledTimes(1)
       expect(screen.queryByRole('dialog', { name: 'app.iconPicker.title' })).not.toBeInTheDocument()
     })
 
-    it.each([
-      { state: 'disabled', props: { confirmDisabled: true } },
-      { state: 'loading', props: { confirmLoading: true } },
-    ])('does not submit while the visible confirmation action is $state', async ({ props }) => {
-      const { onConfirm, onHide } = await setup(props)
-      const action = screen.getByRole('button', { name: /common\.operation\.create/ })
-      if (props.confirmLoading) expect(action).toHaveAttribute('aria-disabled', 'true')
-      else expect(action).toBeDisabled()
-      submitWithKeyboard()
-      await act(async () => {
-        vi.advanceTimersByTime(300)
-      })
+    it('does not submit while the visible confirmation action is disabled', async () => {
+      const { onConfirm, onOpenChange } = await setup({ confirmDisabled: true })
+      expect(screen.getByRole('button', { name: /common\.operation\.create/ })).toBeDisabled()
+      await submitWithKeyboard()
       expect(onConfirm).not.toHaveBeenCalled()
-      expect(onHide).not.toHaveBeenCalled()
+      expect(onOpenChange).not.toHaveBeenCalled()
     })
 
     it('ignores shortcuts outside the dialog and during composition', async () => {
@@ -350,22 +318,16 @@ describe('CreateAppModal', () => {
       const input = screen.getByPlaceholderText('app.newApp.appNamePlaceholder')
       fireEvent.keyDown(input, { key: 'Enter', ctrlKey: true, isComposing: true })
       fireEvent.keyUp(input, { key: 'Enter', ctrlKey: true })
-      await act(async () => {
-        vi.advanceTimersByTime(300)
-      })
       expect(onConfirm).not.toHaveBeenCalled()
     })
 
     it('should not submit when modal is hidden', async () => {
-      const { onConfirm, onHide } = await setup({ show: false })
+      const { onConfirm, onOpenChange } = await setup({ open: false })
 
-      submitWithKeyboard()
-      await act(async () => {
-        vi.advanceTimersByTime(300)
-      })
+      await submitWithKeyboard()
 
       expect(onConfirm).not.toHaveBeenCalled()
-      expect(onHide).not.toHaveBeenCalled()
+      expect(onOpenChange).not.toHaveBeenCalled()
     })
 
     it('should not submit when apps quota is reached in create mode', async () => {
@@ -373,15 +335,12 @@ describe('CreateAppModal', () => {
       mockPlanType = 'team'
       mockAppCount = 10
 
-      const { onConfirm, onHide } = await setup({ isEditModal: false })
+      const { onConfirm, onOpenChange } = await setup({ isEditModal: false })
 
-      submitWithKeyboard()
-      await act(async () => {
-        vi.advanceTimersByTime(300)
-      })
+      await submitWithKeyboard()
 
       expect(onConfirm).not.toHaveBeenCalled()
-      expect(onHide).not.toHaveBeenCalled()
+      expect(onOpenChange).not.toHaveBeenCalled()
     })
 
     it('should submit when apps quota is reached in edit mode', async () => {
@@ -389,27 +348,21 @@ describe('CreateAppModal', () => {
       mockPlanType = 'team'
       mockAppCount = 10
 
-      const { onConfirm, onHide } = await setup({ isEditModal: true })
+      const { onConfirm, onOpenChange } = await setup({ isEditModal: true })
 
-      submitWithKeyboard()
-      await act(async () => {
-        vi.advanceTimersByTime(300)
-      })
+      await submitWithKeyboard()
 
       expect(onConfirm).toHaveBeenCalledTimes(1)
-      expect(onHide).toHaveBeenCalledTimes(1)
+      expect(onOpenChange).not.toHaveBeenCalled()
     })
 
     it('should not submit when name is empty', async () => {
-      const { onConfirm, onHide } = await setup({ appName: '   ' })
+      const { onConfirm, onOpenChange } = await setup({ appName: '   ' })
 
-      submitWithKeyboard()
-      await act(async () => {
-        vi.advanceTimersByTime(300)
-      })
+      await submitWithKeyboard()
 
       expect(onConfirm).not.toHaveBeenCalled()
-      expect(onHide).not.toHaveBeenCalled()
+      expect(onOpenChange).not.toHaveBeenCalled()
     })
   })
 
@@ -477,50 +430,30 @@ describe('CreateAppModal', () => {
     })
 
     it('should allow changing only the background for the current emoji icon', async () => {
-      vi.useFakeTimers()
-      try {
-        const { onConfirm } = await setup({
-          appIconType: 'emoji',
-          appIcon: '🤖',
-          appIconBackground: '#FFEAD5',
-        })
-
-        const pickerDialog = openAppIconPicker()
-
-        fireEvent.click(
-          within(pickerDialog).getByRole('radio', { name: 'app.iconPicker.color.green' }),
-        )
-        fireEvent.click(within(pickerDialog).getByRole('button', { name: 'app.iconPicker.ok' }))
-
-        fireEvent.click(screen.getByRole('button', { name: /common\.operation\.create/ }))
-        await act(async () => {
-          vi.advanceTimersByTime(300)
-        })
-
-        expect(onConfirm).toHaveBeenCalledTimes(1)
-        const payload = onConfirm.mock.calls[0]![0]
-        expect(payload).toMatchObject({
-          icon_type: 'emoji',
-          icon: '🤖',
-          icon_background: '#F3FEE7',
-        })
-      } finally {
-        vi.useRealTimers()
-      }
+      const { onConfirm } = await setup({
+        appIconType: 'emoji',
+        appIcon: '🤖',
+        appIconBackground: '#FFEAD5',
+      })
+      const user = userEvent.setup()
+      const pickerDialog = openAppIconPicker()
+      await user.click(
+        within(pickerDialog).getByRole('radio', { name: 'app.iconPicker.color.green' }),
+      )
+      await user.click(within(pickerDialog).getByRole('button', { name: 'app.iconPicker.ok' }))
+      await user.click(screen.getByRole('button', { name: /common\.operation\.create/ }))
+      expect(onConfirm).toHaveBeenCalledOnce()
+      expect(onConfirm.mock.calls[0]![0]).toMatchObject({
+        icon_type: 'emoji',
+        icon: '🤖',
+        icon_background: '#F3FEE7',
+      })
     })
   })
 
   describe('Submitting', () => {
-    beforeEach(() => {
-      vi.useFakeTimers()
-    })
-
-    afterEach(() => {
-      vi.useRealTimers()
-    })
-
-    it('should call onConfirm with emoji payload and hide when create is clicked', async () => {
-      const { onConfirm, onHide } = await setup({
+    it('submits its emoji payload immediately and leaves closing to the caller', async () => {
+      const { onConfirm, onOpenChange } = await setup({
         appName: 'My App',
         appDescription: 'My description',
         appIconType: 'emoji',
@@ -529,12 +462,9 @@ describe('CreateAppModal', () => {
       })
 
       fireEvent.click(screen.getByRole('button', { name: /common\.operation\.create/ }))
-      await act(async () => {
-        vi.advanceTimersByTime(300)
-      })
 
       expect(onConfirm).toHaveBeenCalledTimes(1)
-      expect(onHide).toHaveBeenCalledTimes(1)
+      expect(onOpenChange).not.toHaveBeenCalled()
 
       const payload = onConfirm.mock.calls[0]![0]
       expect(payload).toMatchObject({
@@ -555,9 +485,6 @@ describe('CreateAppModal', () => {
         target: { value: 'Updated description' },
       })
       fireEvent.click(screen.getByRole('button', { name: /common\.operation\.create/ }))
-      await act(async () => {
-        vi.advanceTimersByTime(300)
-      })
 
       expect(onConfirm).toHaveBeenCalledTimes(1)
       expect(onConfirm.mock.calls[0]![0]).toMatchObject({ description: 'Updated description' })
@@ -572,9 +499,6 @@ describe('CreateAppModal', () => {
       })
 
       fireEvent.click(screen.getByRole('button', { name: /common\.operation\.create/ }))
-      await act(async () => {
-        vi.advanceTimersByTime(300)
-      })
 
       const payload = onConfirm.mock.calls[0]![0]
       expect(payload).toMatchObject({
@@ -596,9 +520,6 @@ describe('CreateAppModal', () => {
       fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '12' } })
 
       fireEvent.click(screen.getByRole('button', { name: /common\.operation\.save/ }))
-      await act(async () => {
-        vi.advanceTimersByTime(300)
-      })
 
       const payload = onConfirm.mock.calls[0]![0]
       expect(payload).toMatchObject({
@@ -611,9 +532,6 @@ describe('CreateAppModal', () => {
       const { onConfirm } = await setup({ isEditModal: true, max_active_requests: null })
 
       fireEvent.click(screen.getByRole('button', { name: /common\.operation\.save/ }))
-      await act(async () => {
-        vi.advanceTimersByTime(300)
-      })
 
       const payload = onConfirm.mock.calls[0]![0]
       expect(payload.max_active_requests).toBeUndefined()
@@ -624,31 +542,9 @@ describe('CreateAppModal', () => {
 
       fireEvent.change(screen.getByRole('spinbutton'), { target: { value: 'abc' } })
       fireEvent.click(screen.getByRole('button', { name: /common\.operation\.save/ }))
-      await act(async () => {
-        vi.advanceTimersByTime(300)
-      })
 
       const payload = onConfirm.mock.calls[0]![0]
       expect(payload.max_active_requests).toBeUndefined()
-    })
-
-    it('should show toast error and not submit when name becomes empty before debounced submit runs', async () => {
-      const { onConfirm, onHide } = await setup({ appName: 'My App' })
-
-      fireEvent.click(screen.getByRole('button', { name: /common\.operation\.create/ }))
-      fireEvent.change(screen.getByPlaceholderText('app.newApp.appNamePlaceholder'), {
-        target: { value: '   ' },
-      })
-
-      await act(async () => {
-        vi.advanceTimersByTime(300)
-      })
-
-      await act(async () => {
-        vi.advanceTimersByTime(6000)
-      })
-      expect(onConfirm).not.toHaveBeenCalled()
-      expect(onHide).not.toHaveBeenCalled()
     })
   })
 })
@@ -658,13 +554,13 @@ it('edits an existing app without waiting for application quota data', async () 
   renderWithConsoleQuery(
     <CreateAppModal
       isEditModal
-      show
+      open
       appName="Existing"
       appDescription=""
       appIconType="emoji"
       appIcon="🤖"
       onConfirm={onConfirm}
-      onHide={vi.fn()}
+      onOpenChange={vi.fn()}
     />,
     { systemFeatures: { deployment_edition: 'CLOUD' } },
   )
@@ -672,6 +568,153 @@ it('edits an existing app without waiting for application quota data', async () 
   expect(save).toBeEnabled()
   await userEvent.setup().click(save)
   await waitFor(() => expect(onConfirm).toHaveBeenCalledOnce())
+})
+
+it('keeps pending submissions local, preserves failed drafts and leaves successful closing to the caller', async () => {
+  let rejectSave!: (error: Error) => void
+  let finishSave!: () => void
+  const onConfirm = vi
+    .fn<(payload: ConfirmPayload) => Promise<void>>()
+    .mockImplementationOnce(
+      () =>
+        new Promise<void>((_, reject) => {
+          rejectSave = reject
+        }),
+    )
+    .mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finishSave = resolve
+        }),
+    )
+  const onOpenChange = vi.fn()
+  await setup({ isEditModal: true, onConfirm, onOpenChange, max_active_requests: 4 })
+  const user = userEvent.setup()
+  const name = screen.getByRole('textbox', { name: 'app.newApp.captionName' })
+  const description = screen.getByRole('textbox', { name: 'app.newApp.captionDescription' })
+  await user.clear(description)
+  await user.type(description, 'Draft description{Enter}second line')
+  expect(onConfirm).not.toHaveBeenCalled()
+  await user.clear(name)
+  await user.type(name, 'Draft name{Enter}')
+  expect(onConfirm).toHaveBeenCalledOnce()
+  expect(onConfirm).toHaveBeenCalledWith(
+    expect.objectContaining({
+      name: 'Draft name',
+      description: 'Draft description\nsecond line',
+      max_active_requests: 4,
+    }),
+  )
+  expect(name).toHaveAttribute('readonly')
+  expect(description).toHaveAttribute('readonly')
+  expect(screen.getByRole('spinbutton')).toHaveAttribute('readonly')
+  expect(getAppIconTrigger()).toBeDisabled()
+  const close = screen.getByRole('button', { name: 'common.operation.close' })
+  const cancel = screen.getByRole('button', { name: 'common.operation.cancel' })
+  const save = screen.getByRole('button', { name: /common\.operation\.save/ })
+  expect(close).toBeDisabled()
+  expect(cancel).toBeDisabled()
+  expect(save).toHaveAttribute('aria-disabled', 'true')
+  const answerIcon = screen.getByRole('switch', { name: 'app.answerIcon.title' })
+  await user.click(answerIcon)
+  expect(answerIcon).not.toBeChecked()
+  await user.click(close)
+  await user.click(cancel)
+  await user.keyboard('{Escape}')
+  await submitWithKeyboard()
+  expect(onOpenChange).not.toHaveBeenCalled()
+  expect(onConfirm).toHaveBeenCalledOnce()
+  await act(async () => rejectSave(new Error('Save failed')))
+  await waitFor(() => expect(name).not.toHaveAttribute('readonly'))
+  expect(name).toHaveValue('Draft name')
+  expect(description).toHaveValue('Draft description\nsecond line')
+  await user.click(save)
+  expect(onConfirm).toHaveBeenCalledTimes(2)
+  await act(async () => finishSave())
+  await waitFor(() => expect(name).not.toHaveAttribute('readonly'))
+  expect(onOpenChange).not.toHaveBeenCalled()
+  await user.click(cancel)
+  expect(onOpenChange).toHaveBeenCalledExactlyOnceWith(false)
+})
+
+it('snapshots source text and icon until exit, then reopens with the current source', async () => {
+  const user = userEvent.setup()
+  const onConfirm = vi.fn<(payload: ConfirmPayload) => Promise<void>>().mockResolvedValue(undefined)
+  const props: CreateAppModalProps = {
+    open: true,
+    isEditModal: true,
+    appName: 'Original',
+    appDescription: 'Original description',
+    appIconType: 'emoji',
+    appIcon: '🤖',
+    appIconBackground: null,
+    appMode: AppModeEnum.CHAT,
+    appUseIconAsAnswerIcon: true,
+    max_active_requests: 3,
+    onConfirm,
+    onOpenChange: vi.fn(),
+  }
+  const { rerender } = render(<CreateAppModal {...props} />)
+  const name = screen.getByRole('textbox', { name: 'app.newApp.captionName' })
+  await user.clear(name)
+  await user.type(name, 'Unsaved name')
+  rerender(
+    <CreateAppModal
+      {...props}
+      appName=""
+      appDescription=""
+      appIconType={null}
+      appIcon={null}
+      appUseIconAsAnswerIcon={false}
+      max_active_requests={null}
+    />,
+  )
+  expect(name).toHaveValue('Unsaved name')
+  expect(screen.getByRole('textbox', { name: 'app.newApp.captionDescription' })).toHaveValue(
+    'Original description',
+  )
+  expect(screen.getByRole('switch')).toBeChecked()
+  expect(screen.getByRole('spinbutton')).toHaveValue(3)
+  await user.click(screen.getByRole('button', { name: /common\.operation\.save/ }))
+  expect(onConfirm).toHaveBeenCalledWith(
+    expect.objectContaining({
+      name: 'Unsaved name',
+      icon_type: 'emoji',
+      icon: '🤖',
+      icon_background: null,
+    }),
+  )
+  rerender(<CreateAppModal {...props} open={false} />)
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  rerender(
+    <CreateAppModal
+      {...props}
+      appName="Latest source"
+      appDescription="Latest description"
+      appIconType="image"
+      appIcon="new-file"
+      appIconUrl="https://example.com/new.png"
+      appUseIconAsAnswerIcon={false}
+      max_active_requests={8}
+    />,
+  )
+  expect(screen.getByRole('textbox', { name: 'app.newApp.captionName' })).toHaveValue(
+    'Latest source',
+  )
+  expect(screen.getByRole('textbox', { name: 'app.newApp.captionDescription' })).toHaveValue(
+    'Latest description',
+  )
+  expect(screen.getByRole('switch')).not.toBeChecked()
+  expect(screen.getByRole('spinbutton')).toHaveValue(8)
+  await user.click(screen.getByRole('button', { name: /common\.operation\.save/ }))
+  expect(onConfirm).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      name: 'Latest source',
+      icon_type: 'image',
+      icon: 'new-file',
+      max_active_requests: 8,
+    }),
+  )
 })
 
 mockEmojiData()

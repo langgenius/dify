@@ -134,6 +134,8 @@ const Apps = ({ onClose, onCreateFromBlank, templateMode }: AppsProps) => {
   const [currApp, setCurrApp] = React.useState<RecommendedAppResponse | null>(null)
   const [previewApp, setPreviewApp] = React.useState<RecommendedAppResponse | null>(null)
   const [isShowCreateModal, setIsShowCreateModal] = React.useState(false)
+  const [hasActivatedCreateModal, setHasActivatedCreateModal] = useState(false)
+  if (isShowCreateModal && !hasActivatedCreateModal) setHasActivatedCreateModal(true)
   const [showDSLConfirmModal, setShowDSLConfirmModal] = React.useState(false)
   const onCreate: CreateAppModalProps['onConfirm'] = async ({
     name,
@@ -176,7 +178,10 @@ const Apps = ({ onClose, onCreateFromBlank, templateMode }: AppsProps) => {
             setIsShowCreateModal(false)
             onClose()
           },
-          onPending: () => setShowDSLConfirmModal(true),
+          onPending: () => {
+            setIsShowCreateModal(false)
+            setShowDSLConfirmModal(true)
+          },
         },
       )
     } catch {
@@ -311,7 +316,7 @@ const Apps = ({ onClose, onCreateFromBlank, templateMode }: AppsProps) => {
           {(!searchFilteredList || searchFilteredList.length === 0) && <NoTemplateFound />}
         </div>
       </div>
-      {isShowCreateModal && (
+      {hasActivatedCreateModal && (
         <CreateAppModal
           appIconType={
             currApp?.app?.icon_type === 'image' || currApp?.app?.icon_type === 'link'
@@ -323,10 +328,9 @@ const Apps = ({ onClose, onCreateFromBlank, templateMode }: AppsProps) => {
           appIconUrl={currApp?.app?.icon_url}
           appName={currApp?.app?.name ?? ''}
           appDescription=""
-          show={isShowCreateModal}
+          open={isShowCreateModal}
           onConfirm={onCreate}
-          confirmLoading={isFetching}
-          onHide={() => setIsShowCreateModal(false)}
+          onOpenChange={setIsShowCreateModal}
         />
       )}
       {showDSLConfirmModal && (

@@ -153,6 +153,8 @@ export function HomeContent() {
 
   const [currApp, setCurrApp] = useState<RecommendedAppResponse | null>(null)
   const [isShowCreateModal, setIsShowCreateModal] = useState(false)
+  const [hasActivatedCreateModal, setHasActivatedCreateModal] = useState(false)
+  if (isShowCreateModal && !hasActivatedCreateModal) setHasActivatedCreateModal(true)
 
   const { handleImportDSL, handleImportDSLConfirm, versions, isFetching } = useImportDSL()
   const [showDSLConfirmModal, setShowDSLConfirmModal] = useState(false)
@@ -225,7 +227,6 @@ export function HomeContent() {
 
     abandonHomeTour()
     setCurrentTryApp(undefined)
-    setCurrApp(null)
     currentCreateAppTrackingRef.current = null
     currentCreateAppModeRef.current = null
     isCurrentTryAppFromLearnDifyRef.current = false
@@ -404,6 +405,7 @@ export function HomeContent() {
         },
         onPending: () => {
           didTransitionCreateFlow = true
+          setIsShowCreateModal(false)
           setShowDSLConfirmModal(true)
         },
         skipRedirectOnSuccess: shouldCompleteHomeTourOnCreateRef.current,
@@ -499,7 +501,7 @@ export function HomeContent() {
           </section>
         </div>
       </div>
-      {isShowCreateModal && (
+      {hasActivatedCreateModal && (
         <CreateAppModal
           appIconType={
             currApp?.app?.icon_type === 'image' ||
@@ -513,10 +515,11 @@ export function HomeContent() {
           appIconUrl={currApp?.app?.icon_url}
           appName={currApp?.app?.name || ''}
           appDescription={currApp?.description || ''}
-          show={isShowCreateModal}
+          open={isShowCreateModal}
           onConfirm={onCreate}
-          confirmLoading={isFetching}
-          onHide={handleCreateModalHide}
+          onOpenChange={(open) => {
+            if (!open) handleCreateModalHide()
+          }}
         />
       )}
       {showDSLConfirmModal && (

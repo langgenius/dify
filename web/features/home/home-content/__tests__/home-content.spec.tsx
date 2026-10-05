@@ -1,4 +1,4 @@
-import type { RecentAppResponse } from '@dify/contracts/api/console/apps/types.gen'
+import type { Import, RecentAppResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type {
   BannerResponse,
   RecommendedAppDetailResponse,
@@ -11,7 +11,6 @@ import type {
 } from '@dify/contracts/api/console/onboarding/types.gen'
 import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import type { ReactNode } from 'react'
-import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { StepByStepTourSessionState } from '@/app/components/step-by-step-tour/types'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -67,8 +66,29 @@ let mockLearnDifyApps: RecommendedAppResponse[] = []
 let mockLearnDifyLoading = false
 let mockWorkspaceApps: RecentAppResponse[] = []
 let mockBanners: BannerResponse[] = []
-const mockHandleImportDSL = vi.fn()
-const mockHandleImportDSLConfirm = vi.fn()
+const mockImportApp = vi.fn()
+const mockConfirmImport = vi.fn()
+const mockPush = vi.hoisted(() => vi.fn())
+const completedImport: Import = {
+  id: 'import-1',
+  status: 'completed',
+  app_id: 'created-app',
+  app_mode: 'chat',
+  permission_keys: ['app.acl.view_layout'],
+}
+const pendingImport: Import = {
+  id: 'import-1',
+  status: 'pending',
+  imported_dsl_version: '0.8.0',
+  current_dsl_version: '0.6.0',
+}
+vi.mock('@/next/navigation', () => ({
+  useRouter: () => ({ push: mockPush }),
+  useParams: () => ({}),
+}))
+vi.mock('@/app/components/workflow/plugin-dependency/hooks', () => ({
+  usePluginDependencies: () => ({ handleCheckPluginDependencies: async () => {} }),
+}))
 const mockTrackCreateApp = vi.fn()
 const mockTrackEvent = vi.hoisted(() => vi.fn())
 const mockGetRecommendedApp = vi.hoisted(() =>
@@ -217,8 +237,12 @@ vi.mock('@/app/notifications', () => ({
 }))
 
 vi.mock('@/service/base', () => ({
-  request: async (url: string) => {
+  request: async (url: string, _init: unknown, options: { request: Request }) => {
     const pathname = new URL(url).pathname
+    if (pathname.endsWith('/apps/imports'))
+      return Response.json(await mockImportApp(await options.request.json()))
+    if (pathname.endsWith('/apps/imports/import-1/confirm'))
+      return Response.json(await mockConfirmImport())
     if (pathname.endsWith('/explore/apps/learn-dify')) {
       if (mockLearnDifyLoading) return new Promise<Response>(() => {})
       return Response.json({ recommended_apps: mockLearnDifyApps })
@@ -248,6 +272,7 @@ vi.mock('@/service/console', async (importOriginal) => {
       systemFeatures: () => Promise.resolve({}),
     },
     consoleQuery: {
+      features: actual.consoleQuery.features,
       account: {
         profile: {
           get: {
@@ -265,6 +290,7 @@ vi.mock('@/service/console', async (importOriginal) => {
         },
       },
       apps: {
+        imports: actual.consoleQuery.apps.imports,
         get: {
           queryOptions: (options: {
             input?: { query?: { limit?: number } }
@@ -369,15 +395,6 @@ vi.mock('@/context/permission-state', async () => {
   return createPermissionStateModuleMock(() => mockConsoleState)
 })
 
-vi.mock('@/hooks/use-import-dsl', () => ({
-  useImportDSL: () => ({
-    handleImportDSL: mockHandleImportDSL,
-    handleImportDSLConfirm: mockHandleImportDSLConfirm,
-    versions: ['v1'],
-    isFetching: false,
-  }),
-}))
-
 vi.mock('@/hooks/use-format-time-from-now', () => ({
   useFormatTimeFromNow: () => ({
     formatTimeFromNow: () => '3 minutes ago',
@@ -386,33 +403,6 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
 
 vi.mock('@/utils/create-app-tracking', () => ({
   trackCreateApp: (...args: unknown[]) => mockTrackCreateApp(...args),
-}))
-
-vi.mock('@/app/components/explore/create-app-modal', () => ({
-  default: (props: CreateAppModalProps) => {
-    if (!props.show) return null
-    return (
-      <div data-testid="create-app-modal">
-        <button
-          data-testid="confirm-create"
-          onClick={() =>
-            props.onConfirm({
-              name: 'New App',
-              icon_type: 'emoji',
-              icon: '🤖',
-              icon_background: '#fff',
-              description: 'desc',
-            })
-          }
-        >
-          confirm
-        </button>
-        <button data-testid="hide-create" onClick={props.onHide}>
-          hide
-        </button>
-      </div>
-    )
-  },
 }))
 
 vi.mock('@/app/components/explore/try-app', () => ({
@@ -448,19 +438,6 @@ vi.mock('../../banner/home-banner', () => ({
   HomeBanner: () => (
     <div data-testid="explore-banner" data-banner-count={mockBanners.length}>
       banner
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/app/create-from-dsl-modal/dsl-confirm-modal', () => ({
-  default: ({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) => (
-    <div data-testid="dsl-confirm-modal">
-      <button data-testid="dsl-confirm" onClick={onConfirm}>
-        confirm
-      </button>
-      <button data-testid="dsl-cancel" onClick={onCancel}>
-        cancel
-      </button>
     </div>
   ),
 }))
@@ -546,6 +523,7 @@ const renderHomeContent = ({
   mockAppCreatePermission(hasEditPermission)
   const { wrapper: ConsoleQueryWrapper, queryClient } = createConsoleQueryWrapper({
     accountProfile: mockConsoleState.userProfile,
+    features: { apps: { size: 0, limit: 10 } },
     systemFeatures: {
       deployment_edition: options.deploymentEdition ?? 'COMMUNITY',
       enable_explore_banner: options.enableExploreBanner ?? false,
@@ -606,6 +584,9 @@ describe('HomeContent', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     vi.clearAllMocks()
+    mockGetRecommendedApp.mockReset()
+    mockImportApp.mockReset().mockResolvedValue(completedImport)
+    mockConfirmImport.mockReset().mockResolvedValue(completedImport)
     localStorage.clear()
     mockExploreData = { categories: [], allList: [] }
     mockLearnDifyApps = [
@@ -1031,30 +1012,22 @@ describe('HomeContent', () => {
         export_data: 'yaml-content',
         mode: AppModeEnum.CHAT,
       })
-      mockHandleImportDSL.mockImplementation(
-        async (_payload: unknown, options: { onSuccess?: () => void; onPending?: () => void }) => {
-          options.onPending?.()
-        },
-      )
-      mockHandleImportDSLConfirm.mockImplementation(
-        async (options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void }) => {
-          options.onSuccess?.({ app_mode: AppModeEnum.CHAT })
-        },
-      )
+      mockImportApp.mockResolvedValue(pendingImport)
+      mockConfirmImport.mockResolvedValue(completedImport)
 
       renderHomeContent({ hasEditPermission: true })
       fireEvent.click(screen.getByRole('button', { name: 'Alpha' }))
-      fireEvent.click(await screen.findByTestId('confirm-create'))
+      fireEvent.click(await screen.findByRole('button', { name: /common\.operation\.create/ }))
 
       await waitFor(() => {
         expect(mockGetRecommendedApp).toHaveBeenCalledWith({ params: { app_id: 'app-1' } })
       })
-      expect(mockHandleImportDSL).toHaveBeenCalledTimes(1)
-      expect(await screen.findByTestId('dsl-confirm-modal')).toBeInTheDocument()
+      await waitFor(() => expect(mockImportApp).toHaveBeenCalledTimes(1))
+      expect(await screen.findByRole('alertdialog')).toBeInTheDocument()
 
-      fireEvent.click(screen.getByTestId('dsl-confirm'))
+      fireEvent.click(screen.getByRole('button', { name: 'app.newApp.Confirm' }))
       await waitFor(() => {
-        expect(mockHandleImportDSLConfirm).toHaveBeenCalledTimes(1)
+        expect(mockConfirmImport).toHaveBeenCalledTimes(1)
         expect(mockTrackCreateApp).toHaveBeenCalledWith({
           source: 'explore_template_list',
           appMode: AppModeEnum.CHAT,
@@ -1076,7 +1049,7 @@ describe('HomeContent', () => {
         export_data: 'latest-yaml',
         mode: AppModeEnum.CHAT,
       })
-      mockHandleImportDSL.mockResolvedValue(undefined)
+      mockImportApp.mockResolvedValue(completedImport)
       const { queryClient } = renderHomeContent({ hasEditPermission: true })
       queryClient.setQueryData(recommendedAppQueryKey('app-1'), {
         id: 'app-1',
@@ -1092,14 +1065,64 @@ describe('HomeContent', () => {
       })
 
       fireEvent.click(screen.getByRole('button', { name: 'Alpha' }))
-      fireEvent.click(await screen.findByTestId('confirm-create'))
+      fireEvent.click(await screen.findByRole('button', { name: /common\.operation\.create/ }))
 
-      await waitFor(() => expect(mockHandleImportDSL).toHaveBeenCalledTimes(1))
+      await waitFor(() => expect(mockImportApp).toHaveBeenCalledTimes(1))
       expect(mockGetRecommendedApp).toHaveBeenCalledWith({ params: { app_id: 'app-1' } })
-      expect(mockHandleImportDSL).toHaveBeenCalledWith(
+      expect(mockImportApp).toHaveBeenCalledWith(
         expect.objectContaining({ yaml_content: 'latest-yaml' }),
-        expect.any(Object),
       )
+    })
+
+    it('keeps a failed Learn Dify draft and its template identity available for retry', async () => {
+      vi.useRealTimers()
+      const user = userEvent.setup()
+      mockStepByStepTour.setUiState({ activeTaskId: 'home', activeGuideIndex: 0, minimized: true })
+      let rejectDetail!: (error: Error) => void
+      mockGetRecommendedApp
+        .mockImplementationOnce(
+          () =>
+            new Promise((_, reject) => {
+              rejectDetail = reject
+            }),
+        )
+        .mockResolvedValue({
+          id: 'learn-1',
+          name: 'Learn Workflow Basics',
+          can_trial: true,
+          export_data: 'retry-dsl',
+          mode: AppModeEnum.CHAT,
+        })
+      renderHomeContent({ hasEditPermission: true, deploymentEdition: 'CLOUD' })
+      await user.click(await screen.findByRole('button', { name: 'Learn Workflow Basics' }))
+      await user.click(await screen.findByTestId('try-app-create'))
+      const input = await screen.findByRole('textbox', { name: 'app.newApp.captionName' })
+      await user.clear(input)
+      await user.type(input, 'Retry lesson')
+      await user.click(screen.getByRole('button', { name: /common\.operation\.create/ }))
+      await waitFor(() => expect(mockGetRecommendedApp).toHaveBeenCalledOnce())
+      expect(input).toHaveAttribute('readonly')
+      await user.keyboard('{Escape}')
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
+      await act(async () => rejectDetail(new Error('Unavailable')))
+      await waitFor(() => expect(input).not.toHaveAttribute('readonly'))
+      expect(input).toHaveValue('Retry lesson')
+      expect(mockImportApp).not.toHaveBeenCalled()
+      await user.click(screen.getByRole('button', { name: /common\.operation\.create/ }))
+      await waitFor(() => expect(mockImportApp).toHaveBeenCalledOnce())
+      expect(mockGetRecommendedApp).toHaveBeenCalledTimes(2)
+      expect(mockGetRecommendedApp).toHaveBeenLastCalledWith({ params: { app_id: 'learn-1' } })
+      expect(mockImportApp).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'Retry lesson',
+          yaml_content: 'retry-dsl',
+          icon_type: 'emoji',
+          icon: '😀',
+          icon_background: '#fff',
+        }),
+      )
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      expect(mockStepByStepTour.patchState).not.toHaveBeenCalled()
     })
 
     it('reports a template detail failure without starting an import', async () => {
@@ -1112,12 +1135,12 @@ describe('HomeContent', () => {
       renderHomeContent({ hasEditPermission: true })
 
       fireEvent.click(screen.getByRole('button', { name: 'Alpha' }))
-      fireEvent.click(await screen.findByTestId('confirm-create'))
+      fireEvent.click(await screen.findByRole('button', { name: /common\.operation\.create/ }))
 
       await waitFor(() =>
         expect(toastMocks.api.error).toHaveBeenCalledWith('app.newApp.appCreateFailed'),
       )
-      expect(mockHandleImportDSL).not.toHaveBeenCalled()
+      expect(mockImportApp).not.toHaveBeenCalled()
     })
 
     it('should open create flow from learn dify item card click', async () => {
@@ -1134,28 +1157,16 @@ describe('HomeContent', () => {
         export_data: 'yaml-content',
         mode: AppModeEnum.CHAT,
       })
-      mockHandleImportDSL.mockImplementation(
-        async (
-          _payload: unknown,
-          options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void },
-        ) => {
-          options.onSuccess?.({ app_mode: AppModeEnum.CHAT })
-        },
-      )
+      mockImportApp.mockResolvedValue(completedImport)
 
       renderHomeContent({ hasEditPermission: true })
       await user.click(await screen.findByRole('button', { name: 'Learn Workflow Basics' }))
-      await user.click(await screen.findByTestId('confirm-create'))
+      await user.click(await screen.findByRole('button', { name: /common\.operation\.create/ }))
 
       await waitFor(() => {
         expect(mockGetRecommendedApp).toHaveBeenCalledWith({ params: { app_id: 'learn-1' } })
       })
-      expect(mockHandleImportDSL).toHaveBeenCalledWith(
-        expect.any(Object),
-        expect.objectContaining({
-          skipRedirectOnSuccess: false,
-        }),
-      )
+      expect(mockPush).toHaveBeenCalledWith('/app/created-app/configuration')
     })
 
     it('should advance the Learn Dify tour to the create button after a lesson opens', async () => {
@@ -1275,20 +1286,13 @@ describe('HomeContent', () => {
         export_data: 'yaml-content',
         mode: AppModeEnum.CHAT,
       })
-      mockHandleImportDSL.mockImplementation(
-        async (
-          _payload: unknown,
-          options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void },
-        ) => {
-          options.onSuccess?.({ app_mode: AppModeEnum.CHAT })
-        },
-      )
+      mockImportApp.mockResolvedValue(completedImport)
 
       renderHomeContent({ hasEditPermission: true, deploymentEdition: 'CLOUD' })
 
       await user.click(await screen.findByRole('button', { name: 'Learn Workflow Basics' }))
       await user.click(await screen.findByTestId('try-app-create'))
-      await user.click(await screen.findByTestId('confirm-create'))
+      await user.click(await screen.findByRole('button', { name: /common\.operation\.create/ }))
 
       await waitFor(() => {
         expect(mockStepByStepTour.patchState.mock.calls.at(-1)?.[0]).toEqual({
@@ -1306,12 +1310,7 @@ describe('HomeContent', () => {
         task_id: 'home',
         task_total: 4,
       })
-      expect(mockHandleImportDSL).toHaveBeenCalledWith(
-        expect.any(Object),
-        expect.objectContaining({
-          skipRedirectOnSuccess: true,
-        }),
-      )
+      expect(mockPush).not.toHaveBeenCalled()
     })
 
     it('should clear the Learn Dify session and provenance when completion persistence fails', async () => {
@@ -1335,20 +1334,13 @@ describe('HomeContent', () => {
         export_data: 'yaml-content',
         mode: AppModeEnum.CHAT,
       })
-      mockHandleImportDSL.mockImplementation(
-        async (
-          _payload: unknown,
-          options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void },
-        ) => {
-          options.onSuccess?.({ app_mode: AppModeEnum.CHAT })
-        },
-      )
+      mockImportApp.mockResolvedValue(completedImport)
 
       renderHomeContent({ hasEditPermission: true, deploymentEdition: 'CLOUD' })
 
       await user.click(await screen.findByRole('button', { name: 'Learn Workflow Basics' }))
       await user.click(await screen.findByTestId('try-app-create'))
-      await user.click(await screen.findByTestId('confirm-create'))
+      await user.click(await screen.findByRole('button', { name: /common\.operation\.create/ }))
 
       await waitFor(() => {
         expect(mockStepByStepTour.patchState).toHaveBeenCalledTimes(1)
@@ -1363,17 +1355,12 @@ describe('HomeContent', () => {
 
       await user.click(screen.getByRole('button', { name: 'Alpha' }))
       await user.click(await screen.findByTestId('try-app-create'))
-      await user.click(await screen.findByTestId('confirm-create'))
+      await user.click(await screen.findByRole('button', { name: /common\.operation\.create/ }))
 
       await waitFor(() => {
-        expect(mockHandleImportDSL).toHaveBeenCalledTimes(2)
+        expect(mockImportApp).toHaveBeenCalledTimes(2)
       })
-      expect(mockHandleImportDSL).toHaveBeenLastCalledWith(
-        expect.any(Object),
-        expect.objectContaining({
-          skipRedirectOnSuccess: false,
-        }),
-      )
+      expect(mockPush).toHaveBeenCalledWith('/app/created-app/configuration')
       expect(mockStepByStepTour.patchState).toHaveBeenCalledTimes(1)
       expect(mockTrackEvent).not.toHaveBeenCalledWith(
         'step_tour',
@@ -1403,30 +1390,19 @@ describe('HomeContent', () => {
         export_data: 'yaml-content',
         mode: AppModeEnum.CHAT,
       })
-      mockHandleImportDSL.mockImplementation(
-        async (_payload: unknown, options: { onPending?: () => void }) => {
-          options.onPending?.()
-        },
-      )
-      mockHandleImportDSLConfirm.mockImplementation(
-        async (options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void }) => {
-          options.onSuccess?.({ app_mode: AppModeEnum.CHAT })
-        },
-      )
+      mockImportApp.mockResolvedValue(pendingImport)
+      mockConfirmImport.mockResolvedValue(completedImport)
 
       renderHomeContent({ hasEditPermission: true, deploymentEdition: 'CLOUD' })
 
       await user.click(await screen.findByRole('button', { name: 'Learn Workflow Basics' }))
       await user.click(await screen.findByTestId('try-app-create'))
-      await user.click(await screen.findByTestId('confirm-create'))
-      await user.click(await screen.findByTestId('dsl-confirm'))
+      await user.click(await screen.findByRole('button', { name: /common\.operation\.create/ }))
+      await user.click(await screen.findByRole('button', { name: 'app.newApp.Confirm' }))
 
       await waitFor(() => {
-        expect(mockHandleImportDSLConfirm).toHaveBeenCalledWith(
-          expect.objectContaining({
-            skipRedirectOnSuccess: true,
-          }),
-        )
+        expect(mockConfirmImport).toHaveBeenCalledOnce()
+        expect(mockPush).not.toHaveBeenCalled()
       })
     })
 
@@ -1454,10 +1430,12 @@ describe('HomeContent', () => {
       )
 
       await user.click(createFromDetailsButton)
-      expect(await screen.findByTestId('create-app-modal')).toBeInTheDocument()
+      expect(
+        await screen.findByRole('dialog', { name: /^explore\.appCustomize\.title/ }),
+      ).toBeInTheDocument()
       expect(createFromDetailsButton).not.toHaveAttribute('data-step-by-step-tour-target')
 
-      await user.click(screen.getByTestId('hide-create'))
+      await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
       await waitFor(() => {
         expect(screen.queryByTestId('try-app-panel')).not.toBeInTheDocument()
@@ -1506,11 +1484,15 @@ describe('HomeContent', () => {
 
       renderHomeContent({ hasEditPermission: true })
       fireEvent.click(screen.getByRole('button', { name: 'Alpha' }))
-      expect(await screen.findByTestId('create-app-modal')).toBeInTheDocument()
+      expect(
+        await screen.findByRole('dialog', { name: /^explore\.appCustomize\.title/ }),
+      ).toBeInTheDocument()
 
-      fireEvent.click(screen.getByTestId('hide-create'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
       await waitFor(() => {
-        expect(screen.queryByTestId('create-app-modal')).not.toBeInTheDocument()
+        expect(
+          screen.queryByRole('dialog', { name: /^explore\.appCustomize\.title/ }),
+        ).not.toBeInTheDocument()
       })
       expect(mockTrackCreateApp).not.toHaveBeenCalled()
     })
@@ -1528,21 +1510,16 @@ describe('HomeContent', () => {
         export_data: 'yaml',
         mode: AppModeEnum.CHAT,
       })
-      mockHandleImportDSL.mockImplementation(
-        async (
-          _payload: unknown,
-          options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void },
-        ) => {
-          options.onSuccess?.({ app_mode: AppModeEnum.CHAT })
-        },
-      )
+      mockImportApp.mockResolvedValue(completedImport)
 
       renderHomeContent({ hasEditPermission: true })
       fireEvent.click(screen.getByRole('button', { name: 'Alpha' }))
-      fireEvent.click(await screen.findByTestId('confirm-create'))
+      fireEvent.click(await screen.findByRole('button', { name: /common\.operation\.create/ }))
 
       await waitFor(() => {
-        expect(screen.queryByTestId('create-app-modal')).not.toBeInTheDocument()
+        expect(
+          screen.queryByRole('dialog', { name: /^explore\.appCustomize\.title/ }),
+        ).not.toBeInTheDocument()
       })
     })
 
@@ -1559,24 +1536,22 @@ describe('HomeContent', () => {
         export_data: 'yaml',
         mode: AppModeEnum.CHAT,
       })
-      mockHandleImportDSL.mockImplementation(
-        async (_payload: unknown, options: { onPending?: () => void }) => {
-          options.onPending?.()
-        },
-      )
+      mockImportApp.mockResolvedValue(pendingImport)
 
       renderHomeContent({ hasEditPermission: true })
       fireEvent.click(screen.getByRole('button', { name: 'Alpha' }))
-      fireEvent.click(await screen.findByTestId('confirm-create'))
+      fireEvent.click(await screen.findByRole('button', { name: /common\.operation\.create/ }))
 
       await waitFor(() => {
-        expect(screen.getByTestId('dsl-confirm-modal')).toBeInTheDocument()
+        expect(screen.getByRole('alertdialog')).toBeInTheDocument()
       })
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
 
-      fireEvent.click(screen.getByTestId('dsl-cancel'))
+      fireEvent.click(screen.getByRole('button', { name: 'app.newApp.Cancel' }))
       await waitFor(() => {
-        expect(screen.queryByTestId('dsl-confirm-modal')).not.toBeInTheDocument()
+        expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
       })
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     })
   })
 
@@ -1596,7 +1571,9 @@ describe('HomeContent', () => {
       fireEvent.click(screen.getByTestId('try-app-create'))
 
       await waitFor(() => {
-        expect(screen.getByTestId('create-app-modal')).toBeInTheDocument()
+        expect(
+          screen.getByRole('dialog', { name: /^explore\.appCustomize\.title/ }),
+        ).toBeInTheDocument()
       })
     })
 
@@ -1613,21 +1590,14 @@ describe('HomeContent', () => {
         export_data: 'yaml',
         mode: AppModeEnum.CHAT,
       })
-      mockHandleImportDSL.mockImplementation(
-        async (
-          _payload: unknown,
-          options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void },
-        ) => {
-          options.onSuccess?.({ app_mode: AppModeEnum.CHAT })
-        },
-      )
+      mockImportApp.mockResolvedValue(completedImport)
 
       renderHomeContent({ hasEditPermission: true, deploymentEdition: 'CLOUD' })
 
       fireEvent.click(screen.getByRole('button', { name: 'Alpha' }))
       await screen.findByTestId('try-app-panel')
       fireEvent.click(screen.getByTestId('try-app-create'))
-      fireEvent.click(await screen.findByTestId('confirm-create'))
+      fireEvent.click(await screen.findByRole('button', { name: /common\.operation\.create/ }))
 
       await waitFor(() => {
         expect(mockTrackCreateApp).toHaveBeenCalledWith({
