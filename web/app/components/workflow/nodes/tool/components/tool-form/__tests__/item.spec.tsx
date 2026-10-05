@@ -1,140 +1,161 @@
 import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { SchemaRoot } from '@/app/components/workflow/nodes/llm/types'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import ToolFormItem from '../item'
+import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
+import { Type } from '@/app/components/workflow/nodes/llm/types'
+import { TriggerFormItem } from '@/app/components/workflow/nodes/trigger-plugin/components/trigger-form/item'
+import { ToolFormItem } from '../item'
 
-type MockSchemaModalProps = {
-  isShow: boolean
-  onClose: () => void
-  rootName: string
-  schema: SchemaRoot
-}
-
-type MockFormInputItemProps = Readonly<{
-  schema: CredentialFormSchema
-}>
-
-const mockUseLanguage = vi.fn()
-const mockSchemaModal = vi.fn<(props: MockSchemaModalProps) => void>()
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useLanguage: () => mockUseLanguage(),
-}))
-
-vi.mock(
-  '@/app/components/plugins/plugin-detail-panel/tool-selector/components/schema-modal',
-  () => ({
-    SchemaModal: (props: MockSchemaModalProps) => {
-      mockSchemaModal(props)
-      return props.isShow ? (
-        <div data-testid="schema-modal">
-          <span>{props.rootName}</span>
-          <button type="button" onClick={props.onClose}>
-            close-schema
-          </button>
-        </div>
-      ) : null
-    },
-  }),
-)
-
-vi.mock('@/app/components/workflow/nodes/_base/components/form-input-item', () => ({
-  default: ({ schema }: MockFormInputItemProps) => <div>{schema.variable}</div>,
-}))
+beforeEach(() => {
+  const paths = new Set([
+    '/console/api/spec/schema-definitions',
+    '/console/api/workspaces/current/tools/builtin',
+    '/console/api/workspaces/current/tools/api',
+    '/console/api/workspaces/current/tools/workflow',
+    '/console/api/workspaces/current/tools/mcp',
+  ])
+  vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+    const url = new URL(input instanceof Request ? input.url : String(input))
+    if (paths.has(url.pathname)) return Response.json([])
+    throw new Error(`Unexpected request: ${url}`)
+  })
+})
 
 const createSchema = (overrides: Partial<CredentialFormSchema> = {}): CredentialFormSchema => ({
-  name: 'api_key',
-  variable: 'api_key',
-  label: {
-    en_US: 'API Key',
-    zh_Hans: 'API Key',
-  },
-  type: FormTypeEnum.textInput,
+  name: 'config',
+  variable: 'config',
+  label: { en_US: 'Config', zh_Hans: 'Config' },
+  type: FormTypeEnum.object,
   required: true,
-  tooltip: {
-    en_US: 'Enter API key',
-    zh_Hans: 'Enter API key',
-  },
   show_on: [],
+  input_schema: { type: Type.object, properties: { city: { type: Type.string } } },
   ...overrides,
 })
 
-describe('tool/tool-form/item', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockUseLanguage.mockReturnValue('en_US')
+const consumers = [
+  ['tool', ToolFormItem],
+  ['trigger', TriggerFormItem],
+] as const
+
+describe.each(consumers)('%s parameter schema entry', (_name, Item) => {
+  it.each([FormTypeEnum.object, FormTypeEnum.array])(
+    'inspects %s parameters through the real dialog without changing their value',
+    async (type) => {
+      const user = userEvent.setup()
+      const onChange = vi.fn()
+      renderWorkflowFlowComponent(
+        <Item
+          readOnly={false}
+          nodeId="node-1"
+          schema={createSchema({
+            type,
+            input_schema:
+              type === FormTypeEnum.array
+                ? {
+                    type: Type.array,
+                    items: { type: Type.object, properties: { city: { type: Type.string } } },
+                  }
+                : { type: Type.object, properties: { city: { type: Type.string } } },
+          })}
+          value={{ config: { type: VarKindType.constant, value: '{}' } }}
+          onChange={onChange}
+        />,
+        { nodes: [], edges: [], hooksStoreProps: {} },
+      )
+      const editor = screen.getByTestId('monaco-editor')
+      const trigger = screen.getByRole('button', { name: /^JSON Schema:/ })
+      await user.click(trigger)
+      const dialog = screen.getByRole('dialog', {
+        name: 'workflowAgent.nodes.agent.parameterSchema',
+      })
+      expect(within(dialog).getByText('config')).toBeInTheDocument()
+      expect(within(dialog).getByText('city')).toBeInTheDocument()
+      expect(editor).toBeInTheDocument()
+      expect(editor).toHaveValue('{}')
+      await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      expect(trigger).toHaveFocus()
+      expect(editor).toHaveValue('{}')
+      expect(onChange).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each([undefined, null])(
+    'keeps an unavailable schema entry disabled for %s',
+    async (input_schema) => {
+      const user = userEvent.setup()
+      renderWorkflowFlowComponent(
+        <Item
+          readOnly={false}
+          nodeId="node-1"
+          schema={createSchema({ input_schema })}
+          value={{}}
+          onChange={vi.fn()}
+        />,
+        { nodes: [], edges: [], hooksStoreProps: {} },
+      )
+      const trigger = screen.getByRole('button', { name: /^JSON Schema:/ })
+      expect(trigger).toBeDisabled()
+      await user.click(trigger)
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    },
+  )
+
+  it('keeps schema inspection available when the parameter is read-only', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    renderWorkflowFlowComponent(
+      <Item
+        readOnly
+        nodeId="node-1"
+        schema={createSchema()}
+        value={{ config: { type: VarKindType.constant, value: '{}' } }}
+        onChange={onChange}
+      />,
+      { nodes: [], edges: [], hooksStoreProps: {} },
+    )
+    await user.click(screen.getByRole('button', { name: /^JSON Schema:/ }))
+    expect(
+      screen.getByRole('dialog', { name: 'workflowAgent.nodes.agent.parameterSchema' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /addField/i })).not.toBeInTheDocument()
+    expect(onChange).not.toHaveBeenCalled()
   })
 
-  // URL fragments inside descriptions should be rendered as external links.
-  it('should render URLs in descriptions as external links', () => {
-    render(
-      <ToolFormItem
-        readOnly={false}
-        nodeId="tool-node"
-        schema={createSchema({
-          tooltip: {
-            en_US: 'Visit https://docs.dify.ai/tools for docs',
-            zh_Hans: 'Visit https://docs.dify.ai/tools for docs',
-          },
-        })}
-        value={{}}
+  it('does not offer schema inspection for scalar parameters', () => {
+    renderWorkflowFlowComponent(
+      <Item
+        readOnly
+        nodeId="node-1"
+        schema={createSchema({ type: FormTypeEnum.textNumber })}
+        value={{ config: { type: VarKindType.constant, value: 7 } }}
         onChange={vi.fn()}
       />,
+      { nodes: [], edges: [], hooksStoreProps: {} },
     )
-
-    const link = screen.getByRole('link', { name: 'https://docs.dify.ai/tools' })
-    expect(link)!.toHaveAttribute('href', 'https://docs.dify.ai/tools')
-    expect(link)!.toHaveAttribute('target', '_blank')
-    expect(link)!.toHaveAttribute('rel', 'noopener noreferrer')
-    expect(link.parentElement)!.toHaveTextContent('Visit https://docs.dify.ai/tools for docs')
+    expect(screen.queryByRole('button', { name: /^JSON Schema:/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'Config' })).toHaveValue('7')
   })
+})
 
-  // Non-text fields keep their descriptions inside the tooltip and support JSON schema preview.
-  it('should show tooltip for non-description fields and open the schema modal', () => {
-    const objectSchema = createSchema({
-      name: 'tool_config',
-      variable: 'tool_config',
-      label: {
-        en_US: 'Tool Config',
-        zh_Hans: 'Tool Config',
-      },
-      type: FormTypeEnum.object,
-      tooltip: {
-        en_US: 'Select from tools',
-        zh_Hans: 'Select from tools',
-      },
-      input_schema: {
-        type: 'object',
-        properties: {
-          city: {
-            type: 'string',
-          },
-        },
-        additionalProperties: false,
-      } as unknown as SchemaRoot,
-    })
-
-    render(
-      <ToolFormItem
-        readOnly={false}
-        nodeId="tool-node"
-        schema={objectSchema}
-        value={{}}
-        onChange={vi.fn()}
-        providerType="trigger"
-      />,
-    )
-
-    const infotipTrigger = screen.getByRole('button', { name: 'Tool Config' })
-    fireEvent.click(infotipTrigger)
-    expect(screen.getByText('Select from tools'))!.toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole('button', { name: 'JSON Schema' }))
-    const schemaModal = screen.getByTestId('schema-modal')
-    expect(schemaModal)!.toBeInTheDocument()
-    expect(within(schemaModal).getByText('tool_config'))!.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'close-schema' }))
-    expect(screen.queryByTestId('schema-modal')).not.toBeInTheDocument()
-  })
+it('keeps tool parameter descriptions linked to external documentation', () => {
+  renderWorkflowFlowComponent(
+    <ToolFormItem
+      readOnly
+      nodeId="node-1"
+      schema={createSchema({
+        type: FormTypeEnum.textNumber,
+        tooltip: { en_US: 'Visit https://docs.dify.ai/tools for docs', zh_Hans: '' },
+      })}
+      value={{}}
+      onChange={vi.fn()}
+    />,
+    { nodes: [], edges: [], hooksStoreProps: {} },
+  )
+  const link = screen.getByRole('link', { name: 'https://docs.dify.ai/tools' })
+  expect(link).toHaveAttribute('href', 'https://docs.dify.ai/tools')
+  expect(link).toHaveAttribute('target', '_blank')
+  expect(link).toHaveAttribute('rel', 'noopener noreferrer')
 })

@@ -1,14 +1,15 @@
-import type { ReactNode } from 'react'
+import type { ReasoningConfigValue } from '../reasoning-config-form'
 import type { AppSelectorValue } from '@/app/components/plugins/plugin-detail-panel/app-selector'
 import type { ToolFormSchema } from '@/app/components/tools/utils/to-form-schema'
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { renderWorkflowComponent as render } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { Type } from '@/app/components/workflow/nodes/llm/types'
-import { renderWithAccountProfile as render } from '@/test/console/account-profile'
-import ReasoningConfigForm from '../reasoning-config-form'
+import { ReasoningConfigForm } from '../reasoning-config-form'
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useLanguage: () => 'en_US',
@@ -37,23 +38,6 @@ vi.mock('@/app/components/plugins/plugin-detail-panel/model-selector', () => ({
     <button data-testid="model-selector" onClick={() => setModel({ model: 'gpt-4.1' })}>
       Select Model
     </button>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
-  default: ({
-    onChange,
-    placeholder,
-  }: {
-    onChange: (value: string) => void
-    placeholder?: ReactNode
-  }) => (
-    <div>
-      <div data-testid="code-editor-placeholder">{placeholder}</div>
-      <button data-testid="code-editor" onClick={() => onChange('{"foo":"bar"}')}>
-        Update JSON
-      </button>
-    </div>
   ),
 }))
 
@@ -99,45 +83,105 @@ vi.mock('@/app/components/workflow/nodes/tool/components/mixed-variable-text-inp
   ),
 }))
 
-vi.mock('../schema-modal', () => ({
-  SchemaModal: ({
-    isShow,
-    rootName,
-    onClose,
-  }: {
-    isShow: boolean
-    rootName: string
-    onClose: () => void
-  }) =>
-    isShow ? (
-      <div data-testid="schema-modal">
-        <span>{rootName}</span>
-        <button data-testid="close-schema" onClick={onClose}>
-          Close
-        </button>
-      </div>
-    ) : null,
-}))
-
-const createSchema = (overrides: Partial<ToolFormSchema> = {}): ToolFormSchema =>
-  ({
-    variable: 'field',
-    type: FormTypeEnum.textInput,
-    default: '',
-    required: false,
-    label: { en_US: 'Field', zh_Hans: '字段' },
-    tooltip: { en_US: 'Tooltip', zh_Hans: '提示' },
-    scope: 'all',
-    url: '',
-    input_schema: {},
-    placeholder: { en_US: 'Placeholder', zh_Hans: '占位符' },
-    options: [],
-    ...overrides,
-  }) as ToolFormSchema
+const createSchema = (overrides: Partial<ToolFormSchema> = {}): ToolFormSchema => ({
+  name: 'field',
+  _type: 'string',
+  form: 'llm',
+  show_on: [],
+  variable: 'field',
+  type: FormTypeEnum.textInput,
+  default: '',
+  required: false,
+  label: { en_US: 'Field', zh_Hans: '字段' },
+  tooltip: { en_US: 'Tooltip', zh_Hans: '提示' },
+  scope: 'all',
+  url: '',
+  input_schema: undefined,
+  placeholder: { en_US: 'Placeholder', zh_Hans: '占位符' },
+  options: [],
+  ...overrides,
+})
 
 describe('ReasoningConfigForm', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  it('inspects each schema without unmounting sibling inputs or losing their current values', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    function Fixture() {
+      const [value, setValue] = useState<ReasoningConfigValue>({
+        count: { auto: 0, value: { type: VarKindType.constant, value: '3' } },
+        config: { auto: 0, value: { type: VarKindType.constant, value: '{}' } },
+        records: { auto: 0, value: { type: VarKindType.constant, value: '[]' } },
+      })
+      return (
+        <ReasoningConfigForm
+          value={value}
+          onChange={(next) => {
+            onChange(next)
+            setValue(next)
+          }}
+          schemas={[
+            createSchema({
+              variable: 'count',
+              type: FormTypeEnum.textNumber,
+              label: { en_US: 'Count', zh_Hans: '数量' },
+            }),
+            createSchema({
+              variable: 'config',
+              type: FormTypeEnum.object,
+              label: { en_US: 'Config', zh_Hans: '配置' },
+              input_schema: { type: Type.object, properties: { city: { type: Type.string } } },
+            }),
+            createSchema({
+              variable: 'records',
+              type: FormTypeEnum.array,
+              label: { en_US: 'Records', zh_Hans: '记录' },
+              input_schema: {
+                type: Type.array,
+                items: { type: Type.object, properties: { id: { type: Type.number } } },
+              },
+            }),
+          ]}
+          nodeOutputVars={[]}
+          availableNodes={[]}
+          nodeId="node-1"
+        />
+      )
+    }
+    render(<Fixture />)
+    const count = screen.getByRole('spinbutton', { name: 'Count' })
+    const [configEditor, recordsEditor] = screen.getAllByTestId('monaco-editor')
+    await user.clear(count)
+    await user.type(count, '8')
+    fireEvent.change(configEditor!, { target: { value: '{"city":"Shanghai"}' } })
+    const previousChanges = onChange.mock.calls.length
+    const entries = screen.getAllByRole('button', {
+      name: /workflowAgent.nodes.agent.clickToViewParameterSchema/,
+    })
+    for (const [index, rootName, property] of [
+      [0, 'Config', 'city'],
+      [1, 'Records', 'id'],
+    ] as const) {
+      await user.click(entries[index]!)
+      const dialog = screen.getByRole('dialog', {
+        name: 'workflowAgent.nodes.agent.parameterSchema',
+      })
+      expect(within(dialog).getByText(rootName)).toBeInTheDocument()
+      expect(within(dialog).getByText(property)).toBeInTheDocument()
+      expect(count).toBeInTheDocument()
+      expect(configEditor).toBeInTheDocument()
+      expect(recordsEditor).toBeInTheDocument()
+      await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      expect(entries[index]).toHaveFocus()
+    }
+    expect(count).toHaveValue(8)
+    expect(configEditor).toHaveValue('{"city":"Shanghai"}')
+    expect(recordsEditor).toHaveValue('[]')
+    expect(onChange).toHaveBeenCalledTimes(previousChanges)
   })
 
   it('names date parameters from their field title and emits tool storage values', async () => {
@@ -248,7 +292,8 @@ describe('ReasoningConfigForm', () => {
     )
   })
 
-  it('should open schema modal for object fields and support app selection', () => {
+  it('inspects object schemas without hiding the form and supports app selection after close', async () => {
+    const user = userEvent.setup()
     const onChange = vi.fn()
 
     render(
@@ -283,11 +328,16 @@ describe('ReasoningConfigForm', () => {
       />,
     )
 
-    fireEvent.click(
-      screen.getByRole('button', { name: 'workflowAgent.nodes.agent.clickToViewParameterSchema' }),
+    const editor = screen.getByTestId('monaco-editor')
+    await user.click(
+      screen.getByRole('button', { name: /workflowAgent.nodes.agent.clickToViewParameterSchema/ }),
     )
-    expect(screen.getByTestId('schema-modal')).toHaveTextContent('Config')
-    fireEvent.click(screen.getByTestId('close-schema'))
+    expect(within(screen.getByRole('dialog')).getByText('Config')).toBeInTheDocument()
+    expect(editor).toBeInTheDocument()
+    expect(editor).toHaveValue('{}')
+    expect(onChange).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
 
     fireEvent.click(screen.getByTestId('app-selector'))
 
@@ -523,9 +573,9 @@ describe('ReasoningConfigForm', () => {
     )
 
     expect(screen.getAllByText('Alpha').length).toBeGreaterThan(0)
-    expect(screen.getByTestId('code-editor-placeholder')).toHaveTextContent('"foo": "bar"')
+    expect(screen.getByTestId('monaco-editor')).toHaveValue('{}')
 
-    fireEvent.click(screen.getByTestId('code-editor'))
+    fireEvent.change(screen.getByTestId('monaco-editor'), { target: { value: '{"foo":"bar"}' } })
 
     expect(onChange).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -545,7 +595,7 @@ describe('ReasoningConfigForm', () => {
         value={{
           config: {
             auto: 0,
-            value: { type: VarKindType.constant, value: '{}' },
+            value: { type: VarKindType.constant, value: '' },
           },
           app: {
             auto: 0,
@@ -581,7 +631,8 @@ describe('ReasoningConfigForm', () => {
       />,
     )
 
-    expect(screen.getByTestId('code-editor-placeholder')).toHaveTextContent('"foo": "bar"')
+    expect(screen.getByTestId('monaco-editor')).toHaveValue('')
+    expect(screen.getByText('{ "foo": "bar" }')).toBeInTheDocument()
     expect(screen.getByTestId('app-selector')).toHaveAttribute('data-scope', 'all')
     expect(screen.getByTestId('var-picker')).toHaveAttribute('data-value', '[]')
     expect(screen.getByRole('link', { name: 'tools.howToGet' })).toHaveAttribute(

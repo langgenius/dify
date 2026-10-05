@@ -2,7 +2,6 @@ import type { FC } from 'react'
 import type { Field } from '../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Separator } from '@langgenius/dify-ui/separator'
-import { RiArrowDropDownLine, RiArrowDropRightLine } from '@remixicon/react'
 import { useDebounceFn } from 'ahooks'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
@@ -77,7 +76,7 @@ const SchemaNode: FC<SchemaNodeProps> = ({
 
   const hasChildren = useMemo(() => getHasChildren(schema), [schema])
   const type = useMemo(() => getFieldType(schema), [schema])
-  const isHovering = hoveringProperty === path.join('.')
+  const isHovering = !readOnly && hoveringProperty === path.join('.')
 
   const handleExpand = () => {
     setIsExpanded(!isExpanded)
@@ -108,12 +107,14 @@ const SchemaNode: FC<SchemaNodeProps> = ({
             <button
               type="button"
               onClick={handleExpand}
-              className="py-0.5 text-text-tertiary hover:text-text-accent"
+              aria-label={name}
+              aria-expanded={isExpanded}
+              className="rounded-sm py-0.5 text-text-tertiary hover:text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
             >
               {isExpanded ? (
-                <RiArrowDropDownLine className="size-4" />
+                <span aria-hidden className="i-ri-arrow-drop-down-line size-4" />
               ) : (
-                <RiArrowDropRightLine className="size-4" />
+                <span aria-hidden className="i-ri-arrow-drop-right-line size-4" />
               )}
             </button>
           </div>
@@ -166,6 +167,7 @@ const SchemaNode: FC<SchemaNodeProps> = ({
                 path={[...path, 'properties', key]}
                 parentPath={path}
                 depth={depth + 1}
+                readOnly={readOnly}
               />
             ))}
 
@@ -182,6 +184,7 @@ const SchemaNode: FC<SchemaNodeProps> = ({
                 path={[...path, 'items', 'properties', key]}
                 parentPath={path}
                 depth={depth + 1}
+                readOnly={readOnly}
               />
             ))}
         </>
