@@ -33,6 +33,25 @@ class TestCSVExtractor:
         assert docs[0].page_content == f"value: {value};body: reference"
         assert docs[0].metadata["source"] == value
 
+    def test_extract_header_none_uses_integer_column_labels(self, tmp_path: Path) -> None:
+        file_path = tmp_path / "headerless.csv"
+        file_path.write_text("00123,NA\n00456,NULL\n", encoding="utf-8")
+
+        docs = CSVExtractor(str(file_path), encoding="utf-8", csv_args={"header": None}).extract()
+
+        assert len(docs) == 2
+        assert docs[0].page_content == "0: 00123;1: NA"
+        assert docs[1].page_content == "0: 00456;1: NULL"
+
+    def test_extract_explicit_integer_names_in_csv_args(self, tmp_path: Path) -> None:
+        file_path = tmp_path / "named.csv"
+        file_path.write_text("a,b\n", encoding="utf-8")
+
+        docs = CSVExtractor(str(file_path), encoding="utf-8", csv_args={"header": None, "names": [10, 20]}).extract()
+
+        assert len(docs) == 1
+        assert docs[0].page_content == "10: a;20: b"
+
     def test_extract_honors_explicit_csv_args(self, tmp_path: Path) -> None:
         file_path = tmp_path / "data.csv"
         file_path.write_text("value;body\n00123;NA\n", encoding="utf-8")
