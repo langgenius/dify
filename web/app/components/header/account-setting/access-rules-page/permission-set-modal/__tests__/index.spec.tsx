@@ -6,7 +6,7 @@ import userEvent from '@testing-library/user-event'
 import { AgentPermission } from '@/features/agent-v2/acl'
 import { consoleQuery } from '@/service/console'
 import { createTestQueryClient } from '@/test/query-client'
-import PermissionSetModal from '../index'
+import { PermissionSetModal } from '../index'
 
 const expectedAppACLPermissionKeys = [
   'app.acl.view_layout',
@@ -110,7 +110,7 @@ describe('PermissionSetModal', () => {
           open
           mode="create"
           resourceType="app"
-          onClose={vi.fn()}
+          onOpenChange={vi.fn()}
           onSubmit={vi.fn()}
         />,
       )
@@ -133,7 +133,7 @@ describe('PermissionSetModal', () => {
           open
           mode="create"
           resourceType="app"
-          onClose={vi.fn()}
+          onOpenChange={vi.fn()}
           onSubmit={vi.fn()}
         />,
       )
@@ -148,7 +148,7 @@ describe('PermissionSetModal', () => {
           open
           mode="create"
           resourceType="dataset"
-          onClose={vi.fn()}
+          onOpenChange={vi.fn()}
           onSubmit={vi.fn()}
         />,
       )
@@ -175,7 +175,7 @@ describe('PermissionSetModal', () => {
           open
           mode="create"
           resourceType="app"
-          onClose={handleClose}
+          onOpenChange={handleClose}
           onSubmit={handleSubmit}
         />,
       )
@@ -214,7 +214,7 @@ describe('PermissionSetModal', () => {
             description: 'Original description',
             permissionKeys: ['app.acl.edit'],
           }}
-          onClose={vi.fn()}
+          onOpenChange={vi.fn()}
           onSubmit={handleSubmit}
         />,
       )
@@ -246,7 +246,7 @@ describe('PermissionSetModal', () => {
             description: 'Read only rule',
             permissionKeys: ['app.acl.edit'],
           }}
-          onClose={vi.fn()}
+          onOpenChange={vi.fn()}
           onSubmit={vi.fn()}
         />,
       )
@@ -267,7 +267,7 @@ describe('PermissionSetModal', () => {
         open
         mode="create"
         resourceType="agent"
-        onClose={vi.fn()}
+        onOpenChange={vi.fn()}
         onSubmit={vi.fn()}
       />,
     )
@@ -289,7 +289,7 @@ describe('PermissionSetModal', () => {
         open
         mode="create"
         resourceType="agent"
-        onClose={close}
+        onOpenChange={close}
         onSubmit={submit}
       />,
     )

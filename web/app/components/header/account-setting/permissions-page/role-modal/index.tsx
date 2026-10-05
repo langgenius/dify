@@ -30,11 +30,11 @@ type RoleModalProps = {
   mode: RoleModalMode
   open: boolean
   role?: Role
-  onClose: () => void
+  onOpenChange: (open: boolean) => void
   onSubmit?: (data: submitRoleData) => void
 }
 
-const RoleModal = ({ mode, open, role, onClose, onSubmit }: RoleModalProps) => {
+function RoleModalContent({ mode, role, onOpenChange, onSubmit }: Omit<RoleModalProps, 'open'>) {
   const { t } = useTranslation(['common', 'permission'])
   const locale = useLocale()
   const docLanguage = getDocLanguage(locale)
@@ -54,100 +54,97 @@ const RoleModal = ({ mode, open, role, onClose, onSubmit }: RoleModalProps) => {
 
   const handleSubmit = () => {
     onSubmit?.({ name: name.trim(), description: desc.trim(), permissionKeys })
-    onClose()
+    onOpenChange(false)
   }
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(nextOpen) => {
-        if (!nextOpen) onClose()
-      }}
-    >
+    <>
+      <div className="relative shrink-0 px-6 pt-6 pb-4">
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              size="lg"
+              className="absolute inset-e-6 top-6"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
+        <div className="pr-8">
+          <DialogTitle className="system-xl-semibold text-text-primary">
+            {t(($) => $[`role.modal.${mode}.title`], { ns: 'permission' })}
+          </DialogTitle>
+          <DialogDescription className="mt-1 system-sm-regular text-text-tertiary">
+            {t(($) => $[`role.modal.${mode}.description`], { ns: 'permission' })}
+          </DialogDescription>
+        </div>
+      </div>
+      <div className="border-t border-divider-subtle" />
+      <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-hidden px-6 py-5">
+        <div className="flex shrink-0 flex-col gap-1">
+          <label htmlFor="role-name" className="system-sm-medium text-text-secondary">
+            {t(($) => $['role.modal.nameLabel'], { ns: 'permission' })}
+          </label>
+          <Input
+            id="role-name"
+            value={name}
+            onChange={onRoleNameChange}
+            placeholder={t(($) => $['role.modal.namePlaceholder'], { ns: 'permission' })}
+            disabled={readonly}
+          />
+        </div>
+        <div className="flex shrink-0 flex-col gap-1">
+          <label htmlFor="role-description" className="system-sm-medium text-text-secondary">
+            {t(($) => $['role.modal.descriptionLabel'], { ns: 'permission' })}
+          </label>
+          <Textarea
+            id="role-description"
+            value={desc}
+            onValueChange={onRoleDescChange}
+            placeholder={t(($) => $['role.modal.descriptionPlaceholder'], { ns: 'permission' })}
+            disabled={readonly}
+            className="min-h-24 resize-none"
+          />
+        </div>
+        <PermissionField value={permissionKeys} onChange={setPermissionKeys} readonly={readonly} />
+      </div>
+      <div className="flex shrink-0 items-center justify-between gap-3 border-t border-divider-subtle px-6 py-4">
+        <a
+          href={getEnterpriseDocUrl('/use/workspace/permission-reference', docLanguage)}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-1 system-xs-medium text-text-accent hover:underline"
+        >
+          <span>{t(($) => $['permissionSet.learnMore'], { ns: 'permission' })}</span>
+          <span aria-hidden className="i-ri-external-link-line h-3.5 w-3.5" />
+        </a>
+        <div className="flex items-center gap-2">
+          <DialogClose render={<Button variant="secondary" />}>
+            {readonly
+              ? t(($) => $['operation.close'], { ns: 'common' })
+              : t(($) => $['operation.cancel'], { ns: 'common' })}
+          </DialogClose>
+          {!readonly && (
+            <Button variant="primary" disabled={!name.trim()} onClick={handleSubmit}>
+              {t(($) => $['operation.confirm'], { ns: 'common' })}
+            </Button>
+          )}
+        </div>
+      </div>
+    </>
+  )
+}
+
+export function RoleModal({ open, onOpenChange, ...contentProps }: RoleModalProps) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className="flex h-[85vh] w-140 flex-col overflow-hidden p-0"
         backdropProps={{ forceRender: true }}
       >
-        <div className="relative shrink-0 px-6 pt-6 pb-4">
-          <DialogClose
-            render={
-              <IconButton
-                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                size="lg"
-                className="absolute inset-e-6 top-6"
-              >
-                <span aria-hidden className="i-ri-close-line size-4" />
-              </IconButton>
-            }
-          />
-          <div className="pr-8">
-            <DialogTitle className="system-xl-semibold text-text-primary">
-              {t(($) => $[`role.modal.${mode}.title`], { ns: 'permission' })}
-            </DialogTitle>
-            <DialogDescription className="mt-1 system-sm-regular text-text-tertiary">
-              {t(($) => $[`role.modal.${mode}.description`], { ns: 'permission' })}
-            </DialogDescription>
-          </div>
-        </div>
-        <div className="border-t border-divider-subtle" />
-        <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-hidden px-6 py-5">
-          <div className="flex shrink-0 flex-col gap-1">
-            <label htmlFor="role-name" className="system-sm-medium text-text-secondary">
-              {t(($) => $['role.modal.nameLabel'], { ns: 'permission' })}
-            </label>
-            <Input
-              id="role-name"
-              value={name}
-              onChange={onRoleNameChange}
-              placeholder={t(($) => $['role.modal.namePlaceholder'], { ns: 'permission' })}
-              disabled={readonly}
-            />
-          </div>
-          <div className="flex shrink-0 flex-col gap-1">
-            <label htmlFor="role-description" className="system-sm-medium text-text-secondary">
-              {t(($) => $['role.modal.descriptionLabel'], { ns: 'permission' })}
-            </label>
-            <Textarea
-              id="role-description"
-              value={desc}
-              onValueChange={onRoleDescChange}
-              placeholder={t(($) => $['role.modal.descriptionPlaceholder'], { ns: 'permission' })}
-              disabled={readonly}
-              className="min-h-24 resize-none"
-            />
-          </div>
-          <PermissionField
-            value={permissionKeys}
-            onChange={setPermissionKeys}
-            readonly={readonly}
-          />
-        </div>
-        <div className="flex shrink-0 items-center justify-between gap-3 border-t border-divider-subtle px-6 py-4">
-          <a
-            href={getEnterpriseDocUrl('/use/workspace/permission-reference', docLanguage)}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1 system-xs-medium text-text-accent hover:underline"
-          >
-            <span>{t(($) => $['permissionSet.learnMore'], { ns: 'permission' })}</span>
-            <span aria-hidden className="i-ri-external-link-line h-3.5 w-3.5" />
-          </a>
-          <div className="flex items-center gap-2">
-            <Button variant="secondary" onClick={onClose}>
-              {readonly
-                ? t(($) => $['operation.close'], { ns: 'common' })
-                : t(($) => $['operation.cancel'], { ns: 'common' })}
-            </Button>
-            {!readonly && (
-              <Button variant="primary" disabled={!name.trim()} onClick={handleSubmit}>
-                {t(($) => $['operation.confirm'], { ns: 'common' })}
-              </Button>
-            )}
-          </div>
-        </div>
+        <RoleModalContent {...contentProps} onOpenChange={onOpenChange} />
       </DialogContent>
     </Dialog>
   )
 }
-
-export default RoleModal

@@ -17,7 +17,7 @@ import {
 import { hasPermission } from '@/utils/permission'
 import { useRoleGroups } from './hooks'
 import RoleList from './role-list'
-import RoleModal from './role-modal'
+import { RoleModal } from './role-modal'
 
 type PermissionsPageProps = {
   containerRef: React.RefObject<HTMLDivElement | null>
@@ -25,6 +25,7 @@ type PermissionsPageProps = {
 
 type ModalState = {
   mode: RoleModalMode
+  open: boolean
   role?: Role
 } | null
 
@@ -52,18 +53,21 @@ const PermissionsPage = ({ containerRef }: PermissionsPageProps) => {
   const { mutateAsync: updateWorkspaceRole } = useUpdateWorkspaceRole()
 
   const openCreate = useCallback(() => {
-    setModalState({ mode: 'create' })
+    setModalState({ mode: 'create', open: true })
   }, [])
 
   const handleView = useCallback((role: Role) => {
-    setModalState({ mode: 'view', role })
+    setModalState({ mode: 'view', role, open: true })
   }, [])
 
   const handleEdit = useCallback((role: Role) => {
-    setModalState({ mode: 'edit', role })
+    setModalState({ mode: 'edit', role, open: true })
   }, [])
 
-  const closeModal = useCallback(() => setModalState(null), [])
+  const handleModalOpenChange = useCallback((open: boolean) => {
+    setModalState((current) => (current ? { ...current, open } : current))
+  }, [])
+  const closeModal = useCallback(() => handleModalOpenChange(false), [handleModalOpenChange])
 
   const handleSubmit = useCallback(
     (data: submitRoleData) => {
@@ -156,10 +160,10 @@ const PermissionsPage = ({ containerRef }: PermissionsPageProps) => {
       </div>
       {modalState && (
         <RoleModal
-          mode={modalState?.mode ?? 'create'}
-          open
-          role={modalState?.role}
-          onClose={closeModal}
+          mode={modalState.mode}
+          open={modalState.open}
+          role={modalState.role}
+          onOpenChange={handleModalOpenChange}
           onSubmit={handleSubmit}
         />
       )}

@@ -21,10 +21,22 @@ const providers = {
 const resourceTypes = ['app', 'dataset', 'agent'] as const
 const sent: Request[] = []
 
-function setup({ canManage = true, builtin = false } = {}) {
+function setup({
+  canManage = true,
+  builtin = false,
+  save,
+}: {
+  canManage?: boolean
+  builtin?: boolean
+  save?: (request: Request) => Promise<Response>
+} = {}) {
   const { wrapper, queryClient } = createConsoleQueryWrapper({
     workspacePermissionKeys: canManage ? ['workspace.role.manage'] : [],
   })
+  const permissions = seedWorkspacePermissionsQuery(
+    queryClient,
+    canManage ? ['workspace.role.manage'] : [],
+  )
   for (const resourceType of resourceTypes) {
     const rule = createAccessPolicyFixture({
       id: `${resourceType}-rule`,
@@ -67,6 +79,22 @@ function setup({ canManage = true, builtin = false } = {}) {
       const req = options.request
       sent.push(req.clone())
       if (req.method === 'GET') {
+        if (new URL(req.url).pathname.endsWith('/my-permissions')) return Response.json(permissions)
+        if (new URL(req.url).pathname.endsWith('/role-permissions/catalog/app')) {
+          return Response.json({
+            groups: [
+              {
+                group_key: 'app_acl',
+                group_name: 'App permissions',
+                description: '',
+                permissions: [
+                  { key: 'app.acl.edit', name: 'Edit configuration', description: '' },
+                  { key: 'app.acl.view_layout', name: 'View layout', description: '' },
+                ],
+              },
+            ],
+          })
+        }
         const resourceType = new URL(req.url).pathname.includes('/datasets/')
           ? 'dataset'
           : new URL(req.url).pathname.includes('/apps/')
@@ -83,7 +111,7 @@ function setup({ canManage = true, builtin = false } = {}) {
           pagination,
         })
       }
-      return Response.json(createAccessPolicyFixture())
+      return save ? save(req) : Response.json(createAccessPolicyFixture())
     },
   )
   return { ...render(<AccessRulesPage />, { wrapper }), queryClient }
@@ -200,5 +228,93 @@ describe('AccessRulesPage', () => {
       screen.queryByRole('button', { name: 'permission.accessRule.newPermissionSet' }),
     ).not.toBeInTheDocument()
     expect(sent.filter((req) => req.method !== 'GET')).toHaveLength(0)
+  })
+})
+
+describe('Permission-set sessions', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    sent.length = 0
+  })
+
+  it('waits for permission-set saving, preserves a rejected draft, and retries the same policy', async () => {
+    let reject!: (error: Error) => void
+    const save = vi
+      .fn()
+      .mockReturnValueOnce(
+        new Promise<Response>((_resolve, fail) => {
+          reject = fail
+        }),
+      )
+      .mockImplementation(async () => Response.json(createAccessPolicyFixture()))
+    const user = userEvent.setup()
+    setup({ save })
+    const section = await openSection('app')
+    await user.click(within(section).getByRole('button', { name: 'common.operation.moreActions' }))
+    await user.click(screen.getByRole('menuitem', { name: 'common.operation.edit' }))
+    const dialog = screen.getByRole('dialog')
+    const name = within(dialog).getByRole('textbox', { name: /permissionSet.nameLabel/ })
+    await user.clear(name)
+    await user.type(name, '  Updated policy  ')
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.confirm' }))
+    await waitFor(() => expect(save).toHaveBeenCalledOnce())
+    expect(dialog).toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.confirm' }))
+    expect(save).toHaveBeenCalledOnce()
+    await act(async () => reject(new Error('Save failed')))
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('common.api.actionFailed')
+    expect(name).toHaveValue('  Updated policy  ')
+    expect(within(dialog).getByRole('checkbox', { name: /app.acl.edit/ })).toBeChecked()
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.confirm' }))
+    await waitFor(() => expect(dialog.isConnected).toBe(false))
+    expect(save).toHaveBeenCalledTimes(2)
+    const mutations = sent.filter((req) => req.method === 'PUT')
+    expect(mutations).toHaveLength(2)
+    for (const mutation of mutations) {
+      expect(new URL(mutation.url).pathname).toMatch(/access-policies\/app-rule$/)
+      expect(await mutation.json()).toMatchObject({
+        name: 'Updated policy',
+        permission_keys: ['app.acl.edit'],
+      })
+    }
+  })
+
+  it('allows cancel while saving and releases the closed permission catalog subscription', async () => {
+    let complete!: (value: Response) => void
+    const save = vi.fn().mockReturnValue(
+      new Promise<Response>((resolve) => {
+        complete = resolve
+      }),
+    )
+    const user = userEvent.setup()
+    const { queryClient } = setup({ save })
+    const section = await openSection('app')
+    const add = within(section).getByRole('button', {
+      name: 'permission.accessRule.newPermissionSet',
+    })
+    await user.click(add)
+    const dialog = screen.getByRole('dialog')
+    await user.type(
+      within(dialog).getByRole('textbox', { name: /permissionSet.nameLabel/ }),
+      'Pending policy',
+    )
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.confirm' }))
+    await waitFor(() => expect(save).toHaveBeenCalledOnce())
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.cancel' }))
+    await waitFor(() => expect(dialog.isConnected).toBe(false))
+    await act(async () =>
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.rbac.rolePermissions.catalog.app.get.queryKey({
+          input: {},
+        }),
+      }),
+    )
+    expect(sent.filter((req) => req.method === 'GET')).toHaveLength(0)
+    await act(async () => complete(Response.json(createAccessPolicyFixture())))
+    await user.click(add)
+    expect(screen.getByRole('textbox', { name: /permissionSet.nameLabel/ })).toHaveValue('')
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(await screen.findByRole('checkbox', { name: /app.acl.view_layout/ })).not.toBeChecked()
+    expect(screen.getByRole('checkbox', { name: /app.acl.edit/ })).not.toBeChecked()
   })
 })
