@@ -3,15 +3,86 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import UTC, datetime
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
+from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter as RealGRPCMetricExporter
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter as RealGRPCSpanExporter
+from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter as RealHTTPMetricExporter
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter as RealHTTPSpanExporter
+from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.sdk.metrics.export import InMemoryMetricReader
 
+import enterprise.telemetry.exporter as exporter_module
+from configs import DifyConfig
 from configs.enterprise import EnterpriseTelemetryConfig
 from enterprise.telemetry.entities import EnterpriseTelemetryCounter, EnterpriseTelemetryHistogram
 from enterprise.telemetry.exporter import EnterpriseExporter, _datetime_to_ns, _parse_otlp_headers
+
+
+def _make_grpc_config(**overrides: object) -> DifyConfig:
+    defaults: dict[str, object] = {
+        "ENTERPRISE_OTLP_ENDPOINT": "https://collector.example.com",
+        "ENTERPRISE_OTLP_HEADERS": "",
+        "ENTERPRISE_OTLP_PROTOCOL": "grpc",
+        "APPLICATION_NAME": "dify",
+        "ENTERPRISE_OTEL_SAMPLING_RATE": 1.0,
+        "ENTERPRISE_INCLUDE_CONTENT": True,
+        "ENTERPRISE_OTLP_API_KEY": "",
+    }
+    defaults.update(overrides)
+    return DifyConfig.model_validate(defaults)
+
+
+@contextmanager
+def _running_exporter(config: DifyConfig) -> Iterator[EnterpriseExporter]:
+    exporter = EnterpriseExporter(config)
+    try:
+        yield exporter
+    finally:
+        exporter._tracer_provider.shutdown()
+        exporter._meter_provider.shutdown()
+
+
+def _record_grpc_construction(
+    monkeypatch: pytest.MonkeyPatch,
+) -> tuple[list[dict[str, object]], list[dict[str, object]]]:
+    span_calls: list[dict[str, object]] = []
+    metric_calls: list[dict[str, object]] = []
+
+    def create_span_exporter(**kwargs: object) -> RealGRPCSpanExporter:
+        span_calls.append(kwargs)
+        return RealGRPCSpanExporter(**kwargs)
+
+    def create_metric_exporter(**kwargs: object) -> RealGRPCMetricExporter:
+        metric_calls.append(kwargs)
+        return RealGRPCMetricExporter(**kwargs)
+
+    monkeypatch.setattr(exporter_module, "GRPCSpanExporter", create_span_exporter)
+    monkeypatch.setattr(exporter_module, "GRPCMetricExporter", create_metric_exporter)
+    return span_calls, metric_calls
+
+
+def _record_http_construction(
+    monkeypatch: pytest.MonkeyPatch,
+) -> tuple[list[dict[str, object]], list[dict[str, object]]]:
+    span_calls: list[dict[str, object]] = []
+    metric_calls: list[dict[str, object]] = []
+
+    def create_span_exporter(**kwargs: object) -> RealHTTPSpanExporter:
+        span_calls.append(kwargs)
+        return RealHTTPSpanExporter(**kwargs)
+
+    def create_metric_exporter(**kwargs: object) -> RealHTTPMetricExporter:
+        metric_calls.append(kwargs)
+        return RealHTTPMetricExporter(**kwargs)
+
+    monkeypatch.setattr(exporter_module, "HTTPSpanExporter", create_span_exporter)
+    monkeypatch.setattr(exporter_module, "HTTPMetricExporter", create_metric_exporter)
+    return span_calls, metric_calls
 
 
 def test_config_api_key_default_empty():
@@ -20,251 +91,143 @@ def test_config_api_key_default_empty():
     assert config.ENTERPRISE_OTLP_API_KEY == ""
 
 
-@patch("enterprise.telemetry.exporter.GRPCSpanExporter")
-@patch("enterprise.telemetry.exporter.GRPCMetricExporter")
-def test_api_key_only_injects_bearer_header(mock_metric_exporter: MagicMock, mock_span_exporter: MagicMock) -> None:
+def test_api_key_only_injects_bearer_header(monkeypatch: pytest.MonkeyPatch) -> None:
     """Test that API key alone injects Bearer authorization header."""
-    mock_config = SimpleNamespace(
-        ENTERPRISE_OTLP_ENDPOINT="https://collector.example.com",
-        ENTERPRISE_OTLP_HEADERS="",
-        ENTERPRISE_OTLP_PROTOCOL="grpc",
-        APPLICATION_NAME="dify",
-        ENTERPRISE_OTEL_SAMPLING_RATE=1.0,
-        ENTERPRISE_INCLUDE_CONTENT=True,
-        ENTERPRISE_OTLP_API_KEY="test-secret-key",
-    )
+    span_calls, _ = _record_grpc_construction(monkeypatch)
+    config = _make_grpc_config(ENTERPRISE_OTLP_API_KEY="test-secret-key")
 
-    EnterpriseExporter(mock_config)
+    with _running_exporter(config):
+        pass
 
-    # Verify span exporter was called with Bearer header
-    assert mock_span_exporter.call_args is not None
-    headers = mock_span_exporter.call_args.kwargs.get("headers")
-    assert headers is not None
+    headers = span_calls[0]["headers"]
+    assert isinstance(headers, tuple)
     assert ("authorization", "Bearer test-secret-key") in headers
 
 
-@patch("enterprise.telemetry.exporter.GRPCSpanExporter")
-@patch("enterprise.telemetry.exporter.GRPCMetricExporter")
-def test_empty_api_key_no_auth_header(mock_metric_exporter: MagicMock, mock_span_exporter: MagicMock) -> None:
+def test_empty_api_key_no_auth_header(monkeypatch: pytest.MonkeyPatch) -> None:
     """Test that empty API key does not inject authorization header."""
-    mock_config = SimpleNamespace(
-        ENTERPRISE_OTLP_ENDPOINT="https://collector.example.com",
-        ENTERPRISE_OTLP_HEADERS="",
-        ENTERPRISE_OTLP_PROTOCOL="grpc",
-        APPLICATION_NAME="dify",
-        ENTERPRISE_OTEL_SAMPLING_RATE=1.0,
-        ENTERPRISE_INCLUDE_CONTENT=True,
-        ENTERPRISE_OTLP_API_KEY="",
-    )
+    span_calls, _ = _record_grpc_construction(monkeypatch)
 
-    EnterpriseExporter(mock_config)
+    with _running_exporter(_make_grpc_config()):
+        pass
 
-    # Verify span exporter was called without authorization header
-    assert mock_span_exporter.call_args is not None
-    headers = mock_span_exporter.call_args.kwargs.get("headers")
-    # Headers should be None or not contain authorization
+    headers = span_calls[0]["headers"]
     if headers is not None:
+        assert isinstance(headers, tuple)
         assert not any(key == "authorization" for key, _ in headers)
 
 
-@patch("enterprise.telemetry.exporter.GRPCSpanExporter")
-@patch("enterprise.telemetry.exporter.GRPCMetricExporter")
-def test_api_key_and_custom_headers_merge(mock_metric_exporter: MagicMock, mock_span_exporter: MagicMock) -> None:
+def test_api_key_and_custom_headers_merge(monkeypatch: pytest.MonkeyPatch) -> None:
     """Test that API key and custom headers are merged correctly."""
-    mock_config = SimpleNamespace(
-        ENTERPRISE_OTLP_ENDPOINT="https://collector.example.com",
+    span_calls, _ = _record_grpc_construction(monkeypatch)
+    config = _make_grpc_config(
         ENTERPRISE_OTLP_HEADERS="x-custom=foo",
-        ENTERPRISE_OTLP_PROTOCOL="grpc",
-        APPLICATION_NAME="dify",
-        ENTERPRISE_OTEL_SAMPLING_RATE=1.0,
-        ENTERPRISE_INCLUDE_CONTENT=True,
         ENTERPRISE_OTLP_API_KEY="test-key",
     )
 
-    EnterpriseExporter(mock_config)
+    with _running_exporter(config):
+        pass
 
-    # Verify both headers are present
-    assert mock_span_exporter.call_args is not None
-    headers = mock_span_exporter.call_args.kwargs.get("headers")
-    assert headers is not None
+    headers = span_calls[0]["headers"]
+    assert isinstance(headers, tuple)
     assert ("authorization", "Bearer test-key") in headers
     assert ("x-custom", "foo") in headers
 
 
-@patch("enterprise.telemetry.exporter.GRPCSpanExporter")
-@patch("enterprise.telemetry.exporter.GRPCMetricExporter")
 def test_api_key_overrides_conflicting_header(
-    mock_metric_exporter: MagicMock, mock_span_exporter: MagicMock, caplog
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
     """Test that API key overrides conflicting authorization header and logs warning."""
-    mock_config = SimpleNamespace(
-        ENTERPRISE_OTLP_ENDPOINT="https://collector.example.com",
+    span_calls, _ = _record_grpc_construction(monkeypatch)
+    config = _make_grpc_config(
         ENTERPRISE_OTLP_HEADERS="authorization=Basic+old",
-        ENTERPRISE_OTLP_PROTOCOL="grpc",
-        APPLICATION_NAME="dify",
-        ENTERPRISE_OTEL_SAMPLING_RATE=1.0,
-        ENTERPRISE_INCLUDE_CONTENT=True,
         ENTERPRISE_OTLP_API_KEY="test-key",
     )
 
     with caplog.at_level(logging.WARNING, logger="enterprise.telemetry.exporter"):
-        EnterpriseExporter(mock_config)
+        with _running_exporter(config):
+            pass
 
-    # Verify Bearer header takes precedence
-    assert mock_span_exporter.call_args is not None
-    headers = mock_span_exporter.call_args.kwargs.get("headers")
-    assert headers is not None
+    headers = span_calls[0]["headers"]
+    assert isinstance(headers, tuple)
     assert ("authorization", "Bearer test-key") in headers
-    # Verify old authorization header is not present
     assert ("authorization", "Basic old") not in headers
 
-    # Verify warning was logged
     assert "ENTERPRISE_OTLP_API_KEY is set" in caplog.text
     assert "authorization" in caplog.text
 
 
-@patch("enterprise.telemetry.exporter.GRPCSpanExporter")
-@patch("enterprise.telemetry.exporter.GRPCMetricExporter")
-def test_https_endpoint_uses_secure_grpc(mock_metric_exporter: MagicMock, mock_span_exporter: MagicMock) -> None:
+def test_https_endpoint_uses_secure_grpc(monkeypatch: pytest.MonkeyPatch) -> None:
     """Test that https:// endpoint enables TLS (insecure=False) for gRPC."""
-    mock_config = SimpleNamespace(
-        ENTERPRISE_OTLP_ENDPOINT="https://collector.example.com",
-        ENTERPRISE_OTLP_HEADERS="",
-        ENTERPRISE_OTLP_PROTOCOL="grpc",
-        APPLICATION_NAME="dify",
-        ENTERPRISE_OTEL_SAMPLING_RATE=1.0,
-        ENTERPRISE_INCLUDE_CONTENT=True,
-        ENTERPRISE_OTLP_API_KEY="test-key",
-    )
+    span_calls, metric_calls = _record_grpc_construction(monkeypatch)
 
-    EnterpriseExporter(mock_config)
+    with _running_exporter(_make_grpc_config(ENTERPRISE_OTLP_API_KEY="test-key")):
+        pass
 
-    # Verify insecure=False for both exporters (https:// scheme)
-    assert mock_span_exporter.call_args is not None
-    assert mock_span_exporter.call_args.kwargs["insecure"] is False
-
-    assert mock_metric_exporter.call_args is not None
-    assert mock_metric_exporter.call_args.kwargs["insecure"] is False
+    assert span_calls[0]["insecure"] is False
+    assert metric_calls[0]["insecure"] is False
 
 
-@patch("enterprise.telemetry.exporter.GRPCSpanExporter")
-@patch("enterprise.telemetry.exporter.GRPCMetricExporter")
-def test_http_endpoint_uses_insecure_grpc(mock_metric_exporter: MagicMock, mock_span_exporter: MagicMock) -> None:
+def test_http_endpoint_uses_insecure_grpc(monkeypatch: pytest.MonkeyPatch) -> None:
     """Test that http:// endpoint uses insecure gRPC (insecure=True)."""
-    mock_config = SimpleNamespace(
-        ENTERPRISE_OTLP_ENDPOINT="http://collector.example.com",
-        ENTERPRISE_OTLP_HEADERS="",
-        ENTERPRISE_OTLP_PROTOCOL="grpc",
-        APPLICATION_NAME="dify",
-        ENTERPRISE_OTEL_SAMPLING_RATE=1.0,
-        ENTERPRISE_INCLUDE_CONTENT=True,
-        ENTERPRISE_OTLP_API_KEY="",
-    )
+    span_calls, metric_calls = _record_grpc_construction(monkeypatch)
 
-    EnterpriseExporter(mock_config)
+    with _running_exporter(_make_grpc_config(ENTERPRISE_OTLP_ENDPOINT="http://collector.example.com")):
+        pass
 
-    # Verify insecure=True for both exporters (http:// scheme)
-    assert mock_span_exporter.call_args is not None
-    assert mock_span_exporter.call_args.kwargs["insecure"] is True
-
-    assert mock_metric_exporter.call_args is not None
-    assert mock_metric_exporter.call_args.kwargs["insecure"] is True
+    assert span_calls[0]["insecure"] is True
+    assert metric_calls[0]["insecure"] is True
 
 
-@patch("enterprise.telemetry.exporter.HTTPSpanExporter")
-@patch("enterprise.telemetry.exporter.HTTPMetricExporter")
-def test_insecure_not_passed_to_http_exporters(mock_metric_exporter: MagicMock, mock_span_exporter: MagicMock) -> None:
+def test_insecure_not_passed_to_http_exporters(monkeypatch: pytest.MonkeyPatch) -> None:
     """Test that insecure parameter is not passed to HTTP exporters."""
-    mock_config = SimpleNamespace(
+    span_calls, metric_calls = _record_http_construction(monkeypatch)
+    config = _make_grpc_config(
         ENTERPRISE_OTLP_ENDPOINT="http://collector.example.com",
-        ENTERPRISE_OTLP_HEADERS="",
         ENTERPRISE_OTLP_PROTOCOL="http",
-        APPLICATION_NAME="dify",
-        ENTERPRISE_OTEL_SAMPLING_RATE=1.0,
-        ENTERPRISE_INCLUDE_CONTENT=True,
         ENTERPRISE_OTLP_API_KEY="test-key",
     )
 
-    EnterpriseExporter(mock_config)
+    with _running_exporter(config):
+        pass
 
-    # Verify insecure kwarg is NOT in HTTP exporter calls
-    assert mock_span_exporter.call_args is not None
-    assert "insecure" not in mock_span_exporter.call_args.kwargs
-
-    assert mock_metric_exporter.call_args is not None
-    assert "insecure" not in mock_metric_exporter.call_args.kwargs
+    assert "insecure" not in span_calls[0]
+    assert "insecure" not in metric_calls[0]
 
 
-@patch("enterprise.telemetry.exporter.GRPCSpanExporter")
-@patch("enterprise.telemetry.exporter.GRPCMetricExporter")
-def test_api_key_with_special_chars_preserved(mock_metric_exporter: MagicMock, mock_span_exporter: MagicMock) -> None:
+def test_api_key_with_special_chars_preserved(monkeypatch: pytest.MonkeyPatch) -> None:
     """Test that API key with special characters is preserved without mangling."""
     special_key = "abc+def/ghi=jkl=="
-    mock_config = SimpleNamespace(
-        ENTERPRISE_OTLP_ENDPOINT="https://collector.example.com",
-        ENTERPRISE_OTLP_HEADERS="",
-        ENTERPRISE_OTLP_PROTOCOL="grpc",
-        APPLICATION_NAME="dify",
-        ENTERPRISE_OTEL_SAMPLING_RATE=1.0,
-        ENTERPRISE_INCLUDE_CONTENT=True,
-        ENTERPRISE_OTLP_API_KEY=special_key,
-    )
+    span_calls, _ = _record_grpc_construction(monkeypatch)
 
-    EnterpriseExporter(mock_config)
+    with _running_exporter(_make_grpc_config(ENTERPRISE_OTLP_API_KEY=special_key)):
+        pass
 
-    # Verify special characters are preserved in Bearer header
-    assert mock_span_exporter.call_args is not None
-    headers = mock_span_exporter.call_args.kwargs.get("headers")
-    assert headers is not None
+    headers = span_calls[0]["headers"]
+    assert isinstance(headers, tuple)
     assert ("authorization", f"Bearer {special_key}") in headers
 
 
-@patch("enterprise.telemetry.exporter.GRPCSpanExporter")
-@patch("enterprise.telemetry.exporter.GRPCMetricExporter")
-def test_no_scheme_localhost_uses_insecure(mock_metric_exporter: MagicMock, mock_span_exporter: MagicMock) -> None:
+def test_no_scheme_localhost_uses_insecure(monkeypatch: pytest.MonkeyPatch) -> None:
     """Test that endpoint without scheme defaults to insecure for localhost."""
-    mock_config = SimpleNamespace(
-        ENTERPRISE_OTLP_ENDPOINT="localhost:4317",
-        ENTERPRISE_OTLP_HEADERS="",
-        ENTERPRISE_OTLP_PROTOCOL="grpc",
-        APPLICATION_NAME="dify",
-        ENTERPRISE_OTEL_SAMPLING_RATE=1.0,
-        ENTERPRISE_INCLUDE_CONTENT=True,
-        ENTERPRISE_OTLP_API_KEY="",
-    )
+    span_calls, metric_calls = _record_grpc_construction(monkeypatch)
 
-    EnterpriseExporter(mock_config)
+    with _running_exporter(_make_grpc_config(ENTERPRISE_OTLP_ENDPOINT="localhost:4317")):
+        pass
 
-    # Verify insecure=True for localhost without scheme
-    assert mock_span_exporter.call_args is not None
-    assert mock_span_exporter.call_args.kwargs["insecure"] is True
-
-    assert mock_metric_exporter.call_args is not None
-    assert mock_metric_exporter.call_args.kwargs["insecure"] is True
+    assert span_calls[0]["insecure"] is True
+    assert metric_calls[0]["insecure"] is True
 
 
-@patch("enterprise.telemetry.exporter.GRPCSpanExporter")
-@patch("enterprise.telemetry.exporter.GRPCMetricExporter")
-def test_no_scheme_production_uses_insecure(mock_metric_exporter: MagicMock, mock_span_exporter: MagicMock) -> None:
+def test_no_scheme_production_uses_insecure(monkeypatch: pytest.MonkeyPatch) -> None:
     """Test that endpoint without scheme defaults to insecure (not https://)."""
-    mock_config = SimpleNamespace(
-        ENTERPRISE_OTLP_ENDPOINT="collector.example.com:4317",
-        ENTERPRISE_OTLP_HEADERS="",
-        ENTERPRISE_OTLP_PROTOCOL="grpc",
-        APPLICATION_NAME="dify",
-        ENTERPRISE_OTEL_SAMPLING_RATE=1.0,
-        ENTERPRISE_INCLUDE_CONTENT=True,
-        ENTERPRISE_OTLP_API_KEY="",
-    )
+    span_calls, metric_calls = _record_grpc_construction(monkeypatch)
 
-    EnterpriseExporter(mock_config)
+    with _running_exporter(_make_grpc_config(ENTERPRISE_OTLP_ENDPOINT="collector.example.com:4317")):
+        pass
 
-    # Verify insecure=True for any endpoint without https:// scheme
-    assert mock_span_exporter.call_args is not None
-    assert mock_span_exporter.call_args.kwargs["insecure"] is True
-
-    assert mock_metric_exporter.call_args is not None
-    assert mock_metric_exporter.call_args.kwargs["insecure"] is True
+    assert span_calls[0]["insecure"] is True
+    assert metric_calls[0]["insecure"] is True
 
 
 # ---------------------------------------------------------------------------
@@ -323,38 +286,16 @@ def test_datetime_to_ns_returns_integer_nanoseconds() -> None:
 # ---------------------------------------------------------------------------
 
 
-def _make_grpc_config(**overrides) -> SimpleNamespace:
-    defaults = {
-        "ENTERPRISE_OTLP_ENDPOINT": "https://collector.example.com",
-        "ENTERPRISE_OTLP_HEADERS": "",
-        "ENTERPRISE_OTLP_PROTOCOL": "grpc",
-        "APPLICATION_NAME": "dify",
-        "ENTERPRISE_OTEL_SAMPLING_RATE": 1.0,
-        "ENTERPRISE_INCLUDE_CONTENT": True,
-        "ENTERPRISE_OTLP_API_KEY": "",
-    }
-    defaults.update(overrides)
-    return SimpleNamespace(**defaults)
-
-
-@patch("enterprise.telemetry.exporter.GRPCSpanExporter")
-@patch("enterprise.telemetry.exporter.GRPCMetricExporter")
-def test_include_content_true_stored_on_exporter(
-    mock_metric_exporter: MagicMock, mock_span_exporter: MagicMock
-) -> None:
+def test_include_content_true_stored_on_exporter() -> None:
     """include_content=True is stored as a public attribute (line 115)."""
-    exporter = EnterpriseExporter(_make_grpc_config(ENTERPRISE_INCLUDE_CONTENT=True))
-    assert exporter.include_content is True
+    with _running_exporter(_make_grpc_config(ENTERPRISE_INCLUDE_CONTENT=True)) as exporter:
+        assert exporter.include_content is True
 
 
-@patch("enterprise.telemetry.exporter.GRPCSpanExporter")
-@patch("enterprise.telemetry.exporter.GRPCMetricExporter")
-def test_include_content_false_stored_on_exporter(
-    mock_metric_exporter: MagicMock, mock_span_exporter: MagicMock
-) -> None:
+def test_include_content_false_stored_on_exporter() -> None:
     """include_content=False is preserved (lines 288-289 path exercised by callers)."""
-    exporter = EnterpriseExporter(_make_grpc_config(ENTERPRISE_INCLUDE_CONTENT=False))
-    assert exporter.include_content is False
+    with _running_exporter(_make_grpc_config(ENTERPRISE_INCLUDE_CONTENT=False)) as exporter:
+        assert exporter.include_content is False
 
 
 # ---------------------------------------------------------------------------
@@ -362,28 +303,26 @@ def test_include_content_false_stored_on_exporter(
 # ---------------------------------------------------------------------------
 
 
-@patch("enterprise.telemetry.exporter.GRPCSpanExporter")
-@patch("enterprise.telemetry.exporter.GRPCMetricExporter")
-def test_grpc_exporter_created_with_correct_endpoint(
-    mock_metric_exporter: MagicMock, mock_span_exporter: MagicMock
-) -> None:
+def test_grpc_exporter_created_with_correct_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
     """GRPCSpanExporter and GRPCMetricExporter receive the configured endpoint."""
-    EnterpriseExporter(_make_grpc_config(ENTERPRISE_OTLP_ENDPOINT="https://my-collector:4317"))
+    span_calls, metric_calls = _record_grpc_construction(monkeypatch)
 
-    assert mock_span_exporter.call_args.kwargs["endpoint"] == "https://my-collector:4317"
-    assert mock_metric_exporter.call_args.kwargs["endpoint"] == "https://my-collector:4317"
+    with _running_exporter(_make_grpc_config(ENTERPRISE_OTLP_ENDPOINT="https://my-collector:4317")):
+        pass
+
+    assert span_calls[0]["endpoint"] == "https://my-collector:4317"
+    assert metric_calls[0]["endpoint"] == "https://my-collector:4317"
 
 
-@patch("enterprise.telemetry.exporter.GRPCSpanExporter")
-@patch("enterprise.telemetry.exporter.GRPCMetricExporter")
-def test_grpc_exporter_empty_endpoint_passes_none(
-    mock_metric_exporter: MagicMock, mock_span_exporter: MagicMock
-) -> None:
+def test_grpc_exporter_empty_endpoint_passes_none(monkeypatch: pytest.MonkeyPatch) -> None:
     """Empty string endpoint is normalised to None for both gRPC exporters."""
-    EnterpriseExporter(_make_grpc_config(ENTERPRISE_OTLP_ENDPOINT=""))
+    span_calls, metric_calls = _record_grpc_construction(monkeypatch)
 
-    assert mock_span_exporter.call_args.kwargs["endpoint"] is None
-    assert mock_metric_exporter.call_args.kwargs["endpoint"] is None
+    with _running_exporter(_make_grpc_config(ENTERPRISE_OTLP_ENDPOINT="")):
+        pass
+
+    assert span_calls[0]["endpoint"] is None
+    assert metric_calls[0]["endpoint"] is None
 
 
 # ---------------------------------------------------------------------------
@@ -410,11 +349,13 @@ def _make_exporter_with_mock_tracer() -> tuple[EnterpriseExporter, MagicMock, Ma
     return exporter, mock_tracer, mock_span
 
 
-@patch("enterprise.telemetry.exporter.set_correlation_id")
-@patch("enterprise.telemetry.exporter.set_span_id_source")
-def test_export_span_sets_and_clears_context(mock_set_span: MagicMock, mock_set_corr: MagicMock) -> None:
+def test_export_span_sets_and_clears_context(monkeypatch: pytest.MonkeyPatch) -> None:
     """export_span sets correlation/span context before the span and clears them in finally."""
     exporter, mock_tracer, mock_span = _make_exporter_with_mock_tracer()
+    correlation_ids: list[str | None] = []
+    span_id_sources: list[str | None] = []
+    monkeypatch.setattr(exporter_module, "set_correlation_id", correlation_ids.append)
+    monkeypatch.setattr(exporter_module, "set_span_id_source", span_id_sources.append)
 
     exporter.export_span(
         name="test.span",
@@ -423,12 +364,8 @@ def test_export_span_sets_and_clears_context(mock_set_span: MagicMock, mock_set_
         span_id_source="span-src-1",
     )
 
-    # Context was set at the start of the call
-    mock_set_corr.assert_any_call("corr-1")
-    mock_set_span.assert_any_call("span-src-1")
-    # Context was cleared in finally
-    mock_set_corr.assert_called_with(None)
-    mock_set_span.assert_called_with(None)
+    assert correlation_ids == ["corr-1", None]
+    assert span_id_sources == ["span-src-1", None]
 
 
 def test_export_span_sets_attributes_on_span() -> None:
@@ -577,30 +514,31 @@ def test_export_span_invalid_trace_correlation_logs_warning(caplog: pytest.LogCa
 # ---------------------------------------------------------------------------
 
 
-@patch("enterprise.telemetry.exporter.GRPCSpanExporter")
-@patch("enterprise.telemetry.exporter.GRPCMetricExporter")
-def test_increment_counter_calls_add_on_counter(mock_metric_exporter: MagicMock, mock_span_exporter: MagicMock) -> None:
+def test_increment_counter_calls_add_on_counter() -> None:
     """increment_counter calls .add() on the matching counter instrument."""
-    exporter = EnterpriseExporter(_make_grpc_config())
-
-    mock_counter = MagicMock()
-    exporter._counters[EnterpriseTelemetryCounter.TOKENS] = mock_counter
+    reader = InMemoryMetricReader()
+    provider = MeterProvider(metric_readers=[reader])
+    counter = provider.get_meter("test").create_counter("test.tokens")
 
     labels = {"tenant_id": "t1", "app_id": "app-1"}
-    exporter.increment_counter(EnterpriseTelemetryCounter.TOKENS, 50, labels)
+    with _running_exporter(_make_grpc_config()) as exporter:
+        exporter._counters[EnterpriseTelemetryCounter.TOKENS] = counter
+        exporter.increment_counter(EnterpriseTelemetryCounter.TOKENS, 50, labels)
 
-    mock_counter.add.assert_called_once_with(50, labels)
+    metrics = reader.get_metrics_data().resource_metrics[0].scope_metrics[0].metrics
+    data_point = metrics[0].data.data_points[0]
+    assert data_point.value == 50
+    assert dict(data_point.attributes) == labels
+    provider.shutdown()
 
 
-@patch("enterprise.telemetry.exporter.GRPCSpanExporter")
-@patch("enterprise.telemetry.exporter.GRPCMetricExporter")
-def test_increment_counter_unknown_name_is_noop(mock_metric_exporter: MagicMock, mock_span_exporter: MagicMock) -> None:
+def test_increment_counter_unknown_name_is_noop() -> None:
     """increment_counter silently does nothing when the counter is not found."""
-    exporter = EnterpriseExporter(_make_grpc_config())
-    exporter._counters.clear()
+    with _running_exporter(_make_grpc_config()) as exporter:
+        exporter._counters.clear()
 
-    # Should not raise
-    exporter.increment_counter(EnterpriseTelemetryCounter.TOKENS, 5, {})
+        # Should not raise
+        exporter.increment_counter(EnterpriseTelemetryCounter.TOKENS, 5, {})
 
 
 # ---------------------------------------------------------------------------
@@ -625,12 +563,10 @@ def test_record_histogram_calls_record_on_histogram(
     mock_histogram.record.assert_called_once_with(3.14, labels)
 
 
-@patch("enterprise.telemetry.exporter.GRPCSpanExporter")
-@patch("enterprise.telemetry.exporter.GRPCMetricExporter")
-def test_record_histogram_unknown_name_is_noop(mock_metric_exporter: MagicMock, mock_span_exporter: MagicMock) -> None:
+def test_record_histogram_unknown_name_is_noop() -> None:
     """record_histogram silently does nothing when the histogram is not found."""
-    exporter = EnterpriseExporter(_make_grpc_config())
-    exporter._histograms.clear()
+    with _running_exporter(_make_grpc_config()) as exporter:
+        exporter._histograms.clear()
 
-    # Should not raise
-    exporter.record_histogram(EnterpriseTelemetryHistogram.WORKFLOW_DURATION, 1.0, {})
+        # Should not raise
+        exporter.record_histogram(EnterpriseTelemetryHistogram.WORKFLOW_DURATION, 1.0, {})
