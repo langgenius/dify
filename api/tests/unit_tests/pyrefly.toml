@@ -45,7 +45,6 @@ project-excludes = [
   "controllers/console/app/test_app_response_models.py",
   "controllers/console/app/test_audio.py",
   "controllers/console/app/test_conversation_api.py",
-  "controllers/console/app/test_conversation_variables_api.py",
   "controllers/console/app/test_create_app_payload.py",
   "controllers/console/app/test_description_validation.py",
   "controllers/console/app/test_generator_api.py",
