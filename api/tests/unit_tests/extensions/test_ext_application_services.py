@@ -47,6 +47,7 @@ from repositories.account_activation_repository import SQLAlchemyAccountActivati
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
 from repositories.app.site_command_repository import AppSiteCommandRepository
 from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfigRepository
+from repositories.app.workflow_comment_repository import WorkflowCommentRepository
 from repositories.app_scoped_end_user_repository import AppScopedEndUserRepo
 from repositories.app_statistic_query_repository import AppStatisticQueryRepository
 from repositories.human_input_file_upload_repository import SQLAlchemyHumanInputFileUploadRepository
@@ -90,6 +91,8 @@ from services.account.oauth_adapters import (
 from services.account_avatar_file_gateway import SQLAlchemyAccountAvatarFileGateway
 from services.app.api_key_service import AppApiKeyService
 from services.app.creators_platform_gateway import CreatorsPlatformGateway
+from services.app.workflow_comment_mention_gateway import CeleryWorkflowCommentMentionNotifier
+from services.app.workflow_comment_service import WorkflowCommentService
 from services.app_generate_service import AppGenerateService
 from services.app_preview_query_service import AppPreviewRef, AppPreviewUnavailableError
 from services.app_scoped_end_user_query_service import AppScopedEndUserQueryService
@@ -560,6 +563,22 @@ def test_build_application_services_wires_workflow_app_log_boundary(
     assert isinstance(services.workflow_app_logs, WorkflowAppLogQueryService)
     assert isinstance(services.workflow_app_logs._logs, WorkflowAppLogQueryRepository)
     assert services.workflow_app_logs._logs._session_factory is sqlite_session_factory
+
+
+def test_build_application_services_wires_workflow_comment_boundary(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=_redis(),
+    )
+
+    assert isinstance(services.workflow_comments, WorkflowCommentService)
+    assert isinstance(services.workflow_comments._comments, WorkflowCommentRepository)
+    assert services.workflow_comments._comments._session_factory is sqlite_session_factory
+    assert isinstance(services.workflow_comments._notifier, CeleryWorkflowCommentMentionNotifier)
 
 
 def test_build_application_services_wires_app_statistic_boundary(
