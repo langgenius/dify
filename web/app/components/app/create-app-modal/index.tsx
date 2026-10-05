@@ -5,6 +5,7 @@ import type { IconPickerValue } from '@/app/components/base/icon-picker'
 import { zPostAppsBody } from '@dify/contracts/api/console/apps/zod.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { DialogClose } from '@langgenius/dify-ui/dialog'
 import { Input } from '@langgenius/dify-ui/input'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Separator } from '@langgenius/dify-ui/separator'
@@ -368,7 +369,9 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
                 </div>
               </button>
               <div className="flex gap-2">
-                <Button onClick={onClose}>{t(($) => $['newApp.Cancel'], { ns: 'app' })}</Button>
+                <DialogClose render={<Button />}>
+                  {t(($) => $['newApp.Cancel'], { ns: 'app' })}
+                </DialogClose>
                 <Button
                   disabled={createDisabled}
                   loading={isCreating}
@@ -423,34 +426,33 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
     </>
   )
 }
-type CreateAppDialogProps = CreateAppProps & {
-  show: boolean
+type CreateAppDialogProps = Omit<CreateAppProps, 'onClose'> & {
+  open: boolean
+  onOpenChange: (open: boolean) => void
 }
-const CreateAppModal = ({
-  show,
-  onClose,
+export function CreateAppModal({
+  open,
+  onOpenChange,
   onCreateFromTemplate,
   defaultAppMode,
-}: CreateAppDialogProps) => {
+}: CreateAppDialogProps) {
   const { t } = useTranslation(['app'])
 
   return (
     <CreateAppDialogShell
-      show={show}
+      open={open}
       title={t(($) => $['newApp.startFromBlank'], { ns: 'app' })}
       contentClassName="overflow-visible"
-      onClose={onClose}
+      onOpenChange={onOpenChange}
     >
       <CreateApp
-        onClose={onClose}
+        onClose={() => onOpenChange(false)}
         onCreateFromTemplate={onCreateFromTemplate}
         defaultAppMode={defaultAppMode}
       />
     </CreateAppDialogShell>
   )
 }
-
-export default CreateAppModal
 
 type AppTypeCardProps = {
   icon: React.JSX.Element

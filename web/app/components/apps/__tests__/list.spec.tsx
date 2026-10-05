@@ -273,24 +273,24 @@ vi.mock('next/dynamic', () => ({
     }
     if (fnString.includes('create-from-dsl-modal')) {
       return function MockCreateFromDSLModal({
-        show,
-        onClose,
+        open,
+        onOpenChange,
       }: {
-        show: boolean
-        onClose: () => void
+        open: boolean
+        onOpenChange: (open: boolean) => void
       }) {
-        if (!show) return null
+        if (!open) return null
         return React.createElement(
           'div',
           { 'data-testid': 'create-dsl-modal' },
           React.createElement(
             'button',
-            { onClick: onClose, 'data-testid': 'close-dsl-modal' },
+            { onClick: () => onOpenChange(false), 'data-testid': 'close-dsl-modal' },
             'Close',
           ),
           React.createElement(
             'button',
-            { onClick: onClose, 'data-testid': 'success-dsl-modal' },
+            { onClick: () => onOpenChange(false), 'data-testid': 'success-dsl-modal' },
             'Success',
           ),
         )
@@ -298,26 +298,26 @@ vi.mock('next/dynamic', () => ({
     }
     if (fnString.includes('create-app-modal')) {
       return function MockCreateAppModal({
-        show,
-        onClose,
+        open,
+        onOpenChange,
         onCreateFromTemplate,
       }: {
-        show: boolean
-        onClose: () => void
+        open: boolean
+        onOpenChange: (open: boolean) => void
         onCreateFromTemplate: () => void
       }) {
-        if (!show) return null
+        if (!open) return null
         return React.createElement(
           'div',
           { 'data-testid': 'create-app-modal' },
           React.createElement(
             'button',
-            { onClick: onClose, 'data-testid': 'close-create-modal' },
+            { onClick: () => onOpenChange(false), 'data-testid': 'close-create-modal' },
             'Close',
           ),
           React.createElement(
             'button',
-            { onClick: onClose, 'data-testid': 'success-create-modal' },
+            { onClick: () => onOpenChange(false), 'data-testid': 'success-create-modal' },
             'Success',
           ),
           React.createElement(
@@ -330,26 +330,26 @@ vi.mock('next/dynamic', () => ({
     }
     if (fnString.includes('create-app-dialog')) {
       return function MockCreateAppTemplateDialog({
-        show,
-        onClose,
+        open,
+        onOpenChange,
         onCreateFromBlank,
       }: {
-        show: boolean
-        onClose: () => void
+        open: boolean
+        onOpenChange: (open: boolean) => void
         onCreateFromBlank: () => void
       }) {
-        if (!show) return null
+        if (!open) return null
         return React.createElement(
           'div',
           { 'data-testid': 'template-dialog' },
           React.createElement(
             'button',
-            { onClick: onClose, 'data-testid': 'close-template-dialog' },
+            { onClick: () => onOpenChange(false), 'data-testid': 'close-template-dialog' },
             'Close',
           ),
           React.createElement(
             'button',
-            { onClick: onClose, 'data-testid': 'success-template-dialog' },
+            { onClick: () => onOpenChange(false), 'data-testid': 'success-template-dialog' },
             'Success',
           ),
           React.createElement(
