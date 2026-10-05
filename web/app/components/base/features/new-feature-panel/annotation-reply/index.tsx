@@ -11,7 +11,7 @@ import { useFeatures, useFeaturesStore } from '@/app/components/base/features/ho
 import ConfigParamModal from '@/app/components/base/features/new-feature-panel/annotation-reply/config-param-modal'
 import useAnnotationConfig from '@/app/components/base/features/new-feature-panel/annotation-reply/use-annotation-config'
 import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
-import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
+import { AnnotationFullModal } from '@/app/components/billing/annotation-full/modal'
 import { ANNOTATION_DEFAULT } from '@/config'
 import Link from '@/next/link'
 import { usePathname } from '@/next/navigation'
@@ -157,12 +157,10 @@ const AnnotationReply = ({ disabled, onChange }: Props) => {
         }}
         annotationConfig={annotationReply as any}
       />
-      {isShowAnnotationFullModal && (
-        <AnnotationFullModal
-          show={isShowAnnotationFullModal}
-          onHide={() => setIsShowAnnotationFullModal(false)}
-        />
-      )}
+      <AnnotationFullModal
+        open={isShowAnnotationFullModal}
+        onOpenChange={setIsShowAnnotationFullModal}
+      />
     </>
   )
 }

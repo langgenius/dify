@@ -2,6 +2,7 @@ import type { ReactElement } from 'react'
 import type { Mock } from 'vite-plus/test'
 import type { AnnotationItem } from '../type'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import * as React from 'react'
 import { toast } from '@/app/notifications'
 import {
@@ -141,17 +142,6 @@ vi.mock(
       ) : null,
   }),
 )
-vi.mock('@/app/components/billing/annotation-full/modal', () => ({
-  default: (props: any) =>
-    props.show ? (
-      <div data-testid="annotation-full-modal">
-        <button data-testid="hide-annotation-full-modal" onClick={props.onHide}>
-          hide-full
-        </button>
-      </div>
-    ) : null,
-}))
-
 const mockNotify = vi.fn()
 vi.spyOn(toast, 'success').mockImplementation((message, options) => {
   mockNotify({ type: 'success', message, ...options })
@@ -195,7 +185,7 @@ const createAnnotation = (overrides: Partial<AnnotationItem> = {}): AnnotationIt
 const renderComponent = () => render(<Annotation appDetail={appDetail} />)
 
 function render(ui: ReactElement) {
-  return renderWithConsoleQuery(ui, {
+  return renderWithConsoleQuery(<NuqsTestingAdapter>{ui}</NuqsTestingAdapter>, {
     systemFeatures: { deployment_edition: 'CLOUD' },
     features: { annotation_quota_limit: annotationQuota },
   })
@@ -343,10 +333,20 @@ describe('Annotation', () => {
     const toggle = await screen.findByRole('switch')
     fireEvent.click(toggle)
 
-    expect(screen.getByTestId('annotation-full-modal')).toBeInTheDocument()
+    expect(
+      screen.getByRole('dialog', {
+        name: /annotatedResponse\.fullTipLine1.*annotatedResponse\.fullTipLine2/,
+      }),
+    ).toBeInTheDocument()
 
-    fireEvent.click(screen.getByTestId('hide-annotation-full-modal'))
-    expect(screen.queryByTestId('annotation-full-modal')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', {
+          name: /annotatedResponse\.fullTipLine1.*annotatedResponse\.fullTipLine2/,
+        }),
+      ).not.toBeInTheDocument(),
+    )
   })
 
   it('should disable annotations and refetch config after the async job completes', async () => {

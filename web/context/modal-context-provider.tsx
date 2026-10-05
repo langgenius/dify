@@ -33,7 +33,10 @@ const ExternalDataToolModal = dynamic(
   },
 )
 const AnnotationFullModal = dynamic(
-  () => import('@/app/components/billing/annotation-full/modal'),
+  () =>
+    import('@/app/components/billing/annotation-full/modal').then(
+      (module) => module.AnnotationFullModal,
+    ),
   {
     ssr: false,
   },
@@ -95,7 +98,7 @@ export const ModalContextProvider = ({ children }: ModalContextProviderProps) =>
   > | null>(null)
   const [showUpdatePluginModal, setShowUpdatePluginModal] =
     useState<ModalState<UpdatePluginPayload> | null>(null)
-  const [showAnnotationFullModal, setShowAnnotationFullModal] = useState(false)
+  const [annotationFullSession, setAnnotationFullSession] = useState<{ open: boolean } | null>(null)
   const { triggerEventsLimitModal, dismissTriggerEventsLimitModal } = useTriggerEventsLimitModal()
 
   const setShowModerationSettingModal = useCallback<
@@ -224,7 +227,7 @@ export const ModalContextProvider = ({ children }: ModalContextProviderProps) =>
   const hasBlockingModalOpen = Boolean(
     showModerationSettingModal ||
     showExternalDataToolModal ||
-    showAnnotationFullModal ||
+    annotationFullSession?.open ||
     showModelModal ||
     showExternalKnowledgeAPIModal ||
     showOpeningModal ||
@@ -238,7 +241,7 @@ export const ModalContextProvider = ({ children }: ModalContextProviderProps) =>
         hasBlockingModalOpen,
         setShowModerationSettingModal,
         setShowExternalDataToolModal,
-        setShowAnnotationFullModal: () => setShowAnnotationFullModal(true),
+        setShowAnnotationFullModal: () => setAnnotationFullSession({ open: true }),
         setShowModelModal,
         setShowExternalKnowledgeAPIModal,
         setShowOpeningModal,
@@ -269,10 +272,10 @@ export const ModalContextProvider = ({ children }: ModalContextProviderProps) =>
           />
         )}
 
-        {showAnnotationFullModal && (
+        {annotationFullSession && (
           <AnnotationFullModal
-            show={showAnnotationFullModal}
-            onHide={() => setShowAnnotationFullModal(false)}
+            open={annotationFullSession.open}
+            onOpenChange={(open) => setAnnotationFullSession({ open })}
           />
         )}
         {!!showModelModal && (

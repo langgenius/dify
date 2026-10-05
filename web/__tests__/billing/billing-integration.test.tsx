@@ -11,7 +11,7 @@ import dayjs from 'dayjs'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import * as React from 'react'
 import AnnotationFull from '@/app/components/billing/annotation-full'
-import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
+import { AnnotationFullModal } from '@/app/components/billing/annotation-full/modal'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import Billing from '@/app/components/billing/billing-page'
 import { NUM_INFINITE } from '@/app/components/billing/config'
@@ -575,7 +575,12 @@ describe('Capacity Full Components Integration', () => {
         annotation_quota_limit: { size: 10, limit: 10 },
       })
 
-      render(<AnnotationFullModal show={true} onHide={vi.fn()} />)
+      render(<AnnotationFullModal open onOpenChange={vi.fn()} />)
+      expect(
+        screen.getByRole('dialog', {
+          name: /annotatedResponse\.fullTipLine1.*annotatedResponse\.fullTipLine2/,
+        }),
+      ).toBeInTheDocument()
 
       expect(screen.getByText(/annotatedResponse\.fullTipLine1/i)).toBeInTheDocument()
       expect(screen.getByText(/annotatedResponse\.quotaTitle/i)).toBeInTheDocument()
@@ -588,7 +593,7 @@ describe('Capacity Full Components Integration', () => {
         annotation_quota_limit: { size: 10, limit: 10 },
       })
 
-      render(<AnnotationFullModal show={false} onHide={vi.fn()} />)
+      render(<AnnotationFullModal open={false} onOpenChange={vi.fn()} />)
 
       expect(screen.queryByText(/annotatedResponse\.fullTipLine1/i)).not.toBeInTheDocument()
     })
@@ -860,7 +865,7 @@ describe('Cross-Component Upgrade Flow', () => {
       annotation_quota_limit: { size: 10, limit: 10 },
     })
 
-    render(<AnnotationFullModal show={true} onHide={vi.fn()} />)
+    render(<AnnotationFullModal open onOpenChange={vi.fn()} />)
 
     const upgradeText = screen.getByText(/upgradeBtn\.encourage$/i)
     await user.click(upgradeText)
