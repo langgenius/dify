@@ -76,8 +76,11 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-it('isolates galleries, snapshots the clicked list and starts the clicked image again on a quick reopen', async () => {
+it('preloads the gallery snapshot, retains its resources through exit and reopens the clicked image', async () => {
   vi.stubGlobal('BASE_UI_ANIMATIONS_DISABLED', false)
+  const fetchImage = vi.spyOn(globalThis, 'fetch')
+  const createObjectURL = vi.spyOn(URL, 'createObjectURL')
+  const revokeObjectURL = vi.spyOn(URL, 'revokeObjectURL')
   const red = createImage('red.png', 'red')
   const blue = createImage('blue.png', 'blue')
   const green = createImage('green.png', 'green')
@@ -98,6 +101,11 @@ it('isolates galleries, snapshots the clicked list and starts the clicked image 
   let preview = screen.getByRole('dialog', { name: 'blue.png' })
   const blueImage = preview.getByRole('img', { name: 'blue.png' })
   await expect.poll(() => (blueImage.element() as HTMLImageElement).naturalWidth).toBe(80)
+  await expect.poll(() => createObjectURL.mock.results.length).toBe(2)
+  expect(fetchImage).toHaveBeenCalledWith(red.sourceUrl)
+  expect(fetchImage).toHaveBeenCalledWith(blue.sourceUrl)
+  expect(fetchImage).not.toHaveBeenCalledWith(green.sourceUrl)
+  const sessionURLs = createObjectURL.mock.results.map((result) => result.value)
   await expect
     .element(preview.getByRole('button', { name: 'common.pagination.next' }))
     .toBeDisabled()
@@ -108,13 +116,20 @@ it('isolates galleries, snapshots the clicked list and starts the clicked image 
   await userEvent.keyboard('{ArrowLeft}')
   preview = screen.getByRole('dialog', { name: 'red.png' })
   await expect.element(preview.getByRole('img', { name: 'red.png' })).toBeVisible()
+  expect(createObjectURL).toHaveBeenCalledTimes(2)
   const popup = preview.element()
   await expect.poll(() => getComputedStyle(popup).opacity).toBe('1')
   const exitFrame = new Promise<boolean>((resolve) => {
     const onTransition = (event: Event) => {
       if (event.target !== popup || (event as TransitionEvent).propertyName !== 'opacity') return
       popup.removeEventListener('transitionrun', onTransition)
-      resolve(popup.isConnected && Number(getComputedStyle(popup).opacity) > 0)
+      resolve(
+        popup.isConnected &&
+          Number(getComputedStyle(popup).opacity) > 0 &&
+          sessionURLs.every(
+            (url) => !revokeObjectURL.mock.calls.some(([revoked]) => revoked === url),
+          ),
+      )
     }
     popup.addEventListener('transitionrun', onTransition)
   })
@@ -122,6 +137,7 @@ it('isolates galleries, snapshots the clicked list and starts the clicked image 
   expect(await exitFrame).toBe(true)
   await expect.element(blueEntry).toHaveFocus()
   expect(popup.isConnected).toBe(false)
+  for (const url of sessionURLs) expect(revokeObjectURL).toHaveBeenCalledWith(url)
   await userEvent.keyboard(' ')
   preview = screen.getByRole('dialog', { name: 'blue.png' })
   await expect.element(preview.getByRole('img', { name: 'blue.png' })).toBeVisible()
@@ -152,39 +168,37 @@ it('isolates galleries, snapshots the clicked list and starts the clicked image 
   await expect.element(greenEntry).toHaveFocus()
 })
 
-it('retries a real image decoding error and keeps Close available', async () => {
-  const broken = { ...createImage('broken.png', 'red'), sourceUrl: 'data:image/png;base64,AAAA' }
-  let failures = 0
-  const onError = (event: Event) => {
-    if (event.target instanceof HTMLImageElement && event.target.src === broken.sourceUrl)
-      failures += 1
-  }
-  document.addEventListener('error', onError, true)
-  try {
-    const screen = await render(<ImageList images={[broken]} size="md" />)
-    const trigger = screen.getByRole('button', { name: 'broken.png' })
-    await trigger.click()
-    const preview = screen.getByRole('dialog', { name: 'broken.png' })
-    const close = preview.getByRole('button', { name: 'common.operation.close' })
-    const originalClose = close.element()
-    await expect
-      .element(preview.getByText('common.imageUploader.uploadFromComputerReadError'))
-      .toBeVisible()
-    const initialFailures = failures
-    await preview.getByRole('button', { name: 'common.operation.retry' }).click()
-    await expect.poll(() => failures).toBeGreaterThan(initialFailures)
-    await expect
-      .element(preview.getByText('common.imageUploader.uploadFromComputerReadError'))
-      .toBeVisible()
-    expect(close.element()).toBe(originalClose)
-    await userEvent.tab()
-    expect(preview.element().contains(document.activeElement)).toBe(true)
-    await userEvent.keyboard('{Escape}')
-    await expect.element(preview).not.toBeInTheDocument()
-    await expect.element(trigger).toHaveFocus()
-  } finally {
-    document.removeEventListener('error', onError, true)
-  }
+it('retries a failed resource request, decodes its Blob and keeps Close available', async () => {
+  const image = createImage('retry.png', 'red')
+  const originalFetch = globalThis.fetch.bind(globalThis)
+  let shouldFail = true
+  const fetchImage = vi.spyOn(globalThis, 'fetch').mockImplementation((...args) => {
+    if (args[0] === image.sourceUrl && shouldFail) {
+      shouldFail = false
+      return Promise.resolve(new Response(null, { status: 503 }))
+    }
+    return originalFetch(...args)
+  })
+  const screen = await render(<ImageList images={[image]} size="md" />)
+  const trigger = screen.getByRole('button', { name: 'retry.png' })
+  await trigger.click()
+  const preview = screen.getByRole('dialog', { name: 'retry.png' })
+  const close = preview.getByRole('button', { name: 'common.operation.close' })
+  const originalClose = close.element()
+  await expect
+    .element(preview.getByText('common.imageUploader.uploadFromComputerReadError'))
+    .toBeVisible()
+  await preview.getByRole('button', { name: 'common.operation.retry' }).click()
+  const loadedImage = preview.getByRole('img', { name: 'retry.png' })
+  await expect.poll(() => (loadedImage.element() as HTMLImageElement).naturalWidth).toBe(80)
+  expect(fetchImage.mock.calls.filter(([url]) => url === image.sourceUrl)).toHaveLength(2)
+  expect((loadedImage.element() as HTMLImageElement).src).toMatch(/^blob:/)
+  expect(close.element()).toBe(originalClose)
+  await userEvent.tab()
+  expect(preview.element().contains(document.activeElement)).toBe(true)
+  await userEvent.keyboard('{Escape}')
+  await expect.element(preview).not.toBeInTheDocument()
+  await expect.element(trigger).toHaveFocus()
 })
 
 it('reaches uploader removal by keyboard and previews a read-only failed upload by pointer', async () => {

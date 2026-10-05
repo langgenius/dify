@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react'
-import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
   DialogBackdrop,
@@ -11,7 +10,7 @@ import {
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Kbd } from '@langgenius/dify-ui/kbd'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { formatFileSize } from '@/utils/format'
@@ -31,63 +30,10 @@ type ImagePreviewerProps = {
   children: ReactNode
 }
 
-type ImageLoadState =
+type CachedImage =
   | { status: 'loading' }
   | { status: 'error' }
-  | { status: 'loaded'; width: number; height: number }
-
-function LoadSelectedImage({ image }: { image: ImageInfo }) {
-  const { t } = useTranslation(['common'])
-  const [loadState, setLoadState] = useState<ImageLoadState>({ status: 'loading' })
-
-  if (loadState.status === 'error') {
-    return (
-      <div className="flex max-w-sm flex-col items-center gap-y-2 system-sm-regular text-text-tertiary">
-        <span>{t(($) => $['imageUploader.uploadFromComputerReadError'], { ns: 'common' })}</span>
-        <IconButton
-          variant="secondary"
-          size="xl"
-          aria-label={t(($) => $['operation.retry'], { ns: 'common' })}
-          onClick={() => setLoadState({ status: 'loading' })}
-          className="rounded-full"
-        >
-          <span aria-hidden className="i-ri-refresh-line size-5" />
-        </IconButton>
-      </div>
-    )
-  }
-
-  return (
-    <div className="flex size-full flex-col items-center justify-center gap-y-2">
-      {loadState.status === 'loading' && <LoadingPlaceholder className="h-full" />}
-      <img
-        alt={image.name}
-        src={image.url}
-        onLoad={(event) =>
-          setLoadState({
-            status: 'loaded',
-            width: event.currentTarget.naturalWidth,
-            height: event.currentTarget.naturalHeight,
-          })
-        }
-        onError={() => setLoadState({ status: 'error' })}
-        className={cn(
-          'max-h-[calc(100%-2.5rem)] max-w-full object-contain shadow-lg ring-8 ring-effects-image-frame backdrop-blur-[5px]',
-          loadState.status === 'loading' && 'hidden',
-        )}
-      />
-      {loadState.status === 'loaded' && (
-        <div className="flex shrink-0 gap-x-2 pt-3 pb-1 system-sm-regular text-text-tertiary">
-          <span>{image.name}</span>
-          <span>·</span>
-          <span>{`${loadState.width} ×  ${loadState.height}`}</span>
-          <span>·</span>
-          <span>{formatFileSize(image.size)}</span>
-        </div>
-      )}
-    </div>
-  )
-}
+  | { status: 'loaded'; blobUrl: string; width: number; height: number }
 
 function ImagePreviewPopup({ payload }: { payload: ImagePreviewPayload }) {
   const previewRef = useRef<HTMLDivElement>(null)
@@ -95,6 +41,68 @@ function ImagePreviewPopup({ payload }: { payload: ImagePreviewPayload }) {
   const [images] = useState(payload.images)
   const [currentIndex, setCurrentIndex] = useState(payload.initialIndex)
   const currentImage = images[currentIndex]
+  const [cachedImages, setCachedImages] = useState<Record<string, CachedImage>>({})
+  const retryImageRef = useRef<((url: string) => void) | null>(null)
+  const currentCache = currentImage && cachedImages[currentImage.url]
+
+  useEffect(() => {
+    let disposed = false
+    const requested = new Set<string>()
+    const objectUrls = new Set<string>()
+
+    const loadImage = async (url: string) => {
+      if (disposed || requested.has(url)) return
+      requested.add(url)
+      setCachedImages((previous) => ({ ...previous, [url]: { status: 'loading' } }))
+      let blobUrl: string | undefined
+      const fail = () => {
+        if (disposed) return
+        if (blobUrl) {
+          URL.revokeObjectURL(blobUrl)
+          objectUrls.delete(blobUrl)
+        }
+        requested.delete(url)
+        setCachedImages((previous) => ({ ...previous, [url]: { status: 'error' } }))
+      }
+
+      try {
+        const response = await fetch(url)
+        if (disposed) return
+        if (!response.ok) throw new Error(`Failed to load: ${url}`)
+        const blob = await response.blob()
+        if (disposed) return
+        const source = URL.createObjectURL(blob)
+        blobUrl = source
+        // Own the URL before decoding so an exit also releases unfinished images.
+        objectUrls.add(source)
+        const image = new Image()
+        image.onload = () => {
+          if (disposed) return
+          setCachedImages((previous) => ({
+            ...previous,
+            [url]: {
+              status: 'loaded',
+              blobUrl: source,
+              width: image.naturalWidth,
+              height: image.naturalHeight,
+            },
+          }))
+        }
+        image.onerror = fail
+        image.src = source
+      } catch {
+        fail()
+      }
+    }
+
+    retryImageRef.current = loadImage
+    images.forEach((image) => void loadImage(image.url))
+    return () => {
+      disposed = true
+      retryImageRef.current = null
+      objectUrls.forEach((url) => URL.revokeObjectURL(url))
+    }
+  }, [images])
 
   const prevImage = () => setCurrentIndex((index) => Math.max(0, index - 1))
   const nextImage = () => setCurrentIndex((index) => Math.min(images.length - 1, index + 1))
@@ -137,7 +145,41 @@ function ImagePreviewPopup({ payload }: { payload: ImagePreviewPayload }) {
           />
           <Kbd>{formatForDisplay('Escape')}</Kbd>
         </div>
-        <LoadSelectedImage key={currentImage.url} image={currentImage} />
+        {(!currentCache || currentCache.status === 'loading') && (
+          <LoadingPlaceholder className="h-full" />
+        )}
+        {currentCache?.status === 'error' && (
+          <div className="flex max-w-sm flex-col items-center gap-y-2 system-sm-regular text-text-tertiary">
+            <span>
+              {t(($) => $['imageUploader.uploadFromComputerReadError'], { ns: 'common' })}
+            </span>
+            <IconButton
+              variant="secondary"
+              size="xl"
+              aria-label={t(($) => $['operation.retry'], { ns: 'common' })}
+              onClick={() => retryImageRef.current?.(currentImage.url)}
+              className="rounded-full"
+            >
+              <span aria-hidden className="i-ri-refresh-line size-5" />
+            </IconButton>
+          </div>
+        )}
+        {currentCache?.status === 'loaded' && (
+          <div className="flex size-full flex-col items-center justify-center gap-y-2">
+            <img
+              alt={currentImage.name}
+              src={currentCache.blobUrl}
+              className="max-h-[calc(100%-2.5rem)] max-w-full object-contain shadow-lg ring-8 ring-effects-image-frame backdrop-blur-[5px]"
+            />
+            <div className="flex shrink-0 gap-x-2 pt-3 pb-1 system-sm-regular text-text-tertiary">
+              <span>{currentImage.name}</span>
+              <span>·</span>
+              <span>{`${currentCache.width} ×  ${currentCache.height}`}</span>
+              <span>·</span>
+              <span>{formatFileSize(currentImage.size)}</span>
+            </div>
+          </div>
+        )}
         <IconButton
           variant="secondary"
           size="xl"
