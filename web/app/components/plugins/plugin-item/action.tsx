@@ -21,7 +21,7 @@ import { useModalContext } from '@/context/modal-context'
 import { uninstallPlugin } from '@/service/plugins'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import { checkForUpdates, fetchReleases } from '../install-plugin/hooks'
-import PluginInfo from '../plugin-page/plugin-info'
+import { PluginInfoDialog } from '../plugin-page/plugin-info'
 import { PluginSource } from '../types'
 
 const i18nPrefix = 'action'
@@ -167,14 +167,15 @@ const Action: FC<Props> = ({
         </Tooltip>
       )}
 
-      {isShowPluginInfo && (
-        <PluginInfo
-          repository={meta!.repo}
-          release={meta!.version}
-          packageName={meta!.package}
-          onHide={hidePluginInfo}
-        />
-      )}
+      <PluginInfoDialog
+        open={isShowPluginInfo}
+        onOpenChange={(open) => {
+          if (!open) hidePluginInfo()
+        }}
+        repository={meta?.repo}
+        release={meta?.version}
+        packageName={meta?.package}
+      />
       <AlertDialog open={isShowDeleteConfirm} onOpenChange={(open) => !open && hideDeleteConfirm()}>
         <AlertDialogContent backdropProps={{ forceRender: true }}>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">

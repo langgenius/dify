@@ -1,30 +1,30 @@
 'use client'
-import type { FC } from 'react'
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import KeyValueItem from '../base/key-value-item'
 import { convertRepoToUrl } from '../install-plugin/utils'
 
 const i18nPrefix = 'pluginInfoModal'
-type Props = Readonly<{
+type PluginInfoDialogProps = {
   repository?: string
   release?: string
   packageName?: string
-  onHide: () => void
-}>
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}
 
-const PlugInfo: FC<Props> = ({ repository, release, packageName, onHide }) => {
+export function PluginInfoDialog({
+  repository,
+  release,
+  packageName,
+  open,
+  onOpenChange,
+}: PluginInfoDialogProps) {
   const { t } = useTranslation(['common', 'plugin'])
   const labelWidthClassName = 'w-[96px]'
   return (
-    <Dialog
-      open
-      onOpenChange={(open) => {
-        if (!open) onHide()
-      }}
-    >
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-full max-w-120! overflow-hidden! border-none text-left align-middle">
         <DialogClose
           render={
@@ -69,4 +69,3 @@ const PlugInfo: FC<Props> = ({ repository, release, packageName, onHide }) => {
     </Dialog>
   )
 }
-export default React.memo(PlugInfo)

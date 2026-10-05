@@ -19,17 +19,22 @@ type ReadmeDrawerProps = {
   detail: ReadmePanelState['detail']
   open: boolean
   onOpenChange: (open: boolean) => void
-  triggerId?: string
+  onOpenChangeComplete: (open: boolean) => void
 }
 
-export function ReadmeDrawer({ detail, open, onOpenChange, triggerId }: ReadmeDrawerProps) {
+export function ReadmeDrawer({
+  detail,
+  open,
+  onOpenChange,
+  onOpenChangeComplete,
+}: ReadmeDrawerProps) {
   const { t } = useTranslation(['common', 'plugin'])
 
   return (
     <Drawer
       open={open}
       onOpenChange={onOpenChange}
-      triggerId={triggerId}
+      onOpenChangeComplete={onOpenChangeComplete}
       modal
       swipeDirection="left"
     >

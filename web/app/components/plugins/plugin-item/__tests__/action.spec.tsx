@@ -69,32 +69,6 @@ vi.mock('@/service/use-plugins', () => ({
   useInvalidateInstalledPluginList: () => mockInvalidateInstalledPluginList,
 }))
 
-// Mock PluginInfo component - has complex dependencies (Modal, KeyValueItem)
-vi.mock('../../plugin-page/plugin-info', () => ({
-  default: ({
-    repository,
-    release,
-    packageName,
-    onHide,
-  }: {
-    repository: string
-    release: string
-    packageName: string
-    onHide: () => void
-  }) => (
-    <div
-      data-testid="plugin-info-modal"
-      data-repo={repository}
-      data-release={release}
-      data-package={packageName}
-    >
-      <button data-testid="close-plugin-info" onClick={onHide}>
-        Close
-      </button>
-    </div>
-  ),
-}))
-
 // ==================== Test Utilities ====================
 
 type ActionProps = {
@@ -457,85 +431,50 @@ describe('Action Component', () => {
 
   // ==================== Plugin Info Tests ====================
   describe('Plugin Info', () => {
-    it('should show plugin info modal when info button is clicked', () => {
-      // Arrange
-      const props = createActionProps({
-        isShowInfo: true,
-        isShowDelete: false,
-        isShowFetchNewVersion: false,
-        meta: {
-          repo: 'owner/repo-name',
-          version: '2.0.0',
-          package: 'my-package.difypkg',
-        },
-      })
-
-      // Act
-      render(<Action {...props} />)
-      fireEvent.click(getPluginInfoButton())
-
-      // Assert
-      // Assert
-      expect(screen.getByTestId('plugin-info-modal'))!.toBeInTheDocument()
-      expect(screen.getByTestId('plugin-info-modal'))!.toHaveAttribute(
-        'data-repo',
-        'owner/repo-name',
+    it('opens the real info dialog with the supplied metadata', async () => {
+      const user = userEvent.setup()
+      render(
+        <Action
+          {...createActionProps({
+            isShowInfo: true,
+            isShowDelete: false,
+            meta: { repo: 'owner/repo-name', version: '2.0.0', package: 'my-package.difypkg' },
+          })}
+        />,
       )
-      expect(screen.getByTestId('plugin-info-modal'))!.toHaveAttribute('data-release', '2.0.0')
-      expect(screen.getByTestId('plugin-info-modal'))!.toHaveAttribute(
-        'data-package',
-        'my-package.difypkg',
-      )
+      await user.click(getPluginInfoButton())
+      expect(
+        screen.getByRole('dialog', { name: 'plugin.pluginInfoModal.title' }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('group', { name: 'plugin.pluginInfoModal.repository' }),
+      ).toHaveTextContent('https://github.com/owner/repo-name')
+      expect(
+        screen.getByRole('group', { name: 'plugin.pluginInfoModal.release' }),
+      ).toHaveTextContent('2.0.0')
+      expect(
+        screen.getByRole('group', { name: 'plugin.pluginInfoModal.packageName' }),
+      ).toHaveTextContent('my-package.difypkg')
     })
 
-    it('should hide plugin info modal when close is clicked', () => {
-      // Arrange
-      const props = createActionProps({
-        isShowInfo: true,
-        isShowDelete: false,
-        isShowFetchNewVersion: false,
-      })
+    it('closes the real dialog, returns focus, and opens a new session', async () => {
+      const user = userEvent.setup()
+      render(<Action {...createActionProps({ isShowInfo: true, isShowDelete: false })} />)
+      const trigger = getPluginInfoButton()
+      await user.click(trigger)
+      await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      expect(trigger).toHaveFocus()
+      await user.click(trigger)
+      expect(
+        screen.getByRole('dialog', { name: 'plugin.pluginInfoModal.title' }),
+      ).toBeInTheDocument()
+    })
 
-      // Act
-      render(<Action {...props} />)
-      fireEvent.click(getPluginInfoButton())
-      expect(screen.getByTestId('plugin-info-modal'))!.toBeInTheDocument()
-
-      fireEvent.click(screen.getByTestId('close-plugin-info'))
-
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      expect(screen.queryByTestId('plugin-info-modal')).not.toBeInTheDocument()
+    it('keeps the closed dialog safe when metadata is absent', () => {
+      render(<Action {...createActionProps({ meta: undefined })} />)
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'plugin.action.delete' })).toBeInTheDocument()
     })
   })
 
