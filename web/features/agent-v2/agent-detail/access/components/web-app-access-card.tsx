@@ -5,6 +5,7 @@ import type { AppSiteUpdatePayload } from '@dify/contracts/api/console/apps/type
 import type { SettingsAppInfo } from '@/app/components/app/overview/settings'
 import type { AppIconType } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
+import { Dialog, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import dynamic from 'next/dynamic'
 import { useState } from 'react'
@@ -13,7 +14,7 @@ import {
   WebAppAccessControlEntry,
   WebAppAccessControlEntrySkeleton,
 } from '@/app/components/app/access-point/shared/web-app-access-control'
-import CustomizeModal from '@/app/components/app/overview/customize'
+import CustomizeDialogContent from '@/app/components/app/overview/customize'
 import EmbeddedModal from '@/app/components/app/overview/embedded'
 import SettingsModal from '@/app/components/app/overview/settings'
 import { AccessPointCard } from '@/app/components/base/access-point/card'
@@ -73,7 +74,6 @@ export function WebAppAccessCard({
           appId,
         }
       : null
-  const [showCustomizeModal, setShowCustomizeModal] = useState(false)
   const [showEmbeddedModal, setShowEmbeddedModal] = useState(false)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
   const [showAccessControl, setShowAccessControl] = useState(false)
@@ -242,15 +242,27 @@ export function WebAppAccessCard({
               <span aria-hidden className="i-ri-window-line size-4" />
               {t(($) => $['agentDetail.access.webApp.actions.embedIntoSite'])}
             </Button>
-            <Button
-              variant="secondary"
-              disabled={!canUseIntegrationActions || !customizeConfig}
-              onClick={() => setShowCustomizeModal(true)}
-              className="flex items-center gap-1 px-3"
-            >
-              <span aria-hidden className="i-custom-vender-deploy-code-block size-4" />
-              {t(($) => $['agentDetail.access.webApp.actions.customFrontend'])}
-            </Button>
+            <Dialog>
+              <DialogTrigger
+                render={
+                  <Button
+                    variant="secondary"
+                    disabled={!canUseIntegrationActions || !customizeConfig}
+                    className="flex items-center gap-1 px-3"
+                  >
+                    <span aria-hidden className="i-custom-vender-deploy-code-block size-4" />
+                    {t(($) => $['agentDetail.access.webApp.actions.customFrontend'])}
+                  </Button>
+                }
+              />
+              {canManageWebApp && customizeConfig && (
+                <CustomizeDialogContent
+                  appId={customizeConfig.appId}
+                  api_base_url={customizeConfig.apiBaseUrl}
+                  sourceCodeRepository="webapp-conversation"
+                />
+              )}
+            </Dialog>
             <Button
               variant="secondary"
               disabled={!canManageWebApp || !settingsAppInfo || updateSiteMutation.isPending}
@@ -311,15 +323,6 @@ export function WebAppAccessCard({
           isShow={showSettingsModal}
           onClose={() => setShowSettingsModal(false)}
           onSave={handleSaveSettings}
-        />
-      )}
-      {canManageWebApp && customizeConfig && (
-        <CustomizeModal
-          isShow={showCustomizeModal}
-          onClose={() => setShowCustomizeModal(false)}
-          appId={customizeConfig.appId}
-          api_base_url={customizeConfig.apiBaseUrl}
-          sourceCodeRepository="webapp-conversation"
         />
       )}
       {canManageWebApp && embeddedConfig && (
