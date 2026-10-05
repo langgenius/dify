@@ -17,12 +17,11 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AccessControl from '@/app/components/app/app-access-control'
-import CustomizeDialogContent from '@/app/components/app/overview/customize'
+import { CustomizeDialog } from '@/app/components/app/overview/customize'
 import EmbeddedModal from '@/app/components/app/overview/embedded'
 import SettingsModal from '@/app/components/app/overview/settings'
 import { WorkflowLaunchDialog } from '@/app/components/app/overview/workflow-launch-dialog'
@@ -229,27 +228,12 @@ export function WebAppAccessPointCard({
                 {t(($) => $['studio.accessPoint.embedIntoSite'], { ns: 'deployments' })}
               </Button>
             )}
-            <Dialog>
-              <DialogTrigger
-                render={
-                  <Button
-                    className="flex items-center gap-1 px-3"
-                    variant="secondary"
-                    disabled={!actionsAvailable || !canManageAccessPoint}
-                  >
-                    <span aria-hidden className="i-custom-vender-deploy-code-block size-4" />
-                    {t(($) => $['overview.appInfo.customize.entry'], {
-                      ns: 'appOverview',
-                    })}
-                  </Button>
-                }
-              />
-              <CustomizeDialogContent
-                appId={appInfo.id}
-                api_base_url={appInfo.api_base_url}
-                mode={appInfo.mode}
-              />
-            </Dialog>
+            <CustomizeDialog
+              appId={appInfo.id}
+              api_base_url={appInfo.api_base_url}
+              mode={appInfo.mode}
+              disabled={!actionsAvailable || !canManageAccessPoint}
+            />
             <Button
               className="flex items-center gap-1 px-3"
               variant="secondary"

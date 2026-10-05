@@ -49,6 +49,7 @@ const Details = ({ id, type, name, onApplyTemplate }: DetailsProps) => {
         render={
           <IconButton
             aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+            size="lg"
             className="absolute top-4 right-4 z-10"
           >
             <span className="i-ri-close-line size-4 text-text-tertiary" aria-hidden />
