@@ -1,5 +1,5 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { render } from '@/test/console/render'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import SnippetCreateButton from '../snippet-create-button'
 
 const {
@@ -42,31 +42,21 @@ vi.mock('@/context/permission-state', async () => {
   }))
 })
 
-vi.mock('@/service/use-snippets', () => ({
-  useCreateSnippetMutation: () => ({
-    mutateAsync: mockCreateMutateAsync,
-    isPending: false,
-  }),
-  useImportSnippetDSLMutation: () => ({
-    mutateAsync: mockImportMutateAsync,
-    isPending: false,
-  }),
-  useConfirmSnippetImportMutation: () => ({
-    mutateAsync: mockConfirmImportMutateAsync,
-    isPending: false,
-  }),
-}))
-
-vi.mock('@/service/console', () => ({
-  consoleClient: {
-    snippets: {
-      bySnippetId: {
-        workflows: {
-          draft: {
-            post: mockSyncDraftWorkflow,
-          },
-        },
-      },
+vi.mock('@/service/console/browser', () => ({
+  consoleBrowserLink: {
+    call: (path: string[], input: unknown) => {
+      switch (path.join('.')) {
+        case 'workspaces.current.customizedSnippets.post':
+          return mockCreateMutateAsync(input)
+        case 'snippets.bySnippetId.workflows.draft.post':
+          return mockSyncDraftWorkflow(input)
+        case 'workspaces.current.customizedSnippets.imports.post':
+          return mockImportMutateAsync(input)
+        case 'workspaces.current.customizedSnippets.imports.byImportId.confirm.post':
+          return mockConfirmImportMutateAsync(input)
+        default:
+          throw new Error(`Unexpected request: ${path.join('.')}`)
+      }
     },
   },
 }))
@@ -163,12 +153,63 @@ describe('SnippetCreateButton', () => {
 
     await waitFor(() => {
       expect(mockImportMutateAsync).toHaveBeenCalledWith({
-        mode: 'yaml-url',
-        yamlContent: undefined,
-        yamlUrl: 'https://example.com/snippet.yml',
+        body: {
+          mode: 'yaml-url',
+          yaml_content: undefined,
+          yaml_url: 'https://example.com/snippet.yml',
+        },
       })
     })
     expect(mockToastSuccess).toHaveBeenCalledWith('snippet.importSuccess')
     expect(mockPush).toHaveBeenCalledWith('/snippets/snippet-imported/orchestrate')
+  })
+  it('keeps the original failure contract: blank creation closes after the create request rejects', async () => {
+    mockCreateMutateAsync.mockRejectedValueOnce(new Error('Create failed'))
+    render(<SnippetCreateButton />)
+    fireEvent.click(screen.getByRole('button', { name: 'snippet.create' }))
+    fireEvent.click(screen.getByRole('button', { name: 'snippet.createFromBlank' }))
+    fireEvent.change(screen.getByPlaceholderText('workflow.snippet.namePlaceholder'), {
+      target: { value: 'Failed snippet' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /workflow\.snippet\.confirm/i }))
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'workflow.snippet.createDialogTitle' }),
+      ).not.toBeInTheDocument(),
+    )
+    expect(mockCreateMutateAsync).toHaveBeenCalledTimes(1)
+    expect(mockSyncDraftWorkflow).not.toHaveBeenCalled()
+    expect(mockPush).not.toHaveBeenCalled()
+  })
+
+  it('keeps creation pending until the second draft request resolves, then closes and navigates', async () => {
+    let resolveDraft!: (value: unknown) => void
+    mockCreateMutateAsync.mockResolvedValueOnce({ id: 'pending-snippet' })
+    mockSyncDraftWorkflow.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveDraft = resolve
+      }),
+    )
+    render(<SnippetCreateButton />)
+    fireEvent.click(screen.getByRole('button', { name: 'snippet.create' }))
+    fireEvent.click(screen.getByRole('button', { name: 'snippet.createFromBlank' }))
+    fireEvent.change(screen.getByPlaceholderText('workflow.snippet.namePlaceholder'), {
+      target: { value: 'Pending snippet' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /workflow\.snippet\.confirm/i }))
+    await waitFor(() => expect(mockSyncDraftWorkflow).toHaveBeenCalledTimes(1))
+    expect(
+      screen.getByRole('dialog', { name: 'workflow.snippet.createDialogTitle' }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeDisabled()
+    expect(screen.getByPlaceholderText('workflow.snippet.namePlaceholder')).toBeDisabled()
+    expect(mockPush).not.toHaveBeenCalled()
+    await act(async () => resolveDraft({ result: 'success' }))
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'workflow.snippet.createDialogTitle' }),
+      ).not.toBeInTheDocument(),
+    )
+    expect(mockPush).toHaveBeenCalledExactlyOnceWith('/snippets/pending-snippet/orchestrate')
   })
 })

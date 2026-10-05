@@ -1,6 +1,5 @@
-import type { CreateSnippetDialogPayload } from '@/app/components/snippets/create-snippet-dialog'
 import type { SnippetDetail } from '@/models/snippet'
-import { screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { render } from '@/test/console/render'
@@ -57,59 +56,6 @@ vi.mock('@/service/use-snippets', () => ({
     mutate: mockDeleteMutate,
     isPending: false,
   }),
-}))
-
-type MockCreateSnippetDialogProps = {
-  isOpen: boolean
-  title?: string
-  confirmText?: string
-  initialValue?: {
-    name?: string
-    description?: string
-  }
-  onClose: () => void
-  onConfirm: (payload: CreateSnippetDialogPayload) => void
-}
-
-vi.mock('@/app/components/snippets/create-snippet-dialog', () => ({
-  CreateSnippetDialog: ({
-    isOpen,
-    title,
-    confirmText,
-    initialValue,
-    onClose,
-    onConfirm,
-  }: MockCreateSnippetDialogProps) => {
-    if (!isOpen) return null
-
-    return (
-      <div data-testid="create-snippet-dialog">
-        <div>{title}</div>
-        <div>{confirmText}</div>
-        <div>{initialValue?.name}</div>
-        <div>{initialValue?.description}</div>
-        <button
-          type="button"
-          onClick={() =>
-            onConfirm({
-              name: 'Updated snippet',
-              description: 'Updated description',
-              graph: {
-                nodes: [],
-                edges: [],
-                viewport: { x: 0, y: 0, zoom: 1 },
-              },
-            })
-          }
-        >
-          submit-edit
-        </button>
-        <button type="button" onClick={onClose}>
-          close-edit
-        </button>
-      </div>
-    )
-  },
 }))
 
 const mockSnippet: SnippetDetail = {
@@ -180,15 +126,25 @@ describe('SnippetInfoDropdown', () => {
       await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
       await user.click(screen.getByText('snippet.menu.editInfo'))
 
-      expect(screen.getByTestId('create-snippet-dialog')).toBeInTheDocument()
+      expect(screen.getByRole('dialog', { name: 'snippet.editDialogTitle' })).toBeInTheDocument()
       expect(screen.getByText('snippet.editDialogTitle')).toBeInTheDocument()
       expect(screen.getByText('common.operation.save')).toBeInTheDocument()
-      expect(screen.getByText(mockSnippet.name)).toBeInTheDocument()
+      expect(screen.getByRole('textbox', { name: 'workflow.snippet.nameLabel' })).toHaveValue(
+        mockSnippet.name,
+      )
       if (!mockSnippet.description)
         throw new Error('mockSnippet.description is required for this test')
-      expect(screen.getByText(mockSnippet.description)).toBeInTheDocument()
+      expect(
+        screen.getByRole('textbox', { name: 'workflow.snippet.descriptionLabel' }),
+      ).toHaveValue(mockSnippet.description)
 
-      await user.click(screen.getByRole('button', { name: 'submit-edit' }))
+      const name = screen.getByRole('textbox', { name: 'workflow.snippet.nameLabel' })
+      const description = screen.getByRole('textbox', { name: 'workflow.snippet.descriptionLabel' })
+      await user.clear(name)
+      await user.type(name, 'Updated snippet')
+      await user.clear(description)
+      await user.type(description, 'Updated description')
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
       expect(mockUpdateMutate).toHaveBeenCalledWith(
         {
@@ -205,6 +161,32 @@ describe('SnippetInfoDropdown', () => {
       )
       expect(mockToastSuccess).toHaveBeenCalledWith('snippet.editDone')
     })
+  })
+
+  it('keeps the draft until the edit mutation succeeds and permits retry after failure', async () => {
+    const user = userEvent.setup()
+    let callbacks: { onSuccess: () => void; onError: (error: Error) => void } | undefined
+    mockUpdateMutate.mockImplementation((_payload, options) => {
+      callbacks = options
+    })
+    render(<SnippetInfoDropdown snippet={mockSnippet} />)
+    await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+    await user.click(screen.getByRole('menuitem', { name: 'snippet.menu.editInfo' }))
+    const name = screen.getByRole('textbox', { name: 'workflow.snippet.nameLabel' })
+    await user.clear(name)
+    await user.type(name, 'Retry draft')
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    expect(name).toHaveValue('Retry draft')
+    expect(screen.getByRole('dialog', { name: 'snippet.editDialogTitle' })).toBeInTheDocument()
+    expect(mockToastSuccess).not.toHaveBeenCalled()
+    act(() => callbacks!.onError(new Error('Update failed')))
+    expect(mockToastError).toHaveBeenCalledWith('Update failed')
+    expect(name).toHaveValue('Retry draft')
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    expect(mockUpdateMutate).toHaveBeenCalledTimes(2)
+    act(() => callbacks!.onSuccess())
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(mockToastSuccess).toHaveBeenCalledWith('snippet.editDone')
   })
 
   // Export should call the export hook and download the returned YAML blob.

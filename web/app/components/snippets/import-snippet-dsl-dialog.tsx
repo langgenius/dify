@@ -12,7 +12,7 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Input } from '@langgenius/dify-ui/input'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { useAtomValue } from 'jotai'
@@ -29,8 +29,8 @@ import {
 import { canCreateAndModifySnippets } from './utils/permission'
 
 type ImportSnippetDSLDialogProps = {
-  isOpen: boolean
-  onClose: () => void
+  open: boolean
+  onOpenChange: (open: boolean) => void
 }
 
 const ImportSnippetDSLDialogTab = {
@@ -51,25 +51,22 @@ const SnippetImportStatus = {
 const getImportedSnippetId = (response: SnippetDSLImportResponse) => response.snippet_id
 
 function SnippetDSLConfirmDialog({
+  open,
+  onOpenChange,
   versions = { importedVersion: '', systemVersion: '' },
   confirmDisabled = false,
-  onCancel,
   onConfirm,
 }: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
   versions?: { importedVersion: string; systemVersion: string }
   confirmDisabled?: boolean
-  onCancel: () => void
   onConfirm: MouseEventHandler
 }) {
   const { t } = useTranslation(['common', 'snippet'])
 
   return (
-    <AlertDialog
-      open
-      onOpenChange={(open) => {
-        if (!open) onCancel()
-      }}
-    >
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent className="w-120 overflow-hidden! border-none text-left align-middle shadow-xl">
         <div className="flex flex-col items-start gap-2 self-stretch p-6 pb-4">
           <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
@@ -105,7 +102,17 @@ function SnippetDSLConfirmDialog({
   )
 }
 
-function ImportSnippetDSLDialog({ isOpen, onClose }: ImportSnippetDSLDialogProps) {
+export function ImportSnippetDSLDialog({ open, onOpenChange }: ImportSnippetDSLDialogProps) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="w-full max-w-120! overflow-hidden! rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0! text-left align-middle shadow-xl">
+        <ImportSnippetDSLContent onClose={() => onOpenChange(false)} />
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function ImportSnippetDSLContent({ onClose }: { onClose: () => void }) {
   const dslUrlInputId = useId()
   const { t } = useTranslation(['common', 'snippet'])
   const { push } = useRouter()
@@ -144,6 +151,7 @@ function ImportSnippetDSLDialog({ isOpen, onClose }: ImportSnippetDSLDialogProps
     (response: SnippetDSLImportResponse) => {
       const snippetId = getImportedSnippetId(response)
 
+      setShowConfirmModal(false)
       onClose()
       toast.success(t(($) => $.importSuccess, { ns: 'snippet' }))
 
@@ -226,94 +234,77 @@ function ImportSnippetDSLDialog({ isOpen, onClose }: ImportSnippetDSLDialogProps
 
   return (
     <>
-      <Dialog open={isOpen} onOpenChange={(open) => !open && !showConfirmModal && onClose()}>
-        <DialogContent className="w-full max-w-120! overflow-hidden! rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0! text-left align-middle shadow-xl">
-          <div className="flex items-center justify-between pt-6 pr-5 pb-3 pl-6">
-            <DialogTitle className="title-2xl-semi-bold text-text-primary">
-              {t(($) => $.importDialogTitle, { ns: 'snippet' })}
-            </DialogTitle>
-            <button
-              type="button"
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              className="flex size-8 cursor-pointer items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover"
-              onClick={onClose}
+      <div className="flex items-center justify-between pt-6 pr-5 pb-3 pl-6">
+        <DialogTitle className="title-2xl-semi-bold text-text-primary">
+          {t(($) => $.importDialogTitle, { ns: 'snippet' })}
+        </DialogTitle>
+        <DialogClose
+          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+          className="flex size-8 cursor-pointer items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover"
+        >
+          <span className="i-ri-close-line size-5" />
+        </DialogClose>
+      </div>
+      <Tabs value={currentTab} onValueChange={handleTabChange}>
+        <TabsList
+          aria-label={t(($) => $.importDialogTitle, { ns: 'snippet' })}
+          className="h-9 gap-6 border-b border-divider-subtle px-6"
+        >
+          <TabsTab
+            value={ImportSnippetDSLDialogTab.FromFile}
+            className="h-full pt-0 pb-0 data-active:border-util-colors-blue-brand-blue-brand-600!"
+            disabled={isSubmitting}
+          >
+            {t(($) => $.importFromDSLFile, { ns: 'snippet' })}
+          </TabsTab>
+          <TabsTab
+            value={ImportSnippetDSLDialogTab.FromUrl}
+            className="h-full pt-0 pb-0 data-active:border-util-colors-blue-brand-blue-brand-600!"
+            disabled={isSubmitting}
+          >
+            {t(($) => $.importFromDSLUrl, { ns: 'snippet' })}
+          </TabsTab>
+        </TabsList>
+        <TabsPanel value={ImportSnippetDSLDialogTab.FromFile} tabIndex={-1} className="px-6 py-4">
+          <Uploader className="mt-0" file={currentFile} updateFile={handleFileChange} />
+        </TabsPanel>
+        <TabsPanel value={ImportSnippetDSLDialogTab.FromUrl} tabIndex={-1} className="px-6 py-4">
+          <div>
+            <label
+              htmlFor={dslUrlInputId}
+              className="mb-1 block system-md-semibold text-text-secondary"
             >
-              <span className="i-ri-close-line size-5" />
-            </button>
+              DSL URL
+            </label>
+            <Input
+              id={dslUrlInputId}
+              placeholder={t(($) => $.importFromDSLUrlPlaceholder, { ns: 'snippet' }) || ''}
+              value={dslUrl}
+              onChange={(event) => setDslUrl(event.target.value)}
+            />
           </div>
-          <Tabs value={currentTab} onValueChange={handleTabChange}>
-            <TabsList
-              aria-label={t(($) => $.importDialogTitle, { ns: 'snippet' })}
-              className="h-9 gap-6 border-b border-divider-subtle px-6"
-            >
-              <TabsTab
-                value={ImportSnippetDSLDialogTab.FromFile}
-                className="h-full pt-0 pb-0 data-active:border-util-colors-blue-brand-blue-brand-600!"
-                disabled={isSubmitting}
-              >
-                {t(($) => $.importFromDSLFile, { ns: 'snippet' })}
-              </TabsTab>
-              <TabsTab
-                value={ImportSnippetDSLDialogTab.FromUrl}
-                className="h-full pt-0 pb-0 data-active:border-util-colors-blue-brand-blue-brand-600!"
-                disabled={isSubmitting}
-              >
-                {t(($) => $.importFromDSLUrl, { ns: 'snippet' })}
-              </TabsTab>
-            </TabsList>
-            <TabsPanel
-              value={ImportSnippetDSLDialogTab.FromFile}
-              tabIndex={-1}
-              className="px-6 py-4"
-            >
-              <Uploader className="mt-0" file={currentFile} updateFile={handleFileChange} />
-            </TabsPanel>
-            <TabsPanel
-              value={ImportSnippetDSLDialogTab.FromUrl}
-              tabIndex={-1}
-              className="px-6 py-4"
-            >
-              <div>
-                <label
-                  htmlFor={dslUrlInputId}
-                  className="mb-1 block system-md-semibold text-text-secondary"
-                >
-                  DSL URL
-                </label>
-                <Input
-                  id={dslUrlInputId}
-                  placeholder={t(($) => $.importFromDSLUrlPlaceholder, { ns: 'snippet' }) || ''}
-                  value={dslUrl}
-                  onChange={(event) => setDslUrl(event.target.value)}
-                />
-              </div>
-            </TabsPanel>
-          </Tabs>
-          <div className="flex justify-end px-6 py-5">
-            <Button className="mr-2" disabled={isSubmitting} onClick={onClose}>
-              {t(($) => $['operation.cancel'], { ns: 'common' })}
-            </Button>
-            <Button
-              disabled={importDisabled}
-              loading={isSubmitting}
-              variant="primary"
-              onClick={handleImport}
-            >
-              {t(($) => $['operation.create'], { ns: 'common' })}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-      {showConfirmModal && (
-        <SnippetDSLConfirmDialog
-          versions={versions}
-          confirmDisabled={confirmSnippetImportMutation.isPending || !canCreateAndModifySnippet}
-          onCancel={() => setShowConfirmModal(false)}
-          onConfirm={handleConfirmImport}
-        />
-      )}
+        </TabsPanel>
+      </Tabs>
+      <div className="flex justify-end px-6 py-5">
+        <DialogClose render={<Button className="mr-2" disabled={isSubmitting} />}>
+          {t(($) => $['operation.cancel'], { ns: 'common' })}
+        </DialogClose>
+        <Button
+          disabled={importDisabled}
+          loading={isSubmitting}
+          variant="primary"
+          onClick={handleImport}
+        >
+          {t(($) => $['operation.create'], { ns: 'common' })}
+        </Button>
+      </div>
+      <SnippetDSLConfirmDialog
+        open={showConfirmModal}
+        onOpenChange={setShowConfirmModal}
+        versions={versions}
+        confirmDisabled={confirmSnippetImportMutation.isPending || !canCreateAndModifySnippet}
+        onConfirm={handleConfirmImport}
+      />
     </>
   )
 }
-
-export default ImportSnippetDSLDialog

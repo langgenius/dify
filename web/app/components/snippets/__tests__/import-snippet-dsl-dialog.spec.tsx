@@ -1,7 +1,7 @@
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { render } from '@/test/console/render'
-import ImportSnippetDSLDialog from '../import-snippet-dsl-dialog'
+import { ImportSnippetDSLDialog } from '../import-snippet-dsl-dialog'
 
 const serviceMocks = vi.hoisted(() => ({
   importMutateAsync: vi.fn(),
@@ -47,14 +47,6 @@ vi.mock('@/service/use-snippets', () => ({
   }),
 }))
 
-vi.mock('@/app/components/app/create-from-dsl-modal/uploader', () => ({
-  Uploader: ({ file, updateFile }: { file?: File; updateFile: (file?: File) => void }) => (
-    <button type="button" onClick={() => updateFile(new File(['name: snippet'], 'snippet.yml'))}>
-      {file?.name || 'select-dsl-file'}
-    </button>
-  ),
-}))
-
 describe('ImportSnippetDSLDialog', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -63,7 +55,7 @@ describe('ImportSnippetDSLDialog', () => {
 
   it('should import a snippet DSL from URL and navigate to the imported snippet', async () => {
     const user = userEvent.setup()
-    const onClose = vi.fn()
+    const onOpenChange = vi.fn()
     serviceMocks.importMutateAsync.mockResolvedValue({
       id: 'import-1',
       status: 'completed',
@@ -71,7 +63,7 @@ describe('ImportSnippetDSLDialog', () => {
       error: '',
     })
 
-    render(<ImportSnippetDSLDialog isOpen onClose={onClose} />)
+    render(<ImportSnippetDSLDialog open onOpenChange={onOpenChange} />)
 
     expect(screen.getByRole('dialog', { name: 'snippet.importDialogTitle' })).toBeInTheDocument()
     expect(screen.getByRole('tablist', { name: 'snippet.importDialogTitle' })).toBeInTheDocument()
@@ -97,7 +89,7 @@ describe('ImportSnippetDSLDialog', () => {
         yamlContent: undefined,
         yamlUrl: 'https://example.com/snippet.yml',
       })
-      expect(onClose).toHaveBeenCalledTimes(1)
+      expect(onOpenChange).toHaveBeenCalledTimes(1)
       expect(toastMocks.success).toHaveBeenCalledWith('snippet.importSuccess')
       expect(routerMocks.push).toHaveBeenCalledWith('/snippets/snippet-1/orchestrate')
     })
@@ -119,9 +111,11 @@ describe('ImportSnippetDSLDialog', () => {
       error: '',
     })
 
-    render(<ImportSnippetDSLDialog isOpen onClose={vi.fn()} />)
+    render(<ImportSnippetDSLDialog open onOpenChange={vi.fn()} />)
 
-    await user.click(screen.getByRole('button', { name: 'select-dsl-file' }))
+    const fileInput = screen.getByRole('dialog').querySelector('input[type="file"]')
+    if (!(fileInput instanceof HTMLInputElement)) throw new Error('Missing DSL file input')
+    await user.upload(fileInput, new File(['name: snippet'], 'snippet.yml'))
     await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
 
     expect(await screen.findByText('snippet.dslVersionMismatchTitle')).toBeInTheDocument()
@@ -138,17 +132,19 @@ describe('ImportSnippetDSLDialog', () => {
 
   it('should show import errors without closing the dialog', async () => {
     const user = userEvent.setup()
-    const onClose = vi.fn()
+    const onOpenChange = vi.fn()
     serviceMocks.importMutateAsync.mockRejectedValue(new Error('invalid yaml'))
 
-    render(<ImportSnippetDSLDialog isOpen onClose={onClose} />)
+    render(<ImportSnippetDSLDialog open onOpenChange={onOpenChange} />)
 
-    await user.click(screen.getByRole('button', { name: 'select-dsl-file' }))
+    const fileInput = screen.getByRole('dialog').querySelector('input[type="file"]')
+    if (!(fileInput instanceof HTMLInputElement)) throw new Error('Missing DSL file input')
+    await user.upload(fileInput, new File(['name: snippet'], 'snippet.yml'))
     await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
 
     await waitFor(() => {
       expect(toastMocks.error).toHaveBeenCalledWith('invalid yaml')
-      expect(onClose).not.toHaveBeenCalled()
+      expect(onOpenChange).not.toHaveBeenCalled()
     })
   })
 
@@ -156,7 +152,7 @@ describe('ImportSnippetDSLDialog', () => {
     const user = userEvent.setup()
     contextMocks.workspacePermissionKeys = []
 
-    render(<ImportSnippetDSLDialog isOpen onClose={vi.fn()} />)
+    render(<ImportSnippetDSLDialog open onOpenChange={vi.fn()} />)
 
     await user.click(screen.getByRole('tab', { name: 'snippet.importFromDSLUrl' }))
     await user.type(
@@ -167,5 +163,63 @@ describe('ImportSnippetDSLDialog', () => {
 
     expect(screen.getByRole('button', { name: 'common.operation.create' })).toBeDisabled()
     expect(serviceMocks.importMutateAsync).not.toHaveBeenCalled()
+  })
+  it.each(['Invalid DSL', ''])(
+    'keeps a failed import open and only reports a supplied error (%s)',
+    async (error) => {
+      const user = userEvent.setup()
+      const onOpenChange = vi.fn()
+      serviceMocks.importMutateAsync.mockResolvedValue({
+        id: 'failed-import',
+        status: 'failed',
+        error,
+      })
+      render(<ImportSnippetDSLDialog open onOpenChange={onOpenChange} />)
+      await user.click(screen.getByRole('tab', { name: 'snippet.importFromDSLUrl' }))
+      await user.type(
+        screen.getByRole('textbox', { name: 'DSL URL' }),
+        'https://example.com/invalid.yml',
+      )
+      await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
+      await waitFor(() => expect(serviceMocks.importMutateAsync).toHaveBeenCalledTimes(1))
+      expect(onOpenChange).not.toHaveBeenCalled()
+      expect(routerMocks.push).not.toHaveBeenCalled()
+      if (error) expect(toastMocks.error).toHaveBeenCalledExactlyOnceWith(error)
+      else expect(toastMocks.error).not.toHaveBeenCalled()
+      expect(screen.getByRole('textbox', { name: 'DSL URL' })).toHaveValue(
+        'https://example.com/invalid.yml',
+      )
+    },
+  )
+
+  it('keeps the version confirmation after a rejected confirm and retries the same import', async () => {
+    const user = userEvent.setup()
+    const onOpenChange = vi.fn()
+    serviceMocks.importMutateAsync.mockResolvedValue({ id: 'retry-import', status: 'pending' })
+    serviceMocks.confirmMutateAsync
+      .mockRejectedValueOnce(new Error('Confirm failed'))
+      .mockResolvedValueOnce({
+        id: 'retry-import',
+        status: 'completed',
+        snippet_id: 'retry-snippet',
+      })
+    render(<ImportSnippetDSLDialog open onOpenChange={onOpenChange} />)
+    await user.click(screen.getByRole('tab', { name: 'snippet.importFromDSLUrl' }))
+    await user.type(
+      screen.getByRole('textbox', { name: 'DSL URL' }),
+      'https://example.com/retry.yml',
+    )
+    await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
+    await user.click(await screen.findByRole('button', { name: 'common.operation.confirm' }))
+    await waitFor(() => expect(toastMocks.error).toHaveBeenCalledWith('Confirm failed'))
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+    expect(onOpenChange).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledExactlyOnceWith(false))
+    expect(serviceMocks.confirmMutateAsync.mock.calls).toEqual([
+      [{ importId: 'retry-import' }],
+      [{ importId: 'retry-import' }],
+    ])
+    expect(routerMocks.push).toHaveBeenCalledExactlyOnceWith('/snippets/retry-snippet/orchestrate')
   })
 })
