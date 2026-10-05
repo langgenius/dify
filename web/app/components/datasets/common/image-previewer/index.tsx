@@ -1,4 +1,4 @@
-import type { DialogHandle } from '@langgenius/dify-ui/dialog'
+import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
@@ -28,7 +28,7 @@ export type ImagePreviewPayload = {
 }
 
 type ImagePreviewerProps = {
-  handle: DialogHandle<ImagePreviewPayload>
+  children: ReactNode
 }
 
 type ImageLoadState =
@@ -163,15 +163,21 @@ function ImagePreviewPopup({ payload }: { payload: ImagePreviewPayload }) {
   )
 }
 
-export function ImagePreviewer({ handle }: ImagePreviewerProps) {
+export function ImagePreviewer({ children }: ImagePreviewerProps) {
   return (
-    <Dialog handle={handle} disablePointerDismissal>
+    <Dialog<ImagePreviewPayload> disablePointerDismissal>
       {({ payload }) => (
-        <DialogPortal>
-          {payload && (
-            <ImagePreviewPopup key={payload.images[payload.initialIndex]?.url} payload={payload} />
-          )}
-        </DialogPortal>
+        <>
+          {children}
+          <DialogPortal>
+            {payload && (
+              <ImagePreviewPopup
+                key={payload.images[payload.initialIndex]?.url}
+                payload={payload}
+              />
+            )}
+          </DialogPortal>
+        </>
       )}
     </Dialog>
   )

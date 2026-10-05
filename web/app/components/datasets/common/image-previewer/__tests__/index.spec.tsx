@@ -1,8 +1,7 @@
-import type { ImageInfo, ImagePreviewPayload } from '../index'
-import { createDialogHandle, DialogTrigger } from '@langgenius/dify-ui/dialog'
+import type { ImageInfo } from '../index'
+import { DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useState } from 'react'
 import { ImagePreviewer } from '../index'
 
 const images: ImageInfo[] = [
@@ -12,16 +11,14 @@ const images: ImageInfo[] = [
 ]
 
 function Gallery({ items = images }: { items?: readonly ImageInfo[] }) {
-  const [handle] = useState(() => createDialogHandle<ImagePreviewPayload>())
   return (
-    <>
+    <ImagePreviewer>
       {items.map((image, initialIndex) => (
-        <DialogTrigger key={image.url} handle={handle} payload={{ images: items, initialIndex }}>
+        <DialogTrigger key={image.url} payload={{ images: items, initialIndex }}>
           Preview {image.name || 'unnamed image'}
         </DialogTrigger>
       ))}
-      <ImagePreviewer handle={handle} />
-    </>
+    </ImagePreviewer>
   )
 }
 
@@ -134,7 +131,7 @@ describe('ImagePreviewer', () => {
     expect(getNavigation(reopened).next).toBeDisabled()
   })
 
-  it('does not dismiss from content clicks and restores the actual detached trigger', async () => {
+  it('does not dismiss from content clicks and restores the actual trigger', async () => {
     const user = userEvent.setup()
     render(<Gallery />)
     const trigger = screen.getByRole('button', { name: 'Preview image2.png' })
