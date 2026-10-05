@@ -1,5 +1,4 @@
 from types import SimpleNamespace
-from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy import Engine
@@ -61,8 +60,7 @@ def _persist_account(session: Session) -> Account:
 
 
 def _trace_instance() -> ConcreteTraceInstance:
-    # Tracing configuration is a domain collaborator, not an ORM session.
-    return ConcreteTraceInstance(MagicMock(spec=BaseTracingConfig))
+    return ConcreteTraceInstance(BaseTracingConfig())
 
 
 @pytest.mark.parametrize("sqlite_session", [TABLES], indirect=True)

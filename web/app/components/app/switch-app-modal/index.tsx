@@ -19,7 +19,6 @@ import { Input } from '@langgenius/dify-ui/input'
 import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import AppIcon from '@/app/components/base/app-icon'
 import { IconPickerDialog } from '@/app/components/base/icon-picker'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
@@ -32,19 +31,17 @@ import { getRedirection } from '@/utils/app-redirection'
 
 type SwitchAppModalProps = {
   show: boolean
-  appDetail: Pick<
+  sourceApp: Pick<
     AppPartial,
     'icon' | 'icon_background' | 'icon_type' | 'icon_url' | 'id' | 'mode' | 'name'
   >
   onClose: () => void
-  inAppDetail?: boolean
 }
 
-const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onClose }: SwitchAppModalProps) => {
+const SwitchAppModal = ({ show, sourceApp, onClose }: SwitchAppModalProps) => {
   const { push, replace } = useRouter()
   const nameInputId = useId()
   const { t } = useTranslation(['app', 'common'])
-  const setAppDetail = useAppStore((s) => s.setAppDetail)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const isRbacEnabled = systemFeatures.rbac_enabled
 
@@ -64,18 +61,18 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onClose }: Switc
     appQuota.size >= appQuota.limit
 
   const [showIconPicker, setShowIconPicker] = useState(false)
-  const appIconType = zIconType.safeParse(appDetail.icon_type).data
+  const appIconType = zIconType.safeParse(sourceApp.icon_type).data
   const [appIcon, setAppIcon] = useState(
     appIconType === 'image'
-      ? { type: 'image' as const, url: appDetail.icon_url ?? '', fileId: appDetail.icon ?? '' }
+      ? { type: 'image' as const, url: sourceApp.icon_url ?? '', fileId: sourceApp.icon ?? '' }
       : {
           type: 'emoji' as const,
-          icon: appDetail.icon ?? '',
-          background: appDetail.icon_background,
+          icon: sourceApp.icon ?? '',
+          background: sourceApp.icon_background,
         },
   )
 
-  const [name, setName] = useState(`${appDetail.name}(copy)`)
+  const [name, setName] = useState(`${sourceApp.name}(copy)`)
   const [removeOriginal, setRemoveOriginal] = useState<boolean>(false)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const { mutateAsync: convertToWorkflow } = useMutation(
@@ -89,7 +86,7 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onClose }: Switc
     if (isAppQuotaUnavailable || isAppsFull) return
     try {
       const { new_app_id: newAppID, permission_keys } = await convertToWorkflow({
-        params: { app_id: appDetail.id },
+        params: { app_id: sourceApp.id },
         body: {
           name,
           icon_type: appIcon.type,
@@ -99,16 +96,15 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onClose }: Switc
       })
       onClose()
       toast.success(t(($) => $['newApp.appCreated'], { ns: 'app' }))
-      if (inAppDetail) setAppDetail()
       if (removeOriginal)
         await deleteOriginalApp({
-          params: { app_id: appDetail.id },
+          params: { app_id: sourceApp.id },
         })
       getRedirection(
         {
           id: newAppID,
           mode:
-            appDetail.mode === AppModeEnum.COMPLETION
+            sourceApp.mode === AppModeEnum.COMPLETION
               ? AppModeEnum.WORKFLOW
               : AppModeEnum.ADVANCED_CHAT,
           permission_keys,

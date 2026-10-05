@@ -296,9 +296,9 @@ it('announces the complete custom displayed value including its timezone', async
       <TimePickerTrigger>
         <TimePickerValue>
           {(displayValue) => (
-            <>
+            <React.Fragment>
               <span>{displayValue}</span> <span>UTC+08:00</span>
-            </>
+            </React.Fragment>
           )}
         </TimePickerValue>
       </TimePickerTrigger>

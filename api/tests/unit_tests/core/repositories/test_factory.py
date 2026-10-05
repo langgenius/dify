@@ -14,9 +14,9 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.repositories.factory import (
     DifyCoreRepositoryFactory,
     RepositoryImportError,
-    WorkflowExecutionRepository,
-    WorkflowNodeExecutionRepository,
 )
+from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
+from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from libs.module_loading import import_string
 from models import Account, EndUser
 from models.enums import WorkflowRunTriggeredFrom
@@ -76,10 +76,8 @@ class TestRepositoryFactory:
         app_id = "test-app-id"
         triggered_from = WorkflowRunTriggeredFrom.APP_RUN
 
-        # Create mock repository class and instance
-        mock_repository_class = MagicMock()
-        mock_repository_instance = MagicMock(spec=WorkflowExecutionRepository)
-        mock_repository_class.return_value = mock_repository_instance
+        # Record construction while creating the real SQLAlchemy repository.
+        mock_repository_class = MagicMock(wraps=SQLAlchemyWorkflowExecutionRepository)
 
         # Mock import_string
         with patch("core.repositories.factory.import_string", return_value=mock_repository_class, autospec=True):
@@ -99,7 +97,7 @@ class TestRepositoryFactory:
                 app_id=app_id,
                 triggered_from=triggered_from,
             )
-            assert result is mock_repository_instance
+            assert isinstance(result, SQLAlchemyWorkflowExecutionRepository)
 
     def test_create_workflow_execution_repository_import_error(self, sqlite_session_factory, config_overrides):
         """Test WorkflowExecutionRepository creation with import error."""
@@ -144,10 +142,8 @@ class TestRepositoryFactory:
         app_id = "test-app-id"
         triggered_from = WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP
 
-        # Create mock repository class and instance
-        mock_repository_class = MagicMock()
-        mock_repository_instance = MagicMock(spec=WorkflowNodeExecutionRepository)
-        mock_repository_class.return_value = mock_repository_instance
+        # Record construction while creating the real SQLAlchemy repository.
+        mock_repository_class = MagicMock(wraps=SQLAlchemyWorkflowNodeExecutionRepository)
 
         # Mock import_string
         with patch("core.repositories.factory.import_string", return_value=mock_repository_class, autospec=True):
@@ -167,7 +163,7 @@ class TestRepositoryFactory:
                 app_id=app_id,
                 triggered_from=triggered_from,
             )
-            assert result is mock_repository_instance
+            assert isinstance(result, SQLAlchemyWorkflowNodeExecutionRepository)
 
     def test_create_workflow_node_execution_repository_import_error(self, sqlite_session_factory, config_overrides):
         """Test WorkflowNodeExecutionRepository creation with import error."""
@@ -218,10 +214,8 @@ class TestRepositoryFactory:
         app_id = "test-app-id"
         triggered_from = WorkflowRunTriggeredFrom.APP_RUN
 
-        # Create mock repository class and instance
-        mock_repository_class = MagicMock()
-        mock_repository_instance = MagicMock(spec=WorkflowExecutionRepository)
-        mock_repository_class.return_value = mock_repository_instance
+        # Record construction while creating the real SQLAlchemy repository.
+        mock_repository_class = MagicMock(wraps=SQLAlchemyWorkflowExecutionRepository)
 
         # Mock import_string
         with patch("core.repositories.factory.import_string", return_value=mock_repository_class, autospec=True):
@@ -241,4 +235,4 @@ class TestRepositoryFactory:
                 app_id=app_id,
                 triggered_from=triggered_from,
             )
-            assert result is mock_repository_instance
+            assert isinstance(result, SQLAlchemyWorkflowExecutionRepository)

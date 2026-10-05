@@ -4,7 +4,7 @@ Regression tests for `libs.helper.TokenManager`.
 `TokenManager` is the storage primitive shared by multiple auth flows, so it
 must preserve every metadata field written by the caller. Business-specific
 validation now happens at the callsite boundary (for example,
-`AccountService.get_change_email_data`), not inside `TokenManager`.
+`TokenManagerChangeEmailTokenGateway.read`), not inside `TokenManager`.
 """
 
 import json

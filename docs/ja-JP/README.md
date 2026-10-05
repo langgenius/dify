@@ -60,7 +60,6 @@
   <a href="../hi-IN/README.md"><img alt="README in हिन्दी" src="https://img.shields.io/badge/Hindi-d9d9d9"></a>
 </p>
 
-# 
 
 <p align="center">
   <a href="https://trendshift.io/repositories/2152" target="_blank"><img src="https://trendshift.io/api/badge/repositories/2152" alt="langgenius%2Fdify | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
@@ -95,7 +94,7 @@ LLM Function CallingやReActに基づくエージェントの定義が可能で�
 ## Difyの使用方法
 
 - **クラウド </br>**
-  [こちら](https://dify.ai)のDify Cloudサービスを利用して、セットアップ不要で試すことができます。サンドボックスプランには、200回のGPT-4呼び出しが無料で含まれています。
+  [Dify Cloud](https://cloud.dify.ai) なら、サーバーを管理せずに Dify を試せます。最新のプランと利用枠は[料金ページ](https://dify.ai/pricing)をご覧ください。
 
 - **Dify Community Editionのセルフホスティング</br>**
   この[スタートガイド](#%E3%82%AF%E3%82%A4%E3%83%83%E3%82%AF%E3%82%B9%E3%82%BF%E3%83%BC%E3%83%88)を使用して、ローカル環境でDifyを簡単に実行できます。

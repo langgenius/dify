@@ -193,19 +193,6 @@ class CreditPoolService:
         )
 
     @classmethod
-    def create_default_pool(cls, tenant_id: str, session: Session) -> TenantCreditPool:
-        """create default credit pool for new tenant"""
-        credit_pool = TenantCreditPool(
-            tenant_id=tenant_id,
-            quota_limit=dify_config.HOSTED_POOL_CREDITS,
-            quota_used=0,
-            pool_type=ProviderQuotaType.TRIAL,
-        )
-        session.add(credit_pool)
-        session.commit()
-        return credit_pool
-
-    @classmethod
     def get_pool(
         cls,
         tenant_id: str,

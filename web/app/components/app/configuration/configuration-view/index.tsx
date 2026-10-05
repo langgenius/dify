@@ -16,12 +16,13 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   Drawer,
   DrawerBackdrop,
-  DrawerCloseButton,
+  DrawerClose,
   DrawerContent,
   DrawerPopup,
   DrawerPortal,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { produce } from 'immer'
 import * as React from 'react'
@@ -254,9 +255,15 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
                   <DrawerPopup className="data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-sm">
                     <DrawerContent className="flex min-h-0 flex-1 flex-col">
                       <div className="mb-4 flex shrink-0 justify-end">
-                        <DrawerCloseButton
-                          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                          className="size-6 rounded-md"
+                        <DrawerClose
+                          render={
+                            <IconButton
+                              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                              size="md"
+                            >
+                              <span aria-hidden="true" className="i-ri-close-line size-4" />
+                            </IconButton>
+                          }
                         />
                       </div>
                       <Debug

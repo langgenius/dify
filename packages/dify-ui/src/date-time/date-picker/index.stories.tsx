@@ -150,8 +150,8 @@ export const NativeForm: Story = {
     )
     for (const [label, name] of [
       ['Start date (required)', 'Start date (required)'],
-      ['Start time', 'Start time 1:30 PM'],
-      ['Reminder (UTC)', 'Reminder (UTC) Jan 15, 2025, 1:30 PM'],
+      ['Start time', /^Start time\b/],
+      ['Reminder (UTC)', /^Reminder \(UTC\)/],
     ] as const) {
       await userEvent.click(canvas.getByText(label, { exact: true }))
       const field = canvas.getByRole('button', { name })

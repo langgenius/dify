@@ -26,7 +26,7 @@ from machinery.context import RequestContext
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset
 from models.model import ApiToken
-from repositories.workspace_member_query_repository import WorkspaceMemberQueryRepository
+from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.app.api_key_service import AppApiKeyNotReadyError
 from services.auth.api_key_contracts import (
     ApiKeyLimitExceededError,
@@ -286,7 +286,7 @@ def persisted_keys_app(
     sqlite_session.commit()
     dataset_access = build_dataset_dependencies(
         database_client=sqlite_session_factory,
-        workspace_roles=WorkspaceMemberQueryRepository(session_factory=sqlite_session_factory),
+        workspace_roles=WorkspaceRepository(session_factory=sqlite_session_factory),
     ).access
     service = build_dataset_api_key_service(
         database_client=sqlite_session_factory,
