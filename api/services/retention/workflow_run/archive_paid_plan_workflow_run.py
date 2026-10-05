@@ -42,6 +42,7 @@ from typing import Any, NotRequired, TypedDict, TypeVar, cast
 import click
 import pyarrow as pa
 import pyarrow.parquet as pq
+from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError
 from sqlalchemy import inspect, select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -125,6 +126,34 @@ class ArchiveBundleIndexDict(TypedDict):
     manifest_keys: list[str]
     run_ids: list[str]
     campaign_ids: NotRequired[list[str]]
+
+
+class ArchiveBundleIndexModel(BaseModel):
+    """Validated shape of a shard `index.json`; mirrors ArchiveBundleIndexDict."""
+
+    model_config = ConfigDict(extra="allow")
+    schema_version: str
+    archive_format: str
+    object_prefix: str
+    updated_at: str
+    manifest_keys: list[str]
+    run_ids: list[str]
+    # Defaults to [] not None: callers do set(index.get("campaign_ids", [])).
+    campaign_ids: list[str] = Field(default_factory=list)
+
+
+class ShardManifestEntryModel(BaseModel):
+    """Fields `_build_bundle_index` reads from a V2 bundle manifest."""
+
+    model_config = ConfigDict(extra="allow")
+    schema_version: str
+    archive_format: str
+    run_ids: list[str]
+    campaign_id: str | None = None
+
+
+_ARCHIVE_BUNDLE_INDEX_ADAPTER = TypeAdapter(ArchiveBundleIndexModel)
+_SHARD_MANIFEST_ENTRY_ADAPTER = TypeAdapter(ShardManifestEntryModel)
 
 
 @dataclass(frozen=True)
@@ -1005,10 +1034,13 @@ class WorkflowRunArchiver:
     ) -> ArchiveBundleIndexDict:
         index_key = self._get_index_object_key(identity)
         payload = storage.get_object(index_key)
-        loaded = json.loads(payload)
-        if not isinstance(loaded, dict):
-            raise ValueError(f"archive index must be an object: {index_key}")
-        index = cast(ArchiveBundleIndexDict, loaded)
+        try:
+            index = cast(
+                ArchiveBundleIndexDict,
+                _ARCHIVE_BUNDLE_INDEX_ADAPTER.validate_json(payload).model_dump(),
+            )
+        except ValidationError as e:
+            raise ValueError(f"archive index is not valid: {index_key}: {e}") from e
         expected_prefix = self._get_shard_object_prefix(identity)
         if index["schema_version"] != ARCHIVE_BUNDLE_SCHEMA_VERSION:
             raise ValueError(f"unsupported archive index schema_version: {index['schema_version']}")
@@ -1083,24 +1115,17 @@ class WorkflowRunArchiver:
         campaign_ids: set[str] = set()
         for manifest_key in manifest_keys:
             manifest_payload = storage.get_object(manifest_key)
-            manifest = json.loads(manifest_payload)
-            if not isinstance(manifest, dict):
-                raise ValueError(f"archive manifest must be an object: {manifest_key}")
-            if manifest.get("schema_version") != ARCHIVE_BUNDLE_SCHEMA_VERSION:
-                raise ValueError(
-                    f"unsupported bundle schema_version in {manifest_key}: {manifest.get('schema_version')}"
-                )
-            if manifest.get("archive_format") != ARCHIVE_BUNDLE_FORMAT:
-                raise ValueError(
-                    f"unsupported bundle archive_format in {manifest_key}: {manifest.get('archive_format')}"
-                )
-            manifest_run_ids = manifest.get("run_ids")
-            if not isinstance(manifest_run_ids, list):
-                raise ValueError(f"manifest run_ids must be a list: {manifest_key}")
-            run_ids.update(str(run_id) for run_id in manifest_run_ids)
-            campaign_id = manifest.get("campaign_id")
-            if isinstance(campaign_id, str):
-                campaign_ids.add(campaign_id)
+            try:
+                manifest = _SHARD_MANIFEST_ENTRY_ADAPTER.validate_json(manifest_payload)
+            except ValidationError as e:
+                raise ValueError(f"archive manifest is not valid: {manifest_key}: {e}") from e
+            if manifest.schema_version != ARCHIVE_BUNDLE_SCHEMA_VERSION:
+                raise ValueError(f"unsupported bundle schema_version in {manifest_key}: {manifest.schema_version}")
+            if manifest.archive_format != ARCHIVE_BUNDLE_FORMAT:
+                raise ValueError(f"unsupported bundle archive_format in {manifest_key}: {manifest.archive_format}")
+            run_ids.update(str(run_id) for run_id in manifest.run_ids)
+            if manifest.campaign_id is not None:
+                campaign_ids.add(manifest.campaign_id)
         return ArchiveBundleIndexDict(
             schema_version=ARCHIVE_BUNDLE_SCHEMA_VERSION,
             archive_format=ARCHIVE_BUNDLE_FORMAT,
