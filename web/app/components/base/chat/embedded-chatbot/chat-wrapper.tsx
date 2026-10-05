@@ -42,6 +42,7 @@ const ChatWrapper = () => {
     newConversationInputs,
     newConversationInputsRef,
     handleNewConversationCompleted,
+    touchConversationActivity,
     isMobile,
     isInstalledApp,
     appId,
@@ -203,6 +204,7 @@ const ChatWrapper = () => {
         conversation_id: currentConversationId,
         parent_message_id: (isRegenerate ? parentAnswer?.id : getLastAnswer(chatList)?.id) || null,
       }
+      touchConversationActivity?.()
       handleSend(getUrl('chat-messages', appSourceType, appId || ''), data, {
         onGetSuggestedQuestions: (responseItemId) =>
           fetchSuggestedQuestions(responseItemId, appSourceType, appId),
@@ -221,6 +223,7 @@ const ChatWrapper = () => {
       appSourceType,
       appId,
       handleNewConversationCompleted,
+      touchConversationActivity,
       appData?.mode,
     ],
   )

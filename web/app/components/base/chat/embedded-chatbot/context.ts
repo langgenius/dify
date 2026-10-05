@@ -26,6 +26,8 @@ export type EmbeddedChatbotContextValue = {
   handleStartChat: (callback?: any) => void
   handleChangeConversation: (conversationId: string) => void
   handleNewConversationCompleted: (newConversationId: string) => void
+  // Records the time of the last message so the optional session reset can expire the chat.
+  touchConversationActivity?: () => void
   chatShouldReloadKey: string
   isMobile: boolean
   isInstalledApp: boolean
