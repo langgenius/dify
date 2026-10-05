@@ -16,7 +16,7 @@ import DeleteAccount from '../delete-account'
 import AvatarWithEdit from './AvatarWithEdit'
 import { ChangePasswordDialog } from './change-password-dialog'
 import { EditAccountNameDialog } from './edit-account-name-dialog'
-import EmailChangeModal from './email-change-modal'
+import { EmailChangeModal } from './email-change-modal'
 
 const titleClassName = `
   system-sm-semibold text-text-secondary
@@ -56,7 +56,6 @@ export default function AccountPage() {
     }),
   )
   const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false)
-  const [showUpdateEmail, setShowUpdateEmail] = useState(false)
 
   if (!userProfile) return null
 
@@ -119,15 +118,7 @@ export default function AccountPage() {
           <div className="flex-1 rounded-lg bg-components-input-bg-normal p-2 system-sm-regular text-components-input-text-filled">
             <span className="pl-1">{userProfile.email}</span>
           </div>
-          {systemFeatures.enable_change_email && (
-            <button
-              type="button"
-              className="cursor-pointer rounded-lg bg-components-button-tertiary-bg px-3 py-2 system-sm-medium text-components-button-tertiary-text"
-              onClick={() => setShowUpdateEmail(true)}
-            >
-              {t(($) => $['operation.change'], { ns: 'common' })}
-            </button>
-          )}
+          {systemFeatures.enable_change_email && <EmailChangeModal email={userProfile.email} />}
         </div>
       </div>
       {systemFeatures.enable_email_password_login && (
@@ -174,10 +165,6 @@ export default function AccountPage() {
           onConfirm={() => setShowDeleteAccountModal(false)}
         />
       )}
-      {/* Use conditional JSX instead of a mounted controlled Dialog so closing destroys the email-change form session. */}
-      {showUpdateEmail ? (
-        <EmailChangeModal onClose={() => setShowUpdateEmail(false)} email={userProfile.email} />
-      ) : null}
     </>
   )
 }
