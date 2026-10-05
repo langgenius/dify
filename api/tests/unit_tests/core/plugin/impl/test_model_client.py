@@ -7,7 +7,7 @@ from types import SimpleNamespace
 import pytest
 from pytest_mock import MockerFixture
 
-from core.plugin.entities.plugin_daemon import PluginDaemonInnerError
+from core.plugin.entities.plugin_daemon import PluginDaemonInnerError, PluginStringResultResponse
 from core.plugin.impl.exc import PluginInvokeError, PluginLLMPollingUnsupportedError
 from core.plugin.impl.model import PluginModelClient
 from graphon.model_runtime.entities.llm_entities import LLMPollingResult, LLMPollingStatus, LLMResult, LLMUsage
@@ -587,7 +587,7 @@ class TestPluginModelClient:
         stream_mock = mocker.patch.object(
             client,
             "_request_with_plugin_daemon_response_stream",
-            return_value=iter([SimpleNamespace(result="transcribed text")]),
+            return_value=iter([PluginStringResultResponse(result="transcribed text")]),
         )
 
         result = client.invoke_speech_to_text(
