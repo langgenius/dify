@@ -363,6 +363,13 @@ export type SiteConfig = {
   icon_background: string | null
   icon_url: string | null
 
+  /** Default avatar shown next to the end-user's own chat messages, when the
+   * embedding page doesn't pass a per-visitor user.avatar_url. */
+  default_user_icon_type: AppIconType | null
+  default_user_icon: string | null
+  default_user_icon_background: string | null
+  default_user_icon_url: string | null
+
   show_workflow_steps: boolean
   use_icon_as_answer_icon: boolean
 }

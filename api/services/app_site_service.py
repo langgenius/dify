@@ -14,6 +14,9 @@ class AppSiteChanges:
     icon_type: str | None = None
     icon: str | None = None
     icon_background: str | None = None
+    default_user_icon_type: str | None = None
+    default_user_icon: str | None = None
+    default_user_icon_background: str | None = None
     description: str | None = None
     default_language: str | None = None
     chat_color_theme: str | None = None
@@ -35,6 +38,9 @@ class AppSiteCommandResult(NamedTuple):
     title: str
     icon: str | None
     icon_background: str | None
+    default_user_icon_type: str | None
+    default_user_icon: str | None
+    default_user_icon_background: str | None
     description: str | None
     default_language: str
     customize_domain: str | None

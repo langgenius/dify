@@ -1,0 +1,33 @@
+<!--
+  Dify chat widget embed — with a persistent, auto-generated avatar per visitor.
+
+  Replace YOUR_CHATBOT_TOKEN and YOUR_DIFY_DOMAIN below with the real values
+  from Dify's Access Point / Embed page for this app.
+-->
+<script>
+  // Give each anonymous visitor a stable random identity, so their avatar
+  // stays the same across visits on this browser (not tied to a real login).
+  function getOrCreateVisitorId() {
+    const key = 'dify_visitor_id'
+    let id = localStorage.getItem(key)
+    if (!id) {
+      id = crypto.randomUUID()
+      localStorage.setItem(key, id)
+    }
+    return id
+  }
+
+  const visitorId = getOrCreateVisitorId()
+
+  window.difyChatbotConfig = {
+    token: 'YOUR_CHATBOT_TOKEN',
+    baseUrl: 'https://YOUR_DIFY_DOMAIN',
+    userVariables: {
+      // A free, no-signup avatar generator. Same seed = same cartoon avatar
+      // every time, so this visitor always sees the same image.
+      avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${visitorId}`,
+      name: 'Guest',
+    },
+  }
+</script>
+<script src="https://YOUR_DIFY_DOMAIN/embed.min.js" id="YOUR_CHATBOT_TOKEN" defer></script>

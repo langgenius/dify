@@ -82,6 +82,8 @@
   "overview.appInfo.settings.more.privacyPolicyTip": "Helps visitors understand the data the application collects, see Dify's <privacyPolicyLink>Privacy Policy</privacyPolicyLink>.",
   "overview.appInfo.settings.multiEnvironmentNotice": "Web app settings apply to all environments.",
   "overview.appInfo.settings.title": "Branding",
+  "overview.appInfo.settings.userIcon.description": "Shown next to a visitor's own messages when the embedding page doesn't supply its own avatar.",
+  "overview.appInfo.settings.userIcon.title": "User Avatar",
   "overview.appInfo.settings.webDesc": "Web App Description",
   "overview.appInfo.settings.webDescPlaceholder": "Enter the description of the web app",
   "overview.appInfo.settings.webDescTip": "This text will be displayed on the client side, providing basic guidance on how to use the application",

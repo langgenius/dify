@@ -490,6 +490,9 @@ class Site(BaseModel):
     icon_type: str | None = None
     icon: str | None = None
     icon_background: str | None = None
+    default_user_icon_type: str | None = None
+    default_user_icon: str | None = None
+    default_user_icon_background: str | None = None
     description: str | None = None
     copyright: str | None = None
     privacy_policy: str | None = None
@@ -504,4 +507,11 @@ class Site(BaseModel):
     def icon_url(self) -> str | None:
         if self.icon and self.icon_type == IconType.IMAGE:
             return file_helpers.get_signed_file_url(self.icon)
+        return None
+
+    @computed_field(return_type=URLString | None)  # type: ignore
+    @property
+    def default_user_icon_url(self) -> str | None:
+        if self.default_user_icon and self.default_user_icon_type == IconType.IMAGE:
+            return file_helpers.get_signed_file_url(self.default_user_icon)
         return None
