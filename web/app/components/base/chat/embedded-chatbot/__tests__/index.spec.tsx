@@ -105,6 +105,7 @@ const createHookReturn = (
     handleStartChat: vi.fn(),
     handleChangeConversation: vi.fn(),
     handleNewConversationCompleted: vi.fn(),
+    touchConversationActivity: vi.fn(),
     newConversationId: '',
     chatShouldReloadKey: 'reload-key',
     allowResetChat: true,

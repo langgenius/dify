@@ -41,6 +41,7 @@ const ChatWrapper = () => {
     newConversationInputs,
     newConversationInputsRef,
     handleNewConversationCompleted,
+    touchConversationActivity,
     isMobile,
     isInstalledApp,
     appId,
@@ -214,6 +215,7 @@ const ChatWrapper = () => {
         parent_message_id: (isRegenerate ? parentAnswer?.id : getLastAnswer(chatList)?.id) || null,
       }
 
+      touchConversationActivity?.()
       handleSend(getUrl('chat-messages', appSourceType, appId || ''), data, {
         onGetConversationMessages: isNewAgent
           ? (conversationId) => fetchChatList(conversationId, appSourceType, appId)
@@ -238,6 +240,7 @@ const ChatWrapper = () => {
       appId,
       isHistoryConversation,
       handleNewConversationCompleted,
+      touchConversationActivity,
       isNewAgent,
       appData?.mode,
     ],

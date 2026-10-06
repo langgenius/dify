@@ -125,6 +125,11 @@ const clientSchema = {
    */
   NEXT_PUBLIC_MAX_TOOLS_NUM: coercedNumber.default(10),
   /**
+   * Hours of inactivity after which a web app chat starts a fresh conversation.
+   * 0 disables the reset. Counted from the last message sent.
+   */
+  NEXT_PUBLIC_CHAT_SESSION_RESET_HOURS: coercedNumber.default(24),
+  /**
    * The maximum number of tree node depth for workflow
    */
   NEXT_PUBLIC_MAX_TREE_DEPTH: coercedNumber.default(50),
@@ -279,6 +284,9 @@ export const env = createEnv({
     NEXT_PUBLIC_MAX_PARALLEL_LIMIT: isServer
       ? process.env.NEXT_PUBLIC_MAX_PARALLEL_LIMIT
       : getRuntimeEnvFromBody('maxParallelLimit'),
+    NEXT_PUBLIC_CHAT_SESSION_RESET_HOURS: isServer
+      ? process.env.NEXT_PUBLIC_CHAT_SESSION_RESET_HOURS
+      : getRuntimeEnvFromBody('chatSessionResetHours'),
     NEXT_PUBLIC_MAX_TOOLS_NUM: isServer
       ? process.env.NEXT_PUBLIC_MAX_TOOLS_NUM
       : getRuntimeEnvFromBody('maxToolsNum'),

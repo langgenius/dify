@@ -102,6 +102,7 @@ const defaultHookReturn: HookReturn = {
   conversationRenaming: false,
   handleRenameConversation: vi.fn(),
   handleNewConversationCompleted: vi.fn(),
+  touchConversationActivity: vi.fn(),
   newConversationId: '',
   chatShouldReloadKey: 'test-reload-key',
   handleFeedback: vi.fn(),
