@@ -368,7 +368,6 @@ project-excludes = [
   "core/helper/code_executor/test_template_transformer.py",
   "core/helper/test_creators.py",
   "core/helper/test_credential_utils.py",
-  "core/helper/test_csv_sanitizer.py",
   "core/helper/test_encrypter.py",
   "core/helper/test_ssrf_proxy.py",
   "core/helper/test_trace_id_helper.py",
