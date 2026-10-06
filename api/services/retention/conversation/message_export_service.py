@@ -19,7 +19,7 @@ from typing import Any, BinaryIO, cast
 
 import orjson
 import sqlalchemy as sa
-from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationError
 from sqlalchemy import select, tuple_
 from sqlalchemy.orm import Session
 
@@ -74,10 +74,7 @@ class _MessageMetadataModel(BaseModel):
     """The part of `Message.message_metadata` an export reads."""
 
     model_config = ConfigDict(extra="ignore")
-    retriever_resources: list[Any] = Field(default_factory=list)
-
-
-_MESSAGE_METADATA_ADAPTER = TypeAdapter(_MessageMetadataModel)
+    retriever_resources: list[dict[str, JsonValue]] = Field(default_factory=list)
 
 
 class AppMessageExportService:
@@ -294,7 +291,9 @@ class AppMessageExportService:
         retriever_resources: list[Any] = []
         if row.message_metadata:
             try:
-                retriever_resources = _MESSAGE_METADATA_ADAPTER.validate_json(row.message_metadata).retriever_resources
+                retriever_resources = _MessageMetadataModel.model_validate_json(
+                    row.message_metadata
+                ).retriever_resources
             except (ValidationError, TypeError):
                 pass
 
