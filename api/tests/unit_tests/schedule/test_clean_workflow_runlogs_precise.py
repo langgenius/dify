@@ -1,40 +1,82 @@
+import importlib.util
+import sqlite3
 import sys
 from collections.abc import Callable, Iterator
-from types import ModuleType, SimpleNamespace
-from unittest.mock import MagicMock
+from decimal import Decimal
+from pathlib import Path
+from types import ModuleType
+from uuid import uuid4
 
 import pytest
+from sqlalchemy import Connection, create_engine, event, select
+from sqlalchemy.orm import ORMExecuteState, Session, sessionmaker
+from sqlalchemy.pool import ConnectionPoolEntry
 
+from graphon.entities.pause_reason import PauseReasonType
+from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus, WorkflowType
+from graphon.file import FileTransferMethod, FileType
+from models.base import Base
+from models.enums import (
+    AppTriggerType,
+    ConversationFromSource,
+    CreatorUserRole,
+    ExecutionOffLoadType,
+    FeedbackFromSource,
+    FeedbackRating,
+    MessageChainType,
+    WorkflowRunTriggeredFrom,
+    WorkflowTriggerStatus,
+)
+from models.model import (
+    AppAnnotationHitHistory,
+    AppMode,
+    Conversation,
+    DatasetRetrieverResource,
+    Message,
+    MessageAgentThought,
+    MessageAnnotation,
+    MessageChain,
+    MessageFeedback,
+    MessageFile,
+)
+from models.trigger import WorkflowTriggerLog
+from models.web import SavedMessage
+from models.workflow import (
+    ConversationVariable,
+    WorkflowAppLog,
+    WorkflowAppLogCreatedFrom,
+    WorkflowNodeExecutionModel,
+    WorkflowNodeExecutionOffload,
+    WorkflowNodeExecutionTriggeredFrom,
+    WorkflowPause,
+    WorkflowPauseReason,
+    WorkflowRun,
+)
+from repositories.factory import DifyAPIRepositoryFactory
 
-class _NestedTransaction:
-    entered: bool
-    exited: bool
-
-    def __init__(self) -> None:
-        self.entered = False
-        self.exited = False
-
-    def __enter__(self) -> None:
-        self.entered = True
-
-    def __exit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc_value: BaseException | None,
-        traceback: object | None,
-    ) -> bool:
-        self.exited = True
-        return False
-
-
-class _ExecuteResult:
-    rows: list[object]
-
-    def __init__(self, rows: list[object] | None = None) -> None:
-        self.rows = rows or []
-
-    def all(self) -> list[object]:
-        return self.rows
+TABLES = [
+    Base.metadata.tables[model.__tablename__]
+    for model in (
+        Conversation,
+        Message,
+        AppAnnotationHitHistory,
+        DatasetRetrieverResource,
+        MessageAgentThought,
+        MessageChain,
+        MessageFile,
+        MessageAnnotation,
+        MessageFeedback,
+        SavedMessage,
+        ConversationVariable,
+        WorkflowRun,
+        WorkflowNodeExecutionModel,
+        WorkflowNodeExecutionOffload,
+        WorkflowAppLog,
+        WorkflowPause,
+        WorkflowPauseReason,
+        WorkflowTriggerLog,
+    )
+]
 
 
 class _CeleryStub:
@@ -45,74 +87,247 @@ class _CeleryStub:
         return decorator
 
 
-def _load_cleanup_module(monkeypatch: pytest.MonkeyPatch) -> ModuleType:
-    app_stub = ModuleType("app")
-    app_stub.celery = _CeleryStub()
-    monkeypatch.setitem(sys.modules, "app", app_stub)
-    sys.modules.pop("schedule.clean_workflow_runlogs_precise", None)
-
-    from schedule import clean_workflow_runlogs_precise as cleanup_module
-
-    return cleanup_module
+class _AppStub(ModuleType):
+    celery = _CeleryStub()
 
 
 @pytest.fixture
-def cleanup_module(monkeypatch: pytest.MonkeyPatch) -> Iterator[ModuleType]:
-    yield _load_cleanup_module(monkeypatch)
-    sys.modules.pop("schedule.clean_workflow_runlogs_precise", None)
+def cleanup_module(monkeypatch: pytest.MonkeyPatch) -> ModuleType:
+    # Load a private copy so the Celery stub cannot leak through the schedule package's import cache.
+    path = Path(__file__).resolve().parents[3] / "schedule" / "clean_workflow_runlogs_precise.py"
+    spec = importlib.util.spec_from_file_location("_test_clean_workflow_runlogs_precise", path)
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    with monkeypatch.context() as patch:
+        patch.setitem(sys.modules, "app", _AppStub("app"))
+        spec.loader.exec_module(module)
+    return module
 
 
-def test_delete_batch_deletes_workflow_runs_with_the_caller_session(
-    cleanup_module: ModuleType, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    cleanup = cleanup_module
-    session = MagicMock()
-    nested_transaction = _NestedTransaction()
-    session.begin_nested.return_value = nested_transaction
-    session.get_bind.return_value = object()
-    session.execute.side_effect = [
-        _ExecuteResult([SimpleNamespace(id="message-1", conversation_id="conversation-1")]),
-        *[_ExecuteResult() for _ in range(11)],
-    ]
+@pytest.fixture
+def session_maker() -> Iterator[sessionmaker[Session]]:
+    engine = create_engine("sqlite:///:memory:")
 
-    node_execution_repo = MagicMock()
-    node_execution_repo.delete_by_runs.return_value = (2, 1)
-    trigger_log_repo = MagicMock()
-    trigger_log_repo.delete_by_run_ids.return_value = 3
-    monkeypatch.setattr(
-        cleanup.DifyAPIRepositoryFactory,
-        "create_api_workflow_node_execution_repository",
-        lambda *_args, **_kwargs: node_execution_repo,
+    @event.listens_for(engine, "connect")
+    def configure_sqlite(connection: sqlite3.Connection, _record: ConnectionPoolEntry) -> None:
+        connection.isolation_level = None
+        connection.execute("PRAGMA foreign_keys=ON")
+
+    @event.listens_for(engine, "begin")
+    def begin_transaction(connection: Connection) -> None:
+        # Python 3.12's SQLite legacy mode otherwise releases a savepoint outside the outer transaction.
+        connection.exec_driver_sql("BEGIN")
+
+    try:
+        Base.metadata.create_all(engine, tables=TABLES)
+        yield sessionmaker(bind=engine, expire_on_commit=False)
+    finally:
+        engine.dispose()
+
+
+def _seed_batch(session: Session) -> WorkflowRun:
+    tenant_id, app_id, workflow_id, user_id = (str(uuid4()) for _ in range(4))
+    run_id, conversation_id, message_id, node_execution_id = (str(uuid4()) for _ in range(4))
+    run = WorkflowRun(
+        id=run_id,
+        tenant_id=tenant_id,
+        app_id=app_id,
+        workflow_id=workflow_id,
+        type=WorkflowType.CHAT,
+        triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        version="1",
+        status=WorkflowExecutionStatus.SUCCEEDED,
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by=user_id,
     )
-    monkeypatch.setattr(cleanup, "SQLAlchemyWorkflowTriggerLogRepository", lambda _active_session: trigger_log_repo)
+    conversation = Conversation(
+        id=conversation_id,
+        app_id=app_id,
+        mode=AppMode.ADVANCED_CHAT,
+        name="cleanup test",
+        inputs={},
+        from_source=ConversationFromSource.CONSOLE,
+    )
+    session.add_all([run, conversation])
+    session.flush()
+    pause = WorkflowPause(workflow_id=workflow_id, workflow_run_id=run_id, state_object_key="pause-state")
+    annotation = MessageAnnotation(
+        app_id=app_id,
+        question="question",
+        content="answer",
+        account_id=user_id,
+        conversation_id=conversation_id,
+        message_id=message_id,
+    )
+    session.add_all(
+        [
+            Message(
+                id=message_id,
+                app_id=app_id,
+                conversation_id=conversation_id,
+                workflow_run_id=run_id,
+                inputs={},
+                query="question",
+                message={},
+                answer="answer",
+                message_unit_price=Decimal(0),
+                answer_unit_price=Decimal(0),
+                currency="USD",
+                from_source=ConversationFromSource.CONSOLE,
+            ),
+            annotation,
+            AppAnnotationHitHistory(
+                app_id=app_id,
+                annotation_id=annotation.id,
+                source="api",
+                question="question",
+                account_id=user_id,
+                score=1.0,
+                message_id=message_id,
+                annotation_question="question",
+                annotation_content="answer",
+            ),
+            DatasetRetrieverResource(
+                message_id=message_id,
+                position=1,
+                dataset_id=str(uuid4()),
+                dataset_name="dataset",
+                document_id=None,
+                document_name="document",
+                data_source_type=None,
+                segment_id=None,
+                score=None,
+                content="content",
+                hit_count=None,
+                word_count=None,
+                segment_position=None,
+                index_node_hash=None,
+                retriever_from="dev",
+                created_by=user_id,
+            ),
+            MessageAgentThought(
+                message_id=message_id,
+                position=1,
+                created_by_role=CreatorUserRole.ACCOUNT,
+                created_by=user_id,
+            ),
+            MessageChain(message_id=message_id, type=MessageChainType.SYSTEM, input=None, output=None),
+            MessageFile(
+                message_id=message_id,
+                type=FileType.IMAGE,
+                transfer_method=FileTransferMethod.REMOTE_URL,
+                created_by_role=CreatorUserRole.ACCOUNT,
+                created_by=user_id,
+            ),
+            MessageFeedback(
+                app_id=app_id,
+                conversation_id=conversation_id,
+                message_id=message_id,
+                rating=FeedbackRating.LIKE,
+                from_source=FeedbackFromSource.ADMIN,
+            ),
+            SavedMessage(
+                app_id=app_id,
+                message_id=message_id,
+                created_by_role=CreatorUserRole.ACCOUNT,
+                created_by=user_id,
+            ),
+            ConversationVariable(id=str(uuid4()), conversation_id=conversation_id, app_id=app_id, data="{}"),
+            WorkflowNodeExecutionModel(
+                id=node_execution_id,
+                tenant_id=tenant_id,
+                app_id=app_id,
+                workflow_id=workflow_id,
+                triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+                workflow_run_id=run_id,
+                index=1,
+                node_id="start",
+                node_type="start",
+                title="Start",
+                status=WorkflowNodeExecutionStatus.SUCCEEDED,
+                created_by_role=CreatorUserRole.ACCOUNT,
+                created_by=user_id,
+            ),
+            WorkflowNodeExecutionOffload(
+                tenant_id=tenant_id,
+                app_id=app_id,
+                node_execution_id=node_execution_id,
+                type_=ExecutionOffLoadType.INPUTS,
+                file_id=str(uuid4()),
+            ),
+            WorkflowAppLog(
+                tenant_id=tenant_id,
+                app_id=app_id,
+                workflow_id=workflow_id,
+                workflow_run_id=run_id,
+                created_from=WorkflowAppLogCreatedFrom.SERVICE_API,
+                created_by_role=CreatorUserRole.ACCOUNT,
+                created_by=user_id,
+            ),
+            pause,
+            WorkflowPauseReason(pause_id=pause.id, type_=PauseReasonType.SCHEDULED_PAUSE),
+            WorkflowTriggerLog(
+                tenant_id=tenant_id,
+                app_id=app_id,
+                workflow_id=workflow_id,
+                workflow_run_id=run_id,
+                root_node_id=None,
+                trigger_metadata="{}",
+                trigger_type=AppTriggerType.TRIGGER_SCHEDULE,
+                trigger_data="{}",
+                inputs="{}",
+                outputs=None,
+                status=WorkflowTriggerStatus.SUCCEEDED,
+                error=None,
+                queue_name="workflow",
+                celery_task_id=None,
+                created_by_role=CreatorUserRole.ACCOUNT,
+                created_by=user_id,
+            ),
+        ]
+    )
+    session.flush()
+    return run
 
-    workflow_runs = [SimpleNamespace(id="workflow-run-1")]
-    workflow_run_repo = MagicMock()
-    captured: dict[str, object] = {}
 
-    def delete_runs_with_related_in_session(
-        active_session: object,
-        runs: list[SimpleNamespace],
-        delete_node_executions: Callable[[object, list[SimpleNamespace]], tuple[int, int]],
-        delete_trigger_logs: Callable[[object, list[str]], int],
-    ) -> dict[str, int]:
-        captured["session"] = active_session
-        captured["runs"] = runs
-        captured["node_execution_counts"] = delete_node_executions(active_session, runs)
-        captured["trigger_log_count"] = delete_trigger_logs(active_session, ["workflow-run-1"])
-        return {"runs": 1}
+def _row_ids(session: Session) -> dict[str, set[str]]:
+    return {table.name: set(session.scalars(select(table.c.id))) for table in TABLES}
 
-    workflow_run_repo.delete_runs_with_related_in_session.side_effect = delete_runs_with_related_in_session
 
-    assert cleanup._delete_batch(session, workflow_run_repo, workflow_runs, attempt_count=0) is True
+@pytest.mark.parametrize("outcome", ["commit", "rollback", "failure"])
+def test_delete_batch_keeps_cascade_in_caller_transaction(
+    cleanup_module: ModuleType,
+    session_maker: sessionmaker[Session],
+    outcome: str,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with session_maker.begin() as session:
+        _seed_batch(session)
+        retained_rows = _row_ids(session)
+        run = _seed_batch(session)
+        original_rows = _row_ids(session)
 
-    assert nested_transaction.entered is True
-    assert nested_transaction.exited is True
-    assert captured["session"] is session
-    assert captured["runs"] == workflow_runs
-    assert captured["node_execution_counts"] == (2, 1)
-    assert captured["trigger_log_count"] == 3
-    workflow_run_repo.delete_runs_with_related_in_session.assert_called_once()
-    workflow_run_repo.delete_runs_with_related.assert_not_called()
-    node_execution_repo.delete_by_runs.assert_called_once_with(session, ["workflow-run-1"])
-    trigger_log_repo.delete_by_run_ids.assert_called_once_with(["workflow-run-1"])
+    repository = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
+    with session_maker() as session:
+        if outcome == "failure":
+
+            @event.listens_for(session, "do_orm_execute")
+            def fail_run_deletion(state: ORMExecuteState) -> None:
+                if state.is_delete and state.bind_mapper is not None and state.bind_mapper.class_ is WorkflowRun:
+                    raise RuntimeError("Fail after deleting related rows")
+
+        assert cleanup_module._delete_batch(session, repository, [run], attempt_count=0) is (outcome != "failure")
+        assert session.in_transaction()
+        assert not session.in_nested_transaction()
+        assert _row_ids(session) == (original_rows if outcome == "failure" else retained_rows)
+        if outcome == "failure":
+            assert "Fail after deleting related rows" in caplog.text
+
+        if outcome == "rollback":
+            session.rollback()
+        else:
+            session.commit()
+
+    with session_maker() as session:
+        assert _row_ids(session) == (retained_rows if outcome == "commit" else original_rows)
