@@ -247,8 +247,8 @@ def test_init_vector_prefers_dataset_index_struct(
     calls = {"vector_type": None, "init_args": None}
 
     class _Factory:
-        def init_vector(self, dataset, attributes, embeddings):
-            calls["init_args"] = (dataset, attributes, embeddings)
+        def init_vector(self, dataset, attributes, embeddings, *, session):
+            calls["init_args"] = (dataset, attributes, embeddings, session)
             return "vector-processor"
 
     monkeypatch.setattr(
@@ -266,7 +266,7 @@ def test_init_vector_prefers_dataset_index_struct(
 
     assert result == "vector-processor"
     assert calls["vector_type"] == vector_factory_module.VectorType.UPSTASH
-    assert calls["init_args"] == (vector._dataset, ["doc_id"], "embeddings")
+    assert calls["init_args"] == (vector._dataset, ["doc_id"], "embeddings", unbound_session)
 
 
 def test_init_vector_uses_whitelist_override(
@@ -275,7 +275,7 @@ def test_init_vector_uses_whitelist_override(
     calls = {"vector_type": None}
 
     class _Factory:
-        def init_vector(self, dataset, attributes, embeddings):
+        def init_vector(self, dataset, attributes, embeddings, *, session):
             return "vector-processor"
 
     tenant_id = str(uuid4())
