@@ -484,6 +484,7 @@ const ChatWrapper = () => {
               avatar={initUserVariables.avatar_url}
               name={initUserVariables.name || 'user'}
               size="xl"
+              className="!rounded-full overflow-hidden"
             />
           ) : appData?.site.default_user_icon_type ? (
             <AppIcon
