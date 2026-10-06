@@ -78,7 +78,7 @@ class TestDisableSegmentFromIndexTask:
         db_session_with_containers.commit()
 
         # Set current tenant for account
-        account.current_tenant = tenant
+        account.set_current_tenant_with_session(tenant, session=db_session_with_containers)
 
         return account, tenant
 
@@ -456,8 +456,8 @@ class TestDisableSegmentFromIndexTask:
         # Verify index processor was called
         mock_index_processor.clean.assert_called_once()
         call_args = mock_index_processor.clean.call_args
-        # Check that the call was made with the correct parameters
-        assert len(call_args[0]) == 2  # Check two arguments were passed
+        # Check that the call was made with the correct parameters.
+        assert len(call_args[0]) == 2
         assert call_args[0][1] == [segment.index_node_id]  # Check index node IDs
 
         # Verify segment was re-enabled

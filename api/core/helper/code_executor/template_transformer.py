@@ -36,14 +36,14 @@ class TemplateTransformer(ABC):
         return runner_script, preload_script
 
     @classmethod
-    def extract_result_str_from_response(cls, response: str):
+    def extract_result_str_from_response(cls, response: str) -> str:
         result = re.search(rf"{cls._result_tag}(.*){cls._result_tag}", response, re.DOTALL)
         if not result:
             raise ValueError(f"Failed to parse result: no result tag found in response. Response: {response[:200]}...")
         return result.group(1)
 
     @classmethod
-    def transform_response(cls, response: str) -> Mapping[str, Any]:
+    def transform_response(cls, response: str) -> dict[str, Any]:
         """
         Transform response to dict
         :param response: response
@@ -71,7 +71,7 @@ class TemplateTransformer(ABC):
         return result
 
     @classmethod
-    def _post_process_result(cls, result: dict[Any, Any]) -> dict[Any, Any]:
+    def _post_process_result(cls, result: dict[str, Any]) -> dict[str, Any]:
         """
         Post-process the result to convert scientific notation strings back to numbers
         """
@@ -89,7 +89,7 @@ class TemplateTransformer(ABC):
                     return [convert_scientific_notation(v) for v in value]
             return value
 
-        return convert_scientific_notation(result)
+        return {key: convert_scientific_notation(value) for key, value in result.items()}
 
     @classmethod
     @abstractmethod

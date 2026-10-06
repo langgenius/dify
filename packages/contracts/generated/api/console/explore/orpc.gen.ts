@@ -2,7 +2,6 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-
 import {
   zGetExploreAppsByAppIdPath,
   zGetExploreAppsByAppIdResponse,
@@ -12,7 +11,7 @@ import {
   zGetExploreAppsResponse,
   zGetExploreBannersQuery,
   zGetExploreBannersResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 export const get = oc
   .route({

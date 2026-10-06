@@ -1,3 +1,4 @@
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { UseQueryResult } from '@tanstack/react-query'
 /**
  * Logs Container Component Tests
@@ -14,17 +15,21 @@ import type { UseQueryResult } from '@tanstack/react-query'
  * - detail.spec.tsx
  * - trigger-by-display.spec.tsx
  */
-
-import type { MockedFunction } from 'vitest'
+import type { MockedFunction } from 'vite-plus/test'
+import type { CloudSandboxPlanState } from '../../log/cloud-sandbox-retention'
 import type { ILogsProps } from '../index'
 import type { WorkflowAppLogDetail, WorkflowLogsResponse, WorkflowRunDetail } from '@/models/log'
-import type { App, AppIconType, AppModeEnum } from '@/types/app'
-import { screen, waitFor } from '@testing-library/react'
+import type { AppModeEnum } from '@/types/app'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import dayjs from 'dayjs'
 import { APP_PAGE_LIMIT } from '@/config'
 import { WorkflowRunTriggeredFrom } from '@/models/log'
 import * as useLogModule from '@/service/use-log'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render } from '@/test/console/render'
+import { createAppDetailFixture, createAppSiteFixture } from '@/test/fixtures/app'
+import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { TIME_PERIOD_MAPPING } from '../filter'
 import Logs from '../index'
 
@@ -32,7 +37,19 @@ import Logs from '../index'
 // Mocks
 // ============================================================================
 
+const mockPlanState = vi.hoisted(() => ({
+  value: 'unrestricted' as CloudSandboxPlanState,
+}))
+
 vi.mock('@/service/use-log')
+
+vi.mock('../../log/cloud-sandbox-retention', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../log/cloud-sandbox-retention')>()
+  return {
+    ...actual,
+    useCloudSandboxPlanStatus: () => mockPlanState.value,
+  }
+})
 
 vi.mock('ahooks', () => ({
   useDebounce: <T,>(value: T) => value,
@@ -54,12 +71,18 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 vi.mock('@/next/link', () => ({
-  default: ({ children, href }: { children: React.ReactNode, href: string }) => <a href={href}>{children}</a>,
+  default: ({ children, href }: { children: React.ReactNode; href: string }) => (
+    <a href={href}>{children}</a>
+  ),
+}))
+
+vi.mock('../../log/retention-upgrade-notice', () => ({
+  RetentionUpgradeNotice: () => <div>retention-upgrade-notice</div>,
 }))
 
 // Mock the Run component to avoid complex dependencies
 vi.mock('@/app/components/workflow/run', () => ({
-  default: ({ runDetailUrl, tracingListUrl }: { runDetailUrl: string, tracingListUrl: string }) => (
+  default: ({ runDetailUrl, tracingListUrl }: { runDetailUrl: string; tracingListUrl: string }) => (
     <div data-testid="workflow-run">
       <span data-testid="run-detail-url">{runDetailUrl}</span>
       <span data-testid="tracing-list-url">{tracingListUrl}</span>
@@ -78,31 +101,29 @@ vi.mock('@/hooks/use-theme', () => ({
   },
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    userProfile: { timezone: 'UTC' },
-  }),
-  useSelector: (selector: (state: { userProfile: { id: string, timezone: string }, workspacePermissionKeys: string[] }) => unknown) => selector({
-    userProfile: { id: 'user-1', timezone: 'UTC' },
-    workspacePermissionKeys: ['app.create_and_management'],
-  }),
-}))
-
 // Mock WorkflowContextProvider
 vi.mock('@/app/components/workflow/context', () => ({
-  WorkflowContextProvider: ({ children }: { children: React.ReactNode }) => (
-    <>{children}</>
-  ),
+  WorkflowContextProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }))
 
-const mockedUseWorkflowLogs = useLogModule.useWorkflowLogs as MockedFunction<typeof useLogModule.useWorkflowLogs>
+const mockedUseWorkflowLogs = useLogModule.useWorkflowLogs as MockedFunction<
+  typeof useLogModule.useWorkflowLogs
+>
 
 // ============================================================================
 // Test Utilities
 // ============================================================================
 
 const renderWithQueryClient = (ui: React.ReactElement) => {
-  return renderWithSystemFeatures(ui)
+  const { wrapper: QueryWrapper } = createConsoleQueryWrapper()
+  const { wrapper: NuqsWrapper } = createNuqsTestWrapper()
+  const wrapper = ({ children }: { children: React.ReactNode }) => (
+    <QueryWrapper>
+      <NuqsWrapper>{children}</NuqsWrapper>
+    </QueryWrapper>
+  )
+
+  return render(ui, { wrapper })
 }
 
 // ============================================================================
@@ -110,7 +131,7 @@ const renderWithQueryClient = (ui: React.ReactElement) => {
 // ============================================================================
 
 const createMockQueryResult = <T,>(
-  overrides: { data?: T, isLoading?: boolean, error?: Error | null } = {},
+  overrides: { data?: T; isLoading?: boolean; error?: Error | null } = {},
 ): UseQueryResult<T, Error> => {
   const isLoading = overrides.isLoading ?? false
   const error = overrides.error ?? null
@@ -150,35 +171,14 @@ const createMockQueryResult = <T,>(
 // Test Data Factories
 // ============================================================================
 
-const createMockApp = (overrides: Partial<App> = {}): App => ({
-  id: 'test-app-id',
-  name: 'Test App',
-  description: 'Test app description',
-  author_name: 'Test Author',
-  icon_type: 'emoji' as AppIconType,
-  icon: '🚀',
-  icon_background: '#FFEAD5',
-  icon_url: null,
-  use_icon_as_answer_icon: false,
-  mode: 'workflow' as AppModeEnum,
-  enable_site: true,
-  enable_api: true,
-  api_rpm: 60,
-  api_rph: 3600,
-  is_demo: false,
-  model_config: {} as App['model_config'],
-  app_model_config: {} as App['app_model_config'],
-  created_at: Date.now(),
-  updated_at: Date.now(),
-  site: {
-    access_token: 'token',
-    app_base_url: 'https://example.com',
-  } as App['site'],
-  api_base_url: 'https://api.example.com',
-  tags: [],
-  access_mode: 'public_access' as App['access_mode'],
-  ...overrides,
-})
+const createMockApp = (overrides: Partial<AppDetailWithSite> = {}): AppDetailWithSite =>
+  createAppDetailFixture({
+    id: 'test-app-id',
+    name: 'Test App',
+    mode: 'workflow',
+    site: createAppSiteFixture({ access_token: 'token', app_base_url: 'https://example.com' }),
+    ...overrides,
+  })
 
 const createMockWorkflowRun = (overrides: Partial<WorkflowRunDetail> = {}): WorkflowRunDetail => ({
   id: 'run-1',
@@ -194,7 +194,9 @@ const createMockWorkflowRun = (overrides: Partial<WorkflowRunDetail> = {}): Work
   ...overrides,
 })
 
-const createMockWorkflowLog = (overrides: Partial<WorkflowAppLogDetail> = {}): WorkflowAppLogDetail => ({
+const createMockWorkflowLog = (
+  overrides: Partial<WorkflowAppLogDetail> = {},
+): WorkflowAppLogDetail => ({
   id: 'log-1',
   workflow_run: createMockWorkflowRun(),
   created_from: 'web-app',
@@ -244,27 +246,13 @@ describe('Logs Container', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockPlanState.value = 'unrestricted'
   })
 
   // --------------------------------------------------------------------------
   // Rendering Tests (REQUIRED)
   // --------------------------------------------------------------------------
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      // Arrange
-      mockedUseWorkflowLogs.mockReturnValue(
-        createMockQueryResult<WorkflowLogsResponse>({
-          data: createMockLogsResponse([], 0),
-        }),
-      )
-
-      // Act
-      renderWithQueryClient(<Logs {...defaultProps} />)
-
-      // Assert
-      expect(screen.getByText('appLog.workflowTitle')).toBeInTheDocument()
-    })
-
     it('should render title and subtitle', () => {
       // Arrange
       mockedUseWorkflowLogs.mockReturnValue(
@@ -294,6 +282,7 @@ describe('Logs Container', () => {
 
       // Assert
       expect(screen.getByPlaceholderText('common.operation.search')).toBeInTheDocument()
+      expect(screen.getByText('retention-upgrade-notice')).toBeInTheDocument()
     })
   })
 
@@ -314,7 +303,7 @@ describe('Logs Container', () => {
       const { container } = renderWithQueryClient(<Logs {...defaultProps} />)
 
       // Assert
-      expect(container.querySelector('.spin-animation')).toBeInTheDocument()
+      expect(within(container).queryByRole('progressbar')).toBeInTheDocument()
     })
 
     it('should not show loading spinner when data is available', () => {
@@ -329,7 +318,7 @@ describe('Logs Container', () => {
       const { container } = renderWithQueryClient(<Logs {...defaultProps} />)
 
       // Assert
-      expect(container.querySelector('.spin-animation')).not.toBeInTheDocument()
+      expect(within(container).queryByRole('progressbar')).not.toBeInTheDocument()
     })
   })
 
@@ -431,8 +420,8 @@ describe('Logs Container', () => {
       renderWithQueryClient(<Logs {...defaultProps} />)
 
       // Act
-      await user.click(screen.getByText('All'))
-      await user.click(await screen.findByText('Success'))
+      await user.click(screen.getByText('appLog.status.all'))
+      await user.click(await screen.findByText('appLog.status.succeeded'))
 
       // Assert
       await waitFor(() => {
@@ -464,6 +453,29 @@ describe('Logs Container', () => {
         expect(lastCall?.params).not.toHaveProperty('created_at__after')
         expect(lastCall?.params).not.toHaveProperty('created_at__before')
       })
+    })
+
+    it('should query the last 30 days when a Sandbox user selects the longest period', async () => {
+      const user = userEvent.setup()
+      mockPlanState.value = 'sandbox'
+      mockedUseWorkflowLogs.mockReturnValue(
+        createMockQueryResult<WorkflowLogsResponse>({
+          data: createMockLogsResponse([], 0),
+        }),
+      )
+
+      renderWithQueryClient(<Logs {...defaultProps} />)
+
+      await user.click(screen.getByText('appLog.filter.period.last7days'))
+      await user.click(await screen.findByText('appLog.filter.period.last30days'))
+
+      expect(
+        screen.getByRole('combobox', { name: 'appLog.filter.period.last30days' }),
+      ).toBeInTheDocument()
+      const params = getMockCallParams()?.params
+      expect(
+        dayjs(String(params?.created_at__before)).diff(String(params?.created_at__after), 'day'),
+      ).toBe(30)
     })
 
     it('should update query when typing keyword', async () => {
@@ -513,7 +525,8 @@ describe('Logs Container', () => {
     it('should render pagination when total exceeds limit', () => {
       // Arrange
       const logs = Array.from({ length: APP_PAGE_LIMIT }, (_, i) =>
-        createMockWorkflowLog({ id: `log-${i}` }))
+        createMockWorkflowLog({ id: `log-${i}` }),
+      )
 
       mockedUseWorkflowLogs.mockReturnValue(
         createMockQueryResult<WorkflowLogsResponse>({
@@ -552,14 +565,17 @@ describe('Logs Container', () => {
       // Arrange
       mockedUseWorkflowLogs.mockReturnValue(
         createMockQueryResult<WorkflowLogsResponse>({
-          data: createMockLogsResponse([
-            createMockWorkflowLog({
-              workflow_run: createMockWorkflowRun({
-                status: 'succeeded',
-                total_tokens: 500,
+          data: createMockLogsResponse(
+            [
+              createMockWorkflowLog({
+                workflow_run: createMockWorkflowRun({
+                  status: 'succeeded',
+                  total_tokens: 500,
+                }),
               }),
-            }),
-          ], 1),
+            ],
+            1,
+          ),
         }),
       )
 
@@ -567,7 +583,7 @@ describe('Logs Container', () => {
       renderWithQueryClient(<Logs {...defaultProps} />)
 
       // Assert
-      expect(screen.getByText('Success')).toBeInTheDocument()
+      expect(screen.getByText('appLog.status.succeeded')).toBeInTheDocument()
       expect(screen.getByText('500')).toBeInTheDocument()
     })
   })
@@ -618,7 +634,7 @@ describe('Logs Container', () => {
       const { container } = renderWithQueryClient(<Logs {...defaultProps} />)
 
       // Assert - should show loading state when data is undefined
-      expect(container.querySelector('.spin-animation')).toBeInTheDocument()
+      expect(within(container).queryByRole('progressbar')).toBeInTheDocument()
     })
 
     it('should handle app with different ID', () => {

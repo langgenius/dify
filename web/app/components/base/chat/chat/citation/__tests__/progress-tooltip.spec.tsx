@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import ProgressTooltip from '../progress-tooltip'
 
 describe('ProgressTooltip', () => {
@@ -74,7 +74,7 @@ describe('ProgressTooltip', () => {
 
       await user.hover(screen.getByTestId('progress-trigger-content'))
 
-      expect(await screen.findByTestId('progress-tooltip-popup')).toHaveTextContent(/hitScore/i)
+      expect((await screen.findByTestId('progress-tooltip-popup')).textContent).toMatch(/hitScore/i)
     })
 
     it('should show the data value inside the tooltip popup', async () => {
@@ -110,14 +110,6 @@ describe('ProgressTooltip', () => {
   })
 
   describe('Edge Cases', () => {
-    it('should render without crashing when data is exactly 0', () => {
-      expect(() => render(<ProgressTooltip data={0} />)).not.toThrow()
-    })
-
-    it('should render without crashing when data is exactly 1', () => {
-      expect(() => render(<ProgressTooltip data={1} />)).not.toThrow()
-    })
-
     it('should re-show tooltip after hover → unhover → hover cycle', async () => {
       const user = userEvent.setup()
       render(<ProgressTooltip data={0.5} />)

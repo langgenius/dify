@@ -14,14 +14,18 @@ describe('ParamItem Slider onChange', () => {
     vi.clearAllMocks()
   })
 
-  const getSlider = () => screen.getByLabelText('Test Param', {
-    selector: 'input[type="range"]',
-  })
+  const getSlider = () =>
+    screen.getByLabelText('Test Param', {
+      selector: 'input[type="range"]',
+    })
 
   it('should divide slider value by 100 when max < 5', async () => {
     const user = userEvent.setup()
     render(<ParamItem {...defaultProps} value={0.5} min={0} max={1} />)
     const slider = getSlider()
+
+    expect(slider).toHaveAttribute('aria-valuenow', '50')
+    expect(slider).toHaveAttribute('aria-valuetext', '0.5')
 
     slider.focus()
     await user.keyboard('{ArrowRight}')

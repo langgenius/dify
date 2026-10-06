@@ -9,7 +9,8 @@ from core.rag.index_processor.constant.index_type import IndexStructureType, Ind
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document
 from models.enums import DataSourceType, DocumentCreatedFrom
-from services.dataset_service import DatasetService
+from repositories.knowledge.dataset_read_repository import get_dataset_doc_form
+from services.knowledge.dataset_service import DatasetService
 
 
 class DatasetDeleteIntegrationDataFactory:
@@ -43,7 +44,7 @@ class DatasetDeleteIntegrationDataFactory:
         db_session_with_containers.add(join)
         db_session_with_containers.commit()
 
-        account.current_tenant = tenant
+        account.set_current_tenant_with_session(tenant, session=db_session_with_containers)
         return account, tenant
 
     @staticmethod
@@ -83,7 +84,7 @@ class DatasetDeleteIntegrationDataFactory:
         created_by: str,
         doc_form: str = IndexStructureType.PARAGRAPH_INDEX,
     ) -> Document:
-        """Persist a document so dataset.doc_form resolves through the real document path."""
+        """Persist a document so dataset.get_doc_form resolves through the real document path."""
         document = Document(
             tenant_id=tenant_id,
             dataset_id=dataset_id,
@@ -130,7 +131,7 @@ class TestDatasetServiceDeleteDataset:
             "events.event_handlers.clean_when_dataset_deleted.clean_dataset_task.delay",
             autospec=True,
         ) as clean_dataset_delay:
-            result = DatasetService.delete_dataset(dataset.id, owner)
+            result = DatasetService.delete_dataset(dataset.id, owner, session=db_session_with_containers)
 
         # Assert
         db_session_with_containers.expire_all()
@@ -142,7 +143,7 @@ class TestDatasetServiceDeleteDataset:
             dataset.indexing_technique,
             dataset.index_struct,
             dataset.collection_binding_id,
-            dataset.doc_form,
+            get_dataset_doc_form(dataset, session=db_session_with_containers),
             dataset.pipeline_id,
         )
 
@@ -166,7 +167,7 @@ class TestDatasetServiceDeleteDataset:
             "events.event_handlers.clean_when_dataset_deleted.clean_dataset_task.delay",
             autospec=True,
         ) as clean_dataset_delay:
-            result = DatasetService.delete_dataset(dataset.id, owner)
+            result = DatasetService.delete_dataset(dataset.id, owner, session=db_session_with_containers)
 
         # Assert
         db_session_with_containers.expire_all()
@@ -194,7 +195,7 @@ class TestDatasetServiceDeleteDataset:
             "events.event_handlers.clean_when_dataset_deleted.clean_dataset_task.delay",
             autospec=True,
         ) as clean_dataset_delay:
-            result = DatasetService.delete_dataset(dataset.id, owner)
+            result = DatasetService.delete_dataset(dataset.id, owner, session=db_session_with_containers)
 
         # Assert
         db_session_with_containers.expire_all()
@@ -222,7 +223,7 @@ class TestDatasetServiceDeleteDataset:
             "events.event_handlers.clean_when_dataset_deleted.clean_dataset_task.delay",
             autospec=True,
         ) as clean_dataset_delay:
-            result = DatasetService.delete_dataset(dataset.id, owner)
+            result = DatasetService.delete_dataset(dataset.id, owner, session=db_session_with_containers)
 
         # Assert
         db_session_with_containers.expire_all()
@@ -241,7 +242,7 @@ class TestDatasetServiceDeleteDataset:
             "events.event_handlers.clean_when_dataset_deleted.clean_dataset_task.delay",
             autospec=True,
         ) as clean_dataset_delay:
-            result = DatasetService.delete_dataset(missing_dataset_id, owner)
+            result = DatasetService.delete_dataset(missing_dataset_id, owner, session=db_session_with_containers)
 
         # Assert
         assert result is False

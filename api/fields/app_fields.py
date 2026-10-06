@@ -1,271 +1,244 @@
-import json
-from typing import override
+"""Shared Console app response schemas for materialized application results."""
 
-from flask_restx import fields
+from datetime import datetime
 
-from fields.workflow_fields import workflow_partial_fields
-from libs.helper import AppIconUrlField, TimestampField
+from pydantic import AliasChoices, Field, computed_field, field_validator
+
+from enums import WebAppAccessMode
+from fields.app_model_config_response import AppModelConfigResponse, AppModelSelectionResponse
+from fields.base import ResponseModel
+from libs.helper import build_icon_url, to_timestamp
+from models.enums import CustomizeTokenStrategy
+from models.model import AppMode, IconType
+from services.entities.app_entities import RecentAppMode
+from services.entities.dsl_entities import DslImportWarning, ImportStatus
 
 
-class JsonStringField(fields.Raw):
-    @override
-    def format(self, value):
-        if isinstance(value, str):
-            try:
-                return json.loads(value)
-            except (json.JSONDecodeError, TypeError):
-                return value
+class AppTraceResponse(ResponseModel):
+    enabled: bool = False
+    tracing_provider: str | None = None
+
+
+class Tag(ResponseModel):
+    id: str
+    name: str
+    type: str
+
+
+class WorkflowPartial(ResponseModel):
+    id: str
+    created_by: str | None = None
+    created_at: int | None = None
+    updated_by: str | None = None
+    updated_at: int | None = None
+
+    @field_validator("created_at", "updated_at", mode="before")
+    @classmethod
+    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
+        return to_timestamp(value)
+
+
+class ModelConfigPartial(ResponseModel):
+    model: AppModelSelectionResponse | None = Field(default=None, validation_alias=AliasChoices("model_dict", "model"))
+    pre_prompt: str | None = None
+    created_by: str | None = None
+    created_at: int | None = None
+    updated_by: str | None = None
+    updated_at: int | None = None
+
+    @field_validator("created_at", "updated_at", mode="before")
+    @classmethod
+    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
+        return to_timestamp(value)
+
+
+class AppDetailSiteResponse(ResponseModel):
+    access_token: str | None = Field(validation_alias="code")
+    code: str | None
+    title: str
+    icon_type: IconType | None
+    icon: str | None
+    icon_background: str | None
+    description: str | None
+    default_language: str
+    chat_color_theme: str | None
+    chat_color_theme_inverted: bool
+    customize_domain: str | None
+    copyright: str | None
+    privacy_policy: str | None
+    input_placeholder: str | None
+    custom_disclaimer: str
+    customize_token_strategy: CustomizeTokenStrategy
+    prompt_public: bool
+    app_base_url: str
+    show_workflow_steps: bool
+    use_icon_as_answer_icon: bool
+    created_by: str | None
+    created_at: int
+    updated_by: str | None
+    updated_at: int
+
+    @computed_field(return_type=str | None)  # type: ignore
+    @property
+    def icon_url(self) -> str | None:
+        return build_icon_url(self.icon_type, self.icon)
+
+    @field_validator("icon_type", mode="before")
+    @classmethod
+    def _normalize_icon_type(cls, value: str | IconType | None) -> str | None:
+        if isinstance(value, IconType):
+            return value.value
         return value
 
-
-class OpaqueRawField(fields.Raw):
-    @override
-    def schema(self) -> dict[str, object]:
-        return {"type": "object"}
-
-
-class StringListRawField(fields.Raw):
-    @override
-    def schema(self) -> dict[str, object]:
-        return {"type": "array", "items": {"type": "string"}}
+    @field_validator("created_at", "updated_at", mode="before")
+    @classmethod
+    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
+        return to_timestamp(value)
 
 
-class ObjectListRawField(fields.Raw):
-    @override
-    def schema(self) -> dict[str, object]:
-        return {"type": "array", "items": {"type": "object"}}
+class DeletedTool(ResponseModel):
+    type: str
+    tool_name: str
+    provider_id: str
 
 
-app_detail_kernel_fields = {
-    "id": fields.String,
-    "name": fields.String,
-    "description": fields.String,
-    "mode": fields.String(attribute="mode_compatible_with_agent"),
-    "icon_type": fields.String,
-    "icon": fields.String,
-    "icon_background": fields.String,
-    "icon_url": AppIconUrlField,
-}
+class AppPartial(ResponseModel):
+    id: str
+    name: str
+    max_active_requests: int | None = None
+    description: str | None = Field(default=None, validation_alias=AliasChoices("desc_or_prompt", "description"))
+    mode: AppMode = Field(validation_alias="mode_compatible_with_agent")
+    icon_type: IconType | None = None
+    icon: str | None = None
+    icon_background: str | None = None
+    model_config_: ModelConfigPartial | None = Field(
+        default=None,
+        validation_alias=AliasChoices("app_model_config", "model_config"),
+        alias="model_config",
+    )
+    workflow: WorkflowPartial | None = None
+    use_icon_as_answer_icon: bool | None = None
+    created_by: str | None = None
+    created_at: int | None = None
+    updated_by: str | None = None
+    updated_at: int | None = None
+    tags: list[Tag] = Field(default_factory=list)
+    access_mode: WebAppAccessMode | None = None
+    create_user_name: str | None = None
+    author_name: str | None = None
+    has_draft_trigger: bool | None = None
+    permission_keys: list[str] = Field(default_factory=list)
+    # For Agent App type: the roster Agent backing this app (None otherwise).
+    bound_agent_id: str | None = None
+    # For Agent App responses exposed through /agent.
+    app_id: str | None = None
+    is_starred: bool = False
+    maintainer: str | None = None
 
-related_app_list = {
-    "data": fields.List(fields.Nested(app_detail_kernel_fields)),
-    "total": fields.Integer,
-}
+    @computed_field(return_type=str | None)  # type: ignore
+    @property
+    def icon_url(self) -> str | None:
+        return build_icon_url(self.icon_type, self.icon)
 
-model_config_fields = {
-    "opening_statement": fields.String,
-    "suggested_questions": StringListRawField(attribute="suggested_questions_list"),
-    "suggested_questions_after_answer": OpaqueRawField(attribute="suggested_questions_after_answer_dict"),
-    "speech_to_text": OpaqueRawField(attribute="speech_to_text_dict"),
-    "text_to_speech": OpaqueRawField(attribute="text_to_speech_dict"),
-    "retriever_resource": OpaqueRawField(attribute="retriever_resource_dict"),
-    "annotation_reply": OpaqueRawField(attribute="annotation_reply_dict"),
-    "more_like_this": OpaqueRawField(attribute="more_like_this_dict"),
-    "sensitive_word_avoidance": OpaqueRawField(attribute="sensitive_word_avoidance_dict"),
-    "external_data_tools": ObjectListRawField(attribute="external_data_tools_list"),
-    "model": OpaqueRawField(attribute="model_dict"),
-    "user_input_form": ObjectListRawField(attribute="user_input_form_list"),
-    "dataset_query_variable": fields.String,
-    "pre_prompt": fields.String,
-    "agent_mode": OpaqueRawField(attribute="agent_mode_dict"),
-    "prompt_type": fields.String,
-    "chat_prompt_config": OpaqueRawField(attribute="chat_prompt_config_dict"),
-    "completion_prompt_config": OpaqueRawField(attribute="completion_prompt_config_dict"),
-    "dataset_configs": OpaqueRawField(attribute="dataset_configs_dict"),
-    "file_upload": OpaqueRawField(attribute="file_upload_dict"),
-    "created_by": fields.String,
-    "created_at": TimestampField,
-    "updated_by": fields.String,
-    "updated_at": TimestampField,
-}
-
-tag_fields = {"id": fields.String, "name": fields.String, "type": fields.String}
-
-app_detail_fields = {
-    "id": fields.String,
-    "name": fields.String,
-    "description": fields.String,
-    "mode": fields.String(attribute="mode_compatible_with_agent"),
-    "icon": fields.String,
-    "icon_background": fields.String,
-    "enable_site": fields.Boolean,
-    "enable_api": fields.Boolean,
-    "model_config": fields.Nested(model_config_fields, attribute="app_model_config", allow_null=True),
-    "workflow": fields.Nested(workflow_partial_fields, allow_null=True),
-    "tracing": OpaqueRawField,
-    "use_icon_as_answer_icon": fields.Boolean,
-    "created_by": fields.String,
-    "created_at": TimestampField,
-    "updated_by": fields.String,
-    "updated_at": TimestampField,
-    "access_mode": fields.String,
-    "tags": fields.List(fields.Nested(tag_fields)),
-    "permission_keys": fields.List(fields.String()),
-}
-
-prompt_config_fields = {
-    "prompt_template": fields.String,
-}
-
-model_config_partial_fields = {
-    "model": OpaqueRawField(attribute="model_dict"),
-    "pre_prompt": fields.String,
-    "created_by": fields.String,
-    "created_at": TimestampField,
-    "updated_by": fields.String,
-    "updated_at": TimestampField,
-}
-
-app_partial_fields = {
-    "id": fields.String,
-    "name": fields.String,
-    "max_active_requests": OpaqueRawField(),
-    "description": fields.String(attribute="desc_or_prompt"),
-    "mode": fields.String(attribute="mode_compatible_with_agent"),
-    "icon_type": fields.String,
-    "icon": fields.String,
-    "icon_background": fields.String,
-    "icon_url": AppIconUrlField,
-    "model_config": fields.Nested(model_config_partial_fields, attribute="app_model_config", allow_null=True),
-    "workflow": fields.Nested(workflow_partial_fields, allow_null=True),
-    "use_icon_as_answer_icon": fields.Boolean,
-    "created_by": fields.String,
-    "created_at": TimestampField,
-    "updated_by": fields.String,
-    "updated_at": TimestampField,
-    "tags": fields.List(fields.Nested(tag_fields)),
-    "access_mode": fields.String,
-    "create_user_name": fields.String,
-    "author_name": fields.String,
-    "has_draft_trigger": fields.Boolean,
-    "permission_keys": fields.List(fields.String()),
-}
+    @field_validator("created_at", "updated_at", mode="before")
+    @classmethod
+    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
+        return to_timestamp(value)
 
 
-app_pagination_fields = {
-    "page": fields.Integer,
-    "limit": fields.Integer(attribute="per_page"),
-    "total": fields.Integer,
-    "has_more": fields.Boolean(attribute="has_next"),
-    "data": fields.List(fields.Nested(app_partial_fields), attribute="items"),
-}
+class RecentAppResponse(ResponseModel):
+    id: str
+    name: str
+    icon_type: IconType | None = None
+    icon: str | None = None
+    icon_background: str | None = None
+    mode: RecentAppMode
+    author_name: str | None = None
+    updated_at: int
+    permission_keys: list[str] = Field(default_factory=list)
+    maintainer: str | None = None
 
-template_fields = {
-    "name": fields.String,
-    "icon": fields.String,
-    "icon_background": fields.String,
-    "description": fields.String,
-    "mode": fields.String,
-    "model_config": fields.Nested(model_config_fields),
-}
+    @computed_field(return_type=str | None)  # type: ignore[prop-decorator]
+    @property
+    def icon_url(self) -> str | None:
+        return build_icon_url(self.icon_type, self.icon)
 
-template_list_fields = {
-    "data": fields.List(fields.Nested(template_fields)),
-}
-
-site_fields = {
-    "access_token": fields.String(attribute="code"),
-    "code": fields.String,
-    "title": fields.String,
-    "icon_type": fields.String,
-    "icon": fields.String,
-    "icon_background": fields.String,
-    "icon_url": AppIconUrlField,
-    "description": fields.String,
-    "default_language": fields.String,
-    "chat_color_theme": fields.String,
-    "chat_color_theme_inverted": fields.Boolean,
-    "customize_domain": fields.String,
-    "copyright": fields.String,
-    "privacy_policy": fields.String,
-    "custom_disclaimer": fields.String,
-    "customize_token_strategy": fields.String,
-    "prompt_public": fields.Boolean,
-    "app_base_url": fields.String,
-    "show_workflow_steps": fields.Boolean,
-    "use_icon_as_answer_icon": fields.Boolean,
-    "created_by": fields.String,
-    "created_at": TimestampField,
-    "updated_by": fields.String,
-    "updated_at": TimestampField,
-}
-
-deleted_tool_fields = {
-    "type": fields.String,
-    "tool_name": fields.String,
-    "provider_id": fields.String,
-}
-
-app_detail_fields_with_site = {
-    "id": fields.String,
-    "name": fields.String,
-    "description": fields.String,
-    "mode": fields.String(attribute="mode_compatible_with_agent"),
-    "icon_type": fields.String,
-    "icon": fields.String,
-    "icon_background": fields.String,
-    "icon_url": AppIconUrlField,
-    "enable_site": fields.Boolean,
-    "enable_api": fields.Boolean,
-    "model_config": fields.Nested(model_config_fields, attribute="app_model_config", allow_null=True),
-    "workflow": fields.Nested(workflow_partial_fields, allow_null=True),
-    "api_base_url": fields.String,
-    "use_icon_as_answer_icon": fields.Boolean,
-    "max_active_requests": fields.Integer,
-    "created_by": fields.String,
-    "created_at": TimestampField,
-    "updated_by": fields.String,
-    "updated_at": TimestampField,
-    "deleted_tools": fields.List(fields.Nested(deleted_tool_fields)),
-    "access_mode": fields.String,
-    "tags": fields.List(fields.Nested(tag_fields)),
-    "permission_keys": fields.List(fields.String()),
-    "site": fields.Nested(site_fields),
-}
+    @field_validator("updated_at", mode="before")
+    @classmethod
+    def _normalize_timestamp(cls, value: datetime | int) -> int:
+        return to_timestamp(value)
 
 
-app_site_fields = {
-    "app_id": fields.String,
-    "access_token": fields.String(attribute="code"),
-    "code": fields.String,
-    "title": fields.String,
-    "icon": fields.String,
-    "icon_background": fields.String,
-    "description": fields.String,
-    "default_language": fields.String,
-    "customize_domain": fields.String,
-    "copyright": fields.String,
-    "privacy_policy": fields.String,
-    "custom_disclaimer": fields.String,
-    "customize_token_strategy": fields.String,
-    "prompt_public": fields.Boolean,
-    "show_workflow_steps": fields.Boolean,
-    "use_icon_as_answer_icon": fields.Boolean,
-}
+class RecentAppListResponse(ResponseModel):
+    data: list[RecentAppResponse]
 
-leaked_dependency_fields = {"type": fields.String, "value": OpaqueRawField, "current_identifier": fields.String}
 
-app_import_fields = {
-    "id": fields.String,
-    "status": fields.String,
-    "app_id": fields.String,
-    "app_mode": fields.String,
-    "current_dsl_version": fields.String,
-    "imported_dsl_version": fields.String,
-    "error": fields.String,
-}
+class AppDetail(ResponseModel):
+    id: str
+    name: str
+    description: str
+    mode: AppMode = Field(validation_alias="mode_compatible_with_agent")
+    icon: str | None
+    icon_background: str | None
+    enable_site: bool
+    enable_api: bool
+    model_config_: AppModelConfigResponse | None = Field(
+        validation_alias=AliasChoices("app_model_config", "model_config"),
+        alias="model_config",
+    )
+    workflow: WorkflowPartial | None
+    tracing: str | None
+    use_icon_as_answer_icon: bool
+    created_by: str | None
+    created_at: int
+    updated_by: str | None
+    updated_at: int
+    access_mode: WebAppAccessMode | None
+    tags: list[Tag]
+    permission_keys: list[str]
+    maintainer: str | None
 
-app_import_check_dependencies_fields = {
-    "leaked_dependencies": fields.List(fields.Nested(leaked_dependency_fields)),
-}
+    @field_validator("created_at", "updated_at", mode="before")
+    @classmethod
+    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
+        return to_timestamp(value)
 
-app_server_fields = {
-    "id": fields.String,
-    "name": fields.String,
-    "server_code": fields.String,
-    "description": fields.String,
-    "status": fields.String,
-    "parameters": JsonStringField,
-    "created_at": TimestampField,
-    "updated_at": TimestampField,
-}
+
+class AppDetailWithSite(AppDetail):
+    icon_type: IconType | None
+    api_base_url: str
+    max_active_requests: int | None
+    deleted_tools: list[DeletedTool]
+    site: AppDetailSiteResponse | None
+    # For Agent App type: the roster Agent backing this app (None otherwise).
+    bound_agent_id: str | None
+    # For Agent App responses exposed through /agent.
+    app_id: str | None
+
+    @computed_field(return_type=str | None)  # type: ignore
+    @property
+    def icon_url(self) -> str | None:
+        return build_icon_url(self.icon_type, self.icon)
+
+
+class AppPagination(ResponseModel):
+    page: int
+    limit: int = Field(validation_alias=AliasChoices("per_page", "limit"))
+    total: int
+    has_more: bool = Field(validation_alias=AliasChoices("has_next", "has_more"))
+    data: list[AppPartial] = Field(validation_alias=AliasChoices("items", "data"))
+
+
+class AppExportResponse(ResponseModel):
+    data: str
+
+
+class AppImportResponse(ResponseModel):
+    id: str
+    status: ImportStatus
+    app_id: str | None = None
+    app_mode: AppMode | None = None
+    current_dsl_version: str
+    imported_dsl_version: str = ""
+    error: str = ""
+    warnings: list[DslImportWarning] = Field(default_factory=list)

@@ -35,7 +35,7 @@ const setupFeatureStore = (fileOverrides: Partial<FileUpload> = {}) => {
     setShowFeaturesModal: vi.fn(),
   } as unknown as FeatureStoreState
 
-  mockUseFeatures.mockImplementation(selector => selector(featureStoreState))
+  mockUseFeatures.mockImplementation((selector) => selector(featureStoreState))
   mockUseFeaturesStore.mockReturnValue({
     getState: () => featureStoreState,
   })
@@ -56,7 +56,7 @@ describe('ParamConfigContent', () => {
     const user = userEvent.setup()
     render(<ParamConfigContent />)
 
-    await user.click(screen.getByText('appDebug.vision.visionSettings.high'))
+    await user.click(screen.getByText('fileUpload.vision.visionSettings.high'))
 
     expect(getUpdatedFile().image?.detail).toBe(Resolution.high)
   })
@@ -65,7 +65,7 @@ describe('ParamConfigContent', () => {
     const user = userEvent.setup()
     render(<ParamConfigContent />)
 
-    await user.click(screen.getByText('appDebug.vision.visionSettings.localUpload'))
+    await user.click(screen.getByText('fileUpload.vision.visionSettings.localUpload'))
     expect(getUpdatedFile().allowed_file_upload_methods).toEqual([TransferMethod.local_file])
 
     fireEvent.change(screen.getByRole('textbox'), { target: { value: '5' } })

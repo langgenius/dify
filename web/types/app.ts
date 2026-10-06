@@ -1,15 +1,16 @@
-import type { CollectionType } from '@/app/components/tools/types'
+import type { ToolProviderType } from '@dify/contracts/api/console/agent/types.gen'
+import type { FileTransferMethod } from '@dify/contracts/api/console/apps/types.gen'
 import type { UploadFileSetting } from '@/app/components/workflow/types'
-import type { Tag } from '@/contract/console/tags'
-import type { LanguagesSupported } from '@/i18n-config/language'
-import type { AccessMode } from '@/models/access-control'
+import type { LanguagesSupported } from '@/i18n/language'
 import type { ExternalDataTool } from '@/models/common'
+import type { RerankingModeEnum, WeightedScoreEnum } from '@/models/datasets'
 import type {
-  RerankingModeEnum,
-  WeightedScoreEnum,
-} from '@/models/datasets'
-import type { AnnotationReplyConfig, ChatPromptConfig, CompletionPromptConfig, DatasetConfigs, PromptMode } from '@/models/debug'
-import type { WorkflowKind } from '@/types/workflow'
+  AnnotationReplyConfig,
+  ChatPromptConfig,
+  CompletionPromptConfig,
+  DatasetConfigs,
+  PromptMode,
+} from '@/models/debug'
 
 export type Theme = 'light' | 'dark' | 'system'
 export const Theme = {
@@ -31,12 +32,12 @@ export const RETRIEVE_TYPE = {
   multiWay: 'multiple' as RETRIEVE_TYPE,
 } as const
 
-export type RETRIEVE_METHOD
-  = | 'semantic_search'
-    | 'full_text_search'
-    | 'hybrid_search'
-    | 'invertedIndex'
-    | 'keyword_search'
+export type RETRIEVE_METHOD =
+  | 'semantic_search'
+  | 'full_text_search'
+  | 'hybrid_search'
+  | 'invertedIndex'
+  | 'keyword_search'
 export const RETRIEVE_METHOD = {
   semantic: 'semantic_search' as RETRIEVE_METHOD,
   fullText: 'full_text_search' as RETRIEVE_METHOD,
@@ -48,21 +49,21 @@ export const RETRIEVE_METHOD = {
 /**
  * App modes
  */
-export type AppModeEnum
-  = | 'completion'
-    | 'workflow'
-    | 'chat'
-    | 'advanced-chat'
-    | 'agent-chat'
+export type AppModeEnum =
+  | 'completion'
+  | 'workflow'
+  | 'chat'
+  | 'advanced-chat'
+  | 'agent-chat'
+  | 'agent'
 export const AppModeEnum = {
   COMPLETION: 'completion' as AppModeEnum,
   WORKFLOW: 'workflow' as AppModeEnum,
   CHAT: 'chat' as AppModeEnum,
   ADVANCED_CHAT: 'advanced-chat' as AppModeEnum,
   AGENT_CHAT: 'agent-chat' as AppModeEnum,
+  AGENT: 'agent' as AppModeEnum,
 } as const
-export const AppModes = [AppModeEnum.COMPLETION, AppModeEnum.WORKFLOW, AppModeEnum.CHAT, AppModeEnum.ADVANCED_CHAT, AppModeEnum.AGENT_CHAT] as const
-
 /**
  * Variable type
  */
@@ -85,58 +86,108 @@ export type PromptVariable = {
 }
 
 type TextTypeFormItem = {
-  default: string
+  default?: string
   label: string
   variable: string
   required: boolean
-  max_length: number
-  hide: boolean
+  max_length?: number
+  hide?: boolean
 }
 
 type SelectTypeFormItem = {
-  default: string
+  default?: string
   label: string
   variable: string
   required: boolean
-  options: string[]
-  hide: boolean
+  options?: string[]
+  hide?: boolean
 }
+
+type NumberTypeFormItem = Omit<TextTypeFormItem, 'default' | 'max_length'> & {
+  default?: string | number
+  max_length?: number
+}
+
+type CheckboxTypeFormItem = Omit<TextTypeFormItem, 'default' | 'max_length'> & {
+  default?: string | boolean
+}
+
+type FileTypeFormItem = Omit<TextTypeFormItem, 'max_length'> &
+  Partial<UploadFileSetting> & {
+    max_length?: number
+  }
+
+type ExternalDataToolFormItem = ExternalDataTool & {
+  label: string
+  variable: string
+  required?: boolean
+  hide?: boolean
+}
+
+type JsonObjectFormItem = Omit<TextTypeFormItem, 'max_length'> & {
+  json_schema?: string | Record<string, unknown>
+}
+
 /**
  * User Input Form Item
  */
-export type UserInputFormItem = {
-  'text-input': TextTypeFormItem
-} | {
-  select: SelectTypeFormItem
-} | {
-  paragraph: TextTypeFormItem
-}
+export type UserInputFormItem =
+  | {
+      'text-input': TextTypeFormItem
+    }
+  | {
+      select: SelectTypeFormItem
+    }
+  | {
+      paragraph: TextTypeFormItem
+    }
+  | {
+      number: NumberTypeFormItem
+    }
+  | {
+      checkbox: CheckboxTypeFormItem
+    }
+  | {
+      file: FileTypeFormItem
+    }
+  | {
+      'file-list': FileTypeFormItem
+    }
+  | {
+      external_data_tool: ExternalDataToolFormItem
+    }
+  | {
+      json_object: JsonObjectFormItem
+    }
 
 export type AgentTool = {
   provider_id: string
-  provider_type: CollectionType
+  provider_type: ToolProviderType
   provider_name: string
   tool_name: string
   tool_label: string
-  tool_parameters: Record<string, any>
+  tool_parameters: Record<string, unknown>
   enabled: boolean
   isDeleted?: boolean
   notAuthor?: boolean
   credential_id?: string
 }
 
-export type ToolItem = {
-  dataset: {
-    enabled: boolean
-    id: string
-  }
-} | {
-  'sensitive-word-avoidance': {
-    enabled: boolean
-    words: string[]
-    canned_response: string
-  }
-} | AgentTool
+export type ToolItem =
+  | {
+      dataset: {
+        enabled: boolean
+        id: string
+      }
+    }
+  | {
+      'sensitive-word-avoidance': {
+        enabled: boolean
+        words: string[]
+        canned_response: string
+      }
+    }
+  | AgentTool
 
 export type AgentStrategy = 'function_call' | 'react'
 export const AgentStrategy = {
@@ -258,141 +309,9 @@ export type ModelConfig = {
   updated_at?: number
 }
 
-export type Language = typeof LanguagesSupported[number]
-
-/**
- * Web Application Configuration
- */
-export type SiteConfig = {
-  /** Application URL Identifier: `http://dify.app/{access_token}` */
-  access_token: string
-  /** Public Title */
-  title: string
-  /** Application Description will be shown in the Client  */
-  description: string
-  /**
-   * Define the color in hex for different elements of the chatbot, such as:
-   * The header, the button , etc.
-   */
-  chat_color_theme: string
-  /** Invert the color of the theme set in chat_color_theme */
-  chat_color_theme_inverted: boolean
-  /** Author */
-  author: string
-  /** User Support Email Address */
-  support_email: string
-  /**
-   * Default Language, e.g. zh-Hans, en-US
-   * Use standard RFC 4646, see https://www.ruanyifeng.com/blog/2008/02/codes_for_language_names.html
-   */
-  default_language: Language
-  /**  Custom Domain */
-  customize_domain: string
-  /** Theme */
-  theme: string
-  /** Custom Token strategy Whether Terminal Users can choose their OpenAI Key */
-  customize_token_strategy: 'must' | 'allow' | 'not_allow'
-  /** Is Prompt Public */
-  prompt_public: boolean
-  /** Web API and APP Base Domain Name */
-  app_base_url: string
-  /** Copyright */
-  copyright: string
-  /** Privacy Policy */
-  privacy_policy: string
-  /** Custom Disclaimer */
-  custom_disclaimer: string
-
-  icon_type: AppIconType | null
-  icon: string
-  icon_background: string | null
-  icon_url: string | null
-
-  show_workflow_steps: boolean
-  use_icon_as_answer_icon: boolean
-}
+export type Language = (typeof LanguagesSupported)[number]
 
 export type AppIconType = 'image' | 'emoji' | 'link'
-
-/**
- * App
- */
-export type App = {
-  /** App ID */
-  id: string
-  /** Name */
-  name: string
-  /** Description */
-  description: string
-  /** Author Name */
-  author_name: string
-
-  /**
-   * Icon Type
-   * @default 'emoji'
-   */
-  icon_type: AppIconType | null
-  /** Icon, stores file ID if icon_type is 'image' */
-  icon: string
-  /** Icon Background, only available when icon_type is null or 'emoji' */
-  icon_background: string | null
-  /** Icon URL, only available when icon_type is 'image' */
-  icon_url: string | null
-  /** Whether to use app icon as answer icon */
-  use_icon_as_answer_icon: boolean
-
-  /** Mode */
-  mode: AppModeEnum
-  /** Enable web app */
-  enable_site: boolean
-  /** Enable web API */
-  enable_api: boolean
-  /** API requests per minute, default is 60 */
-  api_rpm: number
-  /** API requests per hour, default is 3600 */
-  api_rph: number
-  /** Whether it's a demo app */
-  is_demo: boolean
-  /** Whether the current account starred this app */
-  is_starred?: boolean
-  /** Model configuration */
-  model_config: ModelConfig
-  app_model_config: ModelConfig
-  /** Timestamp of creation */
-  created_at: number
-  /** Creator account ID */
-  created_by?: string
-  /** Resource maintainer account ID */
-  maintainer?: string
-  /** Timestamp of update */
-  updated_at: number
-  /** Web Application Configuration */
-  site: SiteConfig
-  /** api site url */
-  api_base_url: string
-  tags: Tag[]
-  workflow?: {
-    id: string
-    created_at: number
-    created_by?: string
-    updated_at: number
-    updated_by?: string
-  }
-  deleted_tools?: Array<{ id: string, tool_name: string }>
-  /** access control */
-  access_mode: AccessMode
-  max_active_requests?: number | null
-  /** whether workflow trigger has un-published draft */
-  has_draft_trigger?: boolean
-  /** Type */
-  workflow_kind?: WorkflowKind | null
-  /** ACL permission keys */
-  permission_keys?: string[]
-}
-
-export type AppSSO = {
-  enable_sso: boolean
-}
 
 export type Resolution = 'low' | 'high'
 export const Resolution = {
@@ -400,7 +319,7 @@ export const Resolution = {
   high: 'high' as Resolution,
 } as const
 
-export type TransferMethod = 'all' | 'local_file' | 'remote_url'
+export type TransferMethod = 'all' | FileTransferMethod
 export const TransferMethod = {
   all: 'all' as TransferMethod,
   local_file: 'local_file' as TransferMethod,

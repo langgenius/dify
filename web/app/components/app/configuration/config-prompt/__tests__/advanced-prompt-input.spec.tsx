@@ -1,7 +1,7 @@
-/* eslint-disable ts/no-explicit-any */
 import type { ReactNode } from 'react'
 import type { PromptRole } from '@/models/debug'
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from '@/app/components/base/prompt-editor/plugins/variable-block'
 import ConfigContext from '@/context/debug-configuration'
 import { AppModeEnum } from '@/types/app'
@@ -16,13 +16,6 @@ const mockOnDelete = vi.fn()
 const mockOnHideContextMissingTip = vi.fn()
 const mockCopy = vi.fn()
 const mockToastError = vi.fn()
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 vi.mock('copy-to-clipboard', () => ({
   default: (...args: unknown[]) => mockCopy(...args),
 }))
@@ -38,13 +31,6 @@ vi.mock('@remixicon/react', async (importOriginal) => {
   }
 })
 
-vi.mock('@/app/components/base/icons/src/vender/line/files', () => ({
-  Copy: ({ onClick }: { onClick: () => void }) => (
-    <button onClick={onClick}>copy-prompt</button>
-  ),
-  CopyCheck: () => <span>copy-checked</span>,
-}))
-
 vi.mock('@/context/event-emitter', () => ({
   useEventEmitterContextContext: () => ({
     eventEmitter: {
@@ -59,14 +45,14 @@ vi.mock('@/context/modal-context', () => ({
   }),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/components/app/configuration/toast', () => ({
   toast: {
     error: (...args: unknown[]) => mockToastError(...args),
   },
 }))
 
 vi.mock('../message-type-selector', () => ({
-  default: ({ onChange, value }: { onChange: (value: PromptRole) => void, value: PromptRole }) => (
+  default: ({ onChange, value }: { onChange: (value: PromptRole) => void; value: PromptRole }) => (
     <button onClick={() => onChange('assistant' as PromptRole)}>{`selector:${value}`}</button>
   ),
 }))
@@ -86,7 +72,7 @@ vi.mock('@/app/components/base/prompt-editor', () => ({
 }))
 
 vi.mock('../prompt-editor-height-resize-wrap', () => ({
-  default: ({ children, footer }: { children: ReactNode, footer: ReactNode }) => (
+  default: ({ children, footer }: { children: ReactNode; footer: ReactNode }) => (
     <div>
       {children}
       {footer}
@@ -94,37 +80,39 @@ vi.mock('../prompt-editor-height-resize-wrap', () => ({
   ),
 }))
 
-const createContextValue = () => ({
-  mode: AppModeEnum.CHAT,
-  hasSetBlockStatus: {
-    context: false,
-    history: false,
-    query: false,
-  },
-  modelConfig: {
-    configs: {
-      prompt_variables: [
-        { key: 'existing_var', name: 'Existing', type: 'string', required: true },
-      ],
+const createContextValue = () =>
+  ({
+    mode: AppModeEnum.CHAT,
+    hasSetBlockStatus: {
+      context: false,
+      history: false,
+      query: false,
     },
-  },
-  setModelConfig: mockSetModelConfig,
-  conversationHistoriesRole: {
-    user_prefix: 'user',
-    assistant_prefix: 'assistant',
-  },
-  showHistoryModal: vi.fn(),
-  dataSets: [],
-  showSelectDataSet: vi.fn(),
-  externalDataToolsConfig: [],
-}) as any
+    modelConfig: {
+      configs: {
+        prompt_variables: [
+          { key: 'existing_var', name: 'Existing', type: 'string', required: true },
+        ],
+      },
+    },
+    setModelConfig: mockSetModelConfig,
+    conversationHistoriesRole: {
+      user_prefix: 'user',
+      assistant_prefix: 'assistant',
+    },
+    showHistoryModal: vi.fn(),
+    dataSets: [],
+    showSelectDataSet: vi.fn(),
+    externalDataToolsConfig: [],
+  }) as any
 
 describe('AdvancedPromptInput', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  it('should delegate prompt text and role changes to the parent callbacks', () => {
+  it('should delegate prompt text and role changes to the parent callbacks', async () => {
+    const user = userEvent.setup()
     render(
       <ConfigContext.Provider value={createContextValue()}>
         <AdvancedPromptInput
@@ -142,10 +130,15 @@ describe('AdvancedPromptInput', () => {
       </ConfigContext.Provider>,
     )
 
-    fireEvent.click(screen.getByText('change-advanced'))
-    fireEvent.click(screen.getByText('selector:user'))
-    fireEvent.click(screen.getByText('copy-prompt'))
-    fireEvent.click(screen.getByText('delete-prompt'))
+    await user.click(screen.getByText('change-advanced'))
+    await user.click(screen.getByText('selector:user'))
+    const copyButton = screen.getByRole('button', { name: 'common.operation.copy' })
+    await user.click(copyButton)
+    expect(copyButton).toHaveFocus()
+    expect(copyButton).toHaveAttribute('aria-disabled', 'true')
+    await user.keyboard('{Enter} ')
+    expect(mockCopy).toHaveBeenCalledTimes(1)
+    await user.click(screen.getByText('delete-prompt'))
 
     expect(mockOnChange).toHaveBeenCalledWith('Updated {{new_var}}')
     expect(mockOnTypeChange).toHaveBeenCalledWith('assistant')
@@ -172,18 +165,20 @@ describe('AdvancedPromptInput', () => {
     )
 
     fireEvent.click(screen.getByText('blur-advanced'))
-    fireEvent.click(screen.getByText('operation.add'))
+    fireEvent.click(screen.getByText(/(?:^|\.)operation\.add(?=$|:)/))
 
-    expect(mockSetModelConfig).toHaveBeenCalledWith(expect.objectContaining({
-      configs: expect.objectContaining({
-        prompt_variables: expect.arrayContaining([
-          expect.objectContaining({
-            key: 'new_var',
-            name: 'new_var',
-          }),
-        ]),
+    expect(mockSetModelConfig).toHaveBeenCalledWith(
+      expect.objectContaining({
+        configs: expect.objectContaining({
+          prompt_variables: expect.arrayContaining([
+            expect.objectContaining({
+              key: 'new_var',
+              name: 'new_var',
+            }),
+          ]),
+        }),
       }),
-    }))
+    )
   })
 
   it('should open the external data tool modal and validate duplicates', () => {
@@ -210,19 +205,25 @@ describe('AdvancedPromptInput', () => {
 
     const modalConfig = mockSetShowExternalDataToolModal.mock.calls[0]![0]
     expect(modalConfig.onValidateBeforeSaveCallback({ variable: 'existing_var' })).toBe(false)
-    expect(mockToastError).toHaveBeenCalledWith('varKeyError.keyAlreadyExists')
+    expect(mockToastError).toHaveBeenCalledWith(
+      expect.stringMatching(/(?:^|\.)varKeyError\.keyAlreadyExists(?=$|:)/),
+    )
 
     modalConfig.onSaveCallback({
       label: 'Search',
       variable: 'search_api',
     })
 
-    expect(mockEmit).toHaveBeenCalledWith(expect.objectContaining({
-      type: 'ADD_EXTERNAL_DATA_TOOL',
-    }))
-    expect(mockEmit).toHaveBeenCalledWith(expect.objectContaining({
-      payload: 'search_api',
-      type: INSERT_VARIABLE_VALUE_BLOCK_COMMAND,
-    }))
+    expect(mockEmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'ADD_EXTERNAL_DATA_TOOL',
+      }),
+    )
+    expect(mockEmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payload: 'search_api',
+        type: INSERT_VARIABLE_VALUE_BLOCK_COMMAND,
+      }),
+    )
   })
 })

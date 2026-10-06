@@ -3,7 +3,6 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { RiDeleteBinLine, RiEditLine } from '@remixicon/react'
 import { capitalize } from 'es-toolkit/string'
 import { memo, useState } from 'react'
-import { BubbleX } from '@/app/components/base/icons/src/vender/line/others'
 
 type VariableItemProps = {
   item: ConversationVariable
@@ -11,21 +10,21 @@ type VariableItemProps = {
   onDelete: (item: ConversationVariable) => void
 }
 
-const VariableItem = ({
-  item,
-  onEdit,
-  onDelete,
-}: VariableItemProps) => {
+const VariableItem = ({ item, onEdit, onDelete }: VariableItemProps) => {
   const [destructive, setDestructive] = useState(false)
   return (
-    <div className={cn(
-      'mb-1 rounded-lg border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg px-2.5 py-2 shadow-xs hover:bg-components-panel-on-panel-item-bg-hover',
-      destructive && 'border-state-destructive-border hover:bg-state-destructive-hover',
-    )}
+    <div
+      className={cn(
+        'mb-1 rounded-lg border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg px-2.5 py-2 shadow-xs hover:bg-components-panel-on-panel-item-bg-hover',
+        destructive && 'border-state-destructive-border hover:bg-state-destructive-hover',
+      )}
     >
       <div className="flex items-center justify-between">
         <div className="flex grow items-center gap-1">
-          <BubbleX className="size-4 text-util-colors-teal-teal-700" />
+          <span
+            aria-hidden
+            className="i-custom-vender-line-others-bubble-x size-4 text-util-colors-teal-teal-700"
+          />
           <div className="system-sm-medium text-text-primary">{item.name}</div>
           <div className="system-xs-medium text-text-tertiary">{capitalize(item.value_type)}</div>
         </div>

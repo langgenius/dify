@@ -144,8 +144,7 @@ export function isEnterpriseEdition(): boolean {
 
 /** Load and validate E2E environment variables. Throws if required vars are missing. */
 export function loadE2EEnv(): E2EEnv {
-  if (_cached !== undefined)
-    return _cached
+  if (_cached !== undefined) return _cached
 
   const edition: DifyEdition = isEnterpriseEdition() ? 'ee' : 'ce'
 
@@ -160,9 +159,9 @@ export function loadE2EEnv(): E2EEnv {
   if (missing.length > 0) {
     const list = missing.map(([k, desc]) => `  ${k}  (${desc})`).join('\n')
     throw new Error(
-      `E2E tests require the following environment variables to be set:\n${list}\n\n`
-      + `Edition: ${edition.toUpperCase()}\n`
-      + 'See test/e2e/setup/env.ts for documentation.',
+      `E2E tests require the following environment variables to be set:\n${list}\n\n` +
+        `Edition: ${edition.toUpperCase()}\n` +
+        'See test/e2e/setup/env.ts for documentation.',
     )
   }
 
@@ -203,8 +202,7 @@ export function isE2ELocalMode(): boolean {
  * global-setup returns early without calling project.provide().
  */
 export function resolveEnv(caps: E2ECapabilities | undefined): E2EEnv {
-  if (!caps)
-    return loadE2EEnv()
+  if (!caps) return loadE2EEnv()
   const env = loadE2EEnv()
   return {
     ...env,

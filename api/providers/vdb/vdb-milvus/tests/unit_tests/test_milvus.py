@@ -1,4 +1,5 @@
 import importlib
+import json
 import sys
 import types
 from types import SimpleNamespace
@@ -8,6 +9,7 @@ import pytest
 from pydantic import ValidationError
 
 from core.rag.models.document import Document
+from models.dataset import Dataset
 
 
 def _build_fake_pymilvus_modules():
@@ -29,7 +31,7 @@ def _build_fake_pymilvus_modules():
                 return_value={"fields": [{"name": "id"}, {"name": "content"}, {"name": "metadata"}]}
             )
             self.get_server_version = MagicMock(return_value="2.5.0")
-            self.insert = MagicMock(return_value=[1])
+            self.insert = MagicMock(return_value={"insert_count": 1, "ids": [1], "cost": 0})
             self.query = MagicMock(return_value=[])
             self.delete = MagicMock()
             self.drop_collection = MagicMock()
@@ -261,7 +263,10 @@ def test_add_texts_batches_and_raises_milvus_exception(milvus_module):
     vector = milvus_module.MilvusVector.__new__(milvus_module.MilvusVector)
     vector._collection_name = "collection_1"
     vector._client = MagicMock()
-    vector._client.insert.side_effect = [["id-1"], ["id-2"]]
+    vector._client.insert.side_effect = [
+        {"insert_count": 1000, "ids": ["id-1"], "cost": 0},
+        {"insert_count": 1, "ids": ["id-2"], "cost": 0},
+    ]
     docs = [Document(page_content=f"text-{i}", metadata={"doc_id": f"d-{i}"}) for i in range(1001)]
     embeddings = [[0.1, 0.2] for _ in range(1001)]
 
@@ -416,12 +421,10 @@ def test_create_collection_builds_schema_and_indexes(milvus_module, monkeypatch:
 
 def test_factory_initializes_milvus_vector(milvus_module, monkeypatch: pytest.MonkeyPatch):
     factory = milvus_module.MilvusVectorFactory()
-    dataset_with_index = SimpleNamespace(
-        id="dataset-1",
-        index_struct_dict={"vector_store": {"class_prefix": "EXISTING_COLLECTION"}},
-        index_struct=None,
+    dataset_with_index = Dataset(
+        id="dataset-1", index_struct=json.dumps({"vector_store": {"class_prefix": "EXISTING_COLLECTION"}})
     )
-    dataset_without_index = SimpleNamespace(id="dataset-2", index_struct_dict=None, index_struct=None)
+    dataset_without_index = Dataset(id="dataset-2")
 
     monkeypatch.setattr(milvus_module.Dataset, "gen_collection_name_by_id", lambda _id: "AUTO_COLLECTION")
     monkeypatch.setattr(milvus_module.dify_config, "MILVUS_URI", "http://localhost:19530")
@@ -433,8 +436,8 @@ def test_factory_initializes_milvus_vector(milvus_module, monkeypatch: pytest.Mo
     monkeypatch.setattr(milvus_module.dify_config, "MILVUS_ANALYZER_PARAMS", '{"tokenizer":"standard"}')
 
     with patch.object(milvus_module, "MilvusVector", return_value="vector") as vector_cls:
-        result_1 = factory.init_vector(dataset_with_index, attributes=[], embeddings=MagicMock())
-        result_2 = factory.init_vector(dataset_without_index, attributes=[], embeddings=MagicMock())
+        result_1 = factory.init_vector(dataset_with_index, attributes=[], embeddings=MagicMock(), session=None)
+        result_2 = factory.init_vector(dataset_without_index, attributes=[], embeddings=MagicMock(), session=None)
 
     assert result_1 == "vector"
     assert result_2 == "vector"

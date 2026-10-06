@@ -1,7 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { GitHubItemAndMarketPlaceDependency, Plugin } from '../../../types'
-import type { VersionProps } from '@/app/components/plugins/types'
+import type { GitHubItemAndMarketPlaceDependency, Plugin, VersionProps } from '../../../types'
 import * as React from 'react'
 import { useEffect } from 'react'
 import { useUploadGitHub } from '@/service/use-plugins'
@@ -44,11 +43,9 @@ const Item: FC<Props> = ({
     }
   }, [data])
   useEffect(() => {
-    if (error)
-      onFetchError()
+    if (error) onFetchError()
   }, [error])
-  if (!payload)
-    return <Loading />
+  if (!payload) return <Loading />
   return (
     <LoadedItem
       payload={payload}

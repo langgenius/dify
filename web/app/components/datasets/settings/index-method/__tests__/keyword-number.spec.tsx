@@ -11,27 +11,17 @@ describe('KeyWordNumber', () => {
     vi.clearAllMocks()
   })
 
-  const getSlider = () => screen.getByLabelText('datasetSettings.form.numberOfKeywords', {
-    selector: 'input[type="range"]',
-  })
+  const getSlider = () =>
+    screen.getByLabelText('datasetSettings.form.numberOfKeywords', {
+      selector: 'input[type="range"]',
+    })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<KeyWordNumber {...defaultProps} />)
-      expect(screen.getByText(/form\.numberOfKeywords/, { selector: '.truncate' })).toBeInTheDocument()
-    })
-
     it('should render label text', () => {
       render(<KeyWordNumber {...defaultProps} />)
-      expect(screen.getByText(/form\.numberOfKeywords/, { selector: '.truncate' })).toBeInTheDocument()
-    })
-
-    it('should render infotip with question icon', () => {
-      render(<KeyWordNumber {...defaultProps} />)
-      const trigger = screen.getByRole('button', { name: 'datasetSettings.form.numberOfKeywords' })
-      const container = trigger.parentElement
-      const questionIcon = container?.querySelector('.i-ri-question-line')
-      expect(questionIcon).toBeInTheDocument()
+      expect(
+        screen.getByText(/form\.numberOfKeywords/, { selector: '.truncate' }),
+      ).toBeInTheDocument()
     })
 
     it('should render slider', () => {

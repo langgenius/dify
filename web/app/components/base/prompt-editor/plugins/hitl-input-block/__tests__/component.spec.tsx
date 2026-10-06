@@ -1,5 +1,8 @@
 import type { RefObject } from 'react'
-import type { FormInputItem, ParagraphFormInput } from '@/app/components/workflow/nodes/human-input/types'
+import type {
+  FormInputItem,
+  ParagraphFormInput,
+} from '@/app/components/workflow/nodes/human-input/types'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { InputVarType } from '@/app/components/workflow/types'
@@ -14,45 +17,54 @@ vi.mock('../../../hooks', () => ({
 }))
 
 vi.mock('../component-ui', () => ({
-  default: ({ formInput, onChange }: { formInput?: FormInputItem, onChange: (payload: FormInputItem) => void }) => {
-    const basePayload: ParagraphFormInput = (formInput && formInput.type === InputVarType.paragraph
-      ? formInput
-      : {
-          type: InputVarType.paragraph,
-          output_variable_name: 'user_name',
-          default: {
-            type: 'constant',
-            selector: [],
-            value: 'hello',
-          },
-        }) satisfies ParagraphFormInput
+  default: ({
+    formInput,
+    onChange,
+  }: {
+    formInput?: FormInputItem
+    onChange: (payload: FormInputItem) => void
+  }) => {
+    const basePayload: ParagraphFormInput = (
+      formInput && formInput.type === InputVarType.paragraph
+        ? formInput
+        : {
+            type: InputVarType.paragraph,
+            output_variable_name: 'user_name',
+            default: {
+              type: 'constant',
+              selector: [],
+              value: 'hello',
+            },
+          }
+    ) satisfies ParagraphFormInput
     return (
       <div>
-        <button
-          type="button"
-          onClick={() => onChange(basePayload)}
-        >
+        <button type="button" onClick={() => onChange(basePayload)}>
           emit-same-name
         </button>
         <button
           type="button"
-          onClick={() => onChange({
-            ...basePayload,
-            output_variable_name: 'renamed_name',
-          })}
+          onClick={() =>
+            onChange({
+              ...basePayload,
+              output_variable_name: 'renamed_name',
+            })
+          }
         >
           emit-rename
         </button>
         <button
           type="button"
-          onClick={() => onChange({
-            ...basePayload,
-            default: {
-              type: 'constant',
-              selector: [],
-              value: 'updated',
-            },
-          })}
+          onClick={() =>
+            onChange({
+              ...basePayload,
+              default: {
+                type: 'constant',
+                selector: [],
+                value: 'updated',
+              },
+            })
+          }
         >
           emit-update
         </button>
@@ -138,10 +150,7 @@ describe('HITLInputComponent', () => {
         nodeKey="node-key-duplicate"
         nodeId="node-duplicate"
         varName="user_name"
-        formInputs={[
-          createInput(),
-          createInput({ output_variable_name: 'renamed_name' }),
-        ]}
+        formInputs={[createInput(), createInput({ output_variable_name: 'renamed_name' })]}
         onChange={onChange}
         onRename={vi.fn()}
         onRemove={vi.fn()}

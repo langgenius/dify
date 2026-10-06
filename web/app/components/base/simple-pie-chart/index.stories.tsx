@@ -24,23 +24,20 @@ const PieChartPlayground = ({
         </span>
       </div>
       <div className="flex items-center gap-4">
-        <SimplePieChart
-          percentage={percentage}
-          fill={fill}
-          stroke={stroke}
-          size={120}
-        />
+        <SimplePieChart percentage={percentage} fill={fill} stroke={stroke} size={120} />
         <div className="flex flex-1 flex-col gap-2">
           <label className="flex items-center justify-between text-xs font-medium text-text-secondary">
             Target progress
-            <span className="rounded-sm bg-background-default px-2 py-1 text-[11px] text-text-tertiary">{label}</span>
+            <span className="rounded-sm bg-background-default px-2 py-1 text-[11px] text-text-tertiary">
+              {label}
+            </span>
           </label>
           <input
             type="range"
             min={0}
             max={100}
             value={percentage}
-            onChange={event => setPercentage(Number.parseInt(event.target.value, 10))}
+            onChange={(event) => setPercentage(Number.parseInt(event.target.value, 10))}
             className="h-2 w-full cursor-pointer appearance-none rounded-full bg-divider-subtle accent-primary-600"
           />
         </div>
@@ -56,7 +53,8 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Thin radial indicator built with ECharts. Use it for quick percentage snapshots inside cards.',
+        component:
+          'Thin radial indicator built with ECharts. Use it for quick percentage snapshots inside cards.',
       },
     },
   },

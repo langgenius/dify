@@ -4,31 +4,94 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
-export type TrialAppDetailWithSite = {
-  access_mode?: string
-  api_base_url?: string
-  created_at?: number
-  created_by?: string
-  deleted_tools?: Array<TrialDeletedTool>
-  description?: string
-  enable_api?: boolean
-  enable_site?: boolean
-  icon?: string
-  icon_background?: string
-  icon_type?: string
-  icon_url?: string
-  id?: string
-  max_active_requests?: number
-  mode?: string
-  model_config?: TrialAppModelConfig
-  name?: string
+export type TrialAppDetailResponse = {
+  access_mode?: string | null
+  api_base_url?: string | null
+  created_at?: number | null
+  created_by?: string | null
+  deleted_tools?: Array<TrialDeletedToolResponse>
+  description?: string | null
+  enable_api: boolean
+  enable_site: boolean
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: TrialIconType | null
+  icon_url?: string | null
+  id: string
+  max_active_requests?: number | null
+  mode: TrialAppMode
+  model_config?: TrialAppModelConfigResponse | null
+  name: string
   permission_keys?: Array<string>
-  site?: TrialSite
-  tags?: Array<TrialTag>
-  updated_at?: number
-  updated_by?: string
-  use_icon_as_answer_icon?: boolean
-  workflow?: TrialWorkflowPartial
+  site: TrialSiteResponse
+  tags?: Array<TrialTagResponse>
+  updated_at?: number | null
+  updated_by?: string | null
+  use_icon_as_answer_icon?: boolean | null
+  workflow?: TrialWorkflowPartialResponse | null
+}
+
+export type AgentAppComposerResponse = {
+  active_config_is_published: boolean
+  active_config_snapshot?: AgentConfigSnapshotSummaryResponse | null
+  agent: AgentComposerAgentResponse
+  agent_soul: AgentSoulConfig
+  app_id?: string | null
+  backing_app_id?: string | null
+  chat_endpoint?: string | null
+  draft?: AgentConfigDraftSummaryResponse | null
+  hidden_app_backed?: boolean
+  save_options: Array<ComposerSaveStrategy>
+  validation?: ComposerValidationFindingsResponse | null
+  variant: 'agent_app'
+}
+
+export type AgentConfigFileListResponse = {
+  agent_id: string
+  config_version: AgentConfigVersionResponse
+  items?: Array<AgentConfigFileItemResponse>
+}
+
+export type AgentConfigDownloadResponse = {
+  url: string
+}
+
+export type AgentConfigFilePreviewResponse = {
+  binary: boolean
+  name: string
+  size?: number | null
+  text?: string | null
+  truncated: boolean
+}
+
+export type AgentConfigSkillListResponse = {
+  agent_id: string
+  config_version: AgentConfigVersionResponse
+  items?: Array<AgentConfigSkillItemResponse>
+}
+
+export type AgentConfigSkillFilePreviewResponse = {
+  binary: boolean
+  path: string
+  size?: number | null
+  text?: string | null
+  truncated: boolean
+}
+
+export type AgentConfigSkillInspectResponse = {
+  description?: string
+  file_tree?: Array<{
+    [key: string]: unknown
+  }> | null
+  files?: Array<AgentConfigSkillFileResponse>
+  hash?: string | null
+  id: string
+  mime_type?: string | null
+  name: string
+  size?: number | null
+  skill_md: AgentConfigSkillMarkdownResponse
+  source: 'config_skill_zip'
+  warnings?: Array<string>
 }
 
 export type AudioTranscriptResponse = {
@@ -46,7 +109,9 @@ export type ChatRequest = {
   retriever_from?: string
 }
 
-export type GeneratedAppResponse = JsonValue
+export type SimpleResultResponse = {
+  result: string
+}
 
 export type CompletionRequest = {
   files?: Array<unknown> | null
@@ -58,12 +123,34 @@ export type CompletionRequest = {
   retriever_from?: string
 }
 
-export type TrialDatasetList = {
-  data?: Array<TrialDataset>
-  has_more?: boolean
-  limit?: number
-  page?: number
-  total?: number
+export type TrialDatasetListResponse = {
+  data: Array<TrialDatasetResponse>
+  has_more: boolean
+  limit: number
+  page: number
+  total: number
+}
+
+export type AppExportResponse = {
+  data: string
+}
+
+export type FileResponse = {
+  conversation_id?: string | null
+  created_at?: number | null
+  created_by?: string | null
+  extension?: string | null
+  file_key?: string | null
+  id: string
+  mime_type?: string | null
+  name: string
+  original_url?: string | null
+  preview_url?: string | null
+  reference?: string | null
+  size: number
+  source_url?: string | null
+  tenant_id?: string | null
+  user_id?: string | null
 }
 
 export type SuggestedQuestionsResponse = {
@@ -71,18 +158,342 @@ export type SuggestedQuestionsResponse = {
 }
 
 export type Parameters = {
-  annotation_reply: JsonObject
-  file_upload: JsonObject
-  more_like_this: JsonObject
+  annotation_reply: {
+    enabled?: boolean
+  }
+  file_upload: {
+    allowed_file_extensions?: Array<string>
+    allowed_file_types?: Array<'audio' | 'custom' | 'document' | 'image' | 'video'>
+    allowed_file_upload_methods?: Array<'local_file' | 'remote_url'>
+    enabled?: boolean
+    image?: {
+      detail?: string
+      enabled?: boolean
+      number_limits?: number
+      transfer_methods?: Array<string>
+    }
+    number_limits?: number
+  }
+  more_like_this: {
+    enabled?: boolean
+  }
   opening_statement?: string | null
-  retriever_resource: JsonObject
-  sensitive_word_avoidance: JsonObject
-  speech_to_text: JsonObject
+  retriever_resource: {
+    enabled?: boolean
+  }
+  sensitive_word_avoidance: {
+    enabled?: boolean
+  }
+  speech_to_text: {
+    enabled?: boolean
+  }
   suggested_questions: Array<string>
-  suggested_questions_after_answer: JsonObject
+  suggested_questions_after_answer: {
+    enabled?: boolean
+  }
   system_parameters: SystemParameters
-  text_to_speech: JsonObject
-  user_input_form: Array<JsonObject>
+  text_to_speech: {
+    autoPlay?: string
+    enabled?: boolean
+    language?: string
+    voice?: string
+  }
+  user_input_form: Array<
+    | {
+        'text-input': {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        select: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        paragraph: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        number: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        external_data_tool: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        file: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        'file-list': {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        checkbox: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+    | {
+        json_object: {
+          allowed_file_extensions?: Array<string> | null
+          allowed_file_types?: Array<string> | null
+          allowed_file_upload_methods?: Array<string> | null
+          config?: {
+            [key: string]: unknown
+          }
+          default?: unknown
+          description?: string
+          hide?: boolean
+          json_schema?: {
+            [key: string]: unknown
+          } | null
+          label: string
+          max_length?: number | null
+          options?: Array<string>
+          required?: boolean
+          type?:
+            | 'checkbox'
+            | 'external_data_tool'
+            | 'file'
+            | 'file-list'
+            | 'json_object'
+            | 'number'
+            | 'paragraph'
+            | 'select'
+            | 'text-input'
+          variable: string
+        }
+      }
+  >
+}
+
+export type RemoteFileUploadPayload = {
+  url: string
+}
+
+export type FileWithSignedUrl = {
+  created_at: number | null
+  created_by: string | null
+  extension: string | null
+  id: string
+  mime_type: string | null
+  name: string
+  size: number
+  url: string | null
 }
 
 export type Site = {
@@ -96,6 +507,7 @@ export type Site = {
   icon_background?: string | null
   icon_type?: string | null
   readonly icon_url: string | null
+  input_placeholder?: string | null
   privacy_policy?: string | null
   show_workflow_steps: boolean
   title: string
@@ -111,28 +523,22 @@ export type TextToSpeechRequest = {
 
 export type AudioBinaryResponse = Blob | File
 
-export type TrialWorkflow = {
-  conversation_variables?: Array<TrialConversationVariable>
-  created_at?: number
-  created_by?: TrialSimpleAccount
-  environment_variables?: Array<{
-    [key: string]: unknown
-  }>
-  features?: {
-    [key: string]: unknown
-  }
-  graph?: {
-    [key: string]: unknown
-  }
-  hash?: string
-  id?: string
-  marked_comment?: string
-  marked_name?: string
-  rag_pipeline_variables?: Array<TrialPipelineVariable>
-  tool_published?: boolean
-  updated_at?: number
-  updated_by?: TrialSimpleAccount
-  version?: string
+export type TrialWorkflowResponse = {
+  conversation_variables?: Array<WorkflowConversationVariableResponse>
+  created_at?: number | null
+  created_by?: TrialSimpleAccount | null
+  environment_variables?: Array<JsonObject>
+  features?: JsonObject
+  graph: JsonObject
+  hash?: string | null
+  id: string
+  marked_comment?: string | null
+  marked_name?: string | null
+  rag_pipeline_variables?: Array<JsonObject>
+  tool_published?: boolean | null
+  updated_at?: number | null
+  updated_by?: TrialSimpleAccount | null
+  version?: string | null
 }
 
 export type WorkflowRunRequest = {
@@ -142,139 +548,215 @@ export type WorkflowRunRequest = {
   }
 }
 
-export type SimpleResultResponse = {
-  result: string
+export type TrialDeletedToolResponse = {
+  provider_id: string
+  tool_name: string
+  type: string
 }
 
-export type TrialDeletedTool = {
-  provider_id?: string
-  tool_name?: string
-  type?: string
-}
+export type TrialIconType = 'emoji' | 'image' | 'link'
 
-export type TrialAppModelConfig = {
-  agent_mode?: {
-    [key: string]: unknown
-  }
-  annotation_reply?: {
-    [key: string]: unknown
-  }
-  chat_prompt_config?: {
-    [key: string]: unknown
-  }
-  completion_prompt_config?: {
-    [key: string]: unknown
-  }
-  created_at?: number
-  created_by?: string
-  dataset_configs?: {
-    [key: string]: unknown
-  }
-  dataset_query_variable?: string
-  external_data_tools?: Array<{
-    [key: string]: unknown
-  }>
-  file_upload?: {
-    [key: string]: unknown
-  }
-  model?: {
-    [key: string]: unknown
-  }
-  more_like_this?: {
-    [key: string]: unknown
-  }
-  opening_statement?: string
-  pre_prompt?: string
-  prompt_type?: string
-  retriever_resource?: {
-    [key: string]: unknown
-  }
-  sensitive_word_avoidance?: {
-    [key: string]: unknown
-  }
-  speech_to_text?: {
-    [key: string]: unknown
-  }
+export type TrialAppMode =
+  | 'advanced-chat'
+  | 'agent'
+  | 'agent-chat'
+  | 'chat'
+  | 'completion'
+  | 'workflow'
+
+export type TrialAppModelConfigResponse = {
+  agent_mode?: TrialAppAgentMode | null
+  annotation_reply?: JsonObject | null
+  chat_prompt_config?: JsonObject | null
+  completion_prompt_config?: JsonObject | null
+  created_at?: number | null
+  created_by?: string | null
+  dataset_configs?: JsonObject | null
+  dataset_query_variable?: string | null
+  external_data_tools?: Array<JsonObject>
+  file_upload?: JsonObject | null
+  model?: TrialAppModel | null
+  more_like_this?: JsonObject | null
+  opening_statement?: string | null
+  pre_prompt?: string | null
+  prompt_type?: string | null
+  retriever_resource?: JsonObject | null
+  sensitive_word_avoidance?: JsonObject | null
+  speech_to_text?: JsonObject | null
   suggested_questions?: Array<string>
-  suggested_questions_after_answer?: {
-    [key: string]: unknown
-  }
-  text_to_speech?: {
-    [key: string]: unknown
-  }
-  updated_at?: number
-  updated_by?: string
-  user_input_form?: Array<{
-    [key: string]: unknown
-  }>
+  suggested_questions_after_answer?: JsonObject | null
+  text_to_speech?: JsonObject | null
+  updated_at?: number | null
+  updated_by?: string | null
+  user_input_form?: Array<JsonObject>
 }
 
-export type TrialSite = {
-  access_token?: string
-  app_base_url?: string
-  chat_color_theme?: string
-  chat_color_theme_inverted?: boolean
-  code?: string
-  copyright?: string
-  created_at?: number
-  created_by?: string
-  custom_disclaimer?: string
-  customize_domain?: string
-  customize_token_strategy?: string
-  default_language?: string
+export type TrialSiteResponse = {
+  access_token?: string | null
+  app_base_url?: string | null
+  chat_color_theme?: string | null
+  chat_color_theme_inverted?: boolean | null
+  code?: string | null
+  copyright?: string | null
+  created_at?: number | null
+  created_by?: string | null
+  custom_disclaimer?: string | null
+  customize_domain?: string | null
+  customize_token_strategy?: string | null
+  default_language: string
+  description?: string | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: TrialIconType | null
+  icon_url?: string | null
+  input_placeholder?: string | null
+  privacy_policy?: string | null
+  prompt_public?: boolean | null
+  show_workflow_steps?: boolean | null
+  title: string
+  updated_at?: number | null
+  updated_by?: string | null
+  use_icon_as_answer_icon?: boolean | null
+}
+
+export type TrialTagResponse = {
+  id: string
+  name: string
+  type: string
+}
+
+export type TrialWorkflowPartialResponse = {
+  created_at?: number | null
+  created_by?: string | null
+  id: string
+  updated_at?: number | null
+  updated_by?: string | null
+}
+
+export type AgentConfigSnapshotSummaryResponse = {
+  agent_id?: string | null
+  created_at?: number | null
+  created_by?: string | null
+  display_version?: number | null
+  id: string
+  snapshot_version?: number | null
+  summary?: string | null
+  version: number
+  version_note?: string | null
+}
+
+export type AgentComposerAgentResponse = {
+  active_config_snapshot_id?: string | null
+  app_id?: string | null
+  backing_app_id?: string | null
+  description: string
+  hidden_app_backed?: boolean
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: string | null
+  id: string
+  name: string
+  role?: string | null
+  scope: AgentScope
+  source?: AgentSource | null
+  status: AgentStatus
+}
+
+export type AgentSoulConfig = {
+  app_features?: AgentSoulAppFeaturesConfig
+  app_variables?: Array<AppVariableConfig>
+  config_files?: Array<AgentConfigFileRefConfig>
+  config_note?: string
+  config_skills?: Array<AgentConfigSkillRefConfig>
+  env?: AgentSoulEnvConfig
+  human?: AgentSoulHumanConfig
+  knowledge?: AgentSoulKnowledgeConfig
+  memory?: AgentSoulMemoryConfig
+  misc_legacy?: AgentSoulAppFeaturesConfig
+  model?: AgentSoulModelConfig | null
+  prompt?: AgentSoulPromptConfig
+  sandbox?: AgentSoulSandboxConfig
+  schema_version?: number
+  tools?: AgentSoulToolsConfig
+}
+
+export type AgentConfigDraftSummaryResponse = {
+  account_id?: string | null
+  agent_id: string
+  base_snapshot_id?: string | null
+  created_at?: number | null
+  created_by?: string | null
+  draft_type: AgentConfigDraftType
+  id: string
+  updated_at?: number | null
+  updated_by?: string | null
+}
+
+export type ComposerSaveStrategy =
+  | 'node_job_only'
+  | 'save_as_new_agent'
+  | 'save_as_new_version'
+  | 'save_to_current_version'
+  | 'save_to_roster'
+
+export type ComposerValidationFindingsResponse = {
+  knowledge_retrieval_placeholder?: Array<ComposerKnowledgePlaceholderResponse>
+  warnings?: Array<ComposerValidationWarningResponse>
+}
+
+export type AgentConfigVersionResponse = {
+  id: string
+  kind: 'build_draft' | 'draft' | 'snapshot'
+  writable: boolean
+}
+
+export type AgentConfigFileItemResponse = {
+  file_id?: string | null
+  hash?: string | null
+  id: string
+  is_missing?: boolean
+  mime_type?: string | null
+  name: string
+  size?: number | null
+}
+
+export type AgentConfigSkillItemResponse = {
   description?: string
-  icon?: string
-  icon_background?: string
-  icon_type?: string
-  icon_url?: string
-  privacy_policy?: string
-  prompt_public?: boolean
-  show_workflow_steps?: boolean
-  title?: string
-  updated_at?: number
-  updated_by?: string
-  use_icon_as_answer_icon?: boolean
+  file_id?: string | null
+  hash?: string | null
+  id: string
+  is_missing?: boolean
+  mime_type?: string | null
+  name: string
+  size?: number | null
 }
 
-export type TrialTag = {
-  id?: string
-  name?: string
-  type?: string
+export type AgentConfigSkillFileResponse = {
+  downloadable: boolean
+  name: string
+  path: string
+  previewable: boolean
+  type: 'directory' | 'file'
 }
 
-export type TrialWorkflowPartial = {
-  created_at?: number
-  created_by?: string
-  id?: string
-  updated_at?: number
-  updated_by?: string
+export type AgentConfigSkillMarkdownResponse = {
+  binary: false
+  path: 'SKILL.md'
+  size?: number | null
+  text: string
+  truncated: boolean
 }
 
-export type JsonValue
-  = | string
-    | number
-    | number
-    | boolean
-    | {
-      [key: string]: unknown
-    }
-    | Array<unknown>
-    | null
-
-export type TrialDataset = {
-  created_at?: number
-  created_by?: string
-  data_source_type?: string
-  description?: string
-  id?: string
-  indexing_technique?: string
-  name?: string
-  permission?: string
+export type TrialDatasetResponse = {
+  created_at?: number | null
+  created_by?: string | null
+  data_source_type?: string | null
+  description?: string | null
+  id: string
+  indexing_technique?: string | null
+  name: string
+  permission?: string | null
   permission_keys?: Array<string>
-}
-
-export type JsonObject = {
-  [key: string]: unknown
 }
 
 export type SystemParameters = {
@@ -285,56 +767,504 @@ export type SystemParameters = {
   workflow_file_upload_limit: number
 }
 
-export type TrialConversationVariable = {
+export type WorkflowConversationVariableResponse = {
+  description: string
+  id: string
+  name: string
+  value: unknown
+  value_type: string
+}
+
+export type TrialSimpleAccount = {
+  email?: string | null
+  id: string
+  name?: string | null
+}
+
+export type JsonObject = {
+  [key: string]: unknown
+}
+
+export type TrialAppAgentMode = {
+  enabled?: boolean | null
+  strategy?: string | null
+  tools?: Array<JsonObject>
+}
+
+export type TrialAppModel = {
+  completion_params?: JsonObject
+  mode?: string | null
+  name: string
+  provider: string
+}
+
+export type AgentScope = 'roster' | 'workflow_only'
+
+export type AgentSource = 'agent_app' | 'imported' | 'roster' | 'system' | 'workflow'
+
+export type AgentStatus = 'active' | 'archived'
+
+export type AgentSoulAppFeaturesConfig = {
+  file_upload?: AgentFileUploadFeatureConfig
+  opening_statement?: string | null
+  retriever_resource?: AgentFeatureToggleConfig | null
+  sensitive_word_avoidance?: AgentSensitiveWordAvoidanceFeatureConfig | null
+  speech_to_text?: AgentFeatureToggleConfig | null
+  suggested_questions?: Array<string> | null
+  suggested_questions_after_answer?: AgentSuggestedQuestionsAfterAnswerFeatureConfig | null
+  text_to_speech?: AgentTextToSpeechFeatureConfig | null
+  [key: string]: unknown
+}
+
+export type AppVariableConfig = {
+  default?: unknown
+  name: string
+  required?: boolean
+  type: string
+}
+
+export type AgentConfigFileRefConfig = {
+  file_id?: string
+  file_kind: 'tool_file' | 'upload_file'
+  hash?: string | null
+  is_missing?: boolean
+  mime_type?: string | null
+  name: string
+  size?: number | null
+}
+
+export type AgentConfigSkillRefConfig = {
   description?: string
-  id?: string
-  name?: string
+  file_id?: string
+  file_kind?: 'tool_file'
+  hash?: string | null
+  is_missing?: boolean
+  mime_type?: string | null
+  name: string
+  size?: number | null
+}
+
+export type AgentSoulEnvConfig = {
+  secret_refs?: Array<AgentSecretRefConfig>
+  variables?: Array<AgentEnvVariableConfig>
+}
+
+export type AgentSoulHumanConfig = {
+  contacts?: Array<AgentHumanContactConfig>
+  tools?: Array<AgentHumanToolConfig>
+}
+
+export type AgentSoulKnowledgeConfig = {
+  sets?: Array<AgentKnowledgeSetConfig>
+}
+
+export type AgentSoulMemoryConfig = {
+  artifacts?: Array<AgentMemoryArtifactConfig>
+  budget?: string | null
+  scope?: string | null
+}
+
+export type AgentSoulModelConfig = {
+  credential_ref?: AgentSoulModelCredentialRef | null
+  model: string
+  model_provider: string
+  model_settings?: AgentSoulModelSettings
+  plugin_id: string
+}
+
+export type AgentSoulPromptConfig = {
+  system_prompt?: string
+}
+
+export type AgentSoulSandboxConfig = {
+  config?: AgentSandboxProviderConfig
+  provider?: string | null
+}
+
+export type AgentSoulToolsConfig = {
+  cli_tools?: Array<AgentCliToolConfig>
+  dify_tools?: Array<AgentSoulDifyToolConfig>
+}
+
+export type AgentConfigDraftType = 'debug_build' | 'draft'
+
+export type ComposerKnowledgePlaceholderResponse = {
+  id: string
+  placeholder_name: string
+}
+
+export type ComposerValidationWarningResponse = {
+  code: string
+  id?: string | null
+  kind?: string | null
+  message?: string | null
+  surface?: string | null
+}
+
+export type AgentFileUploadFeatureConfig = {
+  allowed_file_extensions?: Array<string>
+  allowed_file_types?: Array<FileType>
+  allowed_file_upload_methods?: Array<FileTransferMethod>
+  enabled?: boolean
+  image?: AgentFileUploadImageFeatureConfig
+  number_limits?: number
+  [key: string]: unknown
+}
+
+export type AgentFeatureToggleConfig = {
+  enabled?: boolean
+  [key: string]: unknown
+}
+
+export type AgentSensitiveWordAvoidanceFeatureConfig = {
+  config?: AgentModerationProviderConfig | null
+  enabled?: boolean
+  type?: string | null
+  [key: string]: unknown
+}
+
+export type AgentSuggestedQuestionsAfterAnswerFeatureConfig = {
+  enabled?: boolean
+  model?: AgentSuggestedQuestionsAfterAnswerModelConfig | null
+  prompt?: string | null
+  [key: string]: unknown
+}
+
+export type AgentTextToSpeechFeatureConfig = {
+  autoPlay?: 'disabled' | 'enabled' | null
+  enabled?: boolean
+  language?: string | null
+  voice?: string | null
+  [key: string]: unknown
+}
+
+export type AgentSecretRefConfig = {
+  credential_id?: string | null
+  env_name?: string | null
+  id?: string | null
+  key?: string | null
+  name?: string | null
+  permission?: AgentPermissionConfig | null
+  permission_status?: string | null
+  provider?: string | null
+  provider_credential_id?: string | null
+  ref?: string | null
+  type?: string | null
+  value?: string | null
+  variable?: string | null
+  [key: string]: unknown
+}
+
+export type AgentEnvVariableConfig = {
+  default?:
+    | string
+    | number
+    | number
+    | boolean
+    | Array<string>
+    | Array<number>
+    | Array<number>
+    | Array<boolean>
+    | null
+  env_name?: string | null
+  key?: string | null
+  name?: string | null
+  required?: boolean
+  type?: string | null
   value?:
     | string
     | number
     | number
     | boolean
-    | {
-      [key: string]: unknown
-    }
-    | Array<unknown>
+    | Array<string>
+    | Array<number>
+    | Array<number>
+    | Array<boolean>
     | null
-  value_type?: string
+  variable?: string | null
+  [key: string]: unknown
 }
 
-export type TrialSimpleAccount = {
-  email?: string
-  id?: string
-  name?: string
+export type AgentHumanContactConfig = {
+  channel?: string | null
+  contact_id?: string | null
+  contact_method?: string | null
+  email?: string | null
+  human_id?: string | null
+  id?: string | null
+  method?: string | null
+  name?: string | null
+  tenant_id?: string | null
+  [key: string]: unknown
 }
 
-export type TrialPipelineVariable = {
-  allow_file_extension?: Array<string>
-  allow_file_upload_methods?: Array<string>
-  allowed_file_types?: Array<string>
-  belong_to_node_id?: string
-  default_value?:
-    | string
-    | number
-    | number
-    | boolean
-    | {
-      [key: string]: unknown
-    }
-    | Array<unknown>
-    | null
-  label?: string
-  max_length?: number
-  options?: Array<string>
-  placeholder?: string
-  required?: boolean
-  tooltips?: string
-  type?: string
-  unit?: string
-  variable?: string
+export type AgentHumanToolConfig = {
+  description?: string | null
+  enabled?: boolean
+  name?: string | null
+  [key: string]: unknown
 }
 
-export type GeneratedAppResponseWritable = JsonValue
+export type AgentKnowledgeSetConfig = {
+  datasets: Array<AgentKnowledgeDatasetConfig>
+  description?: string | null
+  id: string
+  metadata_filtering?: AgentKnowledgeMetadataFilteringConfig
+  name: string
+  query: AgentKnowledgeQueryConfig
+  retrieval: AgentKnowledgeRetrievalConfig
+}
+
+export type AgentMemoryArtifactConfig = {
+  id?: string | null
+  name?: string | null
+  type?: string | null
+  url?: string | null
+  [key: string]: unknown
+}
+
+export type AgentSoulModelCredentialRef = {
+  id?: string | null
+  provider?: string | null
+  type: string
+}
+
+export type AgentSoulModelSettings = {
+  frequency_penalty?: number | null
+  max_tokens?: number | null
+  presence_penalty?: number | null
+  response_format?: AgentModelResponseFormatConfig | null
+  stop?: Array<string> | null
+  temperature?: number | null
+  top_p?: number | null
+  [key: string]: unknown
+}
+
+export type AgentSandboxProviderConfig = {
+  cpu?: number | null
+  env?: Array<AgentEnvVariableConfig>
+  image?: string | null
+  working_dir?: string | null
+  [key: string]: unknown
+}
+
+export type AgentCliToolConfig = {
+  approved?: boolean
+  authorization_status?: AgentCliToolAuthorizationStatus | null
+  command?: string | null
+  dangerous?: boolean
+  dangerous_accepted?: boolean
+  dangerous_acknowledged?: boolean
+  dangerous_command?: boolean
+  description?: string | null
+  enabled?: boolean
+  env?: AgentCliToolEnvConfig
+  id?: string | null
+  inferred_from?: string | null
+  install?: string | null
+  install_command?: string | null
+  install_commands?: Array<string>
+  invoke_metadata?: {
+    [key: string]: unknown
+  }
+  label?: string | null
+  name?: string | null
+  permission?: AgentPermissionConfig | null
+  pre_authorized?: boolean | null
+  requires_confirmation?: boolean
+  risk_accepted?: boolean
+  risk_level?: AgentCliToolRiskLevel | null
+  setup_command?: string | null
+  tool_name?: string | null
+  [key: string]: unknown
+}
+
+export type AgentSoulDifyToolConfig = {
+  credential_ref?: AgentSoulDifyToolCredentialRef | null
+  credential_type?: 'api-key' | 'oauth2' | 'unauthorized'
+  description?: string | null
+  enabled?: boolean
+  name?: string | null
+  plugin_id?: string | null
+  provider?: string | null
+  provider_id?: string | null
+  provider_type: ToolProviderType
+  runtime_parameters?: {
+    [key: string]:
+      | string
+      | number
+      | number
+      | boolean
+      | Array<string>
+      | Array<number>
+      | Array<number>
+      | Array<boolean>
+      | null
+  }
+  tool_name?: string | null
+}
+
+export type FileType = 'audio' | 'custom' | 'document' | 'image' | 'video'
+
+export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url' | 'tool_file'
+
+export type AgentFileUploadImageFeatureConfig = {
+  enabled?: boolean
+  [key: string]: unknown
+}
+
+export type AgentModerationProviderConfig = {
+  api_based_extension_id?: string | null
+  inputs_config?: AgentModerationIoConfig | null
+  keywords?: string | null
+  outputs_config?: AgentModerationIoConfig | null
+  [key: string]: unknown
+}
+
+export type AgentSuggestedQuestionsAfterAnswerModelConfig = {
+  completion_params?: {
+    [key: string]: unknown
+  } | null
+  mode?: string | null
+  name: string
+  provider: string
+  [key: string]: unknown
+}
+
+export type AgentPermissionConfig = {
+  allowed?: boolean | null
+  state?: string | null
+  status?: string | null
+}
+
+export type AgentKnowledgeDatasetConfig = {
+  description?: string | null
+  id?: string | null
+  name?: string | null
+}
+
+export type AgentKnowledgeMetadataFilteringConfig = {
+  conditions?: AgentKnowledgeMetadataConditions | null
+  mode?: 'automatic' | 'disabled' | 'manual'
+  model_config?: AgentKnowledgeModelConfig | null
+}
+
+export type AgentKnowledgeQueryConfig = {
+  mode: AgentKnowledgeQueryMode
+  value?: string | null
+}
+
+export type AgentKnowledgeRetrievalConfig = {
+  mode: 'multiple' | 'single'
+  model?: AgentKnowledgeModelConfig | null
+  reranking_enable?: boolean
+  reranking_mode?: string
+  reranking_model?: AgentKnowledgeRerankingModelConfig | null
+  score_threshold?: number | null
+  top_k?: number | null
+  weights?: AgentKnowledgeWeightedScoreConfig | null
+}
+
+export type AgentModelResponseFormatConfig = {
+  type?: string | null
+  [key: string]: unknown
+}
+
+export type AgentCliToolAuthorizationStatus =
+  | 'allowed'
+  | 'authorized'
+  | 'denied'
+  | 'forbidden'
+  | 'not_required'
+  | 'pending'
+  | 'pre_authorized'
+  | 'unauthorized'
+
+export type AgentCliToolEnvConfig = {
+  secret_refs?: Array<AgentSecretRefConfig>
+  variables?: Array<AgentEnvVariableConfig>
+}
+
+export type AgentCliToolRiskLevel = 'dangerous' | 'safe' | 'unknown'
+
+export type AgentSoulDifyToolCredentialRef = {
+  id?: string | null
+  provider?: string | null
+  type?: 'provider' | 'tool'
+}
+
+export type ToolProviderType =
+  | 'api'
+  | 'app'
+  | 'builtin'
+  | 'dataset-retrieval'
+  | 'mcp'
+  | 'plugin'
+  | 'workflow'
+
+export type AgentModerationIoConfig = {
+  enabled?: boolean
+  preset_response?: string | null
+  [key: string]: unknown
+}
+
+export type AgentKnowledgeMetadataConditions = {
+  conditions?: Array<AgentKnowledgeMetadataCondition>
+  logical_operator?: 'and' | 'or'
+}
+
+export type AgentKnowledgeModelConfig = {
+  completion_params?: {
+    [key: string]: unknown
+  }
+  mode: string
+  name: string
+  provider: string
+}
+
+export type AgentKnowledgeQueryMode = 'generated_query' | 'user_query'
+
+export type AgentKnowledgeRerankingModelConfig = {
+  model: string
+  provider: string
+}
+
+export type AgentKnowledgeWeightedScoreConfig = {
+  keyword_setting?: {
+    [key: string]: unknown
+  } | null
+  vector_setting?: {
+    [key: string]: unknown
+  } | null
+  weight_type?: string | null
+  [key: string]: unknown
+}
+
+export type AgentKnowledgeMetadataCondition = {
+  comparison_operator:
+    | '<'
+    | '='
+    | '>'
+    | 'after'
+    | 'before'
+    | 'contains'
+    | 'empty'
+    | 'end with'
+    | 'in'
+    | 'is'
+    | 'is not'
+    | 'not contains'
+    | 'not empty'
+    | 'not in'
+    | 'start with'
+    | '≠'
+    | '≤'
+    | '≥'
+  id?: string | null
+  metadata_id?: string | null
+  name: string
+  value?: string | Array<string> | number | null
+}
 
 export type SiteWritable = {
   chat_color_theme?: string | null
@@ -346,6 +1276,7 @@ export type SiteWritable = {
   icon?: string | null
   icon_background?: string | null
   icon_type?: string | null
+  input_placeholder?: string | null
   privacy_policy?: string | null
   show_workflow_steps: boolean
   title: string
@@ -362,11 +1293,199 @@ export type GetTrialAppsByAppIdData = {
 }
 
 export type GetTrialAppsByAppIdResponses = {
-  200: TrialAppDetailWithSite
+  200: TrialAppDetailResponse
 }
 
-export type GetTrialAppsByAppIdResponse
-  = GetTrialAppsByAppIdResponses[keyof GetTrialAppsByAppIdResponses]
+export type GetTrialAppsByAppIdResponse =
+  GetTrialAppsByAppIdResponses[keyof GetTrialAppsByAppIdResponses]
+
+export type GetTrialAppsByAppIdAgentComposerData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/trial-apps/{app_id}/agent-composer'
+}
+
+export type GetTrialAppsByAppIdAgentComposerResponses = {
+  200: AgentAppComposerResponse
+}
+
+export type GetTrialAppsByAppIdAgentComposerResponse =
+  GetTrialAppsByAppIdAgentComposerResponses[keyof GetTrialAppsByAppIdAgentComposerResponses]
+
+export type GetTrialAppsByAppIdAgentConfigFilesData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: {
+    version_id?: string
+  }
+  url: '/trial-apps/{app_id}/agent/config/files'
+}
+
+export type GetTrialAppsByAppIdAgentConfigFilesResponses = {
+  200: AgentConfigFileListResponse
+}
+
+export type GetTrialAppsByAppIdAgentConfigFilesResponse =
+  GetTrialAppsByAppIdAgentConfigFilesResponses[keyof GetTrialAppsByAppIdAgentConfigFilesResponses]
+
+export type GetTrialAppsByAppIdAgentConfigFilesByNameDownloadData = {
+  body?: never
+  path: {
+    app_id: string
+    name: string
+  }
+  query?: {
+    version_id?: string
+  }
+  url: '/trial-apps/{app_id}/agent/config/files/{name}/download'
+}
+
+export type GetTrialAppsByAppIdAgentConfigFilesByNameDownloadResponses = {
+  200: AgentConfigDownloadResponse
+}
+
+export type GetTrialAppsByAppIdAgentConfigFilesByNameDownloadResponse =
+  GetTrialAppsByAppIdAgentConfigFilesByNameDownloadResponses[keyof GetTrialAppsByAppIdAgentConfigFilesByNameDownloadResponses]
+
+export type GetTrialAppsByAppIdAgentConfigFilesByNamePreviewData = {
+  body?: never
+  path: {
+    app_id: string
+    name: string
+  }
+  query?: {
+    version_id?: string
+  }
+  url: '/trial-apps/{app_id}/agent/config/files/{name}/preview'
+}
+
+export type GetTrialAppsByAppIdAgentConfigFilesByNamePreviewResponses = {
+  200: AgentConfigFilePreviewResponse
+}
+
+export type GetTrialAppsByAppIdAgentConfigFilesByNamePreviewResponse =
+  GetTrialAppsByAppIdAgentConfigFilesByNamePreviewResponses[keyof GetTrialAppsByAppIdAgentConfigFilesByNamePreviewResponses]
+
+export type GetTrialAppsByAppIdAgentConfigSkillsData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: {
+    version_id?: string
+  }
+  url: '/trial-apps/{app_id}/agent/config/skills'
+}
+
+export type GetTrialAppsByAppIdAgentConfigSkillsResponses = {
+  200: AgentConfigSkillListResponse
+}
+
+export type GetTrialAppsByAppIdAgentConfigSkillsResponse =
+  GetTrialAppsByAppIdAgentConfigSkillsResponses[keyof GetTrialAppsByAppIdAgentConfigSkillsResponses]
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameDownloadData = {
+  body?: never
+  path: {
+    app_id: string
+    name: string
+  }
+  query?: {
+    version_id?: string
+  }
+  url: '/trial-apps/{app_id}/agent/config/skills/{name}/download'
+}
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameDownloadResponses = {
+  200: AgentConfigDownloadResponse
+}
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameDownloadResponse =
+  GetTrialAppsByAppIdAgentConfigSkillsByNameDownloadResponses[keyof GetTrialAppsByAppIdAgentConfigSkillsByNameDownloadResponses]
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesContentData = {
+  body?: never
+  path: {
+    app_id: string
+    name: string
+  }
+  query: {
+    path: string
+    version_id?: string
+  }
+  url: '/trial-apps/{app_id}/agent/config/skills/{name}/files/content'
+}
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesContentResponses = {
+  200: Blob | File
+}
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesContentResponse =
+  GetTrialAppsByAppIdAgentConfigSkillsByNameFilesContentResponses[keyof GetTrialAppsByAppIdAgentConfigSkillsByNameFilesContentResponses]
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesDownloadData = {
+  body?: never
+  path: {
+    app_id: string
+    name: string
+  }
+  query: {
+    path: string
+    version_id?: string
+  }
+  url: '/trial-apps/{app_id}/agent/config/skills/{name}/files/download'
+}
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesDownloadResponses = {
+  200: AgentConfigDownloadResponse
+}
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesDownloadResponse =
+  GetTrialAppsByAppIdAgentConfigSkillsByNameFilesDownloadResponses[keyof GetTrialAppsByAppIdAgentConfigSkillsByNameFilesDownloadResponses]
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesPreviewData = {
+  body?: never
+  path: {
+    app_id: string
+    name: string
+  }
+  query: {
+    path: string
+    version_id?: string
+  }
+  url: '/trial-apps/{app_id}/agent/config/skills/{name}/files/preview'
+}
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesPreviewResponses = {
+  200: AgentConfigSkillFilePreviewResponse
+}
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesPreviewResponse =
+  GetTrialAppsByAppIdAgentConfigSkillsByNameFilesPreviewResponses[keyof GetTrialAppsByAppIdAgentConfigSkillsByNameFilesPreviewResponses]
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameInspectData = {
+  body?: never
+  path: {
+    app_id: string
+    name: string
+  }
+  query?: {
+    version_id?: string
+  }
+  url: '/trial-apps/{app_id}/agent/config/skills/{name}/inspect'
+}
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameInspectResponses = {
+  200: AgentConfigSkillInspectResponse
+}
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameInspectResponse =
+  GetTrialAppsByAppIdAgentConfigSkillsByNameInspectResponses[keyof GetTrialAppsByAppIdAgentConfigSkillsByNameInspectResponses]
 
 export type PostTrialAppsByAppIdAudioToTextData = {
   body?: never
@@ -381,8 +1500,8 @@ export type PostTrialAppsByAppIdAudioToTextResponses = {
   200: AudioTranscriptResponse
 }
 
-export type PostTrialAppsByAppIdAudioToTextResponse
-  = PostTrialAppsByAppIdAudioToTextResponses[keyof PostTrialAppsByAppIdAudioToTextResponses]
+export type PostTrialAppsByAppIdAudioToTextResponse =
+  PostTrialAppsByAppIdAudioToTextResponses[keyof PostTrialAppsByAppIdAudioToTextResponses]
 
 export type PostTrialAppsByAppIdChatMessagesData = {
   body: ChatRequest
@@ -394,11 +1513,30 @@ export type PostTrialAppsByAppIdChatMessagesData = {
 }
 
 export type PostTrialAppsByAppIdChatMessagesResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
-export type PostTrialAppsByAppIdChatMessagesResponse
-  = PostTrialAppsByAppIdChatMessagesResponses[keyof PostTrialAppsByAppIdChatMessagesResponses]
+export type PostTrialAppsByAppIdChatMessagesResponse =
+  PostTrialAppsByAppIdChatMessagesResponses[keyof PostTrialAppsByAppIdChatMessagesResponses]
+
+export type PostTrialAppsByAppIdChatMessagesByTaskIdStopData = {
+  body?: never
+  path: {
+    app_id: string
+    task_id: string
+  }
+  query?: never
+  url: '/trial-apps/{app_id}/chat-messages/{task_id}/stop'
+}
+
+export type PostTrialAppsByAppIdChatMessagesByTaskIdStopResponses = {
+  200: SimpleResultResponse
+}
+
+export type PostTrialAppsByAppIdChatMessagesByTaskIdStopResponse =
+  PostTrialAppsByAppIdChatMessagesByTaskIdStopResponses[keyof PostTrialAppsByAppIdChatMessagesByTaskIdStopResponses]
 
 export type PostTrialAppsByAppIdCompletionMessagesData = {
   body: CompletionRequest
@@ -410,11 +1548,13 @@ export type PostTrialAppsByAppIdCompletionMessagesData = {
 }
 
 export type PostTrialAppsByAppIdCompletionMessagesResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
-export type PostTrialAppsByAppIdCompletionMessagesResponse
-  = PostTrialAppsByAppIdCompletionMessagesResponses[keyof PostTrialAppsByAppIdCompletionMessagesResponses]
+export type PostTrialAppsByAppIdCompletionMessagesResponse =
+  PostTrialAppsByAppIdCompletionMessagesResponses[keyof PostTrialAppsByAppIdCompletionMessagesResponses]
 
 export type GetTrialAppsByAppIdDatasetsData = {
   body?: never
@@ -430,11 +1570,53 @@ export type GetTrialAppsByAppIdDatasetsData = {
 }
 
 export type GetTrialAppsByAppIdDatasetsResponses = {
-  200: TrialDatasetList
+  200: TrialDatasetListResponse
 }
 
-export type GetTrialAppsByAppIdDatasetsResponse
-  = GetTrialAppsByAppIdDatasetsResponses[keyof GetTrialAppsByAppIdDatasetsResponses]
+export type GetTrialAppsByAppIdDatasetsResponse =
+  GetTrialAppsByAppIdDatasetsResponses[keyof GetTrialAppsByAppIdDatasetsResponses]
+
+export type GetTrialAppsByAppIdExportData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query: {
+    format?: 'ifpkg' | 'yaml'
+    version_id: string
+  }
+  url: '/trial-apps/{app_id}/export'
+}
+
+export type GetTrialAppsByAppIdExportErrors = {
+  404: unknown
+}
+
+export type GetTrialAppsByAppIdExportResponses = {
+  200: AppExportResponse | Blob | File
+}
+
+export type GetTrialAppsByAppIdExportResponse =
+  GetTrialAppsByAppIdExportResponses[keyof GetTrialAppsByAppIdExportResponses]
+
+export type PostTrialAppsByAppIdFilesUploadData = {
+  body: {
+    file: Blob | File
+    source?: 'datasets'
+  }
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/trial-apps/{app_id}/files/upload'
+}
+
+export type PostTrialAppsByAppIdFilesUploadResponses = {
+  201: FileResponse
+}
+
+export type PostTrialAppsByAppIdFilesUploadResponse =
+  PostTrialAppsByAppIdFilesUploadResponses[keyof PostTrialAppsByAppIdFilesUploadResponses]
 
 export type GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsData = {
   body?: never
@@ -450,8 +1632,8 @@ export type GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponses = 
   200: SuggestedQuestionsResponse
 }
 
-export type GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponse
-  = GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponses[keyof GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponses]
+export type GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponse =
+  GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponses[keyof GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponses]
 
 export type GetTrialAppsByAppIdParametersData = {
   body?: never
@@ -466,8 +1648,24 @@ export type GetTrialAppsByAppIdParametersResponses = {
   200: Parameters
 }
 
-export type GetTrialAppsByAppIdParametersResponse
-  = GetTrialAppsByAppIdParametersResponses[keyof GetTrialAppsByAppIdParametersResponses]
+export type GetTrialAppsByAppIdParametersResponse =
+  GetTrialAppsByAppIdParametersResponses[keyof GetTrialAppsByAppIdParametersResponses]
+
+export type PostTrialAppsByAppIdRemoteFilesUploadData = {
+  body: RemoteFileUploadPayload
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/trial-apps/{app_id}/remote-files/upload'
+}
+
+export type PostTrialAppsByAppIdRemoteFilesUploadResponses = {
+  201: FileWithSignedUrl
+}
+
+export type PostTrialAppsByAppIdRemoteFilesUploadResponse =
+  PostTrialAppsByAppIdRemoteFilesUploadResponses[keyof PostTrialAppsByAppIdRemoteFilesUploadResponses]
 
 export type GetTrialAppsByAppIdSiteData = {
   body?: never
@@ -482,8 +1680,8 @@ export type GetTrialAppsByAppIdSiteResponses = {
   200: Site
 }
 
-export type GetTrialAppsByAppIdSiteResponse
-  = GetTrialAppsByAppIdSiteResponses[keyof GetTrialAppsByAppIdSiteResponses]
+export type GetTrialAppsByAppIdSiteResponse =
+  GetTrialAppsByAppIdSiteResponses[keyof GetTrialAppsByAppIdSiteResponses]
 
 export type PostTrialAppsByAppIdTextToAudioData = {
   body: TextToSpeechRequest
@@ -498,8 +1696,8 @@ export type PostTrialAppsByAppIdTextToAudioResponses = {
   200: AudioBinaryResponse
 }
 
-export type PostTrialAppsByAppIdTextToAudioResponse
-  = PostTrialAppsByAppIdTextToAudioResponses[keyof PostTrialAppsByAppIdTextToAudioResponses]
+export type PostTrialAppsByAppIdTextToAudioResponse =
+  PostTrialAppsByAppIdTextToAudioResponses[keyof PostTrialAppsByAppIdTextToAudioResponses]
 
 export type GetTrialAppsByAppIdWorkflowsData = {
   body?: never
@@ -511,11 +1709,11 @@ export type GetTrialAppsByAppIdWorkflowsData = {
 }
 
 export type GetTrialAppsByAppIdWorkflowsResponses = {
-  200: TrialWorkflow
+  200: TrialWorkflowResponse
 }
 
-export type GetTrialAppsByAppIdWorkflowsResponse
-  = GetTrialAppsByAppIdWorkflowsResponses[keyof GetTrialAppsByAppIdWorkflowsResponses]
+export type GetTrialAppsByAppIdWorkflowsResponse =
+  GetTrialAppsByAppIdWorkflowsResponses[keyof GetTrialAppsByAppIdWorkflowsResponses]
 
 export type PostTrialAppsByAppIdWorkflowsRunData = {
   body: WorkflowRunRequest
@@ -527,11 +1725,13 @@ export type PostTrialAppsByAppIdWorkflowsRunData = {
 }
 
 export type PostTrialAppsByAppIdWorkflowsRunResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
-export type PostTrialAppsByAppIdWorkflowsRunResponse
-  = PostTrialAppsByAppIdWorkflowsRunResponses[keyof PostTrialAppsByAppIdWorkflowsRunResponses]
+export type PostTrialAppsByAppIdWorkflowsRunResponse =
+  PostTrialAppsByAppIdWorkflowsRunResponses[keyof PostTrialAppsByAppIdWorkflowsRunResponses]
 
 export type PostTrialAppsByAppIdWorkflowsTasksByTaskIdStopData = {
   body?: never
@@ -547,5 +1747,5 @@ export type PostTrialAppsByAppIdWorkflowsTasksByTaskIdStopResponses = {
   200: SimpleResultResponse
 }
 
-export type PostTrialAppsByAppIdWorkflowsTasksByTaskIdStopResponse
-  = PostTrialAppsByAppIdWorkflowsTasksByTaskIdStopResponses[keyof PostTrialAppsByAppIdWorkflowsTasksByTaskIdStopResponses]
+export type PostTrialAppsByAppIdWorkflowsTasksByTaskIdStopResponse =
+  PostTrialAppsByAppIdWorkflowsTasksByTaskIdStopResponses[keyof PostTrialAppsByAppIdWorkflowsTasksByTaskIdStopResponses]

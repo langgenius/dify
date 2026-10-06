@@ -7,7 +7,7 @@ add, update, and remove actions.
 """
 
 import uuid
-from unittest.mock import ANY, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 from faker import Faker
@@ -17,8 +17,8 @@ from sqlalchemy.orm import Session
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
-from services.account_service import AccountService, TenantService
 from tasks.deal_dataset_vector_index_task import deal_dataset_vector_index_task
+from tests.test_containers_integration_tests.helpers import accounts as account_fixtures
 from tests.test_containers_integration_tests.helpers import generate_valid_password
 
 
@@ -29,10 +29,10 @@ class TestDealDatasetVectorIndexTask:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch("services.account_service.FeatureService") as mock_account_feature_service,
+            patch("services.account.login_adapters.SystemFeatureService") as mock_account_feature_service,
         ):
             # Setup default mock returns for account service
-            mock_account_feature_service.get_system_features.return_value.is_allow_register = True
+            mock_account_feature_service.is_registration_allowed.return_value = True
 
             yield {
                 "account_feature_service": mock_account_feature_service,
@@ -62,14 +62,14 @@ class TestDealDatasetVectorIndexTask:
         Returns a tuple of (account, tenant) where tenant is guaranteed to be non-None.
         """
         fake = Faker()
-        account = AccountService.create_account(
+        account = account_fixtures.create_account(
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
             session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
+        account_fixtures.create_owner_workspace(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
         assert tenant is not None
         return account, tenant
@@ -330,7 +330,13 @@ class TestDealDatasetVectorIndexTask:
         # Verify index processor clean and load methods were called
         mock_factory = mock_index_processor_factory.return_value
         mock_processor = mock_factory.init_index_processor.return_value
-        mock_processor.clean.assert_called_once_with(ANY, None, with_keywords=False, delete_child_chunks=False)
+        mock_processor.clean.assert_called_once()
+        clean_args, clean_kwargs = mock_processor.clean.call_args
+        assert clean_args[0].id == dataset.id
+        assert clean_args[1] is None
+        assert clean_kwargs["with_keywords"] is False
+        assert clean_kwargs["delete_child_chunks"] is False
+        assert clean_kwargs["session"] is not None
         mock_processor.load.assert_called_once()
 
     def test_deal_dataset_vector_index_task_dataset_not_found_error(
@@ -470,7 +476,13 @@ class TestDealDatasetVectorIndexTask:
         # Verify that index processor clean was called but no load
         mock_factory = mock_index_processor_factory.return_value
         mock_processor = mock_factory.init_index_processor.return_value
-        mock_processor.clean.assert_called_once_with(ANY, None, with_keywords=False, delete_child_chunks=False)
+        mock_processor.clean.assert_called_once()
+        clean_args, clean_kwargs = mock_processor.clean.call_args
+        assert clean_args[0].id == dataset.id
+        assert clean_args[1] is None
+        assert clean_kwargs["with_keywords"] is False
+        assert clean_kwargs["delete_child_chunks"] is False
+        assert clean_kwargs["session"] is not None
         mock_processor.load.assert_not_called()
 
     def test_deal_dataset_vector_index_task_add_action_with_exception_handling(

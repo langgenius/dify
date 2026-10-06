@@ -1,51 +1,35 @@
-import type { SlashCommandHandler } from './types'
-import { RiUser3Line } from '@remixicon/react'
-import * as React from 'react'
-import { getI18n } from 'react-i18next'
-import { registerCommands, unregisterCommands } from './command-bus'
-
-// Account command dependency types - no external dependencies needed
-type AccountDeps = Record<string, never>
+import type { SlashCommand } from './types'
 
 /**
  * Account command - Navigates to account page
  */
-export const accountCommand: SlashCommandHandler<AccountDeps> = {
+export const accountCommand: SlashCommand = {
   name: 'account',
   description: 'Navigate to account page',
   mode: 'direct',
 
-  // Direct execution function
-  execute: () => {
-    window.location.href = '/account'
-  },
+  execute: (_args, context) => context.navigate('/account'),
 
-  async search(args: string, locale: string = 'en') {
-    const i18n = getI18n()
-    return [{
-      id: 'account',
-      title: i18n.t('account.account', { ns: 'common', lng: locale }),
-      description: i18n.t('gotoAnything.actions.accountDesc', { ns: 'app', lng: locale }),
-      type: 'command' as const,
-      icon: (
-        <div className="flex h-6 w-6 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-components-panel-bg">
-          <RiUser3Line className="size-4 text-text-tertiary" />
-        </div>
-      ),
-      data: { command: 'navigation.account', args: {} },
-    }]
-  },
-
-  register(_deps: AccountDeps) {
-    registerCommands({
-      'navigation.account': async (_args) => {
-        // Navigate to account page
-        window.location.href = '/account'
+  search(args: string, context) {
+    return [
+      {
+        id: 'account',
+        title: context.t(($) => $['account.account'], {
+          ns: 'accountSettings',
+          lng: context.locale,
+        }),
+        description: context.t(($) => $['gotoAnything.actions.accountDesc'], {
+          ns: 'app',
+          lng: context.locale,
+        }),
+        type: 'command' as const,
+        icon: (
+          <div className="flex h-6 w-6 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-components-panel-bg">
+            <span aria-hidden className="i-ri-user-3-line size-4 text-text-tertiary" />
+          </div>
+        ),
+        data: { command: 'account', args: {} },
       },
-    })
-  },
-
-  unregister() {
-    unregisterCommands(['navigation.account'])
+    ]
   },
 }

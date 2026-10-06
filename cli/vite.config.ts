@@ -2,7 +2,9 @@ import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite-plus'
 import { resolveBuildInfo } from './scripts/lib/resolve-buildinfo.js'
 
-const buildInfo = resolveBuildInfo()
+const buildInfo = resolveBuildInfo({
+  env: { ...process.env, DIFYCTL_CHANNEL: process.env.DIFYCTL_CHANNEL ?? 'dev' },
+})
 
 export default defineConfig({
   resolve: {
@@ -12,7 +14,8 @@ export default defineConfig({
     },
   },
   pack: {
-    entry: ['src/index.ts', 'src/commands/**/*.ts', 'src/framework/**/*.ts'],
+    deps: { resolveDepSubpath: true },
+    entry: ['src/main.ts', 'src/kernel/**/*.ts', 'src/plugins/**/*.ts', 'src/commands/**/*.ts'],
     format: ['esm'],
     fixedExtension: false,
     dts: true,
@@ -20,14 +23,12 @@ export default defineConfig({
     sourcemap: true,
     treeshake: false,
     outDir: 'dist',
-    target: 'node22',
+    target: 'node24',
     define: {
       __DIFYCTL_VERSION__: JSON.stringify(buildInfo.version),
       __DIFYCTL_COMMIT__: JSON.stringify(buildInfo.commit),
       __DIFYCTL_BUILD_DATE__: JSON.stringify(buildInfo.buildDate),
       __DIFYCTL_CHANNEL__: JSON.stringify(buildInfo.channel),
-      __DIFYCTL_MIN_DIFY__: JSON.stringify(buildInfo.minDify),
-      __DIFYCTL_MAX_DIFY__: JSON.stringify(buildInfo.maxDify),
     },
   },
   test: {
@@ -39,7 +40,7 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'text-summary', 'json'],
       include: ['src/**/*.ts'],
-      exclude: ['src/**/*.test.ts', 'src/types/**'],
+      exclude: ['src/**/*.test.ts'],
     },
   },
 })

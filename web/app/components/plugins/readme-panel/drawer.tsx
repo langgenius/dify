@@ -1,33 +1,29 @@
 'use client'
 
-import type { PluginDetail } from '../types'
+import type { ReadmePanelState } from './store'
 import {
   Drawer,
   DrawerBackdrop,
-  DrawerCloseButton,
+  DrawerClose,
   DrawerContent,
   DrawerPopup,
   DrawerPortal,
   DrawerTitle,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useTranslation } from 'react-i18next'
 import { ReadmePanelContent } from './content'
 
 type ReadmeDrawerProps = {
-  detail: PluginDetail
+  detail: ReadmePanelState['detail']
   open: boolean
   onOpenChange: (open: boolean) => void
   triggerId?: string
 }
 
-export function ReadmeDrawer({
-  detail,
-  open,
-  onOpenChange,
-  triggerId,
-}: ReadmeDrawerProps) {
-  const { t } = useTranslation()
+export function ReadmeDrawer({ detail, open, onOpenChange, triggerId }: ReadmeDrawerProps) {
+  const { t } = useTranslation(['common', 'plugin'])
 
   return (
     <Drawer
@@ -44,14 +40,23 @@ export function ReadmeDrawer({
             <DrawerContent className="flex min-h-0 flex-1 flex-col p-0">
               <ReadmePanelContent
                 detail={detail}
-                title={(
+                title={
                   <DrawerTitle className="truncate text-xs font-medium text-text-tertiary uppercase">
-                    {t('readmeInfo.title', { ns: 'plugin' })}
+                    {t(($) => $['readmeInfo.title'], { ns: 'plugin' })}
                   </DrawerTitle>
-                )}
-                closeButton={(
-                  <DrawerCloseButton aria-label={t('operation.close', { ns: 'common' })} />
-                )}
+                }
+                closeButton={
+                  <DrawerClose
+                    render={
+                      <IconButton
+                        aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                        size="lg"
+                      >
+                        <span aria-hidden="true" className="i-ri-close-line size-4" />
+                      </IconButton>
+                    }
+                  />
+                }
               />
             </DrawerContent>
           </DrawerPopup>

@@ -1,14 +1,28 @@
+from typing import override
+
 from flask import Blueprint
 from flask_restx import Namespace
 
+from controllers.openapi._catalog import attach_catalog
 from controllers.openapi._errors import ErrorBody, OpenApiErrorCode, OpenApiErrorFormatter
+from controllers.openapi._upload import describe_multipart_bodies
 from libs.device_flow_security import attach_anti_framing
 from libs.external_api import ExternalApi
 
 bp = Blueprint("openapi", __name__, url_prefix="/openapi/v1")
 attach_anti_framing(bp)
+attach_catalog(bp)
 
-api = ExternalApi(
+
+class _OpenApi(ExternalApi):
+    """The surface's document also names the multipart form its file-bearing bodies accept."""
+
+    @override
+    def finish_document(self, document: dict[str, object]) -> dict[str, object]:
+        return describe_multipart_bodies(document)
+
+
+api = _OpenApi(
     bp,
     version="1.0",
     title="OpenAPI",
@@ -20,22 +34,25 @@ openapi_ns = Namespace("openapi", description="User-scoped operations", path="/"
 
 # Register response/query models BEFORE importing controller modules so that
 # @openapi_ns.response / @openapi_ns.expect decorators can resolve model names.
-from controllers.common.fields import EventStreamResponse
+from controllers.common.fields import EventStreamResponse, SimpleResultResponse
 from controllers.common.schema import register_enum_models, register_response_schema_models, register_schema_models
 from controllers.openapi._models import (
     AccountPayload,
     AccountResponse,
+    AdvancedChatRunPayload,
     AppDescribeInfo,
     AppDescribeQuery,
     AppDescribeResponse,
     AppDslExportQuery,
     AppDslExportResponse,
     AppDslImportPayload,
+    AppDslImportResponse,
     AppInfo,
     AppListQuery,
     AppListResponse,
     AppListRow,
-    AppRunRequest,
+    ChatRunPayload,
+    CompletionRunPayload,
     DeviceCodeRequest,
     DeviceCodeResponse,
     DeviceLookupQuery,
@@ -44,8 +61,10 @@ from controllers.openapi._models import (
     DeviceMutateResponse,
     DevicePollRequest,
     DeviceTokenResponse,
+    FileUploadPayload,
     FormSubmitResponse,
     HealthResponse,
+    Hint,
     HumanInputFormDefinitionResponse,
     MemberActionResponse,
     MemberInvitePayload,
@@ -55,6 +74,7 @@ from controllers.openapi._models import (
     MemberResponse,
     MemberRoleUpdatePayload,
     MessageMetadata,
+    OpenApiFormSubmitPayload,
     PermittedExternalAppsListQuery,
     PermittedExternalAppsListResponse,
     RevokeResponse,
@@ -65,38 +85,47 @@ from controllers.openapi._models import (
     TaskStopResponse,
     UsageInfo,
     WorkflowRunData,
+    WorkflowRunPayload,
     WorkspaceDetailResponse,
+    WorkspaceListQuery,
     WorkspaceListResponse,
     WorkspacePayload,
     WorkspaceSummaryResponse,
 )
 from fields.file_fields import FileResponse
-from services.app_dsl_service import Import
-from services.entities.dsl_entities import CheckDependenciesResult
+from services.entities.dsl_entities import CheckDependenciesResult, Import
 
 register_schema_models(
     openapi_ns,
+    AdvancedChatRunPayload,
     AppDescribeQuery,
     AppDslImportPayload,
     AppDslExportQuery,
     AppListQuery,
-    AppRunRequest,
+    ChatRunPayload,
+    CompletionRunPayload,
     DeviceCodeRequest,
     DevicePollRequest,
     DeviceLookupQuery,
     DeviceMutateRequest,
+    FileUploadPayload,
     MemberInvitePayload,
     MemberListQuery,
     MemberRoleUpdatePayload,
+    OpenApiFormSubmitPayload,
     PermittedExternalAppsListQuery,
     SessionListQuery,
+    WorkflowRunPayload,
+    WorkspaceListQuery,
 )
 register_response_schema_models(
     openapi_ns,
     ErrorBody,
     EventStreamResponse,
+    SimpleResultResponse,
     UsageInfo,
     MessageMetadata,
+    Hint,
     AppListRow,
     AppListResponse,
     AppInfo,
@@ -104,6 +133,7 @@ register_response_schema_models(
     AppDescribeResponse,
     AppDslExportResponse,
     Import,
+    AppDslImportResponse,
     CheckDependenciesResult,
     WorkflowRunData,
     AccountPayload,
@@ -136,7 +166,6 @@ register_response_schema_models(
 register_enum_models(openapi_ns, OpenApiErrorCode)
 
 from . import (
-    _meta,
     account,
     app_dsl,
     app_run,
@@ -154,7 +183,6 @@ from . import (
 # Request models are imported from _models.py and registered above.
 
 __all__ = [
-    "_meta",
     "account",
     "app_dsl",
     "app_run",

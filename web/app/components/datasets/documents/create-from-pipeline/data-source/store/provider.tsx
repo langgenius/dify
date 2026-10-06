@@ -1,4 +1,5 @@
-import { createContext, useRef } from 'react'
+import { createContext } from 'react'
+import { useRefWithInit } from '@/hooks/use-ref-with-init'
 import { createDataSourceStore } from './'
 
 type DataSourceStoreApi = ReturnType<typeof createDataSourceStore>
@@ -11,18 +12,11 @@ type DataSourceProviderProps = {
   children: React.ReactNode
 }
 
-const DataSourceProvider = ({
-  children,
-}: DataSourceProviderProps) => {
-  const storeRef = useRef<DataSourceStoreApi>(null)
-
-  if (!storeRef.current)
-    storeRef.current = createDataSourceStore()
+const DataSourceProvider = ({ children }: DataSourceProviderProps) => {
+  const storeRef = useRefWithInit(createDataSourceStore)
 
   return (
-    <DataSourceContext.Provider value={storeRef.current!}>
-      {children}
-    </DataSourceContext.Provider>
+    <DataSourceContext.Provider value={storeRef.current}>{children}</DataSourceContext.Provider>
   )
 }
 

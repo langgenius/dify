@@ -12,24 +12,29 @@ vi.mock('../hooks', () => ({
   }),
 }))
 
-const createFileConfig = (overrides: Partial<FileUpload> = {}): FileUpload => ({
-  enabled: true,
-  allowed_file_types: ['image'],
-  allowed_file_extensions: [],
-  number_limits: 5,
-  ...overrides,
-} as FileUpload)
+const createFileConfig = (overrides: Partial<FileUpload> = {}): FileUpload =>
+  ({
+    enabled: true,
+    allowed_file_types: ['image'],
+    allowed_file_extensions: [],
+    number_limits: 5,
+    ...overrides,
+  }) as FileUpload
 
 function createStubFile(id: string): FileEntity {
-  return { id, name: `${id}.txt`, size: 0, type: '', progress: 100, transferMethod: 'local_file' as FileEntity['transferMethod'], supportFileType: 'document' }
+  return {
+    id,
+    name: `${id}.txt`,
+    size: 0,
+    type: '',
+    progress: 100,
+    transferMethod: 'local_file' as FileEntity['transferMethod'],
+    supportFileType: 'document',
+  }
 }
 
 function renderWithProvider(ui: React.ReactElement, fileIds: string[] = []) {
-  return render(
-    <FileContextProvider value={fileIds.map(createStubFile)}>
-      {ui}
-    </FileContextProvider>,
-  )
+  return render(<FileContextProvider value={fileIds.map(createStubFile)}>{ui}</FileContextProvider>)
 }
 
 describe('FileInput', () => {
@@ -45,7 +50,9 @@ describe('FileInput', () => {
   })
 
   it('should set accept attribute based on allowed file types', () => {
-    renderWithProvider(<FileInput fileConfig={createFileConfig({ allowed_file_types: ['image'] })} />)
+    renderWithProvider(
+      <FileInput fileConfig={createFileConfig({ allowed_file_types: ['image'] })} />,
+    )
 
     const input = document.querySelector('input[type="file"]') as HTMLInputElement
     expect(input.accept).toBe('.JPG,.JPEG,.PNG,.GIF,.WEBP,.SVG')
@@ -53,10 +60,11 @@ describe('FileInput', () => {
 
   it('should use custom extensions when file type is custom', () => {
     renderWithProvider(
-      <FileInput fileConfig={createFileConfig({
-        allowed_file_types: ['custom'] as unknown as FileUpload['allowed_file_types'],
-        allowed_file_extensions: ['.csv', '.xlsx'],
-      })}
+      <FileInput
+        fileConfig={createFileConfig({
+          allowed_file_types: ['custom'] as unknown as FileUpload['allowed_file_types'],
+          allowed_file_extensions: ['.csv', '.xlsx'],
+        })}
       />,
     )
 
@@ -79,20 +87,18 @@ describe('FileInput', () => {
   })
 
   it('should be disabled when file limit is reached', () => {
-    renderWithProvider(
-      <FileInput fileConfig={createFileConfig({ number_limits: 3 })} />,
-      ['1', '2', '3'],
-    )
+    renderWithProvider(<FileInput fileConfig={createFileConfig({ number_limits: 3 })} />, [
+      '1',
+      '2',
+      '3',
+    ])
 
     const input = document.querySelector('input[type="file"]') as HTMLInputElement
     expect(input.disabled).toBe(true)
   })
 
   it('should not be disabled when file limit is not reached', () => {
-    renderWithProvider(
-      <FileInput fileConfig={createFileConfig({ number_limits: 3 })} />,
-      ['1'],
-    )
+    renderWithProvider(<FileInput fileConfig={createFileConfig({ number_limits: 3 })} />, ['1'])
 
     const input = document.querySelector('input[type="file"]') as HTMLInputElement
     expect(input.disabled).toBe(false)
@@ -109,10 +115,10 @@ describe('FileInput', () => {
   })
 
   it('should respect number_limits when uploading multiple files', () => {
-    renderWithProvider(
-      <FileInput fileConfig={createFileConfig({ number_limits: 3 })} />,
-      ['1', '2'],
-    )
+    renderWithProvider(<FileInput fileConfig={createFileConfig({ number_limits: 3 })} />, [
+      '1',
+      '2',
+    ])
 
     const input = document.querySelector('input[type="file"]') as HTMLInputElement
     const file1 = new File(['content'], 'test1.jpg', { type: 'image/jpeg' })
@@ -148,7 +154,9 @@ describe('FileInput', () => {
   })
 
   it('should handle empty allowed_file_types', () => {
-    renderWithProvider(<FileInput fileConfig={createFileConfig({ allowed_file_types: undefined })} />)
+    renderWithProvider(
+      <FileInput fileConfig={createFileConfig({ allowed_file_types: undefined })} />,
+    )
 
     const input = document.querySelector('input[type="file"]') as HTMLInputElement
     expect(input.accept).toBe('')
@@ -156,10 +164,11 @@ describe('FileInput', () => {
 
   it('should handle custom type with undefined allowed_file_extensions', () => {
     renderWithProvider(
-      <FileInput fileConfig={createFileConfig({
-        allowed_file_types: ['custom'] as unknown as FileUpload['allowed_file_types'],
-        allowed_file_extensions: undefined,
-      })}
+      <FileInput
+        fileConfig={createFileConfig({
+          allowed_file_types: ['custom'] as unknown as FileUpload['allowed_file_types'],
+          allowed_file_extensions: undefined,
+        })}
       />,
     )
 

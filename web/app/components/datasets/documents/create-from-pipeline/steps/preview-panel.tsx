@@ -1,7 +1,13 @@
 'use client'
 import type { Datasource } from '@/app/components/rag-pipeline/components/panel/test-run/types'
 import type { NotionPage } from '@/models/common'
-import type { CrawlResultItem, CustomFile, DocumentItem, FileIndexingEstimateResponse, FileItem } from '@/models/datasets'
+import type {
+  CrawlResultItem,
+  CustomFile,
+  DocumentItem,
+  FileIndexingEstimateResponse,
+  FileItem,
+} from '@/models/datasets'
 import type { DatasourceType, OnlineDriveFile } from '@/models/pipeline'
 import { memo } from 'react'
 import ChunkPreview from '../preview/chunk-preview'
@@ -19,41 +25,37 @@ type StepOnePreviewProps = {
   hideWebsitePreview: () => void
 }
 
-export const StepOnePreview = memo(({
-  datasource,
-  currentLocalFile,
-  currentDocument,
-  currentWebsite,
-  hidePreviewLocalFile,
-  hidePreviewOnlineDocument,
-  hideWebsitePreview,
-}: StepOnePreviewProps) => {
-  return (
-    <div className="h-full min-w-0 flex-1">
-      <div className="flex h-full flex-col pt-2 pl-2">
-        {currentLocalFile && (
-          <FilePreview
-            file={currentLocalFile}
-            hidePreview={hidePreviewLocalFile}
-          />
-        )}
-        {currentDocument && (
-          <OnlineDocumentPreview
-            datasourceNodeId={datasource!.nodeId}
-            currentPage={currentDocument}
-            hidePreview={hidePreviewOnlineDocument}
-          />
-        )}
-        {currentWebsite && (
-          <WebsitePreview
-            currentWebsite={currentWebsite}
-            hidePreview={hideWebsitePreview}
-          />
-        )}
+export const StepOnePreview = memo(
+  ({
+    datasource,
+    currentLocalFile,
+    currentDocument,
+    currentWebsite,
+    hidePreviewLocalFile,
+    hidePreviewOnlineDocument,
+    hideWebsitePreview,
+  }: StepOnePreviewProps) => {
+    return (
+      <div className="h-full min-w-0 flex-1">
+        <div className="flex h-full flex-col pt-2 pl-2">
+          {currentLocalFile && (
+            <FilePreview file={currentLocalFile} hidePreview={hidePreviewLocalFile} />
+          )}
+          {currentDocument && (
+            <OnlineDocumentPreview
+              datasourceNodeId={datasource!.nodeId}
+              currentPage={currentDocument}
+              hidePreview={hidePreviewOnlineDocument}
+            />
+          )}
+          {currentWebsite && (
+            <WebsitePreview currentWebsite={currentWebsite} hidePreview={hideWebsitePreview} />
+          )}
+        </div>
       </div>
-    </div>
-  )
-})
+    )
+  },
+)
 StepOnePreview.displayName = 'StepOnePreview'
 
 type StepTwoPreviewProps = {
@@ -72,41 +74,43 @@ type StepTwoPreviewProps = {
   handlePreviewOnlineDriveFileChange: (file: OnlineDriveFile) => void
 }
 
-export const StepTwoPreview = memo(({
-  datasourceType,
-  localFileList,
-  onlineDocuments,
-  websitePages,
-  selectedOnlineDriveFileList,
-  isIdle,
-  isPendingPreview,
-  estimateData,
-  onPreview,
-  handlePreviewFileChange,
-  handlePreviewOnlineDocumentChange,
-  handlePreviewWebsitePageChange,
-  handlePreviewOnlineDriveFileChange,
-}: StepTwoPreviewProps) => {
-  return (
-    <div className="h-full min-w-0 flex-1">
-      <div className="flex h-full flex-col pt-2 pl-2">
-        <ChunkPreview
-          dataSourceType={datasourceType as DatasourceType}
-          localFiles={localFileList.map(file => file.file)}
-          onlineDocuments={onlineDocuments}
-          websitePages={websitePages}
-          onlineDriveFiles={selectedOnlineDriveFileList}
-          isIdle={isIdle}
-          isPending={isPendingPreview}
-          estimateData={estimateData}
-          onPreview={onPreview}
-          handlePreviewFileChange={handlePreviewFileChange}
-          handlePreviewOnlineDocumentChange={handlePreviewOnlineDocumentChange}
-          handlePreviewWebsitePageChange={handlePreviewWebsitePageChange}
-          handlePreviewOnlineDriveFileChange={handlePreviewOnlineDriveFileChange}
-        />
+export const StepTwoPreview = memo(
+  ({
+    datasourceType,
+    localFileList,
+    onlineDocuments,
+    websitePages,
+    selectedOnlineDriveFileList,
+    isIdle,
+    isPendingPreview,
+    estimateData,
+    onPreview,
+    handlePreviewFileChange,
+    handlePreviewOnlineDocumentChange,
+    handlePreviewWebsitePageChange,
+    handlePreviewOnlineDriveFileChange,
+  }: StepTwoPreviewProps) => {
+    return (
+      <div className="h-full min-w-0 flex-1">
+        <div className="flex h-full flex-col pt-2 pl-2">
+          <ChunkPreview
+            dataSourceType={datasourceType as DatasourceType}
+            localFiles={localFileList.map((file) => file.file)}
+            onlineDocuments={onlineDocuments}
+            websitePages={websitePages}
+            onlineDriveFiles={selectedOnlineDriveFileList}
+            isIdle={isIdle}
+            isPending={isPendingPreview}
+            estimateData={estimateData}
+            onPreview={onPreview}
+            handlePreviewFileChange={handlePreviewFileChange}
+            handlePreviewOnlineDocumentChange={handlePreviewOnlineDocumentChange}
+            handlePreviewWebsitePageChange={handlePreviewWebsitePageChange}
+            handlePreviewOnlineDriveFileChange={handlePreviewOnlineDriveFileChange}
+          />
+        </div>
       </div>
-    </div>
-  )
-})
+    )
+  },
+)
 StepTwoPreview.displayName = 'StepTwoPreview'

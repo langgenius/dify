@@ -6,16 +6,21 @@ import typing
 import click
 from celery import shared_task
 
-from core.plugin.entities.marketplace import MarketplacePluginSnapshot
+from core.helper.marketplace import batch_fetch_plugin_manifests, get_plugin_pkg_url
+from core.plugin.entities.marketplace import MarketplacePluginDeclaration, MarketplacePluginSnapshot
 from core.plugin.entities.plugin import PluginInstallation, PluginInstallationSource
 from core.plugin.impl.plugin import PluginInstaller
 from core.plugin.plugin_service import PluginService
 from extensions.ext_redis import redis_client
-from models.account import TenantPluginAutoUpgradeStrategy
+from models.account import (
+    TenantPluginAutoUpgradeCategory,
+    TenantPluginAutoUpgradeMode,
+    TenantPluginAutoUpgradeStrategySetting,
+)
 
 logger = logging.getLogger(__name__)
 
-PluginCategory = TenantPluginAutoUpgradeStrategy.PluginCategory
+PluginCategory = TenantPluginAutoUpgradeCategory
 RETRY_TIMES_OF_ONE_PLUGIN_IN_ONE_TENANT = 3
 CACHE_REDIS_KEY_PREFIX = "plugin_autoupgrade_check_task:cached_plugin_snapshot:"
 CACHE_REDIS_TTL = 60 * 60  # 1 hour
@@ -50,25 +55,86 @@ def _get_cached_manifest(plugin_id: str) -> typing.Union[MarketplacePluginSnapsh
         return False
 
 
+def _set_cached_manifest(plugin_id: str, snapshot: MarketplacePluginSnapshot | None) -> None:
+    """
+    Cache a plugin snapshot in Redis, or record that the marketplace has no such plugin.
+
+    Caching misses as well as hits keeps the fallback cheap: a plugin that the marketplace
+    does not know about is looked up once per TTL instead of once per check cycle.
+    """
+    try:
+        key = _get_redis_cache_key(plugin_id)
+        if snapshot is None:
+            redis_client.setex(key, CACHE_REDIS_TTL, json.dumps(None))
+        else:
+            redis_client.setex(key, CACHE_REDIS_TTL, snapshot.model_dump_json())
+    except Exception:
+        # If Redis fails, continue without caching
+        logger.exception("Failed to set cached manifest for plugin %s", plugin_id)
+
+
+def _snapshot_from_declaration(declaration: MarketplacePluginDeclaration) -> MarketplacePluginSnapshot:
+    """Adapt a batch-API declaration to the snapshot shape used by the upgrade check."""
+    return MarketplacePluginSnapshot(
+        org=declaration.org,
+        name=declaration.name,
+        latest_version=declaration.latest_version,
+        latest_package_identifier=declaration.latest_package_identifier,
+        latest_package_url=get_plugin_pkg_url(declaration.latest_package_identifier),
+    )
+
+
 def marketplace_batch_fetch_plugin_manifests(
     plugin_ids_plain_list: list[str],
 ) -> list[MarketplacePluginSnapshot]:
     """
-    Fetch plugin manifests from Redis cache only.
-    This function assumes fetch_global_plugin_manifest() has been called
-    to pre-populate the cache with all marketplace plugins.
+    Fetch plugin manifests, preferring the pre-populated Redis cache.
+
+    fetch_global_plugin_manifest() normally warms the cache with the whole marketplace.
+    When that snapshot is unavailable or incomplete, fall back to the per-plugin batch API
+    so upgrades still happen instead of being silently skipped.
     """
     result: list[MarketplacePluginSnapshot] = []
+    uncached_plugin_ids: list[str] = []
 
     # Check Redis cache for each plugin
     for plugin_id in plugin_ids_plain_list:
         cached_result = _get_cached_manifest(plugin_id)
-        if not isinstance(cached_result, MarketplacePluginSnapshot):
-            # cached_result is False (not in cache) or None (cached as not found)
-            logger.warning("plugin %s not found in cache, skipping", plugin_id)
+        if isinstance(cached_result, MarketplacePluginSnapshot):
+            result.append(cached_result)
+        elif cached_result is None:
+            # Cached as not found in the marketplace; nothing to upgrade to.
             continue
+        else:
+            uncached_plugin_ids.append(plugin_id)
 
-        result.append(cached_result)
+    if not uncached_plugin_ids:
+        return result
+
+    logger.info(
+        "%d plugin manifests missing from the global snapshot, fetching them from the marketplace",
+        len(uncached_plugin_ids),
+    )
+
+    try:
+        declarations = batch_fetch_plugin_manifests(uncached_plugin_ids)
+    except Exception:
+        logger.exception(
+            "failed to fetch plugin manifests from marketplace, skipping %d plugins", len(uncached_plugin_ids)
+        )
+        return result
+
+    fetched_plugin_ids = set()
+    for declaration in declarations:
+        snapshot = _snapshot_from_declaration(declaration)
+        fetched_plugin_ids.add(declaration.plugin_id)
+        _set_cached_manifest(declaration.plugin_id, snapshot)
+        result.append(snapshot)
+
+    # Remember which plugins the marketplace does not serve, so we stop asking every cycle.
+    for plugin_id in uncached_plugin_ids:
+        if plugin_id not in fetched_plugin_ids:
+            _set_cached_manifest(plugin_id, None)
 
     return result
 
@@ -95,9 +161,9 @@ def _plugin_matches_category(plugin: PluginInstallation, category: str | None) -
 @shared_task(queue="plugin")
 def process_tenant_plugin_autoupgrade_check_task(
     tenant_id: str,
-    strategy_setting: TenantPluginAutoUpgradeStrategy.StrategySetting,
+    strategy_setting: TenantPluginAutoUpgradeStrategySetting,
     upgrade_time_of_day: int,
-    upgrade_mode: TenantPluginAutoUpgradeStrategy.UpgradeMode,
+    upgrade_mode: TenantPluginAutoUpgradeMode,
     exclude_plugins: list[str],
     include_plugins: list[str],
     category: PluginCategory | str | None = None,
@@ -113,14 +179,14 @@ def process_tenant_plugin_autoupgrade_check_task(
             )
         )
 
-        if strategy_setting == TenantPluginAutoUpgradeStrategy.StrategySetting.DISABLED:
+        if strategy_setting == TenantPluginAutoUpgradeStrategySetting.DISABLED:
             return
 
         # get plugin_ids to check
         plugin_ids: list[tuple[str, str, str]] = []  # plugin_id, version, unique_identifier
         click.echo(click.style(f"Upgrade mode: {upgrade_mode}", fg="green"))
 
-        if upgrade_mode == TenantPluginAutoUpgradeStrategy.UpgradeMode.PARTIAL and include_plugins:
+        if upgrade_mode == TenantPluginAutoUpgradeMode.PARTIAL and include_plugins:
             all_plugins = manager.list_plugins(tenant_id)
 
             for plugin in all_plugins:
@@ -137,7 +203,7 @@ def process_tenant_plugin_autoupgrade_check_task(
                         )
                     )
 
-        elif upgrade_mode == TenantPluginAutoUpgradeStrategy.UpgradeMode.EXCLUDE:
+        elif upgrade_mode == TenantPluginAutoUpgradeMode.EXCLUDE:
             # get all plugins and remove excluded plugins
             all_plugins = manager.list_plugins(tenant_id)
             plugin_ids = [
@@ -147,7 +213,7 @@ def process_tenant_plugin_autoupgrade_check_task(
                 and plugin.plugin_id not in exclude_plugins
                 and _plugin_matches_category(plugin, category_value)
             ]
-        elif upgrade_mode == TenantPluginAutoUpgradeStrategy.UpgradeMode.ALL:
+        elif upgrade_mode == TenantPluginAutoUpgradeMode.ALL:
             all_plugins = manager.list_plugins(tenant_id)
             plugin_ids = [
                 (plugin.plugin_id, plugin.version, plugin.plugin_unique_identifier)
@@ -187,8 +253,8 @@ def process_tenant_plugin_autoupgrade_check_task(
                         return False
 
                     version_checker = {
-                        TenantPluginAutoUpgradeStrategy.StrategySetting.LATEST: operator.ne,
-                        TenantPluginAutoUpgradeStrategy.StrategySetting.FIX_ONLY: fix_only_checker,
+                        TenantPluginAutoUpgradeStrategySetting.LATEST: operator.ne,
+                        TenantPluginAutoUpgradeStrategySetting.FIX_ONLY: fix_only_checker,
                     }
 
                     if version_checker[strategy_setting](latest_version, current_version):

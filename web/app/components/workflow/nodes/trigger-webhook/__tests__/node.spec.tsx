@@ -4,7 +4,9 @@ import { renderNodeComponent } from '@/app/components/workflow/__tests__/workflo
 import { BlockEnum } from '@/app/components/workflow/types'
 import Node from '../node'
 
-const createNodeData = (overrides: Partial<WebhookTriggerNodeType> = {}): WebhookTriggerNodeType => ({
+const createNodeData = (
+  overrides: Partial<WebhookTriggerNodeType> = {},
+): WebhookTriggerNodeType => ({
   title: 'Webhook Trigger',
   desc: '',
   type: BlockEnum.TriggerWebhook,
@@ -28,18 +30,24 @@ describe('TriggerWebhookNode', () => {
   // The node should expose the webhook URL and keep a clear fallback for empty data.
   describe('Rendering', () => {
     it('should render the webhook url when it exists', () => {
-      renderNodeComponent(Node, createNodeData({
-        webhook_url: 'https://example.com/webhook',
-      }))
+      renderNodeComponent(
+        Node,
+        createNodeData({
+          webhook_url: 'https://example.com/webhook',
+        }),
+      )
 
       expect(screen.getByText('URL')).toBeInTheDocument()
       expect(screen.getByText('https://example.com/webhook')).toBeInTheDocument()
     })
 
     it('should render the placeholder when the webhook url is empty', () => {
-      renderNodeComponent(Node, createNodeData({
-        webhook_url: '',
-      }))
+      renderNodeComponent(
+        Node,
+        createNodeData({
+          webhook_url: '',
+        }),
+      )
 
       expect(screen.getByText('--')).toBeInTheDocument()
     })

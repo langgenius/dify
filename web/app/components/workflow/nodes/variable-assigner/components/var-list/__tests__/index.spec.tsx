@@ -7,16 +7,14 @@ import VarList from '../index'
 
 vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
   __esModule: true,
-  default: ({
-    onOpen,
-    onChange,
-  }: {
-    onOpen?: () => void
-    onChange: (value: string[]) => void
-  }) => (
+  default: ({ onOpen, onChange }: { onOpen?: () => void; onChange: (value: string[]) => void }) => (
     <div>
-      <button type="button" data-testid="var-reference-picker-trigger" onClick={onOpen}>open-picker</button>
-      <button type="button" onClick={() => onChange(['node-a', 'answer'])}>select-answer</button>
+      <button type="button" data-testid="var-reference-picker-trigger" onClick={onOpen}>
+        open-picker
+      </button>
+      <button type="button" onClick={() => onChange(['node-a', 'answer'])}>
+        select-answer
+      </button>
     </div>
   ),
 }))
@@ -75,7 +73,7 @@ describe('variable-assigner/var-list', () => {
   it('renders the empty placeholder when no variables are configured', () => {
     renderVarList()
 
-    expect(screen.getByText('workflow.nodes.variableAssigner.noVarTip')).toBeInTheDocument()
+    expect(screen.getByText('workflowLogic.nodes.variableAssigner.noVarTip')).toBeInTheDocument()
   })
 
   it('opens the picker and removes an assigned variable', () => {
@@ -99,9 +97,6 @@ describe('variable-assigner/var-list', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'select-answer' }))
 
-    expect(handleChange).toHaveBeenLastCalledWith(
-      [['node-a', 'answer']],
-      ['node-a', 'answer'],
-    )
+    expect(handleChange).toHaveBeenLastCalledWith([['node-a', 'answer']], ['node-a', 'answer'])
   })
 })

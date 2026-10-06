@@ -22,7 +22,7 @@ from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.pipeline.pipeline_config_manager import PipelineConfigManager
 from core.app.apps.pipeline.pipeline_queue_manager import PipelineQueueManager
-from core.app.apps.pipeline.pipeline_runner import PipelineRunner
+from core.app.apps.pipeline.pipeline_runner import PipelineDocumentStore, PipelineRunner
 from core.app.apps.workflow.generate_response_converter import WorkflowAppGenerateResponseConverter
 from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
 from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerateEntity
@@ -52,7 +52,7 @@ from models import Account, EndUser, Workflow, WorkflowNodeExecutionTriggeredFro
 from models.dataset import Document, DocumentPipelineExecutionLog, Pipeline
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import AppMode
-from services.datasource_provider_service import DatasourceProviderService
+from services.data_source.provider_service import DatasourceProviderService
 from services.rag_pipeline.rag_pipeline_task_proxy import RagPipelineTaskProxy
 from services.workflow_draft_variable_service import DraftVarLoader, WorkflowDraftVariableService
 
@@ -60,10 +60,15 @@ logger = logging.getLogger(__name__)
 
 
 class PipelineGenerator(BaseAppGenerator):
+    def __init__(self, *, documents: PipelineDocumentStore, datasource_providers: DatasourceProviderService) -> None:
+        self._documents = documents
+        self._datasource_providers = datasource_providers
+
     @overload
     def generate(
         self,
         *,
+        session: Session,
         pipeline: Pipeline,
         workflow: Workflow,
         user: Account | EndUser,
@@ -79,6 +84,7 @@ class PipelineGenerator(BaseAppGenerator):
     def generate(
         self,
         *,
+        session: Session,
         pipeline: Pipeline,
         workflow: Workflow,
         user: Account | EndUser,
@@ -94,6 +100,7 @@ class PipelineGenerator(BaseAppGenerator):
     def generate(
         self,
         *,
+        session: Session,
         pipeline: Pipeline,
         workflow: Workflow,
         user: Account | EndUser,
@@ -108,6 +115,7 @@ class PipelineGenerator(BaseAppGenerator):
     def generate(
         self,
         *,
+        session: Session,
         pipeline: Pipeline,
         workflow: Workflow,
         user: Account | EndUser,
@@ -120,10 +128,9 @@ class PipelineGenerator(BaseAppGenerator):
     ) -> Mapping[str, Any] | Generator[Mapping | str, None, None] | None:
         # Add null check for dataset
 
-        with Session(db.engine, expire_on_commit=False) as session:
-            dataset = pipeline.retrieve_dataset(session)
-            if not dataset:
-                raise ValueError("Pipeline dataset is required")
+        dataset = self._documents.get_pipeline_dataset(pipeline, session=session)
+        if not dataset:
+            raise ValueError("Pipeline dataset is required")
         inputs: Mapping[str, Any] = args["inputs"]
         start_node_id: str = args["start_node_id"]
         datasource_type = DatasourceProviderType(args["datasource_type"])
@@ -137,14 +144,14 @@ class PipelineGenerator(BaseAppGenerator):
         )
         documents: list[Document] = []
         if invoke_from == InvokeFrom.PUBLISHED_PIPELINE and not is_retry and not args.get("original_document_id"):
-            from services.dataset_service import DocumentService
             from services.feature_service import FeatureService
+            from services.knowledge.dataset_service import DocumentService
 
             features = FeatureService.get_features(pipeline.tenant_id)
             DocumentService.check_document_creation_limits(len(datasource_info_list), features)
 
             for datasource_info in datasource_info_list:
-                position = DocumentService.get_documents_position(dataset.id)
+                position = DocumentService.get_documents_position(dataset.id, session)
                 document = self._build_document(
                     tenant_id=pipeline.tenant_id,
                     dataset_id=dataset.id,
@@ -157,9 +164,9 @@ class PipelineGenerator(BaseAppGenerator):
                     batch=batch,
                     document_form=dataset.chunk_structure,
                 )
-                db.session.add(document)
+                session.add(document)
                 documents.append(document)
-            db.session.commit()
+            session.flush()
 
         # run in child thread
         rag_pipeline_invoke_entities = []
@@ -177,8 +184,7 @@ class PipelineGenerator(BaseAppGenerator):
                     pipeline_id=pipeline.id,
                     created_by=user.id,
                 )
-                db.session.add(document_pipeline_execution_log)
-                db.session.commit()
+                session.add(document_pipeline_execution_log)
             application_generate_entity = RagPipelineGenerateEntity(
                 task_id=str(uuid.uuid4()),
                 app_config=pipeline_config,
@@ -186,7 +192,7 @@ class PipelineGenerator(BaseAppGenerator):
                 datasource_type=datasource_type,
                 datasource_info=datasource_info,
                 dataset_id=dataset.id,
-                original_document_id=args.get("original_document_id"),
+                original_document_id=None if is_retry else args.get("original_document_id"),
                 start_node_id=start_node_id,
                 batch=batch,
                 document_id=document_id,
@@ -214,6 +220,7 @@ class PipelineGenerator(BaseAppGenerator):
             session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
             workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
                 session_factory=session_factory,
+                tenant_id=pipeline.tenant_id,
                 user=user,
                 app_id=application_generate_entity.app_config.app_id,
                 triggered_from=workflow_triggered_from,
@@ -221,12 +228,14 @@ class PipelineGenerator(BaseAppGenerator):
 
             workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
                 session_factory=session_factory,
+                tenant_id=pipeline.tenant_id,
                 user=user,
                 app_id=application_generate_entity.app_config.app_id,
                 triggered_from=WorkflowNodeExecutionTriggeredFrom.RAG_PIPELINE_RUN,
             )
             if invoke_from == InvokeFrom.DEBUGGER or is_retry:
                 return self._generate(
+                    session=session,
                     flask_app=current_app._get_current_object(),  # type: ignore
                     context=contextvars.copy_context(),
                     pipeline=pipeline,
@@ -253,6 +262,8 @@ class PipelineGenerator(BaseAppGenerator):
                     )
                 )
 
+        if invoke_from == InvokeFrom.PUBLISHED_PIPELINE and not is_retry:
+            session.commit()
         if rag_pipeline_invoke_entities:
             RagPipelineTaskProxy(dataset.tenant_id, user.id, rag_pipeline_invoke_entities).delay()
         # return batch, dataset, documents
@@ -282,6 +293,7 @@ class PipelineGenerator(BaseAppGenerator):
     def _generate(
         self,
         *,
+        session: Session,
         flask_app: Flask,
         context: contextvars.Context,
         pipeline: Pipeline,
@@ -310,7 +322,7 @@ class PipelineGenerator(BaseAppGenerator):
         """
         with preserve_flask_contexts(flask_app, context_vars=context):
             # init queue manager
-            workflow = db.session.get(Workflow, workflow_id)
+            workflow = session.get(Workflow, workflow_id)
             if not workflow:
                 raise ValueError(f"Workflow not found: {workflow_id}")
             queue_manager = PipelineQueueManager(
@@ -341,18 +353,30 @@ class PipelineGenerator(BaseAppGenerator):
             draft_var_saver_factory = self._get_draft_var_saver_factory(
                 invoke_from,
                 user,
+                tenant_id=pipeline.tenant_id,
             )
-            # return response or stream generator
-            response = self._handle_response(
-                application_generate_entity=application_generate_entity,
-                workflow=workflow,
-                queue_manager=queue_manager,
-                user=user,
-                stream=streaming,
-                draft_var_saver_factory=draft_var_saver_factory,
-            )
+            try:
+                response = self._handle_response(
+                    application_generate_entity=application_generate_entity,
+                    workflow=workflow,
+                    queue_manager=queue_manager,
+                    user=user,
+                    stream=streaming,
+                    draft_var_saver_factory=draft_var_saver_factory,
+                )
+                converted_response = WorkflowAppGenerateResponseConverter.convert(
+                    response=response,
+                    invoke_from=invoke_from,
+                )
+            except BaseException:
+                self._join_worker_thread(worker_thread)
+                raise
 
-            return WorkflowAppGenerateResponseConverter.convert(response=response, invoke_from=invoke_from)
+            if isinstance(converted_response, Generator):
+                return self._wrap_stream_with_worker_thread_join(converted_response, worker_thread)
+
+            self._join_worker_thread(worker_thread)
+            return converted_response
 
     def single_iteration_generate(
         self,
@@ -362,16 +386,19 @@ class PipelineGenerator(BaseAppGenerator):
         user: Account | EndUser,
         args: Mapping[str, Any],
         streaming: bool = True,
+        *,
+        session: Session,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
         """
         Generate App response.
 
-        :param app_model: App
+        :param pipeline: Pipeline
         :param workflow: Workflow
         :param node_id: the node id
         :param user: account or end user
         :param args: request args
         :param streaming: is streamed
+        :param session: database session supplied by the caller
         """
         if not node_id:
             raise ValueError("node_id is required")
@@ -384,10 +411,9 @@ class PipelineGenerator(BaseAppGenerator):
             pipeline=pipeline, workflow=workflow, start_node_id=args.get("start_node_id", "shared")
         )
 
-        with Session(db.engine) as session:
-            dataset = pipeline.retrieve_dataset(session)
-            if not dataset:
-                raise ValueError("Pipeline dataset is required")
+        dataset = self._documents.get_pipeline_dataset(pipeline, session=session)
+        if not dataset:
+            raise ValueError("Pipeline dataset is required")
 
         # init application generate entity - use RagPipelineGenerateEntity instead
         application_generate_entity = RagPipelineGenerateEntity(
@@ -417,6 +443,7 @@ class PipelineGenerator(BaseAppGenerator):
 
         workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
             session_factory=session_factory,
+            tenant_id=pipeline.tenant_id,
             user=user,
             app_id=application_generate_entity.app_config.app_id,
             triggered_from=WorkflowRunTriggeredFrom.RAG_PIPELINE_DEBUGGING,
@@ -424,11 +451,12 @@ class PipelineGenerator(BaseAppGenerator):
 
         workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
             session_factory=session_factory,
+            tenant_id=pipeline.tenant_id,
             user=user,
             app_id=application_generate_entity.app_config.app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
         )
-        draft_var_srv = WorkflowDraftVariableService(db.session())
+        draft_var_srv = WorkflowDraftVariableService(session)
         draft_var_srv.prefill_conversation_variable_default_values(workflow, user_id=user.id)
         var_loader = DraftVarLoader(
             engine=db.engine,
@@ -438,6 +466,7 @@ class PipelineGenerator(BaseAppGenerator):
         )
 
         return self._generate(
+            session=session,
             flask_app=current_app._get_current_object(),  # type: ignore
             pipeline=pipeline,
             workflow_id=workflow.id,
@@ -459,16 +488,19 @@ class PipelineGenerator(BaseAppGenerator):
         user: Account | EndUser,
         args: Mapping[str, Any],
         streaming: bool = True,
+        *,
+        session: Session,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
         """
         Generate App response.
 
-        :param app_model: App
+        :param pipeline: Pipeline
         :param workflow: Workflow
         :param node_id: the node id
         :param user: account or end user
         :param args: request args
         :param streaming: is streamed
+        :param session: database session supplied by the caller
         """
         if not node_id:
             raise ValueError("node_id is required")
@@ -476,10 +508,9 @@ class PipelineGenerator(BaseAppGenerator):
         if args.get("inputs") is None:
             raise ValueError("inputs is required")
 
-        with Session(db.engine) as session:
-            dataset = pipeline.retrieve_dataset(session)
-            if not dataset:
-                raise ValueError("Pipeline dataset is required")
+        dataset = self._documents.get_pipeline_dataset(pipeline, session=session)
+        if not dataset:
+            raise ValueError("Pipeline dataset is required")
 
         # convert to app config
         pipeline_config = PipelineConfigManager.get_pipeline_config(
@@ -513,6 +544,7 @@ class PipelineGenerator(BaseAppGenerator):
 
         workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
             session_factory=session_factory,
+            tenant_id=pipeline.tenant_id,
             user=user,
             app_id=application_generate_entity.app_config.app_id,
             triggered_from=WorkflowRunTriggeredFrom.RAG_PIPELINE_DEBUGGING,
@@ -520,11 +552,12 @@ class PipelineGenerator(BaseAppGenerator):
 
         workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
             session_factory=session_factory,
+            tenant_id=pipeline.tenant_id,
             user=user,
             app_id=application_generate_entity.app_config.app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
         )
-        draft_var_srv = WorkflowDraftVariableService(db.session())
+        draft_var_srv = WorkflowDraftVariableService(session)
         draft_var_srv.prefill_conversation_variable_default_values(workflow, user_id=user.id)
         var_loader = DraftVarLoader(
             engine=db.engine,
@@ -534,6 +567,7 @@ class PipelineGenerator(BaseAppGenerator):
         )
 
         return self._generate(
+            session=session,
             flask_app=current_app._get_current_object(),  # type: ignore
             pipeline=pipeline,
             workflow_id=workflow.id,
@@ -605,6 +639,7 @@ class PipelineGenerator(BaseAppGenerator):
                         system_user_id=system_user_id,
                         workflow_execution_repository=workflow_execution_repository,
                         workflow_node_execution_repository=workflow_node_execution_repository,
+                        documents=self._documents,
                     )
 
                     runner.run()
@@ -624,8 +659,6 @@ class PipelineGenerator(BaseAppGenerator):
             except Exception as e:
                 logger.exception("Unknown Error when generating")
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
-            finally:
-                db.session.close()
 
     def _handle_response(
         self,
@@ -751,8 +784,7 @@ class PipelineGenerator(BaseAppGenerator):
                 tenant_id=pipeline.tenant_id,
                 datasource_type=DatasourceProviderType(datasource_type),
             )
-            datasource_provider_service = DatasourceProviderService()
-            credentials = datasource_provider_service.get_datasource_credentials(
+            credentials = self._datasource_providers.get_datasource_credentials(
                 tenant_id=pipeline.tenant_id,
                 provider=datasource_node_data.get("provider_name"),
                 plugin_id=datasource_node_data.get("plugin_id"),

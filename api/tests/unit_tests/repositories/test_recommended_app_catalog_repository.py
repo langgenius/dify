@@ -1,0 +1,343 @@
+import json
+from unittest.mock import MagicMock, patch
+from uuid import UUID, uuid4
+
+import pytest
+from sqlalchemy import event, select
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session, sessionmaker
+
+from extensions.ext_redis import RedisClientWrapper
+from models.account import Tenant, TenantStatus
+from models.agent import Agent, AgentConfigRevision, AgentConfigRevisionOperation, AgentConfigSnapshot
+from models.agent_config_entities import AgentSoulConfig
+from models.enums import CustomizeTokenStrategy
+from models.model import App, AppMode, RecommendedApp, Site
+from repositories.recommended_app_catalog_repository import DatabaseRecommendedAppCatalogRepository
+from services.recommended_app_query_service import RecommendedAppDetailRecord
+
+
+def _add_catalog_app(
+    session: Session,
+    *,
+    categories: list[str] | None = None,
+    language: str = "en-US",
+    is_public: bool = True,
+    is_listed: bool = True,
+    is_learn_dify: bool = False,
+    with_site: bool = True,
+) -> App:
+    app = App(
+        id=str(uuid4()),
+        tenant_id=str(uuid4()),
+        name="Recommended App",
+        mode=AppMode.CHAT,
+        icon_type=None,
+        icon=None,
+        icon_background="#fff",
+        enable_site=True,
+        enable_api=True,
+        is_public=is_public,
+    )
+    recommended_app = RecommendedApp(
+        app_id=app.id,
+        description={},
+        copyright="copyright",
+        privacy_policy="privacy",
+        category="Workflow",
+        categories=["Workflow"] if categories is None else categories,
+        custom_disclaimer="catalog disclaimer",
+        position=1,
+        is_listed=is_listed,
+        is_learn_dify=is_learn_dify,
+        language=language,
+    )
+    session.add_all([app, recommended_app])
+    if with_site:
+        session.add(
+            Site(
+                app_id=app.id,
+                title="Recommended App",
+                description="site description",
+                copyright="site copyright",
+                privacy_policy="site privacy",
+                custom_disclaimer="site disclaimer",
+                default_language="en-US",
+                customize_token_strategy=CustomizeTokenStrategy.NOT_ALLOW,
+            )
+        )
+    session.commit()
+    return app
+
+
+@pytest.mark.parametrize("unavailable", [None, "private", "unlisted", "unpublished", "foreign-snapshot", "archived"])
+def test_agent_package_link_only_exposes_current_public_version(
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+    sqlite_session_factory: sessionmaker[Session],
+    unavailable: str | None,
+) -> None:
+    agent_id, version_id = str(uuid4()), str(uuid4())
+    with sqlite_session_factory() as session:
+        app = _add_catalog_app(session)
+        app.mode = AppMode.AGENT
+        app.is_public = unavailable != "private"
+        tenant = Tenant(name="Source workspace")
+        tenant.id = app.tenant_id
+        tenant.status = TenantStatus.ARCHIVE if unavailable == "archived" else TenantStatus.NORMAL
+        agent = Agent(
+            id=agent_id,
+            tenant_id=app.tenant_id,
+            app_id=app.id,
+            name="Template",
+            scope="roster",
+            source="agent_app",
+            active_config_snapshot_id=version_id,
+            active_config_is_published=False,
+        )
+        snapshot = AgentConfigSnapshot(
+            id=version_id,
+            tenant_id=str(uuid4()) if unavailable == "foreign-snapshot" else app.tenant_id,
+            agent_id=agent_id,
+            version=1,
+            config_snapshot=AgentSoulConfig(),
+        )
+        revision = AgentConfigRevision(
+            tenant_id=app.tenant_id,
+            agent_id=agent_id,
+            current_snapshot_id=version_id,
+            revision=1,
+            operation=AgentConfigRevisionOperation.IMPORT_PACKAGE
+            if unavailable == "unpublished"
+            else AgentConfigRevisionOperation.PUBLISH_DRAFT,
+        )
+        session.add_all([tenant, agent, snapshot, revision])
+        if unavailable == "unlisted":
+            for entry in session.scalars(select(RecommendedApp).where(RecommendedApp.app_id == app.id)):
+                entry.is_listed = False
+        session.commit()
+
+    repository = _repository(sqlite_session_factory, redis=redis_transport[0])
+    source = repository.get_package_source(app.id, UUID(version_id))
+    detail = repository.get_detail(app.id)
+    assert repository.get_package_source(app.id, uuid4()) is None
+    if unavailable:
+        assert source is None
+        assert detail is None or detail.version_id is None
+    else:
+        assert source is not None
+        assert source.agent_id == agent_id
+        assert detail is not None
+        assert detail.export_data == ""
+        assert detail.package_url is None
+        assert detail.version_id == version_id
+
+
+def _repository(
+    session_factory: sessionmaker[Session], *, redis: RedisClientWrapper
+) -> DatabaseRecommendedAppCatalogRepository:
+    return DatabaseRecommendedAppCatalogRepository(session_factory, redis=redis)
+
+
+def test_list_recommended_returns_typed_records_and_falls_back_language(
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    with sqlite_session_factory() as session:
+        app = _add_catalog_app(session)
+
+    repository = _repository(sqlite_session_factory, redis=redis_transport[0])
+    page = repository.list_recommended("fr-FR")
+
+    assert page.categories == ("Workflow",)
+    assert len(page.recommended_apps) == 1
+    record = page.recommended_apps[0]
+    assert record.app_id == app.id
+    assert record.app is not None
+    assert record.app.id == app.id
+    assert record.app.mode == "chat"
+    assert record.description == "site description"
+    assert record.custom_disclaimer == "site disclaimer"
+    assert record.categories == ("Workflow",)
+
+
+def test_list_recommended_batches_app_and_site_lookups(
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+    sqlite_engine: Engine,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    with sqlite_session_factory() as session:
+        app_ids = {_add_catalog_app(session).id for _ in range(3)}
+
+    select_count = 0
+
+    def count_selects(_conn, _cursor, statement: str, _parameters, _context, _executemany) -> None:
+        nonlocal select_count
+        if statement.lstrip().upper().startswith("SELECT"):
+            select_count += 1
+
+    event.listen(sqlite_engine, "before_cursor_execute", count_selects)
+    try:
+        page = _repository(sqlite_session_factory, redis=redis_transport[0]).list_recommended("en-US")
+    finally:
+        event.remove(sqlite_engine, "before_cursor_execute", count_selects)
+
+    assert {app.app_id for app in page.recommended_apps} == app_ids
+    assert select_count == 3
+
+
+def test_list_recommended_skips_private_apps_and_apps_without_sites(
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    with sqlite_session_factory() as session:
+        _add_catalog_app(session, is_public=False)
+        _add_catalog_app(session, with_site=False)
+
+    repository = _repository(sqlite_session_factory, redis=redis_transport[0])
+
+    assert repository.list_recommended("en-US").recommended_apps == ()
+
+
+def test_list_recommended_does_not_restore_legacy_category_when_categories_are_empty(
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    with sqlite_session_factory() as session:
+        app = _add_catalog_app(session, categories=[])
+
+    page = _repository(sqlite_session_factory, redis=redis_transport[0]).list_recommended("en-US")
+
+    record = next(item for item in page.recommended_apps if item.app_id == app.id)
+    assert record.categories == ()
+    assert "Workflow" not in page.categories
+
+
+def test_list_recommended_uses_redis_category_order(
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+    sqlite_engine: Engine,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    with sqlite_session_factory() as session:
+        _add_catalog_app(session, categories=["A", "B", "C", "D"])
+
+    checked_out_connections = 0
+
+    def record_checkout(_dbapi_connection, _connection_record, _connection_proxy) -> None:
+        nonlocal checked_out_connections
+        checked_out_connections += 1
+
+    def record_checkin(_dbapi_connection, _connection_record) -> None:
+        nonlocal checked_out_connections
+        checked_out_connections -= 1
+
+    def get_category_order(_command: str, _key: str, **_kwargs: object) -> bytes:
+        assert checked_out_connections == 0
+        return json.dumps(["C", "A", "B"]).encode()
+
+    redis, commands = redis_transport
+    commands.side_effect = get_category_order
+    event.listen(sqlite_engine, "checkout", record_checkout)
+    event.listen(sqlite_engine, "checkin", record_checkin)
+    try:
+        page = _repository(sqlite_session_factory, redis=redis).list_recommended("en-US")
+    finally:
+        event.remove(sqlite_engine, "checkout", record_checkout)
+        event.remove(sqlite_engine, "checkin", record_checkin)
+
+    assert page.categories == ("C", "A", "B")
+    commands.assert_called_once_with(
+        "GET", "explore:apps:category_order:en-US", keys=["explore:apps:category_order:en-US"]
+    )
+
+
+def test_list_recommended_sorts_categories_without_redis_order(
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    redis, commands = redis_transport
+    with sqlite_session_factory() as session:
+        _add_catalog_app(session, categories=["B", "A", "C"])
+
+    page = _repository(sqlite_session_factory, redis=redis).list_recommended("en-US")
+
+    assert page.categories == ("A", "B", "C")
+
+
+def test_list_learn_dify_filters_flag_and_hides_page_categories(
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    with sqlite_session_factory() as session:
+        learn_app = _add_catalog_app(session, is_learn_dify=True)
+        _add_catalog_app(session, is_learn_dify=False)
+
+    redis, commands = redis_transport
+    repository = _repository(sqlite_session_factory, redis=redis)
+    page = repository.list_learn_dify("fr-FR")
+
+    assert [app.app_id for app in page.recommended_apps] == [learn_app.id]
+    assert page.recommended_apps[0].categories == ("Workflow",)
+    assert page.categories == ()
+    commands.assert_not_called()
+
+
+def test_membership_does_not_export_dsl(
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    with sqlite_session_factory() as session:
+        app = _add_catalog_app(session)
+
+    repository = _repository(sqlite_session_factory, redis=redis_transport[0])
+    with patch(
+        "repositories.recommended_app_catalog_repository.AppDslService.export_dsl",
+        return_value="exported yaml",
+    ) as export_dsl:
+        detail = repository.get_detail(app.id)
+        is_in_catalog = repository.contains(app.id)
+
+    assert detail == RecommendedAppDetailRecord(
+        id=app.id,
+        name="Recommended App",
+        icon=None,
+        icon_background="#fff",
+        mode="chat",
+        export_data="exported yaml",
+    )
+    assert is_in_catalog is True
+    export_dsl.assert_called_once()
+
+
+def test_detail_rejects_unlisted_or_private_apps(
+    redis_transport: tuple[RedisClientWrapper, MagicMock], sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    with sqlite_session_factory() as session:
+        private_app = _add_catalog_app(session, is_public=False)
+        unlisted_app = _add_catalog_app(session, is_listed=False)
+        missing_app_id = str(uuid4())
+
+    repository = _repository(sqlite_session_factory, redis=redis_transport[0])
+
+    assert repository.get_detail(private_app.id) is None
+    assert repository.get_detail(unlisted_app.id) is None
+    assert repository.get_detail(missing_app_id) is None
+    assert repository.contains(private_app.id) is False
+    assert repository.contains(unlisted_app.id) is False
+    assert repository.contains(missing_app_id) is False
+
+
+def test_detail_does_not_require_site(
+    redis_transport: tuple[RedisClientWrapper, MagicMock], sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    with sqlite_session_factory() as session:
+        app = _add_catalog_app(session, with_site=False)
+
+    repository = _repository(sqlite_session_factory, redis=redis_transport[0])
+    with patch(
+        "repositories.recommended_app_catalog_repository.AppDslService.export_dsl",
+        return_value="exported yaml",
+    ):
+        detail = repository.get_detail(app.id)
+
+    assert detail is not None
+    assert detail.id == app.id

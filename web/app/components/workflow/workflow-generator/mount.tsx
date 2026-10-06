@@ -1,6 +1,6 @@
 'use client'
+import dynamic from 'next/dynamic'
 import * as React from 'react'
-import dynamic from '@/next/dynamic'
 import { useWorkflowGeneratorStore } from './store'
 
 // Lazy-load the modal so the bundle of the common layout stays light;
@@ -13,9 +13,8 @@ const WorkflowGeneratorModal = dynamic(() => import('./index'), { ssr: false })
  * zustand store flips ``isOpen`` to true.
  */
 const WorkflowGeneratorMount: React.FC = () => {
-  const isOpen = useWorkflowGeneratorStore(s => s.isOpen)
-  if (!isOpen)
-    return null
+  const isOpen = useWorkflowGeneratorStore((s) => s.isOpen)
+  if (!isOpen) return null
   return <WorkflowGeneratorModal />
 }
 

@@ -1,5 +1,7 @@
 import type { Member } from '@/models/common'
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import MemberList from '../member-list'
 
 const createMember = (overrides: Partial<Member>): Member => ({
@@ -29,29 +31,48 @@ const members: Member[] = [
 ]
 
 describe('human-input/delivery-method/recipient/member-list', () => {
-  it('should filter members, show selected state, and only add unselected members', () => {
+  it('should filter members, show selected state, and only add unselected members', async () => {
+    const user = userEvent.setup()
     const handleSearchChange = vi.fn()
     const handleSelect = vi.fn()
+    const TestMemberList = () => {
+      const [searchValue, setSearchValue] = useState('pending')
 
-    render(
-      <MemberList
-        value={[{ type: 'member', user_id: 'member-1' }]}
-        searchValue="pending"
-        onSearchChange={handleSearchChange}
-        list={members}
-        onSelect={handleSelect}
-        email="owner@example.com"
-      />,
-    )
+      return (
+        <MemberList
+          value={[{ type: 'member', user_id: 'member-1' }]}
+          searchValue={searchValue}
+          onSearchChange={(nextValue) => {
+            setSearchValue(nextValue)
+            handleSearchChange(nextValue)
+          }}
+          list={members}
+          onSelect={handleSelect}
+          email="owner@example.com"
+        />
+      )
+    }
 
-    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'owner' } })
+    render(<TestMemberList />)
+
+    const searchBox = screen.getByRole('searchbox', { name: 'common.operation.search' })
+    await user.clear(searchBox)
+    await user.type(searchBox, 'owner')
     expect(handleSearchChange).toHaveBeenCalledWith('owner')
 
-    expect(screen.getByText('Pending User')).toBeInTheDocument()
-    expect(screen.getByText('common.members.pending')).toBeInTheDocument()
-    expect(screen.getByText('workflow.nodes.humanInput.deliveryMethod.emailConfigure.memberSelector.add')).toBeInTheDocument()
+    expect(screen.getByText('Owner')).toBeInTheDocument()
+    expect(
+      screen.queryByText(
+        'workflowHumanInput.nodes.humanInput.deliveryMethod.emailConfigure.memberSelector.add',
+      ),
+    ).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByText('Pending User'))
+    await user.clear(searchBox)
+    await user.type(searchBox, 'pending')
+
+    expect(screen.getByText('Pending User')).toBeInTheDocument()
+    expect(screen.getByText('workspaceMembers.members.pending')).toBeInTheDocument()
+    await user.click(screen.getByText('Pending User'))
     expect(handleSelect).toHaveBeenCalledWith('member-2')
   })
 
@@ -69,8 +90,12 @@ describe('human-input/delivery-method/recipient/member-list', () => {
       />,
     )
 
-    expect(screen.getByText('common.members.you')).toBeInTheDocument()
-    expect(screen.getByText('workflow.nodes.humanInput.deliveryMethod.emailConfigure.memberSelector.added')).toBeInTheDocument()
+    expect(screen.getByText('workspaceMembers.members.you')).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'workflowHumanInput.nodes.humanInput.deliveryMethod.emailConfigure.memberSelector.added',
+      ),
+    ).toBeInTheDocument()
 
     fireEvent.click(screen.getByText('Owner'))
     expect(handleSelect).not.toHaveBeenCalled()

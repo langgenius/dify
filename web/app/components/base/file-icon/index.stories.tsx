@@ -7,7 +7,8 @@ const meta = {
   parameters: {
     docs: {
       description: {
-        component: 'Maps a file extension to the appropriate SVG icon used across upload and attachment surfaces.',
+        component:
+          'Maps a file extension to the appropriate SVG icon used across upload and attachment surfaces.',
       },
     },
   },
@@ -32,7 +33,7 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 export const Default: Story = {
-  render: args => (
+  render: (args) => (
     <div className="flex items-center gap-4 rounded-lg border border-divider-subtle bg-components-panel-bg p-4">
       <FileIcon {...args} />
       <span className="text-sm text-text-secondary">
@@ -55,10 +56,21 @@ export const Default: Story = {
 
 export const Gallery: Story = {
   render: () => {
-    const examples = ['pdf', 'docx', 'xlsx', 'csv', 'json', 'md', 'txt', 'html', 'notion', 'unknown']
+    const examples = [
+      'pdf',
+      'docx',
+      'xlsx',
+      'csv',
+      'json',
+      'md',
+      'txt',
+      'html',
+      'notion',
+      'unknown',
+    ]
     return (
       <div className="grid grid-cols-5 gap-4 rounded-lg border border-divider-subtle bg-components-panel-bg p-4">
-        {examples.map(type => (
+        {examples.map((type) => (
           <div key={type} className="flex flex-col items-center gap-1">
             <FileIcon type={type} className="size-9" />
             <span className="text-xs text-text-tertiary uppercase">{type}</span>

@@ -1,11 +1,8 @@
 import type { MetadataShape } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { noop } from 'es-toolkit/function'
-import {
-  useCallback,
-  useState,
-} from 'react'
+import { useCallback, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import {
   Collapse,
@@ -33,31 +30,43 @@ const MetadataFilter = ({
   handleMetadataCompletionParamsChange,
   ...restProps
 }: MetadataFilterProps) => {
-  const { t } = useTranslation()
+  const titleId = useId()
+
+  const { t } = useTranslation(['workflowModels'])
   const [collapsed, setCollapsed] = useState(true)
 
-  const handleMetadataFilterModeChangeWrapped = useCallback((mode: MetadataFilteringModeEnum) => {
-    if (mode === MetadataFilteringModeEnum.automatic)
-      setCollapsed(false)
+  const handleMetadataFilterModeChangeWrapped = useCallback(
+    (mode: MetadataFilteringModeEnum) => {
+      if (mode === MetadataFilteringModeEnum.automatic) setCollapsed(false)
 
-    handleMetadataFilterModeChange(mode)
-  }, [handleMetadataFilterModeChange])
+      handleMetadataFilterModeChange(mode)
+    },
+    [handleMetadataFilterModeChange],
+  )
 
   return (
     <Collapse
-      disabled={metadataFilterMode === MetadataFilteringModeEnum.disabled || metadataFilterMode === MetadataFilteringModeEnum.manual}
+      disabled={
+        metadataFilterMode === MetadataFilteringModeEnum.disabled ||
+        metadataFilterMode === MetadataFilteringModeEnum.manual
+      }
       collapsed={collapsed}
       onCollapse={setCollapsed}
     >
       <CollapseHeader>
         <CollapseTrigger>
           <CollapseTitle>
-            {t('nodes.knowledgeRetrieval.metadata.title', { ns: 'workflow' })}
+            <span id={titleId}>
+              {t(($) => $['nodes.knowledgeRetrieval.metadata.title'], { ns: 'workflowModels' })}
+            </span>
           </CollapseTitle>
           {metadataFilterMode === MetadataFilteringModeEnum.automatic && <CollapseIndicator />}
         </CollapseTrigger>
-        <Infotip aria-label={t('nodes.knowledgeRetrieval.metadata.tip', { ns: 'workflow' })} popupClassName="w-[200px]">
-          {t('nodes.knowledgeRetrieval.metadata.tip', { ns: 'workflow' })}
+        <Infotip>
+          <InfotipTrigger aria-labelledby={titleId} />
+          <InfotipContent aria-labelledby={titleId} className="w-50">
+            {t(($) => $['nodes.knowledgeRetrieval.metadata.tip'], { ns: 'workflowModels' })}
+          </InfotipContent>
         </Infotip>
         <CollapseActions>
           <div className="flex items-center pr-4">
@@ -77,7 +86,9 @@ const MetadataFilter = ({
         {metadataFilterMode === MetadataFilteringModeEnum.automatic && (
           <>
             <div className="px-4 body-xs-regular text-text-tertiary">
-              {t('nodes.knowledgeRetrieval.metadata.options.automatic.desc', { ns: 'workflow' })}
+              {t(($) => $['nodes.knowledgeRetrieval.metadata.options.automatic.desc'], {
+                ns: 'workflowModels',
+              })}
             </div>
             <div className="mt-1 px-4">
               <ModelParameterModal

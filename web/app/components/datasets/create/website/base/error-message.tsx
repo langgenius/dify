@@ -2,7 +2,6 @@
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
-import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 
 type Props = Readonly<{
   className?: string
@@ -10,15 +9,19 @@ type Props = Readonly<{
   errorMsg?: string
 }>
 
-const ErrorMessage: FC<Props> = ({
-  className,
-  title,
-  errorMsg,
-}) => {
+const ErrorMessage: FC<Props> = ({ className, title, errorMsg }) => {
   return (
-    <div className={cn(className, 'border-t border-divider-subtle bg-dataset-warning-message-bg px-4 py-2 opacity-40')}>
+    <div
+      className={cn(
+        className,
+        'border-t border-divider-subtle bg-dataset-warning-message-bg px-4 py-2 opacity-40',
+      )}
+    >
       <div className="flex h-5 items-center">
-        <AlertTriangle className="mr-2 size-4 text-text-warning-secondary" />
+        <span
+          aria-hidden
+          className="mr-2 i-custom-vender-solid-alertsAndFeedback-alert-triangle size-4 text-text-warning-secondary"
+        />
         <div className="system-md-medium text-text-warning">{title}</div>
       </div>
       {errorMsg && (

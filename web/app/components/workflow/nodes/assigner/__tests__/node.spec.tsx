@@ -34,7 +34,9 @@ vi.mock('@/app/components/workflow/nodes/_base/components/variable/variable-labe
 
 const mockUseNodes = vi.mocked(useNodes)
 
-const createOperation = (overrides: Partial<AssignerNodeOperation> = {}): AssignerNodeOperation => ({
+const createOperation = (
+  overrides: Partial<AssignerNodeOperation> = {},
+): AssignerNodeOperation => ({
   variable_selector: ['node-1', 'count'],
   input_type: AssignerNodeInputType.variable,
   operation: WriteMode.overwrite,
@@ -82,46 +84,47 @@ describe('assigner/node', () => {
       />,
     )
 
-    expect(screen.getByText('workflow.nodes.assigner.varNotSet')).toBeInTheDocument()
+    expect(screen.getByText('workflowLogic.nodes.assigner.varNotSet')).toBeInTheDocument()
   })
 
   it('renders both version 2 and legacy previews with resolved node labels', () => {
-    const { container, rerender } = render(
-      <Node
-        id="assigner-node"
-        data={createData()}
-      />,
-    )
+    const { container, rerender } = render(<Node id="assigner-node" data={createData()} />)
 
     expect(screen.getByText('Answer:answer:node-1.count')).toBeInTheDocument()
-    expect(screen.getByText('workflow.nodes.assigner.operations.over-write')).toBeInTheDocument()
+    expect(
+      screen.getByText('workflowLogic.nodes.assigner.operations.over-write'),
+    ).toBeInTheDocument()
 
     rerender(
       <Node
         id="assigner-node"
-        data={{
-          title: 'Legacy Assigner',
-          desc: '',
-          type: BlockEnum.VariableAssigner,
-          assigned_variable_selector: ['sys', 'query'],
-          write_mode: WriteMode.append,
-        } as unknown as AssignerNodeType}
+        data={
+          {
+            title: 'Legacy Assigner',
+            desc: '',
+            type: BlockEnum.VariableAssigner,
+            assigned_variable_selector: ['sys', 'query'],
+            write_mode: WriteMode.append,
+          } as unknown as AssignerNodeType
+        }
       />,
     )
 
     expect(screen.getByText('Start:start:sys.query')).toBeInTheDocument()
-    expect(screen.getByText('workflow.nodes.assigner.operations.append')).toBeInTheDocument()
+    expect(screen.getByText('workflowLogic.nodes.assigner.operations.append')).toBeInTheDocument()
 
     rerender(
       <Node
         id="assigner-node"
-        data={{
-          title: 'Legacy Assigner',
-          desc: '',
-          type: BlockEnum.VariableAssigner,
-          assigned_variable_selector: [],
-          write_mode: WriteMode.append,
-        } as unknown as AssignerNodeType}
+        data={
+          {
+            title: 'Legacy Assigner',
+            desc: '',
+            type: BlockEnum.VariableAssigner,
+            assigned_variable_selector: [],
+            write_mode: WriteMode.append,
+          } as unknown as AssignerNodeType
+        }
       />,
     )
 

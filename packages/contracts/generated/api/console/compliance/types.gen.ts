@@ -5,7 +5,31 @@ export type ClientOptions = {
 }
 
 export type ComplianceDownloadResponse = {
-  [key: string]: unknown
+  url: string
+}
+
+export type BillingUnprocessableEntityErrorResponse = {
+  code: 'unprocessable_entity'
+  message: string
+  status: 422
+}
+
+export type ComplianceRateLimitErrorResponse = {
+  code: 'compliance_rate_limit'
+  message: string
+  status: 429
+}
+
+export type BillingOperationFailedErrorResponse = {
+  code: 'billing_operation_failed'
+  message: string
+  status: 502
+}
+
+export type BillingUnavailableErrorResponse = {
+  code: 'billing_unavailable'
+  message: string
+  status: 503
 }
 
 export type GetComplianceDownloadData = {
@@ -17,9 +41,19 @@ export type GetComplianceDownloadData = {
   url: '/compliance/download'
 }
 
+export type GetComplianceDownloadErrors = {
+  422: BillingUnprocessableEntityErrorResponse
+  429: ComplianceRateLimitErrorResponse
+  502: BillingOperationFailedErrorResponse
+  503: BillingUnavailableErrorResponse
+}
+
+export type GetComplianceDownloadError =
+  GetComplianceDownloadErrors[keyof GetComplianceDownloadErrors]
+
 export type GetComplianceDownloadResponses = {
   200: ComplianceDownloadResponse
 }
 
-export type GetComplianceDownloadResponse
-  = GetComplianceDownloadResponses[keyof GetComplianceDownloadResponses]
+export type GetComplianceDownloadResponse =
+  GetComplianceDownloadResponses[keyof GetComplianceDownloadResponses]

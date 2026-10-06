@@ -7,9 +7,26 @@ from werkzeug.exceptions import NotFound, RequestEntityTooLarge
 from controllers.trigger import bp
 from core.trigger.debug.event_bus import TriggerDebugEventBus
 from core.trigger.debug.events import WebhookDebugEvent, build_webhook_pool_key
+from enums import QuotaType
+from extensions.ext_application_services import application_services
+from services.errors.app import QuotaExceededError
 from services.trigger.webhook_service import RawWebhookDataDict, WebhookService
 
 logger = logging.getLogger(__name__)
+
+_QUOTA_EXCEEDED_MESSAGES = {
+    QuotaType.TRIGGER: "Trigger event quota exceeded. Please upgrade your plan.",
+    QuotaType.WORKFLOW: "Workflow execution quota exceeded. Please upgrade your plan.",
+}
+_DEFAULT_QUOTA_EXCEEDED_MESSAGE = "Quota exceeded. Please upgrade your plan."
+
+
+def _get_quota_exceeded_message(feature: str) -> str:
+    try:
+        quota_type = QuotaType(feature)
+    except ValueError:
+        return _DEFAULT_QUOTA_EXCEEDED_MESSAGE
+    return _QUOTA_EXCEEDED_MESSAGES.get(quota_type, _DEFAULT_QUOTA_EXCEEDED_MESSAGE)
 
 
 def _prepare_webhook_execution(webhook_id: str, is_debug: bool = False):
@@ -54,14 +71,26 @@ def handle_webhook(webhook_id: str):
             return jsonify({"error": "Bad Request", "message": error}), 400
 
         # Process webhook call (send to Celery)
-        WebhookService.trigger_workflow_execution(webhook_trigger, webhook_data, workflow)
+        WebhookService.trigger_workflow_execution(
+            webhook_trigger,
+            webhook_data,
+            workflow,
+            end_users=application_services().app_scoped_end_users.commands,
+        )
 
         # Return configured response
         response_data, status_code = WebhookService.generate_webhook_response(node_config)
         return jsonify(response_data), status_code
 
-    except ValueError as e:
-        raise NotFound(str(e))
+    except QuotaExceededError as error:
+        return jsonify(
+            {
+                "error": "Too Many Requests",
+                "message": _get_quota_exceeded_message(error.feature),
+            }
+        ), 429
+    except ValueError as error:
+        raise NotFound(str(error))
     except RequestEntityTooLarge:
         raise
     except Exception as e:

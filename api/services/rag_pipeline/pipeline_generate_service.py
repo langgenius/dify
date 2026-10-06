@@ -1,14 +1,18 @@
 from collections.abc import Mapping
 from typing import Any
 
+from sqlalchemy.orm import Session
+
 from configs import dify_config
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
-from extensions.ext_database import db
-from models.dataset import Document, Pipeline
+from models.dataset import Pipeline
 from models.enums import IndexingStatus
 from models.model import Account, App, EndUser
 from models.workflow import Workflow
+from repositories.knowledge.dataset_read_repository import get_pipeline_dataset
+from services.knowledge.dataset_service import DocumentService
+from services.knowledge.resource_scope import DatasetRef, DocumentRef
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 
 
@@ -21,6 +25,9 @@ class PipelineGenerateService:
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: bool = True,
+        *,
+        session: Session,
+        generator: PipelineGenerator,
     ):
         """
         Pipeline Content Generate
@@ -32,12 +39,17 @@ class PipelineGenerateService:
         :return:
         """
         try:
-            workflow = cls._get_workflow(pipeline, invoke_from)
+            workflow = cls._get_workflow(pipeline, invoke_from, session)
             if original_document_id := args.get("original_document_id"):
-                # update document status to waiting
-                cls.update_document_status(original_document_id)
+                dataset = get_pipeline_dataset(pipeline, session)
+                if dataset is None or dataset.tenant_id != pipeline.tenant_id:
+                    raise ValueError("Pipeline dataset is required")
+                dataset_ref = DatasetRef(tenant_id=dataset.tenant_id, dataset_id=dataset.id)
+                document_ref = dataset_ref.document(original_document_id)
+                cls.update_document_status(document_ref, session=session)
             return PipelineGenerator.convert_to_event_stream(
-                PipelineGenerator().generate(
+                generator.generate(
+                    session=session,
                     pipeline=pipeline,
                     workflow=workflow,
                     user=user,
@@ -62,33 +74,63 @@ class PipelineGenerateService:
 
     @classmethod
     def generate_single_iteration(
-        cls, pipeline: Pipeline, user: Account, node_id: str, args: Any, streaming: bool = True
+        cls,
+        pipeline: Pipeline,
+        user: Account,
+        node_id: str,
+        args: Any,
+        session: Session,
+        streaming: bool = True,
+        *,
+        generator: PipelineGenerator,
     ):
-        workflow = cls._get_workflow(pipeline, InvokeFrom.DEBUGGER)
+        workflow = cls._get_workflow(pipeline, InvokeFrom.DEBUGGER, session)
         return PipelineGenerator.convert_to_event_stream(
-            PipelineGenerator().single_iteration_generate(
-                pipeline=pipeline, workflow=workflow, node_id=node_id, user=user, args=args, streaming=streaming
+            generator.single_iteration_generate(
+                pipeline=pipeline,
+                workflow=workflow,
+                node_id=node_id,
+                user=user,
+                args=args,
+                streaming=streaming,
+                session=session,
             )
         )
 
     @classmethod
-    def generate_single_loop(cls, pipeline: Pipeline, user: Account, node_id: str, args: Any, streaming: bool = True):
-        workflow = cls._get_workflow(pipeline, InvokeFrom.DEBUGGER)
+    def generate_single_loop(
+        cls,
+        pipeline: Pipeline,
+        user: Account,
+        node_id: str,
+        args: Any,
+        session: Session,
+        streaming: bool = True,
+        *,
+        generator: PipelineGenerator,
+    ):
+        workflow = cls._get_workflow(pipeline, InvokeFrom.DEBUGGER, session)
         return PipelineGenerator.convert_to_event_stream(
-            PipelineGenerator().single_loop_generate(
-                pipeline=pipeline, workflow=workflow, node_id=node_id, user=user, args=args, streaming=streaming
+            generator.single_loop_generate(
+                pipeline=pipeline,
+                workflow=workflow,
+                node_id=node_id,
+                user=user,
+                args=args,
+                streaming=streaming,
+                session=session,
             )
         )
 
     @classmethod
-    def _get_workflow(cls, pipeline: Pipeline, invoke_from: InvokeFrom) -> Workflow:
+    def _get_workflow(cls, pipeline: Pipeline, invoke_from: InvokeFrom, session: Session) -> Workflow:
         """
         Get workflow
         :param pipeline: pipeline
         :param invoke_from: invoke from
         :return:
         """
-        rag_pipeline_service = RagPipelineService()
+        rag_pipeline_service = RagPipelineService(session)
         if invoke_from == InvokeFrom.DEBUGGER:
             # fetch draft workflow by app_model
             workflow = rag_pipeline_service.get_draft_workflow(pipeline=pipeline)
@@ -105,13 +147,12 @@ class PipelineGenerateService:
         return workflow
 
     @classmethod
-    def update_document_status(cls, document_id: str):
-        """
-        Update document status to waiting
-        :param document_id: document id
-        """
-        document = db.session.get(Document, document_id)
-        if document:
-            document.indexing_status = IndexingStatus.WAITING
-            db.session.add(document)
-            db.session.commit()
+    def update_document_status(cls, document_ref: DocumentRef, *, session: Session) -> None:
+        """Set a document in the owner-bound dataset to waiting."""
+        document = next(
+            iter(DocumentService.get_documents_by_ids(document_ref.dataset, [document_ref.document_id], session)), None
+        )
+        if document is None:
+            raise ValueError("Pipeline document not found")
+        document.indexing_status = IndexingStatus.WAITING
+        session.add(document)

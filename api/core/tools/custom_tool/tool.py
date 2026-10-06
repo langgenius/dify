@@ -6,6 +6,7 @@ from typing import Any, Union, override
 from urllib.parse import urlencode
 
 import httpx
+from sqlalchemy.orm import Session
 
 from core.helper import ssrf_proxy
 from core.tools.__base.tool import Tool
@@ -102,16 +103,17 @@ class ApiTool(Tool):
             elif not isinstance(credentials["api_key_value"], str):
                 raise ToolProviderCredentialValidationError("api_key_value must be a string")
 
+            api_key_value = credentials["api_key_value"]
             if "api_key_header_prefix" in credentials:
                 api_key_header_prefix = credentials["api_key_header_prefix"]
-                if api_key_header_prefix == "basic" and credentials["api_key_value"]:
-                    credentials["api_key_value"] = f"Basic {credentials['api_key_value']}"
-                elif api_key_header_prefix == "bearer" and credentials["api_key_value"]:
-                    credentials["api_key_value"] = f"Bearer {credentials['api_key_value']}"
+                if api_key_header_prefix == "basic" and api_key_value:
+                    api_key_value = f"Basic {api_key_value}"
+                elif api_key_header_prefix == "bearer" and api_key_value:
+                    api_key_value = f"Bearer {api_key_value}"
                 elif api_key_header_prefix == "custom":
                     pass
 
-            headers[api_key_header] = credentials["api_key_value"]
+            headers[api_key_header] = api_key_value
 
         elif credentials["auth_type"] == "api_key_query":
             # For query parameter authentication, we don't add anything to headers
@@ -379,6 +381,7 @@ class ApiTool(Tool):
     @override
     def _invoke(
         self,
+        session: Session,
         user_id: str,
         tool_parameters: dict[str, Any],
         conversation_id: str | None = None,

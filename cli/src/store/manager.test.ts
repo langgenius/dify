@@ -1,5 +1,5 @@
 import type { TokenStore } from './token-store'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { detectTokenStore, getTokenStore } from './manager'
 
 function memStore(label: string): TokenStore & { _label: string } {
@@ -20,6 +20,19 @@ function memStore(label: string): TokenStore & { _label: string } {
 }
 
 describe('detectTokenStore', () => {
+  it('skips the probe and returns the file store when asked', async () => {
+    const k = memStore('keyring')
+    const f = memStore('file')
+    const writeSpy = vi.spyOn(k, 'write')
+    const result = await detectTokenStore({
+      skipKeyring: true,
+      factory: { keyring: () => k, file: () => f },
+    })
+    expect(writeSpy).not.toHaveBeenCalled()
+    expect(result.mode).toBe('file')
+    expect(result.store).toBe(f)
+  })
+
   it('returns keychain store when probe succeeds', async () => {
     const k = memStore('keyring')
     const f = memStore('file')
@@ -58,7 +71,9 @@ describe('detectTokenStore', () => {
     const f = memStore('file')
     const result = await detectTokenStore({
       factory: {
-        keyring: () => { throw new Error('no backend') },
+        keyring: () => {
+          throw new Error('no backend')
+        },
         file: () => f,
       },
     })

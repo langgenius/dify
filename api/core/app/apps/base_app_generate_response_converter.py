@@ -3,12 +3,15 @@ from abc import ABC, abstractmethod
 from collections.abc import Generator, Mapping
 from typing import Any, Union, cast
 
+from dify_agent.protocol import RunFailureType
 from pydantic import JsonValue
 
+from clients.agent_backend.errors import AgentBackendError, AgentBackendRunFailedError
+from core.app.apps.exc import AppGenerateError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.task_entities import AppBlockingResponse, AppStreamResponse
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
-from graphon.model_runtime.errors.invoke import InvokeError
+from graphon.model_runtime.errors.invoke import InvokeError, InvokeRateLimitError
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +25,7 @@ class AppGenerateResponseConverter[TBlockingResponse: AppBlockingResponse](ABC):
     def convert(
         cls, response: Union[AppBlockingResponse, Generator[AppStreamResponse, Any, None]], invoke_from: InvokeFrom
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], Any, None]:
-        if invoke_from in {InvokeFrom.DEBUGGER, InvokeFrom.SERVICE_API}:
+        if invoke_from in {InvokeFrom.DEBUGGER, InvokeFrom.SERVICE_API, InvokeFrom.OPENAPI}:
             if isinstance(response, AppBlockingResponse):
                 return cls.convert_blocking_full_response(cls._cast_blocking_response(response))
             else:
@@ -116,6 +119,20 @@ class AppGenerateResponseConverter[TBlockingResponse: AppBlockingResponse](ABC):
         :param e: exception
         :return:
         """
+        if isinstance(e, AgentBackendRunFailedError) and e.error_type == RunFailureType.AGENT_RUN_LIMIT_EXCEEDED:
+            return {
+                "code": RunFailureType.AGENT_RUN_LIMIT_EXCEEDED.value,
+                "status": 400,
+                "message": str(e),
+            }
+
+        if isinstance(e, AppGenerateError):
+            return {
+                "code": e.error_code,
+                "status": e.status_code,
+                "message": str(e),
+            }
+
         error_responses: dict[type[Exception], dict[str, JsonValue]] = {
             ValueError: {"code": "invalid_param", "status": 400},
             ProviderTokenNotInitError: {"code": "provider_not_initialize", "status": 400},
@@ -127,6 +144,8 @@ class AppGenerateResponseConverter[TBlockingResponse: AppBlockingResponse](ABC):
             },
             ModelCurrentlyNotSupportError: {"code": "model_currently_not_support", "status": 400},
             InvokeError: {"code": "completion_request_error", "status": 400},
+            AgentBackendError: {"code": "completion_request_error", "status": 400},
+            InvokeRateLimitError: {"code": "rate_limit_error", "status": 429},
         }
 
         # Determine the response based on the type of exception

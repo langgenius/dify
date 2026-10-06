@@ -1,16 +1,14 @@
 import type {
-  NumberFieldButtonProps,
   NumberFieldControlsProps,
-  NumberFieldGroupProps,
+  NumberFieldDecrementProps,
+  NumberFieldIncrementProps,
   NumberFieldInputProps,
-  NumberFieldUnitProps,
 } from '../index'
 import * as React from 'react'
+import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
-import {
-  FieldLabel,
-  FieldRoot,
-} from '../../field'
+import { Button } from '../../button'
+import { Field, FieldLabel } from '../../field'
 import {
   NumberField,
   NumberFieldControls,
@@ -18,42 +16,27 @@ import {
   NumberFieldGroup,
   NumberFieldIncrement,
   NumberFieldInput,
-  NumberFieldUnit,
 } from '../index'
 
 type RenderNumberFieldOptions = {
   defaultValue?: number
-  groupProps?: Partial<NumberFieldGroupProps>
   inputProps?: Partial<NumberFieldInputProps>
-  unitProps?: Partial<NumberFieldUnitProps> & { children?: React.ReactNode }
   controlsProps?: Partial<NumberFieldControlsProps>
-  incrementProps?: Partial<NumberFieldButtonProps>
-  decrementProps?: Partial<NumberFieldButtonProps>
+  incrementProps?: Partial<NumberFieldIncrementProps>
+  decrementProps?: Partial<NumberFieldDecrementProps>
 }
 
 const renderNumberField = ({
   defaultValue = 8,
-  groupProps,
   inputProps,
-  unitProps,
   controlsProps,
   incrementProps,
   decrementProps,
 }: RenderNumberFieldOptions = {}) => {
-  const {
-    children: unitChildren = 'ms',
-    ...restUnitProps
-  } = unitProps ?? {}
-
   return render(
     <NumberField defaultValue={defaultValue}>
-      <NumberFieldGroup data-testid="group" {...groupProps}>
+      <NumberFieldGroup data-testid="group">
         <NumberFieldInput aria-label="Amount" {...inputProps} />
-        {unitProps && (
-          <NumberFieldUnit data-testid="unit" {...restUnitProps}>
-            {unitChildren}
-          </NumberFieldUnit>
-        )}
         {(controlsProps || incrementProps || decrementProps) && (
           <NumberFieldControls data-testid="controls" {...controlsProps}>
             <NumberFieldIncrement data-testid="increment" {...incrementProps} />
@@ -67,99 +50,56 @@ const renderNumberField = ({
 
 describe('NumberField wrapper', () => {
   describe('Group and input', () => {
-    it('should apply medium group classes by default and merge custom className', async () => {
-      const screen = await renderNumberField({
-        groupProps: {
-          className: 'custom-group',
-        },
-      })
+    it('should show the compound focus surface when keyboard users enter without Field', async () => {
+      const screen = await renderNumberField()
+      const group = screen.getByTestId('group')
+      const input = screen.getByRole('textbox', { name: 'Amount' })
+      const restingBoxShadow = getComputedStyle(group.element()).boxShadow
 
-      await expect.element(screen.getByTestId('group')).toHaveClass('rounded-lg')
-      await expect.element(screen.getByTestId('group')).toHaveClass('focus-within:border-components-input-border-active')
-      await expect.element(screen.getByTestId('group')).toHaveClass('custom-group')
-    })
+      await userEvent.keyboard('{Tab}')
 
-    it('should apply large group and input classes when large size is provided', async () => {
-      const screen = await renderNumberField({
-        groupProps: {
-          size: 'large',
-        },
-        inputProps: {
-          size: 'large',
-        },
-      })
-
-      await expect.element(screen.getByTestId('group')).toHaveClass('rounded-[10px]')
-      await expect.element(screen.getByRole('textbox', { name: 'Amount' })).toHaveClass('px-4')
-      await expect.element(screen.getByRole('textbox', { name: 'Amount' })).toHaveClass('py-2')
+      await expect.element(input).toHaveFocus()
+      await expect
+        .poll(() => getComputedStyle(group.element()).boxShadow)
+        .not.toBe(restingBoxShadow)
     })
 
     it('should surface field invalid state on the visual group', async () => {
       const screen = await render(
-        <FieldRoot name="amount" invalid>
+        <Field name="amount" invalid>
           <FieldLabel>Amount</FieldLabel>
           <NumberField defaultValue={8}>
             <NumberFieldGroup data-testid="group">
               <NumberFieldInput />
             </NumberFieldGroup>
           </NumberField>
-        </FieldRoot>,
+        </Field>,
       )
 
       await expect.element(screen.getByTestId('group')).toHaveAttribute('data-invalid')
-      await expect.element(screen.getByTestId('group')).toHaveClass('data-invalid:border-components-input-border-destructive')
-      await expect.element(screen.getByRole('textbox', { name: 'Amount' })).toHaveAttribute('aria-invalid', 'true')
+      await expect
+        .element(screen.getByRole('textbox', { name: 'Amount' }))
+        .toHaveAttribute('aria-invalid', 'true')
     })
 
-    it('should set input defaults and forward passthrough props', async () => {
+    it('should disable autocomplete and expose placeholder and required state', async () => {
       const screen = await renderNumberField({
         inputProps: {
-          className: 'custom-input',
           placeholder: 'Regular placeholder',
           required: true,
         },
       })
 
-      await expect.element(screen.getByRole('textbox', { name: 'Amount' })).toHaveAttribute('autocomplete', 'off')
-      await expect.element(screen.getByRole('textbox', { name: 'Amount' })).toHaveAttribute('autocorrect', 'off')
-      await expect.element(screen.getByRole('textbox', { name: 'Amount' })).toHaveAttribute('placeholder', 'Regular placeholder')
+      await expect
+        .element(screen.getByRole('textbox', { name: 'Amount' }))
+        .toHaveAttribute('autocomplete', 'off')
+      await expect
+        .element(screen.getByRole('textbox', { name: 'Amount' }))
+        .toHaveAttribute('autocorrect', 'off')
+      await expect
+        .element(screen.getByRole('textbox', { name: 'Amount' }))
+        .toHaveAttribute('placeholder', 'Regular placeholder')
       await expect.element(screen.getByRole('textbox', { name: 'Amount' })).toBeRequired()
-      await expect.element(screen.getByRole('textbox', { name: 'Amount' })).toHaveClass('px-3')
-      await expect.element(screen.getByRole('textbox', { name: 'Amount' })).toHaveClass('py-[7px]')
-      await expect.element(screen.getByRole('textbox', { name: 'Amount' })).toHaveClass('system-sm-regular')
-      await expect.element(screen.getByRole('textbox', { name: 'Amount' })).toHaveClass('custom-input')
-    })
-  })
-
-  describe('Unit and controls', () => {
-    it.each([
-      ['medium', 'pe-2'],
-      ['large', 'pe-2.5'],
-    ] as const)('should apply the %s unit spacing variant', async (size, spacingClass) => {
-      const screen = await renderNumberField({
-        unitProps: {
-          size,
-          className: 'custom-unit',
-          title: `unit-${size}`,
-        },
-      })
-
-      await expect.element(screen.getByTestId('unit')).toHaveTextContent('ms')
-      await expect.element(screen.getByTestId('unit')).toHaveAttribute('title', `unit-${size}`)
-      await expect.element(screen.getByTestId('unit')).toHaveClass('custom-unit')
-      await expect.element(screen.getByTestId('unit')).toHaveClass(spacingClass)
-    })
-
-    it('should forward passthrough props to controls', async () => {
-      const screen = await renderNumberField({
-        controlsProps: {
-          className: 'custom-controls',
-          title: 'controls-title',
-        },
-      })
-
-      await expect.element(screen.getByTestId('controls')).toHaveAttribute('title', 'controls-title')
-      await expect.element(screen.getByTestId('controls')).toHaveClass('custom-controls')
     })
   })
 
@@ -169,8 +109,12 @@ describe('NumberField wrapper', () => {
         controlsProps: {},
       })
 
-      expect(screen.getByRole('button', { name: 'Increment value' }).element().querySelector('.i-ri-arrow-up-s-line')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Decrement value' }).element().querySelector('.i-ri-arrow-down-s-line')).toBeInTheDocument()
+      await expect
+        .element(screen.getByRole('button', { name: 'Increment value' }))
+        .toBeInTheDocument()
+      await expect
+        .element(screen.getByRole('button', { name: 'Decrement value' }))
+        .toBeInTheDocument()
     })
 
     it('should preserve explicit aria labels and custom children', async () => {
@@ -178,18 +122,20 @@ describe('NumberField wrapper', () => {
         controlsProps: {},
         incrementProps: {
           'aria-label': 'Increase amount',
-          'children': <span data-testid="custom-increment-icon">+</span>,
+          children: <span data-testid="custom-increment-icon">+</span>,
         },
         decrementProps: {
           'aria-label': 'Decrease amount',
-          'children': <span data-testid="custom-decrement-icon">-</span>,
+          children: <span data-testid="custom-decrement-icon">-</span>,
         },
       })
 
-      expect(screen.getByRole('button', { name: 'Increase amount' }).element()).toContainElement(screen.getByTestId('custom-increment-icon').element())
-      expect(screen.getByRole('button', { name: 'Decrease amount' }).element()).toContainElement(screen.getByTestId('custom-decrement-icon').element())
-      expect(screen.getByRole('button', { name: 'Increase amount' }).element().querySelector('.i-ri-arrow-up-s-line')).not.toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Decrease amount' }).element().querySelector('.i-ri-arrow-down-s-line')).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Increase amount' }).element()).toContainElement(
+        screen.getByTestId('custom-increment-icon').element(),
+      )
+      expect(screen.getByRole('button', { name: 'Decrease amount' }).element()).toContainElement(
+        screen.getByTestId('custom-decrement-icon').element(),
+      )
     })
 
     it('should keep the fallback aria labels when aria-label is omitted in props', async () => {
@@ -203,8 +149,12 @@ describe('NumberField wrapper', () => {
         },
       })
 
-      await expect.element(screen.getByRole('button', { name: 'Increment value' })).toBeInTheDocument()
-      await expect.element(screen.getByRole('button', { name: 'Decrement value' })).toBeInTheDocument()
+      await expect
+        .element(screen.getByRole('button', { name: 'Increment value' }))
+        .toBeInTheDocument()
+      await expect
+        .element(screen.getByRole('button', { name: 'Decrement value' }))
+        .toBeInTheDocument()
     })
 
     it('should rely on aria-labelledby when provided instead of injecting a fallback aria-label', async () => {
@@ -224,32 +174,55 @@ describe('NumberField wrapper', () => {
         </React.Fragment>,
       )
 
-      await expect.element(screen.getByRole('button', { name: 'Increment from label' })).not.toHaveAttribute('aria-label')
-      await expect.element(screen.getByRole('button', { name: 'Decrement from label' })).not.toHaveAttribute('aria-label')
-    })
-
-    it.each([
-      ['medium', 'pt-1', 'pb-1'],
-      ['large', 'pt-1.5', 'pb-1.5'],
-    ] as const)('should apply the %s control button compound spacing classes', async (size, incrementClass, decrementClass) => {
-      const screen = await renderNumberField({
-        controlsProps: {},
-        incrementProps: {
-          size,
-          className: 'custom-increment',
-        },
-        decrementProps: {
-          size,
-          className: 'custom-decrement',
-          title: `decrement-${size}`,
-        },
-      })
-
-      await expect.element(screen.getByTestId('increment')).toHaveClass(incrementClass)
-      await expect.element(screen.getByTestId('increment')).toHaveClass('custom-increment')
-      await expect.element(screen.getByTestId('decrement')).toHaveClass(decrementClass)
-      await expect.element(screen.getByTestId('decrement')).toHaveClass('custom-decrement')
-      await expect.element(screen.getByTestId('decrement')).toHaveAttribute('title', `decrement-${size}`)
+      await expect
+        .element(screen.getByRole('button', { name: 'Increment from label' }))
+        .not.toHaveAttribute('aria-label')
+      await expect
+        .element(screen.getByRole('button', { name: 'Decrement from label' }))
+        .not.toHaveAttribute('aria-label')
     })
   })
+})
+
+describe('Invalid focus colors', () => {
+  it.each(['light', 'dark'])(
+    'preserves error colors through keyboard and pointer focus in %s',
+    async (theme) => {
+      const previousTheme = document.documentElement.dataset.theme
+      document.documentElement.dataset.theme = theme
+      try {
+        const screen = await render(
+          <React.Fragment>
+            <Button>Before</Button>
+            <Field invalid>
+              <FieldLabel>Invalid value</FieldLabel>
+              <NumberField defaultValue={120}>
+                <NumberFieldGroup data-testid="invalid-surface">
+                  <NumberFieldInput />
+                </NumberFieldGroup>
+              </NumberField>
+            </Field>
+          </React.Fragment>,
+        )
+        const input = screen.getByRole('textbox', { name: 'Invalid value' })
+        const surface = screen.getByTestId('invalid-surface').element()
+        const colors = () => {
+          const style = getComputedStyle(surface)
+          return [style.borderTopColor, style.backgroundColor]
+        }
+        const restingColors = colors()
+        const restingShadow = getComputedStyle(surface).boxShadow
+        await screen.getByRole('button', { name: 'Before' }).click()
+        await userEvent.keyboard('{Tab}')
+        await expect.element(input).toHaveFocus()
+        await expect.element(input).toHaveAttribute('aria-invalid', 'true')
+        await expect.poll(colors).toEqual(restingColors)
+        await expect.poll(() => getComputedStyle(surface).boxShadow).not.toBe(restingShadow)
+        await input.click()
+        await expect.poll(colors).toEqual(restingColors)
+      } finally {
+        document.documentElement.dataset.theme = previousTheme
+      }
+    },
+  )
 })

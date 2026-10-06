@@ -4,22 +4,25 @@ from unittest.mock import Mock, patch
 import jsonschema
 import pytest
 
-from core.app.features.rate_limiting.rate_limit import RateLimitGenerator
+from core.app.features.rate_limiting.rate_limit import RateLimit, RateLimitGenerator
 from core.mcp import types
 from core.mcp.server.streamable_http import (
     build_parameter_schema,
     convert_input_form_to_parameters,
     extract_answer_from_response,
+    extract_structured_output,
     handle_call_tool,
     handle_initialize,
     handle_list_tools,
     handle_mcp_request,
     handle_ping,
+    negotiate_protocol_version,
     prepare_tool_arguments,
     process_mapping_response,
 )
 from graphon.variables.input_entities import VariableEntity, VariableEntityType
 from models.model import App, AppMCPServer, AppMode, EndUser
+from services.errors.app import TriggerWorkflowServiceModeUnavailableError
 
 
 class TestHandleMCPRequest:
@@ -27,33 +30,34 @@ class TestHandleMCPRequest:
 
     def setup_method(self):
         """Setup test fixtures"""
-        self.app = Mock(spec=App)
+        self.app = App()
         self.app.name = "test_app"
         self.app.mode = AppMode.CHAT
 
-        self.mcp_server = Mock(spec=AppMCPServer)
+        self.mcp_server = AppMCPServer(
+            tenant_id="tenant-id",
+            app_id="app-id",
+            name="Test Server",
+            description="",
+            server_code="test-server",
+            status="active",
+            parameters="{}",
+        )
         self.mcp_server.description = "Test server"
-        self.mcp_server.parameters_dict = {}
 
-        self.end_user = Mock(spec=EndUser)
+        self.end_user = EndUser()
         self.user_input_form = []
 
-        # Create mock request
-        self.mock_request = Mock()
-        self.mock_request.root = Mock()
-        self.mock_request.root.id = 123
+        self.request = types.ClientRequest(root=types.PingRequest())
 
     def test_handle_ping_request(self):
         """Test handling ping request"""
         # Setup ping request
-        self.mock_request.root = Mock(spec=types.PingRequest)
-        self.mock_request.root.id = 123
-        request_type = Mock(return_value=types.PingRequest)
+        self.request.root = types.PingRequest()
 
-        with patch("core.mcp.server.streamable_http.type", request_type):
-            result = handle_mcp_request(
-                self.app, self.mock_request, self.user_input_form, self.mcp_server, self.end_user, 123
-            )
+        result = handle_mcp_request(
+            Mock(), self.app, self.request, self.user_input_form, self.mcp_server, self.end_user, 123
+        )
 
         assert isinstance(result, types.JSONRPCResponse)
         assert result.jsonrpc == "2.0"
@@ -62,14 +66,17 @@ class TestHandleMCPRequest:
     def test_handle_initialize_request(self):
         """Test handling initialize request"""
         # Setup initialize request
-        self.mock_request.root = Mock(spec=types.InitializeRequest)
-        self.mock_request.root.id = 123
-        request_type = Mock(return_value=types.InitializeRequest)
-
-        with patch("core.mcp.server.streamable_http.type", request_type):
-            result = handle_mcp_request(
-                self.app, self.mock_request, self.user_input_form, self.mcp_server, self.end_user, 123
+        self.request.root = types.InitializeRequest(
+            params=types.InitializeRequestParams(
+                protocolVersion="2025-06-18",
+                capabilities=types.ClientCapabilities(),
+                clientInfo=types.Implementation(name="test-client", version="1.0"),
             )
+        )
+
+        result = handle_mcp_request(
+            Mock(), self.app, self.request, self.user_input_form, self.mcp_server, self.end_user, 123
+        )
 
         assert isinstance(result, types.JSONRPCResponse)
         assert result.jsonrpc == "2.0"
@@ -78,39 +85,58 @@ class TestHandleMCPRequest:
     def test_handle_list_tools_request(self):
         """Test handling list tools request"""
         # Setup list tools request
-        self.mock_request.root = Mock(spec=types.ListToolsRequest)
-        self.mock_request.root.id = 123
-        request_type = Mock(return_value=types.ListToolsRequest)
+        self.request.root = types.ListToolsRequest()
 
-        with patch("core.mcp.server.streamable_http.type", request_type):
-            result = handle_mcp_request(
-                self.app, self.mock_request, self.user_input_form, self.mcp_server, self.end_user, 123
-            )
+        result = handle_mcp_request(
+            Mock(), self.app, self.request, self.user_input_form, self.mcp_server, self.end_user, 123
+        )
 
         assert isinstance(result, types.JSONRPCResponse)
         assert result.jsonrpc == "2.0"
         assert result.id == 123
 
+    def test_handle_list_tools_request_threads_protocol_version(self):
+        """The negotiated version reaches handle_list_tools through the dispatcher."""
+        self.request.root = types.ListToolsRequest()
+
+        result = handle_mcp_request(
+            Mock(), self.app, self.request, self.user_input_form, self.mcp_server, self.end_user, 123, "2025-06-18"
+        )
+
+        assert isinstance(result, types.JSONRPCResponse)
+        tool = result.result["tools"][0]
+        assert tool["outputSchema"] == {"type": "object"}
+        assert tool["title"] == "test_app"
+
+    def test_handle_list_tools_request_legacy_serialization_unchanged(self):
+        """A 2024-11-05 tools/list response serializes without any 2025-06-18 fields."""
+        self.request.root = types.ListToolsRequest()
+
+        result = handle_mcp_request(
+            Mock(), self.app, self.request, self.user_input_form, self.mcp_server, self.end_user, 123, "2024-11-05"
+        )
+
+        assert isinstance(result, types.JSONRPCResponse)
+        tool = result.result["tools"][0]
+        assert set(tool) == {"name", "description", "inputSchema"}
+
     @patch("core.mcp.server.streamable_http.AppGenerateService")
     def test_handle_call_tool_request(self, mock_app_generate):
         """Test handling call tool request"""
         # Setup call tool request
-        mock_call_request = Mock(spec=types.CallToolRequest)
-        mock_call_request.params = Mock()
-        mock_call_request.params.arguments = {"query": "test question"}
-        mock_call_request.id = 123
+        call_request = types.CallToolRequest(
+            params=types.CallToolRequestParams(name="test_app", arguments={"query": "test question"})
+        )
 
-        self.mock_request.root = mock_call_request
-        request_type = Mock(return_value=types.CallToolRequest)
+        self.request.root = call_request
 
         # Mock app generate service response
         mock_response = {"answer": "test answer"}
         mock_app_generate.generate.return_value = mock_response
 
-        with patch("core.mcp.server.streamable_http.type", request_type):
-            result = handle_mcp_request(
-                self.app, self.mock_request, self.user_input_form, self.mcp_server, self.end_user, 123
-            )
+        result = handle_mcp_request(
+            Mock(), self.app, self.request, self.user_input_form, self.mcp_server, self.end_user, 123
+        )
 
         assert isinstance(result, types.JSONRPCResponse)
         assert result.jsonrpc == "2.0"
@@ -119,21 +145,72 @@ class TestHandleMCPRequest:
         # Verify AppGenerateService was called
         mock_app_generate.generate.assert_called_once()
 
+    @patch("core.mcp.server.streamable_http.AppGenerateService")
+    def test_handle_call_tool_returns_trigger_workflow_business_error(self, mock_app_generate):
+        call_request = types.CallToolRequest(
+            params=types.CallToolRequestParams(name="test_app", arguments={"query": "test question"})
+        )
+        self.request.root = call_request
+        mock_app_generate.generate.side_effect = TriggerWorkflowServiceModeUnavailableError()
+
+        result = handle_mcp_request(
+            Mock(),
+            self.app,
+            self.request,
+            self.user_input_form,
+            self.mcp_server,
+            self.end_user,
+            123,
+        )
+
+        assert isinstance(result, types.JSONRPCError)
+        assert result.error.code == types.INVALID_REQUEST
+        assert result.error.data == {"code": "trigger_workflow_service_mode_unavailable"}
+
+    @patch("core.mcp.server.streamable_http.AppGenerateService")
+    def test_handle_call_tool_request_threads_protocol_version(self, mock_app_generate):
+        """The negotiated version reaches handle_call_tool through the dispatcher."""
+        call_request = types.CallToolRequest(
+            params=types.CallToolRequestParams(name="test_app", arguments={"query": "test question"})
+        )
+        self.request.root = call_request
+
+        mock_app_generate.generate.return_value = {"answer": "test answer"}
+
+        result = handle_mcp_request(
+            Mock(), self.app, self.request, self.user_input_form, self.mcp_server, self.end_user, 123, "2025-06-18"
+        )
+
+        assert isinstance(result, types.JSONRPCResponse)
+        assert result.result["structuredContent"] == {"answer": "test answer"}
+
+    @patch("core.mcp.server.streamable_http.AppGenerateService")
+    def test_handle_call_tool_request_legacy_serialization_unchanged(self, mock_app_generate):
+        """A 2024-11-05 tools/call response serializes without structuredContent."""
+        call_request = types.CallToolRequest(
+            params=types.CallToolRequestParams(name="test_app", arguments={"query": "test question"})
+        )
+        self.request.root = call_request
+
+        mock_app_generate.generate.return_value = {"answer": "test answer"}
+
+        result = handle_mcp_request(
+            Mock(), self.app, self.request, self.user_input_form, self.mcp_server, self.end_user, 123, "2024-11-05"
+        )
+
+        assert isinstance(result, types.JSONRPCResponse)
+        assert "structuredContent" not in result.result
+        assert result.result["content"][0]["text"] == "test answer"
+
     def test_handle_unknown_request_type(self):
         """Test handling unknown request type"""
 
-        # Setup unknown request
-        class UnknownRequest:
-            pass
+        # A valid request type with no application-side handler.
+        self.request.root = types.ListResourcesRequest()
 
-        self.mock_request.root = Mock(spec=UnknownRequest)
-        self.mock_request.root.id = 123
-        request_type = Mock(return_value=UnknownRequest)
-
-        with patch("core.mcp.server.streamable_http.type", request_type):
-            result = handle_mcp_request(
-                self.app, self.mock_request, self.user_input_form, self.mcp_server, self.end_user, 123
-            )
+        result = handle_mcp_request(
+            Mock(), self.app, self.request, self.user_input_form, self.mcp_server, self.end_user, 123
+        )
 
         assert isinstance(result, types.JSONRPCError)
         assert result.jsonrpc == "2.0"
@@ -143,15 +220,10 @@ class TestHandleMCPRequest:
     def test_handle_value_error(self):
         """Test handling ValueError"""
         # Setup request that will cause ValueError
-        self.mock_request.root = Mock(spec=types.CallToolRequest)
-        self.mock_request.root.params = Mock()
-        self.mock_request.root.params.arguments = {}
-
-        request_type = Mock(return_value=types.CallToolRequest)
+        self.request.root = types.CallToolRequest(params=types.CallToolRequestParams(name="test_app", arguments={}))
 
         # Don't provide end_user to cause ValueError
-        with patch("core.mcp.server.streamable_http.type", request_type):
-            result = handle_mcp_request(self.app, self.mock_request, self.user_input_form, self.mcp_server, None, 123)
+        result = handle_mcp_request(Mock(), self.app, self.request, self.user_input_form, self.mcp_server, None, 123)
 
         assert isinstance(result, types.JSONRPCError)
         assert result.error.code == types.INVALID_PARAMS
@@ -159,15 +231,13 @@ class TestHandleMCPRequest:
     def test_handle_generic_exception(self):
         """Test handling generic exception"""
         # Setup request that will cause generic exception
-        self.mock_request.root = Mock(spec=types.PingRequest)
-        self.mock_request.root.id = 123
+        self.request.root = types.PingRequest()
 
-        # Patch handle_ping to raise exception instead of type
+        # Inject the handler failure while preserving normal request dispatch.
         with patch("core.mcp.server.streamable_http.handle_ping", side_effect=Exception("Test error")):
-            with patch("core.mcp.server.streamable_http.type", return_value=types.PingRequest):
-                result = handle_mcp_request(
-                    self.app, self.mock_request, self.user_input_form, self.mcp_server, self.end_user, 123
-                )
+            result = handle_mcp_request(
+                Mock(), self.app, self.request, self.user_input_form, self.mcp_server, self.end_user, 123
+            )
 
         assert isinstance(result, types.JSONRPCError)
         assert result.error.code == types.INTERNAL_ERROR
@@ -181,17 +251,38 @@ class TestIndividualHandlers:
         result = handle_ping()
         assert isinstance(result, types.EmptyResult)
 
-    def test_handle_initialize(self):
-        """Test initialize handler"""
-        description = "Test server"
-
-        with patch("core.mcp.server.streamable_http.dify_config") as mock_config:
-            mock_config.project.version = "1.0.0"
-            result = handle_initialize(description)
+    def test_handle_initialize_echoes_supported_version(self):
+        """A supported requested version is echoed back unchanged."""
+        result = handle_initialize("Test server", "2024-11-05")
 
         assert isinstance(result, types.InitializeResult)
-        assert result.protocolVersion == types.SERVER_LATEST_PROTOCOL_VERSION
+        assert result.protocolVersion == "2024-11-05"
         assert result.instructions == "Test server"
+
+    def test_handle_initialize_echoes_intermediate_version(self):
+        """The intermediate supported version (2025-03-26) is echoed back."""
+        result = handle_initialize("Test server", "2025-03-26")
+
+        assert result.protocolVersion == "2025-03-26"
+
+    def test_handle_initialize_negotiates_latest_for_modern_client(self):
+        """A 2025-06-18 client gets 2025-06-18 back."""
+        result = handle_initialize("Test server", "2025-06-18")
+
+        assert result.protocolVersion == "2025-06-18"
+
+    def test_handle_initialize_falls_back_for_unknown_version(self):
+        """An unsupported requested version falls back to the server latest."""
+        result = handle_initialize("Test server", "1999-01-01")
+
+        assert result.protocolVersion == types.SERVER_LATEST_PROTOCOL_VERSION
+        assert result.protocolVersion == "2025-06-18"
+
+    def test_handle_initialize_non_string_version_falls_back(self):
+        """A malformed (non-string) requested version falls back to the server latest."""
+        result = handle_initialize("Test server", 20250618)
+
+        assert result.protocolVersion == types.SERVER_LATEST_PROTOCOL_VERSION
 
     def test_handle_list_tools(self):
         """Test list tools handler"""
@@ -208,27 +299,50 @@ class TestIndividualHandlers:
         assert result.tools[0].name == "test_app"
         assert result.tools[0].description == "Test server"
 
+    def test_handle_list_tools_adds_structured_output_for_modern_client(self):
+        """Tool advertises outputSchema and title when negotiated >= 2025-06-18."""
+        result = handle_list_tools("test_app", AppMode.CHAT, [], "Test server", {}, "2025-06-18")
+
+        tool = result.tools[0]
+        assert tool.outputSchema == {"type": "object"}
+        assert tool.title == "test_app"
+
+    def test_handle_list_tools_omits_structured_output_for_legacy_client(self):
+        """Tool stays unchanged (no outputSchema/title) for 2024-11-05 clients."""
+        result = handle_list_tools("test_app", AppMode.CHAT, [], "Test server", {}, "2024-11-05")
+
+        tool = result.tools[0]
+        assert tool.outputSchema is None
+        assert tool.title is None
+
+    def test_handle_list_tools_omits_structured_output_for_intermediate_client(self):
+        """The 2025-03-26 negotiated version is below the structured-output threshold."""
+        result = handle_list_tools("test_app", AppMode.CHAT, [], "Test server", {}, "2025-03-26")
+
+        tool = result.tools[0]
+        assert tool.outputSchema is None
+        assert tool.title is None
+
     @patch("core.mcp.server.streamable_http.AppGenerateService")
     def test_handle_call_tool(self, mock_app_generate):
         """Test call tool handler"""
-        app = Mock(spec=App)
-        app.mode = AppMode.CHAT
+        app = App(
+            mode=AppMode.CHAT,
+        )
 
-        # Create mock request
-        mock_request = Mock()
-        mock_call_request = Mock(spec=types.CallToolRequest)
-        mock_call_request.params = Mock()
-        mock_call_request.params.arguments = {"query": "test question"}
-        mock_request.root = mock_call_request
+        call_request = types.CallToolRequest(
+            params=types.CallToolRequestParams(name="test_app", arguments={"query": "test question"})
+        )
+        request = types.ClientRequest(root=call_request)
 
         user_input_form: list[VariableEntity] = []
-        end_user = Mock(spec=EndUser)
+        end_user = EndUser()
 
         # Mock app generate service response
         mock_response = {"answer": "test answer"}
         mock_app_generate.generate.return_value = mock_response
 
-        result = handle_call_tool(app, mock_request, user_input_form, end_user)
+        result = handle_call_tool(Mock(), app, request, user_input_form, end_user)
 
         assert isinstance(result, types.CallToolResult)
         assert len(result.content) == 1
@@ -237,14 +351,52 @@ class TestIndividualHandlers:
         assert hasattr(text_content, "text")
         assert text_content.text == "test answer"
 
+    @patch("core.mcp.server.streamable_http.AppGenerateService")
+    def test_handle_call_tool_structured_output_modern_client(self, mock_app_generate):
+        """structuredContent is attached alongside TextContent for >= 2025-06-18."""
+        app = App(
+            mode=AppMode.CHAT,
+        )
+
+        call_request = types.CallToolRequest(
+            params=types.CallToolRequestParams(name="test_app", arguments={"query": "test question"})
+        )
+        request = types.ClientRequest(root=call_request)
+
+        mock_app_generate.generate.return_value = {"answer": "test answer"}
+
+        result = handle_call_tool(Mock(), app, request, [], EndUser(), "2025-06-18")
+
+        assert result.structuredContent == {"answer": "test answer"}
+        assert result.content[0].text == "test answer"
+
+    @patch("core.mcp.server.streamable_http.AppGenerateService")
+    def test_handle_call_tool_no_structured_output_legacy_client(self, mock_app_generate):
+        """structuredContent is omitted for 2024-11-05 clients."""
+        app = App(
+            mode=AppMode.CHAT,
+        )
+
+        call_request = types.CallToolRequest(
+            params=types.CallToolRequestParams(name="test_app", arguments={"query": "test question"})
+        )
+        request = types.ClientRequest(root=call_request)
+
+        mock_app_generate.generate.return_value = {"answer": "test answer"}
+
+        result = handle_call_tool(Mock(), app, request, [], EndUser(), "2024-11-05")
+
+        assert result.structuredContent is None
+        assert result.content[0].text == "test answer"
+
     def test_handle_call_tool_no_end_user(self):
         """Test call tool handler without end user"""
-        app = Mock(spec=App)
-        mock_request = Mock()
+        app = App()
+        request = types.ClientRequest(root=types.CallToolRequest(params=types.CallToolRequestParams(name="test_app")))
         user_input_form: list[VariableEntity] = []
 
         with pytest.raises(ValueError, match="End user not found"):
-            handle_call_tool(app, mock_request, user_input_form, None)
+            handle_call_tool(Mock(), app, request, user_input_form, None)
 
 
 class TestUtilityFunctions:
@@ -297,8 +449,9 @@ class TestUtilityFunctions:
 
     def test_prepare_tool_arguments_chat_mode(self):
         """Test preparing tool arguments for chat mode"""
-        app = Mock(spec=App)
-        app.mode = AppMode.CHAT
+        app = App(
+            mode=AppMode.CHAT,
+        )
 
         arguments = {"query": "test question", "name": "John"}
 
@@ -311,8 +464,9 @@ class TestUtilityFunctions:
 
     def test_prepare_tool_arguments_workflow_mode(self):
         """Test preparing tool arguments for workflow mode"""
-        app = Mock(spec=App)
-        app.mode = AppMode.WORKFLOW
+        app = App(
+            mode=AppMode.WORKFLOW,
+        )
 
         arguments = {"input_text": "test input"}
 
@@ -323,8 +477,9 @@ class TestUtilityFunctions:
 
     def test_prepare_tool_arguments_completion_mode(self):
         """Test preparing tool arguments for completion mode"""
-        app = Mock(spec=App)
-        app.mode = AppMode.COMPLETION
+        app = App(
+            mode=AppMode.COMPLETION,
+        )
 
         arguments = {"name": "John"}
 
@@ -335,8 +490,9 @@ class TestUtilityFunctions:
 
     def test_extract_answer_from_mapping_response_chat(self):
         """Test extracting answer from mapping response for chat mode"""
-        app = Mock(spec=App)
-        app.mode = AppMode.CHAT
+        app = App(
+            mode=AppMode.CHAT,
+        )
 
         response = {"answer": "test answer", "other": "data"}
 
@@ -346,8 +502,9 @@ class TestUtilityFunctions:
 
     def test_extract_answer_from_mapping_response_workflow(self):
         """Test extracting answer from mapping response for workflow mode"""
-        app = Mock(spec=App)
-        app.mode = AppMode.WORKFLOW
+        app = App(
+            mode=AppMode.WORKFLOW,
+        )
 
         response = {"data": {"outputs": {"result": "test result"}}}
 
@@ -356,27 +513,101 @@ class TestUtilityFunctions:
         expected = json.dumps({"result": "test result"}, ensure_ascii=False)
         assert result == expected
 
-    def test_extract_answer_from_streaming_response(self):
+    def test_extract_answer_from_streaming_response(self, monkeypatch: pytest.MonkeyPatch):
         """Test extracting answer from streaming response"""
-        app = Mock(spec=App)
+        app = App()
 
-        # Mock RateLimitGenerator
-        mock_generator = Mock(spec=RateLimitGenerator)
-        mock_generator.generator = [
+        events = [
             'data: {"event": "agent_thought", "thought": "thinking..."}',
             'data: {"event": "agent_thought", "thought": "more thinking"}',
             'data: {"event": "other", "content": "ignore this"}',
             "not data format",
         ]
 
-        result = extract_answer_from_response(app, mock_generator)
+        monkeypatch.setattr(RateLimit, "_instance_dict", {})
+        rate_limit = RateLimit(client_id="mcp-stream-fixture", max_active_requests=0)
+        response = RateLimitGenerator(
+            rate_limit=rate_limit, generator=(item for item in events), request_id=rate_limit.enter()
+        )
+        try:
+            result = extract_answer_from_response(app, response)
+        finally:
+            response.close()
 
         assert result == "thinking...more thinking"
 
+    def test_extract_structured_output_workflow(self):
+        """Workflow mode exposes the raw outputs mapping as structured content."""
+        app = App(
+            mode=AppMode.WORKFLOW,
+        )
+
+        response = {"data": {"outputs": {"result": "test result"}}}
+
+        assert extract_structured_output(app, response, "ignored") == {"result": "test result"}
+
+    def test_extract_structured_output_chat(self):
+        """Chat mode wraps the answer string under an 'answer' key."""
+        app = App(
+            mode=AppMode.CHAT,
+        )
+
+        assert extract_structured_output(app, {"answer": "hi"}, "hi") == {"answer": "hi"}
+
+    def test_extract_structured_output_workflow_missing_outputs(self):
+        """Missing or malformed outputs fall back to None."""
+        app = App(
+            mode=AppMode.WORKFLOW,
+        )
+
+        assert extract_structured_output(app, {"data": {}}, "ignored") is None
+
+    def test_extract_structured_output_workflow_non_mapping_response(self):
+        """A non-mapping workflow response yields no structured output."""
+        app = App(
+            mode=AppMode.WORKFLOW,
+        )
+
+        assert extract_structured_output(app, None, "ignored") is None
+
+    def test_extract_structured_output_workflow_non_mapping_data(self):
+        """A non-mapping 'data' entry yields no structured output."""
+        app = App(
+            mode=AppMode.WORKFLOW,
+        )
+
+        assert extract_structured_output(app, {"data": "not a mapping"}, "ignored") is None
+
+    def test_extract_structured_output_workflow_non_mapping_outputs(self):
+        """A non-mapping 'outputs' entry yields no structured output."""
+        app = App(
+            mode=AppMode.WORKFLOW,
+        )
+
+        assert extract_structured_output(app, {"data": {"outputs": ["not", "a", "mapping"]}}, "ignored") is None
+
+    @pytest.mark.parametrize("mode", [AppMode.ADVANCED_CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION])
+    def test_extract_structured_output_other_answer_modes(self, mode):
+        """Every chat-style mode wraps the answer string under an 'answer' key."""
+        app = App(
+            mode=mode,
+        )
+
+        assert extract_structured_output(app, {"answer": "hi"}, "hi") == {"answer": "hi"}
+
+    def test_extract_structured_output_unknown_mode(self):
+        """Modes outside the MCP surface produce no structured output."""
+        app = App(
+            mode=AppMode.CHANNEL,
+        )
+
+        assert extract_structured_output(app, {"answer": "hi"}, "hi") is None
+
     def test_process_mapping_response_invalid_mode(self):
         """Test processing mapping response with invalid app mode"""
-        app = Mock(spec=App)
-        app.mode = "invalid_mode"
+        app = App(
+            mode="invalid_mode",
+        )
 
         response = {"answer": "test"}
 
@@ -576,3 +807,29 @@ class TestUtilityFunctions:
         # Or validation should also raise SchemaError
         with pytest.raises(jsonschema.exceptions.SchemaError):
             jsonschema.validate(instance={"count": 1.23}, schema=bad_schema)
+
+
+class TestNegotiateProtocolVersion:
+    """Test the MCP-Protocol-Version header resolver."""
+
+    def test_initialize_ignores_header(self):
+        """Initialize negotiates via the request body, so its header is ignored."""
+        assert negotiate_protocol_version("anything", True) == types.DEFAULT_NEGOTIATED_VERSION
+
+    def test_absent_header_defaults(self):
+        """An absent header defaults to 2025-03-26 per the spec back-compat rule."""
+        assert negotiate_protocol_version(None, False) == types.DEFAULT_NEGOTIATED_VERSION
+
+    def test_empty_header_treated_as_absent(self):
+        """An empty header value is treated as absent and defaults to 2025-03-26."""
+        assert negotiate_protocol_version("", False) == types.DEFAULT_NEGOTIATED_VERSION
+
+    def test_supported_header_passes_through(self):
+        """All supported header values are used as the negotiated version."""
+        assert negotiate_protocol_version("2025-06-18", False) == "2025-06-18"
+        assert negotiate_protocol_version("2025-03-26", False) == "2025-03-26"
+        assert negotiate_protocol_version("2024-11-05", False) == "2024-11-05"
+
+    def test_unsupported_header_returns_none(self):
+        """An explicit but unsupported header signals an error (None)."""
+        assert negotiate_protocol_version("1999-01-01", False) is None

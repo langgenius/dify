@@ -41,19 +41,6 @@ describe('ErrorMessageBlockNode', () => {
     })
   })
 
-  it('should create dom with expected classes and never update dom', () => {
-    runInEditor(() => {
-      const node = new ErrorMessageBlockNode()
-      const dom = node.createDOM()
-
-      expect(dom.tagName).toBe('DIV')
-      expect(dom).toHaveClass('inline-flex')
-      expect(dom).toHaveClass('items-center')
-      expect(dom).toHaveClass('align-middle')
-      expect(node.updateDOM()).toBe(false)
-    })
-  })
-
   it('should decorate using ErrorMessageBlockComponent with node key', () => {
     runInEditor(() => {
       const node = new ErrorMessageBlockNode('decorator-key')

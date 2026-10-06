@@ -2,14 +2,13 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-
 import {
   zGetNotionPagesByPageIdByPageTypePreviewPath,
   zGetNotionPagesByPageIdByPageTypePreviewQuery,
   zGetNotionPagesByPageIdByPageTypePreviewResponse,
   zGetNotionPreImportPagesQuery,
   zGetNotionPreImportPagesResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 export const get = oc
   .route({

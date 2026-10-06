@@ -10,6 +10,7 @@ import numpy
 import oracledb
 from oracledb.connection import Connection
 from pydantic import BaseModel, model_validator
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.rag.datasource.vdb.vector_base import BaseVector
@@ -316,10 +317,10 @@ class OracleVector(BaseVector):
                     entities.append(current_entity)
             else:
                 try:
-                    nltk.data.find("tokenizers/punkt")
+                    nltk.data.find("tokenizers/punkt_tab")
                     nltk.data.find("corpora/stopwords")
                 except LookupError:
-                    raise LookupError("Unable to find the required NLTK data package: punkt and stopwords")
+                    raise LookupError("Unable to find the required NLTK data package: punkt_tab and stopwords")
                 e_str = re.sub(r"[^\w ]", "", query)
                 all_tokens = nltk.word_tokenize(e_str)
                 stop_words = stopwords.words("english")
@@ -383,7 +384,9 @@ class OracleVector(BaseVector):
 
 class OracleVectorFactory(AbstractVectorFactory):
     @override
-    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> OracleVector:
+    def init_vector(
+        self, dataset: Dataset, attributes: list, embeddings: Embeddings, *, session: Session | None
+    ) -> OracleVector:
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]
             collection_name = class_prefix

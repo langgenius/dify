@@ -31,12 +31,22 @@ export type PostRemoteFilesUploadData = {
   url: '/remote-files/upload'
 }
 
+export type PostRemoteFilesUploadErrors = {
+  400: unknown
+  404: unknown
+  413: unknown
+  415: unknown
+  422: unknown
+  500: unknown
+  502: unknown
+}
+
 export type PostRemoteFilesUploadResponses = {
   201: FileWithSignedUrl
 }
 
-export type PostRemoteFilesUploadResponse
-  = PostRemoteFilesUploadResponses[keyof PostRemoteFilesUploadResponses]
+export type PostRemoteFilesUploadResponse =
+  PostRemoteFilesUploadResponses[keyof PostRemoteFilesUploadResponses]
 
 export type GetRemoteFilesByUrlData = {
   body?: never
@@ -47,9 +57,16 @@ export type GetRemoteFilesByUrlData = {
   url: '/remote-files/{url}'
 }
 
+export type GetRemoteFilesByUrlErrors = {
+  400: unknown
+  404: unknown
+  500: unknown
+  502: unknown
+}
+
 export type GetRemoteFilesByUrlResponses = {
   200: RemoteFileInfo
 }
 
-export type GetRemoteFilesByUrlResponse
-  = GetRemoteFilesByUrlResponses[keyof GetRemoteFilesByUrlResponses]
+export type GetRemoteFilesByUrlResponse =
+  GetRemoteFilesByUrlResponses[keyof GetRemoteFilesByUrlResponses]

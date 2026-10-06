@@ -3,7 +3,7 @@ import type { DataSourceNotionPageMap, NotionPage } from '@/models/common'
 import type { CrawlResultItem, DocumentItem, FileItem } from '@/models/datasets'
 import type { OnlineDriveFile } from '@/models/pipeline'
 import { act, renderHook } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { DatasourceType } from '@/models/pipeline'
 import { createDataSourceStore } from '../../data-source/store'
 import { useDatasourceActions } from '../use-datasource-actions'
@@ -22,8 +22,13 @@ vi.mock('@/app/components/base/amplitude', () => ({
 
 describe('useDatasourceActions', () => {
   let store: ReturnType<typeof createDataSourceStore>
-  const defaultParams = () => ({
-    datasource: { nodeId: 'node-1', nodeData: { provider_type: DatasourceType.localFile } } as unknown as Datasource,
+  const defaultParams = (): Parameters<typeof useDatasourceActions>[0] & {
+    datasourceType: DatasourceType
+  } => ({
+    datasource: {
+      nodeId: 'node-1',
+      nodeData: { provider_type: DatasourceType.localFile },
+    } as unknown as Datasource,
     datasourceType: DatasourceType.localFile,
     pipelineId: 'pipeline-1',
     dataSourceStore: store,
@@ -125,7 +130,10 @@ describe('useDatasourceActions', () => {
     const { result } = renderHook(() => useDatasourceActions(params))
     result.current.formRef.current = { submit: vi.fn() }
 
-    const website = { title: 'Page', source_url: 'https://example.com' } as unknown as CrawlResultItem
+    const website = {
+      title: 'Page',
+      source_url: 'https://example.com',
+    } as unknown as CrawlResultItem
     act(() => {
       result.current.handlePreviewWebsiteChange(website)
     })
@@ -178,8 +186,13 @@ describe('useDatasourceActions', () => {
 
   it('should handle submit with preview mode', async () => {
     const params = defaultParams()
-    store.getState().setLocalFileList([{ file: { id: 'f1', name: 'test.pdf' } }] as unknown as FileItem[])
-    store.getState().previewLocalFileRef.current = { id: 'f1', name: 'test.pdf' } as unknown as DocumentItem
+    store
+      .getState()
+      .setLocalFileList([{ file: { id: 'f1', name: 'test.pdf' } }] as unknown as FileItem[])
+    store.getState().previewLocalFileRef.current = {
+      id: 'f1',
+      name: 'test.pdf',
+    } as unknown as DocumentItem
 
     mockRunPublishedPipeline.mockResolvedValue({ data: { outputs: { tokens: 100 } } })
 

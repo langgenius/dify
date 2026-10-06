@@ -12,7 +12,14 @@ describe('ConfirmAddVar', () => {
   })
 
   it('should render variable names', () => {
-    render(<ConfirmAddVar varNameArr={['foo', 'bar']} onConfirm={vi.fn()} onCancel={vi.fn()} onHide={vi.fn()} />)
+    render(
+      <ConfirmAddVar
+        varNameArr={['foo', 'bar']}
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+        onHide={vi.fn()}
+      />,
+    )
 
     const highlights = screen.getAllByTestId('var-highlight')
     expect(highlights).toHaveLength(2)
@@ -23,7 +30,14 @@ describe('ConfirmAddVar', () => {
   it('should trigger cancel actions', () => {
     const onConfirm = vi.fn()
     const onCancel = vi.fn()
-    render(<ConfirmAddVar varNameArr={['foo']} onConfirm={onConfirm} onCancel={onCancel} onHide={vi.fn()} />)
+    render(
+      <ConfirmAddVar
+        varNameArr={['foo']}
+        onConfirm={onConfirm}
+        onCancel={onCancel}
+        onHide={vi.fn()}
+      />,
+    )
 
     fireEvent.click(screen.getByText('common.operation.cancel'))
 
@@ -33,7 +47,14 @@ describe('ConfirmAddVar', () => {
   it('should trigger confirm actions', () => {
     const onConfirm = vi.fn()
     const onCancel = vi.fn()
-    render(<ConfirmAddVar varNameArr={['foo']} onConfirm={onConfirm} onCancel={onCancel} onHide={vi.fn()} />)
+    render(
+      <ConfirmAddVar
+        varNameArr={['foo']}
+        onConfirm={onConfirm}
+        onCancel={onCancel}
+        onHide={vi.fn()}
+      />,
+    )
 
     fireEvent.click(screen.getByText('common.operation.add'))
 

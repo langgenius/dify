@@ -1,425 +1,344 @@
-"""
-Unit tests for EasyUIBasedGenerateTaskPipeline._message_end_to_stream_response method.
+"""Exercise message-end file serialization against persisted SQLite rows.
 
-This test suite ensures that the files array is correctly populated in the message_end
-SSE event, which is critical for vision/image chat responses to render correctly.
-
-Test Coverage:
-- Files array populated when MessageFile records exist
-- Files array is None when no MessageFile records exist
-- Correct signed URL generation for LOCAL_FILE transfer method
-- Correct URL handling for REMOTE_URL transfer method
-- Correct URL handling for TOOL_FILE transfer method
-- Proper file metadata formatting (filename, mime_type, size, extension)
+The suite covers empty results, all transfer methods, upload metadata batching,
+and the fallback used when a local message file references a missing upload.
 """
 
 import uuid
-from unittest.mock import MagicMock, Mock, patch
+from datetime import datetime
+from unittest.mock import MagicMock, patch
 
 import pytest
-from sqlalchemy.orm import Session
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session, sessionmaker
 
+from core.app.app_config.entities import (
+    EasyUIBasedAppConfig,
+    EasyUIBasedAppModelConfigFrom,
+    ModelConfigEntity,
+    PromptTemplateEntity,
+)
+from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
+from core.app.entities.app_invoke_entities import ChatAppGenerateEntity, InvokeFrom
 from core.app.entities.task_entities import MessageEndStreamResponse
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
+from extensions.ext_redis import RedisClientWrapper
+from extensions.storage.storage_type import StorageType
 from graphon.file import FileTransferMethod, FileType
-from models.model import MessageFile, UploadFile
+from models.enums import ConversationFromSource, CreatorUserRole
+from models.model import AppMode, Conversation, Message, MessageFile, UploadFile
+from tests.unit_tests.core.model_fixtures import make_model_config
+
+SQLITE_MODELS = (MessageFile, UploadFile)
+pytestmark = [
+    pytest.mark.usefixtures("sqlite_session"),
+    pytest.mark.parametrize("sqlite_session", [SQLITE_MODELS], indirect=True),
+]
 
 
 class TestMessageEndStreamResponseFiles:
-    """Test suite for files array population in message_end SSE event."""
+    """Verify message-end file payloads from actual ORM query results."""
+
+    @pytest.fixture(autouse=True)
+    def bind_sqlite_engine(self, sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Bind sessions opened by the pipeline to the per-test SQLite engine."""
+
+        sqlite_session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
+        monkeypatch.setattr("core.db.session_factory._session_maker", sqlite_session_maker)
 
     @pytest.fixture
-    def mock_pipeline(self):
-        """Create a mock EasyUIBasedGenerateTaskPipeline instance."""
-        pipeline = Mock(spec=EasyUIBasedGenerateTaskPipeline)
-        pipeline._message_id = str(uuid.uuid4())
-        pipeline._task_state = Mock()
-        pipeline._task_state.metadata = Mock()
-        pipeline._task_state.metadata.model_dump = Mock(return_value={"test": "metadata"})
-        pipeline._task_state.llm_result = Mock()
-        pipeline._task_state.llm_result.usage = Mock()
-        pipeline._application_generate_entity = Mock()
-        pipeline._application_generate_entity.task_id = str(uuid.uuid4())
-        return pipeline
+    def pipeline(
+        self, monkeypatch: pytest.MonkeyPatch, redis_transport: tuple[RedisClientWrapper, MagicMock]
+    ) -> EasyUIBasedGenerateTaskPipeline:
+        """Construct the pipeline with validated request, model, and task state."""
+        monkeypatch.setattr("core.app.apps.base_app_queue_manager.redis_client", redis_transport[0])
+        request = ChatAppGenerateEntity(
+            task_id=str(uuid.uuid4()),
+            app_config=EasyUIBasedAppConfig(
+                tenant_id="tenant-id",
+                app_id="app-id",
+                app_mode=AppMode.CHAT,
+                app_model_config_from=EasyUIBasedAppModelConfigFrom.APP_LATEST_CONFIG,
+                app_model_config_dict={},
+                model=ModelConfigEntity(provider="test-provider", model="test-model"),
+                prompt_template=PromptTemplateEntity(prompt_type=PromptTemplateEntity.PromptType.SIMPLE),
+            ),
+            model_conf=make_model_config(provider="test-provider", model="test-model", mode="chat"),
+            inputs={},
+            files=[],
+            user_id="user-id",
+            stream=True,
+            invoke_from=InvokeFrom.WEB_APP,
+        )
+        conversation = Conversation(
+            id=str(uuid.uuid4()),
+            app_id="app-id",
+            mode=AppMode.CHAT,
+            name="Conversation",
+            from_source=ConversationFromSource.API,
+            inputs={},
+        )
+        message = Message(id=str(uuid.uuid4()), created_at=datetime.now())
+        queue = MessageBasedAppQueueManager(
+            task_id=request.task_id,
+            user_id=request.user_id,
+            invoke_from=request.invoke_from,
+            conversation_id=conversation.id,
+            app_mode=AppMode.CHAT,
+            message_id=message.id,
+        )
+        return EasyUIBasedGenerateTaskPipeline(
+            application_generate_entity=request,
+            queue_manager=queue,
+            conversation=conversation,
+            message=message,
+            stream=True,
+        )
+
+    @staticmethod
+    def _message_file(
+        *,
+        transfer_method: FileTransferMethod,
+        url: str | None = None,
+        upload_file_id: str | None = None,
+    ) -> MessageFile:
+        return MessageFile(
+            message_id=str(uuid.uuid4()),
+            type=FileType.IMAGE,
+            transfer_method=transfer_method,
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by=str(uuid.uuid4()),
+            url=url,
+            upload_file_id=upload_file_id,
+        )
 
     @pytest.fixture
-    def mock_message_file_local(self):
-        """Create a mock MessageFile with LOCAL_FILE transfer method."""
-        message_file = Mock(spec=MessageFile)
-        message_file.id = str(uuid.uuid4())
-        message_file.message_id = str(uuid.uuid4())
-        message_file.transfer_method = FileTransferMethod.LOCAL_FILE
-        message_file.upload_file_id = str(uuid.uuid4())
-        message_file.url = None
-        message_file.type = FileType.IMAGE
-        return message_file
+    def message_file_local(self) -> MessageFile:
+        """Create an unpersisted local-file row."""
+
+        return self._message_file(
+            transfer_method=FileTransferMethod.LOCAL_FILE,
+            upload_file_id=str(uuid.uuid4()),
+        )
 
     @pytest.fixture
-    def mock_message_file_remote(self):
-        """Create a mock MessageFile with REMOTE_URL transfer method."""
-        message_file = Mock(spec=MessageFile)
-        message_file.id = str(uuid.uuid4())
-        message_file.message_id = str(uuid.uuid4())
-        message_file.transfer_method = FileTransferMethod.REMOTE_URL
-        message_file.upload_file_id = None
-        message_file.url = "https://example.com/image.jpg"
-        message_file.type = FileType.IMAGE
-        return message_file
+    def message_file_remote(self) -> MessageFile:
+        """Create an unpersisted remote-file row."""
+
+        return self._message_file(
+            transfer_method=FileTransferMethod.REMOTE_URL,
+            url="https://example.com/image.jpg",
+        )
 
     @pytest.fixture
-    def mock_message_file_tool(self):
-        """Create a mock MessageFile with TOOL_FILE transfer method."""
-        message_file = Mock(spec=MessageFile)
-        message_file.id = str(uuid.uuid4())
-        message_file.message_id = str(uuid.uuid4())
-        message_file.transfer_method = FileTransferMethod.TOOL_FILE
-        message_file.upload_file_id = None
-        message_file.url = "tool_file_123.png"
-        message_file.type = FileType.IMAGE
-        return message_file
+    def message_file_tool(self) -> MessageFile:
+        """Create an unpersisted tool-file row."""
+
+        return self._message_file(
+            transfer_method=FileTransferMethod.TOOL_FILE,
+            url="tool_file_123.png",
+        )
 
     @pytest.fixture
-    def mock_upload_file(self, mock_message_file_local):
-        """Create a mock UploadFile."""
-        upload_file = Mock(spec=UploadFile)
-        upload_file.id = mock_message_file_local.upload_file_id
-        upload_file.name = "test_image.png"
-        upload_file.mime_type = "image/png"
-        upload_file.size = 1024
-        upload_file.extension = "png"
-        return upload_file
+    def upload_file(self, message_file_local: MessageFile) -> UploadFile:
+        """Create upload metadata matching the local message-file reference."""
 
-    def test_message_end_with_no_files(self, mock_pipeline):
-        """Test that files array is None when no MessageFile records exist."""
-        # Arrange
-        with (
-            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db") as mock_db,
-            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session") as mock_session_class,
-        ):
-            mock_engine = MagicMock()
-            mock_db.engine = mock_engine
+        upload = UploadFile(
+            tenant_id=str(uuid.uuid4()),
+            storage_type=StorageType.LOCAL,
+            key="uploads/test_image.png",
+            name="test_image.png",
+            size=1024,
+            extension="png",
+            mime_type="image/png",
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by=str(uuid.uuid4()),
+            created_at=datetime.now(),
+            used=True,
+        )
+        upload.id = message_file_local.upload_file_id or str(uuid.uuid4())
+        return upload
 
-            mock_session = MagicMock(spec=Session)
-            mock_session_class.return_value.__enter__.return_value = mock_session
-            mock_session.scalars.return_value.all.return_value = []
+    @staticmethod
+    def _persist(session: Session, *rows: MessageFile | UploadFile) -> None:
+        session.add_all(rows)
+        session.commit()
 
-            # Act
-            result = EasyUIBasedGenerateTaskPipeline._message_end_to_stream_response(mock_pipeline)
+    def test_message_end_with_no_files(
+        self, sqlite_session: Session, pipeline: EasyUIBasedGenerateTaskPipeline
+    ) -> None:
+        """Rows for another message do not leak into an empty files array."""
 
-            # Assert
-            assert isinstance(result, MessageEndStreamResponse)
-            assert result.files is None
-            assert result.id == mock_pipeline._message_id
-            assert result.metadata == {"test": "metadata"}
+        unrelated_file = self._message_file(
+            transfer_method=FileTransferMethod.REMOTE_URL,
+            url="https://example.com/unrelated.png",
+        )
+        self._persist(sqlite_session, unrelated_file)
 
-    def test_message_end_with_local_file(self, mock_pipeline, mock_message_file_local, mock_upload_file):
-        """Test that files array is populated correctly for LOCAL_FILE transfer method."""
-        # Arrange
-        mock_message_file_local.message_id = mock_pipeline._message_id
+        result = pipeline._message_end_to_stream_response()
 
-        with (
-            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db") as mock_db,
-            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session") as mock_session_class,
-            patch("core.app.task_pipeline.message_file_utils.file_helpers.get_signed_file_url") as mock_get_url,
-        ):
-            mock_engine = MagicMock()
-            mock_db.engine = mock_engine
+        assert sqlite_session.get(MessageFile, unrelated_file.id) is unrelated_file
+        assert isinstance(result, MessageEndStreamResponse)
+        assert result.files == []
+        assert result.id == pipeline._message_id
+        assert result.metadata == {
+            "usage": pipeline._task_state.llm_result.usage.model_dump(exclude_none=True),
+            "retriever_resources": [],
+            "reasoning": {},
+        }
 
-            mock_session = MagicMock(spec=Session)
-            mock_session_class.return_value.__enter__.return_value = mock_session
+    def test_message_end_with_local_file(
+        self,
+        sqlite_session: Session,
+        pipeline: EasyUIBasedGenerateTaskPipeline,
+        message_file_local: MessageFile,
+        upload_file: UploadFile,
+    ) -> None:
+        """Local files include persisted upload metadata and a signed URL."""
 
-            # Mock database queries
-            # First query: MessageFile
-            mock_message_files_result = Mock()
-            mock_message_files_result.all.return_value = [mock_message_file_local]
+        message_file_local.message_id = pipeline._message_id
+        self._persist(sqlite_session, message_file_local, upload_file)
 
-            # Second query: UploadFile (batch query to avoid N+1)
-            mock_upload_files_result = Mock()
-            mock_upload_files_result.all.return_value = [mock_upload_file]
+        with patch(
+            "core.app.task_pipeline.message_file_utils.file_helpers.get_signed_file_url",
+            return_value="https://example.com/signed-url?signature=abc123",
+        ) as get_signed_url:
+            result = pipeline._message_end_to_stream_response()
 
-            # Setup scalars to return different results for different queries
-            call_count = [0]  # Use list to allow modification in nested function
+        assert result.files is not None
+        assert len(result.files) == 1
+        file_dict = result.files[0]
+        assert file_dict["related_id"] == message_file_local.id
+        assert file_dict["filename"] == "test_image.png"
+        assert file_dict["mime_type"] == "image/png"
+        assert file_dict["size"] == 1024
+        assert file_dict["extension"] == ".png"
+        assert file_dict["type"] == "image"
+        assert file_dict["transfer_method"] == FileTransferMethod.LOCAL_FILE.value
+        assert file_dict["url"].startswith("https://example.com/signed-url")
+        assert file_dict["upload_file_id"] == message_file_local.upload_file_id
+        assert file_dict["remote_url"] == ""
+        get_signed_url.assert_called_once_with(upload_file_id=upload_file.id)
 
-            def scalars_side_effect(query):
-                call_count[0] += 1
-                # First call is for MessageFile, second call is for UploadFile
-                if call_count[0] == 1:
-                    return mock_message_files_result
-                else:
-                    return mock_upload_files_result
+    def test_message_end_with_remote_url(
+        self, sqlite_session: Session, pipeline: EasyUIBasedGenerateTaskPipeline, message_file_remote: MessageFile
+    ) -> None:
+        """Remote files retain their source URL and derived filename."""
 
-            mock_session.scalars.side_effect = scalars_side_effect
-            mock_get_url.return_value = "https://example.com/signed-url?signature=abc123"
+        message_file_remote.message_id = pipeline._message_id
+        self._persist(sqlite_session, message_file_remote)
 
-            # Act
-            result = EasyUIBasedGenerateTaskPipeline._message_end_to_stream_response(mock_pipeline)
+        result = pipeline._message_end_to_stream_response()
 
-            # Assert
-            assert isinstance(result, MessageEndStreamResponse)
-            assert result.files is not None
-            assert len(result.files) == 1
+        assert result.files is not None
+        assert len(result.files) == 1
+        file_dict = result.files[0]
+        assert file_dict["related_id"] == message_file_remote.id
+        assert file_dict["filename"] == "image.jpg"
+        assert file_dict["url"] == "https://example.com/image.jpg"
+        assert file_dict["extension"] == ".jpg"
+        assert file_dict["type"] == "image"
+        assert file_dict["transfer_method"] == FileTransferMethod.REMOTE_URL.value
+        assert file_dict["remote_url"] == "https://example.com/image.jpg"
+        assert file_dict["upload_file_id"] == message_file_remote.id
 
-            file_dict = result.files[0]
-            assert file_dict["related_id"] == mock_message_file_local.id
-            assert file_dict["filename"] == "test_image.png"
-            assert file_dict["mime_type"] == "image/png"
-            assert file_dict["size"] == 1024
-            assert file_dict["extension"] == ".png"
-            assert file_dict["type"] == "image"
-            assert file_dict["transfer_method"] == FileTransferMethod.LOCAL_FILE.value
-            assert "https://example.com/signed-url" in file_dict["url"]
-            assert file_dict["upload_file_id"] == mock_message_file_local.upload_file_id
-            assert file_dict["remote_url"] == ""
+    def test_message_end_with_tool_file_http(
+        self, sqlite_session: Session, pipeline: EasyUIBasedGenerateTaskPipeline, message_file_tool: MessageFile
+    ) -> None:
+        """HTTP tool-file URLs pass through unchanged."""
 
-            # Verify database queries
-            # Should be called twice: once for MessageFile, once for UploadFile
-            assert mock_session.scalars.call_count == 2
-            mock_get_url.assert_called_once_with(upload_file_id=str(mock_upload_file.id))
+        message_file_tool.message_id = pipeline._message_id
+        message_file_tool.url = "https://example.com/tool_file.png"
+        self._persist(sqlite_session, message_file_tool)
 
-    def test_message_end_with_remote_url(self, mock_pipeline, mock_message_file_remote):
-        """Test that files array is populated correctly for REMOTE_URL transfer method."""
-        # Arrange
-        mock_message_file_remote.message_id = mock_pipeline._message_id
+        result = pipeline._message_end_to_stream_response()
 
-        with (
-            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db") as mock_db,
-            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session") as mock_session_class,
-        ):
-            mock_engine = MagicMock()
-            mock_db.engine = mock_engine
-            mock_session = MagicMock(spec=Session)
-            mock_session_class.return_value.__enter__.return_value = mock_session
+        assert result.files is not None
+        file_dict = result.files[0]
+        assert file_dict["url"] == "https://example.com/tool_file.png"
+        assert file_dict["filename"] == "tool_file.png"
+        assert file_dict["extension"] == ".png"
+        assert file_dict["transfer_method"] == FileTransferMethod.TOOL_FILE.value
 
-            # Mock database queries
-            mock_scalars_result = Mock()
-            mock_scalars_result.all.return_value = [mock_message_file_remote]
-            mock_session.scalars.return_value = mock_scalars_result
+    def test_message_end_with_tool_file_local(
+        self, sqlite_session: Session, pipeline: EasyUIBasedGenerateTaskPipeline, message_file_tool: MessageFile
+    ) -> None:
+        """Local tool-file identifiers are signed at the external boundary."""
 
-            # Act
-            result = EasyUIBasedGenerateTaskPipeline._message_end_to_stream_response(mock_pipeline)
+        message_file_tool.message_id = pipeline._message_id
+        self._persist(sqlite_session, message_file_tool)
 
-            # Assert
-            assert isinstance(result, MessageEndStreamResponse)
-            assert result.files is not None
-            assert len(result.files) == 1
+        with patch(
+            "core.app.task_pipeline.message_file_utils.sign_tool_file",
+            return_value="https://example.com/signed-tool-file.png?signature=xyz",
+        ) as sign_tool:
+            result = pipeline._message_end_to_stream_response()
 
-            file_dict = result.files[0]
-            assert file_dict["related_id"] == mock_message_file_remote.id
-            assert file_dict["filename"] == "image.jpg"
-            assert file_dict["url"] == "https://example.com/image.jpg"
-            assert file_dict["extension"] == ".jpg"
-            assert file_dict["type"] == "image"
-            assert file_dict["transfer_method"] == FileTransferMethod.REMOTE_URL.value
-            assert file_dict["remote_url"] == "https://example.com/image.jpg"
-            assert file_dict["upload_file_id"] == mock_message_file_remote.id
+        assert result.files is not None
+        file_dict = result.files[0]
+        assert file_dict["url"].startswith("https://example.com/signed-tool-file.png")
+        assert file_dict["filename"] == "tool_file_123.png"
+        assert file_dict["extension"] == ".png"
+        assert file_dict["transfer_method"] == FileTransferMethod.TOOL_FILE.value
+        sign_tool.assert_called_once_with(tool_file_id="tool_file_123", extension=".png")
 
-            # Verify only one query for message_files is made
-            mock_session.scalars.assert_called_once()
+    def test_message_end_with_tool_file_long_extension(
+        self, sqlite_session: Session, pipeline: EasyUIBasedGenerateTaskPipeline, message_file_tool: MessageFile
+    ) -> None:
+        """Overlong tool-file extensions use the safe binary fallback."""
 
-    def test_message_end_with_tool_file_http(self, mock_pipeline, mock_message_file_tool):
-        """Test that files array is populated correctly for TOOL_FILE with HTTP URL."""
-        # Arrange
-        mock_message_file_tool.message_id = mock_pipeline._message_id
-        mock_message_file_tool.url = "https://example.com/tool_file.png"
+        message_file_tool.message_id = pipeline._message_id
+        message_file_tool.url = "tool_file_abc.verylongextension"
+        self._persist(sqlite_session, message_file_tool)
 
-        with (
-            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db") as mock_db,
-            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session") as mock_session_class,
-        ):
-            mock_engine = MagicMock()
-            mock_db.engine = mock_engine
-            mock_session = MagicMock(spec=Session)
-            mock_session_class.return_value.__enter__.return_value = mock_session
+        with patch(
+            "core.app.task_pipeline.message_file_utils.sign_tool_file",
+            return_value="https://example.com/signed.bin",
+        ) as sign_tool:
+            result = pipeline._message_end_to_stream_response()
 
-            # Mock database queries
-            mock_scalars_result = Mock()
-            mock_scalars_result.all.return_value = [mock_message_file_tool]
-            mock_session.scalars.return_value = mock_scalars_result
-
-            # Act
-            result = EasyUIBasedGenerateTaskPipeline._message_end_to_stream_response(mock_pipeline)
-
-            # Assert
-            assert isinstance(result, MessageEndStreamResponse)
-            assert result.files is not None
-            assert len(result.files) == 1
-
-            file_dict = result.files[0]
-            assert file_dict["url"] == "https://example.com/tool_file.png"
-            assert file_dict["filename"] == "tool_file.png"
-            assert file_dict["extension"] == ".png"
-            assert file_dict["transfer_method"] == FileTransferMethod.TOOL_FILE.value
-
-    def test_message_end_with_tool_file_local(self, mock_pipeline, mock_message_file_tool):
-        """Test that files array is populated correctly for TOOL_FILE with local path."""
-        # Arrange
-        mock_message_file_tool.message_id = mock_pipeline._message_id
-        mock_message_file_tool.url = "tool_file_123.png"
-
-        with (
-            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db") as mock_db,
-            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session") as mock_session_class,
-            patch("core.app.task_pipeline.message_file_utils.sign_tool_file") as mock_sign_tool,
-        ):
-            mock_engine = MagicMock()
-            mock_db.engine = mock_engine
-
-            mock_session = MagicMock(spec=Session)
-            mock_session_class.return_value.__enter__.return_value = mock_session
-
-            # Mock database queries
-            mock_scalars_result = Mock()
-            mock_scalars_result.all.return_value = [mock_message_file_tool]
-            mock_session.scalars.return_value = mock_scalars_result
-
-            mock_sign_tool.return_value = "https://example.com/signed-tool-file.png?signature=xyz"
-
-            # Act
-            result = EasyUIBasedGenerateTaskPipeline._message_end_to_stream_response(mock_pipeline)
-
-            # Assert
-            assert isinstance(result, MessageEndStreamResponse)
-            assert result.files is not None
-            assert len(result.files) == 1
-
-            file_dict = result.files[0]
-            assert "https://example.com/signed-tool-file.png" in file_dict["url"]
-            assert file_dict["filename"] == "tool_file_123.png"
-            assert file_dict["extension"] == ".png"
-            assert file_dict["transfer_method"] == FileTransferMethod.TOOL_FILE.value
-
-            # Verify tool file signing was called
-            mock_sign_tool.assert_called_once_with(tool_file_id="tool_file_123", extension=".png")
-
-    def test_message_end_with_tool_file_long_extension(self, mock_pipeline, mock_message_file_tool):
-        """Test that TOOL_FILE extensions longer than MAX_TOOL_FILE_EXTENSION_LENGTH fall back to .bin."""
-        mock_message_file_tool.message_id = mock_pipeline._message_id
-        mock_message_file_tool.url = "tool_file_abc.verylongextension"
-
-        with (
-            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db") as mock_db,
-            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session") as mock_session_class,
-            patch("core.app.task_pipeline.message_file_utils.sign_tool_file") as mock_sign_tool,
-        ):
-            mock_engine = MagicMock()
-            mock_db.engine = mock_engine
-            mock_session = MagicMock(spec=Session)
-            mock_session_class.return_value.__enter__.return_value = mock_session
-            mock_scalars_result = Mock()
-            mock_scalars_result.all.return_value = [mock_message_file_tool]
-            mock_session.scalars.return_value = mock_scalars_result
-            mock_sign_tool.return_value = "https://example.com/signed.bin"
-
-            result = EasyUIBasedGenerateTaskPipeline._message_end_to_stream_response(mock_pipeline)
-
-            assert result.files is not None
-            file_dict = result.files[0]
-            assert file_dict["extension"] == ".bin"
-            mock_sign_tool.assert_called_once_with(tool_file_id="tool_file_abc", extension=".bin")
+        assert result.files is not None
+        assert result.files[0]["extension"] == ".bin"
+        sign_tool.assert_called_once_with(tool_file_id="tool_file_abc", extension=".bin")
 
     def test_message_end_with_multiple_files(
-        self, mock_pipeline, mock_message_file_local, mock_message_file_remote, mock_upload_file
-    ):
-        """Test that files array contains all MessageFile records when multiple exist."""
-        # Arrange
-        mock_message_file_local.message_id = mock_pipeline._message_id
-        mock_message_file_remote.message_id = mock_pipeline._message_id
+        self,
+        sqlite_session: Session,
+        pipeline: EasyUIBasedGenerateTaskPipeline,
+        message_file_local: MessageFile,
+        message_file_remote: MessageFile,
+        upload_file: UploadFile,
+    ) -> None:
+        """The response contains every persisted file associated with the message."""
 
-        with (
-            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db") as mock_db,
-            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session") as mock_session_class,
-            patch("core.app.task_pipeline.message_file_utils.file_helpers.get_signed_file_url") as mock_get_url,
+        message_file_local.message_id = pipeline._message_id
+        message_file_remote.message_id = pipeline._message_id
+        self._persist(sqlite_session, message_file_local, message_file_remote, upload_file)
+
+        with patch(
+            "core.app.task_pipeline.message_file_utils.file_helpers.get_signed_file_url",
+            return_value="https://example.com/signed-url?signature=abc123",
         ):
-            mock_engine = MagicMock()
-            mock_db.engine = mock_engine
+            result = pipeline._message_end_to_stream_response()
 
-            mock_session = MagicMock(spec=Session)
-            mock_session_class.return_value.__enter__.return_value = mock_session
+        assert result.files is not None
+        assert {file["related_id"] for file in result.files} == {message_file_local.id, message_file_remote.id}
 
-            # Mock database queries
-            # First query: MessageFile
-            mock_message_files_result = Mock()
-            mock_message_files_result.all.return_value = [mock_message_file_local, mock_message_file_remote]
+    def test_message_end_with_local_file_no_upload_file(
+        self, sqlite_session: Session, pipeline: EasyUIBasedGenerateTaskPipeline, message_file_local: MessageFile
+    ) -> None:
+        """A missing upload row still signs the stored upload identifier."""
 
-            # Second query: UploadFile (batch query to avoid N+1)
-            mock_upload_files_result = Mock()
-            mock_upload_files_result.all.return_value = [mock_upload_file]
+        message_file_local.message_id = pipeline._message_id
+        self._persist(sqlite_session, message_file_local)
 
-            # Setup scalars to return different results for different queries
-            call_count = [0]  # Use list to allow modification in nested function
+        with patch(
+            "core.app.task_pipeline.message_file_utils.file_helpers.get_signed_file_url",
+            return_value="https://example.com/fallback-url?signature=def456",
+        ) as get_signed_url:
+            result = pipeline._message_end_to_stream_response()
 
-            def scalars_side_effect(query):
-                call_count[0] += 1
-                # First call is for MessageFile, second call is for UploadFile
-                if call_count[0] == 1:
-                    return mock_message_files_result
-                else:
-                    return mock_upload_files_result
-
-            mock_session.scalars.side_effect = scalars_side_effect
-            mock_get_url.return_value = "https://example.com/signed-url?signature=abc123"
-
-            # Act
-            result = EasyUIBasedGenerateTaskPipeline._message_end_to_stream_response(mock_pipeline)
-
-            # Assert
-            assert isinstance(result, MessageEndStreamResponse)
-            assert result.files is not None
-            assert len(result.files) == 2
-
-            # Verify both files are present
-            file_ids = [f["related_id"] for f in result.files]
-            assert mock_message_file_local.id in file_ids
-            assert mock_message_file_remote.id in file_ids
-
-    def test_message_end_with_local_file_no_upload_file(self, mock_pipeline, mock_message_file_local):
-        """Test fallback when UploadFile is not found for LOCAL_FILE."""
-        # Arrange
-        mock_message_file_local.message_id = mock_pipeline._message_id
-
-        with (
-            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db") as mock_db,
-            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session") as mock_session_class,
-            patch("core.app.task_pipeline.message_file_utils.file_helpers.get_signed_file_url") as mock_get_url,
-        ):
-            mock_engine = MagicMock()
-            mock_db.engine = mock_engine
-
-            mock_session = MagicMock(spec=Session)
-            mock_session_class.return_value.__enter__.return_value = mock_session
-
-            # Mock database queries
-            # First query: MessageFile
-            mock_message_files_result = Mock()
-            mock_message_files_result.all.return_value = [mock_message_file_local]
-
-            # Second query: UploadFile (batch query) - returns empty list (not found)
-            mock_upload_files_result = Mock()
-            mock_upload_files_result.all.return_value = []  # UploadFile not found
-
-            # Setup scalars to return different results for different queries
-            call_count = [0]  # Use list to allow modification in nested function
-
-            def scalars_side_effect(query):
-                call_count[0] += 1
-                # First call is for MessageFile, second call is for UploadFile
-                if call_count[0] == 1:
-                    return mock_message_files_result
-                else:
-                    return mock_upload_files_result
-
-            mock_session.scalars.side_effect = scalars_side_effect
-            mock_get_url.return_value = "https://example.com/fallback-url?signature=def456"
-
-            # Act
-            result = EasyUIBasedGenerateTaskPipeline._message_end_to_stream_response(mock_pipeline)
-
-            # Assert
-            assert isinstance(result, MessageEndStreamResponse)
-            assert result.files is not None
-            assert len(result.files) == 1
-
-            file_dict = result.files[0]
-            assert "https://example.com/fallback-url" in file_dict["url"]
-            # Verify fallback URL was generated using upload_file_id from message_file
-            mock_get_url.assert_called_with(upload_file_id=str(mock_message_file_local.upload_file_id))
+        assert result.files is not None
+        assert len(result.files) == 1
+        assert result.files[0]["url"].startswith("https://example.com/fallback-url")
+        get_signed_url.assert_called_once_with(upload_file_id=str(message_file_local.upload_file_id))

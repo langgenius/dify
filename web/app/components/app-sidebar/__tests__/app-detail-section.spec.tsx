@@ -1,61 +1,61 @@
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import { screen } from '@testing-library/react'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createAppDetailFixture } from '@/test/fixtures/app'
+import { AppModeEnum } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
 import AppDetailSection from '../app-detail-section'
-import { useAppInfoActions } from '../app-info/use-app-info-actions'
 
-let mockAppMode = 'chat'
+let mockAppMode: AppDetailWithSite['mode'] = 'chat'
 let mockPathname = '/app/app-1/logs'
 let mockAppPermissionKeys: string[] = []
 let mockIsRbacEnabled = true
-
-const render = (ui: Parameters<typeof renderWithSystemFeatures>[0]) => renderWithSystemFeatures(ui, {
-  systemFeatures: {
-    rbac_enabled: mockIsRbacEnabled,
+const mockConsoleState = vi.hoisted(() => ({
+  current: {
+    userProfile: { id: 'user-1' },
+    workspacePermissionKeys: [] as string[],
   },
-})
+}))
 
-vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: Record<string, unknown>) => unknown) => selector({
-    appDetail: {
+const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) => {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(
+    consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
+    createAppDetailFixture({
       id: 'app-1',
       name: 'Test App',
       mode: mockAppMode,
-      icon: '🤖',
-      icon_type: 'emoji',
-      icon_background: '#fff',
       permission_keys: mockAppPermissionKeys,
+    }),
+  )
+  return renderWithConsoleQuery(ui, {
+    queryClient,
+    systemFeatures: {
+      rbac_enabled: mockIsRbacEnabled,
+      enable_app_deploy: false,
     },
-  }),
-}))
+  })
+}
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    userProfile: { id: 'user-1' },
-    workspacePermissionKeys: [],
-  }),
-}))
-
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => mockConsoleState.current)
+})
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({}))
+})
 vi.mock('@/next/navigation', () => ({
   usePathname: () => mockPathname,
 }))
 
 vi.mock('../app-info', () => ({
-  AppInfoView: ({ expand }: { expand: boolean }) => <div data-testid="app-info" data-expand={expand} />,
-}))
-
-vi.mock('../app-info/use-app-info-actions', () => ({
-  useAppInfoActions: vi.fn(() => ({})),
-}))
-
-vi.mock('../../base/divider', () => ({
-  default: ({ className }: { className?: string }) => <hr className={className} />,
+  AppInfoView: () => <div />,
 }))
 
 vi.mock('../nav-link', () => ({
-  default: ({ name, href, mode, iconMap }: { name: string, href: string, mode: string, iconMap: { normal: { displayName?: string } } }) => (
-    <a href={href} data-mode={mode} data-icon={iconMap.normal.displayName}>{name}</a>
-  ),
+  default: ({ name, href }: { name: string; href: string }) => <a href={href}>{name}</a>,
 }))
 
 describe('AppDetailSection', () => {
@@ -69,7 +69,7 @@ describe('AppDetailSection', () => {
 
   // Rendering behavior for app detail navigation entries.
   describe('Rendering', () => {
-    it('should render logs and overview for chat apps with app monitor permission', () => {
+    it('should render only overview for chat apps with app monitor permission', () => {
       // Arrange
       mockAppMode = 'chat'
 
@@ -77,97 +77,72 @@ describe('AppDetailSection', () => {
       render(<AppDetailSection />)
 
       // Assert
-      expect(screen.getByRole('link', { name: 'common.appMenus.logs' })).toHaveAttribute('href', '/app/app-1/logs')
-      expect(screen.getByRole('link', { name: 'common.appMenus.overview' })).toHaveAttribute('href', '/app/app-1/overview')
-      expect(screen.queryByRole('link', { name: 'common.appMenus.annotations' })).not.toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'common.appMenus.overview' })).toHaveAttribute(
+        'href',
+        '/app/app-1/overview',
+      )
+      expect(screen.queryByRole('link', { name: 'common.appMenus.logs' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('link', { name: 'common.appMenus.annotations' }),
+      ).not.toBeInTheDocument()
     })
 
-    it('should render annotations for chat apps with app edit permission', () => {
+    it('should render logs and annotations for chat apps with app log and annotation permission', () => {
       // Arrange
       mockAppMode = 'chat'
-      mockAppPermissionKeys = [AppACLPermission.Edit]
+      mockAppPermissionKeys = [AppACLPermission.LogAndAnnotation]
 
       // Act
       render(<AppDetailSection />)
 
       // Assert
-      expect(screen.getByRole('link', { name: 'common.appMenus.annotations' })).toHaveAttribute('href', '/app/app-1/annotations')
-      expect(screen.getByRole('link', { name: 'common.appMenus.annotations' })).toHaveAttribute('data-icon', 'Annotations')
-      expect(screen.queryByRole('link', { name: 'common.appMenus.overview' })).not.toBeInTheDocument()
-    })
-
-    it('should render dividers before logs and after annotations for chat apps', () => {
-      // Arrange
-      mockAppMode = 'chat'
-      mockAppPermissionKeys = [AppACLPermission.Monitor, AppACLPermission.Edit]
-
-      // Act
-      render(<AppDetailSection />)
-
-      // Assert
-      expect(screen.getAllByRole('separator')).toHaveLength(2)
+      expect(screen.getByRole('link', { name: 'common.appMenus.logs' })).toHaveAttribute(
+        'href',
+        '/app/app-1/logs',
+      )
+      expect(screen.getByRole('link', { name: 'common.appMenus.annotations' })).toHaveAttribute(
+        'href',
+        '/app/app-1/annotations',
+      )
+      expect(
+        screen.queryByRole('link', { name: 'common.appMenus.overview' }),
+      ).not.toBeInTheDocument()
     })
 
     it('should only render logs navigation for workflow apps', () => {
       // Arrange
       mockAppMode = 'workflow'
+      mockAppPermissionKeys = [AppACLPermission.LogAndAnnotation]
 
       // Act
       render(<AppDetailSection />)
 
       // Assert
-      expect(screen.getByRole('link', { name: 'common.appMenus.logs' })).toHaveAttribute('href', '/app/app-1/logs')
-      expect(screen.queryByRole('link', { name: 'common.appMenus.annotations' })).not.toBeInTheDocument()
-    })
-
-    it('should render dividers before and after logs for workflow apps', () => {
-      // Arrange
-      mockAppMode = 'workflow'
-
-      // Act
-      render(<AppDetailSection />)
-
-      // Assert
-      expect(screen.getAllByRole('separator')).toHaveLength(2)
+      expect(screen.getByRole('link', { name: 'common.appMenus.logs' })).toHaveAttribute(
+        'href',
+        '/app/app-1/logs',
+      )
+      expect(
+        screen.queryByRole('link', { name: 'common.appMenus.annotations' }),
+      ).not.toBeInTheDocument()
     })
 
     it('should only render logs navigation for completion apps', () => {
       // Arrange
       mockAppMode = 'completion'
+      mockAppPermissionKeys = [AppACLPermission.LogAndAnnotation]
 
       // Act
       render(<AppDetailSection />)
 
       // Assert
-      expect(screen.getByRole('link', { name: 'common.appMenus.logs' })).toHaveAttribute('href', '/app/app-1/logs')
-      expect(screen.queryByRole('link', { name: 'common.appMenus.annotations' })).not.toBeInTheDocument()
-    })
-
-    it('should not render monitor group dividers without monitor or edit permission', () => {
-      // Arrange
-      mockAppPermissionKeys = []
-
-      // Act
-      render(<AppDetailSection />)
-
-      // Assert
-      expect(screen.queryAllByRole('separator')).toHaveLength(0)
-      expect(screen.queryByRole('link', { name: 'common.appMenus.logs' })).not.toBeInTheDocument()
-      expect(screen.queryByRole('link', { name: 'common.appMenus.annotations' })).not.toBeInTheDocument()
-      expect(screen.queryByRole('link', { name: 'common.appMenus.overview' })).not.toBeInTheDocument()
-    })
-
-    it('should render logs for users with app monitor permission', () => {
-      // Arrange
-      mockAppPermissionKeys = [AppACLPermission.Monitor]
-
-      // Act
-      render(<AppDetailSection />)
-
-      // Assert
-      expect(screen.getByRole('link', { name: 'common.appMenus.logs' })).toHaveAttribute('href', '/app/app-1/logs')
-      expect(screen.queryByRole('link', { name: 'common.appMenus.annotations' })).not.toBeInTheDocument()
-      expect(screen.getAllByRole('separator')).toHaveLength(2)
+      expect(screen.getByRole('link', { name: 'common.appMenus.logs' })).toHaveAttribute(
+        'href',
+        '/app/app-1/logs',
+      )
+      expect(
+        screen.queryByRole('link', { name: 'common.appMenus.annotations' }),
+      ).not.toBeInTheDocument()
     })
 
     it('should render the layout navigation for users with view layout permission', () => {
@@ -178,10 +153,17 @@ describe('AppDetailSection', () => {
       render(<AppDetailSection />)
 
       // Assert
-      expect(screen.getByRole('link', { name: 'common.appMenus.promptEng' })).toHaveAttribute('href', '/app/app-1/configuration')
+      expect(screen.getByRole('link', { name: 'common.appMenus.promptEng' })).toHaveAttribute(
+        'href',
+        '/app/app-1/configuration',
+      )
       expect(screen.queryByRole('link', { name: 'common.appMenus.logs' })).not.toBeInTheDocument()
-      expect(screen.queryByRole('link', { name: 'common.appMenus.annotations' })).not.toBeInTheDocument()
-      expect(screen.queryByRole('link', { name: 'common.appMenus.overview' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('link', { name: 'common.appMenus.annotations' }),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('link', { name: 'common.appMenus.overview' }),
+      ).not.toBeInTheDocument()
     })
 
     it('should hide the layout navigation when layout access is missing', () => {
@@ -189,19 +171,108 @@ describe('AppDetailSection', () => {
       render(<AppDetailSection />)
 
       // Assert
-      expect(screen.queryByRole('link', { name: 'common.appMenus.promptEng' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('link', { name: 'common.appMenus.promptEng' }),
+      ).not.toBeInTheDocument()
     })
 
-    it('should render resource access navigation when app access config permission is granted', () => {
+    it('should render access point navigation using its app route', () => {
+      mockAppPermissionKeys = [AppACLPermission.AccessPointView]
+
+      // Act
+      render(<AppDetailSection />)
+
+      // Assert
+      expect(screen.getByRole('link', { name: 'common.appMenus.accessPoint' })).toHaveAttribute(
+        'href',
+        '/app/app-1/access-point',
+      )
+      expect(
+        screen.queryByRole('link', { name: 'common.appMenus.apiAccess' }),
+      ).not.toBeInTheDocument()
+    })
+
+    it('should hide access point navigation without view permission', () => {
+      render(<AppDetailSection />)
+
+      expect(
+        screen.queryByRole('link', { name: 'common.appMenus.accessPoint' }),
+      ).not.toBeInTheDocument()
+    })
+
+    it.each(['workflow', 'advanced-chat'] as const)(
+      'should render deploy navigation for a %s app with app deploy ACL regardless of the legacy workspace role',
+      (mode) => {
+        // Arrange
+        mockAppMode = mode
+        mockAppPermissionKeys = [AppACLPermission.Deploy]
+
+        // Act
+        render(<AppDetailSection />)
+
+        // Assert
+        expect(screen.getByRole('link', { name: 'common.appMenus.deploy' })).toHaveAttribute(
+          'href',
+          '/app/app-1/deploy',
+        )
+      },
+    )
+
+    it.each([
+      {
+        label: 'the app is not a workflow app',
+        mode: AppModeEnum.CHAT,
+        permissionKeys: [AppACLPermission.Deploy],
+      },
+      {
+        label: 'app deploy ACL permission is missing',
+        mode: AppModeEnum.WORKFLOW,
+        permissionKeys: [AppACLPermission.Monitor],
+      },
+    ])('should hide deploy navigation when $label', ({ mode, permissionKeys }) => {
       // Arrange
+      mockAppMode = mode
+      mockAppPermissionKeys = permissionKeys
+
+      // Act
+      render(<AppDetailSection />)
+
+      // Assert
+      expect(screen.queryByRole('link', { name: 'common.appMenus.deploy' })).not.toBeInTheDocument()
+    })
+
+    it.each([AppModeEnum.CHAT, AppModeEnum.AGENT_CHAT])(
+      'should render resource access navigation for %s apps when app access config permission is granted',
+      (mode) => {
+        // Arrange
+        mockAppMode = mode
+        mockAppPermissionKeys = [AppACLPermission.AccessConfig]
+
+        // Act
+        render(<AppDetailSection />)
+
+        // Assert
+        expect(
+          screen.getByRole('link', { name: 'navigation.settings.resourceAccess' }),
+        ).toHaveAttribute('href', '/app/app-1/access-config')
+        expect(
+          screen.queryByRole('link', { name: 'common.appMenus.overview' }),
+        ).not.toBeInTheDocument()
+      },
+    )
+
+    it('should hide resource access navigation for Agent apps', () => {
+      // Arrange
+      mockAppMode = AppModeEnum.AGENT
       mockAppPermissionKeys = [AppACLPermission.AccessConfig]
 
       // Act
       render(<AppDetailSection />)
 
       // Assert
-      expect(screen.getByRole('link', { name: 'common.settings.resourceAccess' })).toHaveAttribute('href', '/app/app-1/access-config')
-      expect(screen.queryByRole('link', { name: 'common.appMenus.overview' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('link', { name: 'navigation.settings.resourceAccess' }),
+      ).not.toBeInTheDocument()
     })
 
     it('should hide resource access navigation when app access config permission is missing', () => {
@@ -209,7 +280,9 @@ describe('AppDetailSection', () => {
       render(<AppDetailSection />)
 
       // Assert
-      expect(screen.queryByRole('link', { name: 'common.settings.resourceAccess' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('link', { name: 'navigation.settings.resourceAccess' }),
+      ).not.toBeInTheDocument()
     })
 
     it('should hide resource access navigation when RBAC is disabled', () => {
@@ -221,29 +294,9 @@ describe('AppDetailSection', () => {
       render(<AppDetailSection />)
 
       // Assert
-      expect(screen.queryByRole('link', { name: 'common.settings.resourceAccess' })).not.toBeInTheDocument()
-    })
-
-    it('should pass collapsed mode to app info and navigation links when collapsed', () => {
-      // Act
-      render(<AppDetailSection expand={false} />)
-
-      // Assert
-      expect(screen.getByTestId('app-info')).toHaveAttribute('data-expand', 'false')
-      expect(screen.getByRole('link', { name: 'common.appMenus.logs' })).toHaveAttribute('data-mode', 'collapse')
-    })
-
-    it('should scope app info state to the app instead of the current path', () => {
-      // Arrange
-      const { rerender } = render(<AppDetailSection />)
-
-      // Act
-      mockPathname = '/app/app-1/overview'
-      rerender(<AppDetailSection />)
-
-      // Assert
-      expect(useAppInfoActions).toHaveBeenCalledWith({ resetKey: 'app-1' })
-      expect(useAppInfoActions).toHaveBeenLastCalledWith({ resetKey: 'app-1' })
+      expect(
+        screen.queryByRole('link', { name: 'navigation.settings.resourceAccess' }),
+      ).not.toBeInTheDocument()
     })
   })
 })

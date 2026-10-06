@@ -40,7 +40,8 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Shows a curated list of related applications, pairing each app icon with quick navigation links.',
+        component:
+          'Shows a curated list of related applications, pairing each app icon with quick navigation links.',
       },
     },
   },

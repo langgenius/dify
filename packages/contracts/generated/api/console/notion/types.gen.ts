@@ -25,7 +25,7 @@ export type NotionIntegratePageResponse = {
   page_id: string
   page_name: string
   parent_id: string | null
-  type: string
+  type: NotionPageType
 }
 
 export type DataSourceIntegrateIconResponse = {
@@ -33,6 +33,8 @@ export type DataSourceIntegrateIconResponse = {
   type?: string | null
   url?: string | null
 }
+
+export type NotionPageType = 'database' | 'page'
 
 export type GetNotionPagesByPageIdByPageTypePreviewData = {
   body?: never
@@ -50,8 +52,8 @@ export type GetNotionPagesByPageIdByPageTypePreviewResponses = {
   200: TextContentResponse
 }
 
-export type GetNotionPagesByPageIdByPageTypePreviewResponse
-  = GetNotionPagesByPageIdByPageTypePreviewResponses[keyof GetNotionPagesByPageIdByPageTypePreviewResponses]
+export type GetNotionPagesByPageIdByPageTypePreviewResponse =
+  GetNotionPagesByPageIdByPageTypePreviewResponses[keyof GetNotionPagesByPageIdByPageTypePreviewResponses]
 
 export type GetNotionPreImportPagesData = {
   body?: never
@@ -67,5 +69,5 @@ export type GetNotionPreImportPagesResponses = {
   200: NotionIntegrateInfoListResponse
 }
 
-export type GetNotionPreImportPagesResponse
-  = GetNotionPreImportPagesResponses[keyof GetNotionPreImportPagesResponses]
+export type GetNotionPreImportPagesResponse =
+  GetNotionPreImportPagesResponses[keyof GetNotionPreImportPagesResponses]

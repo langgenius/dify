@@ -9,10 +9,10 @@ import json
 import logging
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Protocol
 
 from celery import shared_task
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.db.session_factory import session_factory
@@ -26,7 +26,8 @@ from core.trigger.entities.entities import TriggerProviderEntity
 from core.trigger.provider import PluginTriggerProviderController
 from core.trigger.trigger_manager import TriggerManager
 from core.workflow.nodes.trigger_plugin.entities import TriggerEventNodeData
-from enums.quota_type import QuotaType
+from enums import QuotaType
+from extensions.ext_application_services import application_services
 from graphon.enums import WorkflowExecutionStatus
 from models.enums import (
     AppTriggerType,
@@ -35,12 +36,11 @@ from models.enums import (
     WorkflowRunTriggeredFrom,
     WorkflowTriggerStatus,
 )
-from models.model import EndUser
+from models.model import App, EndUser
 from models.provider_ids import TriggerProviderID
 from models.trigger import TriggerSubscription, WorkflowPluginTrigger, WorkflowTriggerLog
 from models.workflow import Workflow, WorkflowAppLog, WorkflowAppLogCreatedFrom, WorkflowRun
 from services.async_workflow_service import AsyncWorkflowService
-from services.end_user_service import EndUserService
 from services.errors.app import QuotaExceededError
 from services.quota_service import QuotaService, unlimited
 from services.trigger.app_trigger_service import AppTriggerService
@@ -54,6 +54,16 @@ logger = logging.getLogger(__name__)
 
 # Use workflow queue for trigger processing
 TRIGGER_QUEUE = "triggered_workflow_dispatcher"
+
+
+class TriggerEndUserProvisioner(Protocol):
+    def create_end_user_batch(
+        self,
+        type: EndUserType,
+        tenant_id: str,
+        app_ids: list[str],
+        user_id: str,
+    ) -> Mapping[str, EndUser]: ...
 
 
 def dispatch_trigger_debug_event(
@@ -99,23 +109,25 @@ def dispatch_trigger_debug_event(
         return 0
 
 
-def _get_latest_workflows_by_app_ids(
+def _get_published_workflows_by_app_ids(
     session: Session, subscribers: Sequence[WorkflowPluginTrigger]
 ) -> Mapping[str, Workflow]:
-    """Get the latest workflows by app_ids"""
-    workflow_query = (
-        select(Workflow.app_id, func.max(Workflow.created_at).label("max_created_at"))
-        .where(
-            Workflow.app_id.in_({t.app_id for t in subscribers}),
-            Workflow.version != Workflow.VERSION_DRAFT,
-        )
-        .group_by(Workflow.app_id)
-        .subquery()
-    )
+    """Get current published workflows through apps.workflow_id."""
+    app_ids = {trigger.app_id for trigger in subscribers}
+    tenant_ids = {trigger.tenant_id for trigger in subscribers}
+    if not app_ids or not tenant_ids:
+        return {}
+
     workflows = session.scalars(
-        select(Workflow).join(
-            workflow_query,
-            (Workflow.app_id == workflow_query.c.app_id) & (Workflow.created_at == workflow_query.c.max_created_at),
+        select(Workflow)
+        .join(App, App.workflow_id == Workflow.id)
+        .where(
+            App.id.in_(app_ids),
+            App.tenant_id.in_(tenant_ids),
+            App.workflow_id.isnot(None),
+            Workflow.app_id == App.id,
+            Workflow.tenant_id == App.tenant_id,
+            Workflow.version != Workflow.VERSION_DRAFT,
         )
     ).all()
     return {w.app_id: w for w in workflows}
@@ -232,13 +244,20 @@ def dispatch_triggered_workflow(
     subscription: TriggerSubscription,
     event_name: str,
     request_id: str,
+    *,
+    end_users: TriggerEndUserProvisioner,
 ) -> int:
     """Process triggered workflows.
 
     Args:
+        user_id: The ID of the user who activated the trigger
         subscription: The trigger subscription
-        event: The trigger entity that was activated
+        event_name: The name of the trigger event that was activated
         request_id: The ID of the stored request in storage system
+        end_users: Provisioner that resolves or creates the end users for each app
+
+    Returns:
+        The number of workflows dispatched for the event
     """
     request = TriggerHttpRequestCachingService.get_request(request_id)
     payload = TriggerHttpRequestCachingService.get_payload(request_id)
@@ -262,9 +281,9 @@ def dispatch_triggered_workflow(
 
     # Ensure expire_on_commit is set to False to remain workflows available
     with session_factory.create_session() as session:
-        workflows: Mapping[str, Workflow] = _get_latest_workflows_by_app_ids(session, subscribers)
+        workflows: Mapping[str, Workflow] = _get_published_workflows_by_app_ids(session, subscribers)
 
-    end_users: Mapping[str, EndUser] = EndUserService.create_end_user_batch(
+    end_users_by_app: Mapping[str, EndUser] = end_users.create_end_user_batch(
         type=EndUserType.TRIGGER,
         tenant_id=subscription.tenant_id,
         app_ids=[plugin_trigger.app_id for plugin_trigger in subscribers],
@@ -331,7 +350,7 @@ def dispatch_triggered_workflow(
 
                 error_message = e.to_user_friendly_error(plugin_name=trigger_entity.identity.name)
                 try:
-                    end_user = end_users.get(plugin_trigger.app_id)
+                    end_user = end_users_by_app.get(plugin_trigger.app_id)
                     _record_trigger_failure_log(
                         session=session,
                         workflow=workflow,
@@ -382,7 +401,7 @@ def dispatch_triggered_workflow(
 
             # Trigger async workflow
             try:
-                end_user = end_users.get(plugin_trigger.app_id)
+                end_user = end_users_by_app.get(plugin_trigger.app_id)
                 if not end_user:
                     raise ValueError(f"End user not found for app {plugin_trigger.app_id}")
 
@@ -410,6 +429,8 @@ def dispatch_triggered_workflows(
     events: list[str],
     subscription: TriggerSubscription,
     request_id: str,
+    *,
+    end_users: TriggerEndUserProvisioner,
 ) -> int:
     dispatched_count = 0
     for event_name in events:
@@ -419,6 +440,7 @@ def dispatch_triggered_workflows(
                 subscription=subscription,
                 event_name=event_name,
                 request_id=request_id,
+                end_users=end_users,
             )
         except Exception:
             logger.exception(
@@ -448,12 +470,9 @@ def dispatch_triggered_workflows_async(
     Dispatch triggers asynchronously.
 
     Args:
-        endpoint_id: Endpoint ID
-        provider_id: Provider ID
-        subscription_id: Subscription ID
-        timestamp: Timestamp of the event
-        triggers: List of triggers to dispatch
-        request_id: Unique ID of the stored request
+        dispatch_data: Dispatch payload validated into PluginTriggerDispatchData,
+            carrying user_id, tenant_id, endpoint_id, provider_id,
+            subscription_id, timestamp, events, and request_id
 
     Returns:
         dict: Execution result with status and dispatched trigger count
@@ -492,6 +511,7 @@ def dispatch_triggered_workflows_async(
             events=events,
             subscription=subscription,
             request_id=request_id,
+            end_users=application_services().app_scoped_end_users.commands,
         )
 
         debug_dispatched = dispatch_trigger_debug_event(

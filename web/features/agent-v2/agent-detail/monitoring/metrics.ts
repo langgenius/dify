@@ -26,8 +26,7 @@ type ChartRowValue = number | string | undefined
 const chartDateFormat = 'YYYY-MM-DD'
 
 const toMetricNumber = (value: number) => {
-  if (Number.isInteger(value))
-    return value.toLocaleString()
+  if (Number.isInteger(value)) return value.toLocaleString()
 
   return value.toLocaleString(undefined, {
     maximumFractionDigits: 2,
@@ -35,8 +34,7 @@ const toMetricNumber = (value: number) => {
 }
 
 const getChartRowValue = (row: AgentMonitoringChartRow | undefined, key: string): ChartRowValue => {
-  if (!row)
-    return 0
+  if (!row) return 0
 
   return row[key] ?? 0
 }
@@ -47,7 +45,10 @@ const fillChartRows = <T extends { date: string }>(
   valueKey: string,
 ) => {
   const rowsByDate = new Map(
-    (rows ?? []).map(row => [dayjs(row.date).format(chartDateFormat), row as AgentMonitoringChartRow]),
+    (rows ?? []).map((row) => [
+      dayjs(row.date).format(chartDateFormat),
+      row as AgentMonitoringChartRow,
+    ]),
   )
   const start = dayjs(periodQuery.start).startOf('day')
   const end = dayjs(periodQuery.end).startOf('day')
@@ -73,8 +74,7 @@ export const getAgentMonitoringMetrics = (
   const summary = data?.summary
   const charts = data?.charts
   const toChartRows = <T extends { date: string }>(rows: T[] | undefined, valueKey: string) => {
-    if (!periodQuery)
-      return (rows ?? []) as AgentMonitoringChartRow[]
+    if (!periodQuery) return (rows ?? []) as AgentMonitoringChartRow[]
 
     return fillChartRows(rows, periodQuery, valueKey)
   }

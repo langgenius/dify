@@ -3,9 +3,18 @@
 import * as z from 'zod'
 
 /**
+ * SchemaDefinitionItemResponse
+ */
+export const zSchemaDefinitionItemResponse = z.object({
+  label: z.string(),
+  name: z.string(),
+  schema: z.record(z.string(), z.unknown()),
+})
+
+/**
  * SchemaDefinitionsResponse
  */
-export const zSchemaDefinitionsResponse = z.unknown()
+export const zSchemaDefinitionsResponse = z.array(zSchemaDefinitionItemResponse)
 
 /**
  * Success

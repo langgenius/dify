@@ -1,7 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
-import { useEffect } from 'react'
-import { useStore } from '@/app/components/app/store'
 import PromptLogModal from '.'
 
 type PromptLogModalProps = React.ComponentProps<typeof PromptLogModal>
@@ -26,24 +24,10 @@ const mockLogItem: IChatItem = {
   ],
 }
 
-const usePromptLogMocks = () => {
-  useEffect(() => {
-    useStore.getState().setCurrentLogItem(mockLogItem)
-    return () => {
-      useStore.getState().setCurrentLogItem(undefined)
-    }
-  }, [])
-}
-
 const PromptLogPreview = (props: PromptLogModalProps) => {
-  usePromptLogMocks()
-
   return (
-    <div className="relative min-h-[540px] w-full bg-background-default-subtle p-6">
-      <PromptLogModal
-        {...props}
-        currentLogItem={mockLogItem}
-      />
+    <div className="relative min-h-135 w-full bg-background-default-subtle p-6">
+      <PromptLogModal {...props} currentLogItem={mockLogItem} />
     </div>
   )
 }
@@ -55,7 +39,8 @@ const meta = {
     layout: 'fullscreen',
     docs: {
       description: {
-        component: 'Shows the prompt and message transcript used for a chat completion, with copy-to-clipboard support for single prompts.',
+        component:
+          'Shows the prompt and message transcript used for a chat completion, with copy-to-clipboard support for single prompts.',
       },
     },
   },

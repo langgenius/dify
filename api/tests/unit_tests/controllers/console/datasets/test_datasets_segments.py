@@ -1,1254 +1,377 @@
-import inspect
-from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from contextlib import AbstractContextManager
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from inspect import unwrap
+from unittest.mock import create_autospec, patch
 
 import pytest
 from flask import Flask
 from werkzeug.exceptions import Forbidden, NotFound
 
-import services
-from controllers.console import console_ns
+from controllers.common.controller_schemas import ChildChunkCreatePayload, ChildChunkUpdatePayload
 from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.datasets.datasets_segments import (
+    BatchImportPayload,
     ChildChunkAddApi,
     ChildChunkBatchUpdatePayload,
     ChildChunkUpdateApi,
     DatasetDocumentSegmentAddApi,
     DatasetDocumentSegmentApi,
     DatasetDocumentSegmentBatchImportApi,
+    DatasetDocumentSegmentBatchImportStatusApi,
     DatasetDocumentSegmentListApi,
     DatasetDocumentSegmentUpdateApi,
+    SegmentCreatePayload,
+    SegmentUpdatePayload,
+    _raise_segment_error,
 )
-from controllers.console.datasets.error import (
-    ChildChunkDeleteIndexError,
-    ChildChunkIndexingError,
-    InvalidActionError,
+from controllers.console.datasets.error import ChildChunkDeleteIndexError, ChildChunkIndexingError, InvalidActionError
+from machinery.context import RequestContext
+from services.knowledge.entities.segments import ChildChunkRecord, ChildChunkUpdateArgs, SegmentRecord
+from services.knowledge.segments.application import (
+    ChildChunkDeleteIndexApplicationError,
+    ChildChunkIndexingApplicationError,
+    ChildChunkNotFoundError,
+    ChildChunkPage,
+    DatasetSegmentApplicationService,
+    SegmentBatchImport,
+    SegmentBatchImportDispatchError,
+    SegmentBatchImportNotFoundError,
+    SegmentDatasetModelUnavailableError,
+    SegmentDatasetNotFoundError,
+    SegmentDetail,
+    SegmentDocumentIndexingError,
+    SegmentDocumentNotFoundError,
+    SegmentEmbeddingModelUnavailableError,
+    SegmentInvalidFileTypeError,
+    SegmentListFilter,
+    SegmentNotFoundError,
+    SegmentPage,
+    SegmentPermissionDeniedError,
+    SegmentStatusUpdateError,
+    SegmentUploadFileNotFoundError,
 )
-from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
-from core.rag.index_processor.constant.index_type import IndexStructureType
-from fields.segment_fields import segment_response_with_summary
-from libs.datetime_utils import naive_utc_now
-from models.dataset import ChildChunk, DocumentSegment
-from models.enums import SegmentStatus, SegmentType
-from models.model import UploadFile
-from services.errors.chunk import ChildChunkDeleteIndexError as ChildChunkDeleteIndexServiceError
-from services.errors.chunk import ChildChunkIndexingError as ChildChunkIndexingServiceError
 
 
-def _segment():
-    segment = DocumentSegment(
-        tenant_id="tenant-1",
-        dataset_id="ds-1",
-        document_id="doc-1",
-        position=1,
-        content="c",
-        word_count=1,
-        tokens=1,
-        created_by="u1",
+def _context() -> RequestContext:
+    return RequestContext(
+        request_id="request-1",
+        trace_id=None,
+        account_id="account-1",
+        active_workspace_id="tenant-1",
     )
-    segment.id = "seg-1"
-    segment.answer = "a"
-    segment.keywords = ["test"]
-    segment.index_node_id = "n1"
-    segment.index_node_hash = "h"
-    segment.status = SegmentStatus.COMPLETED
-    segment.created_at = naive_utc_now()
-    segment.updated_at = naive_utc_now()
-    segment.updated_by = "u1"
-    return segment
 
 
-def _child_chunk():
-    child_chunk = ChildChunk(
-        tenant_id="tenant-1",
-        dataset_id="ds-1",
-        document_id="doc-1",
-        segment_id="seg-1",
-        position=1,
-        content="child",
-        word_count=1,
-        created_by="u1",
+def _child_chunk_data() -> ChildChunkRecord:
+    now = datetime(2026, 1, 1, tzinfo=UTC)
+    return ChildChunkRecord.model_validate(
+        {
+            "id": "child-1",
+            "segment_id": "segment-1",
+            "content": "child",
+            "position": 1,
+            "word_count": 5,
+            "type": "customized",
+            "created_at": now,
+            "updated_at": now,
+        }
     )
-    child_chunk.id = "cc-1"
-    child_chunk.type = SegmentType.CUSTOMIZED
-    child_chunk.created_at = naive_utc_now()
-    child_chunk.updated_at = naive_utc_now()
-    return child_chunk
 
 
-def _segment_response_dict():
-    return {
-        "id": "seg-1",
-        "position": 1,
-        "document_id": "doc-1",
-        "content": "c",
-        "sign_content": "c",
-        "answer": "a",
-        "word_count": 1,
-        "tokens": 1,
-        "keywords": ["test"],
-        "index_node_id": "n1",
-        "index_node_hash": "h",
-        "hit_count": 0,
-        "enabled": True,
-        "disabled_at": None,
-        "disabled_by": None,
-        "status": "completed",
-        "created_by": "u1",
-        "created_at": 1779678000,
-        "updated_at": 1779678000,
-        "updated_by": "u1",
-        "indexing_at": None,
-        "completed_at": None,
-        "error": None,
-        "stopped_at": None,
-        "child_chunks": [],
-        "attachments": [],
-        "summary": None,
-    }
+def _segment_data() -> SegmentRecord:
+    now = datetime(2026, 1, 1, tzinfo=UTC)
+    return SegmentRecord.model_validate(
+        {
+            "id": "segment-1",
+            "position": 1,
+            "document_id": "document-1",
+            "content": "content",
+            "sign_content": "content",
+            "answer": None,
+            "word_count": 7,
+            "tokens": 2,
+            "keywords": [],
+            "index_node_id": "node-1",
+            "index_node_hash": "hash",
+            "hit_count": 0,
+            "enabled": True,
+            "disabled_at": None,
+            "disabled_by": None,
+            "status": "completed",
+            "created_by": "account-1",
+            "created_at": now,
+            "updated_at": now,
+            "updated_by": None,
+            "indexing_at": None,
+            "completed_at": now,
+            "error": None,
+            "stopped_at": None,
+            "child_chunks": [],
+            "attachments": [],
+            "summary": None,
+        }
+    )
 
 
-def test_segment_response_with_summary():
-    segment = _segment()
+@dataclass(frozen=True)
+class KnowledgeServiceStub:
+    segments: DatasetSegmentApplicationService
+
+
+@dataclass(frozen=True)
+class ApplicationServiceStub:
+    knowledge: KnowledgeServiceStub
+
+
+def _patch_services(segments: DatasetSegmentApplicationService) -> AbstractContextManager[object]:
+    return patch(
+        "controllers.console.datasets.datasets_segments.application_services",
+        return_value=ApplicationServiceStub(knowledge=KnowledgeServiceStub(segments=segments)),
+    )
+
+
+def test_list_segments_delegates_typed_query_and_serializes_page(app: Flask) -> None:
+    segments = create_autospec(DatasetSegmentApplicationService, instance=True, spec_set=True)
+    segments.list_segments.return_value = SegmentPage(
+        items=(_segment_data(),), total=1, total_pages=1, page=2, limit=10
+    )
+    method = unwrap(DatasetDocumentSegmentListApi.get)
 
     with (
-        patch("models.dataset.db.session.scalar", return_value=None),
-        patch("models.dataset.db.session.execute", return_value=MagicMock(all=MagicMock(return_value=[]))),
+        app.test_request_context("/?status=completed&limit=10&page=2&enabled=true&keyword=needle"),
+        _patch_services(segments),
     ):
-        result = segment_response_with_summary(segment, "summary")
+        response, status = method(DatasetDocumentSegmentListApi(), _context(), "dataset-1", "document-1")
 
-    assert result.summary == "summary"
-    assert result.id == segment.id
-
-
-class TestDatasetDocumentSegmentListApi:
-    def test_get_success(self, app: Flask):
-        api = DatasetDocumentSegmentListApi()
-        method = inspect.unwrap(api.get)
-
-        dataset = MagicMock()
-        document = MagicMock()
-        user = MagicMock()
-
-        segment = _segment()
-
-        pagination = MagicMock()
-        pagination.items = [segment]
-        pagination.total = 1
-        pagination.pages = 1
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.get_dataset",
-                return_value=dataset,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_permission",
-                return_value=None,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.DocumentService.get_document",
-                return_value=document,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.db.paginate",
-                return_value=pagination,
-            ),
-            patch(
-                "services.summary_index_service.SummaryIndexService.get_segments_summaries",
-                return_value={},
-            ),
-            patch("models.dataset.db.session.scalar", return_value=None),
-            patch("models.dataset.db.session.execute", return_value=MagicMock(all=MagicMock(return_value=[]))),
-        ):
-            response, status = method(api, "tenant-1", user, "ds-1", "doc-1")
-
-        assert status == 200
-
-    def test_get_dataset_not_found(self, app: Flask):
-        api = DatasetDocumentSegmentListApi()
-        method = inspect.unwrap(api.get)
-        user = MagicMock()
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.get_dataset",
-                return_value=None,
-            ),
-        ):
-            with pytest.raises(NotFound):
-                method(api, "tenant-1", user, "ds-1", "doc-1")
-
-    def test_get_permission_denied(self, app: Flask):
-        api = DatasetDocumentSegmentListApi()
-        method = inspect.unwrap(api.get)
-
-        dataset = MagicMock()
-        user = MagicMock()
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.get_dataset",
-                return_value=dataset,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_permission",
-                side_effect=services.errors.account.NoPermissionError("no access"),
-            ),
-        ):
-            with pytest.raises(Forbidden):
-                method(api, "tenant-1", user, "ds-1", "doc-1")
+    assert status == 200
+    assert response["data"][0]["id"] == "segment-1"
+    assert response["data"][0]["created_at"] == 1767225600
+    assert response["data"][0]["keywords"] == []
+    assert response["data"][0]["disabled_at"] is None
+    query = segments.list_segments.call_args.kwargs["query"]
+    assert query == SegmentListFilter(
+        page=2,
+        limit=10,
+        statuses=("completed",),
+        enabled="true",
+        keyword="needle",
+    )
 
 
-class TestDatasetDocumentSegmentApi:
-    def test_patch_success(self, app: Flask):
-        api = DatasetDocumentSegmentApi()
-        method = inspect.unwrap(api.patch)
+def test_delete_segments_delegates_all_selected_ids(app: Flask) -> None:
+    segments = create_autospec(DatasetSegmentApplicationService, instance=True, spec_set=True)
+    method = unwrap(DatasetDocumentSegmentListApi.delete)
 
-        user = MagicMock()
-        user.is_dataset_editor = True
+    with app.test_request_context("/?segment_id=one&segment_id=two"), _patch_services(segments):
+        response, status = method(DatasetDocumentSegmentListApi(), _context(), "dataset-1", "document-1")
 
-        dataset = MagicMock()
-        dataset.indexing_technique = "economy"
+    assert (response, status) == ("", 204)
+    assert segments.delete_segments.call_args.kwargs["segment_ids"] == ["one", "two"]
 
-        document = MagicMock()
-        document.id = "doc-1"
 
-        with (
-            app.test_request_context("/?segment_id=s1&segment_id=s2"),
-            patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.get_dataset",
-                return_value=dataset,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.DocumentService.get_document",
-                return_value=document,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_permission",
-                return_value=None,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.redis_client.get",
-                return_value=None,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.SegmentService.update_segments_status",
-                return_value=None,
-            ),
-        ):
-            response, status = method(api, "tenant-1", user, "ds-1", "doc-1", "enable")
+@pytest.mark.parametrize("action", ["enable", "disable"])
+def test_change_segment_status_delegates_action(app: Flask, action: str) -> None:
+    segments = create_autospec(DatasetSegmentApplicationService, instance=True, spec_set=True)
+    method = unwrap(DatasetDocumentSegmentApi.patch)
 
-        assert status == 200
-        assert response["result"] == "success"
+    with app.test_request_context("/?segment_id=one"), _patch_services(segments):
+        response, status = method(DatasetDocumentSegmentApi(), _context(), "dataset-1", "document-1", action)
 
-    def test_patch_document_indexing_in_progress(self, app: Flask):
-        api = DatasetDocumentSegmentApi()
-        method = inspect.unwrap(api.patch)
+    assert status == 200
+    assert response == {"result": "success"}
+    assert segments.change_segment_status.call_args.kwargs["action"] == action
 
-        user = MagicMock()
-        user.is_dataset_editor = True
 
-        dataset = MagicMock()
-        dataset.indexing_technique = "economy"
+@pytest.mark.parametrize("action", ["typo", "ENABLE", "enable "])
+def test_change_segment_status_rejects_unknown_action_before_service_call(app: Flask, action: str) -> None:
+    segments = create_autospec(DatasetSegmentApplicationService, instance=True, spec_set=True)
+    method = unwrap(DatasetDocumentSegmentApi.patch)
 
-        document = MagicMock()
-        document.id = "doc-1"
+    with (
+        app.test_request_context("/?segment_id=one"),
+        _patch_services(segments),
+        pytest.raises(InvalidActionError) as error,
+    ):
+        method(DatasetDocumentSegmentApi(), _context(), "dataset-1", "document-1", action)
 
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.get_dataset",
-                return_value=dataset,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.DocumentService.get_document",
-                return_value=document,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_model_setting",
-                return_value=None,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_permission",
-                return_value=None,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.redis_client.get",
-                return_value=b"running",
-            ),
-        ):
-            with pytest.raises(InvalidActionError):
-                method(api, "tenant-1", user, "ds-1", "doc-1", "disable")
+    assert error.value.code == 400
+    segments.change_segment_status.assert_not_called()
 
-    def test_patch_llm_bad_request(self, app: Flask):
-        api = DatasetDocumentSegmentApi()
-        method = inspect.unwrap(api.patch)
 
-        user = MagicMock(is_dataset_editor=True)
+def test_create_segment_delegates_payload_and_serializes_detail(app: Flask) -> None:
+    segments = create_autospec(DatasetSegmentApplicationService, instance=True, spec_set=True)
+    segments.create_segment.return_value = SegmentDetail(data=_segment_data(), doc_form="text_model")
+    method = unwrap(DatasetDocumentSegmentAddApi.post)
 
-        dataset = MagicMock(
-            indexing_technique="high_quality",
-            embedding_model_provider="openai",
-            embedding_model="text-embed",
+    with app.test_request_context("/"), _patch_services(segments):
+        response, status = method(
+            DatasetDocumentSegmentAddApi(),
+            SegmentCreatePayload(content="content"),
+            _context(),
+            "dataset-1",
+            "document-1",
         )
 
-        document = MagicMock(id="doc-1")
+    assert status == 200
+    assert response["data"]["id"] == "segment-1"
+    assert segments.create_segment.call_args.kwargs["values"] == {"content": "content"}
 
-        with (
-            app.test_request_context("/?segment_id=s1"),
-            patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.get_dataset",
-                return_value=dataset,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.DocumentService.get_document",
-                return_value=document,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_model_setting",
-                return_value=None,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_permission",
-                return_value=None,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.ModelManager.get_model_instance",
-                side_effect=LLMBadRequestError(),
-            ),
-        ):
-            with pytest.raises(ProviderNotInitializeError):
-                method(api, "tenant-1", user, "ds-1", "doc-1", "enable")
 
-    def test_patch_provider_token_not_init(self, app: Flask):
-        api = DatasetDocumentSegmentApi()
-        method = inspect.unwrap(api.patch)
+def test_update_and_delete_segment_delegate_owned_ids(app: Flask) -> None:
+    segments = create_autospec(DatasetSegmentApplicationService, instance=True, spec_set=True)
+    segments.update_segment.return_value = SegmentDetail(data=_segment_data(), doc_form="text_model")
 
-        user = MagicMock(is_dataset_editor=True)
-
-        dataset = MagicMock(
-            indexing_technique="high_quality",
-            embedding_model_provider="openai",
-            embedding_model="text-embed",
+    with app.test_request_context("/"), _patch_services(segments):
+        update_response, update_status = unwrap(DatasetDocumentSegmentUpdateApi.patch)(
+            DatasetDocumentSegmentUpdateApi(),
+            SegmentUpdatePayload(content="updated"),
+            _context(),
+            "dataset-1",
+            "document-1",
+            "segment-1",
+        )
+        delete_response, delete_status = unwrap(DatasetDocumentSegmentUpdateApi.delete)(
+            DatasetDocumentSegmentUpdateApi(),
+            _context(),
+            "dataset-1",
+            "document-1",
+            "segment-1",
         )
 
-        document = MagicMock(id="doc-1")
-
-        with (
-            app.test_request_context("/?segment_id=s1"),
-            patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.get_dataset",
-                return_value=dataset,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.DocumentService.get_document",
-                return_value=document,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_model_setting",
-                return_value=None,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_permission",
-                return_value=None,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.ModelManager.get_model_instance",
-                side_effect=ProviderTokenNotInitError("token missing"),
-            ),
-        ):
-            with pytest.raises(ProviderNotInitializeError):
-                method(api, "tenant-1", user, "ds-1", "doc-1", "enable")
+    assert update_status == 200
+    assert update_response["data"]["content"] == "content"
+    assert (delete_response, delete_status) == ("", 204)
+    assert segments.update_segment.call_args.kwargs["segment_id"] == "segment-1"
+    assert segments.delete_segment.call_args.kwargs["segment_id"] == "segment-1"
 
 
-class TestDatasetDocumentSegmentAddApi:
-    def test_post_success(self, app: Flask):
-        api = DatasetDocumentSegmentAddApi()
-        method = inspect.unwrap(api.post)
+def test_batch_import_delegates_and_preserves_dispatch_failure_response(app: Flask) -> None:
+    segments = create_autospec(DatasetSegmentApplicationService, instance=True, spec_set=True)
+    segments.start_batch_import.return_value = SegmentBatchImport(job_id="job-1", job_status="waiting")
+    method = unwrap(DatasetDocumentSegmentBatchImportApi.post)
 
-        payload = {"content": "hello"}
+    with app.test_request_context("/"), _patch_services(segments):
+        response, status = method(
+            DatasetDocumentSegmentBatchImportApi(),
+            BatchImportPayload(upload_file_id="file-1"),
+            _context(),
+            "dataset-1",
+            "document-1",
+        )
+    assert status == 200
+    assert response == {"job_id": "job-1", "job_status": "waiting"}
 
-        user = MagicMock()
-        user.is_dataset_editor = True
+    segments.start_batch_import.side_effect = SegmentBatchImportDispatchError("redis down")
+    with app.test_request_context("/"), _patch_services(segments):
+        response, status = method(
+            DatasetDocumentSegmentBatchImportApi(),
+            BatchImportPayload(upload_file_id="file-1"),
+            _context(),
+            "dataset-1",
+            "document-1",
+        )
+    assert (response, status) == ({"error": "redis down"}, 500)
 
-        dataset = MagicMock()
-        dataset.indexing_technique = "economy"
 
-        document = MagicMock()
-        document.doc_form = IndexStructureType.PARAGRAPH_INDEX
+def test_batch_import_status_preserves_missing_job_contract(app: Flask) -> None:
+    segments = create_autospec(DatasetSegmentApplicationService, instance=True, spec_set=True)
+    method = unwrap(DatasetDocumentSegmentBatchImportStatusApi.get)
 
-        segment = _segment()
+    segments.get_batch_import_status.side_effect = SegmentBatchImportNotFoundError("The job does not exist.")
+    with app.test_request_context("/"), _patch_services(segments), pytest.raises(ValueError):
+        method(DatasetDocumentSegmentBatchImportStatusApi(), _context(), "job-1")
 
-        with (
-            app.test_request_context("/", json=payload),
-            patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.get_dataset",
-                return_value=dataset,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.DocumentService.get_document",
-                return_value=document,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_permission",
-                return_value=None,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.SegmentService.segment_create_args_validate",
-                return_value=None,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.SegmentService.create_segment",
-                return_value=segment,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.SummaryIndexService.get_segment_summary",
-                return_value=None,
-            ),
-            patch("models.dataset.db.session.scalar", return_value=None),
-            patch("models.dataset.db.session.execute", return_value=MagicMock(all=MagicMock(return_value=[]))),
-        ):
-            response, status = method(api, "tenant-1", user, "ds-1", "doc-1")
+    segments.get_batch_import_status.side_effect = None
+    segments.get_batch_import_status.return_value = SegmentBatchImport(job_id="job-1", job_status="completed")
+    with app.test_request_context("/"), _patch_services(segments):
+        response, status = method(DatasetDocumentSegmentBatchImportStatusApi(), _context(), "job-1")
+    assert status == 200
+    assert response == {"job_id": "job-1", "job_status": "completed"}
 
-        assert status == 200
-        assert response["data"]["id"] == "seg-1"
 
-    def test_post_llm_bad_request(self, app: Flask):
-        api = DatasetDocumentSegmentAddApi()
-        method = inspect.unwrap(api.post)
+def test_child_chunk_create_and_list_delegate(app: Flask) -> None:
+    segments = create_autospec(DatasetSegmentApplicationService, instance=True, spec_set=True)
+    segments.create_child_chunk.return_value = _child_chunk_data()
+    segments.list_child_chunks.return_value = ChildChunkPage(
+        items=(_child_chunk_data(),), total=1, total_pages=1, page=1, limit=20
+    )
 
-        payload = {"content": "x"}
-
-        user = MagicMock(is_dataset_editor=True)
-
-        dataset = MagicMock(
-            indexing_technique="high_quality",
-            embedding_model_provider="openai",
-            embedding_model="text-embed",
+    with app.test_request_context("/"), _patch_services(segments):
+        create_response, create_status = unwrap(ChildChunkAddApi.post)(
+            ChildChunkAddApi(),
+            ChildChunkCreatePayload(content="child"),
+            _context(),
+            "dataset-1",
+            "document-1",
+            "segment-1",
+        )
+        list_response, list_status = unwrap(ChildChunkAddApi.get)(
+            ChildChunkAddApi(), _context(), "dataset-1", "document-1", "segment-1"
         )
 
-        document = MagicMock()
+    assert create_status == list_status == 200
+    assert create_response["data"]["id"] == "child-1"
+    assert create_response["data"]["created_at"] == 1767225600
+    assert list_response["data"][0]["id"] == "child-1"
 
-        with (
-            app.test_request_context("/", json=payload),
-            patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.get_dataset",
-                return_value=dataset,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.DocumentService.get_document",
-                return_value=document,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.ModelManager.get_model_instance",
-                side_effect=LLMBadRequestError(),
-            ),
-        ):
-            with pytest.raises(ProviderNotInitializeError):
-                method(api, "tenant-1", user, "ds-1", "doc-1")
 
-    def test_post_provider_token_not_init(self, app: Flask):
-        api = DatasetDocumentSegmentAddApi()
-        method = inspect.unwrap(api.post)
+def test_child_chunk_mutations_delegate(app: Flask) -> None:
+    segments = create_autospec(DatasetSegmentApplicationService, instance=True, spec_set=True)
+    segments.update_child_chunks.return_value = (_child_chunk_data(),)
+    segments.update_child_chunk.return_value = _child_chunk_data()
+    chunks = [ChildChunkUpdateArgs(id="child-1", content="updated")]
 
-        payload = {"content": "x"}
-
-        user = MagicMock(is_dataset_editor=True)
-
-        dataset = MagicMock(
-            indexing_technique="high_quality",
-            embedding_model_provider="openai",
-            embedding_model="text-embed",
+    with app.test_request_context("/"), _patch_services(segments):
+        batch_response, batch_status = unwrap(ChildChunkAddApi.patch)(
+            ChildChunkAddApi(),
+            ChildChunkBatchUpdatePayload(chunks=chunks),
+            _context(),
+            "dataset-1",
+            "document-1",
+            "segment-1",
+        )
+        update_response, update_status = unwrap(ChildChunkUpdateApi.patch)(
+            ChildChunkUpdateApi(),
+            ChildChunkUpdatePayload(content="updated"),
+            _context(),
+            "dataset-1",
+            "document-1",
+            "segment-1",
+            "child-1",
+        )
+        delete_response, delete_status = unwrap(ChildChunkUpdateApi.delete)(
+            ChildChunkUpdateApi(),
+            _context(),
+            "dataset-1",
+            "document-1",
+            "segment-1",
+            "child-1",
         )
 
-        document = MagicMock()
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.get_dataset",
-                return_value=dataset,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.DocumentService.get_document",
-                return_value=document,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.ModelManager.get_model_instance",
-                side_effect=ProviderTokenNotInitError("token missing"),
-            ),
-        ):
-            with pytest.raises(ProviderNotInitializeError):
-                method(api, "tenant-1", user, "ds-1", "doc-1")
-
-
-class TestDatasetDocumentSegmentUpdateApi:
-    def test_patch_success(self, app: Flask):
-        api = DatasetDocumentSegmentUpdateApi()
-        method = inspect.unwrap(api.patch)
-
-        payload = {"content": "updated"}
-
-        user = MagicMock()
-        user.is_dataset_editor = True
-
-        dataset = MagicMock()
-        dataset.indexing_technique = "economy"
-
-        document = MagicMock()
-        document.doc_form = IndexStructureType.PARAGRAPH_INDEX
-
-        segment = _segment()
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.get_dataset",
-                return_value=dataset,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.DocumentService.get_document",
-                return_value=document,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.db.session.scalar",
-                side_effect=[segment, None],
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_permission",
-                return_value=None,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.SegmentService.segment_create_args_validate",
-                return_value=None,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.SegmentService.update_segment",
-                return_value=segment,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.SummaryIndexService.get_segment_summary",
-                return_value=None,
-            ),
-            patch("models.dataset.db.session.execute", return_value=MagicMock(all=MagicMock(return_value=[]))),
-        ):
-            response, status = method(api, "tenant-1", user, "ds-1", "doc-1", "seg-1")
-
-        assert status == 200
-        assert "data" in response
-
-    def test_patch_llm_bad_request(self, app: Flask):
-        api = DatasetDocumentSegmentUpdateApi()
-        method = inspect.unwrap(api.patch)
-
-        payload = {"content": "x"}
-
-        user = MagicMock(is_dataset_editor=True)
-
-        dataset = MagicMock(
-            indexing_technique="high_quality",
-            embedding_model_provider="openai",
-            embedding_model="text-embed",
-        )
-
-        document = MagicMock()
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.get_dataset",
-                return_value=dataset,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.DocumentService.get_document",
-                return_value=document,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_model_setting",
-                return_value=None,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.ModelManager.get_model_instance",
-                side_effect=LLMBadRequestError(),
-            ),
-        ):
-            with pytest.raises(ProviderNotInitializeError):
-                method(api, "tenant-1", user, "ds-1", "doc-1", "seg-1")
-
-
-class TestDatasetDocumentSegmentBatchImportApi:
-    def test_post_success(self, app: Flask):
-        api = DatasetDocumentSegmentBatchImportApi()
-        method = inspect.unwrap(api.post)
-
-        payload = {"upload_file_id": "file-1"}
-
-        upload_file = MagicMock(spec=UploadFile)
-        upload_file.name = "test.csv"
-        user = MagicMock(id="u1")
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.get_dataset",
-                return_value=MagicMock(),
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.DocumentService.get_document",
-                return_value=MagicMock(),
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.db.session.scalar",
-                return_value=upload_file,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.redis_client.setnx",
-                return_value=True,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.batch_create_segment_to_index_task.delay",
-                return_value=None,
-            ),
-        ):
-            response, status = method(api, "tenant-1", user, "ds-1", "doc-1")
-
-        assert status == 200
-        assert response["job_status"] == "waiting"
-
-    def test_post_dataset_not_found(self, app: Flask):
-        api = DatasetDocumentSegmentBatchImportApi()
-        method = inspect.unwrap(api.post)
-
-        payload = {"upload_file_id": "file-1"}
-        user = MagicMock(id="u1")
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.get_dataset",
-                return_value=None,
-            ),
-        ):
-            with pytest.raises(NotFound):
-                method(api, "tenant-1", user, "ds-1", "doc-1")
-
-    def test_post_document_not_found(self, app: Flask):
-        api = DatasetDocumentSegmentBatchImportApi()
-        method = inspect.unwrap(api.post)
-
-        payload = {"upload_file_id": "file-1"}
-        user = MagicMock(id="u1")
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.get_dataset",
-                return_value=MagicMock(),
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.DocumentService.get_document",
-                return_value=None,
-            ),
-        ):
-            with pytest.raises(NotFound):
-                method(api, "tenant-1", user, "ds-1", "doc-1")
-
-    def test_post_upload_file_not_found(self, app: Flask):
-        api = DatasetDocumentSegmentBatchImportApi()
-        method = inspect.unwrap(api.post)
-
-        payload = {"upload_file_id": "file-1"}
-        user = MagicMock(id="u1")
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.get_dataset",
-                return_value=MagicMock(),
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.DocumentService.get_document",
-                return_value=MagicMock(),
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.db.session.scalar",
-                return_value=None,
-            ),
-        ):
-            with pytest.raises(NotFound):
-                method(api, "tenant-1", user, "ds-1", "doc-1")
-
-    def test_post_invalid_file_type(self, app: Flask):
-        api = DatasetDocumentSegmentBatchImportApi()
-        method = inspect.unwrap(api.post)
-
-        payload = {"upload_file_id": "file-1"}
-
-        upload_file = MagicMock()
-        upload_file.name = "test.txt"
-        user = MagicMock(id="u1")
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.get_dataset",
-                return_value=MagicMock(),
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.DocumentService.get_document",
-                return_value=MagicMock(),
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.db.session.scalar",
-                return_value=upload_file,
-            ),
-        ):
-            with pytest.raises(ValueError):
-                method(api, "tenant-1", user, "ds-1", "doc-1")
-
-    def test_post_async_task_failure(self, app: Flask):
-        api = DatasetDocumentSegmentBatchImportApi()
-        method = inspect.unwrap(api.post)
-
-        payload = {"upload_file_id": "file-1"}
-
-        upload_file = MagicMock()
-        upload_file.name = "test.csv"
-        user = MagicMock(id="u1")
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.get_dataset",
-                return_value=MagicMock(),
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.DocumentService.get_document",
-                return_value=MagicMock(),
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.db.session.scalar",
-                return_value=upload_file,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.redis_client.setnx",
-                side_effect=Exception("redis down"),
-            ),
-        ):
-            response, status = method(api, "tenant-1", user, "ds-1", "doc-1")
-
-        assert status == 500
-        assert "error" in response
-
-    def test_get_job_not_found_in_redis(self, app: Flask):
-        api = DatasetDocumentSegmentBatchImportApi()
-        method = inspect.unwrap(api.get)
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.datasets_segments.redis_client.get",
-                return_value=None,
-            ),
-        ):
-            with pytest.raises(ValueError):
-                method(api, job_id="job-1")
-
-
-class TestChildChunkAddApi:
-    def test_patch_documents_batch_update_payload(self):
-        api_doc = getattr(ChildChunkAddApi.patch, "__apidoc__")  # noqa: B009
-        expected_model = ChildChunkBatchUpdatePayload.__name__
-
-        assert [model.name for model in api_doc["expect"]] == [expected_model]
-
-    def test_get_uses_default_pagination_for_malformed_ints(self, app: Flask):
-        api = ChildChunkAddApi()
-        method = inspect.unwrap(api.get)
-
-        pagination = MagicMock(items=[], total=0, pages=0)
-
-        with (
-            app.test_request_context("/?page=bad&limit="),
-            patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.get_dataset",
-                return_value=MagicMock(),
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_model_setting",
-                return_value=None,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.DocumentService.get_document",
-                return_value=MagicMock(),
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.db.session.scalar",
-                return_value=MagicMock(),
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.SegmentService.get_child_chunks",
-                return_value=pagination,
-            ) as get_child_chunks,
-        ):
-            response, status = method(api, "tenant-1", "ds-1", "doc-1", "seg-1")
-
-        assert status == 200
-        assert response["page"] == 1
-        assert response["limit"] == 20
-        get_child_chunks.assert_called_once_with("seg-1", "doc-1", "ds-1", 1, 20, None)
-
-    def test_post_success(self, app: Flask):
-        api = ChildChunkAddApi()
-        method = inspect.unwrap(api.post)
-
-        payload = {"content": "child"}
-
-        user = MagicMock()
-        user.is_dataset_editor = True
-
-        dataset = MagicMock()
-        dataset.indexing_technique = "economy"
-
-        document = MagicMock()
-        segment = MagicMock()
-        child_chunk = _child_chunk()
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.get_dataset",
-                return_value=dataset,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.DocumentService.get_document",
-                return_value=document,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.db.session.scalar",
-                return_value=segment,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_permission",
-                return_value=None,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.SegmentService.create_child_chunk",
-                return_value=child_chunk,
-            ),
-        ):
-            response, status = method(api, "tenant-1", user, "ds-1", "doc-1", "seg-1")
-
-        assert status == 200
-        assert response["data"]["id"] == "cc-1"
-
-    def test_post_child_chunk_indexing_error(self, app: Flask):
-        api = ChildChunkAddApi()
-        method = inspect.unwrap(api.post)
-
-        payload = {"content": "child"}
-
-        user = MagicMock(is_dataset_editor=True)
-
-        dataset = MagicMock(indexing_technique="economy")
-        document = MagicMock()
-        segment = MagicMock()
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.get_dataset",
-                return_value=dataset,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.DocumentService.get_document",
-                return_value=document,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.db.session.scalar",
-                return_value=segment,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_permission",
-                return_value=None,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.SegmentService.create_child_chunk",
-                side_effect=ChildChunkIndexingServiceError("fail"),
-            ),
-        ):
-            with pytest.raises(ChildChunkIndexingError):
-                method(api, "tenant-1", user, "ds-1", "doc-1", "seg-1")
-
-
-class TestChildChunkUpdateApi:
-    def test_delete_success(self, app: Flask):
-        api = ChildChunkUpdateApi()
-        method = inspect.unwrap(api.delete)
-
-        user = MagicMock()
-        user.is_dataset_editor = True
-
-        dataset = MagicMock()
-        document = MagicMock()
-        segment = MagicMock()
-        child_chunk = MagicMock()
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.get_dataset",
-                return_value=dataset,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.DocumentService.get_document",
-                return_value=document,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.db.session.scalar",
-                side_effect=[segment, child_chunk],
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_permission",
-                return_value=None,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.SegmentService.delete_child_chunk",
-                return_value=None,
-            ),
-        ):
-            response, status = method(api, "tenant-1", user, "ds-1", "doc-1", "seg-1", "cc-1")
-
-        assert status == 204
-        assert response == ""
-
-    def test_delete_child_chunk_index_error(self, app: Flask):
-        api = ChildChunkUpdateApi()
-        method = inspect.unwrap(api.delete)
-
-        user = MagicMock(is_dataset_editor=True)
-
-        dataset = MagicMock()
-        document = MagicMock()
-        segment = MagicMock()
-        child_chunk = MagicMock()
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.get_dataset",
-                return_value=dataset,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.DocumentService.get_document",
-                return_value=document,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.db.session.scalar",
-                side_effect=[segment, child_chunk],
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_permission",
-                return_value=None,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.SegmentService.delete_child_chunk",
-                side_effect=ChildChunkDeleteIndexServiceError("fail"),
-            ),
-        ):
-            with pytest.raises(ChildChunkDeleteIndexError):
-                method(api, "tenant-1", user, "ds-1", "doc-1", "seg-1", "cc-1")
-
-
-class TestSegmentListAdvancedCases:
-    def test_segment_list_with_keyword_filter(self, app: Flask):
-        api = DatasetDocumentSegmentListApi()
-        method = inspect.unwrap(api.get)
-
-        dataset = MagicMock()
-        document = MagicMock()
-        user = MagicMock()
-
-        segment = _segment()
-
-        pagination = MagicMock(items=[segment], total=1, pages=1)
-
-        with (
-            app.test_request_context("/?keyword=test"),
-            patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.get_dataset",
-                return_value=dataset,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_permission",
-                return_value=None,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.DocumentService.get_document",
-                return_value=document,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.db.paginate",
-                return_value=pagination,
-            ),
-            patch(
-                "services.summary_index_service.SummaryIndexService.get_segments_summaries",
-                return_value={},
-            ),
-            patch("models.dataset.db.session.scalar", return_value=None),
-            patch("models.dataset.db.session.execute", return_value=MagicMock(all=MagicMock(return_value=[]))),
-        ):
-            result = method(api, "tenant-1", user, "ds-1", "doc-1")
-
-        if isinstance(result, tuple):
-            response, status = result
-        else:
-            response, status = result, 200
-
-        assert status == 200
-        assert response["total"] == 1
-
-    def test_segment_list_postgres_keyword_filter_handles_scalar_keywords(self, app: Flask):
-        api = DatasetDocumentSegmentListApi()
-        method = inspect.unwrap(api.get)
-
-        dataset = MagicMock()
-        document = MagicMock()
-        user = MagicMock()
-        pagination = MagicMock(items=[], total=0, pages=0)
-
-        with (
-            app.test_request_context("/?keyword=test"),
-            patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.get_dataset",
-                return_value=dataset,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_permission",
-                return_value=None,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.DocumentService.get_document",
-                return_value=document,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.dify_config",
-                SimpleNamespace(SQLALCHEMY_DATABASE_URI_SCHEME="postgresql"),
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.db.paginate",
-                return_value=pagination,
-            ) as paginate_mock,
-        ):
-            method(
-                api,
-                "11111111-1111-1111-1111-111111111111",
-                user,
-                "22222222-2222-2222-2222-222222222222",
-                "33333333-3333-3333-3333-333333333333",
-            )
-
-        query = paginate_mock.call_args.kwargs["select"]
-        sql = str(query.compile(compile_kwargs={"literal_binds": True}))
-        assert "jsonb_array_elements_text(CASE" in sql
-        assert "ELSE CAST('[]' AS JSONB)" in sql
-
-    def test_segment_list_permission_denied(self, app: Flask):
-        """Test segment list with permission denied"""
-        api = DatasetDocumentSegmentListApi()
-        method = inspect.unwrap(api.get)
-        user = MagicMock()
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.get_dataset",
-                return_value=MagicMock(),
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_permission",
-                side_effect=services.errors.account.NoPermissionError("No permission"),
-            ),
-        ):
-            with pytest.raises(Forbidden):
-                method(api, "tenant-1", user, "ds-1", "doc-1")
-
-    def test_segment_list_dataset_not_found(self, app: Flask):
-        """Test segment list with dataset not found"""
-        api = DatasetDocumentSegmentListApi()
-        method = inspect.unwrap(api.get)
-        user = MagicMock()
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.get_dataset",
-                return_value=None,
-            ),
-        ):
-            with pytest.raises(NotFound):
-                method(api, "tenant-1", user, "ds-1", "doc-1")
-
-
-class TestSegmentOperationCases:
-    def test_segment_add_with_provider_token_error(self, app: Flask):
-        """Test segment add with provider token not initialized"""
-        api = DatasetDocumentSegmentAddApi()
-        method = inspect.unwrap(api.post)
-
-        user = MagicMock(is_dataset_editor=True)
-        dataset = MagicMock()
-        document = MagicMock()
-
-        payload = {"content": "new content", "answer": None}
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.get_dataset",
-                return_value=dataset,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.DocumentService.get_document",
-                return_value=document,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_permission",
-                return_value=None,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.SegmentService.create_segment",
-                side_effect=ProviderTokenNotInitError("Token not init"),
-            ),
-        ):
-            with pytest.raises(ProviderTokenNotInitError):
-                method(api, "tenant-1", user, "ds-1", "doc-1")
-
-    def test_batch_import_with_document_not_found(self, app: Flask):
-        """Test batch import with document not found"""
-        api = DatasetDocumentSegmentBatchImportApi()
-        method = inspect.unwrap(api.post)
-
-        user = MagicMock(is_dataset_editor=True)
-        dataset = MagicMock()
-
-        payload = {"upload_file_id": "file-1"}
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.get_dataset",
-                return_value=dataset,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.DocumentService.get_document",
-                return_value=None,
-            ),
-        ):
-            with pytest.raises(NotFound):
-                method(api, "tenant-1", user, "ds-1", "doc-1")
-
-    def test_batch_import_with_invalid_file(self, app: Flask):
-        """Test batch import with invalid file type"""
-        api = DatasetDocumentSegmentBatchImportApi()
-        method = inspect.unwrap(api.post)
-
-        user = MagicMock(is_dataset_editor=True)
-        dataset = MagicMock()
-        document = MagicMock()
-        upload_file = None  # File not found
-
-        payload = {"upload_file_id": "file-1"}
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.get_dataset",
-                return_value=dataset,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.DocumentService.get_document",
-                return_value=document,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.db.session.scalar",
-                return_value=upload_file,
-            ),
-        ):
-            with pytest.raises(NotFound):
-                method(api, "tenant-1", user, "ds-1", "doc-1")
-
-    def test_batch_import_with_async_task_failure(self, app: Flask):
-        api = DatasetDocumentSegmentBatchImportApi()
-        method = inspect.unwrap(api.post)
-
-        user = MagicMock(is_dataset_editor=True)
-        dataset = MagicMock()
-        document = MagicMock()
-        upload_file = MagicMock(spec=UploadFile, extension="csv", id="file-1")
-        upload_file.name = "test.csv"
-
-        payload = {"upload_file_id": "file-1"}
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.get_dataset",
-                return_value=dataset,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.DocumentService.get_document",
-                return_value=document,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.db.session.scalar",
-                return_value=upload_file,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_permission",
-                return_value=None,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_segments.batch_create_segment_to_index_task.delay",
-                side_effect=Exception("Task failed"),
-            ),
-        ):
-            response, status = method(api, "tenant-1", user, "ds-1", "doc-1")
-
-        assert status == 500
-        assert "error" in response
-
-    def test_batch_import_get_job_not_found(self, app: Flask):
-        api = DatasetDocumentSegmentBatchImportApi()
-        method = inspect.unwrap(api.get)
-
-        with (
-            app.test_request_context("/?job_id=invalid-job"),
-            patch(
-                "controllers.console.datasets.datasets_segments.redis_client.get",
-                return_value=None,
-            ),
-        ):
-            with pytest.raises(ValueError):
-                method(api, "invalid-job")
+    assert batch_status == update_status == 200
+    assert batch_response["data"][0]["id"] == "child-1"
+    assert update_response["data"]["id"] == "child-1"
+    assert (delete_response, delete_status) == ("", 204)
+
+
+@pytest.mark.parametrize(
+    ("error", "expected"),
+    [
+        (SegmentDatasetNotFoundError(), NotFound),
+        (SegmentDocumentNotFoundError(), NotFound),
+        (SegmentNotFoundError(), NotFound),
+        (ChildChunkNotFoundError(), NotFound),
+        (SegmentUploadFileNotFoundError(), NotFound),
+        (SegmentPermissionDeniedError(), Forbidden),
+        (SegmentEmbeddingModelUnavailableError(), ProviderNotInitializeError),
+        (SegmentDatasetModelUnavailableError(), ValueError),
+        (SegmentDocumentIndexingError(), InvalidActionError),
+        (SegmentStatusUpdateError(), InvalidActionError),
+        (SegmentInvalidFileTypeError(), ValueError),
+        (ChildChunkIndexingApplicationError(), ChildChunkIndexingError),
+        (ChildChunkDeleteIndexApplicationError(), ChildChunkDeleteIndexError),
+    ],
+)
+def test_segment_application_errors_map_to_existing_http_contract(error: Exception, expected: type[Exception]) -> None:
+    with pytest.raises(expected):
+        _raise_segment_error(error)

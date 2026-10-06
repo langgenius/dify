@@ -1,8 +1,13 @@
 from collections.abc import Sequence
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
+from uuid import uuid4
 
 import pytest
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session, sessionmaker
 
+from models.human_input import HumanInputForm
 from tasks import mail_human_input_delivery_task as task_module
 
 
@@ -18,18 +23,17 @@ class _DummyMail:
         self.sent.append({"to": to, "subject": subject, "html": html})
 
 
-class _DummySession:
-    def __init__(self, form):
-        self._form = form
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        return False
-
-    def get(self, _model, _form_id):
-        return self._form
+def _form(*, workflow_run_id: str | None = None) -> HumanInputForm:
+    return HumanInputForm(
+        tenant_id=str(uuid4()),
+        app_id=str(uuid4()),
+        workflow_run_id=workflow_run_id,
+        conversation_id=None,
+        node_id="human-input",
+        form_definition="{}",
+        rendered_content="content",
+        expiration_time=datetime.now(UTC) + timedelta(hours=1),
+    )
 
 
 def _build_job(recipient_count: int = 1) -> task_module._EmailDeliveryJob:
@@ -46,9 +50,14 @@ def _build_job(recipient_count: int = 1) -> task_module._EmailDeliveryJob:
     )
 
 
-def test_dispatch_human_input_email_task_sends_to_each_recipient(monkeypatch: pytest.MonkeyPatch):
+@pytest.mark.parametrize("sqlite_session", [(HumanInputForm,)], indirect=True)
+def test_dispatch_human_input_email_task_sends_to_each_recipient(
+    monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine, sqlite_session: Session
+):
     mail = _DummyMail()
-    form = SimpleNamespace(id="form-1", tenant_id="tenant-1", workflow_run_id=None)
+    form = _form()
+    sqlite_session.add(form)
+    sqlite_session.commit()
 
     monkeypatch.setattr(task_module, "mail", mail)
     monkeypatch.setattr(
@@ -60,9 +69,9 @@ def test_dispatch_human_input_email_task_sends_to_each_recipient(monkeypatch: py
     monkeypatch.setattr(task_module, "_load_email_jobs", lambda _session, _form: jobs)
 
     task_module.dispatch_human_input_email_task(
-        form_id="form-1",
+        form_id=form.id,
         node_title="Approve",
-        session_factory=lambda: _DummySession(form),
+        session_factory=sessionmaker(bind=sqlite_engine, expire_on_commit=False),
     )
 
     assert len(mail.sent) == 2
@@ -70,9 +79,14 @@ def test_dispatch_human_input_email_task_sends_to_each_recipient(monkeypatch: py
     assert all("Body for" in payload["html"] for payload in mail.sent)
 
 
-def test_dispatch_human_input_email_task_skips_when_feature_disabled(monkeypatch: pytest.MonkeyPatch):
+@pytest.mark.parametrize("sqlite_session", [(HumanInputForm,)], indirect=True)
+def test_dispatch_human_input_email_task_skips_when_feature_disabled(
+    monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine, sqlite_session: Session
+):
     mail = _DummyMail()
-    form = SimpleNamespace(id="form-1", tenant_id="tenant-1", workflow_run_id=None)
+    form = _form()
+    sqlite_session.add(form)
+    sqlite_session.commit()
 
     monkeypatch.setattr(task_module, "mail", mail)
     monkeypatch.setattr(
@@ -83,17 +97,22 @@ def test_dispatch_human_input_email_task_skips_when_feature_disabled(monkeypatch
     monkeypatch.setattr(task_module, "_load_email_jobs", lambda _session, _form: [])
 
     task_module.dispatch_human_input_email_task(
-        form_id="form-1",
+        form_id=form.id,
         node_title="Approve",
-        session_factory=lambda: _DummySession(form),
+        session_factory=sessionmaker(bind=sqlite_engine, expire_on_commit=False),
     )
 
     assert mail.sent == []
 
 
-def test_dispatch_human_input_email_task_replaces_body_variables(monkeypatch: pytest.MonkeyPatch):
+@pytest.mark.parametrize("sqlite_session", [(HumanInputForm,)], indirect=True)
+def test_dispatch_human_input_email_task_replaces_body_variables(
+    monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine, sqlite_session: Session
+):
     mail = _DummyMail()
-    form = SimpleNamespace(id="form-1", tenant_id="tenant-1", workflow_run_id="run-1")
+    form = _form(workflow_run_id=str(uuid4()))
+    sqlite_session.add(form)
+    sqlite_session.commit()
     job = task_module._EmailDeliveryJob(
         form_id="form-1",
         subject="Subject",
@@ -115,21 +134,26 @@ def test_dispatch_human_input_email_task_replaces_body_variables(monkeypatch: py
     monkeypatch.setattr(task_module, "_load_variable_pool", lambda _workflow_run_id: variable_pool)
 
     task_module.dispatch_human_input_email_task(
-        form_id="form-1",
+        form_id=form.id,
         node_title="Approve",
-        session_factory=lambda: _DummySession(form),
+        session_factory=sessionmaker(bind=sqlite_engine, expire_on_commit=False),
     )
 
     assert mail.sent[0]["html"] == "<p>Body OK</p>"
 
 
 @pytest.mark.parametrize("line_break", ["\r\n", "\r", "\n"])
+@pytest.mark.parametrize("sqlite_session", [(HumanInputForm,)], indirect=True)
 def test_dispatch_human_input_email_task_sanitizes_subject(
     monkeypatch: pytest.MonkeyPatch,
     line_break: str,
+    sqlite_engine: Engine,
+    sqlite_session: Session,
 ):
     mail = _DummyMail()
-    form = SimpleNamespace(id="form-1", tenant_id="tenant-1", workflow_run_id=None)
+    form = _form()
+    sqlite_session.add(form)
+    sqlite_session.commit()
     job = task_module._EmailDeliveryJob(
         form_id="form-1",
         subject=f"Notice{line_break}BCC:attacker@example.com <b>Alert</b>",
@@ -148,9 +172,9 @@ def test_dispatch_human_input_email_task_sanitizes_subject(
     monkeypatch.setattr(task_module, "_load_variable_pool", lambda _workflow_run_id: None)
 
     task_module.dispatch_human_input_email_task(
-        form_id="form-1",
+        form_id=form.id,
         node_title="Approve",
-        session_factory=lambda: _DummySession(form),
+        session_factory=sessionmaker(bind=sqlite_engine, expire_on_commit=False),
     )
 
     assert mail.sent[0]["subject"] == "Notice BCC:attacker@example.com Alert"

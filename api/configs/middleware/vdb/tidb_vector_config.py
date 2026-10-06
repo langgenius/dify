@@ -31,3 +31,8 @@ class TiDBVectorConfig(BaseSettings):
         description="Name of the TiDB Vector database to connect to",
         default=None,
     )
+
+    TIDB_VECTOR_ENABLE_FULLTEXT_SEARCH: bool = Field(
+        description="Enable TiDB Vector full-text and hybrid search features",
+        default=False,
+    )

@@ -10,7 +10,13 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
 from controllers.console.workspace import plugin_permission_required
-from models.account import Tenant, TenantPluginPermission, TenantStatus
+from models.account import (
+    Tenant,
+    TenantPluginDebugPermission,
+    TenantPluginInstallPermission,
+    TenantPluginPermission,
+    TenantStatus,
+)
 
 
 def _create_tenant(db_session: Session) -> Tenant:
@@ -24,8 +30,8 @@ def _create_tenant(db_session: Session) -> Tenant:
 def _create_permission(
     db_session: Session,
     tenant_id: str,
-    install: TenantPluginPermission.InstallPermission = TenantPluginPermission.InstallPermission.EVERYONE,
-    debug: TenantPluginPermission.DebugPermission = TenantPluginPermission.DebugPermission.EVERYONE,
+    install: TenantPluginInstallPermission = TenantPluginInstallPermission.EVERYONE,
+    debug: TenantPluginDebugPermission = TenantPluginDebugPermission.EVERYONE,
 ) -> TenantPluginPermission:
     perm = TenantPluginPermission(
         tenant_id=tenant_id,
@@ -59,8 +65,8 @@ class TestPluginPermissionRequired:
         _create_permission(
             db_session_with_containers,
             tenant.id,
-            install=TenantPluginPermission.InstallPermission.NOBODY,
-            debug=TenantPluginPermission.DebugPermission.EVERYONE,
+            install=TenantPluginInstallPermission.NOBODY,
+            debug=TenantPluginDebugPermission.EVERYONE,
         )
         user = SimpleNamespace(is_admin_or_owner=True)
 
@@ -81,8 +87,8 @@ class TestPluginPermissionRequired:
         _create_permission(
             db_session_with_containers,
             tenant.id,
-            install=TenantPluginPermission.InstallPermission.ADMINS,
-            debug=TenantPluginPermission.DebugPermission.EVERYONE,
+            install=TenantPluginInstallPermission.ADMINS,
+            debug=TenantPluginDebugPermission.EVERYONE,
         )
         user = SimpleNamespace(is_admin_or_owner=False)
 
@@ -103,8 +109,8 @@ class TestPluginPermissionRequired:
         _create_permission(
             db_session_with_containers,
             tenant.id,
-            install=TenantPluginPermission.InstallPermission.ADMINS,
-            debug=TenantPluginPermission.DebugPermission.EVERYONE,
+            install=TenantPluginInstallPermission.ADMINS,
+            debug=TenantPluginDebugPermission.EVERYONE,
         )
         user = SimpleNamespace(is_admin_or_owner=True)
 
@@ -124,8 +130,8 @@ class TestPluginPermissionRequired:
         _create_permission(
             db_session_with_containers,
             tenant.id,
-            install=TenantPluginPermission.InstallPermission.EVERYONE,
-            debug=TenantPluginPermission.DebugPermission.NOBODY,
+            install=TenantPluginInstallPermission.EVERYONE,
+            debug=TenantPluginDebugPermission.NOBODY,
         )
         user = SimpleNamespace(is_admin_or_owner=True)
 
@@ -146,8 +152,8 @@ class TestPluginPermissionRequired:
         _create_permission(
             db_session_with_containers,
             tenant.id,
-            install=TenantPluginPermission.InstallPermission.EVERYONE,
-            debug=TenantPluginPermission.DebugPermission.ADMINS,
+            install=TenantPluginInstallPermission.EVERYONE,
+            debug=TenantPluginDebugPermission.ADMINS,
         )
         user = SimpleNamespace(is_admin_or_owner=False)
 
@@ -168,8 +174,8 @@ class TestPluginPermissionRequired:
         _create_permission(
             db_session_with_containers,
             tenant.id,
-            install=TenantPluginPermission.InstallPermission.EVERYONE,
-            debug=TenantPluginPermission.DebugPermission.ADMINS,
+            install=TenantPluginInstallPermission.EVERYONE,
+            debug=TenantPluginDebugPermission.ADMINS,
         )
         user = SimpleNamespace(is_admin_or_owner=True)
 

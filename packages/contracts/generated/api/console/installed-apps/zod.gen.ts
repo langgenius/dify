@@ -3,20 +3,6 @@
 import * as z from 'zod'
 
 /**
- * InstalledAppCreatePayload
- */
-export const zInstalledAppCreatePayload = z.object({
-  app_id: z.string(),
-})
-
-/**
- * SimpleMessageResponse
- */
-export const zSimpleMessageResponse = z.object({
-  message: z.string(),
-})
-
-/**
  * InstalledAppUpdatePayload
  */
 export const zInstalledAppUpdatePayload = z.object({
@@ -43,6 +29,7 @@ export const zAudioTranscriptResponse = z.object({
  */
 export const zChatMessagePayload = z.object({
   conversation_id: z.string().nullish(),
+  draft_type: z.enum(['debug_build', 'draft']).optional().default('draft'),
   files: z.array(z.unknown()).nullish(),
   inputs: z.record(z.string(), z.unknown()),
   model_config: z.record(z.string(), z.unknown()).optional(),
@@ -112,9 +99,15 @@ export const zSuggestedQuestionsResponse = z.object({
 
 /**
  * ExploreAppMetaResponse
+ *
+ * Metadata consumed by the installed-app chat UI.
+ *
+ * Built-in tool icons are URL strings; API-based tool icons are provider-defined payload objects.
  */
 export const zExploreAppMetaResponse = z.object({
-  tool_icons: z.record(z.string(), z.unknown()).optional(),
+  tool_icons: z
+    .record(z.string(), z.union([z.string(), z.record(z.string(), z.unknown())]))
+    .optional(),
 })
 
 /**
@@ -137,7 +130,9 @@ export const zTextToAudioPayload = z.object({
 /**
  * AudioBinaryResponse
  */
-export const zAudioBinaryResponse = z.custom<Blob | File>()
+export const zAudioBinaryResponse = z.custom<Blob | File>(
+  (value) => value instanceof Blob || value instanceof File,
+)
 
 /**
  * WorkflowRunPayload
@@ -145,12 +140,36 @@ export const zAudioBinaryResponse = z.custom<Blob | File>()
 export const zWorkflowRunPayload = z.object({
   files: z
     .array(
-      z.object({
-        transfer_method: z.enum(['local_file', 'remote_url']),
-        type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
-        upload_file_id: z.string().optional(),
-        url: z.string().optional(),
-      }),
+      z.union([
+        z.object({
+          remote_url: z.string().optional(),
+          transfer_method: z.enum(['remote_url']),
+          type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+          upload_file_id: z.string().optional(),
+          url: z.string(),
+        }),
+        z.object({
+          remote_url: z.string(),
+          transfer_method: z.enum(['remote_url']),
+          type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+          upload_file_id: z.string().optional(),
+          url: z.string().optional(),
+        }),
+        z.object({
+          remote_url: z.string().optional(),
+          transfer_method: z.enum(['remote_url']),
+          type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+          upload_file_id: z.string(),
+          url: z.string().optional(),
+        }),
+        z.object({
+          remote_url: z.string().optional(),
+          transfer_method: z.enum(['local_file']),
+          type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+          upload_file_id: z.string(),
+          url: z.string().optional(),
+        }),
+      ]),
     )
     .nullish(),
   inputs: z.record(z.string(), z.unknown()),
@@ -168,16 +187,11 @@ export const zJsonValue = z
   .nullable()
 
 /**
- * GeneratedAppResponse
- */
-export const zGeneratedAppResponse = zJsonValue
-
-/**
  * SimpleConversation
  */
 export const zSimpleConversation = z.object({
   created_at: z.int().nullish(),
-  id: z.string(),
+  id: z.uuid(),
   inputs: z.record(z.string(), zJsonValue),
   introduction: z.string().nullish(),
   name: z.string(),
@@ -194,8 +208,6 @@ export const zConversationInfiniteScrollPagination = z.object({
   limit: z.int(),
 })
 
-export const zJsonObject = z.record(z.string(), z.unknown())
-
 /**
  * SystemParameters
  */
@@ -211,31 +223,376 @@ export const zSystemParameters = z.object({
  * Parameters
  */
 export const zParameters = z.object({
-  annotation_reply: zJsonObject,
-  file_upload: zJsonObject,
-  more_like_this: zJsonObject,
+  annotation_reply: z.object({
+    enabled: z.boolean().optional(),
+  }),
+  file_upload: z.object({
+    allowed_file_extensions: z.array(z.string()).optional(),
+    allowed_file_types: z
+      .array(z.enum(['audio', 'custom', 'document', 'image', 'video']))
+      .optional(),
+    allowed_file_upload_methods: z.array(z.enum(['local_file', 'remote_url'])).optional(),
+    enabled: z.boolean().optional(),
+    image: z
+      .object({
+        detail: z.string().optional(),
+        enabled: z.boolean().optional(),
+        number_limits: z.int().optional(),
+        transfer_methods: z.array(z.string()).optional(),
+      })
+      .optional(),
+    number_limits: z.int().optional(),
+  }),
+  more_like_this: z.object({
+    enabled: z.boolean().optional(),
+  }),
   opening_statement: z.string().nullish(),
-  retriever_resource: zJsonObject,
-  sensitive_word_avoidance: zJsonObject,
-  speech_to_text: zJsonObject,
+  retriever_resource: z.object({
+    enabled: z.boolean().optional(),
+  }),
+  sensitive_word_avoidance: z.object({
+    enabled: z.boolean().optional(),
+  }),
+  speech_to_text: z.object({
+    enabled: z.boolean().optional(),
+  }),
   suggested_questions: z.array(z.string()),
-  suggested_questions_after_answer: zJsonObject,
+  suggested_questions_after_answer: z.object({
+    enabled: z.boolean().optional(),
+  }),
   system_parameters: zSystemParameters,
-  text_to_speech: zJsonObject,
-  user_input_form: z.array(zJsonObject),
+  text_to_speech: z.object({
+    autoPlay: z.string().optional(),
+    enabled: z.boolean().optional(),
+    language: z.string().optional(),
+    voice: z.string().optional(),
+  }),
+  user_input_form: z.array(
+    z.union([
+      z
+        .object({
+          'text-input': z.object({
+            allowed_file_extensions: z.array(z.string()).nullish(),
+            allowed_file_types: z.array(z.string()).nullish(),
+            allowed_file_upload_methods: z.array(z.string()).nullish(),
+            config: z.record(z.string(), z.unknown()).optional(),
+            default: z.unknown().optional(),
+            description: z.string().optional(),
+            hide: z.boolean().optional(),
+            json_schema: z.record(z.string(), z.unknown()).nullish(),
+            label: z.string(),
+            max_length: z.int().nullish(),
+            options: z.array(z.string()).optional(),
+            required: z.boolean().optional(),
+            type: z
+              .enum([
+                'checkbox',
+                'external_data_tool',
+                'file',
+                'file-list',
+                'json_object',
+                'number',
+                'paragraph',
+                'select',
+                'text-input',
+              ])
+              .optional(),
+            variable: z.string(),
+          }),
+        })
+        .strict(),
+      z
+        .object({
+          select: z.object({
+            allowed_file_extensions: z.array(z.string()).nullish(),
+            allowed_file_types: z.array(z.string()).nullish(),
+            allowed_file_upload_methods: z.array(z.string()).nullish(),
+            config: z.record(z.string(), z.unknown()).optional(),
+            default: z.unknown().optional(),
+            description: z.string().optional(),
+            hide: z.boolean().optional(),
+            json_schema: z.record(z.string(), z.unknown()).nullish(),
+            label: z.string(),
+            max_length: z.int().nullish(),
+            options: z.array(z.string()).optional(),
+            required: z.boolean().optional(),
+            type: z
+              .enum([
+                'checkbox',
+                'external_data_tool',
+                'file',
+                'file-list',
+                'json_object',
+                'number',
+                'paragraph',
+                'select',
+                'text-input',
+              ])
+              .optional(),
+            variable: z.string(),
+          }),
+        })
+        .strict(),
+      z
+        .object({
+          paragraph: z.object({
+            allowed_file_extensions: z.array(z.string()).nullish(),
+            allowed_file_types: z.array(z.string()).nullish(),
+            allowed_file_upload_methods: z.array(z.string()).nullish(),
+            config: z.record(z.string(), z.unknown()).optional(),
+            default: z.unknown().optional(),
+            description: z.string().optional(),
+            hide: z.boolean().optional(),
+            json_schema: z.record(z.string(), z.unknown()).nullish(),
+            label: z.string(),
+            max_length: z.int().nullish(),
+            options: z.array(z.string()).optional(),
+            required: z.boolean().optional(),
+            type: z
+              .enum([
+                'checkbox',
+                'external_data_tool',
+                'file',
+                'file-list',
+                'json_object',
+                'number',
+                'paragraph',
+                'select',
+                'text-input',
+              ])
+              .optional(),
+            variable: z.string(),
+          }),
+        })
+        .strict(),
+      z
+        .object({
+          number: z.object({
+            allowed_file_extensions: z.array(z.string()).nullish(),
+            allowed_file_types: z.array(z.string()).nullish(),
+            allowed_file_upload_methods: z.array(z.string()).nullish(),
+            config: z.record(z.string(), z.unknown()).optional(),
+            default: z.unknown().optional(),
+            description: z.string().optional(),
+            hide: z.boolean().optional(),
+            json_schema: z.record(z.string(), z.unknown()).nullish(),
+            label: z.string(),
+            max_length: z.int().nullish(),
+            options: z.array(z.string()).optional(),
+            required: z.boolean().optional(),
+            type: z
+              .enum([
+                'checkbox',
+                'external_data_tool',
+                'file',
+                'file-list',
+                'json_object',
+                'number',
+                'paragraph',
+                'select',
+                'text-input',
+              ])
+              .optional(),
+            variable: z.string(),
+          }),
+        })
+        .strict(),
+      z
+        .object({
+          external_data_tool: z.object({
+            allowed_file_extensions: z.array(z.string()).nullish(),
+            allowed_file_types: z.array(z.string()).nullish(),
+            allowed_file_upload_methods: z.array(z.string()).nullish(),
+            config: z.record(z.string(), z.unknown()).optional(),
+            default: z.unknown().optional(),
+            description: z.string().optional(),
+            hide: z.boolean().optional(),
+            json_schema: z.record(z.string(), z.unknown()).nullish(),
+            label: z.string(),
+            max_length: z.int().nullish(),
+            options: z.array(z.string()).optional(),
+            required: z.boolean().optional(),
+            type: z
+              .enum([
+                'checkbox',
+                'external_data_tool',
+                'file',
+                'file-list',
+                'json_object',
+                'number',
+                'paragraph',
+                'select',
+                'text-input',
+              ])
+              .optional(),
+            variable: z.string(),
+          }),
+        })
+        .strict(),
+      z
+        .object({
+          file: z.object({
+            allowed_file_extensions: z.array(z.string()).nullish(),
+            allowed_file_types: z.array(z.string()).nullish(),
+            allowed_file_upload_methods: z.array(z.string()).nullish(),
+            config: z.record(z.string(), z.unknown()).optional(),
+            default: z.unknown().optional(),
+            description: z.string().optional(),
+            hide: z.boolean().optional(),
+            json_schema: z.record(z.string(), z.unknown()).nullish(),
+            label: z.string(),
+            max_length: z.int().nullish(),
+            options: z.array(z.string()).optional(),
+            required: z.boolean().optional(),
+            type: z
+              .enum([
+                'checkbox',
+                'external_data_tool',
+                'file',
+                'file-list',
+                'json_object',
+                'number',
+                'paragraph',
+                'select',
+                'text-input',
+              ])
+              .optional(),
+            variable: z.string(),
+          }),
+        })
+        .strict(),
+      z
+        .object({
+          'file-list': z.object({
+            allowed_file_extensions: z.array(z.string()).nullish(),
+            allowed_file_types: z.array(z.string()).nullish(),
+            allowed_file_upload_methods: z.array(z.string()).nullish(),
+            config: z.record(z.string(), z.unknown()).optional(),
+            default: z.unknown().optional(),
+            description: z.string().optional(),
+            hide: z.boolean().optional(),
+            json_schema: z.record(z.string(), z.unknown()).nullish(),
+            label: z.string(),
+            max_length: z.int().nullish(),
+            options: z.array(z.string()).optional(),
+            required: z.boolean().optional(),
+            type: z
+              .enum([
+                'checkbox',
+                'external_data_tool',
+                'file',
+                'file-list',
+                'json_object',
+                'number',
+                'paragraph',
+                'select',
+                'text-input',
+              ])
+              .optional(),
+            variable: z.string(),
+          }),
+        })
+        .strict(),
+      z
+        .object({
+          checkbox: z.object({
+            allowed_file_extensions: z.array(z.string()).nullish(),
+            allowed_file_types: z.array(z.string()).nullish(),
+            allowed_file_upload_methods: z.array(z.string()).nullish(),
+            config: z.record(z.string(), z.unknown()).optional(),
+            default: z.unknown().optional(),
+            description: z.string().optional(),
+            hide: z.boolean().optional(),
+            json_schema: z.record(z.string(), z.unknown()).nullish(),
+            label: z.string(),
+            max_length: z.int().nullish(),
+            options: z.array(z.string()).optional(),
+            required: z.boolean().optional(),
+            type: z
+              .enum([
+                'checkbox',
+                'external_data_tool',
+                'file',
+                'file-list',
+                'json_object',
+                'number',
+                'paragraph',
+                'select',
+                'text-input',
+              ])
+              .optional(),
+            variable: z.string(),
+          }),
+        })
+        .strict(),
+      z
+        .object({
+          json_object: z.object({
+            allowed_file_extensions: z.array(z.string()).nullish(),
+            allowed_file_types: z.array(z.string()).nullish(),
+            allowed_file_upload_methods: z.array(z.string()).nullish(),
+            config: z.record(z.string(), z.unknown()).optional(),
+            default: z.unknown().optional(),
+            description: z.string().optional(),
+            hide: z.boolean().optional(),
+            json_schema: z.record(z.string(), z.unknown()).nullish(),
+            label: z.string(),
+            max_length: z.int().nullish(),
+            options: z.array(z.string()).optional(),
+            required: z.boolean().optional(),
+            type: z
+              .enum([
+                'checkbox',
+                'external_data_tool',
+                'file',
+                'file-list',
+                'json_object',
+                'number',
+                'paragraph',
+                'select',
+                'text-input',
+              ])
+              .optional(),
+            variable: z.string(),
+          }),
+        })
+        .strict(),
+    ]),
+  ),
 })
+
+/**
+ * IconType
+ */
+export const zIconType = z.enum(['emoji', 'image', 'link'])
+
+/**
+ * AppMode
+ */
+export const zAppMode = z.enum([
+  'advanced-chat',
+  'agent',
+  'agent-chat',
+  'channel',
+  'chat',
+  'completion',
+  'rag-pipeline',
+  'workflow',
+])
 
 /**
  * InstalledAppInfoResponse
  */
 export const zInstalledAppInfoResponse = z.object({
-  icon: z.string().nullish(),
-  icon_background: z.string().nullish(),
-  icon_type: z.string().nullish(),
+  description: z.string(),
+  icon: z.string().nullable(),
+  icon_background: z.string().nullable(),
+  icon_type: zIconType.nullable(),
+  icon_url: z.string().nullable(),
   id: z.string(),
-  mode: z.string().nullish(),
-  name: z.string().nullish(),
-  use_icon_as_answer_icon: z.boolean().nullish(),
+  mode: zAppMode,
+  name: z.string(),
+  use_icon_as_answer_icon: z.boolean(),
 })
 
 /**
@@ -247,26 +604,27 @@ export const zInstalledAppResponse = z.object({
   editable: z.boolean(),
   id: z.string(),
   is_pinned: z.boolean(),
-  last_used_at: z.int().nullish(),
-  uninstallable: z.boolean(),
+  last_used_at: z.int().nullable(),
 })
 
 /**
  * InstalledAppListResponse
  */
 export const zInstalledAppListResponse = z.object({
+  has_more: z.boolean(),
   installed_apps: z.array(zInstalledAppResponse),
+  next_cursor: z.string().nullable(),
 })
 
 /**
  * AgentThought
  */
 export const zAgentThought = z.object({
+  answer: z.string().nullish(),
   chain_id: z.string().nullish(),
   created_at: z.int().nullish(),
   files: z.array(z.string()),
   id: z.string(),
-  message_chain_id: z.string().nullish(),
   message_id: z.string(),
   observation: z.string().nullish(),
   position: z.int(),
@@ -291,12 +649,12 @@ export const zJsonValueType = z.unknown()
 export const zMessageFile = z.object({
   belongs_to: z.string().nullish(),
   filename: z.string(),
-  id: z.string(),
+  id: z.uuid(),
   mime_type: z.string().nullish(),
   size: z.int().nullish(),
   transfer_method: z.string(),
   type: z.string(),
-  upload_file_id: z.string().nullish(),
+  upload_file_id: z.uuid().nullish(),
   url: z.string().nullish(),
 })
 
@@ -329,17 +687,17 @@ export const zRetrieverResource = z.object({
   content: z.string().nullish(),
   created_at: z.int().nullish(),
   data_source_type: z.string().nullish(),
-  dataset_id: z.string().nullish(),
+  dataset_id: z.uuid().nullish(),
   dataset_name: z.string().nullish(),
-  document_id: z.string().nullish(),
+  document_id: z.uuid().nullish(),
   document_name: z.string().nullish(),
   hit_count: z.int().nullish(),
-  id: z.string().optional(),
+  id: z.uuid().optional(),
   index_node_hash: z.string().nullish(),
-  message_id: z.string().optional(),
+  message_id: z.uuid().optional(),
   position: z.int(),
   score: z.number().nullish(),
-  segment_id: z.string().nullish(),
+  segment_id: z.uuid().nullish(),
   segment_position: z.int().nullish(),
   summary: z.string().nullish(),
   word_count: z.int().nullish(),
@@ -378,7 +736,10 @@ export const zButtonStyle = z.enum(['accent', 'default', 'ghost', 'primary'])
  */
 export const zUserActionConfig = z.object({
   button_style: zButtonStyle.optional().default('default'),
-  id: z.string().max(20),
+  id: z
+    .string()
+    .max(20)
+    .regex(/^[A-Za-z_][A-Za-z0-9_]*$/),
   title: z.string().max(100),
 })
 
@@ -424,7 +785,7 @@ export const zFileListInputConfig = z.object({
  * ValueSourceType
  *
  * ValueSourceType records whether the value comes from a static setting
- * in form definiton, or a variable while the workflow is running.
+ * in form definition, or a variable while the workflow is running.
  */
 export const zValueSourceType = z.enum(['constant', 'variable'])
 
@@ -508,19 +869,28 @@ export const zHumanInputContent = z.object({
 export const zExploreMessageListItem = z.object({
   agent_thoughts: z.array(zAgentThought),
   answer: z.string(),
-  conversation_id: z.string(),
+  answer_tokens: z.int().optional().default(0),
+  conversation_id: z.uuid(),
   created_at: z.int().nullish(),
+  currency: z.string().nullish(),
   error: z.string().nullish(),
   extra_contents: z.array(zHumanInputContent),
   feedback: zSimpleFeedback.nullish(),
-  id: z.string(),
+  id: z.uuid(),
   inputs: z.record(z.string(), zJsonValueType),
   message_files: z.array(zMessageFile),
+  message_tokens: z.int().optional().default(0),
   metadata: zJsonValueType.nullish(),
-  parent_message_id: z.string().nullish(),
+  parent_message_id: z.uuid().nullish(),
+  provider_response_latency: z.number().optional().default(0),
   query: z.string(),
   retriever_resources: z.array(zRetrieverResource),
   status: z.string(),
+  total_price: z
+    .string()
+    .regex(/^(?![-+.]*$)[+-]?0*\d*\.?\d*$/)
+    .nullish(),
+  total_tokens: z.int().readonly(),
 })
 
 /**
@@ -532,8 +902,84 @@ export const zExploreMessageInfiniteScrollPagination = z.object({
   limit: z.int(),
 })
 
+/**
+ * InstalledAppInfoResponse
+ */
+export const zInstalledAppInfoResponseWritable = z.object({
+  description: z.string(),
+  icon: z.string().nullable(),
+  icon_background: z.string().nullable(),
+  icon_type: zIconType.nullable(),
+  id: z.string(),
+  mode: zAppMode,
+  name: z.string(),
+  use_icon_as_answer_icon: z.boolean(),
+})
+
+/**
+ * InstalledAppResponse
+ */
+export const zInstalledAppResponseWritable = z.object({
+  app: zInstalledAppInfoResponseWritable,
+  app_owner_tenant_id: z.string(),
+  editable: z.boolean(),
+  id: z.string(),
+  is_pinned: z.boolean(),
+  last_used_at: z.int().nullable(),
+})
+
+/**
+ * InstalledAppListResponse
+ */
+export const zInstalledAppListResponseWritable = z.object({
+  has_more: z.boolean(),
+  installed_apps: z.array(zInstalledAppResponseWritable),
+  next_cursor: z.string().nullable(),
+})
+
+/**
+ * ExploreMessageListItem
+ */
+export const zExploreMessageListItemWritable = z.object({
+  agent_thoughts: z.array(zAgentThought),
+  answer: z.string(),
+  answer_tokens: z.int().optional().default(0),
+  conversation_id: z.uuid(),
+  created_at: z.int().nullish(),
+  currency: z.string().nullish(),
+  error: z.string().nullish(),
+  extra_contents: z.array(zHumanInputContent),
+  feedback: zSimpleFeedback.nullish(),
+  id: z.uuid(),
+  inputs: z.record(z.string(), zJsonValueType),
+  message_files: z.array(zMessageFile),
+  message_tokens: z.int().optional().default(0),
+  metadata: zJsonValueType.nullish(),
+  parent_message_id: z.uuid().nullish(),
+  provider_response_latency: z.number().optional().default(0),
+  query: z.string(),
+  retriever_resources: z.array(zRetrieverResource),
+  status: z.string(),
+  total_price: z
+    .string()
+    .regex(/^(?![-+.]*$)[+-]?0*\d*\.?\d*$/)
+    .nullish(),
+})
+
+/**
+ * ExploreMessageInfiniteScrollPagination
+ */
+export const zExploreMessageInfiniteScrollPaginationWritable = z.object({
+  data: z.array(zExploreMessageListItemWritable),
+  has_more: z.boolean(),
+  limit: z.int(),
+})
+
 export const zGetInstalledAppsQuery = z.object({
   app_id: z.string().optional(),
+  cursor: z.string().optional(),
+  limit: z.int().gte(1).lte(100).optional().default(20),
+  name: z.string().max(100).optional(),
 })
 
 /**
@@ -541,21 +987,14 @@ export const zGetInstalledAppsQuery = z.object({
  */
 export const zGetInstalledAppsResponse = zInstalledAppListResponse
 
-export const zPostInstalledAppsBody = zInstalledAppCreatePayload
-
-/**
- * Success
- */
-export const zPostInstalledAppsResponse = zSimpleMessageResponse
-
-export const zDeleteInstalledAppsByInstalledAppIdPath = z.object({
+export const zGetInstalledAppsByInstalledAppIdPath = z.object({
   installed_app_id: z.uuid(),
 })
 
 /**
- * App uninstalled successfully
+ * Success
  */
-export const zDeleteInstalledAppsByInstalledAppIdResponse = z.void()
+export const zGetInstalledAppsByInstalledAppIdResponse = zInstalledAppResponse
 
 export const zPatchInstalledAppsByInstalledAppIdBody = zInstalledAppUpdatePayload
 
@@ -586,7 +1025,10 @@ export const zPostInstalledAppsByInstalledAppIdChatMessagesPath = z.object({
 /**
  * Success
  */
-export const zPostInstalledAppsByInstalledAppIdChatMessagesResponse = zGeneratedAppResponse
+export const zPostInstalledAppsByInstalledAppIdChatMessagesResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
 
 export const zPostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopPath = z.object({
   installed_app_id: z.uuid(),
@@ -596,11 +1038,11 @@ export const zPostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopPath = z.
 /**
  * Success
  */
-export const zPostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopResponse
-  = zSimpleResultResponse
+export const zPostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopResponse =
+  zSimpleResultResponse
 
-export const zPostInstalledAppsByInstalledAppIdCompletionMessagesBody
-  = zCompletionMessageExplorePayload
+export const zPostInstalledAppsByInstalledAppIdCompletionMessagesBody =
+  zCompletionMessageExplorePayload
 
 export const zPostInstalledAppsByInstalledAppIdCompletionMessagesPath = z.object({
   installed_app_id: z.uuid(),
@@ -609,7 +1051,10 @@ export const zPostInstalledAppsByInstalledAppIdCompletionMessagesPath = z.object
 /**
  * Success
  */
-export const zPostInstalledAppsByInstalledAppIdCompletionMessagesResponse = zGeneratedAppResponse
+export const zPostInstalledAppsByInstalledAppIdCompletionMessagesResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
 
 export const zPostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopPath = z.object({
   installed_app_id: z.uuid(),
@@ -619,8 +1064,8 @@ export const zPostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopPat
 /**
  * Success
  */
-export const zPostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopResponse
-  = zSimpleResultResponse
+export const zPostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopResponse =
+  zSimpleResultResponse
 
 export const zGetInstalledAppsByInstalledAppIdConversationsPath = z.object({
   installed_app_id: z.uuid(),
@@ -635,8 +1080,8 @@ export const zGetInstalledAppsByInstalledAppIdConversationsQuery = z.object({
 /**
  * Success
  */
-export const zGetInstalledAppsByInstalledAppIdConversationsResponse
-  = zConversationInfiniteScrollPagination
+export const zGetInstalledAppsByInstalledAppIdConversationsResponse =
+  zConversationInfiniteScrollPagination
 
 export const zDeleteInstalledAppsByInstalledAppIdConversationsByCIdPath = z.object({
   c_id: z.uuid(),
@@ -648,8 +1093,8 @@ export const zDeleteInstalledAppsByInstalledAppIdConversationsByCIdPath = z.obje
  */
 export const zDeleteInstalledAppsByInstalledAppIdConversationsByCIdResponse = z.void()
 
-export const zPostInstalledAppsByInstalledAppIdConversationsByCIdNameBody
-  = zConversationRenamePayload
+export const zPostInstalledAppsByInstalledAppIdConversationsByCIdNameBody =
+  zConversationRenamePayload
 
 export const zPostInstalledAppsByInstalledAppIdConversationsByCIdNamePath = z.object({
   c_id: z.uuid(),
@@ -694,11 +1139,11 @@ export const zGetInstalledAppsByInstalledAppIdMessagesQuery = z.object({
 /**
  * Success
  */
-export const zGetInstalledAppsByInstalledAppIdMessagesResponse
-  = zExploreMessageInfiniteScrollPagination
+export const zGetInstalledAppsByInstalledAppIdMessagesResponse =
+  zExploreMessageInfiniteScrollPagination
 
-export const zPostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksBody
-  = zMessageFeedbackPayload
+export const zPostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksBody =
+  zMessageFeedbackPayload
 
 export const zPostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksPath = z.object({
   installed_app_id: z.uuid(),
@@ -708,8 +1153,8 @@ export const zPostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksPath 
 /**
  * Feedback submitted successfully
  */
-export const zPostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksResponse
-  = zResultResponse
+export const zPostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksResponse =
+  zResultResponse
 
 export const zGetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisPath = z.object({
   installed_app_id: z.uuid(),
@@ -723,8 +1168,10 @@ export const zGetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisQue
 /**
  * Success
  */
-export const zGetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisResponse
-  = zGeneratedAppResponse
+export const zGetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
 
 export const zGetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuestionsPath = z.object({
   installed_app_id: z.uuid(),
@@ -734,8 +1181,8 @@ export const zGetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuesti
 /**
  * Success
  */
-export const zGetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuestionsResponse
-  = zSuggestedQuestionsResponse
+export const zGetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuestionsResponse =
+  zSuggestedQuestionsResponse
 
 export const zGetInstalledAppsByInstalledAppIdMetaPath = z.object({
   installed_app_id: z.uuid(),
@@ -767,8 +1214,8 @@ export const zGetInstalledAppsByInstalledAppIdSavedMessagesQuery = z.object({
 /**
  * Success
  */
-export const zGetInstalledAppsByInstalledAppIdSavedMessagesResponse
-  = zSavedMessageInfiniteScrollPagination
+export const zGetInstalledAppsByInstalledAppIdSavedMessagesResponse =
+  zSavedMessageInfiniteScrollPagination
 
 export const zPostInstalledAppsByInstalledAppIdSavedMessagesBody = zSavedMessageCreatePayload
 
@@ -811,7 +1258,10 @@ export const zPostInstalledAppsByInstalledAppIdWorkflowsRunPath = z.object({
 /**
  * Success
  */
-export const zPostInstalledAppsByInstalledAppIdWorkflowsRunResponse = zGeneratedAppResponse
+export const zPostInstalledAppsByInstalledAppIdWorkflowsRunResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
 
 export const zPostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopPath = z.object({
   installed_app_id: z.uuid(),
@@ -821,5 +1271,5 @@ export const zPostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopPath = 
 /**
  * Success
  */
-export const zPostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopResponse
-  = zSimpleResultResponse
+export const zPostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopResponse =
+  zSimpleResultResponse

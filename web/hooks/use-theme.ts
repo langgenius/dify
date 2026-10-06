@@ -5,7 +5,7 @@ const useTheme = () => {
   const { theme, resolvedTheme, ...rest } = useBaseTheme()
   return {
     // only returns 'light' or 'dark' theme
-    theme: theme === Theme.system ? resolvedTheme as Theme : theme as Theme,
+    theme: theme === Theme.system ? (resolvedTheme as Theme) : (theme as Theme),
     ...rest,
   }
 }

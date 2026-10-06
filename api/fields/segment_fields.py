@@ -1,7 +1,4 @@
-from collections.abc import Iterable, Mapping
-from dataclasses import dataclass
 from datetime import datetime
-from typing import Any
 
 from pydantic import field_serializer
 
@@ -69,27 +66,6 @@ class SegmentResponse(ResponseModel):
     @field_serializer("disabled_at", "indexing_at", "completed_at", "stopped_at")
     def serialize_optional_timestamp(self, value: datetime | int | None) -> int | None:
         return to_timestamp(value)
-
-
-@dataclass(frozen=True)
-class SegmentWithSummary:
-    segment: Any
-    summary: str | None
-
-    def __getattr__(self, name: str) -> Any:
-        return getattr(self.segment, name)
-
-
-def segment_response_with_summary(segment: Any, summary: str | None) -> SegmentResponse:
-    response_source = SegmentWithSummary(segment=segment, summary=summary)
-    return SegmentResponse.model_validate(response_source, from_attributes=True)
-
-
-def segment_responses_with_summaries(
-    segments: Iterable[Any],
-    summaries: Mapping[str, str | None],
-) -> list[SegmentResponse]:
-    return [segment_response_with_summary(segment, summaries.get(segment.id)) for segment in segments]
 
 
 class SegmentDetailResponse(ResponseModel):

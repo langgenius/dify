@@ -1,15 +1,15 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import DebugInfo from '../debug-info'
-
-const mockDebugKey = vi.hoisted(() => ({
-  data: null as null | { key: string, host: string, port: number },
-  isLoading: false,
-}))
 
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.example.com${path}`,
+}))
+
+const mockDebugKey = vi.hoisted(() => ({
+  data: null as null | { key: string; host: string; port: number },
+  isLoading: false,
 }))
 
 vi.mock('@/service/use-plugins', () => ({
@@ -27,9 +27,7 @@ vi.mock('../../base/key-value-item', () => ({
     maskedValue?: string
   }) => (
     <div data-testid={`kv-${label}`}>
-      {label}
-      :
-      {maskedValue || value}
+      {label}:{maskedValue || value}
     </div>
   ),
 }))
@@ -51,22 +49,8 @@ describe('DebugInfo', () => {
   it('renders a disabled trigger when debug info is unavailable', () => {
     render(<DebugInfo />)
 
-    const trigger = screen.getByRole('button')
+    const trigger = screen.getByRole('button', { name: 'plugin.debugInfo.title' })
     expect(trigger).toBeDisabled()
-  })
-
-  it('uses caller-provided trigger classes without default icon padding', () => {
-    render(
-      <DebugInfo
-        triggerClassName="h-8 w-full py-1 pr-1 pl-2 text-components-menu-item-text"
-        triggerContent="Debugging"
-      />,
-    )
-
-    const trigger = screen.getByRole('button', { name: 'Debugging' })
-
-    expect(trigger).toHaveClass('h-8', 'w-full', 'py-1', 'pr-1', 'pl-2', 'text-components-menu-item-text')
-    expect(trigger).not.toHaveClass('p-2', 'text-components-button-secondary-text')
   })
 
   it('opens a popover with debug metadata and masks the key when info is available', async () => {
@@ -79,7 +63,7 @@ describe('DebugInfo', () => {
     const user = userEvent.setup()
     render(<DebugInfo />)
 
-    const trigger = screen.getByRole('button')
+    const trigger = screen.getByRole('button', { name: 'plugin.debugInfo.title' })
     expect(trigger).toBeEnabled()
 
     // Popover is closed initially — content not rendered yet
@@ -88,8 +72,11 @@ describe('DebugInfo', () => {
     await user.click(trigger)
 
     expect(screen.getByText('plugin.debugInfo.title')).toBeInTheDocument()
-    expect(screen.getByText('plugin.debugInfo.title').closest('.w-\\[360px\\]')).toHaveClass('rounded-2xl', 'shadow-2xl')
-    expect(screen.getByRole('link')).toHaveAttribute(
+    expect(screen.getByText('plugin.debugInfo.title').closest('.w-90')).toHaveClass(
+      'rounded-2xl',
+      'shadow-2xl',
+    )
+    expect(screen.getByRole('link', { name: 'plugin.debugInfo.viewDocs' })).toHaveAttribute(
       'href',
       'https://docs.example.com/develop-plugin/features-and-specs/plugin-types/remote-debug-a-plugin',
     )

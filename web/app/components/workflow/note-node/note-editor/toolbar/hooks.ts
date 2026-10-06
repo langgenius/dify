@@ -1,7 +1,4 @@
-import {
-  $isLinkNode,
-  TOGGLE_LINK_COMMAND,
-} from '@lexical/link'
+import { $isLinkNode, TOGGLE_LINK_COMMAND } from '@lexical/link'
 import { INSERT_UNORDERED_LIST_COMMAND } from '@lexical/list'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import {
@@ -19,11 +16,7 @@ import {
   FORMAT_TEXT_COMMAND,
   SELECTION_CHANGE_COMMAND,
 } from 'lexical'
-import {
-  useCallback,
-  useEffect,
-  useState,
-} from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNoteEditorStore } from '../store'
 import { getSelectedNode } from '../utils'
 
@@ -42,8 +35,7 @@ const toggleLink = (
   editor.update(() => {
     const selection = $getSelection()
 
-    if (!$isRangeSelection(selection))
-      return
+    if (!$isRangeSelection(selection)) return
 
     const node = getSelectedNode(selection)
     const parent = node.getParent()
@@ -71,8 +63,7 @@ const toggleBullet = (
 
   editor.update(() => {
     const selection = $getSelection()
-    if ($isRangeSelection(selection))
-      $setBlocksType(selection, () => $createParagraphNode())
+    if ($isRangeSelection(selection)) $setBlocksType(selection, () => $createParagraphNode())
   })
 }
 
@@ -80,20 +71,22 @@ export const useCommand = () => {
   const [editor] = useLexicalComposerContext()
   const noteEditorStore = useNoteEditorStore()
 
-  const handleCommand = useCallback((type: string) => {
-    if (type === 'bold' || type === 'italic' || type === 'strikethrough') {
-      editor.dispatchCommand(FORMAT_TEXT_COMMAND, type)
-      return
-    }
+  const handleCommand = useCallback(
+    (type: string) => {
+      if (type === 'bold' || type === 'italic' || type === 'strikethrough') {
+        editor.dispatchCommand(FORMAT_TEXT_COMMAND, type)
+        return
+      }
 
-    if (type === 'link') {
-      toggleLink(editor, noteEditorStore)
-      return
-    }
+      if (type === 'link') {
+        toggleLink(editor, noteEditorStore)
+        return
+      }
 
-    if (type === 'bullet')
-      toggleBullet(editor, noteEditorStore.getState().selectedIsBullet)
-  }, [editor, noteEditorStore])
+      if (type === 'bullet') toggleBullet(editor, noteEditorStore.getState().selectedIsBullet)
+    },
+    [editor, noteEditorStore],
+  )
 
   return {
     handleCommand,
@@ -105,26 +98,30 @@ export const useFontSize = () => {
   const [fontSize, setFontSize] = useState(DEFAULT_FONT_SIZE)
   const [fontSizeSelectorShow, setFontSizeSelectorShow] = useState(false)
 
-  const handleFontSize = useCallback((fontSize: string) => {
-    editor.update(() => {
-      const selection = $getSelection()
-
-      if ($isRangeSelection(selection))
-        $patchStyleText(selection, { 'font-size': fontSize })
-    })
-  }, [editor])
-
-  const handleOpenFontSizeSelector = useCallback((newFontSizeSelectorShow: boolean) => {
-    if (newFontSizeSelectorShow) {
+  const handleFontSize = useCallback(
+    (fontSize: string) => {
       editor.update(() => {
         const selection = $getSelection()
 
-        if ($isRangeSelection(selection))
-          $setSelection(selection.clone())
+        if ($isRangeSelection(selection)) $patchStyleText(selection, { 'font-size': fontSize })
       })
-    }
-    setFontSizeSelectorShow(newFontSizeSelectorShow)
-  }, [editor])
+    },
+    [editor],
+  )
+
+  const handleOpenFontSizeSelector = useCallback(
+    (newFontSizeSelectorShow: boolean) => {
+      if (newFontSizeSelectorShow) {
+        editor.update(() => {
+          const selection = $getSelection()
+
+          if ($isRangeSelection(selection)) $setSelection(selection.clone())
+        })
+      }
+      setFontSizeSelectorShow(newFontSizeSelectorShow)
+    },
+    [editor],
+  )
 
   useEffect(() => {
     return mergeRegister(

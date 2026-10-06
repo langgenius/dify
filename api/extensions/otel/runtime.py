@@ -69,19 +69,24 @@ def on_user_loaded(_sender, user: Union["Account", "EndUser"]):
         if user:
             try:
                 current_span = get_current_span()
+                if not current_span.is_recording():
+                    return
                 tenant_id = extract_tenant_id(user)
                 if not tenant_id:
                     return
-                if current_span:
-                    current_span.set_attribute(DifySpanAttributes.TENANT_ID, tenant_id)
-                    current_span.set_attribute(GenAIAttributes.USER_ID, user.id)
+                current_span.set_attributes(
+                    {
+                        DifySpanAttributes.TENANT_ID: tenant_id,
+                        GenAIAttributes.USER_ID: user.id,
+                    }
+                )
             except Exception:
                 logger.exception("Error setting tenant and user attributes")
                 pass
 
 
 @worker_init.connect(weak=False)
-def init_celery_worker(*args, **kwargs):
+def init_celery_worker(*args: object, **kwargs: object):
     if dify_config.ENABLE_OTEL:
         from opentelemetry.instrumentation.celery import CeleryInstrumentor
         from opentelemetry.metrics import get_meter_provider
@@ -93,7 +98,7 @@ def init_celery_worker(*args, **kwargs):
         metric_provider = get_meter_provider()
         if dify_config.DEBUG:
             logger.info("Initializing OpenTelemetry for Celery worker")
-        CeleryInstrumentor(tracer_provider=tracer_provider, meter_provider=metric_provider).instrument()
+        CeleryInstrumentor().instrument(tracer_provider=tracer_provider, meter_provider=metric_provider)
         setup_celery_sqlcommenter()
 
 

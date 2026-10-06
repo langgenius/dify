@@ -12,13 +12,15 @@ describe('WorkflowHiddenInputFields', () => {
   it('should render a text input with label and placeholder', () => {
     render(
       <WorkflowHiddenInputFields
-        hiddenVariables={[{
-          variable: 'name',
-          label: 'Full Name',
-          type: InputVarType.textInput,
-          hide: true,
-          required: true,
-        }]}
+        hiddenVariables={[
+          {
+            variable: 'name',
+            label: 'Full Name',
+            type: InputVarType.textInput,
+            hide: true,
+            required: true,
+          },
+        ]}
         values={{ name: 'Alice' }}
         onValueChange={onValueChange}
       />,
@@ -34,13 +36,15 @@ describe('WorkflowHiddenInputFields', () => {
   it('should render a number input for number-typed variables', () => {
     render(
       <WorkflowHiddenInputFields
-        hiddenVariables={[{
-          variable: 'count',
-          label: 'Count',
-          type: InputVarType.number,
-          hide: true,
-          required: false,
-        }]}
+        hiddenVariables={[
+          {
+            variable: 'count',
+            label: 'Count',
+            type: InputVarType.number,
+            hide: true,
+            required: false,
+          },
+        ]}
         values={{ count: '5' }}
         onValueChange={onValueChange}
       />,
@@ -56,13 +60,15 @@ describe('WorkflowHiddenInputFields', () => {
   it('should render a checkbox input without a separate label element above', () => {
     render(
       <WorkflowHiddenInputFields
-        hiddenVariables={[{
-          variable: 'enabled',
-          label: 'Enable Feature',
-          type: InputVarType.checkbox,
-          hide: true,
-          required: false,
-        }]}
+        hiddenVariables={[
+          {
+            variable: 'enabled',
+            label: 'Enable Feature',
+            type: InputVarType.checkbox,
+            hide: true,
+            required: false,
+          },
+        ]}
         values={{ enabled: true }}
         onValueChange={onValueChange}
       />,
@@ -79,14 +85,16 @@ describe('WorkflowHiddenInputFields', () => {
   it('should render a select dropdown for select-typed variables', () => {
     render(
       <WorkflowHiddenInputFields
-        hiddenVariables={[{
-          variable: 'color',
-          label: 'Color',
-          type: InputVarType.select,
-          hide: true,
-          required: false,
-          options: ['red', 'green', 'blue'],
-        }]}
+        hiddenVariables={[
+          {
+            variable: 'color',
+            label: 'Color',
+            type: InputVarType.select,
+            hide: true,
+            required: false,
+            options: ['red', 'green', 'blue'],
+          },
+        ]}
         values={{ color: 'red' }}
         onValueChange={onValueChange}
       />,
@@ -98,14 +106,16 @@ describe('WorkflowHiddenInputFields', () => {
   it('should render a textarea for paragraph-typed variables', () => {
     render(
       <WorkflowHiddenInputFields
-        hiddenVariables={[{
-          variable: 'description',
-          label: 'Description',
-          type: InputVarType.paragraph,
-          hide: true,
-          required: false,
-          max_length: 500,
-        }]}
+        hiddenVariables={[
+          {
+            variable: 'description',
+            label: 'Description',
+            type: InputVarType.paragraph,
+            hide: true,
+            required: false,
+            max_length: 500,
+          },
+        ]}
         values={{ description: 'Hello world' }}
         onValueChange={onValueChange}
       />,
@@ -121,13 +131,15 @@ describe('WorkflowHiddenInputFields', () => {
   it('should render a textarea for json-typed variables', () => {
     render(
       <WorkflowHiddenInputFields
-        hiddenVariables={[{
-          variable: 'config',
-          label: 'Config JSON',
-          type: InputVarType.json,
-          hide: true,
-          required: false,
-        }]}
+        hiddenVariables={[
+          {
+            variable: 'config',
+            label: 'Config JSON',
+            type: InputVarType.json,
+            hide: true,
+            required: false,
+          },
+        ]}
         values={{ config: '{"key": "value"}' }}
         onValueChange={onValueChange}
       />,
@@ -140,13 +152,15 @@ describe('WorkflowHiddenInputFields', () => {
   it('should render a textarea for jsonObject-typed variables', () => {
     render(
       <WorkflowHiddenInputFields
-        hiddenVariables={[{
-          variable: 'schema',
-          label: 'Schema',
-          type: InputVarType.jsonObject,
-          hide: true,
-          required: false,
-        }]}
+        hiddenVariables={[
+          {
+            variable: 'schema',
+            label: 'Schema',
+            type: InputVarType.jsonObject,
+            hide: true,
+            required: false,
+          },
+        ]}
         values={{ schema: '{}' }}
         onValueChange={onValueChange}
       />,
@@ -159,13 +173,15 @@ describe('WorkflowHiddenInputFields', () => {
   it('should use the variable key as label when label is not a string', () => {
     render(
       <WorkflowHiddenInputFields
-        hiddenVariables={[{
-          variable: 'my_var',
-          label: { nodeType: 'start' as never, nodeName: 'Start', variable: 'my_var' },
-          type: InputVarType.textInput,
-          hide: true,
-          required: false,
-        }]}
+        hiddenVariables={[
+          {
+            variable: 'my_var',
+            label: { nodeType: 'start' as never, nodeName: 'Start', variable: 'my_var' },
+            type: InputVarType.textInput,
+            hide: true,
+            required: false,
+          },
+        ]}
         values={{ my_var: '' }}
         onValueChange={onValueChange}
       />,
@@ -177,13 +193,15 @@ describe('WorkflowHiddenInputFields', () => {
   it('should use the custom fieldIdPrefix for element ids', () => {
     const { container } = render(
       <WorkflowHiddenInputFields
-        hiddenVariables={[{
-          variable: 'token',
-          label: 'Token',
-          type: InputVarType.textInput,
-          hide: true,
-          required: false,
-        }]}
+        hiddenVariables={[
+          {
+            variable: 'token',
+            label: 'Token',
+            type: InputVarType.textInput,
+            hide: true,
+            required: false,
+          },
+        ]}
         values={{ token: 'abc' }}
         onValueChange={onValueChange}
         fieldIdPrefix="custom-prefix"
@@ -196,13 +214,15 @@ describe('WorkflowHiddenInputFields', () => {
   it('should render empty string for non-string fieldValue in text inputs', () => {
     render(
       <WorkflowHiddenInputFields
-        hiddenVariables={[{
-          variable: 'flag',
-          label: 'Flag',
-          type: InputVarType.textInput,
-          hide: true,
-          required: false,
-        }]}
+        hiddenVariables={[
+          {
+            variable: 'flag',
+            label: 'Flag',
+            type: InputVarType.textInput,
+            hide: true,
+            required: false,
+          },
+        ]}
         values={{ flag: true as never }}
         onValueChange={onValueChange}
       />,

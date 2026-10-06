@@ -1,6 +1,7 @@
 import type { BuiltInMetadataItem, MetadataItemWithValueLength } from '../../types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import userEvent from '@testing-library/user-event'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { DataType } from '../../types'
 import DatasetMetadataDrawer from '../dataset-metadata-drawer'
 
@@ -8,9 +9,7 @@ import DatasetMetadataDrawer from '../dataset-metadata-drawer'
 vi.mock('@/service/knowledge/use-metadata', () => ({
   useDatasetMetaData: () => ({
     data: {
-      doc_metadata: [
-        { id: '1', name: 'existing_field', type: DataType.string },
-      ],
+      doc_metadata: [{ id: '1', name: 'existing_field', type: DataType.string }],
     },
   }),
 }))
@@ -23,7 +22,7 @@ vi.mock('../../hooks/use-check-metadata-name', () => ({
 }))
 
 const mockToastNotify = vi.fn()
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   default: {
     notify: (args: unknown) => mockToastNotify(args),
   },
@@ -66,27 +65,27 @@ describe('DatasetMetadataDrawer', () => {
   }
 
   const openCreateMetadata = async () => {
-    fireEvent.click(screen.getByRole('button', { name: 'dataset.metadata.datasetMetadata.addMetaData' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'dataset.metadata.datasetMetadata.addMetaData' }),
+    )
     await waitFor(() => {
-      expect(screen.getByRole('textbox', { name: 'dataset.metadata.createMetadata.name' })).toBeInTheDocument()
+      expect(
+        screen.getByRole('textbox', { name: 'dataset.metadata.createMetadata.name' }),
+      ).toBeInTheDocument()
     })
   }
 
   const saveCreatedMetadata = (name = 'new_field') => {
-    fireEvent.change(screen.getByRole('textbox', { name: 'dataset.metadata.createMetadata.name' }), {
-      target: { value: name },
-    })
+    fireEvent.change(
+      screen.getByRole('textbox', { name: 'dataset.metadata.createMetadata.name' }),
+      {
+        target: { value: name },
+      },
+    )
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
   }
 
   describe('Rendering', () => {
-    it('should render without crashing', async () => {
-      render(<DatasetMetadataDrawer {...defaultProps} />)
-      await waitFor(() => {
-        expect(screen.getByRole('dialog'))!.toBeInTheDocument()
-      })
-    })
-
     it('should render user metadata items', async () => {
       render(<DatasetMetadataDrawer {...defaultProps} />)
       await waitFor(() => {
@@ -114,20 +113,41 @@ describe('DatasetMetadataDrawer', () => {
     it('should render add metadata button', async () => {
       render(<DatasetMetadataDrawer {...defaultProps} />)
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'dataset.metadata.datasetMetadata.addMetaData' }))!.toBeInTheDocument()
+        expect(
+          screen.getByRole('button', { name: 'dataset.metadata.datasetMetadata.addMetaData' }),
+        )!.toBeInTheDocument()
       })
     })
 
     it('should render switch for built-in toggle', async () => {
       render(<DatasetMetadataDrawer {...defaultProps} />)
       await waitFor(() => {
-        const switchBtn = screen.getByRole('switch')
+        const switchBtn = screen.getByRole('switch', {
+          name: 'dataset.metadata.datasetMetadata.builtIn',
+        })
         expect(switchBtn)!.toBeInTheDocument()
       })
     })
   })
 
   describe('User Interactions', () => {
+    it('exposes actions only for editable metadata and lets keyboard users rename it', async () => {
+      const user = userEvent.setup()
+      render(<DatasetMetadataDrawer {...defaultProps} />)
+      const addButton = await screen.findByRole('button', {
+        name: 'dataset.metadata.datasetMetadata.addMetaData',
+      })
+      expect(screen.getAllByRole('button', { name: 'common.operation.edit' })).toHaveLength(2)
+      expect(screen.getAllByRole('button', { name: 'common.operation.remove' })).toHaveLength(2)
+      addButton.focus()
+      await user.tab()
+      expect(screen.getAllByRole('button', { name: 'common.operation.edit' })[0]).toHaveFocus()
+      await user.keyboard('{Enter}')
+      expect(
+        await screen.findByRole('textbox', { name: 'dataset.metadata.datasetMetadata.name' }),
+      ).toHaveValue('field_one')
+    })
+
     it('should call onClose when drawer close button is clicked', async () => {
       const onClose = vi.fn()
       render(<DatasetMetadataDrawer {...defaultProps} onClose={onClose} />)
@@ -154,7 +174,9 @@ describe('DatasetMetadataDrawer', () => {
         expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       })
 
-      const switchBtn = screen.getByRole('switch')
+      const switchBtn = screen.getByRole('switch', {
+        name: 'dataset.metadata.datasetMetadata.builtIn',
+      })
       fireEvent.click(switchBtn)
 
       expect(onIsBuiltInEnabledChange).toHaveBeenCalled()
@@ -171,7 +193,9 @@ describe('DatasetMetadataDrawer', () => {
 
       await openCreateMetadata()
 
-      expect(screen.getByRole('textbox', { name: 'dataset.metadata.createMetadata.name' }))!.toBeInTheDocument()
+      expect(
+        screen.getByRole('textbox', { name: 'dataset.metadata.createMetadata.name' }),
+      )!.toBeInTheDocument()
     })
 
     it('should call onAdd and show success toast when metadata is added', async () => {
@@ -215,7 +239,9 @@ describe('DatasetMetadataDrawer', () => {
       saveCreatedMetadata()
 
       await waitFor(() => {
-        expect(screen.queryByRole('textbox', { name: 'dataset.metadata.createMetadata.name' })).not.toBeInTheDocument()
+        expect(
+          screen.queryByRole('textbox', { name: 'dataset.metadata.createMetadata.name' }),
+        ).not.toBeInTheDocument()
       })
     })
   })
@@ -296,7 +322,9 @@ describe('DatasetMetadataDrawer', () => {
 
       // Verify rename modal closes while drawer stays open
       await waitFor(() => {
-        expect(screen.queryByRole('dialog', { name: 'dataset.metadata.datasetMetadata.rename' })).not.toBeInTheDocument()
+        expect(
+          screen.queryByRole('dialog', { name: 'dataset.metadata.datasetMetadata.rename' }),
+        ).not.toBeInTheDocument()
         expect(screen.getAllByRole('dialog')).toHaveLength(1)
       })
     })
@@ -319,7 +347,9 @@ describe('DatasetMetadataDrawer', () => {
       fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
 
       await waitFor(() => {
-        expect(screen.queryByRole('dialog', { name: 'dataset.metadata.datasetMetadata.rename' })).not.toBeInTheDocument()
+        expect(
+          screen.queryByRole('dialog', { name: 'dataset.metadata.datasetMetadata.rename' }),
+        ).not.toBeInTheDocument()
         expect(screen.getAllByRole('dialog')).toHaveLength(1)
       })
     })
@@ -338,7 +368,7 @@ describe('DatasetMetadataDrawer', () => {
       // Confirm dialog should appear
       await waitFor(() => {
         const confirmBtns = screen.getAllByRole('button')
-        const hasConfirmBtn = confirmBtns.some(btn =>
+        const hasConfirmBtn = confirmBtns.some((btn) =>
           btn.textContent?.toLowerCase().includes('confirm'),
         )
         expect(hasConfirmBtn).toBe(true)
@@ -358,18 +388,17 @@ describe('DatasetMetadataDrawer', () => {
       // Wait for confirm dialog
       await waitFor(() => {
         const confirmBtns = screen.getAllByRole('button')
-        const hasConfirmBtn = confirmBtns.some(btn =>
+        const hasConfirmBtn = confirmBtns.some((btn) =>
           btn.textContent?.toLowerCase().includes('confirm'),
         )
         expect(hasConfirmBtn).toBe(true)
       })
 
       const confirmBtns = screen.getAllByRole('button')
-      const confirmBtn = confirmBtns.find(btn =>
+      const confirmBtn = confirmBtns.find((btn) =>
         btn.textContent?.toLowerCase().includes('confirm'),
       )
-      if (confirmBtn)
-        fireEvent.click(confirmBtn)
+      if (confirmBtn) fireEvent.click(confirmBtn)
 
       await waitFor(() => {
         expect(onRemove).toHaveBeenCalledWith('1')
@@ -396,18 +425,15 @@ describe('DatasetMetadataDrawer', () => {
       // Wait for confirm dialog
       await waitFor(() => {
         const confirmBtns = screen.getAllByRole('button')
-        const hasConfirmBtn = confirmBtns.some(btn =>
+        const hasConfirmBtn = confirmBtns.some((btn) =>
           btn.textContent?.toLowerCase().includes('confirm'),
         )
         expect(hasConfirmBtn).toBe(true)
       })
 
       const cancelBtns = screen.getAllByRole('button')
-      const cancelBtn = cancelBtns.find(btn =>
-        btn.textContent?.toLowerCase().includes('cancel'),
-      )
-      if (cancelBtn)
-        fireEvent.click(cancelBtn)
+      const cancelBtn = cancelBtns.find((btn) => btn.textContent?.toLowerCase().includes('cancel'))
+      if (cancelBtn) fireEvent.click(cancelBtn)
     })
   })
 
@@ -429,9 +455,7 @@ describe('DatasetMetadataDrawer', () => {
 
   describe('Built-in Items State', () => {
     it('should show disabled styling when built-in is disabled', async () => {
-      render(
-        <DatasetMetadataDrawer {...defaultProps} isBuiltInEnabled={false} />,
-      )
+      render(<DatasetMetadataDrawer {...defaultProps} isBuiltInEnabled={false} />)
 
       await waitFor(() => {
         expect(screen.getByRole('dialog'))!.toBeInTheDocument()
@@ -443,9 +467,7 @@ describe('DatasetMetadataDrawer', () => {
     })
 
     it('should not show disabled styling when built-in is enabled', async () => {
-      render(
-        <DatasetMetadataDrawer {...defaultProps} isBuiltInEnabled />,
-      )
+      render(<DatasetMetadataDrawer {...defaultProps} isBuiltInEnabled />)
 
       await waitFor(() => {
         expect(screen.getByRole('dialog'))!.toBeInTheDocument()
@@ -475,9 +497,7 @@ describe('DatasetMetadataDrawer', () => {
     })
 
     it('should handle single built-in metadata item', async () => {
-      const singleBuiltIn: BuiltInMetadataItem[] = [
-        { name: 'created_at', type: DataType.time },
-      ]
+      const singleBuiltIn: BuiltInMetadataItem[] = [{ name: 'created_at', type: DataType.time }]
       render(<DatasetMetadataDrawer {...defaultProps} builtInMetadata={singleBuiltIn} />)
       await waitFor(() => {
         expect(screen.getByText('created_at'))!.toBeInTheDocument()

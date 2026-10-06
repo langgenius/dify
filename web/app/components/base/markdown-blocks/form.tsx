@@ -1,16 +1,46 @@
-import type { ButtonProps } from '@langgenius/dify-ui/button'
-import type { Dayjs } from 'dayjs'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
-import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger, SelectValue } from '@langgenius/dify-ui/select'
+import { Input } from '@langgenius/dify-ui/input'
+import { NumberField, NumberFieldGroup, NumberFieldInput } from '@langgenius/dify-ui/number-field'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectItemIndicator,
+  SelectItemText,
+  SelectTrigger,
+  SelectValue,
+} from '@langgenius/dify-ui/select'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import * as React from 'react'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useId, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useChatContext } from '@/app/components/base/chat/chat/context'
-import DatePicker from '@/app/components/base/date-and-time-picker/date-picker'
-import TimePicker from '@/app/components/base/date-and-time-picker/time-picker'
-import { formatDateForOutput, toDayjs } from '@/app/components/base/date-and-time-picker/utils/dayjs'
-import Input from '@/app/components/base/input'
+import {
+  DatePicker,
+  DatePickerClear,
+  DatePickerContent,
+  DatePickerLabel,
+  DatePickerTrigger,
+} from '@/app/components/base/date-time-picker/date-picker'
+import {
+  DateTimePicker,
+  DateTimePickerClear,
+  DateTimePickerContent,
+  DateTimePickerLabel,
+  DateTimePickerTrigger,
+} from '@/app/components/base/date-time-picker/date-time-picker'
+import {
+  TimePicker,
+  TimePickerClear,
+  TimePickerContent,
+  TimePickerLabel,
+  TimePickerTrigger,
+} from '@/app/components/base/date-time-picker/time-picker'
+import { MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS, MARKDOWN_FORM_FIELD_NAME_MAX_LENGTH } from '@/config'
+import { parseDateValue } from '../date-time-picker/date-value'
+import { getMarkdownButtonAppearance } from './button-appearance'
+import { parseFormInstant, parseFormTime } from './date-values'
 
 const DATA_FORMAT = {
   TEXT: 'text',
@@ -37,31 +67,38 @@ const SUPPORTED_TYPES = {
   HIDDEN: 'hidden',
 } as const
 
-type SupportedType = typeof SUPPORTED_TYPES[keyof typeof SUPPORTED_TYPES]
+type SupportedType = (typeof SUPPORTED_TYPES)[keyof typeof SUPPORTED_TYPES]
 
 const SUPPORTED_TYPES_SET = new Set<string>(Object.values(SUPPORTED_TYPES))
+const PICKER_TYPES = new Set<string>([
+  SUPPORTED_TYPES.DATE,
+  SUPPORTED_TYPES.TIME,
+  SUPPORTED_TYPES.DATETIME,
+])
 
-const SAFE_NAME_RE = /^[a-z][\w-]*$/i
+const SAFE_NAME_RE = /^\p{L}[\p{L}\p{M}\p{N}_-]*$/u
+// Treat operator-provided characters literally instead of interpolating them into a regular expression.
+const EXTRA_SAFE_NAME_CHARS = new Set(MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS)
 const PROTOTYPE_POISON_KEYS = new Set(['__proto__', 'constructor', 'prototype'])
 
 function isSafeName(name: unknown): name is string {
-  return typeof name === 'string'
-    && name.length > 0
-    && name.length <= 128
-    && SAFE_NAME_RE.test(name)
-    && !PROTOTYPE_POISON_KEYS.has(name)
-}
+  if (
+    typeof name !== 'string' ||
+    name.length === 0 ||
+    name.length > MARKDOWN_FORM_FIELD_NAME_MAX_LENGTH
+  )
+    return false
 
-const VALID_BUTTON_VARIANTS = new Set<string>([
-  'primary',
-  'warning',
-  'secondary',
-  'secondary-accent',
-  'ghost',
-  'ghost-accent',
-  'tertiary',
-])
-const VALID_BUTTON_SIZES = new Set<string>(['small', 'medium', 'large'])
+  const [firstChar, ...remainingChars] = Array.from(name)
+  return (
+    firstChar !== undefined &&
+    SAFE_NAME_RE.test(firstChar) &&
+    remainingChars.every(
+      (char) => SAFE_NAME_RE.test(`A${char}`) || EXTRA_SAFE_NAME_CHARS.has(char),
+    ) &&
+    !PROTOTYPE_POISON_KEYS.has(name)
+  )
+}
 
 type HastText = {
   type: 'text'
@@ -75,7 +112,7 @@ type HastElement = {
   children: Array<HastElement | HastText>
 }
 
-type FormValue = string | boolean | Dayjs | undefined
+type FormValue = string | number | boolean | Date | undefined
 type FormValues = Record<string, FormValue>
 type EditState = {
   source: HastElement[]
@@ -92,8 +129,7 @@ function getLabelTarget(node: HastElement): string {
 }
 
 function str(val: unknown): string {
-  if (val == null)
-    return ''
+  if (val == null) return ''
   return String(val)
 }
 
@@ -103,23 +139,29 @@ function computeInitialFormValues(children: HastElement[]): FormValues {
     if (child.tagName !== SUPPORTED_TAGS.INPUT && child.tagName !== SUPPORTED_TAGS.TEXTAREA)
       continue
     const name = child.properties.name
-    if (!isSafeName(name))
-      continue
+    if (!isSafeName(name)) continue
 
     const type = child.tagName === SUPPORTED_TAGS.INPUT ? str(child.properties.type) : ''
 
     if (type === SUPPORTED_TYPES.HIDDEN) {
       init[name] = str(child.properties.value)
-    }
-    else if (type === SUPPORTED_TYPES.DATE || type === SUPPORTED_TYPES.DATETIME || type === SUPPORTED_TYPES.TIME) {
+    } else if (
+      type === SUPPORTED_TYPES.DATE ||
+      type === SUPPORTED_TYPES.DATETIME ||
+      type === SUPPORTED_TYPES.TIME
+    ) {
       const raw = child.properties.value
-      init[name] = raw != null ? toDayjs(String(raw)) : undefined
-    }
-    else if (type === SUPPORTED_TYPES.CHECKBOX) {
+      init[name] =
+        type === SUPPORTED_TYPES.DATE
+          ? parseDateValue(raw)
+          : type === SUPPORTED_TYPES.TIME
+            ? parseFormTime(raw)
+            : parseFormInstant(raw)
+    } else if (type === SUPPORTED_TYPES.CHECKBOX) {
       const { checked, value } = child.properties
-      init[name] = !!checked || value === true || value === 'true'
-    }
-    else {
+      const hasInitialValue = checked != null || value != null
+      init[name] = hasInitialValue ? !!checked || value === true || value === 'true' : undefined
+    } else {
       init[name] = child.properties.value != null ? str(child.properties.value) : undefined
     }
   }
@@ -132,18 +174,17 @@ function getElementKey(child: HastElement, index: number): string {
   const htmlFor = str(child.properties.htmlFor)
   const type = str(child.properties.type)
 
-  if (tag === SUPPORTED_TAGS.LABEL)
-    return `label-${index}-${htmlFor || name}`
-  if (tag === SUPPORTED_TAGS.INPUT)
-    return `input-${index}-${type}-${name}`
-  if (tag === SUPPORTED_TAGS.TEXTAREA)
-    return `textarea-${index}-${name}`
-  if (tag === SUPPORTED_TAGS.BUTTON)
-    return `button-${index}-${getTextContent(child)}`
+  if (tag === SUPPORTED_TAGS.LABEL) return `label-${index}-${htmlFor || name}`
+  if (tag === SUPPORTED_TAGS.INPUT) return `input-${index}-${type}-${name}`
+  if (tag === SUPPORTED_TAGS.TEXTAREA) return `textarea-${index}-${name}`
+  if (tag === SUPPORTED_TAGS.BUTTON) return `button-${index}-${getTextContent(child)}`
   return `${tag}-${index}`
 }
 
 const MarkdownForm = ({ node }: { node: HastElement }) => {
+  const formId = useId()
+  const { t } = useTranslation(['common'])
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
   const typedNode = node
   const { onSend } = useChatContext()
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -153,10 +194,7 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
     [typedNode.children],
   )
 
-  const baseFormValues = useMemo(
-    () => computeInitialFormValues(elementChildren),
-    [elementChildren],
-  )
+  const baseFormValues = useMemo(() => computeInitialFormValues(elementChildren), [elementChildren])
 
   const [editState, setEditState] = useState<EditState>(() => ({
     source: elementChildren,
@@ -164,22 +202,23 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
   }))
 
   const formValues = useMemo<FormValues>(() => {
-    if (editState.source === elementChildren)
-      return { ...baseFormValues, ...editState.edits }
+    if (editState.source === elementChildren) return { ...baseFormValues, ...editState.edits }
     return baseFormValues
   }, [editState, baseFormValues, elementChildren])
 
-  const updateValue = useCallback((name: string, value: FormValue) => {
-    if (!isSafeName(name))
-      return
-    setEditState(prev => ({
-      source: elementChildren,
-      edits: {
-        ...(prev.source === elementChildren ? prev.edits : {}),
-        [name]: value,
-      },
-    }))
-  }, [elementChildren])
+  const updateValue = useCallback(
+    (name: string, value: FormValue) => {
+      if (!isSafeName(name)) return
+      setEditState((prev) => ({
+        source: elementChildren,
+        edits: {
+          ...(prev.source === elementChildren ? prev.edits : {}),
+          [name]: value,
+        },
+      }))
+    },
+    [elementChildren],
+  )
 
   const getFormOutput = useCallback((): Record<string, string | boolean | undefined> => {
     const out = Object.create(null) as Record<string, string | boolean | undefined>
@@ -187,136 +226,180 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
       if (child.tagName !== SUPPORTED_TAGS.INPUT && child.tagName !== SUPPORTED_TAGS.TEXTAREA)
         continue
       const name = child.properties.name
-      if (!isSafeName(name))
-        continue
+      if (!isSafeName(name)) continue
       let value: FormValue = formValues[name]
-      if (
-        child.tagName === SUPPORTED_TAGS.INPUT
-        && (child.properties.type === SUPPORTED_TYPES.DATE || child.properties.type === SUPPORTED_TYPES.DATETIME)
-        && value != null
-        && typeof value === 'object'
-        && 'format' in value
-      ) {
-        const includeTime = child.properties.type === SUPPORTED_TYPES.DATETIME
-        value = formatDateForOutput(value as Dayjs, includeTime)
-      }
-      if (typeof value === 'boolean')
-        out[name] = value
-      else
-        out[name] = value != null ? String(value) : undefined
+      if (value instanceof Date) value = value.toISOString()
+      if (value === undefined) continue
+      if (typeof value === 'boolean') out[name] = value
+      else out[name] = String(value)
     }
     return out
   }, [elementChildren, formValues])
 
-  const onSubmit = useCallback((e: React.MouseEvent) => {
-    e.preventDefault()
-    if (isSubmitting)
-      return
-    setIsSubmitting(true)
-    try {
-      const format = str(typedNode.properties.dataFormat) || DATA_FORMAT.TEXT
-      const result = getFormOutput()
-      if (format === DATA_FORMAT.JSON) {
-        onSend?.(JSON.stringify(result))
+  const onSubmit = useCallback(
+    (e: React.FormEvent<HTMLFormElement>) => {
+      e.preventDefault()
+      e.stopPropagation()
+      if (isSubmitting) return
+      setIsSubmitting(true)
+      try {
+        const format = str(typedNode.properties.dataFormat) || DATA_FORMAT.TEXT
+        const result = getFormOutput()
+        if (format === DATA_FORMAT.JSON) {
+          onSend?.(JSON.stringify(result))
+        } else {
+          const textResult = Object.entries(result)
+            .map(([key, value]) => `${key}: ${value}`)
+            .join('\n')
+          onSend?.(textResult)
+        }
+      } catch {
+        setIsSubmitting(false)
       }
-      else {
-        const textResult = Object.entries(result)
-          .map(([key, value]) => `${key}: ${value}`)
-          .join('\n')
-        onSend?.(textResult)
-      }
-    }
-    catch {
-      setIsSubmitting(false)
-    }
-  }, [isSubmitting, typedNode.properties.dataFormat, getFormOutput, onSend])
+    },
+    [isSubmitting, typedNode.properties.dataFormat, getFormOutput, onSend],
+  )
 
   return (
-    <form
-      autoComplete="off"
-      className="flex flex-col self-stretch"
-      data-testid="markdown-form"
-      onSubmit={(e) => {
-        e.preventDefault()
-        e.stopPropagation()
-      }}
-    >
+    <form autoComplete="off" className="flex flex-col self-stretch" onSubmit={onSubmit}>
       {elementChildren.map((child, index) => {
         const key = getElementKey(child, index)
         if (child.tagName === SUPPORTED_TAGS.LABEL) {
+          const target = elementChildren.find(
+            (node) =>
+              node.tagName === SUPPORTED_TAGS.INPUT &&
+              isSafeName(str(node.properties.name)) &&
+              getLabelTarget(child) === (str(node.properties.id) || str(node.properties.name)),
+          )
+          if (target && PICKER_TYPES.has(str(target.properties.type))) return null
           return (
             <label
               key={key}
-              htmlFor={getLabelTarget(child)}
+              htmlFor={`${formId}-${getLabelTarget(child)}`}
               className="my-2 system-md-semibold text-text-secondary"
-              data-testid="label-field"
             >
               {getTextContent(child)}
             </label>
           )
         }
 
-        if (child.tagName === SUPPORTED_TAGS.INPUT && SUPPORTED_TYPES_SET.has(str(child.properties.type))) {
+        if (
+          child.tagName === SUPPORTED_TAGS.INPUT &&
+          SUPPORTED_TYPES_SET.has(str(child.properties.type))
+        ) {
           const name = str(child.properties.name)
-          if (!isSafeName(name))
-            return null
+          if (!isSafeName(name)) return null
 
           const type = str(child.properties.type) as SupportedType
-
-          if (type === SUPPORTED_TYPES.DATE || type === SUPPORTED_TYPES.DATETIME) {
+          const controlId = `${formId}-${str(child.properties.id) || name}`
+          const fieldLabel = elementChildren.find(
+            (node) =>
+              node.tagName === SUPPORTED_TAGS.LABEL &&
+              getLabelTarget(node) === (str(child.properties.id) || name),
+          )
+          const hasExternalLabel = Boolean(fieldLabel)
+          const pickerLabel = fieldLabel ? getTextContent(fieldLabel) : name
+          const pickerProps = {
+            name,
+            required: Boolean(child.properties.required),
+            disabled: Boolean(child.properties.disabled),
+            readOnly: Boolean(child.properties.readOnly),
+            placeholder: str(child.properties.placeholder) || undefined,
+          }
+          const clearLabel = t(($) => $['operation.clear'])
+          if (type === SUPPORTED_TYPES.DATE) {
             return (
               <DatePicker
                 key={key}
-                value={formValues[name] as Dayjs | undefined}
-                needTimePicker={type === SUPPORTED_TYPES.DATETIME}
-                onChange={date => updateValue(name, date)}
-                onClear={() => updateValue(name, undefined)}
-              />
+                {...pickerProps}
+                value={(formValues[name] as string | undefined) ?? null}
+                onValueChange={(date) => updateValue(name, date ?? undefined)}
+              >
+                <DatePickerLabel
+                  className={fieldLabel ? 'my-2 system-md-semibold text-text-secondary' : 'sr-only'}
+                >
+                  {pickerLabel}
+                </DatePickerLabel>
+                <div className="flex">
+                  <DatePickerTrigger id={controlId} />
+                  <DatePickerClear aria-label={clearLabel} />
+                </div>
+                <DatePickerContent />
+              </DatePicker>
+            )
+          }
+          if (type === SUPPORTED_TYPES.DATETIME) {
+            return (
+              <DateTimePicker
+                key={key}
+                {...pickerProps}
+                timeZone={timeZone}
+                value={(formValues[name] as Date | undefined) ?? null}
+                onValueChange={(date) => updateValue(name, date ?? undefined)}
+              >
+                <DateTimePickerLabel
+                  className={fieldLabel ? 'my-2 system-md-semibold text-text-secondary' : 'sr-only'}
+                >
+                  {pickerLabel}
+                </DateTimePickerLabel>
+                <div className="flex">
+                  <DateTimePickerTrigger id={controlId} />
+                  <DateTimePickerClear aria-label={clearLabel} />
+                </div>
+                <DateTimePickerContent />
+              </DateTimePicker>
             )
           }
           if (type === SUPPORTED_TYPES.TIME) {
             return (
               <TimePicker
                 key={key}
-                value={formValues[name] as Dayjs | string | undefined}
-                onChange={time => updateValue(name, time)}
-                onClear={() => updateValue(name, undefined)}
-              />
+                {...pickerProps}
+                value={(formValues[name] as string | undefined) ?? null}
+                onValueChange={(time) => updateValue(name, time ?? undefined)}
+              >
+                <TimePickerLabel
+                  className={fieldLabel ? 'my-2 system-md-semibold text-text-secondary' : 'sr-only'}
+                >
+                  {pickerLabel}
+                </TimePickerLabel>
+                <div className="flex">
+                  <TimePickerTrigger id={controlId} />
+                  <TimePickerClear aria-label={clearLabel} />
+                </div>
+                <TimePickerContent />
+              </TimePicker>
             )
           }
           if (type === SUPPORTED_TYPES.CHECKBOX) {
             const label = str(child.properties.dataTip || child.properties['data-tip'])
-            const hasExternalLabel = elementChildren.some(node =>
-              node.tagName === SUPPORTED_TAGS.LABEL && getLabelTarget(node) === name,
-            )
             const checkboxAriaLabel = label || (hasExternalLabel ? undefined : name)
             return (
               <div className="mt-2 flex h-6 items-center space-x-2" key={key}>
                 <Checkbox
-                  id={name}
+                  id={controlId}
                   checked={!!formValues[name]}
                   aria-label={checkboxAriaLabel}
-                  onCheckedChange={checked => updateValue(name, checked)}
+                  onCheckedChange={(checked) => updateValue(name, checked)}
                 />
                 {label && <span>{label}</span>}
               </div>
             )
           }
           if (type === SUPPORTED_TYPES.SELECT) {
-            const rawOptions = child.properties.dataOptions || child.properties['data-options'] || []
+            const rawOptions =
+              child.properties.dataOptions || child.properties['data-options'] || []
             let options: string[] = []
             if (typeof rawOptions === 'string') {
               try {
                 const parsed: unknown = JSON.parse(rawOptions)
                 if (Array.isArray(parsed))
                   options = parsed.filter((o): o is string => typeof o === 'string')
-              }
-              catch (error) {
+              } catch (error) {
                 console.error('Failed to parse data-options JSON:', rawOptions, error)
                 options = []
               }
-            }
-            else if (Array.isArray(rawOptions)) {
+            } else if (Array.isArray(rawOptions)) {
               options = rawOptions.filter((o): o is string => typeof o === 'string')
             }
             return (
@@ -324,15 +407,14 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
                 key={key}
                 defaultValue={formValues[name] as string | undefined}
                 onValueChange={(val) => {
-                  if (val != null)
-                    updateValue(name, val)
+                  if (val != null) updateValue(name, val)
                 }}
               >
-                <SelectTrigger className="w-full">
+                <SelectTrigger id={controlId} aria-label={hasExternalLabel ? undefined : name}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {options.map(option => (
+                  {options.map((option) => (
                     <SelectItem key={option} value={option}>
                       <SelectItemText>{option}</SelectItemText>
                       <SelectItemIndicator />
@@ -354,52 +436,76 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
             )
           }
 
+          if (type === SUPPORTED_TYPES.NUMBER) {
+            const value = formValues[name]
+            return (
+              <NumberField
+                key={key}
+                name={name}
+                step="any"
+                value={value == null || value === '' ? null : Number(value)}
+                onValueChange={(value) => updateValue(name, value ?? '')}
+              >
+                <NumberFieldGroup>
+                  <NumberFieldInput
+                    id={controlId}
+                    aria-label={hasExternalLabel ? undefined : name}
+                    placeholder={str(child.properties.placeholder)}
+                  />
+                </NumberFieldGroup>
+              </NumberField>
+            )
+          }
+
           return (
             <Input
               key={key}
+              id={controlId}
+              aria-label={hasExternalLabel ? undefined : name}
               type={type}
               name={name}
               placeholder={str(child.properties.placeholder)}
               value={str(formValues[name])}
-              onChange={e => updateValue(name, e.target.value)}
+              onValueChange={(value) => updateValue(name, value)}
             />
           )
         }
 
         if (child.tagName === SUPPORTED_TAGS.TEXTAREA) {
           const name = str(child.properties.name)
-          if (!isSafeName(name))
-            return null
+          if (!isSafeName(name)) return null
+          const controlId = `${formId}-${str(child.properties.id) || name}`
+          const hasExternalLabel = elementChildren.some(
+            (node) =>
+              node.tagName === SUPPORTED_TAGS.LABEL &&
+              getLabelTarget(node) === (str(child.properties.id) || name),
+          )
           return (
             <Textarea
-              aria-label={name}
+              id={controlId}
+              aria-label={hasExternalLabel ? undefined : name}
               key={key}
               name={name}
               placeholder={str(child.properties.placeholder)}
               value={str(formValues[name])}
-              onValueChange={value => updateValue(name, value)}
+              onValueChange={(value) => updateValue(name, value)}
             />
           )
         }
 
         if (child.tagName === SUPPORTED_TAGS.BUTTON) {
-          const rawVariant = str(child.properties.dataVariant)
-          const rawSize = str(child.properties.dataSize)
-          const variant = VALID_BUTTON_VARIANTS.has(rawVariant)
-            ? rawVariant as ButtonProps['variant']
-            : undefined
-          const size = VALID_BUTTON_SIZES.has(rawSize)
-            ? rawSize as ButtonProps['size']
-            : undefined
+          const appearance = getMarkdownButtonAppearance(
+            child.properties.dataVariant,
+            child.properties.dataSize,
+          )
 
           return (
             <Button
-              variant={variant}
-              size={size}
-              className="mt-4"
               key={key}
+              {...appearance}
+              className="mt-4"
               disabled={isSubmitting}
-              onClick={onSubmit}
+              type="submit"
             >
               <span className="text-[13px]">{getTextContent(child)}</span>
             </Button>

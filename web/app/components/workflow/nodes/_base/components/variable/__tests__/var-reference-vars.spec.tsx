@@ -1,5 +1,6 @@
 import type { NodeOutPutVar } from '@/app/components/workflow/types'
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { VarType } from '@/app/components/workflow/types'
 import VarReferenceVars from '../var-reference-vars'
 
@@ -21,34 +22,46 @@ vi.mock('../object-child-tree-panel/picker', () => ({
 }))
 
 vi.mock('../manage-input-field', () => ({
-  default: ({ onManage }: { onManage: () => void }) => <button onClick={onManage}>manage-input</button>,
+  default: ({ onManage }: { onManage: () => void }) => (
+    <button onClick={onManage}>manage-input</button>
+  ),
 }))
 
 describe('VarReferenceVars', () => {
+  let keyboardTarget: HTMLInputElement
   const createVars = (vars: NodeOutPutVar[]) => vars
 
-  const baseVars = createVars([{
-    title: 'Node A',
-    nodeId: 'node-a',
-    vars: [{ variable: 'valid_name', type: VarType.string }],
-  }])
+  beforeEach(() => {
+    render(<input aria-label="Variable owner" />)
+    keyboardTarget = screen.getByRole('textbox', { name: 'Variable owner' })
+  })
 
-  it('should filter vars through the search box and call onClose on escape', () => {
+  const baseVars = createVars([
+    {
+      title: 'Node A',
+      nodeId: 'node-a',
+      vars: [{ variable: 'valid_name', type: VarType.string }],
+    },
+  ])
+
+  it('should filter, clear without leaving the search group, and close on escape', async () => {
+    const user = userEvent.setup()
     const onClose = vi.fn()
+    const onBlur = vi.fn()
     render(
-      <VarReferenceVars
-        vars={baseVars}
-        onChange={vi.fn()}
-        onClose={onClose}
-      />,
+      <VarReferenceVars vars={baseVars} onChange={vi.fn()} onClose={onClose} onBlur={onBlur} />,
     )
 
-    fireEvent.change(screen.getByPlaceholderText('workflow.common.searchVar'), {
-      target: { value: 'valid' },
-    })
+    const searchBox = screen.getByRole('searchbox', { name: 'workflow.common.searchVar' })
+    await user.type(searchBox, 'valid')
     expect(screen.getByText('valid_name')).toBeInTheDocument()
 
-    fireEvent.keyDown(screen.getByPlaceholderText('workflow.common.searchVar'), { key: 'Escape' })
+    await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
+    expect(searchBox).toHaveValue('')
+    expect(searchBox).toHaveFocus()
+    expect(onBlur).not.toHaveBeenCalled()
+
+    await user.keyboard('{Escape}')
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
@@ -58,14 +71,17 @@ describe('VarReferenceVars', () => {
     render(
       <VarReferenceVars
         hideSearch
-        vars={createVars([{
-          title: 'Node A',
-          nodeId: 'node-a',
-          vars: [
-            { variable: 'first_value', type: VarType.string },
-            { variable: 'second_value', type: VarType.string },
-          ],
-        }])}
+        keyboardTarget={keyboardTarget}
+        vars={createVars([
+          {
+            title: 'Node A',
+            nodeId: 'node-a',
+            vars: [
+              { variable: 'first_value', type: VarType.string },
+              { variable: 'second_value', type: VarType.string },
+            ],
+          },
+        ])}
         onChange={onChange}
       />,
     )
@@ -76,33 +92,37 @@ describe('VarReferenceVars', () => {
     expect(firstItem).toHaveAttribute('data-selected', 'true')
     expect(secondItem).toHaveAttribute('data-selected', 'false')
 
-    fireEvent.keyDown(document, { key: 'ArrowDown' })
+    fireEvent.keyDown(document.body, { key: 'ArrowDown' })
+    fireEvent.keyDown(keyboardTarget, { key: 'ArrowDown', isComposing: true })
+    expect(firstItem).toHaveAttribute('data-selected', 'true')
+    fireEvent.keyDown(keyboardTarget, { key: 'ArrowDown' })
 
     expect(firstItem).toHaveAttribute('data-selected', 'false')
     expect(secondItem).toHaveAttribute('data-selected', 'true')
 
-    fireEvent.keyDown(document, { key: 'Enter' })
+    fireEvent.keyDown(keyboardTarget, { key: 'Enter' })
 
-    expect(onChange).toHaveBeenCalledWith(['node-a', 'second_value'], expect.objectContaining({
-      variable: 'second_value',
-    }))
+    expect(onChange).toHaveBeenCalledWith(
+      ['node-a', 'second_value'],
+      expect.objectContaining({
+        variable: 'second_value',
+      }),
+    )
   })
 
   it('should call onChange when a variable item is chosen', () => {
     const onChange = vi.fn()
 
-    render(
-      <VarReferenceVars
-        vars={baseVars}
-        onChange={onChange}
-      />,
-    )
+    render(<VarReferenceVars vars={baseVars} onChange={onChange} />)
 
     fireEvent.click(screen.getByText('valid_name'))
 
-    expect(onChange).toHaveBeenCalledWith(['node-a', 'valid_name'], expect.objectContaining({
-      variable: 'valid_name',
-    }))
+    expect(onChange).toHaveBeenCalledWith(
+      ['node-a', 'valid_name'],
+      expect.objectContaining({
+        variable: 'valid_name',
+      }),
+    )
   })
 
   it('should render empty state and manage input action', () => {
@@ -127,6 +147,7 @@ describe('VarReferenceVars', () => {
     render(
       <VarReferenceVars
         hideSearch
+        keyboardTarget={keyboardTarget}
         preferSchemaType
         vars={createVars([
           {
@@ -153,6 +174,7 @@ describe('VarReferenceVars', () => {
     render(
       <VarReferenceVars
         hideSearch
+        keyboardTarget={keyboardTarget}
         vars={createVars([
           {
             title: 'Flat',
@@ -170,7 +192,7 @@ describe('VarReferenceVars', () => {
       />,
     )
 
-    expect(screen.getByText('workflow.debug.lastOutput')).toBeInTheDocument()
+    expect(screen.getByText('workflowDebug.debug.lastOutput')).toBeInTheDocument()
     expect(screen.getByText('current_prompt')).toBeInTheDocument()
   })
 
@@ -180,6 +202,7 @@ describe('VarReferenceVars', () => {
     render(
       <VarReferenceVars
         hideSearch
+        keyboardTarget={keyboardTarget}
         isSupportFileVar
         vars={createVars([
           {
@@ -202,10 +225,26 @@ describe('VarReferenceVars', () => {
     fireEvent.click(screen.getByText('current'))
     fireEvent.click(screen.getByText('asset'))
 
-    expect(onChange).toHaveBeenNthCalledWith(1, ['env', 'API_KEY'], expect.objectContaining({ variable: 'env.API_KEY' }))
-    expect(onChange).toHaveBeenNthCalledWith(2, ['conversation', 'user_name'], expect.objectContaining({ variable: 'conversation.user_name' }))
-    expect(onChange).toHaveBeenNthCalledWith(3, ['node-special', 'current'], expect.objectContaining({ variable: 'current' }))
-    expect(onChange).toHaveBeenNthCalledWith(4, ['node-special', 'asset'], expect.objectContaining({ variable: 'asset' }))
+    expect(onChange).toHaveBeenNthCalledWith(
+      1,
+      ['env', 'API_KEY'],
+      expect.objectContaining({ variable: 'env.API_KEY' }),
+    )
+    expect(onChange).toHaveBeenNthCalledWith(
+      2,
+      ['conversation', 'user_name'],
+      expect.objectContaining({ variable: 'conversation.user_name' }),
+    )
+    expect(onChange).toHaveBeenNthCalledWith(
+      3,
+      ['node-special', 'current'],
+      expect.objectContaining({ variable: 'current' }),
+    )
+    expect(onChange).toHaveBeenNthCalledWith(
+      4,
+      ['node-special', 'asset'],
+      expect.objectContaining({ variable: 'asset' }),
+    )
   })
 
   it('should resolve selectors for special variables and file support from keyboard selection', () => {
@@ -214,6 +253,7 @@ describe('VarReferenceVars', () => {
     render(
       <VarReferenceVars
         hideSearch
+        keyboardTarget={keyboardTarget}
         isSupportFileVar
         vars={createVars([
           {
@@ -231,18 +271,34 @@ describe('VarReferenceVars', () => {
       />,
     )
 
-    fireEvent.keyDown(document, { key: 'Enter' })
-    fireEvent.keyDown(document, { key: 'ArrowDown' })
-    fireEvent.keyDown(document, { key: 'Enter' })
-    fireEvent.keyDown(document, { key: 'ArrowDown' })
-    fireEvent.keyDown(document, { key: 'Enter' })
-    fireEvent.keyDown(document, { key: 'ArrowDown' })
-    fireEvent.keyDown(document, { key: 'Enter' })
+    fireEvent.keyDown(keyboardTarget, { key: 'Enter' })
+    fireEvent.keyDown(keyboardTarget, { key: 'ArrowDown' })
+    fireEvent.keyDown(keyboardTarget, { key: 'Enter' })
+    fireEvent.keyDown(keyboardTarget, { key: 'ArrowDown' })
+    fireEvent.keyDown(keyboardTarget, { key: 'Enter' })
+    fireEvent.keyDown(keyboardTarget, { key: 'ArrowDown' })
+    fireEvent.keyDown(keyboardTarget, { key: 'Enter' })
 
-    expect(onChange).toHaveBeenNthCalledWith(1, ['env', 'API_KEY'], expect.objectContaining({ variable: 'env.API_KEY' }))
-    expect(onChange).toHaveBeenNthCalledWith(2, ['conversation', 'user_name'], expect.objectContaining({ variable: 'conversation.user_name' }))
-    expect(onChange).toHaveBeenNthCalledWith(3, ['node-special', 'current'], expect.objectContaining({ variable: 'current' }))
-    expect(onChange).toHaveBeenNthCalledWith(4, ['node-special', 'asset'], expect.objectContaining({ variable: 'asset' }))
+    expect(onChange).toHaveBeenNthCalledWith(
+      1,
+      ['env', 'API_KEY'],
+      expect.objectContaining({ variable: 'env.API_KEY' }),
+    )
+    expect(onChange).toHaveBeenNthCalledWith(
+      2,
+      ['conversation', 'user_name'],
+      expect.objectContaining({ variable: 'conversation.user_name' }),
+    )
+    expect(onChange).toHaveBeenNthCalledWith(
+      3,
+      ['node-special', 'current'],
+      expect.objectContaining({ variable: 'current' }),
+    )
+    expect(onChange).toHaveBeenNthCalledWith(
+      4,
+      ['node-special', 'asset'],
+      expect.objectContaining({ variable: 'asset' }),
+    )
   })
 
   it('should render object vars and select them by node path', () => {
@@ -251,15 +307,18 @@ describe('VarReferenceVars', () => {
     render(
       <VarReferenceVars
         hideSearch
+        keyboardTarget={keyboardTarget}
         vars={createVars([
           {
             title: 'Object vars',
             nodeId: 'node-obj',
-            vars: [{
-              variable: 'payload',
-              type: VarType.object,
-              children: [{ variable: 'child', type: VarType.string }],
-            }],
+            vars: [
+              {
+                variable: 'payload',
+                type: VarType.object,
+                children: [{ variable: 'child', type: VarType.string }],
+              },
+            ],
           },
         ])}
         onChange={onChange}
@@ -267,28 +326,35 @@ describe('VarReferenceVars', () => {
     )
 
     fireEvent.click(screen.getByText('payload'))
-    expect(onChange).toHaveBeenCalledWith(['node-obj', 'payload'], expect.objectContaining({
-      variable: 'payload',
-    }))
+    expect(onChange).toHaveBeenCalledWith(
+      ['node-obj', 'payload'],
+      expect.objectContaining({
+        variable: 'payload',
+      }),
+    )
   })
 
   it('should filter by externally controlled search text and match child variables', () => {
     render(
       <VarReferenceVars
         hideSearch
+        keyboardTarget={keyboardTarget}
         searchText="child"
         vars={createVars([
           {
             title: 'Object vars',
             nodeId: 'node-obj',
-            vars: [{
-              variable: 'payload',
-              type: VarType.object,
-              children: [{ variable: 'child_name', type: VarType.string }],
-            }, {
-              variable: 'other_value',
-              type: VarType.string,
-            }],
+            vars: [
+              {
+                variable: 'payload',
+                type: VarType.object,
+                children: [{ variable: 'child_name', type: VarType.string }],
+              },
+              {
+                variable: 'other_value',
+                type: VarType.string,
+              },
+            ],
           },
         ])}
         onChange={vi.fn()}
@@ -331,6 +397,7 @@ describe('VarReferenceVars', () => {
     render(
       <VarReferenceVars
         hideSearch
+        keyboardTarget={keyboardTarget}
         vars={createVars([
           {
             title: 'Files',
@@ -342,7 +409,7 @@ describe('VarReferenceVars', () => {
       />,
     )
 
-    fireEvent.keyDown(document, { key: 'Enter' })
+    fireEvent.keyDown(keyboardTarget, { key: 'Enter' })
 
     expect(onChange).not.toHaveBeenCalled()
   })

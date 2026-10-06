@@ -1,12 +1,25 @@
 from pathlib import Path
 from typing import cast
-from unittest.mock import Mock
+from unittest.mock import Mock, create_autospec
 
 import pytest
+from sqlalchemy.orm import Session, sessionmaker
 
 from models import Account, Tenant
-from services.entities.knowledge_entities.knowledge_entities import MetadataArgs
-from services.metadata_service import MetadataService
+from repositories.knowledge.metadata_repository import SQLAlchemyMetadataRepository
+from services.knowledge.dataset_access import DatasetAccess
+from services.knowledge.entities.knowledge_entities import MetadataArgs
+from services.knowledge.metadata.application import MetadataService
+from services.knowledge.resource_scope import DatasetRef
+
+
+def _metadata_service(session: Session) -> MetadataService:
+    return MetadataService(
+        store=SQLAlchemyMetadataRepository(
+            session_factory=sessionmaker(bind=session.get_bind(), expire_on_commit=False)
+        ),
+        dataset_access=create_autospec(DatasetAccess, instance=True),
+    )
 
 
 def _make_account(account_id: str = "user-456", tenant_id: str = "tenant-123") -> Account:
@@ -38,7 +51,8 @@ class TestMetadataBugCompleteValidation:
         assert valid_args.type == "string"
         assert valid_args.name == "test_name"
 
-    def test_2_business_logic_layer_crashes_on_none(self) -> None:
+    @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+    def test_2_business_logic_layer_crashes_on_none(self, sqlite_session: Session) -> None:
         """Test Layer 2: Business logic crashes when None values slip through."""
         # Create mock that bypasses Pydantic validation
         mock_metadata_args = Mock()
@@ -48,15 +62,18 @@ class TestMetadataBugCompleteValidation:
         account = _make_account()
         # Should crash with TypeError
         with pytest.raises(TypeError, match="object of type 'NoneType' has no len"):
-            MetadataService.create_metadata(Mock(), "dataset-123", mock_metadata_args, account, "tenant-123")
+            _metadata_service(sqlite_session).create_metadata(
+                DatasetRef("tenant-123", "dataset-123"), mock_metadata_args, actor_id=account.id
+            )
 
         # Test update method as well
         account = _make_account()
         none_name = cast(str, None)
         with pytest.raises(TypeError, match="object of type 'NoneType' has no len"):
-            MetadataService.update_metadata_name(
-                Mock(), "dataset-123", "metadata-456", none_name, account, "tenant-123"
+            _metadata_service(sqlite_session).update_metadata_name(
+                DatasetRef(Mock().tenant_id, Mock().id), "metadata-456", none_name, actor_id=account.id
             )
+        assert not sqlite_session.in_transaction()
 
     def test_3_database_constraints_verification(self) -> None:
         """Test Layer 3: Verify database model has nullable=False constraints."""
@@ -91,7 +108,8 @@ class TestMetadataBugCompleteValidation:
         assert args.type == "string"
         assert args.name == "valid_name"
 
-    def test_6_simulated_buggy_behavior(self) -> None:
+    @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+    def test_6_simulated_buggy_behavior(self, sqlite_session: Session) -> None:
         """Test simulating the original buggy behavior by bypassing Pydantic validation."""
         mock_metadata_args = Mock()
         mock_metadata_args.name = None
@@ -99,7 +117,10 @@ class TestMetadataBugCompleteValidation:
 
         account = _make_account()
         with pytest.raises(TypeError, match="object of type 'NoneType' has no len"):
-            MetadataService.create_metadata(Mock(), "dataset-123", mock_metadata_args, account, "tenant-123")
+            _metadata_service(sqlite_session).create_metadata(
+                DatasetRef("tenant-123", "dataset-123"), mock_metadata_args, actor_id=account.id
+            )
+        assert not sqlite_session.in_transaction()
 
     def test_7_end_to_end_validation_layers(self) -> None:
         """Test all validation layers work together correctly."""

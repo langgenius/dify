@@ -2,11 +2,7 @@ import type { CommonResponse } from '@/models/common'
 import type { IndexingStatusResponse } from '@/models/datasets'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
-import {
-  fetchIndexingStatus,
-  pauseDocIndexing,
-  resumeDocIndexing,
-} from '@/service/datasets'
+import { fetchIndexingStatus, pauseDocIndexing, resumeDocIndexing } from '@/service/datasets'
 
 const NAME_SPACE = 'embedding'
 
@@ -14,17 +10,16 @@ const EMBEDDING_STATUSES = ['indexing', 'splitting', 'parsing', 'cleaning'] as c
 const TERMINAL_STATUSES = ['completed', 'error', 'paused'] as const
 
 export const isEmbeddingStatus = (status?: string): boolean => {
-  return EMBEDDING_STATUSES.includes(status as typeof EMBEDDING_STATUSES[number])
+  return EMBEDDING_STATUSES.includes(status as (typeof EMBEDDING_STATUSES)[number])
 }
 
 export const isTerminalStatus = (status?: string): boolean => {
-  return TERMINAL_STATUSES.includes(status as typeof TERMINAL_STATUSES[number])
+  return TERMINAL_STATUSES.includes(status as (typeof TERMINAL_STATUSES)[number])
 }
 
 export const calculatePercent = (completed?: number, total?: number): number => {
-  if (!total || total === 0)
-    return 0
-  const percent = Math.round((completed || 0) * 100 / total)
+  if (!total || total === 0) return 0
+  const percent = Math.round(((completed || 0) * 100) / total)
   return Math.min(percent, 100)
 }
 
@@ -44,7 +39,10 @@ export const useEmbeddingStatus = ({
   const queryClient = useQueryClient()
   const isPolling = useRef(false)
   const onCompleteRef = useRef(onComplete)
-  onCompleteRef.current = onComplete
+
+  useEffect(() => {
+    onCompleteRef.current = onComplete
+  }, [onComplete])
 
   const queryKey = useMemo(
     () => [NAME_SPACE, 'indexing-status', datasetId, documentId] as const,
@@ -112,7 +110,12 @@ type UsePauseResumeOptions = {
   onError?: (error: Error) => void
 }
 
-export const usePauseIndexing = ({ datasetId, documentId, onSuccess, onError }: UsePauseResumeOptions) => {
+export const usePauseIndexing = ({
+  datasetId,
+  documentId,
+  onSuccess,
+  onError,
+}: UsePauseResumeOptions) => {
   return useMutation<CommonResponse, Error>({
     mutationKey: [NAME_SPACE, 'pause', datasetId, documentId],
     mutationFn: () => pauseDocIndexing({ datasetId: datasetId!, documentId: documentId! }),
@@ -121,7 +124,12 @@ export const usePauseIndexing = ({ datasetId, documentId, onSuccess, onError }: 
   })
 }
 
-export const useResumeIndexing = ({ datasetId, documentId, onSuccess, onError }: UsePauseResumeOptions) => {
+export const useResumeIndexing = ({
+  datasetId,
+  documentId,
+  onSuccess,
+  onError,
+}: UsePauseResumeOptions) => {
   return useMutation<CommonResponse, Error>({
     mutationKey: [NAME_SPACE, 'resume', datasetId, documentId],
     mutationFn: () => resumeDocIndexing({ datasetId: datasetId!, documentId: documentId! }),

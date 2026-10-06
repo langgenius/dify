@@ -1,5 +1,7 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import BatchAction from '../batch-action'
 
 describe('BatchAction', () => {
@@ -16,12 +18,6 @@ describe('BatchAction', () => {
   }
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const { container } = render(<BatchAction {...defaultProps} />)
-
-      expect(container.firstChild).toBeInTheDocument()
-    })
-
     it('should display selected count', () => {
       render(<BatchAction {...defaultProps} />)
 
@@ -54,6 +50,25 @@ describe('BatchAction', () => {
   })
 
   describe('User Interactions', () => {
+    it('should disable mutations while keeping cancellation available', async () => {
+      const user = userEvent.setup()
+      render(<BatchAction {...defaultProps} disabled />)
+
+      for (const action of ['enable', 'disable', 'delete']) {
+        const button = screen.getByRole('button', { name: `dataset.batchAction.${action}` })
+        expect(button).toBeDisabled()
+        await user.click(button)
+      }
+
+      expect(defaultProps.onBatchEnable).not.toHaveBeenCalled()
+      expect(defaultProps.onBatchDisable).not.toHaveBeenCalled()
+      expect(defaultProps.onBatchDelete).not.toHaveBeenCalled()
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'dataset.batchAction.cancel' }))
+      expect(defaultProps.onCancel).toHaveBeenCalledOnce()
+    })
+
     it('should call onBatchEnable when enable button is clicked', () => {
       const mockOnBatchEnable = vi.fn()
       render(<BatchAction {...defaultProps} onBatchEnable={mockOnBatchEnable} />)
@@ -188,13 +203,6 @@ describe('BatchAction', () => {
       fireEvent.click(screen.getByText(/batchAction\.reIndex/i))
 
       expect(mockOnBatchReIndex).toHaveBeenCalledTimes(1)
-    })
-
-    it('should apply custom className', () => {
-      const { container } = render(<BatchAction {...defaultProps} className="custom-class" />)
-
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('custom-class')
     })
   })
 

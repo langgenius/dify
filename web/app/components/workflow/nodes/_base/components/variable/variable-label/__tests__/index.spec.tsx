@@ -1,11 +1,15 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
-import VariableIcon from '../base/variable-icon'
 import VariableLabel from '../base/variable-label'
 import VariableName from '../base/variable-name'
 import VariableNodeLabel from '../base/variable-node-label'
-import { VariableIconWithColor, VariableLabelInEditor, VariableLabelInNode, VariableLabelInSelect, VariableLabelInText } from '../index'
+import {
+  VariableLabelInEditor,
+  VariableLabelInNode,
+  VariableLabelInSelect,
+  VariableLabelInText,
+} from '../index'
 
 describe('variable-label index', () => {
   beforeEach(() => {
@@ -57,9 +61,9 @@ describe('variable-label index', () => {
       expect(screen.getByText('payload.answer')).toBeInTheDocument()
     })
 
-    it('should render the editor variant with selected styles and inline error feedback', async () => {
+    it('discloses the variable validation error on hover', async () => {
       const user = userEvent.setup()
-      const { container } = render(
+      render(
         <VariableLabelInEditor
           nodeType={BlockEnum.Code}
           nodeTitle="Source Node"
@@ -76,30 +80,11 @@ describe('variable-label index', () => {
 
       await user.hover(screen.getByText('payload'))
 
-      expect(container.querySelector('[data-icon="Warning"]')).not.toBeNull()
-    })
-
-    it('should render the icon helpers for environment and exception variables', () => {
-      const { container } = render(
-        <div>
-          <VariableIcon variables={['env', 'API_KEY']} />
-          <VariableIconWithColor
-            variables={['conversation', 'message']}
-            isExceptionVariable
-          />
-        </div>,
-      )
-
-      expect(container.querySelectorAll('svg').length).toBeGreaterThan(0)
+      expect(await screen.findByText('Invalid variable')).toBeVisible()
     })
 
     it('should render the base variable name with shortened path and title', () => {
-      render(
-        <VariableName
-          variables={['node-id', 'payload', 'answer']}
-          notShowFullPath
-        />,
-      )
+      render(<VariableName variables={['node-id', 'payload', 'answer']} notShowFullPath />)
 
       expect(screen.getByText('answer')).toHaveAttribute('title', 'answer')
     })
@@ -109,12 +94,7 @@ describe('variable-label index', () => {
 
       expect(container).toBeEmptyDOMElement()
 
-      rerender(
-        <VariableNodeLabel
-          nodeType={BlockEnum.Code}
-          nodeTitle="Code Node"
-        />,
-      )
+      rerender(<VariableNodeLabel nodeType={BlockEnum.Code} nodeTitle="Code Node" />)
 
       expect(screen.getByText('Code Node')).toBeInTheDocument()
     })

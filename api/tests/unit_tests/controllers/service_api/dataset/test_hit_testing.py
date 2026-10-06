@@ -15,17 +15,17 @@ Strategy:
 """
 
 import uuid
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask, g
 from werkzeug.exceptions import Forbidden, NotFound
 
-import services
+import services.errors.base
 from controllers.service_api.dataset.hit_testing import HitTestingApi, HitTestingPayload
 from models.account import Account, Tenant, TenantAccountRole
 from models.dataset import Dataset
-from services.entities.knowledge_entities.knowledge_entities import RetrievalModel
+from services.knowledge.entities.knowledge_entities import RetrievalModel
 
 # ---------------------------------------------------------------------------
 # HitTestingPayload Model Tests
@@ -74,12 +74,12 @@ def hit_testing_record() -> dict[str, object]:
 class TestHitTestingPayload:
     """Test suite for HitTestingPayload Pydantic model."""
 
-    def test_payload_with_required_query(self):
+    def test_payload_with_required_query(self) -> None:
         """Test payload with required query field."""
         payload = HitTestingPayload(query="test query")
         assert payload.query == "test query"
 
-    def test_payload_with_all_fields(self):
+    def test_payload_with_all_fields(self) -> None:
         """Test payload with all optional fields."""
         retrieval_model_data = {
             "search_method": "semantic_search",
@@ -99,17 +99,17 @@ class TestHitTestingPayload:
         assert payload.external_retrieval_model == {"provider": "openai"}
         assert payload.attachment_ids == ["att_1", "att_2"]
 
-    def test_payload_query_too_long(self):
+    def test_payload_query_too_long(self) -> None:
         """Test payload rejects query over 250 characters."""
         with pytest.raises(ValueError):
             HitTestingPayload(query="x" * 251)
 
-    def test_payload_query_at_max_length(self):
+    def test_payload_query_at_max_length(self) -> None:
         """Test payload accepts query at exactly 250 characters."""
         payload = HitTestingPayload(query="x" * 250)
         assert len(payload.query) == 250
 
-    def test_payload_ignores_unknown_fields_for_compatibility(self):
+    def test_payload_ignores_unknown_fields_for_compatibility(self) -> None:
         """Top-level fields outside the documented schema remain ignored as before."""
         payload = HitTestingPayload.model_validate({"query": "test query", "top_k": 3})
 
@@ -146,11 +146,11 @@ class TestHitTestingApiPost:
     @patch("controllers.console.datasets.hit_testing_base.DatasetService")
     def test_post_success(
         self,
-        mock_dataset_svc,
-        mock_hit_svc,
-        mock_ns,
+        mock_dataset_svc: MagicMock,
+        mock_hit_svc: MagicMock,
+        mock_ns: MagicMock,
         app: Flask,
-    ):
+    ) -> None:
         """Test successful hit testing request."""
         dataset_id = str(uuid.uuid4())
         tenant_id = str(uuid.uuid4())
@@ -161,7 +161,7 @@ class TestHitTestingApiPost:
         mock_dataset_svc.get_dataset.return_value = mock_dataset
         mock_dataset_svc.check_dataset_permission.return_value = None
 
-        mock_hit_svc.retrieve.return_value = {"query": {"content": "test query"}, "records": []}
+        mock_hit_svc.retrieve.return_value = {"query": {"content": "test query"}, "records": list[object]()}
         mock_hit_svc.hit_testing_args_check.return_value = None
 
         mock_ns.payload = {"query": "test query"}
@@ -181,11 +181,11 @@ class TestHitTestingApiPost:
     @patch("controllers.console.datasets.hit_testing_base.DatasetService")
     def test_post_with_retrieval_model(
         self,
-        mock_dataset_svc,
-        mock_hit_svc,
-        mock_ns,
+        mock_dataset_svc: MagicMock,
+        mock_hit_svc: MagicMock,
+        mock_ns: MagicMock,
         app: Flask,
-    ):
+    ) -> None:
         """Test hit testing with custom retrieval model."""
         dataset_id = str(uuid.uuid4())
         tenant_id = str(uuid.uuid4())
@@ -204,7 +204,7 @@ class TestHitTestingApiPost:
             "score_threshold": 0.8,
         }
 
-        mock_hit_svc.retrieve.return_value = {"query": {"content": "complex query"}, "records": []}
+        mock_hit_svc.retrieve.return_value = {"query": {"content": "complex query"}, "records": list[object]()}
         mock_hit_svc.hit_testing_args_check.return_value = None
 
         mock_ns.payload = {
@@ -232,11 +232,11 @@ class TestHitTestingApiPost:
     @patch("controllers.console.datasets.hit_testing_base.DatasetService")
     def test_post_preserves_retrieval_model_metadata_filtering_conditions(
         self,
-        mock_dataset_svc,
-        mock_hit_svc,
-        mock_ns,
+        mock_dataset_svc: MagicMock,
+        mock_hit_svc: MagicMock,
+        mock_ns: MagicMock,
         app: Flask,
-    ):
+    ) -> None:
         """Service API retrieval payload should not drop metadata filters."""
         dataset_id = str(uuid.uuid4())
         tenant_id = str(uuid.uuid4())
@@ -246,7 +246,7 @@ class TestHitTestingApiPost:
 
         mock_dataset_svc.get_dataset.return_value = mock_dataset
         mock_dataset_svc.check_dataset_permission.return_value = None
-        mock_hit_svc.retrieve.return_value = {"query": {"content": "filtered query"}, "records": []}
+        mock_hit_svc.retrieve.return_value = {"query": {"content": "filtered query"}, "records": list[object]()}
         mock_hit_svc.hit_testing_args_check.return_value = None
 
         metadata_filtering_conditions = {
@@ -285,11 +285,11 @@ class TestHitTestingApiPost:
     @patch("controllers.console.datasets.hit_testing_base.DatasetService")
     def test_post_prepares_nullable_list_fields(
         self,
-        mock_dataset_svc,
-        mock_hit_svc,
-        mock_ns,
+        mock_dataset_svc: MagicMock,
+        mock_hit_svc: MagicMock,
+        mock_ns: MagicMock,
         app: Flask,
-    ):
+    ) -> None:
         """Test service API prepares nullable list fields from retrieval records."""
         dataset_id = str(uuid.uuid4())
         tenant_id = str(uuid.uuid4())
@@ -328,10 +328,10 @@ class TestHitTestingApiPost:
     @patch("controllers.console.datasets.hit_testing_base.DatasetService")
     def test_post_dataset_not_found(
         self,
-        mock_dataset_svc,
-        mock_ns,
+        mock_dataset_svc: MagicMock,
+        mock_ns: MagicMock,
         app: Flask,
-    ):
+    ) -> None:
         """Test hit testing with non-existent dataset."""
         dataset_id = str(uuid.uuid4())
         tenant_id = str(uuid.uuid4())
@@ -351,10 +351,10 @@ class TestHitTestingApiPost:
     @patch("controllers.console.datasets.hit_testing_base.DatasetService")
     def test_post_no_dataset_permission(
         self,
-        mock_dataset_svc,
-        mock_ns,
+        mock_dataset_svc: MagicMock,
+        mock_ns: MagicMock,
         app: Flask,
-    ):
+    ) -> None:
         """Test hit testing when user lacks dataset permission."""
         dataset_id = str(uuid.uuid4())
         tenant_id = str(uuid.uuid4())
@@ -363,9 +363,7 @@ class TestHitTestingApiPost:
         account = self._account(tenant_id)
 
         mock_dataset_svc.get_dataset.return_value = mock_dataset
-        mock_dataset_svc.check_dataset_permission.side_effect = services.errors.account.NoPermissionError(
-            "Access denied"
-        )
+        mock_dataset_svc.check_dataset_permission.side_effect = services.errors.base.NoPermissionError("Access denied")
         mock_ns.payload = {"query": "test query"}
 
         with app.test_request_context():

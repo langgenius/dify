@@ -53,14 +53,18 @@ describe('FileListInLog', () => {
   })
 
   it('should render image files with an img element in collapsed view', () => {
-    const fileList = [{
-      varName: 'files',
-      list: [createFile({
-        name: 'photo.png',
-        supportFileType: 'image',
-        url: 'https://example.com/photo.png',
-      })],
-    }]
+    const fileList = [
+      {
+        varName: 'files',
+        list: [
+          createFile({
+            name: 'photo.png',
+            supportFileType: 'image',
+            url: 'https://example.com/photo.png',
+          }),
+        ],
+      },
+    ]
     render(<FileListInLog fileList={fileList} />)
 
     const img = screen.getByRole('img')
@@ -69,13 +73,17 @@ describe('FileListInLog', () => {
   })
 
   it('should render non-image files with an SVG icon in collapsed view', () => {
-    const fileList = [{
-      varName: 'files',
-      list: [createFile({
-        name: 'doc.pdf',
-        supportFileType: 'document',
-      })],
-    }]
+    const fileList = [
+      {
+        varName: 'files',
+        list: [
+          createFile({
+            name: 'doc.pdf',
+            supportFileType: 'document',
+          }),
+        ],
+      },
+    ]
     render(<FileListInLog fileList={fileList} />)
 
     expect(screen.queryByRole('img')).not.toBeInTheDocument()
@@ -100,30 +108,20 @@ describe('FileListInLog', () => {
     expect(screen.getByText('documents')).toBeInTheDocument()
   })
 
-  it('should apply noBorder class when noBorder is true', () => {
-    const fileList = [{ varName: 'files', list: [createFile()] }]
-    const { container } = render(<FileListInLog fileList={fileList} noBorder />)
-
-    expect(container.firstChild).not.toHaveClass('border-t')
-  })
-
-  it('should apply noPadding class when noPadding is true', () => {
-    const fileList = [{ varName: 'files', list: [createFile()] }]
-    const { container } = render(<FileListInLog fileList={fileList} noPadding />)
-
-    expect(container.firstChild).toHaveClass('p-0!')
-  })
-
   it('should render image file with empty url when both base64Url and url are undefined', () => {
-    const fileList = [{
-      varName: 'files',
-      list: [createFile({
-        name: 'photo.png',
-        supportFileType: 'image',
-        base64Url: undefined,
-        url: undefined,
-      })],
-    }]
+    const fileList = [
+      {
+        varName: 'files',
+        list: [
+          createFile({
+            name: 'photo.png',
+            supportFileType: 'image',
+            base64Url: undefined,
+            url: undefined,
+          }),
+        ],
+      },
+    ]
     render(<FileListInLog fileList={fileList} />)
 
     const img = screen.getByRole('img')

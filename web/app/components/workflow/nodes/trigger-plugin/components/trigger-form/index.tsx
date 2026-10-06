@@ -13,7 +13,6 @@ type Props = Readonly<{
   value: PluginTriggerVarInputs
   onChange: (value: PluginTriggerVarInputs) => void
   onOpen?: (index: number) => void
-  inPanel?: boolean
   currentEvent?: Event
   currentProvider?: TriggerWithProvider
   extraParams?: Record<string, any>
@@ -26,7 +25,6 @@ const TriggerForm: FC<Props> = ({
   schema,
   value,
   onChange,
-  inPanel,
   currentEvent,
   currentProvider,
   extraParams,
@@ -34,23 +32,20 @@ const TriggerForm: FC<Props> = ({
 }) => {
   return (
     <div className="space-y-1">
-      {
-        schema.map((schema, index) => (
-          <TriggerFormItem
-            key={index}
-            readOnly={readOnly}
-            nodeId={nodeId}
-            schema={schema}
-            value={value}
-            onChange={onChange}
-            inPanel={inPanel}
-            currentEvent={currentEvent}
-            currentProvider={currentProvider}
-            extraParams={extraParams}
-            disableVariableInsertion={disableVariableInsertion}
-          />
-        ))
-      }
+      {schema.map((schema, index) => (
+        <TriggerFormItem
+          key={index}
+          readOnly={readOnly}
+          nodeId={nodeId}
+          schema={schema}
+          value={value}
+          onChange={onChange}
+          currentEvent={currentEvent}
+          currentProvider={currentProvider}
+          extraParams={extraParams}
+          disableVariableInsertion={disableVariableInsertion}
+        />
+      ))}
     </div>
   )
 }

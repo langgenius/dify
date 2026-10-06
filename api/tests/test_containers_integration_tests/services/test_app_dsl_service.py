@@ -11,6 +11,7 @@ import pytest
 import yaml
 from faker import Faker
 from flask import Flask
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from core.trigger.constants import (
@@ -21,9 +22,25 @@ from core.trigger.constants import (
 from extensions.ext_redis import redis_client
 from graphon.enums import BuiltinNodeTypes
 from models import Account, App, AppMode
+from models.account import Tenant
+from models.agent import (
+    Agent,
+    AgentConfigDraft,
+    AgentConfigDraftType,
+    AgentConfigSnapshot,
+    AgentScope,
+    AgentSource,
+    AgentStatus,
+    WorkflowAgentBindingType,
+    WorkflowAgentNodeBinding,
+)
+from models.agent_config_entities import AgentSoulConfig
 from models.model import AppModelConfig, IconType
+from models.workflow import Workflow, WorkflowType
 from services import app_dsl_service
-from services.account_service import AccountService, TenantService
+from services.agent.dsl_entities import AGENT_PACKAGE_REF_KEY, make_portable_agent_package
+from services.agent.dsl_service import AgentDslService
+from services.app_creation_records import create_site_record
 from services.app_dsl_service import (
     CHECK_DEPENDENCIES_REDIS_KEY_PREFIX,
     CURRENT_DSL_VERSION,
@@ -39,16 +56,19 @@ from services.app_dsl_service import (
 from services.app_service import AppService, CreateAppParams
 from services.dsl_version import check_version_compatibility
 from services.errors.app import WorkflowNotFoundError
+from tests.test_containers_integration_tests.helpers import accounts as account_fixtures
 from tests.test_containers_integration_tests.helpers import generate_valid_password
 
 _DEFAULT_TENANT_ID = "00000000-0000-0000-0000-000000000001"
 _DEFAULT_ACCOUNT_ID = "00000000-0000-0000-0000-000000000002"
 
 
-def _account_mock(*, tenant_id: str = _DEFAULT_TENANT_ID, account_id: str = _DEFAULT_ACCOUNT_ID) -> MagicMock:
-    account = MagicMock(spec=Account)
-    account.current_tenant_id = tenant_id
+def _account(*, tenant_id: str = _DEFAULT_TENANT_ID, account_id: str = _DEFAULT_ACCOUNT_ID) -> Account:
+    account = Account(name="DSL test account", email="dsl@example.com")
     account.id = account_id
+    tenant = Tenant(name="DSL test workspace")
+    tenant.id = tenant_id
+    account._current_tenant = tenant
     return account
 
 
@@ -71,8 +91,8 @@ def _pending_yaml_content(version: str = "99.0.0") -> bytes:
     return (f'version: "{version}"\nkind: app\napp:\n  name: Loop Test\n  mode: workflow\n').encode()
 
 
-def _app_stub(**overrides: Any) -> App:
-    """Create a stub App object for testing without hitting the database."""
+def _app_record(**overrides: Any) -> App:
+    """Create a transient App with real mapped attributes and session helpers."""
     defaults = {
         "id": str(uuid4()),
         "tenant_id": _DEFAULT_TENANT_ID,
@@ -83,12 +103,8 @@ def _app_stub(**overrides: Any) -> App:
         "icon": "i",
         "icon_background": "#fff",
         "use_icon_as_answer_icon": False,
-        "app_model_config": None,
     }
-    app = MagicMock(spec=App)
-    for key, value in (defaults | overrides).items():
-        object.__setattr__(app, key, value)
-    return app
+    return App(**(defaults | overrides))
 
 
 class TestAppDslService:
@@ -106,7 +122,7 @@ class TestAppDslService:
             patch("services.app_dsl_service.DependenciesAnalysisService") as mock_dependencies_service,
             patch("services.app_dsl_service.app_was_created") as mock_app_was_created,
             patch("services.app_service.ModelManager.for_tenant") as mock_model_manager,
-            patch("services.app_service.FeatureService") as mock_feature_service,
+            patch("services.app_service.SystemFeatureService") as mock_feature_service,
             patch("services.app_service.EnterpriseService") as mock_enterprise_service,
         ):
             mock_workflow_service.return_value.get_draft_workflow.return_value = None
@@ -123,10 +139,9 @@ class TestAppDslService:
                 "gpt-3.5-turbo",
             )
 
-            mock_feature_service.get_system_features.return_value.webapp_auth.enabled = False
+            mock_feature_service.is_webapp_auth_enabled.return_value = False
             mock_enterprise_service.WebAppAuth.update_app_access_mode.return_value = None
             mock_enterprise_service.WebAppAuth.cleanup_webapp.return_value = None
-
             yield {
                 "workflow_service": mock_workflow_service,
                 "dependencies_service": mock_dependencies_service,
@@ -138,18 +153,16 @@ class TestAppDslService:
 
     def _create_test_app_and_account(self, db_session_with_containers: Session, mock_external_service_dependencies):
         fake = Faker()
-        with patch("services.account_service.FeatureService") as mock_account_feature_service:
-            mock_account_feature_service.get_system_features.return_value.is_allow_register = True
-            account = AccountService.create_account(
+        with patch("services.account.login_adapters.SystemFeatureService") as mock_account_feature_service:
+            mock_account_feature_service.is_registration_allowed.return_value = True
+            account = account_fixtures.create_account(
                 email=fake.email(),
                 name=fake.name(),
                 interface_language="en-US",
                 password=generate_valid_password(fake),
                 session=db_session_with_containers,
             )
-            TenantService.create_owner_tenant_if_not_exist(
-                account, name=fake.company(), session=db_session_with_containers
-            )
+            account_fixtures.create_owner_workspace(account, name=fake.company(), session=db_session_with_containers)
             tenant = account.current_tenant
             app_args = CreateAppParams(
                 name=fake.company(),
@@ -162,7 +175,7 @@ class TestAppDslService:
                 api_rpm=10,
             )
             app_service = AppService()
-            app = app_service.create_app(tenant.id, app_args, account)
+            app = app_service.create_app(tenant.id, app_args, account, session=db_session_with_containers)
             return app, account
 
     def _create_simple_yaml_content(self, app_name: str = "Test App", app_mode: str = "chat") -> str:
@@ -223,7 +236,7 @@ class TestAppDslService:
         service = AppDslService(db_session_with_containers)
         with pytest.raises(ValueError, match="Invalid import_mode"):
             service.import_app(
-                account=_account_mock(),
+                account=_account(),
                 import_mode="invalid-mode",
                 yaml_content="version: '0.1.0'",
             )
@@ -231,7 +244,7 @@ class TestAppDslService:
     def test_import_app_missing_yaml_content(self, db_session_with_containers: Session):
         service = AppDslService(db_session_with_containers)
         result = service.import_app(
-            account=_account_mock(),
+            account=_account(),
             import_mode=ImportMode.YAML_CONTENT,
             yaml_content=None,
         )
@@ -241,7 +254,7 @@ class TestAppDslService:
     def test_import_app_missing_yaml_url(self, db_session_with_containers: Session):
         service = AppDslService(db_session_with_containers)
         result = service.import_app(
-            account=_account_mock(),
+            account=_account(),
             import_mode=ImportMode.YAML_URL,
             yaml_url=None,
         )
@@ -251,7 +264,7 @@ class TestAppDslService:
     def test_import_app_yaml_not_mapping_returns_failed(self, db_session_with_containers: Session):
         service = AppDslService(db_session_with_containers)
         result = service.import_app(
-            account=_account_mock(),
+            account=_account(),
             import_mode=ImportMode.YAML_CONTENT,
             yaml_content="[]",
         )
@@ -262,7 +275,7 @@ class TestAppDslService:
         service = AppDslService(db_session_with_containers)
         yaml_content = _yaml_dump({"version": 1, "kind": "app", "app": {"name": "x", "mode": "workflow"}})
         result = service.import_app(
-            account=_account_mock(),
+            account=_account(),
             import_mode=ImportMode.YAML_CONTENT,
             yaml_content=yaml_content,
         )
@@ -272,7 +285,7 @@ class TestAppDslService:
     def test_import_app_missing_app_data_returns_failed(self, db_session_with_containers: Session):
         service = AppDslService(db_session_with_containers)
         result = service.import_app(
-            account=_account_mock(),
+            account=_account(),
             import_mode=ImportMode.YAML_CONTENT,
             yaml_content=_yaml_dump({"version": "0.6.0", "kind": "app"}),
         )
@@ -289,7 +302,7 @@ class TestAppDslService:
 
         service = AppDslService(db_session_with_containers)
         result = service.import_app(
-            account=_account_mock(),
+            account=_account(),
             import_mode=ImportMode.YAML_CONTENT,
             yaml_content="x: y",
         )
@@ -307,7 +320,7 @@ class TestAppDslService:
 
         service = AppDslService(db_session_with_containers)
         result = service.import_app(
-            account=_account_mock(),
+            account=_account(),
             import_mode=ImportMode.YAML_CONTENT,
             yaml_content=_workflow_yaml(),
         )
@@ -327,7 +340,7 @@ class TestAppDslService:
 
         service = AppDslService(db_session_with_containers)
         result = service.import_app(
-            account=_account_mock(),
+            account=_account(),
             import_mode=ImportMode.YAML_URL,
             yaml_url="https://example.com/a.yml",
         )
@@ -344,7 +357,7 @@ class TestAppDslService:
 
         service = AppDslService(db_session_with_containers)
         result = service.import_app(
-            account=_account_mock(),
+            account=_account(),
             import_mode=ImportMode.YAML_URL,
             yaml_url="https://example.com/a.yml",
         )
@@ -361,7 +374,7 @@ class TestAppDslService:
 
         service = AppDslService(db_session_with_containers)
         result = service.import_app(
-            account=_account_mock(),
+            account=_account(),
             import_mode=ImportMode.YAML_URL,
             yaml_url="https://example.com/a.yml",
         )
@@ -388,7 +401,7 @@ class TestAppDslService:
 
         service = AppDslService(db_session_with_containers)
         result = service.import_app(
-            account=_account_mock(),
+            account=_account(),
             import_mode=ImportMode.YAML_URL,
             yaml_url=yaml_url,
         )
@@ -419,7 +432,7 @@ class TestAppDslService:
 
         service = AppDslService(db_session_with_containers)
         result = service.import_app(
-            account=_account_mock(),
+            account=_account(),
             import_mode=ImportMode.YAML_URL,
             yaml_url=yaml_url,
         )
@@ -432,7 +445,7 @@ class TestAppDslService:
     def test_import_app_app_id_not_found_returns_failed(self, db_session_with_containers: Session):
         service = AppDslService(db_session_with_containers)
         result = service.import_app(
-            account=_account_mock(),
+            account=_account(),
             import_mode=ImportMode.YAML_CONTENT,
             yaml_content=_workflow_yaml(),
             app_id=str(uuid4()),
@@ -461,7 +474,7 @@ class TestAppDslService:
     def test_import_app_pending_stores_import_info_in_redis(self, db_session_with_containers: Session):
         service = AppDslService(db_session_with_containers)
         result = service.import_app(
-            account=_account_mock(),
+            account=_account(),
             import_mode=ImportMode.YAML_CONTENT,
             yaml_content=_workflow_yaml(version="99.0.0"),
             name="n",
@@ -476,6 +489,9 @@ class TestAppDslService:
         redis_key = f"{IMPORT_INFO_REDIS_KEY_PREFIX}{result.id}"
         stored = redis_client.get(redis_key)
         assert stored is not None
+        pending = PendingData.model_validate_json(stored)
+        assert pending.tenant_id == _DEFAULT_TENANT_ID
+        assert pending.account_id == _DEFAULT_ACCOUNT_ID
 
     def test_import_app_completed_uses_declared_dependencies(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -560,7 +576,7 @@ class TestAppDslService:
 
         service = AppDslService(db_session_with_containers)
         result = service.import_app(
-            account=_account_mock(),
+            account=_account(),
             import_mode=ImportMode.YAML_CONTENT,
             yaml_content=_yaml_dump(data),
         )
@@ -571,7 +587,7 @@ class TestAppDslService:
 
     def test_confirm_import_expired_returns_failed(self, db_session_with_containers: Session):
         service = AppDslService(db_session_with_containers)
-        result = service.confirm_import(import_id=str(uuid4()), account=_account_mock())
+        result = service.confirm_import(import_id=str(uuid4()), account=_account())
         assert result.status == ImportStatus.FAILED
         assert "expired" in result.error
 
@@ -582,6 +598,8 @@ class TestAppDslService:
         redis_key = f"{IMPORT_INFO_REDIS_KEY_PREFIX}{import_id}"
 
         pending = PendingData(
+            tenant_id=_DEFAULT_TENANT_ID,
+            account_id=_DEFAULT_ACCOUNT_ID,
             import_mode=ImportMode.YAML_CONTENT,
             yaml_content=_workflow_yaml(),
             name="name",
@@ -605,7 +623,7 @@ class TestAppDslService:
         )
 
         service = AppDslService(db_session_with_containers)
-        result = service.confirm_import(import_id=import_id, account=_account_mock())
+        result = service.confirm_import(import_id=import_id, account=_account())
         assert result.status == ImportStatus.COMPLETED
         assert result.app_id == created_app.id
         assert redis_client.get(redis_key) is None
@@ -616,7 +634,7 @@ class TestAppDslService:
         redis_client.setex(redis_key, IMPORT_INFO_REDIS_EXPIRY, "123")
 
         service = AppDslService(db_session_with_containers)
-        result = service.confirm_import(import_id=import_id, account=_account_mock())
+        result = service.confirm_import(import_id=import_id, account=_account())
         assert result.status == ImportStatus.FAILED
         assert "validation error" in result.error
 
@@ -626,14 +644,14 @@ class TestAppDslService:
         redis_client.setex(redis_key, IMPORT_INFO_REDIS_EXPIRY, "not-valid-json")
 
         service = AppDslService(db_session_with_containers)
-        result = service.confirm_import(import_id=import_id, account=_account_mock())
+        result = service.confirm_import(import_id=import_id, account=_account())
         assert result.status == ImportStatus.FAILED
 
     # ── Check Dependencies ────────────────────────────────────────────
 
     def test_check_dependencies_returns_empty_when_no_redis_data(self, db_session_with_containers: Session):
         service = AppDslService(db_session_with_containers)
-        app_model = _app_stub()
+        app_model = _app_record()
         result = service.check_dependencies(app_model=app_model)
         assert result.leaked_dependencies == []
 
@@ -664,7 +682,7 @@ class TestAppDslService:
         )
 
         service = AppDslService(db_session_with_containers)
-        result = service.check_dependencies(app_model=_app_stub(id=app_id))
+        result = service.check_dependencies(app_model=_app_record(id=app_id))
         assert len(result.leaked_dependencies) == 1
 
     def test_check_dependencies_with_real_app(
@@ -688,7 +706,7 @@ class TestAppDslService:
     def test_create_or_update_app_missing_mode_raises(self, db_session_with_containers: Session):
         service = AppDslService(db_session_with_containers)
         with pytest.raises(ValueError, match="loss app mode"):
-            service._create_or_update_app(app=None, data={"app": {}}, account=_account_mock())
+            service._create_or_update_app(app=None, data={"app": {}}, account=_account())
 
     def test_create_or_update_app_existing_app_updates_fields(
         self, db_session_with_containers: Session, monkeypatch: pytest.MonkeyPatch
@@ -710,7 +728,7 @@ class TestAppDslService:
             lambda _m: SimpleNamespace(kind="conv"),
         )
 
-        app = _app_stub(
+        app = _app_record(
             mode=AppMode.WORKFLOW,
             name="old",
             description="old-desc",
@@ -732,21 +750,21 @@ class TestAppDslService:
                 },
                 "workflow": {"graph": {"nodes": []}, "features": {}},
             },
-            account=_account_mock(),
+            account=_account(),
             name="override-name",
             description=None,
             icon_background="#222222",
         )
         assert updated is app
         assert app.name == "override-name"
-        assert app.icon_type == IconType.IMAGE
-        assert app.icon == "X"
+        assert app.icon_type == app_dsl_service.DEFAULT_ICON_TYPE
+        assert app.icon == app_dsl_service.DEFAULT_ICON
         assert app.icon_background == "#222222"
         assert app.updated_at is fixed_now
 
     def test_create_or_update_app_new_app_requires_tenant(self, db_session_with_containers: Session):
-        account = _account_mock()
-        account.current_tenant_id = None
+        account = _account()
+        account._current_tenant = None
         service = AppDslService(db_session_with_containers)
         with pytest.raises(ValueError, match="Current tenant is not set"):
             service._create_or_update_app(
@@ -796,18 +814,18 @@ class TestAppDslService:
         service = AppDslService(db_session_with_containers)
         with pytest.raises(ValueError, match="Missing workflow data"):
             service._create_or_update_app(
-                app=_app_stub(mode=AppMode.WORKFLOW),
+                app=_app_record(mode=AppMode.WORKFLOW),
                 data={"app": {"mode": AppMode.WORKFLOW}},
-                account=_account_mock(),
+                account=_account(),
             )
 
     def test_create_or_update_app_chat_requires_model_config(self, db_session_with_containers: Session):
         service = AppDslService(db_session_with_containers)
         with pytest.raises(ValueError, match="Missing model_config"):
             service._create_or_update_app(
-                app=_app_stub(mode=AppMode.CHAT),
+                app=_app_record(mode=AppMode.CHAT),
                 data={"app": {"mode": AppMode.CHAT}},
-                account=_account_mock(),
+                account=_account(),
             )
 
     def test_create_or_update_app_chat_creates_model_config_and_sends_event(
@@ -818,66 +836,86 @@ class TestAppDslService:
         db_session_with_containers.commit()
 
         service = AppDslService(db_session_with_containers)
-        service._create_or_update_app(
-            app=app,
-            data={
-                "app": {"mode": AppMode.CHAT},
-                "model_config": {"model": {"provider": "openai"}},
-            },
-            account=account,
-        )
+        with patch("services.app_dsl_service.app_model_config_was_updated") as signal:
+            service._create_or_update_app(
+                app=app,
+                data={
+                    "app": {"mode": AppMode.CHAT},
+                    "model_config": {"model": {"provider": "openai"}},
+                },
+                account=account,
+            )
 
         db_session_with_containers.expire_all()
         assert app.app_model_config_id is not None
+        assert signal.send.call_args.kwargs["session"] is db_session_with_containers
 
     def test_create_or_update_app_invalid_mode_raises(self, db_session_with_containers: Session):
         service = AppDslService(db_session_with_containers)
         with pytest.raises(ValueError, match="Invalid app mode"):
             service._create_or_update_app(
-                app=_app_stub(mode=AppMode.RAG_PIPELINE),
+                app=_app_record(mode=AppMode.RAG_PIPELINE),
                 data={"app": {"mode": AppMode.RAG_PIPELINE}},
-                account=_account_mock(),
+                account=_account(),
             )
 
     # ── Export ─────────────────────────────────────────────────────────
 
-    def test_export_dsl_delegates_by_mode(self, monkeypatch: pytest.MonkeyPatch):
+    def test_export_dsl_delegates_by_mode(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        db_session_with_containers: Session,
+        mock_external_service_dependencies,
+    ):
         workflow_calls: list[bool] = []
         model_calls: list[bool] = []
+
+        def append_workflow(**_kwargs: Any) -> list[str]:
+            workflow_calls.append(True)
+            return []
+
+        def append_model(*_args: Any, **_kwargs: Any) -> list[str]:
+            model_calls.append(True)
+            return []
+
         monkeypatch.setattr(
             AppDslService,
             "_append_workflow_export_data",
-            lambda **_kwargs: workflow_calls.append(True),
+            append_workflow,
         )
         monkeypatch.setattr(
             AppDslService,
             "_append_model_config_export_data",
-            lambda *_args, **_kwargs: model_calls.append(True),
+            append_model,
         )
 
-        workflow_app = _app_stub(
+        workflow_app = _app_record(
             mode=AppMode.WORKFLOW,
             icon_type="emoji",
         )
-        AppDslService.export_dsl(workflow_app)
+        AppDslService.export_dsl(workflow_app, session=db_session_with_containers)
         assert workflow_calls == [True]
 
-        chat_app = _app_stub(
+        chat_app = _app_record(
             mode=AppMode.CHAT,
             icon_type="emoji",
-            app_model_config=SimpleNamespace(to_dict=lambda: {"agent_mode": {"tools": []}}),
         )
-        AppDslService.export_dsl(chat_app)
+        AppDslService.export_dsl(chat_app, session=db_session_with_containers)
         assert model_calls == [True]
 
-    def test_export_dsl_preserves_icon_and_icon_type(self, monkeypatch: pytest.MonkeyPatch):
+    def test_export_dsl_preserves_icon_and_icon_type(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        db_session_with_containers: Session,
+        mock_external_service_dependencies,
+    ):
         monkeypatch.setattr(
             AppDslService,
             "_append_workflow_export_data",
-            lambda **_kwargs: None,
+            lambda **_kwargs: [],
         )
 
-        emoji_app = _app_stub(
+        emoji_app = _app_record(
             mode=AppMode.WORKFLOW,
             name="Emoji App",
             icon="🎨",
@@ -886,13 +924,13 @@ class TestAppDslService:
             description="App with emoji icon",
             use_icon_as_answer_icon=True,
         )
-        yaml_output = AppDslService.export_dsl(emoji_app)
+        yaml_output = AppDslService.export_dsl(emoji_app, session=db_session_with_containers)
         data = yaml.safe_load(yaml_output)
         assert data["app"]["icon"] == "🎨"
         assert data["app"]["icon_type"] == "emoji"
         assert data["app"]["icon_background"] == "#FF5733"
 
-        image_app = _app_stub(
+        image_app = _app_record(
             mode=AppMode.WORKFLOW,
             name="Image App",
             icon="https://example.com/icon.png",
@@ -901,7 +939,7 @@ class TestAppDslService:
             description="App with image icon",
             use_icon_as_answer_icon=False,
         )
-        yaml_output = AppDslService.export_dsl(image_app)
+        yaml_output = AppDslService.export_dsl(image_app, session=db_session_with_containers)
         data = yaml.safe_load(yaml_output)
         assert data["app"]["icon"] == "https://example.com/icon.png"
         assert data["app"]["icon_type"] == "image"
@@ -936,7 +974,7 @@ class TestAppDslService:
         db_session_with_containers.add(model_config)
         db_session_with_containers.commit()
 
-        exported_dsl = AppDslService.export_dsl(app, include_secret=False)
+        exported_dsl = AppDslService.export_dsl(app, include_secret=False, session=db_session_with_containers)
         exported_data = yaml.safe_load(exported_dsl)
 
         assert exported_data["kind"] == "app"
@@ -944,6 +982,272 @@ class TestAppDslService:
         assert exported_data["app"]["mode"] == app.mode
         assert "model_config" in exported_data
         assert "dependencies" in exported_data
+
+    def test_workflow_package_import_materializes_all_agent_bindings_as_inline(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
+        app.mode = AppMode.WORKFLOW
+        workflow = Workflow.new(
+            tenant_id=app.tenant_id,
+            app_id=app.id,
+            type=WorkflowType.WORKFLOW.value,
+            version=Workflow.VERSION_DRAFT,
+            graph=json.dumps({"nodes": [], "edges": []}),
+            features=json.dumps({}),
+            created_by=account.id,
+            environment_variables=[],
+            conversation_variables=[],
+            rag_pipeline_variables=[],
+        )
+        db_session_with_containers.add(workflow)
+        db_session_with_containers.flush()
+
+        source_agent = Agent(
+            tenant_id=app.tenant_id,
+            name="Portable Agent",
+            description="Imported into each node",
+            role="researcher",
+            scope=AgentScope.ROSTER,
+            source=AgentSource.AGENT_APP,
+            status=AgentStatus.ACTIVE,
+            created_by=account.id,
+            updated_by=account.id,
+        )
+        package = make_portable_agent_package(source_agent, AgentSoulConfig(config_note="portable"))
+        graph = {
+            "nodes": [
+                {
+                    "id": "roster-node",
+                    "data": {
+                        "type": BuiltinNodeTypes.AGENT,
+                        "version": "2",
+                        "agent_node_kind": "dify_agent",
+                        "agent_binding": {
+                            "binding_type": WorkflowAgentBindingType.ROSTER_AGENT.value,
+                            AGENT_PACKAGE_REF_KEY: "agent_1",
+                        },
+                    },
+                },
+                {
+                    "id": "inline-node",
+                    "data": {
+                        "type": BuiltinNodeTypes.AGENT,
+                        "version": "2",
+                        "agent_node_kind": "dify_agent",
+                        "agent_binding": {
+                            "binding_type": WorkflowAgentBindingType.INLINE_AGENT.value,
+                            AGENT_PACKAGE_REF_KEY: "agent_1",
+                        },
+                    },
+                },
+            ],
+            "edges": [],
+        }
+        imported_roster_count_before = db_session_with_containers.scalar(
+            select(func.count())
+            .select_from(Agent)
+            .where(
+                Agent.tenant_id == app.tenant_id,
+                Agent.scope == AgentScope.ROSTER,
+                Agent.source == AgentSource.IMPORTED,
+            )
+        )
+
+        imported_graph, warnings, retirement_candidates = AgentDslService(
+            db_session_with_containers
+        ).import_workflow_packages(
+            workflow=workflow,
+            portable_graph=graph,
+            raw_packages={"agent_1": package.model_dump(mode="json")},
+            account=account,
+        )
+        db_session_with_containers.commit()
+
+        assert warnings == []
+        assert retirement_candidates == set()
+        graph_bindings = [node["data"]["agent_binding"] for node in imported_graph["nodes"]]
+        assert all(binding["binding_type"] == WorkflowAgentBindingType.INLINE_AGENT.value for binding in graph_bindings)
+        assert len({binding["agent_id"] for binding in graph_bindings}) == 2
+
+        bindings = db_session_with_containers.scalars(
+            select(WorkflowAgentNodeBinding).where(
+                WorkflowAgentNodeBinding.tenant_id == app.tenant_id,
+                WorkflowAgentNodeBinding.workflow_id == workflow.id,
+                WorkflowAgentNodeBinding.workflow_version == Workflow.VERSION_DRAFT,
+            )
+        ).all()
+        assert len(bindings) == 2
+        assert all(binding.binding_type == WorkflowAgentBindingType.INLINE_AGENT for binding in bindings)
+
+        imported_agents = db_session_with_containers.scalars(
+            select(Agent).where(Agent.id.in_({binding.agent_id for binding in bindings if binding.agent_id}))
+        ).all()
+        assert len(imported_agents) == 2
+        assert all(agent.scope == AgentScope.WORKFLOW_ONLY for agent in imported_agents)
+        assert all(agent.source == AgentSource.IMPORTED for agent in imported_agents)
+        assert all(agent.app_id == app.id and agent.workflow_id == workflow.id for agent in imported_agents)
+        assert {agent.workflow_node_id for agent in imported_agents} == {"roster-node", "inline-node"}
+        assert all(agent.backing_app_id for agent in imported_agents)
+
+        backing_apps = db_session_with_containers.scalars(
+            select(App).where(App.id.in_({agent.backing_app_id for agent in imported_agents if agent.backing_app_id}))
+        ).all()
+        assert len(backing_apps) == 2
+        assert all(backing_app.mode == AppMode.AGENT for backing_app in backing_apps)
+        assert all(backing_app.enable_site is False and backing_app.enable_api is False for backing_app in backing_apps)
+
+        imported_roster_count_after = db_session_with_containers.scalar(
+            select(func.count())
+            .select_from(Agent)
+            .where(
+                Agent.tenant_id == app.tenant_id,
+                Agent.scope == AgentScope.ROSTER,
+                Agent.source == AgentSource.IMPORTED,
+            )
+        )
+        assert imported_roster_count_after == imported_roster_count_before
+
+    def test_agent_app_dsl_round_trip_creates_unpublished_imported_agent(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        _, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
+        source_app = AppService().create_app(
+            account.current_tenant_id,
+            CreateAppParams(
+                name="Portable Agent",
+                description="Agent DSL integration test",
+                mode="agent",
+                agent_role="researcher",
+                icon_type="emoji",
+                icon="R",
+                icon_background="#FFFFFF",
+            ),
+            account,
+            session=db_session_with_containers,
+        )
+        source_agent = db_session_with_containers.scalar(
+            select(Agent).where(
+                Agent.tenant_id == account.current_tenant_id,
+                Agent.app_id == source_app.id,
+                Agent.scope == AgentScope.ROSTER,
+            )
+        )
+        assert source_agent is not None
+        source_snapshot = db_session_with_containers.scalar(
+            select(AgentConfigSnapshot).where(
+                AgentConfigSnapshot.agent_id == source_agent.id,
+                AgentConfigSnapshot.id == source_agent.active_config_snapshot_id,
+            )
+        )
+        assert source_snapshot is not None
+        source_snapshot.config_snapshot = AgentSoulConfig.model_validate(
+            {
+                "config_skills": [
+                    {
+                        "name": "research",
+                        "description": "Research source material.",
+                        "file_id": "source-skill-file-id",
+                        "size": 123,
+                    }
+                ],
+                "config_files": [
+                    {
+                        "name": "guide.md",
+                        "file_kind": "upload_file",
+                        "file_id": "source-config-file-id",
+                        "size": 456,
+                        "mime_type": "text/markdown",
+                    }
+                ],
+            }
+        )
+        db_session_with_containers.commit()
+
+        yaml_content = AppDslService.export_dsl(
+            source_app,
+            include_secret=False,
+            session=db_session_with_containers,
+        )
+        exported_data = yaml.safe_load(yaml_content)
+        serialized_package = exported_data["agent_packages"][exported_data["agent"]["package_ref"]]
+        assert exported_data["app"]["mode"] == AppMode.AGENT.value
+        assert "agent_id" not in json.dumps(serialized_package)
+        assert serialized_package["soul"]["config_skills"] == [
+            {
+                "name": "research",
+                "description": "Research source material.",
+                "file_kind": "tool_file",
+                "file_id": "",
+                "is_missing": True,
+                "size": 123,
+                "hash": None,
+                "mime_type": "application/zip",
+            }
+        ]
+        assert serialized_package["soul"]["config_files"] == [
+            {
+                "name": "guide.md",
+                "file_kind": "upload_file",
+                "file_id": "",
+                "is_missing": True,
+                "size": 456,
+                "hash": None,
+                "mime_type": "text/markdown",
+            }
+        ]
+        assert "source-skill-file-id" not in yaml_content
+        assert "source-config-file-id" not in yaml_content
+
+        mock_external_service_dependencies["app_was_created"].send.side_effect = (
+            lambda app, *, account, session, **_kwargs: create_site_record(app=app, account=account, session=session)
+        )
+        result = AppDslService(db_session_with_containers).import_app(
+            account=account,
+            import_mode=ImportMode.YAML_CONTENT,
+            yaml_content=yaml_content,
+        )
+        assert result.status == ImportStatus.COMPLETED_WITH_WARNINGS
+        assert {warning.code for warning in result.warnings} == {
+            "agent_file_omitted",
+            "agent_skill_omitted",
+        }
+        assert result.app_id is not None
+        db_session_with_containers.commit()
+
+        imported_agent = db_session_with_containers.scalar(
+            select(Agent).where(
+                Agent.tenant_id == account.current_tenant_id,
+                Agent.app_id == result.app_id,
+                Agent.scope == AgentScope.ROSTER,
+                Agent.source == AgentSource.IMPORTED,
+            )
+        )
+        assert imported_agent is not None
+        assert imported_agent.active_config_is_published is False
+        imported_app = db_session_with_containers.get(App, result.app_id)
+        assert imported_app is not None
+        assert imported_app.enable_site is False
+        assert imported_app.enable_api is False
+        imported_site = imported_app.site_with_session(session=db_session_with_containers)
+        assert imported_site is not None
+        assert imported_site.title == exported_data["site"]["title"]
+        draft = db_session_with_containers.scalar(
+            select(AgentConfigDraft).where(
+                AgentConfigDraft.agent_id == imported_agent.id,
+                AgentConfigDraft.draft_type == AgentConfigDraftType.DRAFT,
+                AgentConfigDraft.draft_owner_key == "",
+            )
+        )
+        assert draft is not None
+        assert draft.base_snapshot_id == imported_agent.active_config_snapshot_id
+        imported_soul = AgentSoulConfig.model_validate(draft.config_snapshot_dict)
+        assert imported_soul.config_skills[0].name == "research"
+        assert imported_soul.config_skills[0].file_id == ""
+        assert imported_soul.config_skills[0].is_missing is True
+        assert imported_soul.config_files[0].name == "guide.md"
+        assert imported_soul.config_files[0].file_id == ""
+        assert imported_soul.config_files[0].is_missing is True
 
     def test_export_dsl_workflow_app_success(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -972,7 +1276,7 @@ class TestAppDslService:
             "workflow_service"
         ].return_value.get_draft_workflow.return_value = mock_workflow
 
-        exported_dsl = AppDslService.export_dsl(app, include_secret=False)
+        exported_dsl = AppDslService.export_dsl(app, include_secret=False, session=db_session_with_containers)
         exported_data = yaml.safe_load(exported_dsl)
 
         assert exported_data["kind"] == "app"
@@ -1006,7 +1310,7 @@ class TestAppDslService:
 
         workflow_id = str(uuid4())
 
-        def mock_get_draft_workflow(app_model, wf_id=None):
+        def mock_get_draft_workflow(app_model, wf_id=None, **_kwargs):
             if wf_id == workflow_id:
                 return mock_workflow
             return None
@@ -1015,7 +1319,9 @@ class TestAppDslService:
             "workflow_service"
         ].return_value.get_draft_workflow.side_effect = mock_get_draft_workflow
 
-        exported_dsl = AppDslService.export_dsl(app, include_secret=False, workflow_id=workflow_id)
+        exported_dsl = AppDslService.export_dsl(
+            app, include_secret=False, workflow_id=workflow_id, session=db_session_with_containers
+        )
         exported_data = yaml.safe_load(exported_dsl)
 
         assert exported_data["kind"] == "app"
@@ -1032,13 +1338,17 @@ class TestAppDslService:
 
         with pytest.raises(
             WorkflowNotFoundError,
-            match="Missing draft workflow configuration, please check.",
+            match="Workflow version not found. Workflow ID:",
         ):
-            AppDslService.export_dsl(app, include_secret=False, workflow_id=str(uuid4()))
+            AppDslService.export_dsl(
+                app, include_secret=False, workflow_id=str(uuid4()), session=db_session_with_containers
+            )
 
     # ── Workflow Export Data ───────────────────────────────────────────
 
-    def test_append_workflow_export_data_filters_and_overrides(self, monkeypatch: pytest.MonkeyPatch):
+    def test_append_workflow_export_data_filters_and_overrides(
+        self, monkeypatch: pytest.MonkeyPatch, db_session_with_containers: Session
+    ):
         workflow_dict = {
             "graph": {
                 "nodes": [
@@ -1103,26 +1413,13 @@ class TestAppDslService:
             "_extract_dependencies_from_workflow",
             lambda *_args, **_kwargs: ["dep-1"],
         )
-        monkeypatch.setattr(
-            app_dsl_service.DependenciesAnalysisService,
-            "generate_dependencies",
-            lambda *, tenant_id, dependencies: [
-                SimpleNamespace(
-                    model_dump=lambda: {
-                        "tenant": tenant_id,
-                        "dep": dependencies[0],
-                    }
-                )
-            ],
-        )
-        monkeypatch.setattr(app_dsl_service, "jsonable_encoder", lambda x: x)
-
         export_data: dict = {}
-        AppDslService._append_workflow_export_data(
+        dependencies = AppDslService._append_workflow_export_data(
             export_data=export_data,
-            app_model=_app_stub(),
+            app_model=_app_record(),
             include_secret=False,
             workflow_id=None,
+            session=db_session_with_containers,
         )
 
         nodes = export_data["workflow"]["graph"]["nodes"]
@@ -1136,9 +1433,11 @@ class TestAppDslService:
         assert nodes[4]["data"]["webhook_url"] == ""
         assert nodes[4]["data"]["webhook_debug_url"] == ""
         assert nodes[5]["data"]["subscription_id"] == ""
-        assert export_data["dependencies"] == [{"tenant": _DEFAULT_TENANT_ID, "dep": "dep-1"}]
+        assert dependencies == ["dep-1"]
 
-    def test_append_workflow_export_data_missing_workflow_raises(self, monkeypatch: pytest.MonkeyPatch):
+    def test_append_workflow_export_data_missing_workflow_raises(
+        self, monkeypatch: pytest.MonkeyPatch, db_session_with_containers: Session
+    ):
         workflow_service = MagicMock()
         workflow_service.get_draft_workflow.return_value = None
         monkeypatch.setattr(app_dsl_service, "WorkflowService", lambda: workflow_service)
@@ -1146,44 +1445,48 @@ class TestAppDslService:
         with pytest.raises(WorkflowNotFoundError, match="Missing draft workflow configuration"):
             AppDslService._append_workflow_export_data(
                 export_data={},
-                app_model=_app_stub(),
+                app_model=_app_record(),
                 include_secret=False,
                 workflow_id=None,
+                session=db_session_with_containers,
             )
 
     # ── Model Config Export Data ──────────────────────────────────────
 
-    def test_append_model_config_export_data_filters_credential_id(self, monkeypatch: pytest.MonkeyPatch):
+    def test_append_model_config_export_data_filters_credential_id(
+        self, monkeypatch: pytest.MonkeyPatch, db_session_with_containers: Session
+    ):
         monkeypatch.setattr(
             AppDslService,
             "_extract_dependencies_from_model_config",
             lambda *_args, **_kwargs: ["dep-1"],
         )
-        monkeypatch.setattr(
-            app_dsl_service.DependenciesAnalysisService,
-            "generate_dependencies",
-            lambda *, tenant_id, dependencies: [
-                SimpleNamespace(
-                    model_dump=lambda: {
-                        "tenant": tenant_id,
-                        "dep": dependencies[0],
-                    }
-                )
-            ],
+        app_model = _app_record()
+        app_model_config = AppModelConfig(
+            app_id=app_model.id,
+            agent_mode=json.dumps({"enabled": True, "tools": [{"credential_id": "secret"}]}),
         )
-        monkeypatch.setattr(app_dsl_service, "jsonable_encoder", lambda x: x)
-
-        app_model_config = SimpleNamespace(to_dict=lambda: {"agent_mode": {"tools": [{"credential_id": "secret"}]}})
-        app_model = _app_stub(app_model_config=app_model_config)
+        app_model.app_model_config_id = app_model_config.id
+        db_session_with_containers.add(app_model_config)
+        db_session_with_containers.flush()
+        db_session_with_containers.expire_all()
+        annotation_reply = {"enabled": False}
+        monkeypatch.setattr(app_dsl_service, "load_annotation_reply_config", lambda *_args: annotation_reply)
         export_data: dict = {}
 
-        AppDslService._append_model_config_export_data(export_data, app_model)
+        dependencies = AppDslService._append_model_config_export_data(
+            export_data, app_model, session=db_session_with_containers
+        )
         assert export_data["model_config"]["agent_mode"]["tools"] == [{}]
-        assert export_data["dependencies"] == [{"tenant": _DEFAULT_TENANT_ID, "dep": "dep-1"}]
+        assert dependencies == ["dep-1"]
+        assert export_data["model_config"]["annotation_reply"] == annotation_reply
+        assert app_model_config.agent_mode_dict["tools"] == [{"credential_id": "secret"}]
 
-    def test_append_model_config_export_data_requires_app_config(self):
+    def test_append_model_config_export_data_requires_app_config(self, db_session_with_containers: Session):
         with pytest.raises(ValueError, match="Missing app configuration"):
-            AppDslService._append_model_config_export_data({}, _app_stub(app_model_config=None))
+            AppDslService._append_model_config_export_data(
+                {}, _app_record(app_model_config_id=str(uuid4())), session=db_session_with_containers
+            )
 
     # ── Dependency Extraction ─────────────────────────────────────────
 

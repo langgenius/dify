@@ -29,14 +29,9 @@ export const usePreImportNotionPages = ({
 
 export const useInvalidPreImportNotionPages = () => {
   const queryClient = useQueryClient()
-  return ({
-    datasetId,
-    credentialId,
-  }: PreImportNotionPagesParams) => {
-    queryClient.invalidateQueries(
-      {
-        queryKey: [PRE_IMPORT_NOTION_PAGES_QUERY_KEY, datasetId, credentialId],
-      },
-    )
+  return ({ datasetId, credentialId }: PreImportNotionPagesParams) => {
+    queryClient.invalidateQueries({
+      queryKey: [PRE_IMPORT_NOTION_PAGES_QUERY_KEY, datasetId, credentialId],
+    })
   }
 }

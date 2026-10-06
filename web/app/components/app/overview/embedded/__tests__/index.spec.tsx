@@ -1,11 +1,12 @@
 import type { SiteInfo } from '@/models/share'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
 import { act } from 'react'
-
-import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vite-plus/test'
 import { InputVarType } from '@/app/components/workflow/types'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import Embedded from '../index'
 
 vi.mock('../style.module.css', () => ({
@@ -18,32 +19,8 @@ vi.mock('../style.module.css', () => ({
     pluginInstallIcon: 'pluginInstallIcon',
   },
 }))
-const mockThemeBuilder = {
-  buildTheme: vi.fn(),
-  theme: {
-    primaryColor: '#123456',
-  },
-}
-const mockUseAppContext = vi.fn(() => ({
-  langGeniusVersionInfo: {
-    current_env: 'PRODUCTION',
-    current_version: '',
-    latest_version: '',
-    release_date: '',
-    release_notes: '',
-    version: '',
-    can_auto_update: false,
-  },
-}))
-
 vi.mock('copy-to-clipboard', () => ({
   default: vi.fn(),
-}))
-vi.mock('@/app/components/base/chat/embedded-chatbot/theme/theme-context', () => ({
-  useThemeContext: () => mockThemeBuilder,
-}))
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => mockUseAppContext(),
 }))
 const mockWindowOpen = vi.spyOn(window, 'open').mockImplementation(() => null)
 const mockedCopy = vi.mocked(copy)
@@ -64,12 +41,7 @@ const baseProps = {
   className: 'custom-modal',
 }
 
-const getCopyButton = () => {
-  const buttons = screen.getAllByRole('button')
-  const actionButton = buttons.find(button => button.className.includes('action-btn'))
-  expect(actionButton).toBeDefined()
-  return actionButton!
-}
+const getCopyButton = () => screen.getByRole('button', { name: /copy/i })
 
 describe('Embedded', () => {
   beforeAll(() => {
@@ -98,42 +70,85 @@ describe('Embedded', () => {
     globalThis.CompressionStream = originalCompressionStream
   })
 
-  it('builds theme and copies iframe snippet', async () => {
+  it('copies iframe snippet', async () => {
+    const user = userEvent.setup()
+
     await act(async () => {
       render(<Embedded {...baseProps} />)
     })
 
     await waitFor(() => {
-      expect(screen.getByText((content, node) => node?.tagName.toLowerCase() === 'pre' && content.includes('/chatbot/token'))).toBeInTheDocument()
+      expect(
+        screen.getByText(
+          (content, node) =>
+            node?.tagName.toLowerCase() === 'pre' && content.includes('/chatbot/token'),
+        ),
+      ).toBeInTheDocument()
     })
 
-    const actionButton = getCopyButton()
-    const innerDiv = actionButton.querySelector('div')
-    await act(async () => {
-      fireEvent.click(innerDiv ?? actionButton)
-    })
+    const copyButton = getCopyButton()
+    await user.click(copyButton)
 
-    expect(mockThemeBuilder.buildTheme).toHaveBeenCalledWith(siteInfo.chat_color_theme, siteInfo.chat_color_theme_inverted)
     await waitFor(() => {
       expect(mockedCopy).toHaveBeenCalledWith(expect.stringContaining('/chatbot/token'))
     })
   })
 
-  it('opens chrome plugin store link when chrome option selected', async () => {
+  it('links each embed method tab to a panel and supports arrow key selection', async () => {
+    const user = userEvent.setup()
     await act(async () => {
       render(<Embedded {...baseProps} />)
     })
 
-    const optionButtons = document.body.querySelectorAll('[class*="option"]')
-    expect(optionButtons.length).toBeGreaterThanOrEqual(3)
-    act(() => {
-      fireEvent.click(optionButtons[2]!)
+    const iframe = screen.getByRole('tab', {
+      name: 'appOverview.overview.appInfo.embedded.iframe',
+    })
+    const scripts = screen.getByRole('tab', {
+      name: 'appOverview.overview.appInfo.embedded.scripts',
+    })
+    const chromePlugin = screen.getByRole('tab', {
+      name: 'appOverview.overview.appInfo.embedded.chromePlugin',
     })
 
-    const [chromeText] = screen.getAllByText('appOverview.overview.appInfo.embedded.chromePlugin')
-    act(() => {
-      fireEvent.click(chromeText!)
+    expect(screen.getByRole('tablist')).toBeInTheDocument()
+    expect(iframe).toHaveAttribute('aria-selected', 'true')
+    expect(scripts).toHaveAttribute('aria-selected', 'false')
+    expect(chromePlugin).toHaveAttribute('aria-selected', 'false')
+    expect(screen.getByRole('tabpanel')).toHaveAttribute('aria-labelledby', iframe.id)
+    expect(iframe).toHaveAttribute('aria-controls', screen.getByRole('tabpanel').id)
+
+    await user.click(iframe)
+    expect(iframe).toHaveFocus()
+    await user.keyboard('{ArrowRight}')
+
+    expect(scripts).toHaveFocus()
+    expect(iframe).toHaveAttribute('aria-selected', 'true')
+
+    await user.keyboard('{Enter}')
+
+    expect(iframe).toHaveAttribute('aria-selected', 'false')
+    expect(scripts).toHaveAttribute('aria-selected', 'true')
+    expect(chromePlugin).toHaveAttribute('aria-selected', 'false')
+    expect(screen.getByRole('tabpanel')).toHaveAttribute('aria-labelledby', scripts.id)
+  })
+
+  it('opens chrome plugin store link when chrome option selected', async () => {
+    const user = userEvent.setup()
+    await act(async () => {
+      render(<Embedded {...baseProps} />)
     })
+
+    await user.click(
+      screen.getByRole('tab', {
+        name: 'appOverview.overview.appInfo.embedded.chromePlugin',
+      }),
+    )
+
+    await user.click(
+      within(screen.getByRole('tabpanel')).getByRole('button', {
+        name: 'appOverview.overview.appInfo.embedded.chromePlugin',
+      }),
+    )
 
     expect(mockWindowOpen).toHaveBeenCalledWith(
       'https://chrome.google.com/webstore/detail/dify-chatbot/ceehdapohffmjmkdcifjofadiaoeggaf',
@@ -142,25 +157,45 @@ describe('Embedded', () => {
     )
   })
 
+  it('calls onClose when the close button is clicked', async () => {
+    const user = userEvent.setup()
+    const onClose = vi.fn()
+
+    await act(async () => {
+      render(<Embedded {...baseProps} onClose={onClose} />)
+    })
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
   it('keeps hidden inputs collapsed by default and updates iframe and script content when values change', async () => {
+    const user = userEvent.setup()
     render(
       <Embedded
         {...baseProps}
-        hiddenInputs={[{
-          variable: 'secret',
-          label: 'Secret',
-          type: InputVarType.textInput,
-          hide: true,
-          required: true,
-          default: '',
-        }]}
+        hiddenInputs={[
+          {
+            variable: 'secret',
+            label: 'Secret',
+            type: InputVarType.textInput,
+            hide: true,
+            required: true,
+            default: '',
+          },
+        ]}
       />,
     )
 
     expect(screen.queryByLabelText('Secret')).not.toBeInTheDocument()
 
     await act(async () => {
-      fireEvent.click(screen.getByText('appOverview.overview.appInfo.embedded.hiddenInputs.title').closest('button')!)
+      fireEvent.click(
+        screen
+          .getByText('appOverview.overview.appInfo.embedded.hiddenInputs.title')
+          .closest('button')!,
+      )
     })
 
     await waitFor(() => {
@@ -180,10 +215,11 @@ describe('Embedded', () => {
       expect(codeBlock?.textContent ?? '').toContain('/chatbot/token?secret=dG9wLXNlY3JldA%3D%3D')
     })
 
-    const optionButtons = document.body.querySelectorAll('[class*="option"]')
-    act(() => {
-      fireEvent.click(optionButtons[1]!)
-    })
+    await user.click(
+      screen.getByRole('tab', {
+        name: 'appOverview.overview.appInfo.embedded.scripts',
+      }),
+    )
 
     await waitFor(() => {
       const codeBlock = document.querySelector('pre')
@@ -192,51 +228,52 @@ describe('Embedded', () => {
   })
 
   it('copies script content when scripts option is selected', async () => {
+    const user = userEvent.setup()
+
     await act(async () => {
       render(<Embedded {...baseProps} />)
     })
 
-    const optionButtons = document.body.querySelectorAll('[class*="option"]')
-    act(() => {
-      fireEvent.click(optionButtons[1]!)
-    })
+    await user.click(
+      screen.getByRole('tab', {
+        name: 'appOverview.overview.appInfo.embedded.scripts',
+      }),
+    )
 
     await waitFor(() => {
       const codeBlock = document.querySelector('pre')
-      expect(codeBlock?.textContent ?? '').toContain('token: \'token\'')
+      expect(codeBlock?.textContent ?? '').toContain("token: 'token'")
+      expect(codeBlock?.textContent ?? '').toContain('background-color: #000000')
     })
 
-    const actionButton = getCopyButton()
-    const innerDiv = actionButton.querySelector('div')
-    await act(async () => {
-      fireEvent.click(innerDiv ?? actionButton)
-    })
+    const copyButton = getCopyButton()
+    await user.click(copyButton)
 
     await waitFor(() => {
-      expect(mockedCopy).toHaveBeenCalledWith(expect.stringContaining('token: \'token\''))
+      expect(mockedCopy).toHaveBeenCalledWith(expect.stringContaining("token: 'token'"))
     })
   })
 
   it('copies chrome plugin URL (without prefix) when chromePlugin option is selected', async () => {
+    const user = userEvent.setup()
+
     await act(async () => {
       render(<Embedded {...baseProps} />)
     })
 
-    const optionButtons = document.body.querySelectorAll('[class*="option"]')
-    act(() => {
-      fireEvent.click(optionButtons[2]!)
-    })
+    await user.click(
+      screen.getByRole('tab', {
+        name: 'appOverview.overview.appInfo.embedded.chromePlugin',
+      }),
+    )
 
     await waitFor(() => {
       const codeBlock = document.querySelector('pre')
       expect(codeBlock?.textContent ?? '').toContain('ChatBot URL:')
     })
 
-    const actionButton = getCopyButton()
-    const innerDiv = actionButton.querySelector('div')
-    await act(async () => {
-      fireEvent.click(innerDiv ?? actionButton)
-    })
+    const copyButton = getCopyButton()
+    await user.click(copyButton)
 
     await waitFor(() => {
       expect(mockedCopy).toHaveBeenCalledWith(expect.stringContaining('/chatbot/token'))

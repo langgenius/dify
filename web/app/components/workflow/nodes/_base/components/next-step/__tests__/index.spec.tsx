@@ -1,39 +1,49 @@
-import type { ReactNode } from 'react'
 import type { Edge, Node } from '@/app/components/workflow/types'
 import { screen } from '@testing-library/react'
-import {
-  createEdge,
-  createNode,
-} from '@/app/components/workflow/__tests__/fixtures'
+import { createEdge, createNode } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
-import {
-  useAvailableBlocks,
-  useNodesInteractions,
-  useNodesReadOnly,
-  useToolIcon,
-} from '@/app/components/workflow/hooks'
 import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { useAvailableBlocks } from '../../../../../hooks/use-available-blocks'
+import { useNodesInteractions } from '../../../../../hooks/use-nodes-interactions'
+import { useToolIcon } from '../../../../../hooks/use-tool-icon'
+import { useNodesReadOnly } from '../../../../../hooks/use-workflow'
 import NextStep from '../index'
 
-vi.mock('@/app/components/workflow/block-selector', () => ({
-  default: ({ trigger }: { trigger: ((open: boolean) => ReactNode) | ReactNode }) => {
-    return (
-      <div data-testid="next-step-block-selector">
-        {typeof trigger === 'function' ? trigger(false) : trigger}
-      </div>
-    )
-  },
-}))
+vi.mock('../../../../../hooks/use-available-blocks', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../../hooks/use-available-blocks')>()
 
-vi.mock('@/app/components/workflow/hooks', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/app/components/workflow/hooks')>()
   return {
     ...actual,
     useAvailableBlocks: vi.fn(),
+  }
+})
+
+vi.mock('../../../../../hooks/use-nodes-interactions', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('../../../../../hooks/use-nodes-interactions')>()
+
+  return {
+    ...actual,
     useNodesInteractions: vi.fn(),
-    useNodesReadOnly: vi.fn(),
+  }
+})
+
+vi.mock('../../../../../hooks/use-tool-icon', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../../hooks/use-tool-icon')>()
+
+  return {
+    ...actual,
     useToolIcon: vi.fn(),
+  }
+})
+
+vi.mock('../../../../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../../hooks/use-workflow')>()
+
+  return {
+    ...actual,
+    useNodesReadOnly: vi.fn(),
   }
 })
 
@@ -52,17 +62,14 @@ const createAvailableBlocksResult = (): ReturnType<typeof useAvailableBlocks> =>
 })
 
 const renderComponent = (selectedNode: Node, nodes: Node[], edges: Edge[] = []) =>
-  renderWorkflowFlowComponent(
-    <NextStep selectedNode={selectedNode} />,
-    {
-      nodes,
-      edges,
-      canvasStyle: {
-        width: 600,
-        height: 400,
-      },
+  renderWorkflowFlowComponent(<NextStep selectedNode={selectedNode} />, {
+    nodes,
+    edges,
+    canvasStyle: {
+      width: 600,
+      height: 400,
     },
-  )
+  })
 
 describe('NextStep', () => {
   beforeEach(() => {
@@ -113,10 +120,12 @@ describe('NextStep', () => {
         data: {
           type: BlockEnum.Code,
           title: 'Selected Node',
-          _targetBranches: [{
-            id: 'branch-a',
-            name: 'Approved',
-          }],
+          _targetBranches: [
+            {
+              id: 'branch-a',
+              name: 'Approved',
+            },
+          ],
         },
       })
       const nextNode = createNode({
@@ -145,10 +154,12 @@ describe('NextStep', () => {
         data: {
           type: BlockEnum.QuestionClassifier,
           title: 'Classifier',
-          _targetBranches: [{
-            id: 'branch-b',
-            name: 'Original branch name',
-          }],
+          _targetBranches: [
+            {
+              id: 'branch-b',
+              name: 'Original branch name',
+            },
+          ],
         },
       })
       const danglingEdge = createEdge({

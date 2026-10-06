@@ -1,7 +1,7 @@
 import type { PluginDetail } from '../types'
 import { useQuery } from '@tanstack/react-query'
 import { renderHook } from '@testing-library/react'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { usePluginsWithLatestVersion } from '../hooks'
 import { PluginSource } from '../types'
 
@@ -9,11 +9,19 @@ vi.mock('@tanstack/react-query', () => ({
   useQuery: vi.fn(),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
-    plugins: {
-      latestVersions: {
-        queryOptions: vi.fn((options: unknown) => options),
+    workspaces: {
+      current: {
+        plugin: {
+          list: {
+            latestVersions: {
+              post: {
+                queryOptions: vi.fn((options: unknown) => options),
+              },
+            },
+          },
+        },
       },
     },
   },
@@ -49,13 +57,13 @@ describe('usePluginsWithLatestVersion', () => {
   })
 
   it('should disable latest-version querying when there are no marketplace plugins', () => {
-    const plugins = [
-      createPlugin({ plugin_id: 'github-plugin', source: PluginSource.github }),
-    ]
+    const plugins = [createPlugin({ plugin_id: 'github-plugin', source: PluginSource.github })]
 
     const { result } = renderHook(() => usePluginsWithLatestVersion(plugins))
 
-    expect(consoleQuery.plugins.latestVersions.queryOptions).toHaveBeenCalledWith({
+    expect(
+      consoleQuery.workspaces.current.plugin.list.latestVersions.post.queryOptions,
+    ).toHaveBeenCalledWith({
       input: { body: { plugin_ids: [] } },
       enabled: false,
     })
@@ -109,7 +117,9 @@ describe('usePluginsWithLatestVersion', () => {
 
     const { result } = renderHook(() => usePluginsWithLatestVersion(plugins))
 
-    expect(consoleQuery.plugins.latestVersions.queryOptions).toHaveBeenCalledWith({
+    expect(
+      consoleQuery.workspaces.current.plugin.list.latestVersions.post.queryOptions,
+    ).toHaveBeenCalledWith({
       input: { body: { plugin_ids: ['plugin-1'] } },
       enabled: true,
     })

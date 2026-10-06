@@ -7,7 +7,7 @@ import Node from '../node'
 const mockUseNodePluginInstallation = vi.hoisted(() => vi.fn())
 const mockUseCurrentToolCollection = vi.hoisted(() => vi.fn())
 
-vi.mock('@/app/components/workflow/hooks/use-node-plugin-installation', () => ({
+vi.mock('../../../hooks/use-node-plugin-installation', () => ({
   useNodePluginInstallation: mockUseNodePluginInstallation,
 }))
 
@@ -95,5 +95,20 @@ describe('ToolNode', () => {
 
       expect(container).toBeEmptyDOMElement()
     })
+  })
+
+  it('should render multi-select configuration values', () => {
+    render(
+      <Node
+        id="tool-node-1"
+        data={createNodeData({
+          tool_configurations: {
+            formats: { type: 'constant', value: ['png', 'svg'] },
+          },
+        })}
+      />,
+    )
+
+    expect(screen.getByTitle('png, svg')).toHaveTextContent('png, svg')
   })
 })

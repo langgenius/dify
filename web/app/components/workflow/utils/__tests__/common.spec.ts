@@ -1,6 +1,4 @@
-import {
-  formatWorkflowRunIdentifier,
-} from '../common'
+import { formatWorkflowRunIdentifier } from '../common'
 
 describe('formatWorkflowRunIdentifier', () => {
   it('should return fallback text when finishedAt is undefined', () => {

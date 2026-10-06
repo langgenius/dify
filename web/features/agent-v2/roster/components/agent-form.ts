@@ -1,30 +1,45 @@
-import type { AgentAppPartial } from '@dify/contracts/api/console/agent/types.gen'
-import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
+import type {
+  AgentAppCreatePayload,
+  AgentAppPartial,
+} from '@dify/contracts/api/console/agent/types.gen'
+import type { AgentComposerAgentResponse } from '@dify/contracts/api/console/apps/types.gen'
+import type { IconPickerValue } from '@/app/components/base/icon-picker'
+
+type AgentFormField = 'description' | 'name' | 'role'
 
 export type AgentFormValues = {
-  description?: string
-  name?: string
-  role?: string
+  [Field in AgentFormField]-?: NonNullable<AgentAppCreatePayload[Field]>
 }
 
-export type AgentIconSelection = AppIconSelection | {
-  type: 'link'
-  icon: string
-  url: string
-}
+export type AgentFormSource = Pick<
+  AgentAppPartial,
+  'description' | 'icon' | 'icon_background' | 'icon_type' | 'icon_url' | 'id' | 'name' | 'role'
+>
+
+export type AgentIconSelection =
+  | IconPickerValue
+  | {
+      type: 'link'
+      icon: string
+      url: string
+    }
 
 export const defaultAgentIcon = {
   type: 'emoji',
   icon: '🧸',
   background: '#F5F3FF',
-} satisfies AppIconSelection
+} satisfies IconPickerValue
 
-export const createAgentIconSelection = (agent: AgentAppPartial): AgentIconSelection => {
+type AgentIconSource =
+  | Pick<AgentAppPartial, 'icon' | 'icon_background' | 'icon_type' | 'icon_url'>
+  | Pick<AgentComposerAgentResponse, 'icon' | 'icon_background' | 'icon_type'>
+
+export const createAgentIconSelection = (agent: AgentIconSource): AgentIconSelection => {
   if (agent.icon_type === 'image' && agent.icon) {
     return {
       type: 'image',
       fileId: agent.icon,
-      url: agent.icon,
+      url: ('icon_url' in agent ? agent.icon_url : undefined) ?? agent.icon,
     }
   }
 
@@ -44,11 +59,9 @@ export const createAgentIconSelection = (agent: AgentAppPartial): AgentIconSelec
 }
 
 export const getAgentIconKey = (icon: AgentIconSelection) => {
-  if (icon.type === 'emoji')
-    return `${icon.type}:${icon.icon}:${icon.background}`
+  if (icon.type === 'emoji') return `${icon.type}:${icon.icon}:${icon.background}`
 
-  if (icon.type === 'image')
-    return `${icon.type}:${icon.fileId}`
+  if (icon.type === 'image') return `${icon.type}:${icon.fileId}`
 
   return `${icon.type}:${icon.icon}`
 }

@@ -1,6 +1,8 @@
 import type { SiteInfo } from '@/models/share'
+import type { WebAppAddress } from '@/service/webapp-address'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import userEvent from '@testing-library/user-event'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import MenuDropdown from '../menu-dropdown'
 
 vi.mock('../info-modal', () => ({
@@ -13,16 +15,20 @@ vi.mock('../info-modal', () => ({
     onClose: () => void
     data?: SiteInfo
   }) => {
-    if (!isShow)
-      return null
+    if (!isShow) return null
     return (
       <div data-testid="info-modal">
         <span>{data?.title}</span>
-        <button type="button" onClick={onClose}>Close Info</button>
+        <button type="button" onClick={onClose}>
+          Close Info
+        </button>
       </div>
     )
   },
 }))
+
+const mockSetTheme = vi.fn()
+vi.mock('next-themes', () => ({ useTheme: () => ({ theme: 'system', setTheme: mockSetTheme }) }))
 
 const mockReplace = vi.fn()
 const mockPathname = '/test-path'
@@ -34,6 +40,7 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 const mockShareCode = 'test-share-code'
+const webAppAddress: WebAppAddress = { kind: 'default', code: mockShareCode }
 vi.mock('@/context/web-app-context', () => ({
   useWebAppStore: (selector: (state: Record<string, unknown>) => unknown) => {
     const state = {
@@ -47,6 +54,10 @@ vi.mock('@/context/web-app-context', () => ({
 const mockWebAppLogout = vi.fn().mockResolvedValue(undefined)
 vi.mock('@/service/webapp-auth', () => ({
   webAppLogout: (...args: unknown[]) => mockWebAppLogout(...args),
+}))
+
+vi.mock('@/service/webapp-address', () => ({
+  resolveWebAppAddress: () => webAppAddress,
 }))
 
 afterEach(() => {
@@ -99,6 +110,23 @@ describe('MenuDropdown', () => {
         expect(screen.getByText('common.userProfile.about')).toBeInTheDocument()
       })
     })
+  })
+
+  it('exposes checked theme items and keeps the menu open after changing the theme', async () => {
+    const user = userEvent.setup()
+    render(<MenuDropdown data={baseSiteInfo} />)
+    const trigger = screen.getByRole('button')
+    await user.click(trigger)
+    expect(screen.getByRole('menuitemradio', { name: 'common.theme.auto' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
+    const light = screen.getByRole('menuitemradio', { name: 'common.theme.light' })
+    await user.click(light)
+    expect(mockSetTheme).toHaveBeenCalledWith('light', expect.anything())
+    expect(screen.getByRole('menu')).toBeInTheDocument()
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(trigger).toHaveFocus())
   })
 
   describe('privacy policy link', () => {
@@ -188,7 +216,7 @@ describe('MenuDropdown', () => {
       })
 
       await waitFor(() => {
-        expect(mockWebAppLogout).toHaveBeenCalledWith(mockShareCode)
+        expect(mockWebAppLogout).toHaveBeenCalledWith(webAppAddress)
         expect(mockReplace).toHaveBeenCalledWith(`/webapp-signin?redirect_url=${mockPathname}`)
       })
     })
@@ -233,15 +261,6 @@ describe('MenuDropdown', () => {
     })
   })
 
-  describe('placement prop', () => {
-    it('should accept custom placement', () => {
-      render(<MenuDropdown data={baseSiteInfo} placement="top-start" />)
-
-      const triggerButton = screen.getByRole('button')
-      expect(triggerButton).toBeInTheDocument()
-    })
-  })
-
   describe('toggle behavior', () => {
     it('should close dropdown when clicking trigger again', async () => {
       render(<MenuDropdown data={baseSiteInfo} />)
@@ -257,12 +276,6 @@ describe('MenuDropdown', () => {
       await waitFor(() => {
         expect(screen.queryByText('common.theme.theme')).not.toBeInTheDocument()
       })
-    })
-  })
-
-  describe('memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      expect((MenuDropdown as unknown as { $$typeof: symbol }).$$typeof).toBe(Symbol.for('react.memo'))
     })
   })
 })

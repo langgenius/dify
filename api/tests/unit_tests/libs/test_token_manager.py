@@ -4,7 +4,7 @@ Regression tests for `libs.helper.TokenManager`.
 `TokenManager` is the storage primitive shared by multiple auth flows, so it
 must preserve every metadata field written by the caller. Business-specific
 validation now happens at the callsite boundary (for example,
-`AccountService.get_change_email_data`), not inside `TokenManager`.
+`TokenManagerChangeEmailTokenGateway.read`), not inside `TokenManager`.
 """
 
 import json
@@ -61,19 +61,16 @@ def test_token_manager_roundtrip_preserves_untyped_metadata_keys(monkeypatch: py
     assert data.get("custom_marker") == "preserve-me"
 
 
-def test_token_manager_roundtrip_uses_explicit_email_with_account(monkeypatch: pytest.MonkeyPatch) -> None:
-    """When both `account` and `email` are supplied, the token should bind the
-    stable `account_id` from the account and the target email from the explicit
-    email argument.
+def test_token_manager_roundtrip_uses_explicit_account_id(monkeypatch: pytest.MonkeyPatch) -> None:
+    """When both `account_id` and `email` are supplied, the token should bind
+    both primitive values without depending on an account model.
     """
 
     storage: dict[str, str] = {}
     monkeypatch.setattr(helper_module, "redis_client", _build_fake_redis(storage))
 
-    account = SimpleNamespace(id="acc-1", email="old@example.com")
-
     token = TokenManager.generate_token(
-        account=account,
+        account_id="acc-1",
         email="new@example.com",
         token_type="change_email",
         additional_data={

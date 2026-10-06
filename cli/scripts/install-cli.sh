@@ -10,6 +10,7 @@
 #   DIFYCTL_VERSION  difyctl version pin (used only when DIFY_VERSION is unset).
 #   DIFYCTL_PREFIX   install dir (default $HOME/.local); binary -> $PREFIX/bin/difyctl
 #   DIFYCTL_REPO     release source repo (default langgenius/dify)
+#   GITHUB_TOKEN     GitHub token (or GH_TOKEN) to raise the API rate limit to 5000/hour.
 # requires: curl, uname, sort -V, and sha256sum or shasum.
 set -eu
 
@@ -17,11 +18,14 @@ REPO="${DIFYCTL_REPO:-langgenius/dify}"
 PREFIX="${DIFYCTL_PREFIX:-${HOME}/.local}"
 DIFY_VERSION="${DIFY_VERSION:-}"
 DIFYCTL_VERSION="${DIFYCTL_VERSION:-}"
+GH_AUTH="${GITHUB_TOKEN:-${GH_TOKEN:-}}"
+# fetch_json runs in a subshell, so it reports failures via this file, not a variable.
+FETCH_ERR_FILE="${TMPDIR:-/tmp}/difyctl-fetcherr.$$"
 API="https://api.github.com/repos/${REPO}"
 DL="https://github.com/${REPO}/releases/download"
 
 err() { printf '%s\n' "install-cli: $*" >&2; }
-die() { err "$*"; exit 1; }
+die() { err "$*"; rm -f "$FETCH_ERR_FILE"; exit 1; }
 need() { command -v "$1" >/dev/null 2>&1 || die "$1 is required"; }
 re_escape() { printf '%s' "$1" | sed 's/[][\\.^$*+?(){}|/]/\\&/g'; }
 
@@ -66,8 +70,75 @@ list_release_tags() {
         | sed -E 's#.*:[[:space:]]*"([^"]*)".*#\1#'
 }
 
+# fetch_json URL -> body on stdout, 0 on success. On failure writes the cause to
+# FETCH_ERR_FILE (ratelimit:<epoch> | http:<code> | network) and returns nonzero.
+# Inspects the status and rate-limit headers, so it must not use curl -f.
 fetch_json() {
-    curl -fsSL -H "Accept: application/vnd.github+json" "$1"
+    rm -f "$FETCH_ERR_FILE"
+    _hdr=$(mktemp) || return 1
+    _body=$(mktemp) || { rm -f "$_hdr"; return 1; }
+    if [ -n "$GH_AUTH" ]; then
+        _code=$(curl -sSL -D "$_hdr" -o "$_body" -w '%{http_code}' \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${GH_AUTH}" \
+            "$1" 2>/dev/null) || _code=000
+    else
+        _code=$(curl -sSL -D "$_hdr" -o "$_body" -w '%{http_code}' \
+            -H "Accept: application/vnd.github+json" \
+            "$1" 2>/dev/null) || _code=000
+    fi
+    case "$_code" in
+        2*) cat "$_body"; rm -f "$_hdr" "$_body"; return 0 ;;
+        403|429)
+            _rem=$(awk 'tolower($1)=="x-ratelimit-remaining:"{gsub(/\r/,"",$2);v=$2} END{print v}' "$_hdr")
+            if [ "$_code" = "429" ] || [ "${_rem:-}" = "0" ]; then
+                _rst=$(awk 'tolower($1)=="x-ratelimit-reset:"{gsub(/\r/,"",$2);v=$2} END{print v}' "$_hdr")
+                printf 'ratelimit:%s' "$_rst" > "$FETCH_ERR_FILE"
+            else
+                printf 'http:%s' "$_code" > "$FETCH_ERR_FILE"
+            fi ;;
+        000) printf 'network' > "$FETCH_ERR_FILE" ;;
+        *)   printf 'http:%s' "$_code" > "$FETCH_ERR_FILE" ;;
+    esac
+    rm -f "$_hdr" "$_body"
+    return 1
+}
+
+# rate_limit_hint [RESET_EPOCH] -> explain the GitHub API limit and how to proceed.
+rate_limit_hint() {
+    err "GitHub API rate limit exceeded (unauthenticated requests are capped at 60/hour per IP)."
+    case "${1:-}" in
+        '' | *[!0-9]*) ;;
+        *)
+            _now=$(date +%s 2>/dev/null) || _now=""
+            if [ -n "$_now" ]; then
+                _mins=$(( ($1 - _now + 59) / 60 ))
+                if [ "$_mins" -gt 0 ]; then
+                    err "The limit resets in ~${_mins} min."
+                fi
+            fi ;;
+    esac
+    err "To proceed now, authenticate to raise the limit to 5000/hour:"
+    err "  curl -fsSL <install-url> | GITHUB_TOKEN=<token> sh"
+    err "Tip: pinning DIFY_VERSION makes a single API call (DIFYCTL_VERSION scans many)."
+}
+
+# True if the last fetch_json hit a rate limit — lets a subshell bail without printing.
+fetch_hit_ratelimit() {
+    [ -f "$FETCH_ERR_FILE" ] || return 1
+    case "$(cat "$FETCH_ERR_FILE" 2>/dev/null || true)" in
+        ratelimit:*) return 0 ;;
+    esac
+    return 1
+}
+
+# Explain and exit if the last fetch_json hit a rate limit; else return. Main shell only.
+maybe_ratelimit_exit() {
+    fetch_hit_ratelimit || return 0
+    _reset=$(cat "$FETCH_ERR_FILE" 2>/dev/null || true)
+    rm -f "$FETCH_ERR_FILE"
+    rate_limit_hint "${_reset#ratelimit:}"
+    exit 1
 }
 
 # find_release_for_difyctl WANT TARGET -> newest Dify tag whose assets host that difyctl build
@@ -75,11 +146,11 @@ find_release_for_difyctl() {
     _want="$1"
     _target="$2"
     _raw=$(fetch_json "${API}/releases?per_page=100") \
-        || die "failed to query ${REPO} releases (network error or GitHub API rate limit)"
+        || { fetch_hit_ratelimit && return 1; die "failed to query ${REPO} releases (network error or GitHub API rate limit)"; }
     _tags=$(printf '%s' "$_raw" | list_release_tags)
     for _t in $_tags; do
         _rel=$(fetch_json "${API}/releases/tags/${_t}") \
-            || { err "fetch failed for ${_t}, skipping"; continue; }
+            || { fetch_hit_ratelimit && return 1; err "fetch failed for ${_t}, skipping"; continue; }
         _name=$(printf '%s' "$_rel" | pick_asset "$_target")
         [ -n "$_name" ] || continue
         if [ "$(asset_version "$_name" "$_target")" = "$_want" ]; then
@@ -94,22 +165,23 @@ resolve_release() {
     _target="$1"
     if [ -n "$DIFY_VERSION" ]; then
         REL=$(fetch_json "${API}/releases/tags/${DIFY_VERSION}") \
-            || die "Dify release ${DIFY_VERSION} not found"
+            || { maybe_ratelimit_exit; die "Dify release ${DIFY_VERSION} not found"; }
         DIFY_TAG="$DIFY_VERSION"
     elif [ -n "$DIFYCTL_VERSION" ]; then
         DIFY_TAG=$(find_release_for_difyctl "$DIFYCTL_VERSION" "$_target") \
-            || die "difyctl ${DIFYCTL_VERSION} not found on any Dify release"
+            || { maybe_ratelimit_exit; die "difyctl ${DIFYCTL_VERSION} not found on any Dify release"; }
         REL=$(fetch_json "${API}/releases/tags/${DIFY_TAG}") \
-            || die "failed to fetch Dify release ${DIFY_TAG}"
+            || { maybe_ratelimit_exit; die "failed to fetch Dify release ${DIFY_TAG}"; }
     else
         REL=$(fetch_json "${API}/releases/latest") \
-            || die "failed to query latest Dify release (set DIFY_VERSION to pin one)"
+            || { maybe_ratelimit_exit; die "failed to query latest Dify release (set DIFY_VERSION to pin one)"; }
         DIFY_TAG=$(printf '%s' "$REL" | list_release_tags | head -1)
         [ -n "$DIFY_TAG" ] || die "could not parse a tag from the latest Dify release"
     fi
 }
 
 main() {
+    trap 'rm -f "$FETCH_ERR_FILE"' EXIT INT TERM
     need curl
     need uname
     sort -V /dev/null >/dev/null 2>&1 || die "sort with -V support is required (install coreutils)"
@@ -131,7 +203,7 @@ main() {
     base="${DL}/${DIFY_TAG}"
 
     tmp=$(mktemp -d 2>/dev/null || mktemp -d -t difyctl-install)
-    trap 'rm -rf "$tmp"' EXIT INT TERM
+    trap 'rm -rf "$tmp"; rm -f "$FETCH_ERR_FILE"' EXIT INT TERM
 
     printf 'downloading %s (Dify %s)...\n' "$asset" "$DIFY_TAG"
     curl -fsSL "${base}/${asset}" -o "${tmp}/${asset}" \

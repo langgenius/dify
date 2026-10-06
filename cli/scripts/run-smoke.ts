@@ -1,32 +1,61 @@
 #!/usr/bin/env -S bun
-import { execSync } from 'node:child_process'
+// scripts/run-smoke.ts — five checks against a running Dify server (or mock),
+// through `bun bin/dev.js`. DIFY_SERVER, DIFY_TOKEN, DIFY_CONFIG_DIR, and
+// DIFY_CACHE_DIR are read from the environment and passed through unchanged.
+import { execFileSync, spawnSync } from 'node:child_process'
+import { ExitCode } from '../src/errors/codes.js'
 
-type Check = { name: string, run: () => void }
+type Check = { name: string; run: () => void }
 
-const baseUrlIdx = process.argv.indexOf('--base-url')
-const baseUrl = baseUrlIdx > -1 ? process.argv[baseUrlIdx + 1] : 'http://localhost:5001'
-if (!baseUrl) {
-  console.error('usage: run-smoke.ts --base-url <url>')
-  process.exit(2)
+function cli(args: string[]): string {
+  return execFileSync('bun', ['bin/dev.js', ...args], { encoding: 'utf8' })
 }
 
-const env = { ...process.env, DIFY_BASE_URL: baseUrl }
+function cliExitCode(args: string[]): number {
+  return spawnSync('bun', ['bin/dev.js', ...args], { encoding: 'utf8' }).status ?? 1
+}
 
-function cli(args: string): string {
-  return execSync(`bun bin/dev.js ${args}`, { env, encoding: 'utf8' })
+function expectExit(args: string[], expected: number): void {
+  const code = cliExitCode(args)
+  if (code !== expected)
+    throw new Error(`expected exit ${expected} for "${args.join(' ')}", got ${code}`)
 }
 
 const checks: Check[] = [
-  { name: 'config show', run: () => { cli('config show') } },
-  { name: 'get workspace', run: () => {
-    if (!cli('get workspace').includes('id'))
-      throw new Error('no workspace listed')
-  } },
-  { name: 'get apps', run: () => { cli('get apps') } },
-  { name: 'difyctl version prints compat', run: () => {
-    if (!cli('version').includes('compat:'))
-      throw new Error('no compat line')
-  } },
+  {
+    name: 'version prints .client.version',
+    run: () => {
+      const body = JSON.parse(cli(['version']))
+      if (typeof body.client?.version !== 'string') throw new Error('no .client.version')
+    },
+  },
+  {
+    name: 'help get.console_app carries .input.properties.workspace_id',
+    run: () => {
+      const body = JSON.parse(cli(['help', 'get.console_app', '--json']))
+      if (body.input?.properties?.workspace_id === undefined)
+        throw new Error('no .input.properties.workspace_id')
+    },
+  },
+  {
+    name: 'get console_app returns .data',
+    run: () => {
+      const body = JSON.parse(cli(['get', 'console_app', '--input', '{"limit":1}']))
+      if (body.data === undefined) throw new Error('no .data')
+    },
+  },
+  {
+    name: '--stream on an object-kind op exits 2 (usage)',
+    run: () =>
+      expectExit(
+        ['describe', 'console_app', '--input', '{"app_id":"x"}', '--stream'],
+        ExitCode.Usage,
+      ),
+  },
+  {
+    name: 'a missing required input exits 2 (usage)',
+    run: () => expectExit(['describe', 'console_app', '--input', '{}'], ExitCode.Usage),
+  },
 ]
 
 let failed = 0
@@ -34,8 +63,7 @@ for (const c of checks) {
   try {
     c.run()
     console.log(`[x] ${c.name}`)
-  }
-  catch (err) {
+  } catch (err) {
     failed++
     console.log(`[ ] ${c.name} — ${(err as Error).message}`)
   }

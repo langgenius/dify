@@ -1,10 +1,11 @@
 import fs from 'node:fs'
 import path, { normalize, sep } from 'node:path'
+import { getTranslationSourceKey } from '../../../scripts/check-i18n-plurals.ts'
 import { cleanJsonText } from '../utils.js'
 
 function extractPlaceholders(str) {
   const matches = str.match(/\{\{\w+\}\}/g) || []
-  return matches.map(m => m.slice(2, -2)).sort()
+  return matches.map((m) => m.slice(2, -2)).sort()
 }
 
 function extractTagMarkers(str) {
@@ -15,10 +16,8 @@ function extractTagMarkers(str) {
     const isClosing = fullMatch.startsWith('</')
     const isSelfClosing = !isClosing && fullMatch.endsWith('/>')
 
-    if (isClosing)
-      return `close:${name}`
-    if (isSelfClosing)
-      return `self:${name}`
+    if (isClosing) return `close:${name}`
+    if (isSelfClosing) return `self:${name}`
     return `open:${name}`
   })
 
@@ -26,16 +25,13 @@ function extractTagMarkers(str) {
 }
 
 function formatTagMarker(marker) {
-  if (marker.startsWith('close:'))
-    return marker.slice('close:'.length)
-  if (marker.startsWith('self:'))
-    return marker.slice('self:'.length)
+  if (marker.startsWith('close:')) return marker.slice('close:'.length)
+  if (marker.startsWith('self:')) return marker.slice('self:'.length)
   return marker.slice('open:'.length)
 }
 
 function arraysEqual(arr1, arr2) {
-  if (arr1.length !== arr2.length)
-    return false
+  if (arr1.length !== arr2.length) return false
   return arr1.every((val, i) => val === arr2[i])
 }
 
@@ -44,37 +40,37 @@ function uniqueSorted(items) {
 }
 
 function getJsonLiteralValue(node) {
-  if (!node)
-    return undefined
+  if (!node) return undefined
   return node.type === 'JSONLiteral' ? node.value : undefined
 }
 
 function buildPlaceholderMessage(key, englishPlaceholders, currentPlaceholders) {
-  const missing = englishPlaceholders.filter(p => !currentPlaceholders.includes(p))
-  const extra = currentPlaceholders.filter(p => !englishPlaceholders.includes(p))
+  const missing = englishPlaceholders.filter((p) => !currentPlaceholders.includes(p))
+  const extra = currentPlaceholders.filter((p) => !englishPlaceholders.includes(p))
 
   const details = []
-  if (missing.length > 0)
-    details.push(`missing {{${missing.join('}}, {{')}}}`)
-  if (extra.length > 0)
-    details.push(`extra {{${extra.join('}}, {{')}}}`)
+  if (missing.length > 0) details.push(`missing {{${missing.join('}}, {{')}}}`)
+  if (extra.length > 0) details.push(`extra {{${extra.join('}}, {{')}}}`)
 
-  return `Placeholder mismatch with en-US in "${key}": ${details.join('; ')}. `
-    + `Expected: {{${englishPlaceholders.join('}}, {{') || 'none'}}}`
+  return (
+    `Placeholder mismatch with en-US in "${key}": ${details.join('; ')}. ` +
+    `Expected: {{${englishPlaceholders.join('}}, {{') || 'none'}}}`
+  )
 }
 
 function buildTagMessage(key, englishTagMarkers, currentTagMarkers) {
-  const missing = englishTagMarkers.filter(p => !currentTagMarkers.includes(p))
-  const extra = currentTagMarkers.filter(p => !englishTagMarkers.includes(p))
+  const missing = englishTagMarkers.filter((p) => !currentTagMarkers.includes(p))
+  const extra = currentTagMarkers.filter((p) => !englishTagMarkers.includes(p))
 
   const details = []
   if (missing.length > 0)
     details.push(`missing ${uniqueSorted(missing.map(formatTagMarker)).join(', ')}`)
-  if (extra.length > 0)
-    details.push(`extra ${uniqueSorted(extra.map(formatTagMarker)).join(', ')}`)
+  if (extra.length > 0) details.push(`extra ${uniqueSorted(extra.map(formatTagMarker)).join(', ')}`)
 
-  return `Trans tag mismatch with en-US in "${key}": ${details.join('; ')}. `
-    + `Expected: ${uniqueSorted(englishTagMarkers.map(formatTagMarker)).join(', ') || 'none'}`
+  return (
+    `Trans tag mismatch with en-US in "${key}": ${details.join('; ')}. ` +
+    `Expected: ${uniqueSorted(englishTagMarkers.map(formatTagMarker)).join(', ') || 'none'}`
+  )
 }
 
 export default {
@@ -88,41 +84,43 @@ export default {
     const state = {
       enabled: false,
       englishJson: null,
+      englishKeys: new Set(),
+      language: 'en-US',
     }
 
     function isTopLevelProperty(node) {
       const objectNode = node.parent
-      if (!objectNode || objectNode.type !== 'JSONObjectExpression')
-        return false
+      if (!objectNode || objectNode.type !== 'JSONObjectExpression') return false
       const expressionNode = objectNode.parent
-      return !!expressionNode
-        && (expressionNode.type === 'JSONExpressionStatement'
-          || expressionNode.type === 'Program'
-          || expressionNode.type === 'JSONProgram')
+      return (
+        !!expressionNode &&
+        (expressionNode.type === 'JSONExpressionStatement' ||
+          expressionNode.type === 'Program' ||
+          expressionNode.type === 'JSONProgram')
+      )
     }
 
     return {
       Program(node) {
         const { filename } = context
 
-        if (!filename.endsWith('.json'))
-          return
+        if (!filename.endsWith('.json')) return
 
         const parts = normalize(filename).split(sep)
         const jsonFile = parts.at(-1)
         const lang = parts.at(-2)
 
-        if (lang === 'en-US')
-          return
+        if (!lang || lang === 'en-US') return
 
         state.enabled = true
+        state.language = lang
 
         try {
           const englishFilePath = path.join(path.dirname(filename), '..', 'en-US', jsonFile ?? '')
           const englishText = fs.readFileSync(englishFilePath, 'utf8')
           state.englishJson = JSON.parse(cleanJsonText(englishText))
-        }
-        catch (error) {
+          state.englishKeys = new Set(Object.keys(state.englishJson))
+        } catch (error) {
           state.enabled = false
           context.report({
             node,
@@ -131,25 +129,21 @@ export default {
         }
       },
       JSONProperty(node) {
-        if (!state.enabled)
-          return
+        if (!state.enabled) return
 
-        if (!state.englishJson || !isTopLevelProperty(node))
-          return
+        if (!state.englishJson || !isTopLevelProperty(node)) return
 
         const key = node.key.value ?? node.key.name
-        if (!key)
-          return
+        if (!key) return
 
-        if (!Object.prototype.hasOwnProperty.call(state.englishJson, key))
-          return
+        const sourceKey = getTranslationSourceKey(state.englishKeys, key, state.language)
+        if (!sourceKey) return
 
         const currentNode = node.value ?? node
         const currentValue = getJsonLiteralValue(currentNode)
-        const englishValue = state.englishJson[key]
+        const englishValue = state.englishJson[sourceKey]
 
-        if (typeof currentValue !== 'string' || typeof englishValue !== 'string')
-          return
+        if (typeof currentValue !== 'string' || typeof englishValue !== 'string') return
 
         const currentPlaceholders = extractPlaceholders(currentValue)
         const englishPlaceholders = extractPlaceholders(englishValue)

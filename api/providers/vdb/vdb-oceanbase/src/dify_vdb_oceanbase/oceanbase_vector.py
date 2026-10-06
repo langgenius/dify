@@ -8,6 +8,7 @@ from pyobvector import VECTOR, ObVecClient, cosine_distance, inner_product, l2_d
 from sqlalchemy import JSON, Column, String
 from sqlalchemy.dialects.mysql import LONGTEXT
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.rag.datasource.vdb.field import parse_metadata_json
@@ -136,8 +137,30 @@ class OceanBaseVector(BaseVector):
             vals = []
             params = self._client.perform_raw_text_sql("SHOW PARAMETERS LIKE '%ob_vector_memory_limit_percentage%'")
             for row in params:
-                val = int(row[6])
-                vals.append(val)
+                # OceanBase and SeekDB 1.4 return different column layouts for
+                # SHOW PARAMETERS (SeekDB drops svr_ip/svr_port), so resolve the
+                # value column by name instead of relying on a fixed position.
+                try:
+                    mapping = row._mapping
+                except AttributeError:
+                    mapping = None
+
+                raw_value = None
+                if mapping is not None:
+                    for key, value in mapping.items():
+                        if str(key).lower() == "value":
+                            raw_value = value
+                            break
+                elif len(row) > 6:
+                    # Fallback for plain sequence rows (e.g. test doubles).
+                    raw_value = row[6]
+                if raw_value is None:
+                    continue
+                try:
+                    vals.append(int(raw_value))
+                except (TypeError, ValueError):
+                    continue
+
             if len(vals) == 0:
                 raise ValueError("ob_vector_memory_limit_percentage not found in parameters.")
             if any(val == 0 for val in vals):
@@ -321,8 +344,13 @@ class OceanBaseVector(BaseVector):
 
             from sqlalchemy import text
 
-            # Validate key to prevent injection in JSON path
-            if not re.match(r"^[a-zA-Z0-9_.]+$", key):
+            # Validate key to prevent injection in JSON path.
+            # Use re.fullmatch instead of re.match to reject trailing newlines.
+            # Python's '$' matches at end-of-string OR just before a trailing
+            # newline, so re.match accepts "user_id\n". re.fullmatch requires
+            # the whole string to match.
+            # Regression for #39884 (sibling of #39234 / #39548 / #39666 / #39730 / #39880).
+            if not re.fullmatch(r"[a-zA-Z0-9_.]+", key):
                 raise ValueError(f"Invalid characters in metadata key: {key}")
 
             # Use parameterized query to prevent SQL injection
@@ -454,11 +482,14 @@ class OceanBaseVector(BaseVector):
         _where_clause = None
         if document_ids_filter:
             # Validate document IDs to prevent SQL injection
-            # Document IDs should be alphanumeric with hyphens and underscores
+            # Document IDs should be alphanumeric with hyphens and underscores.
+            # Use re.fullmatch instead of re.match to reject trailing newlines.
+            # See the metadata-key validator above for the rationale.
+            # Regression for #39884 (sibling of #39234 / #39548 / #39666 / #39730 / #39880).
             import re
 
             for doc_id in document_ids_filter:
-                if not isinstance(doc_id, str) or not re.match(r"^[a-zA-Z0-9_-]+$", doc_id):
+                if not isinstance(doc_id, str) or not re.fullmatch(r"[a-zA-Z0-9_-]+", doc_id):
                     raise ValueError(f"Invalid document ID format: {doc_id}")
 
             # Safe to use in query after validation
@@ -534,6 +565,8 @@ class OceanBaseVectorFactory(AbstractVectorFactory):
         dataset: Dataset,
         attributes: list,
         embeddings: Embeddings,
+        *,
+        session: Session | None,
     ) -> BaseVector:
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]

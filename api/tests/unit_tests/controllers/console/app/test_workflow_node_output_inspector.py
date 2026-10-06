@@ -24,13 +24,15 @@ from __future__ import annotations
 
 import json
 from collections.abc import Iterator
-from typing import Any
-from unittest.mock import MagicMock
+from unittest.mock import ANY, MagicMock
 from uuid import UUID
 
 import pytest
 
 from controllers.console.app import workflow_node_output_inspector as ctrl
+from graphon.enums import WorkflowExecutionStatus
+from models import App, AppMode
+from models.model import IconType
 from services.workflow.inspector_events import InspectorMessage
 from services.workflow.node_output_inspector_service import (
     NodeOutputInspectorError,
@@ -46,13 +48,25 @@ from services.workflow.node_output_inspector_service import (
 
 
 @pytest.fixture
-def app_model() -> Any:
-    """A minimal ``App`` stub the controller passes through to the service.
+def app_model() -> App:
+    """A real transient ``App`` the controller passes through to the service.
 
     The SSE generator never reads its attributes — just forwards it — so a
-    sentinel object is enough.
+    transient mapped instance is sufficient.
     """
-    return MagicMock(name="App", tenant_id="tenant-1", id="app-1")
+    return App(
+        id="app-1",
+        tenant_id="tenant-1",
+        name="Inspector app",
+        description="",
+        mode=AppMode.WORKFLOW,
+        icon_type=IconType.EMOJI,
+        icon="robot",
+        icon_background="#FFFFFF",
+        enable_site=True,
+        enable_api=True,
+        max_active_requests=None,
+    )
 
 
 @pytest.fixture
@@ -61,8 +75,6 @@ def run_id() -> UUID:
 
 
 def _snapshot_view(*, status: str, node_id: str = "agent-1") -> WorkflowRunSnapshotView:
-    from graphon.enums import WorkflowExecutionStatus
-
     return WorkflowRunSnapshotView(
         workflow_run_id="00000000-0000-0000-0000-0000000000aa",
         workflow_run_status=WorkflowExecutionStatus(status),
@@ -382,7 +394,9 @@ def test_serve_snapshot_happy_path(patch_service, app_model, run_id):
     result = ctrl._serve_snapshot(app_model, run_id)
     assert isinstance(result, dict)
     assert result["workflow_run_id"] == "00000000-0000-0000-0000-0000000000aa"
-    patch_service.snapshot_workflow_run.assert_called_once_with(app_model=app_model, workflow_run_id=str(run_id))
+    patch_service.snapshot_workflow_run.assert_called_once_with(
+        app_model=app_model, workflow_run_id=str(run_id), session=ANY
+    )
 
 
 def test_serve_snapshot_translates_inspector_error_to_404(patch_service, app_model, run_id):
@@ -399,7 +413,7 @@ def test_serve_node_detail_happy_path(patch_service, app_model, run_id):
     result = ctrl._serve_node_detail(app_model, run_id, "agent-1")
     assert result["node_id"] == "agent-1"
     patch_service.node_detail.assert_called_once_with(
-        app_model=app_model, workflow_run_id=str(run_id), node_id="agent-1"
+        app_model=app_model, workflow_run_id=str(run_id), node_id="agent-1", session=ANY
     )
 
 
@@ -431,6 +445,7 @@ def test_serve_output_preview_happy_path(patch_service, app_model, run_id):
         workflow_run_id=str(run_id),
         node_id="agent-1",
         output_name="text",
+        session=ANY,
     )
 
 

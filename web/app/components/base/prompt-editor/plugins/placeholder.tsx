@@ -12,16 +12,17 @@ const Placeholder = ({
   value?: ReactNode
   className?: string
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
-    <div className={cn(
-      'pointer-events-none absolute top-0 left-0 size-full text-sm text-components-input-text-placeholder select-none',
-      compact ? 'text-[13px] leading-5' : 'text-sm/6',
-      className,
-    )}
+    <div
+      className={cn(
+        'pointer-events-none absolute top-0 left-0 size-full text-sm text-components-input-text-placeholder select-none',
+        compact ? 'text-[13px] leading-5' : 'text-sm/6',
+        className,
+      )}
     >
-      {value || t('promptEditor.placeholder', { ns: 'common' })}
+      {value || t(($) => $['promptEditor.placeholder'], { ns: 'common' })}
     </div>
   )
 }

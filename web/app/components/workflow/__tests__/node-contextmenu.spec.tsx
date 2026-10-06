@@ -1,6 +1,9 @@
 import type { Node } from '../types'
 import { ContextMenu } from '@langgenius/dify-ui/context-menu'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { detectPlatform } from '@tanstack/react-hotkeys'
+import { act, fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { ReactFlowProvider } from 'reactflow'
 import { NodeContextmenu } from '../node-contextmenu'
 
 const mockUseNodes = vi.hoisted(() => vi.fn())
@@ -13,7 +16,9 @@ vi.mock('@/app/components/workflow/store/workflow/use-nodes', () => ({
 }))
 
 vi.mock('@/app/components/workflow/store', () => ({
-  useStore: (selector: (state: { contextMenuTarget?: { type: 'node', nodeId: string } }) => unknown) => mockUseStore(selector),
+  useStore: (
+    selector: (state: { contextMenuTarget?: { type: 'node'; nodeId: string } }) => unknown,
+  ) => mockUseStore(selector),
 }))
 
 vi.mock('@/app/components/workflow/node-actions-menu/use-node-actions-menu-model', () => ({
@@ -22,52 +27,73 @@ vi.mock('@/app/components/workflow/node-actions-menu/use-node-actions-menu-model
 
 describe('NodeContextmenu', () => {
   const mockClose = vi.fn()
-  let contextMenuTarget: { type: 'node', nodeId: string } | undefined
+  let contextMenuTarget: { type: 'node'; nodeId: string } | undefined
   let nodes: Node[]
 
   beforeEach(() => {
     vi.clearAllMocks()
     contextMenuTarget = undefined
-    nodes = [{
-      id: 'node-1',
-      type: 'custom',
-      position: { x: 0, y: 0 },
-      data: {
-        title: 'Node 1',
-        desc: '',
-        type: 'code' as never,
-      },
-    } as Node]
+    nodes = [
+      {
+        id: 'node-1',
+        type: 'custom',
+        position: { x: 0, y: 0 },
+        data: {
+          title: 'Node 1',
+          desc: '',
+          type: 'code' as never,
+        },
+      } as Node,
+    ]
 
     mockUseNodes.mockImplementation(() => nodes)
-    mockUseStore.mockImplementation((selector: (state: { contextMenuTarget?: { type: 'node', nodeId: string } }) => unknown) => selector({ contextMenuTarget }))
-    mockUseNodeActionsMenuModel.mockImplementation((props: { id: string, data: Node['data'], onClose: () => void }) => ({
-      about: {
-        author: 'Dify',
-        description: 'Node actions',
-      },
-      canChangeBlock: false,
-      canRun: false,
-      data: props.data,
-      handleCopy: props.onClose,
-      handleDelete: props.onClose,
-      handleDuplicate: props.onClose,
-      handleRun: props.onClose,
-      helpLinkUri: undefined,
-      id: props.id,
-      isSingleton: false,
-      isUndeletable: false,
-      nodesReadOnly: false,
-      sourceHandle: 'source',
-      workflowAppHref: undefined,
-    }))
+    mockUseStore.mockImplementation(
+      (selector: (state: { contextMenuTarget?: { type: 'node'; nodeId: string } }) => unknown) =>
+        selector({ contextMenuTarget }),
+    )
+    mockUseNodeActionsMenuModel.mockImplementation(
+      (props: { id: string; data: Node['data']; onClose: () => void }) => ({
+        about: {
+          author: 'Dify',
+          description: 'Node actions',
+        },
+        canChangeBlock: false,
+        canRun: false,
+        data: props.data,
+        handleCopy: props.onClose,
+        handleDelete: props.onClose,
+        handleDuplicate: props.onClose,
+        handleRun: props.onClose,
+        helpLinkUri: undefined,
+        id: props.id,
+        isSingleton: false,
+        isUndeletable: false,
+        nodesReadOnly: false,
+        sourceHandle: 'source',
+        workflowAppHref: undefined,
+      }),
+    )
   })
 
-  const renderNodeContextmenu = () => render(
-    <ContextMenu open>
-      <NodeContextmenu onClose={mockClose} />
-    </ContextMenu>,
-  )
+  const renderNodeContextmenu = () =>
+    render(
+      <ReactFlowProvider>
+        <ContextMenu open>
+          <NodeContextmenu onClose={mockClose} />
+        </ContextMenu>
+      </ReactFlowProvider>,
+    )
+
+  it.each(['c', 'd', 'Delete'])('runs %s from the node context menu owner', async (key) => {
+    const user = userEvent.setup()
+    contextMenuTarget = { type: 'node', nodeId: 'node-1' }
+    renderNodeContextmenu()
+    const item = screen.getByRole('menuitem', { name: /workflow.common.copy/ })
+    act(() => item.focus())
+    const mod = detectPlatform() === 'mac' ? 'Meta' : 'Control'
+    await user.keyboard(key.length === 1 ? `{${mod}>}${key}{/${mod}}` : `{${key}}`)
+    expect(mockClose).toHaveBeenCalledTimes(1)
+  })
 
   it('should stay hidden when the node menu is absent', () => {
     renderNodeContextmenu()
@@ -90,11 +116,13 @@ describe('NodeContextmenu', () => {
     renderNodeContextmenu()
 
     expect(screen.getByText('WORKFLOW.PANEL.ABOUT')).toBeInTheDocument()
-    expect(mockUseNodeActionsMenuModel).toHaveBeenCalledWith(expect.objectContaining({
-      id: 'node-1',
-      data: expect.objectContaining({ title: 'Node 1' }),
-      showHelpLink: true,
-    }))
+    expect(mockUseNodeActionsMenuModel).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'node-1',
+        data: expect.objectContaining({ title: 'Node 1' }),
+        showHelpLink: true,
+      }),
+    )
 
     fireEvent.click(screen.getByRole('menuitem', { name: /workflow\.common\.copy/i }))
 

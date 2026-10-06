@@ -1,8 +1,7 @@
 import type { Edge, Node } from '../types'
 import { ContextMenu } from '@langgenius/dify-ui/context-menu'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useEffect } from 'react'
 import { useEdges, useNodes, useStoreApi } from 'reactflow'
 import { createEdge, createNode } from '../__tests__/fixtures'
 import { renderWorkflowFlowComponent } from '../__tests__/workflow-test-env'
@@ -35,16 +34,6 @@ vi.mock('../utils', async (importOriginal) => {
   }
 })
 
-vi.mock('../hooks', async () => {
-  const { useEdgesInteractions } = await import('../hooks/use-edges-interactions')
-  const { usePanelInteractions } = await import('../hooks/use-panel-interactions')
-
-  return {
-    useEdgesInteractions,
-    usePanelInteractions,
-  }
-})
-
 type EdgeRuntimeState = {
   _hovering?: boolean
   _isBundled?: boolean
@@ -62,10 +51,7 @@ const getNodeRuntimeState = (node?: Node): NodeRuntimeState =>
   (node?.data ?? {}) as NodeRuntimeState
 
 function createFlowNodes() {
-  return [
-    createNode({ id: 'n1' }),
-    createNode({ id: 'n2', position: { x: 100, y: 0 } }),
-  ]
+  return [createNode({ id: 'n1' }), createNode({ id: 'n2', position: { x: 100, y: 0 } })]
 }
 
 function createFlowEdges() {
@@ -103,24 +89,9 @@ const hooksStoreProps = {
 }
 
 const EdgeMenuHarness = () => {
-  const { handleEdgeContextMenu, handleEdgeDelete } = useEdgesInteractions()
+  const { handleEdgeContextMenu } = useEdgesInteractions()
   const edges = useEdges() as Edge[]
   const reactFlowStore = useStoreApi()
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== 'Delete' && e.key !== 'Backspace')
-        return
-
-      e.preventDefault()
-      handleEdgeDelete()
-    }
-
-    document.addEventListener('keydown', handleKeyDown)
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [handleEdgeDelete])
 
   return (
     <div>
@@ -128,14 +99,18 @@ const EdgeMenuHarness = () => {
       <button
         type="button"
         aria-label="Right-click edge e1"
-        onContextMenu={e => handleEdgeContextMenu(e as never, edges.find(edge => edge.id === 'e1') as never)}
+        onContextMenu={(e) =>
+          handleEdgeContextMenu(e as never, edges.find((edge) => edge.id === 'e1') as never)
+        }
       >
         edge-e1
       </button>
       <button
         type="button"
         aria-label="Right-click edge e2"
-        onContextMenu={e => handleEdgeContextMenu(e as never, edges.find(edge => edge.id === 'e2') as never)}
+        onContextMenu={(e) =>
+          handleEdgeContextMenu(e as never, edges.find((edge) => edge.id === 'e2') as never)
+        }
       >
         edge-e2
       </button>
@@ -144,7 +119,7 @@ const EdgeMenuHarness = () => {
         aria-label="Remove edge e1"
         onClick={() => {
           const { edges, setEdges } = reactFlowStore.getState()
-          setEdges(edges.filter(edge => edge.id !== 'e1'))
+          setEdges(edges.filter((edge) => edge.id !== 'e1'))
         }}
       >
         remove-e1
@@ -221,7 +196,7 @@ describe('EdgeContextmenu', () => {
       },
     })
 
-    const deleteAction = await screen.findByRole('menuitem', { name: /common:operation\.delete/i })
+    const deleteAction = await screen.findByRole('menuitem', { name: /common\.operation\.delete/i })
 
     await user.click(deleteAction)
 
@@ -263,7 +238,9 @@ describe('EdgeContextmenu', () => {
     })
 
     expect(await screen.findByRole('menu'))!.toBeInTheDocument()
-    expect(screen.getByRole('menuitem', { name: /common:operation\.delete/i }))!.toBeInTheDocument()
+    expect(
+      screen.getByRole('menuitem', { name: /common\.operation\.delete/i }),
+    )!.toBeInTheDocument()
   })
 
   it('should delete the right-clicked edge and close the menu when delete is clicked', async () => {
@@ -276,11 +253,11 @@ describe('EdgeContextmenu', () => {
       clientY: 180,
     })
 
-    await user.click(await screen.findByRole('menuitem', { name: /common:operation\.delete/i }))
+    await user.click(await screen.findByRole('menuitem', { name: /common\.operation\.delete/i }))
 
     await waitFor(() => {
       expect(screen.queryByRole('menu')).not.toBeInTheDocument()
-      expect(latestEdges.map(edge => edge.id)).toEqual(['e1'])
+      expect(latestEdges.map((edge) => edge.id)).toEqual(['e1'])
     })
     expect(mockSaveStateToHistory).toHaveBeenCalledWith('EdgeDelete')
   })
@@ -288,39 +265,48 @@ describe('EdgeContextmenu', () => {
   it.each([
     ['Delete', 'Delete'],
     ['Backspace', 'Backspace'],
-  ])('should delete the right-clicked edge with %s after switching from a selected node', async (_, key) => {
-    renderEdgeMenu({
-      nodes: [
-        createNode({
-          id: 'n1',
-          selected: true,
-          data: { selected: true, _isBundled: true },
-        }),
-        createNode({
-          id: 'n2',
-          position: { x: 100, y: 0 },
-        }),
-      ],
-    })
+  ])(
+    'should delete the right-clicked edge with %s after switching from a selected node',
+    async (_, key) => {
+      const user = userEvent.setup()
+      renderEdgeMenu({
+        nodes: [
+          createNode({
+            id: 'n1',
+            selected: true,
+            data: { selected: true, _isBundled: true },
+          }),
+          createNode({
+            id: 'n2',
+            position: { x: 100, y: 0 },
+          }),
+        ],
+      })
 
-    fireEvent.contextMenu(screen.getByRole('button', { name: 'Right-click edge e2' }), {
-      clientX: 240,
-      clientY: 120,
-    })
+      fireEvent.contextMenu(screen.getByRole('button', { name: 'Right-click edge e2' }), {
+        clientX: 240,
+        clientY: 120,
+      })
 
-    expect(await screen.findByRole('menu'))!.toBeInTheDocument()
+      expect(await screen.findByRole('menu'))!.toBeInTheDocument()
 
-    fireEvent.keyDown(document.body, { key })
+      const item = screen.getByRole('menuitem', { name: /common\.operation\.delete/i })
+      act(() => item.focus())
+      await user.keyboard(`{${key}}`)
 
-    await waitFor(() => {
-      expect(screen.queryByRole('menu')).not.toBeInTheDocument()
-      expect(latestEdges.map(edge => edge.id)).toEqual(['e1'])
-      expect(latestNodes.map(node => node.id)).toEqual(['n1', 'n2'])
-      expect(latestNodes.every(node => !node.selected && !getNodeRuntimeState(node).selected)).toBe(true)
-    })
-  })
+      await waitFor(() => {
+        expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+        expect(latestEdges.map((edge) => edge.id)).toEqual(['e1'])
+        expect(latestNodes.map((node) => node.id)).toEqual(['n1', 'n2'])
+        expect(
+          latestNodes.every((node) => !node.selected && !getNodeRuntimeState(node).selected),
+        ).toBe(true)
+      })
+    },
+  )
 
   it('should keep bundled multi-selection nodes intact when delete runs after right-clicking an edge', async () => {
+    const user = userEvent.setup()
     renderEdgeMenu({
       nodes: [
         createNode({
@@ -344,17 +330,22 @@ describe('EdgeContextmenu', () => {
 
     expect(await screen.findByRole('menu'))!.toBeInTheDocument()
 
-    fireEvent.keyDown(document.body, { key: 'Delete' })
+    const item = screen.getByRole('menuitem', { name: /common\.operation\.delete/i })
+    act(() => item.focus())
+    await user.keyboard('{Delete}')
 
     await waitFor(() => {
       expect(screen.queryByRole('menu')).not.toBeInTheDocument()
-      expect(latestEdges.map(edge => edge.id)).toEqual(['e2'])
+      expect(latestEdges.map((edge) => edge.id)).toEqual(['e2'])
       expect(latestNodes).toHaveLength(2)
-      expect(latestNodes.every(node =>
-        !node.selected
-        && !getNodeRuntimeState(node).selected
-        && !getNodeRuntimeState(node)._isBundled,
-      )).toBe(true)
+      expect(
+        latestNodes.every(
+          (node) =>
+            !node.selected &&
+            !getNodeRuntimeState(node).selected &&
+            !getNodeRuntimeState(node)._isBundled,
+        ),
+      ).toBe(true)
     })
   })
 
@@ -376,9 +367,9 @@ describe('EdgeContextmenu', () => {
 
     await waitFor(() => {
       expect(screen.getAllByRole('menu')).toHaveLength(1)
-      expect(latestEdges.find(edge => edge.id === 'e1')?.selected).toBe(false)
-      expect(latestEdges.find(edge => edge.id === 'e2')?.selected).toBe(true)
-      expect(latestEdges.every(edge => !getEdgeRuntimeState(edge)._isBundled)).toBe(true)
+      expect(latestEdges.find((edge) => edge.id === 'e1')?.selected).toBe(false)
+      expect(latestEdges.find((edge) => edge.id === 'e2')?.selected).toBe(true)
+      expect(latestEdges.every((edge) => !getEdgeRuntimeState(edge)._isBundled)).toBe(true)
     })
   })
 
@@ -391,7 +382,9 @@ describe('EdgeContextmenu', () => {
     })
     expect(await screen.findByRole('menu'))!.toBeInTheDocument()
 
-    fireEvent.click(container.querySelector('button[aria-label="Remove edge e1"]') as HTMLButtonElement)
+    fireEvent.click(
+      container.querySelector('button[aria-label="Remove edge e1"]') as HTMLButtonElement,
+    )
 
     await waitFor(() => {
       expect(screen.queryByRole('menu')).not.toBeInTheDocument()

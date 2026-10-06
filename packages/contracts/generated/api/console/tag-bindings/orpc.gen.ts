@@ -2,13 +2,12 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-
 import {
   zPostTagBindingsBody,
   zPostTagBindingsRemoveBody,
   zPostTagBindingsRemoveResponse,
   zPostTagBindingsResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 /**
  * Remove one or more tag bindings from a target.

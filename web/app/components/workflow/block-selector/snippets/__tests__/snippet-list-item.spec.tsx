@@ -1,8 +1,8 @@
-import type { PublishedSnippetListItem } from '../snippet-detail-card'
+import type { SnippetListItem as SnippetListItemData } from '@/types/snippet'
 import { fireEvent, render, screen } from '@testing-library/react'
 import SnippetListItem from '../snippet-list-item'
 
-const createSnippet = (overrides: Partial<PublishedSnippetListItem> = {}): PublishedSnippetListItem => ({
+const createSnippet = (overrides: Partial<SnippetListItemData> = {}): SnippetListItemData => ({
   id: 'snippet-1',
   name: 'Customer Review',
   description: 'Snippet description',
@@ -15,6 +15,7 @@ const createSnippet = (overrides: Partial<PublishedSnippetListItem> = {}): Publi
   updated_at: 2,
   updated_by: 'user-1',
   ...overrides,
+  version: overrides.version ?? 1,
 })
 
 describe('SnippetListItem', () => {
@@ -25,12 +26,7 @@ describe('SnippetListItem', () => {
   describe('Rendering', () => {
     it('should render snippet title and description', () => {
       render(
-        <SnippetListItem
-          snippet={createSnippet()}
-          isHovered={false}
-          onMouseEnter={vi.fn()}
-          onMouseLeave={vi.fn()}
-        />,
+        <SnippetListItem snippet={createSnippet()} onMouseEnter={vi.fn()} onMouseLeave={vi.fn()} />,
       )
 
       expect(screen.getByText('Customer Review')).toBeInTheDocument()
@@ -41,9 +37,8 @@ describe('SnippetListItem', () => {
       render(
         <SnippetListItem
           snippet={createSnippet({
-            tags: [{ id: 'tag-1', name: 'Search', type: 'snippet', binding_count: 1 }],
+            tags: [{ id: 'tag-1', name: 'Search', type: 'snippet', binding_count: '' }],
           })}
-          isHovered={false}
           onMouseEnter={vi.fn()}
           onMouseLeave={vi.fn()}
         />,
@@ -64,14 +59,13 @@ describe('SnippetListItem', () => {
       render(
         <SnippetListItem
           snippet={createSnippet()}
-          isHovered={false}
           onClick={handleClick}
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
         />,
       )
 
-      const item = screen.getByText('Customer Review').closest('div')!
+      const item = screen.getByRole('button', { name: /Customer Review/ })
 
       fireEvent.mouseEnter(item)
       fireEvent.mouseLeave(item)

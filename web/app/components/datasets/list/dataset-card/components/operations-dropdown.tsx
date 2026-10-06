@@ -3,14 +3,22 @@ import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { useTranslation } from 'react-i18next'
+import {
+  getStepByStepTourDropdownMenuContentProps,
+  useStepByStepTourControlledDropdown,
+} from '@/app/components/step-by-step-tour/dropdown-menu'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { getDatasetACLCapabilities } from '@/utils/permission'
-import Operations from '../operations'
 
 type OperationsDropdownProps = {
   dataset: DataSet
@@ -18,6 +26,8 @@ type OperationsDropdownProps = {
   handleExportPipeline: (include?: boolean) => void
   detectIsUsedByApp: () => void
   openAccessConfig: () => void
+  stepByStepTourHighlightPart?: string
+  stepByStepTourOpen?: boolean
 }
 
 const OperationsDropdown = ({
@@ -26,63 +36,106 @@ const OperationsDropdown = ({
   handleExportPipeline,
   detectIsUsedByApp,
   openAccessConfig,
+  stepByStepTourHighlightPart,
+  stepByStepTourOpen,
 }: OperationsDropdownProps) => {
-  const [open, setOpen] = React.useState(false)
-  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const isRbacEnabled = systemFeatures.rbac_enabled
-  const datasetACLCapabilities = React.useMemo(() => getDatasetACLCapabilities(dataset.permission_keys, {
-    currentUserId,
-    resourceMaintainer: dataset.maintainer,
-    workspacePermissionKeys,
-    isRbacEnabled,
-  }), [dataset.maintainer, dataset.permission_keys, currentUserId, isRbacEnabled, workspacePermissionKeys])
-  const canShowOperations = datasetACLCapabilities.canEdit
-    || datasetACLCapabilities.canImportExportDSL
-    || datasetACLCapabilities.canAccessConfig
-    || datasetACLCapabilities.canDelete
+  const operationsMenu = useStepByStepTourControlledDropdown({
+    allowTriggerCloseWhileControlled: false,
+    controlledOpen: stepByStepTourOpen,
+  })
+  const open = operationsMenu.open
+  const setOpen = operationsMenu.onOpenChange
+  const { t } = useTranslation(['common', 'datasetPipeline', 'navigation'])
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const { data: isRbacEnabled } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ rbac_enabled }) => rbac_enabled,
+  })
+  const datasetACLCapabilities = React.useMemo(
+    () =>
+      getDatasetACLCapabilities(dataset.permission_keys, {
+        currentUserId,
+        resourceMaintainer: dataset.maintainer,
+        workspacePermissionKeys,
+        isRbacEnabled,
+      }),
+    [
+      dataset.maintainer,
+      dataset.permission_keys,
+      currentUserId,
+      isRbacEnabled,
+      workspacePermissionKeys,
+    ],
+  )
+  const canShowOperations =
+    datasetACLCapabilities.canEdit ||
+    datasetACLCapabilities.canImportExportDSL ||
+    datasetACLCapabilities.canAccessConfig ||
+    datasetACLCapabilities.canDelete
 
-  if (!canShowOperations)
-    return null
+  if (!canShowOperations) return null
 
   return (
     <div
-      className={cn(
-        'absolute top-2 right-2 z-5',
-        open
-          ? 'pointer-events-auto visible'
-          : 'pointer-events-none invisible group-hover:pointer-events-auto group-hover:visible',
-      )}
-      onClick={e => e.stopPropagation()}
+      className={cn('absolute right-2 z-5', dataset.embedding_available ? 'top-2' : 'top-6')}
+      onClick={(e) => e.stopPropagation()}
     >
       <DropdownMenu modal={false} open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger
           className={cn(
             'inline-flex size-9 cursor-pointer items-center justify-center rounded-[10px] border-[0.5px]',
-            'border-components-actionbar-border bg-components-button-secondary-bg p-0 shadow-lg ring-2 shadow-shadow-shadow-5 ring-components-button-secondary-bg ring-inset',
+            'border-components-actionbar-border bg-components-button-secondary-bg p-0 shadow-lg inset-ring-2 shadow-shadow-shadow-5 inset-ring-components-button-secondary-bg',
             'transition-colors hover:border-components-actionbar-border hover:bg-state-base-hover',
-            'focus-visible:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden focus-visible:ring-inset',
+            'focus-visible:bg-state-base-hover focus-visible:inset-ring-1 focus-visible:inset-ring-components-input-border-hover focus-visible:outline-hidden',
             'data-popup-open:bg-state-base-hover',
           )}
           aria-label="Dataset operations"
+          onClick={(event) => {
+            event.preventDefault()
+            event.stopPropagation()
+          }}
         >
           <span className="i-ri-more-fill size-5 text-text-tertiary" />
         </DropdownMenuTrigger>
         <DropdownMenuContent
           placement="bottom-end"
-          popupClassName="min-w-[186px]"
+          {...getStepByStepTourDropdownMenuContentProps({
+            highlightPart: stepByStepTourHighlightPart,
+            interactionMode: operationsMenu.controlled ? 'presentation' : 'interactive',
+            className: 'min-w-[186px]',
+          })}
         >
-          <Operations
-            showEdit={datasetACLCapabilities.canEdit}
-            showDelete={datasetACLCapabilities.canDelete}
-            showExportPipeline={dataset.runtime_mode === 'rag_pipeline' && datasetACLCapabilities.canImportExportDSL}
-            showAccessConfig={datasetACLCapabilities.canAccessConfig}
-            openRenameModal={openRenameModal}
-            handleExportPipeline={handleExportPipeline}
-            detectIsUsedByApp={detectIsUsedByApp}
-            openAccessConfig={openAccessConfig}
-          />
+          {datasetACLCapabilities.canEdit && (
+            <DropdownMenuItem className="gap-2" onClick={openRenameModal}>
+              <span aria-hidden className="i-ri-edit-line size-4 text-text-tertiary" />
+              {t(($) => $['operation.edit'], { ns: 'common' })}
+            </DropdownMenuItem>
+          )}
+          {dataset.runtime_mode === 'rag_pipeline' && datasetACLCapabilities.canImportExportDSL && (
+            <DropdownMenuItem className="gap-2" onClick={() => handleExportPipeline()}>
+              <span aria-hidden className="i-ri-file-download-line size-4 text-text-tertiary" />
+              {t(($) => $['operations.exportPipeline'], { ns: 'datasetPipeline' })}
+            </DropdownMenuItem>
+          )}
+          {datasetACLCapabilities.canAccessConfig && (
+            <DropdownMenuItem className="gap-2" onClick={openAccessConfig}>
+              <span aria-hidden className="i-ri-lock-line size-4 text-text-tertiary" />
+              {t(($) => $['settings.resourceAccess'], { ns: 'navigation' })}
+            </DropdownMenuItem>
+          )}
+          {datasetACLCapabilities.canDelete && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="gap-2" variant="destructive" onClick={detectIsUsedByApp}>
+                <span aria-hidden className="i-ri-delete-bin-line size-4" />
+                {t(($) => $['operation.delete'], { ns: 'common' })}
+              </DropdownMenuItem>
+            </>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>

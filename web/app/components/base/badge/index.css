@@ -1,36 +1,36 @@
 @utility badge {
-  @apply inline-flex justify-center items-center text-text-tertiary border border-divider-deep;
+  @apply inline-flex items-center justify-center border border-divider-deep text-text-tertiary;
 
   &.badge-warning {
-    @apply text-text-warning border border-text-warning;
+    @apply border border-text-warning text-text-warning;
   }
 
   &.badge-accent {
-    @apply text-text-accent-secondary border border-text-accent-secondary;
+    @apply border border-text-accent-secondary text-text-accent-secondary;
   }
 }
 
 @utility badge-l {
-  @apply rounded-md gap-1 min-w-6;
+  @apply min-w-6 gap-1 rounded-md;
 }
 
 @utility badge-m {
   /* m is for the regular button */
-  @apply rounded-md gap-[3px] min-w-5;
+  @apply min-w-5 gap-[3px] rounded-md;
 }
 
 @utility badge-s {
-  @apply rounded-[5px] gap-0.5 min-w-[18px];
+  @apply min-w-[18px] gap-0.5 rounded-[5px];
 }
 
 @utility badge-warning {
   &.badge {
-    @apply text-text-warning border border-text-warning;
+    @apply border border-text-warning text-text-warning;
   }
 }
 
 @utility badge-accent {
   &.badge {
-    @apply text-text-accent-secondary border border-text-accent-secondary;
+    @apply border border-text-accent-secondary text-text-accent-secondary;
   }
 }

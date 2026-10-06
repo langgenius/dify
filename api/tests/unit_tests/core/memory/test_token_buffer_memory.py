@@ -1,32 +1,115 @@
-"""Comprehensive unit tests for core/memory/token_buffer_memory.py"""
+"""Comprehensive SQLite-backed tests for token-buffer memory."""
 
+import json
+from collections.abc import Iterator, Mapping, Sequence
+from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
+from decimal import Decimal
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
+from sqlalchemy import Engine, event
+from sqlalchemy.orm import Session
 
+import models.model as model_module
+from core.app.file_access import FileAccessControllerProtocol
+from core.memory import token_buffer_memory as memory_module
 from core.memory.token_buffer_memory import TokenBufferMemory
+from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities import (
     AssistantPromptMessage,
     ImagePromptMessageContent,
+    PromptMessage,
     PromptMessageRole,
     TextPromptMessageContent,
     UserPromptMessage,
 )
-from models.model import AppMode
+from models.base import TypeBase
+from models.enums import ConversationFromSource, CreatorUserRole, MessageFileBelongsTo
+from models.model import App, AppAnnotationSetting, AppMode, AppModelConfig, Conversation, Message, MessageFile
+from models.workflow import (
+    Workflow,
+    WorkflowExecutionStatus,
+    WorkflowRun,
+    WorkflowRunTriggeredFrom,
+    WorkflowType,
+)
 
 # ---------------------------------------------------------------------------
 # Helpers / shared fixtures
 # ---------------------------------------------------------------------------
 
 
-def _make_conversation(mode: AppMode = AppMode.CHAT) -> MagicMock:
-    """Return a minimal Conversation mock."""
-    conv = MagicMock()
-    conv.id = str(uuid4())
-    conv.mode = mode
-    conv.model_config = {}
-    return conv
+@dataclass(frozen=True)
+class Database:
+    """Typed SQLite binding plus executed SQL for query-count assertions."""
+
+    engine: Engine
+    session: Session
+    statements: list[tuple[str, object]]
+
+
+@pytest.fixture
+def database(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator[Database]:
+    TypeBase.metadata.create_all(
+        sqlite_engine,
+        tables=[
+            App.__table__,
+            Conversation.__table__,
+            Message.__table__,
+            MessageFile.__table__,
+            Workflow.__table__,
+            AppModelConfig.__table__,
+            AppAnnotationSetting.__table__,
+        ],
+    )
+    statements: list[tuple[str, object]] = []
+
+    def record_statement(_connection, _cursor, statement, parameters, _context, _executemany) -> None:
+        statements.append((statement, parameters))
+
+    event.listen(sqlite_engine, "before_cursor_execute", record_statement)
+    with Session(sqlite_engine, expire_on_commit=False) as session:
+        database = Database(engine=sqlite_engine, session=session, statements=statements)
+        monkeypatch.setattr(memory_module, "db", SimpleNamespace(engine=sqlite_engine, session=lambda: session))
+        monkeypatch.setattr(model_module, "db", database)
+        yield database
+    event.remove(sqlite_engine, "before_cursor_execute", record_statement)
+
+
+def _make_app(*, app_id: str | None = None, mode: AppMode = AppMode.CHAT) -> App:
+    """Return a real transient app with the ownership fields used by memory."""
+    return App(
+        id=app_id or str(uuid4()),
+        tenant_id=str(uuid4()),
+        name="Memory test app",
+        mode=mode,
+        enable_site=False,
+        enable_api=False,
+    )
+
+
+def _make_conversation(mode: AppMode = AppMode.CHAT, *, app_id: str | None = None) -> Conversation:
+    """Return a real transient conversation configured without database-backed model settings."""
+    return Conversation(
+        id=str(uuid4()),
+        app_id=app_id or str(uuid4()),
+        mode=mode,
+        name="Memory test conversation",
+        override_model_configs="{}",
+        _inputs={},
+        from_source=ConversationFromSource.API,
+    )
+
+
+def _persist_conversation(database: Database, mode: AppMode = AppMode.CHAT) -> Conversation:
+    app = _make_app(mode=mode)
+    conversation = _make_conversation(mode, app_id=app.id)
+    database.session.add_all([app, conversation])
+    database.session.commit()
+    return conversation
 
 
 def _make_model_instance() -> MagicMock:
@@ -36,460 +119,106 @@ def _make_model_instance() -> MagicMock:
     return mi
 
 
-def _make_message(answer: str = "hello", answer_tokens: int = 5) -> MagicMock:
-    msg = MagicMock()
-    msg.id = str(uuid4())
-    msg.query = "user query"
-    msg.answer = answer
-    msg.answer_tokens = answer_tokens
-    msg.workflow_run_id = str(uuid4())
-    msg.created_at = MagicMock()
-    return msg
-
-
-# ===========================================================================
-# Tests for __init__ and workflow_run_repo property
-# ===========================================================================
-
-
-class TestInit:
-    def test_init_stores_conversation_and_model_instance(self):
-        conv = _make_conversation()
-        mi = _make_model_instance()
-        mem = TokenBufferMemory(conversation=conv, model_instance=mi)
-        assert mem.conversation is conv
-        assert mem.model_instance is mi
-        assert mem._workflow_run_repo is None
-
-    def test_workflow_run_repo_is_created_lazily(self):
-        conv = _make_conversation()
-        mi = _make_model_instance()
-        mem = TokenBufferMemory(conversation=conv, model_instance=mi)
-
-        mock_repo = MagicMock()
-        with (
-            patch("core.memory.token_buffer_memory.sessionmaker") as mock_sm,
-            patch("core.memory.token_buffer_memory.db") as mock_db,
-            patch(
-                "core.memory.token_buffer_memory.DifyAPIRepositoryFactory.create_api_workflow_run_repository",
-                return_value=mock_repo,
-            ),
-        ):
-            mock_db.engine = MagicMock()
-            repo = mem.workflow_run_repo
-            assert repo is mock_repo
-            assert mem._workflow_run_repo is mock_repo
-
-    def test_workflow_run_repo_cached_after_first_access(self):
-        conv = _make_conversation()
-        mi = _make_model_instance()
-        mem = TokenBufferMemory(conversation=conv, model_instance=mi)
-
-        existing_repo = MagicMock()
-        mem._workflow_run_repo = existing_repo
-
-        with patch(
-            "core.memory.token_buffer_memory.DifyAPIRepositoryFactory.create_api_workflow_run_repository"
-        ) as mock_factory:
-            repo = mem.workflow_run_repo
-            mock_factory.assert_not_called()
-            assert repo is existing_repo
-
-
-# ===========================================================================
-# Tests for _build_prompt_message_with_files
-# ===========================================================================
-
-
-class TestBuildPromptMessageWithFiles:
-    """Tests for the private _build_prompt_message_with_files method."""
-
-    # ------------------------------------------------------------------
-    # Mode: CHAT / AGENT_CHAT / COMPLETION (simple branch)
-    # ------------------------------------------------------------------
-
-    @pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION])
-    def test_chat_mode_no_files_user_message(self, mode):
-        """When file_extra_config is falsy or app_record is None → plain UserPromptMessage."""
-        conv = _make_conversation(mode)
-        mi = _make_model_instance()
-        mem = TokenBufferMemory(conversation=conv, model_instance=mi)
-
-        with patch(
-            "core.memory.token_buffer_memory.FileUploadConfigManager.convert",
-            return_value=None,  # falsy → file_objs = []
-        ):
-            result = mem._build_prompt_message_with_files(
-                message_files=[],
-                text_content="hello",
-                message=_make_message(),
-                app_record=MagicMock(),
-                is_user_message=True,
-            )
-
-        assert isinstance(result, UserPromptMessage)
-        assert result.content == "hello"
-
-    @pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION])
-    def test_chat_mode_no_files_assistant_message(self, mode):
-        """Plain AssistantPromptMessage when no files and is_user_message=False."""
-        conv = _make_conversation(mode)
-        mem = TokenBufferMemory(conversation=conv, model_instance=_make_model_instance())
-
-        with patch(
-            "core.memory.token_buffer_memory.FileUploadConfigManager.convert",
-            return_value=None,
-        ):
-            result = mem._build_prompt_message_with_files(
-                message_files=[],
-                text_content="ai reply",
-                message=_make_message(),
-                app_record=None,
-                is_user_message=False,
-            )
-
-        assert isinstance(result, AssistantPromptMessage)
-        assert result.content == "ai reply"
-
-    @pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION])
-    def test_chat_mode_with_files_user_message(self, mode):
-        """When files are present, returns UserPromptMessage with list content."""
-        conv = _make_conversation(mode)
-        mem = TokenBufferMemory(conversation=conv, model_instance=_make_model_instance())
-
-        mock_file_extra_config = MagicMock()
-        mock_file_extra_config.image_config = None  # no detail override
-
-        mock_file_obj = MagicMock()
-        # Must be a real entity so Pydantic's tagged union discriminator can validate it
-        real_image_content = ImagePromptMessageContent(
-            url="http://example.com/img.png", format="png", mime_type="image/png"
-        )
-
-        mock_message_file = MagicMock()
-        mock_app_record = MagicMock()
-        mock_app_record.tenant_id = "tenant-1"
-
-        with (
-            patch(
-                "core.memory.token_buffer_memory.FileUploadConfigManager.convert",
-                return_value=mock_file_extra_config,
-            ),
-            patch(
-                "core.memory.token_buffer_memory.file_factory.build_from_message_file",
-                return_value=mock_file_obj,
-            ),
-            patch(
-                "core.memory.token_buffer_memory.file_manager.to_prompt_message_content",
-                return_value=real_image_content,
-            ),
-        ):
-            result = mem._build_prompt_message_with_files(
-                message_files=[mock_message_file],
-                text_content="user text",
-                message=_make_message(),
-                app_record=mock_app_record,
-                is_user_message=True,
-            )
-
-        assert isinstance(result, UserPromptMessage)
-        assert isinstance(result.content, list)
-        # Last element should be TextPromptMessageContent
-        assert isinstance(result.content[-1], TextPromptMessageContent)
-        assert result.content[-1].data == "user text"
-
-    def test_replay_does_not_pass_config_to_file_factory(self):
-        """Replay contract: history files were validated on upload, so this
-        path must not forward a FileUploadConfig. The factory's signature
-        no longer accepts ``config``; this test guards against a future
-        regression that re-introduces it."""
-        conv = _make_conversation(AppMode.CHAT)
-        mem = TokenBufferMemory(conversation=conv, model_instance=_make_model_instance())
-
-        mock_file_extra_config = MagicMock()
-        mock_file_extra_config.image_config = None
-
-        real_image_content = ImagePromptMessageContent(
-            url="http://example.com/img.png", format="png", mime_type="image/png"
-        )
-        mock_app_record = MagicMock()
-        mock_app_record.tenant_id = "tenant-1"
-
-        with (
-            patch(
-                "core.memory.token_buffer_memory.FileUploadConfigManager.convert",
-                return_value=mock_file_extra_config,
-            ),
-            patch(
-                "core.memory.token_buffer_memory.file_factory.build_from_message_file",
-                return_value=MagicMock(),
-            ) as mock_build,
-            patch(
-                "core.memory.token_buffer_memory.file_manager.to_prompt_message_content",
-                return_value=real_image_content,
-            ),
-        ):
-            mem._build_prompt_message_with_files(
-                message_files=[MagicMock()],
-                text_content="user text",
-                message=_make_message(),
-                app_record=mock_app_record,
-                is_user_message=True,
-            )
-
-        mock_build.assert_called_once()
-        assert "config" not in mock_build.call_args.kwargs
-
-    @pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION])
-    def test_chat_mode_with_files_assistant_message(self, mode):
-        """When files are present, returns AssistantPromptMessage with list content."""
-        conv = _make_conversation(mode)
-        mem = TokenBufferMemory(conversation=conv, model_instance=_make_model_instance())
-
-        mock_file_extra_config = MagicMock()
-        mock_file_extra_config.image_config = None
-
-        mock_file_obj = MagicMock()
-        real_image_content = ImagePromptMessageContent(
-            url="http://example.com/img.png", format="png", mime_type="image/png"
-        )
-        mock_app_record = MagicMock()
-        mock_app_record.tenant_id = "tenant-1"
-
-        with (
-            patch(
-                "core.memory.token_buffer_memory.FileUploadConfigManager.convert",
-                return_value=mock_file_extra_config,
-            ),
-            patch(
-                "core.memory.token_buffer_memory.file_factory.build_from_message_file",
-                return_value=mock_file_obj,
-            ),
-            patch(
-                "core.memory.token_buffer_memory.file_manager.to_prompt_message_content",
-                return_value=real_image_content,
-            ),
-        ):
-            result = mem._build_prompt_message_with_files(
-                message_files=[MagicMock()],
-                text_content="ai text",
-                message=_make_message(),
-                app_record=mock_app_record,
-                is_user_message=False,
-            )
-
-        assert isinstance(result, AssistantPromptMessage)
-        assert isinstance(result.content, list)
-
-    @pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION])
-    def test_chat_mode_with_files_image_detail_overridden(self, mode):
-        """When image_config.detail is set, detail is taken from config."""
-        conv = _make_conversation(mode)
-        mem = TokenBufferMemory(conversation=conv, model_instance=_make_model_instance())
-
-        mock_image_config = MagicMock()
-        mock_image_config.detail = ImagePromptMessageContent.DETAIL.LOW
-
-        mock_file_extra_config = MagicMock()
-        mock_file_extra_config.image_config = mock_image_config
-
-        mock_app_record = MagicMock()
-        mock_app_record.tenant_id = "tenant-1"
-
-        real_image_content = ImagePromptMessageContent(
-            url="http://example.com/img.png", format="png", mime_type="image/png"
-        )
-
-        with (
-            patch(
-                "core.memory.token_buffer_memory.FileUploadConfigManager.convert",
-                return_value=mock_file_extra_config,
-            ),
-            patch(
-                "core.memory.token_buffer_memory.file_factory.build_from_message_file",
-                return_value=MagicMock(),
-            ),
-            patch(
-                "core.memory.token_buffer_memory.file_manager.to_prompt_message_content",
-                return_value=real_image_content,
-            ) as mock_to_prompt,
-        ):
-            mem._build_prompt_message_with_files(
-                message_files=[MagicMock()],
-                text_content="user text",
-                message=_make_message(),
-                app_record=mock_app_record,
-                is_user_message=True,
-            )
-            # Ensure the LOW detail was passed through
-            mock_to_prompt.assert_called_once_with(
-                mock_to_prompt.call_args[0][0], image_detail_config=ImagePromptMessageContent.DETAIL.LOW
-            )
-
-    @pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION])
-    def test_chat_mode_app_record_none_returns_empty_file_objs(self, mode):
-        """app_record=None path → file_objs stays empty → plain messages."""
-        conv = _make_conversation(mode)
-        mem = TokenBufferMemory(conversation=conv, model_instance=_make_model_instance())
-
-        mock_file_extra_config = MagicMock()
-
-        with patch(
-            "core.memory.token_buffer_memory.FileUploadConfigManager.convert",
-            return_value=mock_file_extra_config,
-        ):
-            result = mem._build_prompt_message_with_files(
-                message_files=[MagicMock()],
-                text_content="hello",
-                message=_make_message(),
-                app_record=None,  # <-- forces the else branch → file_objs = []
-                is_user_message=True,
-            )
-
-        assert isinstance(result, UserPromptMessage)
-        assert result.content == "hello"
-
-    # ------------------------------------------------------------------
-    # Mode: ADVANCED_CHAT / WORKFLOW
-    # ------------------------------------------------------------------
-
-    @pytest.mark.parametrize("mode", [AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    def test_workflow_mode_no_app_raises(self, mode):
-        """Raises ValueError when conversation.app is falsy."""
-        conv = _make_conversation(mode)
-        conv.app = None
-        mem = TokenBufferMemory(conversation=conv, model_instance=_make_model_instance())
-
-        with pytest.raises(ValueError, match="App not found for conversation"):
-            mem._build_prompt_message_with_files(
-                message_files=[],
-                text_content="text",
-                message=_make_message(),
-                app_record=MagicMock(),
-                is_user_message=True,
-            )
-
-    @pytest.mark.parametrize("mode", [AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    def test_workflow_mode_no_workflow_run_id_raises(self, mode):
-        """Raises ValueError when message.workflow_run_id is falsy."""
-        conv = _make_conversation(mode)
-        conv.app = MagicMock()
-
-        message = _make_message()
-        message.workflow_run_id = None  # force missing
-
-        mem = TokenBufferMemory(conversation=conv, model_instance=_make_model_instance())
-
-        with pytest.raises(ValueError, match="Workflow run ID not found"):
-            mem._build_prompt_message_with_files(
-                message_files=[],
-                text_content="text",
-                message=message,
-                app_record=MagicMock(),
-                is_user_message=True,
-            )
-
-    @pytest.mark.parametrize("mode", [AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    def test_workflow_mode_workflow_run_not_found_raises(self, mode):
-        """Raises ValueError when workflow_run_repo returns None."""
-        conv = _make_conversation(mode)
-        mock_app = MagicMock()
-        conv.app = mock_app
-
-        mem = TokenBufferMemory(conversation=conv, model_instance=_make_model_instance())
-        mem._workflow_run_repo = MagicMock()
-        mem._workflow_run_repo.get_workflow_run_by_id.return_value = None
-
-        with pytest.raises(ValueError, match="Workflow run not found"):
-            mem._build_prompt_message_with_files(
-                message_files=[],
-                text_content="text",
-                message=_make_message(),
-                app_record=MagicMock(),
-                is_user_message=True,
-            )
-
-    @pytest.mark.parametrize("mode", [AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    def test_workflow_mode_workflow_not_found_raises(self, mode):
-        """Raises ValueError when Workflow lookup returns None."""
-        conv = _make_conversation(mode)
-        conv.app = MagicMock()
-
-        mock_workflow_run = MagicMock()
-        mock_workflow_run.workflow_id = str(uuid4())
-
-        mem = TokenBufferMemory(conversation=conv, model_instance=_make_model_instance())
-        mem._workflow_run_repo = MagicMock()
-        mem._workflow_run_repo.get_workflow_run_by_id.return_value = mock_workflow_run
-
-        with (
-            patch("core.memory.token_buffer_memory.db") as mock_db,
-        ):
-            mock_db.session.scalar.return_value = None  # workflow not found
-
-            with pytest.raises(ValueError, match="Workflow not found"):
-                mem._build_prompt_message_with_files(
-                    message_files=[],
-                    text_content="text",
-                    message=_make_message(),
-                    app_record=MagicMock(),
-                    is_user_message=True,
-                )
-
-    @pytest.mark.parametrize("mode", [AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    def test_workflow_mode_success_no_files_user(self, mode):
-        """Happy path: workflow mode, no message files → plain UserPromptMessage."""
-        conv = _make_conversation(mode)
-        conv.app = MagicMock()
-
-        mock_workflow_run = MagicMock()
-        mock_workflow_run.workflow_id = str(uuid4())
-
-        mock_workflow = MagicMock()
-        mock_workflow.features_dict = {}
-
-        mem = TokenBufferMemory(conversation=conv, model_instance=_make_model_instance())
-        mem._workflow_run_repo = MagicMock()
-        mem._workflow_run_repo.get_workflow_run_by_id.return_value = mock_workflow_run
-
-        with (
-            patch("core.memory.token_buffer_memory.db") as mock_db,
-            patch(
-                "core.memory.token_buffer_memory.FileUploadConfigManager.convert",
-                return_value=None,
-            ),
-        ):
-            mock_db.session.scalar.return_value = mock_workflow
-
-            result = mem._build_prompt_message_with_files(
-                message_files=[],
-                text_content="wf text",
-                message=_make_message(),
-                app_record=MagicMock(),
-                is_user_message=True,
-            )
-
-        assert isinstance(result, UserPromptMessage)
-        assert result.content == "wf text"
-
-    # ------------------------------------------------------------------
-    # Invalid mode
-    # ------------------------------------------------------------------
-
-    def test_invalid_mode_raises_assertion(self):
-        """Any unknown AppMode raises AssertionError."""
-        conv = _make_conversation()
-        conv.mode = "unknown_mode"  # not in any set
-        mem = TokenBufferMemory(conversation=conv, model_instance=_make_model_instance())
-
-        with pytest.raises(AssertionError, match="Invalid app mode"):
-            mem._build_prompt_message_with_files(
-                message_files=[],
-                text_content="text",
-                message=_make_message(),
-                app_record=MagicMock(),
-                is_user_message=True,
-            )
+def _make_workflow_run(*, workflow_id: str | None = None) -> WorkflowRun:
+    workflow_run = WorkflowRun(
+        tenant_id=str(uuid4()),
+        app_id=str(uuid4()),
+        workflow_id=workflow_id or str(uuid4()),
+        type=WorkflowType.CHAT,
+        triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        version="1",
+        graph="{}",
+        inputs="{}",
+        status=WorkflowExecutionStatus.SUCCEEDED,
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by=str(uuid4()),
+    )
+    workflow_run.id = str(uuid4())
+    return workflow_run
+
+
+def _persist_message(
+    database: Database,
+    conversation_id: str,
+    *,
+    query: str = "user query",
+    answer: str = "hello",
+    answer_tokens: int = 5,
+    created_at: datetime | None = None,
+    workflow_run_id: str | None = None,
+) -> Message:
+    message = Message(
+        id=str(uuid4()),
+        app_id="app-1",
+        conversation_id=conversation_id,
+        _inputs={},
+        query=query,
+        message={},
+        message_unit_price=Decimal(0),
+        answer=answer,
+        answer_tokens=answer_tokens,
+        answer_unit_price=Decimal(0),
+        currency="USD",
+        from_source=ConversationFromSource.API,
+        workflow_run_id=workflow_run_id,
+        created_at=created_at or datetime.now(UTC).replace(tzinfo=None),
+    )
+    database.session.add(message)
+    database.session.commit()
+    return message
+
+
+def _persist_message_file(
+    database: Database,
+    message: Message,
+    *,
+    belongs_to: MessageFileBelongsTo | None,
+) -> MessageFile:
+    message_file = MessageFile(
+        message_id=message.id,
+        type=FileType.IMAGE,
+        transfer_method=FileTransferMethod.REMOTE_URL,
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="account-1",
+        belongs_to=belongs_to,
+        url="https://example.com/image.png",
+    )
+    database.session.add(message_file)
+    database.session.commit()
+    return message_file
+
+
+def _persist_workflow(database: Database, *, workflow_id: str) -> Workflow:
+    workflow = Workflow(
+        id=workflow_id,
+        tenant_id="tenant-1",
+        app_id="app-1",
+        type=WorkflowType.CHAT,
+        version="1",
+        graph="{}",
+        features="{}",
+        created_by="account-1",
+    )
+    database.session.add(workflow)
+    database.session.commit()
+    return workflow
+
+
+def _enable_file_uploads(
+    database: Database, conversation: Conversation, *, enabled: bool = True, detail: str = "high"
+) -> None:
+    conversation.override_model_configs = json.dumps(
+        {
+            "model": {"provider": "test", "name": "test", "completion_params": {}},
+            "file_upload": {
+                "enabled": enabled,
+                "allowed_file_types": ["image"],
+                "allowed_file_upload_methods": ["remote_url", "local_file", "tool_file"],
+                "image": {"detail": detail},
+            },
+        }
+    )
+    database.session.commit()
 
 
 # ===========================================================================
@@ -498,381 +227,176 @@ class TestBuildPromptMessageWithFiles:
 
 
 class TestGetHistoryPromptMessages:
-    """Tests for get_history_prompt_messages."""
+    """Tests for persisted history retrieval, file batching, and pruning."""
 
-    def _make_memory(self, mode: AppMode = AppMode.CHAT) -> TokenBufferMemory:
-        conv = _make_conversation(mode)
-        conv.app = MagicMock()
+    def _make_memory(self, database: Database, mode: AppMode = AppMode.CHAT) -> TokenBufferMemory:
+        conv = _persist_conversation(database, mode)
         return TokenBufferMemory(conversation=conv, model_instance=_make_model_instance())
 
-    def test_returns_empty_when_no_messages(self):
-        mem = self._make_memory()
-        with patch("core.memory.token_buffer_memory.db") as mock_db:
-            mock_db.session.scalars.return_value.all.return_value = []
-            result = mem.get_history_prompt_messages()
-        assert result == []
+    def test_returns_empty_when_no_messages(self, database: Database) -> None:
+        assert self._make_memory(database).get_history_prompt_messages() == []
 
-    def test_skips_first_message_without_answer(self):
-        """The newest message (index 0 after extraction) without answer and tokens==0 is skipped."""
-        mem = self._make_memory()
+    def test_missing_app_preserves_text_history(self, database: Database) -> None:
+        conversation = _make_conversation()
+        mem = TokenBufferMemory(conversation=conversation, model_instance=_make_model_instance())
+        message = _persist_message(database, conversation.id, query="My query", answer="My answer")
+        _persist_message_file(database, message, belongs_to=MessageFileBelongsTo.USER)
 
-        msg_no_answer = _make_message(answer="", answer_tokens=0)
-        msg_no_answer.parent_message_id = None  # ensures extract_thread_messages returns it
-
-        with (
-            patch("core.memory.token_buffer_memory.db") as mock_db,
-            patch(
-                "core.memory.token_buffer_memory.extract_thread_messages",
-                return_value=[msg_no_answer],
-            ),
-        ):
-            mock_db.session.scalars.return_value.all.side_effect = [
-                [msg_no_answer],  # first call: messages query
-                [],  # second call: user files query (never hit, but safe)
-            ]
+        with patch.object(memory_module.file_factory, "build_from_mapping") as build_file:
             result = mem.get_history_prompt_messages()
 
-        assert result == []
+        assert [prompt.content for prompt in result] == ["My query", "My answer"]
+        build_file.assert_not_called()
 
-    def test_message_with_answer_not_skipped(self):
-        """A message with a non-empty answer is NOT popped."""
-        mem = self._make_memory()
+    @pytest.mark.parametrize("mode", [AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    def test_workflow_history_uses_callers_uncommitted_app(self, database: Database, mode: AppMode) -> None:
+        mem = self._make_memory(database, mode)
+        workflow_run = _make_workflow_run()
+        workflow = _persist_workflow(database, workflow_id=workflow_run.workflow_id)
+        message = _persist_message(database, mem.conversation.id, workflow_run_id=workflow_run.id)
+        _persist_message_file(database, message, belongs_to=MessageFileBelongsTo.USER)
+        app = database.session.get(App, mem.conversation.app_id)
+        assert app is not None
+        app.tenant_id = str(uuid4())
+        repository = MagicMock()
+        repository.get_workflow_run_by_id.return_value = workflow_run
 
-        msg = _make_message(answer="some answer", answer_tokens=10)
-        msg.parent_message_id = None
-
-        with (
-            patch("core.memory.token_buffer_memory.db") as mock_db,
-            patch(
-                "core.memory.token_buffer_memory.extract_thread_messages",
-                return_value=[msg],
-            ),
-            patch(
-                "core.memory.token_buffer_memory.FileUploadConfigManager.convert",
-                return_value=None,
-            ),
+        with patch.object(
+            memory_module.DifyAPIRepositoryFactory, "create_api_workflow_run_repository", return_value=repository
         ):
-            # user files query → empty; assistant files query → empty
-            mock_db.session.scalars.return_value.all.return_value = []
             result = mem.get_history_prompt_messages()
 
-        assert len(result) == 2  # one user + one assistant
+        assert [prompt.content for prompt in result] == ["user query", "hello"]
+        repository.get_workflow_run_by_id.assert_called_once_with(
+            tenant_id=app.tenant_id, app_id=app.id, run_id=message.workflow_run_id
+        )
+        assert database.session.get(Workflow, workflow.id) is workflow
 
-    def test_message_limit_default_is_500(self):
-        """When message_limit is None the stmt is limited to 500."""
-        mem = self._make_memory()
-        with (
-            patch("core.memory.token_buffer_memory.db") as mock_db,
-            patch("core.memory.token_buffer_memory.select") as mock_select,
-            patch("core.memory.token_buffer_memory.extract_thread_messages", return_value=[]),
-        ):
-            mock_stmt = MagicMock()
-            mock_select.return_value.where.return_value.order_by.return_value = mock_stmt
-            mock_stmt.limit.return_value = mock_stmt
-            mock_db.session.scalars.return_value.all.return_value = []
+    def test_skips_newest_message_without_answer(self, database: Database) -> None:
+        mem = self._make_memory(database)
+        message = _persist_message(database, mem.conversation.id, answer="", answer_tokens=0)
 
-            mem.get_history_prompt_messages(message_limit=None)
-            mock_stmt.limit.assert_called_with(500)
+        assert mem.get_history_prompt_messages() == []
+        assert database.session.get(Message, message.id) is message
 
-    def test_message_limit_clipped_to_500(self):
-        """A message_limit > 500 is clamped to 500."""
-        mem = self._make_memory()
-        with (
-            patch("core.memory.token_buffer_memory.db") as mock_db,
-            patch("core.memory.token_buffer_memory.select") as mock_select,
-            patch("core.memory.token_buffer_memory.extract_thread_messages", return_value=[]),
-        ):
-            mock_stmt = MagicMock()
-            mock_select.return_value.where.return_value.order_by.return_value = mock_stmt
-            mock_stmt.limit.return_value = mock_stmt
-            mock_db.session.scalars.return_value.all.return_value = []
+    def test_message_with_answer_returns_user_and_assistant_prompts(self, database: Database) -> None:
+        mem = self._make_memory(database)
+        _persist_message(database, mem.conversation.id, query="My query", answer="My answer", answer_tokens=10)
 
-            mem.get_history_prompt_messages(message_limit=9999)
-            mock_stmt.limit.assert_called_with(500)
-
-    def test_message_limit_positive_used(self):
-        """A positive message_limit < 500 is used as-is."""
-        mem = self._make_memory()
-        with (
-            patch("core.memory.token_buffer_memory.db") as mock_db,
-            patch("core.memory.token_buffer_memory.select") as mock_select,
-            patch("core.memory.token_buffer_memory.extract_thread_messages", return_value=[]),
-        ):
-            mock_stmt = MagicMock()
-            mock_select.return_value.where.return_value.order_by.return_value = mock_stmt
-            mock_stmt.limit.return_value = mock_stmt
-            mock_db.session.scalars.return_value.all.return_value = []
-
-            mem.get_history_prompt_messages(message_limit=10)
-            mock_stmt.limit.assert_called_with(10)
-
-    def test_message_limit_zero_uses_default(self):
-        """message_limit=0 triggers the else branch → default 500."""
-        mem = self._make_memory()
-        with (
-            patch("core.memory.token_buffer_memory.db") as mock_db,
-            patch("core.memory.token_buffer_memory.select") as mock_select,
-            patch("core.memory.token_buffer_memory.extract_thread_messages", return_value=[]),
-        ):
-            mock_stmt = MagicMock()
-            mock_select.return_value.where.return_value.order_by.return_value = mock_stmt
-            mock_stmt.limit.return_value = mock_stmt
-            mock_db.session.scalars.return_value.all.return_value = []
-
-            mem.get_history_prompt_messages(message_limit=0)
-            mock_stmt.limit.assert_called_with(500)
-
-    def test_user_files_cause_build_with_files_call(self):
-        """When user_files is non-empty _build_prompt_message_with_files is invoked."""
-        mem = self._make_memory()
-        msg = _make_message()
-        msg.parent_message_id = None
-
-        mock_user_file = MagicMock()
-        mock_user_prompt = UserPromptMessage(content="from build")
-        mock_assistant_prompt = AssistantPromptMessage(content="answer")
-
-        call_count = {"n": 0}
-
-        def scalars_side_effect(stmt):
-            r = MagicMock()
-            if call_count["n"] == 0:
-                # messages query
-                r.all.return_value = [msg]
-            elif call_count["n"] == 1:
-                # user files
-                r.all.return_value = [mock_user_file]
-            else:
-                # assistant files
-                r.all.return_value = []
-            call_count["n"] += 1
-            return r
-
-        with (
-            patch("core.memory.token_buffer_memory.db") as mock_db,
-            patch(
-                "core.memory.token_buffer_memory.extract_thread_messages",
-                return_value=[msg],
-            ),
-            patch.object(
-                mem,
-                "_build_prompt_message_with_files",
-                side_effect=[mock_user_prompt, mock_assistant_prompt],
-            ) as mock_build,
-            patch(
-                "core.memory.token_buffer_memory.FileUploadConfigManager.convert",
-                return_value=None,
-            ),
-        ):
-            mock_db.session.scalars.side_effect = scalars_side_effect
-            result = mem.get_history_prompt_messages()
-
-        assert mock_build.call_count >= 1
-        # First call should be user message
-        first_call_kwargs = mock_build.call_args_list[0][1]
-        assert first_call_kwargs["is_user_message"] is True
-
-    def test_assistant_files_cause_build_with_files_call(self):
-        """When assistant_files is non-empty, build is called with is_user_message=False."""
-        mem = self._make_memory()
-        msg = _make_message()
-        msg.parent_message_id = None
-
-        mock_assistant_file = MagicMock()
-        mock_user_prompt = UserPromptMessage(content="query")
-        mock_assistant_prompt = AssistantPromptMessage(content="built")
-
-        call_count = {"n": 0}
-
-        def scalars_side_effect(stmt):
-            r = MagicMock()
-            if call_count["n"] == 0:
-                r.all.return_value = [msg]
-            elif call_count["n"] == 1:
-                r.all.return_value = []  # no user files
-            else:
-                r.all.return_value = [mock_assistant_file]
-            call_count["n"] += 1
-            return r
-
-        with (
-            patch("core.memory.token_buffer_memory.db") as mock_db,
-            patch(
-                "core.memory.token_buffer_memory.extract_thread_messages",
-                return_value=[msg],
-            ),
-            patch.object(
-                mem,
-                "_build_prompt_message_with_files",
-                return_value=mock_assistant_prompt,
-            ) as mock_build,
-        ):
-            mock_db.session.scalars.side_effect = scalars_side_effect
-            result = mem.get_history_prompt_messages()
-
-        mock_build.assert_called_once()
-        call_kwargs = mock_build.call_args[1]
-        assert call_kwargs["is_user_message"] is False
-
-    def test_token_pruning_removes_oldest_messages(self):
-        """If tokens exceed limit, oldest messages are removed until within limit."""
-        conv = _make_conversation()
-        conv.app = MagicMock()
-
-        # Model returns tokens that decrease only after removing pairs
-        token_values = [3000, 1500]  # first call over limit, second within
-        mi = MagicMock()
-        mi.get_llm_num_tokens.side_effect = token_values
-
-        mem = TokenBufferMemory(conversation=conv, model_instance=mi)
-
-        msg = _make_message()
-        msg.parent_message_id = None
-
-        call_count = {"n": 0}
-
-        def scalars_side_effect(stmt):
-            r = MagicMock()
-            if call_count["n"] == 0:
-                r.all.return_value = [msg]
-            else:
-                r.all.return_value = []
-            call_count["n"] += 1
-            return r
-
-        with (
-            patch("core.memory.token_buffer_memory.db") as mock_db,
-            patch(
-                "core.memory.token_buffer_memory.extract_thread_messages",
-                return_value=[msg],
-            ),
-            patch(
-                "core.memory.token_buffer_memory.FileUploadConfigManager.convert",
-                return_value=None,
-            ),
-        ):
-            mock_db.session.scalars.side_effect = scalars_side_effect
-            result = mem.get_history_prompt_messages(max_token_limit=2000)
-
-        # After pruning, we should have fewer than the 2 initial messages
-        assert len(result) <= 1
-
-    def test_token_pruning_stops_at_single_message(self):
-        """Pruning stops when only 1 message remains (to prevent empty list)."""
-        conv = _make_conversation()
-        conv.app = MagicMock()
-
-        # Always over limit
-        mi = MagicMock()
-        mi.get_llm_num_tokens.return_value = 99999
-
-        mem = TokenBufferMemory(conversation=conv, model_instance=mi)
-
-        msg = _make_message()
-        msg.parent_message_id = None
-
-        call_count = {"n": 0}
-
-        def scalars_side_effect(stmt):
-            r = MagicMock()
-            if call_count["n"] == 0:
-                r.all.return_value = [msg]
-            else:
-                r.all.return_value = []
-            call_count["n"] += 1
-            return r
-
-        with (
-            patch("core.memory.token_buffer_memory.db") as mock_db,
-            patch(
-                "core.memory.token_buffer_memory.extract_thread_messages",
-                return_value=[msg],
-            ),
-            patch(
-                "core.memory.token_buffer_memory.FileUploadConfigManager.convert",
-                return_value=None,
-            ),
-        ):
-            mock_db.session.scalars.side_effect = scalars_side_effect
-            result = mem.get_history_prompt_messages(max_token_limit=1)
-
-        # At least 1 message should remain
-        assert len(result) >= 1
-
-    def test_no_pruning_when_within_limit(self):
-        """When tokens ≤ limit, no pruning occurs."""
-        mem = self._make_memory()
-        mem.model_instance.get_llm_num_tokens.return_value = 50  # well under default 2000
-
-        msg = _make_message()
-        msg.parent_message_id = None
-
-        call_count = {"n": 0}
-
-        def scalars_side_effect(stmt):
-            r = MagicMock()
-            if call_count["n"] == 0:
-                r.all.return_value = [msg]
-            else:
-                r.all.return_value = []
-            call_count["n"] += 1
-            return r
-
-        with (
-            patch("core.memory.token_buffer_memory.db") as mock_db,
-            patch(
-                "core.memory.token_buffer_memory.extract_thread_messages",
-                return_value=[msg],
-            ),
-            patch(
-                "core.memory.token_buffer_memory.FileUploadConfigManager.convert",
-                return_value=None,
-            ),
-        ):
-            mock_db.session.scalars.side_effect = scalars_side_effect
-            result = mem.get_history_prompt_messages(max_token_limit=2000)
-
-        assert len(result) == 2  # user + assistant
-
-    def test_plain_user_and_assistant_messages_returned(self):
-        """Without files, plain UserPromptMessage and AssistantPromptMessage appear."""
-        mem = self._make_memory()
-
-        msg = _make_message(answer="My answer")
-        msg.query = "My query"
-        msg.parent_message_id = None
-
-        call_count = {"n": 0}
-
-        def scalars_side_effect(stmt):
-            r = MagicMock()
-            if call_count["n"] == 0:
-                r.all.return_value = [msg]
-            else:
-                r.all.return_value = []
-            call_count["n"] += 1
-            return r
-
-        with (
-            patch("core.memory.token_buffer_memory.db") as mock_db,
-            patch(
-                "core.memory.token_buffer_memory.extract_thread_messages",
-                return_value=[msg],
-            ),
-            patch(
-                "core.memory.token_buffer_memory.FileUploadConfigManager.convert",
-                return_value=None,
-            ),
-        ):
-            mock_db.session.scalars.side_effect = scalars_side_effect
-            result = mem.get_history_prompt_messages()
+        result = mem.get_history_prompt_messages()
 
         assert len(result) == 2
-        user_msg, ai_msg = result
-        assert isinstance(user_msg, UserPromptMessage)
-        assert user_msg.content == "My query"
-        assert isinstance(ai_msg, AssistantPromptMessage)
-        assert ai_msg.content == "My answer"
+        assert isinstance(result[0], UserPromptMessage)
+        assert result[0].content == "My query"
+        assert isinstance(result[1], AssistantPromptMessage)
+        assert result[1].content == "My answer"
+
+    def test_history_is_conversation_scoped(self, database: Database) -> None:
+        mem = self._make_memory(database)
+        _persist_message(database, mem.conversation.id, answer="visible")
+        _persist_message(database, "other-conversation", answer="hidden")
+
+        result = mem.get_history_prompt_messages()
+
+        assert [prompt.content for prompt in result] == ["user query", "visible"]
+
+    @pytest.mark.parametrize(
+        ("message_limit", "expected_limit"),
+        [(None, 500), (9999, 500), (10, 10), (0, 500)],
+    )
+    def test_message_limit_is_applied_to_executable_query(
+        self,
+        database: Database,
+        message_limit: int | None,
+        expected_limit: int,
+    ) -> None:
+        mem = self._make_memory(database)
+        before = len(database.statements)
+
+        mem.get_history_prompt_messages(message_limit=message_limit)
+
+        statements = [entry for entry in database.statements[before:] if "FROM messages" in entry[0]]
+        assert len(statements) == 1
+        sql, parameters = statements[0]
+        assert "LIMIT" in sql
+        assert expected_limit in parameters
+
+    @pytest.mark.parametrize(
+        ("belongs_to", "is_user_message"),
+        [
+            (MessageFileBelongsTo.USER, True),
+            (None, True),
+            (MessageFileBelongsTo.ASSISTANT, False),
+        ],
+    )
+    def test_message_files_use_persisted_ownership(
+        self,
+        database: Database,
+        belongs_to: MessageFileBelongsTo | None,
+        is_user_message: bool,
+    ) -> None:
+        mem = self._make_memory(database)
+        message = _persist_message(database, mem.conversation.id)
+        message_file = _persist_message_file(database, message, belongs_to=belongs_to)
+        _enable_file_uploads(database, mem.conversation)
+        app = database.session.get(App, mem.conversation.app_id)
+        assert app is not None
+
+        history = TokenBufferMemory.load_history(
+            conversation=mem.conversation, app_record=app, session=database.session, message_limit=None
+        )
+
+        file_prompt = history.prompts[0 if is_user_message else 1]
+        other_prompt = history.prompts[1 if is_user_message else 0]
+        assert [reference.id for reference in file_prompt.files] == [message_file.id]
+        assert file_prompt.is_user_message is is_user_message
+        assert other_prompt.files == ()
+
+    def test_message_files_are_batch_loaded_with_constant_query_count(self, database: Database) -> None:
+        mem = self._make_memory(database)
+        base_time = datetime.now(UTC).replace(tzinfo=None)
+        messages = [
+            _persist_message(
+                database,
+                mem.conversation.id,
+                query=f"query-{index}",
+                answer=f"answer-{index}",
+                created_at=base_time + timedelta(seconds=index),
+            )
+            for index in range(5)
+        ]
+        before = len(database.statements)
+
+        with patch("core.memory.token_buffer_memory.extract_thread_messages", return_value=messages):
+            result = mem.get_history_prompt_messages()
+
+        selects = [sql for sql, _ in database.statements[before:] if sql.lstrip().upper().startswith("SELECT")]
+        assert len(selects) == 4
+        assert sum("FROM apps" in sql for sql in selects) == 1
+        assert len(result) == 10
+
+    @pytest.mark.parametrize(
+        ("token_values", "max_token_limit", "expected_length"),
+        [
+            ([3000, 1500], 2000, 1),
+            ([99999, 99999], 1, 1),
+            ([50], 2000, 2),
+        ],
+    )
+    def test_token_pruning_uses_persisted_history(
+        self,
+        database: Database,
+        token_values: list[int],
+        max_token_limit: int,
+        expected_length: int,
+    ) -> None:
+        mem = self._make_memory(database)
+        mem.model_instance.get_llm_num_tokens.side_effect = token_values
+        _persist_message(database, mem.conversation.id)
+
+        result = mem.get_history_prompt_messages(max_token_limit=max_token_limit)
+
+        assert len(result) == expected_length
 
 
 # ===========================================================================
@@ -885,7 +409,6 @@ class TestGetHistoryPromptText:
 
     def _make_memory(self) -> TokenBufferMemory:
         conv = _make_conversation()
-        conv.app = MagicMock()
         return TokenBufferMemory(conversation=conv, model_instance=_make_model_instance())
 
     def test_empty_messages_returns_empty_string(self):
@@ -1009,3 +532,216 @@ class TestGetHistoryPromptText:
             result = mem.get_history_prompt_text()
         assert "response text" in result
         assert "[image]" in result
+
+
+class TestPreparedHistory:
+    @pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION])
+    @pytest.mark.parametrize("detail", ["low", "high"])
+    def test_load_detaches_history_before_attachment_and_token_io(
+        self, database: Database, mode: AppMode, detail: str
+    ) -> None:
+        conversation = _persist_conversation(database, mode)
+        _enable_file_uploads(database, conversation, detail=detail)
+        message = _persist_message(database, conversation.id, query="question", answer="answer")
+        message_file = _persist_message_file(database, message, belongs_to=MessageFileBelongsTo.USER)
+        app = database.session.get(App, conversation.app_id)
+        assert app is not None
+        file_id, tenant_id = message_file.id, app.tenant_id
+        model = _make_model_instance()
+
+        with (
+            patch.object(memory_module.file_factory, "build_from_mapping") as build_file,
+            patch.object(memory_module.file_manager, "to_prompt_message_content") as to_prompt,
+        ):
+            history = TokenBufferMemory.load_history(
+                conversation=conversation, app_record=app, session=database.session, message_limit=3
+            )
+            build_file.assert_not_called()
+            to_prompt.assert_not_called()
+            model.get_llm_num_tokens.assert_not_called()
+            message.query = "later query"
+            message_file.url = "https://example.com/later.png"
+            database.session.close()
+            statement_count = len(database.statements)
+
+            def restore_file(
+                *, mapping: Mapping[str, object], tenant_id: str, access_controller: FileAccessControllerProtocol
+            ) -> File:
+                assert not database.session.in_transaction()
+                assert mapping["id"] == file_id
+                assert mapping["url"] == "https://example.com/image.png"
+                assert tenant_id
+                assert access_controller is memory_module._file_access_controller
+                return File(
+                    filename="image.png",
+                    file_type=FileType.IMAGE,
+                    transfer_method=FileTransferMethod.REMOTE_URL,
+                    remote_url="https://example.com/image.png",
+                    mime_type="image/png",
+                    extension=".png",
+                    size=42,
+                )
+
+            def render_file(
+                file: File, *, image_detail_config: ImagePromptMessageContent.DETAIL
+            ) -> ImagePromptMessageContent:
+                assert not database.session.in_transaction()
+                assert image_detail_config == detail
+                assert file.remote_url is not None
+                return ImagePromptMessageContent(url=file.remote_url, format="png", mime_type="image/png")
+
+            def count_tokens(prompts: Sequence[PromptMessage]) -> int:
+                assert prompts
+                assert not database.session.in_transaction()
+                return 100
+
+            build_file.side_effect = restore_file
+            to_prompt.side_effect = render_file
+            model.get_llm_num_tokens.side_effect = count_tokens
+            text = history.get_prompt_text(model_instance=model, max_token_limit=3000)
+
+        assert text == "Human: [image]\nquestion\nAssistant: answer"
+        assert build_file.call_args.kwargs["tenant_id"] == tenant_id
+        assert "config" not in build_file.call_args.kwargs
+        assert len(database.statements) == statement_count
+
+    @pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION])
+    def test_disabled_file_uploads_keep_history_text(self, database: Database, mode: AppMode) -> None:
+        conversation = _persist_conversation(database, mode)
+        _enable_file_uploads(database, conversation, enabled=False)
+        message = _persist_message(database, conversation.id)
+        _persist_message_file(database, message, belongs_to=MessageFileBelongsTo.USER)
+        app = database.session.get(App, conversation.app_id)
+        history = TokenBufferMemory.load_history(
+            conversation=conversation, app_record=app, session=database.session, message_limit=None
+        )
+        database.session.close()
+
+        with patch.object(memory_module.file_factory, "build_from_mapping") as build_file:
+            text = history.get_prompt_text(model_instance=_make_model_instance(), max_token_limit=3000)
+
+        build_file.assert_not_called()
+        assert text == "Human: user query\nAssistant: hello"
+
+    @pytest.mark.parametrize("mode", [AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    def test_workflow_attachment_uses_message_run_configuration(self, database: Database, mode: AppMode) -> None:
+        conversation = _persist_conversation(database, mode)
+        workflow_run = _make_workflow_run()
+        workflow = _persist_workflow(database, workflow_id=workflow_run.workflow_id)
+        workflow.features = json.dumps({"file_upload": {"enabled": True}})
+        message = _persist_message(database, conversation.id, workflow_run_id=workflow_run.id)
+        _persist_message_file(database, message, belongs_to=MessageFileBelongsTo.ASSISTANT)
+        app = database.session.get(App, conversation.app_id)
+        assert app is not None
+        repository = MagicMock()
+        repository.get_workflow_run_by_id.return_value = workflow_run
+
+        history = TokenBufferMemory.load_history(
+            conversation=conversation,
+            app_record=app,
+            session=database.session,
+            message_limit=3,
+            workflow_run_repo=repository,
+        )
+
+        repository.get_workflow_run_by_id.assert_called_once_with(
+            tenant_id=app.tenant_id,
+            app_id=app.id,
+            run_id=workflow_run.id,
+        )
+        assert history.prompts[0].files == ()
+        assert len(history.prompts[1].files) == 1
+        assert history.prompts[1].image_detail == ImagePromptMessageContent.DETAIL.HIGH
+
+    @pytest.mark.parametrize(
+        ("missing", "error"),
+        [
+            ("app", "App not found for conversation"),
+            ("run_id", "Workflow run ID not found"),
+            ("run", "Workflow run not found"),
+            ("workflow", "Workflow not found"),
+        ],
+    )
+    def test_workflow_attachment_missing_context_preserves_error(
+        self, database: Database, missing: str, error: str
+    ) -> None:
+        conversation = _persist_conversation(database, AppMode.ADVANCED_CHAT)
+        workflow_run = _make_workflow_run()
+        message = _persist_message(
+            database, conversation.id, workflow_run_id=None if missing == "run_id" else workflow_run.id
+        )
+        _persist_message_file(database, message, belongs_to=MessageFileBelongsTo.USER)
+        app = None if missing == "app" else database.session.get(App, conversation.app_id)
+        repository = MagicMock()
+        repository.get_workflow_run_by_id.return_value = None if missing == "run" else workflow_run
+
+        with pytest.raises(ValueError, match=error):
+            TokenBufferMemory.load_history(
+                conversation=conversation,
+                app_record=app,
+                session=database.session,
+                message_limit=3,
+                workflow_run_repo=repository,
+            )
+
+    def test_history_preserves_branch_order_and_skips_unfinished_leaf(self, database: Database) -> None:
+        conversation = _persist_conversation(database)
+        base = datetime.now(UTC).replace(tzinfo=None)
+        parent = _persist_message(database, conversation.id, query="parent", created_at=base)
+        sibling = _persist_message(database, conversation.id, query="sibling", created_at=base + timedelta(seconds=1))
+        sibling.parent_message_id = parent.id
+        child = _persist_message(database, conversation.id, query="child", created_at=base + timedelta(seconds=2))
+        child.parent_message_id = parent.id
+        leaf = _persist_message(
+            database,
+            conversation.id,
+            query="unfinished",
+            answer="",
+            answer_tokens=0,
+            created_at=base + timedelta(seconds=3),
+        )
+        leaf.parent_message_id = child.id
+        database.session.commit()
+        app = database.session.get(App, conversation.app_id)
+        history = TokenBufferMemory.load_history(
+            conversation=conversation,
+            app_record=app,
+            session=database.session,
+            message_limit=4,
+        )
+        database.session.close()
+
+        assert history.get_prompt_text(model_instance=_make_model_instance(), max_token_limit=3000) == (
+            "Human: parent\nAssistant: hello\nHuman: child\nAssistant: hello"
+        )
+
+    def test_configured_workflow_repository_is_reused_for_history(self, database: Database) -> None:
+        conversation = _persist_conversation(database, AppMode.ADVANCED_CHAT)
+        workflow_run = _make_workflow_run()
+        workflow = _persist_workflow(database, workflow_id=workflow_run.workflow_id)
+        workflow.features = json.dumps({"file_upload": {"enabled": True}})
+        parent = _persist_message(database, conversation.id, workflow_run_id=workflow_run.id)
+        child = _persist_message(
+            database,
+            conversation.id,
+            workflow_run_id=workflow_run.id,
+            created_at=parent.created_at + timedelta(seconds=1),
+        )
+        child.parent_message_id = parent.id
+        for message in (parent, child):
+            _persist_message_file(database, message, belongs_to=MessageFileBelongsTo.USER)
+        app = database.session.get(App, conversation.app_id)
+        repository = MagicMock()
+        repository.get_workflow_run_by_id.return_value = workflow_run
+
+        with patch.object(
+            memory_module.DifyAPIRepositoryFactory, "create_api_workflow_run_repository", return_value=repository
+        ) as create_repository:
+            history = TokenBufferMemory.load_history(
+                conversation=conversation, app_record=app, session=database.session, message_limit=3
+            )
+
+        create_repository.assert_called_once()
+        assert repository.get_workflow_run_by_id.call_count == 2
+        assert len(history.prompts) == 4
+        assert [len(prompt.files) for prompt in history.prompts] == [1, 0, 1, 0]

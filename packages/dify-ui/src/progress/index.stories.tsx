@@ -1,7 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import type { ProgressCircleColor, ProgressCircleSize } from '.'
+import type { ProgressCircleProps } from '.'
 import * as React from 'react'
 import { ProgressCircle } from '.'
+
+type ProgressCircleColor = NonNullable<ProgressCircleProps['color']>
+type ProgressCircleSize = NonNullable<ProgressCircleProps['size']>
 
 const colors: ProgressCircleColor[] = ['gray', 'white', 'blue', 'warning', 'error']
 const sizes: ProgressCircleSize[] = ['small', 'medium', 'large']
@@ -27,32 +30,30 @@ type Story = StoryObj<typeof meta>
 
 export const Circle: Story = {
   args: {
-    'value': 42,
-    'color': 'blue',
-    'size': 'small',
+    value: 42,
+    color: 'blue',
+    size: 'small',
     'aria-label': 'Uploading',
   },
 }
 
 export const CircleMatrix: Story = {
   args: {
-    'value': 62,
+    value: 62,
     'aria-label': 'Progress',
   },
   render: () => (
     <div className="grid grid-cols-[auto_auto_auto_auto] items-center gap-4 rounded-lg bg-components-panel-bg p-4">
       <div />
-      {sizes.map(size => (
+      {sizes.map((size) => (
         <div key={size} className="system-xs-medium text-text-tertiary">
           {size}
         </div>
       ))}
-      {colors.map(color => (
+      {colors.map((color) => (
         <React.Fragment key={color}>
-          <div className="system-xs-semibold-uppercase text-text-secondary">
-            {color}
-          </div>
-          {sizes.map(size => (
+          <div className="system-xs-semibold-uppercase text-text-secondary">{color}</div>
+          {sizes.map((size) => (
             <ProgressCircle
               key={`${color}-${size}`}
               value={62}
@@ -69,9 +70,9 @@ export const CircleMatrix: Story = {
 
 export const Indeterminate: Story = {
   args: {
-    'value': null,
-    'color': 'gray',
-    'size': 'medium',
+    value: null,
+    color: 'gray',
+    size: 'medium',
     'aria-label': 'Processing',
   },
 }

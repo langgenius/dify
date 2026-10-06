@@ -1,4 +1,7 @@
-import type { AgentLogSourceListResponse, AgentStatisticSummaryEnvelopeResponse } from '@dify/contracts/api/console/agent/types.gen'
+import type {
+  AgentLogSourceListResponse,
+  AgentStatisticSummaryEnvelopeResponse,
+} from '@dify/contracts/api/console/agent/types.gen'
 import type { EChartsOption } from 'echarts'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
@@ -28,20 +31,20 @@ const mocks = vi.hoisted(() => ({
   })),
 }))
 
-vi.mock('echarts-for-react', () => ({
-  default: ({ option, style }: { option: EChartsOption, style?: React.CSSProperties }) => {
+vi.mock('echarts-for-react/esm/core', () => ({
+  default: ({ option, style }: { option: EChartsOption; style?: React.CSSProperties }) => {
     mocks.chartOptions.push(option)
 
     return <div data-testid="agent-monitoring-chart" style={style} />
   },
 }))
 
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => (path: string) => `https://docs.example.com${path}`,
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: () => 'en-US',
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     agent: {
       byAgentId: {
@@ -98,30 +101,14 @@ const statisticsResponse: AgentStatisticSummaryEnvelopeResponse = {
     user_satisfaction_rate: 66.67,
   },
   charts: {
-    average_response_time: [
-      { date: '2026-06-22', latency: 1250 },
-    ],
-    average_session_interactions: [
-      { date: '2026-06-22', interactions: 1.5 },
-    ],
-    daily_conversations: [
-      { date: '2026-06-22', conversation_count: 2 },
-    ],
-    daily_end_users: [
-      { date: '2026-06-22', terminal_count: 3 },
-    ],
-    daily_messages: [
-      { date: '2026-06-22', message_count: 1250 },
-    ],
-    token_usage: [
-      { date: '2026-06-22', token_count: 2500, total_price: '0.005', currency: 'USD' },
-    ],
-    tokens_per_second: [
-      { date: '2026-06-22', tps: 4 },
-    ],
-    user_satisfaction_rate: [
-      { date: '2026-06-22', rate: 66.67 },
-    ],
+    average_response_time: [{ date: '2026-06-22', latency: 1250 }],
+    average_session_interactions: [{ date: '2026-06-22', interactions: 1.5 }],
+    daily_conversations: [{ date: '2026-06-22', conversation_count: 2 }],
+    daily_end_users: [{ date: '2026-06-22', terminal_count: 3 }],
+    daily_messages: [{ date: '2026-06-22', message_count: 1250 }],
+    token_usage: [{ date: '2026-06-22', token_count: 2500, total_price: '0.005', currency: 'USD' }],
+    tokens_per_second: [{ date: '2026-06-22', tps: 4 }],
+    user_satisfaction_rate: [{ date: '2026-06-22', rate: 66.67 }],
   },
 }
 
@@ -172,8 +159,7 @@ const renderPage = () => {
 const getLatestStatisticsQueryInput = () => {
   const latestCall = mocks.statisticsQueryOptions.mock.calls.at(-1)
 
-  if (!latestCall)
-    throw new Error('Expected statistics query options to be called')
+  if (!latestCall) throw new Error('Expected statistics query options to be called')
 
   return latestCall[0]
 }
@@ -207,6 +193,13 @@ describe('AgentMonitoringPage', () => {
     expect(getLatestStatisticsQueryInput().input.query).not.toHaveProperty('source')
   })
 
+  it('should show the monitoring description without the obsolete documentation link', () => {
+    renderPage()
+
+    expect(screen.getByText('agentV2.agentDetail.monitoring.description')).toBeInTheDocument()
+    expect(screen.queryByRole('link')).not.toBeInTheDocument()
+  })
+
   it('should render statistics summary values and chart options from backend data', async () => {
     renderPage()
 
@@ -223,9 +216,11 @@ describe('AgentMonitoringPage', () => {
     const firstChartOption = mocks.chartOptions[0]
 
     expect(firstChartOption).toBeDefined()
-    expect(firstChartOption).toEqual(expect.objectContaining({
-      grid: { top: 8, right: 36, bottom: 10, left: 25, containLabel: true },
-    }))
+    expect(firstChartOption).toEqual(
+      expect.objectContaining({
+        grid: { top: 8, right: 36, bottom: 10, left: 25, containLabel: true },
+      }),
+    )
     expect(firstChartOption?.xAxis).toEqual(expect.any(Array))
   })
 
@@ -254,20 +249,40 @@ describe('AgentMonitoringPage', () => {
     await user.click(await screen.findByRole('option', { name: /Book Translation/ }))
 
     await waitFor(() => {
-      expect(getLatestStatisticsQueryInput().input.query).toEqual(expect.objectContaining({
-        source: 'webapp:webapp-app-id',
-      }))
+      expect(getLatestStatisticsQueryInput().input.query).toEqual(
+        expect.objectContaining({
+          source: 'webapp:webapp-app-id',
+        }),
+      )
     })
 
     const sourceTrigger = screen.getByRole('combobox', { name: /Book Translation/ })
 
-    expect(within(sourceTrigger).getByText(/metadata.sourceLabel/)).toHaveClass('system-sm-regular', 'text-text-tertiary')
-    expect(within(sourceTrigger).getByText('Book Translation')).toHaveClass('system-sm-medium', 'text-text-secondary')
+    expect(within(sourceTrigger).getByText(/metadata.sourceLabel/)).toHaveClass(
+      'system-sm-regular',
+      'text-text-tertiary',
+    )
+    expect(within(sourceTrigger).getByText('Book Translation')).toHaveClass(
+      'system-sm-medium',
+      'text-text-secondary',
+    )
+
+    const clearButton = screen.getByRole('button', { name: /operation.clear.*Book Translation/ })
+    clearButton.focus()
+    await user.keyboard('{Enter}')
+
+    await waitFor(() => {
+      expect(getLatestStatisticsQueryInput().input.query).not.toHaveProperty('source')
+    })
+    expect(
+      screen.getByRole('combobox', { name: /metadata.sourceLabel.*sources.all/ }),
+    ).toBeInTheDocument()
   })
 
   it('should keep previous statistics visible while a source filter refetches', async () => {
     const user = userEvent.setup()
-    let resolveNextStatistics: (value: AgentStatisticSummaryEnvelopeResponse) => void = () => undefined
+    let resolveNextStatistics: (value: AgentStatisticSummaryEnvelopeResponse) => void = () =>
+      undefined
     const nextStatisticsPromise = new Promise<AgentStatisticSummaryEnvelopeResponse>((resolve) => {
       resolveNextStatistics = resolve
     })
@@ -283,12 +298,31 @@ describe('AgentMonitoringPage', () => {
     await user.click(await screen.findByRole('option', { name: /Book Translation/ }))
 
     await waitFor(() => {
-      expect(getLatestStatisticsQueryInput().input.query).toEqual(expect.objectContaining({
-        source: 'webapp:webapp-app-id',
-      }))
+      expect(getLatestStatisticsQueryInput().input.query).toEqual(
+        expect.objectContaining({
+          source: 'webapp:webapp-app-id',
+        }),
+      )
     })
     expect(screen.getByText('1.3k')).toBeInTheDocument()
 
     resolveNextStatistics(emptyStatisticsResponse)
+  })
+
+  it('announces a loading failure and recovers after retry', async () => {
+    const user = userEvent.setup()
+    mocks.statisticsQueryFn
+      .mockRejectedValueOnce(new Error('Statistics unavailable'))
+      .mockResolvedValueOnce(statisticsResponse)
+
+    renderPage()
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'agentV2.agentDetail.monitoring.loadFailed',
+    )
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+
+    expect(await screen.findByText('1.3k')).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 })

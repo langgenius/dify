@@ -5,59 +5,72 @@ import type {
   ModelLoadBalancingConfig,
   ModelProvider,
 } from '../../declarations'
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { AddCredentialInLoadBalancing } from '@/app/components/header/account-setting/model-provider-page/model-auth'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { ConfigurationMethodEnum } from '../../declarations'
 import ModelLoadBalancingConfigs from '../model-load-balancing-configs'
 
 let mockModelLoadBalancingEnabled = true
-
-vi.mock('@/config', () => ({
-  IS_CE_EDITION: false,
-}))
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContextSelector: (selector: (state: { modelLoadBalancingEnabled: boolean }) => boolean) => selector({ modelLoadBalancingEnabled: mockModelLoadBalancingEnabled }),
-}))
+const render = (ui: React.ReactElement) =>
+  renderWithConsoleQuery(ui, {
+    systemFeatures: { deployment_edition: 'CLOUD' },
+    features: { model_load_balancing_enabled: mockModelLoadBalancingEnabled },
+  })
 
 vi.mock('../cooldown-timer', () => ({
-  default: ({ secondsRemaining, onFinish }: { secondsRemaining?: number, onFinish?: () => void }) => (
+  default: ({
+    secondsRemaining,
+    onFinish,
+  }: {
+    secondsRemaining?: number
+    onFinish?: () => void
+  }) => (
     <button type="button" onClick={onFinish} data-testid="cooldown-timer">
-      {secondsRemaining}
-      s
+      {secondsRemaining}s
     </button>
   ),
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-auth', () => ({
-  AddCredentialInLoadBalancing: vi.fn(({ onSelectCredential, onUpdate, onRemove }: {
-    onSelectCredential: (credential: Credential) => void
-    onUpdate?: (payload?: unknown, formValues?: Record<string, unknown>) => void
-    onRemove?: (credentialId: string) => void
-  }) => (
-    <div>
-      <button
-        type="button"
-        onClick={() => onSelectCredential({ credential_id: 'cred-2', credential_name: 'Key 2' } as Credential)}
-      >
-        add credential
-      </button>
-      <button
-        type="button"
-        onClick={() => onUpdate?.({ credential: { credential_id: 'cred-2' } }, { __authorization_name__: 'Key 2' })}
-      >
-        trigger update
-      </button>
-      <button
-        type="button"
-        onClick={() => onRemove?.('cred-2')}
-      >
-        trigger remove
-      </button>
-    </div>
-  )),
+  AddCredentialInLoadBalancing: vi.fn(
+    ({
+      onSelectCredential,
+      onUpdate,
+      onRemove,
+    }: {
+      onSelectCredential: (credential: Credential) => void
+      onUpdate?: (payload?: unknown, formValues?: Record<string, unknown>) => void
+      onRemove?: (credentialId: string) => void
+    }) => (
+      <div>
+        <button
+          type="button"
+          onClick={() =>
+            onSelectCredential({ credential_id: 'cred-2', credential_name: 'Key 2' } as Credential)
+          }
+        >
+          add credential
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            onUpdate?.(
+              { credential: { credential_id: 'cred-2' } },
+              { __authorization_name__: 'Key 2' },
+            )
+          }
+        >
+          trigger update
+        </button>
+        <button type="button" onClick={() => onRemove?.('cred-2')}>
+          trigger remove
+        </button>
+      </div>
+    ),
+  ),
 }))
 
 vi.mock('@/app/components/billing/upgrade-btn', () => ({
@@ -89,17 +102,18 @@ describe('ModelLoadBalancingConfigs', () => {
     ],
   } as unknown as ModelCredential
 
-  const createDraftConfig = (enabled = true): ModelLoadBalancingConfig => ({
-    enabled,
-    configs: [
-      {
-        id: 'cfg-1',
-        credential_id: 'cred-1',
-        enabled: true,
-        name: 'Key 1',
-      },
-    ],
-  } as ModelLoadBalancingConfig)
+  const createDraftConfig = (enabled = true): ModelLoadBalancingConfig =>
+    ({
+      enabled,
+      configs: [
+        {
+          id: 'cfg-1',
+          credential_id: 'cred-1',
+          enabled: true,
+          name: 'Key 1',
+        },
+      ],
+    }) as ModelLoadBalancingConfig
 
   const StatefulHarness = ({
     initialConfig,
@@ -114,7 +128,9 @@ describe('ModelLoadBalancingConfigs', () => {
     onRemove?: (credentialId: string) => void
     configurationMethod?: ConfigurationMethodEnum
   }) => {
-    const [draftConfig, setDraftConfig] = useState<ModelLoadBalancingConfig | undefined>(initialConfig)
+    const [draftConfig, setDraftConfig] = useState<ModelLoadBalancingConfig | undefined>(
+      initialConfig,
+    )
     return (
       <ModelLoadBalancingConfigs
         draftConfig={draftConfig}
@@ -149,12 +165,14 @@ describe('ModelLoadBalancingConfigs', () => {
     expect(container.firstChild).toBeNull()
   })
 
-  it('should enable load balancing by clicking the main panel when disabled and without switch', async () => {
+  it('should enable load balancing from the named mode button with the keyboard', async () => {
     const user = userEvent.setup()
     render(<StatefulHarness initialConfig={createDraftConfig(false)} withSwitch={false} />)
 
-    const panel = screen.getByTestId('load-balancing-main-panel')
-    await user.click(panel)
+    const modeButton = screen.getByTestId('load-balancing-select-mode')
+    expect(modeButton).toHaveAccessibleName('modelProvider.modelProvider.loadBalancing')
+    modeButton.focus()
+    await user.keyboard('[Space]')
     expect(screen.getByText('Key 1')).toBeInTheDocument()
   })
 
@@ -162,8 +180,9 @@ describe('ModelLoadBalancingConfigs', () => {
     const user = userEvent.setup()
     render(<StatefulHarness initialConfig={createDraftConfig(true)} />)
 
-    const removeBtn = screen.getByTestId('load-balancing-remove-cfg-1')
-    await user.click(removeBtn)
+    const removeBtn = screen.getByRole('button', { name: 'common.operation.remove Key 1' })
+    removeBtn.focus()
+    await user.keyboard('{Enter}')
 
     expect(screen.queryByText('Key 1')).not.toBeInTheDocument()
   })
@@ -173,6 +192,7 @@ describe('ModelLoadBalancingConfigs', () => {
     render(<StatefulHarness initialConfig={createDraftConfig(true)} />)
 
     const entrySwitch = screen.getByTestId('load-balancing-switch-cfg-1')
+    expect(screen.getByRole('switch', { name: 'Key 1' })).toBe(entrySwitch)
     await user.click(entrySwitch)
     // Internal state transitions are verified by successful interactions
   })
@@ -182,9 +202,14 @@ describe('ModelLoadBalancingConfigs', () => {
     render(<StatefulHarness initialConfig={createDraftConfig(true)} withSwitch />)
 
     const mainSwitch = screen.getByTestId('load-balancing-switch-main')
+    expect(screen.getByRole('switch', { name: 'modelProvider.modelProvider.loadBalancing' })).toBe(
+      mainSwitch,
+    )
     await user.click(mainSwitch)
     // Check if description is still there (it should be)
-    expect(screen.getByText('common.modelProvider.loadBalancingDescription')).toBeInTheDocument()
+    expect(
+      screen.getByText('modelProvider.modelProvider.loadBalancingDescription'),
+    ).toBeInTheDocument()
   })
 
   it('should disable main switch when load balancing is not permitted', async () => {
@@ -217,7 +242,14 @@ describe('ModelLoadBalancingConfigs', () => {
     const cooldownConfig: ModelLoadBalancingConfig = {
       enabled: true,
       configs: [
-        { id: 'cfg-1', credential_id: 'cred-1', enabled: true, name: 'Key 1', in_cooldown: true, ttl: 30 },
+        {
+          id: 'cfg-1',
+          credential_id: 'cred-1',
+          enabled: true,
+          name: 'Key 1',
+          in_cooldown: true,
+          ttl: 30,
+        },
       ],
     } as unknown as ModelLoadBalancingConfig
     render(<StatefulHarness initialConfig={cooldownConfig} />)
@@ -232,7 +264,13 @@ describe('ModelLoadBalancingConfigs', () => {
     const user = userEvent.setup()
     const onUpdate = vi.fn()
     const onRemove = vi.fn()
-    render(<StatefulHarness initialConfig={createDraftConfig(true)} onUpdate={onUpdate} onRemove={onRemove} />)
+    render(
+      <StatefulHarness
+        initialConfig={createDraftConfig(true)}
+        onUpdate={onUpdate}
+        onRemove={onRemove}
+      />,
+    )
 
     // Add
     await user.click(screen.getByRole('button', { name: 'add credential' }))
@@ -251,14 +289,17 @@ describe('ModelLoadBalancingConfigs', () => {
   it('should show "Provider Managed" badge for inherit config in predefined method', () => {
     const inheritConfig: ModelLoadBalancingConfig = {
       enabled: true,
-      configs: [
-        { id: 'cfg-inherit', credential_id: '', enabled: true, name: '__inherit__' },
-      ],
+      configs: [{ id: 'cfg-inherit', credential_id: '', enabled: true, name: '__inherit__' }],
     } as ModelLoadBalancingConfig
-    render(<StatefulHarness initialConfig={inheritConfig} configurationMethod={ConfigurationMethodEnum.predefinedModel} />)
+    render(
+      <StatefulHarness
+        initialConfig={inheritConfig}
+        configurationMethod={ConfigurationMethodEnum.predefinedModel}
+      />,
+    )
 
-    expect(screen.getByText('common.modelProvider.providerManaged')).toBeInTheDocument()
-    expect(screen.getByText('common.modelProvider.defaultConfig')).toBeInTheDocument()
+    expect(screen.getByText('modelProvider.modelProvider.providerManaged')).toBeInTheDocument()
+    expect(screen.getByText('modelProvider.modelProvider.defaultConfig')).toBeInTheDocument()
   })
 
   it('should remove credential at index 0', async () => {
@@ -309,9 +350,7 @@ describe('ModelLoadBalancingConfigs', () => {
   it('should not show provider badge when isProviderManaged=true but configurationMethod is customizableModel', () => {
     const inheritConfig: ModelLoadBalancingConfig = {
       enabled: true,
-      configs: [
-        { id: 'cfg-inherit', credential_id: '', enabled: true, name: '__inherit__' },
-      ],
+      configs: [{ id: 'cfg-inherit', credential_id: '', enabled: true, name: '__inherit__' }],
     } as ModelLoadBalancingConfig
 
     render(
@@ -321,8 +360,10 @@ describe('ModelLoadBalancingConfigs', () => {
       />,
     )
 
-    expect(screen.getByText('common.modelProvider.defaultConfig')).toBeInTheDocument()
-    expect(screen.queryByText('common.modelProvider.providerManaged')).not.toBeInTheDocument()
+    expect(screen.getByText('modelProvider.modelProvider.defaultConfig')).toBeInTheDocument()
+    expect(
+      screen.queryByText('modelProvider.modelProvider.providerManaged'),
+    ).not.toBeInTheDocument()
   })
 
   it('should show upgrade panel when modelLoadBalancingEnabled=false and not CE edition', () => {
@@ -331,7 +372,9 @@ describe('ModelLoadBalancingConfigs', () => {
     render(<StatefulHarness initialConfig={createDraftConfig(false)} />)
 
     expect(screen.getByText('upgrade')).toBeInTheDocument()
-    expect(screen.getByText('common.modelProvider.upgradeForLoadBalancing')).toBeInTheDocument()
+    expect(
+      screen.getByText('modelProvider.modelProvider.upgradeForLoadBalancing'),
+    ).toBeInTheDocument()
   })
 
   it('should pass explicit boolean state to toggleConfigEntryEnabled (typeof state === boolean branch)', async () => {
@@ -352,7 +395,12 @@ describe('ModelLoadBalancingConfigs', () => {
     const restrictedConfig: ModelLoadBalancingConfig = {
       enabled: true,
       configs: [
-        { id: 'cfg-restricted', credential_id: 'cred-restricted', enabled: true, name: 'Restricted Key' },
+        {
+          id: 'cfg-restricted',
+          credential_id: 'cred-restricted',
+          enabled: true,
+          name: 'Restricted Key',
+        },
       ],
     } as ModelLoadBalancingConfig
 
@@ -385,9 +433,14 @@ describe('ModelLoadBalancingConfigs', () => {
 
   it('should handle edge cases where draftConfig becomes null during callbacks', async () => {
     let capturedAdd: ((credential: Credential) => void) | null = null
-    let capturedUpdate: ((payload?: unknown, formValues?: Record<string, unknown>) => void) | null = null
+    let capturedUpdate: ((payload?: unknown, formValues?: Record<string, unknown>) => void) | null =
+      null
     let capturedRemove: ((credentialId: string) => void) | null = null
-    const MockChild = ({ onSelectCredential, onUpdate, onRemove }: {
+    const MockChild = ({
+      onSelectCredential,
+      onUpdate,
+      onRemove,
+    }: {
       onSelectCredential: (credential: Credential) => void
       onUpdate?: (payload?: unknown, formValues?: Record<string, unknown>) => void
       onRemove?: (credentialId: string) => void
@@ -397,7 +450,9 @@ describe('ModelLoadBalancingConfigs', () => {
       capturedRemove = onRemove || null
       return null
     }
-    vi.mocked(AddCredentialInLoadBalancing).mockImplementation(MockChild as unknown as typeof AddCredentialInLoadBalancing)
+    vi.mocked(AddCredentialInLoadBalancing).mockImplementation(
+      MockChild as unknown as typeof AddCredentialInLoadBalancing,
+    )
 
     const { rerender } = render(<StatefulHarness initialConfig={createDraftConfig(true)} />)
 
@@ -411,11 +466,15 @@ describe('ModelLoadBalancingConfigs', () => {
     // Trigger callbacks
     act(() => {
       if (capturedAdd)
-        (capturedAdd as (credential: Credential) => void)({ credential_id: 'new', credential_name: 'New' })
+        (capturedAdd as (credential: Credential) => void)({
+          credential_id: 'new',
+          credential_name: 'New',
+        })
       if (capturedUpdate)
-        (capturedUpdate as (payload?: unknown, formValues?: Record<string, unknown>) => void)({ some: 'payload' })
-      if (capturedRemove)
-        (capturedRemove as (credentialId: string) => void)('cred-1')
+        (capturedUpdate as (payload?: unknown, formValues?: Record<string, unknown>) => void)({
+          some: 'payload',
+        })
+      if (capturedRemove) (capturedRemove as (credentialId: string) => void)('cred-1')
     })
 
     // Should not throw and just return prev (which is undefined)
@@ -423,14 +482,12 @@ describe('ModelLoadBalancingConfigs', () => {
 
   it('should not toggle load balancing when modelLoadBalancingEnabled=false and clicking panel to enable', async () => {
     // Arrange: load balancing not enabled in context, draftConfig.enabled=false (so panel is clickable)
-    const user = userEvent.setup()
     mockModelLoadBalancingEnabled = false
     render(<StatefulHarness initialConfig={createDraftConfig(false)} withSwitch={false} />)
 
     // Act: clicking the panel calls toggleModalBalancing(true)
     // but (modelLoadBalancingEnabled || !enabled) = (false || false) = false → condition fails
-    const panel = screen.getByTestId('load-balancing-main-panel')
-    await user.click(panel)
+    expect(screen.queryByTestId('load-balancing-select-mode')).not.toBeInTheDocument()
 
     expect(screen.queryByText('Key 1')).not.toBeInTheDocument()
   })
@@ -438,19 +495,29 @@ describe('ModelLoadBalancingConfigs', () => {
   it('should return early from addConfigEntry setDraftConfig when prev is undefined', async () => {
     // Arrange: use a controlled wrapper that exposes a way to force draftConfig to undefined
     let capturedAdd: ((credential: Credential) => void) | null = null
-    const MockChild = ({ onSelectCredential }: {
+    const MockChild = ({
+      onSelectCredential,
+    }: {
       onSelectCredential: (credential: Credential) => void
     }) => {
       capturedAdd = onSelectCredential
       return null
     }
-    vi.mocked(AddCredentialInLoadBalancing).mockImplementation(MockChild as unknown as typeof AddCredentialInLoadBalancing)
+    vi.mocked(AddCredentialInLoadBalancing).mockImplementation(
+      MockChild as unknown as typeof AddCredentialInLoadBalancing,
+    )
 
     // Use a setDraftConfig spy that tracks calls and simulates null prev
-    const setDraftConfigSpy = vi.fn((updater: ((prev: ModelLoadBalancingConfig | undefined) => ModelLoadBalancingConfig | undefined) | ModelLoadBalancingConfig | undefined) => {
-      if (typeof updater === 'function')
-        updater(undefined)
-    })
+    const setDraftConfigSpy = vi.fn(
+      (
+        updater:
+          | ((prev: ModelLoadBalancingConfig | undefined) => ModelLoadBalancingConfig | undefined)
+          | ModelLoadBalancingConfig
+          | undefined,
+      ) => {
+        if (typeof updater === 'function') updater(undefined)
+      },
+    )
 
     render(
       <ModelLoadBalancingConfigs
@@ -466,7 +533,10 @@ describe('ModelLoadBalancingConfigs', () => {
     // Act: trigger addConfigEntry with undefined prev via the spy
     act(() => {
       if (capturedAdd)
-        (capturedAdd as (credential: Credential) => void)({ credential_id: 'new', credential_name: 'New' } as Credential)
+        (capturedAdd as (credential: Credential) => void)({
+          credential_id: 'new',
+          credential_name: 'New',
+        } as Credential)
     })
 
     // Assert: setDraftConfig was called and the updater returned early (prev was undefined)
@@ -475,10 +545,16 @@ describe('ModelLoadBalancingConfigs', () => {
 
   it('should return early from updateConfigEntry setDraftConfig when prev is undefined', async () => {
     // Arrange: use setDraftConfig spy that invokes updater with undefined prev
-    const setDraftConfigSpy = vi.fn((updater: ((prev: ModelLoadBalancingConfig | undefined) => ModelLoadBalancingConfig | undefined) | ModelLoadBalancingConfig | undefined) => {
-      if (typeof updater === 'function')
-        updater(undefined)
-    })
+    const setDraftConfigSpy = vi.fn(
+      (
+        updater:
+          | ((prev: ModelLoadBalancingConfig | undefined) => ModelLoadBalancingConfig | undefined)
+          | ModelLoadBalancingConfig
+          | undefined,
+      ) => {
+        if (typeof updater === 'function') updater(undefined)
+      },
+    )
 
     render(
       <ModelLoadBalancingConfigs

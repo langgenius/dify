@@ -8,7 +8,8 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Large empty state card used in panels and drawers to hint at the next action for the user.',
+        component:
+          'Large empty state card used in panels and drawers to hint at the next action for the user.',
       },
     },
   },
@@ -16,7 +17,8 @@ const meta = {
     title: 'No items yet',
     description: (
       <p className="text-xs/5 text-text-tertiary">
-        Add your first entry to see it appear here. Empty states help users discover what happens next.
+        Add your first entry to see it appear here. Empty states help users discover what happens
+        next.
       </p>
     ),
   },

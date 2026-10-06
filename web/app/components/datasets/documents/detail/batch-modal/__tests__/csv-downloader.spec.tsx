@@ -1,19 +1,29 @@
 import type { ReactNode } from 'react'
 import { render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { LanguagesSupported } from '@/i18n-config/language'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { LanguagesSupported } from '@/i18n/language'
 import { ChunkingMode } from '@/models/datasets'
-
 import CSVDownload from '../csv-downloader'
 
 // Mock useLocale
 let mockLocale = LanguagesSupported[0] // en-US
-vi.mock('@/context/i18n', () => ({
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: () => mockLocale,
 }))
 
 // Mock react-papaparse
-const MockCSVDownloader = ({ children, data, filename, type }: { children: ReactNode, data: unknown, filename: string, type: string }) => (
+const MockCSVDownloader = ({
+  children,
+  data,
+  filename,
+  type,
+}: {
+  children: ReactNode
+  data: unknown
+  filename: string
+  type: string
+}) => (
   <div
     data-testid="csv-downloader-link"
     data-filename={filename}
@@ -38,12 +48,6 @@ describe('CSVDownloader', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const { container } = render(<CSVDownload docForm={ChunkingMode.text} />)
-
-      expect(container.firstChild).toBeInTheDocument()
-    })
-
     it('should render structure title', () => {
       render(<CSVDownload docForm={ChunkingMode.text} />)
 
@@ -131,11 +135,7 @@ describe('CSVDownloader', () => {
 
       const link = screen.getByTestId('csv-downloader-link')
       const data = JSON.parse(link.getAttribute('data-data') || '[]')
-      expect(data).toEqual([
-        ['segment content'],
-        ['content1'],
-        ['content2'],
-      ])
+      expect(data).toEqual([['segment content'], ['content1'], ['content2']])
     })
 
     it('should provide Chinese QA template when locale is Chinese and docForm is qa', () => {
@@ -159,11 +159,7 @@ describe('CSVDownloader', () => {
 
       const link = screen.getByTestId('csv-downloader-link')
       const data = JSON.parse(link.getAttribute('data-data') || '[]')
-      expect(data).toEqual([
-        ['分段内容'],
-        ['内容 1'],
-        ['内容 2'],
-      ])
+      expect(data).toEqual([['分段内容'], ['内容 1'], ['内容 2']])
     })
   })
 

@@ -6,7 +6,7 @@ export class ConcurrentAccessError extends BaseError {
     const msg = `Another process is modifying the file ${filePath}. remove ${filePath}.lock to reset lock.`
 
     super({
-      code: ErrorCode.ClientError,
+      code: ErrorCode.Unknown,
       message: msg,
       hint: `remove ${filePath}.lock to reset lock.`,
     })
@@ -16,7 +16,7 @@ export class ConcurrentAccessError extends BaseError {
 type YamlMark = {
   line: number
   column: number
-  snippet?: string
+  snippet?: string | null
 }
 
 type YamlParseError = {
@@ -35,7 +35,7 @@ export class BadYamlFormatError extends BaseError {
     const body = snippet ? `\n\n${snippet}` : ''
 
     super({
-      code: ErrorCode.ClientError,
+      code: ErrorCode.Unknown,
       message: `${header}${body}`,
       hint: `Fix the YAML syntax in ${path} or remove the file to reset it.`,
     })
@@ -43,12 +43,10 @@ export class BadYamlFormatError extends BaseError {
 }
 
 function excerpt(raw: string, mark: YamlMark | undefined): string {
-  if (mark === undefined)
-    return ''
+  if (mark === undefined) return ''
   const lines = raw.split('\n')
   const target = mark.line
-  if (target < 0 || target >= lines.length)
-    return ''
+  if (target < 0 || target >= lines.length) return ''
   const start = Math.max(0, target - 2)
   const end = Math.min(lines.length, target + 3)
   const width = String(end).length
@@ -57,8 +55,7 @@ function excerpt(raw: string, mark: YamlMark | undefined): string {
     const marker = i === target ? '>' : ' '
     const num = String(i + 1).padStart(width, ' ')
     out.push(`${marker} ${num} | ${lines[i]}`)
-    if (i === target)
-      out.push(`${' '.repeat(width + 4)}${' '.repeat(mark.column)}^`)
+    if (i === target) out.push(`${' '.repeat(width + 4)}${' '.repeat(mark.column)}^`)
   }
   return out.join('\n')
 }

@@ -5,8 +5,9 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from core.entities.document_task import DocumentTask
-from enums.cloud_plan import CloudPlan
+from enums import CloudPlan, DeploymentEdition
 from services.document_indexing_proxy.batch_indexing_base import BatchDocumentIndexingProxy
+from tests.unit_tests.config_override import config_overrides_context
 
 # ---------------------------------------------------------------------------
 # Concrete subclass for testing (the base class is abstract)
@@ -154,6 +155,7 @@ class TestSendToTenantQueue:
         """When get_task_key() is truthy, tasks must be pushed via push_tasks()."""
         # Arrange
         proxy = make_proxy()
+        # pyrefly: ignore [missing-attribute]
         proxy._tenant_isolated_task_queue.get_task_key.return_value = "existing-key"
         task_func = MagicMock()
 
@@ -169,6 +171,7 @@ class TestSendToTenantQueue:
         """When a key already exists, task_func.delay must never be called."""
         # Arrange
         proxy = make_proxy()
+        # pyrefly: ignore [missing-attribute]
         proxy._tenant_isolated_task_queue.get_task_key.return_value = "existing-key"
         task_func = MagicMock()
 
@@ -182,6 +185,7 @@ class TestSendToTenantQueue:
         """When a key already exists, set_task_waiting_time must never be called."""
         # Arrange
         proxy = make_proxy()
+        # pyrefly: ignore [missing-attribute]
         proxy._tenant_isolated_task_queue.get_task_key.return_value = "existing-key"
         task_func = MagicMock()
 
@@ -196,6 +200,7 @@ class TestSendToTenantQueue:
         """Verify the serialised payload matches asdict(DocumentTask(...))."""
         # Arrange
         proxy = make_proxy(document_ids=["doc-x"])
+        # pyrefly: ignore [missing-attribute]
         proxy._tenant_isolated_task_queue.get_task_key.return_value = "k"
         task_func = MagicMock()
 
@@ -219,6 +224,7 @@ class TestSendToTenantQueue:
         """When get_task_key() is falsy, set_task_waiting_time and task_func.delay are invoked."""
         # Arrange
         proxy = make_proxy()
+        # pyrefly: ignore [missing-attribute]
         proxy._tenant_isolated_task_queue.get_task_key.return_value = None
         task_func = MagicMock()
 
@@ -238,6 +244,7 @@ class TestSendToTenantQueue:
         """When get_task_key() is falsy, push_tasks must never be called."""
         # Arrange
         proxy = make_proxy()
+        # pyrefly: ignore [missing-attribute]
         proxy._tenant_isolated_task_queue.get_task_key.return_value = None
         task_func = MagicMock()
 
@@ -253,6 +260,7 @@ class TestSendToTenantQueue:
         """Verify that any falsy return from get_task_key() triggers the init branch."""
         # Arrange
         proxy = make_proxy()
+        # pyrefly: ignore [missing-attribute]
         proxy._tenant_isolated_task_queue.get_task_key.return_value = falsy_key
         task_func = MagicMock()
 
@@ -268,20 +276,21 @@ class TestSendToTenantQueue:
 class TestDispatchRouting:
     """Tests for the _dispatch / delay routing logic inherited from the base class."""
 
-    def _mock_features(self, enabled: bool, plan: CloudPlan) -> MagicMock:
+    def _mock_features(self, plan: CloudPlan) -> MagicMock:
         features = MagicMock()
-        features.billing.enabled = enabled
         features.billing.subscription.plan = plan
         return features
 
-    def test_should_send_to_normal_tenant_queue_when_billing_enabled_and_sandbox_plan(self) -> None:
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+    def test_should_send_to_normal_tenant_queue_in_cloud_with_sandbox_plan(self) -> None:
         """Sandbox plan routes to normal priority queue with tenant isolation."""
         # Arrange
         proxy = make_proxy()
+        # pyrefly: ignore [missing-attribute]
         proxy._tenant_isolated_task_queue.get_task_key.return_value = None
 
         with patch("services.document_indexing_proxy.base.FeatureService.get_features") as mock_features:
-            mock_features.return_value = self._mock_features(enabled=True, plan=CloudPlan.SANDBOX)
+            mock_features.return_value = self._mock_features(plan=CloudPlan.SANDBOX)
 
             # Act
             with patch.object(proxy, "_send_to_default_tenant_queue") as mock_method:
@@ -290,13 +299,14 @@ class TestDispatchRouting:
         # Assert
         mock_method.assert_called_once()
 
-    def test_should_send_to_priority_tenant_queue_when_billing_enabled_and_paid_plan(self) -> None:
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+    def test_should_send_to_priority_tenant_queue_in_cloud_with_paid_plan(self) -> None:
         """Non-sandbox paid plan routes to priority queue with tenant isolation."""
         # Arrange
         proxy = make_proxy()
 
         with patch("services.document_indexing_proxy.base.FeatureService.get_features") as mock_features:
-            mock_features.return_value = self._mock_features(enabled=True, plan=CloudPlan.PROFESSIONAL)
+            mock_features.return_value = self._mock_features(plan=CloudPlan.PROFESSIONAL)
 
             # Act
             with patch.object(proxy, "_send_to_priority_tenant_queue") as mock_method:
@@ -305,13 +315,14 @@ class TestDispatchRouting:
         # Assert
         mock_method.assert_called_once()
 
-    def test_should_send_to_priority_direct_queue_when_billing_not_enabled(self) -> None:
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+    def test_should_send_to_priority_direct_queue_outside_cloud(self) -> None:
         """Self-hosted / no billing → priority direct queue (no tenant isolation)."""
         # Arrange
         proxy = make_proxy()
 
         with patch("services.document_indexing_proxy.base.FeatureService.get_features") as mock_features:
-            mock_features.return_value = self._mock_features(enabled=False, plan=CloudPlan.SANDBOX)
+            mock_features.return_value = self._mock_features(plan=CloudPlan.SANDBOX)
 
             # Act
             with patch.object(proxy, "_send_to_priority_direct_queue") as mock_method:
@@ -332,19 +343,20 @@ class TestDispatchRouting:
         # Assert
         mock_dispatch.assert_called_once()
 
-    def test_should_use_feature_service_for_billing_info(self) -> None:
-        """Verify that FeatureService.get_features is consulted during dispatch."""
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+    def test_should_skip_feature_service_outside_cloud(self) -> None:
+        """Self-hosted dispatch does not load Cloud plan data."""
         # Arrange
         proxy = make_proxy()
 
         with patch("services.document_indexing_proxy.base.FeatureService.get_features") as mock_features:
-            mock_features.return_value = self._mock_features(enabled=False, plan=CloudPlan.SANDBOX)
+            mock_features.return_value = self._mock_features(plan=CloudPlan.SANDBOX)
             with patch.object(proxy, "_send_to_priority_direct_queue"):
                 # Act
                 proxy._dispatch()
 
         # Assert
-        mock_features.assert_called_once_with(TENANT_ID, exclude_vector_space=True)
+        mock_features.assert_not_called()
 
 
 class TestBaseRouterHelpers:

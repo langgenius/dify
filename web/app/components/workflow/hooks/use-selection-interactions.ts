@@ -1,12 +1,8 @@
 import type { MouseEvent } from 'react'
-import type {
-  OnSelectionChangeFunc,
-} from 'reactflow'
+import type { OnSelectionChangeFunc } from 'reactflow'
 import type { Node } from '../types'
 import { produce } from 'immer'
-import {
-  useCallback,
-} from 'react'
+import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
 import { useWorkflowStore } from '../store'
 import { useCollaborativeWorkflow } from './use-collaborative-workflow'
@@ -19,98 +15,78 @@ export const useSelectionInteractions = () => {
   const { getNodesReadOnly } = useNodesReadOnly()
 
   const handleSelectionStart = useCallback(() => {
-    const {
-      getNodes,
-      setNodes,
-      edges,
-      setEdges,
-      userSelectionRect,
-    } = store.getState()
+    const { getNodes, setNodes, edges, setEdges, userSelectionRect } = store.getState()
 
     if (!userSelectionRect?.width || !userSelectionRect?.height) {
       const nodes = getNodes()
       const newNodes = produce(nodes, (draft) => {
         draft.forEach((node) => {
-          if (node.data._isBundled)
-            node.data._isBundled = false
+          if (node.data._isBundled) node.data._isBundled = false
         })
       })
       setNodes(newNodes)
       const newEdges = produce(edges, (draft) => {
         draft.forEach((edge) => {
-          if (edge.data._isBundled)
-            edge.data._isBundled = false
+          if (edge.data._isBundled) edge.data._isBundled = false
         })
       })
       setEdges(newEdges)
     }
   }, [store])
 
-  const handleSelectionChange = useCallback<OnSelectionChangeFunc>(({ nodes: nodesInSelection, edges: edgesInSelection }) => {
-    const {
-      getNodes,
-      setNodes,
-      edges,
-      setEdges,
-      userSelectionRect,
-    } = store.getState()
+  const handleSelectionChange = useCallback<OnSelectionChangeFunc>(
+    ({ nodes: nodesInSelection, edges: edgesInSelection }) => {
+      const { getNodes, setNodes, edges, setEdges, userSelectionRect } = store.getState()
 
-    const nodes = getNodes()
+      const nodes = getNodes()
 
-    if (!userSelectionRect?.width || !userSelectionRect?.height)
-      return
+      if (!userSelectionRect?.width || !userSelectionRect?.height) return
 
-    const newNodes = produce(nodes, (draft) => {
-      draft.forEach((node) => {
-        const nodeInSelection = nodesInSelection.find(n => n.id === node.id)
+      const newNodes = produce(nodes, (draft) => {
+        draft.forEach((node) => {
+          const nodeInSelection = nodesInSelection.find((n) => n.id === node.id)
 
-        if (nodeInSelection)
-          node.data._isBundled = true
-        else
-          node.data._isBundled = false
+          if (nodeInSelection) node.data._isBundled = true
+          else node.data._isBundled = false
+        })
       })
-    })
-    setNodes(newNodes)
-    const newEdges = produce(edges, (draft) => {
-      draft.forEach((edge) => {
-        const edgeInSelection = edgesInSelection.find(e => e.id === edge.id)
+      setNodes(newNodes)
+      const newEdges = produce(edges, (draft) => {
+        draft.forEach((edge) => {
+          const edgeInSelection = edgesInSelection.find((e) => e.id === edge.id)
 
-        if (edgeInSelection)
-          edge.data._isBundled = true
-        else
-          edge.data._isBundled = false
+          if (edgeInSelection) edge.data._isBundled = true
+          else edge.data._isBundled = false
+        })
       })
-    })
-    setEdges(newEdges)
-  }, [store])
+      setEdges(newEdges)
+    },
+    [store],
+  )
 
-  const handleSelectionDrag = useCallback((_: MouseEvent, nodesWithDrag: Node[]) => {
-    workflowStore.setState({
-      nodeAnimation: false,
-    })
-
-    if (getNodesReadOnly())
-      return
-
-    const { nodes, setNodes } = collaborativeWorkflow.getState()
-    const newNodes = produce(nodes, (draft) => {
-      draft.forEach((node) => {
-        const dragNode = nodesWithDrag.find(n => n.id === node.id)
-
-        if (dragNode)
-          node.position = dragNode.position
+  const handleSelectionDrag = useCallback(
+    (_: MouseEvent, nodesWithDrag: Node[]) => {
+      workflowStore.setState({
+        nodeAnimation: false,
       })
-    })
-    setNodes(newNodes, true, 'use-selection-interactions:handleSelectionDrag')
-  }, [collaborativeWorkflow, getNodesReadOnly, workflowStore])
+
+      if (getNodesReadOnly()) return
+
+      const { nodes, setNodes } = collaborativeWorkflow.getState()
+      const newNodes = produce(nodes, (draft) => {
+        draft.forEach((node) => {
+          const dragNode = nodesWithDrag.find((n) => n.id === node.id)
+
+          if (dragNode) node.position = dragNode.position
+        })
+      })
+      setNodes(newNodes, true, 'use-selection-interactions:handleSelectionDrag')
+    },
+    [collaborativeWorkflow, getNodesReadOnly, workflowStore],
+  )
 
   const handleSelectionCancel = useCallback(() => {
-    const {
-      getNodes,
-      setNodes,
-      edges,
-      setEdges,
-    } = store.getState()
+    const { getNodes, setNodes, edges, setEdges } = store.getState()
 
     store.setState({
       userSelectionRect: null,
@@ -120,30 +96,30 @@ export const useSelectionInteractions = () => {
     const nodes = getNodes()
     const newNodes = produce(nodes, (draft) => {
       draft.forEach((node) => {
-        if (node.data._isBundled)
-          node.data._isBundled = false
+        if (node.data._isBundled) node.data._isBundled = false
       })
     })
     setNodes(newNodes)
     const newEdges = produce(edges, (draft) => {
       draft.forEach((edge) => {
-        if (edge.data._isBundled)
-          edge.data._isBundled = false
+        if (edge.data._isBundled) edge.data._isBundled = false
       })
     })
     setEdges(newEdges)
   }, [store])
 
-  const handleSelectionContextMenu = useCallback((e: MouseEvent) => {
-    const target = e.target as HTMLElement
-    if (!target.classList.contains('react-flow__nodesselection-rect'))
-      return
+  const handleSelectionContextMenu = useCallback(
+    (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      if (!target.classList.contains('react-flow__nodesselection-rect')) return
 
-    e.preventDefault()
-    workflowStore.setState({
-      contextMenuTarget: { type: 'selection' },
-    })
-  }, [workflowStore])
+      e.preventDefault()
+      workflowStore.setState({
+        contextMenuTarget: { type: 'selection' },
+      })
+    },
+    [workflowStore],
+  )
 
   return {
     handleSelectionStart,

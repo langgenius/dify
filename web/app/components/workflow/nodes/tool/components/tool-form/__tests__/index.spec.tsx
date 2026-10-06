@@ -1,17 +1,16 @@
-import type { ToolVarInputs } from '../../../types'
 import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { ResourceVarInputs } from '@/app/components/workflow/nodes/_base/types'
 import { render, screen } from '@testing-library/react'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { VarType } from '../../../types'
+import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import ToolForm from '../index'
 
 type MockToolFormItemProps = {
   readOnly: boolean
   nodeId: string
   schema: CredentialFormSchema
-  value: ToolVarInputs
-  onChange: (value: ToolVarInputs) => void
-  inPanel?: boolean
+  value: ResourceVarInputs
+  onChange: (value: ResourceVarInputs) => void
   showManageInputField?: boolean
   onManageInputField?: () => void
   extraParams?: Record<string, unknown>
@@ -23,7 +22,9 @@ const mockToolFormItem = vi.fn<(props: MockToolFormItemProps) => void>()
 vi.mock('../item', () => ({
   default: (props: MockToolFormItemProps) => {
     mockToolFormItem(props)
-    return <div data-testid={`tool-form-item-${props.schema.variable}`}>{props.schema.label.en_US}</div>
+    return (
+      <div data-testid={`tool-form-item-${props.schema.variable}`}>{props.schema.label.en_US}</div>
+    )
   },
 }))
 
@@ -48,9 +49,9 @@ describe('tool/tool-form', () => {
   it('should render every schema item and forward tool-specific props', () => {
     const handleChange = vi.fn()
     const handleManageInputField = vi.fn()
-    const value: ToolVarInputs = {
+    const value: ResourceVarInputs = {
       api_key: {
-        type: VarType.constant,
+        type: VarKindType.constant,
         value: 'secret',
       },
     }
@@ -72,7 +73,6 @@ describe('tool/tool-form', () => {
         ]}
         value={value}
         onChange={handleChange}
-        inPanel
         showManageInputField
         onManageInputField={handleManageInputField}
         extraParams={{ mode: 'panel' }}
@@ -88,7 +88,6 @@ describe('tool/tool-form', () => {
       schema: expect.objectContaining({ variable: 'api_key' }),
       value,
       onChange: handleChange,
-      inPanel: true,
       showManageInputField: true,
       onManageInputField: handleManageInputField,
       extraParams: { mode: 'panel' },
@@ -98,13 +97,7 @@ describe('tool/tool-form', () => {
 
   it('should render an empty container when schema is empty', () => {
     const { container } = render(
-      <ToolForm
-        readOnly={false}
-        nodeId="tool-node"
-        schema={[]}
-        value={{}}
-        onChange={vi.fn()}
-      />,
+      <ToolForm readOnly={false} nodeId="tool-node" schema={[]} value={{}} onChange={vi.fn()} />,
     )
 
     expect(container.firstChild)!.toHaveClass('space-y-1')

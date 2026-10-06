@@ -1,4 +1,10 @@
-import { getLegacyPluginRedirectPath } from '../plugin-routes'
+import {
+  getFirstPackageIdFromSearchParams,
+  getInstallRedirectPathByPluginCategory,
+  getInstallRedirectPathFromSearchParams,
+  getLegacyPluginRedirectPath,
+  shouldResolveInstallCategoryRedirect,
+} from '../plugin-routes'
 
 describe('plugin routes', () => {
   it.each([
@@ -13,9 +19,125 @@ describe('plugin routes', () => {
     [{ tab: 'trigger' }, '/integrations/trigger'],
     [{ tab: 'agent-strategy' }, '/integrations/agent-strategy'],
     [{ tab: 'extension' }, '/integrations/extension'],
+    [
+      {
+        tab: 'trigger',
+        'package-ids': '["langgenius/telegram_trigger"]',
+        source: 'https://marketplace.dify.ai',
+      },
+      '/integrations/trigger?package-ids=%5B%22langgenius%2Ftelegram_trigger%22%5D',
+    ],
   ])('redirects legacy plugin category URLs for search params %j', (searchParams, expected) => {
     expect(getLegacyPluginRedirectPath(searchParams)).toBe(expected)
   })
+
+  it.each([
+    [{ 'package-ids': '["langgenius/telegram_trigger"]' }, '/integrations'],
+    [{ tab: 'plugins', 'package-ids': '["langgenius/telegram_trigger"]' }, '/integrations'],
+    [{ 'bundle-info': '{"org":"langgenius","name":"bundle","version":"1.0.0"}' }, '/integrations'],
+  ])(
+    'redirects unresolved install deep links to integrations for search params %j',
+    (searchParams, expected) => {
+      expect(getLegacyPluginRedirectPath(searchParams)).toBe(expected)
+    },
+  )
+
+  it('parses the first package id from marketplace install search params', () => {
+    expect(
+      getFirstPackageIdFromSearchParams({
+        'package-ids':
+          '["junjiem/mcp_see_agent:0.2.4@82caf96890992e9dec2c43c3fac82bfce8bd18a41de7c2b6948151b2d7f7b7a2"]',
+      }),
+    ).toBe(
+      'junjiem/mcp_see_agent:0.2.4@82caf96890992e9dec2c43c3fac82bfce8bd18a41de7c2b6948151b2d7f7b7a2',
+    )
+  })
+
+  it.each([
+    [{ 'package-ids': '["junjiem/mcp_see_agent"]' }, true],
+    [{ tab: 'plugins', 'package-ids': '["junjiem/mcp_see_agent"]' }, true],
+    [{ tab: 'trigger', 'package-ids': '["langgenius/telegram_trigger"]' }, false],
+    [{ 'bundle-info': '{"org":"langgenius","name":"bundle","version":"1.0.0"}' }, false],
+  ])(
+    'detects package install deep links that need category resolution for search params %j',
+    (searchParams, expected) => {
+      expect(shouldResolveInstallCategoryRedirect(searchParams)).toBe(expected)
+    },
+  )
+
+  it.each([
+    [
+      'model',
+      { 'package-ids': '["langgenius/openai"]' },
+      '/integrations/model-provider?package-ids=%5B%22langgenius%2Fopenai%22%5D',
+    ],
+    [
+      'agent-strategy',
+      { 'package-ids': '["junjiem/mcp_see_agent"]' },
+      '/integrations/agent-strategy?package-ids=%5B%22junjiem%2Fmcp_see_agent%22%5D',
+    ],
+    [
+      'trigger',
+      {
+        tab: 'plugins',
+        'package-ids': '["langgenius/telegram_trigger"]',
+        source: 'https://marketplace.dify.ai',
+      },
+      '/integrations/trigger?package-ids=%5B%22langgenius%2Ftelegram_trigger%22%5D',
+    ],
+    [
+      'datasource',
+      { 'package-ids': '["langgenius/notion_datasource"]' },
+      '/integrations/data-source?package-ids=%5B%22langgenius%2Fnotion_datasource%22%5D',
+    ],
+  ])(
+    'builds install redirect paths from marketplace plugin category %s',
+    (category, searchParams, expected) => {
+      expect(getInstallRedirectPathByPluginCategory(category, searchParams)).toBe(expected)
+    },
+  )
+
+  it.each([
+    [
+      {
+        category: 'agent-strategy',
+        'package-ids': '["junjiem/mcp_see_agent"]',
+        source: 'https://marketplace.dify.ai',
+      },
+      '/integrations/agent-strategy?package-ids=%5B%22junjiem%2Fmcp_see_agent%22%5D',
+    ],
+    [
+      {
+        tab: 'trigger',
+        'package-ids': '["langgenius/telegram_trigger"]',
+        source: 'https://marketplace.dify.ai',
+      },
+      '/integrations/trigger?package-ids=%5B%22langgenius%2Ftelegram_trigger%22%5D',
+    ],
+    [
+      {
+        category: 'model',
+        'package-ids': '["langgenius/openai"]',
+        source: 'https://marketplace.dify.ai',
+      },
+      '/integrations/model-provider?package-ids=%5B%22langgenius%2Fopenai%22%5D',
+    ],
+    [
+      {
+        category: 'datasource',
+        'package-ids': '["langgenius/notion_datasource"]',
+        source: 'https://marketplace.dify.ai',
+      },
+      '/integrations/data-source?package-ids=%5B%22langgenius%2Fnotion_datasource%22%5D',
+    ],
+    [{ category: 'bundle', 'package-ids': '["langgenius/bundle"]' }, undefined],
+    [{ category: 'agent-strategy' }, undefined],
+  ])(
+    'builds install redirect paths directly from install search params %j',
+    (searchParams, expected) => {
+      expect(getInstallRedirectPathFromSearchParams(searchParams)).toBe(expected)
+    },
+  )
 
   it.each([
     [{ tab: 'discover' }, '/marketplace'],
@@ -31,9 +153,9 @@ describe('plugin routes', () => {
   })
 
   it.each([
-    { tab: 'unsupported' },
-    { tab: 'toString' },
-  ])('does not redirect unsupported plugin URLs for search params %j', (searchParams) => {
-    expect(getLegacyPluginRedirectPath(searchParams)).toBeUndefined()
+    [{ tab: 'unsupported' }, '/integrations'],
+    [{ tab: 'toString' }, '/integrations'],
+  ])('redirects unsupported plugin URLs for search params %j', (searchParams, expected) => {
+    expect(getLegacyPluginRedirectPath(searchParams)).toBe(expected)
   })
 })

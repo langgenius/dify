@@ -1,9 +1,16 @@
-"""Tests for openapi workflow events reconnect endpoint."""
+"""Tests for the OpenAPI workflow-events reconnect endpoint.
+
+The controller constructs a repository session factory, so every case binds
+that real SQLAlchemy factory to an isolated SQLite engine. Repository behavior
+remains mocked because these tests focus on run ownership and SSE responses.
+
+Auth is not exercised here: `@endpoint` resolves the `Context` before the handler
+runs, and the allow/deny answers live in `test_auth_matrix.py`.
+"""
 
 from __future__ import annotations
 
 import sys
-import uuid
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -11,20 +18,40 @@ import pytest
 from flask import Flask
 from werkzeug.exceptions import NotFound
 
-from controllers.openapi.auth.data import AuthData
-from libs.oauth_bearer import Scope, TokenType
-from models.enums import CreatorUserRole
+from controllers.openapi.workflow_events import OpenApiWorkflowEventsApi, WorkflowEventsQuery
+from core.db.session_factory import session_factory
+from graphon.enums import WorkflowExecutionStatus
+from models.account import Account
+from models.enums import CreatorUserRole, EndUserType, WorkflowRunTriggeredFrom
+from models.model import App, AppMode, EndUser
+from models.workflow import WorkflowRun, WorkflowType
 
 
-def _make_auth_data(app_model, caller, caller_kind):
-    return AuthData.model_construct(
-        token_type=TokenType.OAUTH_ACCOUNT,
-        account_id=uuid.uuid4(),
-        token_hash="test",
-        scopes=frozenset({Scope.FULL}),
-        app=app_model,
+class _SealableContext:
+    """A `Context` stand-in that refuses reads once `seal()` is called.
+
+    The router's session closes when the handler returns, so anything the SSE
+    body still needs off `ctx` would be read through a closed session.
+    """
+
+    def __init__(self, **values: object) -> None:
+        self._values = values
+        self._sealed = False
+
+    def seal(self) -> None:
+        self._sealed = True
+
+    def __getattr__(self, name: str) -> object:
+        if self._sealed:
+            raise AssertionError(f"ctx.{name} was read after the handler returned")
+        return self._values[name]
+
+
+def _context(caller: Account | EndUser, caller_role: CreatorUserRole) -> _SealableContext:
+    return _SealableContext(
+        app=_make_app(),
         caller=caller,
-        caller_kind=caller_kind,
+        subject=SimpleNamespace(caller_role=caller_role),
     )
 
 
@@ -35,200 +62,145 @@ def _make_workflow_run(
     created_by_role=CreatorUserRole.ACCOUNT,
     created_by="acct-1",
     finished_at=None,
-):
-    return SimpleNamespace(
+) -> WorkflowRun:
+    return WorkflowRun(
         id="wf-run-1",
         app_id=app_id,
         tenant_id=tenant_id,
+        workflow_id="workflow-1",
+        type=WorkflowType.CHAT,
+        triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        version="1",
+        graph="{}",
+        inputs="{}",
+        status=WorkflowExecutionStatus.SUCCEEDED,
         created_by_role=created_by_role,
         created_by=created_by,
         finished_at=finished_at,
     )
 
 
+def _make_app() -> App:
+    return App(
+        id="app-1",
+        tenant_id="tenant-1",
+        name="Workflow events app",
+        mode=AppMode.WORKFLOW,
+        enable_site=True,
+        enable_api=True,
+    )
+
+
+def _make_account() -> Account:
+    account = Account(name="Workflow Events User", email="events@example.com")
+    account.id = "acct-1"
+    return account
+
+
+def _make_end_user() -> EndUser:
+    return EndUser(
+        id="eu-1",
+        tenant_id="tenant-1",
+        app_id="app-1",
+        type=EndUserType.OPENAPI,
+        session_id="session-1",
+    )
+
+
 class TestOpenApiWorkflowEventsApi:
-    def _get_api(self):
-        from controllers.openapi.workflow_events import OpenApiWorkflowEventsApi
-
-        return OpenApiWorkflowEventsApi()
-
-    def test_not_found_when_run_missing(self, app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch):
+    def _bind_repo(self, monkeypatch: pytest.MonkeyPatch, workflow_run: WorkflowRun | None) -> Mock:
         module = sys.modules["controllers.openapi.workflow_events"]
         repo_mock = Mock()
-        repo_mock.get_workflow_run_by_id_and_tenant_id.return_value = None
+        repo_mock.get_workflow_run_by_id_and_tenant_id.return_value = workflow_run
         factory_mock = Mock()
         factory_mock.create_api_workflow_run_repository.return_value = repo_mock
         monkeypatch.setattr(module, "DifyAPIRepositoryFactory", factory_mock)
-        monkeypatch.setattr(module, "sessionmaker", Mock(return_value=object()))
-        monkeypatch.setattr(module, "db", SimpleNamespace(engine=object()))
+        return factory_mock
 
-        api = self._get_api()
-        from models.model import AppMode
-
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW)
-        caller = SimpleNamespace(id="acct-1")
-
-        with app.test_request_context("/openapi/v1/apps/app-1/tasks/wf-run-1/events"):
-            with pytest.raises(NotFound):
-                api.get.__wrapped__(
-                    api,
-                    app_id="app-1",
-                    task_id="wf-run-1",
-                    auth_data=_make_auth_data(app_model, caller, "account"),
-                )
-
-    def test_not_found_when_run_belongs_to_different_app(
-        self, app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch
-    ):
+    def _bind_generators(self, monkeypatch: pytest.MonkeyPatch) -> None:
         module = sys.modules["controllers.openapi.workflow_events"]
-        run = _make_workflow_run(app_id="other-app")
-        repo_mock = Mock()
-        repo_mock.get_workflow_run_by_id_and_tenant_id.return_value = run
-        factory_mock = Mock()
-        factory_mock.create_api_workflow_run_repository.return_value = repo_mock
-        monkeypatch.setattr(module, "DifyAPIRepositoryFactory", factory_mock)
-        monkeypatch.setattr(module, "sessionmaker", Mock(return_value=object()))
-        monkeypatch.setattr(module, "db", SimpleNamespace(engine=object()))
-
-        api = self._get_api()
-        from models.model import AppMode
-
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW)
-        caller = SimpleNamespace(id="acct-1")
-
-        with app.test_request_context("/openapi/v1/apps/app-1/tasks/wf-run-1/events"):
-            with pytest.raises(NotFound):
-                api.get.__wrapped__(
-                    api,
-                    app_id="app-1",
-                    task_id="wf-run-1",
-                    auth_data=_make_auth_data(app_model, caller, "account"),
-                )
-
-    def test_account_caller_checks_created_by_account(
-        self, app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch
-    ):
-        """Account caller must match created_by == caller.id and role == ACCOUNT."""
-        module = sys.modules["controllers.openapi.workflow_events"]
-        run = _make_workflow_run(created_by_role=CreatorUserRole.ACCOUNT, created_by="acct-1")
-        repo_mock = Mock()
-        repo_mock.get_workflow_run_by_id_and_tenant_id.return_value = run
-        factory_mock = Mock()
-        factory_mock.create_api_workflow_run_repository.return_value = repo_mock
-        monkeypatch.setattr(module, "DifyAPIRepositoryFactory", factory_mock)
-        monkeypatch.setattr(module, "sessionmaker", Mock(return_value=object()))
-        monkeypatch.setattr(module, "db", SimpleNamespace(engine=object()))
-
-        snapshot_builder = Mock(return_value=iter([]))
-        monkeypatch.setattr(module, "build_workflow_event_stream", snapshot_builder)
-
         generator_mock = Mock()
         generator_mock.convert_to_event_stream.return_value = iter([])
         monkeypatch.setattr(module, "WorkflowAppGenerator", lambda: generator_mock)
-
         msg_gen_mock = Mock()
         msg_gen_mock.retrieve_events.return_value = iter([])
         monkeypatch.setattr(module, "MessageGenerator", lambda: msg_gen_mock)
 
-        from models.model import AppMode
+    def test_not_found_when_run_missing(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
+        factory_mock = self._bind_repo(monkeypatch, None)
 
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW)
-        caller = SimpleNamespace(id="acct-1")
-
-        api = self._get_api()
-        with app.test_request_context("/openapi/v1/apps/app-1/tasks/wf-run-1/events"):
-            # Should not raise NotFound for matching caller
-            resp = api.get.__wrapped__(
-                api,
-                app_id="app-1",
-                task_id="wf-run-1",
-                auth_data=_make_auth_data(app_model, caller, "account"),
-            )
-        assert resp.mimetype == "text/event-stream"
-
-    def test_account_caller_rejected_for_end_user_run(
-        self, app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch
-    ):
-        module = sys.modules["controllers.openapi.workflow_events"]
-        run = _make_workflow_run(created_by_role=CreatorUserRole.END_USER, created_by="eu-1")
-        repo_mock = Mock()
-        repo_mock.get_workflow_run_by_id_and_tenant_id.return_value = run
-        factory_mock = Mock()
-        factory_mock.create_api_workflow_run_repository.return_value = repo_mock
-        monkeypatch.setattr(module, "DifyAPIRepositoryFactory", factory_mock)
-        monkeypatch.setattr(module, "sessionmaker", Mock(return_value=object()))
-        monkeypatch.setattr(module, "db", SimpleNamespace(engine=object()))
-
-        from models.model import AppMode
-
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW)
-        caller = SimpleNamespace(id="acct-1")
-
-        api = self._get_api()
+        api = OpenApiWorkflowEventsApi()
         with app.test_request_context("/openapi/v1/apps/app-1/tasks/wf-run-1/events"):
             with pytest.raises(NotFound):
-                api.get.__wrapped__(
+                api.get.__handler__(
                     api,
+                    _context(_make_account(), CreatorUserRole.ACCOUNT),
                     app_id="app-1",
                     task_id="wf-run-1",
-                    auth_data=_make_auth_data(app_model, caller, "account"),
+                    query=WorkflowEventsQuery(),
                 )
 
-    def test_end_user_caller_checks_created_by_end_user(
-        self, app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch
-    ):
+        # The stream outlives the guard's session, so the repository gets the guard's
+        # own maker rather than a fresh one bound straight to the engine.
+        session_maker = factory_mock.create_api_workflow_run_repository.call_args.args[0]
+        assert session_maker is session_factory.get_session_maker()
+
+    def test_not_found_when_run_belongs_to_different_app(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
+        self._bind_repo(monkeypatch, _make_workflow_run(app_id="other-app"))
+
+        api = OpenApiWorkflowEventsApi()
+        with app.test_request_context("/openapi/v1/apps/app-1/tasks/wf-run-1/events"):
+            with pytest.raises(NotFound):
+                api.get.__handler__(
+                    api,
+                    _context(_make_account(), CreatorUserRole.ACCOUNT),
+                    app_id="app-1",
+                    task_id="wf-run-1",
+                    query=WorkflowEventsQuery(),
+                )
+
+    def test_account_caller_rejected_for_end_user_run(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
+        self._bind_repo(monkeypatch, _make_workflow_run(created_by_role=CreatorUserRole.END_USER, created_by="eu-1"))
+
+        api = OpenApiWorkflowEventsApi()
+        with app.test_request_context("/openapi/v1/apps/app-1/tasks/wf-run-1/events"):
+            with pytest.raises(NotFound):
+                api.get.__handler__(
+                    api,
+                    _context(_make_account(), CreatorUserRole.ACCOUNT),
+                    app_id="app-1",
+                    task_id="wf-run-1",
+                    query=WorkflowEventsQuery(),
+                )
+
+    def test_end_user_caller_checks_created_by_end_user(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         """End-user caller must match created_by == caller.id and role == END_USER."""
-        module = sys.modules["controllers.openapi.workflow_events"]
-        run = _make_workflow_run(created_by_role=CreatorUserRole.END_USER, created_by="eu-1")
-        repo_mock = Mock()
-        repo_mock.get_workflow_run_by_id_and_tenant_id.return_value = run
-        factory_mock = Mock()
-        factory_mock.create_api_workflow_run_repository.return_value = repo_mock
-        monkeypatch.setattr(module, "DifyAPIRepositoryFactory", factory_mock)
-        monkeypatch.setattr(module, "sessionmaker", Mock(return_value=object()))
-        monkeypatch.setattr(module, "db", SimpleNamespace(engine=object()))
+        self._bind_repo(monkeypatch, _make_workflow_run(created_by_role=CreatorUserRole.END_USER, created_by="eu-1"))
+        self._bind_generators(monkeypatch)
 
-        msg_gen_mock = Mock()
-        msg_gen_mock.retrieve_events.return_value = iter([])
-        monkeypatch.setattr(module, "MessageGenerator", lambda: msg_gen_mock)
-
-        generator_mock = Mock()
-        generator_mock.convert_to_event_stream.return_value = iter([])
-        monkeypatch.setattr(module, "WorkflowAppGenerator", lambda: generator_mock)
-
-        from models.model import AppMode
-
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW)
-        caller = SimpleNamespace(id="eu-1")
-
-        api = self._get_api()
+        api = OpenApiWorkflowEventsApi()
         with app.test_request_context("/openapi/v1/apps/app-1/tasks/wf-run-1/events"):
-            resp = api.get.__wrapped__(
+            resp = api.get.__handler__(
                 api,
+                _context(_make_end_user(), CreatorUserRole.END_USER),
                 app_id="app-1",
                 task_id="wf-run-1",
-                auth_data=_make_auth_data(app_model, caller, "end_user"),
+                query=WorkflowEventsQuery(),
             )
         assert resp.mimetype == "text/event-stream"
 
-    def test_finished_run_returns_single_sse_event(self, app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch):
-        """A finished run returns a single done-event SSE response without streaming."""
+    def _bind_finished_run(self, monkeypatch: pytest.MonkeyPatch) -> None:
         from datetime import UTC, datetime
 
         module = sys.modules["controllers.openapi.workflow_events"]
-        finished_at = datetime(2024, 1, 1, tzinfo=UTC)
-        run = _make_workflow_run(
-            created_by_role=CreatorUserRole.ACCOUNT,
-            created_by="acct-1",
-            finished_at=finished_at,
+        self._bind_repo(
+            monkeypatch,
+            _make_workflow_run(
+                created_by_role=CreatorUserRole.ACCOUNT,
+                created_by="acct-1",
+                finished_at=datetime(2024, 1, 1, tzinfo=UTC),
+            ),
         )
-        repo_mock = Mock()
-        repo_mock.get_workflow_run_by_id_and_tenant_id.return_value = run
-        factory_mock = Mock()
-        factory_mock.create_api_workflow_run_repository.return_value = repo_mock
-        monkeypatch.setattr(module, "DifyAPIRepositoryFactory", factory_mock)
-        monkeypatch.setattr(module, "sessionmaker", Mock(return_value=object()))
-        monkeypatch.setattr(module, "db", SimpleNamespace(engine=object()))
 
         finish_response = SimpleNamespace(
             event=SimpleNamespace(value="workflow_finished"),
@@ -238,20 +210,81 @@ class TestOpenApiWorkflowEventsApi:
         converter_mock.workflow_run_result_to_finish_response.return_value = finish_response
         monkeypatch.setattr(module, "WorkflowResponseConverter", converter_mock)
 
-        from models.model import AppMode
+    def test_finished_run_reads_everything_off_the_context_before_streaming(
+        self, app: Flask, monkeypatch: pytest.MonkeyPatch
+    ):
+        """A finished run answers a single done event without streaming. Its body
+        is a real generator, so it runs entirely after the handler has returned
+        and the router's session is gone.
+        """
+        self._bind_finished_run(monkeypatch)
 
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW)
-        caller = SimpleNamespace(id="acct-1")
-
-        api = self._get_api()
+        ctx = _context(_make_account(), CreatorUserRole.ACCOUNT)
+        api = OpenApiWorkflowEventsApi()
         with app.test_request_context("/openapi/v1/apps/app-1/tasks/wf-run-1/events"):
-            resp = api.get.__wrapped__(
+            resp = api.get.__handler__(api, ctx, app_id="app-1", task_id="wf-run-1", query=WorkflowEventsQuery())
+            ctx.seal()
+            body = "".join(resp.response)
+
+        assert resp.mimetype == "text/event-stream"
+        assert "workflow_finished" in body
+
+    @pytest.mark.parametrize("include_state_snapshot", [False, True], ids=["events", "snapshot"])
+    def test_stream_reads_everything_off_the_context_before_streaming(
+        self, app: Flask, monkeypatch: pytest.MonkeyPatch, include_state_snapshot: bool
+    ):
+        """Both stream shapes must be fully resolved before the handler returns,
+        and an account caller whose id and role match `created_by` is admitted.
+
+        The snapshot branch is the one that used to read `app_model.tenant_id` and
+        `app_model.id` from inside the generator, which the router's closed session
+        can no longer answer.
+        """
+        module = sys.modules["controllers.openapi.workflow_events"]
+        self._bind_repo(monkeypatch, _make_workflow_run(created_by_role=CreatorUserRole.ACCOUNT, created_by="acct-1"))
+
+        generator_mock = Mock()
+        generator_mock.convert_to_event_stream.return_value = iter(["event: a\n\n", "event: b\n\n"])
+        monkeypatch.setattr(module, "WorkflowAppGenerator", lambda: generator_mock)
+        msg_gen_mock = Mock()
+        msg_gen_mock.retrieve_events.return_value = iter([])
+        monkeypatch.setattr(module, "MessageGenerator", lambda: msg_gen_mock)
+        monkeypatch.setattr(module, "build_workflow_event_stream", Mock(return_value=iter([])))
+
+        ctx = _context(_make_account(), CreatorUserRole.ACCOUNT)
+        api = OpenApiWorkflowEventsApi()
+        query = WorkflowEventsQuery(include_state_snapshot=include_state_snapshot)
+        with app.test_request_context("/openapi/v1/apps/app-1/tasks/wf-run-1/events"):
+            resp = api.get.__handler__(api, ctx, app_id="app-1", task_id="wf-run-1", query=query)
+            ctx.seal()
+            body = "".join(resp.response)
+
+        assert resp.mimetype == "text/event-stream"
+        assert body == "event: a\n\nevent: b\n\n"
+
+    @pytest.mark.parametrize("continue_on_pause", [False, True], ids=["close", "keep_open"])
+    def test_continue_on_pause_comes_off_the_declared_query_model(
+        self, app: Flask, monkeypatch: pytest.MonkeyPatch, continue_on_pause: bool
+    ):
+        module = sys.modules["controllers.openapi.workflow_events"]
+        self._bind_repo(monkeypatch, _make_workflow_run(created_by_role=CreatorUserRole.ACCOUNT, created_by="acct-1"))
+        generator_mock = Mock()
+        generator_mock.convert_to_event_stream.return_value = iter([])
+        monkeypatch.setattr(module, "WorkflowAppGenerator", lambda: generator_mock)
+        msg_gen_mock = Mock()
+        msg_gen_mock.retrieve_events.return_value = iter([])
+        monkeypatch.setattr(module, "MessageGenerator", lambda: msg_gen_mock)
+
+        api = OpenApiWorkflowEventsApi()
+        with app.test_request_context("/openapi/v1/apps/app-1/tasks/wf-run-1/events"):
+            resp = api.get.__handler__(
                 api,
+                _context(_make_account(), CreatorUserRole.ACCOUNT),
                 app_id="app-1",
                 task_id="wf-run-1",
-                auth_data=_make_auth_data(app_model, caller, "account"),
+                query=WorkflowEventsQuery(continue_on_pause=continue_on_pause),
             )
-        assert resp.mimetype == "text/event-stream"
-        chunks = list(resp.response)
-        data = b"".join(c if isinstance(c, bytes) else c.encode() for c in chunks).decode()
-        assert "workflow_finished" in data
+            "".join(resp.response)
+
+        terminal_events = msg_gen_mock.retrieve_events.call_args.kwargs["terminal_events"]
+        assert terminal_events == ([] if continue_on_pause else None)

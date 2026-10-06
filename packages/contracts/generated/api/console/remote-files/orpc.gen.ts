@@ -2,13 +2,12 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-
 import {
   zGetRemoteFilesByUrlPath,
   zGetRemoteFilesByUrlResponse,
   zPostRemoteFilesUploadBody,
   zPostRemoteFilesUploadResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 export const post = oc
   .route({

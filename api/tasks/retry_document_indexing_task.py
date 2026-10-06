@@ -5,15 +5,21 @@ import click
 from celery import shared_task
 from sqlalchemy import delete, select
 
-from core.db.session_factory import session_factory
-from core.indexing_runner import IndexingRunner
-from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
+from configs import dify_config
+from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
+from core.db.session_factory import get_session_maker, session_factory
+from core.rag.index_processor.index_processor import IndexProcessorFactory
+from enums import DeploymentEdition
+from extensions.application_services.data_sources import build_data_source_credentials
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from models import Account, Tenant
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import IndexingStatus
+from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
 from services.feature_service import FeatureService
+from services.knowledge.indexing.adapters.execution import build_document_indexing_service
+from services.knowledge.resource_scope import DatasetRef
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 
 logger = logging.getLogger(__name__)
@@ -43,14 +49,14 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str], user_
             tenant = session.scalar(select(Tenant).where(Tenant.id == dataset.tenant_id).limit(1))
             if not tenant:
                 raise ValueError("Tenant not found")
-            user.current_tenant = tenant
+            user.set_current_tenant_with_session(tenant, session=session)
 
             for document_id in document_ids:
                 retry_indexing_cache_key = f"document_{document_id}_is_retried"
                 # check document limit
-                features = FeatureService.get_features(tenant.id)
-                try:
-                    if features.billing.enabled:
+                if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
+                    features = FeatureService.get_features(tenant.id)
+                    try:
                         vector_space = features.vector_space
                         assert vector_space is not None
                         if 0 < vector_space.limit <= vector_space.size:
@@ -58,18 +64,20 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str], user_
                                 "Your total number of documents plus the number of uploads have over the limit of "
                                 "your subscription."
                             )
-                except Exception as e:
-                    document = session.scalar(
-                        select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
-                    )
-                    if document:
-                        document.indexing_status = IndexingStatus.ERROR
-                        document.error = str(e)
-                        document.stopped_at = naive_utc_now()
-                        session.add(document)
-                        session.commit()
-                    redis_client.delete(retry_indexing_cache_key)
-                    return
+                    except Exception as e:
+                        document = session.scalar(
+                            select(Document)
+                            .where(Document.id == document_id, Document.dataset_id == dataset_id)
+                            .limit(1)
+                        )
+                        if document:
+                            document.indexing_status = IndexingStatus.ERROR
+                            document.error = str(e)
+                            document.stopped_at = naive_utc_now()
+                            session.add(document)
+                            session.commit()
+                        redis_client.delete(retry_indexing_cache_key)
+                        return
 
                 logger.info(click.style(f"Start retry document: {document_id}", fg="green"))
                 document = session.scalar(
@@ -88,31 +96,61 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str], user_
                     if segments:
                         index_node_ids = [segment.index_node_id for segment in segments if segment.index_node_id]
                         # delete from vector index
-                        index_processor.clean(dataset, index_node_ids, with_keywords=True, delete_child_chunks=True)
+                        index_processor.clean(
+                            dataset,
+                            index_node_ids,
+                            with_keywords=True,
+                            delete_child_chunks=True,
+                            session=session,
+                        )
 
                     segment_ids = [segment.id for segment in segments]
-                    segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.id.in_(segment_ids))
-                    session.execute(segment_delete_stmt)
+                    if segment_ids:
+                        segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.id.in_(segment_ids))
+                        session.execute(segment_delete_stmt)
                     session.commit()
 
                     document.indexing_status = IndexingStatus.PARSING
                     document.processing_started_at = naive_utc_now()
                     session.add(document)
+                    document_ref = DatasetRef(document.tenant_id, document.dataset_id).document(document.id)
+                    runtime_mode = dataset.runtime_mode
+                    # Persist preparation before handing off to the selected execution service.
                     session.commit()
 
-                    if dataset.runtime_mode == "rag_pipeline":
-                        rag_pipeline_service = RagPipelineService()
-                        rag_pipeline_service.retry_error_document(dataset, document, user)
+                    if runtime_mode == "rag_pipeline":
+                        with session_factory.create_session() as rag_session:
+                            rag_pipeline_service = RagPipelineService(rag_session)
+                            rag_pipeline_service.retry_error_document(
+                                dataset,
+                                document,
+                                user,
+                                generator=PipelineGenerator(
+                                    documents=SQLAlchemyDocumentRepository(
+                                        session_factory=session_factory.get_session_maker()
+                                    ),
+                                    datasource_providers=build_data_source_credentials(
+                                        database_client=get_session_maker()
+                                    ).providers,
+                                ),
+                            )
                     else:
-                        indexing_runner = IndexingRunner()
-                        indexing_runner.run([document])
+                        indexing_service = build_document_indexing_service(
+                            session_factory=session_factory.get_session_maker(), enforce_vector_space_admission=True
+                        )
+                        indexing_service.run([document_ref])
                     redis_client.delete(retry_indexing_cache_key)
                 except Exception as ex:
-                    document.indexing_status = IndexingStatus.ERROR
-                    document.error = str(ex)
-                    document.stopped_at = naive_utc_now()
-                    session.add(document)
-                    session.commit()
+                    session.rollback()
+                    document = session.scalar(
+                        select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
+                    )
+                    if document:
+                        document.indexing_status = IndexingStatus.ERROR
+                        document.error = str(ex)
+                        document.stopped_at = naive_utc_now()
+                        session.add(document)
+                        session.commit()
                     logger.info(click.style(str(ex), fg="yellow"))
                     redis_client.delete(retry_indexing_cache_key)
                     logger.exception("retry_document_indexing_task failed, document_id: %s", document_id)

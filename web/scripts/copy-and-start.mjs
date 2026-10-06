@@ -15,8 +15,7 @@ const pathExists = async (path) => {
     await stat(path)
     console.debug(`Path exists: ${path}`)
     return true
-  }
-  catch (err) {
+  } catch (err) {
     if (err.code === 'ENOENT') {
       console.warn(`Path does not exist: ${path}`)
       return false
@@ -33,8 +32,7 @@ const STANDALONE_ROOT_CANDIDATES = [
 const getStandaloneRoot = async () => {
   for (const standaloneRoot of STANDALONE_ROOT_CANDIDATES) {
     const serverScriptPath = path.join(standaloneRoot, 'server.js')
-    if (await pathExists(serverScriptPath))
-      return standaloneRoot
+    if (await pathExists(serverScriptPath)) return standaloneRoot
   }
 
   throw new Error(
@@ -71,13 +69,11 @@ const copyAllDirs = async (standaloneRoot) => {
       await mkdir(destParent, { recursive: true })
       if (await pathExists(src)) {
         await copyDir(src, dest)
-      }
-      else {
+      } else {
         console.error(`Error: ${src} directory does not exist. This is a required build artifact.`)
         process.exit(1)
       }
-    }
-    catch (err) {
+    } catch (err) {
       console.error(`Error processing ${src}:`, err.message)
       process.exit(1)
     }
@@ -101,18 +97,14 @@ const main = async () => {
   console.debug(`Server script path: ${serverScriptPath}`)
   console.debug(`Environment variables - PORT: ${port}, HOSTNAME: ${host}`)
 
-  const server = spawn(
-    process.execPath,
-    [serverScriptPath],
-    {
-      env: {
-        ...process.env,
-        PORT: port,
-        HOSTNAME: host,
-      },
-      stdio: 'inherit',
+  const server = spawn(process.execPath, [serverScriptPath], {
+    env: {
+      ...process.env,
+      PORT: port,
+      HOSTNAME: host,
     },
-  )
+    stdio: 'inherit',
+  })
 
   server.on('error', (err) => {
     console.error('Failed to start server:', err)

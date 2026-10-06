@@ -1,6 +1,8 @@
 import uuid
 from typing import Any, Literal, cast
 
+from sqlalchemy.orm import Session
+
 from core.app.app_config.entities import (
     DatasetEntity,
     DatasetRetrieveConfigEntity,
@@ -10,7 +12,7 @@ from core.app.app_config.entities import (
 from core.entities.agent_entities import PlanningStrategy
 from core.rag.data_post_processor.data_post_processor import RerankingModelDict, WeightsDict
 from models.model import AppMode, AppModelConfigDict
-from services.dataset_service import DatasetService
+from services.knowledge.dataset_service import DatasetService
 
 
 class DatasetConfigManager:
@@ -139,7 +141,7 @@ class DatasetConfigManager:
 
     @classmethod
     def validate_and_set_defaults(
-        cls, tenant_id: str, app_mode: AppMode, config: dict[str, Any]
+        cls, tenant_id: str, app_mode: AppMode, config: dict[str, Any], session: Session
     ) -> tuple[dict[str, Any], list[str]]:
         """
         Validate and set defaults for dataset feature
@@ -149,7 +151,7 @@ class DatasetConfigManager:
         :param config: app model config args
         """
         # Extract dataset config for legacy compatibility
-        config = cls.extract_dataset_config_for_legacy_compatibility(tenant_id, app_mode, config)
+        config = cls.extract_dataset_config_for_legacy_compatibility(tenant_id, app_mode, config, session)
 
         # dataset_configs
         if "dataset_configs" not in config or not config.get("dataset_configs"):
@@ -174,7 +176,9 @@ class DatasetConfigManager:
         return config, ["agent_mode", "dataset_configs", "dataset_query_variable"]
 
     @classmethod
-    def extract_dataset_config_for_legacy_compatibility(cls, tenant_id: str, app_mode: AppMode, config: dict[str, Any]):
+    def extract_dataset_config_for_legacy_compatibility(
+        cls, tenant_id: str, app_mode: AppMode, config: dict[str, Any], session: Session
+    ):
         """
         Extract dataset config for legacy compatibility
 
@@ -202,6 +206,36 @@ class DatasetConfigManager:
 
         if not isinstance(config["agent_mode"]["tools"], list):
             raise ValueError("tools in agent_mode must be a list of objects")
+
+        # All app modes persist these tools, including modes that skip the agent validator.
+        for tool in config["agent_mode"]["tools"]:
+            if not isinstance(tool, dict):
+                continue
+            if all(field in tool for field in ("provider_type", "provider_id", "tool_name", "tool_parameters")):
+                tool_config = tool
+            else:
+                tool_name = next(
+                    (
+                        name
+                        for name in (
+                            "dataset",
+                            "google_search",
+                            "web_reader",
+                            "wikipedia",
+                            "current_datetime",
+                            "sensitive-word-avoidance",
+                        )
+                        if name in tool
+                    ),
+                    None,
+                )
+                if tool_name is None:
+                    continue
+                tool_config = tool[tool_name]
+                if not isinstance(tool_config, dict):
+                    continue
+            if "enabled" not in tool_config or tool_config["enabled"] is None:
+                tool_config["enabled"] = False
 
         # strategy
         if "strategy" not in config["agent_mode"] or not config["agent_mode"].get("strategy"):
@@ -237,7 +271,7 @@ class DatasetConfigManager:
                     except ValueError:
                         raise ValueError("id in dataset must be of UUID type")
 
-                    if not cls.is_dataset_exists(tenant_id, tool_item["id"]):
+                    if not cls.is_dataset_exists(tenant_id, tool_item["id"], session):
                         raise ValueError("Dataset ID does not exist, please check your permission.")
 
                     has_datasets = True
@@ -254,9 +288,9 @@ class DatasetConfigManager:
         return config
 
     @classmethod
-    def is_dataset_exists(cls, tenant_id: str, dataset_id: str) -> bool:
+    def is_dataset_exists(cls, tenant_id: str, dataset_id: str, session: Session) -> bool:
         # verify if the dataset ID exists
-        dataset = DatasetService.get_dataset(dataset_id)
+        dataset = DatasetService.get_dataset(dataset_id, session)
 
         if not dataset:
             return False

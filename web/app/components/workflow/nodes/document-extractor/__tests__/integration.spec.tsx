@@ -1,13 +1,23 @@
-import type { ReactNode } from 'react'
+import type { ReactElement, ReactNode } from 'react'
 import type { DocExtractorNodeType } from '../types'
 import type { PanelProps } from '@/types/workflow'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { LanguagesSupported } from '@/i18n-config/language'
+import { LanguagesSupported } from '@/i18n/language'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { BlockEnum } from '../../../types'
 import Node from '../node'
 import Panel from '../panel'
 import useConfig from '../use-config'
+
+const render = (ui: ReactElement) => {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(consoleQuery.files.supportType.get.queryOptions().queryKey, {
+    allowed_extensions: ['PDF', 'md', 'md', 'DOCX'],
+  })
+  return renderWithConsoleQuery(ui, { queryClient })
+}
 
 let mockLocale = 'en-US'
 
@@ -41,7 +51,7 @@ vi.mock('@/app/components/workflow/nodes/_base/components/variable/variable-labe
 
 vi.mock('@/app/components/workflow/nodes/_base/components/field', () => ({
   __esModule: true,
-  default: ({ title, children }: { title: ReactNode, children: ReactNode }) => (
+  default: ({ title, children }: { title: ReactNode; children: ReactNode }) => (
     <div>
       <div>{title}</div>
       {children}
@@ -52,7 +62,7 @@ vi.mock('@/app/components/workflow/nodes/_base/components/field', () => ({
 vi.mock('@/app/components/workflow/nodes/_base/components/output-vars', () => ({
   __esModule: true,
   default: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  VarItem: ({ name, type }: { name: string, type: string }) => <div>{`${name}:${type}`}</div>,
+  VarItem: ({ name, type }: { name: string; type: string }) => <div>{`${name}:${type}`}</div>,
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/split', () => ({
@@ -62,26 +72,19 @@ vi.mock('@/app/components/workflow/nodes/_base/components/split', () => ({
 
 vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
   __esModule: true,
-  default: ({
-    onChange,
-  }: {
-    onChange: (value: string[]) => void
-  }) => <button type="button" onClick={() => onChange(['node-1', 'files'])}>pick-file-var</button>,
+  default: ({ onChange }: { onChange: (value: string[]) => void }) => (
+    <button type="button" onClick={() => onChange(['node-1', 'files'])}>
+      pick-file-var
+    </button>
+  ),
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-help-link', () => ({
   useNodeHelpLink: () => 'https://docs.example.com/document-extractor',
 }))
 
-vi.mock('@/service/use-common', () => ({
-  useFileSupportTypes: () => ({
-    data: {
-      allowed_extensions: ['PDF', 'md', 'md', 'DOCX'],
-    },
-  }),
-}))
-
-vi.mock('@/context/i18n', () => ({
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: () => mockLocale,
 }))
 
@@ -101,7 +104,9 @@ const createData = (overrides: Partial<DocExtractorNodeType> = {}): DocExtractor
   ...overrides,
 })
 
-const createConfigResult = (overrides: Partial<ReturnType<typeof useConfig>> = {}): ReturnType<typeof useConfig> => ({
+const createConfigResult = (
+  overrides: Partial<ReturnType<typeof useConfig>> = {},
+): ReturnType<typeof useConfig> => ({
   readOnly: false,
   inputs: createData(),
   handleVarChanges: vi.fn(),
@@ -139,12 +144,7 @@ describe('document-extractor path', () => {
   })
 
   it('should render the selected input variable on the node', () => {
-    render(
-      <Node
-        id="doc-node"
-        data={createData()}
-      />,
-    )
+    render(<Node id="doc-node" data={createData()} />)
 
     expect(screen.getByText('workflow.nodes.docExtractor.inputVar'))!.toBeInTheDocument()
     expect(screen.getByText('Input Files:start:node-1.files'))!.toBeInTheDocument()
@@ -154,39 +154,40 @@ describe('document-extractor path', () => {
     const user = userEvent.setup()
     const handleVarChanges = vi.fn()
 
-    mockUseConfig.mockReturnValueOnce(createConfigResult({
-      inputs: createData({
-        is_array_file: false,
+    mockUseConfig.mockReturnValueOnce(
+      createConfigResult({
+        inputs: createData({
+          is_array_file: false,
+        }),
+        handleVarChanges,
       }),
-      handleVarChanges,
-    }))
-
-    render(
-      <Panel
-        id="doc-node"
-        data={createData()}
-        panelProps={panelProps}
-      />,
     )
+
+    render(<Panel id="doc-node" data={createData()} panelProps={panelProps} />)
 
     await user.click(screen.getByRole('button', { name: 'pick-file-var' }))
 
     expect(handleVarChanges).toHaveBeenCalledWith(['node-1', 'files'])
-    expect(screen.getByText('workflow.nodes.docExtractor.supportFileTypes:{"types":"pdf, markdown, docx"}'))!.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'workflow.nodes.docExtractor.learnMore' }))!.toHaveAttribute(
-      'href',
-      'https://docs.example.com/document-extractor',
-    )
+    expect(
+      screen.getByText(
+        'workflow.nodes.docExtractor.supportFileTypes:{"types":"pdf, markdown, docx"}',
+      ),
+    )!.toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: 'workflow.nodes.docExtractor.learnMore' }),
+    )!.toHaveAttribute('href', 'https://docs.example.com/document-extractor')
     expect(screen.getByText('text:string'))!.toBeInTheDocument()
   })
 
   it('should use chinese separators and array output types when the input is an array of files', () => {
     mockLocale = LanguagesSupported[1]!
-    mockUseConfig.mockReturnValueOnce(createConfigResult({
-      inputs: createData({
-        is_array_file: true,
+    mockUseConfig.mockReturnValueOnce(
+      createConfigResult({
+        inputs: createData({
+          is_array_file: true,
+        }),
       }),
-    }))
+    )
 
     render(
       <Panel
@@ -198,7 +199,11 @@ describe('document-extractor path', () => {
       />,
     )
 
-    expect(screen.getByText('workflow.nodes.docExtractor.supportFileTypes:{"types":"pdf、 markdown、 docx"}'))!.toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'workflow.nodes.docExtractor.supportFileTypes:{"types":"pdf、 markdown、 docx"}',
+      ),
+    )!.toBeInTheDocument()
     expect(screen.getByText('text:array[string]'))!.toBeInTheDocument()
   })
 })

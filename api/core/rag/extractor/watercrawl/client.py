@@ -131,7 +131,10 @@ class WaterCrawlAPIClient(BaseAPIClient):
         content_type = response.headers.get("Content-Type", "")
         media_type = content_type.split(";", 1)[0].strip().lower()
         if media_type == "application/json":
-            return response.json() or {}
+            try:
+                return response.json() or {}
+            except ValueError as exc:
+                raise ValueError("Invalid JSON response from WaterCrawl") from exc
 
         if media_type == "application/octet-stream":
             return response.content
@@ -229,7 +232,7 @@ class WaterCrawlAPIClient(BaseAPIClient):
                 return event_data["data"]
 
     def download_result(self, result_object: dict[str, Any]):
-        response = httpx.get(result_object["result"], timeout=30)
+        response = httpx.get(result_object["result"], timeout=WATERCRAWL_REQUEST_TIMEOUT)
         try:
             response.raise_for_status()
             result_object["result"] = response.json()

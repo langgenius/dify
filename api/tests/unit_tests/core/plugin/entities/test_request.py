@@ -22,6 +22,7 @@ def test_request_download_file_accepts_tool_file_reference() -> None:
 
     assert payload.file.transfer_method == "tool_file"
     assert payload.file.reference == reference
+    assert payload.for_external is True
 
 
 def test_request_download_file_accepts_remote_url() -> None:
@@ -40,6 +41,25 @@ def test_request_download_file_accepts_remote_url() -> None:
 
     assert payload.file.transfer_method == "remote_url"
     assert payload.file.url == "https://example.com/report.pdf"
+
+
+def test_request_download_file_accepts_internal_download_request() -> None:
+    reference = build_file_reference(record_id="tool-file-1")
+    payload = RequestRequestDownloadFile.model_validate(
+        {
+            "tenant_id": "tenant-1",
+            "user_id": "user-1",
+            "user_from": "account",
+            "invoke_from": "debugger",
+            "file": {
+                "transfer_method": "tool_file",
+                "reference": reference,
+            },
+            "for_external": False,
+        }
+    )
+
+    assert payload.for_external is False
 
 
 def test_request_download_file_rejects_remote_url_without_url() -> None:

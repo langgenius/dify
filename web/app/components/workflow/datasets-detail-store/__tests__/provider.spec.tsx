@@ -12,26 +12,28 @@ vi.mock('@/service/datasets', () => ({
 }))
 
 const Consumer = () => {
-  const datasetCount = useDatasetsDetailStore(state => Object.keys(state.datasetsDetail).length)
+  const datasetCount = useDatasetsDetailStore((state) => Object.keys(state.datasetsDetail).length)
   return <div>{`dataset-count:${datasetCount}`}</div>
 }
 
-const createWorkflowNode = (datasetIds: string[] = []): Node => ({
-  id: `node-${datasetIds.join('-') || 'empty'}`,
-  type: 'custom',
-  position: { x: 0, y: 0 },
-  data: {
-    title: 'Knowledge',
-    desc: '',
-    type: BlockEnum.KnowledgeRetrieval,
-    dataset_ids: datasetIds,
-  },
-} as unknown as Node)
+const createWorkflowNode = (datasetIds: string[] = []): Node =>
+  ({
+    id: `node-${datasetIds.join('-') || 'empty'}`,
+    type: 'custom',
+    position: { x: 0, y: 0 },
+    data: {
+      title: 'Knowledge',
+      desc: '',
+      type: BlockEnum.KnowledgeRetrieval,
+      dataset_ids: datasetIds,
+    },
+  }) as unknown as Node
 
-const createDataset = (id: string): DataSet => ({
-  id,
-  name: `Dataset ${id}`,
-} as DataSet)
+const createDataset = (id: string): DataSet =>
+  ({
+    id,
+    name: `Dataset ${id}`,
+  }) as DataSet
 
 describe('datasets-detail-store provider', () => {
   beforeEach(() => {
@@ -41,18 +43,19 @@ describe('datasets-detail-store provider', () => {
 
   it('should provide the datasets detail store without fetching when no knowledge datasets are selected', () => {
     render(
-      <DatasetsDetailProvider nodes={[
-        {
-          id: 'node-start',
-          type: 'custom',
-          position: { x: 0, y: 0 },
-          data: {
-            title: 'Start',
-            desc: '',
-            type: BlockEnum.Start,
-          },
-        } as unknown as Node,
-      ]}
+      <DatasetsDetailProvider
+        nodes={[
+          {
+            id: 'node-start',
+            type: 'custom',
+            position: { x: 0, y: 0 },
+            data: {
+              title: 'Start',
+              desc: '',
+              type: BlockEnum.Start,
+            },
+          } as unknown as Node,
+        ]}
       >
         <Consumer />
       </DatasetsDetailProvider>,
@@ -68,10 +71,8 @@ describe('datasets-detail-store provider', () => {
     })
 
     render(
-      <DatasetsDetailProvider nodes={[
-        createWorkflowNode(['dataset-1', 'dataset-2']),
-        createWorkflowNode(['dataset-2']),
-      ]}
+      <DatasetsDetailProvider
+        nodes={[createWorkflowNode(['dataset-1', 'dataset-2']), createWorkflowNode(['dataset-2'])]}
       >
         <Consumer />
       </DatasetsDetailProvider>,

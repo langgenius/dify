@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 
 from pydantic import BaseModel, ConfigDict
+from sqlalchemy.orm import Session
 
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 
@@ -18,12 +19,12 @@ class DatasetRetrieverBaseTool(BaseModel, ABC):
     retriever_from: str
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    def run(self, query: str) -> str:
+    def run(self, session: Session, query: str) -> str:
         """Use the tool."""
-        return self._run(query)
+        return self._run(session, query)
 
     @abstractmethod
-    def _run(self, query: str) -> str:
+    def _run(self, session: Session, query: str) -> str:
         """Use the tool.
 
         Add run_manager: Optional[CallbackManagerForToolRun] = None

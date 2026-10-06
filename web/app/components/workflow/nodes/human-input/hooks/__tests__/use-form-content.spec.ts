@@ -6,9 +6,14 @@ import useFormContent from '../use-form-content'
 const mockUseWorkflow = vi.hoisted(() => vi.fn())
 const mockUseNodeCrud = vi.hoisted(() => vi.fn())
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useWorkflow: () => mockUseWorkflow(),
-}))
+vi.mock('../../../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../hooks/use-workflow')>()
+
+  return {
+    ...actual,
+    useWorkflow: () => mockUseWorkflow(),
+  }
+})
 
 vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-crud', () => ({
   __esModule: true,
@@ -69,12 +74,18 @@ describe('human-input/use-form-content', () => {
       result.current.handleFormInputsChange(nextInputs)
     })
 
-    expect(mockSetInputs).toHaveBeenNthCalledWith(1, expect.objectContaining({
-      form_content: 'Updated body',
-    }))
-    expect(mockSetInputs).toHaveBeenNthCalledWith(2, expect.objectContaining({
-      inputs: nextInputs,
-    }))
+    expect(mockSetInputs).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        form_content: 'Updated body',
+      }),
+    )
+    expect(mockSetInputs).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        inputs: nextInputs,
+      }),
+    )
     expect(result.current.editorKey).toBe(1)
   })
 
@@ -88,27 +99,33 @@ describe('human-input/use-form-content', () => {
       result.current.handleFormInputItemRename(renamedInput, 'old_name')
     })
 
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      form_content: 'Hello {{#$output.new_name#}}',
-      inputs: [renamedInput],
-    }))
-    expect(mockHandleOutVarRenameChange).toHaveBeenCalledWith('human-input-node', ['human-input-node', 'old_name'], ['human-input-node', 'new_name'])
+    expect(mockSetInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        form_content: 'Hello {{#$output.new_name#}}',
+        inputs: [renamedInput],
+      }),
+    )
+    expect(mockHandleOutVarRenameChange).toHaveBeenCalledWith(
+      'human-input-node',
+      ['human-input-node', 'old_name'],
+      ['human-input-node', 'new_name'],
+    )
     expect(result.current.editorKey).toBe(1)
   })
 
   it('should not rename an input to an existing variable name', () => {
     currentInputs = createPayload({
-      inputs: [
-        createFormInput(),
-        createFormInput({ output_variable_name: 'existing_name' }),
-      ],
+      inputs: [createFormInput(), createFormInput({ output_variable_name: 'existing_name' })],
     })
     const { result } = renderHook(() => useFormContent('human-input-node', currentInputs))
 
     act(() => {
-      result.current.handleFormInputItemRename(createFormInput({
-        output_variable_name: 'existing_name',
-      }), 'old_name')
+      result.current.handleFormInputItemRename(
+        createFormInput({
+          output_variable_name: 'existing_name',
+        }),
+        'old_name',
+      )
     })
 
     expect(mockSetInputs).not.toHaveBeenCalled()
@@ -123,10 +140,12 @@ describe('human-input/use-form-content', () => {
       result.current.handleFormInputItemRemove('old_name')
     })
 
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      form_content: 'Hello ',
-      inputs: [],
-    }))
+    expect(mockSetInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        form_content: 'Hello ',
+        inputs: [],
+      }),
+    )
     expect(result.current.editorKey).toBe(1)
   })
 })

@@ -63,6 +63,6 @@ class BaseTraceInstance(ABC):
             )
             if not current_tenant:
                 raise ValueError(f"Current tenant not found for account {service_account.id}")
-            service_account.set_tenant_id(current_tenant.tenant_id)
+            service_account.set_tenant_id_with_session(current_tenant.tenant_id, session=session)
 
             return service_account

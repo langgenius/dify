@@ -117,9 +117,12 @@ class RedisSubscriptionBase(Subscription):
                 )
                 continue
 
-            self._enqueue_message(payload_bytes)
             if payload_bytes == SIG_CLOSE:
-                break
+                # Close signals are broadcast to every subscriber on the topic.
+                # The closing subscription is already handled by the _closed check above.
+                continue
+
+            self._enqueue_message(payload_bytes)
 
         _logger.debug("%s listener thread stopped for channel %s", self._get_subscription_type().title(), self._topic)
         try:
@@ -193,6 +196,8 @@ class RedisSubscriptionBase(Subscription):
         except queue.Empty:
             return None
 
+        if item == SIG_CLOSE:
+            raise SubscriptionClosedError(f"The Redis {self._get_subscription_type()} subscription is closed")
         return item
 
     @override

@@ -8,18 +8,14 @@ export type IOStreams = {
   in: NodeJS.ReadableStream
   isOutTTY: boolean
   isErrTTY: boolean
-  outputFormat: string
 }
 
 export function nullStreams(): IOStreams {
   return bufferStreams()
 }
 
-export function realStreams(outputFormat = ''): IOStreams {
-  return {
-    outputFormat,
-    ...io(),
-  }
+export function realStreams(): IOStreams {
+  return io()
 }
 
 export type BufferStreams = IOStreams & {
@@ -42,16 +38,13 @@ export function bufferStreams(stdin = ''): BufferStreams {
       cb()
     },
   }) as unknown as NodeJS.WritableStream
-  const inStream: NodeJS.ReadableStream = stdin === ''
-    ? new PassThrough()
-    : Readable.from([stdin])
+  const inStream: NodeJS.ReadableStream = stdin === '' ? new PassThrough() : Readable.from([stdin])
   return {
     out,
     err,
     in: inStream,
     isOutTTY: false,
     isErrTTY: false,
-    outputFormat: '',
     outBuf: () => Buffer.concat(outChunks).toString('utf8'),
     errBuf: () => Buffer.concat(errChunks).toString('utf8'),
   }

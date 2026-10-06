@@ -1,31 +1,19 @@
-import { render, screen } from '@testing-library/react'
-import { AppACLPermission } from '@/utils/permission'
+import type { PeriodParams } from '@/app/components/app/overview/app-chart'
+import { screen } from '@testing-library/react'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import ChartView from '../chart-view'
 
 const testState = vi.hoisted(() => ({
-  appDetail: {
-    id: 'app-1',
-    mode: 'chat',
-    maintainer: 'maintainer-1',
-    permission_keys: [] as string[],
-  },
-  currentUserId: 'user-1',
-  workspacePermissionKeys: [] as string[],
   chartRenderSpy: vi.fn(),
+  conversationPeriodSpy: vi.fn(),
 }))
 
-vi.mock('@/app/components/app/store', () => ({
-  useStore: <T,>(selector: (state: { appDetail: typeof testState.appDetail }) => T): T => selector({
-    appDetail: testState.appDetail,
-  }),
-}))
-
-vi.mock('@/context/app-context', () => ({
-  useSelector: vi.fn((selector: (state: { userProfile: { id: string }, workspacePermissionKeys: string[] }) => unknown) => selector({
-    userProfile: { id: testState.currentUserId },
-    workspacePermissionKeys: testState.workspacePermissionKeys,
-  })),
-}))
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
+    currentWorkspace: { id: 'workspace-1' },
+  }))
+})
 
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => path,
@@ -44,8 +32,9 @@ vi.mock('@/app/components/app/overview/app-chart', () => ({
     testState.chartRenderSpy('avg-user-interactions')
     return <div>avg user interactions chart</div>
   },
-  ConversationsChart: () => {
+  ConversationsChart: ({ period }: { period: PeriodParams }) => {
     testState.chartRenderSpy('conversations')
+    testState.conversationPeriodSpy(period)
     return <div>conversations chart</div>
   },
   CostChart: () => {
@@ -90,38 +79,41 @@ vi.mock('../time-range-picker', () => ({
   default: () => <button type="button">time range</button>,
 }))
 
-describe('ChartView monitor permission', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    testState.appDetail = {
-      id: 'app-1',
-      mode: 'chat',
-      maintainer: 'maintainer-1',
-      permission_keys: [],
-    }
-    testState.currentUserId = 'user-1'
-    testState.workspacePermissionKeys = []
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: [],
+  }))
+})
+
+describe('ChartView', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('renders chat charts and the page-provided header action', () => {
+    renderWithConsoleQuery(
+      <ChartView
+        appId="app-1"
+        appMode="chat"
+        headerRight={<button type="button">header action</button>}
+      />,
+    )
+
+    expect(screen.getByRole('heading', { name: 'common.appMenus.overview' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'header action' })).toBeInTheDocument()
+    expect(screen.getByText('conversations chart')).toBeInTheDocument()
+    expect(screen.getByText('avg session interactions chart')).toBeInTheDocument()
   })
 
-  // Monitoring charts are part of the app monitor permission surface.
-  describe('Permissions', () => {
-    it('should not render monitoring charts when app monitor permission is missing', () => {
-      render(<ChartView appId="app-1" headerRight={<button type="button">header action</button>} />)
+  it('renders completion charts from the explicit app mode', () => {
+    renderWithConsoleQuery(<ChartView appId="app-1" appMode="completion" headerRight={null} />)
+    expect(screen.getByText('avg response time chart')).toBeInTheDocument()
+    expect(screen.queryByText('avg session interactions chart')).not.toBeInTheDocument()
+  })
 
-      expect(screen.queryByRole('heading', { name: 'common.appMenus.overview' })).not.toBeInTheDocument()
-      expect(screen.queryByText('header action')).not.toBeInTheDocument()
-      expect(testState.chartRenderSpy).not.toHaveBeenCalled()
-    })
-
-    it('should render monitoring charts when app monitor permission is granted', () => {
-      testState.appDetail.permission_keys = [AppACLPermission.Monitor]
-
-      render(<ChartView appId="app-1" headerRight={<button type="button">header action</button>} />)
-
-      expect(screen.getByRole('heading', { name: 'common.appMenus.overview' })).toBeInTheDocument()
-      expect(screen.getByText('header action')).toBeInTheDocument()
-      expect(screen.getByText('conversations chart')).toBeInTheDocument()
-      expect(testState.chartRenderSpy).toHaveBeenCalledWith('conversations')
-    })
+  it('renders workflow charts from the explicit app mode', () => {
+    renderWithConsoleQuery(<ChartView appId="app-2" appMode="workflow" headerRight={null} />)
+    expect(screen.getByText('workflow messages chart')).toBeInTheDocument()
+    expect(screen.queryByText('conversations chart')).not.toBeInTheDocument()
   })
 })

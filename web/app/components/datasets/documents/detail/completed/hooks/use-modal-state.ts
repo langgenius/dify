@@ -82,11 +82,11 @@ export const useModalState = (options: UseModalStateOptions): UseModalStateRetur
   }, [])
 
   const toggleFullScreen = useCallback(() => {
-    setFullScreen(prev => !prev)
+    setFullScreen((prev) => !prev)
   }, [])
 
   const toggleCollapsed = useCallback(() => {
-    setIsCollapsed(prev => !prev)
+    setIsCollapsed((prev) => !prev)
   }, [])
 
   return {

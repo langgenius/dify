@@ -2,14 +2,13 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-
 import {
   zGetFormHumanInputByFormTokenPath,
   zGetFormHumanInputByFormTokenResponse,
   zPostFormHumanInputByFormTokenBody,
   zPostFormHumanInputByFormTokenPath,
   zPostFormHumanInputByFormTokenResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 /**
  * Get human input form definition by form token

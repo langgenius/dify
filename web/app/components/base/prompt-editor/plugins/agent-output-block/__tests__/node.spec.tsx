@@ -1,18 +1,9 @@
-import type {
-  Klass,
-  LexicalEditor,
-  LexicalNode,
-} from 'lexical'
+import type { Klass, LexicalEditor, LexicalNode } from 'lexical'
 import { createEditor } from 'lexical'
-import {
-  $createAgentOutputBlockNode,
-  $isAgentOutputBlockNode,
-  AgentOutputBlockNode,
-} from '../node'
+import { $createAgentOutputBlockNode, $isAgentOutputBlockNode, AgentOutputBlockNode } from '../node'
 import {
   extractAgentOutputNames,
   getAgentOutputToken,
-  inferAgentOutputType,
   parseAgentOutputToken,
   replaceAgentOutputName,
 } from '../utils'
@@ -40,26 +31,33 @@ describe('AgentOutputBlockNode', () => {
     })
   })
 
-  it('should persist and parse file-name output tokens', () => {
+  it('should select the output name only for newly inserted editing nodes', () => {
     runInEditor(() => {
-      const node = $createAgentOutputBlockNode('qna_report.pdf', 'file')
+      const newEditingNode = $createAgentOutputBlockNode('output', 'string', true)
+      const existingEditingNode = $createAgentOutputBlockNode(
+        'summary',
+        'string',
+        true,
+        [],
+        undefined,
+        undefined,
+        false,
+      )
+      const typeSelectingNode = $createAgentOutputBlockNode(
+        'summary',
+        'string',
+        true,
+        [],
+        undefined,
+        undefined,
+        false,
+        true,
+      )
 
-      expect(node.getTextContent()).toBe('[§output:qna_report.pdf:qna_report.pdf§]')
-      expect(getAgentOutputToken('qna_report.pdf')).toBe('[§output:qna_report.pdf:qna_report.pdf§]')
+      expect(newEditingNode.shouldSelectNameOnEdit()).toBe(true)
+      expect(existingEditingNode.shouldSelectNameOnEdit()).toBe(false)
+      expect(typeSelectingNode.shouldOpenTypeSelectOnEdit()).toBe(true)
     })
-
-    expect(parseAgentOutputToken('Use [§output:qna_report.pdf:qna_report.pdf§]')).toEqual({
-      name: 'qna_report.pdf',
-      start: 4,
-      end: 44,
-    })
-  })
-
-  it('should infer file type only for whitelisted file extensions', () => {
-    expect(inferAgentOutputType('qna_report.pdf', 'string')).toBe('file')
-    expect(inferAgentOutputType('QNA_REPORT.PDF', 'string')).toBe('file')
-    expect(inferAgentOutputType('report.customext', 'string')).toBe('string')
-    expect(inferAgentOutputType('report.customext', 'object')).toBe('object')
   })
 
   it('should parse bracketed output tokens and legacy bare tokens', () => {
@@ -77,18 +75,28 @@ describe('AgentOutputBlockNode', () => {
   })
 
   it('should extract output names from bracketed and legacy tokens', () => {
-    expect([...extractAgentOutputNames('A [§output:summary:summary§] B §output:qna_report.pdf:qna_report.pdf§')]).toEqual([
-      'summary',
-      'qna_report.pdf',
-    ])
+    expect([
+      ...extractAgentOutputNames(
+        'A [§output:summary:summary§] B §output:final_summary:final_summary§',
+      ),
+    ]).toEqual(['summary', 'final_summary'])
   })
 
   it('should replace only matching output token names', () => {
-    expect(replaceAgentOutputName(
-      'Use [§output:summary:summary§] and §output:other:other§',
-      'summary',
-      'final_summary',
-    )).toBe('Use [§output:final_summary:final_summary§] and §output:other:other§')
+    expect(
+      replaceAgentOutputName(
+        'Use [§output:summary:summary§] and §output:other:other§',
+        'summary',
+        'final_summary',
+      ),
+    ).toBe('Use [§output:final_summary:final_summary§] and §output:other:other§')
+    expect(
+      replaceAgentOutputName(
+        'Generate [§output:output:output§] and §output:output:output§',
+        'output',
+        'summary',
+      ),
+    ).toBe('Generate [§output:summary:summary§] and §output:summary:summary§')
   })
 
   it('should create node with helper and support type guard checks', () => {

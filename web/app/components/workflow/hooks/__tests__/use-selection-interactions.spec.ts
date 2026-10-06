@@ -30,17 +30,20 @@ function createFlowEdges() {
 }
 
 function renderSelectionInteractions(initialStoreState?: Record<string, unknown>) {
-  return renderWorkflowFlowHook(() => ({
-    ...useSelectionInteractions(),
-    nodes: useNodes(),
-    edges: useEdges(),
-    reactFlowStore: useStoreApi(),
-  }), {
-    nodes: createFlowNodes(),
-    edges: createFlowEdges(),
-    reactFlowProps: { fitView: false },
-    initialStoreState,
-  })
+  return renderWorkflowFlowHook(
+    () => ({
+      ...useSelectionInteractions(),
+      nodes: useNodes(),
+      edges: useEdges(),
+      reactFlowStore: useStoreApi(),
+    }),
+    {
+      nodes: createFlowNodes(),
+      edges: createFlowEdges(),
+      reactFlowProps: { fitView: false },
+      initialStoreState,
+    },
+  )
 }
 
 describe('useSelectionInteractions', () => {
@@ -76,8 +79,8 @@ describe('useSelectionInteractions', () => {
     })
 
     await waitFor(() => {
-      expect(result.current.nodes.every(node => !getBundledState(node)._isBundled)).toBe(true)
-      expect(result.current.edges.every(edge => !getBundledState(edge)._isBundled)).toBe(true)
+      expect(result.current.nodes.every((node) => !getBundledState(node)._isBundled)).toBe(true)
+      expect(result.current.edges.every((edge) => !getBundledState(edge)._isBundled)).toBe(true)
     })
   })
 
@@ -98,9 +101,15 @@ describe('useSelectionInteractions', () => {
     })
 
     await waitFor(() => {
-      expect(getBundledState(result.current.nodes.find(node => node.id === 'n1'))._isBundled).toBe(true)
-      expect(getBundledState(result.current.nodes.find(node => node.id === 'n2'))._isBundled).toBe(false)
-      expect(getBundledState(result.current.nodes.find(node => node.id === 'n3'))._isBundled).toBe(true)
+      expect(
+        getBundledState(result.current.nodes.find((node) => node.id === 'n1'))._isBundled,
+      ).toBe(true)
+      expect(
+        getBundledState(result.current.nodes.find((node) => node.id === 'n2'))._isBundled,
+      ).toBe(false)
+      expect(
+        getBundledState(result.current.nodes.find((node) => node.id === 'n3'))._isBundled,
+      ).toBe(true)
     })
   })
 
@@ -121,17 +130,19 @@ describe('useSelectionInteractions', () => {
     })
 
     await waitFor(() => {
-      expect(getBundledState(result.current.edges.find(edge => edge.id === 'e1'))._isBundled).toBe(true)
-      expect(getBundledState(result.current.edges.find(edge => edge.id === 'e2'))._isBundled).toBe(false)
+      expect(
+        getBundledState(result.current.edges.find((edge) => edge.id === 'e1'))._isBundled,
+      ).toBe(true)
+      expect(
+        getBundledState(result.current.edges.find((edge) => edge.id === 'e2'))._isBundled,
+      ).toBe(false)
     })
   })
 
   it('handleSelectionDrag should sync node positions', async () => {
     const setNodesSpy = vi.spyOn(collaborationManager, 'setNodes')
     const { result, store } = renderSelectionInteractions()
-    const draggedNodes = [
-      { id: 'n1', position: { x: 50, y: 60 }, data: {} },
-    ] as never
+    const draggedNodes = [{ id: 'n1', position: { x: 50, y: 60 }, data: {} }] as never
 
     act(() => {
       result.current.handleSelectionDrag({} as unknown as React.MouseEvent, draggedNodes)
@@ -140,11 +151,20 @@ describe('useSelectionInteractions', () => {
     expect(store.getState().nodeAnimation).toBe(false)
     expect(setNodesSpy).toHaveBeenCalledOnce()
     expect(setNodesSpy.mock.calls[0]?.[2]).toBe('use-selection-interactions:handleSelectionDrag')
-    expect(setNodesSpy.mock.calls[0]?.[1].find(node => node.id === 'n1')?.position).toEqual({ x: 50, y: 60 })
+    expect(setNodesSpy.mock.calls[0]?.[1].find((node) => node.id === 'n1')?.position).toEqual({
+      x: 50,
+      y: 60,
+    })
 
     await waitFor(() => {
-      expect(result.current.nodes.find(node => node.id === 'n1')?.position).toEqual({ x: 50, y: 60 })
-      expect(result.current.nodes.find(node => node.id === 'n2')?.position).toEqual({ x: 100, y: 100 })
+      expect(result.current.nodes.find((node) => node.id === 'n1')?.position).toEqual({
+        x: 50,
+        y: 60,
+      })
+      expect(result.current.nodes.find((node) => node.id === 'n2')?.position).toEqual({
+        x: 100,
+        y: 100,
+      })
     })
   })
 
@@ -166,8 +186,8 @@ describe('useSelectionInteractions', () => {
     expect(result.current.reactFlowStore.getState().userSelectionActive).toBe(true)
 
     await waitFor(() => {
-      expect(result.current.nodes.every(node => !getBundledState(node)._isBundled)).toBe(true)
-      expect(result.current.edges.every(edge => !getBundledState(edge)._isBundled)).toBe(true)
+      expect(result.current.nodes.every((node) => !getBundledState(node)._isBundled)).toBe(true)
+      expect(result.current.edges.every((edge) => !getBundledState(edge)._isBundled)).toBe(true)
     })
   })
 

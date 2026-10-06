@@ -93,14 +93,6 @@ class AppStatus(StrEnum):
     NORMAL = "normal"
 
 
-class AppMCPServerStatus(StrEnum):
-    """AppMCPServer Status Enum"""
-
-    NORMAL = "normal"
-    ACTIVE = "active"
-    INACTIVE = "inactive"
-
-
 class ConversationStatus(StrEnum):
     """Conversation Status Enum"""
 
@@ -208,11 +200,15 @@ class InvokeFrom(StrEnum):
 class EndUserType(StrEnum):
     """Persisted type values for the ``end_users.type`` column."""
 
+    APP_DEPLOY = "app-deploy"
     BROWSER = "browser"
     MCP = "mcp"
     OPENAPI = "openapi"
     SERVICE_API = "service-api"
     TRIGGER = "trigger"
+
+
+DEFAULT_END_USER_SESSION_ID = "DEFAULT-USER"
 
 
 class DocumentDocType(StrEnum):
@@ -237,6 +233,7 @@ class TagType(StrEnum):
     KNOWLEDGE = "knowledge"
     APP = "app"
     SNIPPET = "snippet"
+    SKILL = "skill"
 
 
 class DatasetMetadataType(StrEnum):

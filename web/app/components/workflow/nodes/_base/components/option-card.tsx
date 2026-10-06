@@ -2,10 +2,10 @@
 import type { VariantProps } from 'class-variance-authority'
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { cva } from 'class-variance-authority'
 import * as React from 'react'
 import { useCallback } from 'react'
-import { Infotip } from '@/app/components/base/infotip'
 
 const variants = cva([], {
   variants: {
@@ -28,7 +28,8 @@ type Props = Readonly<{
   disabled?: boolean
   align?: 'left' | 'center' | 'right'
   tooltip?: string
-}> & VariantProps<typeof variants>
+}> &
+  VariantProps<typeof variants>
 
 const OptionCard: FC<Props> = ({
   className,
@@ -39,9 +40,10 @@ const OptionCard: FC<Props> = ({
   align = 'center',
   tooltip,
 }) => {
+  const titleId = React.useId()
+
   const handleSelect = useCallback(() => {
-    if (selected || disabled)
-      return
+    if (selected || disabled) return
     onSelect()
   }, [onSelect, selected, disabled])
 
@@ -49,21 +51,27 @@ const OptionCard: FC<Props> = ({
     <div
       className={cn(
         'flex h-8 cursor-default items-center rounded-md border border-components-option-card-option-border bg-components-option-card-option-bg px-2 system-sm-regular text-text-secondary',
-        (!selected && !disabled) && 'cursor-pointer hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
-        (selected && !disabled) && 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg system-sm-medium shadow-xs',
+        !selected &&
+          !disabled &&
+          'cursor-pointer hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
+        selected &&
+          !disabled &&
+          'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg system-sm-medium shadow-xs',
         disabled && 'text-text-disabled',
         variants({ align }),
         className,
       )}
       onClick={handleSelect}
     >
-      <span>{title}</span>
-      {tooltip
-        && (
-          <Infotip aria-label={tooltip} popupClassName="w-[240px]">
+      <span id={titleId}>{title}</span>
+      {tooltip && (
+        <Infotip>
+          <InfotipTrigger aria-labelledby={titleId} />
+          <InfotipContent aria-labelledby={titleId} className="w-60">
             {tooltip}
-          </Infotip>
-        )}
+          </InfotipContent>
+        </Infotip>
+      )}
     </div>
   )
 }

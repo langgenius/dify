@@ -35,7 +35,7 @@ export type DataSourceIntegratePageResponse = {
   page_id: string
   page_name: string
   parent_id: string
-  type: string
+  type: NotionPageType
 }
 
 export type DataSourceIntegrateIconResponse = {
@@ -43,6 +43,8 @@ export type DataSourceIntegrateIconResponse = {
   type?: string | null
   url?: string | null
 }
+
+export type NotionPageType = 'database' | 'page'
 
 export type GetDataSourceIntegratesData = {
   body?: never
@@ -55,39 +57,8 @@ export type GetDataSourceIntegratesResponses = {
   200: DataSourceIntegrateListResponse
 }
 
-export type GetDataSourceIntegratesResponse
-  = GetDataSourceIntegratesResponses[keyof GetDataSourceIntegratesResponses]
-
-export type PatchDataSourceIntegratesData = {
-  body?: never
-  path?: never
-  query?: never
-  url: '/data-source/integrates'
-}
-
-export type PatchDataSourceIntegratesResponses = {
-  200: SimpleResultResponse
-}
-
-export type PatchDataSourceIntegratesResponse
-  = PatchDataSourceIntegratesResponses[keyof PatchDataSourceIntegratesResponses]
-
-export type GetDataSourceIntegratesByBindingIdByActionData = {
-  body?: never
-  path: {
-    action: string
-    binding_id: string
-  }
-  query?: never
-  url: '/data-source/integrates/{binding_id}/{action}'
-}
-
-export type GetDataSourceIntegratesByBindingIdByActionResponses = {
-  200: DataSourceIntegrateListResponse
-}
-
-export type GetDataSourceIntegratesByBindingIdByActionResponse
-  = GetDataSourceIntegratesByBindingIdByActionResponses[keyof GetDataSourceIntegratesByBindingIdByActionResponses]
+export type GetDataSourceIntegratesResponse =
+  GetDataSourceIntegratesResponses[keyof GetDataSourceIntegratesResponses]
 
 export type PatchDataSourceIntegratesByBindingIdByActionData = {
   body?: never
@@ -103,5 +74,5 @@ export type PatchDataSourceIntegratesByBindingIdByActionResponses = {
   200: SimpleResultResponse
 }
 
-export type PatchDataSourceIntegratesByBindingIdByActionResponse
-  = PatchDataSourceIntegratesByBindingIdByActionResponses[keyof PatchDataSourceIntegratesByBindingIdByActionResponses]
+export type PatchDataSourceIntegratesByBindingIdByActionResponse =
+  PatchDataSourceIntegratesByBindingIdByActionResponses[keyof PatchDataSourceIntegratesByBindingIdByActionResponses]

@@ -8,12 +8,12 @@ type CornerLabelsProps = {
 }
 
 const CornerLabels = ({ dataset }: CornerLabelsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['dataset'])
 
   if (!dataset.embedding_available) {
     return (
       <CornerLabel
-        label={t('cornerLabel.unavailable', { ns: 'dataset' })}
+        label={t(($) => $['cornerLabel.unavailable'], { ns: 'dataset' })}
         className="absolute top-0 right-0 z-5"
         labelClassName="rounded-tr-xl"
       />

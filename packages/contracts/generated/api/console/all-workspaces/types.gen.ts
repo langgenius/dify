@@ -4,7 +4,7 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
-export type WorkspaceListResponse = {
+export type WorkspacePaginationResponse = {
   data: Array<WorkspaceListItemResponse>
   has_more: boolean
   limit: number
@@ -30,7 +30,7 @@ export type GetAllWorkspacesData = {
 }
 
 export type GetAllWorkspacesResponses = {
-  200: WorkspaceListResponse
+  200: WorkspacePaginationResponse
 }
 
 export type GetAllWorkspacesResponse = GetAllWorkspacesResponses[keyof GetAllWorkspacesResponses]

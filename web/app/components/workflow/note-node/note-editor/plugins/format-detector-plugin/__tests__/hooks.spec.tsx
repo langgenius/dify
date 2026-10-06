@@ -4,6 +4,7 @@ import { useFormatDetector } from '../hooks'
 type MockParent = {
   isLink?: boolean
   getURL?: () => string
+  getKey?: () => string
   isListItem?: boolean
 } | null
 
@@ -16,6 +17,7 @@ const {
   mockSetSelectedIsItalic,
   mockSetSelectedIsStrikeThrough,
   mockSetSelectedLinkUrl,
+  mockSetSelectedLinkKey,
   mockSetSelectedIsLink,
   mockSetSelectedIsBullet,
   mockEditorIsComposing,
@@ -30,12 +32,14 @@ const {
     isLink: false,
     isListItem: false,
     getURL: vi.fn(() => ''),
+    getKey: vi.fn(() => 'link-node'),
     getParent: vi.fn<() => MockParent>(() => null),
   },
   mockSetSelectedIsBold: vi.fn(),
   mockSetSelectedIsItalic: vi.fn(),
   mockSetSelectedIsStrikeThrough: vi.fn(),
   mockSetSelectedLinkUrl: vi.fn(),
+  mockSetSelectedLinkKey: vi.fn(),
   mockSetSelectedIsLink: vi.fn(),
   mockSetSelectedIsBullet: vi.fn(),
   mockEditorIsComposing: vi.fn(() => false),
@@ -43,25 +47,42 @@ const {
 }))
 
 vi.mock('@lexical/react/LexicalComposerContext', () => ({
-  useLexicalComposerContext: () => ([{
-    isComposing: mockEditorIsComposing,
-    getEditorState: () => ({
-      read: (callback: () => void) => callback(),
-    }),
-    registerUpdateListener: mockRegisterUpdateListener,
-  }]),
+  useLexicalComposerContext: () => [
+    {
+      isComposing: mockEditorIsComposing,
+      getEditorState: () => ({
+        read: (callback: () => void) => callback(),
+      }),
+      registerUpdateListener: mockRegisterUpdateListener,
+    },
+  ],
 }))
 
 vi.mock('@lexical/utils', () => ({
-  mergeRegister: (...cleanups: Array<() => void>) => () => cleanups.forEach(cleanup => cleanup()),
+  mergeRegister:
+    (...cleanups: Array<() => void>) =>
+    () =>
+      cleanups.forEach((cleanup) => cleanup()),
 }))
 
 vi.mock('@lexical/link', () => ({
-  $isLinkNode: (node: unknown) => Boolean(node && typeof node === 'object' && 'isLink' in (node as object) && (node as { isLink?: boolean }).isLink),
+  $isLinkNode: (node: unknown) =>
+    Boolean(
+      node &&
+      typeof node === 'object' &&
+      'isLink' in (node as object) &&
+      (node as { isLink?: boolean }).isLink,
+    ),
 }))
 
 vi.mock('@lexical/list', () => ({
-  $isListItemNode: (node: unknown) => Boolean(node && typeof node === 'object' && 'isListItem' in (node as object) && (node as { isListItem?: boolean }).isListItem),
+  $isListItemNode: (node: unknown) =>
+    Boolean(
+      node &&
+      typeof node === 'object' &&
+      'isListItem' in (node as object) &&
+      (node as { isListItem?: boolean }).isListItem,
+    ),
 }))
 
 vi.mock('lexical', () => ({
@@ -76,6 +97,7 @@ vi.mock('../../../store', () => ({
       setSelectedIsItalic: mockSetSelectedIsItalic,
       setSelectedIsStrikeThrough: mockSetSelectedIsStrikeThrough,
       setSelectedLinkUrl: mockSetSelectedLinkUrl,
+      setSelectedLinkKey: mockSetSelectedLinkKey,
       setSelectedIsLink: mockSetSelectedIsLink,
       setSelectedIsBullet: mockSetSelectedIsBullet,
     }),
@@ -95,7 +117,9 @@ describe('format detector hook', () => {
     vi.clearAllMocks()
     mockIsRangeSelection.mockReturnValue(true)
     mockEditorIsComposing.mockReturnValue(false)
-    mockSelection.hasFormat.mockImplementation((format: string) => format === 'bold' || format === 'strikethrough')
+    mockSelection.hasFormat.mockImplementation(
+      (format: string) => format === 'bold' || format === 'strikethrough',
+    )
     mockSelectedNode.isLink = false
     mockSelectedNode.isListItem = false
     mockSelectedNode.getURL.mockReturnValue('')

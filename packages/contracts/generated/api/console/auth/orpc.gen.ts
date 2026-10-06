@@ -2,7 +2,6 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-
 import {
   zDeleteAuthPluginDatasourceByProviderIdCustomClientPath,
   zDeleteAuthPluginDatasourceByProviderIdCustomClientResponse,
@@ -28,7 +27,7 @@ import {
   zPostAuthPluginDatasourceByProviderIdUpdateNameResponse,
   zPostAuthPluginDatasourceByProviderIdUpdatePath,
   zPostAuthPluginDatasourceByProviderIdUpdateResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 export const get = oc
   .route({

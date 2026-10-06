@@ -1,11 +1,13 @@
 import json
 import logging
+import re
 import uuid
 from enum import StrEnum
 from typing import Any, override
 
 from clickhouse_connect import get_client  # type: ignore[import-untyped]
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.rag.datasource.vdb.vector_base import BaseVector
@@ -16,6 +18,8 @@ from core.rag.models.document import Document
 from models.dataset import Dataset
 
 logger = logging.getLogger(__name__)
+
+METADATA_KEY_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
 class MyScaleConfig(BaseModel):
@@ -102,7 +106,10 @@ class MyScaleVector(BaseVector):
 
     @override
     def text_exists(self, id: str) -> bool:
-        results = self._client.query(f"SELECT id FROM {self._config.database}.{self._collection_name} WHERE id='{id}'")
+        results = self._client.query(
+            f"SELECT id FROM {self._config.database}.{self._collection_name} WHERE id={{id:String}}",
+            parameters={"id": id},
+        )
         return results.row_count > 0
 
     @override
@@ -110,20 +117,26 @@ class MyScaleVector(BaseVector):
         if not ids:
             return
         self._client.command(
-            f"DELETE FROM {self._config.database}.{self._collection_name} WHERE id IN {str(tuple(ids))}"
+            f"DELETE FROM {self._config.database}.{self._collection_name} WHERE id IN {{ids:Array(String)}}",
+            parameters={"ids": ids},
         )
 
     @override
     def get_ids_by_metadata_field(self, key: str, value: str):
+        self._validate_metadata_key(key)
         rows = self._client.query(
-            f"SELECT DISTINCT id FROM {self._config.database}.{self._collection_name} WHERE metadata.{key}='{value}'"
+            f"SELECT DISTINCT id FROM {self._config.database}.{self._collection_name} "
+            f"WHERE metadata.{key}={{value:String}}",
+            parameters={"value": value},
         ).result_rows
         return [row[0] for row in rows]
 
     @override
     def delete_by_metadata_field(self, key: str, value: str):
+        self._validate_metadata_key(key)
         self._client.command(
-            f"DELETE FROM {self._config.database}.{self._collection_name} WHERE metadata.{key}='{value}'"
+            f"DELETE FROM {self._config.database}.{self._collection_name} WHERE metadata.{key}={{value:String}}",
+            parameters={"value": value},
         )
 
     @override
@@ -132,22 +145,29 @@ class MyScaleVector(BaseVector):
 
     @override
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
-        return self._search(f"TextSearch('enable_nlq=false')(text, '{query}')", SortOrder.DESC, **kwargs)
+        return self._search(
+            "TextSearch('enable_nlq=false')(text, {query:String})",
+            SortOrder.DESC,
+            parameters={"query": query},
+            **kwargs,
+        )
 
-    def _search(self, dist: str, order: SortOrder, **kwargs: Any) -> list[Document]:
+    def _search(
+        self, dist: str, order: SortOrder, parameters: dict[str, Any] | None = None, **kwargs: Any
+    ) -> list[Document]:
         top_k = kwargs.get("top_k", 4)
         if not isinstance(top_k, int) or top_k <= 0:
             raise ValueError("top_k must be a positive integer")
         score_threshold = float(kwargs.get("score_threshold") or 0.0)
-        where_str = (
-            f"WHERE dist < {1 - score_threshold}"
-            if self._metric.upper() == "COSINE" and order == SortOrder.ASC and score_threshold > 0.0
-            else ""
-        )
+        where_conditions = []
+        query_parameters = dict(parameters or {})
+        if self._metric.upper() == "COSINE" and order == SortOrder.ASC and score_threshold > 0.0:
+            where_conditions.append(f"dist < {1 - score_threshold}")
         document_ids_filter = kwargs.get("document_ids_filter")
         if document_ids_filter:
-            document_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
-            where_str = f"{where_str} AND metadata['document_id'] in ({document_ids})"
+            where_conditions.append("metadata['document_id'] IN {document_ids_filter:Array(String)}")
+            query_parameters["document_ids_filter"] = document_ids_filter
+        where_str = f"WHERE {' AND '.join(where_conditions)}" if where_conditions else ""
         sql = f"""
             SELECT text, vector, metadata, {dist} as dist FROM {self._config.database}.{self._collection_name}
             {where_str} ORDER BY dist {order.value} LIMIT {top_k}
@@ -159,11 +179,16 @@ class MyScaleVector(BaseVector):
                     vector=r["vector"],
                     metadata=r["metadata"],
                 )
-                for r in self._client.query(sql).named_results()
+                for r in self._client.query(sql, parameters=query_parameters).named_results()
             ]
         except Exception:
             logger.exception("Vector search operation failed")
             return []
+
+    @staticmethod
+    def _validate_metadata_key(key: str) -> None:
+        if not METADATA_KEY_PATTERN.match(key):
+            raise ValueError("metadata key must be a valid identifier")
 
     @override
     def delete(self):
@@ -172,7 +197,9 @@ class MyScaleVector(BaseVector):
 
 class MyScaleVectorFactory(AbstractVectorFactory):
     @override
-    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> MyScaleVector:
+    def init_vector(
+        self, dataset: Dataset, attributes: list, embeddings: Embeddings, *, session: Session | None
+    ) -> MyScaleVector:
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]
             collection_name = class_prefix.lower()

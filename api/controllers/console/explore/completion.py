@@ -1,12 +1,15 @@
 import logging
+from http import HTTPStatus
 from typing import Any, Literal
 from uuid import UUID
 
+from flask import Response
+from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
-from werkzeug.exceptions import InternalServerError, NotFound
 
 import services
-from controllers.common.fields import GeneratedAppResponse, SimpleResultResponse
+from controllers.common.errors import InternalServerError, NotFoundError, UnauthorizedError
+from controllers.common.fields import SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.app.error import (
     AppUnavailableError,
@@ -17,8 +20,9 @@ from controllers.console.app.error import (
     ProviderQuotaExceededError,
 )
 from controllers.console.explore.error import NotChatAppError, NotCompletionAppError
-from controllers.console.explore.wraps import InstalledAppResource
-from controllers.console.wraps import with_current_user, with_current_user_id
+from controllers.console.explore.installed_app_admission import get_installed_app
+from controllers.console.flask_admission import console_account_admission
+from controllers.console.wraps import model_validate
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
@@ -26,15 +30,16 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
-from extensions.ext_database import db
+from extensions.ext_application_services import application_services
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
-from libs.datetime_utils import naive_utc_now
-from models import Account
-from models.model import AppMode, InstalledApp
-from services.app_generate_service import AppGenerateService
-from services.app_task_service import AppTaskService
+from machinery.context import RequestContext
+from models.model import AppMode
+from services.account_errors import AccountNotFoundError
+from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.errors.llm import InvokeRateLimitError
+from services.installed_app_access_service import InstalledAppNotFoundError, InstalledAppRef
+from services.installed_app_generation_service import InstalledAppNotChatError, InstalledAppNotCompletionError
 
 from .. import console_ns
 
@@ -73,7 +78,7 @@ class ChatMessagePayload(BaseModel):
 
 
 register_schema_models(console_ns, CompletionMessageExplorePayload, ChatMessagePayload)
-register_response_schema_models(console_ns, GeneratedAppResponse, SimpleResultResponse)
+register_response_schema_models(console_ns, SimpleResultResponse)
 
 
 # define completion api for user
@@ -81,34 +86,37 @@ register_response_schema_models(console_ns, GeneratedAppResponse, SimpleResultRe
     "/installed-apps/<uuid:installed_app_id>/completion-messages",
     endpoint="installed_app_completion",
 )
-class CompletionApi(InstalledAppResource):
+class CompletionApi(Resource):
     @console_ns.expect(console_ns.models[CompletionMessageExplorePayload.__name__])
-    @console_ns.response(200, "Success", console_ns.models[GeneratedAppResponse.__name__])
-    @with_current_user
-    def post(self, current_user: Account, installed_app: InstalledApp):
-        app_model = installed_app.app
-        if app_model is None:
-            raise AppUnavailableError()
-        if app_model.mode != AppMode.COMPLETION:
-            raise NotCompletionAppError()
-
-        payload = CompletionMessageExplorePayload.model_validate(console_ns.payload or {})
-        args = payload.model_dump(exclude_none=True)
-
-        streaming = payload.response_mode == "streaming"
-        args["auto_generate_name"] = False
-
-        installed_app.last_used_at = naive_utc_now()
-        db.session.commit()
-
+    @console_ns.response(HTTPStatus.OK, "Success")
+    @console_account_admission()
+    @get_installed_app
+    @model_validate(CompletionMessageExplorePayload)
+    def post(
+        self,
+        req_data: CompletionMessageExplorePayload,
+        request_context: RequestContext,
+        installed_app: InstalledAppRef,
+    ) -> Response:
         try:
-            response = AppGenerateService.generate(
-                app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=streaming
+            response = application_services().installed_apps.generation.generate_completion(
+                installed_app=installed_app,
+                account_id=request_context.account_id,
+                args=req_data.model_dump(exclude_none=True),
             )
 
+            # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
+        except AppDefinitionUnavailableError:
+            raise AppUnavailableError() from None
+        except InstalledAppNotCompletionError:
+            raise NotCompletionAppError() from None
+        except InstalledAppNotFoundError:
+            raise NotFoundError("Installed app not found") from None
+        except AccountNotFoundError:
+            raise UnauthorizedError("Account no longer exists.") from None
         except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFoundError("Conversation Not Exists.")
         except services.errors.conversation.ConversationCompletedError:
             raise ConversationCompletedError()
         except services.errors.app_model_config.AppModelConfigBrokenError:
@@ -133,58 +141,62 @@ class CompletionApi(InstalledAppResource):
     "/installed-apps/<uuid:installed_app_id>/completion-messages/<string:task_id>/stop",
     endpoint="installed_app_stop_completion",
 )
-class CompletionStopApi(InstalledAppResource):
-    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
-    @with_current_user_id
-    def post(self, current_user_id: str, installed_app: InstalledApp, task_id: str):
-        app_model = installed_app.app
-        if app_model is None:
-            raise AppUnavailableError()
-        if app_model.mode != AppMode.COMPLETION:
+class CompletionStopApi(Resource):
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @console_account_admission()
+    @get_installed_app
+    def post(
+        self, request_context: RequestContext, installed_app: InstalledAppRef, task_id: str
+    ) -> tuple[dict[str, object], int]:
+        app_mode = installed_app.app_mode
+        if app_mode != AppMode.COMPLETION:
             raise NotCompletionAppError()
 
-        AppTaskService.stop_task(
+        application_services().app_tasks.stop_task(
             task_id=task_id,
             invoke_from=InvokeFrom.EXPLORE,
-            user_id=current_user_id,
-            app_mode=AppMode.value_of(app_model.mode),
+            user_id=request_context.account_id,
+            app_mode=AppMode.value_of(app_mode),
         )
 
-        return {"result": "success"}, 200
+        return SimpleResultResponse(result="success").model_dump(mode="json"), HTTPStatus.OK
 
 
 @console_ns.route(
     "/installed-apps/<uuid:installed_app_id>/chat-messages",
     endpoint="installed_app_chat_completion",
 )
-class ChatApi(InstalledAppResource):
+class ChatApi(Resource):
     @console_ns.expect(console_ns.models[ChatMessagePayload.__name__])
-    @console_ns.response(200, "Success", console_ns.models[GeneratedAppResponse.__name__])
-    @with_current_user
-    def post(self, current_user: Account, installed_app: InstalledApp):
-        app_model = installed_app.app
-        if app_model is None:
-            raise AppUnavailableError()
-        app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
-            raise NotChatAppError()
-
-        payload = ChatMessagePayload.model_validate(console_ns.payload or {})
-        args = payload.model_dump(exclude_none=True)
-
-        args["auto_generate_name"] = False
-
-        installed_app.last_used_at = naive_utc_now()
-        db.session.commit()
-
+    @console_ns.response(HTTPStatus.OK, "Success")
+    @console_account_admission()
+    @get_installed_app
+    @model_validate(ChatMessagePayload)
+    def post(
+        self,
+        req_data: ChatMessagePayload,
+        request_context: RequestContext,
+        installed_app: InstalledAppRef,
+    ) -> Response:
         try:
-            response = AppGenerateService.generate(
-                app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=True
+            response = application_services().installed_apps.generation.generate_chat(
+                installed_app=installed_app,
+                account_id=request_context.account_id,
+                args=req_data.model_dump(exclude_none=True),
             )
 
+            # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
+        except AppDefinitionUnavailableError:
+            raise AppUnavailableError() from None
+        except InstalledAppNotChatError:
+            raise NotChatAppError() from None
+        except InstalledAppNotFoundError:
+            raise NotFoundError("Installed app not found") from None
+        except AccountNotFoundError:
+            raise UnauthorizedError("Account no longer exists.") from None
         except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFoundError("Conversation Not Exists.")
         except services.errors.conversation.ConversationCompletedError:
             raise ConversationCompletedError()
         except services.errors.app_model_config.AppModelConfigBrokenError:
@@ -211,22 +223,22 @@ class ChatApi(InstalledAppResource):
     "/installed-apps/<uuid:installed_app_id>/chat-messages/<string:task_id>/stop",
     endpoint="installed_app_stop_chat_completion",
 )
-class ChatStopApi(InstalledAppResource):
-    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
-    @with_current_user_id
-    def post(self, current_user_id: str, installed_app: InstalledApp, task_id: str):
-        app_model = installed_app.app
-        if app_model is None:
-            raise AppUnavailableError()
-        app_mode = AppMode.value_of(app_model.mode)
+class ChatStopApi(Resource):
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @console_account_admission()
+    @get_installed_app
+    def post(
+        self, request_context: RequestContext, installed_app: InstalledAppRef, task_id: str
+    ) -> tuple[dict[str, object], int]:
+        app_mode = AppMode.value_of(installed_app.app_mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
-        AppTaskService.stop_task(
+        application_services().app_tasks.stop_task(
             task_id=task_id,
             invoke_from=InvokeFrom.EXPLORE,
-            user_id=current_user_id,
+            user_id=request_context.account_id,
             app_mode=app_mode,
         )
 
-        return {"result": "success"}, 200
+        return SimpleResultResponse(result="success").model_dump(mode="json"), HTTPStatus.OK

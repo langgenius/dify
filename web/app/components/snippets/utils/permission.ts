@@ -6,15 +6,21 @@ export const SnippetPermission = {
   Management: 'snippets.management',
 } as const satisfies Record<string, PermissionKey>
 
-export const canCreateAndModifySnippets = (workspacePermissionKeys: readonly PermissionKey[] | null | undefined) => {
+export const canCreateAndModifySnippets = (
+  workspacePermissionKeys: readonly PermissionKey[] | null | undefined,
+) => {
   return hasPermission(workspacePermissionKeys, SnippetPermission.CreateAndModify)
 }
 
-export const canManageSnippets = (workspacePermissionKeys: readonly PermissionKey[] | null | undefined) => {
+export const canManageSnippets = (
+  workspacePermissionKeys: readonly PermissionKey[] | null | undefined,
+) => {
   return hasPermission(workspacePermissionKeys, SnippetPermission.Management)
 }
 
-export const canAccessSnippets = (workspacePermissionKeys: readonly PermissionKey[] | null | undefined) => {
+export const canAccessSnippets = (
+  workspacePermissionKeys: readonly PermissionKey[] | null | undefined,
+) => {
   return hasPermission(workspacePermissionKeys, [
     SnippetPermission.CreateAndModify,
     SnippetPermission.Management,

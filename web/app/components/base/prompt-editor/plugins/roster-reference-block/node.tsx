@@ -1,12 +1,6 @@
-import type {
-  NodeKey,
-  SerializedLexicalNode,
-} from 'lexical'
+import type { NodeKey, SerializedLexicalNode } from 'lexical'
 import type { JSX } from 'react'
-import {
-  $applyNodeReplacement,
-  DecoratorNode,
-} from 'lexical'
+import { $applyNodeReplacement, DecoratorNode } from 'lexical'
 import RosterReferenceBlockComponent from './component'
 
 type SerializedRosterReferenceBlockNode = SerializedLexicalNode & {
@@ -47,7 +41,9 @@ export class RosterReferenceBlockNode extends DecoratorNode<JSX.Element> {
     return <RosterReferenceBlockComponent text={this.getTextContent()} />
   }
 
-  static override importJSON(serializedNode: SerializedRosterReferenceBlockNode): RosterReferenceBlockNode {
+  static override importJSON(
+    serializedNode: SerializedRosterReferenceBlockNode,
+  ): RosterReferenceBlockNode {
     return $createRosterReferenceBlockNode(serializedNode.text)
   }
 

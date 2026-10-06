@@ -10,7 +10,7 @@ from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.workflow.nodes.knowledge_retrieval.retrieval import KnowledgeRetrievalRequest
 from models.dataset import Dataset, Document
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
-from services.account_service import AccountService, TenantService
+from tests.test_containers_integration_tests.helpers import accounts as account_fixtures
 from tests.test_containers_integration_tests.helpers import generate_valid_password
 
 
@@ -22,14 +22,14 @@ class TestGetAvailableDatasetsIntegration:
         fake = Faker()
 
         # Create account and tenant
-        account = AccountService.create_account(
+        account = account_fixtures.create_account(
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
             session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
+        account_fixtures.create_owner_workspace(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Create dataset
@@ -84,14 +84,14 @@ class TestGetAvailableDatasetsIntegration:
         # Arrange
         fake = Faker()
 
-        account = AccountService.create_account(
+        account = account_fixtures.create_account(
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
             session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
+        account_fixtures.create_owner_workspace(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         dataset = Dataset(
@@ -138,14 +138,14 @@ class TestGetAvailableDatasetsIntegration:
         # Arrange
         fake = Faker()
 
-        account = AccountService.create_account(
+        account = account_fixtures.create_account(
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
             session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
+        account_fixtures.create_owner_workspace(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         dataset = Dataset(
@@ -192,14 +192,14 @@ class TestGetAvailableDatasetsIntegration:
         # Arrange
         fake = Faker()
 
-        account = AccountService.create_account(
+        account = account_fixtures.create_account(
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
             session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
+        account_fixtures.create_owner_workspace(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         dataset = Dataset(
@@ -256,14 +256,14 @@ class TestGetAvailableDatasetsIntegration:
         # Arrange
         fake = Faker()
 
-        account = AccountService.create_account(
+        account = account_fixtures.create_account(
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
             session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
+        account_fixtures.create_owner_workspace(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         dataset = Dataset(
@@ -291,28 +291,24 @@ class TestGetAvailableDatasetsIntegration:
         fake = Faker()
 
         # Create two accounts/tenants
-        account1 = AccountService.create_account(
+        account1 = account_fixtures.create_account(
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
             session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(
-            account1, name=fake.company(), session=db_session_with_containers
-        )
+        account_fixtures.create_owner_workspace(account1, name=fake.company(), session=db_session_with_containers)
         tenant1 = account1.current_tenant
 
-        account2 = AccountService.create_account(
+        account2 = account_fixtures.create_account(
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
             session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(
-            account2, name=fake.company(), session=db_session_with_containers
-        )
+        account_fixtures.create_owner_workspace(account2, name=fake.company(), session=db_session_with_containers)
         tenant2 = account2.current_tenant
 
         # Create dataset for tenant1
@@ -373,14 +369,14 @@ class TestGetAvailableDatasetsIntegration:
         # Arrange
         fake = Faker()
 
-        account = AccountService.create_account(
+        account = account_fixtures.create_account(
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
             session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
+        account_fixtures.create_owner_workspace(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Don't create any datasets
@@ -398,14 +394,14 @@ class TestGetAvailableDatasetsIntegration:
         # Arrange
         fake = Faker()
 
-        account = AccountService.create_account(
+        account = account_fixtures.create_account(
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
             session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
+        account_fixtures.create_owner_workspace(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Create multiple datasets
@@ -460,14 +456,14 @@ class TestKnowledgeRetrievalIntegration:
         # Arrange
         fake = Faker()
 
-        account = AccountService.create_account(
+        account = account_fixtures.create_account(
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
             session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
+        account_fixtures.create_owner_workspace(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         dataset = Dataset(
@@ -518,7 +514,7 @@ class TestKnowledgeRetrievalIntegration:
             with patch.object(dataset_retrieval, "get_metadata_filter_condition", return_value=(None, None)):
                 with patch.object(dataset_retrieval, "multiple_retrieve", return_value=[]):
                     # Act
-                    result = dataset_retrieval.knowledge_retrieval(request)
+                    result = dataset_retrieval.knowledge_retrieval(db_session_with_containers, request)
 
                     # Assert
                     assert isinstance(result, list)
@@ -529,14 +525,14 @@ class TestKnowledgeRetrievalIntegration:
         # Arrange
         fake = Faker()
 
-        account = AccountService.create_account(
+        account = account_fixtures.create_account(
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
             session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
+        account_fixtures.create_owner_workspace(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Create dataset but no documents
@@ -567,7 +563,7 @@ class TestKnowledgeRetrievalIntegration:
         # Mock rate limit check
         with patch.object(dataset_retrieval, "_check_knowledge_rate_limit"):
             # Act
-            result = dataset_retrieval.knowledge_retrieval(request)
+            result = dataset_retrieval.knowledge_retrieval(db_session_with_containers, request)
 
             # Assert
             assert result == []
@@ -578,14 +574,14 @@ class TestKnowledgeRetrievalIntegration:
         # Arrange
         fake = Faker()
 
-        account = AccountService.create_account(
+        account = account_fixtures.create_account(
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
             session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
+        account_fixtures.create_owner_workspace(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         dataset = Dataset(
@@ -620,16 +616,16 @@ class TestKnowledgeRetrievalIntegration:
         ):
             # Act & Assert
             with pytest.raises(Exception, match="Rate limit exceeded"):
-                dataset_retrieval.knowledge_retrieval(request)
+                dataset_retrieval.knowledge_retrieval(db_session_with_containers, request)
 
 
 @pytest.fixture
 def mock_external_service_dependencies():
     with (
-        patch("services.account_service.FeatureService") as mock_account_feature_service,
+        patch("services.account.login_adapters.SystemFeatureService") as mock_account_feature_service,
     ):
         # Setup default mock returns for account service
-        mock_account_feature_service.get_system_features.return_value.is_allow_register = True
+        mock_account_feature_service.is_registration_allowed.return_value = True
 
         yield {
             "account_feature_service": mock_account_feature_service,

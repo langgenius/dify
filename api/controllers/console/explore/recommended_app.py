@@ -1,24 +1,34 @@
-from typing import Any
+from http import HTTPStatus
+from typing import Any, Literal
 from uuid import UUID
 
-from flask import request
+from flask import make_response, send_file
 from flask_restx import Resource
-from pydantic import BaseModel, Field, RootModel, computed_field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
 
-from constants.languages import languages
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
-from controllers.console.wraps import account_initialization_required, with_current_user
-from extensions.ext_database import db
+from controllers.console.explore.error import RecommendedAppNotFoundError
+from controllers.console.flask_admission import console_account_admission
+from controllers.console.wraps import model_validate
+from extensions.ext_application_services import application_services
+from fields.app_export_fields import AppExportResponse
 from fields.base import ResponseModel
-from libs.helper import build_icon_url
-from libs.login import login_required
-from models import Account
-from services.recommended_app_service import RecommendedAppService
+from libs.flask_restx_compat import BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY
+from libs.helper import build_icon_url, dump_response
+from machinery.context import RequestContext
+from services.recommended_app_query_service import RecommendedAppNotFoundError as RecommendedAppQueryNotFoundError
 
 
 class RecommendedAppsQuery(BaseModel):
-    language: str | None = Field(default=None, description="Language code for recommended app localization")
+    language: str = Field(default="en-US", description="Language code for recommended app localization")
+
+
+class RecommendedAgentExportQuery(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    version_id: UUID = Field(description="Current published template snapshot ID")
+    format: Literal["yaml", "ifpkg"] = Field(default="ifpkg", description="Export format; defaults to ifpkg")
 
 
 class RecommendedAppInfoResponse(ResponseModel):
@@ -58,7 +68,7 @@ class RecommendedAppResponse(ResponseModel):
     categories: list[str] = Field(default_factory=list)
     position: int | None = None
     is_listed: bool | None = None
-    can_trial: bool | None = None
+    can_trial: bool
 
 
 class RecommendedAppListResponse(ResponseModel):
@@ -70,68 +80,106 @@ class LearnDifyAppListResponse(ResponseModel):
     recommended_apps: list[RecommendedAppResponse]
 
 
-class RecommendedAppDetailResponse(RootModel[dict[str, Any]]):
-    root: dict[str, Any]
+class RecommendedAppDetailResponse(ResponseModel):
+    id: str
+    name: str
+    icon: str | None = None
+    icon_background: str | None = None
+    mode: str
+    export_data: str
+    can_trial: bool
+    package_url: str | None = Field(default=None, description="Download URL for a New Agent .ifpkg template")
+    version_id: str | None = Field(default=None, description="Published version for direct local template creation")
 
 
 register_schema_models(
     console_ns,
     RecommendedAppsQuery,
+    RecommendedAgentExportQuery,
+)
+register_response_schema_models(
+    console_ns,
     RecommendedAppInfoResponse,
     RecommendedAppResponse,
     RecommendedAppListResponse,
     LearnDifyAppListResponse,
+    RecommendedAppDetailResponse,
+    AppExportResponse,
 )
-register_response_schema_models(console_ns, RecommendedAppDetailResponse)
-
-
-def _resolve_language(language: str | None, user: Account) -> str:
-    if language and language in languages:
-        return language
-    if user.interface_language:
-        return user.interface_language
-    return languages[0]
 
 
 @console_ns.route("/explore/apps")
 class RecommendedAppListApi(Resource):
     @console_ns.doc(params=query_params_from_model(RecommendedAppsQuery))
-    @console_ns.response(200, "Success", console_ns.models[RecommendedAppListResponse.__name__])
-    @login_required
-    @account_initialization_required
-    @with_current_user
-    def get(self, current_user: Account):
-        # language args
-        args = RecommendedAppsQuery.model_validate(request.args.to_dict(flat=True))
-        language_prefix = _resolve_language(args.language, current_user)
-
-        return RecommendedAppListResponse.model_validate(
-            RecommendedAppService.get_recommended_apps_and_categories(db.session, language_prefix),
-            from_attributes=True,
-        ).model_dump(mode="json")
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[RecommendedAppListResponse.__name__])
+    @console_account_admission()
+    @model_validate(RecommendedAppsQuery)
+    def get(self, req_data: RecommendedAppsQuery, _request_context: RequestContext):
+        return dump_response(
+            RecommendedAppListResponse,
+            application_services().recommended_app_queries.list_recommended(
+                language=req_data.language,
+            ),
+        )
 
 
 @console_ns.route("/explore/apps/learn-dify")
 class LearnDifyAppListApi(Resource):
     @console_ns.doc(params=query_params_from_model(RecommendedAppsQuery))
-    @console_ns.response(200, "Success", console_ns.models[LearnDifyAppListResponse.__name__])
-    @login_required
-    @account_initialization_required
-    @with_current_user
-    def get(self, current_user: Account):
-        args = RecommendedAppsQuery.model_validate(request.args.to_dict(flat=True))
-        language_prefix = _resolve_language(args.language, current_user)
-
-        return LearnDifyAppListResponse.model_validate(
-            RecommendedAppService.get_learn_dify_apps(db.session, language_prefix),
-            from_attributes=True,
-        ).model_dump(mode="json")
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[LearnDifyAppListResponse.__name__])
+    @console_account_admission()
+    @model_validate(RecommendedAppsQuery)
+    def get(self, req_data: RecommendedAppsQuery, _request_context: RequestContext):
+        return dump_response(
+            LearnDifyAppListResponse,
+            application_services().recommended_app_queries.list_learn_dify(
+                language=req_data.language,
+            ),
+        )
 
 
 @console_ns.route("/explore/apps/<uuid:app_id>")
 class RecommendedAppApi(Resource):
-    @console_ns.response(200, "Success", console_ns.models[RecommendedAppDetailResponse.__name__])
-    @login_required
-    @account_initialization_required
-    def get(self, app_id: UUID):
-        return RecommendedAppService.get_recommend_app_detail(db.session, str(app_id))
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[RecommendedAppDetailResponse.__name__])
+    @console_ns.response(HTTPStatus.NOT_FOUND, "Recommended app not found")
+    @console_account_admission()
+    def get(self, _request_context: RequestContext, app_id: UUID):
+        try:
+            result = application_services().recommended_app_queries.get_detail(str(app_id))
+        except RecommendedAppQueryNotFoundError:
+            raise RecommendedAppNotFoundError() from None
+        return dump_response(RecommendedAppDetailResponse, result)
+
+
+@console_ns.route("/trial-apps/<uuid:app_id>/export")
+class RecommendedAgentExportApi(Resource):
+    @console_ns.doc(params=query_params_from_model(RecommendedAgentExportQuery))
+    @console_ns.doc(
+        produces=["application/json", "application/zip"],
+        vendor={BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY: ["application/zip"]},
+    )
+    @console_ns.response(200, "Published Agent template export", console_ns.models[AppExportResponse.__name__])
+    @console_ns.response(404, "Published template unavailable")
+    @model_validate(RecommendedAgentExportQuery)
+    def get(self, query: RecommendedAgentExportQuery, app_id: UUID):
+        # Both formats require public catalog membership and the current published version.
+        try:
+            exported = application_services().recommended_app_packages.export(
+                app_id=str(app_id), version_id=query.version_id, format=query.format
+            )
+        except RecommendedAppQueryNotFoundError:
+            raise RecommendedAppNotFoundError() from None
+        if isinstance(exported, str):
+            response = make_response(dump_response(AppExportResponse, {"data": exported}))
+            response.headers["Cache-Control"] = "no-store"
+            return response
+        try:
+            response = send_file(
+                exported.archive, mimetype="application/zip", as_attachment=True, download_name=exported.filename
+            )
+        except Exception:
+            exported.close()
+            raise
+        response.headers["Cache-Control"] = "no-store"
+        response.call_on_close(exported.close)
+        return response

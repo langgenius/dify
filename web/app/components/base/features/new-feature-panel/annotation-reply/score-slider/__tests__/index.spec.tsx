@@ -1,46 +1,44 @@
-import { render, screen } from '@testing-library/react'
-import ScoreSlider from '../index'
+import { act, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import ScoreSlider from '..'
 
 describe('ScoreSlider', () => {
-  const getSliderInput = () => screen.getByLabelText('appDebug.feature.annotation.scoreThreshold.title')
+  it('should display and update the score with two decimal places', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    const { rerender } = render(<ScoreSlider value={0.9} onChange={onChange} />)
 
-  beforeEach(() => {
-    vi.clearAllMocks()
+    const slider = screen.getByRole('slider', {
+      name: 'appDebug.feature.annotation.scoreThreshold.title',
+    })
+    expect(slider).toHaveAttribute('aria-valuenow', '0.9')
+    expect(slider).toHaveAttribute('aria-valuetext', '0.90')
+    expect(screen.getByRole('status')).toHaveTextContent('0.90')
+    expect(screen.getByRole('status')).toHaveAttribute('for', slider.id)
+    act(() => slider.focus())
+    await user.keyboard('{ArrowRight}')
+    expect(onChange).toHaveBeenCalledWith(0.91, expect.anything())
+    rerender(<ScoreSlider value={0.91} onChange={onChange} />)
+    expect(screen.getByRole('status')).toHaveTextContent('0.91')
+    expect(slider).toHaveAttribute('aria-valuetext', '0.91')
   })
 
-  it('should render the slider', () => {
-    render(<ScoreSlider value={90} onChange={vi.fn()} />)
+  it.each([
+    ['{PageUp}', 0.6],
+    ['{PageDown}', 0.4],
+    ['{Shift>}{ArrowRight}{/Shift}', 0.6],
+    ['{Shift>}{ArrowLeft}{/Shift}', 0.4],
+  ])('should adjust the score by 0.10 with %s', async (key, expectedValue) => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    render(<ScoreSlider value={0.5} onChange={onChange} />)
 
-    expect(getSliderInput()).toBeInTheDocument()
-  })
+    const slider = screen.getByRole('slider', {
+      name: 'appDebug.feature.annotation.scoreThreshold.title',
+    })
+    act(() => slider.focus())
+    await user.keyboard(key)
 
-  it('should display easy match and accurate match labels', () => {
-    render(<ScoreSlider value={90} onChange={vi.fn()} />)
-
-    expect(screen.getByText('0.0')).toBeInTheDocument()
-    expect(screen.getByText('1.0')).toBeInTheDocument()
-    expect(screen.getByText(/feature\.annotation\.scoreThreshold\.easyMatch/)).toBeInTheDocument()
-    expect(screen.getByText(/feature\.annotation\.scoreThreshold\.accurateMatch/)).toBeInTheDocument()
-  })
-
-  it('should render with custom className', () => {
-    const { container } = render(<ScoreSlider className="custom-class" value={90} onChange={vi.fn()} />)
-
-    expect(getSliderInput()).toBeInTheDocument()
-    expect(container.firstChild).toHaveClass('custom-class')
-  })
-
-  it('should pass value to the slider', () => {
-    render(<ScoreSlider value={95} onChange={vi.fn()} />)
-
-    expect(getSliderInput()).toHaveValue('95')
-    expect(screen.getByText('0.95')).toBeInTheDocument()
-  })
-
-  it('should allow zero as the minimum score threshold', () => {
-    render(<ScoreSlider value={0} onChange={vi.fn()} />)
-
-    expect(getSliderInput()).toHaveValue('0')
-    expect(screen.getByText('0.00')).toBeInTheDocument()
+    expect(onChange).toHaveBeenCalledWith(expectedValue, expect.anything())
   })
 })

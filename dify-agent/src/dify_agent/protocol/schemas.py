@@ -21,13 +21,13 @@ by ``DIFY_AGENT_MODEL_LAYER_ID``, the optional history layer named by
 ``DIFY_AGENT_HISTORY_LAYER_ID``, and the optional structured output layer named
 by ``DIFY_AGENT_OUTPUT_LAYER_ID``. Request-level ``on_exit`` signals decide
 whether each active layer is suspended or deleted when the run exits, with
-suspend as the default so successful terminal events can include resumable
-snapshots. Successful runs always publish the resumable Agenton session snapshot
-on the terminal ``run_succeeded`` event together with exactly one of the final
-JSON-safe ``output`` or a deferred external ``deferred_tool_call`` payload. That
-lets consumers treat terminal success events as complete run summaries without a
-separate pause protocol. Session snapshots carry only layer lifecycle/runtime
-state in compositor order; they do not persist output-layer config. Resumed
+suspend as the default so terminal events can include resumable snapshots.
+Successful runs always publish the resumable Agenton session snapshot on the
+terminal ``run_succeeded`` event; failed and cancelled runs publish it when the
+compositor context was entered and exited. Success includes either the final JSON-safe
+``output`` or a deferred external ``deferred_tool_call`` payload. Session
+snapshots carry only layer lifecycle/runtime state in
+compositor order; they do not persist output-layer config. Resumed
 structured-output runs therefore must resubmit the same ``output`` layer in
 ``composition.layers[]`` so snapshot layer name/order still matches the
 composition and the runtime can rebuild the same structured output contract.
@@ -36,6 +36,8 @@ composition and the runtime can rebuild the same structured output contract.
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from decimal import Decimal
+from enum import StrEnum
 from typing import Annotated, ClassVar, Final, Literal, TypeAlias
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, TypeAdapter, model_serializer, model_validator
@@ -50,7 +52,6 @@ DIFY_AGENT_MODEL_LAYER_ID: Final[str] = "llm"
 DIFY_AGENT_HISTORY_LAYER_ID: Final[str] = "history"
 DIFY_AGENT_OUTPUT_LAYER_ID: Final[str] = "output"
 RunStatus = Literal["running", "succeeded", "failed", "cancelled"]
-RunPurpose = Literal["workflow_node", "single_step", "agent_app", "babysit", "fasten_preview"]
 RunEventType = Literal[
     "run_started",
     "pydantic_ai_event",
@@ -58,6 +59,16 @@ RunEventType = Literal[
     "run_failed",
     "run_cancelled",
 ]
+
+
+class RunFailureType(StrEnum):
+    """Stable machine-readable categories for failed Dify Agent runs.
+
+    Run-limit failures cover execution budgets enforced by Dify Agent, not
+    provider, connection, or wall-clock timeouts.
+    """
+
+    AGENT_RUN_LIMIT_EXCEEDED = "agent_run_limit_exceeded"
 
 
 def utc_now() -> datetime:
@@ -136,7 +147,6 @@ class CreateRunRequest(BaseModel):
     """
 
     composition: RunComposition
-    purpose: RunPurpose = "workflow_node"
     idempotency_key: str | None = None
     metadata: dict[str, JsonValue] = Field(default_factory=dict)
     session_snapshot: CompositorSessionSnapshot | None = None
@@ -215,6 +225,7 @@ class RunStatusResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     error: str | None = None
+    error_type: RunFailureType | None = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
@@ -252,12 +263,44 @@ class DeferredToolCallPayload(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
 
+class AgentRunUsage(BaseModel):
+    """Complete model usage reported for one Agent run.
+
+    Pricing fields default to zero so events from older Agent backend versions that contain only
+    token counts remain valid when a new consumer replays persisted Redis streams.
+    """
+
+    prompt_tokens: int = 0
+    prompt_unit_price: Decimal = Decimal(0)
+    prompt_price_unit: Decimal = Decimal(0)
+    prompt_price: Decimal = Decimal(0)
+    completion_tokens: int = 0
+    completion_unit_price: Decimal = Decimal(0)
+    completion_price_unit: Decimal = Decimal(0)
+    completion_price: Decimal = Decimal(0)
+    total_tokens: int = 0
+    total_price: Decimal = Decimal(0)
+    currency: str = "USD"
+    latency: float = 0.0
+    time_to_first_token: float | None = None
+    time_to_generate: float | None = None
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+    @model_validator(mode="after")
+    def _derive_total_tokens(self) -> AgentRunUsage:
+        if self.total_tokens == 0 and (self.prompt_tokens > 0 or self.completion_tokens > 0):
+            self.total_tokens = self.prompt_tokens + self.completion_tokens
+        return self
+
+
 class RunSucceededEventData(BaseModel):
     """Terminal success payload for final output or deferred tool continuation."""
 
     output: JsonValue | None = None
     deferred_tool_call: DeferredToolCallPayload | None = None
     session_snapshot: CompositorSessionSnapshot
+    usage: AgentRunUsage | None = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
@@ -276,6 +319,8 @@ class RunSucceededEventData(BaseModel):
             data["output"] = self.output
         if "deferred_tool_call" in self.model_fields_set:
             data["deferred_tool_call"] = self.deferred_tool_call
+        if self.usage is not None:
+            data["usage"] = self.usage
         return data
 
 
@@ -283,7 +328,10 @@ class RunFailedEventData(BaseModel):
     """Terminal failure payload shown to polling and SSE consumers."""
 
     error: str
+    error_type: RunFailureType | None = None
     reason: str | None = None
+    session_snapshot: CompositorSessionSnapshot | None = None
+    usage: AgentRunUsage | None = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
@@ -293,6 +341,8 @@ class RunCancelledEventData(BaseModel):
 
     reason: str | None = None
     message: str | None = None
+    session_snapshot: CompositorSessionSnapshot | None = None
+    usage: AgentRunUsage | None = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
@@ -315,10 +365,11 @@ class RunStartedEvent(BaseRunEvent):
 
 
 class PydanticAIStreamRunEvent(BaseRunEvent):
-    """Pydantic AI stream event using the upstream typed event model."""
+    """Pydantic AI stream event with optional Dify Agent semantic annotations."""
 
     type: Literal["pydantic_ai_event"] = "pydantic_ai_event"
     data: AgentStreamEvent
+    agent_message_delta: str | None = None
 
 
 class RunSucceededEvent(BaseRunEvent):
@@ -329,7 +380,7 @@ class RunSucceededEvent(BaseRunEvent):
 
 
 class RunFailedEvent(BaseRunEvent):
-    """Terminal failure event emitted before the run status becomes failed."""
+    """Terminal failure event atomically committed with the failed run status."""
 
     type: Literal["run_failed"] = "run_failed"
     data: RunFailedEventData
@@ -361,6 +412,7 @@ class RunEventsResponse(BaseModel):
 
 __all__ = [
     "BaseRunEvent",
+    "AgentRunUsage",
     "CancelRunRequest",
     "CancelRunResponse",
     "CreateRunRequest",
@@ -382,7 +434,7 @@ __all__ = [
     "RunEventsResponse",
     "RunFailedEvent",
     "RunFailedEventData",
-    "RunPurpose",
+    "RunFailureType",
     "RunStartedEvent",
     "RunStatus",
     "RunStatusResponse",

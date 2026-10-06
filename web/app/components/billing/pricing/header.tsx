@@ -1,47 +1,32 @@
-import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import DifyLogo from '../../base/logo/dify-logo'
+import { DifyLogo } from '../../base/logo/dify-logo'
 import styles from './header.module.css'
 
-type HeaderProps = {
-  onClose: () => void
-}
-
-const Header = ({
-  onClose,
-}: HeaderProps) => {
-  const { t } = useTranslation()
+const Header = () => {
+  const { t } = useTranslation(['billing'])
 
   return (
-    <div className="flex min-h-[105px] w-full justify-center px-10">
-      <div className="relative flex max-w-[1680px] grow flex-col justify-end gap-y-1 border-x border-divider-accent p-6 pt-8">
-        <div className="flex items-end">
-          <div aria-hidden="true" className="py-[5px]">
-            <DifyLogo className="h-[27px] w-[60px]" />
+    <div className="flex min-h-26.25 w-full justify-center px-3 xl:px-10">
+      <div className="relative flex max-w-[1680px] min-w-0 grow flex-col justify-end gap-y-1 border-x border-divider-accent p-3 pt-8 xl:p-6 xl:pt-8">
+        <div className="flex flex-wrap items-end pr-14">
+          <div aria-hidden="true" className="py-1.25">
+            <DifyLogo alt="" className="h-6.75 w-15" />
           </div>
           <DialogTitle
             className={cn(
-              'bg-billing-plan-title-bg bg-clip-text px-1.5 text-[37px] leading-[1.2] text-transparent',
+              'min-w-0 bg-billing-plan-title-bg bg-clip-text px-1.5 text-[37px] leading-[1.2] wrap-anywhere text-transparent',
               styles.instrumentSerif,
             )}
           >
-            {t('plansCommon.title.plans', { ns: 'billing' })}
+            {t(($) => $['plansCommon.title.plans'], { ns: 'billing' })}
           </DialogTitle>
         </div>
         <DialogDescription className="system-sm-regular text-text-tertiary">
-          {t('plansCommon.title.description', { ns: 'billing' })}
+          {t(($) => $['plansCommon.title.description'], { ns: 'billing' })}
         </DialogDescription>
-        <Button
-          variant="secondary"
-          className="absolute right-[-18px] bottom-[40.5px] z-10 size-9 rounded-full p-2"
-          aria-label={t('operation.close', { ns: 'common' })}
-          onClick={onClose}
-        >
-          <span aria-hidden="true" className="i-ri-close-line size-5" />
-        </Button>
       </div>
     </div>
   )

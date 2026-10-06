@@ -1,15 +1,17 @@
 'use client'
+import type { ComponentProps } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Drawer,
   DrawerBackdrop,
-  DrawerCloseButton,
+  DrawerClose,
   DrawerContent,
   DrawerPopup,
   DrawerPortal,
   DrawerTitle,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useTranslation } from 'react-i18next'
 
 type IFloatRightContainerProps = {
@@ -21,6 +23,7 @@ type IFloatRightContainerProps = {
   panelClassName?: string
   title?: string
   mask?: boolean
+  finalFocus?: ComponentProps<typeof DrawerPopup>['finalFocus']
 }
 
 const FloatRightContainer = ({
@@ -32,8 +35,9 @@ const FloatRightContainer = ({
   panelClassName,
   title,
   mask = true,
+  finalFocus,
 }: IFloatRightContainerProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
     <>
@@ -43,14 +47,19 @@ const FloatRightContainer = ({
           modal
           swipeDirection="right"
           onOpenChange={(open) => {
-            if (!open)
-              onClose()
+            if (!open) onClose()
           }}
         >
           <DrawerPortal>
             <DrawerBackdrop className={cn(!mask && 'bg-transparent')} />
             <DrawerViewport>
-              <DrawerPopup className={cn('data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-sm', panelClassName)}>
+              <DrawerPopup
+                finalFocus={finalFocus}
+                className={cn(
+                  'data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-sm',
+                  panelClassName,
+                )}
+              >
                 <DrawerContent className="flex min-h-0 flex-1 flex-col">
                   {(title || showClose) && (
                     <div className="mb-4 flex shrink-0 items-center justify-between">
@@ -60,9 +69,15 @@ const FloatRightContainer = ({
                         </DrawerTitle>
                       )}
                       {showClose && (
-                        <DrawerCloseButton
-                          aria-label={t('operation.close', { ns: 'common' })}
-                          className="size-6 rounded-md"
+                        <DrawerClose
+                          render={
+                            <IconButton
+                              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                              size="md"
+                            >
+                              <span aria-hidden="true" className="i-ri-close-line size-4" />
+                            </IconButton>
+                          }
                         />
                       )}
                     </div>
@@ -74,9 +89,7 @@ const FloatRightContainer = ({
           </DrawerPortal>
         </Drawer>
       )}
-      {(!isMobile && isOpen) && (
-        <>{children}</>
-      )}
+      {!isMobile && isOpen && <>{children}</>}
     </>
   )
 }

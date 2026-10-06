@@ -1,48 +1,46 @@
-# Playwright Best Practices For Dify E2E
+# Playwright Best Practices
 
-Use this reference when writing or reviewing locator, assertion, isolation, or synchronization logic for Dify's Cucumber-based E2E suite.
+Use this reference when writing or reviewing locator, assertion, isolation, or synchronization logic.
 
 Official sources:
 
 - https://playwright.dev/docs/best-practices
 - https://playwright.dev/docs/locators
+- https://playwright.dev/docs/actionability
 - https://playwright.dev/docs/test-assertions
+- https://playwright.dev/docs/test-timeouts
 - https://playwright.dev/docs/browser-contexts
+- https://playwright.dev/docs/events
+- https://playwright.dev/docs/trace-viewer
 
 ## What Matters Most
 
 ### 1. Keep scenarios isolated
 
-Playwright's model is built around clean browser contexts so one test does not leak into another. In Dify's suite, that principle maps to per-scenario session setup in `features/support/hooks.ts` and `DifyWorld`.
+Playwright's model is built around clean browser contexts so one test does not leak into another.
 
 Apply it like this:
 
 - do not depend on another scenario having run first
-- do not persist ad hoc scenario state outside `DifyWorld`
-- do not couple ordinary scenarios to `@fresh` behavior
-- when a flow needs special auth/session semantics, express that through the existing tag model or explicit hook changes
+- keep scenario state in the runner's scenario-owned context rather than module globals
+- model special authentication or session setup through explicit per-scenario fixtures rather than shared mutable state
 
-### 2. Prefer user-facing locators
+### 2. Select locators by user contract
 
-Playwright recommends built-in locators that reflect what users perceive on the page.
+Prefer built-in locators that match how the target is exposed to users:
 
-Preferred order in this repository:
+- interactive controls: role and accessible name
+- form controls: associated label; use placeholder when it is the relevant stable contract, especially when no label exists
+- non-interactive content: visible text or the relevant text alternative
+- elements without a meaningful user-facing contract: an intentional test id
 
-1. `getByRole`
-2. `getByLabel`
-3. `getByPlaceholder`
-4. `getByText`
-5. `getByTestId` when an explicit test contract is the most stable option
+This is a semantic choice, not a fixed ranking. Do not add incorrect roles or accessible names solely to satisfy a locator. When the product element should have user-facing semantics, fix that contract instead.
 
 Avoid raw CSS/XPath selectors unless no stable user-facing contract exists and adding one is not practical.
 
-Also remember:
+Locators are strict for single-element actions. Scope to a stable region or use `filter({ has, hasText })` to make the intended target unique. Treat `.first()`, `.last()`, or `.nth()` as a review signal: the positional choice should be intentional and stable, not merely silence ambiguity.
 
-- repeated content usually needs scoping to a stable container
-- exact text matching is often too brittle when role/name or label already exists
-- `getByTestId` is acceptable when semantics are weak but the contract is intentional
-
-### 3. Use web-first assertions
+### 3. Use web-first assertions with the right timeout owner
 
 Playwright assertions auto-wait and retry. Prefer them over manual state inspection.
 
@@ -62,6 +60,10 @@ Avoid:
 
 If a condition genuinely needs custom retry logic, use Playwright's polling/assertion tools deliberately and keep that choice local and explicit.
 
+Use `expect.poll` for non-DOM truth such as API state, backend eventual consistency, generated resources, or captured browser events. For DOM state, use locator assertions so Playwright can apply actionability and web-first retry semantics.
+
+Cucumber step and hook timeouts, Playwright locator/action timeouts, and Playwright assertion timeouts are separate budgets. `browserContext.setDefaultTimeout()` does not change the default five-second assertion timeout. Put an explicit longer assertion timeout only on the readiness owner that needs it; do not raise an outer timeout to mask a shorter inner failure.
+
 ### 4. Let actions wait for actionability
 
 Locator actions already wait for the element to be actionable. Do not preface every click/fill with extra timing logic unless the action needs a specific visible/ready assertion for clarity.
@@ -75,22 +77,20 @@ Bad pattern:
 
 - stack arbitrary waits before every action
 - wait on unstable implementation details instead of the visible state the user cares about
+- use `force: true` to bypass a real hit-target, overlay, or disabled-state failure
 
-### 5. Match debugging to the current suite
+When synchronizing on a one-shot popup, download, request, or response, create the wait before triggering the action, then await the event. A scenario-owned listener may instead capture events for a later assertion. Do not use `networkidle` as an application-readiness assertion; wait for the user-visible state or owned backend contract.
 
-Playwright's wider ecosystem supports traces and rich debugging tools. Dify's current suite already captures:
+### 5. Match debugging to the active harness
 
-- full-page screenshots
-- page HTML
-- console errors
-- page errors
-
-Use the existing artifact flow by default. If a task is specifically about improving diagnostics, confirm the change fits the current Cucumber architecture before importing broader Playwright tooling.
+Playwright supports traces, screenshots, page snapshots, and browser logs. Configure artifact capture in Cucumber hooks instead of adding parallel diagnostics to individual scenarios. If tracing is introduced, use `browserContext.tracing`; Playwright Test options such as `trace: 'on-first-retry'`, projects, workers, fixtures, reporters, and retries do not configure this harness.
 
 ## Review Questions
 
 - Would this locator survive DOM refactors that do not change user-visible behavior?
+- Is a positional locator expressing product order, or hiding an ambiguous match?
 - Is this assertion using Playwright's retrying semantics?
-- Is any explicit wait masking a real readiness problem?
+- Does an explicit timeout belong to the condition that is actually slow?
+- Was an event wait registered before the action that emits it?
 - Does this code preserve per-scenario isolation?
-- Is a new abstraction really needed, or does it bypass the existing `DifyWorld` + step-definition model?
+- Is a new abstraction really needed, or does it bypass the runner's scenario-owned context and lifecycle?

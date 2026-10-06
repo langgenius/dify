@@ -1,6 +1,7 @@
 import type { ComponentType } from 'react'
 import type { Components, StreamdownProps } from 'streamdown'
 import { createMathPlugin } from '@streamdown/math'
+import dynamic from 'next/dynamic'
 import { memo, useMemo } from 'react'
 import RemarkBreaks from 'remark-breaks'
 import { defaultRehypePlugins, defaultRemarkPlugins, Streamdown } from 'streamdown'
@@ -9,7 +10,6 @@ import {
   Img,
   Link,
   MarkdownButton,
-  MarkdownForm,
   Paragraph,
   PluginImg,
   PluginParagraph,
@@ -17,7 +17,6 @@ import {
   VideoBlock,
 } from '@/app/components/base/markdown-blocks'
 import { ALLOW_INLINE_STYLES, ENABLE_SINGLE_DOLLAR_LATEX } from '@/config'
-import dynamic from '@/next/dynamic'
 import { customUrlTransform } from './markdown-utils'
 import 'katex/dist/katex.min.css'
 
@@ -35,7 +34,17 @@ type SanitizeSchema = {
   [key: string]: unknown
 }
 
-const CodeBlock = dynamic(() => import('@/app/components/base/markdown-blocks/code-block'), { ssr: false })
+const MARKDOWN_FORM_TAG_RE = /<form(?:\s|>)/i
+
+const MarkdownForm = dynamic(() => import('@/app/components/base/markdown-blocks/form'), {
+  ssr: false,
+})
+
+const CodeBlock = dynamic(
+  () =>
+    import('@/app/components/base/markdown-blocks/code-block').then((module) => module.CodeBlock),
+  { ssr: false },
+)
 
 const mathPlugin = createMathPlugin({
   singleDollarTextMath: ENABLE_SINGLE_DOLLAR_LATEX,
@@ -77,8 +86,10 @@ const ALLOWED_TAGS: Record<string, string[]> = {
  * when `rehypePlugins` is the exact default reference (identity check).
  */
 function buildRehypePlugins(extraPlugins?: PluggableList): PluggableList {
-  const [sanitizePlugin, defaultSanitizeSchema]
-    = defaultRehypePlugins.sanitize as [Pluggable, SanitizeSchema]
+  const [sanitizePlugin, defaultSanitizeSchema] = defaultRehypePlugins.sanitize as [
+    Pluggable,
+    SanitizeSchema,
+  ]
 
   const tagNamesSet = new Set([
     ...(defaultSanitizeSchema.tagNames ?? []),
@@ -102,21 +113,19 @@ function buildRehypePlugins(extraPlugins?: PluggableList): PluggableList {
         return !overrideNames.has(name as string)
       })
       mergedAttributes[tag] = [...filtered, ...(ALLOWED_TAGS[tag] ?? [])]
-    }
-    else {
+    } else {
       mergedAttributes[tag] = ALLOWED_TAGS[tag]!
     }
   }
 
   // The default schema forces `input` to be `{disabled:true, type:'checkbox'}`
   // via `required`.  Drop that so form inputs keep their original attributes.
-  const { input: _inputRequired, ...requiredRest }
-    = (defaultSanitizeSchema.required ?? {})
+  const { input: _inputRequired, ...requiredRest } = defaultSanitizeSchema.required ?? {}
 
   // `name` is in the default `clobber` list, which prefixes every `name` value
   // with `user-content-`.  Form fields need the original `name`, and our form
   // component validates names with `isSafeName()`, so remove it.
-  const clobber = (defaultSanitizeSchema.clobber ?? []).filter(k => k !== 'name')
+  const clobber = (defaultSanitizeSchema.clobber ?? []).filter((k) => k !== 'name')
 
   if (ALLOW_INLINE_STYLES) {
     const globalAttrs = mergedAttributes['*'] ?? []
@@ -165,10 +174,19 @@ const StreamdownWrapper = (props: StreamdownWrapperProps) => {
     className,
     mode = 'streaming',
   } = props
+  // Remend treats Markdown punctuation inside raw HTML attributes as incomplete syntax.
+  // Form markup must reach the HTML parser unchanged or a field name such as `field()!*&-`
+  // gains a synthetic trailing `*` after the closing form tag.
+  const shouldParseIncompleteMarkdown = !MARKDOWN_FORM_TAG_RE.test(latexContent)
 
   const remarkPlugins = useMemo(
     () => [
-      [Array.isArray(defaultRemarkPlugins.gfm) ? defaultRemarkPlugins.gfm[0] : defaultRemarkPlugins.gfm, { singleTilde: false }] as Pluggable,
+      [
+        Array.isArray(defaultRemarkPlugins.gfm)
+          ? defaultRemarkPlugins.gfm[0]
+          : defaultRemarkPlugins.gfm,
+        { singleTilde: false },
+      ] as Pluggable,
       RemarkBreaks,
       ...(props.remarkPlugins ?? []),
     ],
@@ -188,18 +206,37 @@ const StreamdownWrapper = (props: StreamdownWrapperProps) => {
   )
 
   const disallowedElements = useMemo(
-    () => ['iframe', 'head', 'html', 'meta', 'link', 'style', 'body', ...(props.customDisallowedElements || [])],
+    () => [
+      'iframe',
+      'head',
+      'html',
+      'meta',
+      'link',
+      'style',
+      'body',
+      ...(props.customDisallowedElements || []),
+    ],
     [props.customDisallowedElements],
   )
 
   const components: Components = useMemo(
     () => ({
       code: CodeBlock,
-      img: imgProps => pluginInfo ? <PluginImg src={String(imgProps.src ?? '')} pluginInfo={pluginInfo} /> : <Img src={String(imgProps.src ?? '')} />,
+      img: (imgProps) =>
+        pluginInfo ? (
+          <PluginImg src={String(imgProps.src ?? '')} pluginInfo={pluginInfo} />
+        ) : (
+          <Img src={String(imgProps.src ?? '')} />
+        ),
       video: VideoBlock,
       audio: AudioBlock,
       a: Link,
-      p: pProps => pluginInfo ? <PluginParagraph {...pProps} pluginInfo={pluginInfo} /> : <Paragraph {...pProps} />,
+      p: (pProps) =>
+        pluginInfo ? (
+          <PluginParagraph {...pProps} pluginInfo={pluginInfo} />
+        ) : (
+          <Paragraph {...pProps} />
+        ),
       button: MarkdownButton,
       form: MarkdownForm as ComponentType,
       details: ThinkBlock as ComponentType,
@@ -219,6 +256,7 @@ const StreamdownWrapper = (props: StreamdownWrapperProps) => {
       components={components}
       isAnimating={isAnimating}
       mode={mode}
+      parseIncompleteMarkdown={shouldParseIncompleteMarkdown}
     >
       {latexContent}
     </Streamdown>

@@ -4,6 +4,7 @@ from dotenv import dotenv_values
 
 BASE_API_AND_DOCKER_CONFIG_SET_DIFF: frozenset[str] = frozenset(
     (
+        "AGENT_BACKEND_API_TOKEN",
         "APP_MAX_EXECUTION_TIME",
         "BATCH_UPLOAD_LIMIT",
         "CELERY_BEAT_SCHEDULER_TIME",
@@ -43,6 +44,7 @@ BASE_API_AND_DOCKER_CONFIG_SET_DIFF: frozenset[str] = frozenset(
 
 BASE_API_AND_DOCKER_COMPOSE_CONFIG_SET_DIFF: frozenset[str] = frozenset(
     (
+        "AGENT_BACKEND_API_TOKEN",
         "BATCH_UPLOAD_LIMIT",
         "CELERY_BEAT_SCHEDULER_TIME",
         "HTTP_REQUEST_MAX_CONNECT_TIMEOUT",

@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { useLocale } from '@/context/i18n'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { useLocale } from '#i18n'
 import { useSearchParams } from '@/next/navigation'
 import { getBrowserTimezone } from '@/utils/timezone'
 import SocialAuth from '../social-auth'
@@ -9,7 +9,8 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: vi.fn(),
 }))
 
-vi.mock('@/context/i18n', () => ({
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: vi.fn(),
 }))
 
@@ -24,7 +25,9 @@ const mockGetBrowserTimezone = vi.mocked(getBrowserTimezone)
 describe('SocialAuth', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseSearchParams.mockReturnValue(new URLSearchParams() as unknown as ReturnType<typeof useSearchParams>)
+    mockUseSearchParams.mockReturnValue(
+      new URLSearchParams() as unknown as ReturnType<typeof useSearchParams>,
+    )
     mockUseLocale.mockReturnValue('zh-Hans')
     mockGetBrowserTimezone.mockReturnValue('Asia/Shanghai')
   })
@@ -35,6 +38,7 @@ describe('SocialAuth', () => {
 
       expect(screen.getByRole('link', { name: 'login.withGitHub' })).toBeInTheDocument()
       expect(screen.getByRole('link', { name: 'login.withGoogle' })).toBeInTheDocument()
+      expect(screen.queryByRole('button')).not.toBeInTheDocument()
     })
   })
 
@@ -62,14 +66,19 @@ describe('SocialAuth', () => {
 
     it('should preserve invite token when adding timezone', () => {
       mockUseSearchParams.mockReturnValue(
-        new URLSearchParams('invite_token=invite-123') as unknown as ReturnType<typeof useSearchParams>,
+        new URLSearchParams('invite_token=invite-123') as unknown as ReturnType<
+          typeof useSearchParams
+        >,
       )
 
       render(<SocialAuth />)
 
       const githubLink = screen.getByRole('link', { name: 'login.withGitHub' })
       expect(githubLink).toHaveAttribute('href', expect.stringContaining('invite_token=invite-123'))
-      expect(githubLink).toHaveAttribute('href', expect.stringContaining('timezone=Asia%2FShanghai'))
+      expect(githubLink).toHaveAttribute(
+        'href',
+        expect.stringContaining('timezone=Asia%2FShanghai'),
+      )
       expect(githubLink).toHaveAttribute('href', expect.stringContaining('language=zh-Hans'))
     })
   })
@@ -80,7 +89,9 @@ describe('SocialAuth', () => {
 
       render(<SocialAuth />)
 
-      expect(screen.getByRole('link', { name: 'login.withGitHub' }).getAttribute('href')).not.toContain('timezone=')
+      expect(
+        screen.getByRole('link', { name: 'login.withGitHub' }).getAttribute('href'),
+      ).not.toContain('timezone=')
     })
   })
 })

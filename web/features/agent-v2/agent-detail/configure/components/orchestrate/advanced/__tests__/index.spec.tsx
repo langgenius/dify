@@ -14,15 +14,15 @@ describe('AgentAdvancedSettings', () => {
     render(<AgentAdvancedSettings />)
 
     const label = 'agentV2.agentDetail.configure.advancedSettings.label'
-    const triggers = screen.getAllByRole('button', { name: label })
+    const trigger = screen.getByRole('button', { name: label })
 
-    expect(triggers[0]).not.toHaveAttribute('data-panel-open')
+    expect(trigger).not.toHaveAttribute('data-panel-open')
     expect(screen.queryByText('advanced-env-editor')).not.toBeInTheDocument()
     expect(screen.queryByText('advanced-content-moderation')).not.toBeInTheDocument()
 
-    fireEvent.click(triggers[0]!)
+    fireEvent.click(trigger)
 
     expect(screen.getByText('advanced-env-editor')).toBeInTheDocument()
-    expect(screen.getByText('advanced-content-moderation')).toBeInTheDocument()
+    expect(screen.queryByText('advanced-content-moderation')).not.toBeInTheDocument()
   })
 })

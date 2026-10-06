@@ -1,13 +1,14 @@
 import json
 import logging
 from unittest import mock
+from unittest.mock import MagicMock
 
 import pytest
 from flask import Flask, Response
 
-from configs import dify_config
 from extensions import ext_request_logging
 from extensions.ext_request_logging import _is_content_type_json, _log_request_finished, init_app
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 def test_is_content_type_json():
@@ -58,7 +59,7 @@ def mock_response_receiver(monkeypatch: pytest.MonkeyPatch) -> mock.Mock:
 
 @pytest.fixture
 def enable_request_logging(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(dify_config, "ENABLE_REQUEST_LOGGING", True)
+    apply_config_overrides(monkeypatch, ENABLE_REQUEST_LOGGING=True)
 
 
 def _captured_records(caplog: pytest.LogCaptureFixture, level: int) -> list[logging.LogRecord]:
@@ -73,10 +74,10 @@ class TestRequestLoggingExtension:
     def test_receiver_should_not_be_invoked_if_configuration_is_disabled(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        mock_request_receiver,
-        mock_response_receiver,
+        mock_request_receiver: MagicMock,
+        mock_response_receiver: MagicMock,
     ):
-        monkeypatch.setattr(dify_config, "ENABLE_REQUEST_LOGGING", False)
+        apply_config_overrides(monkeypatch, ENABLE_REQUEST_LOGGING=False)
 
         app = _get_test_app()
         init_app(app)
@@ -90,8 +91,8 @@ class TestRequestLoggingExtension:
     def test_receiver_should_be_called_if_enabled(
         self,
         enable_request_logging,
-        mock_request_receiver,
-        mock_response_receiver,
+        mock_request_receiver: MagicMock,
+        mock_response_receiver: MagicMock,
     ):
         """
         Test the request logging extension with JSON data.

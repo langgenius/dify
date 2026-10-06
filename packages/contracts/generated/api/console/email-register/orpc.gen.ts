@@ -2,7 +2,6 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-
 import {
   zPostEmailRegisterBody,
   zPostEmailRegisterResponse,
@@ -10,7 +9,7 @@ import {
   zPostEmailRegisterSendEmailResponse,
   zPostEmailRegisterValidityBody,
   zPostEmailRegisterValidityResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 export const post = oc
   .route({

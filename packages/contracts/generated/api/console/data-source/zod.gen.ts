@@ -19,6 +19,11 @@ export const zDataSourceIntegrateIconResponse = z.object({
 })
 
 /**
+ * NotionPageType
+ */
+export const zNotionPageType = z.enum(['database', 'page'])
+
+/**
  * DataSourceIntegratePageResponse
  */
 export const zDataSourceIntegratePageResponse = z.object({
@@ -26,7 +31,7 @@ export const zDataSourceIntegratePageResponse = z.object({
   page_id: z.string(),
   page_name: z.string(),
   parent_id: z.string(),
-  type: z.string(),
+  type: zNotionPageType,
 })
 
 /**
@@ -64,21 +69,6 @@ export const zDataSourceIntegrateListResponse = z.object({
  * Success
  */
 export const zGetDataSourceIntegratesResponse = zDataSourceIntegrateListResponse
-
-/**
- * Success
- */
-export const zPatchDataSourceIntegratesResponse = zSimpleResultResponse
-
-export const zGetDataSourceIntegratesByBindingIdByActionPath = z.object({
-  action: z.string(),
-  binding_id: z.uuid(),
-})
-
-/**
- * Success
- */
-export const zGetDataSourceIntegratesByBindingIdByActionResponse = zDataSourceIntegrateListResponse
 
 export const zPatchDataSourceIntegratesByBindingIdByActionPath = z.object({
   action: z.string(),

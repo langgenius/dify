@@ -7,18 +7,32 @@ import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import { AssignerNodeInputType, WriteMode } from '../../../types'
 import VarList from '../index'
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useIsChatMode: () => false,
-  useWorkflow: () => ({
-    getTreeLeafNodes: () => [],
-    getNodeById: () => undefined,
-    getBeforeNodesInSameBranchIncludeParent: () => [],
-  }),
-  useWorkflowVariables: () => ({
-    getNodeAvailableVars: () => [],
-    getCurrentVariableType: () => undefined,
-  }),
-}))
+vi.mock('../../../../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../../hooks/use-workflow')>()
+
+  return {
+    ...actual,
+    useIsChatMode: () => false,
+    useWorkflow: () => ({
+      getTreeLeafNodes: () => [],
+      getNodeById: () => undefined,
+      getBeforeNodesInSameBranchIncludeParent: () => [],
+    }),
+  }
+})
+
+vi.mock('../../../../../hooks/use-workflow-variables', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('../../../../../hooks/use-workflow-variables')>()
+
+  return {
+    ...actual,
+    useWorkflowVariables: () => ({
+      getNodeAvailableVars: () => [],
+      getCurrentVariableType: () => undefined,
+    }),
+  }
+})
 
 const sourceNode = createNode({
   id: 'node-a',
@@ -40,7 +54,9 @@ const currentNode = createNode({
   },
 })
 
-const createOperation = (overrides: Partial<ComponentProps<typeof VarList>['list'][number]> = {}) => ({
+const createOperation = (
+  overrides: Partial<ComponentProps<typeof VarList>['list'][number]> = {},
+) => ({
   variable_selector: ['node-a', 'flag'],
   input_type: AssignerNodeInputType.variable,
   operation: WriteMode.overwrite,
@@ -88,7 +104,7 @@ describe('assigner/var-list', () => {
   it('renders the empty placeholder when no operations are configured', () => {
     renderVarList()
 
-    expect(screen.getByText('workflow.nodes.assigner.noVarTip')).toBeInTheDocument()
+    expect(screen.getByText('workflowLogic.nodes.assigner.noVarTip')).toBeInTheDocument()
   })
 
   it('switches a boolean assignment to constant mode and updates the selected value', async () => {
@@ -100,8 +116,8 @@ describe('assigner/var-list', () => {
       getToAssignedVarType: () => VarType.boolean,
     })
 
-    await user.click(screen.getByText('workflow.nodes.assigner.operations.over-write'))
-    await user.click(screen.getAllByText('workflow.nodes.assigner.operations.set').at(-1)!)
+    await user.click(screen.getByText('workflowLogic.nodes.assigner.operations.over-write'))
+    await user.click(screen.getAllByText('workflowLogic.nodes.assigner.operations.set').at(-1)!)
 
     expect(handleChange.mock.lastCall?.[0]).toEqual([
       createOperation({

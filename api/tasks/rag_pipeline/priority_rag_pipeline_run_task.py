@@ -14,15 +14,19 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
+from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerateEntity
 from core.app.entities.rag_pipeline_invoke_entities import RagPipelineInvokeEntity
+from core.db.session_factory import get_session_maker
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
 from core.repositories.factory import DifyCoreRepositoryFactory
+from extensions.application_services.data_sources import build_data_source_credentials
 from extensions.ext_database import db
 from models import Account, Tenant
 from models.dataset import Pipeline
 from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom
+from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
 from services.file_service import FileService
 
 logger = logging.getLogger(__name__)
@@ -126,7 +130,7 @@ def run_single_rag_pipeline_task(rag_pipeline_invoke_entity: Mapping[str, Any], 
                 tenant = session.scalar(select(Tenant).where(Tenant.id == tenant_id).limit(1))
                 if not tenant:
                     raise ValueError(f"Tenant {tenant_id} not found")
-                account.current_tenant = tenant
+                account.set_current_tenant_with_session(tenant, session=session)
 
                 pipeline = session.scalar(select(Pipeline).where(Pipeline.id == pipeline_id).limit(1))
                 if not pipeline:
@@ -146,6 +150,7 @@ def run_single_rag_pipeline_task(rag_pipeline_invoke_entity: Mapping[str, Any], 
                 session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
                 workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
                     session_factory=session_factory,
+                    tenant_id=pipeline.tenant_id,
                     user=account,
                     app_id=entity.app_config.app_id,
                     triggered_from=WorkflowRunTriggeredFrom.RAG_PIPELINE_RUN,
@@ -154,6 +159,7 @@ def run_single_rag_pipeline_task(rag_pipeline_invoke_entity: Mapping[str, Any], 
                 workflow_node_execution_repository = (
                     DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
                         session_factory=session_factory,
+                        tenant_id=pipeline.tenant_id,
                         user=account,
                         app_id=entity.app_config.app_id,
                         triggered_from=WorkflowNodeExecutionTriggeredFrom.RAG_PIPELINE_RUN,
@@ -168,23 +174,27 @@ def run_single_rag_pipeline_task(rag_pipeline_invoke_entity: Mapping[str, Any], 
 
             # Direct execution without creating another thread
             # Since we're already in a thread pool, no need for nested threading
-            from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 
-            pipeline_generator = PipelineGenerator()
-            # Using protected method intentionally for async execution
-            pipeline_generator._generate(  # type: ignore[attr-defined]
-                flask_app=flask_app,
-                context=context,
-                pipeline=pipeline,
-                workflow_id=workflow_id,
-                user=account,
-                application_generate_entity=entity,
-                invoke_from=InvokeFrom.PUBLISHED_PIPELINE,
-                workflow_execution_repository=workflow_execution_repository,
-                workflow_node_execution_repository=workflow_node_execution_repository,
-                streaming=streaming,
-                workflow_thread_pool_id=workflow_thread_pool_id,
+            pipeline_generator = PipelineGenerator(
+                documents=SQLAlchemyDocumentRepository(session_factory=session_factory),
+                datasource_providers=build_data_source_credentials(database_client=get_session_maker()).providers,
             )
+            # Using protected method intentionally for async execution
+            with Session(db.engine, expire_on_commit=False) as session:
+                pipeline_generator._generate(  # type: ignore[attr-defined]
+                    session=session,
+                    flask_app=flask_app,
+                    context=context,
+                    pipeline=pipeline,
+                    workflow_id=workflow_id,
+                    user=account,
+                    application_generate_entity=entity,
+                    invoke_from=InvokeFrom.PUBLISHED_PIPELINE,
+                    workflow_execution_repository=workflow_execution_repository,
+                    workflow_node_execution_repository=workflow_node_execution_repository,
+                    streaming=streaming,
+                    workflow_thread_pool_id=workflow_thread_pool_id,
+                )
         except Exception:
             logging.exception("Error in priority pipeline task")
             raise

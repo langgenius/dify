@@ -1,8 +1,7 @@
 import mimetypes
 import re
-from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, cast
+from typing import Any
 from urllib.parse import unquote
 
 import charset_normalizer
@@ -58,7 +57,7 @@ def get_url(url: str, user_agent: str | None = None) -> str:
             return f"Unsupported content-type [{main_content_type}] of URL."
 
         if main_content_type in extract_processor.SUPPORT_URL_CONTENT_TYPES:
-            return cast(str, ExtractProcessor.load_from_url(url, return_text=True))
+            return ExtractProcessor.load_from_url(url, return_text=True)
 
         response = remote_fetcher.make_request("GET", url, headers=headers, follow_redirects=True, timeout=(120, 300))
     elif response.status_code == 403:
@@ -101,15 +100,24 @@ def get_url(url: str, user_agent: str | None = None) -> str:
 class Article:
     title: str
     author: str
-    text: Sequence[dict]
+    text: str
 
 
 def extract_using_readabilipy(html: str):
     json_article: dict[str, Any] = simple_json_from_html_string(html, use_readability=False)
+    # readabilipy returns plain_text as a list of dicts whose "text" values
+    # contain the (possibly HTML-tagged) paragraph content; flatten them into
+    # a single clean text block.
+    plain_text = json_article.get("plain_text") or []
+    text = "\n".join(
+        stripped
+        for item in plain_text
+        if isinstance(item, dict) and (stripped := re.sub(r"<[^>]+>", "", str(item.get("text") or "")).strip())
+    )
     article = Article(
         title=json_article.get("title") or "",
         author=json_article.get("byline") or "",
-        text=json_article.get("plain_text") or [],
+        text=text,
     )
 
     return article

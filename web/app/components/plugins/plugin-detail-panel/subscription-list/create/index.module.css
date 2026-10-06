@@ -1,0 +1,13 @@
+@reference "../../../../../styles/globals.css";
+
+.highlightedIconButton {
+  @apply border-[0.5px] border-components-button-secondary-border-hover bg-components-button-secondary-bg-hover text-components-button-secondary-accent-text shadow-xs;
+
+  &:hover {
+    @apply border-components-button-secondary-border-disabled bg-components-button-secondary-bg-disabled text-components-button-secondary-accent-text-disabled;
+  }
+
+  &[data-disabled]:hover {
+    @apply bg-components-button-secondary-bg-disabled text-components-button-secondary-accent-text-disabled;
+  }
+}

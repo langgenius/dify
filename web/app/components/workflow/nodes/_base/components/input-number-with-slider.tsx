@@ -1,6 +1,13 @@
 'use client'
-import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
-import { Slider } from '@langgenius/dify-ui/slider'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
+import {
+  Slider,
+  SliderControl,
+  SliderIndicator,
+  SliderLabel,
+  SliderThumb,
+  SliderTrack,
+} from '@langgenius/dify-ui/slider'
 import * as React from 'react'
 import { useCallback } from 'react'
 
@@ -23,6 +30,8 @@ function InputNumberWithSlider({
   readonly,
   onChange,
 }: InputNumberWithSliderProps) {
+  const sliderValue = Number.isFinite(value) ? value : (min ?? 0)
+
   const handleBlur = useCallback(() => {
     if (value === undefined || value === null || Number.isNaN(value)) {
       onChange(defaultValue)
@@ -32,16 +41,18 @@ function InputNumberWithSlider({
       onChange(max)
       return
     }
-    if (min !== undefined && value < min)
-      onChange(min)
+    if (min !== undefined && value < min) onChange(min)
   }, [defaultValue, max, min, onChange, value])
 
-  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    onChange(Number.parseFloat(e.target.value))
-  }, [onChange])
+  const handleChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      onChange(Number.parseFloat(e.target.value))
+    },
+    [onChange],
+  )
 
   return (
-    <FieldsetRoot>
+    <Fieldset>
       <FieldsetLegend className="sr-only">{label}</FieldsetLegend>
       <div className="flex h-8 items-center justify-between space-x-2">
         <input
@@ -58,16 +69,23 @@ function InputNumberWithSlider({
         />
         <Slider
           className="grow"
-          value={value}
+          value={sliderValue}
           min={min}
           max={max}
           step={1}
           onValueChange={onChange}
           disabled={readonly}
-          aria-label={label}
-        />
+        >
+          <SliderLabel className="sr-only">{label}</SliderLabel>
+          <SliderControl>
+            <SliderTrack>
+              <SliderIndicator />
+              <SliderThumb />
+            </SliderTrack>
+          </SliderControl>
+        </Slider>
       </div>
-    </FieldsetRoot>
+    </Fieldset>
   )
 }
 export default React.memo(InputNumberWithSlider)

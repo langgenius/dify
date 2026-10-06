@@ -1,4 +1,3 @@
-/* eslint-disable ts/no-explicit-any */
 import type { ModelConfig, PromptVariable } from '@/models/debug'
 import type { ToolItem } from '@/types/app'
 import { render, screen } from '@testing-library/react'
@@ -108,13 +107,6 @@ const createModelConfig = (overrides: Partial<ModelConfig> = {}): ModelConfig =>
   sensitive_word_avoidance: null,
   annotation_reply: null,
   external_data_tools: null,
-  system_parameters: {
-    audio_file_size_limit: 1,
-    file_size_limit: 1,
-    image_file_size_limit: 1,
-    video_file_size_limit: 1,
-    workflow_file_upload_limit: 1,
-  },
   dataSets: [],
   agentConfig: {
     enabled: false,
@@ -211,12 +203,14 @@ describe('Config - Prompt Handling', () => {
     latestConfigPromptProps.onChange('Updated template', additions)
 
     expect(contextValue.setPrevPromptConfig).toHaveBeenCalledWith(contextValue.modelConfig.configs)
-    expect(contextValue.setModelConfig).toHaveBeenCalledWith(expect.objectContaining({
-      configs: expect.objectContaining({
-        prompt_template: 'Updated template',
-        prompt_variables: [...previousVariables, ...additions],
+    expect(contextValue.setModelConfig).toHaveBeenCalledWith(
+      expect.objectContaining({
+        configs: expect.objectContaining({
+          prompt_template: 'Updated template',
+          prompt_variables: [...previousVariables, ...additions],
+        }),
       }),
-    }))
+    )
     expect(mockFormattingDispatcher).toHaveBeenCalledTimes(1)
   })
 
@@ -237,10 +231,12 @@ describe('Config - Prompt Handling', () => {
     latestConfigVarProps.onPromptVariablesChange(replacementVariables)
 
     expect(contextValue.setPrevPromptConfig).toHaveBeenCalledWith(contextValue.modelConfig.configs)
-    expect(contextValue.setModelConfig).toHaveBeenCalledWith(expect.objectContaining({
-      configs: expect.objectContaining({
-        prompt_variables: replacementVariables,
+    expect(contextValue.setModelConfig).toHaveBeenCalledWith(
+      expect.objectContaining({
+        configs: expect.objectContaining({
+          prompt_variables: replacementVariables,
+        }),
       }),
-    }))
+    )
   })
 })

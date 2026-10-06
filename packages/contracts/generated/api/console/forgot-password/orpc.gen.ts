@@ -2,7 +2,6 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-
 import {
   zPostForgotPasswordBody,
   zPostForgotPasswordResetsBody,
@@ -10,7 +9,7 @@ import {
   zPostForgotPasswordResponse,
   zPostForgotPasswordValidityBody,
   zPostForgotPasswordValidityResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 /**
  * Reset password with verification token

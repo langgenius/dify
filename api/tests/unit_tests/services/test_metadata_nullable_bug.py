@@ -1,11 +1,30 @@
 from typing import cast
-from unittest.mock import Mock
+from unittest.mock import Mock, create_autospec
 
 import pytest
+from sqlalchemy.orm import Session, sessionmaker
 
 from models import Account, Tenant
-from services.entities.knowledge_entities.knowledge_entities import MetadataArgs
-from services.metadata_service import MetadataService
+from repositories.knowledge.metadata_repository import SQLAlchemyMetadataRepository
+from services.knowledge.dataset_access import DatasetAccess
+from services.knowledge.entities.knowledge_entities import MetadataArgs
+from services.knowledge.metadata.application import MetadataService
+from services.knowledge.resource_scope import DatasetRef
+
+
+def _metadata_service(session: Session) -> MetadataService:
+    return MetadataService(
+        store=SQLAlchemyMetadataRepository(
+            session_factory=sessionmaker(bind=session.get_bind(), expire_on_commit=False)
+        ),
+        dataset_access=create_autospec(DatasetAccess, instance=True),
+    )
+
+
+pytestmark = [
+    pytest.mark.usefixtures("sqlite_session"),
+    pytest.mark.parametrize("sqlite_session", [()], indirect=True),
+]
 
 
 def _make_account(account_id: str = "user-456", tenant_id: str = "tenant-123") -> Account:
@@ -27,7 +46,7 @@ class TestMetadataNullableBug:
             # This should fail because Pydantic expects non-None values
             MetadataArgs(type=None, name=None)  # pyrefly: ignore[bad-argument-type]
 
-    def test_metadata_service_create_with_none_name_crashes(self) -> None:
+    def test_metadata_service_create_with_none_name_crashes(self, sqlite_session: Session) -> None:
         """Test that MetadataService.create_metadata crashes when name is None."""
         # Mock the MetadataArgs to bypass Pydantic validation
         mock_metadata_args = Mock()
@@ -37,17 +56,21 @@ class TestMetadataNullableBug:
         account = _make_account()
         # This should crash with TypeError when calling len(None)
         with pytest.raises(TypeError, match="object of type 'NoneType' has no len"):
-            MetadataService.create_metadata(Mock(), "dataset-123", mock_metadata_args, account, "tenant-123")
+            _metadata_service(sqlite_session).create_metadata(
+                DatasetRef("tenant-123", "dataset-123"), mock_metadata_args, actor_id=account.id
+            )
+        assert not sqlite_session.in_transaction()
 
-    def test_metadata_service_update_with_none_name_crashes(self) -> None:
+    def test_metadata_service_update_with_none_name_crashes(self, sqlite_session: Session) -> None:
         """Test that MetadataService.update_metadata_name crashes when name is None."""
         account = _make_account()
         none_name = cast(str, None)
         # This should crash with TypeError when calling len(None)
         with pytest.raises(TypeError, match="object of type 'NoneType' has no len"):
-            MetadataService.update_metadata_name(
-                Mock(), "dataset-123", "metadata-456", none_name, account, "tenant-123"
+            _metadata_service(sqlite_session).update_metadata_name(
+                DatasetRef(Mock().tenant_id, Mock().id), "metadata-456", none_name, actor_id=account.id
             )
+        assert not sqlite_session.in_transaction()
 
     def test_api_layer_now_uses_pydantic_validation(self) -> None:
         """Verify that API layer relies on Pydantic validation instead of reqparse."""

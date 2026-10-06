@@ -53,5 +53,5 @@ export type GetWebsiteCrawlStatusByJobIdResponses = {
   200: WebsiteCrawlResponse
 }
 
-export type GetWebsiteCrawlStatusByJobIdResponse
-  = GetWebsiteCrawlStatusByJobIdResponses[keyof GetWebsiteCrawlStatusByJobIdResponses]
+export type GetWebsiteCrawlStatusByJobIdResponse =
+  GetWebsiteCrawlStatusByJobIdResponses[keyof GetWebsiteCrawlStatusByJobIdResponses]

@@ -2,7 +2,8 @@
 
 import json
 from collections.abc import Generator
-from unittest.mock import MagicMock, Mock, patch
+from contextlib import nullcontext
+from unittest.mock import patch
 
 import httpx
 import httpx_sse
@@ -14,6 +15,29 @@ from core.mcp.utils import (
     create_ssrf_proxy_mcp_http_client,
     ssrf_proxy_sse_connect,
 )
+
+
+@pytest.fixture(autouse=True)
+def _mcp_config(config_overrides) -> None:
+    config_overrides(
+        SSRF_PROXY_ALL_URL=None,
+        SSRF_PROXY_HTTP_URL=None,
+        SSRF_PROXY_HTTPS_URL=None,
+        HTTP_REQUEST_NODE_SSL_VERIFY=True,
+        SSRF_DEFAULT_TIME_OUT=30.0,
+        SSRF_DEFAULT_CONNECT_TIME_OUT=10.0,
+        SSRF_DEFAULT_READ_TIME_OUT=60.0,
+        SSRF_DEFAULT_WRITE_TIME_OUT=30.0,
+    )
+
+
+@pytest.fixture
+def http_client() -> Generator[httpx.Client]:
+    def unexpected_request(request: httpx.Request) -> httpx.Response:
+        raise AssertionError(f"Unexpected HTTP request: {request.method} {request.url}")
+
+    with httpx.Client(transport=httpx.MockTransport(unexpected_request)) as client:
+        yield client
 
 
 class TestConstants:
@@ -32,11 +56,9 @@ class TestConstants:
 class TestCreateSSRFProxyMCPHTTPClient:
     """Test create_ssrf_proxy_mcp_http_client function."""
 
-    @patch("core.mcp.utils.dify_config")
-    def test_create_client_with_all_url_proxy(self, mock_config):
+    def test_create_client_with_all_url_proxy(self, config_overrides):
         """Test client creation with SSRF_PROXY_ALL_URL configured."""
-        mock_config.SSRF_PROXY_ALL_URL = "http://proxy.example.com:8080"
-        mock_config.HTTP_REQUEST_NODE_SSL_VERIFY = True
+        config_overrides(SSRF_PROXY_ALL_URL="http://proxy.example.com:8080")
 
         client = create_ssrf_proxy_mcp_http_client(
             headers={"Authorization": "Bearer token"}, timeout=httpx.Timeout(30.0)
@@ -50,13 +72,13 @@ class TestCreateSSRFProxyMCPHTTPClient:
         # Clean up
         client.close()
 
-    @patch("core.mcp.utils.dify_config")
-    def test_create_client_with_http_https_proxies(self, mock_config):
+    def test_create_client_with_http_https_proxies(self, config_overrides):
         """Test client creation with separate HTTP/HTTPS proxies."""
-        mock_config.SSRF_PROXY_ALL_URL = None
-        mock_config.SSRF_PROXY_HTTP_URL = "http://http-proxy.example.com:8080"
-        mock_config.SSRF_PROXY_HTTPS_URL = "http://https-proxy.example.com:8443"
-        mock_config.HTTP_REQUEST_NODE_SSL_VERIFY = False
+        config_overrides(
+            SSRF_PROXY_HTTP_URL="http://http-proxy.example.com:8080",
+            SSRF_PROXY_HTTPS_URL="http://https-proxy.example.com:8443",
+            HTTP_REQUEST_NODE_SSL_VERIFY=False,
+        )
 
         client = create_ssrf_proxy_mcp_http_client()
 
@@ -66,13 +88,8 @@ class TestCreateSSRFProxyMCPHTTPClient:
         # Clean up
         client.close()
 
-    @patch("core.mcp.utils.dify_config")
-    def test_create_client_without_proxy(self, mock_config):
+    def test_create_client_without_proxy(self):
         """Test client creation without proxy configuration."""
-        mock_config.SSRF_PROXY_ALL_URL = None
-        mock_config.SSRF_PROXY_HTTP_URL = None
-        mock_config.SSRF_PROXY_HTTPS_URL = None
-        mock_config.HTTP_REQUEST_NODE_SSL_VERIFY = True
 
         headers = {"X-Custom-Header": "value"}
         timeout = httpx.Timeout(timeout=30.0, connect=5.0, read=10.0, write=30.0)
@@ -88,13 +105,8 @@ class TestCreateSSRFProxyMCPHTTPClient:
         # Clean up
         client.close()
 
-    @patch("core.mcp.utils.dify_config")
-    def test_create_client_default_params(self, mock_config):
+    def test_create_client_default_params(self):
         """Test client creation with default parameters."""
-        mock_config.SSRF_PROXY_ALL_URL = None
-        mock_config.SSRF_PROXY_HTTP_URL = None
-        mock_config.SSRF_PROXY_HTTPS_URL = None
-        mock_config.HTTP_REQUEST_NODE_SSL_VERIFY = True
 
         client = create_ssrf_proxy_mcp_http_client()
 
@@ -113,18 +125,16 @@ class TestSSRFProxySSEConnect:
 
     @patch("core.mcp.utils.connect_sse", autospec=True)
     @patch("core.mcp.utils.create_ssrf_proxy_mcp_http_client", autospec=True)
-    def test_sse_connect_with_provided_client(self, mock_create_client, mock_connect_sse):
+    def test_sse_connect_with_provided_client(self, mock_create_client, mock_connect_sse, http_client):
         """Test SSE connection with pre-configured client."""
-        # Setup mocks
-        mock_client = Mock(spec=httpx.Client)
-        mock_event_source = Mock(spec=httpx_sse.EventSource)
-        mock_context = MagicMock()
-        mock_context.__enter__.return_value = mock_event_source
-        mock_connect_sse.return_value = mock_context
+        # Configure the connection boundary.
+        event_source = httpx_sse.EventSource(httpx.Response(200, headers={"content-type": "text/event-stream"}))
+        context = nullcontext(event_source)
+        mock_connect_sse.return_value = context
 
         # Call with provided client
         result = ssrf_proxy_sse_connect(
-            "http://example.com/sse", client=mock_client, method="POST", headers={"Authorization": "Bearer token"}
+            "http://example.com/sse", client=http_client, method="POST", headers={"Authorization": "Bearer token"}
         )
 
         # Verify client creation was not called
@@ -132,31 +142,22 @@ class TestSSRFProxySSEConnect:
 
         # Verify connect_sse was called correctly
         mock_connect_sse.assert_called_once_with(
-            mock_client, "POST", "http://example.com/sse", headers={"Authorization": "Bearer token"}
+            http_client, "POST", "http://example.com/sse", headers={"Authorization": "Bearer token"}
         )
 
         # Verify result
-        assert result == mock_context
+        assert result == context
 
     @patch("core.mcp.utils.connect_sse", autospec=True)
     @patch("core.mcp.utils.create_ssrf_proxy_mcp_http_client", autospec=True)
-    @patch("core.mcp.utils.dify_config")
-    def test_sse_connect_without_client(self, mock_config, mock_create_client, mock_connect_sse):
+    def test_sse_connect_without_client(self, mock_create_client, mock_connect_sse, http_client):
         """Test SSE connection without pre-configured client."""
-        # Setup config
-        mock_config.SSRF_DEFAULT_TIME_OUT = 30.0
-        mock_config.SSRF_DEFAULT_CONNECT_TIME_OUT = 10.0
-        mock_config.SSRF_DEFAULT_READ_TIME_OUT = 60.0
-        mock_config.SSRF_DEFAULT_WRITE_TIME_OUT = 30.0
+        # Configure the connection boundary.
+        mock_create_client.return_value = http_client
 
-        # Setup mocks
-        mock_client = Mock(spec=httpx.Client)
-        mock_create_client.return_value = mock_client
-
-        mock_event_source = Mock(spec=httpx_sse.EventSource)
-        mock_context = MagicMock()
-        mock_context.__enter__.return_value = mock_event_source
-        mock_connect_sse.return_value = mock_context
+        event_source = httpx_sse.EventSource(httpx.Response(200, headers={"content-type": "text/event-stream"}))
+        context = nullcontext(event_source)
+        mock_connect_sse.return_value = context
 
         # Call without client
         result = ssrf_proxy_sse_connect("http://example.com/sse", headers={"X-Custom": "value"})
@@ -175,26 +176,24 @@ class TestSSRFProxySSEConnect:
 
         # Verify connect_sse was called
         mock_connect_sse.assert_called_once_with(
-            mock_client,
+            http_client,
             "GET",  # Default method
             "http://example.com/sse",
         )
 
         # Verify result
-        assert result == mock_context
+        assert result == context
 
     @patch("core.mcp.utils.connect_sse", autospec=True)
     @patch("core.mcp.utils.create_ssrf_proxy_mcp_http_client", autospec=True)
-    def test_sse_connect_with_custom_timeout(self, mock_create_client, mock_connect_sse):
+    def test_sse_connect_with_custom_timeout(self, mock_create_client, mock_connect_sse, http_client):
         """Test SSE connection with custom timeout."""
-        # Setup mocks
-        mock_client = Mock(spec=httpx.Client)
-        mock_create_client.return_value = mock_client
+        # Configure the connection boundary.
+        mock_create_client.return_value = http_client
 
-        mock_event_source = Mock(spec=httpx_sse.EventSource)
-        mock_context = MagicMock()
-        mock_context.__enter__.return_value = mock_event_source
-        mock_connect_sse.return_value = mock_context
+        event_source = httpx_sse.EventSource(httpx.Response(200, headers={"content-type": "text/event-stream"}))
+        context = nullcontext(event_source)
+        mock_connect_sse.return_value = context
 
         custom_timeout = httpx.Timeout(timeout=60.0, read=120.0)
 
@@ -207,15 +206,14 @@ class TestSSRFProxySSEConnect:
         assert call_args[1]["timeout"] == custom_timeout
 
         # Verify result
-        assert result == mock_context
+        assert result == context
 
     @patch("core.mcp.utils.connect_sse", autospec=True)
     @patch("core.mcp.utils.create_ssrf_proxy_mcp_http_client", autospec=True)
-    def test_sse_connect_error_cleanup(self, mock_create_client, mock_connect_sse):
+    def test_sse_connect_error_cleanup(self, mock_create_client, mock_connect_sse, http_client):
         """Test SSE connection cleans up client on error."""
-        # Setup mocks
-        mock_client = Mock(spec=httpx.Client)
-        mock_create_client.return_value = mock_client
+        # Configure the connection boundary.
+        mock_create_client.return_value = http_client
 
         # Make connect_sse raise an exception
         mock_connect_sse.side_effect = httpx.ConnectError("Connection failed")
@@ -225,23 +223,22 @@ class TestSSRFProxySSEConnect:
             ssrf_proxy_sse_connect("http://example.com/sse")
 
         # Verify client was cleaned up
-        mock_client.close.assert_called_once()
+        assert http_client.is_closed
 
     @patch("core.mcp.utils.connect_sse", autospec=True)
-    def test_sse_connect_error_no_cleanup_with_provided_client(self, mock_connect_sse):
+    def test_sse_connect_error_no_cleanup_with_provided_client(self, mock_connect_sse, http_client):
         """Test SSE connection doesn't clean up provided client on error."""
-        # Setup mocks
-        mock_client = Mock(spec=httpx.Client)
+        # Configure the connection boundary.
 
         # Make connect_sse raise an exception
         mock_connect_sse.side_effect = httpx.ConnectError("Connection failed")
 
         # Call should raise the exception
         with pytest.raises(httpx.ConnectError):
-            ssrf_proxy_sse_connect("http://example.com/sse", client=mock_client)
+            ssrf_proxy_sse_connect("http://example.com/sse", client=http_client)
 
         # Verify client was NOT cleaned up (because it was provided)
-        mock_client.close.assert_not_called()
+        assert not http_client.is_closed
 
 
 class TestCreateMCPErrorResponse:

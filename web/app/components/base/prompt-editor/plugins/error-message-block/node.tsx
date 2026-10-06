@@ -32,11 +32,7 @@ export class ErrorMessageBlockNode extends DecoratorNode<React.JSX.Element> {
   }
 
   override decorate(): React.JSX.Element {
-    return (
-      <ErrorMessageBlockComponent
-        nodeKey={this.getKey()}
-      />
-    )
+    return <ErrorMessageBlockComponent nodeKey={this.getKey()} />
   }
 
   static override importJSON(): ErrorMessageBlockNode {

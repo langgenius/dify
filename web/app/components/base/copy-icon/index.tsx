@@ -11,7 +11,7 @@ type Props = Readonly<{
 const prefixEmbedded = 'overview.appInfo.embedded'
 
 const CopyIcon = ({ content }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appOverview'])
   const { copied, copy, reset } = useClipboard()
 
   const handleCopy = useCallback(() => {
@@ -19,15 +19,15 @@ const CopyIcon = ({ content }: Props) => {
   }, [copy, content])
 
   const tooltipText = copied
-    ? t(`${prefixEmbedded}.copied`, { ns: 'appOverview' })
-    : t(`${prefixEmbedded}.copy`, { ns: 'appOverview' })
+    ? t(($) => $[`${prefixEmbedded}.copied`], { ns: 'appOverview' })
+    : t(($) => $[`${prefixEmbedded}.copy`], { ns: 'appOverview' })
   /* v8 ignore next -- i18n test mock always returns a non-empty string; runtime fallback is defensive. -- @preserve */
   const safeTooltipText = tooltipText || ''
 
   return (
     <Tooltip>
       <TooltipTrigger
-        render={(
+        render={
           <button
             type="button"
             aria-label={safeTooltipText}
@@ -35,15 +35,15 @@ const CopyIcon = ({ content }: Props) => {
             onClick={handleCopy}
             onMouseLeave={reset}
           >
-            {!copied
-              ? (<span aria-hidden className="i-custom-vender-line-files-copy size-3.5" />)
-              : (<span aria-hidden className="i-custom-vender-line-files-copy-check size-3.5" />)}
+            {!copied ? (
+              <span aria-hidden className="i-custom-vender-line-files-copy size-3.5" />
+            ) : (
+              <span aria-hidden className="i-custom-vender-line-files-copy-check size-3.5" />
+            )}
           </button>
-        )}
+        }
       />
-      <TooltipContent>
-        {safeTooltipText}
-      </TooltipContent>
+      <TooltipContent>{safeTooltipText}</TooltipContent>
     </Tooltip>
   )
 }

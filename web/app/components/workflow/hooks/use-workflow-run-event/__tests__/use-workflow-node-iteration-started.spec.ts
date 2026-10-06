@@ -39,11 +39,13 @@ describe('useWorkflowNodeIterationStarted', () => {
       expect(transform[1]).toBe(310)
       expect(transform[2]).toBe(1)
 
-      const node = result.current.nodes.find(item => item.id === 'n1')
+      const node = result.current.nodes.find((item) => item.id === 'n1')
       expect(getNodeRuntimeState(node)._runningStatus).toBe(NodeRunningStatus.Running)
       expect(getNodeRuntimeState(node)._iterationLength).toBe(10)
       expect(getNodeRuntimeState(node)._waitingRun).toBe(false)
-      expect(getEdgeRuntimeState(result.current.edges[0])._targetRunningStatus).toBe(NodeRunningStatus.Running)
+      expect(getEdgeRuntimeState(result.current.edges[0])._targetRunningStatus).toBe(
+        NodeRunningStatus.Running,
+      )
     })
   })
 })

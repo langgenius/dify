@@ -4,6 +4,7 @@ import pytest
 from pydantic import ValidationError
 
 from core.mcp.types import (
+    DEFAULT_NEGOTIATED_VERSION,
     INTERNAL_ERROR,
     INVALID_PARAMS,
     INVALID_REQUEST,
@@ -11,6 +12,7 @@ from core.mcp.types import (
     METHOD_NOT_FOUND,
     PARSE_ERROR,
     SERVER_LATEST_PROTOCOL_VERSION,
+    SERVER_SUPPORTED_PROTOCOL_VERSIONS,
     Annotations,
     CallToolRequest,
     CallToolRequestParams,
@@ -59,7 +61,9 @@ class TestConstants:
     def test_protocol_versions(self):
         """Test protocol version constants."""
         assert LATEST_PROTOCOL_VERSION == "2025-06-18"
-        assert SERVER_LATEST_PROTOCOL_VERSION == "2024-11-05"
+        assert SERVER_LATEST_PROTOCOL_VERSION == "2025-06-18"
+        assert DEFAULT_NEGOTIATED_VERSION == "2025-03-26"
+        assert sorted(SERVER_SUPPORTED_PROTOCOL_VERSIONS) == ["2024-11-05", "2025-03-26", "2025-06-18"]
 
     def test_error_codes(self):
         """Test JSON-RPC error code constants."""

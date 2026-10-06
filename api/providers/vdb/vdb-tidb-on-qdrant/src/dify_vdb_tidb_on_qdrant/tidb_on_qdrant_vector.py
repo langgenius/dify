@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any, override
 
 import httpx
 import qdrant_client
+from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 from flask import current_app
@@ -41,10 +42,14 @@ from models.enums import TidbAuthBindingStatus
 if TYPE_CHECKING:
     from qdrant_client import grpc  # noqa
     from qdrant_client.conversions import common_types
-    from qdrant_client.http import models as rest
 
     type DictFilter = dict[str, str | int | bool | dict | list]
     type MetadataFilter = DictFilter | common_types.Filter
+
+
+# Bounded connect/read timeout so a slow or hanging TiDB Cloud API call
+# cannot block a cluster provisioning or password rotation forever.
+_TIDB_CLOUD_REQUEST_TIMEOUT = httpx.Timeout(30.0, connect=5.0)
 
 
 class TidbOnQdrantConfig(BaseModel):
@@ -357,7 +362,7 @@ class TidbOnQdrantVector(BaseVector):
             query_filter=filter,
             limit=kwargs.get("top_k", 4),
             with_payload=True,
-            with_vectors=True,
+            with_vectors=False,
             score_threshold=kwargs.get("score_threshold", 0.0),
         )
         docs = []
@@ -433,7 +438,9 @@ class TidbOnQdrantVector(BaseVector):
 
 class TidbOnQdrantVectorFactory(AbstractVectorFactory):
     @override
-    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> TidbOnQdrantVector:
+    def init_vector(
+        self, dataset: Dataset, attributes: list, embeddings: Embeddings, *, session: Session | None
+    ) -> TidbOnQdrantVector:
         logger.info("init_vector: tenant_id=%s, dataset_id=%s", dataset.tenant_id, dataset.id)
         stmt = select(TidbAuthBinding).where(TidbAuthBinding.tenant_id == dataset.tenant_id)
         tidb_auth_binding = db.session.scalars(stmt).one_or_none()
@@ -552,6 +559,7 @@ class TidbOnQdrantVectorFactory(AbstractVectorFactory):
             f"{tidb_config.api_url}/clusters",
             json=cluster_data,
             auth=DigestAuth(tidb_config.public_key, tidb_config.private_key),
+            timeout=_TIDB_CLOUD_REQUEST_TIMEOUT,
         )
 
         if response.status_code == 200:
@@ -575,6 +583,7 @@ class TidbOnQdrantVectorFactory(AbstractVectorFactory):
             f"{tidb_config.api_url}/clusters/{cluster_id}/password",
             json=body,
             auth=DigestAuth(tidb_config.public_key, tidb_config.private_key),
+            timeout=_TIDB_CLOUD_REQUEST_TIMEOUT,
         )
 
         if response.status_code == 200:

@@ -5,8 +5,21 @@ import { CUSTOM_ITERATION_START_NODE } from '../../nodes/iteration-start/constan
 import { CUSTOM_LOOP_START_NODE } from '../../nodes/loop-start/constants'
 import { BlockEnum } from '../../types'
 
-type ElkChild = Record<string, unknown> & { id: string, width?: number, height?: number, x?: number, y?: number, children?: ElkChild[], ports?: Array<{ id: string, layoutOptions?: Record<string, string> }>, layoutOptions?: Record<string, string> }
-type ElkGraph = Record<string, unknown> & { id: string, children?: ElkChild[], edges?: Array<Record<string, unknown>> }
+type ElkChild = Record<string, unknown> & {
+  id: string
+  width?: number
+  height?: number
+  x?: number
+  y?: number
+  children?: ElkChild[]
+  ports?: Array<{ id: string; layoutOptions?: Record<string, string> }>
+  layoutOptions?: Record<string, string>
+}
+type ElkGraph = Record<string, unknown> & {
+  id: string
+  children?: ElkChild[]
+  edges?: Array<Record<string, unknown>>
+}
 
 let layoutCallArgs: ElkGraph | null = null
 let mockReturnOverride: ((graph: ElkGraph) => ElkGraph) | null = null
@@ -16,8 +29,7 @@ vi.mock('elkjs/lib/elk.bundled.js', () => {
     default: class MockELK {
       async layout(graph: ElkGraph) {
         layoutCallArgs = graph
-        if (mockReturnOverride)
-          return mockReturnOverride(graph)
+        if (mockReturnOverride) return mockReturnOverride(graph)
 
         const children = (graph.children || []).map((child: ElkChild, i: number) => ({
           ...child,
@@ -34,14 +46,22 @@ vi.mock('elkjs/lib/elk.bundled.js', () => {
 
 const { getLayoutByELK, getLayoutForChildNodes } = await import('../elk-layout')
 
-function makeWorkflowNode(overrides: Omit<Partial<Node>, 'data'> & { data?: Partial<CommonNodeType> & Record<string, unknown> } = {}): Node {
+function makeWorkflowNode(
+  overrides: Omit<Partial<Node>, 'data'> & {
+    data?: Partial<CommonNodeType> & Record<string, unknown>
+  } = {},
+): Node {
   return createNode({
     type: CUSTOM_NODE,
     ...overrides,
   })
 }
 
-function makeWorkflowEdge(overrides: Omit<Partial<Edge>, 'data'> & { data?: Partial<CommonEdgeType> & Record<string, unknown> } = {}): Edge {
+function makeWorkflowEdge(
+  overrides: Omit<Partial<Edge>, 'data'> & {
+    data?: Partial<CommonEdgeType> & Record<string, unknown>
+  } = {},
+): Edge {
   return createEdge(overrides)
 }
 
@@ -71,7 +91,11 @@ describe('getLayoutByELK', () => {
   it('should filter out nodes with parentId', async () => {
     const nodes = [
       makeWorkflowNode({ id: 'a', data: { type: BlockEnum.Start, title: '', desc: '' } }),
-      makeWorkflowNode({ id: 'child', data: { type: BlockEnum.Code, title: '', desc: '' }, parentId: 'a' }),
+      makeWorkflowNode({
+        id: 'child',
+        data: { type: BlockEnum.Code, title: '', desc: '' },
+        parentId: 'a',
+      }),
     ]
 
     const result = await getLayoutByELK(nodes, [])
@@ -82,7 +106,11 @@ describe('getLayoutByELK', () => {
   it('should filter out non-CUSTOM_NODE type nodes', async () => {
     const nodes = [
       makeWorkflowNode({ id: 'a', data: { type: BlockEnum.Start, title: '', desc: '' } }),
-      makeWorkflowNode({ id: 'iter-start', type: CUSTOM_ITERATION_START_NODE, data: { type: BlockEnum.IterationStart, title: '', desc: '' } }),
+      makeWorkflowNode({
+        id: 'iter-start',
+        type: CUSTOM_ITERATION_START_NODE,
+        data: { type: BlockEnum.IterationStart, title: '', desc: '' },
+      }),
     ]
 
     const result = await getLayoutByELK(nodes, [])
@@ -95,7 +123,11 @@ describe('getLayoutByELK', () => {
       makeWorkflowNode({ id: 'b', data: { type: BlockEnum.Code, title: '', desc: '' } }),
     ]
     const edges = [
-      makeWorkflowEdge({ source: 'a', target: 'b', data: { isInIteration: true, iteration_id: 'iter-1' } }),
+      makeWorkflowEdge({
+        source: 'a',
+        target: 'b',
+        data: { isInIteration: true, iteration_id: 'iter-1' },
+      }),
     ]
 
     await getLayoutByELK(nodes, edges)
@@ -159,7 +191,12 @@ describe('getLayoutByELK', () => {
     const nodes = [
       makeWorkflowNode({
         id: 'hi-1',
-        data: { type: BlockEnum.HumanInput, title: '', desc: '', user_actions: [{ id: 'action-1' }, { id: 'action-2' }] },
+        data: {
+          type: BlockEnum.HumanInput,
+          title: '',
+          desc: '',
+          user_actions: [{ id: 'action-1' }, { id: 'action-2' }],
+        },
       }),
       makeWorkflowNode({ id: 'b', data: { type: BlockEnum.Code, title: '', desc: '' } }),
       makeWorkflowNode({ id: 'c', data: { type: BlockEnum.Code, title: '', desc: '' } }),
@@ -178,7 +215,12 @@ describe('getLayoutByELK', () => {
     const nodes = [
       makeWorkflowNode({
         id: 'hi-1',
-        data: { type: BlockEnum.HumanInput, title: '', desc: '', user_actions: [{ id: 'action-1' }] },
+        data: {
+          type: BlockEnum.HumanInput,
+          title: '',
+          desc: '',
+          user_actions: [{ id: 'action-1' }],
+        },
       }),
       makeWorkflowNode({ id: 'b', data: { type: BlockEnum.Code, title: '', desc: '' } }),
     ]
@@ -191,7 +233,9 @@ describe('getLayoutByELK', () => {
   })
 
   it('should normalise bounds so minX and minY start at 0', async () => {
-    const nodes = [makeWorkflowNode({ id: 'a', data: { type: BlockEnum.Start, title: '', desc: '' } })]
+    const nodes = [
+      makeWorkflowNode({ id: 'a', data: { type: BlockEnum.Start, title: '', desc: '' } }),
+    ]
     const result = await getLayoutByELK(nodes, [])
     expect(result.bounds.minX).toBe(0)
     expect(result.bounds.minY).toBe(0)
@@ -237,7 +281,12 @@ describe('getLayoutByELK', () => {
     const nodes = [
       makeWorkflowNode({
         id: 'hi-1',
-        data: { type: BlockEnum.HumanInput, title: '', desc: '', user_actions: [{ id: 'a1' }, { id: 'a2' }] },
+        data: {
+          type: BlockEnum.HumanInput,
+          title: '',
+          desc: '',
+          user_actions: [{ id: 'a1' }, { id: 'a2' }],
+        },
       }),
       makeWorkflowNode({ id: 'x', data: { type: BlockEnum.Code, title: '', desc: '' } }),
       makeWorkflowNode({ id: 'y', data: { type: BlockEnum.Code, title: '', desc: '' } }),
@@ -300,7 +349,9 @@ describe('getLayoutByELK', () => {
       })),
     })
 
-    const nodes = [makeWorkflowNode({ id: 'a', data: { type: BlockEnum.Start, title: '', desc: '' } })]
+    const nodes = [
+      makeWorkflowNode({ id: 'a', data: { type: BlockEnum.Start, title: '', desc: '' } }),
+    ]
     const result = await getLayoutByELK(nodes, [])
     const info = result.nodes.get('a')!
     expect(info.x).toBe(0)
@@ -401,7 +452,12 @@ describe('getLayoutByELK', () => {
     const nodes = [
       makeWorkflowNode({
         id: 'hi-1',
-        data: { type: BlockEnum.HumanInput, title: '', desc: '', user_actions: [{ id: 'known-action' }] },
+        data: {
+          type: BlockEnum.HumanInput,
+          title: '',
+          desc: '',
+          user_actions: [{ id: 'known-action' }],
+        },
       }),
       makeWorkflowNode({ id: 'b', data: { type: BlockEnum.Code, title: '', desc: '' } }),
       makeWorkflowNode({ id: 'c', data: { type: BlockEnum.Code, title: '', desc: '' } }),
@@ -494,7 +550,11 @@ describe('getLayoutByELK', () => {
           type: BlockEnum.QuestionClassifier,
           title: '',
           desc: '',
-          classes: [{ id: 'cls-a', name: 'A' }, { id: 'cls-b', name: 'B' }, { id: 'cls-c', name: 'C' }],
+          classes: [
+            { id: 'cls-a', name: 'A' },
+            { id: 'cls-b', name: 'B' },
+            { id: 'cls-c', name: 'C' },
+          ],
         },
       }),
       makeWorkflowNode({ id: 'x', data: { type: BlockEnum.Code, title: '', desc: '' } }),
@@ -510,11 +570,7 @@ describe('getLayoutByELK', () => {
     await getLayoutByELK(nodes, edges)
     const qcNode = layoutCallArgs!.children!.find((c: ElkChild) => c.id === 'qc-1')!
     const portIds = qcNode.ports!.map((p: { id: string }) => p.id)
-    expect(portIds).toEqual([
-      'qc-1-out-cls-a',
-      'qc-1-out-cls-b',
-      'qc-1-out-cls-c',
-    ])
+    expect(portIds).toEqual(['qc-1-out-cls-a', 'qc-1-out-cls-b', 'qc-1-out-cls-c'])
   })
 
   it('should build ports for QuestionClassifier with single class', async () => {
@@ -581,7 +637,12 @@ describe('getLayoutByELK', () => {
     ]
     const edges = [
       makeWorkflowEdge({ source: 'start', target: 'if-1' }),
-      makeWorkflowEdge({ id: 'e-else', source: 'if-1', target: 'branch-else', sourceHandle: 'false' }),
+      makeWorkflowEdge({
+        id: 'e-else',
+        source: 'if-1',
+        target: 'branch-else',
+        sourceHandle: 'false',
+      }),
       makeWorkflowEdge({ id: 'e-a', source: 'if-1', target: 'branch-a', sourceHandle: 'case-a' }),
       makeWorkflowEdge({ source: 'branch-a', target: 'end' }),
       makeWorkflowEdge({ source: 'branch-else', target: 'end' }),
@@ -604,7 +665,10 @@ describe('getLayoutByELK', () => {
           type: BlockEnum.QuestionClassifier,
           title: '',
           desc: '',
-          classes: [{ id: 'c1', name: 'C1' }, { id: 'c2', name: 'C2' }],
+          classes: [
+            { id: 'c1', name: 'C1' },
+            { id: 'c2', name: 'C2' },
+          ],
         },
       }),
       makeWorkflowNode({ id: 'upper', data: { type: BlockEnum.Code, title: '', desc: '' } }),
@@ -624,7 +688,10 @@ describe('getLayoutByELK', () => {
 
   it('should handle QuestionClassifier with no classes property', async () => {
     const nodes = [
-      makeWorkflowNode({ id: 'qc-1', data: { type: BlockEnum.QuestionClassifier, title: '', desc: '' } }),
+      makeWorkflowNode({
+        id: 'qc-1',
+        data: { type: BlockEnum.QuestionClassifier, title: '', desc: '' },
+      }),
       makeWorkflowNode({ id: 'b', data: { type: BlockEnum.Code, title: '', desc: '' } }),
       makeWorkflowNode({ id: 'c', data: { type: BlockEnum.Code, title: '', desc: '' } }),
     ]
@@ -642,7 +709,12 @@ describe('getLayoutByELK', () => {
     const nodes = [
       makeWorkflowNode({
         id: 'qc-1',
-        data: { type: BlockEnum.QuestionClassifier, title: '', desc: '', classes: [{ id: 'known', name: 'K' }] },
+        data: {
+          type: BlockEnum.QuestionClassifier,
+          title: '',
+          desc: '',
+          classes: [{ id: 'known', name: 'K' }],
+        },
       }),
       makeWorkflowNode({ id: 'b', data: { type: BlockEnum.Code, title: '', desc: '' } }),
       makeWorkflowNode({ id: 'c', data: { type: BlockEnum.Code, title: '', desc: '' } }),
@@ -663,9 +735,7 @@ describe('getLayoutByELK', () => {
       makeWorkflowNode({ id: 'connected', data: { type: BlockEnum.Code, title: '', desc: '' } }),
       makeWorkflowNode({ id: 'isolated', data: { type: BlockEnum.Code, title: '', desc: '' } }),
     ]
-    const edges = [
-      makeWorkflowEdge({ source: 'start', target: 'connected' }),
-    ]
+    const edges = [makeWorkflowEdge({ source: 'start', target: 'connected' })]
 
     await getLayoutByELK(nodes, edges)
     const childIds = layoutCallArgs!.children!.map((c: ElkChild) => c.id)
@@ -690,8 +760,8 @@ describe('getLayoutByELK', () => {
     ]
 
     await getLayoutByELK(nodes, edges)
-    const elkEdges = layoutCallArgs!.edges as Array<{ sources: string[], targets: string[] }>
-    const ifEdges = elkEdges.filter(e => e.sources[0] === 'if-1')
+    const elkEdges = layoutCallArgs!.edges as Array<{ sources: string[]; targets: string[] }>
+    const ifEdges = elkEdges.filter((e) => e.sources[0] === 'if-1')
     expect(ifEdges[0]!.targets[0]).toBe('a')
     expect(ifEdges[1]!.targets[0]).toBe('b')
   })
@@ -713,13 +783,15 @@ describe('getLayoutByELK', () => {
 
     await getLayoutByELK(nodes, edges)
 
-    const elkEdges = layoutCallArgs!.edges as Array<{ sources: string[], targets: string[] }>
+    const elkEdges = layoutCallArgs!.edges as Array<{ sources: string[]; targets: string[] }>
     expect(elkEdges).toHaveLength(3)
-    expect(elkEdges).toEqual(expect.arrayContaining([
-      expect.objectContaining({ sources: ['if-1'], targets: ['a'] }),
-      expect.objectContaining({ sources: ['if-1'], targets: ['b'] }),
-      expect.objectContaining({ sources: ['a'], targets: ['if-1'] }),
-    ]))
+    expect(elkEdges).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ sources: ['if-1'], targets: ['a'] }),
+        expect.objectContaining({ sources: ['if-1'], targets: ['b'] }),
+        expect.objectContaining({ sources: ['a'], targets: ['if-1'] }),
+      ]),
+    )
   })
 
   it('should filter loop internal edges', async () => {
@@ -753,10 +825,18 @@ describe('getLayoutForChildNodes', () => {
         parentId: 'parent',
         data: { type: BlockEnum.IterationStart, title: '', desc: '' },
       }),
-      makeWorkflowNode({ id: 'child-1', parentId: 'parent', data: { type: BlockEnum.Code, title: '', desc: '' } }),
+      makeWorkflowNode({
+        id: 'child-1',
+        parentId: 'parent',
+        data: { type: BlockEnum.Code, title: '', desc: '' },
+      }),
     ]
     const edges = [
-      makeWorkflowEdge({ source: 'iter-start', target: 'child-1', data: { isInIteration: true, iteration_id: 'parent' } }),
+      makeWorkflowEdge({
+        source: 'iter-start',
+        target: 'child-1',
+        data: { isInIteration: true, iteration_id: 'parent' },
+      }),
     ]
 
     const result = await getLayoutForChildNodes('parent', nodes, edges)
@@ -774,10 +854,18 @@ describe('getLayoutForChildNodes', () => {
         parentId: 'loop-p',
         data: { type: BlockEnum.LoopStart, title: '', desc: '' },
       }),
-      makeWorkflowNode({ id: 'loop-child', parentId: 'loop-p', data: { type: BlockEnum.Code, title: '', desc: '' } }),
+      makeWorkflowNode({
+        id: 'loop-child',
+        parentId: 'loop-p',
+        data: { type: BlockEnum.Code, title: '', desc: '' },
+      }),
     ]
     const edges = [
-      makeWorkflowEdge({ source: 'loop-start', target: 'loop-child', data: { isInLoop: true, loop_id: 'loop-p' } }),
+      makeWorkflowEdge({
+        source: 'loop-start',
+        target: 'loop-child',
+        data: { isInLoop: true, loop_id: 'loop-p' },
+      }),
     ]
 
     const result = await getLayoutForChildNodes('loop-p', nodes, edges)
@@ -787,12 +875,28 @@ describe('getLayoutForChildNodes', () => {
 
   it('should only include edges belonging to the parent iteration', async () => {
     const nodes = [
-      makeWorkflowNode({ id: 'child-a', parentId: 'parent', data: { type: BlockEnum.Code, title: '', desc: '' } }),
-      makeWorkflowNode({ id: 'child-b', parentId: 'parent', data: { type: BlockEnum.Code, title: '', desc: '' } }),
+      makeWorkflowNode({
+        id: 'child-a',
+        parentId: 'parent',
+        data: { type: BlockEnum.Code, title: '', desc: '' },
+      }),
+      makeWorkflowNode({
+        id: 'child-b',
+        parentId: 'parent',
+        data: { type: BlockEnum.Code, title: '', desc: '' },
+      }),
     ]
     const edges = [
-      makeWorkflowEdge({ source: 'child-a', target: 'child-b', data: { isInIteration: true, iteration_id: 'parent' } }),
-      makeWorkflowEdge({ source: 'x', target: 'y', data: { isInIteration: true, iteration_id: 'other-parent' } }),
+      makeWorkflowEdge({
+        source: 'child-a',
+        target: 'child-b',
+        data: { isInIteration: true, iteration_id: 'parent' },
+      }),
+      makeWorkflowEdge({
+        source: 'x',
+        target: 'y',
+        data: { isInIteration: true, iteration_id: 'other-parent' },
+      }),
     ]
 
     await getLayoutForChildNodes('parent', nodes, edges)
@@ -818,7 +922,11 @@ describe('getLayoutForChildNodes', () => {
         parentId: 'parent',
         data: { type: BlockEnum.IterationStart, title: '', desc: '' },
       }),
-      makeWorkflowNode({ id: 'child', parentId: 'parent', data: { type: BlockEnum.Code, title: '', desc: '' } }),
+      makeWorkflowNode({
+        id: 'child',
+        parentId: 'parent',
+        data: { type: BlockEnum.Code, title: '', desc: '' },
+      }),
     ]
 
     const result = await getLayoutForChildNodes('parent', nodes, [])
@@ -846,7 +954,11 @@ describe('getLayoutForChildNodes', () => {
         parentId: 'parent',
         data: { type: BlockEnum.IterationStart, title: '', desc: '' },
       }),
-      makeWorkflowNode({ id: 'child', parentId: 'parent', data: { type: BlockEnum.Code, title: '', desc: '' } }),
+      makeWorkflowNode({
+        id: 'child',
+        parentId: 'parent',
+        data: { type: BlockEnum.Code, title: '', desc: '' },
+      }),
     ]
 
     const result = await getLayoutForChildNodes('parent', nodes, [])
@@ -855,8 +967,16 @@ describe('getLayoutForChildNodes', () => {
 
   it('should handle child nodes identified by data type LoopStart', async () => {
     const nodes = [
-      makeWorkflowNode({ id: 'ls', parentId: 'parent', data: { type: BlockEnum.LoopStart, title: '', desc: '' } }),
-      makeWorkflowNode({ id: 'child', parentId: 'parent', data: { type: BlockEnum.Code, title: '', desc: '' } }),
+      makeWorkflowNode({
+        id: 'ls',
+        parentId: 'parent',
+        data: { type: BlockEnum.LoopStart, title: '', desc: '' },
+      }),
+      makeWorkflowNode({
+        id: 'child',
+        parentId: 'parent',
+        data: { type: BlockEnum.Code, title: '', desc: '' },
+      }),
     ]
 
     const result = await getLayoutForChildNodes('parent', nodes, [])
@@ -866,8 +986,16 @@ describe('getLayoutForChildNodes', () => {
 
   it('should handle child nodes identified by data type IterationStart', async () => {
     const nodes = [
-      makeWorkflowNode({ id: 'is', parentId: 'parent', data: { type: BlockEnum.IterationStart, title: '', desc: '' } }),
-      makeWorkflowNode({ id: 'child', parentId: 'parent', data: { type: BlockEnum.Code, title: '', desc: '' } }),
+      makeWorkflowNode({
+        id: 'is',
+        parentId: 'parent',
+        data: { type: BlockEnum.IterationStart, title: '', desc: '' },
+      }),
+      makeWorkflowNode({
+        id: 'child',
+        parentId: 'parent',
+        data: { type: BlockEnum.Code, title: '', desc: '' },
+      }),
     ]
 
     const result = await getLayoutForChildNodes('parent', nodes, [])
@@ -877,8 +1005,16 @@ describe('getLayoutForChildNodes', () => {
 
   it('should handle no start node in child layout', async () => {
     const nodes = [
-      makeWorkflowNode({ id: 'c1', parentId: 'parent', data: { type: BlockEnum.Code, title: '', desc: '' } }),
-      makeWorkflowNode({ id: 'c2', parentId: 'parent', data: { type: BlockEnum.Code, title: '', desc: '' } }),
+      makeWorkflowNode({
+        id: 'c1',
+        parentId: 'parent',
+        data: { type: BlockEnum.Code, title: '', desc: '' },
+      }),
+      makeWorkflowNode({
+        id: 'c2',
+        parentId: 'parent',
+        data: { type: BlockEnum.Code, title: '', desc: '' },
+      }),
     ]
 
     const result = await getLayoutForChildNodes('parent', nodes, [])
@@ -902,16 +1038,43 @@ describe('getLayoutForChildNodes', () => {
           type: BlockEnum.QuestionClassifier,
           title: '',
           desc: '',
-          classes: [{ id: 'cls-1', name: 'C1' }, { id: 'cls-2', name: 'C2' }],
+          classes: [
+            { id: 'cls-1', name: 'C1' },
+            { id: 'cls-2', name: 'C2' },
+          ],
         },
       }),
-      makeWorkflowNode({ id: 'upper', parentId: 'parent', data: { type: BlockEnum.Code, title: '', desc: '' } }),
-      makeWorkflowNode({ id: 'lower', parentId: 'parent', data: { type: BlockEnum.Code, title: '', desc: '' } }),
+      makeWorkflowNode({
+        id: 'upper',
+        parentId: 'parent',
+        data: { type: BlockEnum.Code, title: '', desc: '' },
+      }),
+      makeWorkflowNode({
+        id: 'lower',
+        parentId: 'parent',
+        data: { type: BlockEnum.Code, title: '', desc: '' },
+      }),
     ]
     const edges = [
-      makeWorkflowEdge({ source: 'iter-start', target: 'qc-child', data: { isInIteration: true, iteration_id: 'parent' } }),
-      makeWorkflowEdge({ id: 'e-c2', source: 'qc-child', target: 'lower', sourceHandle: 'cls-2', data: { isInIteration: true, iteration_id: 'parent' } }),
-      makeWorkflowEdge({ id: 'e-c1', source: 'qc-child', target: 'upper', sourceHandle: 'cls-1', data: { isInIteration: true, iteration_id: 'parent' } }),
+      makeWorkflowEdge({
+        source: 'iter-start',
+        target: 'qc-child',
+        data: { isInIteration: true, iteration_id: 'parent' },
+      }),
+      makeWorkflowEdge({
+        id: 'e-c2',
+        source: 'qc-child',
+        target: 'lower',
+        sourceHandle: 'cls-2',
+        data: { isInIteration: true, iteration_id: 'parent' },
+      }),
+      makeWorkflowEdge({
+        id: 'e-c1',
+        source: 'qc-child',
+        target: 'upper',
+        sourceHandle: 'cls-1',
+        data: { isInIteration: true, iteration_id: 'parent' },
+      }),
     ]
 
     await getLayoutForChildNodes('parent', nodes, edges)
@@ -932,7 +1095,11 @@ describe('getLayoutForChildNodes', () => {
     })
 
     const nodes = [
-      makeWorkflowNode({ id: 'c1', parentId: 'parent', data: { type: BlockEnum.Code, title: '', desc: '' } }),
+      makeWorkflowNode({
+        id: 'c1',
+        parentId: 'parent',
+        data: { type: BlockEnum.Code, title: '', desc: '' },
+      }),
     ]
 
     const result = await getLayoutForChildNodes('parent', nodes, [])

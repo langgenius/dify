@@ -15,14 +15,8 @@ type Props = {
   readonly className?: string
 }
 
-const ResultItemMeta: FC<Props> = ({
-  labelPrefix,
-  positionId,
-  wordCount,
-  score,
-  className,
-}) => {
-  const { t } = useTranslation()
+const ResultItemMeta: FC<Props> = ({ labelPrefix, positionId, wordCount, score, className }) => {
+  const { t } = useTranslation(['datasetDocuments'])
 
   return (
     <div className={cn('flex items-center justify-between', className)}>
@@ -34,9 +28,8 @@ const ResultItemMeta: FC<Props> = ({
         />
         <Dot />
         <div className="system-xs-medium text-text-tertiary">
-          {wordCount}
-          {' '}
-          {t('segment.characters', { ns: 'datasetDocuments', count: wordCount })}
+          {wordCount}{' '}
+          {t(($) => $['segment.characters'], { ns: 'datasetDocuments', count: wordCount })}
         </div>
       </div>
       <Score value={score} />

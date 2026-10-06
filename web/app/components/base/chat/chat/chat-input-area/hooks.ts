@@ -1,8 +1,4 @@
-import {
-  useCallback,
-  useRef,
-  useState,
-} from 'react'
+import { useCallback, useRef, useState } from 'react'
 
 export const useTextAreaHeight = () => {
   const wrapperRef = useRef<HTMLDivElement>(null)
@@ -21,12 +17,9 @@ export const useTextAreaHeight = () => {
       const { width: holdSpaceWidth } = holdSpaceRef.current.getBoundingClientRect()
       if (textareaHeight > 32) {
         setIsMultipleLine(true)
-      }
-      else {
-        if (textValueWidth + holdSpaceWidth >= wrapperWidth)
-          setIsMultipleLine(true)
-        else
-          setIsMultipleLine(false)
+      } else {
+        if (textValueWidth + holdSpaceWidth >= wrapperWidth) setIsMultipleLine(true)
+        else setIsMultipleLine(false)
       }
     }
   }, [])

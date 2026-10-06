@@ -1,17 +1,11 @@
 import type { PanelProps } from '@/app/components/workflow/panel'
-import {
-  memo,
-  useMemo,
-} from 'react'
-import { useShallow } from 'zustand/react/shallow'
+import dynamic from 'next/dynamic'
+import { memo, useMemo } from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Panel from '@/app/components/workflow/panel'
 import CommentsPanel from '@/app/components/workflow/panel/comments-panel'
 import { useStore } from '@/app/components/workflow/store'
-import dynamic from '@/next/dynamic'
-import {
-  useIsChatMode,
-} from '../hooks'
+import { useIsChatMode } from '../hooks/use-is-chat-mode'
 
 const MessageLogModal = dynamic(() => import('@/app/components/base/message-log-modal'), {
   ssr: false,
@@ -28,110 +22,81 @@ const DebugAndPreview = dynamic(() => import('@/app/components/workflow/panel/de
 const WorkflowPreview = dynamic(() => import('@/app/components/workflow/panel/workflow-preview'), {
   ssr: false,
 })
-const ChatVariablePanel = dynamic(() => import('@/app/components/workflow/panel/chat-variable-panel'), {
-  ssr: false,
-})
-const GlobalVariablePanel = dynamic(() => import('@/app/components/workflow/panel/global-variable-panel'), {
-  ssr: false,
-})
+const ChatVariablePanel = dynamic(
+  () => import('@/app/components/workflow/panel/chat-variable-panel'),
+  {
+    ssr: false,
+  },
+)
+const GlobalVariablePanel = dynamic(
+  () => import('@/app/components/workflow/panel/global-variable-panel'),
+  {
+    ssr: false,
+  },
+)
 
-const WorkflowPanelOnLeft = () => {
-  const { currentLogItem, setCurrentLogItem, showMessageLogModal, setShowMessageLogModal, currentLogModalActiveTab } = useAppStore(useShallow(state => ({
-    currentLogItem: state.currentLogItem,
-    setCurrentLogItem: state.setCurrentLogItem,
-    showMessageLogModal: state.showMessageLogModal,
-    setShowMessageLogModal: state.setShowMessageLogModal,
-    currentLogModalActiveTab: state.currentLogModalActiveTab,
-  })))
+const WorkflowPanelOnLeft = ({ appId }: { appId: string }) => {
+  const messageLogItem = useStore((state) => state.messageLogItem)
+  const setMessageLogItem = useStore((state) => state.setMessageLogItem)
   return (
     <>
-      {
-        showMessageLogModal && (
-          <MessageLogModal
-            fixedWidth
-            width={400}
-            currentLogItem={currentLogItem}
-            onCancel={() => {
-              setCurrentLogItem()
-              setShowMessageLogModal(false)
-            }}
-            defaultTab={currentLogModalActiveTab}
-          />
-        )
-      }
+      {messageLogItem && (
+        <MessageLogModal
+          appId={appId}
+          fixedWidth
+          width={400}
+          currentLogItem={messageLogItem}
+          onCancel={() => setMessageLogItem(undefined)}
+        />
+      )}
     </>
   )
 }
 const WorkflowPanelOnRight = () => {
   const isChatMode = useIsChatMode()
-  const historyWorkflowData = useStore(s => s.historyWorkflowData)
-  const showDebugAndPreviewPanel = useStore(s => s.showDebugAndPreviewPanel)
-  const showChatVariablePanel = useStore(s => s.showChatVariablePanel)
-  const showGlobalVariablePanel = useStore(s => s.showGlobalVariablePanel)
-  const controlMode = useStore(s => s.controlMode)
+  const historyWorkflowData = useStore((s) => s.historyWorkflowData)
+  const showDebugAndPreviewPanel = useStore((s) => s.showDebugAndPreviewPanel)
+  const showChatVariablePanel = useStore((s) => s.showChatVariablePanel)
+  const showGlobalVariablePanel = useStore((s) => s.showGlobalVariablePanel)
+  const controlMode = useStore((s) => s.controlMode)
 
   return (
     <>
-      {
-        historyWorkflowData && !isChatMode && (
-          <Record />
-        )
-      }
-      {
-        historyWorkflowData && isChatMode && (
-          <ChatRecord />
-        )
-      }
-      {
-        showDebugAndPreviewPanel && isChatMode && (
-          <DebugAndPreview />
-        )
-      }
-      {
-        showDebugAndPreviewPanel && !isChatMode && (
-          <WorkflowPreview />
-        )
-      }
-      {
-        showChatVariablePanel && isChatMode && (
-          <ChatVariablePanel />
-        )
-      }
-      {
-        showGlobalVariablePanel && (
-          <GlobalVariablePanel />
-        )
-      }
+      {historyWorkflowData && !isChatMode && <Record />}
+      {historyWorkflowData && isChatMode && <ChatRecord />}
+      {showDebugAndPreviewPanel && isChatMode && <DebugAndPreview />}
+      {showDebugAndPreviewPanel && !isChatMode && <WorkflowPreview />}
+      {showChatVariablePanel && isChatMode && <ChatVariablePanel />}
+      {showGlobalVariablePanel && <GlobalVariablePanel />}
       {controlMode === 'comment' && <CommentsPanel />}
     </>
   )
 }
 const WorkflowPanel = () => {
-  const appDetail = useAppStore(s => s.appDetail)
+  const appDetail = useAppStore((s) => s.appDetail)
   const versionHistoryPanelProps = useMemo(() => {
     const appId = appDetail?.id
     return {
+      appMode: appDetail?.mode,
       getVersionListUrl: `/apps/${appId}/workflows`,
       deleteVersionUrl: (versionId: string) => `/apps/${appId}/workflows/${versionId}`,
       restoreVersionUrl: (versionId: string) => `/apps/${appId}/workflows/${versionId}/restore`,
       updateVersionUrl: (versionId: string) => `/apps/${appId}/workflows/${versionId}`,
       latestVersionId: appDetail?.workflow?.id,
     }
-  }, [appDetail?.id, appDetail?.workflow?.id])
+  }, [appDetail?.id, appDetail?.mode, appDetail?.workflow?.id])
 
   const panelProps: PanelProps = useMemo(() => {
     return {
       components: {
-        left: <WorkflowPanelOnLeft />,
+        left: appDetail && <WorkflowPanelOnLeft appId={appDetail.id} />,
         right: <WorkflowPanelOnRight />,
       },
       versionHistoryPanelProps,
     }
-  }, [versionHistoryPanelProps])
+  }, [appDetail, versionHistoryPanelProps])
 
-  return (
-    <Panel {...panelProps} />
-  )
+  return <Panel {...panelProps} />
 }
 
 export default memo(WorkflowPanel)

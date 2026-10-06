@@ -2,7 +2,6 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-
 import {
   zGetBillingInvoicesResponse,
   zGetBillingSubscriptionQuery,
@@ -10,7 +9,7 @@ import {
   zPutBillingPartnersByPartnerKeyTenantsBody,
   zPutBillingPartnersByPartnerKeyTenantsPath,
   zPutBillingPartnersByPartnerKeyTenantsResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 export const get = oc
   .route({

@@ -28,11 +28,9 @@ export class FileTokenStore implements TokenStore {
 
   async read(host: string, email: string): Promise<string> {
     const doc = await this.store.getTyped<TokenDoc>()
-    if (doc === null)
-      return ''
+    if (doc === null) return ''
     // missing version = legacy pre-v1 format (same data shape); future unknown versions are rejected
-    if (doc.version !== undefined && doc.version !== DOC_VERSION)
-      return ''
+    if (doc.version !== undefined && doc.version !== DOC_VERSION) return ''
     return doc.tokens?.[host]?.[email] ?? ''
   }
 
@@ -46,27 +44,28 @@ export class FileTokenStore implements TokenStore {
 
   async remove(host: string, email: string): Promise<void> {
     const doc = await this.store.getTyped<TokenDoc>()
-    if (doc === null)
-      return
-    if (doc.version !== undefined && doc.version !== DOC_VERSION)
-      return
+    if (doc === null) return
+    if (doc.version !== undefined && doc.version !== DOC_VERSION) return
     const tokens = doc.tokens ?? {}
     const hostMap = tokens[host]
-    if (hostMap === undefined || !(email in hostMap))
-      return
+    if (hostMap === undefined || !(email in hostMap)) return
     delete hostMap[email]
-    if (Object.keys(hostMap).length === 0)
-      delete tokens[host]
+    if (Object.keys(hostMap).length === 0) delete tokens[host]
     await this.store.setTyped({ version: DOC_VERSION, tokens })
   }
 
-  private async load(): Promise<{ version: number, tokens: Record<string, Record<string, string>> }> {
+  private async load(): Promise<{
+    version: number
+    tokens: Record<string, Record<string, string>>
+  }> {
     const doc = await this.store.getTyped<TokenDoc>()
-    if (doc === null)
-      return { version: DOC_VERSION, tokens: {} }
+    if (doc === null) return { version: DOC_VERSION, tokens: {} }
     if (doc.version !== undefined && doc.version !== DOC_VERSION)
       return { version: DOC_VERSION, tokens: {} }
-    return { version: DOC_VERSION, tokens: (doc.tokens ?? {}) as Record<string, Record<string, string>> }
+    return {
+      version: DOC_VERSION,
+      tokens: (doc.tokens ?? {}) as Record<string, Record<string, string>>,
+    }
   }
 }
 
@@ -84,17 +83,14 @@ export class KeychainTokenStore implements TokenStore {
     let raw: string | null | undefined
     try {
       raw = await new AsyncEntry(this.service, entryName(host, email)).getPassword()
-    }
-    catch (err) {
+    } catch (err) {
       throw keyringUnavailableError(err)
     }
-    if (raw === null || raw === undefined || raw === '')
-      return ''
+    if (raw === null || raw === undefined || raw === '') return ''
     try {
       const parsed: unknown = JSON.parse(raw)
       return typeof parsed === 'string' ? parsed : ''
-    }
-    catch {
+    } catch {
       return ''
     }
   }
@@ -102,8 +98,7 @@ export class KeychainTokenStore implements TokenStore {
   async write(host: string, email: string, bearer: string): Promise<void> {
     try {
       await new AsyncEntry(this.service, entryName(host, email)).setPassword(JSON.stringify(bearer))
-    }
-    catch (err) {
+    } catch (err) {
       throw keyringUnavailableError(err)
     }
   }
@@ -111,8 +106,9 @@ export class KeychainTokenStore implements TokenStore {
   async remove(host: string, email: string): Promise<void> {
     try {
       await new AsyncEntry(this.service, entryName(host, email)).deletePassword()
+    } catch {
+      /* missing entry is fine */
     }
-    catch { /* missing entry is fine */ }
   }
 }
 

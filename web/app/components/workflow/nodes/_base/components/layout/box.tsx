@@ -7,19 +7,9 @@ export type BoxProps = {
   children?: ReactNode
   withBorderBottom?: boolean
 }
-export const Box = memo(({
-  className,
-  children,
-  withBorderBottom,
-}: BoxProps) => {
+export const Box = memo(({ className, children, withBorderBottom }: BoxProps) => {
   return (
-    <div
-      className={cn(
-        'py-2',
-        withBorderBottom && 'border-b border-divider-subtle',
-        className,
-      )}
-    >
+    <div className={cn('py-2', withBorderBottom && 'border-b border-divider-subtle', className)}>
       {children}
     </div>
   )

@@ -11,33 +11,30 @@ type SortHeaderProps = {
   onSort: (field: SortField) => void
 }
 
-const SortHeader: FC<SortHeaderProps> = React.memo(({
-  field,
-  label,
-  currentSortField,
-  sortOrder,
-  onSort,
-}) => {
-  const isActive = currentSortField === field
-  const isDesc = isActive && sortOrder === 'desc'
+const SortHeader: FC<SortHeaderProps> = React.memo(
+  ({ field, label, currentSortField, sortOrder, onSort }) => {
+    const isActive = currentSortField === field
+    const isDesc = isActive && sortOrder === 'desc'
 
-  return (
-    <button
-      type="button"
-      className="flex items-center bg-transparent p-0 text-left hover:text-text-secondary"
-      onClick={() => onSort(field)}
-    >
-      {label}
-      <span
-        className={cn(
-          'ml-0.5 i-ri-arrow-down-line size-3 transition-all',
-          isActive ? 'text-text-tertiary' : 'text-text-disabled',
-          isActive && !isDesc ? 'rotate-180' : '',
-        )}
-      />
-    </button>
-  )
-})
+    return (
+      <button
+        type="button"
+        className="flex items-center bg-transparent p-0 text-left hover:text-text-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-state-accent-solid"
+        onClick={() => onSort(field)}
+      >
+        {label}
+        <span
+          aria-hidden="true"
+          className={cn(
+            'ml-0.5 i-ri-arrow-down-line size-3 transition-all',
+            isActive ? 'text-text-tertiary' : 'text-text-disabled',
+            isActive && !isDesc ? 'rotate-180' : '',
+          )}
+        />
+      </button>
+    )
+  },
+)
 
 SortHeader.displayName = 'SortHeader'
 

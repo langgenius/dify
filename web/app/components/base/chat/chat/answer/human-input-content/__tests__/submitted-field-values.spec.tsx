@@ -1,7 +1,7 @@
 import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
 import type { FileResponse, HumanInputFormValue } from '@/types/workflow'
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { InputVarType } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
 import SubmittedFieldValues from '../submitted-field-values'
@@ -93,7 +93,10 @@ describe('SubmittedFieldValues', () => {
     render(<SubmittedFieldValues fields={fields} values={values} />)
 
     expect(screen.getByTestId('submitted-field-attachment')).toHaveTextContent('decision.pdf')
-    expect(screen.getByRole('img', { name: 'Preview' })).toHaveAttribute('src', 'https://example.com/evidence-1.png')
+    expect(screen.getByRole('img', { name: 'Preview' })).toHaveAttribute(
+      'src',
+      'https://example.com/evidence-1.png',
+    )
     expect(screen.getByText('evidence-2.pdf')).toBeInTheDocument()
     expect(screen.getAllByTestId('file-list')).toHaveLength(2)
   })
@@ -119,7 +122,10 @@ describe('SubmittedFieldValues', () => {
 
     expect(screen.getByTestId('submitted-field-summary')).toHaveTextContent('Unstructured summary')
     expect(screen.getByTestId('submitted-field-attachment')).toHaveTextContent('decision.pdf')
-    expect(screen.getByRole('img', { name: 'Preview' })).toHaveAttribute('src', 'https://example.com/evidence-1.png')
+    expect(screen.getByRole('img', { name: 'Preview' })).toHaveAttribute(
+      'src',
+      'https://example.com/evidence-1.png',
+    )
     expect(screen.getByText('evidence-2.pdf')).toBeInTheDocument()
   })
 

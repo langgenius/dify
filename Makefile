@@ -2,6 +2,7 @@
 DOCKER_REGISTRY=langgenius
 WEB_IMAGE=$(DOCKER_REGISTRY)/dify-web
 API_IMAGE=$(DOCKER_REGISTRY)/dify-api
+SANDBOX_RUNTIME_IMAGE=$(DOCKER_REGISTRY)/dify-agent-local-sandbox
 VERSION=latest
 DOCKER_DIR=docker
 DOCKER_MIDDLEWARE_ENV=$(DOCKER_DIR)/middleware.env
@@ -79,6 +80,7 @@ lint:
 	@uv run --project api --dev ruff format ./api
 	@uv run --project api --dev ruff check --fix ./api
 	@$(MAKE) api-contract-lint
+	@uv run --project api python scripts/check_no_spec_mock.py
 	@uv run --directory api --dev lint-imports
 	@uv run --project api --dev dotenv-linter ./api/.env.example ./web/.env.example
 	@echo "✅ Linting complete"
@@ -89,15 +91,13 @@ api-contract-lint:
 	@echo "✅ Response contract lint complete"
 
 type-check:
-	@echo "📝 Running type checks (pyrefly + mypy)..."
+	@echo "📝 Running type checks (pyrefly)..."
 	@./dev/pyrefly-check-local $(PATH_TO_CHECK)
-	@uv --directory api run mypy --exclude-gitignore --exclude '(^|/)conftest\.py$$' --exclude 'tests/' --exclude 'migrations/' --exclude 'dev/generate_swagger_specs.py' --exclude 'dev/generate_fastopenapi_specs.py' --check-untyped-defs --disable-error-code=import-untyped .
 	@echo "✅ Type checks complete"
 
 type-check-core:
-	@echo "📝 Running core type checks (pyrefly + mypy)..."
+	@echo "📝 Running core type checks (pyrefly)..."
 	@./dev/pyrefly-check-local $(PATH_TO_CHECK)
-	@uv --directory api run mypy --exclude-gitignore --exclude '(^|/)conftest\.py$$' --exclude 'tests/' --exclude 'migrations/' --exclude 'dev/generate_swagger_specs.py' --exclude 'dev/generate_fastopenapi_specs.py' --check-untyped-defs --disable-error-code=import-untyped .
 	@echo "✅ Core type checks complete"
 
 test:
@@ -106,6 +106,7 @@ test:
 		echo "Target: $(TARGET_TESTS)"; \
 		uv run --project api --dev pytest $(TARGET_TESTS); \
 	else \
+		set -e; \
 		echo "Running backend unit tests"; \
 		uv run --project api --dev pytest -p no:benchmark --timeout "$${PYTEST_TIMEOUT:-20}" -n auto \
 			api/tests/unit_tests \
@@ -123,6 +124,7 @@ test-all:
 		echo "Target: $(TARGET_TESTS)"; \
 		uv run --project api --dev pytest $(TARGET_TESTS); \
 	else \
+		set -e; \
 		echo "Running backend unit tests"; \
 		uv run --project api --dev pytest -p no:benchmark --timeout "$${PYTEST_TIMEOUT:-20}" -n auto \
 			api/tests/unit_tests \
@@ -160,6 +162,13 @@ build-api:
 	docker build -t $(API_IMAGE):$(VERSION) -f api/Dockerfile .
 	@echo "API Docker image built successfully: $(API_IMAGE):$(VERSION)"
 
+build-sandbox-runtime:
+	@echo "Building sandbox runtime Docker image: $(SANDBOX_RUNTIME_IMAGE):$(VERSION)..."
+	docker build -t $(SANDBOX_RUNTIME_IMAGE):$(VERSION) \
+		-f dify-agent-runtime/docker/Dockerfile \
+		dify-agent-runtime
+	@echo "Sandbox runtime Docker image built successfully: $(SANDBOX_RUNTIME_IMAGE):$(VERSION)"
+
 # Push Docker images
 push-web:
 	@echo "Pushing web Docker image: $(WEB_IMAGE):$(VERSION)..."
@@ -171,14 +180,20 @@ push-api:
 	docker push $(API_IMAGE):$(VERSION)
 	@echo "API Docker image pushed successfully: $(API_IMAGE):$(VERSION)"
 
+push-sandbox-runtime:
+	@echo "Pushing sandbox runtime Docker image: $(SANDBOX_RUNTIME_IMAGE):$(VERSION)..."
+	docker push $(SANDBOX_RUNTIME_IMAGE):$(VERSION)
+	@echo "Sandbox runtime Docker image pushed successfully: $(SANDBOX_RUNTIME_IMAGE):$(VERSION)"
+
 # Build all images
-build-all: build-web build-api
+build-all: build-web build-api build-sandbox-runtime
 
 # Push all images
-push-all: push-web push-api
+push-all: push-web push-api push-sandbox-runtime
 
 build-push-api: build-api push-api
 build-push-web: build-web push-web
+build-push-sandbox-runtime: build-sandbox-runtime push-sandbox-runtime
 
 # Build and push all images
 build-push-all: build-all push-all
@@ -198,17 +213,18 @@ help:
 	@echo "  make check          - Check code with ruff"
 	@echo "  make lint           - Format, fix, and lint code (ruff, imports, dotenv)"
 	@echo "  make api-contract-lint - Check Flask response docs against returned schemas"
-	@echo "  make type-check     - Run type checks (pyrefly, mypy)"
-	@echo "  make type-check-core - Run core type checks (pyrefly, mypy)"
+	@echo "  make type-check     - Run type checks (pyrefly)"
+	@echo "  make type-check-core - Run core type checks (pyrefly)"
 	@echo "  make test           - Run backend unit tests (or TARGET_TESTS=./api/tests/<target_tests>)"
 	@echo "  make test-all       - Run full backend tests, including Docker-backed suites"
 	@echo ""
 	@echo "Docker Build Targets:"
 	@echo "  make build-web      - Build web Docker image"
 	@echo "  make build-api      - Build API Docker image"
+	@echo "  make build-sandbox-runtime - Build sandbox runtime Docker image"
 	@echo "  make build-all      - Build all Docker images"
 	@echo "  make push-all       - Push all Docker images"
 	@echo "  make build-push-all - Build and push all Docker images"
 
 # Phony targets
-.PHONY: build-web build-api push-web push-api build-all push-all build-push-all dev-setup prepare-docker prepare-web prepare-api dev-clean help format check lint api-contract-lint type-check test test-all
+.PHONY: build-web build-api build-sandbox-runtime push-web push-api push-sandbox-runtime build-all push-all build-push-all build-push-sandbox-runtime dev-setup prepare-docker prepare-web prepare-api dev-clean help format check lint api-contract-lint type-check test test-all
