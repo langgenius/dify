@@ -502,6 +502,7 @@ const ChatWrapper = () => {
         ) : appData?.site.default_user_icon_type ? (
           <AppIcon
             size="large"
+            rounded
             iconType={appData.site.default_user_icon_type}
             icon={appData.site.default_user_icon ?? undefined}
             background={appData.site.default_user_icon_background}
