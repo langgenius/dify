@@ -164,7 +164,7 @@ class ChatClient extends DifyClient {
             'user' => $user,
             'auto_generate' => $auto_generate
         ];
-        return $this->send_request('PATCH', "conversations/{$conversation_id}", $data);
+        return $this->send_request('POST', "conversations/{$conversation_id}/name", $data);
     }
 
     public function delete_conversation($conversation_id, $user) {
