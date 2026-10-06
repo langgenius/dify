@@ -1,5 +1,8 @@
 import type { Edge, Node } from '../../types'
 import { act } from '@testing-library/react'
+import { useStore as useAppStore } from '@/app/components/app/store'
+import { createAppDetailFixture } from '@/test/fixtures/app'
+import { AppModeEnum } from '@/types/app'
 import { createEdge, createNode } from '../../__tests__/fixtures'
 import { resetReactFlowMockState, rfState } from '../../__tests__/reactflow-mock-state'
 import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
@@ -955,6 +958,87 @@ describe('useNodesInteractions', () => {
     })
 
     expect(rfState.setNodes).toHaveBeenCalled()
+  })
+
+  describe('pasted conversation memory', () => {
+    const memory = {
+      window: { enabled: false, size: 50 },
+      query_prompt_template: '{{#sys.query#}}\n\n{{#sys.files#}}',
+    }
+    const promptTemplate = [{ role: 'user', text: '{{#start.query#}}' }]
+
+    it.each(
+      [
+        BlockEnum.LLM,
+        BlockEnum.QuestionClassifier,
+        BlockEnum.ParameterExtractor,
+        BlockEnum.Agent,
+      ].flatMap((type) => [
+        { type, mode: AppModeEnum.WORKFLOW, keepsMemory: false },
+        { type, mode: AppModeEnum.ADVANCED_CHAT, keepsMemory: true },
+      ]),
+    )(
+      'pastes $type into $mode with keepsMemory=$keepsMemory',
+      async ({ type, mode, keepsMemory }) => {
+        useAppStore.getState().setAppDetail(createAppDetailFixture({ mode }))
+        runtimeNodesMetaDataMap.value = {
+          [type]: { defaultValue: { type, title: type, desc: '' } },
+        }
+        const sourceNode = createNode({
+          id: 'source-node',
+          data: { type, memory, prompt_template: promptTemplate },
+        })
+        const { result, store } = renderWorkflowHook(() => useNodesInteractions())
+        store.setState({ clipboardElements: [sourceNode], clipboardEdges: [] })
+
+        await act(async () => {
+          await result.current.handleNodesPaste()
+        })
+
+        const pastedNodes = rfState.setNodes.mock.calls.at(-1)?.[0] as Node[]
+        const pastedNode = pastedNodes.find((node) => node.data.type === type)!
+        if (keepsMemory) expect(pastedNode.data).toHaveProperty('memory', memory)
+        else expect(pastedNode.data).not.toHaveProperty('memory')
+        expect(pastedNode.data).toHaveProperty('prompt_template', promptTemplate)
+        expect(store.getState().clipboardElements[0]?.data).toHaveProperty('memory', memory)
+      },
+    )
+
+    it.each([BlockEnum.Iteration, BlockEnum.Loop])(
+      'clears memory from LLM children when pasting a %s into Workflow',
+      async (containerType) => {
+        useAppStore.getState().setAppDetail(createAppDetailFixture({ mode: AppModeEnum.WORKFLOW }))
+        runtimeNodesMetaDataMap.value = {
+          [containerType]: {
+            defaultValue: { type: containerType, title: containerType, desc: '' },
+          },
+          [BlockEnum.LLM]: { defaultValue: { type: BlockEnum.LLM, title: 'LLM', desc: '' } },
+        }
+        const sourceContainer = createNode({
+          id: 'source-container',
+          data: { type: containerType },
+        })
+        const sourceChild = createNode({
+          id: 'source-child',
+          parentId: sourceContainer.id,
+          data: { type: BlockEnum.LLM, memory, prompt_template: promptTemplate },
+        })
+        const { result, store } = renderWorkflowHook(() => useNodesInteractions())
+        store.setState({ clipboardElements: [sourceContainer, sourceChild], clipboardEdges: [] })
+
+        await act(async () => {
+          await result.current.handleNodesPaste()
+        })
+
+        const pastedNodes = rfState.setNodes.mock.calls.at(-1)?.[0] as Node[]
+        const pastedChild = pastedNodes.find((node) => node.data.type === BlockEnum.LLM)!
+        expect(pastedChild.parentId).toBe(
+          pastedNodes.find((node) => node.data.type === containerType)?.id,
+        )
+        expect(pastedChild.data).not.toHaveProperty('memory')
+        expect(sourceChild.data).toHaveProperty('memory', memory)
+      },
+    )
   })
 
   // Paste title handling should preserve original names until the destination canvas conflicts.

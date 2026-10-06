@@ -18,8 +18,10 @@ import { produce } from 'immer'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getConnectedEdges, getOutgoers, useReactFlow } from 'reactflow'
+import { useStore as useAppStore } from '@/app/components/app/store'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
+import { AppModeEnum } from '@/types/app'
 import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import {
   CUSTOM_EDGE,
@@ -164,6 +166,7 @@ const isNoteLinkClickTarget = (target: EventTarget | null, node: Node) => {
 
 export const useNodesInteractions = () => {
   const { t } = useTranslation(['workflow'])
+  const isWorkflowMode = useAppStore((s) => s.appDetail?.mode === AppModeEnum.WORKFLOW)
   const { data: appDslVersion = '' } = useQuery(
     consoleQuery.appDslVersion.get.queryOptions({
       staleTime: Infinity,
@@ -2127,6 +2130,19 @@ export const useNodesInteractions = () => {
       }
     })
 
+    if (isWorkflowMode) {
+      const memoryNodeTypes: BlockEnum[] = [
+        BlockEnum.LLM,
+        BlockEnum.QuestionClassifier,
+        BlockEnum.ParameterExtractor,
+        BlockEnum.Agent,
+      ]
+      nodesToPaste.forEach((node) => {
+        if (memoryNodeTypes.includes(getNodeCatalogType(node.data)) && 'memory' in node.data)
+          delete node.data.memory
+      })
+    }
+
     const newNodes = produce(nodes, (draft: Node[]) => {
       parentChildrenToAppend.forEach(({ parentId, childId, childType }) => {
         const p = draft.find((n) => n.id === parentId)
@@ -2153,6 +2169,7 @@ export const useNodesInteractions = () => {
     handleNodeLoopChildrenCopy,
     getNodeDefaultValueForPaste,
     appDslVersion,
+    isWorkflowMode,
   ])
 
   const handleNodesDuplicate = useCallback(
