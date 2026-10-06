@@ -113,7 +113,7 @@ def _runtime(
         user_id: str,
         datasource_parameters: dict[str, object],
         provider_type: str,
-    ) -> Generator[OnlineDocumentPagesMessage, None, None]:
+    ) -> Generator[OnlineDocumentPagesMessage]:
         calls.append((user_id, datasource_parameters, provider_type))
         yield from messages
 
