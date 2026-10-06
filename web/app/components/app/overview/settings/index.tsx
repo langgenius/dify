@@ -526,7 +526,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                           </FieldDescription>
                         </div>
                         <AppIcon
-                          size="large"
+                          size="xxl"
                           onClick={() => setShowUserIconPicker(true)}
                           className="shrink-0 cursor-pointer"
                           iconType={
