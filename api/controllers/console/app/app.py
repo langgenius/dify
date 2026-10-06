@@ -318,6 +318,9 @@ class AppDetailSiteResponse(ResponseModel):
     icon_type: str | IconType | None = None
     icon: str | None = None
     icon_background: str | None = None
+    default_user_icon_type: str | IconType | None = None
+    default_user_icon: str | None = None
+    default_user_icon_background: str | None = None
     description: str | None = None
     default_language: str | None = None
     chat_color_theme: str | None = None
@@ -342,7 +345,12 @@ class AppDetailSiteResponse(ResponseModel):
     def icon_url(self) -> str | None:
         return build_icon_url(self.icon_type, self.icon)
 
-    @field_validator("icon_type", mode="before")
+    @computed_field(return_type=str | None)  # type: ignore
+    @property
+    def default_user_icon_url(self) -> str | None:
+        return build_icon_url(self.default_user_icon_type, self.default_user_icon)
+
+    @field_validator("icon_type", "default_user_icon_type", mode="before")
     @classmethod
     def _normalize_icon_type(cls, value: str | IconType | None) -> str | None:
         if isinstance(value, IconType):

@@ -1,12 +1,24 @@
-# Runs the custom web image built by .github/workflows/build-web-image.yml
-# instead of the stock langgenius/dify-web image.
+# Runs the custom web/api images built by .github/workflows/build-web-image.yml
+# and build-api-image.yml, instead of the stock langgenius/dify-web and
+# langgenius/dify-api images.
 #
 # Set these in docker/.env on the server (see the end of docker/.env.example):
 #   CUSTOM_WEB_IMAGE      Docker Hub repository, e.g. yourusername/dify-web-custom
 #   CUSTOM_WEB_IMAGE_TAG  image tag to run, e.g. 1.0.1 (defaults to latest)
+#   CUSTOM_API_IMAGE      Docker Hub repository, e.g. yourusername/dify-api-custom
+#   CUSTOM_API_IMAGE_TAG  image tag to run, e.g. 1.0.1 (defaults to latest)
 #
-# Deploy a new version: change CUSTOM_WEB_IMAGE_TAG, then run
-#   docker compose pull web && docker compose up -d web
+# Deploy a new version: change the *_TAG value(s), then run
+#   docker compose pull web api worker worker_beat api_websocket
+#   docker compose up -d web api worker worker_beat api_websocket
 services:
   web:
     image: ${CUSTOM_WEB_IMAGE:?Set CUSTOM_WEB_IMAGE in docker/.env}:${CUSTOM_WEB_IMAGE_TAG:-latest}
+  api:
+    image: ${CUSTOM_API_IMAGE:?Set CUSTOM_API_IMAGE in docker/.env}:${CUSTOM_API_IMAGE_TAG:-latest}
+  api_websocket:
+    image: ${CUSTOM_API_IMAGE:?Set CUSTOM_API_IMAGE in docker/.env}:${CUSTOM_API_IMAGE_TAG:-latest}
+  worker:
+    image: ${CUSTOM_API_IMAGE:?Set CUSTOM_API_IMAGE in docker/.env}:${CUSTOM_API_IMAGE_TAG:-latest}
+  worker_beat:
+    image: ${CUSTOM_API_IMAGE:?Set CUSTOM_API_IMAGE in docker/.env}:${CUSTOM_API_IMAGE_TAG:-latest}
