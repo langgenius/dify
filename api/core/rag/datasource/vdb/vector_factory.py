@@ -28,7 +28,15 @@ logger = logging.getLogger(__name__)
 
 class AbstractVectorFactory(ABC):
     @abstractmethod
-    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> BaseVector:
+    def init_vector(
+        self, dataset: Dataset, attributes: list, embeddings: Embeddings, *, session: Session | None
+    ) -> BaseVector:
+        """Initialize the backend using the caller's session for metadata reads.
+
+        Direct factory callers may pass ``None`` to retain backend-specific
+        legacy reads. A supplied session belongs to the caller and must not be
+        committed, rolled back, or closed here.
+        """
         raise NotImplementedError
 
     @staticmethod
@@ -151,7 +159,7 @@ class Vector:
     def _init_vector(self, *, session: Session) -> BaseVector:
         vector_type = self.resolve_vector_type(self._dataset, session=session)
         vector_factory_cls = self.get_vector_factory(vector_type)
-        return vector_factory_cls().init_vector(self._dataset, self._attributes, self._embeddings)
+        return vector_factory_cls().init_vector(self._dataset, self._attributes, self._embeddings, session=session)
 
     @staticmethod
     def get_vector_factory(vector_type: str) -> type[AbstractVectorFactory]:
