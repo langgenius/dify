@@ -448,7 +448,6 @@ project-excludes = [
   "core/rag/embedding/test_embedding_base.py",
   "core/rag/embedding/test_embedding_service.py",
   "core/rag/extractor/blob/test_blob.py",
-  "core/rag/extractor/firecrawl/test_firecrawl.py",
   "core/rag/extractor/test_csv_extractor.py",
   "core/rag/extractor/test_excel_extractor.py",
   "core/rag/extractor/test_extract_processor.py",
