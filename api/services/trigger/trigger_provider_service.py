@@ -453,11 +453,12 @@ class TriggerProviderService:
             provider_controller: PluginTriggerProviderController = TriggerManager.get_trigger_provider(
                 tenant_id=tenant_id, provider_id=provider_id
             )
-            # Create encrypter
-            encrypter, _ = create_provider_encrypter(
+            # Subscription credentials must use the credentials schema (same as add/update/read paths),
+            # not the OAuth client schema, otherwise tokens are (de)crypted with the wrong secret fields.
+            encrypter, _ = create_trigger_provider_encrypter_for_subscription(
                 tenant_id=tenant_id,
-                config=[x.to_basic_provider_config() for x in provider_controller.get_oauth_client_schema()],
-                cache=NoOpProviderCredentialCache(),
+                controller=provider_controller,
+                subscription=subscription,
             )
 
             # Decrypt current credentials
