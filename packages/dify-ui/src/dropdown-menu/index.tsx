@@ -23,6 +23,9 @@ const DropdownMenuPortal = Menu.Portal
 const DropdownMenuTrigger = Menu.Trigger
 const DropdownMenuSub = Menu.SubmenuRoot
 const DropdownMenuGroup = Menu.Group
+const createDropdownMenuHandle = Menu.createHandle
+
+type DropdownMenuHandle<Payload = unknown> = Menu.Handle<Payload>
 
 type DropdownMenuProps<Payload = unknown> = Menu.Root.Props<Payload>
 type DropdownMenuTriggerProps<Payload = unknown> = Menu.Trigger.Props<Payload>
@@ -104,9 +107,9 @@ function DropdownMenuCheckboxItemIndicator({
 
 type DropdownMenuCheckboxItemIndicatorProps = Omit<Menu.CheckboxItemIndicator.Props, 'children'>
 
-type DropdownMenuLabelProps = Menu.GroupLabel.Props
+type DropdownMenuGroupLabelProps = Menu.GroupLabel.Props
 
-function DropdownMenuLabel({ className, ...props }: DropdownMenuLabelProps) {
+function DropdownMenuGroupLabel({ className, ...props }: DropdownMenuGroupLabelProps) {
   return (
     <Menu.GroupLabel
       className={(state) => cn(floatingGroupLabelClassName, resolveClassName(className, state))}
@@ -293,13 +296,14 @@ function DropdownMenuSeparator({ className, ...props }: DropdownMenuSeparatorPro
 }
 
 export {
+  createDropdownMenuHandle,
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuCheckboxItemIndicator,
   DropdownMenuContent,
   DropdownMenuGroup,
+  DropdownMenuGroupLabel,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuLinkItem,
   DropdownMenuPopup,
   DropdownMenuPortal,
@@ -318,9 +322,10 @@ export type {
   DropdownMenuCheckboxItemIndicatorProps,
   DropdownMenuCheckboxItemProps,
   DropdownMenuContentProps,
+  DropdownMenuGroupLabelProps,
   DropdownMenuGroupProps,
+  DropdownMenuHandle,
   DropdownMenuItemProps,
-  DropdownMenuLabelProps,
   DropdownMenuLinkItemProps,
   DropdownMenuPopupProps,
   DropdownMenuPortalProps,

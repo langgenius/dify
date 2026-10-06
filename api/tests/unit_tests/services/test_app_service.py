@@ -9,7 +9,7 @@ from uuid import uuid4
 
 import pytest
 from sqlalchemy import event, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from enums import DeploymentEdition
 from graphon.model_runtime.entities.model_entities import ModelType
@@ -17,6 +17,7 @@ from models import Account, Tenant
 from models.account import TenantAccountJoin, TenantAccountRole
 from models.agent import (
     Agent,
+    AgentConfigSnapshot,
     AgentIconType,
     AgentScope,
     AgentSource,
@@ -24,10 +25,13 @@ from models.agent import (
     WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
+from models.agent_config_entities import AgentSoulConfig
 from models.model import App, AppMode, AppModelConfig, IconType
+from models.provider import TenantDefaultModel
 from models.workflow import Workflow, WorkflowType
+from repositories.app.console_repository import ConsoleAppRepository
 from services.agent.errors import AgentAccessNotReadyError, AgentNameConflictError
-from services.app_service import AppListParams, AppService, CreateAppParams
+from services.app_service import AppListParams, AppResponseView, AppService, CreateAppParams
 from services.enterprise import rbac_service as enterprise_rbac_service
 
 
@@ -116,6 +120,107 @@ def _persist_agent_app(
 
 
 class TestCreateAppTransactionBoundary:
+    def test_agent_app_seeds_workspace_default_model_in_initial_snapshot(
+        self, sqlite_session: Session, config_overrides: Callable[..., None]
+    ) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+        account = _persist_account(sqlite_session)
+        tenant_id = account.current_tenant_id or ""
+        sqlite_session.add(
+            TenantDefaultModel(
+                tenant_id=tenant_id,
+                model_type=ModelType.LLM,
+                provider_name="langgenius/openai/openai",
+                model_name="gpt-4o",
+            )
+        )
+        sqlite_session.commit()
+
+        with (
+            patch("services.app_service.app_was_created.send"),
+            patch("services.app_service.enterprise_rbac_service.try_sync_creator_access_policy_member_bindings"),
+            patch("services.app_service.SystemFeatureService.is_webapp_auth_enabled", return_value=False),
+        ):
+            app = AppService().create_app(
+                tenant_id,
+                CreateAppParams(name="Agent with default model", mode=AppMode.AGENT.value),
+                account,
+                session=sqlite_session,
+            )
+
+        agent = sqlite_session.scalar(select(Agent).where(Agent.app_id == app.id))
+        assert agent is not None
+        snapshot = sqlite_session.get(AgentConfigSnapshot, agent.active_config_snapshot_id)
+        assert snapshot is not None
+        model = AgentSoulConfig.model_validate(snapshot.config_snapshot_dict).model
+        assert model is not None
+        assert model.plugin_id == "langgenius/openai"
+        assert model.model_provider == "langgenius/openai/openai"
+        assert model.model == "gpt-4o"
+        assert agent.active_config_has_model is True
+
+    def test_agent_app_without_available_default_keeps_initial_model_empty(
+        self, sqlite_session: Session, config_overrides: Callable[..., None]
+    ) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+        account = _persist_account(sqlite_session)
+        tenant_id = account.current_tenant_id or ""
+
+        with (
+            patch("services.app_service.ModelProviderService.get_default_model_selection", return_value=None),
+            patch("services.app_service.app_was_created.send"),
+            patch("services.app_service.enterprise_rbac_service.try_sync_creator_access_policy_member_bindings"),
+            patch("services.app_service.SystemFeatureService.is_webapp_auth_enabled", return_value=False),
+        ):
+            app = AppService().create_app(
+                tenant_id,
+                CreateAppParams(name="Agent without default model", mode=AppMode.AGENT.value),
+                account,
+                session=sqlite_session,
+            )
+
+        agent = sqlite_session.scalar(select(Agent).where(Agent.app_id == app.id))
+        assert agent is not None
+        snapshot = sqlite_session.get(AgentConfigSnapshot, agent.active_config_snapshot_id)
+        assert snapshot is not None
+        assert AgentSoulConfig.model_validate(snapshot.config_snapshot_dict).model is None
+        assert agent.active_config_has_model is False
+
+    def test_agent_app_with_invalid_default_provider_still_creates_empty_snapshot(
+        self, sqlite_session: Session, config_overrides: Callable[..., None]
+    ) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+        account = _persist_account(sqlite_session)
+        tenant_id = account.current_tenant_id or ""
+        sqlite_session.add(
+            TenantDefaultModel(
+                tenant_id=tenant_id,
+                model_type=ModelType.LLM,
+                provider_name="invalid/provider",
+                model_name="gpt-4o",
+            )
+        )
+        sqlite_session.commit()
+
+        with (
+            patch("services.app_service.app_was_created.send"),
+            patch("services.app_service.enterprise_rbac_service.try_sync_creator_access_policy_member_bindings"),
+            patch("services.app_service.SystemFeatureService.is_webapp_auth_enabled", return_value=False),
+        ):
+            app = AppService().create_app(
+                tenant_id,
+                CreateAppParams(name="Agent with invalid default", mode=AppMode.AGENT.value),
+                account,
+                session=sqlite_session,
+            )
+
+        agent = sqlite_session.scalar(select(Agent).where(Agent.app_id == app.id))
+        assert agent is not None
+        snapshot = sqlite_session.get(AgentConfigSnapshot, agent.active_config_snapshot_id)
+        assert snapshot is not None
+        assert AgentSoulConfig.model_validate(snapshot.config_snapshot_dict).model is None
+        assert agent.active_config_has_model is False
+
     def test_commits_database_state_before_external_side_effects(
         self, sqlite_session: Session, config_overrides: Callable[..., None]
     ) -> None:
@@ -283,7 +388,7 @@ class TestCreateAppRBACAccessInitialization:
 
 @pytest.mark.parametrize(
     "update_status",
-    [AppService.update_app_site_status, AppService.update_app_api_status],
+    [AppService.update_app_api_status],
 )
 def test_app_status_updates_commit_before_signal(update_status: Callable[..., App], sqlite_session: Session) -> None:
     account = _persist_account(sqlite_session)
@@ -303,7 +408,6 @@ def test_app_status_updates_commit_before_signal(update_status: Callable[..., Ap
 @pytest.mark.parametrize(
     "update_status",
     [
-        AppService.update_app_site_status,
         AppService.update_app_api_status,
     ],
 )
@@ -314,9 +418,8 @@ def test_unpublished_agent_app_access_cannot_be_enabled(
     commits: list[str] = []
     event.listen(sqlite_session, "after_commit", lambda _session: commits.append("commit"))
 
-    with patch("services.app_service.agent_has_workflow_callable_active_snapshot", return_value=False):
-        with pytest.raises(AgentAccessNotReadyError):
-            update_status(AppService(), app, True, session=sqlite_session)
+    with pytest.raises(AgentAccessNotReadyError):
+        update_status(AppService(), app, True, session=sqlite_session)
 
     assert app.enable_site is False
     assert app.enable_api is False
@@ -464,7 +567,7 @@ def test_get_recent_apps_uses_one_tenant_scoped_projection_query(sqlite_session:
 
     event.listen(bind, "before_cursor_execute", record_sql)
     try:
-        recent_apps = AppService().get_recent_apps(
+        recent_apps = ConsoleAppRepository.get_recent_apps(
             account.id,
             tenant_id,
             AppListParams(limit=2),
@@ -483,68 +586,40 @@ def test_get_recent_apps_uses_one_tenant_scoped_projection_query(sqlite_session:
     assert "app_model_configs" not in select_statements[0].lower()
 
 
-class TestGetApp:
-    def test_legacy_agent_detection_uses_caller_session(self, unbound_session: Session):
-        app = App(
-            mode=AppMode.CHAT,
-        )
+class TestAppResponseViewAgentConfig:
+    def test_masking_persistent_agent_config_does_not_change_database(
+        self, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+    ):
+        tenant_id = str(uuid4())
+        app = _persist_app(sqlite_session, tenant_id=tenant_id)
+        app.mode = AppMode.AGENT_CHAT
+        original_agent_mode = {"enabled": True, "tools": [{"parameters": {"secret": "encrypted-value"}}]}
+        config = AppModelConfig(app_id=app.id, agent_mode=json.dumps(original_agent_mode))
+        sqlite_session.add(config)
+        sqlite_session.flush()
+        app.app_model_config_id = config.id
+        sqlite_session.commit()
+
         account = Account(name="Test Account", email="test@example.com")
         account._current_tenant = Tenant(name="Test Tenant")
-        account._current_tenant.id = "tenant-1"
+        account._current_tenant.id = tenant_id
+        masked_agent_mode = {"enabled": True, "tools": [{"parameters": {"secret": "[masked]"}}]}
 
         with (
-            patch.object(App, "is_agent_with_session", return_value=False) as is_agent,
-            patch.object(App, "app_model_config_with_session") as get_model_config,
-            patch("services.app_service.current_user", account),
+            patch("services.app_service.mask_agent_tool_parameters", return_value=masked_agent_mode),
+            patch.object(sqlite_session, "refresh", side_effect=AssertionError("App refresh is unnecessary")),
         ):
-            assert AppService().get_app(app, session=unbound_session) is app
+            response_config = AppResponseView(app, session=sqlite_session, account=account).app_model_config
+            assert response_config is not None
+            assert response_config.agent_mode_dict == masked_agent_mode
+            assert config.agent_mode_dict == original_agent_mode
+            assert not sqlite_session.is_modified(config)
+            sqlite_session.commit()
 
-        is_agent.assert_called_once_with(session=unbound_session)
-        get_model_config.assert_not_called()
-
-    def test_agent_model_config_uses_caller_session(self, unbound_session: Session):
-        app = App(
-            mode=AppMode.AGENT_CHAT,
-        )
-        account = Account(name="Test Account", email="test@example.com")
-        account._current_tenant = Tenant(name="Test Tenant")
-        account._current_tenant.id = "tenant-1"
-
-        with (
-            patch.object(App, "is_agent_with_session") as is_agent,
-            patch.object(App, "app_model_config_with_session", return_value=None) as get_model_config,
-            patch("services.app_service.current_user", account),
-        ):
-            assert AppService().get_app(app, session=unbound_session) is app
-
-        is_agent.assert_not_called()
-        get_model_config.assert_called_once_with(session=unbound_session)
-
-    def test_masked_agent_config_is_served_through_the_session_accessor(self, unbound_session: Session):
-        """The masked config must be reachable via `app_model_config_with_session`.
-
-        Every response path resolves an `App`'s model config through that accessor
-        (`AppResponseView.app_model_config`), never through a raw attribute, so the
-        masking `get_app` applies has to be observable there.
-        """
-        app = App(mode=AppMode.AGENT_CHAT)
-        app.id = str(uuid4())
-        masked_config = AppModelConfig(app_id=app.id, agent_mode=json.dumps({"enabled": True, "tools": []}))
-        # A second, unmasked instance: what a fresh lookup would hand back if the
-        # returned app ever fell through to the base accessor.
-        refetched_config = AppModelConfig(app_id=app.id, agent_mode=json.dumps({"enabled": True, "tools": []}))
-        account = Account(name="Test Account", email="test@example.com")
-        account._current_tenant = Tenant(name="Test Tenant")
-        account._current_tenant.id = "tenant-1"
-
-        with (
-            patch.object(App, "app_model_config_with_session", side_effect=[masked_config, refetched_config]),
-            patch("services.app_service.current_user", account),
-        ):
-            result = AppService().get_app(app, session=unbound_session)
-
-            assert result is not app
-            assert result.app_model_config_with_session(session=unbound_session) is masked_config
+        with sqlite_session_factory() as read_session:
+            saved_config = read_session.get(AppModelConfig, config.id)
+            assert saved_config is not None
+            assert saved_config.agent_mode_dict == original_agent_mode
 
 
 class TestAgentAppType:

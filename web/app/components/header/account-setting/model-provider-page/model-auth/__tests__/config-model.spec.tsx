@@ -9,7 +9,7 @@ describe('ConfigModel', () => {
       props: {},
     },
     {
-      name: 'common.modelProvider.auth.authorizationError',
+      name: 'modelProvider.modelProvider.auth.authorizationError',
       props: { loadBalancingInvalid: true },
     },
   ])('keeps the $name action focusable and unavailable while loading', ({ name, props }) => {

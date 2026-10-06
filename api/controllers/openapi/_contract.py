@@ -154,6 +154,7 @@ def endpoint(
     body: type[BaseModel] | None = None,
     returns: ReturnSpec | Sequence[ReturnSpec] | None = None,
     edition: frozenset[DeploymentEdition] | None = None,
+    account_context: bool = False,
     internal: bool = False,
     deprecated: bool = False,
     examples: Sequence[Example] = (),
@@ -162,6 +163,11 @@ def endpoint(
     serialisation — auth, then ``accepts``, then ``returns``. Exposes
     ``view.__handler__`` (the bare handler) and ``view.__spec__`` (the exact
     `EndpointSpec` instance the router runs).
+
+    ``account_context=True`` supplies a framework-neutral ``RequestContext`` after
+    account/workspace admission and releases the authentication session before
+    the handler. It is for account endpoints whose application services own
+    persistence; other endpoints retain the lazy ORM-backed ``Context``.
 
     ``returns`` takes one ``(code, model, description)`` or several; a route
     that stacked N ``@returns`` today declares them here in the same top-to-bottom
@@ -181,6 +187,7 @@ def endpoint(
     spec = EndpointSpec(
         requirements=requirements,
         edition=edition,
+        account_context=account_context,
         catalog=CatalogMeta(
             op=op,
             kind=kind,

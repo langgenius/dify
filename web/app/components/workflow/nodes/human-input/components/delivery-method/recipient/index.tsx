@@ -21,7 +21,7 @@ type Props = Readonly<{
 }>
 
 const Recipient = ({ data, onChange }: Props) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflowHumanInput'])
   const wholeWorkspaceId = useId()
   const { data: userProfileEmail } = useSuspenseQuery({
     ...userProfileQueryOptions(),
@@ -72,7 +72,7 @@ const Recipient = ({ data, onChange }: Props) => {
             <RiGroupLine className="size-4 text-text-secondary" />
             <div className="system-sm-medium text-text-secondary">
               {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.memberSelector.title`], {
-                ns: 'workflow',
+                ns: 'workflowHumanInput',
               })}
             </div>
           </div>
@@ -106,7 +106,7 @@ const Recipient = ({ data, onChange }: Props) => {
         >
           {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.allMembers`], {
             workspaceName: currentWorkspace.name.replace(/'/g, '’'),
-            ns: 'workflow',
+            ns: 'workflowHumanInput',
           })}
         </label>
         <Switch

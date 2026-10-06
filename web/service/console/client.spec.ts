@@ -6,6 +6,8 @@ import type { MutationFunctionContext, QueryFunctionContext } from '@tanstack/re
 import type { consoleQuery as ConsoleQuery } from '@/service/console'
 import { MutationObserver, QueryClient, QueryObserver } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createAgentFixture } from '@/test/fixtures/agent'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { normalizeConsoleOpenAPIURL } from './openapi-url'
 
 const loadConsoleQuery = async () => {
@@ -84,22 +86,8 @@ const getRetryFn = (queryOptions: object): RetryFn => {
   return retry as RetryFn
 }
 
-const createAgent = (overrides: Partial<AgentMutationResponse> = {}): AgentMutationResponse => ({
-  ...overrides,
-  access_ready: overrides.access_ready ?? true,
-  debug_conversation_has_messages: overrides.debug_conversation_has_messages ?? false,
-  debug_conversation_message_count: overrides.debug_conversation_message_count ?? 0,
-  enable_api: overrides.enable_api ?? true,
-  enable_site: overrides.enable_site ?? true,
-  description: overrides.description ?? 'Agent description',
-  hidden_app_backed: overrides.hidden_app_backed ?? false,
-  id: overrides.id ?? 'agent-1',
-  icon_url: overrides.icon_url ?? null,
-  mode: overrides.mode ?? 'agent',
-  name: overrides.name ?? 'Agent',
-  permission_keys: overrides.permission_keys ?? [],
-  role: overrides.role ?? 'Assistant',
-})
+const createAgent = (overrides: Partial<AgentMutationResponse> = {}): AgentMutationResponse =>
+  createAgentFixture({ role: 'Assistant', ...overrides })
 
 const createComposerState = (
   overrides: Partial<AgentComposerMutationResponse> = {},
@@ -196,6 +184,33 @@ const createWorkflowComposerState = (
 
 // Scenario: base URL selection and warnings.
 describe('consoleQuery transport context', () => {
+  it('uploads icon files as multipart data through the Console transport', async () => {
+    const file = new File(['GIF89a'], 'icon.gif', { type: 'image/gif' })
+    const response = { id: 'uploaded-icon', name: file.name, size: file.size }
+    const request = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(response), {
+        status: 201,
+        headers: { 'content-type': 'application/json' },
+      }),
+    )
+    const consoleQuery = await loadConsoleQueryWithRequest(request)
+    const mutation = new MutationObserver(
+      new QueryClient(),
+      consoleQuery.files.upload.post.mutationOptions(),
+    )
+    await expect(mutation.mutate({ body: { file } })).resolves.toEqual(response)
+    const outgoing = request.mock.calls[0]?.[2]?.request as Request
+    expect(outgoing.url).toContain('/files/upload')
+    expect(outgoing.headers.get('content-type')).toContain('multipart/form-data; boundary=')
+    const form = await outgoing.formData()
+    expect(Array.from(form.keys())).toEqual(['file'])
+    const uploaded = form.get('file')
+    if (!(uploaded instanceof File)) throw new TypeError('Expected an uploaded icon')
+    expect(uploaded.name).toBe(file.name)
+    expect(uploaded.type).toBe(file.type)
+    expect(await uploaded.text()).toBe('GIF89a')
+  })
+
   afterEach(() => {
     vi.restoreAllMocks()
   })
@@ -645,13 +660,7 @@ describe('consoleQuery app mutation defaults', () => {
       .spyOn(queryClient, 'invalidateQueries')
       .mockImplementation(() => new Promise(() => {}))
     const context = createMutationContext(queryClient)
-    const appDetail: AppDetail = {
-      enable_api: true,
-      enable_site: true,
-      id: 'app-1',
-      mode: 'chat',
-      name: 'App',
-    }
+    const appDetail: AppDetail = createAppDetailFixture()
     const appSite: AppSiteResponse = {
       app_id: 'app-1',
       customize_token_strategy: 'fixed',
@@ -723,14 +732,11 @@ describe('consoleQuery app mutation defaults', () => {
     const otherDetailQueryKey = consoleQuery.apps.byAppId.get.queryKey({
       input: { params: { app_id: 'app-2' } },
     })
-    const updatedApp = {
+    const updatedApp = createAppDetailFixture({
       enable_api: false,
       enable_site: false,
-      icon_url: null,
-      id: 'app-1',
-      mode: 'chat',
       name: 'Updated app',
-    }
+    })
     queryClient.setQueryData(detailQueryKey, { ...updatedApp, name: 'Old app' })
     queryClient.setQueryData(otherDetailQueryKey, { ...updatedApp, id: 'app-2', name: 'Other app' })
 

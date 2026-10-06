@@ -57,7 +57,7 @@ const NON_TERMINAL_DISPLAY_STATUSES = new Set<(typeof DisplayStatusList)[number]
 const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { t } = useTranslation(['common', 'datasetDocuments'])
+  const { t } = useTranslation(['common', 'datasetDocuments', 'navigation'])
 
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
@@ -151,7 +151,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
   })
   const documentTitle =
     documentDetail?.name || t(($) => $['datasetMenus.documents'], { ns: 'common' })
-  const datasetTitle = dataset?.name || t(($) => $['menus.datasets'], { ns: 'common' })
+  const datasetTitle = dataset?.name || t(($) => $['menus.datasets'], { ns: 'navigation' })
   useDocumentTitle(`${documentTitle} · ${datasetTitle}`)
 
   const { data: documentMetadata } = useDocumentMetadata({

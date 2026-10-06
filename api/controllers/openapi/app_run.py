@@ -20,6 +20,7 @@ from werkzeug.exceptions import (
 )
 
 import services
+from constants.oauth_bearer import Scope
 from controllers.common.fields import EventStreamResponse
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.openapi import openapi_ns
@@ -70,7 +71,6 @@ from extensions.ext_redis import redis_client
 from graphon.graph_engine.manager import GraphEngineManager
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
-from libs.oauth_bearer import Scope
 from models.model import App, AppMode
 from services.app_generate_service import AppGenerateService
 from services.errors.app import (
@@ -237,7 +237,7 @@ _RUN_ROUTES: Final = (
     _RunRoute(
         resource="WorkflowRunApi",
         segment="workflow",
-        op="console_app.workflow.run",
+        op="run.console_app.workflow",
         summary="Run a workflow app; streams workflow events",
         payload=WorkflowRunPayload,
         modes=(AppMode.WORKFLOW,),
@@ -260,7 +260,7 @@ _RUN_ROUTES: Final = (
     _RunRoute(
         resource="ChatRunApi",
         segment="chat",
-        op="console_app.chat.run",
+        op="run.console_app.chat",
         summary="Run a chat or agent app; streams message events",
         payload=ChatRunPayload,
         modes=(AppMode.CHAT, AppMode.AGENT_CHAT),
@@ -293,7 +293,7 @@ _RUN_ROUTES: Final = (
     _RunRoute(
         resource="AdvancedChatRunApi",
         segment="advanced-chat",
-        op="console_app.advanced_chat.run",
+        op="run.console_app.advanced_chat",
         summary="Run an advanced-chat (chatflow) app; streams message and workflow events",
         payload=AdvancedChatRunPayload,
         modes=(AppMode.ADVANCED_CHAT,),
@@ -317,7 +317,7 @@ _RUN_ROUTES: Final = (
     _RunRoute(
         resource="CompletionRunApi",
         segment="completion",
-        op="console_app.completion.run",
+        op="run.console_app.completion",
         summary="Run a completion app; streams message events",
         payload=CompletionRunPayload,
         modes=(AppMode.COMPLETION,),
@@ -362,7 +362,7 @@ WorkflowRunApi, ChatRunApi, AdvancedChatRunApi, CompletionRunApi = (_run_api(rou
 @openapi_ns.route("/apps/<string:app_id>/tasks/<string:task_id>:stop")
 class AppRunTaskStopApi(Resource):
     @endpoint(
-        op="run.stop",
+        op="stop.run",
         kind=Kind.OBJECT,
         summary="Stop a running task",
         examples=(Example(title="Stop a running task", input={"app_id": "<app_id>", "task_id": "<task_id>"}),),

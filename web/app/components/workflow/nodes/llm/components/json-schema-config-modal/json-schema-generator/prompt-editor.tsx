@@ -38,7 +38,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
 }) => {
   const instructionLabelId = React.useId()
 
-  const { t } = useTranslation(['common', 'workflow'])
+  const { t } = useTranslation(['common', 'modelProvider', 'workflowModels'])
 
   const handleInstructionChange = useCallback(
     (value: string) => {
@@ -60,16 +60,16 @@ const PromptEditor: FC<PromptEditorProps> = ({
       {/* Title */}
       <div className="flex flex-col gap-y-[0.5px] px-3 pt-3.5 pb-1">
         <div className="flex pr-8 pl-1 system-xl-semibold text-text-primary">
-          {t(($) => $['nodes.llm.jsonSchema.generateJsonSchema'], { ns: 'workflow' })}
+          {t(($) => $['nodes.llm.jsonSchema.generateJsonSchema'], { ns: 'workflowModels' })}
         </div>
         <div className="flex px-1 system-xs-regular text-text-tertiary">
-          {t(($) => $['nodes.llm.jsonSchema.generationTip'], { ns: 'workflow' })}
+          {t(($) => $['nodes.llm.jsonSchema.generationTip'], { ns: 'workflowModels' })}
         </div>
       </div>
       {/* Content */}
       <div className="flex flex-col gap-y-1 px-4 py-2">
         <div className="flex h-6 items-center system-sm-semibold-uppercase text-text-secondary">
-          {t(($) => $['modelProvider.model'], { ns: 'common' })}
+          {t(($) => $['modelProvider.model'], { ns: 'modelProvider' })}
         </div>
         <ModelParameterModal
           popupClassName="w-[448px]!"
@@ -85,21 +85,23 @@ const PromptEditor: FC<PromptEditorProps> = ({
       <div className="flex flex-col gap-y-1 px-4 py-2">
         <div className="flex h-6 items-center system-sm-semibold-uppercase text-text-secondary">
           <span id={instructionLabelId}>
-            {t(($) => $['nodes.llm.jsonSchema.instruction'], { ns: 'workflow' })}
+            {t(($) => $['nodes.llm.jsonSchema.instruction'], { ns: 'workflowModels' })}
           </span>
           <Infotip>
             <InfotipTrigger aria-labelledby={instructionLabelId} className="size-3.5" />
             <InfotipContent aria-labelledby={instructionLabelId}>
-              {t(($) => $['nodes.llm.jsonSchema.promptTooltip'], { ns: 'workflow' })}
+              {t(($) => $['nodes.llm.jsonSchema.promptTooltip'], { ns: 'workflowModels' })}
             </InfotipContent>
           </Infotip>
         </div>
         <div className="flex items-center">
           <Textarea
-            aria-label={t(($) => $['nodes.llm.jsonSchema.instruction'], { ns: 'workflow' })}
+            aria-label={t(($) => $['nodes.llm.jsonSchema.instruction'], { ns: 'workflowModels' })}
             className="h-91 resize-none px-2 py-1"
             value={instruction}
-            placeholder={t(($) => $['nodes.llm.jsonSchema.promptPlaceholder'], { ns: 'workflow' })}
+            placeholder={t(($) => $['nodes.llm.jsonSchema.promptPlaceholder'], {
+              ns: 'workflowModels',
+            })}
             onValueChange={handleInstructionChange}
           />
         </div>
@@ -111,7 +113,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
         </Button>
         <Button variant="primary" className="flex items-center" onClick={onGenerate}>
           <RiSparklingFill className="size-4" />
-          <span>{t(($) => $['nodes.llm.jsonSchema.generate'], { ns: 'workflow' })}</span>
+          <span>{t(($) => $['nodes.llm.jsonSchema.generate'], { ns: 'workflowModels' })}</span>
         </Button>
       </div>
     </div>

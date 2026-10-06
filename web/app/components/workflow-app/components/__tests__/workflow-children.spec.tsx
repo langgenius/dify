@@ -6,6 +6,7 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import WorkflowChildren from '../workflow-children'
 
 type WorkflowStoreState = {
+  appId?: string
   showFeaturesPanel: boolean
   showImportDSLModal: boolean
   setShowImportDSLModal: (show: boolean) => void
@@ -177,7 +178,7 @@ vi.mock('@/app/components/workflow-app/components/workflow-panel', () => ({
   default: () => <div data-testid="workflow-panel">workflow-panel</div>,
 }))
 
-vi.mock('@/next/dynamic', async () => {
+vi.mock('next/dynamic', async () => {
   const ReactModule = await import('react')
 
   return {
@@ -334,6 +335,7 @@ describe('WorkflowChildren', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     workflowStoreState = {
+      appId: 'app-1',
       showFeaturesPanel: false,
       showImportDSLModal: false,
       setShowImportDSLModal: mockSetShowImportDSLModal,

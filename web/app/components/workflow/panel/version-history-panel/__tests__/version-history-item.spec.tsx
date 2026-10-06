@@ -68,7 +68,7 @@ describe('VersionHistoryItem', () => {
         />,
       )
 
-      expect(screen.getByText('workflow.versionHistory.currentDraft')).toBeInTheDocument()
+      expect(screen.getByText('workflowHistory.versionHistory.currentDraft')).toBeInTheDocument()
 
       await waitFor(() => {
         expect(onClick).toHaveBeenCalledWith(
@@ -148,24 +148,20 @@ describe('VersionHistoryItem', () => {
       const triggerButton = await screen.findByRole('button', { name: 'common.operation.more' })
       await user.click(triggerButton)
 
-      expect(screen.getByText('workflow.versionHistory.latest')).toBeInTheDocument()
+      expect(screen.getByText('workflowHistory.versionHistory.latest')).toBeInTheDocument()
       expect(screen.getByText('Initial release')).toBeInTheDocument()
       expect(screen.getByText(/Alice$/)).toBeInTheDocument()
       expect(screen.getByText('workflow.common.restore')).toBeInTheDocument()
-      expect(screen.getByText('workflow.versionHistory.editVersionInfo')).toBeInTheDocument()
+      expect(screen.getByText('workflowHistory.versionHistory.editVersionInfo')).toBeInTheDocument()
       expect(screen.getByText('app.exportApp')).toBeInTheDocument()
-      expect(screen.getByText('workflow.versionHistory.copyId')).toBeInTheDocument()
+      expect(screen.getByText('workflowHistory.versionHistory.copyId')).toBeInTheDocument()
       expect(screen.getByText('version-1')).toBeInTheDocument()
       expect(screen.queryByText('common.operation.delete')).not.toBeInTheDocument()
 
-      const restoreItem = screen.getByText('workflow.common.restore').closest('.cursor-pointer')
-      if (!restoreItem) throw new Error('Expected restore menu item')
-
-      fireEvent.click(restoreItem)
+      await user.click(screen.getByRole('menuitem', { name: 'workflow.common.restore' }))
 
       expect(handleClickActionMenuItem).toHaveBeenCalledTimes(1)
       expect(handleClickActionMenuItem).toHaveBeenCalledWith(
-        VersionHistoryContextMenuOptions.restore,
         VersionHistoryContextMenuOptions.restore,
       )
     })
@@ -191,7 +187,7 @@ describe('VersionHistoryItem', () => {
       await user.click(triggerButton)
 
       expect(screen.queryByText('app.exportApp')).not.toBeInTheDocument()
-      expect(screen.getByText('workflow.versionHistory.copyId')).toBeInTheDocument()
+      expect(screen.getByText('workflowHistory.versionHistory.copyId')).toBeInTheDocument()
     })
 
     it('should ignore clicks when the item is already selected', async () => {

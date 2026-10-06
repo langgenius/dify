@@ -1,5 +1,6 @@
 import type { SortType } from '@/service/datasets'
 import { fireEvent, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { DataSourceType } from '@/models/datasets'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
@@ -166,6 +167,22 @@ describe('DocumentsHeader', () => {
       render(<DocumentsHeader {...defaultProps} isShowEditMetadataModal={false} />)
       expect(screen.queryByTestId('metadata-drawer')).not.toBeInTheDocument()
     })
+  })
+
+  it('keeps a stable status label while exposing the selected filter value', async () => {
+    const user = userEvent.setup()
+    const { rerender } = render(<DocumentsHeader {...defaultProps} />)
+    const filter = screen.getByRole('combobox', {
+      name: 'datasetDocuments.list.table.header.status',
+    })
+    expect(filter).toHaveTextContent('datasetDocuments.list.index.all')
+    await user.click(screen.getByText('datasetDocuments.list.table.header.status'))
+    expect(filter).toHaveAttribute('aria-expanded', 'true')
+    await user.keyboard('{Escape}')
+    rerender(<DocumentsHeader {...defaultProps} statusFilterValue="available" />)
+    expect(
+      screen.getByRole('combobox', { name: 'datasetDocuments.list.table.header.status' }),
+    ).toHaveTextContent('datasetDocuments.list.status.available')
   })
 
   describe('User Interactions', () => {

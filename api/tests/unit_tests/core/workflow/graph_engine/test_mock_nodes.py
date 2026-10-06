@@ -10,8 +10,17 @@ from collections.abc import Generator, Mapping
 from typing import TYPE_CHECKING, Any, Optional
 from unittest.mock import MagicMock
 
-from core.model_manager import ModelInstance
-from core.workflow.node_runtime import DifyToolNodeRuntime
+from core.app.llm.model_access import DifyCredentialsProvider, DifyModelFactory
+from core.helper.ssrf_proxy import graphon_ssrf_proxy
+from core.workflow.node_runtime import (
+    DifyFileReferenceFactory,
+    DifyPreparedLLM,
+    DifyPromptMessageSerializer,
+    DifyToolFileManager,
+    DifyToolNodeRuntime,
+    build_dify_llm_file_saver,
+    resolve_dify_run_context,
+)
 from core.workflow.nodes.agent import AgentNode
 from core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node import KnowledgeRetrievalNode
 from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
@@ -21,15 +30,12 @@ from graphon.nodes.code import CodeNode
 from graphon.nodes.document_extractor import DocumentExtractorNode
 from graphon.nodes.http_request import HttpRequestNode
 from graphon.nodes.llm import LLMNode
-from graphon.nodes.llm.file_saver import LLMFileSaver
-from graphon.nodes.llm.protocols import CredentialsProvider, ModelFactory
-from graphon.nodes.llm.runtime_protocols import PromptMessageSerializerProtocol
 from graphon.nodes.parameter_extractor import ParameterExtractorNode
-from graphon.nodes.protocols import FileReferenceFactoryProtocol, HttpClientProtocol, ToolFileManagerProtocol
 from graphon.nodes.question_classifier import QuestionClassifierNode
 from graphon.nodes.template_transform import TemplateTransformNode
 from graphon.nodes.tool import ToolNode
 from graphon.template_rendering import Jinja2TemplateRenderer, TemplateRenderError
+from tests.unit_tests.core.model_fixtures import make_model_instance
 
 if TYPE_CHECKING:
     from graphon.entities import GraphInitParams
@@ -63,19 +69,24 @@ class MockNodeMixin:
         mock_config: Optional["MockConfig"] = None,
         **kwargs: Any,
     ) -> None:
+        run_context = resolve_dify_run_context(graph_init_params.run_context)
         if isinstance(self, (LLMNode, QuestionClassifierNode, ParameterExtractorNode)):
-            kwargs.setdefault("credentials_provider", MagicMock(spec=CredentialsProvider))
-            kwargs.setdefault("model_factory", MagicMock(spec=ModelFactory))
-            kwargs.setdefault("model_instance", MagicMock(spec=ModelInstance))
-            kwargs.setdefault("prompt_message_serializer", MagicMock(spec=PromptMessageSerializerProtocol))
-            # LLM-like nodes now require an http_client; provide a mock by default for tests.
-            kwargs.setdefault("http_client", MagicMock(spec=HttpClientProtocol))
+            kwargs.setdefault("credentials_provider", DifyCredentialsProvider(run_context=run_context))
+            kwargs.setdefault("model_factory", DifyModelFactory(run_context=run_context))
+            kwargs.setdefault(
+                "model_instance", DifyPreparedLLM(make_model_instance(provider="openai", model="gpt-3.5-turbo"))
+            )
+            kwargs.setdefault("prompt_message_serializer", DifyPromptMessageSerializer())
+            # These nodes override _run; their real runtime dependencies remain unused.
+            kwargs.setdefault("http_client", graphon_ssrf_proxy)
 
         if isinstance(self, (LLMNode, QuestionClassifierNode)):
-            kwargs.setdefault("llm_file_saver", MagicMock(spec=LLMFileSaver))
+            kwargs.setdefault(
+                "llm_file_saver", build_dify_llm_file_saver(run_context=run_context, http_client=graphon_ssrf_proxy)
+            )
 
         if isinstance(self, HttpRequestNode):
-            kwargs.setdefault("file_reference_factory", MagicMock(spec=FileReferenceFactoryProtocol))
+            kwargs.setdefault("file_reference_factory", DifyFileReferenceFactory(run_context))
 
         # Ensure TemplateTransformNode receives a renderer now required by constructor
         if isinstance(self, TemplateTransformNode):
@@ -85,7 +96,7 @@ class MockNodeMixin:
         from graphon.nodes.tool import ToolNode as _ToolNode  # local import to avoid cycles
 
         if isinstance(self, _ToolNode):
-            kwargs.setdefault("tool_file_manager", MagicMock(spec=ToolFileManagerProtocol))
+            kwargs.setdefault("tool_file_manager", DifyToolFileManager(run_context))
             kwargs.setdefault("runtime", DifyToolNodeRuntime(graph_init_params.run_context))
 
         if isinstance(self, AgentNode):

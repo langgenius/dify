@@ -79,7 +79,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
   isBasicMode,
   onFinished,
 }) => {
-  const { t } = useTranslation(['appDebug', 'common'])
+  const { t } = useTranslation(['appDebug', 'common', 'appGeneration'])
   const instructionLabelId = useId()
   const [storedModel, setStoredModel] = useAutoGenModel()
   const [selectedModel, setSelectedModel] = React.useState<Model>()
@@ -149,7 +149,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
     (key: TemplateKey) => {
       return () => {
         const template = t(($) => $[`generate.template.${key}.instruction` as const], {
-          ns: 'appDebug',
+          ns: 'appGeneration',
         })
         setInstructionFromSessionStorage(template)
         setEditorKey(`${flowId}-${Date.now()}`)
@@ -173,7 +173,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
       toast.error(
         t(($) => $['errorMsg.fieldRequired'], {
           ns: 'common',
-          field: t(($) => $['generate.instruction'], { ns: 'appDebug' }),
+          field: t(($) => $['generate.instruction'], { ns: 'appGeneration' }),
         }),
       )
       return false
@@ -192,7 +192,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
     <div className="flex min-w-0 flex-col items-center justify-center space-y-3 xl:h-full xl:flex-1">
       <LoadingPlaceholder />
       <div className="text-[13px] text-text-tertiary">
-        {t(($) => $['generate.loading'], { ns: 'appDebug' })}
+        {t(($) => $['generate.loading'], { ns: 'appGeneration' })}
       </div>
     </div>
   )
@@ -286,10 +286,10 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
           <div className="min-w-0 border-divider-regular p-6 xl:h-full xl:flex-1 xl:overflow-y-auto xl:border-r">
             <div className="mb-5">
               <DialogTitle className={`text-lg leading-7 font-bold ${s.textGradient}`}>
-                {t(($) => $['generate.title'], { ns: 'appDebug' })}
+                {t(($) => $['generate.title'], { ns: 'appGeneration' })}
               </DialogTitle>
               <div className="mt-1 text-[13px] font-normal text-text-tertiary">
-                {t(($) => $['generate.description'], { ns: 'appDebug' })}
+                {t(($) => $['generate.description'], { ns: 'appGeneration' })}
               </div>
             </div>
             <div>
@@ -308,7 +308,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
               <div className="mt-4">
                 <div className="flex items-center">
                   <div className="mr-3 shrink-0 text-xs leading-4.5 font-semibold text-text-tertiary uppercase">
-                    {t(($) => $['generate.tryIt'], { ns: 'appDebug' })}
+                    {t(($) => $['generate.tryIt'], { ns: 'appGeneration' })}
                   </div>
                   <div
                     className="h-px grow"
@@ -323,7 +323,9 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
                     <TryLabel
                       key={item.key}
                       iconClassName={item.iconClassName}
-                      text={t(($) => $[`generate.template.${item.key}.name`], { ns: 'appDebug' })}
+                      text={t(($) => $[`generate.template.${item.key}.name`], {
+                        ns: 'appGeneration',
+                      })}
                       onClick={handleChooseTemplate(item.key)}
                     />
                   ))}
@@ -338,7 +340,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
                   id={instructionLabelId}
                   className="mb-1.5 system-sm-semibold-uppercase text-text-secondary"
                 >
-                  {t(($) => $['generate.instruction'], { ns: 'appDebug' })}
+                  {t(($) => $['generate.instruction'], { ns: 'appGeneration' })}
                 </div>
                 {isBasicMode ? (
                   <InstructionEditorInBasic
@@ -368,7 +370,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
 
               <div className="mt-7 flex flex-wrap justify-end gap-2">
                 <Button onClick={onClose}>
-                  {t(($) => $[`${i18nPrefix}.dismiss`], { ns: 'appDebug' })}
+                  {t(($) => $[`${i18nPrefix}.dismiss`], { ns: 'appGeneration' })}
                 </Button>
                 <Button
                   className="flex"
@@ -378,7 +380,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
                 >
                   <span aria-hidden className="i-custom-vender-other-generator size-4" />
                   <span className="text-xs font-semibold">
-                    {t(($) => $['generate.generate'], { ns: 'appDebug' })}
+                    {t(($) => $['generate.generate'], { ns: 'appGeneration' })}
                   </span>
                 </Button>
               </div>
@@ -408,10 +410,10 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
             <AlertDialogContent>
               <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
                 <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-                  {t(($) => $['generate.overwriteTitle'], { ns: 'appDebug' })}
+                  {t(($) => $['generate.overwriteTitle'], { ns: 'appGeneration' })}
                 </AlertDialogTitle>
                 <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-                  {t(($) => $['generate.overwriteMessage'], { ns: 'appDebug' })}
+                  {t(($) => $['generate.overwriteMessage'], { ns: 'appGeneration' })}
                 </AlertDialogDescription>
               </div>
               <AlertDialogActions>

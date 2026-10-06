@@ -41,7 +41,7 @@ export function AgentVersionRestore({
   onBeforeRestore?: () => void | Promise<void>
   onRestored?: () => void | Promise<void>
 }) {
-  const { t } = useTranslation(['agentV2', 'billing', 'common', 'workflow'])
+  const { t } = useTranslation(['agentV2', 'billing', 'common', 'workflowHistory'])
   const queryClient = useQueryClient()
   const { canReleaseAndVersion: canRestore } = useAgentPermissions(agentId)
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
@@ -137,7 +137,7 @@ export function AgentVersionRestore({
               {`${t(($) => $['agentDetail.versionHistory.restore'])} ${versionLabel}`}
             </AlertDialogTitle>
             <AlertDialogDescription className="system-md-regular text-text-secondary">
-              {t(($) => $['versionHistory.restorationTip'], { ns: 'workflow' })}
+              {t(($) => $['versionHistory.restorationTip'], { ns: 'workflowHistory' })}
             </AlertDialogDescription>
           </div>
           <AlertDialogActions>

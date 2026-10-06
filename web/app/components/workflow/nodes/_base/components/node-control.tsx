@@ -16,7 +16,7 @@ type NodeControlProps = Pick<Node, 'id' | 'data'> & {
   pluginInstallLocked?: boolean
 }
 const NodeControl: FC<NodeControlProps> = ({ id, data, pluginInstallLocked }) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow', 'workflowDebug'])
   const { handleNodeSelect } = useNodesInteractions()
   const nodesReadOnly = useNodesReadOnly()
   const workflowStore = useWorkflowStore()
@@ -45,7 +45,7 @@ const NodeControl: FC<NodeControlProps> = ({ id, data, pluginInstallLocked }) =>
             type="button"
             aria-label={
               isSingleRunning
-                ? t(($) => $['debug.variableInspect.trigger.stop'], { ns: 'workflow' })
+                ? t(($) => $['debug.variableInspect.trigger.stop'], { ns: 'workflowDebug' })
                 : t(($) => $['panel.runThisStep'], { ns: 'workflow' })
             }
             className={`flex size-6 items-center justify-center rounded-md ${isSingleRunning && 'cursor-pointer hover:bg-state-base-hover'}`}

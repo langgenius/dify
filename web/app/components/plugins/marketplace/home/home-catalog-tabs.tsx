@@ -20,7 +20,7 @@ const HomeCatalogTabs = ({
   labels,
   language,
 }: HomeCatalogTabsProps) => {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['navigation'])
   const { t: tPlugin } = useTranslation(['plugin'])
   const catalogParams = language ? { language } : undefined
   const getRelativeCatalogHref = (path: string) => {
@@ -41,7 +41,7 @@ const HomeCatalogTabs = ({
 
   return (
     <nav
-      aria-label={t(($) => $['mainNav.marketplace'], { ns: 'common' })}
+      aria-label={t(($) => $['mainNav.marketplace'], { ns: 'navigation' })}
       className={cn('flex h-8 items-center gap-1', className)}
     >
       <Link

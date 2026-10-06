@@ -4,6 +4,7 @@ import type {
 } from '@dify/contracts/api/console/agent/types.gen'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { ChatConfig, OnFeedback } from '@/app/components/base/chat/types'
+import { DrawerTitle } from '@langgenius/dify-ui/drawer'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -25,7 +26,7 @@ export function AgentLogDetailPanel({
   onClose: () => void
 }) {
   const { t } = useTranslation(['agentV2', 'appLog', 'common'])
-  const { t: tAgentV2 } = useTranslation(['agentV2'])
+  const { t: tAgentV2 } = useTranslation(['agentV2', 'agentRoster'])
   const { formatTime } = useTimestamp()
   const queryClient = useQueryClient()
   const feedbackMutation = useMutation(
@@ -56,7 +57,7 @@ export function AgentLogDetailPanel({
         formatLogTime: (value) =>
           formatTime(
             value,
-            tAgentV2(($) => $['roster.dateTimeFormat']),
+            tAgentV2(($) => $['roster.dateTimeFormat'], { ns: 'agentRoster' }),
           ),
         messages: messagesQuery.data?.data ?? [],
       })
@@ -108,9 +109,9 @@ export function AgentLogDetailPanel({
           </div>
         </div>
         <div className="flex min-w-0 grow flex-wrap items-center justify-end gap-y-1">
-          <div className="min-w-0 truncate system-sm-medium text-text-secondary">
-            {log?.title || log?.conversation_id}
-          </div>
+          <DrawerTitle className="min-w-0 truncate system-sm-medium text-text-secondary">
+            {log?.title || log?.conversation_id || tAgentV2(($) => $['agentDetail.logs.title'])}
+          </DrawerTitle>
         </div>
         <IconButton
           size="lg"
@@ -147,7 +148,6 @@ export function AgentLogDetailPanel({
               chatList={chatList}
               noChatInput
               hideProcessDetail
-              hideLogModal
               chatContainerInnerClassName="px-3"
               onFeedback={handleFeedback}
             />

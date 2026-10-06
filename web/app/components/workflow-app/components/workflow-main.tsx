@@ -319,6 +319,8 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
       try {
         const response = await fetchWorkflowDraft(`/apps/${appId}/workflows/draft`)
 
+        if (response.hash) workflowStore.getState().setSyncWorkflowDraftHash(response.hash)
+
         // Handle features, variables etc.
         handleWorkflowDataUpdate(response)
 
@@ -337,6 +339,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     handleWorkflowDataUpdate,
     handleUpdateWorkflowCanvas,
     isCollaborationEnabled,
+    workflowStore,
   ])
 
   // The server directs this request to the selected saver. Do not gate it on the

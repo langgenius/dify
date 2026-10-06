@@ -628,11 +628,11 @@ describe('SkillDetailPage builder', () => {
     renderSkillDetailPage()
     await user.click(
       await screen.findByRole('button', {
-        name: 'common.modelProvider.modelSettings',
+        name: 'modelProvider.modelProvider.modelSettings',
       }),
     )
     const dialog = await screen.findByRole('dialog', {
-      name: 'common.modelProvider.modelSettings',
+      name: 'modelProvider.modelProvider.modelSettings',
     })
     const temperature = await within(dialog).findByRole('spinbutton', { name: 'Temperature' })
     await user.clear(temperature)

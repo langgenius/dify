@@ -107,9 +107,9 @@ function WorkspaceCardTrigger({
   onPrefetchWorkspaces: () => void
   onPlanClick: () => void
 }) {
-  const { t } = useTranslation(['common'])
-  const creditsUnit = t(($) => $['mainNav.workspace.creditsUnit'], { ns: 'common' })
-  const openMenuLabel = t(($) => $['mainNav.workspace.openMenu'], { ns: 'common' })
+  const { t } = useTranslation(['common', 'navigation'])
+  const creditsUnit = t(($) => $['mainNav.workspace.creditsUnit'], { ns: 'navigation' })
+  const openMenuLabel = t(($) => $['mainNav.workspace.openMenu'], { ns: 'navigation' })
   const isUnlimited = credits === -1
   const formattedCredits = isUnlimited
     ? t(($) => $['license.unlimited'], { ns: 'common' })
@@ -253,7 +253,7 @@ const selectCurrentWorkspaceCardData = (workspace: CurrentWorkspaceCardSource) =
 })
 
 export function WorkspaceCard() {
-  const { t } = useTranslation(['billing', 'common'])
+  const { t } = useTranslation(['billing', 'common', 'navigation'])
   const queryClient = useQueryClient()
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
@@ -340,8 +340,10 @@ export function WorkspaceCard() {
             name={currentWorkspace.name}
             status={renderWorkspaceStatus()}
             showInviteMembers={showInviteMembers}
-            settingsLabel={t(($) => $['mainNav.workspace.settings'], { ns: 'common' })}
-            inviteMembersLabel={t(($) => $['mainNav.workspace.inviteMembers'], { ns: 'common' })}
+            settingsLabel={t(($) => $['mainNav.workspace.settings'], { ns: 'navigation' })}
+            inviteMembersLabel={t(($) => $['mainNav.workspace.inviteMembers'], {
+              ns: 'navigation',
+            })}
             onOpenSettings={() => {
               setOpen(false)
               setSettingsDestination(hasBillingPlan ? 'billing' : 'members')

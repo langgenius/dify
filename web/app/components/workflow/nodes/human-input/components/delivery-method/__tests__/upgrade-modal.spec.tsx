@@ -15,10 +15,12 @@ it('renders upgrade copy and handles hide and pricing actions', async () => {
     { systemFeatures: { deployment_edition: 'CLOUD' } },
   )
   expect(screen.getByRole('dialog')).toHaveTextContent(
-    'workflow.nodes.humanInput.deliveryMethod.upgradeTipContent',
+    'workflowHumanInput.nodes.humanInput.deliveryMethod.upgradeTipContent',
   )
   await user.click(
-    screen.getByRole('button', { name: 'workflow.nodes.humanInput.deliveryMethod.upgradeTipHide' }),
+    screen.getByRole('button', {
+      name: 'workflowHumanInput.nodes.humanInput.deliveryMethod.upgradeTipHide',
+    }),
   )
   expect(onOpenChange).toHaveBeenCalledWith(false)
   await user.click(screen.getByRole('button', { name: /billing.upgradeBtn.encourageShort/i }))

@@ -3,11 +3,12 @@ import type { JsonObject } from '@dify/contracts/api/console/trial-apps/types.ge
 import type { FC } from 'react'
 import type { Edge, Node } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { BlockEnum } from '@/app/components/workflow/types'
 import WorkflowPreview from '@/app/components/workflow/workflow-preview'
-import { useGetTryAppFlowPreview } from '@/service/use-try-app'
+import { consoleQuery } from '@/service/console'
 
 type Props = {
   readonly appId: string
@@ -153,7 +154,11 @@ const normalizeWorkflowPreviewGraph = (graph: JsonObject) => {
 }
 
 const FlowAppPreview: FC<Props> = ({ appId, className }) => {
-  const { data, isLoading } = useGetTryAppFlowPreview(appId)
+  const { data, isLoading } = useQuery(
+    consoleQuery.trialApps.byAppId.workflows.get.queryOptions({
+      input: { params: { app_id: appId } },
+    }),
+  )
 
   if (isLoading) {
     return (

@@ -13,7 +13,7 @@ type LoopLogTriggerProps = {
   ) => void
 }
 const LoopLogTrigger = ({ nodeInfo, allExecutions, onShowLoopResultList }: LoopLogTriggerProps) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow', 'workflowLogic'])
 
   const filterNodesForInstance = (key: string): NodeTracing[] => {
     if (!allExecutions) return []
@@ -82,11 +82,11 @@ const LoopLogTrigger = ({ nodeInfo, allExecutions, onShowLoopResultList }: LoopL
         className="i-custom-vender-workflow-loop size-4 shrink-0 text-components-button-tertiary-text"
       />
       <div className="flex-1 text-left system-sm-medium text-components-button-tertiary-text">
-        {t(($) => $['nodes.loop.loop'], { ns: 'workflow', count: displayLoopCount })}
+        {t(($) => $['nodes.loop.loop'], { ns: 'workflowLogic', count: displayLoopCount })}
         {errorCount > 0 && (
           <>
-            {t(($) => $['nodes.loop.comma'], { ns: 'workflow' })}
-            {t(($) => $['nodes.loop.error'], { ns: 'workflow', count: errorCount })}
+            {t(($) => $['nodes.loop.comma'], { ns: 'workflowLogic' })}
+            {t(($) => $['nodes.loop.error'], { ns: 'workflowLogic', count: errorCount })}
           </>
         )}
       </div>

@@ -35,7 +35,7 @@ const ConfigParamModal: FC<Props> = ({
   isInit,
   annotationConfig: oldAnnotationConfig,
 }) => {
-  const { t } = useTranslation(['appAnnotation', 'appDebug', 'common'])
+  const { t } = useTranslation(['appAnnotation', 'appDebug', 'common', 'modelProvider'])
   const {
     modelList: embeddingsModelList,
     defaultModel: embeddingsDefaultModel,
@@ -65,7 +65,7 @@ const ConfigParamModal: FC<Props> = ({
       !embeddingModel.modelName ||
       (embeddingModel.modelName === embeddingsDefaultModel?.model && !isEmbeddingsDefaultModelValid)
     ) {
-      toast.error(t(($) => $['modelProvider.embeddingModel.required'], { ns: 'common' }))
+      toast.error(t(($) => $['modelProvider.embeddingModel.required'], { ns: 'modelProvider' }))
       return
     }
     setLoading(true)
@@ -99,18 +99,18 @@ const ConfigParamModal: FC<Props> = ({
           >
             <ScoreSlider
               className="mt-1"
-              value={(annotationConfig.score_threshold ?? ANNOTATION_DEFAULT.score_threshold) * 100}
+              value={annotationConfig.score_threshold ?? ANNOTATION_DEFAULT.score_threshold}
               onChange={(val) => {
                 setAnnotationConfig({
                   ...annotationConfig,
-                  score_threshold: val / 100,
+                  score_threshold: val,
                 })
               }}
             />
           </Item>
 
           <Item
-            title={t(($) => $['modelProvider.embeddingModel.key'], { ns: 'common' })}
+            title={t(($) => $['modelProvider.embeddingModel.key'], { ns: 'modelProvider' })}
             tooltip={t(($) => $.embeddingModelSwitchTip, { ns: 'appAnnotation' })}
           >
             <div className="pt-1">

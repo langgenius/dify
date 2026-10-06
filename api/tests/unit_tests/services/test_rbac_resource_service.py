@@ -1,11 +1,13 @@
 """RBACResourceService reads through the session its caller passes in (#37403)."""
 
+import pytest
 from sqlalchemy.orm import Session
 
 from models.agent import Agent, AgentKind, AgentScope, AgentSource, AgentStatus
 from models.dataset import Dataset
 from models.model import App, AppMode
 from services.rbac_resource_service import RBACResourceService
+from tests.unit_tests.model_factories import make_document
 
 TENANT_ID = "tenant-1"
 OTHER_TENANT_ID = "tenant-2"
@@ -133,3 +135,30 @@ class TestGetDatasetIdByPipeline:
         sqlite_session.flush()
 
         assert RBACResourceService.get_dataset_id_by_pipeline(sqlite_session, TENANT_ID, "pipeline-1") is None
+
+
+class TestGetDatasetIdByDocument:
+    @pytest.mark.parametrize(
+        ("dataset_tenant", "document_tenant", "expected"),
+        [
+            (TENANT_ID, TENANT_ID, "dataset-1"),
+            (OTHER_TENANT_ID, OTHER_TENANT_ID, None),
+            (OTHER_TENANT_ID, TENANT_ID, None),
+            (TENANT_ID, OTHER_TENANT_ID, None),
+        ],
+    )
+    def test_scopes_both_dataset_and_document(
+        self, sqlite_session: Session, dataset_tenant: str, document_tenant: str, expected: str | None
+    ) -> None:
+        sqlite_session.add_all(
+            [
+                _dataset(dataset_id="dataset-1", tenant_id=dataset_tenant),
+                make_document(document_id="doc-1", dataset_id="dataset-1", tenant_id=document_tenant),
+            ]
+        )
+        sqlite_session.flush()
+
+        assert RBACResourceService.get_dataset_id_by_document(sqlite_session, TENANT_ID, "doc-1") == expected
+
+    def test_missing_document(self, sqlite_session: Session) -> None:
+        assert RBACResourceService.get_dataset_id_by_document(sqlite_session, TENANT_ID, "missing") is None

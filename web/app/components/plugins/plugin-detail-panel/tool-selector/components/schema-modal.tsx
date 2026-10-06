@@ -16,7 +16,7 @@ type Props = Readonly<{
 }>
 
 export function SchemaModal({ isShow, schema, rootName, onClose }: Props) {
-  const { t } = useTranslation(['common', 'workflow'])
+  const { t } = useTranslation(['common', 'workflowAgent'])
   return (
     <Dialog open={isShow} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="w-full max-w-240 p-0">
@@ -24,7 +24,7 @@ export function SchemaModal({ isShow, schema, rootName, onClose }: Props) {
           {/* Header */}
           <div className="relative flex p-6 pr-14 pb-3">
             <DialogTitle className="grow truncate title-2xl-semi-bold text-text-primary">
-              {t(($) => $['nodes.agent.parameterSchema'], { ns: 'workflow' })}
+              {t(($) => $['nodes.agent.parameterSchema'], { ns: 'workflowAgent' })}
             </DialogTitle>
             <button
               type="button"

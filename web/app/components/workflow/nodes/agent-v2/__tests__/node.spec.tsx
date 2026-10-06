@@ -145,11 +145,11 @@ describe('agent/node', () => {
     expect(mockUseAgentRosterDetail).toHaveBeenCalledWith(undefined)
     expect(mockUseWorkflowInlineAgentDetail).toHaveBeenCalledWith('agent-node', 'inline-agent-1')
     expect(screen.queryByText('Workflow Agent 1')).not.toBeInTheDocument()
-    expect(screen.getByText('workflow.nodes.agent.roster.inlineSetup.name')).toHaveClass(
+    expect(screen.getByText('workflowAgent.nodes.agent.roster.inlineSetup.name')).toHaveClass(
       'system-xs-regular',
       'text-text-secondary',
     )
-    expect(screen.getByText('workflow.nodes.agent.roster.inlineSetup.type')).toHaveClass(
+    expect(screen.getByText('workflowAgent.nodes.agent.roster.inlineSetup.type')).toHaveClass(
       'system-2xs-regular',
       'text-text-tertiary',
     )
@@ -175,7 +175,7 @@ describe('agent/node', () => {
     )
 
     expect(
-      screen.queryByText('workflow.nodes.agent.roster.inlineSetup.name'),
+      screen.queryByText('workflowAgent.nodes.agent.roster.inlineSetup.name'),
     ).not.toBeInTheDocument()
     expect(container.querySelector('.bg-workflow-block-parma-bg')).toBeInTheDocument()
     expect(

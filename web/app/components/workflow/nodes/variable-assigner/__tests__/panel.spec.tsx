@@ -128,17 +128,17 @@ describe('variable-assigner/panel', () => {
     expect(screen.getByText('Group2:number:true')).toBeInTheDocument()
     expect(
       screen.getByText(
-        /Group1\.output:string:workflow\.nodes\.variableAssigner\.outputVars\.varDescribe/,
+        /Group1\.output:string:workflowLogic\.nodes\.variableAssigner\.outputVars\.varDescribe/,
       ),
     ).toBeInTheDocument()
     expect(
       screen.getByText(
-        /Group2\.output:number:workflow\.nodes\.variableAssigner\.outputVars\.varDescribe/,
+        /Group2\.output:number:workflowLogic\.nodes\.variableAssigner\.outputVars\.varDescribe/,
       ),
     ).toBeInTheDocument()
 
     await user.click(screen.getByRole('switch'))
-    await user.click(screen.getByText('workflow.nodes.variableAssigner.addGroup'))
+    await user.click(screen.getByText('workflowLogic.nodes.variableAssigner.addGroup'))
     await user.click(screen.getByRole('button', { name: 'cancel-remove' }))
     await user.click(screen.getByRole('button', { name: 'confirm-remove' }))
 
@@ -174,10 +174,12 @@ describe('variable-assigner/panel', () => {
     render(<Panel id="assigner-node" data={createData()} panelProps={panelProps} />)
 
     expect(screen.getByText('root:string:false')).toBeInTheDocument()
-    expect(screen.getByText('workflow.nodes.variableAssigner.aggregationGroup')).toBeInTheDocument()
+    expect(
+      screen.getByText('workflowLogic.nodes.variableAssigner.aggregationGroup'),
+    ).toBeInTheDocument()
     expect(
       screen.queryByText(
-        /Group1\.output:string:workflow\.nodes\.variableAssigner\.outputVars\.varDescribe/,
+        /Group1\.output:string:workflowLogic\.nodes\.variableAssigner\.outputVars\.varDescribe/,
       ),
     ).not.toBeInTheDocument()
   })

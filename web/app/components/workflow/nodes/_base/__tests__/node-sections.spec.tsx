@@ -1,10 +1,11 @@
+import type { TFunction } from 'i18next'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 import { withSelectorKey } from '@/test/i18n-mock'
 import { NodeBody, NodeDescription, NodeHeaderMeta } from '../node-sections'
 
-const t = withSelectorKey((key: string) => key)
+const t = withSelectorKey((key: string) => key) as TFunction<['workflow']>
 
 describe('node sections', () => {
   it('should render loop and loading metadata in the header section', () => {

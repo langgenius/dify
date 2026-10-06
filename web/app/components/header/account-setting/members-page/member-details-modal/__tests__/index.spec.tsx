@@ -105,9 +105,11 @@ describe('MemberDetailsModal', () => {
         />,
       )
 
-      expect(screen.getByText(/common\.members\.memberDetails\.assignedRole:/i)).toBeInTheDocument()
       expect(
-        screen.queryByText(/common\.members\.memberDetails\.assignedRoles/i),
+        screen.getByText(/workspaceMembers\.members\.memberDetails\.assignedRole:/i),
+      ).toBeInTheDocument()
+      expect(
+        screen.queryByText(/workspaceMembers\.members\.memberDetails\.assignedRoles/i),
       ).not.toBeInTheDocument()
     })
 

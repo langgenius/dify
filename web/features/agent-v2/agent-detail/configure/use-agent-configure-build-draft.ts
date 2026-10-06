@@ -405,13 +405,7 @@ export function useAgentConfigureBuildDraftActions({
         queryKey: buildDraftQueryOptions.queryKey,
       })
       rebaseComposerDraft(nextAgentSoulConfig)
-      if (
-        shouldRefetchComposer ||
-        !nextAgentSoulConfig?.model?.model ||
-        !nextAgentSoulConfig.model.model_provider
-      ) {
-        onComposerRebased?.()
-      }
+      if (shouldRefetchComposer) onComposerRebased?.()
     },
     [
       buildDraftQueryOptions.queryKey,
