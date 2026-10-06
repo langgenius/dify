@@ -689,8 +689,8 @@ class TrialMessageSuggestedQuestionApi(Resource):
             raise ProviderModelCurrentlyNotSupportError()
         except InvokeError as e:
             raise CompletionRequestError(e.description)
-        except HTTPException:
-            raise
+        except AgentVersionNotFoundError as error:
+            raise AgentVersionNotFoundHTTPError() from error
         except Exception:
             logger.exception("internal server error.")
             raise InternalServerError()

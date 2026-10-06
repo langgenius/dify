@@ -11,6 +11,7 @@ import pytest
 from flask import Flask, Request
 from sqlalchemy import Connection, Engine, delete, event, select, update
 from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
+from werkzeug.exceptions import Forbidden
 from werkzeug.test import TestResponse
 
 import controllers.console.explore.trial as trial_module
@@ -33,11 +34,11 @@ from graphon.model_runtime.errors.invoke import InvokeError
 from libs.external_api import ExternalApi
 from models import Account, AccountTrialAppRecord, App, AppMode, Conversation, Message, Tenant, TrialApp
 from models.account import AccountStatus
+from models.agent import Agent, AgentScope, AgentSource, AgentStatus
 from models.enums import ConversationFromSource
 from models.model import AppModelConfig
 from repositories.message_suggested_questions_repository import SuggestedQuestionsRepository
 from repositories.trial_app_repository import TrialAppRepository
-from services.agent.errors import AgentVersionNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.message_suggested_questions_generator import SuggestedQuestionsGenerator
 from services.message_suggested_questions_queries import SuggestedQuestionsQuery
@@ -350,6 +351,28 @@ def test_questions_keep_response_history_owner_and_usage(
     harness.assert_closed()
 
 
+def test_missing_published_agent_version_has_specific_error(harness: _Harness) -> None:
+    with harness.factory.begin() as session:
+        session.execute(update(App).where(App.id == harness.target.id).values(mode=AppMode.AGENT))
+        session.add(
+            Agent(
+                tenant_id=harness.target.tenant_id,
+                app_id=harness.target.id,
+                name="Trial Agent",
+                scope=AgentScope.ROSTER,
+                source=AgentSource.AGENT_APP,
+                status=AgentStatus.ACTIVE,
+            )
+        )
+
+    _assert_error(harness.get(), 404, "agent_version_not_found_error", "Agent config version not found.")
+    assert harness.provider.tenant_ids == []
+    assert harness.provider.prompts == []
+    assert harness.provider.traces == []
+    assert harness.usage() is None
+    harness.assert_closed()
+
+
 @pytest.mark.parametrize("entity", ["message", "conversation"])
 @pytest.mark.parametrize("mismatch", ["missing", "app", "account", "source", "end-user"])
 def test_message_and_conversation_require_complete_owner_chain(harness: _Harness, entity: str, mismatch: str) -> None:
@@ -492,6 +515,27 @@ def test_token_count_failures_preserve_specific_errors_and_close_session(
     harness.assert_closed()
 
 
+@pytest.mark.parametrize("failure", [RuntimeError("Private provider detail"), Forbidden("Private provider detail")])
+def test_unexpected_provider_errors_have_opaque_internal_error(harness: _Harness, failure: Exception) -> None:
+    harness.provider.failure = failure
+
+    response = harness.get()
+
+    _assert_error(
+        response,
+        500,
+        "internal_server_error",
+        "The server encountered an internal error and was unable to complete your request. "
+        "Either the server is overloaded or there is an error in the application.",
+    )
+    assert "Private provider detail" not in response.get_data(as_text=True)
+    assert harness.provider.token_calls == 1
+    assert harness.provider.prompts == []
+    assert harness.provider.traces == []
+    assert harness.usage() is None
+    harness.assert_closed()
+
+
 @pytest.mark.parametrize("failure", [None, InvokeError("Provider unavailable")])
 def test_runtime_preserves_outer_request_session(harness: _Harness, failure: Exception | None) -> None:
     harness.provider.failure = failure
@@ -537,7 +581,6 @@ def test_advanced_chat_without_published_workflow_keeps_empty_success(harness: _
     [
         (AppDefinitionUnavailableError("App changed after admission"), 400, "app_unavailable", None),
         (SuggestedQuestionsActorNotFoundError("Account disappeared"), 401, "unauthorized", "Account no longer exists."),
-        (AgentVersionNotFoundError(), 404, "agent_version_not_found_error", "Agent config version not found."),
     ],
 )
 def test_reload_errors_have_explicit_http_mapping(
@@ -567,7 +610,10 @@ def test_reload_errors_have_explicit_http_mapping(
         raise failure
 
     monkeypatch.setattr(MessageSuggestedQuestionsService, "get_suggested_questions", reject_reload)
-    _assert_error(harness.get(), status, code, message)
+    response = harness.get()
+    _assert_error(response, status, code, message)
+    if status == 401:
+        assert response.headers["WWW-Authenticate"] == 'Bearer realm="api"'
     assert harness.provider.prompts == []
     assert harness.usage() is None
     harness.assert_closed()

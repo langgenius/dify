@@ -205,7 +205,7 @@ class _QuestionProvider:
     legacy_sessions: list[Session] = field(default_factory=list)
     prompts: list[str] = field(default_factory=list)
     io_sessions: list[tuple[str, bool]] = field(default_factory=list)
-    token_failure: bool = False
+    token_failure: Exception | None = None
     traces: list[TraceTask] = field(default_factory=list)
 
     def get_default_model_instance(self, *, tenant_id: str, model_type: ModelType) -> ModelInstance:
@@ -228,8 +228,8 @@ class _QuestionProvider:
 
     def get_llm_num_tokens(self, prompt_messages: Sequence[PromptMessage]) -> int:
         self.record_io("tokens")
-        if self.token_failure:
-            raise ValueError("Token counter failed")
+        if self.token_failure is not None:
+            raise self.token_failure
         return len(prompt_messages)
 
     def get_model_schema(self) -> AIModelEntity:
@@ -850,13 +850,14 @@ def test_generation_resource_errors_remain_specific(
     messages.assert_unused()
 
 
-def test_shared_suggested_questions_token_failure_releases_sessions(real_questions: _QuestionProvider) -> None:
-    real_questions.token_failure = True
-    _error(
-        real_questions.messages.request("suggested-questions", message_id=real_questions.message.id),
-        status=500,
-        code="internal_server_error",
-    )
+@pytest.mark.parametrize("failure", [ValueError("private token failure"), Forbidden("private token failure")])
+def test_shared_suggested_questions_token_failure_releases_sessions(
+    real_questions: _QuestionProvider, failure: Exception
+) -> None:
+    real_questions.token_failure = failure
+    response = real_questions.messages.request("suggested-questions", message_id=real_questions.message.id)
+    _error(response, status=500, code="internal_server_error")
+    assert "private token failure" not in response.get_data(as_text=True)
     assert [stage for stage, _closed in real_questions.io_sessions] == ["tokens"]
     assert len(real_questions.legacy_sessions) == 1
     assert not real_questions.prompts
