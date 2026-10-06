@@ -4,7 +4,6 @@ import type { ChatConfig, ChatItem, ChatItemInTree, OnSend } from '../types'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine, RiArrowUpSLine } from '@remixicon/react'
-import { useTheme } from 'next-themes'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackWebAppEvent } from '@/app/components/base/amplitude/web-app-event'
@@ -62,14 +61,24 @@ const ChatWrapper = () => {
 
   // Admin-forced light/dark mode (Settings > Chat Appearance). "auto" leaves
   // the visitor's device preference in charge, same as before this setting
-  // existed. The embedded widget loads this page in its own iframe document,
-  // so this only affects the widget, not the host page it's embedded on.
-  const { setTheme } = useTheme()
+  // existed. Sets the data-theme attribute directly on this iframe's own
+  // document instead of next-themes' setTheme() - setTheme() writes to
+  // localStorage, which is shared with the top-level page when the iframe
+  // and the Dify console are the same origin (e.g. a logged-in admin
+  // previewing the widget), and next-themes syncs that across every open
+  // tab/frame on that origin. Scoping it to this document avoids that.
   useEffect(() => {
     const chatThemeMode = appData?.site.chat_theme_mode
-    if (chatThemeMode && chatThemeMode !== 'auto')
-      setTheme(chatThemeMode)
-  }, [appData?.site.chat_theme_mode, setTheme])
+    if (!chatThemeMode || chatThemeMode === 'auto') return
+
+    const root = document.documentElement
+    const previousTheme = root.getAttribute('data-theme')
+    root.setAttribute('data-theme', chatThemeMode)
+    return () => {
+      if (previousTheme) root.setAttribute('data-theme', previousTheme)
+      else root.removeAttribute('data-theme')
+    }
+  }, [appData?.site.chat_theme_mode])
 
   // Read sendOnEnter from URL params (e.g., ?sendOnEnter=false)
   const sendOnEnter = useMemo(() => {
