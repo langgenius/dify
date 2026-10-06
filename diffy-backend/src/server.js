@@ -25,6 +25,9 @@ function buildServer() {
   app.register(difyRoute);
   app.register(diffyIframeRoute);
 
+  // chat.html is also served from a plain GET route, besides the static /chat.html.
+  app.get("/chat", (request, reply) => reply.sendFile("chat.html"));
+
   app.get("/health", async () => ({ status: "ok" }));
 
   return app;
