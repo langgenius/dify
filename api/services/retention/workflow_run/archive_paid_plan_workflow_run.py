@@ -42,7 +42,7 @@ from typing import Any, NotRequired, TypedDict, TypeVar, cast
 import click
 import pyarrow as pa
 import pyarrow.parquet as pq
-from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from sqlalchemy import inspect, select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -150,10 +150,6 @@ class ShardManifestEntryModel(BaseModel):
     archive_format: str
     run_ids: list[str]
     campaign_id: str | None = None
-
-
-_ARCHIVE_BUNDLE_INDEX_ADAPTER = TypeAdapter(ArchiveBundleIndexModel)
-_SHARD_MANIFEST_ENTRY_ADAPTER = TypeAdapter(ShardManifestEntryModel)
 
 
 @dataclass(frozen=True)
@@ -1037,7 +1033,7 @@ class WorkflowRunArchiver:
         try:
             index = cast(
                 ArchiveBundleIndexDict,
-                _ARCHIVE_BUNDLE_INDEX_ADAPTER.validate_json(payload).model_dump(),
+                ArchiveBundleIndexModel.model_validate_json(payload).model_dump(),
             )
         except ValidationError as e:
             raise ValueError(f"archive index is not valid: {index_key}: {e}") from e
@@ -1116,7 +1112,7 @@ class WorkflowRunArchiver:
         for manifest_key in manifest_keys:
             manifest_payload = storage.get_object(manifest_key)
             try:
-                manifest = _SHARD_MANIFEST_ENTRY_ADAPTER.validate_json(manifest_payload)
+                manifest = ShardManifestEntryModel.model_validate_json(manifest_payload)
             except ValidationError as e:
                 raise ValueError(f"archive manifest is not valid: {manifest_key}: {e}") from e
             if manifest.schema_version != ARCHIVE_BUNDLE_SCHEMA_VERSION:

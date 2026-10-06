@@ -27,7 +27,7 @@ import pyarrow.parquet as pq
 import sqlalchemy as sa
 from botocore.exceptions import ClientError, HTTPClientError
 from botocore.exceptions import ConnectionError as BotoCoreConnectionError
-from pydantic import BaseModel, ConfigDict, TypeAdapter, ValidationError
+from pydantic import BaseModel, ConfigDict, ValidationError
 from sqlalchemy import delete, func, inspect, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.engine import CursorResult
@@ -125,9 +125,6 @@ class BundleManifestModel(BaseModel):
     archived_at: str = ""
     tables: dict[str, BundleTableManifestEntryModel]
     run_ids: list[str]
-
-
-_BUNDLE_MANIFEST_ADAPTER = TypeAdapter(BundleManifestModel)
 
 
 @dataclass(frozen=True)
@@ -795,7 +792,7 @@ class WorkflowRunBundleArchiveMaintenance:
         try:
             manifest = cast(
                 BundleManifest,
-                _BUNDLE_MANIFEST_ADAPTER.validate_json(manifest_data).model_dump(),
+                BundleManifestModel.model_validate_json(manifest_data).model_dump(),
             )
         except ValidationError as e:
             raise ValueError(f"manifest.json is not a valid bundle manifest: {e}") from e
