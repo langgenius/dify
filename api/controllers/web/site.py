@@ -20,6 +20,7 @@ class WebSiteResponse(ResponseModel):
     title: str
     chat_color_theme: str | None = None
     chat_color_theme_inverted: bool
+    chat_theme_mode: str | None = None
     icon_type: str | None = None
     icon: str | None = None
     icon_background: str | None = None

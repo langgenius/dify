@@ -4,6 +4,7 @@ import type { ChatConfig, ChatItem, ChatItemInTree, OnSend } from '../types'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine, RiArrowUpSLine } from '@remixicon/react'
+import { useTheme } from 'next-themes'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackWebAppEvent } from '@/app/components/base/amplitude/web-app-event'
@@ -58,6 +59,17 @@ const ChatWrapper = () => {
     initUserVariables,
     appSourceType,
   } = useEmbeddedChatbotContext()
+
+  // Admin-forced light/dark mode (Settings > Chat Appearance). "auto" leaves
+  // the visitor's device preference in charge, same as before this setting
+  // existed. The embedded widget loads this page in its own iframe document,
+  // so this only affects the widget, not the host page it's embedded on.
+  const { setTheme } = useTheme()
+  useEffect(() => {
+    const chatThemeMode = appData?.site.chat_theme_mode
+    if (chatThemeMode && chatThemeMode !== 'auto')
+      setTheme(chatThemeMode)
+  }, [appData?.site.chat_theme_mode, setTheme])
 
   // Read sendOnEnter from URL params (e.g., ?sendOnEnter=false)
   const sendOnEnter = useMemo(() => {

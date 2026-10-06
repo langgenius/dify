@@ -30,6 +30,7 @@ def _map_site_configuration(site: Site) -> AppSiteConfiguration:
         title=site.title,
         chat_color_theme=site.chat_color_theme,
         chat_color_theme_inverted=site.chat_color_theme_inverted,
+        chat_theme_mode=site.chat_theme_mode,
         icon_type=site.icon_type.value if site.icon_type is not None else None,
         icon=site.icon,
         icon_background=site.icon_background,

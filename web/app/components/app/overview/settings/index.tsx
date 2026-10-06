@@ -58,6 +58,7 @@ type SettingsSiteInfo = Pick<
   | 'default_language'
   | 'chat_color_theme'
   | 'chat_color_theme_inverted'
+  | 'chat_theme_mode'
   | 'copyright'
   | 'privacy_policy'
   | 'custom_disclaimer'
@@ -95,6 +96,7 @@ export type ConfigParams = {
   default_language: string
   chat_color_theme: string
   chat_color_theme_inverted: boolean
+  chat_theme_mode?: 'light' | 'dark' | 'auto'
   prompt_public: boolean
   copyright: string
   privacy_policy: string
@@ -126,12 +128,31 @@ type SelectOption = {
 
 const LANGUAGE_OPTIONS: SelectOption[] = languages.filter((item) => item.supported)
 
+const CHAT_THEME_MODE_VALUES = ['auto', 'light', 'dark'] as const satisfies ReadonlyArray<'auto' | 'light' | 'dark'>
+
+// i18next's typed selector (enableSelector: 'optimize') requires a literal
+// key at each call site, so this can't be collapsed into one dynamic lookup.
+const getChatThemeModeLabel = (
+  value: 'auto' | 'light' | 'dark',
+  t: ReturnType<typeof useTranslation>['t'],
+) => {
+  switch (value) {
+    case 'light':
+      return t(($) => $[`${prefixSettings}.chatThemeMode.light`], { ns: 'appOverview' })
+    case 'dark':
+      return t(($) => $[`${prefixSettings}.chatThemeMode.dark`], { ns: 'appOverview' })
+    default:
+      return t(($) => $[`${prefixSettings}.chatThemeMode.auto`], { ns: 'appOverview' })
+  }
+}
+
 const createInputInfo = (appInfo: ISettingsModalProps['appInfo']) => {
   const {
     title,
     description,
     chat_color_theme,
     chat_color_theme_inverted,
+    chat_theme_mode,
     copyright,
     privacy_policy,
     custom_disclaimer,
@@ -145,6 +166,7 @@ const createInputInfo = (appInfo: ISettingsModalProps['appInfo']) => {
     desc: description,
     chatColorTheme: chat_color_theme,
     chatColorThemeInverted: chat_color_theme_inverted,
+    chatThemeMode: chat_theme_mode ?? 'auto',
     copyright,
     copyrightSwitchValue: !!copyright,
     privacyPolicy: privacy_policy,
@@ -198,6 +220,7 @@ const getSettingsResetKey = (appInfo: ISettingsModalProps['appInfo']) =>
     appInfo.site.description,
     appInfo.site.chat_color_theme,
     appInfo.site.chat_color_theme_inverted,
+    appInfo.site.chat_theme_mode,
     appInfo.site.copyright,
     appInfo.site.privacy_policy,
     appInfo.site.custom_disclaimer,
@@ -356,6 +379,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
       default_language: language,
       chat_color_theme: inputInfo.chatColorTheme,
       chat_color_theme_inverted: inputInfo.chatColorThemeInverted,
+      chat_theme_mode: inputInfo.chatThemeMode,
       prompt_public: false,
       copyright:
         !webappCopyrightEnabled || isCloudSandboxPlan
@@ -621,6 +645,48 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                           ></Switch>
                         </div>
                       </Field>
+                    </div>
+                  )}
+                  {/* light/dark mode */}
+                  {isChat && (
+                    <div className="flex items-center">
+                      <div className="grow">
+                        <div className={cn('py-1 system-sm-semibold text-text-secondary')}>
+                          {t(($) => $[`${prefixSettings}.chatThemeMode.title`], { ns: 'appOverview' })}
+                        </div>
+                        <div className="pb-0.5 body-xs-regular text-text-tertiary">
+                          {t(($) => $[`${prefixSettings}.chatThemeMode.description`], {
+                            ns: 'appOverview',
+                          })}
+                        </div>
+                      </div>
+                      <Select
+                        value={inputInfo.chatThemeMode}
+                        onValueChange={(nextValue) => {
+                          if (nextValue)
+                            setInputInfo((item) => ({ ...item, chatThemeMode: nextValue as 'auto' | 'light' | 'dark' }))
+                        }}
+                      >
+                        <SelectTrigger
+                          aria-label={t(($) => $[`${prefixSettings}.chatThemeMode.title`], {
+                            ns: 'appOverview',
+                          })}
+                          size="medium"
+                          className="w-50 shrink-0"
+                        >
+                          {getChatThemeModeLabel(inputInfo.chatThemeMode, t)}
+                        </SelectTrigger>
+                        <SelectContent>
+                          {CHAT_THEME_MODE_VALUES.map((value) => (
+                            <SelectItem key={value} value={value}>
+                              <SelectItemText>
+                                {getChatThemeModeLabel(value, t)}
+                              </SelectItemText>
+                              <SelectItemIndicator />
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   )}
                   {/* workflow detail */}

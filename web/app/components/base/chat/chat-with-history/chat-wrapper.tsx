@@ -4,6 +4,7 @@ import type { ChatConfig, ChatItem, ChatItemInTree, OnSend } from '../types'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine, RiArrowUpSLine } from '@remixicon/react'
+import { useTheme } from 'next-themes'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackWebAppEvent } from '@/app/components/base/amplitude/web-app-event'
@@ -59,6 +60,16 @@ const ChatWrapper = () => {
     isNewAgent,
     renderAgentContent,
   } = useChatWithHistoryContext()
+
+  // Admin-forced light/dark mode (Settings > Chat Appearance). "auto" leaves
+  // the visitor's device preference in charge, same as before this setting
+  // existed.
+  const { setTheme } = useTheme()
+  useEffect(() => {
+    const chatThemeMode = appData?.site.chat_theme_mode
+    if (chatThemeMode && chatThemeMode !== 'auto')
+      setTheme(chatThemeMode)
+  }, [appData?.site.chat_theme_mode, setTheme])
 
   const appSourceType = isInstalledApp ? AppSourceType.installedApp : AppSourceType.webApp
   const timezone =

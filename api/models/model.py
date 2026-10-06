@@ -2367,6 +2367,10 @@ class Site(TypeBase):
 
     customize_domain: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
     chat_color_theme: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    # Forces the end-user web app/embedded widget's light/dark mode instead of
+    # following the visitor's device. One of "light", "dark", "auto" (default:
+    # follow the visitor's device, same as before this field existed).
+    chat_theme_mode: Mapped[str] = mapped_column(String(10), nullable=False, server_default=sa.text("'auto'"), default="auto")
     prompt_public: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.false(), default=False)
     chat_color_theme_inverted: Mapped[bool] = mapped_column(
         sa.Boolean, nullable=False, server_default=sa.false(), default=False

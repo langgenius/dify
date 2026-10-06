@@ -325,6 +325,7 @@ class AppDetailSiteResponse(ResponseModel):
     default_language: str | None = None
     chat_color_theme: str | None = None
     chat_color_theme_inverted: bool | None = None
+    chat_theme_mode: str | None = None
     customize_domain: str | None = None
     copyright: str | None = None
     privacy_policy: str | None = None

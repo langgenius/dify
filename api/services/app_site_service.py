@@ -6,6 +6,7 @@ from typing import Literal, NamedTuple, Protocol
 from machinery.context import RequestContext
 
 AppSiteTokenStrategy = Literal["must", "allow", "not_allow"]
+ChatThemeMode = Literal["light", "dark", "auto"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -21,6 +22,7 @@ class AppSiteChanges:
     default_language: str | None = None
     chat_color_theme: str | None = None
     chat_color_theme_inverted: bool | None = None
+    chat_theme_mode: ChatThemeMode | None = None
     customize_domain: str | None = None
     copyright: str | None = None
     privacy_policy: str | None = None

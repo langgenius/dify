@@ -24,6 +24,7 @@ from services.app_site_service import (
     AppSiteChanges,
     AppSiteNotFoundError,
     AppSiteTokenStrategy,
+    ChatThemeMode,
 )
 
 _APP_SITE_EDIT_ROLES = frozenset(
@@ -53,6 +54,7 @@ class AppSiteUpdatePayload(BaseModel):
     default_language: str | None = Field(default=None)
     chat_color_theme: str | None = Field(default=None)
     chat_color_theme_inverted: bool | None = Field(default=None)
+    chat_theme_mode: ChatThemeMode | None = Field(default=None)
     customize_domain: str | None = Field(default=None)
     copyright: str | None = Field(default=None)
     privacy_policy: str | None = Field(default=None)
