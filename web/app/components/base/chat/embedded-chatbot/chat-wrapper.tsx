@@ -488,17 +488,11 @@ const ChatWrapper = () => {
       sendOnEnter={sendOnEnter}
       questionIcon={
         initUserVariables?.avatar_url ? (
-          // Wrapped with an inline style (not a className) so the circular
-          // clip wins regardless of whatever inside Avatar's own CSS is
-          // fighting it - a plain `!rounded-full` class didn't survive
-          // whatever override exists, inline style outranks nearly anything.
-          <div style={{ borderRadius: '9999px', overflow: 'hidden', width: 40, height: 40 }}>
-            <Avatar
-              avatar={initUserVariables.avatar_url}
-              name={initUserVariables.name || 'user'}
-              size="xl"
-            />
-          </div>
+          <Avatar
+            avatar={initUserVariables.avatar_url}
+            name={initUserVariables.name || 'user'}
+            size="xl"
+          />
         ) : appData?.site.default_user_icon_type ? (
           <AppIcon
             size="large"
