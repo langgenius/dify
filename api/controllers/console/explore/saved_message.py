@@ -2,9 +2,9 @@ from http import HTTPStatus
 from uuid import UUID
 
 from flask_restx import Resource
-from werkzeug.exceptions import NotFound
 
 from controllers.common.controller_schemas import SavedMessageCreatePayload, SavedMessageListQuery
+from controllers.common.errors import NotFoundError
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.explore.error import NotCompletionAppError
@@ -72,7 +72,7 @@ class SavedMessageListApi(Resource):
                 message_id=str(req_data.message_id),
             )
         except MessageNotExistsError:
-            raise NotFound("Message Not Exists.")
+            raise NotFoundError("Message Not Exists.")
 
         return ResultResponse(result="success").model_dump(mode="json")
 
