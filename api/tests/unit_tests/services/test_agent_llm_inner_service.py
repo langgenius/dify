@@ -8,6 +8,7 @@ from uuid import uuid4
 
 import pytest
 from pydantic import JsonValue
+from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
@@ -21,6 +22,7 @@ from models.model import App, AppMode
 from models.provider import ProviderType
 from services.agent_llm_inner_service import AgentLLMInnerService, AgentLLMInnerServiceError, PreparedAgentLLMInvocation
 from services.entities.agent_llm_inner import AgentLLMInvokeCaller, AgentLLMInvokeRequest, AgentLLMInvokeTarget
+from tests.unit_tests.core.model_fixtures import make_model_instance
 
 
 def _request() -> AgentLLMInvokeRequest:
@@ -204,7 +206,7 @@ def test_gateway_uses_quota_managed_instance_as_single_credit_owner(
     provider_invoke.assert_called_once()
 
 
-def test_gateway_forwards_prompt_messages_without_revalidation() -> None:
+def test_gateway_forwards_prompt_messages_without_revalidation(mocker: MockerFixture) -> None:
     request = _request()
     prompt_messages: list[dict[str, JsonValue]] = [
         {
@@ -227,18 +229,18 @@ def test_gateway_forwards_prompt_messages_without_revalidation() -> None:
         },
     ]
     request.target.prompt_messages = prompt_messages
-    model_instance = MagicMock(spec=ModelInstance)
-    model_instance.invoke_llm.return_value = iter([])
+    model_instance = make_model_instance(provider=request.target.provider, model=request.target.model)
+    invoke = mocker.patch.object(model_instance, "invoke_llm", return_value=iter([]))
     prepared = PreparedAgentLLMInvocation(request=request, model_instance=model_instance)
 
     assert list(AgentLLMInnerService().invoke(prepared)) == []
-    assert model_instance.invoke_llm.call_args.kwargs["prompt_messages"] is prompt_messages
+    assert invoke.call_args.kwargs["prompt_messages"] is prompt_messages
 
 
-def test_standalone_agent_app_gateway_is_attributed_to_app() -> None:
+def test_standalone_agent_app_gateway_is_attributed_to_app(mocker: MockerFixture) -> None:
     request = _request()
-    model_instance = MagicMock(spec=ModelInstance)
-    model_instance.invoke_llm.return_value = iter([])
+    model_instance = make_model_instance(provider=request.target.provider, model=request.target.model)
+    invoke = mocker.patch.object(model_instance, "invoke_llm", return_value=iter([]))
     prepared = PreparedAgentLLMInvocation(
         request=request,
         model_instance=model_instance,
@@ -246,16 +248,16 @@ def test_standalone_agent_app_gateway_is_attributed_to_app() -> None:
     )
 
     assert list(AgentLLMInnerService().invoke(prepared)) == []
-    request_metadata = model_instance.invoke_llm.call_args.kwargs["request_metadata"]
+    request_metadata = invoke.call_args.kwargs["request_metadata"]
     assert request_metadata["created_by"] is CreditUsageCreatedBy.APP
     assert request_metadata["agent_config_version_kind"] == "draft"
 
 
-def test_agent_build_draft_gateway_is_attributed_to_build_draft() -> None:
+def test_agent_build_draft_gateway_is_attributed_to_build_draft(mocker: MockerFixture) -> None:
     request = _request()
     request.caller.agent_config_version_kind = "build_draft"
-    model_instance = MagicMock(spec=ModelInstance)
-    model_instance.invoke_llm.return_value = iter([])
+    model_instance = make_model_instance(provider=request.target.provider, model=request.target.model)
+    invoke = mocker.patch.object(model_instance, "invoke_llm", return_value=iter([]))
     prepared = PreparedAgentLLMInvocation(
         request=request,
         model_instance=model_instance,
@@ -263,7 +265,7 @@ def test_agent_build_draft_gateway_is_attributed_to_build_draft() -> None:
     )
 
     assert list(AgentLLMInnerService().invoke(prepared)) == []
-    request_metadata = model_instance.invoke_llm.call_args.kwargs["request_metadata"]
+    request_metadata = invoke.call_args.kwargs["request_metadata"]
     assert request_metadata["created_by"] is CreditUsageCreatedBy.BUILD_DRAFT
     assert request_metadata["agent_config_version_kind"] == "build_draft"
 

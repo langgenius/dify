@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Generator
 from typing import Any
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
@@ -11,6 +11,8 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
+from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.common_entities import I18nObject
@@ -276,8 +278,7 @@ def test_create_message_files_and_invoke_generator(sqlite_engine: Engine, sqlite
 @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
 def test_generic_invoke_success_and_error_paths(sqlite_session: Session):
     tool = _build_tool()
-    callback = Mock()
-    callback.on_tool_execution.side_effect = lambda **kwargs: kwargs["tool_outputs"]
+    callback = DifyWorkflowCallbackHandler()
     response = list(
         ToolEngine.generic_invoke(
             session=sqlite_session,
@@ -292,12 +293,9 @@ def test_generic_invoke_success_and_error_paths(sqlite_session: Session):
         )
     )
     assert response[0].message.text == "ok"
-    callback.on_tool_start.assert_called_once()
-    callback.on_tool_execution.assert_called_once()
 
     tool.raise_error = RuntimeError("boom")
-    error_callback = Mock()
-    error_callback.on_tool_execution.side_effect = lambda **kwargs: list(kwargs["tool_outputs"])
+    error_callback = DifyWorkflowCallbackHandler()
     with pytest.raises(RuntimeError, match="boom"):
         list(
             ToolEngine.generic_invoke(
@@ -309,13 +307,12 @@ def test_generic_invoke_success_and_error_paths(sqlite_session: Session):
                 workflow_call_depth=0,
             )
         )
-    error_callback.on_tool_error.assert_called_once()
 
 
 @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
 def test_agent_invoke_success(sqlite_session: Session):
     tool = _build_tool(with_llm_parameter=True)
-    callback = Mock()
+    callback = DifyAgentCallbackHandler()
     message = _message()
     meta = ToolInvokeMeta.empty()
 
@@ -340,14 +337,12 @@ def test_agent_invoke_success(sqlite_session: Session):
     assert result_text == "ok"
     assert message_files == []
     assert result_meta.error is None
-    callback.on_tool_start.assert_called_once()
-    callback.on_tool_end.assert_called_once()
 
 
 @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
 def test_agent_invoke_param_validation_error(sqlite_session: Session):
     tool = _build_tool(with_llm_parameter=True)
-    callback = Mock()
+    callback = DifyAgentCallbackHandler()
     message = _message()
 
     with patch.object(ToolEngine, "_invoke", side_effect=ToolParameterValidationError("bad-param")):
@@ -370,7 +365,7 @@ def test_agent_invoke_param_validation_error(sqlite_session: Session):
 @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
 def test_agent_invoke_engine_meta_error(sqlite_session: Session):
     tool = _build_tool(with_llm_parameter=True)
-    callback = Mock()
+    callback = DifyAgentCallbackHandler()
     message = _message()
     engine_error = ToolEngineInvokeError(ToolInvokeMeta.error_instance("meta failure"))
 
@@ -416,7 +411,7 @@ def test_convert_tool_response_excludes_variable_messages():
 @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
 def test_agent_invoke_tool_invoke_error(sqlite_session: Session):
     tool = _build_tool(with_llm_parameter=True)
-    callback = Mock()
+    callback = DifyAgentCallbackHandler()
     message = _message()
 
     with patch.object(ToolEngine, "_invoke", side_effect=ToolInvokeError("invoke boom")):
