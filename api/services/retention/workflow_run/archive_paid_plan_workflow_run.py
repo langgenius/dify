@@ -37,12 +37,12 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from enum import Enum
 from threading import Lock
-from typing import Any, NotRequired, TypedDict, TypeVar, cast
+from typing import Any, NotRequired, TypedDict, TypeVar
 
 import click
 import pyarrow as pa
 import pyarrow.parquet as pq
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, TypeAdapter, ValidationError
 from sqlalchemy import inspect, select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -128,18 +128,7 @@ class ArchiveBundleIndexDict(TypedDict):
     campaign_ids: NotRequired[list[str]]
 
 
-class ArchiveBundleIndexModel(BaseModel):
-    """Validated shape of a shard `index.json`; mirrors ArchiveBundleIndexDict."""
-
-    model_config = ConfigDict(extra="allow")
-    schema_version: str
-    archive_format: str
-    object_prefix: str
-    updated_at: str
-    manifest_keys: list[str]
-    run_ids: list[str]
-    # Defaults to [] not None: callers do set(index.get("campaign_ids", [])).
-    campaign_ids: list[str] = Field(default_factory=list)
+_ARCHIVE_BUNDLE_INDEX_ADAPTER = TypeAdapter(ArchiveBundleIndexDict)
 
 
 class ShardManifestEntryModel(BaseModel):
@@ -1031,10 +1020,7 @@ class WorkflowRunArchiver:
         index_key = self._get_index_object_key(identity)
         payload = storage.get_object(index_key)
         try:
-            index = cast(
-                ArchiveBundleIndexDict,
-                ArchiveBundleIndexModel.model_validate_json(payload).model_dump(),
-            )
+            index = _ARCHIVE_BUNDLE_INDEX_ADAPTER.validate_json(payload)
         except ValidationError as e:
             raise ValueError(f"archive index is not valid: {index_key}: {e}") from e
         expected_prefix = self._get_shard_object_prefix(identity)

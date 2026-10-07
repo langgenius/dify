@@ -619,7 +619,7 @@ def test_get_crawl_url_data_dispatches(monkeypatch: pytest.MonkeyPatch, provider
 
 
 def test_get_firecrawl_url_data_reads_from_storage_when_present(monkeypatch: pytest.MonkeyPatch) -> None:
-    stored_list = [{"source_url": "https://example.com", "title": "t"}]
+    stored_list = [{"source_url": "https://example.com", "title": "t", "description": None, "markdown": None}]
     stored = json.dumps(stored_list).encode("utf-8")
 
     storage_mock = MagicMock()
@@ -630,7 +630,12 @@ def test_get_firecrawl_url_data_reads_from_storage_when_present(monkeypatch: pyt
     monkeypatch.setattr(website_service_module, "FirecrawlApp", MagicMock())
 
     result = WebsiteService._get_firecrawl_url_data("job-1", "https://example.com", "k", {"base_url": "b"})
-    assert result == {"source_url": "https://example.com", "title": "t"}
+    assert result == {
+        "source_url": "https://example.com",
+        "title": "t",
+        "description": None,
+        "markdown": None,
+    }
     assert result is not stored_list[0]
 
 

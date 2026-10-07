@@ -21,13 +21,13 @@ import time
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, TypedDict, cast
+from typing import Any, NotRequired, TypedDict, cast
 
 import pyarrow.parquet as pq
 import sqlalchemy as sa
 from botocore.exceptions import ClientError, HTTPClientError
 from botocore.exceptions import ConnectionError as BotoCoreConnectionError
-from pydantic import BaseModel, ConfigDict, ValidationError
+from pydantic import TypeAdapter, ValidationError
 from sqlalchemy import delete, func, inspect, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.engine import CursorResult
@@ -84,47 +84,18 @@ class BundleManifest(TypedDict):
     object_prefix: str
     workflow_run_count: int
     workflow_node_execution_count: int
-    min_created_at: str
-    max_created_at: str
-    min_run_id: str
-    max_run_id: str
-    archived_at: str
+    # Optional so validation stays at the strength of the previous handwritten check, which
+    # listed only the first thirteen fields as required.
+    min_created_at: NotRequired[str]
+    max_created_at: NotRequired[str]
+    min_run_id: NotRequired[str]
+    max_run_id: NotRequired[str]
+    archived_at: NotRequired[str]
     tables: dict[str, TableManifestEntry]
     run_ids: list[str]
 
 
-class BundleTableManifestEntryModel(BaseModel):
-    """Validated shape of one V2 archive bundle table entry."""
-
-    model_config = ConfigDict(extra="allow")
-    row_count: int
-    checksum: str
-    size_bytes: int
-    object_key: str
-
-
-class BundleManifestModel(BaseModel):
-    """Validated shape of a V2 archive bundle manifest; 13 fields required, 5 optional."""
-
-    model_config = ConfigDict(extra="allow")
-    schema_version: str
-    archive_format: str
-    tenant_id: str
-    tenant_prefix: str
-    year: int
-    month: int
-    shard: str
-    bundle_id: str
-    object_prefix: str
-    workflow_run_count: int
-    workflow_node_execution_count: int
-    min_created_at: str = ""
-    max_created_at: str = ""
-    min_run_id: str = ""
-    max_run_id: str = ""
-    archived_at: str = ""
-    tables: dict[str, BundleTableManifestEntryModel]
-    run_ids: list[str]
+_BUNDLE_MANIFEST_ADAPTER = TypeAdapter(BundleManifest)
 
 
 @dataclass(frozen=True)
@@ -790,10 +761,7 @@ class WorkflowRunBundleArchiveMaintenance:
         object_prefix: str,
     ) -> BundleManifest:
         try:
-            manifest = cast(
-                BundleManifest,
-                BundleManifestModel.model_validate_json(manifest_data).model_dump(),
-            )
+            manifest = _BUNDLE_MANIFEST_ADAPTER.validate_json(manifest_data)
         except ValidationError as e:
             raise ValueError(f"manifest.json is not a valid bundle manifest: {e}") from e
         if manifest["schema_version"] != ARCHIVE_BUNDLE_SCHEMA_VERSION:

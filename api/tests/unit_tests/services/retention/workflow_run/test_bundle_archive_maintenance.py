@@ -117,6 +117,11 @@ def _manifest(
             "object_prefix": object_prefix,
             "workflow_run_count": len(records["workflow_runs"]),
             "workflow_node_execution_count": len(records["workflow_node_executions"]),
+            "min_created_at": "2025-03-01T00:00:00+00:00",
+            "max_created_at": "2025-03-01T00:00:00+00:00",
+            "min_run_id": "run-min",
+            "max_run_id": "run-max",
+            "archived_at": "2025-03-01T00:00:00+00:00",
             "tables": tables,
             "run_ids": [str(record["id"]) for record in records["workflow_runs"]],
         }
@@ -385,8 +390,8 @@ def _load_manifest(entry: ArchiveBundleCatalogEntry, payload: dict[str, Any]) ->
     )
 
 
-def test_bundle_manifest_accepts_missing_optional_range_fields() -> None:
-    """The five range/audit fields are optional; older manifests without them must still load."""
+def test_bundle_manifest_accepts_missing_range_fields() -> None:
+    """The range/audit fields stay optional, matching the previous handwritten check."""
     entry = _catalog_entry()
     payload = _manifest_payload(entry)
     for field in ("min_created_at", "max_created_at", "min_run_id", "max_run_id", "archived_at"):
