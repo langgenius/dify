@@ -17,6 +17,8 @@ const PopoverTitle = BasePopover.Title
 const PopoverDescription = BasePopover.Description
 const createPopoverHandle = BasePopover.createHandle
 
+type PopoverActions = BasePopover.Root.Actions
+
 type PopoverProps<Payload = unknown> = BasePopover.Root.Props<Payload>
 type PopoverArrowProps = BasePopover.Arrow.Props
 type PopoverPortalProps = BasePopover.Portal.Props
@@ -126,6 +128,7 @@ export {
   PopoverTrigger,
 }
 export type {
+  PopoverActions,
   PopoverArrowProps,
   PopoverBackdropProps,
   PopoverCloseProps,

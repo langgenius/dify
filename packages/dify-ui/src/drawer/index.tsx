@@ -16,6 +16,8 @@ const DrawerDescription = BaseDrawer.Description
 const DrawerClose = BaseDrawer.Close
 const createDrawerHandle = BaseDrawer.createHandle
 
+type DrawerActions = BaseDrawer.Root.Actions
+
 type DrawerProps<Payload = unknown> = BaseDrawer.Root.Props<Payload>
 type DrawerHandle<Payload = unknown> = BaseDrawer.Handle<Payload>
 type DrawerProviderProps = BaseDrawer.Provider.Props
@@ -121,6 +123,7 @@ export {
 }
 
 export type {
+  DrawerActions,
   DrawerBackdropProps,
   DrawerCloseProps,
   DrawerContentProps,

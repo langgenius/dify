@@ -27,6 +27,8 @@ const createDropdownMenuHandle = Menu.createHandle
 
 type DropdownMenuHandle<Payload = unknown> = Menu.Handle<Payload>
 
+type DropdownMenuActions = Menu.Root.Actions
+
 type DropdownMenuProps<Payload = unknown> = Menu.Root.Props<Payload>
 type DropdownMenuTriggerProps<Payload = unknown> = Menu.Trigger.Props<Payload>
 type DropdownMenuPortalProps = Menu.Portal.Props
@@ -319,6 +321,7 @@ export {
 }
 
 export type {
+  DropdownMenuActions,
   DropdownMenuCheckboxItemIndicatorProps,
   DropdownMenuCheckboxItemProps,
   DropdownMenuContentProps,

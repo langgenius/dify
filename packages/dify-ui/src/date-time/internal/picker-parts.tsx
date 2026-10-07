@@ -1,7 +1,12 @@
 'use client'
 
 import type { IconButtonProps } from '../../icon-button'
-import type { PopoverContentProps, PopoverProps, PopoverTriggerProps } from '../../popover'
+import type {
+  PopoverActions,
+  PopoverContentProps,
+  PopoverProps,
+  PopoverTriggerProps,
+} from '../../popover'
 import { useMergedRefs } from '@base-ui/utils/useMergedRefs'
 import * as React from 'react'
 import { cn } from '../../cn'
@@ -73,7 +78,7 @@ function PickerRoot({
   const [labelId, setLabelId] = React.useState<string>()
   const triggerRef = React.useRef<HTMLButtonElement>(null)
   const inputRef = React.useRef<HTMLInputElement>(null)
-  const actionsRef = React.useRef<NonNullable<PopoverProps['actionsRef']>['current']>(null)
+  const actionsRef = React.useRef<PopoverActions>(null)
   const [validationAttempted, setValidationAttempted] = React.useState(false)
   const errorMessage = props.invalid
     ? (props.validationMessage ?? 'Choose a valid value.')
