@@ -113,7 +113,15 @@ const useSingleRunFormParams = ({
           .filter((item) => item.edition_type !== EditionType.jinja2)
           .map((item) => item.text)
       : [(inputs.prompt_template as PromptItem).text]
-    if (!isSnippetFlow && isChatMode && isChatModel && !!inputs.memory) arr.push('{{#sys.query#}}')
+    if (
+      !isSnippetFlow &&
+      isChatMode &&
+      isChatModel &&
+      !!inputs.memory &&
+      (!inputs.memory.query_prompt_template ||
+        inputs.memory.query_prompt_template.includes('{{#sys.query#}}'))
+    )
+      arr.push('{{#sys.query#}}')
 
     if (isChatMode && isChatModel && !!inputs.memory) arr.push(inputs.memory.query_prompt_template)
 

@@ -77,7 +77,6 @@ const nodeDefault: NodeDefault<LLMNodeType> = {
     },
   ) {
     let errorMessages = ''
-    const isSnippetFlow = moreDataForCheckValid?.flowType === FlowType.snippet
     const hasValidModelSelector =
       payload.model_selector === undefined ||
       !isEnvironmentModelSource(payload.model_selector) ||
@@ -115,18 +114,6 @@ const nodeDefault: NodeDefault<LLMNodeType> = {
           ns: 'workflow',
           field: t(($) => $['nodes.llm.prompt'], { ns: 'workflow' }),
         })
-    }
-
-    if (!errorMessages && !!payload.memory) {
-      const isChatModel = model?.mode === AppModeEnum.CHAT
-      // payload.memory.query_prompt_template not pass is default: {{#sys.query#}}
-      if (
-        !isSnippetFlow &&
-        isChatModel &&
-        !!payload.memory.query_prompt_template &&
-        !payload.memory.query_prompt_template.includes('{{#sys.query#}}')
-      )
-        errorMessages = t(($) => $['nodes.llm.sysQueryInUser'], { ns: 'workflow' })
     }
 
     if (!errorMessages) {
