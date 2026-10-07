@@ -6,7 +6,7 @@ from typing import Any, NotRequired, TypedDict, cast
 
 import httpx
 from flask_login import current_user
-from pydantic import BaseModel, ConfigDict, TypeAdapter, ValidationError
+from pydantic import TypeAdapter, ValidationError
 
 from core.helper import encrypter
 from core.helper.http_client_pooling import get_pooled_http_client
@@ -36,17 +36,7 @@ _adaptive_http_client: httpx.Client = get_pooled_http_client(
 )
 
 
-class _CachedFirecrawlDocument(BaseModel):
-    """Cached Firecrawl document; fields default to None so older payloads still load."""
-
-    model_config = ConfigDict(extra="allow")
-    title: str | None = None
-    description: str | None = None
-    source_url: str | None = None
-    markdown: str | None = None
-
-
-_FIRECRAWL_DOCUMENTS_ADAPTER = TypeAdapter(list[_CachedFirecrawlDocument])
+_FIRECRAWL_DOCUMENTS_ADAPTER = TypeAdapter(list[FirecrawlDocumentData])
 
 
 @dataclass
@@ -392,13 +382,7 @@ class WebsiteService:
             stored_data = storage.load_once(file_key)
             if stored_data:
                 try:
-                    crawl_data = cast(
-                        list[FirecrawlDocumentData],
-                        [
-                            document.model_dump(exclude_unset=True)
-                            for document in _FIRECRAWL_DOCUMENTS_ADAPTER.validate_json(stored_data)
-                        ],
-                    )
+                    crawl_data = _FIRECRAWL_DOCUMENTS_ADAPTER.validate_json(stored_data)
                 except ValidationError as e:
                     raise ValueError(f"cached crawl data is not valid: {file_key}: {e}") from e
         else:
