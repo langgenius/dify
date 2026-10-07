@@ -356,7 +356,12 @@ class ApiTool(Tool):
                 elif property["type"] == "string":
                     return str(value)
                 elif property["type"] == "boolean":
-                    return bool(value)
+                    if str(value).lower() in {"true", "1"}:
+                        return True
+                    elif str(value).lower() in {"false", "0"}:
+                        return False
+                    else:
+                        return value
                 elif property["type"] == "null":
                     if value is None:
                         return None
