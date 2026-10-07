@@ -43,6 +43,7 @@ in [E2B runtime metering](runtime-metering.md).
 | `DIFY_AGENT_REDIS_URL` | `redis://localhost:6379/0` | Redis connection URL. |
 | `DIFY_AGENT_REDIS_PREFIX` | `dify-agent` | Prefix for Redis record and event keys. |
 | `DIFY_AGENT_SHUTDOWN_GRACE_SECONDS` | `30` | Seconds to wait for active local runs during graceful shutdown before cancellation. |
+| `DIFY_AGENT_MAX_ACTIVE_RUNS` | empty | Optional process-local admission limit for active runs. When empty, scheduling is unbounded; when set to a positive integer, requests beyond the limit are rejected with `429 Too Many Requests` and `Retry-After: 1`. |
 | `DIFY_AGENT_RUN_RETENTION_SECONDS` | `7200` | Seconds to retain Redis run records and per-run event streams after their last write; defaults to 2 hours. |
 | `DIFY_AGENT_RUN_EVENT_STREAM_MAX_LENGTH` | `5000` | Approximate target maximum for replayable events retained in each per-run Redis Stream. |
 | `DIFY_AGENT_STREAM_TEXT_DELTA_COALESCING_ENABLED` | `true` | Set `false` to publish each text delta without coalescing. |
@@ -339,7 +340,10 @@ blocks.
 same process. There is no Redis job stream, consumer group, pending reclaim, or
 automatic retry layer. Request-shaped runtime failures such as bad composition,
 prompt, output, or snapshot inputs are reported later as failed runs rather than
-rejected synchronously once the request DTO itself is accepted.
+rejected synchronously once the request DTO itself is accepted. Set
+`DIFY_AGENT_MAX_ACTIVE_RUNS` to add a process-local admission limit; the limit is
+checked before persistence and rejection is mapped to `429 Too Many Requests`.
+It is not a shared quota across API replicas.
 
 Each run explicitly limits Pydantic AI to 500 model-request steps. Tool calls do
 not have a separate count limit, but every model request used to continue the

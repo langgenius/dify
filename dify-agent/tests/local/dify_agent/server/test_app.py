@@ -88,6 +88,7 @@ class FakeRunScheduler:
 
     store: object
     shutdown_grace_seconds: float
+    max_active_runs: int | None
     run_timeout_seconds: float
     stream_text_delta_coalescing_enabled: bool
     stream_text_delta_flush_interval_seconds: float
@@ -104,6 +105,7 @@ class FakeRunScheduler:
         plugin_daemon_http_client: FakePluginDaemonHttpClient,
         dify_api_http_client: FakePluginDaemonHttpClient,
         shutdown_grace_seconds: float,
+        max_active_runs: int | None = None,
         run_timeout_seconds: float,
         stream_text_delta_coalescing_enabled: bool,
         stream_text_delta_flush_interval_seconds: float,
@@ -113,6 +115,7 @@ class FakeRunScheduler:
     ) -> None:
         self.store = store
         self.shutdown_grace_seconds = shutdown_grace_seconds
+        self.max_active_runs = max_active_runs
         self.run_timeout_seconds = run_timeout_seconds
         self.stream_text_delta_coalescing_enabled = stream_text_delta_coalescing_enabled
         self.stream_text_delta_flush_interval_seconds = stream_text_delta_flush_interval_seconds

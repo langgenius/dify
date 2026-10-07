@@ -120,6 +120,7 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
             plugin_daemon_http_client=plugin_daemon_http_client,
             dify_api_http_client=dify_api_inner_http_client,
             shutdown_grace_seconds=resolved_settings.shutdown_grace_seconds,
+            max_active_runs=resolved_settings.max_active_runs,
             run_timeout_seconds=resolved_settings.run_timeout_seconds,
             stream_text_delta_coalescing_enabled=resolved_settings.stream_text_delta_coalescing_enabled,
             stream_text_delta_flush_interval_seconds=(resolved_settings.stream_text_delta_flush_interval_ms / 1000),
