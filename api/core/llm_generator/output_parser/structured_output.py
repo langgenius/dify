@@ -1,4 +1,5 @@
 import json
+import logging
 from collections.abc import Generator, Mapping, Sequence
 from copy import deepcopy
 from enum import StrEnum
@@ -26,6 +27,8 @@ from graphon.model_runtime.entities.message_entities import (
     TextPromptMessageContent,
 )
 from graphon.model_runtime.entities.model_entities import AIModelEntity, ParameterRule
+
+logger = logging.getLogger(__name__)
 
 
 class ResponseFormat(StrEnum):
@@ -122,11 +125,37 @@ def invoke_llm_with_structured_output(
         **(model_parameters or {}),
     }
 
-    if model_schema.support_structure_output:
+    # A model YAML may declare `structured-output` in its `features` list
+    # without the provider plugin actually consuming the schema. The native
+    # path sets `json_schema` in the request body and then conditionally
+    # sets `response_format` only if the model's parameter rules list
+    # `json_schema` as a `response_format` option. When the rules do not,
+    # the schema is dropped on the wire and the request returns
+    # unconstrained output. Pre-fix this branch excluded the prompt-based
+    # fallback, so a model that declared the feature silently produced
+    # worse results than one that did not. See #40907.
+    can_use_native_schema = model_schema.support_structure_output and any(
+        rule.name == "response_format" and ResponseFormat.JSON_SCHEMA in rule.options
+        for rule in model_schema.parameter_rules
+    )
+
+    if can_use_native_schema:
         model_parameters = _handle_native_json_schema(
             provider, model_schema, json_schema, model_parameters_with_json_schema, model_schema.parameter_rules
         )
     else:
+        if model_schema.support_structure_output:
+            # The model declared structured-output support but its parameter
+            # rules do not actually let the provider plugin consume a JSON
+            # schema. Without this log, the schema being applied via
+            # prompt injection is invisible to the operator. See #40907.
+            logger.info(
+                "structured_output: model %s on provider %s declared the "
+                "feature but the parameter rules do not list json_schema as a "
+                "response_format option; using prompt-based schema injection.",
+                model_schema.model,
+                provider,
+            )
         # Set appropriate response format based on model capabilities
         _set_response_format(model_parameters_with_json_schema, model_schema.parameter_rules)
 
