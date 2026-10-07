@@ -168,7 +168,7 @@ describe('llm/use-single-run-form-params', () => {
   })
 
   it('does not force a sys.query single-run input when memory uses another variable', () => {
-    const getInputVars = vi.fn(() => [createInputVar('#start.completed#')])
+    const getInputVars = vi.fn((_textList: string[]) => [createInputVar('#start.completed#')])
     const toVarInputs = vi.fn((_variables: Variable[]) => [])
 
     const { result } = renderHook(() =>
@@ -202,7 +202,7 @@ describe('llm/use-single-run-form-params', () => {
   })
 
   it('keeps the sys.query single-run input when memory falls back to the default template', () => {
-    const getInputVars = vi.fn(() => [createInputVar('#sys.query#')])
+    const getInputVars = vi.fn((_textList: string[]) => [createInputVar('#sys.query#')])
     const toVarInputs = vi.fn((_variables: Variable[]) => [])
 
     renderHook(() =>
@@ -230,7 +230,7 @@ describe('llm/use-single-run-form-params', () => {
   })
 
   it('does not force a sys.query single-run input for a static memory template', () => {
-    const getInputVars = vi.fn(() => [])
+    const getInputVars = vi.fn((_textList: string[]) => [])
     const toVarInputs = vi.fn((_variables: Variable[]) => [])
 
     renderHook(() =>
