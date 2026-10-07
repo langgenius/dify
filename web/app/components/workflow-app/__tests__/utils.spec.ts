@@ -1,6 +1,11 @@
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
-import { buildInitialFeatures, buildTriggerStatusMap, coerceReplayUserInputs } from '../utils'
+import {
+  buildInitialFeatures,
+  buildTriggerStatusMap,
+  coerceReplayUserInputs,
+  normalizeFileUploadForSave,
+} from '../utils'
 
 describe('workflow-app utils', () => {
   it('should map trigger statuses to enabled and disabled states', () => {
@@ -89,5 +94,41 @@ describe('workflow-app utils', () => {
       citation: { enabled: true },
       moderation: { enabled: true },
     })
+  })
+
+  it('should omit disabled legacy image settings when saving general file uploads', () => {
+    expect(
+      normalizeFileUploadForSave({
+        enabled: true,
+        allowed_file_types: [SupportUploadFileTypes.image, SupportUploadFileTypes.video],
+        allowed_file_extensions: ['.png', '.mp4'],
+        allowed_file_upload_methods: [TransferMethod.local_file],
+        number_limits: 10,
+        image: {
+          enabled: false,
+          number_limits: 3,
+          transfer_methods: [TransferMethod.local_file, TransferMethod.remote_url],
+        },
+      }),
+    ).toEqual({
+      enabled: true,
+      allowed_file_types: [SupportUploadFileTypes.image, SupportUploadFileTypes.video],
+      allowed_file_extensions: ['.png', '.mp4'],
+      allowed_file_upload_methods: [TransferMethod.local_file],
+      number_limits: 10,
+    })
+  })
+
+  it('should preserve explicitly enabled image-specific settings', () => {
+    const fileUpload = {
+      enabled: true,
+      image: {
+        enabled: true,
+        number_limits: 3,
+        transfer_methods: [TransferMethod.local_file],
+      },
+    }
+
+    expect(normalizeFileUploadForSave(fileUpload)).toEqual(fileUpload)
   })
 })

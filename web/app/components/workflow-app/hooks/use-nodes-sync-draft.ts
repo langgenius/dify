@@ -26,6 +26,7 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { isAppDeletingOrDeleted } from '@/service/app-deletion'
 import { postWithKeepalive } from '@/service/fetch'
 import { syncWorkflowDraft } from '@/service/workflow'
+import { normalizeFileUploadForSave } from '../utils'
 import { useWorkflowRefreshDraft } from './use-workflow-refresh-draft'
 
 const shouldSkipDraftSync = (appId: string | undefined, isWorkflowDataLoaded: boolean) =>
@@ -101,7 +102,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       speech_to_text: features.speech2text,
       retriever_resource: features.citation,
       sensitive_word_avoidance: features.moderation,
-      file_upload: features.file,
+      file_upload: normalizeFileUploadForSave(features.file),
     }
 
     return {
