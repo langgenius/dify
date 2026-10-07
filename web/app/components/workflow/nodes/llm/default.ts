@@ -4,7 +4,7 @@ import type { LLMNodeType } from './types'
 import { genNodeMetaData } from '@/app/components/workflow/utils'
 // import { RETRIEVAL_OUTPUT_STRUCT } from '../../constants'
 import { AppModeEnum } from '@/types/app'
-import { FlowType } from '@/types/common'
+import type { FlowType } from '@/types/common'
 import { BlockEnum, EditionType, PromptRole } from '../../types'
 import {
   getLLMModelIssue,
