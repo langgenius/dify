@@ -1,8 +1,5 @@
 import type { Edge, Node } from '../../types'
 import { act } from '@testing-library/react'
-import { useStore as useAppStore } from '@/app/components/app/store'
-import { createAppDetailFixture } from '@/test/fixtures/app'
-import { AppModeEnum } from '@/types/app'
 import { createEdge, createNode } from '../../__tests__/fixtures'
 import { resetReactFlowMockState, rfState } from '../../__tests__/reactflow-mock-state'
 import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
@@ -33,6 +30,7 @@ const runtimeNodesMetaDataMap = vi.hoisted(() => ({
 }))
 
 const runtimeState = vi.hoisted(() => ({
+  isChatMode: false,
   nodesReadOnly: false,
   workflowReadOnly: false,
 }))
@@ -45,6 +43,7 @@ vi.mock('reactflow', async () =>
 )
 
 vi.mock('../use-workflow', () => ({
+  useIsChatMode: () => runtimeState.isChatMode,
   useWorkflow: () => ({
     getAfterNodesInSameBranch: () => [],
   }),
@@ -120,6 +119,7 @@ describe('useNodesInteractions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     resetReactFlowMockState()
+    runtimeState.isChatMode = false
     runtimeState.nodesReadOnly = false
     runtimeState.workflowReadOnly = false
     mockCreateInlineAgentBinding.mockImplementation(
@@ -974,13 +974,13 @@ describe('useNodesInteractions', () => {
         BlockEnum.ParameterExtractor,
         BlockEnum.Agent,
       ].flatMap((type) => [
-        { type, mode: AppModeEnum.WORKFLOW, keepsMemory: false },
-        { type, mode: AppModeEnum.ADVANCED_CHAT, keepsMemory: true },
+        { type, isChatMode: false },
+        { type, isChatMode: true },
       ]),
     )(
-      'pastes $type into $mode with keepsMemory=$keepsMemory',
-      async ({ type, mode, keepsMemory }) => {
-        useAppStore.getState().setAppDetail(createAppDetailFixture({ mode }))
+      'pastes $type with conversation memory only when isChatMode=$isChatMode',
+      async ({ type, isChatMode }) => {
+        runtimeState.isChatMode = isChatMode
         runtimeNodesMetaDataMap.value = {
           [type]: { defaultValue: { type, title: type, desc: '' } },
         }
@@ -997,7 +997,7 @@ describe('useNodesInteractions', () => {
 
         const pastedNodes = rfState.setNodes.mock.calls.at(-1)?.[0] as Node[]
         const pastedNode = pastedNodes.find((node) => node.data.type === type)!
-        if (keepsMemory) expect(pastedNode.data).toHaveProperty('memory', memory)
+        if (isChatMode) expect(pastedNode.data).toHaveProperty('memory', memory)
         else expect(pastedNode.data).not.toHaveProperty('memory')
         expect(pastedNode.data).toHaveProperty('prompt_template', promptTemplate)
         expect(store.getState().clipboardElements[0]?.data).toHaveProperty('memory', memory)
@@ -1007,7 +1007,6 @@ describe('useNodesInteractions', () => {
     it.each([BlockEnum.Iteration, BlockEnum.Loop])(
       'clears memory from LLM children when pasting a %s into Workflow',
       async (containerType) => {
-        useAppStore.getState().setAppDetail(createAppDetailFixture({ mode: AppModeEnum.WORKFLOW }))
         runtimeNodesMetaDataMap.value = {
           [containerType]: {
             defaultValue: { type: containerType, title: containerType, desc: '' },
