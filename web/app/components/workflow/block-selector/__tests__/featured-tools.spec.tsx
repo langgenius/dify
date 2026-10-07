@@ -71,7 +71,7 @@ describe('FeaturedTools', () => {
 
     render(<FeaturedTools plugins={plugins} providerMap={providerMap} onSelect={vi.fn()} />)
 
-    expect(screen.getByText('Provider 1')).toBeInTheDocument()
+    expect(await screen.findByText('Provider 1')).toBeInTheDocument()
     expect(screen.queryByText('Provider 6')).not.toBeInTheDocument()
 
     const showMoreButton = screen.getByRole('button', {
@@ -118,7 +118,7 @@ describe('FeaturedTools', () => {
     await user.keyboard('{Enter}')
 
     expect(trigger).toHaveAttribute('aria-expanded', 'true')
-    expect(screen.getByText('Provider One')).toBeInTheDocument()
+    expect(await screen.findByText('Provider One')).toBeInTheDocument()
     expect(globalThis.localStorage.getItem('workflow_tools_featured_collapsed')).toBe('false')
   })
 
