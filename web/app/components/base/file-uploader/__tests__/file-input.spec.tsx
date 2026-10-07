@@ -69,7 +69,46 @@ describe('FileInput', () => {
     )
 
     const input = document.querySelector('input[type="file"]') as HTMLInputElement
-    expect(input.accept).toBe('.csv,.xlsx')
+    expect(input.accept).toBe('.CSV,.XLSX')
+  })
+
+  it('should keep overlapping image extensions in custom accept filters', () => {
+    renderWithProvider(
+      <FileInput
+        fileConfig={createFileConfig({
+          allowed_file_types: ['custom'] as unknown as FileUpload['allowed_file_types'],
+          allowed_file_extensions: [
+            'JPG',
+            'JPEG',
+            'PNG',
+            'GIF',
+            'WEBP',
+            'SVG',
+            '.pdf',
+            '.json',
+            '.wps',
+            '.ofd',
+          ],
+        })}
+      />,
+    )
+
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement
+    expect(input.accept).toBe('.JPG,.JPEG,.PNG,.GIF,.WEBP,.SVG,.PDF,.JSON,.WPS,.OFD')
+  })
+
+  it('should union built-in types with custom extensions', () => {
+    renderWithProvider(
+      <FileInput
+        fileConfig={createFileConfig({
+          allowed_file_types: ['image', 'custom'] as unknown as FileUpload['allowed_file_types'],
+          allowed_file_extensions: ['.json', '.wps', 'PNG'],
+        })}
+      />,
+    )
+
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement
+    expect(input.accept).toBe('.JPG,.JPEG,.PNG,.GIF,.WEBP,.SVG,.JSON,.WPS')
   })
 
   it('should allow multiple files when number_limits > 1', () => {
