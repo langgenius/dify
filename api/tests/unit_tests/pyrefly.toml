@@ -370,7 +370,6 @@ project-excludes = [
   "core/helper/test_credential_utils.py",
   "core/helper/test_encrypter.py",
   "core/helper/test_ssrf_proxy.py",
-  "core/helper/test_trace_id_helper.py",
   "core/llm_generator/output_parser/test_rule_config_generator.py",
   "core/llm_generator/output_parser/test_structured_output.py",
   "core/llm_generator/test_llm_generator.py",
