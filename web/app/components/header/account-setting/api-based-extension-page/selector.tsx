@@ -148,14 +148,12 @@ export function ApiBasedExtensionSelector({ value, onChange }: ApiBasedExtension
           </PopoverPositioner>
         </PopoverPortal>
       </Popover>
-      {addModalOpen && (
-        <ApiBasedExtensionModal
-          open
-          mode="create"
-          onOpenChange={handleAddModalOpenChange}
-          onSaved={handleApiBasedExtensionSaved}
-        />
-      )}
+      <ApiBasedExtensionModal
+        open={addModalOpen}
+        mode="create"
+        onOpenChange={handleAddModalOpenChange}
+        onSaved={handleApiBasedExtensionSaved}
+      />
     </>
   )
 }

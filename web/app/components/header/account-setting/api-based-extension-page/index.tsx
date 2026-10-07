@@ -18,9 +18,11 @@ import { ApiBasedExtensionModal } from './modal'
 type ApiBasedExtensionDialogState =
   | {
       mode: 'create'
+      open: boolean
     }
   | {
       mode: 'edit'
+      open: boolean
       apiBasedExtension: ApiBasedExtensionResponse
     }
   | null
@@ -85,6 +87,7 @@ export function ApiBasedExtensionPage({ layout }: ApiBasedExtensionPageProps = {
     if (!canManage) return
 
     setDialogState({
+      open: true,
       mode: 'create',
     })
   }
@@ -92,15 +95,16 @@ export function ApiBasedExtensionPage({ layout }: ApiBasedExtensionPageProps = {
     if (!canManage) return
 
     setDialogState({
+      open: true,
       mode: 'edit',
       apiBasedExtension,
     })
   }
   const handleApiBasedExtensionSaved = () => {
-    setDialogState(null)
+    setDialogState((current) => (current ? { ...current, open: false } : current))
   }
   const handleApiBasedExtensionModalOpenChange = (open: boolean) => {
-    if (!open) setDialogState(null)
+    if (!open) setDialogState((current) => (current ? { ...current, open: false } : current))
   }
 
   const toolbar = (
@@ -144,19 +148,9 @@ export function ApiBasedExtensionPage({ layout }: ApiBasedExtensionPageProps = {
             />
           </div>
         ))}
-      {dialogState?.mode === 'create' && (
+      {dialogState && (
         <ApiBasedExtensionModal
-          open
-          mode="create"
-          onOpenChange={handleApiBasedExtensionModalOpenChange}
-          onSaved={handleApiBasedExtensionSaved}
-        />
-      )}
-      {dialogState?.mode === 'edit' && (
-        <ApiBasedExtensionModal
-          open
-          mode="edit"
-          apiBasedExtension={dialogState.apiBasedExtension}
+          {...dialogState}
           onOpenChange={handleApiBasedExtensionModalOpenChange}
           onSaved={handleApiBasedExtensionSaved}
         />
