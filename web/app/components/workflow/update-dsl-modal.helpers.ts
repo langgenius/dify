@@ -94,12 +94,17 @@ export const normalizeWorkflowFeatures = (features: WorkflowFeatures) => {
   return {
     file: {
       image: {
-        enabled: !!features.file_upload?.image?.enabled,
-        number_limits: features.file_upload?.image?.number_limits || 3,
-        transfer_methods: features.file_upload?.image?.transfer_methods || [
-          'local_file',
-          'remote_url',
-        ],
+        enabled: features.file_upload?.image?.enabled ?? features.file_upload?.enabled ?? false,
+        number_limits:
+          features.file_upload?.image?.number_limits ||
+          features.file_upload?.number_limits ||
+          3,
+        transfer_methods:
+          features.file_upload?.image?.transfer_methods ||
+          features.file_upload?.allowed_file_upload_methods || [
+            'local_file',
+            'remote_url',
+          ],
       },
       enabled: !!(features.file_upload?.enabled || features.file_upload?.image?.enabled),
       allowed_file_types: features.file_upload?.allowed_file_types || [

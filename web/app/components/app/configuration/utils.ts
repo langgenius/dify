@@ -38,12 +38,17 @@ export const buildConfigurationFeaturesData = (
     file: {
       image: {
         detail: modelConfig.file_upload?.image?.detail || Resolution.high,
-        enabled: !!modelConfig.file_upload?.image?.enabled,
-        number_limits: modelConfig.file_upload?.image?.number_limits || 3,
-        transfer_methods: modelConfig.file_upload?.image?.transfer_methods || [
-          'local_file',
-          'remote_url',
-        ],
+        enabled: modelConfig.file_upload?.image?.enabled ?? modelConfig.file_upload?.enabled ?? false,
+        number_limits:
+          modelConfig.file_upload?.image?.number_limits ||
+          modelConfig.file_upload?.number_limits ||
+          3,
+        transfer_methods:
+          modelConfig.file_upload?.image?.transfer_methods ||
+          modelConfig.file_upload?.allowed_file_upload_methods || [
+            'local_file',
+            'remote_url',
+          ],
       },
       enabled: !!(modelConfig.file_upload?.enabled || modelConfig.file_upload?.image?.enabled),
       allowed_file_types: modelConfig.file_upload?.allowed_file_types || [],
