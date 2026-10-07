@@ -166,6 +166,7 @@ describe('llm/use-single-run-form-params', () => {
       }),
     ])
   })
+
   it('does not force a sys.query single-run input when memory uses another variable', () => {
     const getInputVars = vi.fn(() => [createInputVar('#start.completed#')])
     const toVarInputs = vi.fn((_variables: Variable[]) => [])
@@ -256,5 +257,4 @@ describe('llm/use-single-run-form-params', () => {
     expect(textList).toContain('custom prompt')
     expect(textList).not.toContain('{{#sys.query#}}')
   })
-
 })
