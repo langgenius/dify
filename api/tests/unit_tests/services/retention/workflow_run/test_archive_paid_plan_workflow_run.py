@@ -109,3 +109,37 @@ def test_build_bundle_index_rejects_manifest_without_run_ids() -> None:
                 "archive_format": ARCHIVE_BUNDLE_FORMAT,
             }
         )
+
+
+def test_build_bundle_index_rejects_unsupported_manifest_schema_version() -> None:
+    with pytest.raises(ValueError, match="unsupported bundle schema_version"):
+        _build_index(
+            {
+                "schema_version": "v1",
+                "archive_format": ARCHIVE_BUNDLE_FORMAT,
+                "run_ids": ["run-1"],
+            }
+        )
+
+
+def test_build_bundle_index_rejects_unsupported_manifest_archive_format() -> None:
+    with pytest.raises(ValueError, match="unsupported bundle archive_format"):
+        _build_index(
+            {
+                "schema_version": ARCHIVE_BUNDLE_SCHEMA_VERSION,
+                "archive_format": "unknown-format",
+                "run_ids": ["run-1"],
+            }
+        )
+
+
+def test_build_bundle_index_omits_missing_campaign_id() -> None:
+    index = _build_index(
+        {
+            "schema_version": ARCHIVE_BUNDLE_SCHEMA_VERSION,
+            "archive_format": ARCHIVE_BUNDLE_FORMAT,
+            "run_ids": ["run-1"],
+        }
+    )
+
+    assert index.get("campaign_ids") == []

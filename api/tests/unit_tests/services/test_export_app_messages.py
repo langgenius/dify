@@ -1,4 +1,6 @@
 import datetime
+import json
+from types import SimpleNamespace
 
 import pytest
 
@@ -41,3 +43,29 @@ def test_service_derives_output_names_from_filename_base():
     assert service._filename_base == "exports/2026/test01"
     assert service.output_gz_name == "exports/2026/test01.jsonl.gz"
     assert service.output_jsonl_name == "exports/2026/test01.jsonl"
+
+
+def _row(message_metadata: str) -> SimpleNamespace:
+    return SimpleNamespace(
+        id="msg-1",
+        conversation_id="conv-1",
+        query="q",
+        answer="a",
+        _inputs={},
+        message_metadata=message_metadata,
+    )
+
+
+def test_build_record_extracts_retriever_resources():
+    record = AppMessageExportService._build_record(_row(json.dumps({"retriever_resources": [{"id": "r1"}]})), {})
+
+    assert record.retriever_resources == [{"id": "r1"}]
+    assert record.message_id == "msg-1"
+
+
+def test_build_record_ignores_unparseable_metadata():
+    """message_metadata is free-form JSON, so a broken value must not fail the whole export."""
+    record = AppMessageExportService._build_record(_row("{not json"), {})
+
+    assert record.retriever_resources == []
+    assert record.message_id == "msg-1"
