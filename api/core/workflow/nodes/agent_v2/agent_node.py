@@ -127,6 +127,12 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         self._type_checker = type_checker
         self._failure_orchestrator = failure_orchestrator
         self._session_store = session_store
+        self._caller_persistence_error: Exception | None = None
+
+    def record_caller_persistence_result(self, *, error: Exception | None = None) -> None:
+        """Record the worker-side caller-row persistence result for this attempt."""
+
+        self._caller_persistence_error = error
 
     @classmethod
     @override
@@ -149,6 +155,9 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
 
     @override
     def _run(self) -> Generator[NodeEventBase | NodeRunPauseRequestedEvent, None, None]:
+        if self._caller_persistence_error is not None:
+            raise self._caller_persistence_error
+
         inputs: dict[str, Any] = {}
         process_data: dict[str, Any] = {}
         metadata: dict[str, Any] = {
