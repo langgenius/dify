@@ -152,6 +152,39 @@ describe('AccessPoint', () => {
     ])
     expect(screen.queryByRole('tab', { name: 'Quality Assurance' })).not.toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Built-in' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tabpanel', { name: 'Built-in' })).toBeVisible()
+    expect(accessPointMocks.deployed).not.toHaveBeenCalled()
+    for (const tab of screen.getAllByRole('tab')) {
+      const panel = document.getElementById(tab.getAttribute('aria-controls')!)
+      expect(panel).toHaveAttribute('role', 'tabpanel')
+      expect(panel).toHaveAttribute('aria-labelledby', tab.id)
+    }
+  })
+
+  it('supports keyboard selection and moves focus into the active environment panel', async () => {
+    const user = userEvent.setup()
+    const { onUrlUpdate } = renderAccessPoint({ searchParams: '?accessPoint=mcp' })
+    const builtIn = screen.getByRole('tab', { name: 'Built-in' })
+    const staging = screen.getByRole('tab', { name: 'Staging' })
+
+    await user.tab()
+    expect(builtIn).toHaveFocus()
+    await user.keyboard('{ArrowRight}')
+    expect(staging).toHaveFocus()
+    expect(builtIn).toHaveAttribute('aria-selected', 'true')
+    await user.keyboard('{Enter}')
+
+    await waitFor(() => {
+      expect(staging).toHaveAttribute('aria-selected', 'true')
+    })
+    expect(onUrlUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ queryString: '?environment=staging' }),
+    )
+    expect(screen.queryByRole('tabpanel', { name: 'Built-in' })).not.toBeInTheDocument()
+    const panel = screen.getByRole('tabpanel', { name: 'Staging' })
+    expect(panel).toHaveAttribute('aria-labelledby', staging.id)
+    await user.tab()
+    expect(panel).toHaveFocus()
   })
 
   it('persists the selected environment in the URL', async () => {
@@ -249,6 +282,7 @@ describe('AccessPoint', () => {
     renderAccessPoint()
 
     expect(screen.queryByRole('tab')).not.toBeInTheDocument()
+    expect(screen.queryByRole('tabpanel')).not.toBeInTheDocument()
     expect(accessPointMocks.builtIn).toHaveBeenCalledTimes(1)
     expect(accessPointMocks.deployed).not.toHaveBeenCalled()
   })

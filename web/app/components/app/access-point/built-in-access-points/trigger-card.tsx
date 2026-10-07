@@ -114,7 +114,7 @@ function TriggerAccessPointItem({
       </span>
       <span
         className={`flex shrink-0 items-center gap-1 system-xs-semibold-uppercase ${
-          enabled ? 'text-text-success' : 'text-text-tertiary'
+          enabled ? 'text-util-colors-green-green-700' : 'text-text-tertiary'
         }`}
       >
         <StatusDot size="small" status={enabled ? 'success' : 'disabled'} />
@@ -198,7 +198,7 @@ export function TriggerAccessPointCard({
               href={docLink('/use-dify/nodes/trigger/overview')}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-text-accent hover:underline"
+              className="text-text-accent underline"
             >
               {t(($) => $['overview.triggerInfo.learnAboutTriggers'], {
                 ns: 'appOverview',

@@ -11,7 +11,7 @@ import type { Language } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { Field, FieldDescription, FieldLabel } from '@langgenius/dify-ui/field'
+import { Field, FieldDescription, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
@@ -110,6 +110,7 @@ type SelectOption = {
   value: Language
   name: string
 }
+type SettingsFieldName = 'title' | 'chat_color_theme' | 'privacy_policy'
 
 const LANGUAGE_OPTIONS: SelectOption[] = languages.filter((item) => item.supported)
 
@@ -191,6 +192,10 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   const [inputInfo, setInputInfo] = useState(nextInputInfo)
   const [language, setLanguage] = useState(default_language)
   const [saveLoading, setSaveLoading] = useState(false)
+  const [formErrors, setFormErrors] = useState<Partial<Record<SettingsFieldName, string>>>({})
+  const titleRef = React.useRef<HTMLInputElement>(null)
+  const colorRef = React.useRef<HTMLInputElement>(null)
+  const privacyPolicyRef = React.useRef<HTMLInputElement>(null)
   const { t } = useTranslation(['app', 'appOverview', 'billing', 'common'])
 
   const [showIconPicker, setShowIconPicker] = useState(false)
@@ -210,6 +215,10 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   const inputPlaceholderLabelId = React.useId()
   const inputPlaceholderDescriptionId = React.useId()
   const invertedThemeLabelId = React.useId()
+  const chatColorLabelId = React.useId()
+  const chatColorDescriptionId = React.useId()
+  const inputPlaceholderRestrictionId = React.useId()
+  const copyrightRestrictionId = React.useId()
   const inputPlaceholderValue = inputInfo.inputPlaceholder ?? ''
   const copyrightSwitchValue = inputInfo.copyrightSwitchValue
   const showInputPlaceholderPreview =
@@ -231,22 +240,32 @@ const SettingsModal: FC<ISettingsModalProps> = ({
         onChange={(e) => setInputInfo((item) => ({ ...item, inputPlaceholder: e.target.value }))}
         onFocus={() => setInputPlaceholderFocused(true)}
         onBlur={() => setInputPlaceholderFocused(false)}
-        disabled={!canCustomizePlaceholder}
+        readOnly={!canCustomizePlaceholder}
+        aria-disabled={!canCustomizePlaceholder || undefined}
         maxLength={INPUT_PLACEHOLDER_MAX_LENGTH}
         autoComplete="off"
         aria-labelledby={inputPlaceholderLabelId}
-        aria-describedby={inputPlaceholderDescriptionId}
+        aria-describedby={
+          deploymentEdition === 'CLOUD' && webappCopyrightEnabled === false
+            ? `${inputPlaceholderDescriptionId} ${inputPlaceholderRestrictionId}`
+            : inputPlaceholderDescriptionId
+        }
         placeholder={
           t(($) => $[`${prefixSettings}.more.inputPlaceholderPlaceholder`], {
             ns: 'appOverview',
           }) as string
         }
         className={cn(
-          'flex-1 bg-transparent body-md-regular outline-hidden',
+          'min-w-0 flex-1 rounded-sm bg-transparent body-md-regular outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
           showInputPlaceholderPreview ? 'text-text-placeholder' : 'text-text-primary',
           !canCustomizePlaceholder && 'cursor-not-allowed',
         )}
       />
+      {deploymentEdition === 'CLOUD' && webappCopyrightEnabled === false && (
+        <span id={inputPlaceholderRestrictionId} className="sr-only">
+          {t(($) => $[`${prefixSettings}.more.inputPlaceholderTooltip`], { ns: 'appOverview' })}
+        </span>
+      )}
       <span
         aria-hidden="true"
         className="grid h-7 w-7 shrink-0 cursor-not-allowed place-items-center rounded-md bg-components-button-primary-bg opacity-50"
@@ -272,6 +291,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
       setInputInfo(nextInputInfo)
       setLanguage(default_language)
       setAppIcon(nextAppIcon)
+      setFormErrors({})
       setPreviousSettingsResetKey(settingsResetKey)
     }
   }
@@ -281,8 +301,21 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   }
 
   const handleFormSubmit = async () => {
+    const reportError = (field: SettingsFieldName, message: string) => {
+      setFormErrors({ [field]: message })
+      toast.error(message)
+      const control = {
+        title: titleRef,
+        chat_color_theme: colorRef,
+        privacy_policy: privacyPolicyRef,
+      }[field]
+      control.current?.focus()
+    }
     if (!inputInfo.title) {
-      toast.error(t(($) => $['newApp.nameNotEmpty'], { ns: 'app' }))
+      reportError(
+        'title',
+        t(($) => $['newApp.nameNotEmpty'], { ns: 'app' }),
+      )
       return
     }
 
@@ -302,15 +335,22 @@ const SettingsModal: FC<ISettingsModalProps> = ({
 
     if (inputInfo !== null) {
       if (!validateColorHex(inputInfo.chatColorTheme)) {
-        toast.error(t(($) => $[`${prefixSettings}.invalidHexMessage`], { ns: 'appOverview' }))
+        reportError(
+          'chat_color_theme',
+          t(($) => $[`${prefixSettings}.invalidHexMessage`], { ns: 'appOverview' }),
+        )
         return
       }
       if (!validatePrivacyPolicy(inputInfo.privacyPolicy)) {
-        toast.error(t(($) => $[`${prefixSettings}.invalidPrivacyPolicy`], { ns: 'appOverview' }))
+        reportError(
+          'privacy_policy',
+          t(($) => $[`${prefixSettings}.invalidPrivacyPolicy`], { ns: 'appOverview' }),
+        )
         return
       }
     }
 
+    setFormErrors({})
     setSaveLoading(true)
     const params = {
       title: inputInfo.title,
@@ -363,6 +403,13 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   const onDesChange = (value: string) => {
     setInputInfo((item) => ({ ...item, desc: value }))
   }
+  const clearFieldError = (field: SettingsFieldName) => {
+    setFormErrors((errors) => {
+      const nextErrors = { ...errors }
+      delete nextErrors[field]
+      return nextErrors
+    })
+  }
 
   return (
     <>
@@ -392,6 +439,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
           </div>
           <Form
             className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)_auto]"
+            errors={formErrors}
             onFormSubmit={handleFormSubmit}
           >
             {canDeploy && (
@@ -434,12 +482,16 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                         {t(($) => $[`${prefixSettings}.webName`], { ns: 'appOverview' })}
                       </FieldLabel>
                       <Input
+                        ref={titleRef}
+                        aria-required="true"
                         value={inputInfo.title}
-                        onValueChange={(value) =>
+                        onValueChange={(value) => {
+                          clearFieldError('title')
                           setInputInfo((item) => ({ ...item, title: value }))
-                        }
+                        }}
                         placeholder={t(($) => $.appNamePlaceholder, { ns: 'app' }) || ''}
                       />
+                      <FieldError />
                     </Field>
                     <button
                       type="button"
@@ -544,27 +596,37 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                   {isChat && (
                     <div className="flex items-center">
                       <div className="grow">
-                        <div className={cn('py-1 system-sm-semibold text-text-secondary')}>
+                        <div
+                          id={chatColorLabelId}
+                          className={cn('py-1 system-sm-semibold text-text-secondary')}
+                        >
                           {t(($) => $[`${prefixSettings}.chatColorTheme`], { ns: 'appOverview' })}
                         </div>
-                        <div className="pb-0.5 body-xs-regular text-text-tertiary">
+                        <div
+                          id={chatColorDescriptionId}
+                          className="pb-0.5 body-xs-regular text-text-tertiary"
+                        >
                           {t(($) => $[`${prefixSettings}.chatColorThemeDesc`], {
                             ns: 'appOverview',
                           })}
                         </div>
                       </div>
-                      <Field name="chat_color_theme" className="w-50 shrink-0">
-                        <Input
-                          aria-label={t(($) => $[`${prefixSettings}.chatColorTheme`], {
-                            ns: 'appOverview',
-                          })}
-                          className="mb-1"
-                          value={inputInfo.chatColorTheme ?? ''}
-                          onValueChange={(value) =>
-                            setInputInfo((item) => ({ ...item, chatColorTheme: value }))
-                          }
-                          placeholder="E.g #A020F0"
-                        />
+                      <div className="w-50 shrink-0">
+                        <Field name="chat_color_theme">
+                          <Input
+                            ref={colorRef}
+                            aria-labelledby={chatColorLabelId}
+                            aria-describedby={chatColorDescriptionId}
+                            className="mb-1"
+                            value={inputInfo.chatColorTheme ?? ''}
+                            onValueChange={(value) => {
+                              clearFieldError('chat_color_theme')
+                              setInputInfo((item) => ({ ...item, chatColorTheme: value }))
+                            }}
+                            placeholder="E.g #A020F0"
+                          />
+                          <FieldError />
+                        </Field>
                         <div className="flex items-center justify-between gap-2 body-xs-regular text-text-tertiary">
                           <span id={invertedThemeLabelId}>
                             {t(($) => $[`${prefixSettings}.chatColorThemeInverted`], {
@@ -579,7 +641,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                             }
                           ></Switch>
                         </div>
-                      </Field>
+                      </div>
                     </div>
                   )}
                   {/* workflow detail */}
@@ -647,7 +709,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                         {deploymentEdition === 'CLOUD' && webappCopyrightEnabled === false ? (
                           <Tooltip>
                             <TooltipTrigger render={inputPlaceholderField} />
-                            <TooltipContent className="w-45">
+                            <TooltipContent role="tooltip" className="w-45">
                               {t(($) => $[`${prefixSettings}.more.inputPlaceholderTooltip`], {
                                 ns: 'appOverview',
                               })}
@@ -699,29 +761,37 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                             }
                           />
                         ) : (
-                          <Tooltip>
-                            <TooltipTrigger
-                              render={
-                                <div>
+                          <>
+                            <Tooltip>
+                              <TooltipTrigger
+                                render={
                                   <Switch
                                     aria-label={t(($) => $[`${prefixSettings}.more.copyright`], {
                                       ns: 'appOverview',
                                     })}
-                                    disabled
+                                    readOnly
+                                    aria-disabled="true"
+                                    aria-describedby={copyrightRestrictionId}
+                                    data-disabled=""
                                     checked={copyrightSwitchValue}
                                     onCheckedChange={(v) =>
                                       setInputInfo({ ...inputInfo, copyrightSwitchValue: v })
                                     }
                                   />
-                                </div>
-                              }
-                            />
-                            <TooltipContent className="w-45">
+                                }
+                              />
+                              <TooltipContent role="tooltip" className="w-45">
+                                {t(($) => $[`${prefixSettings}.more.copyrightTooltip`], {
+                                  ns: 'appOverview',
+                                })}
+                              </TooltipContent>
+                            </Tooltip>
+                            <span id={copyrightRestrictionId} className="sr-only">
                               {t(($) => $[`${prefixSettings}.more.copyrightTooltip`], {
                                 ns: 'appOverview',
                               })}
-                            </TooltipContent>
-                          </Tooltip>
+                            </span>
+                          </>
                         )}
                       </div>
                       <p className="pb-0.5 body-xs-regular text-text-tertiary">
@@ -745,11 +815,11 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                       )}
                     </div>
                     {/* privacy policy */}
-                    <div className="w-full">
-                      <div className={cn('py-1 system-sm-semibold text-text-secondary')}>
+                    <Field name="privacy_policy" className="w-full">
+                      <FieldLabel className={cn('py-1 system-sm-semibold text-text-secondary')}>
                         {t(($) => $[`${prefixSettings}.more.privacyPolicy`], { ns: 'appOverview' })}
-                      </div>
-                      <p className={cn('pb-0.5 body-xs-regular text-text-tertiary')}>
+                      </FieldLabel>
+                      <FieldDescription className={cn('pb-0.5 body-xs-regular text-text-tertiary')}>
                         <Trans
                           i18nKey={($) => $[`${prefixSettings}.more.privacyPolicyTip`]}
                           ns="appOverview"
@@ -759,26 +829,28 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                                 href="https://dify.ai/privacy"
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-text-accent"
+                                className="text-text-accent underline"
                               />
                             ),
                           }}
                         />
-                      </p>
+                      </FieldDescription>
                       <Input
-                        aria-label={t(($) => $[`${prefixSettings}.more.privacyPolicy`], {
-                          ns: 'appOverview',
-                        })}
+                        ref={privacyPolicyRef}
                         className="mt-1"
                         value={inputInfo.privacyPolicy}
-                        onChange={onChange('privacyPolicy')}
+                        onValueChange={(value) => {
+                          clearFieldError('privacy_policy')
+                          setInputInfo((item) => ({ ...item, privacyPolicy: value }))
+                        }}
                         placeholder={
                           t(($) => $[`${prefixSettings}.more.privacyPolicyPlaceholder`], {
                             ns: 'appOverview',
                           }) as string
                         }
                       />
-                    </div>
+                      <FieldError />
+                    </Field>
                     {/* custom disclaimer */}
                     <div className="w-full">
                       <div className={cn('py-1 system-sm-semibold text-text-secondary')}>

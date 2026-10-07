@@ -13,7 +13,8 @@ it('keeps the copied tooltip visible after clicking the copy button', async () =
     await expect.element(page.getByText('common.operation.copy')).toBeVisible()
     await copyButton.click()
 
-    await expect.element(page.getByText('common.operation.copied')).toBeVisible()
+    await expect.element(page.getByRole('tooltip')).toHaveTextContent('common.operation.copied')
+    await expect.element(screen.getByRole('status')).toHaveTextContent('common.operation.copied')
     await expect
       .element(screen.getByRole('button', { name: 'common.operation.copied' }))
       .toBeVisible()

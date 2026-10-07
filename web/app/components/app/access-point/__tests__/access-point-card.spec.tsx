@@ -1,5 +1,5 @@
 import type { AccessPointStatus } from '@/app/components/base/access-point/status'
-import { screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AccessPointCard } from '@/app/components/base/access-point/card'
 import { render } from '@/test/console/render'
@@ -76,12 +76,18 @@ describe('AccessPointCard', () => {
 
     const accessSwitch = screen.getByRole('switch', { name: 'Toggle Web App' })
     expect(accessSwitch).toHaveAttribute('aria-disabled', 'true')
+    expect(accessSwitch).toHaveAccessibleDescription('Publish first')
 
     await user.tab()
     expect(accessSwitch).toHaveFocus()
-    expect(await screen.findByText('Publish first')).toBeVisible()
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Publish first')
+    expect(accessSwitch).toHaveAccessibleDescription('Publish first')
 
     await user.click(accessSwitch)
     expect(onEnabledChange).not.toHaveBeenCalled()
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('tooltip')).not.toBeInTheDocument())
+    expect(accessSwitch).toHaveFocus()
+    expect(accessSwitch).toHaveAccessibleDescription('Publish first')
   })
 })

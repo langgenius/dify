@@ -38,19 +38,24 @@ export function CopyFeedback({
   }, [copy, content])
 
   return (
-    <Tooltip>
-      <TooltipTrigger
-        closeOnClick={false}
-        render={
-          <IconButton aria-label={safeText} className={className} onClick={handleCopy}>
-            <span
-              aria-hidden="true"
-              className={cn('size-4', copied ? 'i-ri-clipboard-fill' : 'i-ri-clipboard-line')}
-            />
-          </IconButton>
-        }
-      />
-      <TooltipContent>{safeText}</TooltipContent>
-    </Tooltip>
+    <>
+      <Tooltip>
+        <TooltipTrigger
+          closeOnClick={false}
+          render={
+            <IconButton aria-label={safeText} className={className} onClick={handleCopy}>
+              <span
+                aria-hidden="true"
+                className={cn('size-4', copied ? 'i-ri-clipboard-fill' : 'i-ri-clipboard-line')}
+              />
+            </IconButton>
+          }
+        />
+        <TooltipContent role="tooltip">{safeText}</TooltipContent>
+      </Tooltip>
+      <span role="status" className="sr-only">
+        {copied ? safeText : ''}
+      </span>
+    </>
   )
 }

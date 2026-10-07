@@ -66,3 +66,47 @@ export async function syncRunnableWorkflowDraft(
   } satisfies SyncDraftWorkflowPayload
   await client.apps.byAppId.workflows.draft.post({ body, params: { app_id: appId } })
 }
+
+export async function syncRunnableChatflowDraft(
+  client: ConsoleClient,
+  appId: string,
+): Promise<void> {
+  const body = {
+    graph: {
+      nodes: [
+        {
+          id: 'start',
+          type: 'custom',
+          position: { x: 80, y: 282 },
+          data: { id: 'start', type: 'start', title: 'Start', variables: [] },
+        },
+        {
+          id: 'answer',
+          type: 'custom',
+          position: { x: 480, y: 282 },
+          data: {
+            id: 'answer',
+            type: 'answer',
+            title: 'Answer',
+            answer: 'E2E chatflow response',
+            variables: [],
+          },
+        },
+      ],
+      edges: [
+        {
+          id: 'start-answer',
+          type: 'custom',
+          source: 'start',
+          target: 'answer',
+          sourceHandle: 'source',
+          targetHandle: 'target',
+        },
+      ],
+      viewport: { x: 0, y: 0, zoom: 1 },
+    },
+    features: {},
+    conversation_variables: [],
+  } satisfies SyncDraftWorkflowPayload
+  await client.apps.byAppId.workflows.draft.post({ body, params: { app_id: appId } })
+}

@@ -138,7 +138,7 @@ describe('SettingsModal', () => {
     renderSettingsModal({ id: 'app-null-fields', mode: 'chat', site: createAppSiteFixture() })
 
     expect(screen.getByRole('textbox', { name: inputPlaceholderName })).toHaveValue('')
-    fireEvent.click(screen.getByText('common.operation.save'))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     await waitFor(() =>
       expect(mockOnSave).toHaveBeenCalledWith(
@@ -201,10 +201,13 @@ describe('SettingsModal', () => {
   })
 
   it('should notify the user when the name is empty', async () => {
+    const user = userEvent.setup()
     renderSettingsModal()
-    const nameInput = screen.getByPlaceholderText('app.appNamePlaceholder')
-    fireEvent.change(nameInput, { target: { value: '' } })
-    fireEvent.click(screen.getByText('common.operation.save'))
+    const nameInput = screen.getByRole('textbox', {
+      name: 'appOverview.overview.appInfo.settings.webName',
+    })
+    await user.clear(nameInput)
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     await waitFor(() => {
       expect(toastMocks.call).toHaveBeenCalledWith(
@@ -212,14 +215,22 @@ describe('SettingsModal', () => {
       )
     })
     expect(mockOnSave).not.toHaveBeenCalled()
+    expect(nameInput).toHaveAttribute('aria-required', 'true')
+    expect(nameInput).toHaveAttribute('aria-invalid', 'true')
+    expect(nameInput).toHaveAccessibleDescription('app.newApp.nameNotEmpty')
+    expect(nameInput).toHaveFocus()
   })
 
   it('should validate the theme color and show an error when the hex is invalid', async () => {
+    const user = userEvent.setup()
     renderSettingsModal()
-    const colorInput = screen.getByPlaceholderText('E.g #A020F0')
-    fireEvent.change(colorInput, { target: { value: 'not-a-hex' } })
+    const colorInput = screen.getByRole('textbox', {
+      name: 'appOverview.overview.appInfo.settings.chatColorTheme',
+    })
+    await user.clear(colorInput)
+    await user.type(colorInput, 'not-a-hex')
 
-    fireEvent.click(screen.getByText('common.operation.save'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
     await waitFor(() => {
       expect(toastMocks.call).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -228,17 +239,21 @@ describe('SettingsModal', () => {
       )
     })
     expect(mockOnSave).not.toHaveBeenCalled()
+    expect(colorInput).toHaveAttribute('aria-invalid', 'true')
+    expect(colorInput).toHaveAccessibleDescription(expect.stringContaining('invalidHexMessage'))
+    expect(colorInput).toHaveFocus()
   })
 
   it('should validate the privacy policy URL', async () => {
+    const user = userEvent.setup()
     renderSettingsModal()
-    const privacyInput = screen.getByPlaceholderText(
-      'appOverview.overview.appInfo.settings.more.privacyPolicyPlaceholder',
-    )
+    const privacyInput = screen.getByRole('textbox', {
+      name: 'appOverview.overview.appInfo.settings.more.privacyPolicy',
+    })
 
-    fireEvent.change(privacyInput, { target: { value: 'ftp://invalid-url' } })
+    await user.type(privacyInput, 'ftp://invalid-url')
 
-    fireEvent.click(screen.getByText('common.operation.save'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
     await waitFor(() => {
       expect(toastMocks.call).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -247,13 +262,24 @@ describe('SettingsModal', () => {
       )
     })
     expect(mockOnSave).not.toHaveBeenCalled()
+    expect(privacyInput).toHaveAttribute('aria-invalid', 'true')
+    expect(privacyInput).toHaveAccessibleDescription(
+      expect.stringContaining('appOverview.overview.appInfo.settings.invalidPrivacyPolicy'),
+    )
+    expect(privacyInput).toHaveFocus()
+
+    await user.clear(privacyInput)
+    await user.type(privacyInput, 'https://example.test/privacy')
+    expect(privacyInput).not.toHaveAttribute('aria-invalid', 'true')
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    await waitFor(() => expect(mockOnSave).toHaveBeenCalled())
   })
 
   it('should save valid settings and close the modal', async () => {
     mockOnSave.mockResolvedValueOnce(undefined)
     renderSettingsModal()
 
-    fireEvent.click(screen.getByText('common.operation.save'))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     await waitFor(() => expect(mockOnSave).toHaveBeenCalled())
     expect(mockOnSave).toHaveBeenCalledWith(
@@ -383,7 +409,8 @@ describe('SettingsModal', () => {
     renderSettingsModal()
 
     const inputPlaceholder = screen.getByRole('textbox', { name: inputPlaceholderName })
-    expect(inputPlaceholder).toBeDisabled()
+    expect(inputPlaceholder).toHaveAttribute('aria-disabled', 'true')
+    expect(inputPlaceholder).toHaveAttribute('readonly')
     expect(inputPlaceholder).toHaveValue(mockAppInfo.site.input_placeholder)
     expect(
       screen.queryByPlaceholderText(
@@ -391,7 +418,7 @@ describe('SettingsModal', () => {
       ),
     ).toBeDisabled()
 
-    fireEvent.click(screen.getByText('common.operation.save'))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     await waitFor(() => {
       expect(mockOnSave).toHaveBeenCalledWith(
@@ -411,7 +438,7 @@ describe('SettingsModal', () => {
     renderSettingsModal()
     const inputPlaceholder = screen.getByRole('textbox', { name: inputPlaceholderName })
     fireEvent.change(inputPlaceholder, { target: { value: 'Self-hosted prompt' } })
-    fireEvent.click(screen.getByText('common.operation.save'))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     expect(inputPlaceholder).toBeEnabled()
     expect(screen.queryByText('billing.upgradeBtn.encourageShort')).not.toBeInTheDocument()
@@ -423,6 +450,43 @@ describe('SettingsModal', () => {
         }),
       )
     })
+  })
+
+  it('exposes Cloud restrictions to keyboard users without allowing edits', async () => {
+    const user = userEvent.setup()
+    copyrightEnabled = false
+    renderSettingsModal()
+    const inputPlaceholder = screen.getByRole('textbox', { name: inputPlaceholderName })
+    await user.type(inputPlaceholder, 'blocked edit')
+    expect(inputPlaceholder).toHaveFocus()
+    expect(inputPlaceholder).toHaveValue(mockAppInfo.site.input_placeholder)
+    expect(inputPlaceholder).toHaveAccessibleDescription(
+      expect.stringContaining('inputPlaceholderTooltip'),
+    )
+
+    const copyright = screen.getByRole('switch', {
+      name: 'appOverview.overview.appInfo.settings.more.copyright',
+    })
+    expect(copyright).toHaveAccessibleDescription(
+      'appOverview.overview.appInfo.settings.more.copyrightTooltip',
+    )
+    await user.tab()
+    await user.tab()
+    expect(copyright).toHaveFocus()
+    await screen.findByRole('tooltip')
+    expect(copyright).toHaveAttribute('aria-disabled', 'true')
+    expect(copyright).toHaveAccessibleDescription(
+      'appOverview.overview.appInfo.settings.more.copyrightTooltip',
+    )
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('tooltip')).not.toBeInTheDocument())
+    expect(copyright).toHaveFocus()
+    expect(copyright).toHaveAccessibleDescription(
+      'appOverview.overview.appInfo.settings.more.copyrightTooltip',
+    )
+    expect(mockOnClose).not.toHaveBeenCalled()
+    await user.keyboard(' ')
+    expect(copyright).toBeChecked()
   })
 
   it('should open the pricing modal from the copyright upgrade badge for sandbox plans', async () => {
@@ -465,16 +529,19 @@ describe('SettingsModal', () => {
     fireEvent.change(screen.getByDisplayValue('A description'), {
       target: { value: 'Updated description' },
     })
-    fireEvent.change(screen.getByPlaceholderText('E.g #A020F0'), {
-      target: { value: '' },
-    })
+    fireEvent.change(
+      screen.getByRole('textbox', { name: 'appOverview.overview.appInfo.settings.chatColorTheme' }),
+      {
+        target: { value: '' },
+      },
+    )
 
     const switches = screen.getAllByRole('switch')
     switches.forEach((toggle) => {
       fireEvent.click(toggle)
     })
 
-    fireEvent.click(screen.getByText('common.operation.save'))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     await waitFor(() => {
       expect(mockOnSave).toHaveBeenCalledWith(
@@ -517,7 +584,10 @@ it('saves unrelated settings while entitlements are pending without clearing pro
     features: undefined,
     systemFeatures: { deployment_edition: 'CLOUD' },
   })
-  expect(screen.getByRole('textbox', { name: inputPlaceholderName })).toBeDisabled()
+  expect(screen.getByRole('textbox', { name: inputPlaceholderName })).toHaveAttribute(
+    'aria-disabled',
+    'true',
+  )
   expect(screen.queryByText('billing.upgradeBtn.encourageShort')).not.toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
   await waitFor(() =>
