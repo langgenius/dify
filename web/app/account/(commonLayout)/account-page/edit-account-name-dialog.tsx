@@ -71,7 +71,9 @@ export function EditAccountNameDialog({ name }: { name: string }) {
       toast.success(t(($) => $['actionMsg.modifiedSuccessfully']))
       actionsRef.current?.close()
     } catch (error) {
-      toast.error((error as Error).message)
+      // The request layer already reports every error the server answered with.
+      // Only report a failure that never produced a response.
+      if (error instanceof Error && error.message) toast.error(error.message)
     }
   }
 

@@ -1,6 +1,7 @@
 import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { toast } from '@/app/notifications'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
@@ -373,6 +374,52 @@ describe('AccountPage', () => {
       within(dialog).getByRole('button', { name: 'common.operation.save' }),
     ).toBeInTheDocument()
   })
+
+  it.each(['name', 'password'])(
+    'leaves a server-reported %s failure to the request layer',
+    async (field) => {
+      // The request layer reports the server message and rejects with the Response.
+      const error = vi.spyOn(toast, 'error')
+      const user = userEvent.setup()
+      mocks.request.mockRejectedValueOnce(
+        new Response(JSON.stringify({ code: 'invalid_param', message: 'Rejected', status: 400 }), {
+          status: 400,
+        }),
+      )
+      renderPage({ isPasswordSet: true })
+
+      if (field === 'name') {
+        await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
+        await user.type(
+          screen.getByRole('textbox', { name: 'accountSettings.account.name' }),
+          ' Cooper{Enter}',
+        )
+      } else {
+        await user.click(
+          screen.getByRole('button', { name: 'accountSettings.account.resetPassword' }),
+        )
+        await user.type(
+          screen.getByLabelText('accountSettings.account.currentPassword'),
+          'Current123',
+        )
+        await user.type(
+          screen.getByLabelText('accountSettings.account.newPassword'),
+          'NewPassword123',
+        )
+        await user.type(
+          screen.getByLabelText('accountSettings.account.confirmPassword'),
+          'NewPassword123{Enter}',
+        )
+      }
+
+      await waitFor(() => expect(mocks.request).toHaveBeenCalledOnce())
+      const submit = within(screen.getByRole('dialog')).getByRole('button', {
+        name: field === 'name' ? 'common.operation.save' : 'common.operation.reset',
+      })
+      await waitFor(() => expect(submit).not.toHaveAttribute('aria-disabled', 'true'))
+      expect(error).not.toHaveBeenCalled()
+    },
+  )
 
   it('does not offer password editing when password login is disabled', () => {
     renderPage({ passwordLoginEnabled: false })
