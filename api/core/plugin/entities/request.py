@@ -6,6 +6,12 @@ from typing import Any, Literal
 from flask import Response
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from core.credit_usage import (
+    CreditUsageAppType,
+    CreditUsageCreatedBy,
+    normalize_credit_usage_app_type,
+    normalize_credit_usage_created_by,
+)
 from core.datasource.entities.datasource_entities import (
     DatasourceProviderType,
     GetOnlineDocumentPageContentRequest,
@@ -115,11 +121,37 @@ class RequestInvokeDatasource(BaseModel):
 
 
 class BaseRequestInvokeModel(BaseModel):
+    """Model selection and optional business attribution from an inner-API caller.
+
+    ``created_by`` identifies the consuming feature, not a user ID. Callers that
+    omit attribution retain the generic plugin API classification.
+    """
+
     provider: str
     model: str
     model_type: ModelType
+    app_type: CreditUsageAppType | None = None
+    created_by: CreditUsageCreatedBy | None = None
 
     model_config = ConfigDict(protected_namespaces=())
+
+    @field_validator("app_type", mode="before")
+    @classmethod
+    def normalize_app_type(cls, value: object) -> CreditUsageAppType | None:
+        return normalize_credit_usage_app_type(value) if value is not None else None
+
+    @field_validator("created_by", mode="before")
+    @classmethod
+    def normalize_created_by(cls, value: object) -> CreditUsageCreatedBy | None:
+        return normalize_credit_usage_created_by(value) if value is not None else None
+
+    @property
+    def credit_usage_metadata(self) -> dict[str, object]:
+        return {
+            key: value
+            for key, value in {"app_type": self.app_type, "created_by": self.created_by}.items()
+            if value is not None
+        }
 
 
 class RequestInvokeLLM(BaseRequestInvokeModel):

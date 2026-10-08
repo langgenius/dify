@@ -104,6 +104,7 @@ def test_invoke_text_embedding_forwards_input_type_to_bound_model_instance():
         provider="langgenius/openai/openai",
         model_type=ModelType.TEXT_EMBEDDING,
         model="text-embedding-3-small",
+        request_metadata={},
     )
     mock_invoke.assert_called_once_with(texts=["query text"], input_type=EmbeddingInputType.QUERY)
 
@@ -140,6 +141,7 @@ def test_invoke_multimodal_embedding_uses_bound_model_instance():
         provider="langgenius/clip/clip",
         model_type=ModelType.TEXT_EMBEDDING,
         model="clip-multimodal",
+        request_metadata={},
     )
     mock_invoke.assert_called_once_with(
         multimodel_documents=documents,

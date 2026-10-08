@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from core.base.tts.audio_mime import get_model_audio_mime_type, inspect_audio_stream
 from core.credit_usage import CreditUsageCreatedBy
 from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
-from core.model_context import with_credit_usage_created_by
+from core.model_context import get_credit_usage_metadata, with_credit_usage_created_by
 from core.model_manager import ModelManager
 from core.plugin.backwards_invocation.base import BaseBackwardsInvocation
 from core.plugin.entities.request import (
@@ -111,8 +111,14 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
         provider: str,
         model_type: ModelType,
         model: str,
+        request_metadata: Mapping[str, object] | None = None,
     ):
-        return ModelManager.for_tenant(tenant_id=tenant_id, user_id=user_id).get_model_instance(
+        # Bind explicit caller attribution before the decorator exits. Streaming
+        # invocations settle quota later, outside this context manager's lifetime.
+        metadata = {**(get_credit_usage_metadata() or {}), **(request_metadata or {})}
+        return ModelManager.for_tenant(
+            tenant_id=tenant_id, user_id=user_id, request_metadata=metadata
+        ).get_model_instance(
             tenant_id=tenant_id,
             provider=provider,
             model_type=model_type,
@@ -132,6 +138,7 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
             provider=payload.provider,
             model_type=payload.model_type,
             model=payload.model,
+            request_metadata=payload.credit_usage_metadata,
         )
 
         # invoke model
@@ -181,6 +188,7 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
             provider=payload.provider,
             model_type=payload.model_type,
             model=payload.model,
+            request_metadata=payload.credit_usage_metadata,
         )
 
         model_schema = model_instance.model_type_instance.get_model_schema(payload.model, model_instance.credentials)
@@ -239,6 +247,7 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
             provider=payload.provider,
             model_type=payload.model_type,
             model=payload.model,
+            request_metadata=payload.credit_usage_metadata,
         )
 
         # invoke model
@@ -260,6 +269,7 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
             provider=payload.provider,
             model_type=payload.model_type,
             model=payload.model,
+            request_metadata=payload.credit_usage_metadata,
         )
 
         response = model_instance.invoke_multimodal_embedding(
@@ -280,6 +290,7 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
             provider=payload.provider,
             model_type=payload.model_type,
             model=payload.model,
+            request_metadata=payload.credit_usage_metadata,
         )
 
         # invoke model
@@ -372,6 +383,7 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
             provider=payload.provider,
             model_type=payload.model_type,
             model=payload.model,
+            request_metadata=payload.credit_usage_metadata,
         )
 
         def handle() -> Generator[dict[str, Any], None, None]:
@@ -393,6 +405,7 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
             provider=payload.provider,
             model_type=payload.model_type,
             model=payload.model,
+            request_metadata=payload.credit_usage_metadata,
         )
 
         # invoke model
@@ -418,6 +431,7 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
             provider=payload.provider,
             model_type=payload.model_type,
             model=payload.model,
+            request_metadata=payload.credit_usage_metadata,
         )
 
         # invoke model
