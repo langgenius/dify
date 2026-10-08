@@ -21,7 +21,6 @@ import { consoleQuery } from '@/service/console'
 import { useMembers } from '@/service/use-common'
 import { hasPermission } from '@/utils/permission'
 import EditWorkspaceModal from './edit-workspace-modal'
-import InviteButton from './invite-button'
 import { InviteModal } from './invite-modal'
 import InvitedModal from './invited-modal'
 import MemberDetailsModal from './member-details-modal'
@@ -42,7 +41,6 @@ const MembersPage = () => {
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { data, refetch } = useMembers(language)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const [inviteModalVisible, setInviteModalVisible] = useState(false)
   const [invitationResults, setInvitationResults] = useState<
     MemberInviteResponse['invitation_results'] | null
   >(null)
@@ -174,10 +172,7 @@ const MembersPage = () => {
           <div className="shrink-0">
             {canManageMembers && (
               <InviteModal
-                open={inviteModalVisible}
-                trigger={<InviteButton />}
                 isEmailSetup={systemFeatures.is_email_setup}
-                onOpenChange={setInviteModalVisible}
                 onSend={setInvitationResults}
               />
             )}

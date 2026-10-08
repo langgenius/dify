@@ -576,7 +576,7 @@ function CommentThreadComponent({
                 onOpenChange={(open) => setActiveReplyMenuId(open ? comment.id : null)}
               >
                 <DropdownMenuTrigger
-                  className="absolute top-1 right-1 flex size-6 items-center justify-center rounded-md text-text-tertiary opacity-0 outline-hidden group-hover:opacity-100 hover:bg-state-base-hover hover:text-text-secondary focus:opacity-100 focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:opacity-100 [@media(hover:none)]:opacity-100"
+                  className="absolute top-1 right-1 flex size-6 items-center justify-center rounded-md text-text-tertiary opacity-0 group-hover:opacity-100 hover:bg-state-base-hover hover:text-text-secondary focus:opacity-100 data-popup-open:opacity-100 [@media(hover:none)]:opacity-100"
                   aria-label={t(($) => $['comments.aria.commentActions'], {
                     ns: 'workflowComments',
                   })}
@@ -668,7 +668,7 @@ function CommentThreadComponent({
                             if (element) replyMenuTriggersRef.current.set(reply.id, element)
                             else replyMenuTriggersRef.current.delete(reply.id)
                           }}
-                          className="absolute top-1 right-1 flex size-6 items-center justify-center rounded-md text-text-tertiary opacity-0 outline-hidden group-hover:opacity-100 hover:bg-state-base-hover hover:text-text-secondary focus:opacity-100 focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:opacity-100 [@media(hover:none)]:opacity-100"
+                          className="absolute top-1 right-1 flex size-6 items-center justify-center rounded-md text-text-tertiary opacity-0 group-hover:opacity-100 hover:bg-state-base-hover hover:text-text-secondary focus:opacity-100 data-popup-open:opacity-100 [@media(hover:none)]:opacity-100"
                           data-reply-menu
                           aria-label={t(($) => $['comments.aria.replyActions'], {
                             ns: 'workflowComments',

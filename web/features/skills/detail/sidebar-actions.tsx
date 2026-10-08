@@ -249,7 +249,7 @@ export function SkillDetailSidebarActions({
           aria-label={t(($) => $['skillManagement.moreActions'], {
             name: detail.display_name,
           })}
-          className="mt-px flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary"
+          className="mt-px flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary"
         >
           <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
         </DropdownMenuTrigger>

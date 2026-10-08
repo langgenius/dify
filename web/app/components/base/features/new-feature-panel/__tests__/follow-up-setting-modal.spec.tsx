@@ -1,9 +1,9 @@
 import type { SuggestedQuestionsAfterAnswer } from '@/app/components/base/features/types'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { CompletionParams } from '@/types/app'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import FollowUpSettingModal from '../follow-up-setting-modal'
+import { FollowUpSettingsDialog } from '../follow-up-setting-modal'
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useModelListAndDefaultModelAndCurrentProviderAndModel: () => ({
@@ -52,15 +52,14 @@ vi.mock(
   }),
 )
 
-const renderModal = (data: SuggestedQuestionsAfterAnswer = { enabled: true }) => {
+const renderModal = async (data: SuggestedQuestionsAfterAnswer = { enabled: true }) => {
   const onSave = vi.fn()
-  const onCancel = vi.fn()
 
-  render(<FollowUpSettingModal data={data} onSave={onSave} onCancel={onCancel} />)
+  render(<FollowUpSettingsDialog data={data} onSave={onSave} />)
+  await userEvent.setup().click(screen.getByRole('button', { name: 'common.operation.settings' }))
 
   return {
     onSave,
-    onCancel,
   }
 }
 
@@ -73,7 +72,7 @@ describe('FollowUpSettingModal', () => {
   describe('Model Parameters', () => {
     it('should keep max tokens disabled after its switch is turned off', async () => {
       const user = userEvent.setup()
-      renderModal({
+      await renderModal({
         enabled: true,
         model: {
           provider: 'openai',
@@ -97,8 +96,8 @@ describe('FollowUpSettingModal', () => {
       expect(maxTokensSwitch).toHaveAttribute('aria-checked', 'false')
     })
 
-    it('should keep max tokens disabled when saved model parameters omit it', () => {
-      renderModal({
+    it('should keep max tokens disabled when saved model parameters omit it', async () => {
+      await renderModal({
         enabled: true,
         model: {
           provider: 'openai',
@@ -120,7 +119,7 @@ describe('FollowUpSettingModal', () => {
   describe('Default Prompt', () => {
     it('should show the system default prompt and save without a custom prompt when no custom prompt is configured', async () => {
       const user = userEvent.setup()
-      const { onSave } = renderModal()
+      const { onSave } = await renderModal()
 
       expect(
         screen.getByText(
@@ -148,42 +147,34 @@ describe('FollowUpSettingModal', () => {
   })
 
   describe('Custom Prompt', () => {
-    it('should expose the selected prompt mode through RadioItem state attributes', async () => {
+    it('should expose the selected prompt mode to assistive technology', async () => {
       const user = userEvent.setup()
-      renderModal()
+      await renderModal()
 
-      const defaultOption = screen
-        .getByText('appDebug.feature.suggestedQuestionsAfterAnswer.modal.defaultPromptOption')
-        .closest('button')!
-      const customOption = screen
-        .getByText('appDebug.feature.suggestedQuestionsAfterAnswer.modal.customPromptOption')
-        .closest('button')!
+      const defaultOption = screen.getByRole('radio', { name: /modal.defaultPromptOption/ })
+      const customOption = screen.getByRole('radio', { name: /modal.customPromptOption/ })
 
-      expect(defaultOption).toHaveAttribute('data-checked')
-      expect(customOption).not.toHaveAttribute('data-checked')
+      expect(defaultOption).toHaveAttribute('aria-checked', 'true')
+      expect(customOption).toHaveAttribute('aria-checked', 'false')
 
       await user.click(customOption)
 
-      expect(defaultOption).not.toHaveAttribute('data-checked')
-      expect(customOption).toHaveAttribute('data-checked')
+      expect(defaultOption).toHaveAttribute('aria-checked', 'false')
+      expect(customOption).toHaveAttribute('aria-checked', 'true')
     })
 
     it('should enable custom prompt input and save the custom prompt when selected', async () => {
       const user = userEvent.setup()
-      const { onSave } = renderModal()
+      const { onSave } = await renderModal()
 
-      await user.click(
-        screen
-          .getByText('appDebug.feature.suggestedQuestionsAfterAnswer.modal.customPromptOption')
-          .closest('button')!,
-      )
+      await user.click(screen.getByRole('radio', { name: /modal.customPromptOption/ }))
 
       const textarea = screen.getByPlaceholderText(
         'appDebug.feature.suggestedQuestionsAfterAnswer.modal.promptPlaceholder',
       )
       expect(textarea).toHaveAttribute('maxLength', '1000')
 
-      fireEvent.change(textarea, { target: { value: 'Use a custom follow-up prompt.' } })
+      await user.type(textarea, 'Use a custom follow-up prompt.')
 
       await user.click(screen.getByText(/common\.operation\.save/))
 
@@ -196,13 +187,9 @@ describe('FollowUpSettingModal', () => {
 
     it('should disable save when custom prompt is selected but empty', async () => {
       const user = userEvent.setup()
-      renderModal()
+      await renderModal()
 
-      await user.click(
-        screen
-          .getByText('appDebug.feature.suggestedQuestionsAfterAnswer.modal.customPromptOption')
-          .closest('button')!,
-      )
+      await user.click(screen.getByRole('radio', { name: /modal.customPromptOption/ }))
 
       expect(screen.getByText(/common\.operation\.save/).closest('button')).toBeDisabled()
     })

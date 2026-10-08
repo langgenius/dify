@@ -66,8 +66,10 @@ function AutocompleteCollection<Value = unknown>(props: AutocompleteCollectionPr
   return <BaseAutocomplete.Collection {...props} />
 }
 
+// The popup is limited to the available height and lays its parts out in a column, so a status or input
+// sharing it with the list leaves the list to shrink. The popup scrolls only when nothing can.
 const autocompletePopupClassName = [
-  'w-(--anchor-width) max-w-[min(28rem,var(--available-width))] overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg outline-hidden',
+  'flex max-h-(--available-height) w-(--anchor-width) max-w-[min(28rem,var(--available-width))] flex-col overflow-x-hidden overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg outline-hidden',
 ]
 
 const autocompleteListClassName = [
