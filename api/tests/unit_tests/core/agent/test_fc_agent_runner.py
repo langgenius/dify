@@ -404,7 +404,32 @@ class TestBuildDatasetToolImageContents:
             "file ![file](http://localhost:5001/files/11111111-1111-1111-1111-111111111111/file-preview)"
         )
 
-        tool = MagicMock(spec=DatasetRetrieverTool)
+        from core.app.app_config.entities import DatasetRetrieveConfigEntity
+        from core.app.entities.app_invoke_entities import InvokeFrom
+        from core.tools.__base.tool_runtime import ToolRuntime
+        from core.tools.entities.common_entities import I18nObject
+        from core.tools.entities.tool_entities import ToolDescription, ToolEntity, ToolIdentity
+        from services.knowledge.retrieval.dataset_retrieval import DatasetRetrieval
+
+        tool = DatasetRetrieverTool(
+            entity=ToolEntity(
+                identity=ToolIdentity(
+                    provider="dataset", author="Dify", name="dataset", label=I18nObject(en_US="Dataset")
+                ),
+                parameters=[],
+                description=ToolDescription(human=I18nObject(en_US="Retrieve dataset"), llm="Retrieve dataset"),
+            ),
+            runtime=ToolRuntime(tenant_id=upload_file.tenant_id),
+            retrieval=MagicMock(spec=DatasetRetrieval),
+            dataset_id="dataset-id",
+            config=DatasetRetrieveConfigEntity(retrieve_strategy=DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE),
+            top_k=2,
+            inputs={},
+            invoke_from=InvokeFrom.DEBUGGER,
+            return_resource=True,
+            hit_callback=MagicMock(),
+            app_id="app",
+        )
         contents = runner._build_dataset_tool_image_contents(response, tool)
 
         assert contents == [image_content]
