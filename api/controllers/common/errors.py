@@ -140,15 +140,6 @@ class AuthenticationRequiredError(BaseHTTPException):
     description = "Authentication is required."
 
 
-class InternalServerError(BaseHTTPException):
-    error_code = "internal_server_error"
-    code = 500
-    description = (
-        "The server encountered an internal error and was unable to complete your request. "
-        "Either the server is overloaded or there is an error in the application."
-    )
-
-
 class UnsupportedMediaTypeError(BaseHTTPException):
     error_code = "unsupported_media_type"
     code = 415

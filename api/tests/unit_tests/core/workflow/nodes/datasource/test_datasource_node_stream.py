@@ -12,6 +12,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.workflow.nodes.datasource.datasource_node import DatasourceNode
 from core.workflow.nodes.datasource.entities import DatasourceNodeData
 from core.workflow.system_variables import build_system_variables
+from extensions.application_services.workflow import WorkflowExecutionDependencies
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.node_events import NodeRunResult, StreamCompletedEvent
 from graphon.runtime import GraphRuntimeState, VariablePool
@@ -20,7 +21,9 @@ from tests.workflow_test_utils import build_test_graph_init_params
 
 
 @pytest.mark.parametrize("use_factory", [False, True])
-def test_node_integration_minimal_stream(mocker: MockerFixture, workflow_runtime, use_factory: bool) -> None:
+def test_node_integration_minimal_stream(
+    mocker: MockerFixture, workflow_runtime: WorkflowExecutionDependencies, use_factory: bool
+) -> None:
     variable_pool = VariablePool.from_bootstrap(
         system_variables=build_system_variables(
             datasource_type="online_document",

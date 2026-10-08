@@ -3232,7 +3232,7 @@ export const conversationVariables2 = {
 }
 
 /**
- * Get draft workflow
+ * Get environment variables
  *
  * Get environment variables for workflow
  */
@@ -3243,7 +3243,7 @@ export const get64 = oc
     method: 'GET',
     operationId: 'getAppsByAppIdWorkflowsDraftEnvironmentVariables',
     path: '/apps/{app_id}/workflows/draft/environment-variables',
-    summary: 'Get draft workflow',
+    summary: 'Get environment variables',
     tags: ['console'],
   })
   .input(z.object({ params: zGetAppsByAppIdWorkflowsDraftEnvironmentVariablesPath }))
@@ -4028,7 +4028,7 @@ export const delete13 = oc
   .output(zDeleteAppsByAppIdWorkflowsDraftVariablesResponse)
 
 /**
- * Get draft workflow
+ * List draft workflow variables without loading their values
  *
  * Get draft workflow variables
  */
@@ -4039,7 +4039,7 @@ export const get75 = oc
     method: 'GET',
     operationId: 'getAppsByAppIdWorkflowsDraftVariables',
     path: '/apps/{app_id}/workflows/draft/variables',
-    summary: 'Get draft workflow',
+    summary: 'List draft workflow variables without loading their values',
     tags: ['console'],
   })
   .input(

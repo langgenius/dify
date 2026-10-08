@@ -6,7 +6,7 @@ from hashlib import sha1
 
 from redis.lock import Lock
 
-from repositories.workflow_collaboration_repository import (
+from repositories.workflow.collaboration_repository import (
     _UPDATE_SESSION_GRAPH_ACTIVE_LUA,
     WorkflowCollaborationRepository,
     WorkflowSessionInfo,

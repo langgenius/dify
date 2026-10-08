@@ -2,7 +2,7 @@ import json
 from dataclasses import replace
 from types import SimpleNamespace
 from typing import cast
-from unittest.mock import Mock
+from unittest.mock import create_autospec
 
 import pytest
 from agenton.compositor import CompositorSessionSnapshot
@@ -42,6 +42,10 @@ from services.workflow.execution.adapters.agent_v2.runtime_request_builder impor
     build_shell_layer_config,
 )
 from tests.unit_tests.config_override import apply_config_overrides
+
+
+def _workflow_queries() -> WorkflowToolQueries:
+    return create_autospec(WorkflowToolQueries, instance=True, spec_set=True)
 
 
 @pytest.fixture(autouse=True)
@@ -261,7 +265,7 @@ def test_builds_create_run_request_from_agent_soul_and_node_job(
     context = _context()
     result = WorkflowAgentRuntimeRequestBuilder(
         dify_tools_builder=WorkflowAgentDifyToolsBuilder(
-            tool_providers=tool_providers, workflow_queries=Mock(spec=WorkflowToolQueries)
+            tool_providers=tool_providers, workflow_queries=_workflow_queries()
         )
     ).build(context)
 
@@ -389,7 +393,7 @@ def test_normalizes_langgenius_model_provider_for_agent_backend_transport(tool_p
     )
     result = WorkflowAgentRuntimeRequestBuilder(
         dify_tools_builder=WorkflowAgentDifyToolsBuilder(
-            tool_providers=tool_providers, workflow_queries=Mock(spec=WorkflowToolQueries)
+            tool_providers=tool_providers, workflow_queries=_workflow_queries()
         )
     ).build(context)
 
@@ -440,7 +444,7 @@ def test_builds_workflow_run_request_with_file_output_schema_and_reserved_metada
 
     result = WorkflowAgentRuntimeRequestBuilder(
         dify_tools_builder=WorkflowAgentDifyToolsBuilder(
-            tool_providers=tool_providers, workflow_queries=Mock(spec=WorkflowToolQueries)
+            tool_providers=tool_providers, workflow_queries=_workflow_queries()
         )
     ).build(context)
 
@@ -503,7 +507,7 @@ def test_build_maps_agent_soul_shell_settings_to_shell_layer(tool_providers, mon
 
     result = WorkflowAgentRuntimeRequestBuilder(
         dify_tools_builder=WorkflowAgentDifyToolsBuilder(
-            tool_providers=tool_providers, workflow_queries=Mock(spec=WorkflowToolQueries)
+            tool_providers=tool_providers, workflow_queries=_workflow_queries()
         )
     ).build(context)
 
@@ -829,7 +833,7 @@ def test_build_maps_agent_soul_knowledge_to_knowledge_layer_config(tool_provider
 
     result = WorkflowAgentRuntimeRequestBuilder(
         dify_tools_builder=WorkflowAgentDifyToolsBuilder(
-            tool_providers=tool_providers, workflow_queries=Mock(spec=WorkflowToolQueries)
+            tool_providers=tool_providers, workflow_queries=_workflow_queries()
         )
     ).build(context)
 
@@ -944,7 +948,7 @@ def test_build_knowledge_layer_maps_disabled_score_threshold_to_zero(tool_provid
 
     result = WorkflowAgentRuntimeRequestBuilder(
         dify_tools_builder=WorkflowAgentDifyToolsBuilder(
-            tool_providers=tool_providers, workflow_queries=Mock(spec=WorkflowToolQueries)
+            tool_providers=tool_providers, workflow_queries=_workflow_queries()
         )
     ).build(context)
 
@@ -976,7 +980,7 @@ def test_build_skips_knowledge_layer_when_agent_soul_has_no_sets(tool_providers)
 
     result = WorkflowAgentRuntimeRequestBuilder(
         dify_tools_builder=WorkflowAgentDifyToolsBuilder(
-            tool_providers=tool_providers, workflow_queries=Mock(spec=WorkflowToolQueries)
+            tool_providers=tool_providers, workflow_queries=_workflow_queries()
         )
     ).build(context)
 
@@ -990,7 +994,7 @@ def test_build_passes_saved_session_snapshot_to_agent_backend_request(tool_provi
 
     result = WorkflowAgentRuntimeRequestBuilder(
         dify_tools_builder=WorkflowAgentDifyToolsBuilder(
-            tool_providers=tool_providers, workflow_queries=Mock(spec=WorkflowToolQueries)
+            tool_providers=tool_providers, workflow_queries=_workflow_queries()
         )
     ).build(context)
 
@@ -1011,7 +1015,7 @@ def test_requires_agent_soul_model_config(tool_providers):
     with pytest.raises(WorkflowAgentRuntimeRequestBuildError, match="Agent Soul model"):
         WorkflowAgentRuntimeRequestBuilder(
             dify_tools_builder=WorkflowAgentDifyToolsBuilder(
-                tool_providers=tool_providers, workflow_queries=Mock(spec=WorkflowToolQueries)
+                tool_providers=tool_providers, workflow_queries=_workflow_queries()
             )
         ).build(context)
 
@@ -1037,7 +1041,7 @@ def test_missing_previous_node_output_fails_request_build(tool_providers):
     with pytest.raises(WorkflowAgentRuntimeRequestBuildError) as exc_info:
         WorkflowAgentRuntimeRequestBuilder(
             dify_tools_builder=WorkflowAgentDifyToolsBuilder(
-                tool_providers=tool_providers, workflow_queries=Mock(spec=WorkflowToolQueries)
+                tool_providers=tool_providers, workflow_queries=_workflow_queries()
             )
         ).build(context)
 
@@ -1065,7 +1069,7 @@ def test_invalid_previous_node_output_ref_fails_request_build(tool_providers):
     with pytest.raises(WorkflowAgentRuntimeRequestBuildError) as exc_info:
         WorkflowAgentRuntimeRequestBuilder(
             dify_tools_builder=WorkflowAgentDifyToolsBuilder(
-                tool_providers=tool_providers, workflow_queries=Mock(spec=WorkflowToolQueries)
+                tool_providers=tool_providers, workflow_queries=_workflow_queries()
             )
         ).build(context)
 
@@ -1088,7 +1092,7 @@ def test_empty_declared_outputs_omits_structured_output_layer(tool_providers):
 
     result = WorkflowAgentRuntimeRequestBuilder(
         dify_tools_builder=WorkflowAgentDifyToolsBuilder(
-            tool_providers=tool_providers, workflow_queries=Mock(spec=WorkflowToolQueries)
+            tool_providers=tool_providers, workflow_queries=_workflow_queries()
         )
     ).build(context)
 
@@ -1122,7 +1126,7 @@ def test_array_output_emits_typed_items_per_array_item(tool_providers):
 
     result = WorkflowAgentRuntimeRequestBuilder(
         dify_tools_builder=WorkflowAgentDifyToolsBuilder(
-            tool_providers=tool_providers, workflow_queries=Mock(spec=WorkflowToolQueries)
+            tool_providers=tool_providers, workflow_queries=_workflow_queries()
         )
     ).build(context)
 
@@ -1190,7 +1194,7 @@ def test_mentions_expand_in_soul_and_job_prompts_without_token_leak(tool_provide
 
     result = WorkflowAgentRuntimeRequestBuilder(
         dify_tools_builder=WorkflowAgentDifyToolsBuilder(
-            tool_providers=tool_providers, workflow_queries=Mock(spec=WorkflowToolQueries)
+            tool_providers=tool_providers, workflow_queries=_workflow_queries()
         )
     ).build(context)
 
@@ -1238,7 +1242,7 @@ def test_previous_node_file_output_uses_agent_stub_download_mapping_in_workflow_
 
     result = WorkflowAgentRuntimeRequestBuilder(
         dify_tools_builder=WorkflowAgentDifyToolsBuilder(
-            tool_providers=tool_providers, workflow_queries=Mock(spec=WorkflowToolQueries)
+            tool_providers=tool_providers, workflow_queries=_workflow_queries()
         )
     ).build(context)
 
@@ -1276,7 +1280,7 @@ def test_previous_node_file_mapping_strips_extra_fields_in_workflow_context(tool
 
     result = WorkflowAgentRuntimeRequestBuilder(
         dify_tools_builder=WorkflowAgentDifyToolsBuilder(
-            tool_providers=tool_providers, workflow_queries=Mock(spec=WorkflowToolQueries)
+            tool_providers=tool_providers, workflow_queries=_workflow_queries()
         )
     ).build(context)
 
@@ -1296,7 +1300,7 @@ def test_scalar_previous_node_output_appears_in_workflow_context_section(tool_pr
 
     result = WorkflowAgentRuntimeRequestBuilder(
         dify_tools_builder=WorkflowAgentDifyToolsBuilder(
-            tool_providers=tool_providers, workflow_queries=Mock(spec=WorkflowToolQueries)
+            tool_providers=tool_providers, workflow_queries=_workflow_queries()
         )
     ).build(context)
 
@@ -1317,7 +1321,7 @@ def test_stale_previous_node_refs_are_ignored_when_workflow_prompt_has_no_fronte
 
     result = WorkflowAgentRuntimeRequestBuilder(
         dify_tools_builder=WorkflowAgentDifyToolsBuilder(
-            tool_providers=tool_providers, workflow_queries=Mock(spec=WorkflowToolQueries)
+            tool_providers=tool_providers, workflow_queries=_workflow_queries()
         )
     ).build(context)
 
@@ -1369,7 +1373,7 @@ def test_previous_node_file_array_uses_agent_stub_download_mappings_in_workflow_
 
     result = WorkflowAgentRuntimeRequestBuilder(
         dify_tools_builder=WorkflowAgentDifyToolsBuilder(
-            tool_providers=tool_providers, workflow_queries=Mock(spec=WorkflowToolQueries)
+            tool_providers=tool_providers, workflow_queries=_workflow_queries()
         )
     ).build(context)
 
@@ -1416,7 +1420,7 @@ def test_uploaded_workflow_files_are_included_without_prompt_marker(tool_provide
 
     result = WorkflowAgentRuntimeRequestBuilder(
         dify_tools_builder=WorkflowAgentDifyToolsBuilder(
-            tool_providers=tool_providers, workflow_queries=Mock(spec=WorkflowToolQueries)
+            tool_providers=tool_providers, workflow_queries=_workflow_queries()
         )
     ).build(context)
 
@@ -1460,7 +1464,7 @@ def test_previous_node_remote_url_file_mapping_is_not_truncated_in_workflow_cont
 
     result = WorkflowAgentRuntimeRequestBuilder(
         dify_tools_builder=WorkflowAgentDifyToolsBuilder(
-            tool_providers=tool_providers, workflow_queries=Mock(spec=WorkflowToolQueries)
+            tool_providers=tool_providers, workflow_queries=_workflow_queries()
         )
     ).build(context)
 
@@ -1562,7 +1566,7 @@ def test_workflow_run_request_has_config_layer_with_empty_agent_soul(tool_provid
 
     result = WorkflowAgentRuntimeRequestBuilder(
         dify_tools_builder=WorkflowAgentDifyToolsBuilder(
-            tool_providers=tool_providers, workflow_queries=Mock(spec=WorkflowToolQueries)
+            tool_providers=tool_providers, workflow_queries=_workflow_queries()
         )
     ).build(_context())
 
@@ -1591,7 +1595,7 @@ def test_workflow_run_request_contains_config_layer(tool_providers):
 
     result = WorkflowAgentRuntimeRequestBuilder(
         dify_tools_builder=WorkflowAgentDifyToolsBuilder(
-            tool_providers=tool_providers, workflow_queries=Mock(spec=WorkflowToolQueries)
+            tool_providers=tool_providers, workflow_queries=_workflow_queries()
         )
     ).build(context)
 
@@ -1645,7 +1649,7 @@ def test_workflow_run_request_includes_bound_workspace_skills(tool_providers, mo
 
     result = WorkflowAgentRuntimeRequestBuilder(
         dify_tools_builder=WorkflowAgentDifyToolsBuilder(
-            tool_providers=tool_providers, workflow_queries=Mock(spec=WorkflowToolQueries)
+            tool_providers=tool_providers, workflow_queries=_workflow_queries()
         )
     ).build(context)
 
@@ -1662,7 +1666,7 @@ def test_workflow_runtime_expands_config_mentions_in_agent_soul_prompt(tool_prov
 
     result = WorkflowAgentRuntimeRequestBuilder(
         dify_tools_builder=WorkflowAgentDifyToolsBuilder(
-            tool_providers=tool_providers, workflow_queries=Mock(spec=WorkflowToolQueries)
+            tool_providers=tool_providers, workflow_queries=_workflow_queries()
         )
     ).build(context)
 
@@ -1684,7 +1688,7 @@ def test_workflow_runtime_missing_config_mentions_fall_back_to_label_then_name(t
 
     result = WorkflowAgentRuntimeRequestBuilder(
         dify_tools_builder=WorkflowAgentDifyToolsBuilder(
-            tool_providers=tool_providers, workflow_queries=Mock(spec=WorkflowToolQueries)
+            tool_providers=tool_providers, workflow_queries=_workflow_queries()
         )
     ).build(context)
 

@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from threading import Thread
-from typing import TYPE_CHECKING, Any, Protocol
+from typing import Any, Protocol
 
 from core.app.entities.app_invoke_entities import EasyUIBasedAppGenerateEntity, InvokeFrom
 from core.rag.data_post_processor.data_post_processor import RerankingModelDict, WeightsDict
@@ -12,12 +12,10 @@ from core.rag.entities import DocumentContext, MetadataFilteringCondition, Retri
 from core.rag.models.document import Document
 from core.workflow.nodes.knowledge_retrieval.retrieval import KnowledgeRetrievalRequest, Source
 from graphon.file import File
+from graphon.model_runtime.entities.llm_entities import LLMUsage
 from models.dataset import Dataset
 from models.enums import CreatorUserRole
 from services.entities.external_knowledge_entities.external_knowledge_entities import ExternalKnowledgeApiSetting
-
-if TYPE_CHECKING:
-    from services.knowledge.retrieval.dataset_retrieval import DatasetRetrieval
 
 
 class KnowledgeRetrievalRecords(Protocol):
@@ -78,8 +76,19 @@ class RetrievalReranker(Protocol):
     ) -> list[Document]: ...
 
 
+class DatasetRetriever(Protocol):
+    """Retrieval operations consumed by the workflow execution layer."""
+
+    @property
+    def llm_usage(self) -> LLMUsage: ...
+
+    def set_request_metadata(self, request_metadata: Mapping[str, object] | None) -> None: ...
+
+    def knowledge_retrieval(self, request: KnowledgeRetrievalRequest) -> list[Source]: ...
+
+
 class DatasetRetrievalFactory(Protocol):
-    def __call__(self, application_generate_entity: EasyUIBasedAppGenerateEntity | None = None) -> DatasetRetrieval: ...
+    def __call__(self, application_generate_entity: EasyUIBasedAppGenerateEntity | None = None) -> DatasetRetriever: ...
 
 
 class RetrievalScopeQueries(Protocol):
