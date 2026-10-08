@@ -36,7 +36,9 @@ type CloudPlanItemProps = {
   billing:
     | {
         currentPlan: CloudPlan
+        currentBillingInterval: string
         isEducationDiscountEligible: boolean | undefined
+        isEducationDiscountActivated: boolean
       }
     | undefined
 }
@@ -54,11 +56,12 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
   const planInfo = ALL_PLANS[plan]
   const isCurrent = plan === currentPlan
   const isCurrentPaidPlan = isCurrent && !isFreePlan
+  const isCurrentSubscription =
+    isCurrentPaidPlan && billingInterval === billing?.currentBillingInterval
   const isPlanDisabled =
     !billing ||
-    (!isCurrentPaidPlan &&
-      (billing.isEducationDiscountEligible === undefined ||
-        planInfo.level <= ALL_PLANS[billing.currentPlan].level))
+    (!isCurrentSubscription && billing.isEducationDiscountEligible === undefined) ||
+    (!isCurrentPaidPlan && planInfo.level <= ALL_PLANS[billing.currentPlan].level)
   const isEducationDiscountSupportedPlan = plan === 'professional' && isYearly
   const educationDiscountWarningText =
     canManageBilling &&
@@ -92,7 +95,7 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
 
     setIsPlanActionPending(true)
     try {
-      if (isCurrentPaidPlan) {
+      if (isCurrentSubscription) {
         if (!canManageBilling) {
           toast.error(t(($) => $.buyPermissionDeniedTip, { ns: 'billing' }))
           return
@@ -135,7 +138,7 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
     }
   }
   const handlePlanButtonClick = async () => {
-    if (educationDiscountWarningText && !isPlanDisabled) {
+    if (educationDiscountWarningText && !billing?.isEducationDiscountActivated && !isPlanDisabled) {
       setShowEducationPricingConfirm(true)
       return
     }

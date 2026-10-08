@@ -1,7 +1,5 @@
 """Persist workflow-only Agent resources atomically in their caller's transaction."""
 
-from typing import Any
-
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -33,7 +31,7 @@ class WorkflowAgentCreationRepository:
         account_id: str | None,
         name: str,
         description: str = "",
-        icon_type: Any = None,
+        icon_type: str | None = None,
         icon: str | None = None,
         icon_background: str | None = None,
     ) -> App:
@@ -50,8 +48,7 @@ class WorkflowAgentCreationRepository:
         app.name = name
         app.description = description or ""
         app.mode = AppMode.AGENT
-        normalized_icon_type = getattr(icon_type, "value", icon_type)
-        app.icon_type = IconType(normalized_icon_type) if normalized_icon_type else IconType.EMOJI
+        app.icon_type = IconType(icon_type) if icon_type else IconType.EMOJI
         app.icon = icon
         app.icon_background = icon_background
         app.tenant_id = tenant_id

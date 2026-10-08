@@ -3,11 +3,12 @@ from datetime import datetime
 from http import HTTPStatus
 from inspect import unwrap
 from typing import NamedTuple, override
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, create_autospec, patch
 
 import pytest
 from flask import Flask
 from flask_restx import Api, Resource
+from pydantic import ValidationError
 from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.console.auth.error import (
@@ -145,13 +146,13 @@ def services(monkeypatch: pytest.MonkeyPatch) -> Mock:
     from extensions.ext_application_services import AccountServices, ApplicationServices
     from services.workspace.member_service import WorkspaceInvitationService, WorkspaceOwnerTransferService
 
-    services = Mock(spec=ApplicationServices)
-    services.accounts = Mock(spec=AccountServices)
-    services.workspaces = Mock(spec=WorkspaceServices)
-    services.workspaces.invitations = Mock(spec=WorkspaceInvitationService)
-    services.workspaces.owner_transfer = Mock(spec=WorkspaceOwnerTransferService)
-    services.workspaces.members = Mock(spec=WorkspaceMemberService)
-    services.workspaces.member_queries = Mock(spec=WorkspaceMemberQueryService)
+    services = create_autospec(ApplicationServices, instance=True)
+    services.accounts = create_autospec(AccountServices, instance=True)
+    services.workspaces = create_autospec(WorkspaceServices, instance=True)
+    services.workspaces.invitations = create_autospec(WorkspaceInvitationService, instance=True)
+    services.workspaces.owner_transfer = create_autospec(WorkspaceOwnerTransferService, instance=True)
+    services.workspaces.members = create_autospec(WorkspaceMemberService, instance=True)
+    services.workspaces.member_queries = create_autospec(WorkspaceMemberQueryService, instance=True)
     import importlib
 
     monkeypatch.setattr(
@@ -306,6 +307,24 @@ def test_bulk_invite_serializes_results_and_normalizes_input(app: Flask, service
     services.workspaces.invitations.invite_many.assert_called_once_with(
         context, emails=["a@example.com", "b@example.com", "c@example.com"], language=None, role="normal"
     )
+
+
+@pytest.mark.parametrize(
+    "invalid_email",
+    ["", "invalid-email", "@example.com", "user@", "user@example", "user@example.com\n", "user@example.com\r\n"],
+)
+def test_bulk_invite_rejects_invalid_email_before_inviting(app: Flask, services: Mock, invalid_email: str) -> None:
+    api = MemberInviteEmailApi()
+    with (
+        app.test_request_context(
+            "/", method="POST", json={"emails": ["valid@example.com", invalid_email], "role": "normal"}
+        ),
+        pytest.raises(ValidationError, match="not a valid email") as error,
+    ):
+        unwrap(api.post)(api, RequestContext("request", None, "owner", "workspace"))
+
+    assert error.value.errors()[0]["loc"] == ("emails", 1)
+    services.workspaces.invitations.invite_many.assert_not_called()
 
 
 @pytest.mark.parametrize(("seats", "expected"), [(True, SeatsLimitExceeded), (False, WorkspaceMembersLimitExceeded)])

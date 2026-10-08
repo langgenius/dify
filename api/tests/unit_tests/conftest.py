@@ -6,7 +6,7 @@ from collections.abc import Callable, Iterator
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, create_autospec, patch
 
 import pytest
 from flask import Flask
@@ -54,7 +54,17 @@ from tests.unit_tests.config_override import apply_config_overrides
 
 if TYPE_CHECKING:
     from extensions.application_services.app import AppServices
+    from extensions.application_services.workflow import WorkflowExecutionDependencies
+    from models.annotation_reply import AnnotationReplies
+    from models.human_input_contracts import HumanInputFormFactory
+    from repositories.app.generation_repository import AppGenerationRepository
+    from repositories.tools.provider_repository import ToolProviderRepository
+    from repositories.tools.workflow_repository import WorkflowToolRepository
+    from repositories.workflow.runtime_context_repository import WorkflowRuntimeContextRepository
     from services.tag_application_service import TagApplicationService
+    from services.tools.workflow_tools_manage_service import WorkflowToolManageService
+    from services.workflow.console_variable_service import ConsoleWorkflowVariableService
+    from services.workflow.variable_service import WorkflowVariableService
 
 
 def _patch_redis_clients_on_loaded_modules() -> None:
@@ -78,6 +88,18 @@ def redis_transport(monkeypatch: pytest.MonkeyPatch) -> Iterator[tuple[ext_redis
         wrapper = ext_redis.RedisClientWrapper()
         wrapper.initialize(client)
         yield wrapper, commands
+
+
+@pytest.fixture
+def tenant_queue_commands(
+    redis_transport: tuple[ext_redis.RedisClientWrapper, MagicMock], monkeypatch: pytest.MonkeyPatch
+) -> MagicMock:
+    """Run tenant queue serialization and command building without Redis I/O."""
+    from core.rag.pipeline import queue
+
+    redis, commands = redis_transport
+    monkeypatch.setattr(queue, "redis_client", redis)
+    return commands
 
 
 @pytest.fixture
@@ -107,6 +129,18 @@ def _patch_redis_clients() -> Iterator[None]:
 def reset_redis_mock(_patch_redis_clients: None) -> None:
     """Reset the shared Redis mock after per-test client rebinding."""
     redis_mock.reset_mock()
+    # Restoring a monkeypatched method can leave it detached from the parent's reset traversal.
+    redis_mock.delete.reset_mock()
+    redis_mock.get.reset_mock()
+    redis_mock.setex.reset_mock()
+    redis_mock.setnx.reset_mock()
+    redis_mock.lock.reset_mock()
+    redis_mock.exists.reset_mock()
+    redis_mock.set.reset_mock()
+    redis_mock.expire.reset_mock()
+    redis_mock.hgetall.reset_mock()
+    redis_mock.hdel.reset_mock()
+    redis_mock.incr.reset_mock()
     redis_mock.get.return_value = None
     redis_mock.setex.return_value = None
     redis_mock.setnx.return_value = None
@@ -291,7 +325,6 @@ def account_application_services(
     sqlite_session_factory: sessionmaker[Session], account_domain: AccountDomain
 ) -> ApplicationServices:
     from dataclasses import replace
-    from unittest.mock import Mock
 
     from enums import DeploymentEdition
     from extensions.ext_application_services import build_application_services
@@ -301,7 +334,7 @@ def account_application_services(
         database_client=sqlite_session_factory,
         deployment_edition=DeploymentEdition.COMMUNITY,
         initialization_password="",
-        redis=Mock(spec=RedisClientWrapper),
+        redis=create_autospec(RedisClientWrapper, instance=True),
     )
     return replace(
         services,
@@ -340,35 +373,35 @@ def application_tags(sqlite_session_factory: sessionmaker[Session]) -> TagApplic
 
 
 @pytest.fixture
-def workflow_queries(sqlite_session_factory: sessionmaker[Session]):
+def workflow_queries(sqlite_session_factory: sessionmaker[Session]) -> WorkflowToolRepository:
     from repositories.tools.workflow_repository import WorkflowToolRepository
 
     return WorkflowToolRepository(sqlite_session_factory)
 
 
 @pytest.fixture
-def tool_providers(sqlite_session_factory: sessionmaker[Session]):
+def tool_providers(sqlite_session_factory: sessionmaker[Session]) -> ToolProviderRepository:
     from repositories.tools.provider_repository import ToolProviderRepository
 
     return ToolProviderRepository(sqlite_session_factory)
 
 
 @pytest.fixture
-def workflow_tools(sqlite_session_factory: sessionmaker[Session]):
+def workflow_tools(sqlite_session_factory: sessionmaker[Session]) -> WorkflowToolManageService:
     from extensions.application_services.tools import build_tool_services
 
     return build_tool_services(sqlite_session_factory).workflows
 
 
 @pytest.fixture
-def workflow_variables(sqlite_session_factory: sessionmaker[Session]):
+def workflow_variables(sqlite_session_factory: sessionmaker[Session]) -> WorkflowVariableService:
     from extensions.application_services.workflow_variables import build_workflow_variable_service
 
     return build_workflow_variable_service(database_client=sqlite_session_factory)
 
 
 @pytest.fixture
-def console_workflow_variables(sqlite_session_factory: sessionmaker[Session]):
+def console_workflow_variables(sqlite_session_factory: sessionmaker[Session]) -> ConsoleWorkflowVariableService:
     from extensions.application_services.workflow_variables import (
         build_console_workflow_variables,
         build_workflow_variable_service,
@@ -381,21 +414,21 @@ def console_workflow_variables(sqlite_session_factory: sessionmaker[Session]):
 
 
 @pytest.fixture
-def app_records(sqlite_session_factory: sessionmaker[Session]):
+def app_records(sqlite_session_factory: sessionmaker[Session]) -> AppGenerationRepository:
     from repositories.app.generation_repository import AppGenerationRepository
 
     return AppGenerationRepository(sqlite_session_factory)
 
 
 @pytest.fixture
-def annotation_replies(sqlite_session_factory: sessionmaker[Session]):
+def annotation_replies(sqlite_session_factory: sessionmaker[Session]) -> AnnotationReplies:
     from extensions.application_services.annotation import build_annotation_replies
 
     return build_annotation_replies(sqlite_session_factory)
 
 
 @pytest.fixture
-def human_forms(sqlite_session_factory):
+def human_forms(sqlite_session_factory: sessionmaker[Session]) -> HumanInputFormFactory:
     from functools import partial
 
     from repositories.human_input.form_repository import HumanInputFormRepositoryImpl
@@ -404,14 +437,14 @@ def human_forms(sqlite_session_factory):
 
 
 @pytest.fixture
-def workflow_contexts(sqlite_session_factory: sessionmaker[Session]):
+def workflow_contexts(sqlite_session_factory: sessionmaker[Session]) -> WorkflowRuntimeContextRepository:
     from repositories.workflow.runtime_context_repository import WorkflowRuntimeContextRepository
 
     return WorkflowRuntimeContextRepository(sqlite_session_factory)
 
 
 @pytest.fixture
-def workflow_runtime(sqlite_session_factory: sessionmaker[Session]):
+def workflow_runtime(sqlite_session_factory: sessionmaker[Session]) -> WorkflowExecutionDependencies:
     from extensions.application_services.workflow import build_workflow_execution_dependencies
 
     return build_workflow_execution_dependencies(sqlite_session_factory)

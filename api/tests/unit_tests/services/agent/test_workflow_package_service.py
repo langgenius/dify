@@ -486,15 +486,14 @@ def test_resource_io_runs_without_database_transactions(
         assert not sqlite_session.in_transaction()
         assert pool.checkedout() == 0
 
-    def load_legacy_skill(*, tenant_id: str, file_id: str) -> bytes:
-        assert tenant_id == "tenant-1"
-        assert file_id
+    def load_legacy_skill(storage_key: str) -> bytes:
+        assert storage_key == "tools/workspace.zip"
         before_io()
-        return storage.files["tools/workspace.zip"]
+        return storage.files[storage_key]
 
     monkeypatch.setattr(
-        "services.skill_management_service.SkillManagementService._load_tool_file_bytes",
-        staticmethod(load_legacy_skill),
+        "services.skill_management_service.storage.load_once",
+        load_legacy_skill,
     )
     load_stream = storage.load_stream
     save = storage.save

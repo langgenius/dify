@@ -181,7 +181,7 @@ const Editor: FC<Props> = ({
                     render={
                       <button
                         type="button"
-                        className="flex size-4 shrink-0 items-center justify-center rounded-sm p-px outline-hidden hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
+                        className="flex size-4 shrink-0 items-center justify-center rounded-sm p-px hover:bg-state-base-hover"
                       >
                         <span
                           aria-hidden
@@ -229,7 +229,7 @@ const Editor: FC<Props> = ({
                         render={
                           <button
                             type="button"
-                            className="flex h-4 w-7 items-center justify-center rounded-sm outline-hidden hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
+                            className="flex h-4 w-7 items-center justify-center rounded-sm hover:bg-state-base-hover"
                           >
                             <span
                               aria-hidden

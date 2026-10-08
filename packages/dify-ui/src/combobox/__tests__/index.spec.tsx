@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { userEvent } from 'vite-plus/test/browser'
+import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import {
   Combobox,
@@ -277,6 +277,59 @@ describe('Combobox wrappers', () => {
   })
 
   describe('Popup anatomy and options', () => {
+    it('should keep the popup input visible and scroll the list in a short viewport', async () => {
+      const popupRef = React.createRef<HTMLDivElement>()
+      const longOptions = Array.from({ length: 30 }, (_, index) => `Resource ${index + 1}`)
+      const originalViewport = {
+        height: window.innerHeight,
+        width: window.innerWidth,
+      }
+
+      await page.viewport(800, 360)
+
+      try {
+        const screen = await render(
+          <div style={{ padding: 16 }}>
+            <Combobox open items={longOptions}>
+              <ComboboxTrigger aria-label="Resource">Choose resource</ComboboxTrigger>
+              <ComboboxPortal>
+                <ComboboxPositioner>
+                  <ComboboxPopup ref={popupRef} aria-label="Choose a resource">
+                    <ComboboxInput aria-label="Filter resources" />
+                    <ComboboxList<string>>
+                      {(item) => (
+                        <ComboboxItem key={item} value={item}>
+                          {item}
+                        </ComboboxItem>
+                      )}
+                    </ComboboxList>
+                  </ComboboxPopup>
+                </ComboboxPositioner>
+              </ComboboxPortal>
+            </Combobox>
+          </div>,
+        )
+
+        const input = screen.getByRole('combobox', { name: 'Filter resources' })
+        const list = screen.getByRole('listbox')
+        await expect.element(list).toBeVisible()
+        await vi.waitFor(() => {
+          const popupBounds = popupRef.current!.getBoundingClientRect()
+          const inputBounds = input.element().getBoundingClientRect()
+
+          expect(window.innerHeight).toBe(360)
+          expect(popupBounds.top).toBeGreaterThanOrEqual(0)
+          expect(popupBounds.bottom).toBeLessThanOrEqual(window.innerHeight)
+          expect(inputBounds.top).toBeGreaterThanOrEqual(popupBounds.top)
+          expect(inputBounds.bottom).toBeLessThanOrEqual(popupBounds.bottom)
+          expect(list.element().scrollHeight).toBeGreaterThan(list.element().clientHeight)
+          expect(popupRef.current!.scrollHeight).toBeLessThanOrEqual(popupRef.current!.clientHeight)
+        })
+      } finally {
+        await page.viewport(originalViewport.width, originalViewport.height)
+      }
+    })
+
     it('should render source objects while exposing primitive selected values', async () => {
       const onValueChange = vi.fn()
       const screen = await render(

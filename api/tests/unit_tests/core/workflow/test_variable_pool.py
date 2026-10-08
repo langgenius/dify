@@ -40,7 +40,7 @@ from models.utils.file_input_compat import rebuild_serialized_graph_files_withou
 
 
 @pytest.fixture
-def pool():
+def pool() -> VariablePool:
     variable_pool = VariablePool()
     add_variables_to_pool(
         variable_pool,
@@ -54,7 +54,7 @@ def pool():
 
 
 @pytest.fixture
-def file():
+def file() -> File:
     return File(
         file_type=FileType.DOCUMENT,
         transfer_method=FileTransferMethod.LOCAL_FILE,
@@ -65,7 +65,7 @@ def file():
     )
 
 
-def test_get_file_attribute(pool, file):
+def test_get_file_attribute(pool: VariablePool, file: File) -> None:
     # Add a FileSegment to the pool
     pool.add(("node_1", "file_var"), FileSegment(value=file))
 
@@ -80,7 +80,7 @@ def test_get_file_attribute(pool, file):
     assert result is None
 
 
-def test_add_node_inputs_to_pool_stores_inputs_under_aliases():
+def test_add_node_inputs_to_pool_stores_inputs_under_aliases() -> None:
     pool = VariablePool()
 
     add_node_inputs_to_pool(
@@ -100,7 +100,7 @@ def test_add_node_inputs_to_pool_stores_inputs_under_aliases():
 
 
 class TestVariablePool:
-    def test_constructor(self):
+    def test_constructor(self) -> None:
         pool = VariablePool()
         assert pool.variable_dictionary == defaultdict(dict)
 
@@ -128,7 +128,7 @@ class TestVariablePool:
         assert pool.get([ENVIRONMENT_VARIABLE_NODE_ID, "env_var_1"]) is not None
         assert pool.get([CONVERSATION_VARIABLE_NODE_ID, "conv_var_1"]) is not None
 
-    def test_from_bootstrap_loads_legacy_bootstrap_kwargs(self):
+    def test_from_bootstrap_loads_legacy_bootstrap_kwargs(self) -> None:
         pool = VariablePool.from_bootstrap(
             system_variables=build_system_variables(user_id="test_user_id"),
             environment_variables=[StringVariable(name="env_var", value="env-value")],
@@ -148,7 +148,7 @@ class TestVariablePool:
         assert conversation_value.value == "conv-value"
         assert "system_variables" not in pool.model_dump()
 
-    def test_get_system_variables(self):
+    def test_get_system_variables(self) -> None:
         sys_var = build_system_variables(
             user_id="test_user_id",
             app_id="test_app_id",
@@ -189,7 +189,7 @@ class TestVariablePoolSerialization:
     _NODE2_ID = "node_2"
     _NODE3_ID = "node_3"
 
-    def _create_pool_without_file(self):
+    def _create_pool_without_file(self) -> VariablePool:
         # Create comprehensive system variables
         system_vars = build_system_variables(
             user_id="test_user_id",
@@ -284,7 +284,7 @@ class TestVariablePoolSerialization:
         add_variables_to_pool(pool, conv_vars)
         return pool
 
-    def _add_node_data_to_pool(self, pool: VariablePool, with_file=False):
+    def _add_node_data_to_pool(self, pool: VariablePool, with_file: bool = False) -> None:
         test_file = File(
             file_type=FileType.DOCUMENT,
             transfer_method=FileTransferMethod.LOCAL_FILE,
@@ -311,7 +311,7 @@ class TestVariablePoolSerialization:
             pool.add((self._NODE2_ID, "array_file"), ArrayFileSegment(value=[test_file]))
         pool.add((self._NODE2_ID, "array_any"), ArrayAnySegment(value=["mixed", 123, {"key": "value"}]))
 
-    def test_system_variables(self):
+    def test_system_variables(self) -> None:
         sys_vars = build_system_variables(
             user_id="test_user_id",
             app_id="test_app_id",
@@ -332,14 +332,14 @@ class TestVariablePoolSerialization:
             pool2 = VariablePool.model_validate(dict_)
             assert pool2.variable_dictionary == pool.variable_dictionary
 
-    def test_pool_without_file_vars(self):
+    def test_pool_without_file_vars(self) -> None:
         pool = self._create_pool_without_file()
         json = pool.model_dump_json()
         pool2 = pool.model_validate_json(json)
         assert pool2.variable_dictionary == pool.variable_dictionary
         assert pool2 == pool
 
-    def test_basic_dictionary_round_trip(self):
+    def test_basic_dictionary_round_trip(self) -> None:
         """Test basic round-trip serialization: model_dump() → model_validate()"""
         # Create a comprehensive VariablePool with all data types
         original_pool = self._create_pool_without_file()
@@ -358,7 +358,7 @@ class TestVariablePoolSerialization:
         # Verify data integrity is preserved
         self._assert_pools_equal(original_pool, reconstructed_pool)
 
-    def test_json_round_trip(self):
+    def test_json_round_trip(self) -> None:
         """Test JSON round-trip serialization: model_dump_json() → model_validate_json()"""
         # Create a comprehensive VariablePool with all data types
         original_pool = self._create_pool_without_file()
@@ -377,7 +377,7 @@ class TestVariablePoolSerialization:
         # Verify data integrity is preserved
         self._assert_pools_equal(original_pool, reconstructed_pool)
 
-    def test_complex_data_serialization(self):
+    def test_complex_data_serialization(self) -> None:
         """Test file-aware VariablePool round-trips through Dify's model boundary."""
         original_pool = self._create_pool_without_file()
         self._add_node_data_to_pool(original_pool, with_file=True)
@@ -396,7 +396,7 @@ class TestVariablePoolSerialization:
         self._assert_pools_equal(reconstructed_dict, reconstructed_json)
         # TODO: assert the data for file object...
 
-    def _assert_pools_equal(self, pool1: VariablePool, pool2: VariablePool):
+    def _assert_pools_equal(self, pool1: VariablePool, pool2: VariablePool) -> None:
         """Assert that two VariablePools contain equivalent data"""
 
         assert pool1.variable_dictionary == pool2.variable_dictionary
@@ -428,7 +428,7 @@ class TestVariablePoolSerialization:
                 # Value types should be the same (more important than exact class type)
                 assert val1.value_type == val2.value_type
 
-    def test_variable_pool_deserialization_default_dict(self):
+    def test_variable_pool_deserialization_default_dict(self) -> None:
         variable_pool = VariablePool(
             variable_dictionary=defaultdict(dict),
         )
@@ -455,7 +455,7 @@ class TestVariablePoolSerialization:
         loaded.add(["non_exist_node", "a"], 1)
 
 
-def test_get_attr():
+def test_get_attr() -> None:
     vp = VariablePool()
     value = {"output": StringSegment(value="hello")}
 

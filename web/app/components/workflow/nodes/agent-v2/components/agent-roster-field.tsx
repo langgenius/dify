@@ -222,7 +222,7 @@ function AgentRosterDrawer({
                             aria-label={t(($) => $[`${i18nPrefix}.roster.more`], {
                               ns: 'workflowAgent',
                             })}
-                            className="flex size-6 cursor-pointer items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-popup-open:bg-state-base-hover"
+                            className="flex size-6 cursor-pointer items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover data-popup-open:bg-state-base-hover"
                           >
                             <span aria-hidden className="i-ri-more-fill size-4" />
                           </DropdownMenuTrigger>
@@ -444,7 +444,7 @@ export function AgentRosterField({
                 type="button"
                 disabled={isPending}
                 className={cn(
-                  'flex h-6 shrink-0 cursor-pointer items-center justify-center rounded-md px-1.5 py-1 system-xs-medium text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
+                  'flex h-6 shrink-0 cursor-pointer items-center justify-center rounded-md px-1.5 py-1 system-xs-medium text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
                   isPending &&
                     'cursor-not-allowed opacity-50 hover:bg-transparent hover:text-text-tertiary',
                 )}

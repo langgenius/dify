@@ -1,0 +1,63 @@
+id: no-spec-mock
+language: python
+severity: error
+message: Use a real instance or a concrete test fake instead of a spec-based mock.
+rule:
+  all:
+    - pattern: $CALLEE($$$ARGS)
+    # Inspect direct arguments only; nested calls may have unrelated spec keywords.
+    - has:
+        field: arguments
+        has:
+          any:
+            - all:
+                - kind: keyword_argument
+                - has:
+                    field: name
+                    regex: ^spec(_set)?$
+            - all:
+                - kind: dictionary_splat
+                - has:
+                    kind: dictionary
+                    has:
+                      kind: pair
+                      has:
+                        field: key
+                        regex: ^['"]spec(_set)?['"]$
+            - not:
+                any:
+                  - kind: keyword_argument
+                  - kind: dictionary_splat
+                  - kind: comment
+                  - regex: '^[(),]$'
+    - any:
+        - has:
+            field: function
+            regex: '(^|\.)(Mock|MagicMock|AsyncMock|NonCallableMock|NonCallableMagicMock)$'
+        - inside:
+            kind: module
+            stopBy: end
+            has:
+              stopBy: end
+              all:
+                - pattern:
+                    context: from unittest.mock import $ORIGINAL as $CALLEE
+                    selector: aliased_import
+                - has:
+                    field: name
+                    regex: '^(Mock|MagicMock|AsyncMock|NonCallableMock|NonCallableMagicMock)$'
+                - inside:
+                    kind: import_from_statement
+                    has:
+                      field: module_name
+                      regex: '^unittest\.mock$'
+        - inside:
+            kind: module
+            stopBy: end
+            has:
+              stopBy: end
+              all:
+                - pattern: $CALLEE = $ORIGINAL
+                - has:
+                    field: right
+                    regex: '(^|\.)(Mock|MagicMock|AsyncMock|NonCallableMock|NonCallableMagicMock)$'
