@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { createInstance } from 'i18next'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { initReactI18next } from 'react-i18next'
+import { trackEvent } from '@/app/components/base/amplitude'
 import commonTranslations from '@/i18n/locales/en-US/common.json'
 import deploymentTranslations from '@/i18n/locales/en-US/deployments.json'
 import { seedCurrentWorkspaceQuery } from '@/test/console/current-workspace'
@@ -14,6 +15,7 @@ import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console
 import IpPoliciesPage from '..'
 
 vi.unmock('react-i18next')
+vi.mock('@/app/components/base/amplitude', () => ({ trackEvent: vi.fn() }))
 
 describe('IpPoliciesPage', () => {
   beforeEach(async () => {
@@ -78,6 +80,15 @@ describe('IpPoliciesPage', () => {
       await user.keyboard('{Enter}')
 
       const dialog = screen.getByRole('dialog', { name: 'Internal Network' })
+      expect(trackEvent).toHaveBeenCalledWith('ip_policy_interaction', {
+        action: 'settings_tab_viewed',
+      })
+      expect(trackEvent).toHaveBeenCalledWith('ip_policy_interaction', {
+        action: 'form_opened',
+        mode: 'view',
+        source: 'list_row',
+        policy_id: 'group-1',
+      })
       expect(within(dialog).getByText('203.0.113.42/32')).toBeInTheDocument()
       expect(within(dialog).getByText('198.51.100.0/24')).toBeInTheDocument()
       expect(within(dialog).getByText('2001:db8::/32')).toBeInTheDocument()
@@ -214,6 +225,113 @@ describe('IpPoliciesPage', () => {
       name: 'Confirmed',
       expected_version: 2,
     })
+  })
+
+  it('accumulates all validation errors through a conflict retry and resets them on reopen', async () => {
+    const user = userEvent.setup()
+    const group = createNetworkAccessGroupFixture({ allowed_cidrs: ['10.0.0.0/8'] })
+    const queryClient = createConsoleQueryClient()
+    seedNetworkAccessGroups(queryClient, { groups: [group] })
+    let saves = 0
+    vi.mocked(globalThis.fetch).mockImplementation(async (input, init) => {
+      const request = new Request(input, init)
+      if (request.url.endsWith('/current-ip')) return Response.json({ client_ip: '203.0.113.42' })
+      if (request.method === 'PUT') {
+        saves += 1
+        return saves === 1
+          ? Response.json({ code: 'network_access_conflict' }, { status: 409 })
+          : Response.json({ group, entitled: true })
+      }
+      return Response.json({
+        tenant_id: 'workspace-1',
+        entitled: true,
+        groups: [{ ...group, version: 2 }],
+      })
+    })
+    renderWithConsoleQuery(
+      <NuqsTestingAdapter>
+        <IpPoliciesPage />
+      </NuqsTestingAdapter>,
+      {
+        queryClient,
+        systemFeatures: { deployment_edition: 'CLOUD' },
+      },
+    )
+    await user.click(screen.getByRole('button', { name: 'Internal Network' }))
+    const entry = screen.getByPlaceholderText('10.0.0.0/8')
+    for (const invalid of [
+      '256.1.1.1',
+      '01.1.1.1',
+      'gg::1',
+      '10.0.0.1/x',
+      '10.0.0.1/33',
+      '10.0.0.1/1/2',
+      'invalid',
+      '256.1.1.1',
+    ]) {
+      await user.clear(entry)
+      await user.paste(invalid)
+      expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
+    }
+    await user.clear(entry)
+    await user.paste('10.0.0.0/8')
+    const validationErrors = [
+      'octet_out_of_range',
+      'leading_zero',
+      'invalid_ipv6',
+      'prefix_not_number',
+      'prefix_out_of_range',
+      'multiple_slash',
+      'unsupported_format',
+    ]
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() =>
+      expect(trackEvent).toHaveBeenCalledWith('ip_policy_save', {
+        mode: 'edit',
+        source: 'list_row',
+        policy_id: 'group-1',
+        entry_count: 1,
+        validation_error_types: validationErrors,
+        result: 'failed',
+        fail_reason: 'other',
+      }),
+    )
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Save' })).not.toHaveAttribute(
+        'aria-disabled',
+        'true',
+      ),
+    )
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() =>
+      expect(trackEvent).toHaveBeenCalledWith('ip_policy_save', {
+        mode: 'edit',
+        source: 'list_row',
+        policy_id: 'group-1',
+        entry_count: 1,
+        validation_error_types: validationErrors,
+        result: 'success',
+      }),
+    )
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await user.click(screen.getByRole('button', { name: 'Internal Network' }))
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() =>
+      expect(trackEvent).toHaveBeenCalledWith('ip_policy_save', {
+        mode: 'edit',
+        source: 'list_row',
+        policy_id: 'group-1',
+        entry_count: 1,
+        validation_error_types: [],
+        result: 'success',
+      }),
+    )
+    expect(
+      vi.mocked(trackEvent).mock.calls.filter(([event]) => event === 'ip_policy_save'),
+    ).toHaveLength(3)
+    expect(
+      vi.mocked(trackEvent).mock.calls.filter(([, props]) => props?.action === 'form_opened'),
+    ).toHaveLength(2)
   })
 
   it('offers a retry when conflict recovery cannot reload the policy', async () => {
@@ -580,6 +698,17 @@ describe('IpPoliciesPage', () => {
       expect(within(dialog).queryByText(/Still used by/)).not.toBeInTheDocument()
       await user.click(within(dialog).getByRole('button', { name: button }))
 
+      expect(
+        vi
+          .mocked(trackEvent)
+          .mock.calls.filter(([, props]) => String(props?.action).startsWith('delete_')),
+      ).toEqual([
+        ['ip_policy_interaction', { action: 'delete_attempted', policy_id: 'group-1' }],
+        ...(button === 'Cancel'
+          ? [['ip_policy_interaction', { action: 'delete_cancelled', policy_id: 'group-1' }]]
+          : []),
+      ])
+
       await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
       expect(screen.getByRole('button', { name: 'Internal Network' })).toBeInTheDocument()
       expect(globalThis.fetch).not.toHaveBeenCalled()
@@ -591,7 +720,7 @@ describe('IpPoliciesPage', () => {
     async (succeeds) => {
       const user = userEvent.setup()
       const queryClient = createConsoleQueryClient()
-      const group = createNetworkAccessGroupFixture({ version: 7 })
+      const group = createNetworkAccessGroupFixture({ version: 7, used_by_count: 2 })
       seedNetworkAccessGroups(queryClient, { groups: [group] })
       let resolveDeletion!: (response: Response) => void
       const deletion = new Promise<Response>((resolve) => {
@@ -629,6 +758,17 @@ describe('IpPoliciesPage', () => {
       expect(dialog).toBeInTheDocument()
       expect(deleteRequests).toHaveLength(1)
       expect(deleteRequests[0]?.url).toContain('group-1?expected_version=7')
+      expect(
+        vi
+          .mocked(trackEvent)
+          .mock.calls.filter(([, props]) => String(props?.action).startsWith('delete_')),
+      ).toEqual([
+        ['ip_policy_interaction', { action: 'delete_attempted', policy_id: 'group-1' }],
+        [
+          'ip_policy_interaction',
+          { action: 'delete_confirmed', policy_id: 'group-1', referenced_app_count: 2 },
+        ],
+      ])
 
       await act(async () => {
         resolveDeletion(

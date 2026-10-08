@@ -1,6 +1,7 @@
 'use client'
 
 import type { NetworkAccessGroupResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { IpPolicyFormSession } from './policy-form-analytics'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
@@ -18,6 +19,7 @@ import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
 import { AllowlistField } from './allowlist-field'
 import { createAllowlistRow } from './allowlist-row'
+import { recordPolicyValidation } from './policy-form-analytics'
 import { PolicyReferencedApps } from './referenced-apps'
 import {
   canSubmitIpPolicy,
@@ -31,6 +33,7 @@ type IpPolicyDialogSubmit = {
 }
 
 type IpPolicyDialogProps = {
+  analyticsSession?: IpPolicyFormSession
   open: boolean
   mode: 'create' | 'edit' | 'view'
   currentIp?: string
@@ -46,6 +49,7 @@ type IpPolicyDialogProps = {
 }
 
 export function IpPolicyDialog({
+  analyticsSession,
   open,
   mode,
   currentIp,
@@ -195,7 +199,14 @@ export function IpPolicyDialog({
               onRetryCurrentIp={() => {
                 void currentIpQuery.refetch()
               }}
-              onEntriesChange={setEntries}
+              onEntriesChange={(nextEntries) => {
+                if (analyticsSession)
+                  recordPolicyValidation(
+                    analyticsSession,
+                    nextEntries.map((entry) => entry.value),
+                  )
+                setEntries(nextEntries)
+              }}
             />
 
             {mode === 'edit' && usedByCount > 0 && (

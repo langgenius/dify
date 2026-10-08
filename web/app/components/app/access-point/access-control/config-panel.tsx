@@ -5,6 +5,7 @@ import type { FormEvent } from 'react'
 import type { AccessControlDraft, AccessControlPolicy } from './draft'
 import type { AccessControlAppIcon } from './index'
 import type { AccessPoint } from '@/app/components/app/deploy/utils/access-point'
+import type { AccessControlAnalyticsContext } from '@/features/network-access/analytics'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
@@ -12,11 +13,13 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { PopoverClose, PopoverDescription, PopoverTitle } from '@langgenius/dify-ui/popover'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
+import { trackNetworkAccessEvent } from '@/features/network-access/analytics'
 import { canSaveAccessControl, hasSelectedAccessPoint } from './draft'
 import { AccessControlPolicyField } from './policy-field'
 import { AccessControlScopeList } from './scope-list'
 
 type AccessControlConfigPanelProps = {
+  analyticsContext?: AccessControlAnalyticsContext
   draft: AccessControlDraft
   policies: readonly AccessControlPolicy[]
   ipCheck?: NetworkAccessGroupCurrentIpCheckResponse
@@ -40,6 +43,7 @@ type AccessControlConfigPanelProps = {
 }
 
 export function AccessControlConfigPanel({
+  analyticsContext,
   draft,
   policies,
   ipCheck,
@@ -142,6 +146,12 @@ export function AccessControlConfigPanel({
             onManagePolicies={onManagePolicies}
             onSelectPolicy={(policyId) => {
               if (readOnly) return
+              if (analyticsContext)
+                trackNetworkAccessEvent('access_control_interaction', {
+                  ...analyticsContext,
+                  action: 'policy_selected',
+                  policy_id: policyId,
+                })
               onDraftChange({ ...draft, selectedPolicyId: policyId })
             }}
           />

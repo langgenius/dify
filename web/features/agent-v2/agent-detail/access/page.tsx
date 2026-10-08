@@ -60,6 +60,7 @@ export function AgentAccessPage({ agentId }: AgentAccessPageProps) {
         {agent?.app_id && !agent.hidden_app_backed && capabilities.canViewAccessPoint && (
           <AccessControlEntry
             appId={agent.app_id}
+            appMode="agent"
             isPublished={agent.access_ready === true}
             appIcon={{
               iconType:

@@ -1,11 +1,12 @@
 'use client'
 
 import type { NetworkAccessGroupResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { IpPolicyFormSession } from './policy-form-analytics'
 import { Button } from '@langgenius/dify-ui/button'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useQueryState } from 'nuqs'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getNetworkAccessErrorStatus } from '@/app/components/app/access-point/access-control/network-access'
 import { SkeletonContainer, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
@@ -13,12 +14,14 @@ import {
   pricingQueryParamName,
   pricingQueryParser,
 } from '@/app/components/billing/pricing/query-params'
+import { getIpPolicyFailReason, trackNetworkAccessEvent } from '@/features/network-access/analytics'
 import {
   canManageNetworkAccessPoliciesAtom,
   canReadNetworkAccessAtom,
 } from '@/features/network-access/permissions'
 import { consoleQuery } from '@/service/console'
 import { IpPolicyDialog } from './policy-dialog'
+import { startIpPolicyForm } from './policy-form-analytics'
 import {
   policyActionsColClassName,
   policyIpEntriesColClassName,
@@ -29,10 +32,11 @@ import {
   policyUsedByColClassName,
 } from './policy-item'
 
-type DialogState =
+type DialogRequest =
   | { mode: 'create' }
   | { mode: 'edit' | 'view'; group: NetworkAccessGroupResponse }
   | null
+type DialogState = (NonNullable<DialogRequest> & { analytics: IpPolicyFormSession }) | null
 
 function IpPoliciesListSkeleton() {
   const { t } = useTranslation(['common', 'deployments'])
@@ -82,12 +86,32 @@ export default function IpPoliciesPage() {
   const canMutate = canManagePolicies && entitled
   const selectedGroup = dialogState && dialogState.mode !== 'create' ? dialogState.group : null
   const isSaving = createGroup.isPending || updateGroup.isPending
+  const viewedRef = useRef(false)
+  useEffect(() => {
+    if (!canReadPolicies || viewedRef.current) return
+    viewedRef.current = true
+    trackNetworkAccessEvent('ip_policy_interaction', { action: 'settings_tab_viewed' })
+  }, [canReadPolicies])
 
-  const openDialog = (next: DialogState) => {
+  const openDialog = (
+    next: DialogRequest,
+    source: 'list_add_button' | 'list_row' | 'list_row_menu' = 'list_row',
+  ) => {
     dialogSessionRef.current += 1
     setIsRecovering(false)
     setRecoveryError(false)
-    setDialogState(next)
+    setDialogState(
+      next
+        ? {
+            ...next,
+            analytics: startIpPolicyForm({
+              mode: next.mode,
+              source,
+              ...(next.mode === 'create' ? {} : { policy_id: next.group.id }),
+            }),
+          }
+        : null,
+    )
   }
 
   const refreshGroupsAfterConflict = async (groupId: string, session: number) => {
@@ -101,7 +125,7 @@ export default function IpPoliciesPage() {
       setDialogState((current) =>
         current?.mode === 'edit' && current.group.id === groupId
           ? nextGroup
-            ? { mode: 'edit', group: nextGroup }
+            ? { ...current, group: nextGroup }
             : null
           : current,
       )
@@ -118,7 +142,7 @@ export default function IpPoliciesPage() {
       void setPricing('open')
       return
     }
-    openDialog({ mode: 'create' })
+    openDialog({ mode: 'create' }, 'list_add_button')
   }
 
   if (!canReadPolicies) return null
@@ -184,7 +208,7 @@ export default function IpPoliciesPage() {
               onView={(group) => openDialog({ mode: canMutate ? 'edit' : 'view', group })}
               onEdit={(group) => {
                 if (!canMutate) return
-                openDialog({ mode: 'edit', group })
+                openDialog({ mode: 'edit', group }, 'list_row_menu')
               }}
             />
           ))}
@@ -193,6 +217,7 @@ export default function IpPoliciesPage() {
 
       {dialogState && (dialogState.mode !== 'create' || canMutate) && (
         <IpPolicyDialog
+          analyticsSession={dialogState.analytics}
           key={selectedGroup ? `${selectedGroup.id}:${selectedGroup.version}` : 'create'}
           mode={canMutate ? dialogState.mode : 'view'}
           open
@@ -219,44 +244,77 @@ export default function IpPoliciesPage() {
             )
               return
             const session = dialogSessionRef.current
+            const analytics = {
+              ...dialogState.analytics.context,
+              mode: dialogState.mode,
+              entry_count: payload.allowed_cidrs.length,
+              validation_error_types: [...dialogState.analytics.validationErrors],
+            }
+            const trackFailure = async (error: unknown) => {
+              trackNetworkAccessEvent('ip_policy_save', {
+                ...analytics,
+                result: 'failed',
+                fail_reason: await getIpPolicyFailReason(error),
+              })
+            }
             if (selectedGroup) {
-              updateGroup.mutate(
+              void updateGroup
+                .mutateAsync(
+                  {
+                    params: { group_id: selectedGroup.id },
+                    body: {
+                      name: payload.name,
+                      description: selectedGroup.description ?? '',
+                      allowed_cidrs: payload.allowed_cidrs,
+                      expected_version: selectedGroup.version,
+                    },
+                  },
+                  {
+                    onSuccess: () => {
+                      if (dialogSessionRef.current === session) openDialog(null)
+                    },
+                    onError: (error) => {
+                      if (getNetworkAccessErrorStatus(error) !== 409) return
+                      void refreshGroupsAfterConflict(selectedGroup.id, session)
+                    },
+                  },
+                )
+                .then(
+                  (data) =>
+                    trackNetworkAccessEvent('ip_policy_save', {
+                      ...analytics,
+                      result: 'success',
+                      policy_id: data.group.id,
+                    }),
+                  trackFailure,
+                )
+              return
+            }
+
+            void createGroup
+              .mutateAsync(
                 {
-                  params: { group_id: selectedGroup.id },
                   body: {
                     name: payload.name,
-                    description: selectedGroup.description ?? '',
+                    description: '',
                     allowed_cidrs: payload.allowed_cidrs,
-                    expected_version: selectedGroup.version,
                   },
                 },
                 {
                   onSuccess: () => {
                     if (dialogSessionRef.current === session) openDialog(null)
                   },
-                  onError: (error) => {
-                    if (getNetworkAccessErrorStatus(error) !== 409) return
-                    void refreshGroupsAfterConflict(selectedGroup.id, session)
-                  },
                 },
               )
-              return
-            }
-
-            createGroup.mutate(
-              {
-                body: {
-                  name: payload.name,
-                  description: '',
-                  allowed_cidrs: payload.allowed_cidrs,
-                },
-              },
-              {
-                onSuccess: () => {
-                  if (dialogSessionRef.current === session) openDialog(null)
-                },
-              },
-            )
+              .then(
+                (data) =>
+                  trackNetworkAccessEvent('ip_policy_save', {
+                    ...analytics,
+                    result: 'success',
+                    policy_id: data.group.id,
+                  }),
+                trackFailure,
+              )
           }}
         />
       )}

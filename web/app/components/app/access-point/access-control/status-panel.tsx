@@ -3,6 +3,7 @@
 import type { AccessControlDraft, AccessControlPolicy } from './draft'
 import type { AccessControlAppIcon } from './index'
 import type { AccessPoint } from '@/app/components/app/deploy/utils/access-point'
+import type { AccessControlAnalyticsContext } from '@/features/network-access/analytics'
 import {
   AlertDialog,
   AlertDialogCancelButton,
@@ -21,6 +22,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { splitPolicySummary } from '@/app/components/header/account-setting/ip-policies-page/validate-ip-entry'
+import { trackNetworkAccessEvent } from '@/features/network-access/analytics'
 import { getInServiceCoverage } from './chip-status'
 
 const SCOPE_ICONS: Record<Exclude<AccessPoint, 'webApp'>, string> = {
@@ -30,6 +32,7 @@ const SCOPE_ICONS: Record<Exclude<AccessPoint, 'webApp'>, string> = {
 }
 
 type AccessControlStatusPanelProps = {
+  analyticsContext: AccessControlAnalyticsContext
   draft: AccessControlDraft
   appIcon: AccessControlAppIcon
   availableAccessPoints: readonly AccessPoint[]
@@ -42,6 +45,7 @@ type AccessControlStatusPanelProps = {
 }
 
 export function AccessControlStatusPanel({
+  analyticsContext,
   draft,
   appIcon,
   availableAccessPoints,
@@ -64,6 +68,16 @@ export function AccessControlStatusPanel({
     trigger: t(($) => $['settings.trigger'], { ns: 'navigation' }),
   }
   const policyName = selectedPolicy?.name
+  const trackToggle = (
+    action: 'turned_on' | 'turn_off_attempted' | 'turn_off_confirmed' | 'turn_off_cancelled',
+  ) => {
+    if (draft.selectedPolicyId)
+      trackNetworkAccessEvent('access_control_interaction', {
+        ...analyticsContext,
+        action,
+        policy_id: draft.selectedPolicyId,
+      })
+  }
 
   return (
     <div className="flex w-100 flex-col">
@@ -113,9 +127,11 @@ export function AccessControlStatusPanel({
             onCheckedChange={(next) => {
               if (readOnly || updating) return
               if (next) {
+                trackToggle('turned_on')
                 onEnabledChange(true)
                 return
               }
+              trackToggle('turn_off_attempted')
               setConfirmPause(true)
             }}
           />
@@ -212,13 +228,17 @@ export function AccessControlStatusPanel({
             </AlertDialogDescription>
           </div>
           <AlertDialogFooter>
-            <AlertDialogCancelButton variant="secondary">
+            <AlertDialogCancelButton
+              variant="secondary"
+              onClick={() => trackToggle('turn_off_cancelled')}
+            >
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton
               disabled={readOnly || updating}
               onClick={() => {
                 if (readOnly || updating) return
+                trackToggle('turn_off_confirmed')
                 onEnabledChange(false)
                 setConfirmPause(false)
               }}

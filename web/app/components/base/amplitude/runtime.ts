@@ -35,6 +35,27 @@ const createPageNameEnrichmentPlugin = (): Types.EnrichmentPlugin => {
         /* v8 ignore next @preserve */
         const pathname = typeof window !== 'undefined' ? window.location.pathname : ''
         event.event_properties['[Amplitude] Page Title'] = getEnglishPageName(pathname)
+        const pageUrl = event.event_properties['[Amplitude] Page URL']
+        if (typeof pageUrl === 'string') {
+          let eventPath: string
+          try {
+            eventPath = new URL(pageUrl).pathname
+          } catch {
+            return event
+          }
+          const appMatch = /\/app\/([^/]+)\/access-point\/?$/.exec(eventPath)
+          if (appMatch) event.event_properties.app_id = appMatch[1]
+          const agentMatch = /\/agents\/([^/]+)\/access\/?$/.exec(eventPath)
+          if (agentMatch?.[1]) {
+            try {
+              const { getAgentAccessAppId } = await import('./access-point-page-properties')
+              const appId = await getAgentAccessAppId(agentMatch[1])
+              if (appId) event.event_properties.app_id = appId
+            } catch {
+              // Preserve the page view when the app identity cannot be resolved.
+            }
+          }
+        }
       }
       return event
     },
@@ -42,6 +63,7 @@ const createPageNameEnrichmentPlugin = (): Types.EnrichmentPlugin => {
 }
 
 export function initializeAmplitudeSDK(apiKey: string, sessionReplaySampleRate: number) {
+  amplitude.add(createPageNameEnrichmentPlugin())
   amplitude.init(apiKey, {
     defaultTracking: {
       sessions: true,
@@ -51,7 +73,6 @@ export function initializeAmplitudeSDK(apiKey: string, sessionReplaySampleRate: 
       attribution: true,
     },
   })
-  amplitude.add(createPageNameEnrichmentPlugin())
   amplitude.add(sessionReplayPlugin({ sampleRate: sessionReplaySampleRate }))
   amplitude.setOptOut(false)
   return {

@@ -1,9 +1,12 @@
 'use client'
 
+import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import type { ComponentProps } from 'react'
 import type { AccessControlAssignment } from './chip-status'
 import type { AccessControlDraft } from './draft'
 import type AppIcon from '@/app/components/base/app-icon'
+import type { IpPolicyFormSession } from '@/app/components/header/account-setting/ip-policies-page/policy-form-analytics'
+import type { AccessControlSaveProperties } from '@/features/network-access/analytics'
 import {
   AlertDialog,
   AlertDialogCancelButton,
@@ -25,10 +28,17 @@ import {
   pricingQueryParser,
 } from '@/app/components/billing/pricing/query-params'
 import { IpPolicyDialog } from '@/app/components/header/account-setting/ip-policies-page/policy-dialog'
+import { startIpPolicyForm } from '@/app/components/header/account-setting/ip-policies-page/policy-form-analytics'
 import {
   settingsQueryParamName,
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
+import {
+  getAccessControlFailReason,
+  getIpPolicyFailReason,
+  getProtectedAccessPoints,
+  trackNetworkAccessEvent,
+} from '@/features/network-access/analytics'
 import {
   canManageNetworkAccessPoliciesAtom,
   canReadNetworkAccessAtom,
@@ -56,6 +66,7 @@ export type AccessControlAppIcon = Pick<
 
 type AccessControlEntryProps = {
   appId: string
+  appMode: AppMode
   appIcon: AccessControlAppIcon
   canEditBinding: boolean
   isPublished: boolean
@@ -102,6 +113,7 @@ function AccessControlStatusOnlyEntry({ appId }: { appId: string }) {
 
 function AccessControlSession({
   appId,
+  appMode,
   appIcon,
   canEditBinding,
   isPublished,
@@ -140,7 +152,7 @@ function AccessControlSession({
   const [view, setView] = useState<'config' | 'status'>('status')
   const [showBack, setShowBack] = useState(false)
   const [draft, setDraft] = useState<AccessControlDraft | null>(null)
-  const [createPolicyOpen, setCreatePolicyOpen] = useState(false)
+  const [policyFormSession, setPolicyFormSession] = useState<IpPolicyFormSession | null>(null)
   const [policySelectOpen, setPolicySelectOpen] = useState(false)
   const [confirmation, setConfirmation] = useState<{
     draft: AccessControlDraft
@@ -149,6 +161,8 @@ function AccessControlSession({
     changed: boolean
   } | null>(null)
   const saveAttemptRef = useRef(0)
+  const editingRef = useRef(false)
+  const policyDialogSessionRef = useRef(0)
   const selectedPolicyId = draft ? draft.selectedPolicyId : bindingQuery.data?.binding?.group_id
   const checkCurrentIp =
     consoleQuery.workspaces.current.networkAccessGroups.byGroupId.checkCurrentIp.get
@@ -213,6 +227,11 @@ function AccessControlSession({
   const showPaywall = chip.kind === 'pro' && !assignment
   const showDowngrade = Boolean(assignment) && !entitled
   const showStatus = Boolean(assignment) && entitled && (!canMutate || view === 'status')
+  const analyticsContext = {
+    app_id: appId,
+    app_mode: appMode,
+    access_point_total: availableAccessPoints.length,
+  }
 
   const tooltip = showDowngrade
     ? t(($) => $['studio.accessControl.tooltipDowngraded'], { ns: 'deployments' })
@@ -232,12 +251,17 @@ function AccessControlSession({
           : t(($) => $['studio.accessControl.tooltipOff'], { ns: 'deployments' })
 
   const handleTurnOn = () => {
+    trackNetworkAccessEvent('access_control_upgrade_click', {
+      ...analyticsContext,
+      plan_state: showDowngrade ? 'lapsed' : 'sandbox',
+    })
     void setPricing('open')
     const gtag = (window as Window & { gtag?: GtagHandler }).gtag
     if (gtag) gtag('event', 'click_upgrade_btn', { loc: 'access-control-paywall' })
   }
 
   const discardDraft = () => {
+    editingRef.current = false
     saveAttemptRef.current += 1
     saveCheck.reset()
     setConfirmation(null)
@@ -246,7 +270,18 @@ function AccessControlSession({
     setShowBack(false)
   }
 
+  const abandonEditing = (method: 'cancel' | 'back' | 'dismiss') => {
+    if (editingRef.current && !updateBinding.isPending)
+      trackNetworkAccessEvent('access_control_interaction', {
+        ...analyticsContext,
+        action: 'edit_abandoned',
+        abandon_method: method,
+      })
+    editingRef.current = false
+  }
+
   const handleCancel = () => {
+    abandonEditing('cancel')
     discardDraft()
     if (assignment) {
       setView('status')
@@ -256,24 +291,39 @@ function AccessControlSession({
   }
 
   const handleBack = () => {
+    abandonEditing('back')
     discardDraft()
     setView('status')
   }
 
   const handleCreatePolicy = () => {
     if (!canMutate || !canManagePolicies) return
+    policyDialogSessionRef.current += 1
     setOpen(false)
-    setCreatePolicyOpen(true)
+    setPolicyFormSession(
+      startIpPolicyForm({
+        mode: 'create',
+        source: groups.length ? 'access_control_dropdown' : 'access_control_empty_state',
+        app_id: appId,
+        app_mode: appMode,
+      }),
+    )
   }
 
   const handleManagePolicies = () => {
+    trackNetworkAccessEvent('access_control_interaction', {
+      ...analyticsContext,
+      action: 'manage_policies_clicked',
+    })
+    editingRef.current = false
     setOpen(false)
     void setSettingsDestination('ip-policies')
   }
 
   const handlePolicyDialogOpenChange = (nextOpen: boolean) => {
     if (nextOpen) return
-    setCreatePolicyOpen(false)
+    policyDialogSessionRef.current += 1
+    setPolicyFormSession(null)
     setOpen(true)
   }
 
@@ -288,45 +338,65 @@ function AccessControlSession({
       accessPoints: ReturnType<typeof accessPointsFromScopes>
     },
     onSuccess?: () => void,
+    analytics?: AccessControlSaveProperties,
   ) => {
     if (!canMutate || updateBinding.isPending) return
 
-    updateBinding.mutate(
-      {
-        params: { app_id: appId },
-        body: {
-          enabled,
-          group_id: groupId,
-          access_points: accessPoints,
-          expected_version: binding?.version ?? 0,
+    void updateBinding
+      .mutateAsync(
+        {
+          params: { app_id: appId },
+          body: {
+            enabled,
+            group_id: groupId,
+            access_points: accessPoints,
+            expected_version: binding?.version ?? 0,
+          },
         },
-      },
-      {
-        onSuccess: (data) => {
-          queryClient.setQueryData(
-            consoleQuery.apps.byAppId.networkAccessGroup.get.queryKey({
-              input: { params: { app_id: appId } },
-            }),
-            (current) => (current ? { ...current, ...data } : current),
-          )
-          onSuccess?.()
+        {
+          onSuccess: (data) => {
+            queryClient.setQueryData(
+              consoleQuery.apps.byAppId.networkAccessGroup.get.queryKey({
+                input: { params: { app_id: appId } },
+              }),
+              (current) => (current ? { ...current, ...data } : current),
+            )
+            onSuccess?.()
+          },
+          onError: (error) => {
+            if (getNetworkAccessErrorStatus(error) !== 409) return
+            void queryClient.invalidateQueries({
+              queryKey: consoleQuery.apps.byAppId.networkAccessGroup.get.queryKey({
+                input: { params: { app_id: appId } },
+              }),
+            })
+            void queryClient.invalidateQueries({
+              queryKey: consoleQuery.workspaces.current.networkAccessGroups.get.queryKey(),
+            })
+          },
         },
-        onError: (error) => {
-          if (getNetworkAccessErrorStatus(error) !== 409) return
-          void queryClient.invalidateQueries({
-            queryKey: consoleQuery.apps.byAppId.networkAccessGroup.get.queryKey({
-              input: { params: { app_id: appId } },
-            }),
-          })
-          void queryClient.invalidateQueries({
-            queryKey: consoleQuery.workspaces.current.networkAccessGroups.get.queryKey(),
-          })
+      )
+      .then(
+        () => {
+          if (analytics)
+            trackNetworkAccessEvent('access_control_save', { ...analytics, result: 'success' })
         },
-      },
-    )
+        async (error: unknown) => {
+          if (analytics)
+            trackNetworkAccessEvent('access_control_save', {
+              ...analytics,
+              result: 'failed',
+              fail_reason: await getAccessControlFailReason(error),
+            })
+        },
+      )
   }
 
-  const saveDraft = (nextDraft: AccessControlDraft) => {
+  const saveDraft = (nextDraft: AccessControlDraft, currentIpIncluded: boolean) => {
+    if (!nextDraft.selectedPolicyId) return
+    const protectedAccessPoints = getProtectedAccessPoints(
+      accessPointsFromScopes(nextDraft.scopes, availableAccessPoints),
+    )
     persistBinding(
       {
         enabled: true,
@@ -337,6 +407,14 @@ function AccessControlSession({
         discardDraft()
         setView('status')
         setOpen(true)
+      },
+      {
+        ...analyticsContext,
+        is_first_config: binding === null,
+        policy_id: nextDraft.selectedPolicyId,
+        protected_access_points: protectedAccessPoints,
+        protected_count: protectedAccessPoints.length,
+        is_current_ip_included: currentIpIncluded,
       },
     )
   }
@@ -373,7 +451,7 @@ function AccessControlSession({
             return
           }
           setConfirmation(null)
-          saveDraft(nextDraft)
+          saveDraft(nextDraft, check.allowed)
         },
       },
     )
@@ -390,6 +468,16 @@ function AccessControlSession({
     )
   }
 
+  const startEditing = (editEntry: 'first_config' | 'preview_edit' | 'draft_restored') => {
+    if (!canMutate) return
+    editingRef.current = true
+    trackNetworkAccessEvent('access_control_interaction', {
+      ...analyticsContext,
+      action: 'edit_started',
+      edit_entry: editEntry,
+    })
+  }
+
   return (
     <>
       <Tooltip>
@@ -398,16 +486,30 @@ function AccessControlSession({
           onOpenChange={(nextOpen) => {
             setOpen(nextOpen)
             if (!nextOpen) {
+              abandonEditing('dismiss')
               saveAttemptRef.current += 1
               saveCheck.reset()
               if (!dirty) discardDraft()
               return
             }
+            trackNetworkAccessEvent('access_control_entry_click', {
+              ...analyticsContext,
+              entry_status: showPaywall
+                ? 'sandbox'
+                : showDowngrade
+                  ? 'lapsed'
+                  : chip.kind === 'pro'
+                    ? 'sandbox'
+                    : chip.kind,
+              has_draft: dirty,
+            })
             if (dirty) {
+              startEditing('draft_restored')
               setView('config')
               setShowBack(Boolean(assignment) && canMutate)
               return
             }
+            if (!assignment) startEditing('first_config')
             setView(assignment || !canMutate ? 'status' : 'config')
             setShowBack(false)
           }}
@@ -440,6 +542,7 @@ function AccessControlSession({
               />
             ) : showStatus && assignment ? (
               <AccessControlStatusPanel
+                analyticsContext={analyticsContext}
                 draft={resolvedDraft}
                 appIcon={appIcon}
                 availableAccessPoints={availableAccessPoints}
@@ -450,6 +553,7 @@ function AccessControlSession({
                 onEnabledChange={handleEnabledChange}
                 onEdit={() => {
                   if (!canMutate) return
+                  startEditing('preview_edit')
                   setDraft(resolvedDraft)
                   setShowBack(true)
                   setView('config')
@@ -457,6 +561,7 @@ function AccessControlSession({
               />
             ) : (
               <AccessControlConfigPanel
+                analyticsContext={analyticsContext}
                 draft={resolvedDraft}
                 appIcon={appIcon}
                 availableAccessPoints={availableAccessPoints}
@@ -498,42 +603,68 @@ function AccessControlSession({
         </Popover>
         <TooltipContent>{tooltip}</TooltipContent>
       </Tooltip>
-      {createPolicyOpen && canMutate && canManagePolicies && (
+      {policyFormSession && canMutate && canManagePolicies && (
         <IpPolicyDialog
+          analyticsSession={policyFormSession}
           mode="create"
           open
           isPending={createGroup.isPending}
           onOpenChange={handlePolicyDialogOpenChange}
           onSubmit={(payload) => {
             if (!canMutate || !canManagePolicies) return
-            createGroup.mutate(
-              {
-                body: {
-                  name: payload.name,
-                  description: '',
-                  allowed_cidrs: payload.allowed_cidrs,
+            const session = policyDialogSessionRef.current
+            const analytics = {
+              ...policyFormSession.context,
+              mode: 'create' as const,
+              entry_count: payload.allowed_cidrs.length,
+              validation_error_types: [...policyFormSession.validationErrors],
+            }
+            void createGroup
+              .mutateAsync(
+                {
+                  body: {
+                    name: payload.name,
+                    description: '',
+                    allowed_cidrs: payload.allowed_cidrs,
+                  },
                 },
-              },
-              {
-                onSuccess: (data) => {
-                  queryClient.setQueryData(
-                    consoleQuery.workspaces.current.networkAccessGroups.get.queryOptions().queryKey,
-                    (current) => {
-                      if (!current) return current
-                      if (current.groups.some((group) => group.id === data.group.id)) return current
-                      return {
-                        ...current,
-                        groups: [...current.groups, data.group],
-                      }
-                    },
-                  )
-                  setCreatePolicyOpen(false)
-                  setView('config')
-                  setPolicySelectOpen(true)
-                  setOpen(true)
+                {
+                  onSuccess: (data) => {
+                    queryClient.setQueryData(
+                      consoleQuery.workspaces.current.networkAccessGroups.get.queryOptions()
+                        .queryKey,
+                      (current) => {
+                        if (!current) return current
+                        if (current.groups.some((group) => group.id === data.group.id))
+                          return current
+                        return {
+                          ...current,
+                          groups: [...current.groups, data.group],
+                        }
+                      },
+                    )
+                    if (policyDialogSessionRef.current !== session) return
+                    setPolicyFormSession(null)
+                    setView('config')
+                    setPolicySelectOpen(true)
+                    setOpen(true)
+                  },
                 },
-              },
-            )
+              )
+              .then(
+                (data) =>
+                  trackNetworkAccessEvent('ip_policy_save', {
+                    ...analytics,
+                    result: 'success',
+                    policy_id: data.group.id,
+                  }),
+                async (error: unknown) =>
+                  trackNetworkAccessEvent('ip_policy_save', {
+                    ...analytics,
+                    result: 'failed',
+                    fail_reason: await getIpPolicyFailReason(error),
+                  }),
+              )
           }}
         />
       )}
