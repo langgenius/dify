@@ -38,6 +38,7 @@ type CloudPlanItemProps = {
         currentPlan: CloudPlan
         currentBillingInterval: string
         isEducationDiscountEligible: boolean | undefined
+        isEducationDiscountActivated: boolean
       }
     | undefined
 }
@@ -137,7 +138,7 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
     }
   }
   const handlePlanButtonClick = async () => {
-    if (educationDiscountWarningText && !isPlanDisabled) {
+    if (educationDiscountWarningText && !billing?.isEducationDiscountActivated && !isPlanDisabled) {
       setShowEducationPricingConfirm(true)
       return
     }

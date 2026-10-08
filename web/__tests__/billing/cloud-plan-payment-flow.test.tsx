@@ -91,7 +91,12 @@ const renderCloudPlanItem = ({
       <CloudPlanItem
         plan={plan}
         billingInterval={billingInterval}
-        billing={{ currentPlan, currentBillingInterval: 'month', isEducationDiscountEligible }}
+        billing={{
+          currentPlan,
+          currentBillingInterval: 'month',
+          isEducationDiscountEligible,
+          isEducationDiscountActivated: false,
+        }}
       />
     </>,
     { wrapper },
