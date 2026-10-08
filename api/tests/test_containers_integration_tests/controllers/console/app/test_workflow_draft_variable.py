@@ -288,6 +288,9 @@ def test_variable_api_patch_success(
     assert payload["id"] == variable.id
     assert payload["name"] == "renamed_var"
 
+    # The handler commits through its own decorator-injected session, so expire this
+    # session's cached instance to read the persisted row instead of the identity map.
+    db_session_with_containers.expire_all()
     refreshed = db_session_with_containers.scalar(
         select(WorkflowDraftVariable).where(WorkflowDraftVariable.id == variable.id)
     )

@@ -4,6 +4,7 @@ from typing import Any, NamedTuple
 from unittest.mock import patch
 
 import pytest
+from sqlalchemy.orm import Session
 
 from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
 from factories.variable_factory import build_segment
@@ -13,6 +14,8 @@ from fields.workflow_draft_variable_fields import (
     WorkflowDraftVariableResponse,
     WorkflowDraftVariableWithoutValueResponse,
     _serialize_full_content,
+    draft_variable_list_response_source,
+    draft_variable_response_source,
 )
 from graphon.variables.types import SegmentType
 from libs.datetime_utils import naive_utc_now
@@ -76,7 +79,7 @@ class TestWorkflowDraftVariableFields:
         with pytest.raises(AssertionError):
             result = _serialize_full_content(draft_var)
 
-    def test_conversation_variable(self):
+    def test_conversation_variable(self, sqlite_session: Session):
         conv_var = WorkflowDraftVariable.new_conversation_variable(
             app_id=_TEST_APP_ID, name="conv_var", value=build_segment(1)
         )
@@ -102,9 +105,14 @@ class TestWorkflowDraftVariableFields:
         expected_with_value = expected_without_value.copy()
         expected_with_value["value"] = 1
         expected_with_value["full_content"] = None
-        assert dump_response(WorkflowDraftVariableResponse, conv_var) == expected_with_value
+        assert (
+            dump_response(
+                WorkflowDraftVariableResponse, draft_variable_response_source(conv_var, session=sqlite_session)
+            )
+            == expected_with_value
+        )
 
-    def test_create_sys_variable(self):
+    def test_create_sys_variable(self, sqlite_session: Session):
         sys_var = WorkflowDraftVariable.new_sys_variable(
             app_id=_TEST_APP_ID,
             name="sys_var",
@@ -134,9 +142,14 @@ class TestWorkflowDraftVariableFields:
         expected_with_value = expected_without_value.copy()
         expected_with_value["value"] = "a"
         expected_with_value["full_content"] = None
-        assert dump_response(WorkflowDraftVariableResponse, sys_var) == expected_with_value
+        assert (
+            dump_response(
+                WorkflowDraftVariableResponse, draft_variable_response_source(sys_var, session=sqlite_session)
+            )
+            == expected_with_value
+        )
 
-    def test_node_variable(self):
+    def test_node_variable(self, sqlite_session: Session):
         node_var = WorkflowDraftVariable.new_node_variable(
             app_id=_TEST_APP_ID,
             node_id="test_node",
@@ -167,9 +180,14 @@ class TestWorkflowDraftVariableFields:
         expected_with_value = expected_without_value.copy()
         expected_with_value["value"] = [1, "a"]
         expected_with_value["full_content"] = None
-        assert dump_response(WorkflowDraftVariableResponse, node_var) == expected_with_value
+        assert (
+            dump_response(
+                WorkflowDraftVariableResponse, draft_variable_response_source(node_var, session=sqlite_session)
+            )
+            == expected_with_value
+        )
 
-    def test_node_variable_with_file(self):
+    def test_node_variable_with_file(self, sqlite_session: Session):
         node_var = WorkflowDraftVariable.new_node_variable(
             app_id=_TEST_APP_ID,
             node_id="test_node",
@@ -219,7 +237,12 @@ class TestWorkflowDraftVariableFields:
                 "length": 10,
                 "download_url": "http://example.com/signed-url",
             }
-            assert dump_response(WorkflowDraftVariableResponse, node_var) == expected_with_value
+            assert (
+                dump_response(
+                    WorkflowDraftVariableResponse, draft_variable_response_source(node_var, session=sqlite_session)
+                )
+                == expected_with_value
+            )
 
 
 class TestWorkflowDraftVariableList:
@@ -301,11 +324,42 @@ class TestWorkflowDraftVariableList:
             )
 
 
-def test_workflow_node_variables_fields():
+def test_value_response_rejects_bare_model():
+    """A bare model would expose the raw serialized JSON string as the value, so it must fail loudly."""
     conv_var = WorkflowDraftVariable.new_conversation_variable(
         app_id=_TEST_APP_ID, name="conv_var", value=build_segment(1)
     )
-    resp = dump_response(WorkflowDraftVariableListResponse, WorkflowDraftVariableList(variables=[conv_var]))
+    with pytest.raises(TypeError, match="draft_variable_response_source"):
+        dump_response(WorkflowDraftVariableResponse, conv_var)
+
+
+def test_value_response_accepts_plain_mapping():
+    resp = WorkflowDraftVariableResponse.model_validate(
+        {
+            "id": "variable-id",
+            "type": "conversation",
+            "name": "conv_var",
+            "description": "",
+            "selector": ["conversation", "conv_var"],
+            "value_type": "number",
+            "edited": False,
+            "visible": True,
+            "is_truncated": False,
+            "value": 1,
+            "full_content": None,
+        }
+    )
+    assert resp.value == 1
+
+
+def test_workflow_node_variables_fields(sqlite_session: Session):
+    conv_var = WorkflowDraftVariable.new_conversation_variable(
+        app_id=_TEST_APP_ID, name="conv_var", value=build_segment(1)
+    )
+    resp = dump_response(
+        WorkflowDraftVariableListResponse,
+        draft_variable_list_response_source(WorkflowDraftVariableList(variables=[conv_var]), session=sqlite_session),
+    )
     assert isinstance(resp, dict)
     assert len(resp["items"]) == 1
     item_dict = resp["items"][0]
@@ -313,7 +367,7 @@ def test_workflow_node_variables_fields():
     assert item_dict["value"] == 1
 
 
-def test_workflow_file_variable_with_signed_url():
+def test_workflow_file_variable_with_signed_url(sqlite_session: Session):
     """Test that File type variables include signed URLs in API responses."""
     from graphon.file import File, FileTransferMethod, FileType
 
@@ -339,7 +393,10 @@ def test_workflow_file_variable_with_signed_url():
     )
 
     # Marshal the variable using the API fields
-    resp = dump_response(WorkflowDraftVariableListResponse, WorkflowDraftVariableList(variables=[file_var]))
+    resp = dump_response(
+        WorkflowDraftVariableListResponse,
+        draft_variable_list_response_source(WorkflowDraftVariableList(variables=[file_var]), session=sqlite_session),
+    )
 
     # Verify the response structure
     assert isinstance(resp, dict)
@@ -369,7 +426,7 @@ def test_workflow_file_variable_with_signed_url():
     assert "sign=" in remote_url
 
 
-def test_workflow_file_variable_remote_url():
+def test_workflow_file_variable_remote_url(sqlite_session: Session):
     """Test that File type variables with REMOTE_URL transfer method return the remote URL."""
     from graphon.file import File, FileTransferMethod, FileType
 
@@ -395,7 +452,10 @@ def test_workflow_file_variable_remote_url():
     )
 
     # Marshal the variable using the API fields
-    resp = dump_response(WorkflowDraftVariableListResponse, WorkflowDraftVariableList(variables=[file_var]))
+    resp = dump_response(
+        WorkflowDraftVariableListResponse,
+        draft_variable_list_response_source(WorkflowDraftVariableList(variables=[file_var]), session=sqlite_session),
+    )
 
     # Verify the response structure
     assert isinstance(resp, dict)

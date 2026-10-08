@@ -115,21 +115,37 @@ class DraftVarLoader(VariableLoader):
         # Map each selector (as a tuple via `_selector_to_tuple`) to its corresponding variable instance.
         variable_by_selector: dict[tuple[str, str], VariableBase] = {}
 
+        files: list[File] = []
+        offloaded_draft_vars: list[WorkflowDraftVariable] = []
         with Session(bind=self._engine, expire_on_commit=False) as session:
             srv = WorkflowDraftVariableService(session)
             draft_vars = srv.get_draft_variables_by_selectors(self._app_id, selectors, user_id=self._user_id)
 
-        # Important:
-        files: list[File] = []
-        # FileSegment and ArrayFileSegment are not subject to offloading, so their values
-        # can be safely accessed before any offloading logic is applied.
-        for draft_var in draft_vars:
-            value = draft_var.get_value()
-            match value:
-                case FileSegment():
-                    files.append(value.value)
-                case ArrayFileSegment():
-                    files.extend(value.value)
+            for draft_var in draft_vars:
+                if draft_var.is_truncated():
+                    offloaded_draft_vars.append(draft_var)
+                    continue
+
+                # FileSegment and ArrayFileSegment are not subject to offloading, so their values
+                # can be safely accessed before any offloading logic is applied.
+                segment = draft_var.get_value(session=session)
+                match segment:
+                    case FileSegment():
+                        files.append(segment.value)
+                    case ArrayFileSegment():
+                        files.extend(segment.value)
+                variable = segment_to_variable(
+                    segment=segment,
+                    selector=draft_var.get_selector(),
+                    variable_id=draft_var.id,
+                    name=draft_var.name,
+                    description=draft_var.description,
+                )
+                selector_tuple = self._selector_to_tuple(variable.selector)
+                variable_by_selector[selector_tuple] = variable
+
+        # The files above are the same instances held by the variables, so loading their
+        # storage keys here is visible through `variable_by_selector` as well.
         with Session(bind=self._engine) as session:
             storage_key_loader = StorageKeyLoader(
                 session,
@@ -137,23 +153,6 @@ class DraftVarLoader(VariableLoader):
                 access_controller=DatabaseFileAccessController(),
             )
             storage_key_loader.load_storage_keys(files)
-
-        offloaded_draft_vars = []
-        for draft_var in draft_vars:
-            if draft_var.is_truncated():
-                offloaded_draft_vars.append(draft_var)
-                continue
-
-            segment = draft_var.get_value()
-            variable = segment_to_variable(
-                segment=segment,
-                selector=draft_var.get_selector(),
-                variable_id=draft_var.id,
-                name=draft_var.name,
-                description=draft_var.description,
-            )
-            selector_tuple = self._selector_to_tuple(variable.selector)
-            variable_by_selector[selector_tuple] = variable
 
         # Load offloaded variables using multithreading.
         # This approach reduces loading time by querying external systems concurrently.
@@ -189,7 +188,11 @@ class DraftVarLoader(VariableLoader):
             return (draft_var.node_id, draft_var.name), variable
 
         deserialized = json.loads(content)
-        segment = draft_var.build_segment_from_serialized_value(variable_file.value_type, deserialized)
+        # Runs on a worker thread, so it opens its own session instead of sharing one.
+        with Session(bind=self._engine, expire_on_commit=False) as session:
+            segment = draft_var.build_segment_from_serialized_value(
+                variable_file.value_type, deserialized, session=session
+            )
         variable = segment_to_variable(
             segment=segment,
             selector=draft_var.get_selector(),
@@ -574,7 +577,7 @@ class WorkflowDraftVariableService:
         )
         if draft_var is None:
             return None
-        segment = draft_var.get_value()
+        segment = draft_var.get_value(session=self._session)
         if not isinstance(segment, StringSegment):
             logger.warning(
                 "sys.conversation_id variable is not a string: app_id=%s, user_id=%s, id=%s",

@@ -7,12 +7,13 @@ from uuid import UUID
 from flask import Response
 from flask_restx import Resource
 from pydantic import BaseModel, ConfigDict, Field, model_validator
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from controllers.common.errors import InvalidArgumentError, NotFoundError
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.rbac import PlainApp, RBACCheck
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.app.error import (
     DraftWorkflowNotExist,
@@ -41,6 +42,8 @@ from fields.workflow_draft_variable_fields import (
     WorkflowDraftVariableListWithoutValueResponse,
     WorkflowDraftVariableResponse,
     WorkflowDraftVariableWithoutValueResponse,
+    draft_variable_list_response_source,
+    draft_variable_response_source,
 )
 from graphon.variables.types import SegmentType
 from libs.helper import dump_response
@@ -246,12 +249,12 @@ class WorkflowVariableCollectionApi(Resource):
     @console_ns.doc(description="Delete all draft workflow variables")
     @console_ns.response(204, "Workflow variables deleted successfully")
     @_api_prerequisite
-    def delete(self, current_user: Account, app_model: App):
+    @with_session
+    def delete(self, session: Session, current_user: Account, app_model: App):
         draft_var_srv = WorkflowDraftVariableService(
-            session=db.session(),
+            session=session,
         )
         draft_var_srv.delete_user_workflow_variables(app_model.id, user_id=current_user.id)
-        db.session.commit()
         return Response("", 204)
 
 
@@ -284,25 +287,27 @@ class NodeVariableCollectionApi(Resource):
     )
     @_api_prerequisite
     @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
-    def get(self, current_user: Account, app_model: App, node_id: str):
+    @with_session(write=False)
+    def get(self, session: Session, current_user: Account, app_model: App, node_id: str):
         validate_node_id(node_id)
-        with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
-            draft_var_srv = WorkflowDraftVariableService(
-                session=session,
-            )
-            node_vars = draft_var_srv.list_node_variables(app_model.id, node_id, user_id=current_user.id)
-
-        return dump_response(WorkflowDraftVariableListResponse, node_vars)
+        draft_var_srv = WorkflowDraftVariableService(
+            session=session,
+        )
+        node_vars = draft_var_srv.list_node_variables(app_model.id, node_id, user_id=current_user.id)
+        return dump_response(
+            WorkflowDraftVariableListResponse,
+            draft_variable_list_response_source(node_vars, session=session),
+        )
 
     @console_ns.doc("delete_node_variables")
     @console_ns.doc(description="Delete all variables for a specific node")
     @console_ns.response(204, "Node variables deleted successfully")
     @_api_prerequisite
-    def delete(self, current_user: Account, app_model: App, node_id: str):
+    @with_session
+    def delete(self, session: Session, current_user: Account, app_model: App, node_id: str):
         validate_node_id(node_id)
-        srv = WorkflowDraftVariableService(db.session())
+        srv = WorkflowDraftVariableService(session)
         srv.delete_node_variables(app_model.id, node_id, user_id=current_user.id)
-        db.session.commit()
         return Response("", 204)
 
 
@@ -322,9 +327,10 @@ class VariableApi(Resource):
     @console_ns.response(404, "Variable not found")
     @_api_prerequisite
     @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
-    def get(self, current_user: Account, app_model: App, variable_id: UUID):
+    @with_session(write=False)
+    def get(self, session: Session, current_user: Account, app_model: App, variable_id: UUID):
         draft_var_srv = WorkflowDraftVariableService(
-            session=db.session(),
+            session=session,
         )
         variable_id_str = str(variable_id)
         variable = ensure_variable_access(
@@ -333,7 +339,7 @@ class VariableApi(Resource):
             variable_id=variable_id_str,
             current_user_id=current_user.id,
         )
-        return dump_response(WorkflowDraftVariableResponse, variable)
+        return dump_response(WorkflowDraftVariableResponse, draft_variable_response_source(variable, session=session))
 
     @console_ns.doc("update_variable")
     @console_ns.doc(description="Update a workflow variable")
@@ -346,8 +352,10 @@ class VariableApi(Resource):
     @console_ns.response(404, "Variable not found")
     @_api_prerequisite
     @model_validate(WorkflowDraftVariableUpdatePayload)
+    @with_session
     def patch(
         self,
+        session: Session,
         req_data: WorkflowDraftVariableUpdatePayload,
         current_user: Account,
         app_model: App,
@@ -375,7 +383,7 @@ class VariableApi(Resource):
         #     }
 
         draft_var_srv = WorkflowDraftVariableService(
-            session=db.session(),
+            session=session,
         )
 
         variable_id_str = str(variable_id)
@@ -389,7 +397,9 @@ class VariableApi(Resource):
         new_name = req_data.name
         raw_value = req_data.value
         if new_name is None and raw_value is None:
-            return dump_response(WorkflowDraftVariableResponse, variable)
+            return dump_response(
+                WorkflowDraftVariableResponse, draft_variable_response_source(variable, session=session)
+            )
 
         new_value = None
         if raw_value is not None:
@@ -416,17 +426,17 @@ class VariableApi(Resource):
                     pass
             new_value = build_segment_with_type(variable.value_type, raw_value)
         draft_var_srv.update_variable(variable, name=new_name, value=new_value)
-        db.session.commit()
-        return dump_response(WorkflowDraftVariableResponse, variable)
+        return dump_response(WorkflowDraftVariableResponse, draft_variable_response_source(variable, session=session))
 
     @console_ns.doc("delete_variable")
     @console_ns.doc(description="Delete a workflow variable")
     @console_ns.response(204, "Variable deleted successfully")
     @console_ns.response(404, "Variable not found")
     @_api_prerequisite
-    def delete(self, current_user: Account, app_model: App, variable_id: UUID):
+    @with_session
+    def delete(self, session: Session, current_user: Account, app_model: App, variable_id: UUID):
         draft_var_srv = WorkflowDraftVariableService(
-            session=db.session(),
+            session=session,
         )
         variable_id_str = str(variable_id)
         variable = ensure_variable_access(
@@ -436,7 +446,6 @@ class VariableApi(Resource):
             current_user_id=current_user.id,
         )
         draft_var_srv.delete_variable(variable)
-        db.session.commit()
         return Response("", 204)
 
 
@@ -453,13 +462,14 @@ class VariableResetApi(Resource):
     @console_ns.response(204, "Variable reset (no content)")
     @console_ns.response(404, "Variable not found")
     @_api_prerequisite
-    def put(self, current_user: Account, app_model: App, variable_id: UUID):
+    @with_session
+    def put(self, session: Session, current_user: Account, app_model: App, variable_id: UUID):
         draft_var_srv = WorkflowDraftVariableService(
-            session=db.session(),
+            session=session,
         )
 
         workflow_srv = WorkflowService()
-        draft_workflow = workflow_srv.get_draft_workflow(app_model, session=db.session())
+        draft_workflow = workflow_srv.get_draft_workflow(app_model, session=session)
         if draft_workflow is None:
             raise NotFoundError(
                 f"Draft workflow not found, app_id={app_model.id}",
@@ -473,27 +483,27 @@ class VariableResetApi(Resource):
         )
 
         resetted = draft_var_srv.reset_variable(draft_workflow, variable)
-        db.session.commit()
         if resetted is None:
             return Response("", 204)
-        return dump_response(WorkflowDraftVariableResponse, resetted)
+        return dump_response(WorkflowDraftVariableResponse, draft_variable_response_source(resetted, session=session))
 
 
-def _get_variable_list(app_model: App, node_id: str, current_user_id: str) -> WorkflowDraftVariableList:
-    with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
-        draft_var_srv = WorkflowDraftVariableService(
-            session=session,
+def _get_variable_list(
+    app_model: App, node_id: str, current_user_id: str, *, session: Session
+) -> WorkflowDraftVariableList:
+    draft_var_srv = WorkflowDraftVariableService(
+        session=session,
+    )
+    if node_id == CONVERSATION_VARIABLE_NODE_ID:
+        draft_vars = draft_var_srv.list_conversation_variables(app_model.id, user_id=current_user_id)
+    elif node_id == SYSTEM_VARIABLE_NODE_ID:
+        draft_vars = draft_var_srv.list_system_variables(app_model.id, user_id=current_user_id)
+    else:
+        draft_vars = draft_var_srv.list_node_variables(
+            app_id=app_model.id,
+            node_id=node_id,
+            user_id=current_user_id,
         )
-        if node_id == CONVERSATION_VARIABLE_NODE_ID:
-            draft_vars = draft_var_srv.list_conversation_variables(app_model.id, user_id=current_user_id)
-        elif node_id == SYSTEM_VARIABLE_NODE_ID:
-            draft_vars = draft_var_srv.list_system_variables(app_model.id, user_id=current_user_id)
-        else:
-            draft_vars = draft_var_srv.list_node_variables(
-                app_id=app_model.id,
-                node_id=node_id,
-                user_id=current_user_id,
-            )
     return draft_vars
 
 
@@ -510,19 +520,22 @@ class ConversationVariableCollectionApi(Resource):
     @console_ns.response(404, "Draft workflow not found")
     @_api_prerequisite
     @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
-    def get(self, current_user: Account, app_model: App):
+    @with_session
+    def get(self, session: Session, current_user: Account, app_model: App):
         # NOTE(QuantumGhost): Prefill conversation variables into the draft variables table
         # so their IDs can be returned to the caller.
         workflow_srv = WorkflowService()
-        draft_workflow = workflow_srv.get_draft_workflow(app_model, session=db.session())
+        draft_workflow = workflow_srv.get_draft_workflow(app_model, session=session)
         if draft_workflow is None:
             raise NotFoundError(description=f"draft workflow not found, id={app_model.id}")
-        draft_var_srv = WorkflowDraftVariableService(db.session())
+        draft_var_srv = WorkflowDraftVariableService(session)
         draft_var_srv.prefill_conversation_variable_default_values(draft_workflow, user_id=current_user.id)
-        db.session.commit()
         return dump_response(
             WorkflowDraftVariableListResponse,
-            _get_variable_list(app_model, CONVERSATION_VARIABLE_NODE_ID, current_user.id),
+            draft_variable_list_response_source(
+                _get_variable_list(app_model, CONVERSATION_VARIABLE_NODE_ID, current_user.id, session=session),
+                session=session,
+            ),
         )
 
     @console_ns.expect(console_ns.models[ConversationVariableUpdatePayload.__name__])
@@ -575,10 +588,14 @@ class SystemVariableCollectionApi(Resource):
     )
     @_api_prerequisite
     @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
-    def get(self, current_user: Account, app_model: App):
+    @with_session(write=False)
+    def get(self, session: Session, current_user: Account, app_model: App):
         return dump_response(
             WorkflowDraftVariableListResponse,
-            _get_variable_list(app_model, SYSTEM_VARIABLE_NODE_ID, current_user.id),
+            draft_variable_list_response_source(
+                _get_variable_list(app_model, SYSTEM_VARIABLE_NODE_ID, current_user.id, session=session),
+                session=session,
+            ),
         )
 
 
