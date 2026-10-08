@@ -5,7 +5,7 @@
 # Each entry mirrors the production ``defaultValue`` from
 # ``web/app/components/workflow/nodes/<type>/default.ts`` so the generated
 # graph loads in Studio identically to a manually-created node and survives
-# both ``WorkflowService.sync_draft_workflow``'s structural checks and the
+# both ``WorkflowDraftService.sync``'s structural checks and the
 # runtime entity validation each node performs when the workflow runs.
 #
 # Each snippet mirrors the production node default closely enough for one

@@ -1,7 +1,7 @@
 """
 Workflow generator service.
 
-Thin facade over ``core.workflow.generator.WorkflowGenerator`` that owns the
+Application service over ``services.workflow.generation.runner.WorkflowGenerator`` that owns the
 model-manager / model-instance plumbing. Controllers call this; the pure
 domain class never touches the model registry directly.
 
@@ -18,17 +18,17 @@ from typing import Any
 from core.app.app_config.entities import ModelConfig
 from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
 from core.model_manager import ModelInstance, ModelManager
-from core.workflow.generator import WorkflowGenerator
-from core.workflow.generator.tool_catalogue import (
-    ToolCatalogueEntry,
-    build_tool_catalogue,
-    installed_tool_keys,
-)
 from core.workflow.generator.types import (
     WorkflowGenerateResultDict,
     WorkflowGenerationModeRequest,
 )
 from graphon.model_runtime.entities.model_entities import ModelType
+from services.workflow.generation.runner import WorkflowGenerator
+from services.workflow.generation.tool_catalogue import (
+    ToolCatalogueEntry,
+    build_tool_catalogue,
+    installed_tool_keys,
+)
 
 logger = logging.getLogger(__name__)
 

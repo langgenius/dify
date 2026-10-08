@@ -9,7 +9,7 @@ from extensions.ext_application_services import application_services
 from extensions.ext_socketio import sio
 from libs.passport import PassportService
 from libs.token import extract_access_token
-from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository
+from repositories.workflow.collaboration_repository import WorkflowCollaborationRepository
 from services.workflow_collaboration_service import WorkflowCollaborationService
 
 repository = WorkflowCollaborationRepository()

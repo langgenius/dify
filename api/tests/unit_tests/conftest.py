@@ -415,3 +415,10 @@ def workflow_runtime(sqlite_session_factory: sessionmaker[Session]):
     from extensions.application_services.workflow import build_workflow_execution_dependencies
 
     return build_workflow_execution_dependencies(sqlite_session_factory)
+
+
+@pytest.fixture
+def workflow_suggestions(sqlite_session_factory: sessionmaker[Session]):
+    from extensions.application_services.workflow import build_workflow_suggestions
+
+    return build_workflow_suggestions(sqlite_session_factory)

@@ -1,10 +1,12 @@
 import json
+from typing import cast
 from unittest.mock import Mock
 
 import pytest
 
-from repositories import workflow_collaboration_repository as repo_module
-from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository
+from extensions.ext_redis import RedisClientWrapper
+from repositories.workflow import collaboration_repository as repo_module
+from repositories.workflow.collaboration_repository import WorkflowCollaborationRepository
 
 
 class TestWorkflowCollaborationRepository:
@@ -269,3 +271,34 @@ class TestWorkflowCollaborationRepository:
         repository.refresh_server_sessions("server-1")
 
         mock_redis.hdel.assert_called_once_with("ws_server_sessions:server-1", "sid-stale")
+
+
+def test_online_users_batches_existing_hashes_and_ignores_corrupt_values() -> None:
+    pipelines = []
+
+    class Pipeline:
+        def __init__(self) -> None:
+            self.keys = []
+
+        def hgetall(self, key: str) -> None:
+            self.keys.append(key)
+
+        def execute(self) -> list[dict[bytes, bytes]]:
+            return [
+                {b"good": b'{"user_id":"u","username":"User"}', b"corrupt": b"bad", b"array": b"[]"} for _ in self.keys
+            ]
+
+    class Redis:
+        def pipeline(self, *, transaction: bool) -> Pipeline:
+            assert transaction is False
+            pipe = Pipeline()
+            pipelines.append(pipe)
+            return pipe
+
+    repository = WorkflowCollaborationRepository(redis=cast(RedisClientWrapper, Redis()))
+    app_ids = [str(index) for index in range(51)]
+    result = repository.online_users(app_ids)
+    assert [len(pipe.keys) for pipe in pipelines] == [50, 1]
+    assert pipelines[0].keys[0] == "workflow_online_users:0"
+    assert list(result) == app_ids
+    assert result["50"] == [{"user_id": "u", "username": "User"}]

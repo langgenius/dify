@@ -12,7 +12,7 @@ from core.rbac import RBACPermission, RBACResourceScope
 from models.account import Account, Tenant
 from models.base import TypeBase
 from models.model import App, AppMode
-from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository
+from repositories.workflow.collaboration_repository import WorkflowCollaborationRepository
 from services.workflow_collaboration_service import SYNC_REQUEST_TIMEOUT_SECONDS, WorkflowCollaborationService
 from tests.unit_tests.config_override import config_overrides_context
 from tests.unit_tests.model_factories import make_app

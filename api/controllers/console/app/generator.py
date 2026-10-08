@@ -31,6 +31,7 @@ from core.helper.code_executor.python3.python3_code_provider import Python3CodeP
 from core.llm_generator.entities import RuleCodeGeneratePayload, RuleGeneratePayload, RuleStructuredOutputPayload
 from core.llm_generator.llm_generator import LLMGenerator
 from core.workflow.generator.types import WorkflowGenerateErrorCode
+from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from graphon.model_runtime.entities.llm_entities import LLMMode
 from graphon.model_runtime.errors.invoke import InvokeError
@@ -484,7 +485,7 @@ class WorkflowGenerateApi(Resource):
     """Generate a Workflow / Chatflow draft graph from a natural-language description.
 
     Triggered by the cmd+k `/create` slash command. Returns a graph payload
-    shaped exactly like ``WorkflowService.sync_draft_workflow``'s input, so the
+    shaped exactly like ``WorkflowDraftService.sync``'s input, so the
     frontend can hand it straight to ``/apps/{id}/workflows/draft``.
     """
 
@@ -559,7 +560,7 @@ class WorkflowInstructionSuggestionsApi(Resource):
     @with_current_tenant_id
     @model_validate(WorkflowInstructionSuggestionsPayload)
     def post(self, req_data: WorkflowInstructionSuggestionsPayload, current_tenant_id: str):
-        suggestions = LLMGenerator.generate_workflow_instruction_suggestions(
+        suggestions = application_services().workflow_suggestions.generate_workflow_instruction_suggestions(
             tenant_id=current_tenant_id,
             mode=req_data.mode,
             language=req_data.language,
