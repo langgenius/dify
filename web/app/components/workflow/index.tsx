@@ -11,11 +11,11 @@ import type { EventEmitterValue } from '@/context/event-emitter'
 import type { VarInInspect } from '@/types/workflow'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -653,14 +653,14 @@ export const Workflow: FC<WorkflowProps> = memo(
                 </AlertDialogDescription>
               )}
             </div>
-            <AlertDialogActions>
+            <AlertDialogFooter>
               <AlertDialogCancelButton>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </AlertDialogCancelButton>
               <AlertDialogConfirmButton onClick={showConfirm?.onConfirm}>
                 {t(($) => $['operation.confirm'], { ns: 'common' })}
               </AlertDialogConfirmButton>
-            </AlertDialogActions>
+            </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
         {controlMode === ControlMode.Comment && isMouseOverCanvas && <CommentCursor />}

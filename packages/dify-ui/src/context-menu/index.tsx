@@ -253,9 +253,9 @@ function ContextMenuSubContent({
   )
 }
 
-type ContextMenuLabelProps = BaseContextMenu.GroupLabel.Props
+type ContextMenuGroupLabelProps = BaseContextMenu.GroupLabel.Props
 
-function ContextMenuLabel({ className, ...props }: ContextMenuLabelProps) {
+function ContextMenuGroupLabel({ className, ...props }: ContextMenuGroupLabelProps) {
   return (
     <BaseContextMenu.GroupLabel
       className={(state) => cn(floatingGroupLabelClassName, resolveClassName(className, state))}
@@ -281,8 +281,8 @@ export {
   ContextMenuCheckboxItemIndicator,
   ContextMenuContent,
   ContextMenuGroup,
+  ContextMenuGroupLabel,
   ContextMenuItem,
-  ContextMenuLabel,
   ContextMenuLinkItem,
   ContextMenuRadioGroup,
   ContextMenuRadioItem,
@@ -299,9 +299,9 @@ export type {
   ContextMenuCheckboxItemIndicatorProps,
   ContextMenuCheckboxItemProps,
   ContextMenuContentProps,
+  ContextMenuGroupLabelProps,
   ContextMenuGroupProps,
   ContextMenuItemProps,
-  ContextMenuLabelProps,
   ContextMenuLinkItemProps,
   ContextMenuProps,
   ContextMenuRadioGroupProps,

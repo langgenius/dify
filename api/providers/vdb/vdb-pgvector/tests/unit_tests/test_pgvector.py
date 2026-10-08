@@ -484,8 +484,8 @@ def test_pgvector_factory_initializes_expected_collection_name(monkeypatch: pyte
     monkeypatch.setattr(pgvector_module.dify_config, "PGVECTOR_PG_BIGM", False)
 
     with patch.object(pgvector_module, "PGVector", return_value="vector") as vector_cls:
-        result_1 = factory.init_vector(dataset_with_index, attributes=[], embeddings=MagicMock())
-        result_2 = factory.init_vector(dataset_without_index, attributes=[], embeddings=MagicMock())
+        result_1 = factory.init_vector(dataset_with_index, attributes=[], embeddings=MagicMock(), session=None)
+        result_2 = factory.init_vector(dataset_without_index, attributes=[], embeddings=MagicMock(), session=None)
 
     assert result_1 == "vector"
     assert result_2 == "vector"
