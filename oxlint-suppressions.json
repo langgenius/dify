@@ -276,11 +276,6 @@
       "count": 1
     }
   },
-  "web/app/components/app/configuration/config/__tests__/agent-setting-button.spec.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 2
-    }
-  },
   "web/app/components/app/configuration/config/__tests__/config-audio.spec.tsx": {
     "typescript/no-explicit-any": {
       "count": 1
@@ -3028,10 +3023,10 @@
   },
   "web/app/components/workflow/nodes/http/panel.tsx": {
     "jsx-a11y/click-events-have-key-events": {
-      "count": 2
+      "count": 1
     },
     "jsx-a11y/no-static-element-interactions": {
-      "count": 2
+      "count": 1
     }
   },
   "web/app/components/workflow/nodes/http/use-config.ts": {
@@ -3313,19 +3308,6 @@
   "web/app/components/workflow/nodes/loop/use-single-run-form-params.ts": {
     "typescript/no-explicit-any": {
       "count": 3
-    }
-  },
-  "web/app/components/workflow/nodes/parameter-extractor/components/extract-parameter/item.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 2
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 2
-    }
-  },
-  "web/app/components/workflow/nodes/parameter-extractor/components/extract-parameter/update.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 1
     }
   },
   "web/app/components/workflow/nodes/parameter-extractor/use-config.ts": {
