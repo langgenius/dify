@@ -158,29 +158,33 @@ class WeightRerankRunner(BaseRerankRunner):
         self, tenant_id: str, query: str, documents: list[Document], vector_setting: VectorSetting
     ) -> list[float]:
         """
-        Calculate Cosine scores
+        Calculate cosine scores, resolving the query vector only for unscored documents.
         :param query: search query
         :param documents: documents for reranking
 
         :return:
         """
         query_vector_scores = []
-
-        model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
-
-        embedding_model = model_manager.get_model_instance(
-            tenant_id=tenant_id,
-            provider=vector_setting.embedding_provider_name,
-            model_type=ModelType.TEXT_EMBEDDING,
-            model=vector_setting.embedding_model_name,
-        )
-        cache_embedding = CacheEmbedding(embedding_model)
-        query_vector = cache_embedding.embed_query(query)
+        query_vector: list[float] | None = None
         for document in documents:
             # calculate cosine similarity
             if document.metadata and "score" in document.metadata:
                 query_vector_scores.append(document.metadata["score"])
             else:
+                if query_vector is None:
+                    query_vector = CacheEmbedding.get_cached_query_embedding(
+                        vector_setting.embedding_provider_name, vector_setting.embedding_model_name, query
+                    )
+                    if query_vector is None:
+                        model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
+                        embedding_model = model_manager.get_model_instance(
+                            tenant_id=tenant_id,
+                            provider=vector_setting.embedding_provider_name,
+                            model_type=ModelType.TEXT_EMBEDDING,
+                            model=vector_setting.embedding_model_name,
+                        )
+                        query_vector = CacheEmbedding(embedding_model).embed_query(query)
+
                 # transform to NumPy
                 vec1 = np.array(query_vector)
                 vec2 = np.array(document.vector)
