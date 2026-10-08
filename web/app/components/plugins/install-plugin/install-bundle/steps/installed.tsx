@@ -4,7 +4,7 @@ import type { InstallStatus, Plugin, VersionProps } from '../../../types'
 import { Button } from '@langgenius/dify-ui/button'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Badge, { BadgeState } from '@/app/components/base/badge/index'
+import Badge from '@/app/components/base/badge/index'
 import Card from '@/app/components/plugins/card'
 import { MARKETPLACE_API_PREFIX } from '@/config'
 import useGetIcon from '../../base/use-get-icon'
@@ -50,7 +50,7 @@ const Installed: FC<Props> = ({ list, installStatus, versionInfo, onCancel, isHi
                     pluginVersionInfo ? (
                       <Version {...pluginVersionInfo} />
                     ) : (
-                      <Badge className="mx-1" size="s" state={BadgeState.Default}>
+                      <Badge className="mx-1" size="s">
                         {plugin.version}
                       </Badge>
                     )
