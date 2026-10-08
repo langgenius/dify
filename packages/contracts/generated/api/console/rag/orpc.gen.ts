@@ -75,6 +75,7 @@ import {
   zPatchRagPipelineCustomizedTemplatesByTemplateIdResponse,
   zPatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdPath,
   zPatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponse,
+  zPatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdBody,
   zPatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdPath,
   zPatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse,
   zPostRagPipelineCustomizedTemplatesByTemplateIdPath,
@@ -89,6 +90,7 @@ import {
   zPostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopResponse,
   zPostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestorePath,
   zPostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestoreResponse,
+  zPostRagPipelinesByPipelineIdWorkflowsDraftBody,
   zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRunBody,
   zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRunPath,
   zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRunResponse,
@@ -609,7 +611,7 @@ export const datasource = {
 }
 
 /**
- * Get draft workflow
+ * Get environment variables
  */
 export const get12 = oc
   .route({
@@ -617,7 +619,7 @@ export const get12 = oc
     method: 'GET',
     operationId: 'getRagPipelinesByPipelineIdWorkflowsDraftEnvironmentVariables',
     path: '/rag/pipelines/{pipeline_id}/workflows/draft/environment-variables',
-    summary: 'Get draft workflow',
+    summary: 'Get environment variables',
     tags: ['console'],
   })
   .input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsDraftEnvironmentVariablesPath }))
@@ -924,7 +926,10 @@ export const patch2 = oc
     tags: ['console'],
   })
   .input(
-    z.object({ params: zPatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdPath }),
+    z.object({
+      body: zPatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdBody,
+      params: zPatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdPath,
+    }),
   )
   .output(zPatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse)
 
@@ -948,7 +953,7 @@ export const delete4 = oc
   .output(zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesResponse)
 
 /**
- * Get draft workflow
+ * List draft pipeline variables without loading their values
  */
 export const get19 = oc
   .route({
@@ -956,7 +961,7 @@ export const get19 = oc
     method: 'GET',
     operationId: 'getRagPipelinesByPipelineIdWorkflowsDraftVariables',
     path: '/rag/pipelines/{pipeline_id}/workflows/draft/variables',
-    summary: 'Get draft workflow',
+    summary: 'List draft pipeline variables without loading their values',
     tags: ['console'],
   })
   .input(
@@ -1000,7 +1005,12 @@ export const post15 = oc
     summary: 'Sync draft workflow',
     tags: ['console'],
   })
-  .input(z.object({ params: zPostRagPipelinesByPipelineIdWorkflowsDraftPath }))
+  .input(
+    z.object({
+      body: zPostRagPipelinesByPipelineIdWorkflowsDraftBody,
+      params: zPostRagPipelinesByPipelineIdWorkflowsDraftPath,
+    }),
+  )
   .output(zPostRagPipelinesByPipelineIdWorkflowsDraftResponse)
 
 export const draft = {
@@ -1034,7 +1044,7 @@ export const get21 = oc
   .output(zGetRagPipelinesByPipelineIdWorkflowsPublishResponse)
 
 /**
- * Publish workflow
+ * Publish a prepared Pipeline and its dataset settings atomically
  */
 export const post16 = oc
   .route({
@@ -1042,7 +1052,7 @@ export const post16 = oc
     method: 'POST',
     operationId: 'postRagPipelinesByPipelineIdWorkflowsPublish',
     path: '/rag/pipelines/{pipeline_id}/workflows/publish',
-    summary: 'Publish workflow',
+    summary: 'Publish a prepared Pipeline and its dataset settings atomically',
     tags: ['console'],
   })
   .input(z.object({ params: zPostRagPipelinesByPipelineIdWorkflowsPublishPath }))
@@ -1216,9 +1226,6 @@ export const restore = {
   post: post20,
 }
 
-/**
- * Delete a published workflow version that is not currently active on the pipeline
- */
 export const delete5 = oc
   .route({
     inputStructure: 'detailed',
@@ -1226,7 +1233,6 @@ export const delete5 = oc
     operationId: 'deleteRagPipelinesByPipelineIdWorkflowsByWorkflowId',
     path: '/rag/pipelines/{pipeline_id}/workflows/{workflow_id}',
     successStatus: 204,
-    summary: 'Delete a published workflow version that is not currently active on the pipeline',
     tags: ['console'],
   })
   .input(z.object({ params: zDeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdPath }))
