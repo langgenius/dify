@@ -9,12 +9,6 @@ from sqlalchemy import Engine, event
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from core.repositories.human_input_repository import (
-    HumanInputFormRecord,
-    HumanInputFormRepositoryImpl,
-    HumanInputFormSubmissionRepository,
-    _WorkspaceMemberInfo,
-)
 from enums.human_input import HumanInputFormKind, HumanInputFormStatus, RecipientType
 from libs.datetime_utils import naive_utc_now
 from models import Account, TenantAccountJoin
@@ -25,6 +19,7 @@ from models.human_input import (
     HumanInputFormRecipient,
     StandaloneWebAppRecipientPayload,
 )
+from models.human_input_contracts import HumanInputFormRecord
 from models.human_input_delivery import (
     EmailDeliveryConfig,
     EmailDeliveryMethod,
@@ -32,7 +27,15 @@ from models.human_input_delivery import (
     ExternalRecipient,
     MemberRecipient,
 )
-from models.human_input_entities import FormDefinition, UserActionConfig
+from models.human_input_entities import (
+    FormDefinition,
+    UserActionConfig,
+)
+from repositories.human_input.form_repository import (
+    HumanInputFormRepositoryImpl,
+    HumanInputFormSubmissionRepository,
+    _WorkspaceMemberInfo,
+)
 
 
 def _build_repository() -> HumanInputFormRepositoryImpl:
@@ -284,7 +287,6 @@ class TestHumanInputFormRepositoryImplPublicMethods:
 
         assert entity is not None
         assert entity.id == form.id
-        assert entity.submission_token == "token-123"
         assert len(entity.recipients) == 1
         assert entity.recipients[0].token == "token-123"
 
@@ -336,28 +338,13 @@ class TestHumanInputFormSubmissionRepository:
         assert record.recipient_type == RecipientType.STANDALONE_WEB_APP
         assert record.submitted is False
 
-    def test_get_by_form_id_and_recipient_type_uses_recipient(self, sqlite_session: Session):
-        form = _make_form(tenant_id="tenant-1")
-        recipient = _make_recipient(form.id)
-        _persist_form(sqlite_session, form, [recipient])
-        repo = HumanInputFormSubmissionRepository()
-
-        record = repo.get_by_form_id_and_recipient_type(
-            form_id=form.id,
-            recipient_type=RecipientType.STANDALONE_WEB_APP,
-        )
-
-        assert record is not None
-        assert record.recipient_id == recipient.id
-        assert record.access_token == recipient.access_token
-
     def test_mark_submitted_updates_fields(
         self,
         monkeypatch: pytest.MonkeyPatch,
         sqlite_session: Session,
     ):
         fixed_now = datetime(2024, 1, 1, 0, 0, 0)
-        monkeypatch.setattr("core.repositories.human_input_repository.naive_utc_now", lambda: fixed_now)
+        monkeypatch.setattr("repositories.human_input.form_repository.naive_utc_now", lambda: fixed_now)
 
         form = _make_form(tenant_id="tenant-1", expiration_time=fixed_now)
         recipient = _make_recipient(form.id)

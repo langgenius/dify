@@ -7,7 +7,7 @@ from datetime import datetime
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import Engine, event, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.plugin.entities.plugin_daemon import CredentialType as TriggerCredentialType
@@ -42,6 +42,58 @@ def other_user_id() -> str:
 @pytest.fixture
 def repository(sqlite_session_factory: sessionmaker[Session]) -> CredentialQueryRepository:
     return CredentialQueryRepository(session_factory=sqlite_session_factory)
+
+
+@pytest.mark.parametrize("has_default", [False, True])
+def test_default_tool_id_is_a_scoped_single_column_query(
+    sqlite_session: Session,
+    sqlite_engine: Engine,
+    repository: CredentialQueryRepository,
+    has_default: bool,
+) -> None:
+    for credential_id, tenant, provider, day, default in [
+        ("oldest", "workspace", "tool", 2, False),
+        ("default", "workspace", "tool", 3, has_default),
+        ("later-default", "workspace", "tool", 4, has_default),
+        ("foreign", "other-workspace", "tool", 1, True),
+        ("other-provider", "workspace", "other-tool", 1, True),
+    ]:
+        row = BuiltinToolProvider(
+            name=credential_id,
+            tenant_id=tenant,
+            user_id="owner",
+            provider=provider,
+            is_default=default,
+            visibility=PermissionEnum.PARTIAL_TEAM,
+            # Selecting an ID must neither parse credentials nor fetch member permissions.
+            encrypted_credentials="not credential JSON",
+        )
+        row.id = credential_id
+        row.created_at = datetime(2026, 1, day)
+        sqlite_session.add(row)
+    sqlite_session.commit()
+    statements: list[str] = []
+
+    def record(
+        _connection: object,
+        _cursor: object,
+        statement: str,
+        _parameters: object,
+        _context: object,
+        _executemany: bool,
+    ) -> None:
+        statements.append(statement.lower())
+
+    event.listen(sqlite_engine, "before_cursor_execute", record)
+    try:
+        result = repository.default_tool_credential_id(workspace_id="workspace", provider="tool")
+    finally:
+        event.remove(sqlite_engine, "before_cursor_execute", record)
+    assert result == ("default" if has_default else "oldest")
+    assert len(statements) == 1
+    table = BuiltinToolProvider.__tablename__
+    assert statements[0].split("\nfrom")[0].strip() == f"select {table}.id"
+    assert "limit" in statements[0]
 
 
 @pytest.mark.parametrize("provider", ["openai", "langgenius/openai/openai"])
@@ -292,6 +344,7 @@ def test_empty_lists_do_not_require_related_rows(repository: CredentialQueryRepo
         repository.list_datasources(workspace_id="empty", provider="notion", plugin_id="plugin", actor_id="actor") == []
     )
     assert repository.list_tools(workspace_id="empty", provider="tool", actor_id="actor") == []
+    assert repository.default_tool_credential_id(workspace_id="empty", provider="tool") is None
     assert repository.list_trigger_subscriptions(workspace_id="empty", provider="trigger", actor_id="actor") == []
 
 
