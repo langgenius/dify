@@ -88,6 +88,7 @@ export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParam
       const { nodes, edges, viewport } = graph
       eventEmitter?.emit({
         type: WORKFLOW_DATA_UPDATE,
+        instanceId: workflowStore.getState().workflowInstanceId,
         payload: {
           nodes: initialNodes(nodes, edges),
           edges: initialEdges(edges, nodes),
@@ -97,7 +98,7 @@ export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParam
         },
       })
     },
-    [eventEmitter],
+    [eventEmitter, workflowStore],
   )
   const completeImport = useCallback(
     async (pipelineId: string | undefined, status: DSLImportStatus = DSLImportStatus.COMPLETED) => {

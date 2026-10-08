@@ -7,6 +7,7 @@ import userEvent from '@testing-library/user-event'
 import { toast } from '@/app/notifications'
 import { EventEmitterContext } from '@/context/event-emitter'
 import { DSLImportStatus } from '@/models/app'
+import { WorkflowContextProvider } from '../context'
 import UpdateDSLModal from '../update-dsl-modal'
 
 const mockEmit = vi.fn()
@@ -82,7 +83,11 @@ vi.mock('@/app/components/app/create-from-dsl-modal/uploader', () => ({
 
 function render(children: ReactNode) {
   const client = new QueryClient({ defaultOptions: { mutations: { retry: false } } })
-  return rtlRender(<QueryClientProvider client={client}>{children}</QueryClientProvider>)
+  return rtlRender(
+    <QueryClientProvider client={client}>
+      <WorkflowContextProvider>{children}</WorkflowContextProvider>
+    </QueryClientProvider>,
+  )
 }
 
 describe('UpdateDSLModal', () => {

@@ -57,6 +57,7 @@ vi.mock('@/app/components/workflow/store', () => ({
   useWorkflowStore: () => ({
     getState: () => ({
       pipelineId: 'test-pipeline-id',
+      workflowInstanceId: 'pipeline-canvas',
     }),
   }),
 }))

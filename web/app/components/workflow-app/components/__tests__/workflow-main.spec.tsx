@@ -3,7 +3,6 @@ import type { WorkflowProps } from '@/app/components/workflow'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
-import { BlockEnum } from '@/app/components/workflow/types'
 import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import { AppACLPermission } from '@/utils/permission'
 import WorkflowMain from '../workflow-main'
@@ -12,8 +11,6 @@ const mockSetFeatures = vi.fn()
 const mockSetConversationVariables = vi.fn()
 const mockSetEnvironmentVariables = vi.fn()
 const mockSetEnvSecrets = vi.fn()
-const mockSetSyncWorkflowDraftHash = vi.fn()
-const mockHandleUpdateWorkflowCanvas = vi.hoisted(() => vi.fn())
 const mockFetchWorkflowDraft = vi.hoisted(() => vi.fn())
 const mockOnVarsAndFeaturesUpdate = vi.hoisted(() => vi.fn())
 const mockOnWorkflowUpdate = vi.hoisted(() => vi.fn())
@@ -75,7 +72,9 @@ const collaborationRuntime = vi.hoisted(() => ({
 
 const collaborationListeners = vi.hoisted(() => ({
   varsAndFeaturesUpdate: null as null | ((update: unknown) => void | Promise<void>),
-  workflowUpdate: null as null | (() => void | Promise<void>),
+  workflowUpdate: null as
+    | null
+    | ((update: { appId: string; timestamp: number }) => void | Promise<void>),
   syncRequest: null as
     | null
     | ((request: {
@@ -120,11 +119,11 @@ vi.mock('@/app/components/workflow/store', () => ({
     }),
   useWorkflowStore: () => ({
     getState: () => ({
+      appId: 'app-1',
       envSecrets: {},
       setConversationVariables: mockSetConversationVariables,
       setEnvironmentVariables: mockSetEnvironmentVariables,
       setEnvSecrets: mockSetEnvSecrets,
-      setSyncWorkflowDraftHash: mockSetSyncWorkflowDraftHash,
     }),
   }),
 }))
@@ -145,12 +144,6 @@ vi.mock('@/app/components/workflow/collaboration/hooks/use-collaboration', () =>
   },
 }))
 
-vi.mock('@/app/components/workflow/hooks/use-workflow-update', () => ({
-  useWorkflowUpdate: () => ({
-    handleUpdateWorkflowCanvas: mockHandleUpdateWorkflowCanvas,
-  }),
-}))
-
 vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', () => ({
   collaborationManager: {
     onVarsAndFeaturesUpdate: mockOnVarsAndFeaturesUpdate.mockImplementation(
@@ -160,7 +153,7 @@ vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', ()
       },
     ),
     onWorkflowUpdate: mockOnWorkflowUpdate.mockImplementation(
-      (handler: () => void | Promise<void>) => {
+      (handler: typeof collaborationListeners.workflowUpdate) => {
         collaborationListeners.workflowUpdate = handler
         return vi.fn()
       },
@@ -382,38 +375,6 @@ vi.mock('@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars', () =>
   }),
 }))
 
-vi.mock('../../hooks/use-workflow-draft-graph-for-canvas', () => ({
-  useWorkflowDraftGraphForCanvas: () => ({
-    getWorkflowDraftGraphForCanvas: (graph?: {
-      nodes?: unknown[]
-      edges?: unknown[]
-      viewport?: unknown
-    }) => ({
-      nodes: graph?.nodes?.length
-        ? graph.nodes
-        : [{ id: 'start-placeholder', data: { type: BlockEnum.StartPlaceholder } }],
-      edges: graph?.edges || [],
-      viewport: graph?.viewport || { x: 0, y: 0, zoom: 1 },
-    }),
-  }),
-}))
-
-vi.mock('../../hooks/use-workflow-draft-graph-for-canvas', () => ({
-  useWorkflowDraftGraphForCanvas: () => ({
-    getWorkflowDraftGraphForCanvas: (graph?: {
-      nodes?: unknown[]
-      edges?: unknown[]
-      viewport?: unknown
-    }) => ({
-      nodes: graph?.nodes?.length
-        ? graph.nodes
-        : [{ id: 'start-placeholder', data: { type: BlockEnum.StartPlaceholder } }],
-      edges: graph?.edges || [],
-      viewport: graph?.viewport || { x: 0, y: 0, zoom: 1 },
-    }),
-  }),
-}))
-
 vi.mock('../workflow-children', () => ({
   default: () => <div data-testid="workflow-children">workflow-children</div>,
 }))
@@ -600,7 +561,7 @@ describe('WorkflowMain', () => {
     expect(mockUseCollaboration).toHaveBeenCalledWith('app-1', false, expect.any(Object))
   })
 
-  it('subscribes collaboration listeners and handles sync/workflow update callbacks', async () => {
+  it('subscribes collaboration listeners and handles directed saves and variable updates', async () => {
     collaborationRuntime.isEnabled = true
     mockFetchWorkflowDraft.mockResolvedValue({
       hash: 'imported-hash',
@@ -638,17 +599,10 @@ describe('WorkflowMain', () => {
     })
 
     await collaborationListeners.varsAndFeaturesUpdate?.({})
-    await collaborationListeners.workflowUpdate?.()
 
     await waitFor(() => {
       expect(mockFetchWorkflowDraft).toHaveBeenCalledWith('/apps/app-1/workflows/draft')
       expect(mockSetFeatures).toHaveBeenCalled()
-      expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('imported-hash')
-      expect(mockHandleUpdateWorkflowCanvas).toHaveBeenCalledWith({
-        nodes: [{ id: 'n-1' }],
-        edges: [{ id: 'e-1' }],
-        viewport: { x: 3, y: 4, zoom: 1.2 },
-      })
     })
   })
 
@@ -967,29 +921,71 @@ describe('WorkflowMain', () => {
     }
   })
 
-  it('restores a local start placeholder for empty collaboration workflow updates', async () => {
+  it('refreshes matching workflow broadcasts and applies their features through the guarded callback', async () => {
     collaborationRuntime.isEnabled = true
-    mockFetchWorkflowDraft.mockResolvedValue({
-      features: {},
+    const response = {
+      features: {
+        file_upload: { enabled: true },
+        opening_statement: 'Updated opening',
+      },
       conversation_variables: [],
       environment_variables: [],
-      graph: {
-        nodes: [],
-        edges: [],
-        viewport: { x: 0, y: 0, zoom: 1 },
+    }
+    hookFns.handleRefreshWorkflowDraft.mockImplementation(
+      async (
+        _notUpdateCanvas,
+        options: { shouldApply: () => boolean; onSuccess: (value: typeof response) => void },
+      ) => {
+        if (!options.shouldApply()) return false
+        options.onSuccess(response)
+        return true
       },
-    })
+    )
 
     render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
 
-    await collaborationListeners.workflowUpdate?.()
+    await collaborationListeners.workflowUpdate?.({ appId: 'app-1', timestamp: 1 })
 
-    await waitFor(() => {
-      expect(mockHandleUpdateWorkflowCanvas).toHaveBeenCalledWith({
-        nodes: [{ id: 'start-placeholder', data: { type: BlockEnum.StartPlaceholder } }],
-        edges: [],
-        viewport: { x: 0, y: 0, zoom: 1 },
-      })
+    expect(hookFns.handleRefreshWorkflowDraft).toHaveBeenCalledExactlyOnceWith(false, {
+      shouldApply: expect.any(Function),
+      onSuccess: expect.any(Function),
     })
+    expect(mockFetchWorkflowDraft).not.toHaveBeenCalled()
+    expect(mockSetFeatures).toHaveBeenCalledWith(
+      expect.objectContaining({
+        file: expect.objectContaining({ enabled: true }),
+        opening: expect.objectContaining({ opening_statement: 'Updated opening' }),
+      }),
+    )
+  })
+
+  it('ignores workflow broadcasts for another app', async () => {
+    collaborationRuntime.isEnabled = true
+    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
+
+    await collaborationListeners.workflowUpdate?.({ appId: 'other-app', timestamp: 1 })
+
+    expect(hookFns.handleRefreshWorkflowDraft).not.toHaveBeenCalled()
+    expect(mockFetchWorkflowDraft).not.toHaveBeenCalled()
+    expect(mockSetFeatures).not.toHaveBeenCalled()
+  })
+
+  it('invalidates a broadcast refresh and ignores its listener after unmount', async () => {
+    collaborationRuntime.isEnabled = true
+    const { unmount } = render(
+      <WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />,
+    )
+    const listener = collaborationListeners.workflowUpdate!
+    await listener({ appId: 'app-1', timestamp: 1 })
+    const options = hookFns.handleRefreshWorkflowDraft.mock.calls[0]![1] as {
+      shouldApply: () => boolean
+    }
+    expect(options.shouldApply()).toBe(true)
+
+    unmount()
+    expect(options.shouldApply()).toBe(false)
+    await listener({ appId: 'app-1', timestamp: 2 })
+
+    expect(hookFns.handleRefreshWorkflowDraft).toHaveBeenCalledTimes(1)
   })
 })

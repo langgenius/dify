@@ -10,6 +10,7 @@ import { renderWorkflowComponent } from './workflow-test-env'
 
 type WorkflowUpdateEvent = {
   type: string
+  instanceId?: string
   payload: {
     nodes: Node[]
     edges: Edge[]
@@ -28,6 +29,9 @@ const collaborationBridge = vi.hoisted(() => ({
   canFlushGraphOnPageClose: vi.fn(),
   canUseLocalDraftFallback: vi.fn(),
   isConnected: vi.fn(),
+  emitGraphViewState: vi.fn(),
+  canRestoreGraphFromCrdt: vi.fn(),
+  refreshGraphSynchronously: vi.fn(),
   graphImportHandler: null as null | ((payload: { nodes: Node[]; edges: Edge[] }) => void),
   historyActionHandler: null as null | ((payload: unknown) => void),
   restoreIntentHandler: null as
@@ -86,6 +90,7 @@ const workflowHookMocks = vi.hoisted(() => ({
   handlePaneContextMenu: vi.fn(),
   handleSyncWorkflowDraft: vi.fn(),
   syncWorkflowDraftWhenPageClose: vi.fn(),
+  handleRefreshWorkflowDraft: vi.fn(),
   fetchInspectVars: vi.fn(),
   isValidConnection: vi.fn(),
   useShortcuts: vi.fn(),
@@ -204,6 +209,9 @@ vi.mock('../collaboration/core/collaboration-manager', () => ({
     canFlushGraphOnPageClose: collaborationBridge.canFlushGraphOnPageClose,
     canUseLocalDraftFallback: collaborationBridge.canUseLocalDraftFallback,
     isConnected: collaborationBridge.isConnected,
+    emitGraphViewState: collaborationBridge.emitGraphViewState,
+    canRestoreGraphFromCrdt: collaborationBridge.canRestoreGraphFromCrdt,
+    refreshGraphSynchronously: collaborationBridge.refreshGraphSynchronously,
     onGraphImport: (handler: (payload: { nodes: Node[]; edges: Edge[] }) => void) => {
       collaborationBridge.graphImportHandler = handler
       return vi.fn()
@@ -465,7 +473,7 @@ vi.mock('../hooks/use-workflow-panel-interactions', () => ({
 
 vi.mock('../hooks/use-workflow-refresh-draft', () => ({
   useWorkflowRefreshDraft: () => ({
-    handleRefreshWorkflowDraft: vi.fn(),
+    handleRefreshWorkflowDraft: workflowHookMocks.handleRefreshWorkflowDraft,
   }),
 }))
 
@@ -564,6 +572,7 @@ describe('Workflow edge event wiring', () => {
     collaborationBridge.canFlushGraphOnPageClose.mockReturnValue(true)
     collaborationBridge.canUseLocalDraftFallback.mockReturnValue(false)
     collaborationBridge.isConnected.mockReturnValue(true)
+    collaborationBridge.canRestoreGraphFromCrdt.mockReturnValue(true)
     eventEmitterState.subscription = null
     reactFlowBridge.store = null
     collaborationBridge.graphImportHandler = null
@@ -648,6 +657,7 @@ describe('Workflow edge event wiring', () => {
     act(() => {
       eventEmitterState.subscription?.({
         type: WORKFLOW_DATA_UPDATE,
+        instanceId: store.getState().workflowInstanceId,
         payload: {
           nodes: baseNodes,
           edges: [],
@@ -656,6 +666,80 @@ describe('Workflow edge event wiring', () => {
     })
 
     expect(store.getState().contextMenuTarget).toBeUndefined()
+  })
+
+  it('ignores empty graph events from another canvas, including a previous visit to the same app', () => {
+    const first = renderSubject({ initialStoreState: { appId: 'app-1' } })
+    const oldInstanceId = first.store.getState().workflowInstanceId
+    first.unmount()
+    const { store } = renderSubject({
+      initialStoreState: { appId: 'app-1', syncWorkflowDraftHash: 'current-hash' },
+    })
+
+    act(() => {
+      eventEmitterState.subscription?.({
+        type: WORKFLOW_DATA_UPDATE,
+        instanceId: oldInstanceId,
+        payload: { nodes: [], edges: [] },
+      })
+      eventEmitterState.subscription?.({
+        type: WORKFLOW_DATA_UPDATE,
+        payload: { nodes: [], edges: [] },
+      })
+    })
+
+    expect(screen.getByText('Workflow node node-1')).toBeInTheDocument()
+    expect(screen.getByText('Workflow node node-2')).toBeInTheDocument()
+    expect(store.getState().syncWorkflowDraftHash).toBe('current-hash')
+
+    act(() => {
+      eventEmitterState.subscription?.({
+        type: WORKFLOW_DATA_UPDATE,
+        instanceId: store.getState().workflowInstanceId,
+        payload: { nodes: [], edges: [] },
+      })
+    })
+    expect(screen.queryByText('Workflow node node-1')).not.toBeInTheDocument()
+    expect(screen.queryByText('Workflow node node-2')).not.toBeInTheDocument()
+  })
+
+  it('cancels a pending visibility refresh when the canvas unmounts', () => {
+    vi.useFakeTimers()
+    try {
+      const { unmount } = renderSubject()
+      vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible')
+      fireEvent(document, new Event('visibilitychange'))
+      unmount()
+      act(() => vi.advanceTimersByTime(500))
+      expect(workflowHookMocks.handleRefreshWorkflowDraft).not.toHaveBeenCalled()
+    } finally {
+      vi.restoreAllMocks()
+      vi.useRealTimers()
+    }
+  })
+
+  it('uses the reconnected CRDT before a delayed visibility refresh and invalidates it when hidden', () => {
+    vi.useFakeTimers()
+    try {
+      collaborationBridge.isConnected.mockReturnValue(false)
+      renderSubject()
+      const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible')
+      fireEvent(document, new Event('visibilitychange'))
+      collaborationBridge.isConnected.mockReturnValue(true)
+      act(() => vi.advanceTimersByTime(500))
+      expect(collaborationBridge.refreshGraphSynchronously).toHaveBeenCalledTimes(1)
+      expect(workflowHookMocks.handleRefreshWorkflowDraft).toHaveBeenCalledWith(true, {
+        shouldApply: expect.any(Function),
+      })
+      const shouldApply = workflowHookMocks.handleRefreshWorkflowDraft.mock.calls[0]![1].shouldApply
+      expect(shouldApply()).toBe(true)
+      visibility.mockReturnValue('hidden')
+      fireEvent(document, new Event('visibilitychange'))
+      expect(shouldApply()).toBe(false)
+    } finally {
+      vi.restoreAllMocks()
+      vi.useRealTimers()
+    }
   })
 
   it('should show a persistent error toast when saving the draft on unmount fails', () => {

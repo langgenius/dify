@@ -321,6 +321,8 @@ export const Workflow: FC<WorkflowProps> = memo(
 
     eventEmitter?.useSubscription((v: EventEmitterValue) => {
       if (typeof v === 'object' && v.type === WORKFLOW_DATA_UPDATE) {
+        if (v.instanceId !== workflowStore.getState().workflowInstanceId) return
+
         const payload = v.payload as WorkflowDataUpdatePayload
         setNodes(payload.nodes)
         store.getState().setNodes(payload.nodes)
@@ -389,7 +391,12 @@ export const Workflow: FC<WorkflowProps> = memo(
     }, [setCommentPlacing, setCommentQuickAdd, setPendingCommentState])
 
     const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
+    const visibilityRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+    const visibilityRefreshGenerationRef = useRef(0)
     const handleSyncWorkflowDraftWhenPageClose = useCallback(() => {
+      clearTimeout(visibilityRefreshTimerRef.current)
+      const generation = ++visibilityRefreshGenerationRef.current
+
       if (document.visibilityState === 'hidden') {
         // Update the local guard synchronously. Waiting for the server's leader
         // status would leave a window where this hidden tab saves a stale canvas.
@@ -409,15 +416,24 @@ export const Workflow: FC<WorkflowProps> = memo(
         // receiving remote edits. Restore from the CRDT instead of the DB draft — the DB may
         // hold the stale snapshot this very tab saved while hidden, and re-importing it would
         // broadcast a rollback to everyone. A trusted CRDT remains authoritative when empty.
-        const collaborationConnected = collaborationManager.isConnected()
-        if (collaborationConnected && !collaborationManager.canRestoreGraphFromCrdt()) return
+        visibilityRefreshTimerRef.current = setTimeout(() => {
+          const collaborationConnected = collaborationManager.isConnected()
+          const shouldApply = () => {
+            const { isListening, workflowRunningData } = workflowStore.getState()
+            return (
+              generation === visibilityRefreshGenerationRef.current &&
+              document.visibilityState === 'visible' &&
+              !isListening &&
+              workflowRunningData?.result?.status !== WorkflowRunningStatus.Running &&
+              collaborationManager.isConnected() === collaborationConnected &&
+              (!collaborationConnected || collaborationManager.canRestoreGraphFromCrdt())
+            )
+          }
+          if (!shouldApply()) return
 
-        if (collaborationConnected) {
-          collaborationManager.refreshGraphSynchronously()
-          setTimeout(() => handleRefreshWorkflowDraft(true), 500)
-        } else {
-          setTimeout(() => handleRefreshWorkflowDraft(), 500)
-        }
+          if (collaborationConnected) collaborationManager.refreshGraphSynchronously()
+          handleRefreshWorkflowDraft(collaborationConnected, { shouldApply })
+        }, 500)
       }
     }, [syncWorkflowDraftWhenPageClose, handleRefreshWorkflowDraft, workflowStore])
 
@@ -466,6 +482,8 @@ export const Workflow: FC<WorkflowProps> = memo(
       window.addEventListener('beforeunload', handleBeforeUnload)
 
       return () => {
+        clearTimeout(visibilityRefreshTimerRef.current)
+        visibilityRefreshGenerationRef.current += 1
         document.removeEventListener('visibilitychange', handleSyncWorkflowDraftWhenPageClose)
         window.removeEventListener('beforeunload', handleBeforeUnload)
       }

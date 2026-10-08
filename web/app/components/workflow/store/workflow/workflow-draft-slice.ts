@@ -2,6 +2,7 @@ import type { Viewport } from 'reactflow'
 import type { StateCreator } from 'zustand'
 import type { Edge, EnvironmentVariable, Node } from '@/app/components/workflow/types'
 import { debounce } from 'es-toolkit/compat'
+import { v4 as uuid4 } from 'uuid'
 
 type DebouncedFunc = {
   (fn: () => void): void
@@ -10,6 +11,7 @@ type DebouncedFunc = {
 }
 
 export type WorkflowDraftSliceShape = {
+  workflowInstanceId: string
   backupDraft?: {
     nodes: Node[]
     edges: Edge[]
@@ -37,6 +39,7 @@ export const createWorkflowDraftSlice: StateCreator<WorkflowDraftSliceShape> = (
   }, 5000)
 
   return {
+    workflowInstanceId: uuid4(),
     backupDraft: undefined,
     setBackupDraft: (backupDraft) => set(() => ({ backupDraft })),
     debouncedSyncWorkflowDraft: debouncedFn,

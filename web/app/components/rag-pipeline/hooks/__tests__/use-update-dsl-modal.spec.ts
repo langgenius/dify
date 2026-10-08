@@ -58,7 +58,7 @@ vi.mock('@/context/event-emitter', () => ({
 
 vi.mock('@/app/components/workflow/store', () => ({
   useWorkflowStore: () => ({
-    getState: () => ({ pipelineId: 'test-pipeline-id' }),
+    getState: () => ({ pipelineId: 'test-pipeline-id', workflowInstanceId: 'pipeline-canvas' }),
   }),
 }))
 

@@ -16,7 +16,6 @@ import { WorkflowWithInnerContext } from '@/app/components/workflow'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { useCollaboration } from '@/app/components/workflow/collaboration/hooks/use-collaboration'
 import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars'
-import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
@@ -29,7 +28,6 @@ import { useDSLByCanEdit } from '../hooks/use-DSL'
 import { useGetRunAndTraceUrl } from '../hooks/use-get-run-and-trace-url'
 import { useInspectVarsCrud } from '../hooks/use-inspect-vars-crud'
 import { useNodesSyncDraftByCanEdit } from '../hooks/use-nodes-sync-draft'
-import { useWorkflowDraftGraphForCanvas } from '../hooks/use-workflow-draft-graph-for-canvas'
 import { useWorkflowRefreshDraft } from '../hooks/use-workflow-refresh-draft'
 import { useWorkflowRunByCanEdit } from '../hooks/use-workflow-run'
 import { useWorkflowStartRunByCanEdit } from '../hooks/use-workflow-start-run'
@@ -61,7 +59,6 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     isReady: false,
   })
   const reactFlow = useReactFlow()
-  const { getWorkflowDraftGraphForCanvas } = useWorkflowDraftGraphForCanvas(appDetail?.mode)
 
   const reactFlowStore = useMemo(
     () => ({
@@ -202,7 +199,6 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
   const varsUpdateSyncRequestRef = useRef(0)
   const varsUpdateCompletedSyncRef = useRef(0)
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
-  const { handleUpdateWorkflowCanvas } = useWorkflowUpdate()
   const {
     handleBackupDraft,
     handleLoadBackupDraft,
@@ -315,29 +311,24 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
   useEffect(() => {
     if (!appId || !isCollaborationEnabled) return
 
-    const unsubscribe = collaborationManager.onWorkflowUpdate(async () => {
-      try {
-        const response = await fetchWorkflowDraft(`/apps/${appId}/workflows/draft`)
+    let disposed = false
+    const unsubscribe = collaborationManager.onWorkflowUpdate(async (update) => {
+      if (update.appId !== appId || disposed) return
 
-        if (response.hash) workflowStore.getState().setSyncWorkflowDraftHash(response.hash)
-
-        // Handle features, variables etc.
-        handleWorkflowDataUpdate(response)
-
-        // Update workflow canvas (nodes, edges, viewport)
-        if (response.graph)
-          handleUpdateWorkflowCanvas(getWorkflowDraftGraphForCanvas(response.graph))
-      } catch (error) {
-        console.error('Failed to fetch updated workflow:', error)
-      }
+      await handleRefreshWorkflowDraft(false, {
+        shouldApply: () => !disposed && workflowStore.getState().appId === appId,
+        onSuccess: handleWorkflowDataUpdate,
+      })
     })
 
-    return unsubscribe
+    return () => {
+      disposed = true
+      unsubscribe()
+    }
   }, [
     appId,
-    getWorkflowDraftGraphForCanvas,
+    handleRefreshWorkflowDraft,
     handleWorkflowDataUpdate,
-    handleUpdateWorkflowCanvas,
     isCollaborationEnabled,
     workflowStore,
   ])

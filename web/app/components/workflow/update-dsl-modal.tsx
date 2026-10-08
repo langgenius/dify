@@ -19,6 +19,7 @@ import { consoleQuery } from '@/service/console'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { collaborationManager } from './collaboration/core/collaboration-manager'
 import { WORKFLOW_DATA_UPDATE } from './constants'
+import { useWorkflowStore } from './store'
 import {
   getImportNotificationPayload,
   isImportCompleted,
@@ -39,6 +40,7 @@ const UpdateDSLModal = ({ appId, appMode, onCancel, onBackup, onImport }: Update
   const { t } = useTranslation(['workflow', 'app', 'common'])
   const [currentFile, setCurrentFile] = useState<File>()
   const { eventEmitter } = useEventEmitterContextContext()
+  const workflowStore = useWorkflowStore()
   const { handleCheckPluginDependencies } = usePluginDependencies()
 
   const handleWorkflowUpdate = useCallback(
@@ -57,6 +59,7 @@ const UpdateDSLModal = ({ appId, appMode, onCancel, onBackup, onImport }: Update
 
       eventEmitter?.emit({
         type: WORKFLOW_DATA_UPDATE,
+        instanceId: workflowStore.getState().workflowInstanceId,
         payload: {
           nodes: importedNodes,
           edges: importedEdges,
@@ -68,7 +71,7 @@ const UpdateDSLModal = ({ appId, appMode, onCancel, onBackup, onImport }: Update
         },
       })
     },
-    [eventEmitter],
+    [eventEmitter, workflowStore],
   )
 
   const handleCompletedImport = useCallback(

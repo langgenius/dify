@@ -3,10 +3,12 @@ import { useCallback } from 'react'
 import { useReactFlow } from 'reactflow'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { WORKFLOW_DATA_UPDATE } from '../constants'
+import { useWorkflowStore } from '../store'
 import { initialEdges, initialNodes } from '../utils'
 
 export const useWorkflowUpdate = () => {
   const reactflow = useReactFlow()
+  const workflowStore = useWorkflowStore()
   const { eventEmitter } = useEventEmitterContextContext()
 
   const handleUpdateWorkflowCanvas = useCallback(
@@ -15,6 +17,7 @@ export const useWorkflowUpdate = () => {
 
       eventEmitter?.emit({
         type: WORKFLOW_DATA_UPDATE,
+        instanceId: workflowStore.getState().workflowInstanceId,
         payload: {
           nodes: initialNodes(nodes, edges),
           edges: initialEdges(edges, nodes),
@@ -29,7 +32,7 @@ export const useWorkflowUpdate = () => {
       )
         reactflow.setViewport(viewport)
     },
-    [eventEmitter, reactflow],
+    [eventEmitter, reactflow, workflowStore],
   )
 
   return {
