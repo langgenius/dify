@@ -1,11 +1,9 @@
 import json
 import operator
-from collections.abc import Iterator
 from unittest.mock import Mock, patch
 
 import httpx
 import pytest
-from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
 from core.tools.__base.tool_runtime import ToolRuntime
@@ -17,13 +15,6 @@ from core.tools.entities.tool_entities import (
     ToolIdentity,
     ToolInvokeMessage,
 )
-
-
-@pytest.fixture
-def database_session(sqlite_engine: Engine) -> Iterator[Session]:
-    """Yield the live ORM session required by the shared tool invocation contract."""
-    with Session(sqlite_engine) as session:
-        yield session
 
 
 def _get_message_by_type[T](msgs: list[ToolInvokeMessage], msg_type: type[T]) -> ToolInvokeMessage | None:
@@ -65,7 +56,9 @@ class TestApiToolInvoke:
         )
 
     @patch("core.tools.custom_tool.tool.ssrf_proxy.get")
-    def test_invoke_with_json_response_creates_text_message_with_serialized_json(self, mock_get: Mock) -> None:
+    def test_invoke_with_json_response_creates_text_message_with_serialized_json(
+        self, mock_get: Mock, unbound_session: Session
+    ) -> None:
         """Test that when upstream returns JSON, the output Text message contains JSON-serialized string."""
         # Use the response's real JSON parsing and content decoding.
         json_response_data = {
@@ -76,7 +69,7 @@ class TestApiToolInvoke:
         mock_get.return_value = httpx.Response(200, json=json_response_data)
 
         # Invoke the tool
-        result_generator = self.api_tool._invoke(user_id="test_user", tool_parameters={})
+        result_generator = self.api_tool._invoke(session=unbound_session, user_id="test_user", tool_parameters={})
 
         # Get the result from the generator
         result = list(result_generator)
@@ -137,7 +130,7 @@ class TestApiToolInvoke:
         ids=operator.itemgetter(0),
     )
     def test_invoke_with_non_dict_json_response_creates_text_message_with_serialized_json(
-        self, mock_get: Mock, test_case
+        self, mock_get: Mock, test_case, unbound_session: Session
     ) -> None:
         """Test that when upstream returns a non-dict JSON, the output Text message contains JSON-serialized string."""
         # Explicit content also covers JSON null, which is distinct from no body.
@@ -147,7 +140,7 @@ class TestApiToolInvoke:
         )
 
         # Invoke the tool
-        result_generator = self.api_tool._invoke(user_id="test_user", tool_parameters={})
+        result_generator = self.api_tool._invoke(session=unbound_session, user_id="test_user", tool_parameters={})
 
         # Get the result from the generator
         result = list(result_generator)
@@ -171,14 +164,16 @@ class TestApiToolInvoke:
         assert json_message is None, "_invoke should not yield a JSON message for JSON array response"
 
     @patch("core.tools.custom_tool.tool.ssrf_proxy.get")
-    def test_invoke_with_text_response_creates_text_message_with_original_text(self, mock_get: Mock) -> None:
+    def test_invoke_with_text_response_creates_text_message_with_original_text(
+        self, mock_get: Mock, unbound_session: Session
+    ) -> None:
         """Test that when upstream returns plain text, the output Text message contains the original text."""
         # Plain text exercises the response's real JSON decoding failure.
         text_response_data = "This is a plain text response"
         mock_get.return_value = httpx.Response(200, text=text_response_data)
 
         # Invoke the tool
-        result_generator = self.api_tool._invoke(user_id="test_user", tool_parameters={})
+        result_generator = self.api_tool._invoke(session=unbound_session, user_id="test_user", tool_parameters={})
 
         # Get the result from the generator
         result = list(result_generator)
@@ -194,12 +189,12 @@ class TestApiToolInvoke:
         assert message.message.text == text_response_data
 
     @patch("core.tools.custom_tool.tool.ssrf_proxy.get")
-    def test_invoke_with_empty_response(self, mock_get: Mock) -> None:
+    def test_invoke_with_empty_response(self, mock_get: Mock, unbound_session: Session) -> None:
         """Test that empty responses are handled correctly."""
         mock_get.return_value = httpx.Response(200, content=b"", headers={"content-type": "application/json"})
 
         # Invoke the tool
-        result_generator = self.api_tool._invoke(user_id="test_user", tool_parameters={})
+        result_generator = self.api_tool._invoke(session=unbound_session, user_id="test_user", tool_parameters={})
 
         # Get the result from the generator
         result = list(result_generator)
@@ -215,11 +210,11 @@ class TestApiToolInvoke:
         assert "Empty response from the tool" in message.message.text
 
     @patch("core.tools.custom_tool.tool.ssrf_proxy.get")
-    def test_invoke_with_error_response(self, mock_get: Mock) -> None:
+    def test_invoke_with_error_response(self, mock_get: Mock, unbound_session: Session) -> None:
         """Test that error responses are handled correctly."""
         mock_get.return_value = httpx.Response(404, text="Not Found")
 
-        result_generator = self.api_tool._invoke(user_id="test_user", tool_parameters={})
+        result_generator = self.api_tool._invoke(session=unbound_session, user_id="test_user", tool_parameters={})
 
         # Invoke the tool and expect an error
         with pytest.raises(Exception) as exc_info:

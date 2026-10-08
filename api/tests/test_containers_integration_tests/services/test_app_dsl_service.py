@@ -4,7 +4,7 @@ import base64
 import json
 from types import SimpleNamespace
 from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, create_autospec, patch
 from uuid import uuid4
 
 import pytest
@@ -56,7 +56,9 @@ from services.app_dsl_service import (
 )
 from services.app_service import AppService, CreateAppParams
 from services.dsl_version import check_version_compatibility
+from services.entities.dsl_entities import AppDslOverwriteStore
 from services.errors.app import WorkflowNotFoundError
+from services.workflow.draft_service import WorkflowDraftService
 from tests.test_containers_integration_tests.helpers import accounts as account_fixtures
 from tests.test_containers_integration_tests.helpers import generate_valid_password
 
@@ -470,7 +472,7 @@ class TestAppDslService:
             app_id=app.id,
         )
         assert result.status == ImportStatus.FAILED
-        assert "Only workflow or advanced chat apps" in result.error
+        assert result.error == "Only workflow or advanced chat DSLs can overwrite workflow Apps"
 
     # ── Import: Flow ──────────────────────────────────────────────────
 
@@ -709,19 +711,7 @@ class TestAppDslService:
         fixed_now = object()
         monkeypatch.setattr(app_dsl_service, "naive_utc_now", lambda: fixed_now)
 
-        workflow_service = MagicMock()
-        workflow_service.get_draft_workflow.return_value = None
-        monkeypatch.setattr(app_dsl_service, "WorkflowService", lambda: workflow_service)
-        monkeypatch.setattr(
-            app_dsl_service.variable_factory,
-            "build_environment_variable_from_mapping",
-            lambda _m: SimpleNamespace(kind="env"),
-        )
-        monkeypatch.setattr(
-            app_dsl_service.variable_factory,
-            "build_conversation_variable_from_mapping",
-            lambda _m: SimpleNamespace(kind="conv"),
-        )
+        drafts = create_autospec(WorkflowDraftService, instance=True, spec_set=True)
 
         app = _app_record(
             mode=AppMode.WORKFLOW,
@@ -733,7 +723,11 @@ class TestAppDslService:
             updated_by=None,
             updated_at=None,
         )
-        service = build_app_dsl_service(db_session_with_containers)
+        service = AppDslService(
+            db_session_with_containers,
+            drafts=drafts,
+            overwrites=create_autospec(AppDslOverwriteStore, instance=True, spec_set=True),
+        )
         updated = service._create_or_update_app(
             app=app,
             data={
@@ -756,6 +750,15 @@ class TestAppDslService:
         assert app.icon == app_dsl_service.DEFAULT_ICON
         assert app.icon_background == "#222222"
         assert app.updated_at is fixed_now
+
+        drafts.sync.assert_called_once()
+        context, owner, command = drafts.sync.call_args.args
+        assert context.account_id == _DEFAULT_ACCOUNT_ID
+        assert context.active_workspace_id == app.tenant_id
+        assert owner.id == app.id
+        assert command.graph == {"nodes": []}
+        assert command.check_hash is False
+        assert command.clear_debug_variables is True
 
     def test_create_or_update_app_new_app_requires_tenant(self, db_session_with_containers: Session):
         account = _account()

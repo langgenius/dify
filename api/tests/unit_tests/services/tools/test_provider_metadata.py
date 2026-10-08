@@ -1,25 +1,30 @@
 """Provider presentation and execution share tenant-scoped, detached records."""
 
 import json
+from collections.abc import Generator, Mapping
 from datetime import datetime
+from typing import Literal, NoReturn
 from uuid import uuid4
 
 import pytest
 from flask import has_app_context
-from sqlalchemy import create_engine, event
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import Engine, Table, create_engine, event
+from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import QueuePool
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.db import session_factory
-from core.tools.entities.tool_entities import ToolProviderType
+from core.tools.builtin_tool.provider import BuiltinToolProviderController
+from core.tools.entities.tool_entities import ApiProviderSchemaType, ToolProviderType
 from core.tools.errors import ToolProviderNotFoundError
+from core.tools.plugin_tool.provider import PluginToolProviderController
 from models.account import Account
 from models.agent_config_entities import AgentSoulToolsConfig
 from models.base import TypeBase
 from models.tools import ApiToolProvider, BuiltinToolProvider, MCPToolProvider, ToolLabelBinding, WorkflowToolProvider
 from repositories.tools.provider_repository import ToolProviderRepository
 from repositories.tools.workflow_repository import WorkflowToolRepository
+from services.tools.api.provider import ApiToolProviderController
 from services.tools.api_tools_manage_service import ApiToolManageService
 from services.tools.tool_manager import ToolManager
 from services.tools.tools_transform_service import ToolTransformService
@@ -29,17 +34,33 @@ from services.workflow.execution.adapters.agent_v2.dify_tools_builder import (
 )
 from tests.unit_tests.model_factories import make_account
 
+type Database = tuple[sessionmaker[Session], ToolProviderRepository]
+
 
 @pytest.fixture
-def database(monkeypatch):
+def database(monkeypatch: pytest.MonkeyPatch) -> Generator[Database, None, None]:
     engines = [create_engine("sqlite://", poolclass=QueuePool) for _ in range(2)]
-    tables = [Account, ApiToolProvider, BuiltinToolProvider, MCPToolProvider, WorkflowToolProvider, ToolLabelBinding]
+    tables: list[Table] = []
+    for model in (
+        Account,
+        ApiToolProvider,
+        BuiltinToolProvider,
+        MCPToolProvider,
+        WorkflowToolProvider,
+        ToolLabelBinding,
+    ):
+        table = model.__table__
+        assert isinstance(table, Table)
+        tables.append(table)
     for engine in engines:
-        TypeBase.metadata.create_all(engine, tables=[model.__table__ for model in tables])
+        TypeBase.metadata.create_all(engine, tables=tables)
     sessions, global_sessions = [sessionmaker(e, expire_on_commit=False) for e in engines]
 
-    def reject_global(*_args, **_kwargs):
+    def reject_global(*_args: object, **_kwargs: object) -> NoReturn:
         pytest.fail("Provider metadata used the global database")
+
+    def guarded_engine(_database: object) -> Engine:
+        return engines[1]
 
     event.listen(engines[1], "before_cursor_execute", reject_global)
     monkeypatch.setattr(session_factory, "create_session", global_sessions)
@@ -48,7 +69,7 @@ def database(monkeypatch):
         from extensions.ext_database import db
 
         monkeypatch.setattr(db, "session", global_session)
-        monkeypatch.setattr(type(db), "engine", property(lambda _db: engines[1]))
+        monkeypatch.setattr(type(db), "engine", property(guarded_engine))
         try:
             yield sessions, ToolProviderRepository(sessions)
         finally:
@@ -56,14 +77,16 @@ def database(monkeypatch):
                 engine.dispose()
 
 
-def api_provider(*, tenant_id="tenant", name="search", author="author", auth="api_key_query"):
+def api_provider(
+    *, tenant_id: str = "tenant", name: str = "search", author: str = "author", auth: str = "api_key_query"
+) -> ApiToolProvider:
     return ApiToolProvider(
         name=name,
         tenant_id=tenant_id,
         user_id=author,
         description="Search",
         schema="{}",
-        schema_type_str="openapi",
+        schema_type_str=ApiProviderSchemaType.OPENAPI,
         icon=json.dumps({"content": "A", "background": "#000"}),
         tools_str="[]",
         credentials_str=json.dumps({"auth_type": auth, "api_key_value": "encrypted"}),
@@ -82,8 +105,8 @@ def api_provider(*, tenant_id="tenant", name="search", author="author", auth="ap
     ],
 )
 def test_list_detail_and_runtime_use_same_loaded_author_and_release_before_decryption(
-    database, monkeypatch, auth, field
-):
+    database: Database, monkeypatch: pytest.MonkeyPatch, auth: str, field: str | None
+) -> None:
     sessions, providers = database
     with sessions.begin() as session:
         session.add(make_account(account_id="author", name="Repository author"))
@@ -91,22 +114,26 @@ def test_list_detail_and_runtime_use_same_loaded_author_and_release_before_decry
         foreign = api_provider(tenant_id="foreign")
         session.add_all([row, foreign])
         session.flush()
-        session.add(ToolLabelBinding(tool_id=row.id, tool_type="api", label_name="search"))
-        session.add(ToolLabelBinding(tool_id=foreign.id, tool_type="api", label_name="foreign-label"))
-    statements = []
-    event.listen(sessions.kw["bind"], "before_cursor_execute", lambda *args: statements.append(args[2]))
-    calls = []
+        session.add(ToolLabelBinding(tool_id=row.id, tool_type=ToolProviderType.API, label_name="search"))
+        session.add(ToolLabelBinding(tool_id=foreign.id, tool_type=ToolProviderType.API, label_name="foreign-label"))
+    statements: list[str] = []
+
+    def record_statement(_connection: object, _cursor: object, statement: str, *_args: object) -> None:
+        statements.append(statement)
+
+    event.listen(sessions.kw["bind"], "before_cursor_execute", record_statement)
+    calls: list[str] = []
 
     class Encrypter:
-        def decrypt(self, data):
+        def decrypt(self, data: Mapping[str, object]) -> Mapping[str, object]:
             assert sessions.kw["bind"].pool.checkedout() == 0
             calls.append("decrypt")
             return {**data, "api_key_value": "secret"}
 
-        def mask_plugin_credentials(self, data):
+        def mask_plugin_credentials(self, data: Mapping[str, object]) -> Mapping[str, object]:
             return {**data, "api_key_value": "***"}
 
-    def encryption(*, tenant_id, controller):
+    def encryption(*, tenant_id: str, controller: ApiToolProviderController) -> tuple[Encrypter, None]:
         assert tenant_id == "tenant"
         assert sessions.kw["bind"].pool.checkedout() == 0
         assert controller.entity.identity.author == "Repository author"
@@ -136,7 +163,7 @@ def test_list_detail_and_runtime_use_same_loaded_author_and_release_before_decry
         ToolManager.user_get_api_provider("missing", "tenant", tool_providers=providers)
 
 
-def test_authorless_record_converts_without_querying(database):
+def test_authorless_record_converts_without_querying(database: Database) -> None:
     sessions, providers = database
     with sessions.begin() as session:
         row = api_provider(author="deleted")
@@ -144,7 +171,7 @@ def test_authorless_record_converts_without_querying(database):
     record = providers.get(tenant_id="tenant", provider_id=row.id)
     assert record is not None
 
-    def reject_query(*_args):
+    def reject_query(*_args: object) -> NoReturn:
         pytest.fail("Detached conversion queried the database")
 
     event.listen(sessions.kw["bind"], "before_cursor_execute", reject_query)
@@ -154,7 +181,7 @@ def test_authorless_record_converts_without_querying(database):
 
 
 @pytest.mark.parametrize("provider_type", [ToolProviderType.API, ToolProviderType.WORKFLOW, ToolProviderType.MCP])
-def test_icons_use_injected_repository_and_tenant_scope(database, provider_type):
+def test_icons_use_injected_repository_and_tenant_scope(database: Database, provider_type: ToolProviderType) -> None:
     sessions, providers = database
     with sessions.begin() as session:
         if provider_type == ToolProviderType.API:
@@ -181,20 +208,21 @@ def test_icons_use_injected_repository_and_tenant_scope(database, provider_type)
                 icon='{"content":"A","background":"#000"}',
             )
         session.add(row)
-    references = [row.id]
-    if provider_type == ToolProviderType.MCP:
-        references.append(row.server_identifier)
+        session.flush()
+        references = [row.id]
+        if isinstance(row, MCPToolProvider):
+            references.append(row.server_identifier)
     for reference in references:
         icon = ToolManager.get_tool_icon("tenant", provider_type, reference, tool_providers=providers)
+        assert isinstance(icon, dict)
         assert icon == {"content": "A", "background": "#000"}
-        assert (
-            ToolManager.get_tool_icon("foreign", provider_type, reference, tool_providers=providers)["background"]
-            == "#252525"
-        )
+        foreign_icon = ToolManager.get_tool_icon("foreign", provider_type, reference, tool_providers=providers)
+        assert isinstance(foreign_icon, dict)
+        assert foreign_icon["background"] == "#252525"
     assert sessions.kw["bind"].pool.checkedout() == 0
 
 
-def test_builtin_defaults_are_tenant_scoped_and_ordered(database):
+def test_builtin_defaults_are_tenant_scoped_and_ordered(database: Database) -> None:
     sessions, providers = database
     with sessions.begin() as session:
         for tenant, name, default, year in [
@@ -210,7 +238,9 @@ def test_builtin_defaults_are_tenant_scoped_and_ordered(database):
     assert [p.name for p in providers.default_builtin(tenant_id="tenant")] == ["default"]
 
 
-def test_list_all_skips_invalid_api_record_and_loads_mcp_author_before_conversion(database, monkeypatch):
+def test_list_all_skips_invalid_api_record_and_loads_mcp_author_before_conversion(
+    database: Database, monkeypatch: pytest.MonkeyPatch
+) -> None:
     sessions, providers = database
     with sessions.begin() as session:
         session.add(make_account(account_id="author", name="Repository author"))
@@ -228,16 +258,21 @@ def test_list_all_skips_invalid_api_record_and_loads_mcp_author_before_conversio
                 icon='{"content":"M","background":"#000"}',
             )
         )
-    decrypted = []
+    decrypted: list[str] = []
 
-    def decrypt(tenant_id, token):
+    def decrypt(tenant_id: str, token: str) -> str:
         assert tenant_id == "tenant"
         assert token == "encrypted"
         assert sessions.kw["bind"].pool.checkedout() == 0
         decrypted.append(token)
         return "https://mcp.example.com"
 
-    monkeypatch.setattr(ToolManager, "list_builtin_providers", lambda _tenant: [])
+    def no_builtin_providers(
+        _tenant_id: str,
+    ) -> Generator[BuiltinToolProviderController | PluginToolProviderController, None, None]:
+        yield from ()
+
+    monkeypatch.setattr(ToolManager, "list_builtin_providers", no_builtin_providers)
     monkeypatch.setattr("core.entities.mcp_provider.encrypter.decrypt_token", decrypt)
     result = ToolManager.list_providers_from_api(
         "user", "tenant", None, tool_providers=providers, workflow_queries=WorkflowToolRepository(sessions)
@@ -246,16 +281,22 @@ def test_list_all_skips_invalid_api_record_and_loads_mcp_author_before_conversio
     assert decrypted
 
 
-def test_mcp_creation_reads_author_and_converts_response_after_commit(database, monkeypatch):
+def test_mcp_creation_reads_author_and_converts_response_after_commit(
+    database: Database, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from core.entities.mcp_provider import MCPConfiguration
     from services.tools.mcp_tools_manage_service import MCPToolManageService
 
     sessions, providers = database
     with sessions.begin() as session:
         session.add(make_account(account_id="author", name="Repository author"))
-    monkeypatch.setattr("services.tools.mcp_tools_manage_service.encrypter.encrypt_token", lambda _tenant, text: text)
 
-    def decrypt(tenant_id, token):
+    def keep_token(_tenant_id: str, text: str) -> str:
+        return text
+
+    monkeypatch.setattr("services.tools.mcp_tools_manage_service.encrypter.encrypt_token", keep_token)
+
+    def decrypt(tenant_id: str, token: str) -> str:
         assert tenant_id == "tenant"
         assert sessions.kw["bind"].pool.checkedout() == 0
         return token
@@ -283,11 +324,11 @@ def test_mcp_creation_reads_author_and_converts_response_after_commit(database, 
 
 class TestAgentMCPToolsBuilder:
     @pytest.fixture(autouse=True)
-    def _provide_app_context(self):
+    def _provide_app_context(self) -> None:
         """Override the unit suite's Flask context to exercise production DI."""
 
     @pytest.fixture
-    def mcp_builder(self, database):
+    def mcp_builder(self, database: Database) -> WorkflowAgentDifyToolsBuilder:
         from extensions.application_services.workflow import build_workflow_execution_dependencies
 
         sessions, _ = database
@@ -295,7 +336,7 @@ class TestAgentMCPToolsBuilder:
         return WorkflowAgentDifyToolsBuilder(tool_providers=runtime.tool_providers, workflow_queries=runtime.tools)
 
     @pytest.fixture
-    def mcp_provider(self, database):
+    def mcp_provider(self, database: Database) -> MCPToolProvider:
         sessions, _ = database
         with sessions.begin() as session:
             provider = MCPToolProvider(
@@ -327,8 +368,13 @@ class TestAgentMCPToolsBuilder:
     @pytest.mark.parametrize("reference", ["id", "identifier", "uuid-identifier"])
     @pytest.mark.parametrize("provider_entry", [False, True])
     def test_default_builder_uses_injected_repository_without_flask(
-        self, database, mcp_builder, mcp_provider, reference, provider_entry
-    ):
+        self,
+        database: Database,
+        mcp_builder: WorkflowAgentDifyToolsBuilder,
+        mcp_provider: MCPToolProvider,
+        reference: Literal["id", "identifier", "uuid-identifier"],
+        provider_entry: bool,
+    ) -> None:
         assert not has_app_context()
         sessions, _ = database
         if reference == "uuid-identifier":
@@ -361,8 +407,13 @@ class TestAgentMCPToolsBuilder:
     @pytest.mark.parametrize("provider_entry", [False, True])
     @pytest.mark.parametrize("tenant_id", ["tenant", "foreign"])
     def test_missing_and_foreign_providers_cannot_build_tools(
-        self, database, mcp_builder, mcp_provider, tenant_id, provider_entry
-    ):
+        self,
+        database: Database,
+        mcp_builder: WorkflowAgentDifyToolsBuilder,
+        mcp_provider: MCPToolProvider,
+        tenant_id: Literal["tenant", "foreign"],
+        provider_entry: bool,
+    ) -> None:
         assert not has_app_context()
         provider_id = str(uuid4()) if tenant_id == "tenant" else mcp_provider.id
         config = {"provider_type": "mcp", "provider_id": provider_id, "credential_type": "unauthorized"}
@@ -381,8 +432,10 @@ class TestAgentMCPToolsBuilder:
         assert sessions.kw["bind"].pool.checkedout() == 0
 
 
-@pytest.mark.parametrize("provider_type", ["api", "workflow"])
-def test_label_queries_scope_tenant_type_and_requested_providers(database, provider_type):
+@pytest.mark.parametrize("provider_type", [ToolProviderType.API, ToolProviderType.WORKFLOW])
+def test_label_queries_scope_tenant_type_and_requested_providers(
+    database: Database, provider_type: ToolProviderType
+) -> None:
     sessions, providers = database
     labels = providers.api_labels if provider_type == "api" else WorkflowToolRepository(sessions).labels
     ids = {name: str(uuid4()) for name in ["selected", "second", "unselected", "unlabeled", "foreign", "missing"]}
@@ -405,18 +458,22 @@ def test_label_queries_scope_tenant_type_and_requested_providers(database, provi
             session.add_all([api, workflow])
             if name == "unlabeled":
                 continue
-            for kind in ["api", "workflow"]:
+            for kind in [ToolProviderType.API, ToolProviderType.WORKFLOW]:
                 for label in ["search", "news"]:
-                    session.add(ToolLabelBinding(tool_id=ids[name], tool_type=kind, label_name=f"{kind}-{label}"))
+                    session.add(ToolLabelBinding(tool_id=ids[name], tool_type=kind, label_name=f"{kind.value}-{label}"))
         session.add(ToolLabelBinding(tool_id=ids["missing"], tool_type=provider_type, label_name="orphan"))
-    statements = []
-    event.listen(sessions.kw["bind"], "before_cursor_execute", lambda *args: statements.append(args[2]))
+    statements: list[str] = []
+
+    def record_statement(_connection: object, _cursor: object, statement: str, *_args: object) -> None:
+        statements.append(statement)
+
+    event.listen(sessions.kw["bind"], "before_cursor_execute", record_statement)
 
     assert labels(tenant_id="tenant", provider_ids=[]) == {}
     assert statements == []
     result = labels(tenant_id="tenant", provider_ids=[value for name, value in ids.items() if name != "unselected"])
     assert {provider_id: set(names) for provider_id, names in result.items()} == {
-        ids[name]: {f"{provider_type}-search", f"{provider_type}-news"} for name in ["selected", "second"]
+        ids[name]: {f"{provider_type.value}-search", f"{provider_type.value}-news"} for name in ["selected", "second"]
     }
     assert len(statements) == 1
     assert sessions.kw["bind"].pool.checkedout() == 0

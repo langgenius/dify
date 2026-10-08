@@ -5,7 +5,7 @@ from __future__ import annotations
 import sys
 from datetime import datetime
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, create_autospec
 
 import pytest
 from sqlalchemy import event, func, select
@@ -15,6 +15,7 @@ import services.knowledge.summaries.adapters as summary_module
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from models.dataset import Dataset, Document, DocumentSegment, DocumentSegmentSummary
 from models.enums import DataSourceType, DocumentCreatedFrom, SegmentStatus, SummaryStatus
+from models.vector import VectorConfiguration
 from services.knowledge.summaries.adapters import SummaryIndexAdapter
 
 TENANT_ID = "tenant-1"
@@ -177,6 +178,18 @@ def _install_summary_generator(
     return generate
 
 
+def _install_vector(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
+    configuration = VectorConfiguration("qdrant")
+    monkeypatch.setattr(
+        summary_module,
+        "resolve_vector_configuration",
+        create_autospec(summary_module.resolve_vector_configuration, return_value=configuration),
+    )
+    vector = MagicMock(name="vector")
+    monkeypatch.setattr(summary_module, "Vector", create_autospec(summary_module.Vector, return_value=vector))
+    return vector
+
+
 def _install_vector_dependencies(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     monkeypatch.setattr(summary_module.uuid, "uuid4", MagicMock(return_value="node-1"))
     monkeypatch.setattr(summary_module.helper, "generate_text_hash", MagicMock(return_value="hash-1"))
@@ -185,9 +198,7 @@ def _install_vector_dependencies(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     manager = MagicMock(name="model_manager")
     manager.get_model_instance.return_value = embedding_model
     monkeypatch.setattr(summary_module.ModelManager, "for_tenant", MagicMock(return_value=manager))
-    vector = MagicMock(name="vector")
-    monkeypatch.setattr(summary_module, "Vector", MagicMock(return_value=vector))
-    return vector
+    return _install_vector(monkeypatch)
 
 
 class TestGenerateAndCreate:
@@ -612,8 +623,7 @@ class TestEnableDisableDelete:
         second = _persist_segment(sqlite_session, dataset, document, segment_id="seg-2", position=2)
         selected = _persist_summary(sqlite_session, dataset, document, first, node_id="node-1")
         untouched = _persist_summary(sqlite_session, dataset, document, second, summary_id="sum-2", node_id="node-2")
-        vector = MagicMock(name="vector")
-        monkeypatch.setattr(summary_module, "Vector", MagicMock(return_value=vector))
+        vector = _install_vector(monkeypatch)
 
         SummaryIndexAdapter.disable_summaries_for_segments(dataset, segment_ids=[first.id], disabled_by="account-2")
 
@@ -633,9 +643,8 @@ class TestEnableDisableDelete:
     ) -> None:
         dataset, document, segment = _graph(sqlite_session)
         summary = _persist_summary(sqlite_session, dataset, document, segment, node_id="node-1")
-        vector = MagicMock(name="vector")
+        vector = _install_vector(monkeypatch)
         vector.delete_by_ids.side_effect = RuntimeError("vector unavailable")
-        monkeypatch.setattr(summary_module, "Vector", MagicMock(return_value=vector))
 
         SummaryIndexAdapter.disable_summaries_for_segments(dataset)
 
@@ -704,8 +713,7 @@ class TestEnableDisableDelete:
         second = _persist_segment(sqlite_session, dataset, document, segment_id="seg-2", position=2)
         deleted = _persist_summary(sqlite_session, dataset, document, first, node_id="node-1")
         kept = _persist_summary(sqlite_session, dataset, document, second, summary_id="sum-2", node_id="node-2")
-        vector = MagicMock(name="vector")
-        monkeypatch.setattr(summary_module, "Vector", MagicMock(return_value=vector))
+        vector = _install_vector(monkeypatch)
 
         SummaryIndexAdapter.delete_summaries_for_segments(dataset, segment_ids=[first.id], session=sqlite_session)
 
@@ -735,9 +743,8 @@ class TestManualUpdate:
     ) -> None:
         dataset, document, segment = _graph(sqlite_session)
         summary = _persist_summary(sqlite_session, dataset, document, segment, node_id="node-1")
-        vector = MagicMock(name="vector")
+        vector = _install_vector(monkeypatch)
         vector.delete_by_ids.side_effect = RuntimeError("boom")
-        monkeypatch.setattr(summary_module, "Vector", MagicMock(return_value=vector))
 
         result = SummaryIndexAdapter.update_summary_for_segment(segment, dataset, "   ", session=sqlite_session)
 

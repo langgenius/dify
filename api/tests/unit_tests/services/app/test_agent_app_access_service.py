@@ -1,6 +1,6 @@
 """Published Agent App references use the canonical roster query."""
 
-from unittest.mock import Mock
+from unittest.mock import create_autospec
 
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
@@ -59,7 +59,8 @@ def test_access_only_lists_current_published_workflow_references(
         )
     sqlite_session.commit()
     service = build_agent_app_services(
-        database_client=sqlite_session_factory, variables=Mock(spec=WorkflowExecutionVariables)
+        database_client=sqlite_session_factory,
+        variables=create_autospec(WorkflowExecutionVariables, instance=True, spec_set=True),
     ).access
     context = RequestContext("request", None, "account", "tenant-1")
     [reference] = service.list_referencing_workflows(context, "agent")
@@ -96,7 +97,8 @@ def test_access_requires_public_agent_app(
     sqlite_session.add_all([make_app(app_id="agent-app", mode=AppMode.AGENT), agent])
     sqlite_session.commit()
     service = build_agent_app_services(
-        database_client=sqlite_session_factory, variables=Mock(spec=WorkflowExecutionVariables)
+        database_client=sqlite_session_factory,
+        variables=create_autospec(WorkflowExecutionVariables, instance=True, spec_set=True),
     ).access
     with pytest.raises(AgentAppNotFoundError):
         service.list_referencing_workflows(RequestContext("request", None, "account", "tenant-1"), "agent")

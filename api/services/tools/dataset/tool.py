@@ -1,5 +1,7 @@
 from collections.abc import Generator
-from typing import Any, override
+from typing import Any, Protocol, override, runtime_checkable
+
+from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import DatasetRetrieveConfigEntity
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -15,8 +17,26 @@ from core.tools.entities.tool_entities import (
     ToolProviderType,
 )
 from services.knowledge.retrieval.adapters.resource_events import DatasetIndexToolCallbackHandler
-from services.knowledge.retrieval.dataset_retrieval import DatasetRetrieval
 from services.knowledge.retrieval.ports import DatasetRetrievalFactory, KnowledgeRetrievalRecords
+
+
+@runtime_checkable
+class DatasetToolRetrieval(Protocol):
+    def retrieve_dataset(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        user_id: str,
+        dataset_id: str,
+        query: str,
+        config: DatasetRetrieveConfigEntity,
+        top_k: int,
+        inputs: dict[str, Any],
+        invoke_from: InvokeFrom,
+        return_resource: bool,
+        hit_callback: DatasetIndexToolCallbackHandler,
+    ) -> str: ...
 
 
 class DatasetRetrieverTool(Tool):
@@ -25,7 +45,7 @@ class DatasetRetrieverTool(Tool):
         entity: ToolEntity,
         runtime: ToolRuntime,
         *,
-        retrieval: DatasetRetrieval,
+        retrieval: DatasetToolRetrieval,
         dataset_id: str,
         config: DatasetRetrieveConfigEntity,
         top_k: int,
@@ -63,6 +83,8 @@ class DatasetRetrieverTool(Tool):
         if not dataset_ids or retrieve_config is None:
             return []
         feature = retrieval()
+        if not isinstance(feature, DatasetToolRetrieval):
+            raise TypeError("dataset retrieval factory does not support dataset tool invocation")
         tools = []
         for dataset in records.available_datasets(tenant_id, dataset_ids):
             description = dataset.description or "useful for when you want to answer queries about the " + dataset.name
@@ -137,6 +159,7 @@ class DatasetRetrieverTool(Tool):
     @override
     def _invoke(
         self,
+        session: Session,
         user_id: str,
         tool_parameters: dict[str, Any],
         conversation_id: str | None = None,

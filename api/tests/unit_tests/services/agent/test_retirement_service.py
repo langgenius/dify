@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, create_autospec
 
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
@@ -26,7 +26,7 @@ from services.agent.retirement_service import WorkflowAgentRetirementService
 
 
 def test_retire_unowned_failure_propagates() -> None:
-    repository = MagicMock(spec=WorkflowAgentRetirementRepository)
+    repository = create_autospec(WorkflowAgentRetirementRepository, instance=True, spec_set=True)
     error = RuntimeError("retirement failed")
     repository.retire.side_effect = error
     with pytest.raises(RuntimeError) as exc_info:
@@ -231,7 +231,7 @@ def test_retire_unowned_archives_orphan_and_retires_resources(
 
 
 def test_hidden_app_enqueue_failure_prevents_agent_purge_enqueue(monkeypatch: pytest.MonkeyPatch) -> None:
-    repository = MagicMock(spec=WorkflowAgentRetirementRepository)
+    repository = create_autospec(WorkflowAgentRetirementRepository, instance=True, spec_set=True)
     repository.retire.return_value = AgentRetirement(
         ["agent-1", "agent-2"], ["hidden-app-1", "hidden-app-2"], [], [], []
     )

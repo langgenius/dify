@@ -177,6 +177,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
                     annotations=runtime.annotation_replies,
                     records=runtime.chat_records,
                     dataset_tools=runtime.dataset_tools,
+                    tool_invoker=runtime.agent_tool_invoker,
                     workflow_runtime=runtime,
                 ).generate(
                     app_model=app,

@@ -13,6 +13,7 @@ from models import Account
 from models.dataset import Dataset, DatasetProcessRule, Document, DocumentPipelineExecutionLog, Pipeline
 from models.enums import IndexingStatus
 from models.pipeline_execution import PipelineDocumentSeed
+from repositories.knowledge.dataset_read_repository import get_pipeline_dataset
 from services.knowledge.document_sync import SyncDocumentRecord
 from services.knowledge.indexing.errors import DocumentIsDeletedPausedError, DocumentIsPausedError
 from services.knowledge.indexing.estimate import EstimateDocumentRecord, StoredSource
@@ -94,6 +95,10 @@ class SQLAlchemyDocumentRepository:
 
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
+
+    def get_pipeline_dataset(self, pipeline: Pipeline, *, session: Session) -> Dataset | None:
+        """Read within the legacy pipeline caller's transaction, including uncommitted changes."""
+        return get_pipeline_dataset(pipeline, session=session)
 
     def prepare_pipeline_documents(
         self,

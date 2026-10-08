@@ -30,13 +30,13 @@ from models.account import Account
 from models.enums import AppStatus
 from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowType
+from services.app.generation.runtime import AppGenerationRuntime
 from services.app_generate_service import AppGenerateService
 from services.errors.app import (
     TriggerWorkflowServiceModeUnavailableError,
     WorkflowIdFormatError,
     WorkflowNotFoundError,
 )
-from services.workflow.execution.ports import WorkflowRuntime
 from services.workflow.variable_contracts import WorkflowExecutionVariables
 
 
@@ -318,7 +318,7 @@ class TestGenerate(_RealSessionTest):
         mode: AppMode,
         entry: str,
         *,
-        workflow_runtime: WorkflowRuntime,
+        workflow_runtime: AppGenerationRuntime,
     ) -> None:
         from graphon.enums import BuiltinNodeTypes
         from services.app.generation.input_adapter import AppInputAdapter
@@ -390,7 +390,7 @@ class TestGenerate(_RealSessionTest):
         mocker: MockerFixture,
         *,
         workflow_variables: WorkflowExecutionVariables,
-        workflow_runtime: WorkflowRuntime,
+        workflow_runtime: AppGenerationRuntime,
     ):
         gen_spy = mocker.patch(
             "services.app_generate_service.CompletionAppGenerator.generate",
@@ -419,12 +419,11 @@ class TestGenerate(_RealSessionTest):
         mocker: MockerFixture,
         *,
         workflow_variables: WorkflowExecutionVariables,
-        workflow_runtime: WorkflowRuntime,
+        workflow_runtime: AppGenerationRuntime,
     ):
-        gen_spy = mocker.patch(
-            "services.app_generate_service.AgentChatAppGenerator.generate",
-            return_value={"result": "agent"},
-        )
+        generator = mocker.patch("services.app_generate_service.AgentChatAppGenerator")
+        gen_spy = generator.return_value.generate
+        gen_spy.return_value = {"result": "agent"}
         mocker.patch(
             "services.app_generate_service.convert_to_event_stream",
             side_effect=lambda x: x,
@@ -441,6 +440,7 @@ class TestGenerate(_RealSessionTest):
         )
         assert result == {"result": "agent"}
         gen_spy.assert_called_once()
+        assert generator.call_args.kwargs["tool_invoker"] is workflow_runtime.agent_tool_invoker
 
     # -- AGENT_CHAT via is_agent flag (non-AGENT_CHAT mode) -----------------
     def test_agent_via_is_agent_flag(
@@ -448,12 +448,11 @@ class TestGenerate(_RealSessionTest):
         mocker: MockerFixture,
         *,
         workflow_variables: WorkflowExecutionVariables,
-        workflow_runtime: WorkflowRuntime,
+        workflow_runtime: AppGenerationRuntime,
     ):
-        gen_spy = mocker.patch(
-            "services.app_generate_service.AgentChatAppGenerator.generate",
-            return_value={"result": "agent-via-flag"},
-        )
+        generator = mocker.patch("services.app_generate_service.AgentChatAppGenerator")
+        gen_spy = generator.return_value.generate
+        gen_spy.return_value = {"result": "agent-via-flag"}
         mocker.patch(
             "services.app_generate_service.convert_to_event_stream",
             side_effect=lambda x: x,
@@ -473,6 +472,7 @@ class TestGenerate(_RealSessionTest):
         )
         assert result == {"result": "agent-via-flag"}
         gen_spy.assert_called_once()
+        assert generator.call_args.kwargs["tool_invoker"] is workflow_runtime.agent_tool_invoker
         is_agent.assert_called_once_with(session=session)
 
     # -- AGENT --------------------------------------------------------------
@@ -481,7 +481,7 @@ class TestGenerate(_RealSessionTest):
         mocker: MockerFixture,
         *,
         workflow_variables: WorkflowExecutionVariables,
-        workflow_runtime: WorkflowRuntime,
+        workflow_runtime: AppGenerationRuntime,
     ):
         gen_spy = mocker.patch(
             "services.app_generate_service.AgentAppGenerator.generate",
@@ -512,7 +512,7 @@ class TestGenerate(_RealSessionTest):
         mocker: MockerFixture,
         *,
         workflow_variables: WorkflowExecutionVariables,
-        workflow_runtime: WorkflowRuntime,
+        workflow_runtime: AppGenerationRuntime,
     ):
         gen_spy = mocker.patch(
             "services.app_generate_service.ChatAppGenerator.generate",
@@ -542,7 +542,7 @@ class TestGenerate(_RealSessionTest):
         mocker: MockerFixture,
         *,
         workflow_variables: WorkflowExecutionVariables,
-        workflow_runtime: WorkflowRuntime,
+        workflow_runtime: AppGenerationRuntime,
     ):
         workflow = _make_workflow()
         mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
@@ -581,7 +581,7 @@ class TestGenerate(_RealSessionTest):
         config_overrides: Callable[..., None],
         *,
         workflow_variables: WorkflowExecutionVariables,
-        workflow_runtime: WorkflowRuntime,
+        workflow_runtime: AppGenerationRuntime,
     ):
         config_overrides(PUBSUB_REDIS_CHANNEL_TYPE="streams")
         workflow = _make_workflow()
@@ -623,7 +623,7 @@ class TestGenerate(_RealSessionTest):
         mocker: MockerFixture,
         *,
         workflow_variables: WorkflowExecutionVariables,
-        workflow_runtime: WorkflowRuntime,
+        workflow_runtime: AppGenerationRuntime,
     ):
         workflow = _make_workflow()
         mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
@@ -664,7 +664,7 @@ class TestGenerate(_RealSessionTest):
         mocker: MockerFixture,
         *,
         workflow_variables: WorkflowExecutionVariables,
-        workflow_runtime: WorkflowRuntime,
+        workflow_runtime: AppGenerationRuntime,
     ) -> None:
         workflow = _make_workflow(node_types=(node_type,))
         mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
@@ -689,7 +689,7 @@ class TestGenerate(_RealSessionTest):
         mocker: MockerFixture,
         *,
         workflow_variables: WorkflowExecutionVariables,
-        workflow_runtime: WorkflowRuntime,
+        workflow_runtime: AppGenerationRuntime,
     ) -> None:
         workflow = _make_workflow(node_types=("trigger-webhook",))
         mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
@@ -721,7 +721,7 @@ class TestGenerate(_RealSessionTest):
         mocker: MockerFixture,
         *,
         workflow_variables: WorkflowExecutionVariables,
-        workflow_runtime: WorkflowRuntime,
+        workflow_runtime: AppGenerationRuntime,
     ) -> None:
         workflow_id = str(uuid.uuid4())
         workflow = _make_workflow(workflow_id=workflow_id, node_types=("start",))
@@ -758,7 +758,7 @@ class TestGenerate(_RealSessionTest):
         config_overrides: Callable[..., None],
         *,
         workflow_variables: WorkflowExecutionVariables,
-        workflow_runtime: WorkflowRuntime,
+        workflow_runtime: AppGenerationRuntime,
     ):
         config_overrides(PUBSUB_REDIS_CHANNEL_TYPE="streams")
         workflow = _make_workflow()
@@ -800,7 +800,7 @@ class TestGenerate(_RealSessionTest):
         mocker: MockerFixture,
         *,
         workflow_variables: WorkflowExecutionVariables,
-        workflow_runtime: WorkflowRuntime,
+        workflow_runtime: AppGenerationRuntime,
     ):
         app = _make_app("invalid-mode")
         with pytest.raises(ValueError, match="Invalid app mode"):
@@ -834,7 +834,7 @@ class TestGenerateBilling(_RealSessionTest):
         config_overrides: Callable[..., None],
         *,
         workflow_variables: WorkflowExecutionVariables,
-        workflow_runtime: WorkflowRuntime,
+        workflow_runtime: AppGenerationRuntime,
     ):
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
         quota_charge = MagicMock()
@@ -870,7 +870,7 @@ class TestGenerateBilling(_RealSessionTest):
         config_overrides: Callable[..., None],
         *,
         workflow_variables: WorkflowExecutionVariables,
-        workflow_runtime: WorkflowRuntime,
+        workflow_runtime: AppGenerationRuntime,
     ):
         from services.errors.app import QuotaExceededError
         from services.errors.llm import InvokeRateLimitError
@@ -899,7 +899,7 @@ class TestGenerateBilling(_RealSessionTest):
         config_overrides: Callable[..., None],
         *,
         workflow_variables: WorkflowExecutionVariables,
-        workflow_runtime: WorkflowRuntime,
+        workflow_runtime: AppGenerationRuntime,
     ):
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
         quota_charge = MagicMock()
@@ -935,7 +935,7 @@ class TestGenerateBilling(_RealSessionTest):
         config_overrides: Callable[..., None],
         *,
         workflow_variables: WorkflowExecutionVariables,
-        workflow_runtime: WorkflowRuntime,
+        workflow_runtime: AppGenerationRuntime,
     ):
         """For non-streaming (blocking) calls, rate_limit.exit should be called in finally."""
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
@@ -975,7 +975,7 @@ class TestGenerateBilling(_RealSessionTest):
         config_overrides: Callable[..., None],
         *,
         workflow_variables: WorkflowExecutionVariables,
-        workflow_runtime: WorkflowRuntime,
+        workflow_runtime: AppGenerationRuntime,
     ):
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
         quota_charge = MagicMock()
@@ -1016,7 +1016,7 @@ class TestGenerateBilling(_RealSessionTest):
         config_overrides: Callable[..., None],
         *,
         workflow_variables: WorkflowExecutionVariables,
-        workflow_runtime: WorkflowRuntime,
+        workflow_runtime: AppGenerationRuntime,
     ):
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
         quota_charge = MagicMock()
@@ -1126,7 +1126,7 @@ class TestGenerateSingleIteration(_RealSessionTest):
         mocker: MockerFixture,
         *,
         workflow_variables: WorkflowExecutionVariables,
-        workflow_runtime: WorkflowRuntime,
+        workflow_runtime: AppGenerationRuntime,
     ):
         workflow = _make_workflow()
         mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
@@ -1157,7 +1157,7 @@ class TestGenerateSingleIteration(_RealSessionTest):
         mocker: MockerFixture,
         *,
         workflow_variables: WorkflowExecutionVariables,
-        workflow_runtime: WorkflowRuntime,
+        workflow_runtime: AppGenerationRuntime,
     ):
         workflow = _make_workflow()
         mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
@@ -1189,7 +1189,7 @@ class TestGenerateSingleIteration(_RealSessionTest):
         mocker: MockerFixture,
         *,
         workflow_variables: WorkflowExecutionVariables,
-        workflow_runtime: WorkflowRuntime,
+        workflow_runtime: AppGenerationRuntime,
     ):
         app = _make_app(AppMode.CHAT)
         with pytest.raises(ValueError, match="Invalid app mode"):
@@ -1213,7 +1213,7 @@ class TestGenerateSingleLoop(_RealSessionTest):
         mocker: MockerFixture,
         *,
         workflow_variables: WorkflowExecutionVariables,
-        workflow_runtime: WorkflowRuntime,
+        workflow_runtime: AppGenerationRuntime,
     ):
         workflow = _make_workflow()
         mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
@@ -1244,7 +1244,7 @@ class TestGenerateSingleLoop(_RealSessionTest):
         mocker: MockerFixture,
         *,
         workflow_variables: WorkflowExecutionVariables,
-        workflow_runtime: WorkflowRuntime,
+        workflow_runtime: AppGenerationRuntime,
     ):
         workflow = _make_workflow()
         mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
@@ -1276,7 +1276,7 @@ class TestGenerateSingleLoop(_RealSessionTest):
         mocker: MockerFixture,
         *,
         workflow_variables: WorkflowExecutionVariables,
-        workflow_runtime: WorkflowRuntime,
+        workflow_runtime: AppGenerationRuntime,
     ):
         app = _make_app(AppMode.COMPLETION)
         with pytest.raises(ValueError, match="Invalid app mode"):

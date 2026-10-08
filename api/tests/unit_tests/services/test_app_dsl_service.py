@@ -1,7 +1,7 @@
 from collections.abc import Callable
 from types import SimpleNamespace
 from typing import cast
-from unittest.mock import Mock
+from unittest.mock import Mock, create_autospec
 
 import pytest
 import yaml
@@ -193,7 +193,9 @@ def test_import_app_rejects_oversized_yaml_content_before_parsing(
 ) -> None:
     monkeypatch.setattr("services.app_dsl_service.DSL_MAX_SIZE", 3)
     service = AppDslService(
-        session=unbound_session, drafts=Mock(spec=WorkflowDraftService), overwrites=Mock(spec=AppDslOverwriteStore)
+        session=unbound_session,
+        drafts=create_autospec(WorkflowDraftService, instance=True, spec_set=True),
+        overwrites=create_autospec(AppDslOverwriteStore, instance=True, spec_set=True),
     )
     account = _account()
 
@@ -213,7 +215,9 @@ def test_import_app_rejects_oversized_yaml_url_bytes_before_decode(
     response.content = b"\xff\xff"
     monkeypatch.setattr("services.app_dsl_service.remote_fetcher.make_request", Mock(return_value=response))
     service = AppDslService(
-        session=unbound_session, drafts=Mock(spec=WorkflowDraftService), overwrites=Mock(spec=AppDslOverwriteStore)
+        session=unbound_session,
+        drafts=create_autospec(WorkflowDraftService, instance=True, spec_set=True),
+        overwrites=create_autospec(AppDslOverwriteStore, instance=True, spec_set=True),
     )
 
     result = service.import_app(
@@ -235,7 +239,9 @@ def test_import_app_returns_decode_error_for_invalid_yaml_url_bytes(
     response.content = b"\xff"
     monkeypatch.setattr("services.app_dsl_service.remote_fetcher.make_request", Mock(return_value=response))
     service = AppDslService(
-        session=unbound_session, drafts=Mock(spec=WorkflowDraftService), overwrites=Mock(spec=AppDslOverwriteStore)
+        session=unbound_session,
+        drafts=create_autospec(WorkflowDraftService, instance=True, spec_set=True),
+        overwrites=create_autospec(AppDslOverwriteStore, instance=True, spec_set=True),
     )
 
     result = service.import_app(
@@ -349,7 +355,9 @@ def test_pending_import_is_scoped_to_its_owner(monkeypatch: pytest.MonkeyPatch, 
         lambda key, _expiry, value: pending_imports.__setitem__(key, value),
     )
     service = AppDslService(
-        session=unbound_session, drafts=Mock(spec=WorkflowDraftService), overwrites=Mock(spec=AppDslOverwriteStore)
+        session=unbound_session,
+        drafts=create_autospec(WorkflowDraftService, instance=True, spec_set=True),
+        overwrites=create_autospec(AppDslOverwriteStore, instance=True, spec_set=True),
     )
     creator = _account()
 
@@ -397,7 +405,9 @@ def test_pending_import_requires_current_tenant(monkeypatch: pytest.MonkeyPatch,
     account._current_tenant = None
 
     result = AppDslService(
-        session=unbound_session, drafts=Mock(spec=WorkflowDraftService), overwrites=Mock(spec=AppDslOverwriteStore)
+        session=unbound_session,
+        drafts=create_autospec(WorkflowDraftService, instance=True, spec_set=True),
+        overwrites=create_autospec(AppDslOverwriteStore, instance=True, spec_set=True),
     ).import_app(
         account=account,
         import_mode="yaml-content",
@@ -549,7 +559,9 @@ def test_create_or_update_app_rejects_null_required_site_setting_before_mutation
 
     with pytest.raises(ValueError, match="Required Site settings cannot be null"):
         AppDslService(
-            unbound_session, drafts=Mock(spec=WorkflowDraftService), overwrites=Mock(spec=AppDslOverwriteStore)
+            unbound_session,
+            drafts=create_autospec(WorkflowDraftService, instance=True, spec_set=True),
+            overwrites=create_autospec(AppDslOverwriteStore, instance=True, spec_set=True),
         )._create_or_update_app(
             app=app,
             data={"app": {"mode": AppMode.CHAT.value}, "site": {"title": None}},
@@ -563,7 +575,9 @@ def test_import_app_resolves_site_entitlement_before_database_writes(
     monkeypatch: pytest.MonkeyPatch, unbound_session: Session
 ) -> None:
     service = AppDslService(
-        unbound_session, drafts=Mock(spec=WorkflowDraftService), overwrites=Mock(spec=AppDslOverwriteStore)
+        unbound_session,
+        drafts=create_autospec(WorkflowDraftService, instance=True, spec_set=True),
+        overwrites=create_autospec(AppDslOverwriteStore, instance=True, spec_set=True),
     )
     create_or_update = Mock(return_value=_app())
     entitlement = Mock(return_value=False)
@@ -618,7 +632,9 @@ def test_confirm_import_rechecks_site_entitlement(monkeypatch: pytest.MonkeyPatc
     entitlement = Mock(return_value=False)
     monkeypatch.setattr("services.app_dsl_service.FeatureService.can_import_premium_site_settings", entitlement)
     service = AppDslService(
-        unbound_session, drafts=Mock(spec=WorkflowDraftService), overwrites=Mock(spec=AppDslOverwriteStore)
+        unbound_session,
+        drafts=create_autospec(WorkflowDraftService, instance=True, spec_set=True),
+        overwrites=create_autospec(AppDslOverwriteStore, instance=True, spec_set=True),
     )
     create_or_update = Mock(return_value=_app())
     monkeypatch.setattr(service, "_create_or_update_app", create_or_update)
@@ -762,8 +778,12 @@ def test_chat_dsl_import_preserves_valid_feature_fields(sqlite_session: Session)
 
 
 def test_create_or_update_app_removes_imported_workflow_viewport(unbound_session: Session) -> None:
-    drafts = Mock(spec=WorkflowDraftService)
-    service = AppDslService(session=unbound_session, drafts=drafts, overwrites=Mock(spec=AppDslOverwriteStore))
+    drafts = create_autospec(WorkflowDraftService, instance=True, spec_set=True)
+    service = AppDslService(
+        session=unbound_session,
+        drafts=drafts,
+        overwrites=create_autospec(AppDslOverwriteStore, instance=True, spec_set=True),
+    )
     app = make_app(mode=AppMode.WORKFLOW)
     imported_graph: dict[str, object] = {
         "nodes": [],
@@ -831,7 +851,9 @@ def test_agent_import_of_new_agent_checks_function_scope(
     account = _account()
 
     AppDslService(
-        session=unbound_session, drafts=Mock(spec=WorkflowDraftService), overwrites=Mock(spec=AppDslOverwriteStore)
+        session=unbound_session,
+        drafts=create_autospec(WorkflowDraftService, instance=True, spec_set=True),
+        overwrites=create_autospec(AppDslOverwriteStore, instance=True, spec_set=True),
     )._ensure_agent_import_permission(account, app=None)
 
     check.assert_called_once_with(
@@ -851,7 +873,9 @@ def test_create_or_update_app_gates_agent_mode_before_creation(
     config_overrides(RBAC_ENABLED=True)
     monkeypatch.setattr("services.app_dsl_service.RBACService.CheckAccess.check", Mock(return_value=False))
     service = AppDslService(
-        session=unbound_session, drafts=Mock(spec=WorkflowDraftService), overwrites=Mock(spec=AppDslOverwriteStore)
+        session=unbound_session,
+        drafts=create_autospec(WorkflowDraftService, instance=True, spec_set=True),
+        overwrites=create_autospec(AppDslOverwriteStore, instance=True, spec_set=True),
     )
 
     with pytest.raises(NoPermissionError):
@@ -872,7 +896,9 @@ def test_import_app_reraises_permission_denial_instead_of_failed_result(
     config_overrides(RBAC_ENABLED=True)
     monkeypatch.setattr("services.app_dsl_service.RBACService.CheckAccess.check", Mock(return_value=False))
     service = AppDslService(
-        session=unbound_session, drafts=Mock(spec=WorkflowDraftService), overwrites=Mock(spec=AppDslOverwriteStore)
+        session=unbound_session,
+        drafts=create_autospec(WorkflowDraftService, instance=True, spec_set=True),
+        overwrites=create_autospec(AppDslOverwriteStore, instance=True, spec_set=True),
     )
 
     with pytest.raises(NoPermissionError):
@@ -973,9 +999,13 @@ def test_export_dsl_preserves_envelope_and_mode_specific_content(
 def test_overwrite_rejects_incompatible_nodes_before_mutation(mode: AppMode, node_type: str) -> None:
     session = Mock()
     target = App(id="target", tenant_id="tenant", mode=mode, name="Original")
-    overwrites = Mock(spec=AppDslOverwriteStore)
+    overwrites = create_autospec(AppDslOverwriteStore, instance=True, spec_set=True)
     overwrites.snapshot.return_value = AppDslOverwriteTarget(mode, None)
-    service = AppDslService(session, drafts=Mock(spec=WorkflowDraftService), overwrites=overwrites)
+    service = AppDslService(
+        session,
+        drafts=create_autospec(WorkflowDraftService, instance=True, spec_set=True),
+        overwrites=overwrites,
+    )
     result = service.import_app(
         account=_account(),
         import_mode="yaml-content",
@@ -1010,7 +1040,9 @@ def test_missing_app_section_names_the_keys_that_were_present(
     unbound_session: Session, content: dict[str, object], found: str
 ) -> None:
     result = AppDslService(
-        session=unbound_session, drafts=Mock(spec=WorkflowDraftService), overwrites=Mock(spec=AppDslOverwriteStore)
+        session=unbound_session,
+        drafts=create_autospec(WorkflowDraftService, instance=True, spec_set=True),
+        overwrites=create_autospec(AppDslOverwriteStore, instance=True, spec_set=True),
     ).import_app(account=_account(), import_mode="yaml-content", yaml_content=yaml.safe_dump(content, sort_keys=False))
     assert result.status == ImportStatus.FAILED
     assert result.error is not None

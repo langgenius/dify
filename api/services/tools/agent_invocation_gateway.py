@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from contextlib import closing
+
 from core.agent.entities import AgentToolEntity
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
@@ -53,23 +55,26 @@ class AgentToolInvocationGateway:
                 allow_file_parameters=True,
                 use_default_for_missing_form_parameters=True,
             )
-            messages = ToolEngine.generic_invoke(
-                tool=tool_runtime,
-                tool_parameters=dict(request.tool.tool_parameters),
-                user_id=request.caller.user_id,
-                workflow_tool_callback=DifyWorkflowCallbackHandler(),
-                workflow_call_depth=0,
-                conversation_id=request.caller.conversation_id,
-                app_id=request.caller.app_id,
-            )
-            transformed_messages = list(
-                ToolFileMessageTransformer.transform_tool_invoke_messages(
-                    messages=messages,
+            with closing(
+                self._runtime.tool_invoker(
+                    tool=tool_runtime,
+                    tool_parameters=dict(request.tool.tool_parameters),
                     user_id=request.caller.user_id,
-                    tenant_id=request.caller.tenant_id,
+                    workflow_tool_callback=DifyWorkflowCallbackHandler(),
+                    workflow_call_depth=0,
                     conversation_id=request.caller.conversation_id,
+                    app_id=request.caller.app_id,
                 )
-            )
+            ) as messages:
+                with closing(
+                    ToolFileMessageTransformer.transform_tool_invoke_messages(
+                        messages=messages,
+                        user_id=request.caller.user_id,
+                        tenant_id=request.caller.tenant_id,
+                        conversation_id=request.caller.conversation_id,
+                    )
+                ) as transformed:
+                    transformed_messages = list(transformed)
         except ToolProviderNotFoundError as exc:
             raise AgentToolInnerServiceError(
                 error_code="agent_tool_declaration_not_found",

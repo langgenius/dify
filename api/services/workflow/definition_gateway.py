@@ -1,5 +1,6 @@
 """Adapt external definition validation and draft notifications to domain owners."""
 
+from collections.abc import Mapping
 from contextlib import AbstractContextManager
 from typing import Any, Protocol
 
@@ -25,7 +26,6 @@ from services.workflow.contracts import (
 )
 from services.workflow.environment_variable_service import prepare_environment_variables
 from services.workflow.snippet_policy import validate_snippet_graph_forbidden_nodes
-from services.workflow_service import WorkflowService
 
 
 class WorkflowDefinitionReader(Protocol):
@@ -42,6 +42,14 @@ class WorkflowDraftReader(Protocol):
     ) -> WorkflowSnapshot | None: ...
 
 
+class WorkflowDefinitionValidator(Protocol):
+    def validate_features_structure(self, app_model: App, features: dict[str, Any]) -> dict[str, Any | None]: ...
+    def validate_graph_structure(self, graph: Mapping[str, Any]) -> None: ...
+    def validate_publication(
+        self, app_model: App, draft_workflow: Workflow, *, credentials: CredentialQuery
+    ) -> None: ...
+
+
 class WorkflowDefinitionGateway:
     def __init__(
         self,
@@ -49,7 +57,7 @@ class WorkflowDefinitionGateway:
         session_factory: sessionmaker[Session],
         definitions: WorkflowDefinitionReader,
         drafts: WorkflowDraftReader,
-        workflows: WorkflowService,
+        workflows: WorkflowDefinitionValidator,
         credentials: CredentialQuery,
         skills: AgentSkillReader,
     ) -> None:

@@ -4,6 +4,7 @@ import json
 from unittest.mock import patch
 
 import httpx
+from sqlalchemy.orm import Session
 
 import core.plugin.impl.base as plugin_client_module
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -41,7 +42,7 @@ def _build_plugin_tool(*, has_runtime_parameters: bool) -> PluginTool:
     )
 
 
-def test_plugin_tool_invoke_and_fork_runtime():
+def test_plugin_tool_invoke_and_fork_runtime(unbound_session: Session):
     tool = _build_plugin_tool(has_runtime_parameters=False)
     requests: list[httpx.Request] = []
 
@@ -60,7 +61,7 @@ def test_plugin_tool_invoke_and_fork_runtime():
                 return_value={"converted": 1},
             ),
         ):
-            messages = list(tool.invoke(user_id="user-1", tool_parameters={"raw": 1}))
+            messages = list(tool.invoke(session=unbound_session, user_id="user-1", tool_parameters={"raw": 1}))
 
     assert [m.message.text for m in messages] == ["ok"]
     assert len(requests) == 1

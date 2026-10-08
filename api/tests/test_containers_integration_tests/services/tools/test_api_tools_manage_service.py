@@ -6,12 +6,13 @@ from unittest.mock import MagicMock, patch
 import pytest
 from faker import Faker
 from pydantic import TypeAdapter, ValidationError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.tools.entities.tool_entities import ApiProviderSchemaType
 from core.tools.errors import ApiToolProviderNotFoundError
 from models import Account, AccountStatus, Tenant, TenantStatus
 from models.tools import ApiToolProvider
+from repositories.tools.provider_repository import ToolProviderRepository
 from services.tools.api_tools_manage_service import ApiToolManageService
 from services.tools.tool_label_manager import ToolLabelManager
 
@@ -888,8 +889,13 @@ class TestApiToolManageService:
             db_session_with_containers, mock_external_service_dependencies
         )
 
+        tool_providers = ToolProviderRepository(
+            sessionmaker(bind=db_session_with_containers.get_bind(), expire_on_commit=False)
+        )
         with pytest.raises(ValueError, match="you have not added provider"):
-            ApiToolManageService.list_api_tool_provider_tools(account.id, tenant.id, "nonexistent")
+            ApiToolManageService.list_api_tool_provider_tools(
+                account.id, tenant.id, "nonexistent", tool_providers=tool_providers
+            )
 
     def test_test_api_tool_preview_invalid_schema_type(
         self, db_session_with_containers: Session, mock_external_service_dependencies: MockDependencies

@@ -330,6 +330,7 @@ class AppGenerateService:
                     convert_to_event_stream(
                         AgentChatAppGenerator(
                             dataset_tools=runtime.dataset_tools,
+                            tool_invoker=runtime.agent_tool_invoker,
                             annotations=runtime.annotation_replies,
                             records=runtime.chat_records,
                             draft_variable_saver=variables.saver_factory,
