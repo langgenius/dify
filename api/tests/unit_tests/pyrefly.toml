@@ -583,7 +583,6 @@ project-excludes = [
   "core/workflow/nodes/tool/test_tool_node.py",
   "core/workflow/nodes/tool/test_tool_node_runtime.py",
   "core/workflow/nodes/webhook/test_entities.py",
-  "core/workflow/nodes/webhook/test_exceptions.py",
   "core/workflow/nodes/webhook/test_webhook_file_conversion.py",
   "core/workflow/nodes/webhook/test_webhook_node.py",
   "core/workflow/test_enrich_pause_reasons.py",
