@@ -4,6 +4,7 @@ from typing import Any, TypedDict, override
 import chromadb
 from chromadb import QueryResult, Settings
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.rag.datasource.vdb.vector_base import BaseVector, VectorIndexStructDict
@@ -158,7 +159,9 @@ class ChromaVector(BaseVector):
 
 class ChromaVectorFactory(AbstractVectorFactory):
     @override
-    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> BaseVector:
+    def init_vector(
+        self, dataset: Dataset, attributes: list, embeddings: Embeddings, *, session: Session | None
+    ) -> BaseVector:
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]
             collection_name = class_prefix.lower()

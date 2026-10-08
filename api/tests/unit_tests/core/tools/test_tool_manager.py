@@ -15,6 +15,9 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.entities.provider_entities import BasicProviderConfig, ProviderConfigType
+from core.helper.provider_cache import NoOpProviderCredentialCache
+from core.helper.provider_encryption import ProviderConfigEncrypter
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.exc import PluginDaemonNotFoundError, PluginNotFoundError
 from core.tools.__base.tool_runtime import ToolRuntime
@@ -25,6 +28,7 @@ from core.tools.entities.tool_entities import (
 )
 from core.tools.errors import ToolProviderCredentialValidationError, ToolProviderNotFoundError
 from core.tools.plugin_tool.provider import PluginToolProviderController
+from graphon.runtime import VariablePool
 from models.account import Account
 from models.base import TypeBase
 from models.tools import ApiToolProvider, BuiltinToolProvider, WorkflowToolProvider
@@ -879,9 +883,28 @@ def test_get_api_provider_controller_returns_controller_and_credentials(tool_dat
     ]
 
 
-def test_get_api_provider_controller_not_found_raises(
-    monkeypatch: pytest.MonkeyPatch, tool_database: _ToolDatabase, tool_providers
-):
+def test_user_get_api_provider_masks_credentials_and_adds_labels(tool_database: _ToolDatabase, tool_providers):
+    tenant_id = "00000000-0000-0000-0000-000000000001"
+    provider = _api_provider(provider_id="00000000-0000-0000-0000-000000000002", tenant_id=tenant_id)
+    tool_database.session.add(provider)
+    tool_database.session.commit()
+    cache = NoOpProviderCredentialCache()
+    encrypter = ProviderConfigEncrypter(
+        tenant_id=tenant_id,
+        config=[BasicProviderConfig(name="api_key_value", type=ProviderConfigType.SECRET_INPUT)],
+        provider_config_cache=cache,
+    )
+    with (
+        patch("services.tools.tool_manager.create_tool_provider_encrypter", return_value=(encrypter, cache)),
+        patch.object(tool_providers, "api_labels", return_value={provider.id: ["search"]}),
+    ):
+        user_payload = ToolManager.user_get_api_provider(provider.name, tenant_id, tool_providers=tool_providers)
+
+    assert user_payload["credentials"]["api_key_value"] == "******"
+    assert user_payload["labels"] == ["search"]
+
+
+def test_get_api_provider_controller_not_found_raises(tool_database: _ToolDatabase, tool_providers):
     provider_id = "00000000-0000-0000-0000-000000000002"
     tool_database.session.add(
         _api_provider(
@@ -976,8 +999,8 @@ def test_convert_tool_parameters_type_agent_and_workflow_branches():
     )
     assert plain == {"text": "hello"}
 
-    variable_pool = Mock()
-    variable_pool.get.return_value = SimpleNamespace(value="from-variable")
+    variable_pool = VariablePool()
+    variable_pool.add(["sys", "query"], "from-variable")
 
     with patch("services.tools.tool_manager.convert_template", return_value=SimpleNamespace(text="from-template")):
         mixed = ToolManager._convert_tool_parameters_type(
@@ -1005,7 +1028,7 @@ def test_convert_tool_parameters_type_constant_branch():
         required=False,
     )
     text_param.form = ToolParameter.ToolParameterForm.FORM
-    variable_pool = Mock()
+    variable_pool = VariablePool()
 
     constant = ToolManager._convert_tool_parameters_type(
         parameters=[text_param],
@@ -1025,7 +1048,7 @@ def test_convert_tool_parameters_type_model_selector_from_legacy_top_level_confi
         required=True,
     )
     model_param.form = ToolParameter.ToolParameterForm.FORM
-    variable_pool = Mock()
+    variable_pool = VariablePool()
 
     runtime_parameters = ToolManager._convert_tool_parameters_type(
         parameters=[model_param],
@@ -1061,7 +1084,7 @@ def test_convert_tool_parameters_type_model_selector_from_constant_value_config(
         required=True,
     )
     model_param.form = ToolParameter.ToolParameterForm.FORM
-    variable_pool = Mock()
+    variable_pool = VariablePool()
 
     runtime_parameters = ToolManager._convert_tool_parameters_type(
         parameters=[model_param],

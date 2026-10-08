@@ -1,0 +1,222 @@
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuGroupLabel,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { toJpeg, toPng, toSvg } from 'html-to-image'
+import { memo, useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { getNodesBounds, useReactFlow } from 'reactflow'
+import ImagePreview from '@/app/components/base/image-uploader/image-preview'
+import { useStore } from '@/app/components/workflow/store'
+import { downloadUrl } from '@/utils/download'
+import { useNodesReadOnly } from '../hooks/use-workflow'
+import TipPopup from './tip-popup'
+
+const ExportImage = memo(() => {
+  const { t } = useTranslation(['workflow'])
+  const { getNodesReadOnly } = useNodesReadOnly()
+  const reactFlow = useReactFlow()
+
+  const [previewUrl, setPreviewUrl] = useState('')
+  const [previewTitle, setPreviewTitle] = useState('')
+  const knowledgeName = useStore((s) => s.knowledgeName)
+  const appName = useStore((s) => s.appName)
+  const isReadOnly = getNodesReadOnly()
+
+  const handleExportImage = useCallback(
+    async (type: 'png' | 'jpeg' | 'svg', currentWorkflow = false) => {
+      if (!appName && !knowledgeName) return
+
+      if (getNodesReadOnly()) return
+
+      const flowElement = document.querySelector('.react-flow__viewport') as HTMLElement
+      if (!flowElement) return
+
+      try {
+        let filename = appName || knowledgeName
+        const filter = (node: HTMLElement) => {
+          if (node instanceof HTMLImageElement) return node.complete && node.naturalHeight !== 0
+
+          return true
+        }
+
+        let dataUrl
+
+        if (currentWorkflow) {
+          const nodes = reactFlow.getNodes()
+          const nodesBounds = getNodesBounds(nodes)
+
+          const currentViewport = reactFlow.getViewport()
+
+          const viewportWidth = window.innerWidth
+          const viewportHeight = window.innerHeight
+          const zoom = Math.min(
+            viewportWidth / (nodesBounds.width + 100),
+            viewportHeight / (nodesBounds.height + 100),
+            1,
+          )
+
+          const centerX = nodesBounds.x + nodesBounds.width / 2
+          const centerY = nodesBounds.y + nodesBounds.height / 2
+
+          reactFlow.setViewport({
+            x: viewportWidth / 2 - centerX * zoom,
+            y: viewportHeight / 2 - centerY * zoom,
+            zoom,
+          })
+
+          await new Promise((resolve) => setTimeout(resolve, 300))
+
+          const padding = 50
+          const contentWidth = nodesBounds.width + padding * 2
+          const contentHeight = nodesBounds.height + padding * 2
+
+          const exportOptions = {
+            filter,
+            backgroundColor: '#1a1a1a',
+            pixelRatio: 2,
+            width: contentWidth,
+            height: contentHeight,
+            style: {
+              width: `${contentWidth}px`,
+              height: `${contentHeight}px`,
+              transform: `translate(${padding - nodesBounds.x}px, ${padding - nodesBounds.y}px)`,
+              transformOrigin: 'top left',
+            },
+          }
+
+          switch (type) {
+            case 'png':
+              dataUrl = await toPng(flowElement, exportOptions)
+              break
+            case 'jpeg':
+              dataUrl = await toJpeg(flowElement, exportOptions)
+              break
+            case 'svg':
+              dataUrl = await toSvg(flowElement, { filter })
+              break
+            default:
+              dataUrl = await toPng(flowElement, exportOptions)
+          }
+
+          filename += '-whole-workflow'
+
+          setTimeout(() => {
+            reactFlow.setViewport(currentViewport)
+          }, 500)
+        } else {
+          // Current viewport export (existing functionality)
+          switch (type) {
+            case 'png':
+              dataUrl = await toPng(flowElement, { filter })
+              break
+            case 'jpeg':
+              dataUrl = await toJpeg(flowElement, { filter })
+              break
+            case 'svg':
+              dataUrl = await toSvg(flowElement, { filter })
+              break
+            default:
+              dataUrl = await toPng(flowElement, { filter })
+          }
+        }
+
+        const fileName = `${filename}.${type}`
+
+        if (currentWorkflow) {
+          setPreviewUrl(dataUrl)
+          setPreviewTitle(fileName)
+        }
+
+        downloadUrl({ url: dataUrl, fileName })
+      } catch (error) {
+        console.error('Export image failed:', error)
+      }
+    },
+    [getNodesReadOnly, appName, reactFlow, knowledgeName],
+  )
+
+  return (
+    <>
+      <DropdownMenu disabled={isReadOnly}>
+        <TipPopup title={t(($) => $['common.exportImage'], { ns: 'workflow' })}>
+          {/* Tooltip also sets data-popup-open; Menu alone sets data-pressed for its open state. */}
+          <DropdownMenuTrigger
+            render={
+              <IconButton
+                size="lg"
+                aria-label={t(($) => $['common.exportImage'], { ns: 'workflow' })}
+                focusableWhenDisabled
+                className="rounded-md data-pressed:bg-state-base-hover data-pressed:text-text-secondary"
+              >
+                <span aria-hidden className="i-ri-export-line size-4" />
+              </IconButton>
+            }
+          />
+        </TipPopup>
+        <DropdownMenuContent placement="right-end" className="min-w-45">
+          <DropdownMenuGroup>
+            <DropdownMenuGroupLabel>
+              {t(($) => $['common.currentView'], { ns: 'workflow' })}
+            </DropdownMenuGroupLabel>
+            <DropdownMenuItem
+              className="system-md-regular"
+              onClick={() => handleExportImage('png')}
+            >
+              {t(($) => $['common.exportPNG'], { ns: 'workflow' })}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="system-md-regular"
+              onClick={() => handleExportImage('jpeg')}
+            >
+              {t(($) => $['common.exportJPEG'], { ns: 'workflow' })}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="system-md-regular"
+              onClick={() => handleExportImage('svg')}
+            >
+              {t(($) => $['common.exportSVG'], { ns: 'workflow' })}
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
+          <DropdownMenuSeparator className="mx-2" />
+
+          <DropdownMenuGroup>
+            <DropdownMenuGroupLabel>
+              {t(($) => $['common.currentWorkflow'], { ns: 'workflow' })}
+            </DropdownMenuGroupLabel>
+            <DropdownMenuItem
+              className="system-md-regular"
+              onClick={() => handleExportImage('png', true)}
+            >
+              {t(($) => $['common.exportPNG'], { ns: 'workflow' })}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="system-md-regular"
+              onClick={() => handleExportImage('jpeg', true)}
+            >
+              {t(($) => $['common.exportJPEG'], { ns: 'workflow' })}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="system-md-regular"
+              onClick={() => handleExportImage('svg', true)}
+            >
+              {t(($) => $['common.exportSVG'], { ns: 'workflow' })}
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {previewUrl && (
+        <ImagePreview url={previewUrl} title={previewTitle} onCancel={() => setPreviewUrl('')} />
+      )}
+    </>
+  )
+})
+
+export { ExportImage }

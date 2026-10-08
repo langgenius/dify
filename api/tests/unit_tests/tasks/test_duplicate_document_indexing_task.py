@@ -1,11 +1,11 @@
 """Unit tests for queue/wrapper behaviors in duplicate document indexing tasks (non-database logic)."""
 
+import json
 import uuid
 from unittest.mock import Mock, patch
 
 import pytest
 
-from core.rag.pipeline.queue import TenantIsolatedTaskQueue
 from tasks.duplicate_document_indexing_task import (
     _duplicate_document_indexing_task_with_tenant_queue,
     duplicate_document_indexing_task,
@@ -27,17 +27,6 @@ def dataset_id():
 @pytest.fixture
 def document_ids():
     return [str(uuid.uuid4()) for _ in range(3)]
-
-
-@pytest.fixture
-def mock_tenant_isolated_queue():
-    with patch("tasks.duplicate_document_indexing_task.TenantIsolatedTaskQueue", autospec=True) as mock_queue_class:
-        mock_queue = Mock(spec=TenantIsolatedTaskQueue)
-        mock_queue.pull_tasks.return_value = []
-        mock_queue.delete_task_key = Mock()
-        mock_queue.set_task_waiting_time = Mock()
-        mock_queue_class.return_value = mock_queue
-        yield mock_queue
 
 
 class TestDuplicateDocumentIndexingTask:
@@ -72,7 +61,7 @@ class TestDuplicateDocumentIndexingTaskWithTenantQueue:
     def test_tenant_queue_wrapper_calls_core_function(
         self,
         mock_core_func,
-        mock_tenant_isolated_queue,
+        tenant_queue_commands,
         tenant_id,
         dataset_id,
         document_ids,
@@ -91,7 +80,7 @@ class TestDuplicateDocumentIndexingTaskWithTenantQueue:
     def test_tenant_queue_wrapper_deletes_key_when_no_tasks(
         self,
         mock_core_func,
-        mock_tenant_isolated_queue,
+        tenant_queue_commands,
         tenant_id,
         dataset_id,
         document_ids,
@@ -99,19 +88,19 @@ class TestDuplicateDocumentIndexingTaskWithTenantQueue:
         """Test that tenant queue wrapper deletes task key when no more tasks."""
         # Arrange
         mock_task_func = Mock()
-        mock_tenant_isolated_queue.pull_tasks.return_value = []
+        tenant_queue_commands.return_value = None
 
         # Act
         _duplicate_document_indexing_task_with_tenant_queue(tenant_id, dataset_id, document_ids, mock_task_func)
 
         # Assert
-        mock_tenant_isolated_queue.delete_task_key.assert_called_once()
+        tenant_queue_commands.assert_any_call("DEL", f"tenant_duplicate_document_indexing_task:{tenant_id}")
 
     @patch("tasks.duplicate_document_indexing_task._duplicate_document_indexing_task", autospec=True)
     def test_tenant_queue_wrapper_processes_next_tasks(
         self,
         mock_core_func,
-        mock_tenant_isolated_queue,
+        tenant_queue_commands,
         tenant_id,
         dataset_id,
         document_ids,
@@ -124,13 +113,13 @@ class TestDuplicateDocumentIndexingTaskWithTenantQueue:
             "dataset_id": dataset_id,
             "document_ids": document_ids,
         }
-        mock_tenant_isolated_queue.pull_tasks.return_value = [next_task]
+        tenant_queue_commands.side_effect = [json.dumps({"data": next_task}), None, None]
 
         # Act
         _duplicate_document_indexing_task_with_tenant_queue(tenant_id, dataset_id, document_ids, mock_task_func)
 
         # Assert
-        mock_tenant_isolated_queue.set_task_waiting_time.assert_called_once()
+        tenant_queue_commands.assert_any_call("SETEX", f"tenant_duplicate_document_indexing_task:{tenant_id}", 3600, 1)
         mock_task_func.delay.assert_called_once_with(
             tenant_id=tenant_id,
             dataset_id=dataset_id,
@@ -141,7 +130,7 @@ class TestDuplicateDocumentIndexingTaskWithTenantQueue:
     def test_tenant_queue_wrapper_handles_core_function_error(
         self,
         mock_core_func,
-        mock_tenant_isolated_queue,
+        tenant_queue_commands,
         tenant_id,
         dataset_id,
         document_ids,
@@ -156,7 +145,7 @@ class TestDuplicateDocumentIndexingTaskWithTenantQueue:
 
         # Assert
         # Should still check for next tasks even after error
-        mock_tenant_isolated_queue.pull_tasks.assert_called_once()
+        tenant_queue_commands.assert_any_call("RPOP", f"tenant_self_duplicate_document_indexing_task_queue:{tenant_id}")
 
 
 class TestNormalDuplicateDocumentIndexingTask:
