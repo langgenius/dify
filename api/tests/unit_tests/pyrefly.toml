@@ -388,7 +388,6 @@ project-excludes = [
   "core/memory/test_token_buffer_memory.py",
   "core/model_runtime/test_model_provider_factory.py",
   "core/moderation/api/test_api.py",
-  "core/moderation/test_content_moderation.py",
   "core/moderation/test_input_moderation.py",
   "core/moderation/test_output_moderation.py",
   "core/moderation/test_sensitive_word_filter.py",
