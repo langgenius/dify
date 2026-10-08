@@ -5,6 +5,7 @@ import type { AppSiteUpdatePayload } from '@dify/contracts/api/console/apps/type
 import type { SettingsAppInfo } from '@/app/components/app/overview/settings'
 import type { AppIconType } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
+import { Dialog, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import dynamic from 'next/dynamic'
 import { useState } from 'react'
@@ -14,7 +15,7 @@ import {
   WebAppAccessControlEntrySkeleton,
 } from '@/app/components/app/access-point/shared/web-app-access-control'
 import { CustomizeDialog } from '@/app/components/app/overview/customize'
-import { EmbeddedDialog } from '@/app/components/app/overview/embedded'
+import { EmbeddedDialogContent } from '@/app/components/app/overview/embedded'
 import SettingsModal from '@/app/components/app/overview/settings'
 import { AccessPointCard } from '@/app/components/base/access-point/card'
 import { AccessPointUrl } from '@/app/components/base/access-point/url'
@@ -231,14 +232,23 @@ export function WebAppAccessCard({
         onEnabledChange={handleEnabledChange}
         actions={
           <>
-            <EmbeddedDialog
-              appBaseUrl={embeddedConfig?.appBaseUrl}
-              accessToken={embeddedConfig?.accessToken}
-              siteInfo={embeddedConfig?.siteInfo}
-              webAppRoute="agent"
-              disabled={!canUseIntegrationActions || !embeddedConfig}
-              triggerLabel={t(($) => $['agentDetail.access.webApp.actions.embedIntoSite'])}
-            />
+            <Dialog>
+              <DialogTrigger
+                disabled={!canUseIntegrationActions || !embeddedConfig}
+                render={<Button variant="secondary" className="px-3" />}
+              >
+                <span aria-hidden className="i-ri-window-line size-4" />
+                {t(($) => $['agentDetail.access.webApp.actions.embedIntoSite'])}
+              </DialogTrigger>
+              {embeddedConfig && (
+                <EmbeddedDialogContent
+                  appBaseUrl={embeddedConfig.appBaseUrl}
+                  accessToken={embeddedConfig.accessToken}
+                  siteInfo={embeddedConfig.siteInfo}
+                  webAppRoute="agent"
+                />
+              )}
+            </Dialog>
             {canManageWebApp && customizeConfig ? (
               <CustomizeDialog
                 appId={customizeConfig.appId}

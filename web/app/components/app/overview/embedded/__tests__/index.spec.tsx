@@ -1,4 +1,6 @@
+import type { ComponentProps } from 'react'
 import type { SiteInfo } from '@/models/share'
+import { Dialog, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
@@ -7,7 +9,7 @@ import { act } from 'react'
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vite-plus/test'
 import { InputVarType } from '@/app/components/workflow/types'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
-import { EmbeddedDialog } from '../index'
+import { EmbeddedDialogContent } from '../index'
 
 vi.mock('../style.module.css', () => ({
   default: {
@@ -36,6 +38,15 @@ const baseProps = {
   siteInfo,
   appBaseUrl: 'https://app.example.com',
   accessToken: 'token',
+}
+
+function EmbeddedDialog(props: ComponentProps<typeof EmbeddedDialogContent>) {
+  return (
+    <Dialog>
+      <DialogTrigger>embedIntoSite</DialogTrigger>
+      <EmbeddedDialogContent {...props} />
+    </Dialog>
+  )
 }
 
 const getCopyButton = () => screen.getByRole('button', { name: /copy/i })
@@ -171,27 +182,6 @@ describe('EmbeddedDialog', () => {
       'true',
     )
   })
-
-  it.each(['disabled', 'missing-token'] as const)(
-    'keeps a visible unavailable trigger for %s and ends its session',
-    async (reason) => {
-      const user = userEvent.setup()
-      const { rerender } = render(<EmbeddedDialog {...baseProps} />)
-      await user.click(screen.getByRole('button', { name: /embedIntoSite/ }))
-      expect(screen.getByRole('dialog')).toBeInTheDocument()
-      rerender(
-        <EmbeddedDialog
-          {...baseProps}
-          disabled={reason === 'disabled'}
-          accessToken={reason === 'missing-token' ? undefined : baseProps.accessToken}
-        />,
-      )
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /embedIntoSite/ })).toBeDisabled()
-      rerender(<EmbeddedDialog {...baseProps} />)
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    },
-  )
 
   it('keeps hidden inputs collapsed by default and updates iframe and script content when values change', async () => {
     const user = userEvent.setup()

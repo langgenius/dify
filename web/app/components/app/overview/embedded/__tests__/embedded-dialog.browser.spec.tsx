@@ -1,11 +1,11 @@
-import type { ComponentProps } from 'react'
+import { Dialog, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import copy from 'copy-to-clipboard'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { InputVarType } from '@/app/components/workflow/types'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
-import { EmbeddedDialog } from '../index'
+import { EmbeddedDialogContent } from '../index'
 
 const { getProfile } = vi.hoisted(() => ({ getProfile: vi.fn() }))
 
@@ -50,15 +50,17 @@ function createClient() {
   return new QueryClient({ defaultOptions: { queries: { staleTime: Infinity, retry: false } } })
 }
 
-function dialogView(queryClient: QueryClient, props: ComponentProps<typeof EmbeddedDialog> = {}) {
+function dialogView(queryClient: QueryClient) {
   return (
     <QueryClientProvider client={queryClient}>
-      <EmbeddedDialog
-        accessToken="embed-token"
-        appBaseUrl="https://app.example.com"
-        hiddenInputs={hiddenInputs}
-        {...props}
-      />
+      <Dialog>
+        <DialogTrigger>{triggerLabel}</DialogTrigger>
+        <EmbeddedDialogContent
+          accessToken="embed-token"
+          appBaseUrl="https://app.example.com"
+          hiddenInputs={hiddenInputs}
+        />
+      </Dialog>
     </QueryClientProvider>
   )
 }
@@ -178,21 +180,4 @@ it('preserves the hidden input, selected tab and copied preview through exit, th
   await userEvent.keyboard('{Escape}')
   await expect.element(dialog).not.toBeInTheDocument()
   await expect.element(trigger).toHaveFocus()
-})
-
-it('ends the active session when disabled or missing its token and keeps a disabled entry', async () => {
-  const queryClient = createClient()
-  seedAccountProfileQuery(queryClient)
-  const screen = await render(dialogView(queryClient))
-  const trigger = screen.getByRole('button', { name: triggerLabel })
-  const dialog = screen.getByRole('dialog', { name: `${prefix}.title` })
-  for (const unavailable of [{ disabled: true }, { accessToken: undefined }]) {
-    await trigger.click()
-    await expect.element(dialog).toBeVisible()
-    await screen.rerender(dialogView(queryClient, unavailable))
-    await expect.element(dialog).not.toBeInTheDocument()
-    await expect.element(trigger).toBeDisabled()
-    await screen.rerender(dialogView(queryClient))
-    await expect.element(trigger).not.toBeDisabled()
-  }
 })
