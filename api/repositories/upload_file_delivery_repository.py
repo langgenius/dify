@@ -1,8 +1,8 @@
 """SQLAlchemy query adapter for public UploadFile delivery endpoints."""
 
-import json
-from typing import cast, override
+from typing import override
 
+from pydantic import TypeAdapter
 from sqlalchemy import Row, Select, select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -13,6 +13,8 @@ from services.upload_file_delivery_service import (
     UploadFileDeliveryQuery,
     UploadFileDeliveryRecord,
 )
+
+_TENANT_CUSTOM_CONFIG_ADAPTER = TypeAdapter(TenantCustomConfigDict)
 
 
 class UploadFileDeliveryQueryRepository(UploadFileDeliveryQuery):
@@ -36,7 +38,7 @@ class UploadFileDeliveryQueryRepository(UploadFileDeliveryQuery):
                 raise UploadFileDeliveryNotFoundError
 
             custom_config = (
-                cast(TenantCustomConfigDict, json.loads(workspace_row.custom_config))
+                _TENANT_CUSTOM_CONFIG_ADAPTER.validate_json(workspace_row.custom_config)
                 if workspace_row.custom_config
                 else {}
             )
