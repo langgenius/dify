@@ -4,10 +4,10 @@
 # Dify Environment Variables Synchronization Script
 #
 # Features:
-# - Synchronize latest settings from .env.example to .env
-# - Preserve custom settings in existing .env
+# - Rebuild .env from the latest .env.example structure
+# - Preserve values for variables that remain in .env.example
 # - Add new environment variables
-# - Detect removed environment variables
+# - Report variables that will be omitted from .env
 # - Create backup files
 # ================================================================
 
@@ -211,7 +211,7 @@ show_differences_detail() {
     echo ""
     log_info "=== Difference Analysis Complete ==="
     log_info "Note: Consider changing to the recommended values above."
-    log_info "Current implementation preserves .env values."
+    log_info "Current implementation preserves .env values for variables still present in .env.example."
     echo ""
 }
 
@@ -261,8 +261,8 @@ analyze_value_change() {
     fi
 }
 
-# Synchronize .env file with .env.example while preserving custom values
-# Creates a new .env file based on .env.example structure, preserving existing custom values
+# Synchronize .env with .env.example while preserving values for variables still present
+# Creates a new .env file based on .env.example structure and matching variable values
 # Global variables used: DIFF_FILE, TEMP_DIR
 sync_env_file() {
     log_info "Starting partial synchronization of .env file..."
@@ -410,11 +410,10 @@ detect_removed_variables() {
     fi
 
     if [[ ${#removed_vars[@]} -gt 0 ]]; then
-        log_warning "The following environment variables have been removed from .env.example:"
+        log_warning "The following environment variables are absent from .env.example and will be omitted from the rewritten .env:"
         for var in "${removed_vars[@]}"; do
             log_warning "  - $var"
         done
-        log_warning "Consider manually removing these variables from .env"
     else
         log_success "No removed environment variables found"
     fi

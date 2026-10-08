@@ -10,7 +10,7 @@ Run Dify with Docker Compose. Configuration templates live in `.env.example` and
    - Copy `.env.example` to `.env`.
    - Customize `.env` when you need to change essential startup defaults. Copy optional files from `envs/` without the `.example` suffix when you need advanced settings.
    - **Optional (for advanced deployments)**:
-     If you maintain a full `.env` file copied from `.env.example`, you may use the environment synchronization tool to keep it aligned with the latest `.env.example` updates while preserving your custom settings.
+     If you maintain a full `.env` file copied from `.env.example`, you may use the environment synchronization tool to keep it aligned with the latest `.env.example` updates while retaining existing values for variables that remain in the template.
      See the [Environment Variables Synchronization](#environment-variables-synchronization) section below.
 3. **Running the Services**:
    - Execute `docker compose up -d` from the `docker` directory to start the services.
@@ -61,7 +61,8 @@ If you use the default workflow, review `.env.example` and keep your `.env` alig
 If you maintain a customized `.env` file copied from `.env.example`, an optional environment variables synchronization tool is provided.
 
 > This tool performs a **one-way synchronization** from `.env.example` to `.env`.
-> Existing values in `.env` are never overwritten automatically.
+> Existing values are retained only for variables that remain in `.env.example`.
+> Variables absent from the template are omitted from the rewritten `.env` and remain available in the backup.
 
 ### `dify-env-sync.sh` (Optional)
 
@@ -70,14 +71,16 @@ This script compares your current `.env` file with the latest `.env.example` tem
 **What it does**
 
 - Creates a backup of the current `.env` file before making any changes
-- Synchronizes newly added environment variables from `.env.example`
-- Preserves all existing custom values in `.env`
-- Displays differences and variables removed from `.env.example` for review
+- Rebuilds `.env` using the comments, ordering, and variables from `.env.example`
+- Preserves existing values for variables that remain in `.env.example`
+- Adds newly introduced variables with their `.env.example` defaults
+- Reports and omits variables that are absent from `.env.example`
 
 **Backup behavior**
 
 Before synchronization, the current `.env` file is saved to the `env-backup/` directory with a timestamped filename
 (e.g. `env-backup/.env.backup_20231218_143022`).
+Use this backup to recover custom comments, ordering, or variables that are not present in `.env.example`.
 
 **When to use**
 

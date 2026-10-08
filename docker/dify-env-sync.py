@@ -4,10 +4,10 @@
 # Dify Environment Variables Synchronization Script
 #
 # Features:
-# - Synchronize latest settings from .env.example to .env
-# - Preserve custom settings in existing .env
+# - Rebuild .env from the latest .env.example structure
+# - Preserve values for variables that remain in .env.example
 # - Add new environment variables
-# - Detect removed environment variables
+# - Report variables that will be omitted from .env
 # - Create backup files
 # ================================================================
 
@@ -261,7 +261,7 @@ def show_differences_detail(diffs: dict[str, tuple[str, str]]) -> None:
     print()
     log_info("=== Difference Analysis Complete ===")
     log_info("Note: Consider changing to the recommended values above.")
-    log_info("Current implementation preserves .env values.")
+    log_info("Current implementation preserves .env values for variables still present in .env.example.")
     print()
 
 
@@ -280,10 +280,12 @@ def detect_removed_variables(env_vars: dict[str, str], example_vars: dict[str, s
     removed = sorted(set(env_vars) - set(example_vars))
 
     if removed:
-        log_warning("The following environment variables have been removed from .env.example:")
+        log_warning(
+            "The following environment variables are absent from .env.example "
+            "and will be omitted from the rewritten .env:"
+        )
         for var in removed:
             log_warning(f"  - {var}")
-        log_warning("Consider manually removing these variables from .env")
     else:
         log_success("No removed environment variables found")
 
@@ -291,7 +293,7 @@ def detect_removed_variables(env_vars: dict[str, str], example_vars: dict[str, s
 
 
 def sync_env_file(work_dir: Path, env_vars: dict[str, str], diffs: dict[str, tuple[str, str]]) -> None:
-    """Rewrite .env based on .env.example while preserving custom values.
+    """Rewrite .env while preserving values for variables that remain in .env.example.
 
     The output file follows the exact line structure of .env.example
     (preserving comments, blank lines, and ordering).  For every variable
@@ -381,7 +383,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
         prog="dify-env-sync",
         description=(
             "Synchronize .env with .env.example: add new variables, "
-            "preserve custom values, and report removed variables."
+            "preserve values for retained variables, and report omitted variables."
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
