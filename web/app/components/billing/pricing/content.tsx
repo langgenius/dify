@@ -49,6 +49,7 @@ export function PricingContent() {
     ? {
         currentPlan: currentCloudPlan,
         isEducationDiscountEligible,
+        isEducationDiscountActivated: features.education.activated,
       }
     : undefined
 

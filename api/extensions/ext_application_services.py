@@ -149,7 +149,6 @@ from services.oauth_device_application_service import (
 )
 from services.oauth_device_flow import DeviceFlowRedis
 from services.oauth_server_service import OAUTH_ACCESS_TOKEN_EXPIRES_IN, OAuthServerService
-from services.partner_tenant_binding_service import PartnerTenantBindingService
 from services.plugin_file_upload_gateway import ToolFilePluginUploadGateway
 from services.plugin_file_upload_service import PluginFileUploadService
 from services.recommended_app_catalog_gateway import (
@@ -284,7 +283,6 @@ class ApplicationServices:
     installed_apps: InstalledAppServices
     notifications: NotificationService
     step_by_step_tour: StepByStepTourService
-    partner_tenant_bindings: PartnerTenantBindingService
     recommended_app_queries: RecommendedAppQueryService
     recommended_app_packages: RecommendedAppPackageService
     remote_files: RemoteFileService
@@ -650,9 +648,6 @@ def build_application_services(
             states=SQLAlchemyStepByStepTourStateRepository(session_factory=database_client),
             enabled=dify_config.ENABLE_STEP_BY_STEP_TOUR,
             rollout_started_at=dify_config.STEP_BY_STEP_TOUR_ROLLOUT_STARTED_AT,
-        ),
-        partner_tenant_bindings=PartnerTenantBindingService(
-            sync_bindings=BillingService.sync_partner_tenants_bindings,
         ),
         recommended_app_queries=recommended_app_queries,
         recommended_app_packages=recommended_app_packages,

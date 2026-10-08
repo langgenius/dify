@@ -992,7 +992,6 @@ type = forbidden
 source_modules =
     services.billing_portal_service
     services.compliance_download_service
-    services.partner_tenant_binding_service
 forbidden_modules =
     configs
     controllers

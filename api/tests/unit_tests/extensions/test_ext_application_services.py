@@ -132,7 +132,6 @@ from services.knowledge.indexing.estimate import IndexingEstimateApplicationServ
 from services.knowledge.segments.application import DatasetSegmentApplicationService
 from services.message_file_preview_service import MessageFilePreviewService
 from services.oauth_device_application_service import OAuthDeviceApplicationService
-from services.partner_tenant_binding_service import PartnerTenantBindingService
 from services.plugin_file_upload_gateway import ToolFilePluginUploadGateway
 from services.plugin_file_upload_service import PluginFileUploadService
 from services.retention.workflow_run.archive_download_task_cache import WorkflowRunArchiveDownloadTaskCache
@@ -629,11 +628,6 @@ def test_build_application_services_wires_billing_service(
             "get_invoices",
             return_value={"url": "https://billing.example.com/portal"},
         ) as get_invoices,
-        patch.object(
-            BillingService,
-            "sync_partner_tenants_bindings",
-            return_value={"result": "success"},
-        ) as sync_partner_tenants_bindings,
     ):
         services = ext_application_services.build_application_services(
             database_client=sqlite_session_factory,
@@ -655,15 +649,8 @@ def test_build_application_services_wires_billing_service(
         interval="month",
     ) == {"url": "https://billing.example.com/checkout"}
     assert services.billing_portal.get_invoices(request_context) == {"url": "https://billing.example.com/portal"}
-    assert isinstance(services.partner_tenant_bindings, PartnerTenantBindingService)
-    assert services.partner_tenant_bindings.sync(
-        account_id="account-1",
-        partner_key="partner-key",
-        click_id="click-1",
-    ) == {"result": "success"}
     get_subscription.assert_called_once_with("professional", "month", "owner@example.com", "workspace-1")
     get_invoices.assert_called_once_with("owner@example.com", "workspace-1")
-    sync_partner_tenants_bindings.assert_called_once_with("account-1", "partner-key", "click-1")
 
 
 def test_build_application_services_wires_compliance_downloads(

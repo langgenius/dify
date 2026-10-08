@@ -4,11 +4,11 @@ import type { AgentConfigSnapshotSummaryResponse } from '@dify/contracts/api/con
 import type { ReactNode } from 'react'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -140,7 +140,7 @@ export function AgentVersionRestore({
               {t(($) => $['versionHistory.restorationTip'], { ns: 'workflowHistory' })}
             </AlertDialogDescription>
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton variant="secondary" disabled={mutation.isPending}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
@@ -152,7 +152,7 @@ export function AgentVersionRestore({
             >
               {t(($) => $['agentDetail.versionHistory.restore'])}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>
