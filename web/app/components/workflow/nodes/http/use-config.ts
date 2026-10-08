@@ -111,9 +111,6 @@ const useConfig = (id: string, payload: HttpNodeType) => {
     [inputs, setInputs],
   )
 
-  // authorization
-  const [isShowAuthorization, setIsShowAuthorization] = useState(false)
-
   const setAuthorization = useCallback(
     (authorization: Authorization) => {
       const newInputs = produce(inputs, (draft: HttpNodeType) => {
@@ -193,9 +190,6 @@ const useConfig = (id: string, payload: HttpNodeType) => {
     // ssl verify
     handleSSLVerifyChange,
     // authorization
-    isShowAuthorization,
-    showAuthorization: () => setIsShowAuthorization(true),
-    hideAuthorization: () => setIsShowAuthorization(false),
     setAuthorization,
     setTimeout,
     // curl import

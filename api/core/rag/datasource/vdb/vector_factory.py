@@ -2,6 +2,7 @@ import base64
 import logging
 import time
 from abc import ABC, abstractmethod
+from collections.abc import Mapping
 from typing import Any, override
 
 from sqlalchemy import select
@@ -28,7 +29,16 @@ logger = logging.getLogger(__name__)
 
 class AbstractVectorFactory(ABC):
     @abstractmethod
-    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> BaseVector:
+    def init_vector(
+        self, dataset: Dataset, attributes: list, embeddings: Embeddings, *, session: Session | None
+    ) -> BaseVector:
+        """Initialize the backend using the caller's session for metadata reads.
+
+        ``None`` is used by callers that initialize a resolved vector backend
+        outside their database transaction; backend-specific legacy reads may
+        still use their own session in that case. A supplied session belongs to
+        the caller and must not be committed, rolled back, or closed here.
+        """
         raise NotImplementedError
 
     @staticmethod
@@ -105,7 +115,14 @@ class _LazyEmbeddings(Embeddings):
 
 
 class Vector:
-    def __init__(self, dataset: Dataset, attributes: list | None = None, *, session: Session):
+    def __init__(
+        self,
+        dataset: Dataset,
+        attributes: list | None = None,
+        *,
+        session: Session | None,
+        vector_type: str | None = None,
+    ):
         if attributes is None:
             # `is_summary` and `original_chunk_id` are stored on summary vectors
             # by `SummaryIndexService` and read back by `RetrievalService` to
@@ -132,7 +149,14 @@ class Vector:
         self._embeddings: Embeddings = _LazyEmbeddings(dataset)
         self._attributes = attributes
         self._session = session
-        self._vector_processor = self._init_vector(session=session)
+        if vector_type is not None:
+            self._vector_processor = self.get_vector_factory(vector_type)().init_vector(
+                dataset, self._attributes, self._embeddings, session=session
+            )
+        else:
+            if session is None:
+                raise ValueError("A resolved vector type is required without a database session")
+            self._vector_processor = self._init_vector(session=session)
 
     @staticmethod
     def resolve_vector_type(dataset: Dataset, *, session: Session) -> str:
@@ -157,7 +181,7 @@ class Vector:
     def _init_vector(self, *, session: Session) -> BaseVector:
         vector_type = self.resolve_vector_type(self._dataset, session=session)
         vector_factory_cls = self.get_vector_factory(vector_type)
-        return vector_factory_cls().init_vector(self._dataset, self._attributes, self._embeddings)
+        return vector_factory_cls().init_vector(self._dataset, self._attributes, self._embeddings, session=session)
 
     @staticmethod
     def get_vector_factory(vector_type: str) -> type[AbstractVectorFactory]:
@@ -192,7 +216,9 @@ class Vector:
                 self._vector_processor.create(texts=batch, embeddings=batch_embeddings, **kwargs)
             logger.info("Embedding %s texts took %s s", len(texts), time.time() - start)
 
-    def create_multimodal(self, file_documents: list | None = None, **kwargs):
+    def create_multimodal(
+        self, file_documents: list | None = None, *, upload_files: Mapping[str, UploadFile] | None = None, **kwargs
+    ):
         if file_documents:
             start = time.time()
             logger.info("start embedding %s files %s", len(file_documents), start)
@@ -205,9 +231,16 @@ class Vector:
 
                 # Batch query all upload files to avoid N+1 queries
                 attachment_ids = [doc.metadata["doc_id"] for doc in batch]
-                stmt = select(UploadFile).where(UploadFile.id.in_(attachment_ids))
-                upload_files = self._session.scalars(stmt).all()
-                upload_file_map = {str(f.id): f for f in upload_files}
+                upload_file_map: Mapping[str, UploadFile]
+                if upload_files is None:
+                    if self._session is None:
+                        raise ValueError("Upload files must be loaded before indexing without a database session")
+                    stmt = select(UploadFile).where(
+                        UploadFile.id.in_(attachment_ids), UploadFile.tenant_id == self._dataset.tenant_id
+                    )
+                    upload_file_map = {str(f.id): f for f in self._session.scalars(stmt).all()}
+                else:
+                    upload_file_map = upload_files
 
                 file_base64_list = []
                 real_batch = []
@@ -264,6 +297,8 @@ class Vector:
         return self._vector_processor.search_by_vector(query_vector, **kwargs)
 
     def search_by_file(self, file_id: str, **kwargs: Any) -> list[Document]:
+        if self._session is None:
+            raise ValueError("File search requires a database session")
         upload_file: UploadFile | None = self._session.get(UploadFile, file_id)
 
         if not upload_file:

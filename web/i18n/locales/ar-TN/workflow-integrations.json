@@ -45,7 +45,6 @@
   "nodes.triggerSchedule.nextExecutionTimes": "أوقات التنفيذ الـ 5 التالية",
   "nodes.triggerSchedule.onMinute": "في الدقيقة",
   "nodes.triggerSchedule.selectFrequency": "حدد التكرار",
-  "nodes.triggerSchedule.selectTime": "اختر الوقت",
   "nodes.triggerSchedule.title": "الجدول الزمني",
   "nodes.triggerSchedule.useCronExpression": "استخدم تعبير cron",
   "nodes.triggerSchedule.useVisualPicker": "استخدم منتقي مرئي",

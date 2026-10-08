@@ -6,7 +6,7 @@ import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import {
   Drawer,
   DrawerBackdrop,
-  DrawerCloseButton,
+  DrawerClose,
   DrawerContent,
   DrawerDescription,
   DrawerPopup,
@@ -91,13 +91,18 @@ function DocumentsTaskDrawerHeader() {
       <DrawerTitle className="pr-9 system-md-semibold text-text-primary">
         {t(($) => $.backgroundTasks)}
       </DrawerTitle>
-      <DrawerCloseButton
+      <DrawerClose
         data-documents-task-drawer-close
-        aria-label={tCommon(($) => $['operation.close'])}
-        className="absolute top-[calc(1.25rem+env(safe-area-inset-top,0px))] right-[calc(1.5rem+env(safe-area-inset-right,0px))]"
-      >
-        <span aria-hidden className="i-ri-close-line size-5" />
-      </DrawerCloseButton>
+        render={
+          <IconButton
+            aria-label={tCommon(($) => $['operation.close'])}
+            size="lg"
+            className="absolute top-[calc(1.25rem+env(safe-area-inset-top,0px))] right-[calc(1.5rem+env(safe-area-inset-right,0px))]"
+          >
+            <span aria-hidden className="i-ri-close-line size-5" />
+          </IconButton>
+        }
+      />
       <DrawerDescription className="mt-1 system-xs-regular text-text-tertiary">
         {t(($) => $.backgroundTasksDescription, { ns: 'knowledgeTasks' })}
       </DrawerDescription>

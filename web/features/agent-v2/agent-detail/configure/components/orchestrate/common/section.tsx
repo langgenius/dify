@@ -21,7 +21,6 @@ type ConfigureSectionProps = {
   panelId?: string
   rootClassName?: string
   headerClassName?: string
-  titleRowClassName?: string
   panelContentClassName?: string
 }
 
@@ -38,7 +37,6 @@ export function ConfigureSection({
   tip,
   rootClassName,
   headerClassName,
-  titleRowClassName,
   panelContentClassName,
 }: ConfigureSectionProps) {
   const Heading = headingLevel
@@ -50,15 +48,15 @@ export function ConfigureSection({
     <Collapsible
       render={<section />}
       defaultOpen={defaultOpen}
-      className={rootClassName}
+      className={rootClassName ?? 'gap-1 py-3'}
       aria-labelledby={labelId}
     >
-      <div className={cn('mb-2 flex min-h-6 items-center gap-2', headerClassName)}>
+      <div className={cn('flex min-h-6 items-center gap-2', headerClassName)}>
         <div className="min-w-0 flex-1">
-          <div className={cn('group/collapse-title flex min-w-0 items-center', titleRowClassName)}>
+          <div className="group/collapse-title flex min-w-0 items-center">
             <Heading className="relative min-w-0 shrink-0">
               {isBuildDraftChanged && <AgentBuildDraftChangeDot />}
-              <CollapsibleTrigger className="flex h-6 min-h-0 max-w-full touch-manipulation items-center justify-start gap-0 rounded-sm system-sm-medium text-text-secondary outline-hidden select-none focus-visible:ring-2 focus-visible:ring-state-accent-solid">
+              <CollapsibleTrigger className="flex h-6 min-h-0 max-w-full touch-manipulation items-center justify-start gap-0 rounded-sm system-sm-medium text-text-secondary select-none">
                 <span id={labelId} className="min-w-0 truncate system-sm-semibold-uppercase">
                   {label}
                 </span>

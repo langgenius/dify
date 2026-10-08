@@ -2,11 +2,11 @@
 
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -157,7 +157,7 @@ function BulkRemoveAction() {
               {tCommon(($) => $['operation.confirmAction'])}
             </AlertDialogDescription>
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton disabled={pending}>
               {tCommon(($) => $['operation.cancel'])}
             </AlertDialogCancelButton>
@@ -172,7 +172,7 @@ function BulkRemoveAction() {
             >
               {tCommon(($) => $['operation.remove'])}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>

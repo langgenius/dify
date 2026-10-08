@@ -124,7 +124,7 @@ function AgentContentModerationSettingsContent() {
       headingLevel="h4"
       panelId={panelId}
       rootClassName="gap-1 border-t border-divider-subtle py-3"
-      headerClassName="mb-0 gap-1 px-3"
+      headerClassName="gap-1 px-3"
       panelContentClassName="px-3 pt-1"
       actions={
         !readOnly ? (

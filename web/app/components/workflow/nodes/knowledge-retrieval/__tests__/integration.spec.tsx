@@ -551,7 +551,7 @@ describe('knowledge-retrieval path', () => {
 
       await user.click(
         screen.getByRole('button', {
-          name: /workflow.nodes.knowledgeRetrieval.metadata.options.disabled.title/i,
+          name: /workflowModels.nodes.knowledgeRetrieval.metadata.options.disabled.title/i,
         }),
       )
 
@@ -770,7 +770,7 @@ describe('knowledge-retrieval path', () => {
       fireEvent.click(container.querySelector('.ml-1.mt-1') as Element)
 
       expect(onSelect).toHaveBeenCalledWith(MetadataComparisonOperator.is as ComparisonOperator)
-      expect(onDateChange).toHaveBeenCalledWith()
+      expect(onDateChange).toHaveBeenCalledWith(undefined)
       expect(onUpdateCondition).toHaveBeenCalledWith(
         'condition-1',
         expect.objectContaining({ value: 'updated-agent' }),

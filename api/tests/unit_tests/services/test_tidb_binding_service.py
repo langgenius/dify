@@ -361,7 +361,7 @@ def test_legacy_dataset_factory_uses_shared_binding_and_resumes_pending(environm
         patch.object(legacy.time, "sleep") as sleep,
         patch.object(legacy, "TidbOnQdrantVector") as vector,
     ):
-        legacy.TidbOnQdrantVectorFactory().init_vector(dataset, [], MagicMock())
+        legacy.TidbOnQdrantVectorFactory().init_vector(dataset, [], MagicMock(), session=None)
     assert resolve.call_count == 2
     resolve.assert_called_with(binding.tenant_id, allow_create=True)
     sleep.assert_called_once_with(5)
@@ -379,5 +379,5 @@ def test_legacy_dataset_factory_bounds_readiness_wait(environment):
         patch.object(legacy.time, "sleep") as sleep,
     ):
         with pytest.raises(service.TidbBindingPendingError):
-            legacy.TidbOnQdrantVectorFactory().init_vector(dataset, [], MagicMock())
+            legacy.TidbOnQdrantVectorFactory().init_vector(dataset, [], MagicMock(), session=None)
     sleep.assert_not_called()

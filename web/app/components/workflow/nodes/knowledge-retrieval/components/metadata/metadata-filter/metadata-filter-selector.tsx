@@ -4,6 +4,7 @@ import {
   DropdownMenuContent,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
+  DropdownMenuRadioItemIndicator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useTranslation } from 'react-i18next'
@@ -64,23 +65,17 @@ const MetadataFilterSelector = ({
         {selectedOption.value}
         <span aria-hidden className="i-ri-arrow-down-s-line size-3.5" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent
-        placement="bottom-end"
-        sideOffset={4}
-        className="w-70 rounded-xl border-[0.5px] bg-components-panel-bg-blur p-1"
-      >
+      <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-70 p-1">
         <DropdownMenuRadioGroup value={value} onValueChange={onSelect}>
           {visibleOptions.map((option) => (
             <DropdownMenuRadioItem
               key={option.key}
               value={option.key}
               closeOnClick
-              className="h-auto items-start rounded-lg p-2 pr-3"
+              className="h-auto items-start p-2 pr-3"
             >
               <div className="w-4 shrink-0">
-                {option.key === value && (
-                  <span aria-hidden className="i-ri-check-line size-4 text-text-accent" />
-                )}
+                <DropdownMenuRadioItemIndicator />
               </div>
               <div className="grow">
                 <div className="system-sm-semibold text-text-secondary">{option.value}</div>

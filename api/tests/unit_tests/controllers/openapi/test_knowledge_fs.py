@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import inspect
-import json
 import uuid
-from pathlib import Path
 from typing import Protocol, runtime_checkable
 from unittest.mock import Mock
 
@@ -371,17 +369,6 @@ def test_knowledge_fs_error_adapter_uses_stable_domain_errors() -> None:
 
         with pytest.raises(openapi_error):
             fail()
-
-
-def test_cli_catalog_fixture_matches_the_registered_knowledge_fs_operations(openapi_app: Flask) -> None:
-    """CLI wire tests exercise the actual server input and binding contracts."""
-    from controllers.openapi._catalog import build_catalog
-
-    fixture = Path(__file__).resolve().parents[5] / "cli/test/fixtures/knowledge-fs-catalog.json"
-    with openapi_app.app_context():
-        operations = build_catalog(openapi_app)["ops"]
-    expected = {name: operation for name, operation in operations.items() if name.startswith("knowledge_fs.")}
-    assert json.loads(fixture.read_text()) == {"ops": expected}
 
 
 @pytest.mark.parametrize("operation", ["ls", "tree", "grep", "find", "cat", "stat", "diff"])

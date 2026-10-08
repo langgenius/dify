@@ -285,7 +285,7 @@ def test_real_context_scope_rejects_foreign_tenant_wrong_agent_and_changed_workf
     )
     sqlite_session.flush()
     monkeypatch.setattr(gateway.session_factory, "create_session", lambda: nullcontext(sqlite_session))
-    monkeypatch.setattr(gateway.TenantService, "account_belongs_to_tenant", lambda *_args, **_kwargs: True)
+    monkeypatch.setattr(gateway, "_account_belongs_to_tenant", lambda *_args, **_kwargs: True)
     monkeypatch.setattr(
         gateway.AgentConfigService, "resolve_target", lambda *_args, **_kwargs: SimpleNamespace(agent_soul=SOUL)
     )
@@ -297,10 +297,10 @@ def test_real_context_scope_rejects_foreign_tenant_wrong_agent_and_changed_workf
     ):
         with pytest.raises(KnowledgeFsError):
             gateway.AgentKnowledgeGateway._authorize_context(request(context=CONTEXT.model_copy(update=changes)))
-    monkeypatch.setattr(gateway.TenantService, "account_belongs_to_tenant", lambda *_args, **_kwargs: False)
+    monkeypatch.setattr(gateway, "_account_belongs_to_tenant", lambda *_args, **_kwargs: False)
     with pytest.raises(KnowledgeFsError, match="membership"):
         gateway.AgentKnowledgeGateway._authorize_context(request())
-    monkeypatch.setattr(gateway.TenantService, "account_belongs_to_tenant", lambda *_args, **_kwargs: True)
+    monkeypatch.setattr(gateway, "_account_belongs_to_tenant", lambda *_args, **_kwargs: True)
     agent = sqlite_session.get(Agent, "agent")
     assert agent is not None
     agent.status = AgentStatus.ARCHIVED

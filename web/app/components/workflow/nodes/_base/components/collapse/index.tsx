@@ -46,7 +46,7 @@ export function CollapseTrigger({ className, ...props }: CollapseTriggerProps) {
   return (
     <CollapsibleTrigger
       className={cn(
-        'group/collapse ml-4 flex h-6 min-h-0 min-w-0 shrink-0 touch-manipulation items-center justify-start gap-0 rounded-md text-start system-sm-medium text-text-secondary outline-hidden select-none hover:not-data-disabled:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid data-disabled:cursor-not-allowed data-disabled:text-text-disabled data-panel-open:text-text-secondary',
+        'group/collapse ml-4 flex h-6 min-h-0 min-w-0 shrink-0 touch-manipulation items-center justify-start gap-0 rounded-md text-start system-sm-medium text-text-secondary select-none hover:not-data-disabled:text-text-secondary data-disabled:cursor-not-allowed data-disabled:text-text-disabled data-panel-open:text-text-secondary',
         className,
       )}
       {...props}

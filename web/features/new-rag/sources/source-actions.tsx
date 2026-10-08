@@ -4,11 +4,11 @@ import type { SourceAction, SourceEditValues } from './source-list-model'
 import type { Source } from './source-models'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -346,7 +346,7 @@ export function SourceActions({
               {tCommon(($) => $['operation.confirmAction'])}
             </AlertDialogDescription>
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton variant="secondary">
               {tCommon(($) => $['operation.cancel'])}
             </AlertDialogCancelButton>
@@ -361,7 +361,7 @@ export function SourceActions({
             >
               {t(($) => $.removeSource, { ns: 'knowledgeSources' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>

@@ -15,10 +15,10 @@ from models.account import Account
 from models.credential_permission import CredentialType
 from models.knowledge_fs import KnowledgeFSControlSpaceState
 from models.oauth import DatasourceProvider
+from repositories.credentials.query_repository import apply_credential_visibility_filter_for_actor
 from repositories.sqlalchemy_knowledge_fs_control_space_repository import (
     SQLAlchemyKnowledgeFSControlSpaceRepository,
 )
-from services.credential_permission_service import CredentialPermissionService
 from services.knowledge_fs.product_dto import (
     KnowledgeFSCrawlImportPayload,
     KnowledgeFSDeferredSyncPolicyPayload,
@@ -150,13 +150,14 @@ def _find_credential(*, session_maker, tenant_id: str, account_id: str, binding:
         account = session.get(Account, account_id)
         if account is None:
             raise RuntimeError("Initial Source account was not found")
-        query = CredentialPermissionService.apply_visibility_filter(
+        query = apply_credential_visibility_filter_for_actor(
             query,
+            tenant_id=tenant_id,
             model_id_column=DatasourceProvider.id,
             model_user_id_column=DatasourceProvider.user_id,
             model_visibility_column=DatasourceProvider.visibility,
             credential_type=CredentialType.DATASOURCE_PROVIDER,
-            user=account,
+            actor_id=account.id,
         )
         if binding.credential_id is not None:
             query = query.where(DatasourceProvider.id == binding.credential_id)

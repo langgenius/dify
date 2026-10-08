@@ -8,7 +8,6 @@ from pydantic import ValidationError
 from qdrant_client import QdrantClient
 from qdrant_client.http.exceptions import UnexpectedResponse
 
-from configs import dify_config
 from services.knowledge_fs.text_store import (
     TextPayload,
     TextPoint,
@@ -166,8 +165,8 @@ def test_unauthorized_duplicate_and_nonfinite_matches_rejected(matches):
         ("weaviate", WeaviateVectorStore, WeaviateTextStore),
     ],
 )
-def test_selection_reuses_vector_configuration(monkeypatch, backend, wrapper, expected):
-    monkeypatch.setattr(dify_config, "VECTOR_STORE", backend)
+def test_selection_reuses_vector_configuration(config_overrides, backend, wrapper, expected):
+    config_overrides(VECTOR_STORE=backend)
     native = wrapper(MagicMock())
     with patch(
         "services.knowledge_fs.vector_store.configured_vector_client", return_value=nullcontext(native)
@@ -178,8 +177,8 @@ def test_selection_reuses_vector_configuration(monkeypatch, backend, wrapper, ex
         factory.assert_called_once_with(A, allow_create=True)
 
 
-def test_qdrant_selection_and_unsupported_provider(monkeypatch):
-    monkeypatch.setattr(dify_config, "VECTOR_STORE", "qdrant")
+def test_qdrant_selection_and_unsupported_provider(config_overrides):
+    config_overrides(VECTOR_STORE="qdrant")
     native = QdrantClient(":memory:")
     with patch("services.knowledge_fs.vector_store.configured_vector_client", return_value=nullcontext(native)):
         with configured_text_client(A) as store:

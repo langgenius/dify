@@ -3,11 +3,11 @@
 import type { KnowledgeFsSpaceListItemResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -149,7 +149,7 @@ export function KnowledgeSpaceActions({
               onChange={(event) => setDeleteConfirmation(event.target.value)}
             />
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton ref={deleteCancelRef}>
               {tCommon(($) => $['operation.cancel'])}
             </AlertDialogCancelButton>
@@ -160,7 +160,7 @@ export function KnowledgeSpaceActions({
             >
               {tCommon(($) => $['operation.delete'])}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>

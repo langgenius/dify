@@ -2,11 +2,11 @@
 
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -111,7 +111,7 @@ export function DeleteKnowledgeAction() {
               onChange={(event) => setConfirmation(event.target.value)}
             />
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton ref={cancelRef}>
               {tCommon(($) => $['operation.cancel'])}
             </AlertDialogCancelButton>
@@ -122,7 +122,7 @@ export function DeleteKnowledgeAction() {
             >
               {tCommon(($) => $['operation.delete'])}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>

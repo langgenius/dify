@@ -178,6 +178,7 @@ const BaseField = ({
   const isDynamicSelect = formItemType === FormTypeEnum.dynamicSelect
   const isSelect = formItemType === FormTypeEnum.select || isDynamicSelect
   const isSingleControl = inputFieldTypes.includes(formItemType)
+  const hasCustomLabel = isValidElement(label)
 
   const [
     translatedLabel,
@@ -294,21 +295,25 @@ const BaseField = ({
       <div className={cn(fieldClassName)}>
         <div className={cn(labelClassName, formLabelClassName)}>
           {isSelect ? (
-            <SelectLabel className="inline p-0 text-inherit [font:inherit]">
+            <SelectLabel
+              className={cn('inline p-0 text-inherit [font:inherit]', hasCustomLabel && 'w-full')}
+            >
               <span id={labelId}>{translatedLabel || name}</span>
             </SelectLabel>
           ) : isSingleControl ? (
             <label
               id={labelId}
               htmlFor={controlId}
-              className={cn(isValidElement(label) && 'w-full')}
+              className={hasCustomLabel ? 'w-full' : undefined}
             >
               {translatedLabel || name}
             </label>
           ) : (
-            <span id={labelId}>{translatedLabel || name}</span>
+            <span id={labelId} className={hasCustomLabel ? 'w-full' : undefined}>
+              {translatedLabel || name}
+            </span>
           )}
-          {required && !isValidElement(label) && (
+          {required && !hasCustomLabel && (
             <span aria-hidden="true" className="ml-1 text-text-destructive-secondary">
               *
             </span>

@@ -5,11 +5,11 @@ import type { RefObject } from 'react'
 import type { DatasetCardItem } from '@/app/components/datasets/list/dataset-card/types'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
@@ -113,7 +113,7 @@ export function KnowledgeUpgradeDialog({
             )}
           </AlertDialogDescription>
         </div>
-        <AlertDialogActions className="gap-2 p-6 pt-0">
+        <AlertDialogFooter className="gap-2 p-6 pt-0">
           <AlertDialogCancelButton ref={cancelRef} disabled={startMutation.isPending}>
             {tCommon(($) => $['operation.cancel'])}
           </AlertDialogCancelButton>
@@ -125,7 +125,7 @@ export function KnowledgeUpgradeDialog({
           >
             {t(($) => $['upgrade.start'], { ns: 'knowledgeUpgrade' })}
           </AlertDialogConfirmButton>
-        </AlertDialogActions>
+        </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   )

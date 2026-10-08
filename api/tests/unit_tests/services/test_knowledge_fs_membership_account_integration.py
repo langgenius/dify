@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 from hashlib import sha256
-from unittest.mock import patch
 
 import pytest
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from models import Account, App, Dataset, Tenant, TenantAccountJoin
 from models.account import TenantAccountRole
@@ -20,8 +19,7 @@ from models.knowledge_fs import (
     KnowledgeFSControlSpaceState,
     KnowledgeFSLifecycleOutbox,
 )
-from services.account_service import TenantService
-from tests.unit_tests.config_override import config_overrides_context
+from repositories.workspace.workspace_repository import WorkspaceRepository
 from tests.unit_tests.services.knowledge_fs_fakes import claims_summary, revoke_payload
 
 _TABLES = (
@@ -40,29 +38,38 @@ _TABLES = (
 
 
 @pytest.mark.parametrize("sqlite_session", [_TABLES], indirect=True)
-def test_create_tenant_member_advances_existing_knowledge_fs_membership_epoch(sqlite_session: Session) -> None:
+def test_upsert_member_advances_existing_knowledge_fs_membership_epoch(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
     tenant, owner, member = _workspace_accounts(sqlite_session, include_member=False)
     space = _space(tenant, owner.id)
     revision = KnowledgeFSAuthorizationRevision(tenant_id=tenant.id, control_space_id=space.id)
     sqlite_session.add_all([space, revision])
     sqlite_session.commit()
 
-    TenantService.create_tenant_member(tenant, member, sqlite_session, role="normal")
+    WorkspaceRepository(sqlite_session_factory).upsert_member(
+        workspace_id=tenant.id, account_id=member.id, role=TenantAccountRole.NORMAL
+    )
+    sqlite_session.expire_all()
 
     assert revision.membership_epoch == 1
     assert sqlite_session.scalar(select(KnowledgeFSLifecycleOutbox)) is None
 
 
 @pytest.mark.parametrize("sqlite_session", [_TABLES], indirect=True)
-def test_update_workspace_role_revokes_late_durable_grants_in_same_commit(sqlite_session: Session) -> None:
+def test_update_workspace_role_revokes_late_durable_grants_in_same_commit(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
     tenant, owner, member = _workspace_accounts(sqlite_session, member_role=TenantAccountRole.ADMIN)
     space = _space(tenant, owner.id, suffix="2")
     revision = KnowledgeFSAuthorizationRevision(tenant_id=tenant.id, control_space_id=space.id)
     sqlite_session.add_all([space, revision, _audit(tenant, space, member.id, "2")])
     sqlite_session.commit()
 
-    with config_overrides_context(RBAC_ENABLED=False):
-        TenantService.update_member_role(tenant, member, "normal", owner, session=sqlite_session)
+    WorkspaceRepository(sqlite_session_factory).update_member_role(
+        workspace_id=tenant.id, account_id=member.id, role=TenantAccountRole.NORMAL, actor_account_id=owner.id
+    )
+    sqlite_session.expire_all()
 
     command = sqlite_session.scalar(select(KnowledgeFSLifecycleOutbox))
     assert revision.membership_epoch == 1
@@ -72,7 +79,9 @@ def test_update_workspace_role_revokes_late_durable_grants_in_same_commit(sqlite
 
 
 @pytest.mark.parametrize("sqlite_session", [_TABLES], indirect=True)
-def test_remove_member_reassigns_owned_control_space_before_deleting_membership(sqlite_session: Session) -> None:
+def test_remove_member_reassigns_owned_control_space_before_deleting_membership(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
     tenant, owner, member = _workspace_accounts(sqlite_session)
     space = _space(tenant, member.id, suffix="3")
     member_permission = KnowledgeFSControlSpacePermission(
@@ -85,14 +94,10 @@ def test_remove_member_reassigns_owned_control_space_before_deleting_membership(
     sqlite_session.add_all([space, member_permission, revision, _audit(tenant, space, member.id, "3")])
     sqlite_session.commit()
 
-    with (
-        config_overrides_context(RBAC_ENABLED=False),
-        patch(
-            "services.enterprise.account_deletion_sync.sync_workspace_member_removal",
-            return_value=True,
-        ),
-    ):
-        TenantService.remove_member_from_tenant(tenant, member, owner, session=sqlite_session)
+    WorkspaceRepository(sqlite_session_factory).remove_member(
+        workspace_id=tenant.id, account_id=member.id, owner_id=owner.id, actor_account_id=owner.id
+    )
+    sqlite_session.expire_all()
 
     command = sqlite_session.scalar(select(KnowledgeFSLifecycleOutbox))
     assert space.owner_account_id == owner.id

@@ -4,7 +4,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   Drawer,
   DrawerBackdrop,
-  DrawerCloseButton,
+  DrawerClose,
   DrawerContent,
   DrawerDescription,
   DrawerPopup,
@@ -12,6 +12,7 @@ import {
   DrawerTitle,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
@@ -175,14 +176,19 @@ export function DocumentDetailTasksDrawer({
                 <DrawerTitle className="pr-9 system-md-semibold text-text-primary">
                   {t(($) => $.backgroundTasks)}
                 </DrawerTitle>
-                <DrawerCloseButton
+                <DrawerClose
                   ref={drawerCloseButtonRef}
                   id={DOCUMENT_TASK_DRAWER_CLOSE_ID}
-                  aria-label={tCommon(($) => $['operation.close'])}
-                  className="absolute top-[calc(1.25rem+env(safe-area-inset-top,0px))] right-[calc(1.5rem+env(safe-area-inset-right,0px))]"
-                >
-                  <span aria-hidden className="i-ri-close-line size-5" />
-                </DrawerCloseButton>
+                  render={
+                    <IconButton
+                      aria-label={tCommon(($) => $['operation.close'])}
+                      size="lg"
+                      className="absolute top-[calc(1.25rem+env(safe-area-inset-top,0px))] right-[calc(1.5rem+env(safe-area-inset-right,0px))]"
+                    >
+                      <span aria-hidden className="i-ri-close-line size-5" />
+                    </IconButton>
+                  }
+                />
                 <DrawerDescription className="mt-1 system-xs-regular text-text-tertiary">
                   {t(($) => $.backgroundTasksDescription, { ns: 'knowledgeTasks' })}
                 </DrawerDescription>

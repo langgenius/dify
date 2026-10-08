@@ -6,8 +6,6 @@ import json
 from collections.abc import Callable
 from typing import Any, cast
 
-from sqlalchemy import select
-
 from core.datasource.datasource_manager import DatasourceManager
 from core.datasource.entities.datasource_entities import (
     DatasourceProviderType,
@@ -17,10 +15,7 @@ from core.datasource.online_document.online_document_plugin import OnlineDocumen
 from core.datasource.online_drive.online_drive_plugin import OnlineDriveDatasourcePlugin
 from core.datasource.website_crawl.website_crawl_plugin import WebsiteCrawlDatasourcePlugin
 from models.account import Account
-from models.credential_permission import CredentialType
-from models.oauth import DatasourceProvider
-from services.credential_permission_service import CredentialPermissionService
-from services.datasource_provider_service import DatasourceProviderService
+from repositories.data_source.credential_repository import SQLAlchemyDatasourceCredentialRepository
 from services.knowledge_fs.product_dto import (
     KnowledgeFSInitialSourcePreviewDocumentResponse,
     KnowledgeFSInitialSourcePreviewFileResponse,
@@ -53,23 +48,15 @@ class KnowledgeFSInitialSourcePreviewService:
         account: Account,
         payload: KnowledgeFSInitialSourcePreviewPayload | KnowledgeFSInitialWebsiteSourcePreviewPayload,
     ) -> None:
-        query = select(DatasourceProvider).where(
-            DatasourceProvider.tenant_id == tenant_id,
-            DatasourceProvider.id == payload.credential_id,
-            DatasourceProvider.provider == payload.provider,
-            DatasourceProvider.plugin_id == payload.plugin_id,
+        credential = SQLAlchemyDatasourceCredentialRepository(session_factory=self._session_maker).get_visible(
+            workspace_id=tenant_id,
+            actor_id=account.id,
+            credential_id=payload.credential_id,
+            provider=payload.provider,
+            plugin_id=payload.plugin_id,
         )
-        query = CredentialPermissionService.apply_visibility_filter(
-            query,
-            model_id_column=DatasourceProvider.id,
-            model_user_id_column=DatasourceProvider.user_id,
-            model_visibility_column=DatasourceProvider.visibility,
-            credential_type=CredentialType.DATASOURCE_PROVIDER,
-            user=account,
-        )
-        with self._session_maker() as session:
-            if session.scalar(query.limit(1)) is None:
-                raise PermissionError("Datasource credential is unavailable")
+        if credential is None:
+            raise PermissionError("Datasource credential is unavailable")
 
     def preview(
         self,
@@ -81,7 +68,10 @@ class KnowledgeFSInitialSourcePreviewService:
     ) -> KnowledgeFSInitialSourcePreviewResponse:
         _raise_if_canceled(is_canceled)
         self.require_visible_credential(tenant_id=tenant_id, account=account, payload=payload)
-        credentials = DatasourceProviderService().get_datasource_credentials(
+        from extensions.application_services.data_sources import build_data_source_credentials
+
+        providers = build_data_source_credentials(database_client=self._session_maker).providers
+        credentials = providers.get_datasource_credentials(
             tenant_id=tenant_id,
             provider=payload.provider,
             plugin_id=payload.plugin_id,

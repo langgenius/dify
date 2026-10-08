@@ -5,6 +5,7 @@ on:
     branches: [main, deploy/konwledge]
     paths:
       - 'cli/**'
+      - 'skills/**'
       - 'packages/contracts/generated/api/openapi/**'
       - '.github/workflows/cli-edge.yml'
   workflow_dispatch:

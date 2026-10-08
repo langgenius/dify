@@ -4,11 +4,11 @@ import type { RetrievalSettingsDraft } from './model'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import {
@@ -377,7 +377,7 @@ export function RetrievalSettingsSection() {
               {t(($) => $['settings.embeddingChangeWarning'], { ns: 'knowledgeSettings' })}
             </AlertDialogDescription>
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton
               type="button"
               onClick={() => setPendingEmbeddingModel(undefined)}
@@ -398,7 +398,7 @@ export function RetrievalSettingsSection() {
             >
               {tCommon(($) => $['operation.confirm'])}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>

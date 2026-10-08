@@ -23,7 +23,6 @@ from core.plugin.backwards_invocation.base import BaseBackwardsInvocation
 from core.plugin.entities.request import RequestInvokeDatasource
 from models.account import Tenant
 from models.provider_ids import DatasourceProviderID
-from services.datasource_provider_service import DatasourceProviderService
 
 
 class PluginDatasourceBackwardsInvocation(BaseBackwardsInvocation):
@@ -51,7 +50,11 @@ class PluginDatasourceBackwardsInvocation(BaseBackwardsInvocation):
         # Resolving the datasource from the installed declaration prevents a caller
         # from dispatching an arbitrary datasource name under a valid plugin ID.
         runtime = controller.get_datasource(payload.datasource)
-        credentials = DatasourceProviderService().get_datasource_credentials(
+        from core.db.session_factory import session_factory
+        from extensions.application_services.data_sources import build_data_source_credentials
+
+        providers = build_data_source_credentials(database_client=session_factory.get_session_maker()).providers
+        credentials = providers.get_datasource_credentials(
             tenant_id=tenant.id,
             provider=provider_id.provider_name,
             plugin_id=provider_id.plugin_id,

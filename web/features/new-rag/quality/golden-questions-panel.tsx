@@ -4,11 +4,11 @@ import type { KnowledgeFsGoldenQuestionResponse } from '@dify/contracts/api/cons
 import type { GoldenQuestionDraft, GoldenQuestionEvidenceOption } from './types'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -490,7 +490,7 @@ export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) 
               {tCommon(($) => $['operation.confirmAction'])}
             </AlertDialogDescription>
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton variant="secondary" disabled={deleteSubmitting}>
               {tCommon(($) => $['operation.cancel'])}
             </AlertDialogCancelButton>
@@ -503,7 +503,7 @@ export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) 
             >
               {tCommon(($) => $['operation.delete'])}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>

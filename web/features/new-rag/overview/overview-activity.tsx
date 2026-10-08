@@ -2,7 +2,6 @@
 
 import type { KnowledgeFsOverviewActivityResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { ActivityDateRange, ActivityOperator, ActivityRange } from './overview-activity-types'
-import type { DatePickerProps } from '@/app/components/base/date-and-time-picker/types'
 import type { Member } from '@/models/common'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
@@ -10,13 +9,14 @@ import { cn } from '@langgenius/dify-ui/cn'
 import {
   Drawer,
   DrawerBackdrop,
-  DrawerCloseButton,
+  DrawerClose,
   DrawerContent,
   DrawerPopup,
   DrawerPortal,
   DrawerTitle,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import {
   Select,
   SelectContent,
@@ -30,7 +30,13 @@ import dayjs from 'dayjs'
 import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import DatePicker from '@/app/components/base/date-and-time-picker/date-picker'
+import {
+  DatePicker,
+  DatePickerContent,
+  DatePickerLabel,
+  DatePickerTrigger,
+  DatePickerValue,
+} from '@/app/components/base/date-time-picker/date-picker'
 import { consoleQuery } from '@/service/console'
 import { useMembers } from '@/service/use-common'
 import { activityDatesForRange } from './overview-activity-types'
@@ -344,65 +350,53 @@ function ActivityDateRangePicker({
   onChange: (dates: ActivityDateRange) => void
 }) {
   const { t, i18n } = useTranslation(['knowledgeOverview'])
-  const today = dayjs()
+  const today = dayjs().format('YYYY-MM-DD')
   const formatter = useMemo(
     () => new Intl.DateTimeFormat(i18n.language, { day: 'numeric', month: 'short' }),
     [i18n.language],
   )
-  const renderTrigger =
-    (edge: 'start' | 'end'): NonNullable<DatePickerProps['renderTrigger']> =>
-    (props, state, { value }) => (
-      <div
-        {...props}
-        role="button"
-        tabIndex={0}
-        aria-label={`${t(($) => $['overview.timeRange'], { ns: 'knowledgeOverview' })} ${edge}`}
-        className={cn(
-          'min-w-0 flex-1 truncate rounded px-1 py-0.5 text-left system-xs-regular text-components-input-text-filled outline-hidden hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active',
-          props.className,
-          state.open && 'bg-state-base-hover',
-        )}
-        onKeyDown={(event) => {
-          props.onKeyDown?.(event)
-          if (event.defaultPrevented) return
-          if (event.key !== 'Enter' && event.key !== ' ') return
-          event.preventDefault()
-          event.currentTarget.click()
-        }}
-      >
-        {value ? formatter.format(value.toDate()) : '—'}
-      </div>
-    )
+  const timeRangeLabel = t(($) => $['overview.timeRange'], { ns: 'knowledgeOverview' })
+  const start = dates.start.format('YYYY-MM-DD')
+  const end = dates.end.format('YYYY-MM-DD')
+  const triggerClassName =
+    'h-5 w-auto min-w-0 flex-1 truncate rounded px-1 system-xs-regular text-components-input-text-filled'
 
   return (
     <div
       role="group"
-      aria-label={t(($) => $['overview.timeRange'], { ns: 'knowledgeOverview' })}
+      aria-label={timeRangeLabel}
       className="flex h-6 w-35 shrink-0 items-center rounded-lg bg-background-section px-1"
     >
       <DatePicker
-        noConfirm
-        needTimePicker={false}
-        value={dates.start}
-        onChange={(start) => start && onChange({ end: dates.end, start: start.startOf('day') })}
-        onClear={() => undefined}
-        renderTrigger={renderTrigger('start')}
-        getIsDateDisabled={(date) => date.isAfter(today, 'day') || date.isAfter(dates.end, 'day')}
-      />
+        value={start}
+        maxDate={[end, today].sort()[0]}
+        onValueChange={(next) => {
+          if (next) onChange({ end: dates.end, start: dayjs(next).startOf('day') })
+        }}
+      >
+        <DatePickerLabel className="sr-only">{`${timeRangeLabel} start`}</DatePickerLabel>
+        <DatePickerTrigger className={triggerClassName}>
+          <DatePickerValue>{formatter.format(dates.start.toDate())}</DatePickerValue>
+        </DatePickerTrigger>
+        <DatePickerContent />
+      </DatePicker>
       <span aria-hidden className="text-text-quaternary">
         –
       </span>
       <DatePicker
-        noConfirm
-        needTimePicker={false}
-        value={dates.end}
-        onChange={(end) => end && onChange({ end: end.endOf('day'), start: dates.start })}
-        onClear={() => undefined}
-        renderTrigger={renderTrigger('end')}
-        getIsDateDisabled={(date) =>
-          date.isAfter(today, 'day') || date.isBefore(dates.start, 'day')
-        }
-      />
+        value={end}
+        minDate={start}
+        maxDate={today}
+        onValueChange={(next) => {
+          if (next) onChange({ end: dayjs(next).endOf('day'), start: dates.start })
+        }}
+      >
+        <DatePickerLabel className="sr-only">{`${timeRangeLabel} end`}</DatePickerLabel>
+        <DatePickerTrigger className={triggerClassName}>
+          <DatePickerValue>{formatter.format(dates.end.toDate())}</DatePickerValue>
+        </DatePickerTrigger>
+        <DatePickerContent />
+      </DatePicker>
     </div>
   )
 }
@@ -554,9 +548,13 @@ function ActivityDrawer({
                   <DrawerTitle className="system-lg-semibold text-text-primary">
                     {t(($) => $['overview.allActivity'], { ns: 'knowledgeOverview' })}
                   </DrawerTitle>
-                  <DrawerCloseButton>
-                    <span aria-hidden className="i-ri-close-line size-5" />
-                  </DrawerCloseButton>
+                  <DrawerClose
+                    render={
+                      <IconButton aria-label={tCommon(($) => $['operation.close'])} size="lg">
+                        <span aria-hidden className="i-ri-close-line size-5" />
+                      </IconButton>
+                    }
+                  />
                 </div>
               </header>
               <div className="flex h-9 shrink-0 items-start gap-1 border-b border-divider-subtle px-5">

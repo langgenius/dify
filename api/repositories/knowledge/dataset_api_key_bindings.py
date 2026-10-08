@@ -137,12 +137,9 @@ def find_unknown_dataset_ids(session: Session, dataset_ids: list[str], tenant_id
     """Return the dataset ids that do not belong to the tenant (preserving order)."""
     if not dataset_ids:
         return []
-    existing = {
-        str(dataset_id)
-        for dataset_id in session.scalars(
-            select(Dataset.id).where(Dataset.id.in_(dataset_ids), Dataset.tenant_id == tenant_id)
-        ).all()
-    }
+    existing = set(
+        session.scalars(select(Dataset.id).where(Dataset.id.in_(dataset_ids), Dataset.tenant_id == tenant_id)).all()
+    )
     return [dataset_id for dataset_id in dataset_ids if dataset_id not in existing]
 
 

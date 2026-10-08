@@ -158,6 +158,7 @@ const HelpMenu = ({ triggerIcon, triggerClassName, triggerRef, triggerSize }: He
         <DropdownMenuTrigger
           ref={triggerRef}
           data-learn-dify-help-target
+          className="focus-visible:ring-0"
           render={
             <IconButton
               size={triggerSize ?? 'lg'}

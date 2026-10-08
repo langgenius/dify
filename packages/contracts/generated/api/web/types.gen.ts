@@ -740,21 +740,30 @@ export type RetrieverResource = {
   data_source_type?: string | null
   dataset_id?: string | null
   dataset_name?: string | null
+  doc_metadata?: {
+    [key: string]: JsonValueType
+  } | null
   document_asset_id?: string | null
   document_id?: string | null
   document_name?: string | null
   document_revision?: number | null
   document_version?: number | null
+  files?: Array<{
+    [key: string]: JsonValueType
+  }> | null
   hit_count?: number | null
   id?: string
   index_node_hash?: string | null
   knowledge_fs_citation?: KnowledgeFsCitation | null
   message_id?: string
+  page?: number | null
   position: number
+  retriever_from?: string | null
   score?: number | null
   segment_id?: string | null
   segment_position?: number | null
   summary?: string | null
+  title?: string | null
   word_count?: number | null
 }
 

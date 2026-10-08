@@ -4,7 +4,6 @@ from unittest.mock import MagicMock, patch
 import pymysql
 import pytest
 
-from configs import dify_config
 from services.knowledge_fs.text_store import TextIndexPendingError, configured_text_client, execute_text_request
 from services.knowledge_fs.text_store_tidb import TidbTextStore, _sql_endpoint
 from services.knowledge_fs.vector_store import VectorStoreUnavailableError
@@ -90,11 +89,11 @@ def test_concurrent_ddl_only_accepts_duplicate_index(store, code):
             execute_text_request(store, request("upsert", points=[point()]))
 
 
-def test_uses_existing_dify_tenant_binding_and_tls_metadata_endpoint(monkeypatch):
-    monkeypatch.setattr(dify_config, "VECTOR_STORE", "tidb_on_qdrant")
-    monkeypatch.setattr(dify_config, "TIDB_API_URL", "https://cloud.example.test")
-    monkeypatch.setattr(dify_config, "TIDB_PUBLIC_KEY", "test-public")
-    monkeypatch.setattr(dify_config, "TIDB_PRIVATE_KEY", "test-private")
+def test_uses_existing_dify_tenant_binding_and_tls_metadata_endpoint(config_overrides):
+    config_overrides(VECTOR_STORE="tidb_on_qdrant")
+    config_overrides(TIDB_API_URL="https://cloud.example.test")
+    config_overrides(TIDB_PUBLIC_KEY="test-public")
+    config_overrides(TIDB_PRIVATE_KEY="test-private")
     binding = SimpleNamespace(cluster_id="cluster-test", account="test-account", password="test-password")
     _sql_endpoint.cache_clear()
     with (
@@ -120,14 +119,14 @@ def test_uses_existing_dify_tenant_binding_and_tls_metadata_endpoint(monkeypatch
     _sql_endpoint.cache_clear()
 
 
-def test_missing_cloud_endpoint_config_and_missing_cluster_fail_closed(monkeypatch):
+def test_missing_cloud_endpoint_config_and_missing_cluster_fail_closed(config_overrides):
     _sql_endpoint.cache_clear()
-    monkeypatch.setattr(dify_config, "TIDB_API_URL", None)
+    config_overrides(TIDB_API_URL=None)
     with pytest.raises(VectorStoreUnavailableError, match="not configured"):
         _sql_endpoint("missing")
-    monkeypatch.setattr(dify_config, "TIDB_API_URL", "https://cloud.example.test")
-    monkeypatch.setattr(dify_config, "TIDB_PUBLIC_KEY", "test-public")
-    monkeypatch.setattr(dify_config, "TIDB_PRIVATE_KEY", "test-private")
+    config_overrides(TIDB_API_URL="https://cloud.example.test")
+    config_overrides(TIDB_PUBLIC_KEY="test-public")
+    config_overrides(TIDB_PRIVATE_KEY="test-private")
     with patch("dify_vdb_tidb_on_qdrant.tidb_service.TidbService.get_tidb_serverless_cluster", return_value=None):
         with pytest.raises(VectorStoreUnavailableError, match="unavailable"):
             _sql_endpoint("missing")

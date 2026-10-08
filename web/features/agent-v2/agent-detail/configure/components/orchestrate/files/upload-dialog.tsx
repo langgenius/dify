@@ -26,10 +26,10 @@ import { useFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
 import { getSupportFileType } from '@/app/components/base/file-uploader/utils'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
+import { getFileIconType } from '@/features/agent-v2/file-icon'
 import { consoleQuery } from '@/service/console'
 import { useFileUploadConfig } from '@/service/use-common'
 import { formatFileSize } from '@/utils/format'
-import { getFileIconType } from './file-icon'
 
 function toAgentFileNode(committedFile: AgentConfigFileItemResponse): AgentFileNode {
   return {
@@ -175,7 +175,7 @@ function AgentFileUploader({ file, onChange }: { file?: File; onChange: (file?: 
         </div>
       )}
       {file && (
-        <div className="group flex items-center rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs hover:bg-components-panel-on-panel-item-bg-hover">
+        <div className="flex items-center rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs hover:bg-components-panel-on-panel-item-bg-hover">
           <div className="flex items-center justify-center p-3">
             <FileTreeIcon type={getFileIconType(file.name, file.type)} />
           </div>
@@ -189,7 +189,7 @@ function AgentFileUploader({ file, onChange }: { file?: File; onChange: (file?: 
               <span>{formatFileSize(file.size)}</span>
             </div>
           </div>
-          <div className="hidden items-center pr-3 group-hover:flex">
+          <div className="flex items-center pr-3">
             <IconButton
               aria-label={tCommon(($) => $['operation.remove'])}
               onClick={() => onChange(undefined)}

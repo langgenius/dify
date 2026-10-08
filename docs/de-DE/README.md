@@ -86,7 +86,7 @@ docker compose up -d
 
 Nachdem Sie den Server gestartet haben, können Sie über Ihren Browser auf das Dify Dashboard unter [http://localhost/install](http://localhost/install) zugreifen und den Initialisierungsprozess starten.
 
-#### Hilfe suchen
+### Hilfe suchen
 
 Bitte beachten Sie unsere [FAQ](https://docs.dify.ai/getting-started/install-self-hosted/faqs), wenn Sie Probleme bei der Einrichtung von Dify haben. Wenden Sie sich an [die Community und uns](#gemeinschaft--kontakt), falls weiterhin Schwierigkeiten auftreten.
 
@@ -120,7 +120,7 @@ Alle Dify-Angebote kommen mit entsprechenden APIs, sodass Sie Dify mühelos in I
 ## Dify verwenden
 
 - **Cloud </br>**
-  Wir hosten einen [Dify Cloud](https://dify.ai)-Service, den jeder ohne Einrichtung ausprobieren kann. Er bietet alle Funktionen der selbstgehosteten Version und beinhaltet 200 kostenlose GPT-4-Aufrufe im Sandbox-Plan.
+  Mit [Dify Cloud](https://cloud.dify.ai) können Sie Dify ohne eigenen Server ausprobieren. Aktuelle Tarife und Nutzungskontingente finden Sie auf der [Preisseite](https://dify.ai/pricing).
 
 - **Selbstgehostete Dify Community Edition</br>**
   Starten Sie Dify schnell in Ihrer Umgebung mit diesem [Schnellstart-Leitfaden](#schnellstart). Nutzen Sie unsere [Dokumentation](https://docs.dify.ai) für weiterführende Informationen und detaillierte Anweisungen.
@@ -167,7 +167,7 @@ Wählen Sie den Kanal, der am besten zu Ihrem Anliegen passt:
 
 ## Offenlegung der Sicherheit
 
-Um Ihre Privatsphäre zu schützen, vermeiden Sie es bitte, Sicherheitsprobleme auf GitHub zu posten. Schicken Sie Ihre Fragen stattdessen an security@dify.ai und wir werden Ihnen eine ausführlichere Antwort geben.
+Melden Sie Sicherheitslücken gemäß unserer [Sicherheitsrichtlinie](../../SECURITY.md) vertraulich über GitHub Security Advisories. Veröffentlichen Sie sie nicht in öffentlichen Issues, Diskussionen oder Pull Requests.
 
 ## Lizenz
 

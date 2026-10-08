@@ -73,7 +73,8 @@ jobs:
               - 'api/models/__init__.py'
               - 'api/models/enums.py'
               - 'api/models/model.py'
-              - 'api/services/account_service.py'
+              - 'api/repositories/workspace/workspace_repository.py'
+              - 'api/services/workspace/member_service.py'
               - 'api/services/agent_tool_inner_service.py'
               - 'api/services/enterprise/rbac_service.py'
               - 'api/services/entities/agent_tool_inner.py'
@@ -88,7 +89,7 @@ jobs:
               - 'api/tests/unit_tests/core/workflow/nodes/tool/test_tool_node_runtime.py'
               - 'api/tests/unit_tests/core/workflow/test_node_runtime.py'
               - 'api/tests/unit_tests/services/enterprise/test_rbac_service.py'
-              - 'api/tests/unit_tests/services/test_account_service.py'
+              - 'api/tests/unit_tests/repositories/workspace/test_workspace_members.py'
               - 'api/tests/unit_tests/services/test_agent_tool_inner_service.py'
               - 'api/tests/unit_tests/services/test_vector_space_admission_service.py'
               - 'api/tests/unit_tests/services/test_knowledge_fs_capability.py'
@@ -211,7 +212,8 @@ jobs:
             api/models/__init__.py
             api/models/enums.py
             api/models/model.py
-            api/services/account_service.py
+            api/repositories/workspace/workspace_repository.py
+            api/services/workspace/member_service.py
             api/services/agent_tool_inner_service.py
             api/services/enterprise/rbac_service.py
             api/services/entities/agent_tool_inner.py
@@ -257,7 +259,7 @@ jobs:
             api/tests/unit_tests/core/workflow/nodes/tool/test_tool_node_runtime.py
             api/tests/unit_tests/core/workflow/test_node_runtime.py
             api/tests/unit_tests/services/enterprise/test_rbac_service.py
-            api/tests/unit_tests/services/test_account_service.py
+            api/tests/unit_tests/repositories/workspace/test_workspace_members.py
             api/tests/unit_tests/services/test_agent_tool_inner_service.py
             api/tests/unit_tests/services/test_vector_space_admission_service.py
             api/tests/unit_tests/services/test_tidb_binding_service.py

@@ -25,7 +25,18 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSInitialWebsiteSourcePreviewPayload,
 )
 
-_CREDENTIAL = object()
+_CREDENTIAL = SimpleNamespace(
+    id="credential-1",
+    tenant_id="tenant-1",
+    user_id="account-1",
+    name="Credential",
+    provider="provider",
+    plugin_id="plugin",
+    auth_type="api_key",
+    encrypted_credentials={},
+    expires_at=-1,
+    updated_at=None,
+)
 
 
 def _service(credential: object = _CREDENTIAL) -> tuple[KnowledgeFSInitialSourcePreviewService, MagicMock]:
@@ -80,7 +91,7 @@ def test_preview_lists_online_documents_with_stable_import_identity() -> None:
     ]
     with (
         patch(
-            "services.knowledge_fs.initial_source_preview.DatasourceProviderService.get_datasource_credentials",
+            "services.data_source.provider_service.DatasourceProviderService.get_datasource_credentials",
             return_value={"token": "secret"},
         ),
         patch(
@@ -128,7 +139,7 @@ def test_preview_browses_online_drive_and_preserves_pagination() -> None:
     payload.parameters = {"prefix": "folder-1"}
     with (
         patch(
-            "services.knowledge_fs.initial_source_preview.DatasourceProviderService.get_datasource_credentials",
+            "services.data_source.provider_service.DatasourceProviderService.get_datasource_credentials",
             return_value={"token": "secret"},
         ),
         patch(
@@ -174,7 +185,7 @@ def test_preview_crawls_a_website_with_exact_declared_parameters() -> None:
     account = cast(Account, SimpleNamespace(id="account-1"))
     with (
         patch(
-            "services.knowledge_fs.initial_source_preview.DatasourceProviderService.get_datasource_credentials",
+            "services.data_source.provider_service.DatasourceProviderService.get_datasource_credentials",
             return_value={"api_key": "secret"},
         ) as get_credentials,
         patch(
@@ -214,7 +225,7 @@ def test_preview_stops_consuming_website_results_after_cancellation() -> None:
     is_canceled = MagicMock(side_effect=[False, True])
     with (
         patch(
-            "services.knowledge_fs.initial_source_preview.DatasourceProviderService.get_datasource_credentials",
+            "services.data_source.provider_service.DatasourceProviderService.get_datasource_credentials",
             return_value={"api_key": "secret"},
         ),
         patch(
@@ -242,7 +253,7 @@ def test_preview_exposes_an_empty_drive_bucket_as_a_browsable_container() -> Non
     ]
     with (
         patch(
-            "services.knowledge_fs.initial_source_preview.DatasourceProviderService.get_datasource_credentials",
+            "services.data_source.provider_service.DatasourceProviderService.get_datasource_credentials",
             return_value={"token": "secret"},
         ),
         patch(
@@ -266,7 +277,7 @@ def test_preview_rejects_a_credential_hidden_from_the_account() -> None:
     service, _session = _service(credential=None)
     with (
         patch(
-            "services.knowledge_fs.initial_source_preview.DatasourceProviderService.get_datasource_credentials"
+            "services.data_source.provider_service.DatasourceProviderService.get_datasource_credentials"
         ) as get_credentials,
         pytest.raises(PermissionError, match="credential is unavailable"),
     ):

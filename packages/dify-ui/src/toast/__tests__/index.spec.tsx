@@ -1,4 +1,5 @@
 import type { ToastManager, ToastViewportProps } from '../index'
+import * as React from 'react'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import {
@@ -88,7 +89,7 @@ describe('@langgenius/dify-ui/toast', () => {
 
   it('should not intercept pointer events below a collapsed top-anchored stack', async () => {
     const screen = await render(
-      <>
+      <React.Fragment>
         <style>{'[role="dialog"] { transition: none !important; }'}</style>
         <button
           type="button"
@@ -103,7 +104,7 @@ describe('@langgenius/dify-ui/toast', () => {
           Underlying action
         </button>
         <ExampleToastHost manager={manager} timeout={0} />
-      </>,
+      </React.Fragment>,
     )
 
     toast('Older notification')
@@ -134,7 +135,7 @@ describe('@langgenius/dify-ui/toast', () => {
 
     try {
       const screen = await render(
-        <>
+        <React.Fragment>
           <style>
             {`
             [role="dialog"]:not([data-ending-style]) {
@@ -170,7 +171,7 @@ describe('@langgenius/dify-ui/toast', () => {
             }}
           />
           <ExampleToastHost manager={manager} timeout={0} offset={{ top: 120 }} />
-        </>,
+        </React.Fragment>,
       )
 
       toast('Directional notification')
@@ -209,7 +210,7 @@ describe('@langgenius/dify-ui/toast', () => {
 
     try {
       const screen = await render(
-        <>
+        <React.Fragment>
           <style>
             {`
             [role="dialog"][data-ending-style] {
@@ -230,7 +231,7 @@ describe('@langgenius/dify-ui/toast', () => {
             }}
           />
           <ExampleToastHost manager={manager} timeout={0} />
-        </>,
+        </React.Fragment>,
       )
 
       toast('Background notification')
@@ -269,10 +270,10 @@ describe('@langgenius/dify-ui/toast', () => {
     const localManager = createToastManager()
     const localToast = createToast(localManager)
     const screen = await render(
-      <>
+      <React.Fragment>
         <ExampleToastHost manager={manager} />
         <ExampleToastHost manager={localManager} />
-      </>,
+      </React.Fragment>,
     )
 
     localToast.error('Local error')
@@ -361,7 +362,7 @@ describe('@langgenius/dify-ui/toast', () => {
 
     try {
       const screen = await render(
-        <>
+        <React.Fragment>
           <style>
             {`
             [role="dialog"][data-ending-style] {
@@ -391,7 +392,7 @@ describe('@langgenius/dify-ui/toast', () => {
             Underlying action
           </button>
           <ExampleToastHost manager={manager} />
-        </>,
+        </React.Fragment>,
       )
 
       toast('Dismiss me', {

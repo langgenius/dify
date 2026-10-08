@@ -281,7 +281,7 @@ function FileActions({
         <DropdownMenuTrigger
           aria-label={tCommon(($) => $['operation.more'])}
           className={cn(
-            'relative z-10 size-5 shrink-0 cursor-pointer items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:flex data-popup-open:bg-state-base-hover',
+            'relative z-10 size-5 shrink-0 cursor-pointer items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary data-popup-open:flex data-popup-open:bg-state-base-hover',
             visible ? 'flex' : 'hidden group-hover:flex',
           )}
           onClick={(event) => event.stopPropagation()}

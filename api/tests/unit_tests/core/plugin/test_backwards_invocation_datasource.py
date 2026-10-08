@@ -73,7 +73,7 @@ def test_invoke_online_document_uses_dify_bound_runtime_and_credential() -> None
             return_value=controller,
         ) as get_provider,
         patch(
-            "core.plugin.backwards_invocation.datasource.DatasourceProviderService.get_datasource_credentials",
+            "services.data_source.provider_service.DatasourceProviderService.get_datasource_credentials",
             return_value={"token": "resolved-by-dify"},
         ) as get_credentials,
     ):
@@ -122,7 +122,7 @@ def test_validate_credentials_uses_resolved_provider_controller() -> None:
             return_value=controller,
         ),
         patch(
-            "core.plugin.backwards_invocation.datasource.DatasourceProviderService.get_datasource_credentials",
+            "services.data_source.provider_service.DatasourceProviderService.get_datasource_credentials",
             return_value={"token": "resolved-by-dify"},
         ),
     ):
@@ -165,7 +165,7 @@ def test_invoke_website_crawl_uses_the_bound_datasource_plugin() -> None:
             return_value=controller,
         ),
         patch(
-            "core.plugin.backwards_invocation.datasource.DatasourceProviderService.get_datasource_credentials",
+            "services.data_source.provider_service.DatasourceProviderService.get_datasource_credentials",
             return_value={"api_key": "resolved-by-dify"},
         ),
     ):
@@ -209,7 +209,7 @@ def test_invoke_online_document_content_builds_the_dify_request_entity() -> None
             return_value=controller,
         ),
         patch(
-            "core.plugin.backwards_invocation.datasource.DatasourceProviderService.get_datasource_credentials",
+            "services.data_source.provider_service.DatasourceProviderService.get_datasource_credentials",
             return_value={"token": "resolved-by-dify"},
         ),
     ):
@@ -279,7 +279,7 @@ def test_invoke_online_drive_builds_typed_dify_requests(
             return_value=controller,
         ),
         patch(
-            "core.plugin.backwards_invocation.datasource.DatasourceProviderService.get_datasource_credentials",
+            "services.data_source.provider_service.DatasourceProviderService.get_datasource_credentials",
             return_value={"token": "resolved-by-dify"},
         ),
     ):
@@ -408,7 +408,7 @@ def test_invoke_rejects_missing_required_credential() -> None:
             return_value=controller,
         ),
         patch(
-            "core.plugin.backwards_invocation.datasource.DatasourceProviderService.get_datasource_credentials",
+            "services.data_source.provider_service.DatasourceProviderService.get_datasource_credentials",
             return_value={},
         ),
         pytest.raises(ValueError, match="Datasource credential not found"),

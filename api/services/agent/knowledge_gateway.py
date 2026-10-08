@@ -21,18 +21,19 @@ from dify_agent.protocol.knowledge_fs import (
 from dify_agent.protocol.knowledge_investigation import KnowledgeInvestigationPayload
 from pydantic import JsonValue
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.app.file_access import DatabaseFileAccessController, FileAccessScope, bind_file_access_scope
 from core.db.session_factory import session_factory
 from factories.file_factory.builders import build_from_mapping
+from models.account import TenantAccountJoin
 from models.agent import Agent, AgentStatus, WorkflowAgentNodeBinding
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import AppStatus
 from models.knowledge_fs import KnowledgeFSAppSpaceJoinType
 from models.model import App, AppMode, EndUser
-from services.account_service import TenantService
 from services.agent_config_service import AgentConfigService, AgentConfigVersionKind
 from services.knowledge_fs.app_execution_capability import _move_query_image_grants_to_internal_header
 from services.knowledge_fs.product_dto import KnowledgeFSRetrievalQueryImageReference, KnowledgeFSRetrievalTestPayload
@@ -267,7 +268,7 @@ class AgentKnowledgeGateway:
             if app is None or agent is None:
                 raise KnowledgeFsError("KNOWLEDGE_CONTEXT_INVALID", "Agent application is unavailable.", 403)
             if context.user_from == "account":
-                if not TenantService.account_belongs_to_tenant(context.user_id, context.tenant_id, session=session):
+                if not _account_belongs_to_tenant(session, context.user_id, context.tenant_id):
                     raise KnowledgeFsError("KNOWLEDGE_CONTEXT_INVALID", "Workspace membership is unavailable.", 403)
             elif (
                 session.scalar(
@@ -381,3 +382,16 @@ class AgentKnowledgeGateway:
         if total > QUERY_IMAGE_MAX_TOTAL_BYTES:
             raise KnowledgeFsError("QUERY_IMAGE_TOTAL_TOO_LARGE", "Query images exceed the aggregate byte budget.")
         return result
+
+
+def _account_belongs_to_tenant(session: Session, account_id: str | None, tenant_id: str) -> bool:
+    if not account_id:
+        return False
+    return (
+        session.scalar(
+            select(TenantAccountJoin.id)
+            .where(TenantAccountJoin.tenant_id == tenant_id, TenantAccountJoin.account_id == account_id)
+            .limit(1)
+        )
+        is not None
+    )

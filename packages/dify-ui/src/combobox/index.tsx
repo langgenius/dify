@@ -13,8 +13,11 @@ import {
   floatingItemIndicatorClassName,
   floatingPopupAnimationClassName,
   floatingSeparatorClassName,
+  triggerFocusClassName,
 } from '../overlay-shared'
 import { parsePlacement } from '../placement'
+
+type ComboboxActions = BaseCombobox.Root.Actions
 
 type ComboboxProps<
   Value,
@@ -89,59 +92,16 @@ const comboboxItemClassName = [
   'data-disabled:cursor-not-allowed data-disabled:opacity-30 data-disabled:hover:bg-transparent data-disabled:hover:text-text-secondary',
 ]
 
-const comboboxTriggerVariants = cva(
-  [
-    'group/combobox-trigger flex w-full min-w-0 items-center border-0 bg-components-input-bg-normal text-start text-components-input-text-filled outline-hidden transition-colors',
-    'hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt',
-    'focus-visible:ring-2 focus-visible:ring-state-accent-solid',
-    'data-placeholder:text-components-input-text-placeholder',
-    'data-readonly:cursor-default data-readonly:bg-transparent data-readonly:hover:bg-transparent',
-    'data-disabled:cursor-not-allowed data-disabled:bg-components-input-bg-disabled data-disabled:text-components-input-text-filled-disabled data-disabled:hover:bg-components-input-bg-disabled',
-    'data-disabled:data-placeholder:text-components-input-text-disabled',
-    'motion-reduce:transition-none',
-  ],
-  {
-    variants: {
-      size: {
-        small: 'h-6 gap-px rounded-md px-2 py-1 system-xs-regular',
-        medium: 'h-8 gap-0.5 rounded-lg px-3 py-2 system-sm-regular',
-        large: 'h-9 gap-0.5 rounded-[10px] px-4 py-2 system-md-regular',
-      },
-    },
-    defaultVariants: {
-      size: 'medium',
-    },
-  },
-)
+type ComboboxTriggerProps = BaseCombobox.Trigger.Props
 
-type ComboboxTriggerProps = BaseCombobox.Trigger.Props &
-  VariantProps<typeof comboboxTriggerVariants> & {
-    icon?: React.ReactNode | false
-  }
-
-function ComboboxTrigger({
-  className,
-  children,
-  icon,
-  size,
-  type = 'button',
-  ...props
-}: ComboboxTriggerProps) {
+// Owns the focus indicator only. The caller owns the appearance, directly or through `render`.
+function ComboboxTrigger({ className, type = 'button', ...props }: ComboboxTriggerProps) {
   return (
     <BaseCombobox.Trigger
       type={type}
-      className={(state) =>
-        cn(comboboxTriggerVariants({ size, className: resolveClassName(className, state) }))
-      }
+      className={(state) => cn(triggerFocusClassName, resolveClassName(className, state))}
       {...props}
-    >
-      <span className="min-w-0 grow truncate">{children}</span>
-      {icon !== false && (
-        <BaseCombobox.Icon className="shrink-0 text-text-quaternary transition-colors group-hover/combobox-trigger:text-text-secondary group-data-popup-open/combobox-trigger:text-text-secondary group-data-readonly/combobox-trigger:hidden">
-          {icon ?? <span className="i-ri-arrow-down-s-line h-4 w-4" aria-hidden="true" />}
-        </BaseCombobox.Icon>
-      )}
-    </BaseCombobox.Trigger>
+    />
   )
 }
 
@@ -565,6 +525,7 @@ export {
 }
 
 export type {
+  ComboboxActions,
   ComboboxChangeEventDetails,
   ComboboxChipProps,
   ComboboxChipRemoveProps,

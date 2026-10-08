@@ -1,6 +1,7 @@
 import type { ReactElement, ReactNode } from 'react'
 import type { SettingsAppInfo } from '../index'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { consoleQuery } from '@/service/console'
 import {
@@ -183,6 +184,20 @@ describe('SettingsModal', () => {
     expect(screen.getByRole('status')).toHaveTextContent(
       'appOverview.overview.appInfo.settings.multiEnvironmentNotice',
     )
+  })
+
+  it('names the Inverted switch from its visible label and exposes its state', async () => {
+    const user = userEvent.setup()
+    renderSettingsModal()
+
+    const invertedSwitch = screen.getByRole('switch', {
+      name: 'appOverview.overview.appInfo.settings.chatColorThemeInverted',
+    })
+    expect(invertedSwitch).toBeChecked()
+
+    await user.click(invertedSwitch)
+
+    expect(invertedSwitch).not.toBeChecked()
   })
 
   it('should notify the user when the name is empty', async () => {
