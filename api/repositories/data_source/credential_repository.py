@@ -1,6 +1,5 @@
 """Actor-aware and trusted-source SQLAlchemy repository for datasource credentials."""
 
-import json
 from collections.abc import Mapping
 from typing import cast
 
@@ -22,7 +21,7 @@ _CREDENTIALS_ADAPTER = TypeAdapter(dict[str, object])
 def _source_mapping(value: object) -> Mapping[str, object]:
     try:
         if isinstance(value, str):
-            return _CREDENTIALS_ADAPTER.validate_python(json.loads(value))
+            return _CREDENTIALS_ADAPTER.validate_json(value)
         return _CREDENTIALS_ADAPTER.validate_python(value)
     except (TypeError, ValueError, ValidationError):
         return {}

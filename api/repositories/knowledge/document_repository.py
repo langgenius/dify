@@ -1,6 +1,5 @@
 """SQLAlchemy repository for tenant-owned document state."""
 
-import json
 from collections.abc import Mapping
 
 from pydantic import TypeAdapter, ValidationError
@@ -26,7 +25,7 @@ def _mapping(value: object) -> Mapping[str, object] | None:
         return None
     try:
         if isinstance(value, str):
-            return _MAPPING_ADAPTER.validate_python(json.loads(value))
+            return _MAPPING_ADAPTER.validate_json(value)
         return _MAPPING_ADAPTER.validate_python(value)
     except (TypeError, ValueError, ValidationError):
         return {}
