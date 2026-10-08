@@ -7,10 +7,10 @@ from http import HTTPStatus
 
 from flask import Response, request
 from flask_restx import Resource
-from werkzeug.exceptions import HTTPException, InternalServerError
 
 from controllers.common.audio_response import audio_binary_response
 from controllers.common.controller_schemas import TextToAudioPayload
+from controllers.common.errors import InternalServerError
 from controllers.common.fields import AudioBinaryResponse, AudioTranscriptResponse
 from controllers.common.schema import register_response_schema_models, register_schema_model
 from controllers.console import console_ns
@@ -27,14 +27,17 @@ from controllers.console.app.error import (
     SpeechToTextDisabledError,
     UnsupportedAudioTypeError,
 )
+from controllers.console.explore.error import AgentVersionNotFoundHTTPError
 from controllers.console.explore.installed_app_admission import get_installed_app
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import model_validate
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from extensions.ext_application_services import application_services
 from graphon.model_runtime.errors.invoke import InvokeError
+from libs.exception import BaseHTTPException
 from libs.helper import dump_response
 from machinery.context import RequestContext
+from services.agent.errors import AgentVersionNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.audio_types import AudioAppRef, AudioUpload
 from services.errors.app_model_config import AppModelConfigBrokenError
@@ -84,7 +87,9 @@ def _audio_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
             raise ProviderModelCurrentlyNotSupportError() from error
         except InvokeError as error:
             raise CompletionRequestError(error.description) from error
-        except (HTTPException, ValueError):
+        except AgentVersionNotFoundError as error:
+            raise AgentVersionNotFoundHTTPError() from error
+        except (BaseHTTPException, ValueError):
             raise
         except Exception as error:
             logger.exception("Installed-app audio operation failed")
@@ -101,10 +106,15 @@ class ChatAudioApi(Resource):
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AudioTranscriptResponse.__name__])
     @console_account_admission()
     @get_installed_app
-    @_audio_errors
     def post(self, request_context: RequestContext, installed_app: InstalledAppRef) -> dict[str, object]:
+        # Let Flask handle multipart parsing errors before mapping audio operation failures.
         file = request.files.get("file")
         audio = AudioUpload(stream=file.stream, mime_type=file.mimetype) if file is not None else None
+        return self._transcribe(installed_app, audio)
+
+    @_audio_errors
+    def _transcribe(self, installed_app: InstalledAppRef, audio: AudioUpload | None) -> dict[str, object]:
+        """Transcribe an upload; None lets the audio service report a missing file."""
         transcript = application_services().app_audio.transcript_asr(
             app=AudioAppRef(
                 app_id=installed_app.app_id,

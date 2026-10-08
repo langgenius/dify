@@ -18,6 +18,7 @@ from urllib.parse import urlparse
 import weaviate
 import weaviate.classes.config as wc
 from pydantic import BaseModel, model_validator
+from sqlalchemy.orm import Session
 from weaviate.classes.data import DataObject
 from weaviate.classes.init import Auth
 from weaviate.classes.query import Filter, MetadataQuery
@@ -606,7 +607,9 @@ class WeaviateVectorFactory(AbstractVectorFactory):
     """Factory class for creating WeaviateVector instances."""
 
     @override
-    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> WeaviateVector:
+    def init_vector(
+        self, dataset: Dataset, attributes: list, embeddings: Embeddings, *, session: Session | None
+    ) -> WeaviateVector:
         """
         Initializes a WeaviateVector instance for the given dataset.
 

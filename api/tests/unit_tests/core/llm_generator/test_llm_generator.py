@@ -17,8 +17,9 @@ from core.llm_generator import llm_generator as llm_generator_module
 from core.llm_generator.entities import RuleCodeGeneratePayload, RuleGeneratePayload, RuleStructuredOutputPayload
 from core.llm_generator.llm_generator import LLMGenerator
 from core.model_context import get_credit_usage_metadata
-from core.model_manager import ModelInstance, ModelManager
+from core.model_manager import ModelManager
 from core.plugin.impl.base import _get_plugin_daemon_request_timeout
+from core.plugin.impl.model_runtime_factory import create_plugin_model_manager
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
@@ -32,6 +33,7 @@ from models.workflow import (
     WorkflowNodeExecutionTriggeredFrom,
 )
 from services.workflow_service import WorkflowService
+from tests.unit_tests.core.model_fixtures import make_model_config, make_model_instance
 
 
 @pytest.fixture
@@ -47,17 +49,14 @@ def database(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> Iterat
 
 
 @pytest.fixture
-def recording_model_instance(monkeypatch: pytest.MonkeyPatch) -> Mock:
-    model_instance = Mock(spec=ModelInstance)
-    model_instance.invoke_llm.return_value = _llm_result('{"modified": "workflow"}')
-    model_manager = Mock(spec=ModelManager)
-    model_manager.get_model_instance.return_value = model_instance
-    monkeypatch.setattr(
-        llm_generator_module.ModelManager,
-        "for_tenant",
-        Mock(return_value=model_manager),
-    )
-    return model_instance
+def llm_invocation(monkeypatch: pytest.MonkeyPatch) -> Mock:
+    model_instance = make_model_instance(provider="openai", model="gpt-4")
+    invocation = Mock(return_value=_llm_result('{"modified": "workflow"}'))
+    monkeypatch.setattr(model_instance, "invoke_llm", invocation)
+    model_manager = create_plugin_model_manager(tenant_id="tenant")
+    monkeypatch.setattr(model_manager, "get_model_instance", Mock(return_value=model_instance))
+    monkeypatch.setattr(llm_generator_module.ModelManager, "for_tenant", Mock(return_value=model_manager))
+    return invocation
 
 
 def _llm_result(content: str) -> LLMResult:
@@ -470,11 +469,15 @@ class TestLLMGenerator:
     def test_prepared_suggested_questions_defer_provider_calls_without_resolving_again(
         self, monkeypatch: pytest.MonkeyPatch, use_configured_model: bool
     ) -> None:
-        model_instance = Mock(spec=ModelInstance)
-        model_instance.get_model_schema.return_value.parameter_rules = []
-        manager = Mock(spec=ModelManager)
-        manager.get_model_instance.return_value = model_instance
-        manager.get_default_model_instance.return_value = model_instance
+        model_instance = make_model_instance(provider="openai", model="custom-model")
+        schema = make_model_config(provider="openai", model="custom-model", mode="chat").model_schema
+        get_schema = Mock(return_value=schema)
+        invocation = Mock()
+        monkeypatch.setattr(model_instance, "get_model_schema", get_schema)
+        monkeypatch.setattr(model_instance, "invoke_llm", invocation)
+        manager = create_plugin_model_manager(tenant_id="tenant_id")
+        monkeypatch.setattr(manager, "get_model_instance", Mock(return_value=model_instance))
+        monkeypatch.setattr(manager, "get_default_model_instance", Mock(return_value=model_instance))
         resolve_manager = Mock(return_value=manager)
         monkeypatch.setattr(ModelManager, "for_tenant", resolve_manager)
         original_metadata = get_credit_usage_metadata()
@@ -489,7 +492,7 @@ class TestLLMGenerator:
             assert timeout.read == 30.0
             return _llm_result('["Next question?"]')
 
-        model_instance.invoke_llm.side_effect = invoke
+        invocation.side_effect = invoke
         model_config = (
             {
                 "provider": "openai",
@@ -502,8 +505,8 @@ class TestLLMGenerator:
         prepared_model = LLMGenerator.prepare_suggested_questions_model("tenant_id", model_config=model_config)
 
         assert prepared_model is not None
-        model_instance.get_model_schema.assert_not_called()
-        model_instance.invoke_llm.assert_not_called()
+        get_schema.assert_not_called()
+        invocation.assert_not_called()
         resolve_manager.side_effect = AssertionError("Model lookup must finish in the preparation phase")
 
         result = LLMGenerator.invoke_suggested_questions_after_answer(
@@ -511,7 +514,7 @@ class TestLLMGenerator:
         )
 
         assert result == ["Next question?"]
-        parameters = model_instance.invoke_llm.call_args.kwargs
+        parameters = invocation.call_args.kwargs
         assert parameters["model_parameters"] == (
             {"temperature": 0.2} if use_configured_model else {"max_tokens": 256, "temperature": 0.0}
         )
@@ -662,9 +665,7 @@ class TestLLMGenerator:
         assert "Random error" in result["error"]
 
     def test_generate_qa_document_success(self, mock_model_instance):
-        mock_response = MagicMock(spec=LLMResult)
-        mock_response.message = MagicMock()
-        mock_response.message.get_text_content.return_value = "QA Document Content"
+        mock_response = _llm_result("QA Document Content")
         mock_model_instance.invoke_llm.return_value = mock_response
 
         result = LLMGenerator.generate_qa_document("tenant_id", "query", "English")
@@ -723,11 +724,11 @@ class TestLLMGenerator:
     def test_instruction_modify_legacy_without_last_run_uses_real_empty_query(
         self,
         database: Session,
-        recording_model_instance: Mock,
+        llm_invocation: Mock,
         model_config_entity: ModelConfig,
     ):
         app = _persist_app(database)
-        recording_model_instance.invoke_llm.return_value = _llm_result('{"modified": "prompt"}')
+        llm_invocation.return_value = _llm_result('{"modified": "prompt"}')
 
         result = LLMGenerator.instruction_modify_legacy(
             app.tenant_id,
@@ -740,14 +741,14 @@ class TestLLMGenerator:
         )
 
         assert result == {"modified": "prompt"}
-        user_payload = json.loads(recording_model_instance.invoke_llm.call_args.kwargs["prompt_messages"][1].content)
+        user_payload = json.loads(llm_invocation.call_args.kwargs["prompt_messages"][1].content)
         assert "null" in user_payload["instruction"]
         assert "current_val" in user_payload["instruction"]
 
     def test_instruction_modify_legacy_reads_latest_tenant_scoped_message(
         self,
         database: Session,
-        recording_model_instance: Mock,
+        llm_invocation: Mock,
         model_config_entity: ModelConfig,
     ):
         app = _persist_app(database)
@@ -772,14 +773,14 @@ class TestLLMGenerator:
             query="other tenant question",
             created_at=datetime(2026, 1, 3),
         )
-        recording_model_instance.invoke_llm.return_value = _llm_result('{"modified": "prompt"}')
+        llm_invocation.return_value = _llm_result('{"modified": "prompt"}')
 
         result = LLMGenerator.instruction_modify_legacy(
             app.tenant_id, app.id, "current", "instruction", model_config_entity, "ideal", session=database
         )
 
         assert result == {"modified": "prompt"}
-        user_payload = json.loads(recording_model_instance.invoke_llm.call_args.kwargs["prompt_messages"][1].content)
+        user_payload = json.loads(llm_invocation.call_args.kwargs["prompt_messages"][1].content)
         assert user_payload["last_run"]["query"] == "latest question"
         assert user_payload["last_run"]["answer"] == "latest answer"
         assert "older question" not in json.dumps(user_payload)
@@ -854,7 +855,7 @@ class TestLLMGenerator:
         self,
         database: Session,
         sqlite_session_factory: sessionmaker[Session],
-        recording_model_instance: Mock,
+        llm_invocation: Mock,
         model_config_entity: ModelConfig,
     ):
         app = _persist_app(database)
@@ -881,7 +882,7 @@ class TestLLMGenerator:
         )
 
         assert result == {"modified": "workflow"}
-        user_payload = json.loads(recording_model_instance.invoke_llm.call_args.kwargs["prompt_messages"][1].content)
+        user_payload = json.loads(llm_invocation.call_args.kwargs["prompt_messages"][1].content)
         assert user_payload["last_run"]["inputs"] == {"input": "value"}
         assert user_payload["last_run"]["agent_log"][0]["data"] == {"step": 1}
 
@@ -889,7 +890,7 @@ class TestLLMGenerator:
         self,
         database: Session,
         sqlite_session_factory: sessionmaker[Session],
-        recording_model_instance: Mock,
+        llm_invocation: Mock,
         model_config_entity: ModelConfig,
     ):
         app = _persist_app(database)
@@ -910,7 +911,7 @@ class TestLLMGenerator:
         )
 
         assert result == {"modified": "workflow"}
-        user_payload = json.loads(recording_model_instance.invoke_llm.call_args.kwargs["prompt_messages"][1].content)
+        user_payload = json.loads(llm_invocation.call_args.kwargs["prompt_messages"][1].content)
         assert user_payload["last_run"]["agent_log"] == []
 
     @pytest.mark.parametrize(
@@ -924,14 +925,14 @@ class TestLLMGenerator:
         self,
         database: Session,
         sqlite_session_factory: sessionmaker[Session],
-        recording_model_instance: Mock,
+        llm_invocation: Mock,
         model_config_entity: ModelConfig,
         node_type: str | None,
     ):
         app = _persist_app(database)
         _persist_workflow(database, app, node_type=node_type)
         workflow_service = WorkflowService(sqlite_session_factory)
-        recording_model_instance.invoke_llm.return_value = _llm_result('{"modified": "fallback"}')
+        llm_invocation.return_value = _llm_result('{"modified": "fallback"}')
 
         result = LLMGenerator.instruction_modify_workflow(
             app.tenant_id,
@@ -951,7 +952,7 @@ class TestLLMGenerator:
         self,
         database: Session,
         sqlite_session_factory: sessionmaker[Session],
-        recording_model_instance: Mock,
+        llm_invocation: Mock,
         model_config_entity: ModelConfig,
     ):
         app = _persist_app(database)
@@ -971,7 +972,7 @@ class TestLLMGenerator:
         )
 
         assert result == {"modified": "workflow"}
-        system_prompt = recording_model_instance.invoke_llm.call_args.kwargs["prompt_messages"][0].content
+        system_prompt = llm_invocation.call_args.kwargs["prompt_messages"][0].content
         assert system_prompt == llm_generator_module.LLM_MODIFY_PROMPT_SYSTEM
 
     @pytest.mark.parametrize(
@@ -1032,12 +1033,12 @@ class TestPromptGenerationTelemetryEmit:
     PromptGenerationEvent so the metric pipeline is not accidentally broken."""
 
     @pytest.fixture(autouse=True)
-    def _setup(self, recording_model_instance: Mock) -> None:
-        self.model_instance = recording_model_instance
+    def _setup(self, llm_invocation: Mock) -> None:
+        self.llm_invocation = llm_invocation
 
     @patch("core.llm_generator.llm_generator.telemetry_emit")
     def test_generate_code_emits_on_success(self, mock_emit: MagicMock) -> None:
-        self.model_instance.invoke_llm.return_value = _llm_result("print('hello')")
+        self.llm_invocation.return_value = _llm_result("print('hello')")
         model_cfg = ModelConfig(provider="openai", name="gpt-4", mode="chat", completion_params={})
         args = RuleCodeGeneratePayload(instruction="write hello world", model_config=model_cfg, code_language="python")
 
@@ -1055,7 +1056,7 @@ class TestPromptGenerationTelemetryEmit:
 
     @patch("core.llm_generator.llm_generator.telemetry_emit")
     def test_generate_code_emits_on_failure(self, mock_emit: MagicMock) -> None:
-        self.model_instance.invoke_llm.side_effect = InvokeError("model down")
+        self.llm_invocation.side_effect = InvokeError("model down")
         model_cfg = ModelConfig(provider="openai", name="gpt-4", mode="chat", completion_params={})
         args = RuleCodeGeneratePayload(instruction="write hello world", model_config=model_cfg, code_language="python")
 
@@ -1068,7 +1069,7 @@ class TestPromptGenerationTelemetryEmit:
 
     @patch("core.llm_generator.llm_generator.telemetry_emit")
     def test_generate_rule_config_no_variable_emits(self, mock_emit: MagicMock) -> None:
-        self.model_instance.invoke_llm.return_value = _llm_result("generated prompt")
+        self.llm_invocation.return_value = _llm_result("generated prompt")
         model_cfg = ModelConfig(provider="anthropic", name="claude-3", mode="chat", completion_params={})
         args = RuleGeneratePayload(instruction="be helpful", model_config=model_cfg, no_variable=True)
 
@@ -1082,7 +1083,7 @@ class TestPromptGenerationTelemetryEmit:
 
     @patch("core.llm_generator.llm_generator.telemetry_emit")
     def test_generate_rule_config_no_variable_emits_on_failure(self, mock_emit: MagicMock) -> None:
-        self.model_instance.invoke_llm.side_effect = InvokeError("auth fail")
+        self.llm_invocation.side_effect = InvokeError("auth fail")
         model_cfg = ModelConfig(provider="anthropic", name="claude-3", mode="chat", completion_params={})
         args = RuleGeneratePayload(instruction="be helpful", model_config=model_cfg, no_variable=True)
 

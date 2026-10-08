@@ -2,11 +2,11 @@
 import type { EnvironmentVariableItemResponse } from '@dify/contracts/api/console/apps/types.gen'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
@@ -118,7 +118,7 @@ export const AppExportConfirmContent = ({
           </span>
         </label>
       </div>
-      <AlertDialogActions>
+      <AlertDialogFooter>
         <AlertDialogCancelButton disabled={isExporting}>
           {t(($) => $['operation.cancel'], { ns: 'common' })}
         </AlertDialogCancelButton>
@@ -136,7 +136,7 @@ export const AppExportConfirmContent = ({
                 : t(($) => $.exportApp, { ns: 'app' })}
           </span>
         </AlertDialogConfirmButton>
-      </AlertDialogActions>
+      </AlertDialogFooter>
     </AlertDialogContent>
   )
 }

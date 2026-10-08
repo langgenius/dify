@@ -17,6 +17,8 @@ import {
 } from '../overlay-shared'
 import { parsePlacement } from '../placement'
 
+type SelectActions = BaseSelect.Root.Actions
+
 type SelectProps<Value, Multiple extends boolean | undefined = false> = BaseSelect.Root.Props<
   Value,
   Multiple
@@ -176,7 +178,7 @@ function SelectPopup({ className, ...props }: SelectPopupProps) {
     <BaseSelect.Popup
       className={(state) =>
         cn(
-          'max-w-(--available-width) min-w-[min(var(--anchor-width),var(--available-width))] overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg outline-hidden',
+          'flex max-h-(--available-height) max-w-(--available-width) min-w-[min(var(--anchor-width),var(--available-width))] flex-col overflow-x-hidden overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg outline-hidden',
           floatingPopupAnimationClassName,
           resolveClassName(className, state),
         )
@@ -287,6 +289,7 @@ export {
 }
 
 export type {
+  SelectActions,
   SelectContentProps,
   SelectGroupLabelProps,
   SelectGroupProps,

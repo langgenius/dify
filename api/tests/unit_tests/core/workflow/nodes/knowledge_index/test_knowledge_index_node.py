@@ -1,6 +1,5 @@
 import time
 import uuid
-from unittest.mock import Mock
 
 import pytest
 from pytest_mock import MockerFixture
@@ -9,14 +8,14 @@ from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
+from core.rag.index_processor.index_processor import IndexProcessor
+from core.rag.summary_index.summary_index import SummaryIndex
 from core.workflow.nodes.knowledge_index.entities import KnowledgeIndexNodeData
 from core.workflow.nodes.knowledge_index.exc import KnowledgeIndexNodeError
 from core.workflow.nodes.knowledge_index.knowledge_index_node import KnowledgeIndexNode
 from core.workflow.nodes.knowledge_index.protocols import (
-    IndexProcessorProtocol,
     Preview,
     PreviewItem,
-    SummaryIndexServiceProtocol,
 )
 from core.workflow.system_variables import SystemVariableKey, build_system_variables
 from graphon.enums import WorkflowNodeExecutionStatus
@@ -54,8 +53,10 @@ def mock_graph_runtime_state():
 
 @pytest.fixture
 def mock_index_processor(mocker: MockerFixture):
-    """Create mock IndexProcessorProtocol."""
-    mock_processor = Mock(spec=IndexProcessorProtocol)
+    """Use the real processor with indexing and preview I/O boundaries patched."""
+    mock_processor = IndexProcessor()
+    mocker.patch.object(mock_processor, "get_preview_output")
+    mocker.patch.object(mock_processor, "index_and_clean")
     mocker.patch(
         "core.workflow.nodes.knowledge_index.knowledge_index_node.IndexProcessor",
         return_value=mock_processor,
@@ -65,8 +66,9 @@ def mock_index_processor(mocker: MockerFixture):
 
 @pytest.fixture
 def mock_summary_index_service(mocker: MockerFixture):
-    """Create mock SummaryIndexServiceProtocol."""
-    mock_service = Mock(spec=SummaryIndexServiceProtocol)
+    """Use the real summary service with generation patched."""
+    mock_service = SummaryIndex()
+    mocker.patch.object(mock_service, "generate_and_vectorize_summary")
     mocker.patch(
         "core.workflow.nodes.knowledge_index.knowledge_index_node.SummaryIndex",
         return_value=mock_service,

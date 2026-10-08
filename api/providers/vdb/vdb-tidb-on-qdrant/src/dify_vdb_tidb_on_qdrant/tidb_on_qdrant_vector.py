@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any, override
 
 import httpx
 import qdrant_client
+from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 from flask import current_app
@@ -437,7 +438,9 @@ class TidbOnQdrantVector(BaseVector):
 
 class TidbOnQdrantVectorFactory(AbstractVectorFactory):
     @override
-    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> TidbOnQdrantVector:
+    def init_vector(
+        self, dataset: Dataset, attributes: list, embeddings: Embeddings, *, session: Session | None
+    ) -> TidbOnQdrantVector:
         logger.info("init_vector: tenant_id=%s, dataset_id=%s", dataset.tenant_id, dataset.id)
         stmt = select(TidbAuthBinding).where(TidbAuthBinding.tenant_id == dataset.tenant_id)
         tidb_auth_binding = db.session.scalars(stmt).one_or_none()

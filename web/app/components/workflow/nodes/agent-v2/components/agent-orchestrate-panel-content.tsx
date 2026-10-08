@@ -812,7 +812,7 @@ function WorkflowInlineAgentConfigureMoreAction({
         render={
           <button
             type="button"
-            className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+            className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
             aria-label={t(($) => $['operation.more'])}
           >
             <span aria-hidden className="i-ri-more-fill size-4" />
