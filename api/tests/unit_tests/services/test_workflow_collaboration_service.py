@@ -1,7 +1,7 @@
 import logging
 from collections.abc import Iterator
-from contextlib import contextmanager, nullcontext
-from unittest.mock import Mock, patch
+from contextlib import contextmanager
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from socketio.exceptions import TimeoutError as SocketIOTimeoutError
@@ -9,6 +9,7 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
 from core.rbac import RBACPermission, RBACResourceScope
+from extensions.ext_redis import RedisClientWrapper
 from models.account import Account, Tenant
 from models.base import TypeBase
 from models.model import App, AppMode
@@ -16,6 +17,27 @@ from repositories.workflow.collaboration_repository import WorkflowCollaboration
 from services.workflow_collaboration_service import SYNC_REQUEST_TIMEOUT_SECONDS, WorkflowCollaborationService
 from tests.unit_tests.config_override import config_overrides_context
 from tests.unit_tests.model_factories import make_app
+from tests.unit_tests.services.workflow_collaboration_fixtures import RedisState, seed_session, seed_sessions
+
+ServiceFixture = tuple[WorkflowCollaborationService, WorkflowCollaborationRepository, Mock]
+
+
+@pytest.fixture
+def collaboration_redis(
+    redis_transport: tuple[RedisClientWrapper, MagicMock], monkeypatch: pytest.MonkeyPatch
+) -> RedisClientWrapper:
+    client, commands = redis_transport
+    commands.side_effect = RedisState().execute
+    monkeypatch.setattr("repositories.workflow_collaboration_repository.redis_client", client)
+    return client
+
+
+@pytest.fixture
+def real_service(collaboration_redis: RedisClientWrapper) -> ServiceFixture:
+    assert collaboration_redis._require_client() is not None
+    repository = WorkflowCollaborationRepository()
+    socketio = Mock()
+    return WorkflowCollaborationService(repository, socketio, server_id="server-1"), repository, socketio
 
 
 @pytest.fixture
@@ -41,18 +63,11 @@ def _app(*, app_id: str, tenant_id: str, maintainer: str | None = None) -> App:
 
 
 class TestWorkflowCollaborationService:
-    @pytest.fixture
-    def service(self) -> tuple[WorkflowCollaborationService, Mock, Mock]:
-        repository = Mock(spec=WorkflowCollaborationRepository)
-        repository.graph_view_state_lock.return_value = nullcontext()
-        socketio = Mock()
-        return WorkflowCollaborationService(repository, socketio, server_id="server-1"), repository, socketio
-
     def test_authorize_and_join_workflow_room_returns_leader_status(
-        self, service: tuple[WorkflowCollaborationService, Mock, Mock], db_session: Session
+        self, real_service: ServiceFixture, db_session: Session
     ) -> None:
         # Arrange
-        collaboration_service, repository, socketio = service
+        collaboration_service, repository, socketio = real_service
         socketio.get_session.return_value = {
             "user_id": "u-1",
             "username": "Jane",
@@ -82,10 +97,10 @@ class TestWorkflowCollaborationService:
             resource_type=RBACResourceScope.APP,
             resource_id="wf-1",
         )
-        repository.set_session_info.assert_called_once()
-        session_info = repository.set_session_info.call_args.args[1]
+        session_info = repository.get_session_info("wf-1", "sid-1")
+        assert session_info is not None
         assert session_info["server_id"] == "server-1"
-        repository.refresh_server_heartbeat.assert_called_once_with("server-1")
+        assert repository.server_heartbeat_exists("server-1")
         socketio.start_background_task.assert_called_once()
         get_leader.assert_called_once_with("wf-1", "sid-1")
         socketio.enter_room.assert_called_once_with("sid-1", "wf-1")
@@ -93,10 +108,10 @@ class TestWorkflowCollaborationService:
         socketio.emit.assert_called_once_with("status", {"isLeader": True}, room="sid-1")
 
     def test_authorize_and_join_workflow_room_returns_none_when_missing_user(
-        self, service: tuple[WorkflowCollaborationService, Mock, Mock], db_session: Session
+        self, real_service: ServiceFixture, db_session: Session
     ) -> None:
         # Arrange
-        collaboration_service, _repository, socketio = service
+        collaboration_service, _repository, socketio = real_service
         socketio.get_session.return_value = {}
 
         # Act
@@ -106,22 +121,22 @@ class TestWorkflowCollaborationService:
         assert result is None
 
     def test_authorize_and_join_workflow_room_returns_none_when_missing_tenant(
-        self, service: tuple[WorkflowCollaborationService, Mock, Mock], db_session: Session
+        self, real_service: ServiceFixture, db_session: Session
     ) -> None:
-        collaboration_service, repository, socketio = service
+        collaboration_service, repository, socketio = real_service
         socketio.get_session.return_value = {"user_id": "u-1", "username": "Jane", "avatar": None}
 
         result = collaboration_service.authorize_and_join_workflow_room("wf-1", "sid-1", session=db_session)
 
         assert result is None
-        repository.set_session_info.assert_not_called()
+        assert repository.list_sessions("wf-1") == []
         socketio.enter_room.assert_not_called()
         socketio.emit.assert_not_called()
 
     def test_authorize_and_join_workflow_room_returns_none_when_workflow_is_not_accessible(
-        self, service: tuple[WorkflowCollaborationService, Mock, Mock], db_session: Session
+        self, real_service: ServiceFixture, db_session: Session
     ) -> None:
-        collaboration_service, repository, socketio = service
+        collaboration_service, repository, socketio = real_service
         socketio.get_session.return_value = {
             "user_id": "u-1",
             "username": "Jane",
@@ -149,16 +164,16 @@ class TestWorkflowCollaborationService:
             resource_type=RBACResourceScope.APP,
             resource_id="wf-1",
         )
-        repository.refresh_server_heartbeat.assert_not_called()
-        repository.set_session_info.assert_not_called()
+        assert not repository.server_heartbeat_exists("server-1")
+        assert repository.list_sessions("wf-1") == []
         socketio.start_background_task.assert_not_called()
         get_leader.assert_not_called()
         socketio.enter_room.assert_not_called()
         broadcast_online_users.assert_not_called()
         socketio.emit.assert_not_called()
 
-    def test_repr_and_save_socket_identity(self, service: tuple[WorkflowCollaborationService, Mock, Mock]) -> None:
-        collaboration_service, _repository, socketio = service
+    def test_repr_and_save_socket_identity(self, real_service: ServiceFixture) -> None:
+        collaboration_service, _repository, socketio = real_service
         user = Account(name="Jane", email="jane@example.com")
         user.id = "u-1"
         user.avatar = "avatar.png"
@@ -175,10 +190,8 @@ class TestWorkflowCollaborationService:
             {"user_id": "u-1", "username": "Jane", "avatar": "avatar.png", "tenant_id": "t-1"},
         )
 
-    def test_can_access_workflow_uses_session(
-        self, service: tuple[WorkflowCollaborationService, Mock, Mock], db_session: Session
-    ) -> None:
-        collaboration_service, _repository, _socketio = service
+    def test_can_access_workflow_uses_session(self, real_service: ServiceFixture, db_session: Session) -> None:
+        collaboration_service, _repository, _socketio = real_service
         db_session.add_all(
             [
                 _app(app_id="wf-1", tenant_id="tenant-1"),
@@ -201,9 +214,9 @@ class TestWorkflowCollaborationService:
             )
 
     def test_can_access_workflow_allows_maintainer_without_rbac_call(
-        self, service: tuple[WorkflowCollaborationService, Mock, Mock], db_session: Session
+        self, real_service: ServiceFixture, db_session: Session
     ) -> None:
-        collaboration_service, _repository, _socketio = service
+        collaboration_service, _repository, _socketio = real_service
         db_session.add(_app(app_id="wf-1", tenant_id="tenant-1", maintainer="owner-1"))
         db_session.commit()
 
@@ -216,12 +229,10 @@ class TestWorkflowCollaborationService:
         assert result is True
         check_access.assert_not_called()
 
-    def test_relay_collaboration_event_unauthorized(
-        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
-    ) -> None:
+    def test_relay_collaboration_event_unauthorized(self, real_service: ServiceFixture) -> None:
         # Arrange
-        collaboration_service, repository, _socketio = service
-        repository.get_sid_mapping.return_value = None
+        collaboration_service, repository, _socketio = real_service
+        assert repository.get_sid_mapping("sid-1") is None
 
         # Act
         result = collaboration_service.relay_collaboration_event("sid-1", {})
@@ -229,12 +240,11 @@ class TestWorkflowCollaborationService:
         # Assert
         assert result == ({"msg": "unauthorized"}, 401)
 
-    def test_relay_collaboration_event_emits_update(
-        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
-    ) -> None:
+    def test_relay_collaboration_event_emits_update(self, real_service: ServiceFixture) -> None:
         # Arrange
-        collaboration_service, repository, socketio = service
-        repository.get_sid_mapping.return_value = {"workflow_id": "wf-1", "user_id": "u-1"}
+        collaboration_service, repository, socketio = real_service
+        seed_session(repository, "sid-1")
+        repository.set_leader("wf-1", "sid-1")
         payload = {"type": "mouse_move", "data": {"x": 1}, "timestamp": 123}
 
         # Act
@@ -249,22 +259,21 @@ class TestWorkflowCollaborationService:
             skip_sid="sid-1",
         )
 
-    def test_relay_collaboration_event_requires_event_type(
-        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
-    ) -> None:
-        collaboration_service, repository, _socketio = service
-        repository.get_sid_mapping.return_value = {"workflow_id": "wf-1", "user_id": "u-1"}
+    def test_relay_collaboration_event_requires_event_type(self, real_service: ServiceFixture) -> None:
+        collaboration_service, repository, _socketio = real_service
+        seed_session(repository, "sid-1")
+        repository.set_leader("wf-1", "sid-1")
 
         result = collaboration_service.relay_collaboration_event("sid-1", {"data": {"x": 1}})
 
         assert result == ({"msg": "invalid event type"}, 400)
 
     def test_relay_collaboration_event_graph_resync_request_forwards_to_active_leader(
-        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
+        self, real_service: ServiceFixture
     ) -> None:
-        collaboration_service, repository, socketio = service
-        repository.get_sid_mapping.return_value = {"workflow_id": "wf-1", "user_id": "u-1"}
-        repository.get_current_leader.return_value = "sid-leader"
+        collaboration_service, repository, socketio = real_service
+        seed_session(repository, "sid-1")
+        repository.set_leader("wf-1", "sid-leader")
         payload = {"type": "graph_resync_request", "data": {"reason": "reconnect"}, "timestamp": 123}
 
         with (
@@ -284,14 +293,14 @@ class TestWorkflowCollaborationService:
             },
             to="sid-leader",
         )
-        repository.set_leader.assert_not_called()
+        assert repository.get_current_leader("wf-1") == "sid-leader"
 
     def test_relay_collaboration_event_graph_resync_request_reelects_when_leader_is_inactive(
-        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
+        self, real_service: ServiceFixture
     ) -> None:
-        collaboration_service, repository, socketio = service
-        repository.get_sid_mapping.return_value = {"workflow_id": "wf-1", "user_id": "u-1"}
-        repository.get_current_leader.return_value = "sid-old"
+        collaboration_service, repository, socketio = real_service
+        seed_session(repository, "sid-1")
+        repository.set_leader("wf-1", "sid-old")
         payload = {"type": "graph_resync_request", "data": None, "timestamp": 123}
 
         with (
@@ -303,9 +312,8 @@ class TestWorkflowCollaborationService:
             result = collaboration_service.relay_collaboration_event("sid-1", payload)
 
         assert result == ({"msg": "graph_resync_request_forwarded"}, 200)
-        repository.delete_leader.assert_called_once_with("wf-1")
         select_leader.assert_called_once_with("wf-1", preferred_sid="sid-1")
-        repository.set_leader.assert_called_once_with("wf-1", "sid-1")
+        assert repository.get_current_leader("wf-1") == "sid-1"
         broadcast_leader_change.assert_called_once_with("wf-1", "sid-1")
         socketio.emit.assert_called_once_with(
             "collaboration_update",
@@ -314,11 +322,11 @@ class TestWorkflowCollaborationService:
         )
 
     def test_relay_collaboration_event_graph_resync_request_returns_503_without_active_leader(
-        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
+        self, real_service: ServiceFixture
     ) -> None:
-        collaboration_service, repository, socketio = service
-        repository.get_sid_mapping.return_value = {"workflow_id": "wf-1", "user_id": "u-1"}
-        repository.get_current_leader.return_value = "sid-old"
+        collaboration_service, repository, socketio = real_service
+        seed_session(repository, "sid-1")
+        repository.set_leader("wf-1", "sid-old")
         payload = {"type": "graph_resync_request", "data": None, "timestamp": 123}
 
         with (
@@ -329,8 +337,7 @@ class TestWorkflowCollaborationService:
             result = collaboration_service.relay_collaboration_event("sid-1", payload)
 
         assert result == ({"msg": "no_active_leader"}, 503)
-        repository.delete_leader.assert_called_once_with("wf-1")
-        repository.set_leader.assert_not_called()
+        assert repository.get_current_leader("wf-1") is None
         socketio.emit.assert_not_called()
 
     @pytest.mark.parametrize(
@@ -347,12 +354,12 @@ class TestWorkflowCollaborationService:
     )
     def test_relay_collaboration_event_rejects_invalid_graph_view_state(
         self,
-        service: tuple[WorkflowCollaborationService, Mock, Mock],
+        real_service: ServiceFixture,
         graph_active: object,
         sequence: object,
     ) -> None:
-        collaboration_service, repository, _socketio = service
-        repository.get_sid_mapping.return_value = {"workflow_id": "wf-1", "user_id": "u-1"}
+        collaboration_service, repository, _socketio = real_service
+        seed_session(repository, "sid-1")
         payload = {
             "type": "graph_view_state",
             "data": {"graphActive": graph_active, "sequence": sequence},
@@ -363,13 +370,13 @@ class TestWorkflowCollaborationService:
             result = collaboration_service.relay_collaboration_event("sid-1", payload)
 
         assert result == ({"msg": "invalid graph_view_state"}, 400)
-        repository.update_session_graph_active.assert_not_called()
+        session_info = repository.get_session_info("wf-1", "sid-1")
+        assert session_info is not None
+        assert "graph_active" not in session_info
 
-    def test_relay_collaboration_event_requires_sync_request_id(
-        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
-    ) -> None:
-        collaboration_service, repository, socketio = service
-        repository.get_sid_mapping.return_value = {"workflow_id": "wf-1", "user_id": "u-1"}
+    def test_relay_collaboration_event_requires_sync_request_id(self, real_service: ServiceFixture) -> None:
+        collaboration_service, repository, socketio = real_service
+        seed_session(repository, "sid-1")
 
         with patch.object(collaboration_service, "refresh_session_state"):
             result = collaboration_service.relay_collaboration_event(
@@ -380,19 +387,22 @@ class TestWorkflowCollaborationService:
         socketio.call.assert_not_called()
 
     def test_relay_collaboration_event_sync_request_forwards_to_active_leader(
-        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
+        self, real_service: ServiceFixture
     ) -> None:
-        collaboration_service, repository, socketio = service
-        repository.get_sid_mapping.return_value = {"workflow_id": "wf-1", "user_id": "u-1"}
-        repository.get_current_leader.return_value = "sid-leader"
-        repository.get_session_info.return_value = {
-            "user_id": "u-2",
-            "username": "B",
-            "avatar": None,
-            "sid": "sid-leader",
-            "connected_at": 1,
-            "graph_active": True,
-        }
+        collaboration_service, repository, socketio = real_service
+        seed_session(repository, "sid-1")
+        repository.set_leader("wf-1", "sid-leader")
+        repository.set_session_info(
+            "wf-1",
+            {
+                "user_id": "u-2",
+                "username": "B",
+                "avatar": None,
+                "sid": "sid-leader",
+                "connected_at": 1,
+                "graph_active": True,
+            },
+        )
         socketio.call.return_value = {"success": True, "hash": "hash-2", "updatedAt": 456}
         payload = {
             "type": "sync_request",
@@ -427,22 +437,23 @@ class TestWorkflowCollaborationService:
             to="sid-leader",
             timeout=SYNC_REQUEST_TIMEOUT_SECONDS,
         )
-        repository.set_leader.assert_not_called()
+        assert repository.get_current_leader("wf-1") == "sid-leader"
 
-    def test_relay_collaboration_event_sync_request_returns_target_failure(
-        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
-    ) -> None:
-        collaboration_service, repository, socketio = service
-        repository.get_sid_mapping.return_value = {"workflow_id": "wf-1", "user_id": "u-1"}
-        repository.get_current_leader.return_value = "sid-leader"
-        repository.get_session_info.return_value = {
-            "user_id": "u-2",
-            "username": "B",
-            "avatar": None,
-            "sid": "sid-leader",
-            "connected_at": 1,
-            "graph_active": True,
-        }
+    def test_relay_collaboration_event_sync_request_returns_target_failure(self, real_service: ServiceFixture) -> None:
+        collaboration_service, repository, socketio = real_service
+        seed_session(repository, "sid-1")
+        repository.set_leader("wf-1", "sid-leader")
+        repository.set_session_info(
+            "wf-1",
+            {
+                "user_id": "u-2",
+                "username": "B",
+                "avatar": None,
+                "sid": "sid-leader",
+                "connected_at": 1,
+                "graph_active": True,
+            },
+        )
         socketio.call.return_value = {"success": False, "error": "draft_workflow_not_sync"}
         payload = {"type": "sync_request", "data": {"requestId": "req-1"}, "timestamp": 123}
 
@@ -462,20 +473,21 @@ class TestWorkflowCollaborationService:
             502,
         )
 
-    def test_relay_collaboration_event_sync_request_returns_timeout(
-        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
-    ) -> None:
-        collaboration_service, repository, socketio = service
-        repository.get_sid_mapping.return_value = {"workflow_id": "wf-1", "user_id": "u-1"}
-        repository.get_current_leader.return_value = "sid-leader"
-        repository.get_session_info.return_value = {
-            "user_id": "u-2",
-            "username": "B",
-            "avatar": None,
-            "sid": "sid-leader",
-            "connected_at": 1,
-            "graph_active": True,
-        }
+    def test_relay_collaboration_event_sync_request_returns_timeout(self, real_service: ServiceFixture) -> None:
+        collaboration_service, repository, socketio = real_service
+        seed_session(repository, "sid-1")
+        repository.set_leader("wf-1", "sid-leader")
+        repository.set_session_info(
+            "wf-1",
+            {
+                "user_id": "u-2",
+                "username": "B",
+                "avatar": None,
+                "sid": "sid-leader",
+                "connected_at": 1,
+                "graph_active": True,
+            },
+        )
         socketio.call.side_effect = SocketIOTimeoutError()
         payload = {"type": "sync_request", "data": {"requestId": "req-1"}, "timestamp": 123}
 
@@ -497,19 +509,22 @@ class TestWorkflowCollaborationService:
         ],
     )
     def test_relay_collaboration_event_sync_request_rejects_invalid_target_response(
-        self, service: tuple[WorkflowCollaborationService, Mock, Mock], target_result: object
+        self, real_service: ServiceFixture, target_result: object
     ) -> None:
-        collaboration_service, repository, socketio = service
-        repository.get_sid_mapping.return_value = {"workflow_id": "wf-1", "user_id": "u-1"}
-        repository.get_current_leader.return_value = "sid-leader"
-        repository.get_session_info.return_value = {
-            "user_id": "u-2",
-            "username": "B",
-            "avatar": None,
-            "sid": "sid-leader",
-            "connected_at": 1,
-            "graph_active": True,
-        }
+        collaboration_service, repository, socketio = real_service
+        seed_session(repository, "sid-1")
+        repository.set_leader("wf-1", "sid-leader")
+        repository.set_session_info(
+            "wf-1",
+            {
+                "user_id": "u-2",
+                "username": "B",
+                "avatar": None,
+                "sid": "sid-leader",
+                "connected_at": 1,
+                "graph_active": True,
+            },
+        )
         socketio.call.return_value = target_result
         payload = {"type": "sync_request", "data": {"requestId": "req-1"}, "timestamp": 123}
 
@@ -522,21 +537,14 @@ class TestWorkflowCollaborationService:
         assert result[1] == 502
 
     def test_relay_collaboration_event_sync_request_reroutes_from_hidden_leader(
-        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
+        self, real_service: ServiceFixture
     ) -> None:
         # Leader is connected but its tab is hidden; the visible requester takes over.
-        collaboration_service, repository, socketio = service
-        repository.get_sid_mapping.return_value = {"workflow_id": "wf-1", "user_id": "u-1"}
-        repository.get_current_leader.return_value = "sid-leader"
-        repository.get_session_info.return_value = {
-            "user_id": "u-2",
-            "username": "B",
-            "avatar": None,
-            "sid": "sid-leader",
-            "connected_at": 1,
-            "graph_active": False,
-        }
-        repository.list_sessions.return_value = [
+        collaboration_service, repository, socketio = real_service
+        seed_session(repository, "sid-1")
+        repository.set_leader("wf-1", "sid-leader")
+        repository.set_session_info(
+            "wf-1",
             {
                 "user_id": "u-2",
                 "username": "B",
@@ -545,15 +553,28 @@ class TestWorkflowCollaborationService:
                 "connected_at": 1,
                 "graph_active": False,
             },
-            {
-                "user_id": "u-1",
-                "username": "A",
-                "avatar": None,
-                "sid": "sid-1",
-                "connected_at": 2,
-                "graph_active": True,
-            },
-        ]
+        )
+        seed_sessions(
+            repository,
+            [
+                {
+                    "user_id": "u-2",
+                    "username": "B",
+                    "avatar": None,
+                    "sid": "sid-leader",
+                    "connected_at": 1,
+                    "graph_active": False,
+                },
+                {
+                    "user_id": "u-1",
+                    "username": "A",
+                    "avatar": None,
+                    "sid": "sid-1",
+                    "connected_at": 2,
+                    "graph_active": True,
+                },
+            ],
+        )
         socketio.call.return_value = {"success": True, "hash": "hash-2", "updatedAt": 456}
         payload = {
             "type": "sync_request",
@@ -570,7 +591,7 @@ class TestWorkflowCollaborationService:
 
         assert result[1] == 200
         assert result[0]["success"] is True
-        repository.set_leader.assert_called_once_with("wf-1", "sid-1")
+        assert repository.get_current_leader("wf-1") == "sid-1"
         broadcast_leader_change.assert_called_once_with("wf-1", "sid-1")
         socketio.call.assert_called_once_with(
             "collaboration_update",
@@ -585,21 +606,14 @@ class TestWorkflowCollaborationService:
         )
 
     def test_relay_collaboration_event_sync_request_all_hidden_falls_back_to_requester(
-        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
+        self, real_service: ServiceFixture
     ) -> None:
         # Every tab hidden: the requester still becomes leader so the save is not dropped.
-        collaboration_service, repository, socketio = service
-        repository.get_sid_mapping.return_value = {"workflow_id": "wf-1", "user_id": "u-1"}
-        repository.get_current_leader.return_value = "sid-leader"
-        repository.get_session_info.return_value = {
-            "user_id": "u-2",
-            "username": "B",
-            "avatar": None,
-            "sid": "sid-leader",
-            "connected_at": 1,
-            "graph_active": False,
-        }
-        repository.list_sessions.return_value = [
+        collaboration_service, repository, socketio = real_service
+        seed_session(repository, "sid-1")
+        repository.set_leader("wf-1", "sid-leader")
+        repository.set_session_info(
+            "wf-1",
             {
                 "user_id": "u-2",
                 "username": "B",
@@ -608,15 +622,28 @@ class TestWorkflowCollaborationService:
                 "connected_at": 1,
                 "graph_active": False,
             },
-            {
-                "user_id": "u-1",
-                "username": "A",
-                "avatar": None,
-                "sid": "sid-1",
-                "connected_at": 2,
-                "graph_active": False,
-            },
-        ]
+        )
+        seed_sessions(
+            repository,
+            [
+                {
+                    "user_id": "u-2",
+                    "username": "B",
+                    "avatar": None,
+                    "sid": "sid-leader",
+                    "connected_at": 1,
+                    "graph_active": False,
+                },
+                {
+                    "user_id": "u-1",
+                    "username": "A",
+                    "avatar": None,
+                    "sid": "sid-1",
+                    "connected_at": 2,
+                    "graph_active": False,
+                },
+            ],
+        )
         socketio.call.return_value = {"success": True, "hash": "hash-2", "updatedAt": 456}
         payload = {
             "type": "sync_request",
@@ -633,7 +660,7 @@ class TestWorkflowCollaborationService:
 
         assert result[1] == 200
         assert result[0]["success"] is True
-        repository.set_leader.assert_called_once_with("wf-1", "sid-1")
+        assert repository.get_current_leader("wf-1") == "sid-1"
         broadcast_leader_change.assert_called_once_with("wf-1", "sid-1")
         socketio.call.assert_called_once_with(
             "collaboration_update",
@@ -648,12 +675,11 @@ class TestWorkflowCollaborationService:
         )
 
     def test_relay_collaboration_event_graph_view_state_updates_without_broadcast(
-        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
+        self, real_service: ServiceFixture
     ) -> None:
-        collaboration_service, repository, socketio = service
-        repository.get_sid_mapping.return_value = {"workflow_id": "wf-1", "user_id": "u-1"}
-        repository.get_current_leader.return_value = "sid-other"
-        repository.update_session_graph_active.return_value = True
+        collaboration_service, repository, socketio = real_service
+        seed_session(repository, "sid-1")
+        repository.set_leader("wf-1", "sid-other")
         payload = {
             "type": "graph_view_state",
             "data": {"graphActive": False, "sequence": 3},
@@ -664,15 +690,17 @@ class TestWorkflowCollaborationService:
             result = collaboration_service.relay_collaboration_event("sid-1", payload)
 
         assert result == ({"msg": "graph_view_state_updated"}, 200)
-        repository.update_session_graph_active.assert_called_once_with("wf-1", "sid-1", False, 3)
+        session_info = repository.get_session_info("wf-1", "sid-1")
+        assert session_info is not None
+        assert session_info["graph_active"] is False
         socketio.emit.assert_not_called()
-        repository.set_leader.assert_not_called()
+        assert repository.get_current_leader("wf-1") == "sid-other"
 
     def test_graph_view_state_serializes_visibility_write_with_leader_demotion(
-        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
+        self, real_service: ServiceFixture
     ) -> None:
-        collaboration_service, repository, _socketio = service
-        repository.get_sid_mapping.return_value = {"workflow_id": "wf-1", "user_id": "u-1"}
+        collaboration_service, repository, _socketio = real_service
+        seed_session(repository, "sid-1")
         events: list[str] = []
 
         @contextmanager
@@ -681,8 +709,12 @@ class TestWorkflowCollaborationService:
             yield
             events.append("lock_exit")
 
-        repository.graph_view_state_lock.return_value = graph_view_lock()
-        repository.update_session_graph_active.side_effect = lambda *_args: events.append("visibility_write") or True
+        update_visibility = repository.update_session_graph_active
+
+        def record_visibility(workflow_id: str, sid: str, active: bool, sequence: int) -> bool:
+            events.append("visibility_write")
+            return update_visibility(workflow_id, sid, active, sequence)
+
         payload = {
             "type": "graph_view_state",
             "data": {"graphActive": False, "sequence": 4},
@@ -690,6 +722,8 @@ class TestWorkflowCollaborationService:
         }
 
         with (
+            patch.object(repository, "graph_view_state_lock", return_value=graph_view_lock()),
+            patch.object(repository, "update_session_graph_active", side_effect=record_visibility),
             patch.object(collaboration_service, "refresh_session_state"),
             patch.object(
                 collaboration_service,
@@ -703,11 +737,11 @@ class TestWorkflowCollaborationService:
         assert events == ["lock_enter", "visibility_write", "leader_demotion", "lock_exit"]
 
     def test_relay_collaboration_event_graph_view_state_ignores_stale_update_without_demotion(
-        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
+        self, real_service: ServiceFixture
     ) -> None:
-        collaboration_service, repository, _socketio = service
-        repository.get_sid_mapping.return_value = {"workflow_id": "wf-1", "user_id": "u-1"}
-        repository.update_session_graph_active.return_value = False
+        collaboration_service, repository, _socketio = real_service
+        seed_session(repository, "sid-1")
+        assert repository.update_session_graph_active("wf-1", "sid-1", True, 3)
         payload = {
             "type": "graph_view_state",
             "data": {"graphActive": False, "sequence": 2},
@@ -721,34 +755,38 @@ class TestWorkflowCollaborationService:
             result = collaboration_service.relay_collaboration_event("sid-1", payload)
 
         assert result == ({"msg": "graph_view_state_ignored"}, 200)
-        repository.update_session_graph_active.assert_called_once_with("wf-1", "sid-1", False, 2)
+        session_info = repository.get_session_info("wf-1", "sid-1")
+        assert session_info is not None
+        assert session_info["graph_active"] is True
         demote_leader.assert_not_called()
 
     def test_relay_collaboration_event_graph_view_state_demotes_hidden_leader(
-        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
+        self, real_service: ServiceFixture
     ) -> None:
-        collaboration_service, repository, _socketio = service
-        repository.get_sid_mapping.return_value = {"workflow_id": "wf-1", "user_id": "u-1"}
-        repository.get_current_leader.return_value = "sid-1"
-        repository.update_session_graph_active.return_value = True
-        repository.list_sessions.return_value = [
-            {
-                "user_id": "u-1",
-                "username": "A",
-                "avatar": None,
-                "sid": "sid-1",
-                "connected_at": 1,
-                "graph_active": False,
-            },
-            {
-                "user_id": "u-2",
-                "username": "B",
-                "avatar": None,
-                "sid": "sid-2",
-                "connected_at": 2,
-                "graph_active": True,
-            },
-        ]
+        collaboration_service, repository, _socketio = real_service
+        seed_session(repository, "sid-1")
+        repository.set_leader("wf-1", "sid-1")
+        seed_sessions(
+            repository,
+            [
+                {
+                    "user_id": "u-1",
+                    "username": "A",
+                    "avatar": None,
+                    "sid": "sid-1",
+                    "connected_at": 1,
+                    "graph_active": False,
+                },
+                {
+                    "user_id": "u-2",
+                    "username": "B",
+                    "avatar": None,
+                    "sid": "sid-2",
+                    "connected_at": 2,
+                    "graph_active": True,
+                },
+            ],
+        )
         payload = {
             "type": "graph_view_state",
             "data": {"graphActive": False, "sequence": 3},
@@ -763,27 +801,31 @@ class TestWorkflowCollaborationService:
             result = collaboration_service.relay_collaboration_event("sid-1", payload)
 
         assert result == ({"msg": "graph_view_state_updated"}, 200)
-        repository.update_session_graph_active.assert_called_once_with("wf-1", "sid-1", False, 3)
-        repository.set_leader.assert_called_once_with("wf-1", "sid-2")
+        session_info = repository.get_session_info("wf-1", "sid-1")
+        assert session_info is not None
+        assert session_info["graph_active"] is False
+        assert repository.get_current_leader("wf-1") == "sid-2"
         broadcast_leader_change.assert_called_once_with("wf-1", "sid-2")
 
     def test_relay_collaboration_event_graph_view_state_keeps_leader_when_all_hidden(
-        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
+        self, real_service: ServiceFixture
     ) -> None:
-        collaboration_service, repository, _socketio = service
-        repository.get_sid_mapping.return_value = {"workflow_id": "wf-1", "user_id": "u-1"}
-        repository.get_current_leader.return_value = "sid-1"
-        repository.update_session_graph_active.return_value = True
-        repository.list_sessions.return_value = [
-            {
-                "user_id": "u-1",
-                "username": "A",
-                "avatar": None,
-                "sid": "sid-1",
-                "connected_at": 1,
-                "graph_active": False,
-            },
-        ]
+        collaboration_service, repository, _socketio = real_service
+        seed_session(repository, "sid-1")
+        repository.set_leader("wf-1", "sid-1")
+        seed_sessions(
+            repository,
+            [
+                {
+                    "user_id": "u-1",
+                    "username": "A",
+                    "avatar": None,
+                    "sid": "sid-1",
+                    "connected_at": 1,
+                    "graph_active": False,
+                },
+            ],
+        )
         payload = {
             "type": "graph_view_state",
             "data": {"graphActive": False, "sequence": 3},
@@ -798,17 +840,15 @@ class TestWorkflowCollaborationService:
             result = collaboration_service.relay_collaboration_event("sid-1", payload)
 
         assert result == ({"msg": "graph_view_state_updated"}, 200)
-        repository.set_leader.assert_not_called()
-        repository.delete_leader.assert_not_called()
+        assert repository.get_current_leader("wf-1") == "sid-1"
         broadcast_leader_change.assert_not_called()
 
     def test_relay_collaboration_event_graph_view_state_non_leader_no_demotion(
-        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
+        self, real_service: ServiceFixture
     ) -> None:
-        collaboration_service, repository, _socketio = service
-        repository.get_sid_mapping.return_value = {"workflow_id": "wf-1", "user_id": "u-1"}
-        repository.get_current_leader.return_value = "sid-leader"
-        repository.update_session_graph_active.return_value = True
+        collaboration_service, repository, _socketio = real_service
+        seed_session(repository, "sid-1")
+        repository.set_leader("wf-1", "sid-leader")
         payload = {
             "type": "graph_view_state",
             "data": {"graphActive": False, "sequence": 3},
@@ -822,35 +862,37 @@ class TestWorkflowCollaborationService:
             result = collaboration_service.relay_collaboration_event("sid-1", payload)
 
         assert result == ({"msg": "graph_view_state_updated"}, 200)
-        repository.update_session_graph_active.assert_called_once_with("wf-1", "sid-1", False, 3)
-        repository.set_leader.assert_not_called()
+        session_info = repository.get_session_info("wf-1", "sid-1")
+        assert session_info is not None
+        assert session_info["graph_active"] is False
+        assert repository.get_current_leader("wf-1") == "sid-leader"
         broadcast_leader_change.assert_not_called()
-        repository.list_sessions.assert_not_called()
 
-    def test_relay_collaboration_event_sync_request_reelects_active_leader(
-        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
-    ) -> None:
-        collaboration_service, repository, socketio = service
-        repository.get_sid_mapping.return_value = {"workflow_id": "wf-1", "user_id": "u-1"}
-        repository.get_current_leader.return_value = "sid-old"
-        repository.list_sessions.return_value = [
-            {
-                "user_id": "u-2",
-                "username": "B",
-                "avatar": None,
-                "sid": "sid-2",
-                "connected_at": 1,
-                "graph_active": True,
-            },
-            {
-                "user_id": "u-3",
-                "username": "C",
-                "avatar": None,
-                "sid": "sid-3",
-                "connected_at": 2,
-                "graph_active": True,
-            },
-        ]
+    def test_relay_collaboration_event_sync_request_reelects_active_leader(self, real_service: ServiceFixture) -> None:
+        collaboration_service, repository, socketio = real_service
+        seed_session(repository, "sid-2")
+        repository.set_leader("wf-1", "sid-old")
+        seed_sessions(
+            repository,
+            [
+                {
+                    "user_id": "u-2",
+                    "username": "B",
+                    "avatar": None,
+                    "sid": "sid-2",
+                    "connected_at": 1,
+                    "graph_active": True,
+                },
+                {
+                    "user_id": "u-3",
+                    "username": "C",
+                    "avatar": None,
+                    "sid": "sid-3",
+                    "connected_at": 2,
+                    "graph_active": True,
+                },
+            ],
+        )
         socketio.call.return_value = {"success": True, "hash": "hash-2", "updatedAt": 456}
         payload = {
             "type": "sync_request",
@@ -870,14 +912,13 @@ class TestWorkflowCollaborationService:
 
         assert result[1] == 200
         assert result[0]["success"] is True
-        repository.delete_leader.assert_called_once_with("wf-1")
-        repository.set_leader.assert_called_once_with("wf-1", "sid-2")
+        assert repository.get_current_leader("wf-1") == "sid-2"
         broadcast_leader_change.assert_called_once_with("wf-1", "sid-2")
         socketio.call.assert_called_once_with(
             "collaboration_update",
             {
                 "type": "sync_request",
-                "userId": "u-1",
+                "userId": "u-2",
                 "data": {"reason": "join", "requestId": "req-1"},
                 "timestamp": 123,
             },
@@ -886,12 +927,12 @@ class TestWorkflowCollaborationService:
         )
 
     def test_relay_collaboration_event_sync_request_returns_when_no_active_leader(
-        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
+        self, real_service: ServiceFixture
     ) -> None:
-        collaboration_service, repository, socketio = service
-        repository.get_sid_mapping.return_value = {"workflow_id": "wf-1", "user_id": "u-1"}
-        repository.get_current_leader.return_value = "sid-old"
-        repository.list_sessions.return_value = []
+        collaboration_service, repository, socketio = real_service
+        seed_session(repository, "sid-2")
+        repository.set_leader("wf-1", "sid-old")
+        seed_sessions(repository, [])
         payload = {
             "type": "sync_request",
             "data": {"reason": "join", "requestId": "req-1"},
@@ -905,13 +946,13 @@ class TestWorkflowCollaborationService:
             result = collaboration_service.relay_collaboration_event("sid-2", payload)
 
         assert result == ({"msg": "no_active_leader", "requestId": "req-1"}, 503)
-        repository.delete_leader.assert_called_once_with("wf-1")
+        assert repository.get_current_leader("wf-1") is None
         socketio.call.assert_not_called()
 
-    def test_relay_graph_event_unauthorized(self, service: tuple[WorkflowCollaborationService, Mock, Mock]) -> None:
+    def test_relay_graph_event_unauthorized(self, real_service: ServiceFixture) -> None:
         # Arrange
-        collaboration_service, repository, _socketio = service
-        repository.get_sid_mapping.return_value = None
+        collaboration_service, repository, _socketio = real_service
+        assert repository.get_sid_mapping("sid-1") is None
 
         # Act
         result = collaboration_service.relay_graph_event("sid-1", {"nodes": []})
@@ -919,21 +960,21 @@ class TestWorkflowCollaborationService:
         # Assert
         assert result == ({"msg": "unauthorized"}, 401)
 
-    def test_disconnect_session_no_mapping(self, service: tuple[WorkflowCollaborationService, Mock, Mock]) -> None:
+    def test_disconnect_session_no_mapping(self, real_service: ServiceFixture) -> None:
         # Arrange
-        collaboration_service, repository, _socketio = service
-        repository.get_sid_mapping.return_value = None
+        collaboration_service, repository, _socketio = real_service
+        assert repository.get_sid_mapping("sid-1") is None
 
         # Act
         collaboration_service.disconnect_session("sid-1")
 
         # Assert
-        repository.delete_session.assert_not_called()
+        assert repository.list_sessions("wf-1") == []
 
-    def test_disconnect_session_cleans_up(self, service: tuple[WorkflowCollaborationService, Mock, Mock]) -> None:
+    def test_disconnect_session_cleans_up(self, real_service: ServiceFixture) -> None:
         # Arrange
-        collaboration_service, repository, _socketio = service
-        repository.get_sid_mapping.return_value = {"workflow_id": "wf-1", "user_id": "u-1"}
+        collaboration_service, repository, _socketio = real_service
+        seed_session(repository, "sid-1")
 
         with (
             patch.object(collaboration_service, "handle_leader_disconnect") as handle_leader_disconnect,
@@ -943,16 +984,15 @@ class TestWorkflowCollaborationService:
             collaboration_service.disconnect_session("sid-1")
 
         # Assert
-        repository.delete_session.assert_called_once_with("wf-1", "sid-1")
+        assert not repository.session_exists("wf-1", "sid-1")
+        assert repository.get_sid_mapping("sid-1") is None
         handle_leader_disconnect.assert_called_once_with("wf-1", "sid-1")
         broadcast_online_users.assert_called_once_with("wf-1")
 
-    def test_get_or_set_leader_returns_active_leader(
-        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
-    ) -> None:
+    def test_get_or_set_leader_returns_active_leader(self, real_service: ServiceFixture) -> None:
         # Arrange
-        collaboration_service, repository, _socketio = service
-        repository.get_current_leader.return_value = "sid-1"
+        collaboration_service, repository, _socketio = real_service
+        repository.set_leader("wf-1", "sid-1")
 
         with patch.object(collaboration_service, "is_session_active", return_value=True):
             # Act
@@ -960,25 +1000,25 @@ class TestWorkflowCollaborationService:
 
         # Assert
         assert result == "sid-1"
-        repository.set_leader_if_absent.assert_not_called()
+        assert repository.get_current_leader("wf-1") == "sid-1"
 
-    def test_get_or_set_leader_replaces_dead_leader(
-        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
-    ) -> None:
+    def test_get_or_set_leader_replaces_dead_leader(self, real_service: ServiceFixture) -> None:
         # Arrange
-        collaboration_service, repository, _socketio = service
-        repository.get_current_leader.return_value = "sid-1"
-        repository.set_leader_if_absent.return_value = True
-        repository.list_sessions.return_value = [
-            {
-                "user_id": "u-2",
-                "username": "B",
-                "avatar": None,
-                "sid": "sid-2",
-                "connected_at": 1,
-                "graph_active": True,
-            }
-        ]
+        collaboration_service, repository, _socketio = real_service
+        repository.set_leader("wf-1", "sid-1")
+        seed_sessions(
+            repository,
+            [
+                {
+                    "user_id": "u-2",
+                    "username": "B",
+                    "avatar": None,
+                    "sid": "sid-2",
+                    "connected_at": 1,
+                    "graph_active": True,
+                }
+            ],
+        )
 
         with (
             patch.object(collaboration_service, "is_session_active", side_effect=lambda _wf, sid: sid != "sid-1"),
@@ -989,61 +1029,73 @@ class TestWorkflowCollaborationService:
 
         # Assert
         assert result == "sid-2"
-        repository.delete_session.assert_called_once_with("wf-1", "sid-1")
-        repository.delete_leader.assert_called_once_with("wf-1")
+        assert not repository.session_exists("wf-1", "sid-1")
         broadcast_leader_change.assert_called_once_with("wf-1", "sid-2")
 
-    def test_get_or_set_leader_falls_back_to_existing(
-        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
-    ) -> None:
+        assert repository.get_current_leader("wf-1") == "sid-2"
+
+    def test_get_or_set_leader_falls_back_to_existing(self, real_service: ServiceFixture) -> None:
         # Arrange
-        collaboration_service, repository, _socketio = service
-        repository.get_current_leader.side_effect = [None, "sid-3"]
-        repository.set_leader_if_absent.return_value = False
-        repository.list_sessions.return_value = [
-            {
-                "user_id": "u-2",
-                "username": "B",
-                "avatar": None,
-                "sid": "sid-2",
-                "connected_at": 1,
-                "graph_active": True,
-            }
-        ]
+        collaboration_service, repository, _socketio = real_service
+        set_if_absent = repository.set_leader_if_absent
+
+        def competing_leader(workflow_id: str, sid: str) -> bool:
+            repository.set_leader(workflow_id, "sid-3")
+            return set_if_absent(workflow_id, sid)
+
+        seed_sessions(
+            repository,
+            [
+                {
+                    "user_id": "u-2",
+                    "username": "B",
+                    "avatar": None,
+                    "sid": "sid-2",
+                    "connected_at": 1,
+                    "graph_active": True,
+                }
+            ],
+        )
 
         # Act
-        result = collaboration_service.get_or_set_leader("wf-1", "sid-2")
+        with patch.object(repository, "set_leader_if_absent", side_effect=competing_leader):
+            result = collaboration_service.get_or_set_leader("wf-1", "sid-2")
 
         # Assert
         assert result == "sid-3"
 
-    def test_get_or_set_leader_returns_sid_when_leader_still_missing(
-        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
-    ) -> None:
-        collaboration_service, repository, _socketio = service
-        repository.get_current_leader.side_effect = [None, None]
-        repository.set_leader_if_absent.return_value = False
+    def test_get_or_set_leader_returns_sid_when_leader_still_missing(self, real_service: ServiceFixture) -> None:
+        collaboration_service, repository, _socketio = real_service
+        set_if_absent = repository.set_leader_if_absent
 
-        result = collaboration_service.get_or_set_leader("wf-1", "sid-2")
+        def disappearing_leader(workflow_id: str, sid: str) -> bool:
+            repository.set_leader(workflow_id, "sid-3")
+            acquired = set_if_absent(workflow_id, sid)
+            repository.delete_leader(workflow_id)
+            return acquired
+
+        with patch.object(repository, "set_leader_if_absent", side_effect=disappearing_leader):
+            result = collaboration_service.get_or_set_leader("wf-1", "sid-2")
 
         assert result == "sid-2"
 
-    def test_handle_leader_disconnect_elects_new(
-        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
-    ) -> None:
+    def test_handle_leader_disconnect_elects_new(self, real_service: ServiceFixture) -> None:
         # Arrange
-        collaboration_service, repository, _socketio = service
-        repository.get_current_leader.return_value = "sid-1"
-        repository.list_sessions.return_value = [
-            {
-                "user_id": "u-2",
-                "username": "B",
-                "avatar": None,
-                "sid": "sid-2",
-                "connected_at": 1,
-                "graph_active": True,
-            }
-        ]
+        collaboration_service, repository, _socketio = real_service
+        repository.set_leader("wf-1", "sid-1")
+        seed_sessions(
+            repository,
+            [
+                {
+                    "user_id": "u-2",
+                    "username": "B",
+                    "avatar": None,
+                    "sid": "sid-2",
+                    "connected_at": 1,
+                    "graph_active": True,
+                }
+            ],
+        )
 
         with (
             patch.object(collaboration_service, "is_session_active", return_value=True),
@@ -1053,44 +1105,41 @@ class TestWorkflowCollaborationService:
             collaboration_service.handle_leader_disconnect("wf-1", "sid-1")
 
         # Assert
-        repository.set_leader.assert_called_once_with("wf-1", "sid-2")
+        assert repository.get_current_leader("wf-1") == "sid-2"
         broadcast_leader_change.assert_called_once_with("wf-1", "sid-2")
 
-    def test_handle_leader_disconnect_clears_when_empty(
-        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
-    ) -> None:
+    def test_handle_leader_disconnect_clears_when_empty(self, real_service: ServiceFixture) -> None:
         # Arrange
-        collaboration_service, repository, _socketio = service
-        repository.get_current_leader.return_value = "sid-1"
-        repository.list_sessions.return_value = []
+        collaboration_service, repository, _socketio = real_service
+        repository.set_leader("wf-1", "sid-1")
+        seed_sessions(repository, [])
 
         # Act
         collaboration_service.handle_leader_disconnect("wf-1", "sid-1")
 
         # Assert
-        repository.delete_leader.assert_called_once_with("wf-1")
 
-    def test_handle_leader_disconnect_ignores_non_leader_or_missing_leader(
-        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
-    ) -> None:
-        collaboration_service, repository, _socketio = service
+        assert repository.get_current_leader("wf-1") is None
 
-        repository.get_current_leader.return_value = None
+    def test_handle_leader_disconnect_ignores_non_leader_or_missing_leader(self, real_service: ServiceFixture) -> None:
+        collaboration_service, repository, _socketio = real_service
+
+        assert repository.get_current_leader("wf-1") is None
         collaboration_service.handle_leader_disconnect("wf-1", "sid-1")
 
-        repository.get_current_leader.return_value = "sid-leader"
+        repository.set_leader("wf-1", "sid-leader")
         collaboration_service.handle_leader_disconnect("wf-1", "sid-other")
 
-        repository.set_leader.assert_not_called()
-        repository.delete_leader.assert_not_called()
+        assert repository.get_current_leader("wf-1") == "sid-leader"
 
     def test_broadcast_leader_change_logs_emit_errors(
         self,
-        service: tuple[WorkflowCollaborationService, Mock, Mock],
+        real_service: ServiceFixture,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
-        collaboration_service, repository, socketio = service
-        repository.get_session_sids.return_value = ["sid-1", "sid-2"]
+        collaboration_service, repository, socketio = real_service
+        seed_session(repository, "sid-1")
+        seed_session(repository, "sid-2")
         socketio.emit.side_effect = [RuntimeError("boom"), None]
 
         with caplog.at_level(logging.ERROR):
@@ -1100,16 +1149,17 @@ class TestWorkflowCollaborationService:
         assert len(error_records) == 1
         assert "Failed to emit leader status to session sid-1" in error_records[0].getMessage()
 
-    def test_broadcast_online_users_sorts_and_emits(
-        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
-    ) -> None:
+    def test_broadcast_online_users_sorts_and_emits(self, real_service: ServiceFixture) -> None:
         # Arrange
-        collaboration_service, repository, socketio = service
-        repository.list_sessions.return_value = [
-            {"user_id": "u-1", "username": "A", "avatar": None, "sid": "sid-1", "connected_at": 3},
-            {"user_id": "u-2", "username": "B", "avatar": None, "sid": "sid-2", "connected_at": 1},
-        ]
-        repository.get_current_leader.return_value = "sid-1"
+        collaboration_service, repository, socketio = real_service
+        seed_sessions(
+            repository,
+            [
+                {"user_id": "u-1", "username": "A", "avatar": None, "sid": "sid-1", "connected_at": 3},
+                {"user_id": "u-2", "username": "B", "avatar": None, "sid": "sid-2", "connected_at": 1},
+            ],
+        )
+        repository.set_leader("wf-1", "sid-1")
 
         with patch.object(collaboration_service, "is_session_active", return_value=True):
             # Act
@@ -1129,12 +1179,10 @@ class TestWorkflowCollaborationService:
             room="wf-1",
         )
 
-    def test_broadcast_online_users_reassigns_missing_leader(
-        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
-    ) -> None:
-        collaboration_service, repository, socketio = service
+    def test_broadcast_online_users_reassigns_missing_leader(self, real_service: ServiceFixture) -> None:
+        collaboration_service, repository, socketio = real_service
         users = [{"user_id": "u-2", "username": "B", "avatar": None, "sid": "sid-2", "connected_at": 1}]
-        repository.get_current_leader.return_value = "sid-old"
+        repository.set_leader("wf-1", "sid-old")
 
         with (
             patch.object(collaboration_service, "_prune_inactive_sessions", return_value=users),
@@ -1143,8 +1191,7 @@ class TestWorkflowCollaborationService:
         ):
             collaboration_service.broadcast_online_users("wf-1")
 
-        repository.delete_leader.assert_called_once_with("wf-1")
-        repository.set_leader.assert_called_once_with("wf-1", "sid-2")
+        assert repository.get_current_leader("wf-1") == "sid-2"
         broadcast_leader_change.assert_called_once_with("wf-1", "sid-2")
         socketio.emit.assert_called_once_with(
             "online_users",
@@ -1153,37 +1200,40 @@ class TestWorkflowCollaborationService:
         )
 
     def test_refresh_session_state_expires_active_leader(
-        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
+        self, real_service: ServiceFixture, collaboration_redis: RedisClientWrapper
     ) -> None:
         # Arrange
-        collaboration_service, repository, _socketio = service
-        repository.get_current_leader.return_value = "sid-1"
+        collaboration_service, repository, _socketio = real_service
+        seed_session(repository, "sid-1")
+        repository.set_leader("wf-1", "sid-1")
+        collaboration_redis.expire(repository.leader_key("wf-1"), 1)
 
         with patch.object(collaboration_service, "is_session_active", return_value=True):
             # Act
             collaboration_service.refresh_session_state("wf-1", "sid-1")
 
         # Assert
-        repository.refresh_session_state.assert_called_once_with("wf-1", "sid-1")
-        repository.expire_leader.assert_called_once_with("wf-1")
-        repository.set_leader.assert_not_called()
+        assert repository.server_heartbeat_exists("server-1")
+        assert collaboration_redis.ttl(repository.leader_key("wf-1")) == 3600
+        assert repository.get_current_leader("wf-1") == "sid-1"
 
-    def test_refresh_session_state_sets_leader_when_missing(
-        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
-    ) -> None:
+    def test_refresh_session_state_sets_leader_when_missing(self, real_service: ServiceFixture) -> None:
         # Arrange
-        collaboration_service, repository, _socketio = service
-        repository.get_current_leader.return_value = None
-        repository.list_sessions.return_value = [
-            {
-                "user_id": "u-2",
-                "username": "B",
-                "avatar": None,
-                "sid": "sid-2",
-                "connected_at": 1,
-                "graph_active": True,
-            }
-        ]
+        collaboration_service, repository, _socketio = real_service
+        assert repository.get_current_leader("wf-1") is None
+        seed_sessions(
+            repository,
+            [
+                {
+                    "user_id": "u-2",
+                    "username": "B",
+                    "avatar": None,
+                    "sid": "sid-2",
+                    "connected_at": 1,
+                    "graph_active": True,
+                }
+            ],
+        )
 
         with (
             patch.object(collaboration_service, "is_session_active", return_value=True),
@@ -1193,14 +1243,12 @@ class TestWorkflowCollaborationService:
             collaboration_service.refresh_session_state("wf-1", "sid-2")
 
         # Assert
-        repository.set_leader.assert_called_once_with("wf-1", "sid-2")
+        assert repository.get_current_leader("wf-1") == "sid-2"
         broadcast_leader_change.assert_called_once_with("wf-1", "sid-2")
 
-    def test_refresh_session_state_replaces_inactive_existing_leader(
-        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
-    ) -> None:
-        collaboration_service, repository, _socketio = service
-        repository.get_current_leader.return_value = "sid-old"
+    def test_refresh_session_state_replaces_inactive_existing_leader(self, real_service: ServiceFixture) -> None:
+        collaboration_service, repository, _socketio = real_service
+        repository.set_leader("wf-1", "sid-old")
 
         with (
             patch.object(collaboration_service, "is_session_active", return_value=False),
@@ -1208,33 +1256,31 @@ class TestWorkflowCollaborationService:
         ):
             collaboration_service.refresh_session_state("wf-1", "sid-new")
 
-        repository.delete_leader.assert_called_once_with("wf-1")
-        repository.set_leader.assert_called_once_with("wf-1", "sid-new")
+        assert repository.get_current_leader("wf-1") == "sid-new"
         broadcast_leader_change.assert_called_once_with("wf-1", "sid-new")
 
-    def test_relay_graph_event_emits_update(self, service: tuple[WorkflowCollaborationService, Mock, Mock]) -> None:
+    def test_relay_graph_event_emits_update(self, real_service: ServiceFixture) -> None:
         # Arrange
-        collaboration_service, repository, socketio = service
-        repository.get_sid_mapping.return_value = {"workflow_id": "wf-1", "user_id": "u-1"}
+        collaboration_service, repository, socketio = real_service
+        seed_session(repository, "sid-1")
+        repository.set_leader("wf-1", "sid-1")
 
         # Act
         result = collaboration_service.relay_graph_event("sid-1", {"nodes": []})
 
         # Assert
         assert result == ({"msg": "graph_update_broadcasted"}, 200)
-        repository.refresh_session_state.assert_called_once_with("wf-1", "sid-1")
+        assert repository.server_heartbeat_exists("server-1")
         socketio.emit.assert_called_once_with("graph_update", {"nodes": []}, room="wf-1", skip_sid="sid-1")
 
-    def test_prune_inactive_sessions_handles_empty_and_removes_stale(
-        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
-    ) -> None:
-        collaboration_service, repository, _socketio = service
-        repository.list_sessions.return_value = []
+    def test_prune_inactive_sessions_handles_empty_and_removes_stale(self, real_service: ServiceFixture) -> None:
+        collaboration_service, repository, _socketio = real_service
+        seed_sessions(repository, [])
         assert collaboration_service._prune_inactive_sessions("wf-1") == []
 
-        active = {"sid": "sid-1", "user_id": "u-1", "connected_at": 1}
-        stale = {"sid": "sid-2", "user_id": "u-2", "connected_at": 2}
-        repository.list_sessions.return_value = [active, stale]
+        active = {"sid": "sid-1", "user_id": "u-1", "username": "A", "avatar": None, "connected_at": 1}
+        stale = {"sid": "sid-2", "user_id": "u-2", "username": "B", "avatar": None, "connected_at": 2}
+        seed_sessions(repository, [active, stale])
 
         with patch.object(
             collaboration_service,
@@ -1244,53 +1290,67 @@ class TestWorkflowCollaborationService:
             users = collaboration_service._prune_inactive_sessions("wf-1")
 
         assert users == [active]
-        repository.delete_session.assert_called_with("wf-1", "sid-2")
+        assert not repository.session_exists("wf-1", "sid-2")
 
-    def test_is_session_active_guard_branches(self, service: tuple[WorkflowCollaborationService, Mock, Mock]) -> None:
-        collaboration_service, repository, socketio = service
-        repository.get_sid_mapping.return_value = {"workflow_id": "wf-1", "user_id": "u-1", "server_id": "server-1"}
-        repository.session_exists.return_value = True
-
+    def test_is_session_active_guard_branches(
+        self, real_service: ServiceFixture, collaboration_redis: RedisClientWrapper
+    ) -> None:
+        collaboration_service, repository, socketio = real_service
+        info = {
+            "sid": "sid-1",
+            "user_id": "u-1",
+            "username": "A",
+            "avatar": None,
+            "connected_at": 1,
+            "server_id": "server-1",
+        }
+        repository.set_session_info("wf-1", info)
         assert collaboration_service.is_session_active("wf-1", "") is False
-
         socketio.manager.is_connected.return_value = False
         assert collaboration_service.is_session_active("wf-1", "sid-1") is False
-
         socketio.manager.is_connected.return_value = True
         assert collaboration_service.is_session_active("wf-1", "sid-1") is True
-
         socketio.manager.is_connected.side_effect = AttributeError("missing manager")
         assert collaboration_service.is_session_active("wf-1", "sid-1") is False
         socketio.manager.is_connected.side_effect = None
 
-        repository.session_exists.return_value = False
+        collaboration_redis.hdel(repository.workflow_key("wf-1"), "sid-1")
+        assert collaboration_service.is_session_active("wf-1", "sid-1") is False
+        repository.set_session_info("wf-1", info)
+        collaboration_redis.delete(repository.sid_key("sid-1"))
         assert collaboration_service.is_session_active("wf-1", "sid-1") is False
 
-        repository.session_exists.return_value = True
-        repository.get_sid_mapping.return_value = None
-        assert collaboration_service.is_session_active("wf-1", "sid-1") is False
-
-    def test_is_session_active_accepts_remote_session_with_live_server(
-        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
-    ) -> None:
-        collaboration_service, repository, socketio = service
-        repository.get_sid_mapping.return_value = {"workflow_id": "wf-1", "user_id": "u-1", "server_id": "server-2"}
-        repository.session_exists.return_value = True
-        repository.server_heartbeat_exists.return_value = True
+    def test_is_session_active_accepts_remote_session_with_live_server(self, real_service: ServiceFixture) -> None:
+        collaboration_service, repository, socketio = real_service
+        repository.set_session_info(
+            "wf-1",
+            {
+                "sid": "sid-remote",
+                "user_id": "u-1",
+                "username": "A",
+                "avatar": None,
+                "connected_at": 1,
+                "server_id": "server-2",
+            },
+        )
+        repository.refresh_server_heartbeat("server-2")
         socketio.manager.is_connected.return_value = False
-
         assert collaboration_service.is_session_active("wf-1", "sid-remote") is True
-        repository.server_heartbeat_exists.assert_called_once_with("server-2")
 
-    def test_is_session_active_rejects_remote_session_with_dead_server(
-        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
-    ) -> None:
-        collaboration_service, repository, socketio = service
-        repository.get_sid_mapping.return_value = {"workflow_id": "wf-1", "user_id": "u-1", "server_id": "server-2"}
-        repository.session_exists.return_value = True
-        repository.server_heartbeat_exists.return_value = False
+    def test_is_session_active_rejects_remote_session_with_dead_server(self, real_service: ServiceFixture) -> None:
+        collaboration_service, repository, socketio = real_service
+        repository.set_session_info(
+            "wf-1",
+            {
+                "sid": "sid-remote",
+                "user_id": "u-1",
+                "username": "A",
+                "avatar": None,
+                "connected_at": 1,
+                "server_id": "server-2",
+            },
+        )
         socketio.manager.is_connected.return_value = False
-
         assert collaboration_service.is_session_active("wf-1", "sid-remote") is False
 
     @staticmethod
@@ -1304,56 +1364,60 @@ class TestWorkflowCollaborationService:
             "graph_active": graph_active,
         }
 
-    def test_select_graph_leader_prefers_visible_preferred(
-        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
-    ) -> None:
-        collaboration_service, repository, _socketio = service
-        repository.list_sessions.return_value = [
-            self._session("sid-1", 1, graph_active=True),
-            self._session("sid-2", 2, graph_active=True),
-        ]
+    def test_select_graph_leader_prefers_visible_preferred(self, real_service: ServiceFixture) -> None:
+        collaboration_service, repository, _socketio = real_service
+        seed_sessions(
+            repository,
+            [
+                self._session("sid-1", 1, graph_active=True),
+                self._session("sid-2", 2, graph_active=True),
+            ],
+        )
 
         with patch.object(collaboration_service, "is_session_active", return_value=True):
             result = collaboration_service._select_graph_leader("wf-1", preferred_sid="sid-2")
 
         assert result == "sid-2"
 
-    def test_select_graph_leader_visible_beats_hidden_preferred(
-        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
-    ) -> None:
-        collaboration_service, repository, _socketio = service
-        repository.list_sessions.return_value = [
-            self._session("sid-1", 1, graph_active=False),
-            self._session("sid-2", 2, graph_active=True),
-        ]
+    def test_select_graph_leader_visible_beats_hidden_preferred(self, real_service: ServiceFixture) -> None:
+        collaboration_service, repository, _socketio = real_service
+        seed_sessions(
+            repository,
+            [
+                self._session("sid-1", 1, graph_active=False),
+                self._session("sid-2", 2, graph_active=True),
+            ],
+        )
 
         with patch.object(collaboration_service, "is_session_active", return_value=True):
             result = collaboration_service._select_graph_leader("wf-1", preferred_sid="sid-1")
 
         assert result == "sid-2"
 
-    def test_select_graph_leader_all_hidden_falls_back_to_preferred(
-        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
-    ) -> None:
-        collaboration_service, repository, _socketio = service
-        repository.list_sessions.return_value = [
-            self._session("sid-1", 1, graph_active=False),
-            self._session("sid-2", 2, graph_active=False),
-        ]
+    def test_select_graph_leader_all_hidden_falls_back_to_preferred(self, real_service: ServiceFixture) -> None:
+        collaboration_service, repository, _socketio = real_service
+        seed_sessions(
+            repository,
+            [
+                self._session("sid-1", 1, graph_active=False),
+                self._session("sid-2", 2, graph_active=False),
+            ],
+        )
 
         with patch.object(collaboration_service, "is_session_active", return_value=True):
             result = collaboration_service._select_graph_leader("wf-1", preferred_sid="sid-2")
 
         assert result == "sid-2"
 
-    def test_select_graph_leader_all_hidden_without_preference_picks_first(
-        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
-    ) -> None:
-        collaboration_service, repository, _socketio = service
-        repository.list_sessions.return_value = [
-            self._session("sid-1", 1, graph_active=False),
-            self._session("sid-2", 2, graph_active=False),
-        ]
+    def test_select_graph_leader_all_hidden_without_preference_picks_first(self, real_service: ServiceFixture) -> None:
+        collaboration_service, repository, _socketio = real_service
+        seed_sessions(
+            repository,
+            [
+                self._session("sid-1", 1, graph_active=False),
+                self._session("sid-2", 2, graph_active=False),
+            ],
+        )
 
         with patch.object(collaboration_service, "is_session_active", return_value=True):
             result = collaboration_service._select_graph_leader("wf-1")
@@ -1361,23 +1425,24 @@ class TestWorkflowCollaborationService:
         assert result == "sid-1"
 
     def test_select_graph_leader_require_graph_active_returns_none_when_all_hidden(
-        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
+        self, real_service: ServiceFixture
     ) -> None:
-        collaboration_service, repository, _socketio = service
-        repository.list_sessions.return_value = [
-            self._session("sid-1", 1, graph_active=False),
-        ]
+        collaboration_service, repository, _socketio = real_service
+        seed_sessions(
+            repository,
+            [
+                self._session("sid-1", 1, graph_active=False),
+            ],
+        )
 
         with patch.object(collaboration_service, "is_session_active", return_value=True):
             result = collaboration_service._select_graph_leader("wf-1", require_graph_active=True)
 
         assert result is None
 
-    def test_select_graph_leader_no_sessions_returns_none(
-        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
-    ) -> None:
-        collaboration_service, repository, _socketio = service
-        repository.list_sessions.return_value = []
+    def test_select_graph_leader_no_sessions_returns_none(self, real_service: ServiceFixture) -> None:
+        collaboration_service, repository, _socketio = real_service
+        seed_sessions(repository, [])
 
         with patch.object(collaboration_service, "is_session_active", return_value=True):
             result = collaboration_service._select_graph_leader("wf-1")
@@ -1385,13 +1450,16 @@ class TestWorkflowCollaborationService:
         assert result is None
 
     def test_handle_leader_disconnect_elects_hidden_session_when_no_visible_remains(
-        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
+        self, real_service: ServiceFixture
     ) -> None:
-        collaboration_service, repository, _socketio = service
-        repository.get_current_leader.return_value = "sid-old"
-        repository.list_sessions.return_value = [
-            self._session("sid-2", 2, graph_active=False),
-        ]
+        collaboration_service, repository, _socketio = real_service
+        repository.set_leader("wf-1", "sid-old")
+        seed_sessions(
+            repository,
+            [
+                self._session("sid-2", 2, graph_active=False),
+            ],
+        )
 
         with (
             patch.object(collaboration_service, "is_session_active", return_value=True),
@@ -1399,5 +1467,5 @@ class TestWorkflowCollaborationService:
         ):
             collaboration_service.handle_leader_disconnect("wf-1", "sid-old")
 
-        repository.set_leader.assert_called_once_with("wf-1", "sid-2")
+        assert repository.get_current_leader("wf-1") == "sid-2"
         broadcast_leader_change.assert_called_once_with("wf-1", "sid-2")

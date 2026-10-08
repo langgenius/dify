@@ -6,9 +6,6 @@ import {
   zGetBillingInvoicesResponse,
   zGetBillingSubscriptionQuery,
   zGetBillingSubscriptionResponse,
-  zPutBillingPartnersByPartnerKeyTenantsBody,
-  zPutBillingPartnersByPartnerKeyTenantsPath,
-  zPutBillingPartnersByPartnerKeyTenantsResponse,
 } from './zod.gen.ts'
 
 export const get = oc
@@ -23,38 +20,6 @@ export const get = oc
 
 export const invoices = {
   get,
-}
-
-/**
- * Sync partner tenants bindings
- */
-export const put = oc
-  .route({
-    description: 'Sync partner tenants bindings',
-    inputStructure: 'detailed',
-    method: 'PUT',
-    operationId: 'putBillingPartnersByPartnerKeyTenants',
-    path: '/billing/partners/{partner_key}/tenants',
-    tags: ['console'],
-  })
-  .input(
-    z.object({
-      body: zPutBillingPartnersByPartnerKeyTenantsBody,
-      params: zPutBillingPartnersByPartnerKeyTenantsPath,
-    }),
-  )
-  .output(zPutBillingPartnersByPartnerKeyTenantsResponse)
-
-export const tenants = {
-  put,
-}
-
-export const byPartnerKey = {
-  tenants,
-}
-
-export const partners = {
-  byPartnerKey,
 }
 
 export const get2 = oc
@@ -74,7 +39,6 @@ export const subscription = {
 
 export const billing = {
   invoices,
-  partners,
   subscription,
 }
 
