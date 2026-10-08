@@ -358,16 +358,21 @@ export const Workflow: FC<WorkflowProps> = memo(
 
       if (isCollaborationEnabled && !collaborationManager.canFlushGraphOnPageClose()) return
 
-      handleSyncWorkflowDraft(true, true, {
-        onError: () => {
-          toast.error(
-            t(($) => $['common.draftSaveFailed'], { ns: 'workflow' }),
-            {
-              timeout: 0,
-            },
-          )
+      handleSyncWorkflowDraft(
+        true,
+        true,
+        {
+          onError: () => {
+            toast.error(
+              t(($) => $['common.draftSaveFailed'], { ns: 'workflow' }),
+              {
+                timeout: 0,
+              },
+            )
+          },
         },
-      })
+        { skipEmptyGraph: true },
+      )
     })
     useEffect(() => {
       return () => {

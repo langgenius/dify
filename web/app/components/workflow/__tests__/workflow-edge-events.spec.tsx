@@ -744,6 +744,12 @@ describe('Workflow edge event wiring', () => {
       vi.advanceTimersByTime(5000)
 
       expect(workflowHookMocks.handleSyncWorkflowDraft).toHaveBeenCalledTimes(1)
+      expect(workflowHookMocks.handleSyncWorkflowDraft).toHaveBeenCalledWith(
+        true,
+        true,
+        expect.objectContaining({ onError: expect.any(Function) }),
+        { skipEmptyGraph: true },
+      )
       expect(pendingSync).not.toHaveBeenCalled()
     } finally {
       vi.useRealTimers()

@@ -556,7 +556,6 @@ def test_sync_draft_workflow_rejects_legacy_environment_variables() -> None:
 
 
 def test_sync_draft_workflow_hash_mismatch(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-
     def _raise(*_args, **_kwargs):
         raise workflow_module.WorkflowHashNotEqualError()
 
