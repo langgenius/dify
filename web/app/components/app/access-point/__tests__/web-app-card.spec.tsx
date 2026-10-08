@@ -88,8 +88,8 @@ vi.mock('@/app/components/app/app-access-control', () => ({
   ),
 }))
 
-vi.mock('@/app/components/app/overview/customize', () => ({
-  default: () => null,
+vi.mock('@/context/i18n', () => ({
+  useDocLink: () => (path: string) => `https://docs.example.test/en${path}`,
 }))
 
 vi.mock('@/app/components/app/overview/settings', () => ({

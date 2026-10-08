@@ -23,10 +23,10 @@ Import from a public subpath. The package intentionally has no root barrel:
 
 ```tsx
 import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Input } from '@langgenius/dify-ui/input'
-import { cn } from '@langgenius/dify-ui/cn'
 import '@langgenius/dify-ui/styles.css'
 ```
 

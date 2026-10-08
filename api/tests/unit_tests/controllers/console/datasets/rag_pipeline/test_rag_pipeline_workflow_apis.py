@@ -697,7 +697,8 @@ class TestRagPipelineByIdApi:
         @contextmanager
         def transaction() -> Generator[Session]:
             events.append("transaction-enter")
-            yield MagicMock(spec=Session)
+            with Session() as session:
+                yield session
             events.append("transaction-exit")
             if transaction_fails:
                 raise error
