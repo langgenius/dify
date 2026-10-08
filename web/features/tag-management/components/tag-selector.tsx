@@ -268,10 +268,9 @@ export const TagSelector = ({
         disabled={!canManageTags && !canBindOrUnbindTags}
         aria-label={accessibleTriggerLabel}
         className={cn(
-          'group/tag-area relative h-auto w-full cursor-pointer rounded-lg border-0 bg-transparent p-1 hover:bg-state-base-hover focus-visible:bg-transparent data-disabled:bg-transparent data-disabled:opacity-50 data-disabled:hover:bg-transparent data-popup-open:bg-state-base-hover data-popup-open:hover:bg-state-base-hover',
+          'group/tag-area relative flex w-full min-w-0 cursor-pointer items-center gap-0.5 rounded-lg p-1 text-start transition-colors hover:bg-state-base-hover data-disabled:cursor-not-allowed data-disabled:opacity-50 data-disabled:hover:bg-transparent data-popup-open:bg-state-base-hover motion-reduce:transition-none',
           className,
         )}
-        icon={false}
         onClick={onClick}
       >
         <TagTriggerContent tags={tagNames} emptyLabel={emptyTriggerLabel} />
