@@ -30,6 +30,7 @@ from machinery.context import RequestContext
 from models.dataset import ChildChunk, Dataset, Document, DocumentSegment, SegmentAttachmentBinding
 from models.enums import CreatorUserRole, DocumentCreatedFrom, SegmentStatus, SummaryStatus
 from models.model import UploadFile
+from models.vector import VectorConfiguration
 from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepository
 from repositories.knowledge.segment_repository import SQLAlchemySegmentRepository
 from repositories.knowledge.upload_file_repository import SQLAlchemyKnowledgeUploadRepository
@@ -508,10 +509,12 @@ def indexing_probe(
     event.listen(engine, "rollback", finish)
     probe = VectorProbe(active)
 
-    def vector(dataset: Dataset, *, session: Session | None, vector_type: str) -> VectorProbe:
+    def vector(
+        dataset: Dataset, *, session: Session | None, configuration: VectorConfiguration | None = None
+    ) -> VectorProbe:
         assert dataset.tenant_id == "workspace-1"
         assert session is None
-        assert vector_type == "qdrant"
+        assert configuration == VectorConfiguration("qdrant")
         assert not active
         return probe
 
