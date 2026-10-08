@@ -30,10 +30,6 @@ vi.mock('@/app/components/app/configuration/debug', () => ({
   default: () => <div data-testid="debug-panel" />,
 }))
 
-vi.mock('@/app/components/app/configuration/config/agent-setting-button', () => ({
-  default: () => <div data-testid="agent-setting-button" />,
-}))
-
 vi.mock(
   '@/app/components/header/account-setting/model-provider-page/model-parameter-modal',
   () => ({

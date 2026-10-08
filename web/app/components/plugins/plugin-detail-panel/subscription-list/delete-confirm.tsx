@@ -1,10 +1,10 @@
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
@@ -101,14 +101,14 @@ export const DeleteConfirm = (props: Props) => {
               </Field>
             )}
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton disabled={isDeleting}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton type="submit" loading={isDeleting}>
               {t(($) => $[`${tPrefix}.confirm`], { ns: 'pluginTrigger' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </form>
       </AlertDialogContent>
     </AlertDialog>

@@ -7,7 +7,6 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
-from unittest.mock import Mock
 
 import pytest
 
@@ -35,20 +34,25 @@ from models.model import AppMode
 class TestWorkflowResponseConverter:
     """Test truncation in WorkflowResponseConverter."""
 
-    def create_mock_generate_entity(self) -> WorkflowAppGenerateEntity:
-        """Create a mock WorkflowAppGenerateEntity."""
-        mock_entity = Mock(spec=WorkflowAppGenerateEntity)
-        mock_app_config = Mock()
-        mock_app_config.tenant_id = "test-tenant-id"
-        mock_entity.invoke_from = InvokeFrom.WEB_APP
-        mock_entity.app_config = mock_app_config
-        mock_entity.inputs = {}
-        return mock_entity
+    def create_generate_entity(self) -> WorkflowAppGenerateEntity:
+        """Create a validated workflow invocation for response conversion."""
+        return WorkflowAppGenerateEntity(
+            app_config=WorkflowUIBasedAppConfig(
+                tenant_id="test-tenant-id", app_id="app", workflow_id="wf-id", app_mode=AppMode.WORKFLOW
+            ),
+            task_id="task",
+            workflow_execution_id="initial-run-id",
+            user_id="test-user-id",
+            invoke_from=InvokeFrom.WEB_APP,
+            inputs={},
+            files=[],
+            stream=True,
+        )
 
     def create_workflow_response_converter(self) -> WorkflowResponseConverter:
         """Create a WorkflowResponseConverter for testing."""
 
-        mock_entity = self.create_mock_generate_entity()
+        entity = self.create_generate_entity()
         mock_user = Account(
             name="Test User",
             email="test@example.com",
@@ -57,7 +61,7 @@ class TestWorkflowResponseConverter:
 
         system_variables = build_system_variables(workflow_id="wf-id", workflow_execution_id="initial-run-id")
         return WorkflowResponseConverter(
-            application_generate_entity=mock_entity,
+            application_generate_entity=entity,
             user=mock_user,
             system_variables=system_variables,
         )

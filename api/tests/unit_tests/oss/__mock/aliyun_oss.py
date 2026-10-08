@@ -1,9 +1,9 @@
 import os
 import posixpath
-from unittest.mock import MagicMock
 
 import pytest
 from oss2 import Bucket
+from oss2.http import Response as OssResponse
 from oss2.models import GetObjectResult, PutObjectResult
 
 from tests.unit_tests.oss.__mock.base import (
@@ -12,6 +12,7 @@ from tests.unit_tests.oss.__mock.base import (
     get_example_filename,
     get_example_filepath,
     get_example_folder,
+    object_response,
 )
 
 
@@ -60,9 +61,9 @@ class MockAliyunOssClass:
     def get_object(self, key, byte_range=None, headers=None, progress_callback=None, process=None, params=None):
         assert key == self.key
 
-        get_object_output = MagicMock(GetObjectResult)
-        get_object_output.read.return_value = self.content
-        return get_object_output
+        response = object_response(self.content)
+        response.headers.update(self.resp.headers)
+        return GetObjectResult(OssResponse(response))
 
     def get_object_to_file(
         self, key, filename, byte_range=None, headers=None, progress_callback=None, process=None, params=None
