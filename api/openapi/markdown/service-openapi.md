@@ -1018,7 +1018,7 @@ Execute the full knowledge pipeline for a knowledge base. Published runs are que
 | 200 | Pipeline execution result. Published runs return a JSON object containing `batch`, `dataset`, and `documents`. Draft runs return `text/event-stream` for streaming mode or a workflow result JSON object for blocking mode. | **application/json**: [PipelineRunJsonResponse](#pipelinerunjsonresponse)<br>**text/event-stream**: string<br> |
 | 400 | Bad request - invalid payload or pipeline is not configured |  |
 | 401 | Unauthorized - invalid API token |  |
-| 403 | `forbidden` : Forbidden. |  |
+| 403 | `forbidden` : AccessDeniedError. |  |
 | 404 | `not_found` : Dataset not found. |  |
 | 500 | `pipeline_run_error` : Pipeline execution failed. |  |
 
