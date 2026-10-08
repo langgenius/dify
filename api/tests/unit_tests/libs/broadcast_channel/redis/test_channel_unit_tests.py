@@ -1441,6 +1441,12 @@ class TestRedisSubscriptionCommon:
         with pytest.raises(SubscriptionClosedError):
             subscription.receive()
 
+    def test_receive_does_not_leak_close_signal(self, subscription, subscription_params):
+        subscription._queue.put_nowait(SIG_CLOSE)
+
+        with pytest.raises(SubscriptionClosedError):
+            subscription.receive()
+
     # ==================== Table-driven Tests ====================
 
     @pytest.mark.parametrize(
