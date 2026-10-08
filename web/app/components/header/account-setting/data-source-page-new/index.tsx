@@ -13,7 +13,7 @@ import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { consoleQuery } from '@/service/console'
 import { useGetDataSourceListAuth, useInvalidDataSourceListAuth } from '@/service/use-datasource'
 import { useInstalledPluginList, useInvalidateInstalledPluginList } from '@/service/use-plugins'
-import UpdateSettingDialog from '../update-setting-dialog'
+import { UpdateSettingDialog } from '../update-setting-dialog'
 import Card from './card'
 import InstallFromMarketplace from './install-from-marketplace'
 

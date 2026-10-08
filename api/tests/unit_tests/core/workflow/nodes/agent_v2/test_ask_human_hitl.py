@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 from typing import Any
-from unittest.mock import MagicMock
 
 import pytest
 from dify_agent.layers.ask_human import AskHumanToolArgs
 from dify_agent.protocol import DeferredToolCallPayload
+from pytest_mock import MockerFixture
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.workflow.nodes.agent_v2.ask_human_hitl import (
     AskHumanFormBuildError,
@@ -19,7 +20,7 @@ from core.workflow.nodes.agent_v2.ask_human_hitl import (
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from enums.human_input import ButtonStyle, TimeoutUnit
 from models.agent_config_entities import AgentHumanContactConfig
-from models.human_input_contracts import FormCreateParams, HumanInputFormRepository
+from models.human_input_contracts import FormCreateParams
 from models.human_input_delivery import EmailDeliveryMethod, ExternalRecipient, InteractiveSurfaceDeliveryMethod
 from models.human_input_entities import (
     FileInputConfig,
@@ -27,6 +28,7 @@ from models.human_input_entities import (
     ParagraphInputConfig,
     SelectInputConfig,
 )
+from repositories.human_input.form_repository import HumanInputFormRepositoryImpl
 
 
 def _args(**overrides: Any) -> AskHumanToolArgs:
@@ -39,10 +41,14 @@ def _deferred_call(args: dict[str, Any], *, tool_name: str = "ask_human") -> Def
     return DeferredToolCallPayload(tool_call_id="call-1", tool_name=tool_name, args=args)
 
 
-def _fake_repository(form_id: str = "form-123") -> MagicMock:
-    repo = MagicMock(spec=HumanInputFormRepository)
-    repo.create_form.return_value = MagicMock(id=form_id)
-    return repo
+@pytest.fixture
+def repo(sqlite_session_factory: sessionmaker[Session]) -> HumanInputFormRepositoryImpl:
+    return HumanInputFormRepositoryImpl(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_execution_id="wf-1",
+        sessions=sqlite_session_factory,
+    )
 
 
 # ─────────────────────────── parse_ask_human_args ───────────────────────────
@@ -202,19 +208,19 @@ def test_delivery_high_urgency_prefixes_subject() -> None:
 # ─────────────────────────── build_ask_human_pause_reason ───────────────────
 
 
-def test_pause_reason_none_for_non_ask_human_tool() -> None:
+def test_pause_reason_none_for_non_ask_human_tool(repo: HumanInputFormRepositoryImpl) -> None:
     result = build_ask_human_pause_reason(
         deferred_tool_call=_deferred_call({"question": "q"}, tool_name="final_output"),
         node_id="node-1",
         default_node_title="Agent",
         workflow_run_id="wf-1",
         contacts=[],
-        repository=_fake_repository(),
+        repository=repo,
     )
     assert result is None
 
 
-def test_pause_reason_requires_workflow_run_id() -> None:
+def test_pause_reason_requires_workflow_run_id(repo: HumanInputFormRepositoryImpl) -> None:
     with pytest.raises(AskHumanFormBuildError):
         build_ask_human_pause_reason(
             deferred_tool_call=_deferred_call({"question": "q"}),
@@ -222,12 +228,14 @@ def test_pause_reason_requires_workflow_run_id() -> None:
             default_node_title="Agent",
             workflow_run_id="",
             contacts=[],
-            repository=_fake_repository(),
+            repository=repo,
         )
 
 
-def test_pause_reason_builds_form_and_returns_dify_pause_reason() -> None:
-    repo = _fake_repository(form_id="form-xyz")
+def test_pause_reason_builds_form_and_returns_dify_pause_reason(
+    repo: HumanInputFormRepositoryImpl, mocker: MockerFixture
+) -> None:
+    create = mocker.spy(repo, "create_form")
     contacts = [AgentHumanContactConfig(email="a@x.com")]
 
     result = build_ask_human_pause_reason(
@@ -247,14 +255,16 @@ def test_pause_reason_builds_form_and_returns_dify_pause_reason() -> None:
     )
 
     assert result is not None
-    assert result.form_id == "form-xyz"
+    form = repo.get_form("node-1")
+    assert form is not None
+    assert result.form_id == form.id
     assert isinstance(result, HumanInputRequired)
     assert result.node_id == "node-1"
     assert result.node_title == "Approve?"  # args.title wins over default
     assert [i.output_variable_name for i in result.inputs] == ["note"]
     assert [a.id for a in result.actions] == ["ok"]
 
-    params: FormCreateParams = repo.create_form.call_args.args[0]
+    params: FormCreateParams = create.call_args.args[0]
     assert params.workflow_execution_id == "wf-1"
     assert params.node_id == "node-1"
     # No conversation_id passed -> pure workflow run owns the form by workflow_run_id only.
@@ -262,10 +272,12 @@ def test_pause_reason_builds_form_and_returns_dify_pause_reason() -> None:
     assert any(isinstance(m, EmailDeliveryMethod) for m in params.delivery_methods)
 
 
-def test_pause_reason_forwards_conversation_id_for_chatflow() -> None:
+def test_pause_reason_forwards_conversation_id_for_chatflow(
+    repo: HumanInputFormRepositoryImpl, mocker: MockerFixture
+) -> None:
     # ENG-635 (review): an agent node running in a chatflow tags its ask_human form
     # with the conversation in addition to the workflow run.
-    repo = _fake_repository(form_id="form-xyz")
+    create = mocker.spy(repo, "create_form")
 
     build_ask_human_pause_reason(
         deferred_tool_call=_deferred_call({"question": "Please approve"}),
@@ -277,26 +289,28 @@ def test_pause_reason_forwards_conversation_id_for_chatflow() -> None:
         repository=repo,
     )
 
-    params: FormCreateParams = repo.create_form.call_args.args[0]
+    params: FormCreateParams = create.call_args.args[0]
     assert params.workflow_execution_id == "wf-1"
     assert params.conversation_id == "conv-1"
 
 
-def test_pause_reason_falls_back_to_default_node_title() -> None:
+def test_pause_reason_falls_back_to_default_node_title(repo: HumanInputFormRepositoryImpl) -> None:
     result = build_ask_human_pause_reason(
         deferred_tool_call=_deferred_call({"question": "q with no title"}),
         node_id="node-1",
         default_node_title="Agent fallback",
         workflow_run_id="wf-1",
         contacts=[],
-        repository=_fake_repository(),
+        repository=repo,
     )
     assert result is not None
     assert result.node_title == "Agent fallback"
 
 
-def test_pause_reason_select_default_flows_into_resolved_defaults() -> None:
-    repo = _fake_repository()
+def test_pause_reason_select_default_flows_into_resolved_defaults(
+    repo: HumanInputFormRepositoryImpl, mocker: MockerFixture
+) -> None:
+    create = mocker.spy(repo, "create_form")
     result = build_ask_human_pause_reason(
         deferred_tool_call=_deferred_call(
             {
@@ -319,13 +333,12 @@ def test_pause_reason_select_default_flows_into_resolved_defaults() -> None:
         repository=repo,
     )
     assert result is not None
-    params: FormCreateParams = repo.create_form.call_args.args[0]
+    params: FormCreateParams = create.call_args.args[0]
     assert result.resolved_default_values == {"tier": "t1"}
 
 
-def test_pause_reason_wraps_repository_value_error() -> None:
-    repo = MagicMock(spec=HumanInputFormRepository)
-    repo.create_form.side_effect = ValueError("db boom")
+def test_pause_reason_wraps_repository_value_error(repo: HumanInputFormRepositoryImpl, mocker: MockerFixture) -> None:
+    mocker.patch.object(repo, "create_form", side_effect=ValueError("db boom"))
     with pytest.raises(AskHumanFormBuildError):
         build_ask_human_pause_reason(
             deferred_tool_call=_deferred_call({"question": "q"}),
