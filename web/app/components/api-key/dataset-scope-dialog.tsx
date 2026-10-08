@@ -167,12 +167,14 @@ export function DatasetScopeDialog({
                           <span className="max-w-40 truncate system-xs-medium text-text-secondary">
                             {kb.name}
                           </span>
-                          <button
-                            type="button"
+                          <IconButton
+                            size="xs"
                             aria-label={t(($) => $['operation.remove'], { ns: 'common' })}
-                            className="i-ri-close-line size-3.5 shrink-0 cursor-pointer border-none bg-transparent p-0 text-text-tertiary hover:text-text-secondary"
+                            className="shrink-0"
                             onClick={() => removeKb(kb.id)}
-                          />
+                          >
+                            <span aria-hidden className="i-ri-close-line size-3.5" />
+                          </IconButton>
                         </div>
                       ))}
                     </div>
