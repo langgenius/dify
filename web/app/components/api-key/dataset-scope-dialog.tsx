@@ -9,7 +9,11 @@ import {
   ComboboxInputGroup,
   ComboboxItem,
   ComboboxList,
+  ComboboxPopup,
+  ComboboxPortal,
+  ComboboxPositioner,
   ComboboxStatus,
+  ComboboxTrigger,
 } from '@langgenius/dify-ui/combobox'
 import {
   Dialog,
@@ -19,7 +23,6 @@ import {
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Radio, RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -49,14 +52,13 @@ export function DatasetScopeDialog({
   const { t } = useTranslation(['appApi', 'common'])
   const [scope, setScope] = useState<Scope>('all')
   const [selected, setSelected] = useState<SelectedKb[]>([])
-  const [pickerOpen, setPickerOpen] = useState(false)
   const [keyword, setKeyword] = useState('')
 
   // Selection state resets by remounting: the parent bumps this dialog's `key` each time
   // it opens, so every open starts from these defaults with no reset-in-effect.
   const { data: datasetsPages, isLoading } = useInfiniteDatasets(
     { keyword },
-    { enabled: open && pickerOpen },
+    { enabled: open && scope === 'specific' },
   )
   const datasets = useMemo<SelectedKb[]>(
     () =>
@@ -66,6 +68,7 @@ export function DatasetScopeDialog({
     [datasetsPages],
   )
   const selectedIds = useMemo(() => new Set(selected.map((kb) => kb.id)), [selected])
+  const addLabel = t(($) => $['apiKeyModal.addKnowledgeBase'], { ns: 'appApi' })
   const searchLabel = t(($) => $['apiKeyModal.searchKnowledgeBases'], { ns: 'appApi' })
 
   const removeKb = (id: string) => setSelected((prev) => prev.filter((kb) => kb.id !== id))
@@ -180,75 +183,76 @@ export function DatasetScopeDialog({
                     </div>
                   </div>
                 )}
-                <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
-                  <PopoverTrigger
+                <Combobox<SelectedKb, true>
+                  multiple
+                  items={datasets}
+                  filter={null}
+                  value={selected}
+                  inputValue={keyword}
+                  itemToStringLabel={(kb) => kb.name}
+                  isItemEqualToValue={(item, value) => item.id === value.id}
+                  onValueChange={setSelected}
+                  onInputValueChange={(value, details) => {
+                    // Keep the query so several results of one search can be picked.
+                    if (details.isItemPress) details.cancel()
+                    else setKeyword(value)
+                  }}
+                >
+                  <ComboboxTrigger
+                    aria-label={addLabel}
                     render={
-                      <Button variant="secondary" size="small" className="w-full">
-                        <span aria-hidden className="mr-1 i-ri-add-line size-4" />
-                        {t(($) => $['apiKeyModal.addKnowledgeBase'], { ns: 'appApi' })}
-                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="small"
+                        className="w-full data-popup-open:bg-components-button-secondary-bg-hover data-popup-open:inset-ring-components-button-secondary-border-hover"
+                      />
                     }
-                  />
-                  <PopoverContent
-                    placement="bottom"
-                    sideOffset={4}
-                    aria-label={searchLabel}
-                    className="flex max-h-(--available-height) w-80 flex-col p-0"
                   >
-                    <Combobox<SelectedKb, true>
-                      inline
-                      multiple
-                      open={pickerOpen}
-                      items={datasets}
-                      filter={null}
-                      value={selected}
-                      inputValue={keyword}
-                      itemToStringLabel={(kb) => kb.name}
-                      isItemEqualToValue={(item, value) => item.id === value.id}
-                      onOpenChange={setPickerOpen}
-                      onValueChange={setSelected}
-                      onInputValueChange={(value, details) => {
-                        // Keep the query so several results of one search can be picked.
-                        if (details.isItemPress) details.cancel()
-                        else setKeyword(value)
-                      }}
-                    >
-                      <div className="shrink-0 p-2 pb-1">
-                        <ComboboxInputGroup>
-                          <ComboboxInput aria-label={searchLabel} placeholder={searchLabel} />
-                        </ComboboxInputGroup>
-                      </div>
-                      <ComboboxStatus>
-                        {isLoading ? t(($) => $.loading, { ns: 'common' }) : null}
-                      </ComboboxStatus>
-                      <ComboboxList<SelectedKb>
-                        aria-label={t(($) => $['apiKeyModal.scopeSpecificDatasets'], {
-                          ns: 'appApi',
-                        })}
-                        className="min-h-0"
+                    <span aria-hidden className="mr-1 i-ri-add-line size-4" />
+                    {addLabel}
+                  </ComboboxTrigger>
+                  <ComboboxPortal>
+                    <ComboboxPositioner placement="bottom">
+                      <ComboboxPopup
+                        aria-label={searchLabel}
+                        className="w-[min(20rem,var(--available-width))]"
                       >
-                        {(kb) => (
-                          <ComboboxItem<SelectedKb>
-                            key={kb.id}
-                            value={kb}
-                            className="grid-cols-[auto_1fr]"
-                          >
-                            {/* Visual only: the option owns the click target and the selected state. */}
-                            <span aria-hidden inert className="flex">
-                              <Checkbox checked={selectedIds.has(kb.id)} />
-                            </span>
-                            <span className="min-w-0 truncate system-sm-regular text-text-secondary">
-                              {kb.name}
-                            </span>
-                          </ComboboxItem>
-                        )}
-                      </ComboboxList>
-                      <ComboboxEmpty>
-                        {isLoading ? null : t(($) => $.noData, { ns: 'common' })}
-                      </ComboboxEmpty>
-                    </Combobox>
-                  </PopoverContent>
-                </Popover>
+                        <div className="p-1 pb-0">
+                          <ComboboxInputGroup>
+                            <ComboboxInput aria-label={searchLabel} placeholder={searchLabel} />
+                          </ComboboxInputGroup>
+                        </div>
+                        <ComboboxStatus>
+                          {isLoading ? t(($) => $.loading, { ns: 'common' }) : null}
+                        </ComboboxStatus>
+                        <ComboboxList<SelectedKb>
+                          aria-label={t(($) => $['apiKeyModal.scopeSpecificDatasets'], {
+                            ns: 'appApi',
+                          })}
+                        >
+                          {(kb) => (
+                            <ComboboxItem<SelectedKb>
+                              key={kb.id}
+                              value={kb}
+                              className="grid-cols-[auto_1fr]"
+                            >
+                              {/* Visual only: the option owns the click target and the selected state. */}
+                              <span aria-hidden inert className="flex">
+                                <Checkbox checked={selectedIds.has(kb.id)} />
+                              </span>
+                              <span className="min-w-0 truncate system-sm-regular text-text-secondary">
+                                {kb.name}
+                              </span>
+                            </ComboboxItem>
+                          )}
+                        </ComboboxList>
+                        <ComboboxEmpty>
+                          {isLoading ? null : t(($) => $.noData, { ns: 'common' })}
+                        </ComboboxEmpty>
+                      </ComboboxPopup>
+                    </ComboboxPositioner>
+                  </ComboboxPortal>
+                </Combobox>
               </div>
             </div>
           )}

@@ -321,9 +321,9 @@ describe('ApiKeyModal', () => {
     await user.click(screen.getByText('appApi.apiKeyModal.createNewSecretKey'))
     await user.click(await screen.findByRole('radio', { name: /scopeSpecificDatasets/ }))
     expect(screen.getByRole('button', { name: 'common.operation.create' })).toBeDisabled()
-    await user.click(screen.getByRole('button', { name: 'appApi.apiKeyModal.addKnowledgeBase' }))
+    await user.click(screen.getByRole('combobox', { name: 'appApi.apiKeyModal.addKnowledgeBase' }))
     await user.type(
-      screen.getByRole('combobox', { name: 'appApi.apiKeyModal.searchKnowledgeBases' }),
+      await screen.findByRole('combobox', { name: 'appApi.apiKeyModal.searchKnowledgeBases' }),
       'engineering',
     )
 
