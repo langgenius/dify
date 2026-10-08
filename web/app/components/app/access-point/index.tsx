@@ -76,22 +76,26 @@ function AccessPointContent({
             <h1 id="access-point-title" className="title-xl-semi-bold text-text-primary">
               {t(($) => $['appMenus.accessPoint'], { ns: 'common' })}
             </h1>
-            <AccessControlEntry
-              appId={appId}
-              isPublished={Boolean(
-                appInfo &&
-                (appInfo.mode === AppModeEnum.WORKFLOW || appInfo.mode === AppModeEnum.ADVANCED_CHAT
-                  ? appInfo.workflow?.id
-                  : appInfo.model_config),
-              )}
-              appIcon={{
-                iconType: appInfo?.icon_type,
-                icon: appInfo?.icon ?? undefined,
-                background: appInfo?.icon_background,
-                imageUrl: appInfo?.icon_url,
-              }}
-              canEditBinding={canManageAccessPoint}
-            />
+            {appInfo && (
+              <AccessControlEntry
+                appId={appId}
+                appMode={appInfo.mode}
+                isPublished={Boolean(
+                  appInfo &&
+                  (appInfo.mode === AppModeEnum.WORKFLOW ||
+                  appInfo.mode === AppModeEnum.ADVANCED_CHAT
+                    ? appInfo.workflow?.id
+                    : appInfo.model_config),
+                )}
+                appIcon={{
+                  iconType: appInfo?.icon_type,
+                  icon: appInfo?.icon ?? undefined,
+                  background: appInfo?.icon_background,
+                  imageUrl: appInfo?.icon_url,
+                }}
+                canEditBinding={canManageAccessPoint}
+              />
+            )}
           </div>
           <p className="system-xs-regular text-text-tertiary">
             {t(($) => $['studio.accessPoint.description'], { ns: 'deployments' })}

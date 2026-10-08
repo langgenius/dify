@@ -23,6 +23,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { trackNetworkAccessEvent } from '@/features/network-access/analytics'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { consoleQuery } from '@/service/console'
 import { PolicyReferencedApps } from './referenced-apps'
@@ -62,6 +63,11 @@ export function PolicyItem({ group, canMutate, onView, onEdit }: PolicyItemProps
 
   const handleDelete = () => {
     if (!canMutate || deleteGroup.isPending) return
+    trackNetworkAccessEvent('ip_policy_interaction', {
+      action: 'delete_confirmed',
+      policy_id: group.id,
+      referenced_app_count: group.used_by_count,
+    })
 
     deleteGroup.mutate(
       {
@@ -142,6 +148,10 @@ export function PolicyItem({ group, canMutate, onView, onEdit }: PolicyItemProps
                 onClick={() => {
                   if (!canMutate) return
                   setConfirmDelete(true)
+                  trackNetworkAccessEvent('ip_policy_interaction', {
+                    action: 'delete_attempted',
+                    policy_id: group.id,
+                  })
                   setMenuOpen(false)
                 }}
               >
@@ -195,7 +205,16 @@ export function PolicyItem({ group, canMutate, onView, onEdit }: PolicyItemProps
             )}
           </div>
           <AlertDialogFooter className="p-0 pt-2">
-            <AlertDialogCancelButton variant="secondary" disabled={deleteGroup.isPending}>
+            <AlertDialogCancelButton
+              variant="secondary"
+              disabled={deleteGroup.isPending}
+              onClick={() =>
+                trackNetworkAccessEvent('ip_policy_interaction', {
+                  action: 'delete_cancelled',
+                  policy_id: group.id,
+                })
+              }
+            >
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton

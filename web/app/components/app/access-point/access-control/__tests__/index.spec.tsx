@@ -9,6 +9,7 @@ import type {
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { trackEvent } from '@/app/components/base/amplitude'
 import { consoleQuery } from '@/service/console'
 import {
   createNetworkAccessGroupFixture,
@@ -20,6 +21,7 @@ import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console
 import { AccessControlEntry } from '..'
 
 const mockSetPricing = vi.fn()
+vi.mock('@/app/components/base/amplitude', () => ({ trackEvent: vi.fn() }))
 const mockSetSettingsDestination = vi.fn()
 const accessControlTranslations = vi.hoisted(() => ({
   'operation.back': 'Back',
@@ -106,6 +108,7 @@ const renderEntry = ({
 
   return renderWithConsoleQuery(
     <AccessControlEntry
+      appMode="chat"
       appId="app-1"
       appIcon={{}}
       isPublished={isPublished}
@@ -162,10 +165,106 @@ describe('AccessControlEntry', () => {
     vi.clearAllMocks()
   })
 
+  it.each([
+    { entryStatus: 'off', plan: 'professional', binding: null },
+    { entryStatus: 'paused', plan: 'professional', binding: createBinding({ enabled: false }) },
+    { entryStatus: 'on', plan: 'professional', binding: createBinding() },
+    {
+      entryStatus: 'partial',
+      plan: 'professional',
+      binding: createBinding({ access_points: ['webapp'] }),
+    },
+    { entryStatus: 'sandbox', plan: 'sandbox', binding: null },
+    { entryStatus: 'lapsed', plan: 'sandbox', binding: createBinding() },
+  ] as const)(
+    'reports the $entryStatus status before opening the panel',
+    async ({ entryStatus, plan, binding }) => {
+      const user = userEvent.setup()
+      renderEntry({ plan, binding, groups: [createNetworkAccessGroupFixture()] })
+      await user.click(getChip())
+      expect(
+        vi
+          .mocked(trackEvent)
+          .mock.calls.filter(([event]) => event === 'access_control_entry_click'),
+      ).toEqual([
+        [
+          'access_control_entry_click',
+          {
+            app_id: 'app-1',
+            app_mode: 'chat',
+            access_point_total: 3,
+            entry_status: entryStatus,
+            has_draft: false,
+          },
+        ],
+      ])
+      if (entryStatus === 'lapsed') {
+        await user.click(screen.getByRole('button', { name: /Turn on/ }))
+        expect(trackEvent).toHaveBeenCalledWith('access_control_upgrade_click', {
+          app_id: 'app-1',
+          app_mode: 'chat',
+          access_point_total: 3,
+          plan_state: 'lapsed',
+        })
+      }
+    },
+  )
+
+  it('tracks first configuration, dismissal and draft restoration without duplicating entry clicks', async () => {
+    const user = userEvent.setup()
+    renderEntry({ plan: 'professional', groups: [createNetworkAccessGroupFixture()] })
+    await user.click(getChip())
+    expect(trackEvent).toHaveBeenCalledWith('access_control_entry_click', {
+      app_id: 'app-1',
+      app_mode: 'chat',
+      access_point_total: 3,
+      entry_status: 'off',
+      has_draft: false,
+    })
+    expect(trackEvent).toHaveBeenCalledWith('access_control_interaction', {
+      app_id: 'app-1',
+      app_mode: 'chat',
+      access_point_total: 3,
+      action: 'edit_started',
+      edit_entry: 'first_config',
+    })
+    await user.click(screen.getByRole('option', { name: /Internal Network/ }))
+    expect(trackEvent).toHaveBeenCalledWith('access_control_interaction', {
+      app_id: 'app-1',
+      app_mode: 'chat',
+      access_point_total: 3,
+      action: 'policy_selected',
+      policy_id: 'group-1',
+    })
+    await user.keyboard('{Escape}')
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument(),
+    )
+    expect(trackEvent).toHaveBeenCalledWith('access_control_interaction', {
+      app_id: 'app-1',
+      app_mode: 'chat',
+      access_point_total: 3,
+      action: 'edit_abandoned',
+      abandon_method: 'dismiss',
+    })
+    await user.click(getChip())
+    expect(trackEvent).toHaveBeenLastCalledWith('access_control_interaction', {
+      app_id: 'app-1',
+      app_mode: 'chat',
+      access_point_total: 3,
+      action: 'edit_started',
+      edit_entry: 'draft_restored',
+    })
+    expect(
+      vi.mocked(trackEvent).mock.calls.filter(([event]) => event === 'access_control_entry_click'),
+    ).toHaveLength(2)
+  })
+
   it('does not render on community edition', () => {
     renderEntry({ deploymentEdition: 'COMMUNITY', plan: 'sandbox' })
 
     expect(screen.queryByRole('button', { name: /Access Control/ })).not.toBeInTheDocument()
+    expect(trackEvent).not.toHaveBeenCalled()
   })
 
   it('does not render on enterprise edition', () => {
@@ -292,6 +391,12 @@ describe('AccessControlEntry', () => {
     await user.click(turnOn)
 
     expect(mockSetPricing).toHaveBeenCalledWith('open')
+    expect(trackEvent).toHaveBeenLastCalledWith('access_control_upgrade_click', {
+      app_id: 'app-1',
+      app_mode: 'chat',
+      access_point_total: 3,
+      plan_state: 'sandbox',
+    })
   })
 
   it('closes the paywall on Escape without side effects', async () => {
@@ -1012,7 +1117,13 @@ describe('supported access points and binding permission', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled())
 
     rendered.rerender(
-      <AccessControlEntry appId="app-1" appIcon={{}} isPublished={false} canEditBinding={false} />,
+      <AccessControlEntry
+        appMode="chat"
+        appId="app-1"
+        appIcon={{}}
+        isPublished={false}
+        canEditBinding={false}
+      />,
     )
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     await user.click(getChip())
@@ -1026,7 +1137,13 @@ describe('supported access points and binding permission', () => {
     )
 
     rendered.rerender(
-      <AccessControlEntry appId="app-1" appIcon={{}} isPublished={false} canEditBinding />,
+      <AccessControlEntry
+        appMode="chat"
+        appId="app-1"
+        appIcon={{}}
+        isPublished={false}
+        canEditBinding
+      />,
     )
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     await user.click(getChip())
@@ -1051,7 +1168,13 @@ describe('supported access points and binding permission', () => {
     expect(screen.getByRole('alertdialog')).toBeInTheDocument()
 
     rendered.rerender(
-      <AccessControlEntry appId="app-1" appIcon={{}} isPublished={false} canEditBinding={false} />,
+      <AccessControlEntry
+        appMode="chat"
+        appId="app-1"
+        appIcon={{}}
+        isPublished={false}
+        canEditBinding={false}
+      />,
     )
     await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
     await user.click(getChip())
@@ -1059,7 +1182,13 @@ describe('supported access points and binding permission', () => {
     expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
 
     rendered.rerender(
-      <AccessControlEntry appId="app-1" appIcon={{}} isPublished={false} canEditBinding />,
+      <AccessControlEntry
+        appMode="chat"
+        appId="app-1"
+        appIcon={{}}
+        isPublished={false}
+        canEditBinding
+      />,
     )
     await user.click(getChip())
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
@@ -1114,7 +1243,13 @@ describe('supported access points and binding permission', () => {
     await user.click(screen.getByRole('switch', { name: 'Web App' }))
     await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled())
     rendered.rerender(
-      <AccessControlEntry appId="app-2" appIcon={{}} isPublished={false} canEditBinding />,
+      <AccessControlEntry
+        appMode="chat"
+        appId="app-2"
+        appIcon={{}}
+        isPublished={false}
+        canEditBinding
+      />,
     )
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     await user.click(getChip())
@@ -1147,7 +1282,13 @@ describe('supported access points and binding permission', () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => response())
     try {
       renderWithConsoleQuery(
-        <AccessControlEntry appId="app-1" appIcon={{}} isPublished={false} canEditBinding />,
+        <AccessControlEntry
+          appMode="chat"
+          appId="app-1"
+          appIcon={{}}
+          isPublished={false}
+          canEditBinding
+        />,
         {
           queryClient,
           systemFeatures: { deployment_edition: 'CLOUD' },
@@ -1232,6 +1373,85 @@ const openSelectedConfig = async (user: ReturnType<typeof userEvent.setup>) => {
 const lockoutWarning = "Your IP (203.0.113.42) isn't in this policy. You may lose access."
 
 describe('trusted IP checks before saving', () => {
+  it.each([
+    [403, 'This feature requires a paid plan.', 'plan'],
+    [403, 'Forbidden', 'permission'],
+    [503, 'Unavailable', 'network'],
+    [409, 'The network access resource changed. Refresh it and try again.', 'other'],
+  ] as const)(
+    'reports one failed save for the submitted draft after HTTP %s',
+    async (status, message, failReason) => {
+      const user = userEvent.setup()
+      const server = setupBindingServer()
+      server.check.allowed = true
+      server.put = async () => Response.json({ message }, { status })
+      renderEntry({ plan: 'professional', groups: server.groups })
+      await openSelectedConfig(user)
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled())
+      await user.click(screen.getByRole('button', { name: 'Save' }))
+      await waitFor(() =>
+        expect(
+          vi.mocked(trackEvent).mock.calls.filter(([event]) => event === 'access_control_save'),
+        ).toEqual([
+          [
+            'access_control_save',
+            {
+              app_id: 'app-1',
+              app_mode: 'chat',
+              access_point_total: 3,
+              result: 'failed',
+              fail_reason: failReason,
+              is_first_config: true,
+              policy_id: 'group-1',
+              protected_access_points: ['web_app', 'service_api', 'mcp_server'],
+              protected_count: 3,
+              is_current_ip_included: true,
+            },
+          ],
+        ]),
+      )
+    },
+  )
+
+  it('reports the original save once even when its component unmounts before the response', async () => {
+    const user = userEvent.setup()
+    const server = setupBindingServer()
+    server.check.allowed = true
+    let resolveSave!: (response: Response) => void
+    server.put = () =>
+      new Promise<Response>((resolve) => {
+        resolveSave = resolve
+      })
+    const view = renderEntry({ plan: 'professional', groups: server.groups })
+    await openSelectedConfig(user)
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled())
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(server.writes).toHaveLength(1))
+    view.unmount()
+    await act(async () =>
+      resolveSave(Response.json({ binding: createBinding(), effective_enabled: true })),
+    )
+    await waitFor(() =>
+      expect(
+        vi.mocked(trackEvent).mock.calls.filter(([event]) => event === 'access_control_save'),
+      ).toEqual([
+        [
+          'access_control_save',
+          {
+            app_id: 'app-1',
+            app_mode: 'chat',
+            access_point_total: 3,
+            result: 'success',
+            is_first_config: true,
+            policy_id: 'group-1',
+            protected_access_points: ['web_app', 'service_api', 'mcp_server'],
+            protected_count: 3,
+            is_current_ip_included: true,
+          },
+        ],
+      ]),
+    )
+  })
   it('applies policy and scope edits to a live app only after Save', async () => {
     const user = userEvent.setup()
     const server = setupBindingServer(createBinding())
@@ -1272,6 +1492,17 @@ describe('trusted IP checks before saving', () => {
       ]),
     )
     expect(await screen.findByText('Restricted to Office')).toBeInTheDocument()
+    expect(trackEvent).toHaveBeenCalledWith('access_control_save', {
+      app_id: 'app-1',
+      app_mode: 'chat',
+      access_point_total: 3,
+      result: 'success',
+      is_first_config: false,
+      policy_id: 'group-2',
+      protected_access_points: ['web_app', 'service_api'],
+      protected_count: 2,
+      is_current_ip_included: true,
+    })
   })
 
   it.each([true, false])(
@@ -1341,6 +1572,30 @@ describe('trusted IP checks before saving', () => {
         await user.click(await screen.findByRole('button', { name: 'Save anyway' }))
         await waitFor(() => expect(server.writes).toHaveLength(1))
       }
+      await waitFor(() =>
+        expect(trackEvent).toHaveBeenCalledWith('access_control_save', {
+          app_id: 'app-1',
+          app_mode: 'chat',
+          access_point_total: 3,
+          result: 'success',
+          is_first_config: true,
+          policy_id: 'group-1',
+          protected_access_points: ['web_app', 'service_api', 'mcp_server'],
+          protected_count: 3,
+          is_current_ip_included: allowed,
+        }),
+      )
+      expect(
+        vi
+          .mocked(trackEvent)
+          .mock.calls.filter(([event]) => event === 'access_control_entry_click'),
+      ).toHaveLength(1)
+      expect(
+        vi.mocked(trackEvent).mock.calls.filter(([event]) => event === 'access_control_save'),
+      ).toHaveLength(1)
+      expect(
+        vi.mocked(trackEvent).mock.calls.some(([, props]) => props?.action === 'edit_abandoned'),
+      ).toBe(false)
     },
   )
 
@@ -1449,6 +1704,15 @@ describe('immediate pause and resume', () => {
           expected_version: 2,
         },
       ])
+      expect(
+        vi.mocked(trackEvent).mock.calls.filter(([event]) => event === 'access_control_save'),
+      ).toHaveLength(0)
+      expect(
+        vi
+          .mocked(trackEvent)
+          .mock.calls.filter(([, props]) => String(props?.action).startsWith('turn_off_'))
+          .map(([, props]) => props?.action),
+      ).toEqual(['turn_off_attempted', 'turn_off_confirmed'])
       if (status === 409)
         server.binding = createBinding({ version: 3, access_points: ['webapp', 'mcp'] })
       await act(async () => finish(Response.json({ message: 'Unable to pause' }, { status })))
@@ -1469,6 +1733,56 @@ describe('immediate pause and resume', () => {
 })
 
 describe('returning from policy creation', () => {
+  it('keeps a reopened policy form when the previous creation finishes', async () => {
+    const user = userEvent.setup()
+    const server = setupBindingServer()
+    const fetchDefault = vi.mocked(globalThis.fetch).getMockImplementation()!
+    let finish!: (response: Response) => void
+    vi.mocked(globalThis.fetch).mockImplementation((input, init) =>
+      new Request(input, init).method === 'POST'
+        ? new Promise<Response>((resolve) => {
+            finish = resolve
+          })
+        : fetchDefault(input, init),
+    )
+    renderEntry({ plan: 'professional', groups: server.groups })
+    await openSelectedConfig(user)
+    await user.click(screen.getByRole('combobox', { name: 'IP Policy' }))
+    await user.click(screen.getByRole('option', { name: 'Add an IP policy' }))
+    await user.type(screen.getByRole('textbox', { name: 'Name' }), 'First')
+    await user.click(screen.getByPlaceholderText('10.0.0.0/8'))
+    await user.paste('10.0.0.0/8')
+    await user.click(screen.getByRole('button', { name: 'Create' }))
+    await waitFor(() => expect(finish).toBeDefined())
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+    await user.click(screen.getByRole('combobox', { name: 'IP Policy' }))
+    await user.click(screen.getByRole('option', { name: 'Add an IP policy' }))
+    await user.type(screen.getByRole('textbox', { name: 'Name' }), 'Second')
+    await act(async () =>
+      finish(
+        Response.json(
+          { group: createNetworkAccessGroupFixture({ id: 'new-policy', name: 'First' }) },
+          { status: 201 },
+        ),
+      ),
+    )
+    await waitFor(() =>
+      expect(trackEvent).toHaveBeenCalledWith('ip_policy_save', {
+        app_id: 'app-1',
+        app_mode: 'chat',
+        mode: 'create',
+        source: 'access_control_dropdown',
+        result: 'success',
+        policy_id: 'new-policy',
+        entry_count: 1,
+        validation_error_types: [],
+      }),
+    )
+    expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('Second')
+    expect(
+      vi.mocked(trackEvent).mock.calls.filter(([, props]) => props?.action === 'edit_abandoned'),
+    ).toHaveLength(0)
+  })
   it.each(['create', 'cancel', 'failure'] as const)(
     'preserves the selected policy and scope draft after %s',
     async (action) => {
