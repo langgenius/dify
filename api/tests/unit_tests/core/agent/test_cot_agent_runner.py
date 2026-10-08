@@ -65,7 +65,9 @@ class DummyRunner(CotAgentRunner):
 
 
 @pytest.fixture
-def runner(mocker: MockerFixture, sqlite_engine: Engine, app_records) -> Iterator[DummyRunner]:
+def runner(
+    mocker: MockerFixture, sqlite_engine: Engine, app_records, agent_tool_invoker: MagicMock
+) -> Iterator[DummyRunner]:
     # Prevent BaseAgentRunner __init__ from hitting database
     mocker.patch(
         "services.agent.chat.base_runner.BaseAgentRunner.organize_agent_history",
@@ -98,6 +100,7 @@ def runner(mocker: MockerFixture, sqlite_engine: Engine, app_records) -> Iterato
     message = _make_message()
 
     runner = DummyRunner(
+        _tool_invoker=agent_tool_invoker,
         tenant_id="tenant",
         application_generate_entity=application_generate_entity,
         conversation=_make_conversation(),
@@ -199,15 +202,12 @@ class TestHandleInvokeAction:
         response, meta = runner._handle_invoke_action(action, {}, [])
         assert "there is not a tool named" in response
 
-    def test_tool_with_json_string_args(self, runner: DummyRunner, mocker: MockerFixture):
+    def test_tool_with_json_string_args(self, runner: DummyRunner):
         action = AgentScratchpadUnit.Action(action_name="tool", action_input=json.dumps({"a": 1}))
         tool_instance = MagicMock()
         tool_instances = {"tool": tool_instance}
 
-        mocker.patch(
-            "services.agent.chat.cot_runner.ToolEngine.agent_invoke",
-            return_value=("result", [], MagicMock(to_dict=lambda: {})),
-        )
+        runner._tool_invoker.return_value = ("result", [], MagicMock(to_dict=lambda: {}))
 
         response, meta = runner._handle_invoke_action(action, tool_instances, [])
         assert response == "result"
@@ -249,10 +249,7 @@ class TestRun:
             return_value=[action],
         )
 
-        mocker.patch(
-            "services.agent.chat.cot_runner.ToolEngine.agent_invoke",
-            return_value=("ok", [], MagicMock(to_dict=lambda: {})),
-        )
+        runner._tool_invoker.return_value = ("ok", [], MagicMock(to_dict=lambda: {}))
 
         runner.agent_callback = None
 
@@ -271,10 +268,7 @@ class TestRun:
             return_value=[action],
         )
 
-        mocker.patch(
-            "services.agent.chat.cot_runner.ToolEngine.agent_invoke",
-            return_value=("ok", [], MagicMock(to_dict=lambda: {})),
-        )
+        runner._tool_invoker.return_value = ("ok", [], MagicMock(to_dict=lambda: {}))
 
         runner.agent_callback = None
 
@@ -346,10 +340,7 @@ class TestRun:
 
         handle_output.side_effect = _handle_side_effect
         runner.model_instance.invoke_llm = MagicMock(return_value=[])
-        mocker.patch(
-            "services.agent.chat.cot_runner.ToolEngine.agent_invoke",
-            return_value=("ok", [], MagicMock(to_dict=lambda: {})),
-        )
+        runner._tool_invoker.return_value = ("ok", [], MagicMock(to_dict=lambda: {}))
 
         fake_prompt_tool = MagicMock()
         fake_prompt_tool.name = "tool"
@@ -428,10 +419,7 @@ class TestRun:
             side_effect=[[action], []],
         )
 
-        mocker.patch(
-            "services.agent.chat.cot_runner.ToolEngine.agent_invoke",
-            return_value=("ok", [], MagicMock(to_dict=lambda: {})),
-        )
+        runner._tool_invoker.return_value = ("ok", [], MagicMock(to_dict=lambda: {}))
 
         runner.app_config.agent.max_iteration = 5
 
@@ -484,15 +472,12 @@ class TestInitReactState:
 
 
 class TestHandleInvokeActionExtended:
-    def test_tool_with_invalid_json_string_args(self, runner: DummyRunner, mocker: MockerFixture):
+    def test_tool_with_invalid_json_string_args(self, runner: DummyRunner):
         action = AgentScratchpadUnit.Action(action_name="tool", action_input="not-json")
         tool_instance = MagicMock()
         tool_instances = {"tool": tool_instance}
 
-        mocker.patch(
-            "services.agent.chat.cot_runner.ToolEngine.agent_invoke",
-            return_value=("ok", ["file1"], MagicMock(to_dict=lambda: {"k": "v"})),
-        )
+        runner._tool_invoker.return_value = ("ok", ["file1"], MagicMock(to_dict=lambda: {"k": "v"}))
 
         message_file_ids = []
         response, meta = runner._handle_invoke_action(action, tool_instances, message_file_ids)

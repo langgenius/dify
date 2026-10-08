@@ -3947,7 +3947,7 @@ Update conversation variables for workflow draft
 | 200 | Conversation variables updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/draft/environment-variables
-**Get draft workflow**
+**Get environment variables**
 
 Get environment variables for workflow
 
@@ -4517,7 +4517,7 @@ Delete all draft workflow variables
 | 204 | Workflow variables deleted successfully |
 
 ### [GET] /apps/{app_id}/workflows/draft/variables
-**Get draft workflow**
+**List draft workflow variables without loading their values**
 
 Get draft workflow variables
 
@@ -7855,7 +7855,7 @@ Update account-level Step-by-step Tour state
 | 200 | Datasource variables set successfully | **application/json**: [WorkflowRunNodeExecutionResponse](#workflowrunnodeexecutionresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/draft/environment-variables
-**Get draft workflow**
+**Get environment variables**
 
 #### Parameters
 
@@ -8057,7 +8057,7 @@ Update account-level Step-by-step Tour state
 | 204 | Workflow variables deleted successfully |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/draft/variables
-**Get draft workflow**
+**List draft pipeline variables without loading their values**
 
 #### Parameters
 
@@ -8108,6 +8108,12 @@ Update account-level Step-by-step Tour state
 | ---- | ---------- | ----------- | -------- | ------ |
 | pipeline_id | path |  | Yes | string (uuid) |
 | variable_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WorkflowDraftVariablePatchPayload](#workflowdraftvariablepatchpayload)<br> |
 
 #### Responses
 
@@ -15511,10 +15517,10 @@ Legacy Chat App model config used only for follow-up question generation.
 | status | string |  | Yes |
 | time_cost | number<br>integer |  | Yes |
 | tool_icon |  |  | No |
-| tool_input | object |  | Yes |
+| tool_input |  |  | Yes |
 | tool_label | string |  | Yes |
 | tool_name | string |  | Yes |
-| tool_output | object |  | Yes |
+| tool_output |  |  | Yes |
 | tool_parameters | object |  | Yes |
 
 #### AgentUserSatisfactionRateStatisticResponse

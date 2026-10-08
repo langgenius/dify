@@ -6,7 +6,7 @@ from decimal import Decimal
 import pytest
 from pydantic import ValidationError
 from pytest_mock import MockerFixture
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -81,11 +81,19 @@ def _message() -> Message:
 
 
 @pytest.fixture
-def generator(app_records, mocker: MockerFixture, *, annotation_replies, workflow_runtime):
+def generator(
+    app_records,
+    mocker: MockerFixture,
+    sqlite_session_factory: sessionmaker[Session],
+    *,
+    annotation_replies,
+    workflow_runtime,
+):
     gen = AgentChatAppGenerator(
         dataset_tools=workflow_runtime.dataset_tools,
         annotations=annotation_replies,
         records=app_records,
+        tool_sessions=sqlite_session_factory,
     )
     mocker.patch(
         "services.app.generation.adapters.agent_chat.current_app",

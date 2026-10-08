@@ -1,10 +1,13 @@
 """PostgreSQL verifies the expiry range plan against unrelated run and lease history."""
 
+from collections.abc import Mapping, Sequence
 from datetime import timedelta
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import Engine, delete, event
+from sqlalchemy import Engine, Table, delete, event
+from sqlalchemy.engine import Connection, ExecutionContext
+from sqlalchemy.engine.interfaces import DBAPICursor
 from sqlalchemy.orm import Session, sessionmaker
 
 from graphon.enums import WorkflowExecutionStatus
@@ -12,6 +15,8 @@ from libs.datetime_utils import naive_utc_now
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowDebugReservation, WorkflowRun, WorkflowType
 from repositories.workflow.debug_reservation_repository import WorkflowDebugReservationRepository
+
+type DriverParameters = Mapping[str, object] | Sequence[object] | None
 
 
 def test_postgresql_expiry_plan_uses_due_index(db_session_with_containers: Session) -> None:
@@ -23,16 +28,27 @@ def test_postgresql_expiry_plan_uses_due_index(db_session_with_containers: Sessi
     now = naive_utc_now()
     tenant_id, app_id, workflow_id, actor_id = (str(uuid4()) for _ in range(4))
     ids = [str(uuid4()) for _ in range(20_002)]
-    queries = []
+    queries: list[tuple[str, DriverParameters]] = []
 
-    def capture(_connection, _cursor, statement, parameters, _context, _executemany):
+    def capture(
+        _connection: Connection,
+        _cursor: DBAPICursor,
+        statement: str,
+        parameters: DriverParameters,
+        _context: ExecutionContext | None,
+        _executemany: bool,
+    ) -> None:
         if statement.startswith("SELECT"):
             queries.append((statement, parameters))
 
+    workflow_run_table = WorkflowRun.__table__
+    debug_reservation_table = WorkflowDebugReservation.__table__
+    assert isinstance(workflow_run_table, Table)
+    assert isinstance(debug_reservation_table, Table)
     try:
         with sessions.begin() as session:
             session.execute(
-                WorkflowRun.__table__.insert(),
+                workflow_run_table.insert(),
                 [
                     {
                         "id": run_id,
@@ -51,7 +67,7 @@ def test_postgresql_expiry_plan_uses_due_index(db_session_with_containers: Sessi
                 ],
             )
             session.execute(
-                WorkflowDebugReservation.__table__.insert(),
+                debug_reservation_table.insert(),
                 [
                     {
                         "workflow_run_id": run_id,
