@@ -2,7 +2,7 @@
 
 import contextvars
 import threading
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from typing import Any
 from unittest.mock import MagicMock
 
@@ -88,27 +88,47 @@ class TestExecutionContext:
         assert ctx.context_vars is None
         assert ctx.user is None
 
-    def test_enter_with_context_vars(self):
-        """Test enter restores context variables."""
+    @pytest.mark.parametrize("use_enter", [False, True])
+    @pytest.mark.parametrize("caller_value", [None, "caller"])
+    @pytest.mark.parametrize("raise_error", [False, True])
+    def test_enter_with_context_vars(self, use_enter, caller_value, raise_error):
+        """Restore the caller's binding, including an unset variable, on every exit."""
         test_var = contextvars.ContextVar("test_var")
-        test_var.set("original_value")
-
-        # Copy context with the variable
-        context_vars = contextvars.copy_context()
-
-        # Change the variable
-        test_var.set("new_value")
-
-        # Create execution context and enter it
+        context_vars = contextvars.Context()
+        context_vars.run(test_var.set, "captured")
         ctx = ExecutionContext(context_vars=context_vars)
+        token = test_var.set(caller_value) if caller_value is not None else None
 
-        with ctx.enter():
-            # Variable should be restored to original value
-            assert test_var.get() == "original_value"
+        try:
+            with pytest.raises(ValueError, match="body failed") if raise_error else nullcontext():
+                with ctx.enter() if use_enter else ctx:
+                    assert test_var.get() == "captured"
+                    test_var.set("body")
+                    if raise_error:
+                        raise ValueError("body failed")
 
-        # After exiting, variable stays at the value from within the context
-        # (this is expected Python contextvars behavior)
-        assert test_var.get() == "original_value"
+            assert test_var.get(None) == caller_value
+            assert (test_var in contextvars.copy_context()) == (caller_value is not None)
+        finally:
+            if token is not None:
+                test_var.reset(token)
+
+    @pytest.mark.parametrize(("outer_enter", "inner_enter"), [(False, False), (False, True), (True, False)])
+    def test_nested_context_restores_each_scope(self, outer_enter, inner_enter):
+        test_var = contextvars.ContextVar("nested_var")
+        captured = contextvars.Context()
+        captured.run(test_var.set, "captured")
+        ctx = ExecutionContext(context_vars=captured)
+
+        with ctx.enter() if outer_enter else ctx:
+            assert test_var.get() == "captured"
+            test_var.set("outer")
+            with ctx.enter() if inner_enter else ctx:
+                assert test_var.get() == "captured"
+                test_var.set("inner")
+            assert test_var.get() == "outer"
+
+        assert test_var not in contextvars.copy_context()
 
     def test_enter_with_app_context(self):
         """Test enter enters app context if available."""
