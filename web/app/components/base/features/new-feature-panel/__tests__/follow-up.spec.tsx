@@ -1,147 +1,80 @@
 import type { OnFeaturesChange, SuggestedQuestionsAfterAnswer } from '../../types'
-import { fireEvent, render, screen } from '@testing-library/react'
-import * as React from 'react'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { FeaturesProvider } from '../../context'
-import FollowUp from '../follow-up'
+import { FollowUp } from '../follow-up'
 
-vi.mock('../follow-up-setting-modal', () => ({
-  default: ({
-    onSave,
-    onCancel,
-  }: {
-    onSave: (newState: unknown) => void
-    onCancel: () => void
-  }) => (
-    <div data-testid="follow-up-setting-modal">
-      <button
-        type="button"
-        onClick={() =>
-          onSave({
-            enabled: true,
-            prompt: 'test prompt',
-            model: {
-              provider: 'openai',
-              name: 'gpt-4o-mini',
-              mode: 'chat',
-              completion_params: {
-                temperature: 0.7,
-                max_tokens: 0,
-                top_p: 0,
-                echo: false,
-                stop: [],
-                presence_penalty: 0,
-                frequency_penalty: 0,
-              },
-            },
-          })
-        }
-      >
-        save-settings
-      </button>
-      <button type="button" onClick={onCancel}>
-        cancel-settings
-      </button>
-    </div>
-  ),
+vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
+  useModelListAndDefaultModelAndCurrentProviderAndModel: () => ({ defaultModel: undefined }),
 }))
+vi.mock(
+  '@/app/components/header/account-setting/model-provider-page/model-parameter-modal',
+  () => ({
+    default: () => <div>Model selector</div>,
+  }),
+)
 
-const renderWithProvider = (
+function renderWithProvider(
   props: {
     disabled?: boolean
     onChange?: OnFeaturesChange
     suggested?: SuggestedQuestionsAfterAnswer
   } = {},
-) => {
+) {
   return render(
-    <FeaturesProvider
-      features={{
-        suggested: props.suggested || { enabled: false },
-      }}
-    >
+    <FeaturesProvider features={{ suggested: props.suggested || { enabled: false } }}>
       <FollowUp disabled={props.disabled} onChange={props.onChange} />
     </FeaturesProvider>,
   )
 }
 
 describe('FollowUp', () => {
-  it('should render the follow-up feature card', () => {
-    renderWithProvider()
-
-    expect(screen.getByText(/feature\.suggestedQuestionsAfterAnswer\.title/)).toBeInTheDocument()
-  })
-
-  it('should render description text', () => {
-    renderWithProvider()
-
-    expect(
-      screen.getByText(/feature\.suggestedQuestionsAfterAnswer\.description/),
-    ).toBeInTheDocument()
-  })
-
-  it('should render a switch toggle', () => {
-    renderWithProvider()
-
-    expect(screen.getByRole('switch')).toBeInTheDocument()
-  })
-
-  it('should call onChange when toggled', () => {
+  it('enables the feature before exposing its configuration entry', async () => {
+    const user = userEvent.setup()
     const onChange = vi.fn()
     renderWithProvider({ onChange })
-
-    fireEvent.click(screen.getByRole('switch'))
-
-    expect(onChange).toHaveBeenCalledTimes(1)
+    expect(
+      screen.queryByRole('button', { name: 'common.operation.settings' }),
+    ).not.toBeInTheDocument()
+    await user.click(screen.getByRole('switch'))
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ suggested: { enabled: true } }))
+    expect(screen.getByRole('button', { name: 'common.operation.settings' })).toBeInTheDocument()
   })
 
-  it('should not throw when onChange is not provided', () => {
-    renderWithProvider()
-
-    expect(() => fireEvent.click(screen.getByRole('switch'))).not.toThrow()
-  })
-
-  it('should render edit button when enabled and hovering', () => {
-    renderWithProvider({
-      suggested: {
-        enabled: true,
-      },
-    })
-
-    fireEvent.mouseEnter(
-      screen.getByText(/feature\.suggestedQuestionsAfterAnswer\.title/).closest('[class]')!,
-    )
-
-    expect(screen.getByText(/operation\.settings/)).toBeInTheDocument()
-  })
-
-  it('should open settings modal and save follow-up config', () => {
+  it('discards cancelled drafts and reopens the saved custom prompt', async () => {
+    const user = userEvent.setup()
     const onChange = vi.fn()
-    renderWithProvider({
-      onChange,
-      suggested: {
-        enabled: true,
-      },
-    })
-
-    fireEvent.mouseEnter(
-      screen.getByText(/feature\.suggestedQuestionsAfterAnswer\.title/).closest('[class]')!,
-    )
-    fireEvent.click(screen.getByText(/operation\.settings/))
-
-    expect(screen.getByTestId('follow-up-setting-modal')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByText('save-settings'))
-
+    renderWithProvider({ onChange, suggested: { enabled: true, prompt: 'Saved prompt' } })
+    const trigger = screen.getByRole('button', { name: 'common.operation.settings' })
+    await user.click(trigger)
+    const prompt = screen.getByRole('textbox', { name: /modal.customPromptOption/ })
+    await user.clear(prompt)
+    await user.type(prompt, 'Discard me')
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(onChange).not.toHaveBeenCalled()
+    await user.click(trigger)
+    expect(screen.getByRole('textbox')).toHaveValue('Saved prompt')
+    await user.clear(screen.getByRole('textbox'))
+    await user.type(screen.getByRole('textbox'), 'New prompt')
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
     expect(onChange).toHaveBeenCalledWith(
       expect.objectContaining({
-        suggested: expect.objectContaining({
-          enabled: true,
-          prompt: 'test prompt',
-          model: expect.objectContaining({
-            provider: 'openai',
-            name: 'gpt-4o-mini',
-          }),
-        }),
+        suggested: expect.objectContaining({ enabled: true, prompt: 'New prompt' }),
       }),
     )
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await user.click(trigger)
+    expect(screen.getByRole('textbox')).toHaveValue('New prompt')
+  })
+
+  it('prevents changes when the feature is readonly', async () => {
+    const user = userEvent.setup()
+    renderWithProvider({ disabled: true, suggested: { enabled: true } })
+    expect(screen.getByRole('switch')).toHaveAttribute('aria-disabled', 'true')
+    const trigger = screen.getByRole('button', { name: 'common.operation.settings' })
+    expect(trigger).toBeDisabled()
+    await user.click(trigger)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 })

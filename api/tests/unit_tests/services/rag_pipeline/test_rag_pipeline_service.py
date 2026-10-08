@@ -83,17 +83,20 @@ class MockRepo:
     pass
 
 
-def test_get_published_workflow_by_id_locks_restore_source(mocker: MockerFixture) -> None:
-    session = mocker.Mock(spec=Session)
+def test_get_published_workflow_by_id_locks_restore_source(
+    mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
+) -> None:
+    session = rag_pipeline_service.session
     workflow = _make_workflow()
     workflow.version = "v1"
-    session.scalar.return_value = workflow
-    service = RagPipelineService.__new__(RagPipelineService)
-    service._session = session
+    session.add(workflow)
+    session.flush()
+    lookup = mocker.spy(session, "scalar")
+    service = rag_pipeline_service.service
 
     result = service.get_published_workflow_by_id(_make_pipeline(), workflow.id)
 
-    stmt = session.scalar.call_args.args[0]
+    stmt = lookup.call_args.args[0]
     sql = str(stmt.compile(dialect=postgresql.dialect()))
     assert result is workflow
     assert "FOR UPDATE" in sql
@@ -1059,11 +1062,26 @@ def test_set_datasource_variables_success(
     draft_wf.get_enclosing_node_type_and_id.return_value = None  # Avoid unpacking error
     mocker.patch.object(rag_pipeline_service.service, "get_draft_workflow", return_value=draft_wf)
 
-    execution = mocker.Mock(spec=WorkflowNodeExecution)
-    execution.id = "exec-1"
-    execution.process_data = {}
-    execution.inputs = {}
-    execution.outputs = {}
+    execution = WorkflowNodeExecution(
+        id="exec-1",
+        node_execution_id="node-exec-1",
+        workflow_id="wf-1",
+        workflow_execution_id="run-1",
+        index=1,
+        predecessor_node_id=None,
+        node_id="node-1",
+        node_type=BuiltinNodeTypes.DATASOURCE,
+        title="Datasource",
+        process_data={},
+        inputs={},
+        outputs={},
+        status=WorkflowNodeExecutionStatus.SUCCEEDED,
+        error=None,
+        elapsed_time=0,
+        metadata={},
+        created_at=datetime(2026, 1, 1),
+        finished_at=None,
+    )
     mocker.patch.object(rag_pipeline_service.service, "_handle_node_run_result", return_value=execution)
 
     # Mock Repository

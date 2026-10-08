@@ -122,7 +122,7 @@ vi.mock('@/app/components/plugins/reference-setting-modal', () => ({
 }))
 
 vi.mock('@/app/components/header/account-setting/update-setting-dialog', () => ({
-  default: () => (
+  UpdateSettingDialog: () => (
     <button type="button" aria-label="plugin.autoUpdate.autoUpdate">
       plugin.autoUpdate.autoUpdate
     </button>

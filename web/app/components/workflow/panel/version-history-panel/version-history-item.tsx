@@ -36,7 +36,7 @@ const formatVersion = (versionHistory: VersionHistory, latestVersionId: string):
   }
 }
 
-const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
+function VersionHistoryItem({
   item,
   currentVersion,
   latestVersionId,
@@ -45,7 +45,7 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
   canImportExportDSL,
   isLast,
   hideActionMenu,
-}) => {
+}: VersionHistoryItemProps) {
   const { t } = useTranslation(['workflowHistory'])
   const [open, setOpen] = useState(false)
 
@@ -76,7 +76,6 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
         'group relative flex gap-x-1 rounded-lg p-2',
         isSelected ? 'bg-state-accent-active' : 'hover:bg-state-base-hover',
       )}
-      onMouseLeave={() => setOpen(false)}
       onContextMenu={(e) => {
         if (hideActionMenu) return
 
@@ -157,22 +156,15 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
       </div>
       {/* Action Menu */}
       {!hideActionMenu && !isDraft && (
-        <div
-          className={cn(
-            'invisible absolute top-1 right-1 z-10 group-focus-within:visible group-hover:visible',
-            open && 'visible',
-          )}
-        >
-          <ActionMenu
-            workflowId={item.id}
-            isShowDelete={!isLatest}
-            isNamedVersion={!!item.marked_name}
-            canImportExportDSL={canImportExportDSL}
-            open={open}
-            setOpen={setOpen}
-            handleClickActionMenuItem={handleClickActionMenuItem}
-          />
-        </div>
+        <ActionMenu
+          workflowId={item.id}
+          isShowDelete={!isLatest}
+          isNamedVersion={!!item.marked_name}
+          canImportExportDSL={canImportExportDSL}
+          open={open}
+          setOpen={setOpen}
+          handleClickActionMenuItem={handleClickActionMenuItem}
+        />
       )}
     </div>
   )

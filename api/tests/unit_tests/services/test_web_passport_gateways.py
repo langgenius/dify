@@ -1,19 +1,23 @@
 """Unit tests for the outer gateways used by web passport issuance."""
 
-from unittest.mock import MagicMock
-
 import pytest
-from werkzeug.exceptions import Unauthorized
 
+from libs.passport import PassportService
 from services.enterprise.enterprise_service import WebAppAccessMode, WebAppSettings
 from services.web_passport_gateways import DeploymentWebPassportAuthGateway, PassportTokenGateway
 from services.web_passport_service import WebAppAuthType, WebPassportUnauthorizedError
 
 
+def _passport() -> PassportService:
+    passport = PassportService()
+    passport.sk = "test-secret-key-with-at-least-32-bytes"
+    return passport
+
+
 def test_deployment_auth_gateway_reads_deployment_setting() -> None:
     gateway = DeploymentWebPassportAuthGateway(
         webapp_auth_enabled=True,
-        get_app_access_mode=MagicMock(),
+        get_app_access_mode=lambda _app_id: WebAppSettings(accessMode=WebAppAccessMode.PUBLIC),
     )
 
     assert gateway.is_webapp_auth_enabled() is True
@@ -32,40 +36,41 @@ def test_deployment_auth_gateway_delegates_access_mode_mapping(
     access_mode: WebAppAccessMode,
     expected: WebAppAuthType,
 ) -> None:
-    get_access_mode = MagicMock(return_value=WebAppSettings(accessMode=access_mode))
+    requested_app_ids: list[str] = []
+
+    def get_access_mode(app_id: str) -> WebAppSettings:
+        requested_app_ids.append(app_id)
+        return WebAppSettings(accessMode=access_mode)
+
     gateway = DeploymentWebPassportAuthGateway(
         webapp_auth_enabled=True,
         get_app_access_mode=get_access_mode,
     )
 
     assert gateway.get_app_auth_type("app-1") == expected
-    get_access_mode.assert_called_once_with("app-1")
+    assert requested_app_ids == ["app-1"]
 
 
 def test_passport_token_gateway_delegates_issue_and_verify() -> None:
-    passport = MagicMock()
-    passport.verify.return_value = {"sub": "account-1"}
-    passport.issue.return_value = "issued-token"
+    passport = _passport()
     gateway = PassportTokenGateway(passport=passport)
 
-    assert gateway.verify("input-token") == {"sub": "account-1"}
-    assert gateway.issue({"sub": "account-1"}) == "issued-token"
-    passport.verify.assert_called_once_with("input-token")
-    passport.issue.assert_called_once_with({"sub": "account-1"})
+    token = gateway.issue({"sub": "account-1"})
+
+    assert gateway.verify(token) == {"sub": "account-1"}
 
 
 def test_passport_token_gateway_translates_unauthorized() -> None:
-    passport = MagicMock()
-    passport.verify.side_effect = Unauthorized("Token has expired.")
+    passport = _passport()
     gateway = PassportTokenGateway(passport=passport)
+    expired_token = passport.issue({"exp": 0})
 
     with pytest.raises(WebPassportUnauthorizedError, match="Token has expired"):
-        gateway.verify("expired-token")
+        gateway.verify(expired_token)
 
 
-def test_passport_token_gateway_defaults_empty_unauthorized_description() -> None:
-    passport = MagicMock()
-    passport.verify.side_effect = Unauthorized("")
+def test_passport_token_gateway_translates_invalid_token() -> None:
+    passport = _passport()
     gateway = PassportTokenGateway(passport=passport)
 
     with pytest.raises(WebPassportUnauthorizedError, match="Invalid token"):

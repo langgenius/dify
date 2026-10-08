@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.plugin.entities.plugin_daemon import CredentialType
 from models.tools import BuiltinToolProvider, ToolOAuthSystemClient, ToolOAuthTenantClient
 from repositories.credentials.query_repository import CredentialQueryRepository
-from services.tools import builtin_tools_manage_service as service_module
+from services.tools import legacy_builtin_tools_manage_service as service_module
 from services.tools.legacy_builtin_tools_manage_service import BuiltinToolManageService
 
 

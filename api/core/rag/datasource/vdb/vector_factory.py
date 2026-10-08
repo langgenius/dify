@@ -33,7 +33,15 @@ class AbstractVectorFactory(ABC):
         self._collection_name = collection_name
 
     @abstractmethod
-    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> BaseVector:
+    def init_vector(
+        self, dataset: Dataset, attributes: list, embeddings: Embeddings, *, session: Session | None
+    ) -> BaseVector:
+        """Initialize with resolved configuration and the caller's metadata session.
+
+        ``None`` is used after metadata has been resolved outside the backend's
+        external I/O. A supplied session belongs to the caller and must not be
+        committed, rolled back, or closed here.
+        """
         raise NotImplementedError
 
     @staticmethod
@@ -150,7 +158,7 @@ class Vector:
             configuration = resolve_vector_configuration(dataset, session=session)
         self._vector_processor = self.get_vector_factory(configuration.vector_type)(
             collection_name=configuration.collection_name
-        ).init_vector(dataset, self._attributes, self._embeddings)
+        ).init_vector(dataset, self._attributes, self._embeddings, session=session)
 
     @staticmethod
     def get_vector_factory(vector_type: str) -> type[AbstractVectorFactory]:

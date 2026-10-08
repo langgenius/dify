@@ -531,7 +531,7 @@ def test_duplicate_detection_and_id_regeneration(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     repo = _repository(monkeypatch, sqlite_session_factory)
-    duplicate = IntegrityError("duplicate", params=None, orig=Mock(spec=psycopg2.errors.UniqueViolation))
+    duplicate = IntegrityError("duplicate", params=None, orig=psycopg2.errors.UniqueViolation("duplicate key"))
     assert repo._is_duplicate_key_error(duplicate)
     assert not repo._is_duplicate_key_error(IntegrityError("other", params=None, orig=Exception("other")))
     execution = _execution(execution_id="old")
@@ -552,7 +552,7 @@ def test_save_retries_postgres_duplicate_key(
     duplicate = IntegrityError(
         "duplicate",
         params=None,
-        orig=Mock(spec=psycopg2.errors.UniqueViolation),
+        orig=psycopg2.errors.UniqueViolation("duplicate key"),
     )
     persist = Mock(side_effect=[duplicate, None])
     monkeypatch.setattr(repo, "_persist_to_database", persist)

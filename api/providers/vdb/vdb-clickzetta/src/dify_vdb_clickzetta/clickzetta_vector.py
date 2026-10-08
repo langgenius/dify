@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any, override
 
 import clickzetta  # type: ignore
 from pydantic import BaseModel, model_validator
+from sqlalchemy.orm import Session
 
 if TYPE_CHECKING:
     from clickzetta.connector.v0.connection import Connection  # type: ignore
@@ -1069,7 +1070,9 @@ class ClickzettaVectorFactory(AbstractVectorFactory):
     """Factory for creating Clickzetta vector instances."""
 
     @override
-    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> BaseVector:
+    def init_vector(
+        self, dataset: Dataset, attributes: list, embeddings: Embeddings, *, session: Session | None
+    ) -> BaseVector:
         """Initialize a Clickzetta vector instance."""
         # Get configuration from environment variables or dataset config
         config = ClickzettaConfig(

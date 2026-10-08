@@ -307,21 +307,25 @@ def test_qdrant_factory_paths(qdrant_module, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(qdrant_module.dify_config, "QDRANT_URL", "http://localhost:6333")
 
     with Flask(__name__).app_context():
-        vector = qdrant_module.QdrantVectorFactory().init_vector(dataset, attributes=[], embeddings=embeddings)
+        vector = qdrant_module.QdrantVectorFactory().init_vector(
+            dataset, attributes=[], embeddings=embeddings, session=None
+        )
         assert vector.collection_name == "AUTO_COLLECTION"
         assert dataset.index_struct_dict["vector_store"]["class_prefix"] == "AUTO_COLLECTION"
 
         dataset.index_struct = json.dumps({"vector_store": {"class_prefix": "existing"}})
-        vector = qdrant_module.QdrantVectorFactory().init_vector(dataset, attributes=[], embeddings=embeddings)
+        vector = qdrant_module.QdrantVectorFactory().init_vector(
+            dataset, attributes=[], embeddings=embeddings, session=None
+        )
         assert vector.collection_name == "existing"
 
         dataset.collection_binding_id = "binding-1"
         vector = qdrant_module.QdrantVectorFactory(collection_name="BOUND_COLLECTION").init_vector(
-            dataset, attributes=[], embeddings=embeddings
+            dataset, attributes=[], embeddings=embeddings, session=None
         )
         assert vector.collection_name == "BOUND_COLLECTION"
         with pytest.raises(ValueError, match="bound collection name must be resolved"):
-            qdrant_module.QdrantVectorFactory().init_vector(dataset, attributes=[], embeddings=embeddings)
+            qdrant_module.QdrantVectorFactory().init_vector(dataset, attributes=[], embeddings=embeddings, session=None)
 
 
 @pytest.mark.parametrize("backend_fails", [False, True])

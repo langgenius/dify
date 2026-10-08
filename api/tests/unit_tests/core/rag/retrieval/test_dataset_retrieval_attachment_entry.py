@@ -4,11 +4,16 @@ from extensions.application_services.retrieval import build_dataset_retrieval
 
 from unittest.mock import patch
 
+from sqlalchemy.orm import Session, sessionmaker
+
 from core.workflow.nodes.knowledge_retrieval.retrieval import KnowledgeRetrievalRequest
 from models.dataset import Dataset
+from repositories.knowledge.retrieval_repository import KnowledgeRetrievalRepository
 
 
-def test_knowledge_retrieval_allows_attachment_only_requests(sqlite_session_factory) -> None:
+def test_knowledge_retrieval_allows_attachment_only_requests(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
     retrieval = build_dataset_retrieval(sqlite_session_factory)()
     available_dataset = Dataset(
         id="dataset-1",
@@ -34,7 +39,7 @@ def test_knowledge_retrieval_allows_attachment_only_requests(sqlite_session_fact
 
     with (
         patch.object(retrieval, "_check_knowledge_rate_limit"),
-        patch.object(retrieval._records, "available_datasets", return_value=[available_dataset]),
+        patch.object(KnowledgeRetrievalRepository, "available_datasets", return_value=[available_dataset]),
         patch.object(retrieval, "multiple_retrieve", return_value=[]) as mock_multiple,
     ):
         result = retrieval.knowledge_retrieval(request)

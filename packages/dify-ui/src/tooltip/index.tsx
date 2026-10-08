@@ -13,6 +13,8 @@ const Tooltip = BaseTooltip.Root
 const TooltipTrigger = BaseTooltip.Trigger
 
 type TooltipProviderProps = BaseTooltip.Provider.Props
+type TooltipActions = BaseTooltip.Root.Actions
+
 type TooltipProps<Payload = unknown> = BaseTooltip.Root.Props<Payload>
 type TooltipTriggerProps<Payload = unknown> = BaseTooltip.Trigger.Props<Payload>
 
@@ -54,4 +56,10 @@ function TooltipContent({
 
 export { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger }
 
-export type { TooltipContentProps, TooltipProps, TooltipProviderProps, TooltipTriggerProps }
+export type {
+  TooltipActions,
+  TooltipContentProps,
+  TooltipProps,
+  TooltipProviderProps,
+  TooltipTriggerProps,
+}

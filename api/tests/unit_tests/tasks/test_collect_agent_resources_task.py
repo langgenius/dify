@@ -1,5 +1,4 @@
 from typing import Protocol, cast
-from unittest.mock import MagicMock, call
 
 import pytest
 
@@ -22,7 +21,11 @@ def test_collection_task_uses_retention_queue() -> None:
 
 
 def test_enqueue_deduplicates_ids_and_skips_empty_input(monkeypatch: pytest.MonkeyPatch) -> None:
-    delay = MagicMock()
+    delay_calls: list[dict[str, object]] = []
+
+    def delay(**kwargs: object) -> None:
+        delay_calls.append(kwargs)
+
     monkeypatch.setattr(collect_agent_resources, "delay", delay)
 
     enqueue_agent_resource_collection(tenant_id="tenant-1")
@@ -33,13 +36,15 @@ def test_enqueue_deduplicates_ids_and_skips_empty_input(monkeypatch: pytest.Monk
         purge_agent_ids=["agent-2", "", "agent-1", "agent-2"],
     )
 
-    delay.assert_called_once_with(
-        tenant_id="tenant-1",
-        binding_ids=["binding-1", "binding-2"],
-        workspace_ids=["workspace-1"],
-        home_snapshot_ids=[],
-        purge_agent_ids=["agent-1", "agent-2"],
-    )
+    assert delay_calls == [
+        {
+            "tenant_id": "tenant-1",
+            "binding_ids": ["binding-1", "binding-2"],
+            "workspace_ids": ["workspace-1"],
+            "home_snapshot_ids": [],
+            "purge_agent_ids": ["agent-1", "agent-2"],
+        }
+    ]
 
 
 def test_collection_runs_in_workspace_binding_snapshot_order(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -59,7 +64,12 @@ def test_collection_runs_in_workspace_binding_snapshot_order(monkeypatch: pytest
         "collect_retired_home_snapshot",
         lambda **_kwargs: calls.append("home"),
     )
-    purge = MagicMock(side_effect=lambda **_kwargs: calls.append("purge"))
+    purge_calls: list[tuple[str, list[str]]] = []
+
+    def purge(*, tenant_id: str, agent_ids: list[str]) -> None:
+        purge_calls.append((tenant_id, agent_ids))
+        calls.append("purge")
+
     monkeypatch.setattr(AgentDeletionService, "purge_archived_agents", purge)
 
     collect_agent_resources.run(
@@ -71,7 +81,7 @@ def test_collection_runs_in_workspace_binding_snapshot_order(monkeypatch: pytest
     )
 
     assert calls == ["workspace", "binding", "home", "purge"]
-    purge.assert_called_once_with(tenant_id="tenant-1", agent_ids=["agent-1"])
+    assert purge_calls == [("tenant-1", ["agent-1"])]
 
 
 def test_collection_failure_propagates_after_attempting_remaining_resources(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -83,7 +93,10 @@ def test_collection_failure_propagates_after_attempting_remaining_resources(monk
         "binding-1": RuntimeError("binding-1 failed"),
         "home-2": RuntimeError("home-2 failed"),
     }
-    log_exception = MagicMock()
+    logged_exceptions: list[tuple[str, dict[str, object]]] = []
+
+    def log_exception(message: str, *, extra: dict[str, object]) -> None:
+        logged_exceptions.append((message, extra))
 
     def collect_workspace(*, workspace_id: str, **_kwargs: object) -> None:
         calls.append(f"workspace:{workspace_id}")
@@ -104,7 +117,11 @@ def test_collection_failure_propagates_after_attempting_remaining_resources(monk
     monkeypatch.setattr(AgentWorkspaceService, "collect_retired_binding", collect_binding)
     monkeypatch.setattr(AgentHomeSnapshotService, "collect_retired_home_snapshot", collect_home)
     monkeypatch.setattr("tasks.collect_agent_resources_task.logger.exception", log_exception)
-    purge = MagicMock()
+    purge_calls: list[tuple[str, list[str]]] = []
+
+    def purge(*, tenant_id: str, agent_ids: list[str]) -> None:
+        purge_calls.append((tenant_id, agent_ids))
+
     monkeypatch.setattr(AgentDeletionService, "purge_archived_agents", purge)
 
     with pytest.raises(RuntimeError) as exc_info:
@@ -131,33 +148,37 @@ def test_collection_failure_propagates_after_attempting_remaining_resources(monk
         "home:home-2",
         "home:home-3",
     ]
-    purge.assert_not_called()
-    log_exception.assert_has_calls(
-        [
-            call(
-                "Failed to collect retired Agent resource",
-                extra={
-                    "tenant_id": "tenant-1",
-                    "resource_type": resource_type,
-                    "resource_id": resource_id,
-                },
-            )
-            for resource_type, resource_id in (
-                ("workspace", "workspace-1"),
-                ("workspace", "workspace-2"),
-                ("binding", "binding-1"),
-                ("home_snapshot", "home-2"),
-            )
-        ],
-        any_order=False,
-    )
-    assert log_exception.call_count == 4
+    assert purge_calls == []
+    assert logged_exceptions == [
+        (
+            "Failed to collect retired Agent resource",
+            {
+                "tenant_id": "tenant-1",
+                "resource_type": resource_type,
+                "resource_id": resource_id,
+            },
+        )
+        for resource_type, resource_id in (
+            ("workspace", "workspace-1"),
+            ("workspace", "workspace-2"),
+            ("binding", "binding-1"),
+            ("home_snapshot", "home-2"),
+        )
+    ]
 
 
 def test_enqueue_failure_propagates(monkeypatch: pytest.MonkeyPatch) -> None:
     error = RuntimeError("queue unavailable")
-    delay = MagicMock(side_effect=error)
-    log_exception = MagicMock()
+    delay_calls: list[dict[str, object]] = []
+    logged_exceptions: list[tuple[str, dict[str, object]]] = []
+
+    def delay(**kwargs: object) -> None:
+        delay_calls.append(kwargs)
+        raise error
+
+    def log_exception(message: str, *, extra: dict[str, object]) -> None:
+        logged_exceptions.append((message, extra))
+
     monkeypatch.setattr(collect_agent_resources, "delay", delay)
     monkeypatch.setattr("tasks.collect_agent_resources_task.logger.exception", log_exception)
 
@@ -177,8 +198,10 @@ def test_enqueue_failure_propagates(monkeypatch: pytest.MonkeyPatch) -> None:
         "home_snapshot_ids": ["home-1"],
         "purge_agent_ids": ["agent-1", "agent-2"],
     }
-    delay.assert_called_once_with(tenant_id="tenant-1", **payload)
-    log_exception.assert_called_once_with(
-        "Failed to enqueue retired Agent resource collection",
-        extra={"tenant_id": "tenant-1", **payload},
-    )
+    assert delay_calls == [{"tenant_id": "tenant-1", **payload}]
+    assert logged_exceptions == [
+        (
+            "Failed to enqueue retired Agent resource collection",
+            {"tenant_id": "tenant-1", **payload},
+        )
+    ]
