@@ -62,7 +62,7 @@ from libs.helper import TimestampField
 from libs.login import current_account_with_tenant, login_required
 from models import Account
 from models.snippet import CustomizedSnippet
-from services.agent.workflow_publish_service import WorkflowAgentPublishService
+from services.agent.legacy_workflow_publish_service import WorkflowAgentPublishService
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
 from services.snippet_generate_service import SnippetGenerateService

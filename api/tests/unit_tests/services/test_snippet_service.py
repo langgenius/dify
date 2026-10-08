@@ -232,7 +232,7 @@ def test_sync_draft_workflow_creates_draft_and_updates_input_fields(
     service = SnippetService(session_maker=sqlite_session_factory)
     monkeypatch.setattr(service, "get_draft_workflow", Mock(return_value=None))
     monkeypatch.setattr(
-        "services.agent.workflow_publish_service.WorkflowAgentPublishService.sync_agent_bindings_for_draft",
+        "services.agent.legacy_workflow_publish_service.WorkflowAgentPublishService.sync_agent_bindings_for_draft",
         Mock(return_value={"retired-agent"}),
     )
     retire_unowned = Mock()
@@ -494,7 +494,7 @@ def test_restore_published_snippet_workflow_to_draft_copies_source_snapshot(
     monkeypatch.setattr(service, "get_published_workflow_by_id", Mock(return_value=source_workflow))
     monkeypatch.setattr(service, "get_draft_workflow", Mock(return_value=draft_workflow))
     monkeypatch.setattr(
-        "services.agent.workflow_publish_service.WorkflowAgentPublishService.restore_agent_node_bindings_to_draft",
+        "services.agent.legacy_workflow_publish_service.WorkflowAgentPublishService.restore_agent_node_bindings_to_draft",
         Mock(return_value={"retired-agent"}),
     )
     retire_unowned = Mock()
@@ -643,7 +643,7 @@ def test_publish_workflow_creates_snapshot_and_updates_snippet(
     sqlite_session.add_all([draft_workflow, snippet])
     sqlite_session.flush()
     monkeypatch.setattr(
-        "services.agent.workflow_publish_service.WorkflowAgentPublishService.copy_agent_node_bindings_to_published",
+        "services.agent.legacy_workflow_publish_service.WorkflowAgentPublishService.copy_agent_node_bindings_to_published",
         Mock(return_value=set()),
     )
 

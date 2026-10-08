@@ -21,7 +21,7 @@ import re
 import xml.etree.ElementTree as ET
 import zipfile
 from base64 import b64encode
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
@@ -44,6 +44,7 @@ from core.db.session_factory import session_factory
 from core.errors.error import ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from core.tools.tool_file_manager import ToolFileManager
+from enums.agent import WorkflowAgentBindingType
 from extensions.ext_storage import storage
 from graphon.model_runtime.entities.message_entities import (
     ImagePromptMessageContent,
@@ -66,7 +67,6 @@ from models.agent import (
     AgentScope,
     AgentSource,
     AgentStatus,
-    WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
 from models.agent_config_entities import (
@@ -74,6 +74,7 @@ from models.agent_config_entities import (
     AgentSoulModelConfig,
     AgentSoulModelSettings,
     AgentSoulPromptConfig,
+    agent_soul_has_model,
     validate_config_skill_name,
 )
 from models.enums import TagType
@@ -91,7 +92,6 @@ from models.skill import (
     SkillVersionManifestFile,
 )
 from models.tools import ToolFile
-from services.agent.agent_soul_state import agent_soul_has_model
 from services.agent.roster_service import AgentRosterService
 from services.file_service import FileService
 
@@ -583,7 +583,9 @@ class SkillManagementService:
         *,
         tool_file_manager: ToolFileManager | None = None,
         session: Session | None = None,
+        session_maker: Callable[[], Session] | None = None,
     ) -> None:
+        self._sessions = session_maker or session_factory.create_session
         self._tool_files = tool_file_manager or ToolFileManager()
         self._session = session
 
@@ -600,7 +602,7 @@ class SkillManagementService:
         if self._session is not None:
             yield self._session
             return
-        with session_factory.create_session() as managed_session:
+        with self._sessions() as managed_session:
             yield managed_session
 
     def create_skill(self, *, tenant_id: str, user_id: str, payload: SkillCreatePayload) -> dict[str, Any]:
@@ -2335,7 +2337,7 @@ class SkillManagementService:
             )
             for binding, skill, version, tool_file in rows
             for published_name, published_display_name, published_description in [
-                self._published_skill_identity(skill, version)
+                self._published_skill_identity(skill, version, storage_key=tool_file.file_key)
             ]
         ]
 
@@ -2396,7 +2398,9 @@ class SkillManagementService:
         )
 
     @classmethod
-    def _published_skill_identity(cls, skill: Skill, version: SkillVersion) -> tuple[str, str, str]:
+    def _published_skill_identity(
+        cls, skill: Skill, version: SkillVersion, *, storage_key: str | None = None
+    ) -> tuple[str, str, str]:
         """Return metadata from the published snapshot, falling back for old versions."""
         manifest = version.manifest
         if manifest.name is not None:
@@ -2404,9 +2408,10 @@ class SkillManagementService:
             return manifest.name, display_name, manifest.description or ""
 
         try:
-            archive_bytes = cls._load_tool_file_bytes(
-                tenant_id=skill.tenant_id,
-                file_id=version.archive_tool_file_id,
+            archive_bytes = (
+                storage.load_once(storage_key)
+                if storage_key is not None
+                else cls._load_tool_file_bytes(tenant_id=skill.tenant_id, file_id=version.archive_tool_file_id)
             )
             with zipfile.ZipFile(io.BytesIO(archive_bytes)) as archive:
                 cls._validate_archive_limits(archive)
