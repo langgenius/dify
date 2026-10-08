@@ -820,3 +820,63 @@ def test_parse_cell_paragraph_hyperlink_in_table_cell_mailto():
     finally:
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
+
+
+def _generate_table_with_structural_characters():
+    doc = Document()
+    table = doc.add_table(rows=2, cols=2)
+    table.style = "Table Grid"
+    table.cell(0, 0).text = "Name"
+    table.cell(0, 1).text = "Pattern"
+    table.cell(1, 0).text = "alternation"
+    # A pipe is ordinary in a cell: a regex, an "and/or" shorthand, a shell
+    # pipeline in a documentation table.
+    table.cell(1, 1).text = "a|b"
+    return doc
+
+
+def test_table_to_markdown_escapes_a_pipe_in_a_cell(tmp_path: Path) -> None:
+    """A pipe in a cell must not become a column separator."""
+    doc = _generate_table_with_structural_characters()
+    path = tmp_path / "pipes.docx"
+    doc.save(str(path))
+
+    extractor = WordExtractor.__new__(WordExtractor)
+    markdown = extractor._table_to_markdown(Document(str(path)).tables[0], {})
+
+    rows = markdown.splitlines()
+    assert rows[0] == "| Name | Pattern |"
+    assert rows[2] == "| alternation | a\\|b |"
+    # Every row has to describe the same number of columns as the header.
+    assert all(row.count("|") - row.count("\\|") == 3 for row in rows)
+
+
+def test_table_to_markdown_keeps_a_backslash_from_eating_the_escape(tmp_path: Path) -> None:
+    doc = Document()
+    table = doc.add_table(rows=2, cols=1)
+    table.cell(0, 0).text = "Pattern"
+    table.cell(1, 0).text = "a\\|b"
+    path = tmp_path / "backslash.docx"
+    doc.save(str(path))
+
+    extractor = WordExtractor.__new__(WordExtractor)
+    markdown = extractor._table_to_markdown(Document(str(path)).tables[0], {})
+
+    assert markdown.splitlines()[2] == "| a\\\\\\|b |"
+
+
+def test_table_to_markdown_leaves_a_plain_table_alone(tmp_path: Path) -> None:
+    """Guard: a table with nothing to escape renders exactly as before."""
+    doc = Document()
+    table = doc.add_table(rows=2, cols=2)
+    table.cell(0, 0).text = "Item"
+    table.cell(0, 1).text = "Fee"
+    table.cell(1, 0).text = "Registration"
+    table.cell(1, 1).text = "100"
+    path = tmp_path / "plain.docx"
+    doc.save(str(path))
+
+    extractor = WordExtractor.__new__(WordExtractor)
+    markdown = extractor._table_to_markdown(Document(str(path)).tables[0], {})
+
+    assert markdown == "| Item | Fee |\n| --- | --- |\n| Registration | 100 |"
