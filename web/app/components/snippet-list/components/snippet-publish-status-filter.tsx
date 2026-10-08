@@ -20,7 +20,7 @@ type SnippetPublishStatusFilterProps = {
 }
 
 const chipClassName =
-  'flex h-8 items-center rounded-lg border-[0.5px] px-2 text-[13px] leading-4 outline-hidden transition-colors focus-visible:ring-2 focus-visible:ring-state-accent-solid'
+  'flex h-8 items-center rounded-lg border-[0.5px] px-2 text-[13px] leading-4 transition-colors'
 
 const SnippetPublishStatusFilter = ({ value, onChange }: SnippetPublishStatusFilterProps) => {
   const { t } = useTranslation(['app', 'snippet', 'workflow'])

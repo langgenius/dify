@@ -25,7 +25,6 @@ from models.account import TenantAccountRole
 from models.credential_permission import CredentialPermission
 from models.enums import PermissionEnum
 from repositories.credentials.query_repository import CredentialQueryRepository
-from services.credentials.query import CredentialQuery
 
 if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]
@@ -43,7 +42,7 @@ def app() -> Flask:
 
 
 @pytest.fixture
-def controller_module(monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]):
+def controller_module(monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None], sqlite_session_factory):
     """
     Import the controller with auth decorators neutralized only during import.
 
@@ -82,7 +81,9 @@ def controller_module(monkeypatch: pytest.MonkeyPatch, config_overrides: Callabl
     login_module = importlib.import_module("libs.login")
     monkeypatch.setattr(login_module, "check_csrf_token", lambda *args, **kwargs: None)
     monkeypatch.setattr(
-        module, "application_services", lambda: SimpleNamespace(credential_queries=MagicMock(spec=CredentialQuery))
+        module,
+        "application_services",
+        lambda: SimpleNamespace(credential_queries=CredentialQueryRepository(session_factory=sqlite_session_factory)),
     )
     return module
 
