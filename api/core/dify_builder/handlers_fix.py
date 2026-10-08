@@ -347,12 +347,16 @@ def build_form_fields(specs: list[dict]) -> list[FormField]:
             continue
         ftype = spec.get("type") if spec.get("type") in _FORM_FIELD_TYPES else "text"
         options = spec.get("options") if isinstance(spec.get("options"), list) else []
+        hint = spec.get("hint")
         fields.append(
             FormField(
                 key=str(spec["key"]),
                 label=str(spec.get("label", spec["key"])),
                 type=ftype,
                 options=[str(o) for o in options],
+                # A field left blank on purpose has to say why, or it reads as a
+                # box the user forgot to fill (PM report 2026-09-29).
+                hint=hint if isinstance(hint, str) and hint else None,
             )
         )
     return fields

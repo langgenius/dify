@@ -136,6 +136,10 @@ PLAIN: frozenset[str] = frozenset(
         "Status",
         "Workflow",
         "I filled in typical requirements; edit and submit to adjust.",
+        # Why a requirements field arrived empty. Must stay in this catalog:
+        # an unregistered string is value-matched to nothing and ships in
+        # English on a localized form (the ESQ1-259 failure).
+        "Not stated in your request — add it if you have one.",
         "These rules change branching and output; review before applying.",
         "Adjust any values before Builder continues.",
         "Recommended resources are selected by default.",
