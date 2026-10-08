@@ -4,11 +4,15 @@ from extensions.application_services.retrieval import build_dataset_retrieval
 
 from unittest.mock import patch
 
+from sqlalchemy.orm import Session, sessionmaker
+
 from core.workflow.nodes.knowledge_retrieval.retrieval import KnowledgeRetrievalRequest
 from models.dataset import Dataset
 
 
-def test_knowledge_retrieval_allows_attachment_only_requests(sqlite_session_factory) -> None:
+def test_knowledge_retrieval_allows_attachment_only_requests(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
     retrieval = build_dataset_retrieval(sqlite_session_factory)()
     available_dataset = Dataset(
         id="dataset-1",
