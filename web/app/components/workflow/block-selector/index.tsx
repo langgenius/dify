@@ -135,6 +135,7 @@ function BlockSelector({
       ref={triggerRef}
       aria-label={triggerAriaLabel}
       disabled={disabled}
+      className={triggerClassName}
       render={trigger}
       onClick={handleTrigger}
     />
