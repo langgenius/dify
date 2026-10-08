@@ -22,11 +22,11 @@ import type {
 import type { SkillUploadDecision, SkillUploadReviewItem } from './upload-workflow'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import {
@@ -1574,7 +1574,7 @@ export function FileTree({
               <AlertDialogDescription className="mt-2 system-md-regular text-text-tertiary">
                 {deleteNode?.path}
               </AlertDialogDescription>
-              <AlertDialogActions className="p-0 pt-6">
+              <AlertDialogFooter className="p-0 pt-6">
                 <AlertDialogCancelButton disabled={fileMutation.isPending}>
                   {tCommon(($) => $['operation.cancel'])}
                 </AlertDialogCancelButton>
@@ -1585,7 +1585,7 @@ export function FileTree({
                 >
                   {tCommon(($) => $['operation.delete'])}
                 </AlertDialogConfirmButton>
-              </AlertDialogActions>
+              </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
           <div className="mx-3 border-t border-divider-subtle pt-2 pb-3">

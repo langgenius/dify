@@ -14,7 +14,6 @@ from pydantic import ValidationError
 from werkzeug.exceptions import BadGateway, BadRequest, Conflict, Forbidden, HTTPException, NotFound, ServiceUnavailable
 from werkzeug.test import TestResponse
 
-from controllers.console import flask_admission, wraps
 from controllers.console.app.error import AppNotFoundError
 from controllers.console.workspace.network_access_group import (
     AppNetworkAccessGroupApi,
@@ -31,9 +30,9 @@ from controllers.console.workspace.network_access_group import (
     _translate_service_error,
     _translate_upstream_error,
 )
+from controllers.console.wraps import validate_request
 from core.network_access.client_ip import NetworkAccessClientIPUnavailableError
 from enums import DeploymentEdition
-from libs import login as login_adapter
 from libs.login import AccountWithTenant
 from machinery.context import RequestContext
 from models.account import Account, AccountStatus
@@ -66,19 +65,6 @@ ACCOUNT_ID = "22222222-2222-4222-8222-222222222222"
 APP_ID = "33333333-3333-4333-8333-333333333333"
 GROUP_ID = "44444444-4444-4444-8444-444444444444"
 BINDING_ID = "55555555-5555-4555-8555-555555555555"
-
-
-@pytest.fixture
-def authenticated_console_account(monkeypatch: pytest.MonkeyPatch) -> AccountWithTenant:
-    account = Account(name="Admin", email="admin@example.com", status=AccountStatus.ACTIVE)
-    account.id = ACCOUNT_ID
-    identity = AccountWithTenant(account, TENANT_ID)
-    monkeypatch.setattr(login_adapter, "_resolve_current_user", lambda: account)
-    monkeypatch.setattr(login_adapter, "check_csrf_token", MagicMock())
-    monkeypatch.setattr(wraps, "_is_setup_completed", lambda: True)
-    monkeypatch.setattr(wraps, "current_account_with_tenant", lambda: identity)
-    monkeypatch.setattr(flask_admission, "current_account_with_tenant", lambda: identity)
-    return identity
 
 
 def _request_context() -> RequestContext:
@@ -356,26 +342,49 @@ def test_application_error_mapping(
         AppNetworkAccessGroupApi.put,
     ],
 )
+@pytest.mark.parametrize("paid", [False, True], ids=["unpaid", "paid"])
 def test_mutation_paid_plan_admission_precedes_payload_validation(
-    mutation: Callable[..., object],
-    authenticated_console_account: AccountWithTenant,
-    config_overrides: Callable[..., None],
+    mutation: Callable[..., object], paid: bool, config_overrides: Callable[..., None]
 ) -> None:
     app = Flask(__name__)
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, LOGIN_DISABLED=False)
+    account = Account(name="Policy editor", email="editor@example.com", status=AccountStatus.ACTIVE)
+    account.id = ACCOUNT_ID
+    identity = AccountWithTenant(account, TENANT_ID)
+    service = MagicMock()
+    method = mutation.__name__.upper()
+
+    def mutation_route() -> Response:
+        mutation(object())
+        raise AssertionError("An invalid payload must not reach the mutation body")
+
+    app.add_url_rule("/mutation", view_func=mutation_route, methods=[method])
 
     with (
-        app.test_request_context(json={"name": "", "description": "", "allowed_cidrs": []}),
+        _application_services(service),
+        patch("libs.login._resolve_current_user", return_value=account),
+        patch("libs.login.check_csrf_token") as csrf_check,
+        patch("controllers.console.wraps.current_account_with_tenant", return_value=identity),
+        patch("controllers.console.flask_admission.current_account_with_tenant", return_value=identity),
+        patch("controllers.console.wraps.validate_request", wraps=validate_request) as validate_payload,
         patch(
             "controllers.console.wraps.is_cloud_edition_billing_paid_plan",
-            return_value=False,
+            return_value=paid,
         ) as is_paid_plan,
-        pytest.raises(HTTPException) as exc_info,
     ):
-        mutation(object())
+        response = app.test_client().open(
+            "/mutation", method=method, json={"name": "", "description": "", "allowed_cidrs": []}
+        )
 
-    assert exc_info.value.code == 403
-    is_paid_plan.assert_called_once_with(authenticated_console_account.tenant_id)
+    assert response.status_code == (422 if paid else 403)
+    is_paid_plan.assert_called_once_with(TENANT_ID)
+    csrf_check.assert_called_once()
+    assert service.method_calls == []
+    if paid:
+        validate_payload.assert_called_once()
+    else:
+        assert b"This feature requires a paid plan." in response.data
+        validate_payload.assert_not_called()
 
 
 def test_controller_maps_service_error_before_serialization() -> None:
@@ -650,18 +659,27 @@ def test_current_ip_read_maps_role_denial_without_resolving_ip() -> None:
 
 
 @pytest.mark.parametrize("edition", [DeploymentEdition.COMMUNITY, DeploymentEdition.ENTERPRISE])
-@pytest.mark.usefixtures("authenticated_console_account")
-def test_current_ip_read_is_cloud_only(
-    config_overrides: Callable[..., None],
-    edition: DeploymentEdition,
-) -> None:
+def test_current_ip_read_is_cloud_only(config_overrides: Callable[..., None], edition: DeploymentEdition) -> None:
     app = Flask(__name__)
     service = MagicMock()
-    config_overrides(DEPLOYMENT_EDITION=edition)
+    config_overrides(DEPLOYMENT_EDITION=edition, LOGIN_DISABLED=False)
+    account = Account(name="Policy editor", email="editor@example.com", status=AccountStatus.ACTIVE)
+    account.id = ACCOUNT_ID
 
-    with app.test_request_context(), _application_services(service), pytest.raises(NotFound):
+    with (
+        app.test_request_context(),
+        _application_services(service),
+        patch("controllers.console.wraps._is_setup_completed", return_value=True),
+        patch("libs.login._resolve_current_user", return_value=account),
+        patch("libs.login.check_csrf_token") as csrf_check,
+        patch(
+            "controllers.console.wraps.current_account_with_tenant", return_value=AccountWithTenant(account, TENANT_ID)
+        ),
+        pytest.raises(NotFound),
+    ):
         CurrentWorkspaceNetworkAccessGroupCurrentIPApi().get()
 
+    csrf_check.assert_called_once()
     service.get_current_ip.assert_not_called()
 
 
@@ -743,7 +761,7 @@ def _typed_binding_http_response(wire: Mapping[str, object]) -> TestResponse:
     app.testing = True
     apps, memberships, entitlement = MagicMock(), MagicMock(), MagicMock()
     apps.get_manageable_app.return_value = NetworkAccessGroupAppRecord(APP_ID, "workflow", "Test", None, None, None)
-    memberships.get_role_for_account.return_value = "owner"
+    memberships.get_account_role.return_value = "owner"
     entitlement.is_paid_plan.return_value = True
     with httpx.Client(transport=httpx.MockTransport(lambda _request: httpx.Response(200, json=wire))) as client:
         gateway = NetworkAccessGroupGateway(

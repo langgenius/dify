@@ -7,7 +7,7 @@ from decimal import Decimal
 from io import BytesIO
 from types import SimpleNamespace
 from typing import cast
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, call, create_autospec, patch
 from uuid import uuid4
 
 import httpx
@@ -89,6 +89,8 @@ from services.account.oauth_adapters import (
     WorkspaceProvisioningOAuthGateway,
 )
 from services.account_avatar_file_gateway import SQLAlchemyAccountAvatarFileGateway
+from services.api_based_extension_adapters import APIBasedExtensionPingProbe, WorkspaceTokenCipher
+from services.api_based_extension_application_service import APIBasedExtensionApplicationService
 from services.app.api_key_service import AppApiKeyService
 from services.app.creators_platform_gateway import CreatorsPlatformGateway
 from services.app_generate_service import AppGenerateService
@@ -134,7 +136,7 @@ from services.network_access_group_gateway import (
     BillingNetworkAccessGroupEntitlementGateway,
     NetworkAccessGroupGateway,
 )
-from services.network_access_group_service import NetworkAccessGroupService
+from services.network_access_group_service import NetworkAccessGroupAccessDeniedError, NetworkAccessGroupService
 from services.oauth_device_application_service import OAuthDeviceApplicationService
 from services.partner_tenant_binding_service import PartnerTenantBindingService
 from services.plugin_file_upload_gateway import ToolFilePluginUploadGateway
@@ -360,6 +362,21 @@ def test_build_application_services_wires_tag_boundary(
     assert isinstance(services.tags, TagApplicationService)
 
 
+def test_build_application_services_wires_api_based_extension_boundary(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=_redis(),
+    )
+
+    assert isinstance(services.api_based_extensions, APIBasedExtensionApplicationService)
+    assert isinstance(services.api_based_extensions._secrets, WorkspaceTokenCipher)
+    assert isinstance(services.api_based_extensions._probe, APIBasedExtensionPingProbe)
+
+
 def test_build_application_services_reuses_file_service(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
@@ -500,7 +517,7 @@ def test_build_application_services_wires_web_authentication_boundary(
         database_client=sqlite_session_factory,
         deployment_edition=DeploymentEdition.ENTERPRISE,
         initialization_password="",
-        redis=MagicMock(spec=RedisClientWrapper),
+        redis=create_autospec(RedisClientWrapper, instance=True),
     )
 
     assert isinstance(services.web_authentication, WebAuthenticationService)
@@ -526,7 +543,7 @@ def test_build_application_services_reuses_installed_app_dependencies(
         database_client=sqlite_session_factory,
         deployment_edition=DeploymentEdition.COMMUNITY,
         initialization_password="",
-        redis=MagicMock(spec=RedisClientWrapper),
+        redis=create_autospec(RedisClientWrapper, instance=True),
     )
 
     assert isinstance(services.installed_apps.access, InstalledAppAccessService)
@@ -671,6 +688,29 @@ def test_build_application_services_wires_network_access_group_boundary(
     assert isinstance(network_access_groups._apps, SQLAlchemyNetworkAccessGroupAppRepository)
     assert network_access_groups._apps._session_factory is sqlite_session_factory
     assert isinstance(network_access_groups._entitlement, BillingNetworkAccessGroupEntitlementGateway)
+
+    # Exercise the composed membership port, not only the class of its owner.
+    # A workspace-repository migration must not leave a stale method signature.
+    context = RequestContext("request-1", None, "account-1", "workspace-1", "203.0.113.42")
+    with pytest.raises(NetworkAccessGroupAccessDeniedError):
+        network_access_groups.get_current_ip(context, client_ip_supplier=lambda: "203.0.113.42")
+    with sqlite_session_factory.begin() as session:
+        account = Account(name="QA owner", email="qa-owner@example.com")
+        account.id = context.account_id
+        workspace = Tenant(name="QA workspace")
+        workspace.id = context.active_workspace_id
+        session.add_all(
+            [
+                account,
+                workspace,
+                TenantAccountJoin(
+                    tenant_id=workspace.id,
+                    account_id=account.id,
+                    role=TenantAccountRole.OWNER,
+                ),
+            ]
+        )
+    assert network_access_groups.get_current_ip(context, client_ip_supplier=lambda: "203.0.113.42") == "203.0.113.42"
 
 
 def test_build_application_services_wires_compliance_downloads(
@@ -882,7 +922,7 @@ def test_build_application_services_groups_dataset_services_and_reuses_repositor
         database_client=sqlite_session_factory,
         deployment_edition=DeploymentEdition.COMMUNITY,
         initialization_password="",
-        redis=MagicMock(spec=RedisClientWrapper),
+        redis=_redis(),
     )
 
     assert isinstance(services.data_sources.bindings, DataSourceBindingApplicationService)
@@ -926,7 +966,7 @@ def test_build_application_services_wires_credential_query(
         database_client=sqlite_session_factory,
         deployment_edition=DeploymentEdition.COMMUNITY,
         initialization_password="",
-        redis=MagicMock(spec=RedisClientWrapper),
+        redis=_redis(),
     )
     tenant_id, actor_id = str(uuid4()), str(uuid4())
     with sqlite_session_factory.begin() as session:
@@ -1057,7 +1097,7 @@ def test_build_application_services_reuses_installed_app_generation_dependencies
         database_client=sqlite_session_factory,
         deployment_edition=DeploymentEdition.COMMUNITY,
         initialization_password="",
-        redis=MagicMock(spec=RedisClientWrapper),
+        redis=_redis(),
     )
 
     assert services.installed_apps.access._installed_apps is services.installed_apps.generation._usage

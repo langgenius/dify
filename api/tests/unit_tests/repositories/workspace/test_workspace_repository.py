@@ -2,7 +2,7 @@
 
 from collections.abc import Sequence
 from datetime import datetime, timedelta
-from unittest.mock import Mock
+from unittest.mock import Mock, create_autospec
 
 import pytest
 from sqlalchemy import Engine, event, select
@@ -76,6 +76,14 @@ def test_snapshot_role_is_scoped_to_both_account_and_workspace(seeded: Workspace
     with pytest.raises(WorkspaceNotFoundError):
         seeded.get_for_account("w1", "other")
     assert seeded.get_for_account("missing", "a1") is None
+
+
+def test_membership_role_is_scoped_to_both_account_and_workspace(seeded: WorkspaceRepository) -> None:
+    assert seeded.get_account_role(tenant_id="w1", account_id="a1") == "normal"
+    assert seeded.get_account_role(tenant_id="w2", account_id="a1") == "editor"
+    assert seeded.get_account_role(tenant_id="w2", account_id="other") == "owner"
+    assert seeded.get_account_role(tenant_id="w1", account_id="other") is None
+    assert seeded.get_account_role(tenant_id="w2", account_id="missing") is None
 
 
 def test_switch_updates_only_the_requesting_account(
@@ -152,7 +160,7 @@ def test_sessions_are_closed_before_feature_and_plan_io(
 
     event.listen(sqlite_engine, "checkout", checkout)
     event.listen(sqlite_engine, "checkin", checkin)
-    features = Mock(spec=WorkspaceFeatureGateway)
+    features = create_autospec(WorkspaceFeatureGateway, instance=True)
 
     def get_features(workspace_id: str) -> WorkspaceFeatures:
         assert not checked_out
@@ -163,7 +171,9 @@ def test_sessions_are_closed_before_feature_and_plan_io(
         return WorkspaceFeatures(False, EffectiveCreditPool())
 
     features.get_features.side_effect = get_features
-    service = WorkspaceService(workspaces=seeded, features=features, logos=Mock(spec=WorkspaceLogoGateway))
+    service = WorkspaceService(
+        workspaces=seeded, features=features, logos=create_autospec(WorkspaceLogoGateway, instance=True)
+    )
     context = RequestContext("request", None, "a1", "w1")
     try:
         service.rename(context, "Committed")

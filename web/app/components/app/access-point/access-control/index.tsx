@@ -6,11 +6,11 @@ import type { AccessControlDraft } from './draft'
 import type AppIcon from '@/app/components/base/app-icon'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
@@ -573,7 +573,7 @@ function AccessControlSession({
               {t(($) => $['settings.ipPolicyCurrentIpError'], { ns: 'common' })}
             </p>
           )}
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
@@ -584,7 +584,7 @@ function AccessControlSession({
             >
               {t(($) => $['studio.accessControl.saveAnyway'], { ns: 'deployments' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>

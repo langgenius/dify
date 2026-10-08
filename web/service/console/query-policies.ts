@@ -367,6 +367,16 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
         },
         byAppId: {
           // Shared invalidation uses onSettled so feature-owned onSuccess callbacks can coexist.
+          networkAccessGroup: {
+            put: {
+              mutationOptions: {
+                onSettled: (_data, error, _variables, _result, context) => {
+                  if (error) return
+                  return invalidateNetworkAccessGroupQueries(consoleQuery, context.client)
+                },
+              },
+            },
+          },
           apiEnable: {
             post: {
               mutationOptions: {

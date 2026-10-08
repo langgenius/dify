@@ -120,7 +120,7 @@ def _harness(*, role: str | None = "owner", paid: bool = True, app_mode: str = "
     apps = create_autospec(NetworkAccessGroupAppQuery, instance=True, spec_set=True)
     memberships = create_autospec(WorkspaceMembershipRoleQuery, instance=True, spec_set=True)
     entitlement = create_autospec(NetworkAccessGroupEntitlement, instance=True, spec_set=True)
-    memberships.get_role_for_account.return_value = role
+    memberships.get_account_role.return_value = role
     entitlement.is_paid_plan.return_value = paid
     apps.get_manageable_app.return_value = _app(mode=app_mode)
     apps.list_apps.return_value = list[NetworkAccessGroupAppRecord]()
@@ -161,8 +161,8 @@ def test_reads_reject_non_privileged_persisted_roles_before_control_plane(
     with pytest.raises(NetworkAccessGroupAccessDeniedError):
         read(harness.service)
 
-    harness.memberships.get_role_for_account.assert_called_once_with(
-        workspace_id=WORKSPACE_ID,
+    harness.memberships.get_account_role.assert_called_once_with(
+        tenant_id=WORKSPACE_ID,
         account_id=ACCOUNT_ID,
     )
     assert harness.control_plane.method_calls == []
@@ -225,8 +225,8 @@ def test_mutations_reject_non_privileged_persisted_roles_before_control_plane(
     with pytest.raises(NetworkAccessGroupAccessDeniedError):
         mutation(harness.service, _context())
 
-    harness.memberships.get_role_for_account.assert_called_once_with(
-        workspace_id=WORKSPACE_ID,
+    harness.memberships.get_account_role.assert_called_once_with(
+        tenant_id=WORKSPACE_ID,
         account_id=ACCOUNT_ID,
     )
     assert harness.control_plane.method_calls == []
@@ -459,7 +459,7 @@ def test_cleanup_app_binding_forwards_without_console_admission() -> None:
 
     assert result is True
     harness.control_plane.cleanup_app_binding.assert_called_once_with(WORKSPACE_ID, APP_ID)
-    harness.memberships.get_role_for_account.assert_not_called()
+    harness.memberships.get_account_role.assert_not_called()
     harness.entitlement.is_paid_plan.assert_not_called()
 
 
@@ -525,8 +525,8 @@ def test_app_binding_rejects_missing_or_inaccessible_app_before_control_plane() 
         harness.service.get_app_binding(_context(), app_id=APP_ID)
 
     harness.apps.get_manageable_app.assert_called_once_with(workspace_id=WORKSPACE_ID, app_id=APP_ID)
-    harness.memberships.get_role_for_account.assert_called_once_with(
-        workspace_id=WORKSPACE_ID,
+    harness.memberships.get_account_role.assert_called_once_with(
+        tenant_id=WORKSPACE_ID,
         account_id=ACCOUNT_ID,
     )
     harness.control_plane.get_app_binding.assert_not_called()
@@ -547,8 +547,8 @@ def test_update_app_binding_rejects_missing_or_inaccessible_app_before_control_p
         )
 
     harness.apps.get_manageable_app.assert_called_once_with(workspace_id=WORKSPACE_ID, app_id=APP_ID)
-    harness.memberships.get_role_for_account.assert_called_once_with(
-        workspace_id=WORKSPACE_ID,
+    harness.memberships.get_account_role.assert_called_once_with(
+        tenant_id=WORKSPACE_ID,
         account_id=ACCOUNT_ID,
     )
     harness.control_plane.update_app_binding.assert_not_called()
@@ -700,7 +700,7 @@ def test_group_enrichment_includes_agent_routing_metadata() -> None:
 def test_current_ip_check_authorizes_and_loads_tenant_policy_before_reading_ip() -> None:
     harness = _harness(role="editor")
     order: list[str] = []
-    harness.memberships.get_role_for_account.side_effect = lambda **_kwargs: order.append("role") or "editor"
+    harness.memberships.get_account_role.side_effect = lambda **_kwargs: order.append("role") or "editor"
     harness.control_plane.get_group.side_effect = lambda *_args: (
         order.append("policy") or _group(version=7, allowed_cidrs=("2001:db8::/32",))
     )
@@ -720,7 +720,7 @@ def test_current_ip_check_authorizes_and_loads_tenant_policy_before_reading_ip()
 def test_current_ip_read_needs_no_policy_and_preserves_read_admission(role: str, paid: bool) -> None:
     harness = _harness(role=role, paid=paid)
     order: list[str] = []
-    harness.memberships.get_role_for_account.side_effect = lambda **_kwargs: order.append("role") or role
+    harness.memberships.get_account_role.side_effect = lambda **_kwargs: order.append("role") or role
 
     result = harness.service.get_current_ip(
         _context(),
@@ -729,8 +729,8 @@ def test_current_ip_read_needs_no_policy_and_preserves_read_admission(role: str,
 
     assert result == "2001:db8::42"
     assert order == ["role", "ip"]
-    harness.memberships.get_role_for_account.assert_called_once_with(
-        workspace_id=WORKSPACE_ID,
+    harness.memberships.get_account_role.assert_called_once_with(
+        tenant_id=WORKSPACE_ID,
         account_id=ACCOUNT_ID,
     )
     assert harness.control_plane.method_calls == []

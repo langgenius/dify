@@ -97,7 +97,7 @@ class NetworkAccessGroupAppQuery(Protocol):
 
 
 class WorkspaceMembershipRoleQuery(Protocol):
-    def get_role_for_account(self, *, workspace_id: str, account_id: str) -> str | None: ...
+    def get_account_role(self, *, tenant_id: str, account_id: str) -> str | None: ...
 
 
 class NetworkAccessGroupEntitlement(Protocol):
@@ -356,8 +356,8 @@ class NetworkAccessGroupService:
         return self._control_plane.cleanup_app_binding(workspace_id, app_id)
 
     def _ensure_workspace_role(self, context: RequestContext, allowed_roles: frozenset[str]) -> None:
-        role = self._memberships.get_role_for_account(
-            workspace_id=context.active_workspace_id,
+        role = self._memberships.get_account_role(
+            tenant_id=context.active_workspace_id,
             account_id=context.account_id,
         )
         if role not in allowed_roles:

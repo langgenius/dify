@@ -3,10 +3,13 @@
 from dataclasses import dataclass
 from inspect import unwrap
 from typing import override
+from unittest.mock import MagicMock
 
 import pytest
 from flask import Flask, Response
 from flask_restx import Api
+from sqlalchemy import func, select, text
+from sqlalchemy.orm import Session, sessionmaker
 
 from controllers.console import wraps as console_wraps
 from controllers.console.auth.error import AuthenticationFailedError, EmailCodeError
@@ -24,13 +27,21 @@ from controllers.web.login import (
     LogoutApi,
 )
 from machinery.context import RequestContext
+from models.enums import CustomizeTokenStrategy
+from models.model import App, AppModelConfig, EndUser, Site
+from repositories.webapp_access_query_repository import WebAppAccessQueryRepository
 from services.entities.authentication_entities import WebLoginStatus
 from services.web_authentication_service import (
     WebAccountBannedError,
     WebAuthenticationFailedError,
+    WebAuthenticationService,
     WebInvalidCodeError,
 )
-from services.webapp_access_query_service import WebAppAccessAppNotFoundError, WebAppAccessUnavailableError
+from services.webapp_access_query_service import (
+    WebAppAccessAppNotFoundError,
+    WebAppAccessQueryService,
+    WebAppAccessUnavailableError,
+)
 from tests.unit_tests.config_override import apply_config_overrides
 
 
@@ -167,45 +178,115 @@ def test_login_status_translates_access_failures_to_http_errors(
 
 
 @pytest.mark.parametrize(
-    ("service_error", "status_code"),
-    [
-        pytest.param(WebAppAccessAppNotFoundError("private code"), 404, id="unknown-app"),
-        pytest.param(WebAppAccessUnavailableError("private dependency"), 503, id="access-unavailable"),
-        pytest.param(TypeError("private bug"), 500, id="unexpected-failure"),
-    ],
+    "condition",
+    ["missing-site", "dangling-site", "app-disabled", "site-disabled", "app-status-disabled", "unpublished"],
 )
-def test_login_status_preserves_public_app_error_contract(
-    monkeypatch: pytest.MonkeyPatch,
+def test_unavailable_identity_is_canonical_404_before_authentication(
+    condition: str,
     app: Flask,
-    service_error: Exception,
-    status_code: int,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """Keep the IP-access contract across the new Web authentication service boundary."""
     from controllers.web import bp
 
-    class UnavailableLoginStatusService(LoginStatusStub):
-        @override
-        def get_login_status(self, **kwargs: str | None) -> WebLoginStatus:
-            raise service_error
+    app_id = "11111111-1111-1111-1111-111111111111"
+    config_id = "22222222-2222-2222-2222-222222222222"
+    with sqlite_session_factory.begin() as session:
+        if condition != "dangling-site":
+            config = AppModelConfig(app_id=app_id)
+            config.id = config_id
+            session.add(config)
+            session.add(
+                App(
+                    id=app_id,
+                    tenant_id=app_id,
+                    name="Private fixture",
+                    mode="chat",
+                    enable_site=condition != "app-disabled",
+                    enable_api=True,
+                    app_model_config_id=config_id if condition != "unpublished" else None,
+                )
+            )
+        if condition != "missing-site":
+            session.add(
+                Site(
+                    app_id=app_id,
+                    code="private-fixture",
+                    title="Private fixture",
+                    default_language="en-US",
+                    customize_token_strategy=CustomizeTokenStrategy.UUID,
+                )
+            )
+        session.flush()
+        if condition == "site-disabled":
+            session.execute(text("UPDATE sites SET status='disabled' WHERE app_id=:app_id"), {"app_id": app_id})
+        elif condition == "app-status-disabled":
+            session.execute(text("UPDATE apps SET status='disabled' WHERE id=:app_id"), {"app_id": app_id})
 
-    bind_service(monkeypatch, UnavailableLoginStatusService())
+    policy = MagicMock()
+    tokens = MagicMock()
+    app_sessions = MagicMock()
+    access = WebAppAccessQueryService(
+        access=WebAppAccessQueryRepository(session_factory=sqlite_session_factory),
+        policy=policy,
+        webapp_auth_enabled=False,
+        get_access_modes=MagicMock(),
+        get_user_permissions=MagicMock(),
+    )
+    service = WebAuthenticationService(
+        accounts=MagicMock(),
+        passwords=MagicMock(),
+        tokens=tokens,
+        security=MagicMock(),
+        app_access=access,
+        app_sessions=app_sessions,
+        audit=MagicMock(),
+        private_app_access_enabled=False,
+    )
+    bind_service(monkeypatch, service)
     monkeypatch.setattr(console_wraps, "_is_setup_completed", lambda: True)
     apply_config_overrides(monkeypatch, NETWORK_ACCESS_TRUSTED_PROXY_CIDRS="172.18.0.0/16")
     app.register_blueprint(bp)
-
     response = app.test_client().get(
-        "/api/login/status?app_code=missing", environ_overrides={"REMOTE_ADDR": "203.0.113.42"}
+        "/api/login/status?app_code=private-fixture", environ_overrides={"REMOTE_ADDR": "203.0.113.42"}
     )
 
-    assert response.status_code == status_code
-    if status_code == 404:
-        assert response.data == (
-            b'{"client_ip":"203.0.113.42","code":"app_not_found","message":"App not found.","status":404}'
-        )
-        assert response.headers["Content-Type"] == "application/json"
-        assert response.headers["Cache-Control"] == "no-store"
-    else:
-        assert "client_ip" not in response.get_json()
-        assert response.get_json()["code"] != "app_not_found"
+    assert response.status_code == 404
+    assert response.data == (
+        b'{"client_ip":"203.0.113.42","code":"app_not_found","message":"App not found.","status":404}'
+    )
+    assert response.headers["Content-Type"] == "application/json"
+    assert response.headers["Cache-Control"] == "no-store"
+    policy.get_access_mode.assert_not_called()
+    tokens.verify_access_token.assert_not_called()
+    app_sessions.verify.assert_not_called()
+    with sqlite_session_factory() as session:
+        assert session.scalar(select(func.count()).select_from(EndUser)) == 0
+
+
+@pytest.mark.parametrize(
+    ("failure", "status"),
+    [(WebAppAccessUnavailableError("private dependency"), 503), (TypeError("private bug"), 500)],
+)
+def test_login_status_dependency_or_bug_is_not_hidden_as_app_404(
+    failure: Exception, status: int, app: Flask, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from controllers.web import bp
+
+    class FailingLoginStatusService(LoginStatusStub):
+        @override
+        def get_login_status(self, **kwargs: str | None) -> WebLoginStatus:
+            raise failure
+
+    bind_service(monkeypatch, FailingLoginStatusService())
+    monkeypatch.setattr(console_wraps, "_is_setup_completed", lambda: True)
+    app.register_blueprint(bp)
+    response = app.test_client().get("/api/login/status?app_code=fixture")
+
+    assert response.status_code == status
+    assert "client_ip" not in response.get_json()
+    assert response.get_json()["code"] != "app_not_found"
 
 
 class EmailLoginStub:

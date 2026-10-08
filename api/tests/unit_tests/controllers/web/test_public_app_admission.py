@@ -93,27 +93,30 @@ def _harness(
 
     access_repo = WebAppAccessQueryRepository(session_factory=factory)
     passport_repo = WebPassportRepository(session_factory=factory, generate_session_id=lambda: "new-session")
-    auth, tokens, mode_lookup = MagicMock(), MagicMock(), MagicMock(return_value=WebAppAccessMode.PUBLIC)
+    auth, tokens, policy = MagicMock(), MagicMock(), MagicMock()
+    policy.get_access_mode.return_value = WebAppAccessMode.PUBLIC
     auth.is_webapp_auth_enabled.return_value = False
     tokens.issue.return_value = "new-passport"
     tokens.verify.return_value = {"app_id": app.id, "app_code": "fixture-code", "end_user_id": old_user.id}
-    definitions = AppDefinitionQueryRepository(session_factory=factory)
-    webapp_access = WebAppAccessQueryService(
+    access = WebAppAccessQueryService(
         access=access_repo,
         webapp_auth_enabled=False,
-        policy=MagicMock(get_access_mode=mode_lookup),
+        policy=policy,
         get_access_modes=MagicMock(),
         get_user_permissions=MagicMock(),
     )
+    app_sessions = MagicMock(wraps=PassportWebAppSessionGateway(sessions=access_repo, app_access=access))
+    login_tokens = MagicMock()
+    definitions = AppDefinitionQueryRepository(session_factory=factory)
     services = SimpleNamespace(
-        webapp_access=webapp_access,
+        webapp_access=access,
         web_authentication=WebAuthenticationService(
             accounts=MagicMock(),
             passwords=MagicMock(),
-            tokens=MagicMock(),
+            tokens=login_tokens,
             security=MagicMock(),
-            app_access=webapp_access,
-            app_sessions=PassportWebAppSessionGateway(sessions=access_repo, app_access=webapp_access),
+            app_access=access,
+            app_sessions=app_sessions,
             audit=MagicMock(),
             private_app_access_enabled=False,
         ),
@@ -157,7 +160,9 @@ def _harness(
         services=services,
         tokens=tokens,
         auth=auth,
-        mode_lookup=mode_lookup,
+        mode_lookup=policy.get_access_mode,
+        login_tokens=login_tokens,
+        app_sessions=app_sessions,
         access_repo=access_repo,
         passport_repo=passport_repo,
     )
@@ -199,6 +204,8 @@ def test_all_bootstrap_routes_share_404_before_user_or_metadata_side_effects(
     assert h.auth.method_calls == []
     h.mode_lookup.assert_not_called()
     h.tokens.issue.assert_not_called()
+    assert h.login_tokens.method_calls == []
+    h.app_sessions.verify.assert_not_called()
     assert sqlite_session.scalar(select(func.count()).select_from(EndUser)) == (0 if missing else 1)
     assert sqlite_session.scalar(select(func.count()).select_from(WorkflowRun)) == 0
     assert sqlite_session.scalar(select(func.count()).select_from(Message)) == 0
@@ -222,6 +229,8 @@ def test_published_bootstrap_remains_successful_with_normal_passport_behavior(
             assert response.get_json() == {"accessMode": "public"}
         elif route.startswith("/login"):
             assert response.get_json() == {"logged_in": True, "app_logged_in": True}
+            h.app_sessions.verify.assert_called_once_with(token="old-passport", app_code="fixture-code", user_id=None)
+            assert h.login_tokens.method_calls == []
         elif route == "/site":
             assert response.get_json()["site"]["title"] == "Must not leak"
         elif route == "/meta":
@@ -291,3 +300,5 @@ def test_real_database_failure_is_not_reclassified_as_unpublished(
     assert response.get_json()["code"] != "app_not_found"
     assert "client_ip" not in response.get_json()
     h.tokens.issue.assert_not_called()
+    assert h.login_tokens.method_calls == []
+    h.app_sessions.verify.assert_not_called()
