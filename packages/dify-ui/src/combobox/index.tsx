@@ -93,14 +93,14 @@ const comboboxItemClassName = [
 
 type ComboboxTriggerProps = BaseCombobox.Trigger.Props
 
-// Interaction invariants only. The caller owns the appearance, directly or through `render`.
+// Owns the focus indicator only. The caller owns the appearance, directly or through `render`.
 function ComboboxTrigger({ className, type = 'button', ...props }: ComboboxTriggerProps) {
   return (
     <BaseCombobox.Trigger
       type={type}
       className={(state) =>
         cn(
-          'outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid data-disabled:cursor-not-allowed',
+          'outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
           resolveClassName(className, state),
         )
       }

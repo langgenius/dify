@@ -146,7 +146,7 @@ export function AppPicker({
     >
       <ComboboxTrigger
         aria-label={t(($) => $['appSelector.label'], { ns: 'app' })}
-        className="block w-full min-w-0 rounded-lg text-left data-disabled:bg-components-input-bg-disabled"
+        className="block w-full min-w-0 rounded-lg text-left data-disabled:cursor-not-allowed data-disabled:bg-components-input-bg-disabled"
       >
         {trigger}
       </ComboboxTrigger>
