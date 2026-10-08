@@ -961,3 +961,133 @@ def test_scrub_invented_defaults_still_blanks_a_single_label_host_named_as_a_str
     out = build._scrub_invented_defaults(values, "send the slides to the renderer")
 
     assert out["render_api_url"] == ""
+
+
+# ---- The requirements form never asks the user to restate the goal ----------
+#
+# PM report 2026-09-29: the requirements card asked the user to fill in
+# 需求描述 -- the requirement they had already typed as their opening message --
+# and shipped it BLANK, so there was nothing to write. ``_degraded_form`` has
+# always answered that question with ``goal_text``; the LLM path lost that.
+
+_PM_GOAL = "构建一个需求调用工作流, 用户输入需求, 最终输出一个pdf格式的需求调用报告"
+
+
+def test_analyze_goal_answers_a_blank_goal_restating_field_with_the_goal():
+    m = _FakeInstance(
+        [
+            json.dumps(
+                {
+                    "fields": [
+                        {"key": "requirement_description", "label": "需求描述", "type": "textarea"},
+                        {"key": "report_title", "label": "报告标题", "type": "text"},
+                    ],
+                    "values": {"report_title": "需求调研报告"},
+                }
+            )
+        ]
+    )
+
+    out = build.analyze_goal(m, _PM_GOAL)
+
+    assert out["values"]["requirement_description"] == _PM_GOAL
+
+
+def test_analyze_goal_keeps_the_answer_the_model_gave_a_goal_restating_field():
+    """The backstop repairs a blank, it does not overwrite. A model that wrote
+    something narrower than the goal there knew more than we do."""
+    m = _FakeInstance(
+        [
+            json.dumps(
+                {
+                    "fields": [{"key": "requirement", "label": "需求", "type": "textarea"}],
+                    "values": {"requirement": "只看退款工单"},
+                }
+            )
+        ]
+    )
+
+    out = build.analyze_goal(m, "triage inbound tickets")
+
+    assert out["values"]["requirement"] == "只看退款工单"
+
+
+def test_analyze_goal_leaves_a_deliberately_blanked_credential_blank():
+    """``_scrub_invented_defaults`` blanks an invented credential ON PURPOSE so
+    the user supplies it. Writing the goal sentence into an API-key box would be
+    worse than the bug being fixed."""
+    m = _FakeInstance(
+        [
+            json.dumps(
+                {
+                    "fields": [{"key": "bocha_api_key", "label": "博查 API 密钥", "type": "text"}],
+                    "values": {"bocha_api_key": "YOUR_API_KEY"},
+                }
+            )
+        ]
+    )
+
+    out = build.analyze_goal(m, _PM_GOAL)
+
+    assert out["values"]["bocha_api_key"] == ""
+
+
+def test_analyze_goal_does_not_answer_a_goal_restating_select():
+    """A select gains a value none of its options offer, which the form cannot
+    render honestly."""
+    m = _FakeInstance(
+        [
+            json.dumps(
+                {
+                    "fields": [{"key": "goal", "label": "Goal", "type": "select", "options": ["a", "b"]}],
+                    "values": {},
+                }
+            )
+        ]
+    )
+
+    out = build.analyze_goal(m, "triage inbound tickets")
+
+    assert "goal" not in out["values"]
+
+
+def test_analyze_goal_explains_a_field_it_leaves_blank():
+    """A blank box with no explanation reads as one the user forgot to fill.
+    The hint must also be a CATALOG string, or it ships in English on a Chinese
+    form -- the ESQ1-259 failure."""
+    from core.dify_builder import strings
+
+    m = _FakeInstance(
+        [
+            json.dumps(
+                {
+                    "fields": [{"key": "bocha_api_key", "label": "博查 API 密钥", "type": "text"}],
+                    "values": {"bocha_api_key": "YOUR_API_KEY"},
+                }
+            )
+        ]
+    )
+
+    out = build.analyze_goal(m, _PM_GOAL)
+
+    assert out["values"]["bocha_api_key"] == ""
+    assert out["fields"][0]["hint"]
+    assert out["fields"][0]["hint"] in strings.PLAIN
+
+
+def test_analyze_goal_does_not_explain_a_field_that_has_a_value():
+    """Only a blank needs explaining; hinting every field is noise."""
+    m = _FakeInstance(
+        [
+            json.dumps(
+                {
+                    "fields": [{"key": "report_title", "label": "报告标题", "type": "text"}],
+                    "values": {"report_title": "需求调研报告"},
+                }
+            )
+        ]
+    )
+
+    out = build.analyze_goal(m, _PM_GOAL)
+
+    assert not out["fields"][0].get("hint")

@@ -42,7 +42,10 @@ def analyze_goal(
     system = (
         "You are a Dify workflow requirements analyst. Given a build goal, propose 3-6 "
         "clarifying requirement fields SHAPED BY THE GOAL, and a sensible default value per "
-        "field. Never invent a URL/endpoint, API key, token, password, or account/resource id "
+        "field. The user already typed the goal and you are given it below, so never propose a "
+        'field that restates it -- no "requirement description", "goal" or "what do you want" field. '
+        "Every field must ask for something the goal does not already say. "
+        "Never invent a URL/endpoint, API key, token, password, or account/resource id "
         "the goal does not state -- give such a field an empty string as its default so the "
         f"user fills it in. {form_schema.FORM_FIELD_TYPE_GUIDANCE}"
         'Reply with ONLY JSON: {"fields": [{"key": "...", "label": "...", "type": "...", '
@@ -57,7 +60,12 @@ def analyze_goal(
     if not isinstance(fields, list) or not isinstance(values, dict):
         return _degraded_form(goal_text)
     scrubbed_values = _scrub_invented_defaults(values, goal_text)
-    return {"fields": form_schema.reconcile_form_fields(fields, scrubbed_values), "values": scrubbed_values}
+    answered_values = _answer_goal_restatements(fields, scrubbed_values, goal_text)
+    explained_fields = _explain_blank_fields(fields, answered_values)
+    return {
+        "fields": form_schema.reconcile_form_fields(explained_fields, answered_values),
+        "values": answered_values,
+    }
 
 
 def _is_invented_literal(value: Any, key: str | None, goal_text: str) -> bool:
@@ -113,6 +121,126 @@ def _scrub_invented_defaults(values: dict[str, Any], goal_text: str) -> dict[str
         scrubbed[key] = ""
     logger.info("dify_builder: blanked invented default(s) for %s", ", ".join(sorted(blanked)))
     return scrubbed
+
+
+# A requirements field whose name is one of these is asking the user to restate
+# the goal they already typed (PM report 2026-09-29: "需求描述" shipped blank, so
+# there was nothing to write). ``_degraded_form`` has always answered that
+# question with ``goal_text``; these let the LLM path do the same.
+#
+# Deliberately EXACT names, not substrings, and deliberately without a bare
+# "description"/"描述": those are ambiguous (a report description is not the
+# goal), and writing the goal into the wrong box is worse than leaving it
+# blank. The prompt rule is the first line of defence; this is the backstop.
+_GOAL_RESTATING_FIELD_NAMES = frozenset(
+    {
+        "goal",
+        "goals",
+        "usergoal",
+        "usergoals",
+        "workflowgoal",
+        "objective",
+        "objectives",
+        "requirement",
+        "requirements",
+        "userrequirement",
+        "userrequirements",
+        "requirementdescription",
+        "requirementsdescription",
+        "requirementdetail",
+        "requirementdetails",
+        "requirementoverview",
+        "requirementsummary",
+        "taskdescription",
+        "userrequest",
+        "userneed",
+        "userneeds",
+        "需求",
+        "需求描述",
+        "需求说明",
+        "需求详情",
+        "需求内容",
+        "需求概述",
+        "用户需求",
+        "目标",
+        "目标描述",
+        "工作流目标",
+        "任务描述",
+    }
+)
+
+# Types that cannot hold the goal sentence: a select would gain a value none of
+# its options offer, and the rest are not free text. Anything else -- including
+# a missing or unknown type -- becomes a text box downstream
+# (``handlers_fix.build_form_fields`` clamps unknown types to "text"), so it can.
+_NON_TEXT_FORM_FIELD_TYPES = frozenset({"bool", "json", "json_object", "number", "select"})
+
+_FIELD_NAME_SEPARATORS = re.compile(r"[\s_\-:：*]+")
+
+
+# Shown on a requirements field that arrived empty, so it reads as a question
+# the Builder is asking rather than a box someone forgot to fill. Lives in
+# ``strings.PLAIN`` so the Localizer translates it with the rest of the card.
+BLANK_FIELD_HINT = "Not stated in your request — add it if you have one."
+
+
+def _explain_blank_fields(fields: list[Any], values: dict[str, Any]) -> list[Any]:
+    """Attach ``BLANK_FIELD_HINT`` to every field that ends up without a value.
+
+    A field is blank either because the model had nothing to offer or because
+    ``_scrub_invented_defaults`` blanked an invented credential ON PURPOSE.
+    Both look identical to the user, so both get the same explanation. A field
+    the model already hinted keeps its own wording.
+    """
+    explained: list[Any] = []
+    for field_spec in fields:
+        if not isinstance(field_spec, dict) or not field_spec.get("key"):
+            explained.append(field_spec)
+            continue
+        value = values.get(str(field_spec["key"]))
+        blank = value is None or (isinstance(value, str) and not value.strip())
+        if not blank or field_spec.get("hint"):
+            explained.append(field_spec)
+            continue
+        explained.append({**field_spec, "hint": BLANK_FIELD_HINT})
+    return explained
+
+
+def _restates_the_goal(field: dict[str, Any]) -> bool:
+    """True when this field's key or label just asks for the goal back."""
+    for raw in (field.get("key"), field.get("label")):
+        if not isinstance(raw, str):
+            continue
+        if _FIELD_NAME_SEPARATORS.sub("", raw).strip().lower() in _GOAL_RESTATING_FIELD_NAMES:
+            return True
+    return False
+
+
+def _answer_goal_restatements(fields: list[Any], values: dict[str, Any], goal_text: str) -> dict[str, Any]:
+    """Fill any goal-restating field the model left blank with the goal itself.
+
+    Repairs, never overwrites: a field the model actually answered keeps its
+    answer, and a blank field that asks for something else -- a credential the
+    scrubber blanked ON PURPOSE, say -- stays blank. Spraying the goal into
+    every empty box would be worse than the bug this fixes.
+    """
+    answered = dict(values)
+    for field_spec in fields:
+        if not isinstance(field_spec, dict):
+            continue
+        raw_key = field_spec.get("key")
+        if not raw_key:
+            continue
+        if field_spec.get("type") in _NON_TEXT_FORM_FIELD_TYPES:
+            continue
+        key = str(raw_key)
+        current = answered.get(key)
+        if current is not None and not (isinstance(current, str) and not current.strip()):
+            continue
+        if not _restates_the_goal(field_spec):
+            continue
+        answered[key] = goal_text
+    return answered
 
 
 def propose_app_name(
