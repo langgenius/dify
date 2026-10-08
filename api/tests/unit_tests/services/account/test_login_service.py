@@ -49,19 +49,29 @@ class FakeAccounts:
 @dataclass
 class FakeWorkspaces:
     active: bool = False
+    checks: list[str] = field(default_factory=list)
 
     def has_active_for_account(self, account_id: str) -> bool:
-        _ = account_id
+        self.checks.append(account_id)
         return self.active
 
 
 @dataclass
 class FakeInvitations:
     invitation: LoginInvitation | None = None
+    ensured: list[tuple[str, str]] = field(default_factory=list)
+    restored_workspace: FakeWorkspaces | None = None
 
     def resolve(self, *, email: str, token: str) -> LoginInvitation | None:
         _ = email, token
         return self.invitation
+
+    def ensure_membership(self, *, email: str, token: str) -> bool:
+        self.ensured.append((email, token))
+        if self.restored_workspace is None:
+            return False
+        self.restored_workspace.active = True
+        return True
 
 
 @dataclass
@@ -409,6 +419,7 @@ def test_invitation_login_rejects_empty_password_without_completing_account() ->
     assert dependencies.passwords.hashed_passwords == []
     assert dependencies.accounts.completions == []
     assert dependencies.security.failures == ["user@example.com"]
+    assert dependencies.invitations.ensured == []
 
 
 def test_invitation_login_does_not_initialize_password_when_token_is_unknown() -> None:
@@ -420,6 +431,7 @@ def test_invitation_login_does_not_initialize_password_when_token_is_unknown() -
 
     assert dependencies.passwords.hashed_passwords == []
     assert dependencies.accounts.completions == []
+    assert dependencies.invitations.ensured == []
 
 
 def test_invitation_login_applies_new_password_policy_before_completion() -> None:
@@ -435,6 +447,7 @@ def test_invitation_login_applies_new_password_policy_before_completion() -> Non
 
     assert dependencies.passwords.hashed_passwords == ["letters-only"]
     assert dependencies.accounts.completions == []
+    assert dependencies.invitations.ensured == []
 
 
 def test_invalid_password_records_rate_limit_and_audit() -> None:
@@ -447,6 +460,20 @@ def test_invalid_password_records_rate_limit_and_audit() -> None:
 
     assert dependencies.security.failures == ["user@example.com"]
     assert dependencies.audit.failures == [("user@example.com", LoginFailureReason.INVALID_CREDENTIALS, "127.0.0.1")]
+    assert dependencies.invitations.ensured == []
+
+
+def test_wrong_password_does_not_restore_invited_membership() -> None:
+    dependencies = Dependencies()
+    dependencies.accounts.candidates = [_account()]
+    dependencies.invitations.invitation = LoginInvitation(email="user@example.com")
+    dependencies.passwords.valid = False
+
+    with pytest.raises(account_errors.InvalidLoginCredentialsError):
+        dependencies.service().login_with_password(_password_command(invite_token="invite"))
+
+    assert dependencies.invitations.ensured == []
+    assert dependencies.security.failures == ["user@example.com"]
 
 
 def test_password_login_rejects_locked_account_before_loading_candidates() -> None:
@@ -503,6 +530,7 @@ def test_password_login_rejects_invitation_for_another_email() -> None:
     assert dependencies.audit.failures == [
         ("user@example.com", LoginFailureReason.INVALID_INVITATION_EMAIL, "127.0.0.1")
     ]
+    assert dependencies.invitations.ensured == []
 
 
 def test_password_login_tries_lowercase_candidate_after_exact_candidate_password_fails() -> None:
@@ -531,6 +559,40 @@ def test_password_login_returns_no_workspace_without_creating_one() -> None:
     assert not result.workspace_found
     assert result.tokens is None
     assert dependencies.workspaces_provisioning.account_ids == []
+    assert dependencies.invitations.ensured == []
+
+
+def test_password_login_restores_invited_membership_when_account_has_no_workspace() -> None:
+    dependencies = Dependencies()
+    dependencies.accounts.candidates = [_account()]
+    dependencies.invitations.invitation = LoginInvitation(email="user@example.com")
+    dependencies.invitations.restored_workspace = dependencies.workspaces
+    dependencies.policies.workspace_capacity = False
+
+    result = dependencies.service().login_with_password(_password_command(invite_token="invite"))
+
+    assert dependencies.invitations.ensured == [("User@Example.com", "invite")]
+    assert dependencies.workspaces.checks == ["account-1", "account-1"]
+    assert result.workspace_found
+    assert result.tokens == TOKENS
+    assert dependencies.sessions.issued == ["account-1"]
+    assert dependencies.security.resets == ["user@example.com"]
+
+
+@pytest.mark.parametrize("invite_token", [None, "invite"])
+def test_password_login_does_not_restore_membership_for_an_existing_workspace(invite_token: str | None) -> None:
+    dependencies = Dependencies()
+    dependencies.accounts.candidates = [_account()]
+    dependencies.workspaces.active = True
+    if invite_token is not None:
+        dependencies.invitations.invitation = LoginInvitation(email="user@example.com")
+
+    result = dependencies.service().login_with_password(_password_command(invite_token=invite_token))
+
+    assert result.workspace_found
+    assert result.tokens == TOKENS
+    assert dependencies.invitations.ensured == []
+    assert dependencies.workspaces.checks == ["account-1"]
 
 
 def test_password_login_enforces_workspace_capacity() -> None:
@@ -540,6 +602,22 @@ def test_password_login_enforces_workspace_capacity() -> None:
 
     with pytest.raises(account_errors.LoginWorkspaceLimitError):
         dependencies.service().login_with_password(_password_command())
+
+    assert dependencies.invitations.ensured == []
+
+
+def test_password_login_enforces_workspace_capacity_when_invitation_does_not_restore_membership() -> None:
+    dependencies = Dependencies()
+    dependencies.accounts.candidates = [_account()]
+    dependencies.invitations.invitation = LoginInvitation(email="user@example.com")
+    dependencies.policies.workspace_capacity = False
+
+    with pytest.raises(account_errors.LoginWorkspaceLimitError):
+        dependencies.service().login_with_password(_password_command(invite_token="invite"))
+
+    assert dependencies.invitations.ensured == [("User@Example.com", "invite")]
+    assert dependencies.workspaces.checks == ["account-1", "account-1"]
+    assert dependencies.sessions.issued == []
 
 
 def test_send_email_code_normalizes_identity_and_preserves_account_recipient_address() -> None:

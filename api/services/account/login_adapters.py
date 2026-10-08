@@ -27,7 +27,11 @@ from services.account.login_service import (
     HumanVerificationGateway,
     ResetPasswordEmailGateway,
 )
-from services.account_activation_service import AccountActivationRepository, InvitationTokenStore
+from services.account_activation_service import (
+    AccountActivationRepository,
+    AccountActivationService,
+    InvitationTokenStore,
+)
 from services.account_security_gateway import RedisAccountEmailSecurityGateway
 from services.billing_service import BillingService
 from services.email_code_login_challenge import EmailCodeLoginChallengeStore, EmailCodeLoginChallengeUnavailableError
@@ -62,11 +66,18 @@ _RESET_PASSWORD_RATE_LIMIT_SECONDS = 60
 
 
 class AccountActivationConsoleAuthInvitationGateway(ConsoleAuthInvitationGateway):
-    """Resolve login invitations through the shared activation contracts."""
+    """Resolve login invitations and restore invited membership through activation."""
 
-    def __init__(self, *, tokens: InvitationTokenStore, accounts: AccountActivationRepository) -> None:
+    def __init__(
+        self,
+        *,
+        tokens: InvitationTokenStore,
+        accounts: AccountActivationRepository,
+        activation: AccountActivationService,
+    ) -> None:
         self._tokens = tokens
         self._accounts = accounts
+        self._activation = activation
 
     @override
     def resolve(self, *, email: str, token: str) -> LoginInvitation | None:
@@ -81,6 +92,10 @@ class AccountActivationConsoleAuthInvitationGateway(ConsoleAuthInvitationGateway
             if invitation is not None:
                 return LoginInvitation(email=invitation.account_email)
         return None
+
+    @override
+    def ensure_membership(self, *, email: str, token: str) -> bool:
+        return self._activation.ensure_membership(email=email, token=token)
 
 
 class DeploymentConsoleAuthPolicyGateway(ConsoleAuthPolicyGateway):
