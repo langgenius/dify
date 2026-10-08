@@ -12,6 +12,7 @@ import pytest
 from pydantic import JsonValue
 from sqlalchemy import Connection, Engine, event, select, update
 from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
+from werkzeug.exceptions import Forbidden
 from werkzeug.test import TestResponse
 
 import controllers.console.explore.message as module
@@ -795,6 +796,13 @@ def test_suggested_questions_uses_admitted_installation_until_next_request(real_
         (QuotaExceededError(), 400, "provider_quota_exceeded", None),
         (ModelCurrentlyNotSupportError(), 400, "model_currently_not_support", None),
         (InvokeError("Provider rejected input"), 400, "completion_request_error", "Provider rejected input"),
+        (
+            Forbidden("Private provider details"),
+            500,
+            "internal_server_error",
+            "The server encountered an internal error and was unable to complete your request. "
+            "Either the server is overloaded or there is an error in the application.",
+        ),
         (RuntimeError("Unexpected failure"), 500, "internal_server_error", None),
     ],
 )

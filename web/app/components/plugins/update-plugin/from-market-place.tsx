@@ -7,7 +7,7 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Badge, { BadgeState } from '@/app/components/base/badge/index'
+import Badge from '@/app/components/base/badge/index'
 import Card from '@/app/components/plugins/card'
 import checkTaskStatus from '@/app/components/plugins/install-plugin/base/check-task-status'
 import { pluginManifestToCardPluginProps } from '@/app/components/plugins/install-plugin/utils'
@@ -192,7 +192,7 @@ const UpdatePluginModal = ({
                 className="w-full"
                 titleLeft={
                   <>
-                    <Badge className="mx-1" size="s" state={BadgeState.Warning}>
+                    <Badge className="mx-1" size="s" variant="warning">
                       {`${originalPackageInfo.payload.version} -> ${targetPackageInfo.version}`}
                     </Badge>
                   </>
