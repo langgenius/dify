@@ -107,6 +107,10 @@ ENV TIKTOKEN_CACHE_DIR=/app/api/.tiktoken_cache
 RUN python -c "import tiktoken; tiktoken.encoding_for_model('gpt2')" \
     && chown -R dify:dify ${TIKTOKEN_CACHE_DIR}
 
+# Pre-install the spaCy model unstructured needs, so document extraction works offline and as non-root
+RUN python -c "from unstructured.nlp.tokenize import sent_tokenize; sent_tokenize('Warm up.')" \
+    && python -c "import spacy; spacy.load('en_core_web_sm')"
+
 # Copy source code
 COPY --chown=dify:dify api /app/api/
 

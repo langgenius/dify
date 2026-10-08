@@ -3,11 +3,11 @@
 import type { SkillVersionResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -68,14 +68,14 @@ export function RestoreVersionDialog({
             version: versionTitle,
           })}
         </AlertDialogDescription>
-        <AlertDialogActions className="p-0 pt-6">
+        <AlertDialogFooter className="p-0 pt-6">
           <AlertDialogCancelButton disabled={loading}>
             {tCommon(($) => $['operation.cancel'])}
           </AlertDialogCancelButton>
           <AlertDialogConfirmButton loading={loading} onClick={onConfirm}>
             {t(($) => $['skillManagement.detail.restoreVersion'])}
           </AlertDialogConfirmButton>
-        </AlertDialogActions>
+        </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   )
@@ -166,7 +166,7 @@ function VersionFilter({
                   })
             }`}
             className={cn(
-              'flex size-6 shrink-0 items-center justify-center rounded-md p-0.5 outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+              'flex size-6 shrink-0 items-center justify-center rounded-md p-0.5',
               isFiltering
                 ? 'bg-state-accent-active-alt text-text-accent'
                 : 'text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
@@ -377,7 +377,7 @@ function VersionRow({
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger
               aria-label={tCommon(($) => $['operation.more'])}
-              className="absolute top-1 right-1 flex size-6 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg p-1 opacity-0 shadow-xs outline-hidden group-hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:opacity-100"
+              className="absolute top-1 right-1 flex size-6 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg p-1 opacity-0 shadow-xs group-hover:opacity-100 focus-visible:opacity-100 data-popup-open:opacity-100"
             >
               <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
             </DropdownMenuTrigger>
@@ -476,7 +476,7 @@ function VersionRow({
           <AlertDialogDescription className="mt-2 system-md-regular text-text-tertiary">
             {versionTitle}
           </AlertDialogDescription>
-          <AlertDialogActions className="p-0 pt-6">
+          <AlertDialogFooter className="p-0 pt-6">
             <AlertDialogCancelButton disabled={deleteMutation.isPending}>
               {tCommon(($) => $['operation.cancel'])}
             </AlertDialogCancelButton>
@@ -487,7 +487,7 @@ function VersionRow({
             >
               {tCommon(($) => $['operation.delete'])}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>

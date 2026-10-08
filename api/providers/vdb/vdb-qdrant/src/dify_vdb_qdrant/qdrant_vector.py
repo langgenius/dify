@@ -18,6 +18,7 @@ from qdrant_client.http.models import (
     TokenizerType,
 )
 from qdrant_client.local.qdrant_local import QdrantLocal
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.rag.datasource.vdb.field import Field
@@ -495,7 +496,9 @@ class QdrantVector(BaseVector):
 
 class QdrantVectorFactory(AbstractVectorFactory):
     @override
-    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> QdrantVector:
+    def init_vector(
+        self, dataset: Dataset, attributes: list, embeddings: Embeddings, *, session: Session | None
+    ) -> QdrantVector:
         if dataset.collection_binding_id:
             if self._collection_name is None:
                 raise ValueError("The bound collection name must be resolved before initializing Qdrant")

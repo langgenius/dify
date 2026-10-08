@@ -5,6 +5,7 @@ from collections.abc import Sequence
 from unittest import mock
 
 import pytest
+from pytest_mock import MockerFixture
 
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, ModelConfigWithCredentialsEntity, UserFrom
 from core.app.llm.model_access import (
@@ -15,8 +16,10 @@ from core.app.llm.model_access import (
 )
 from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
 from core.entities.provider_entities import CustomConfiguration, SystemConfiguration
+from core.model_manager import ModelInstance
 from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
+from core.workflow.node_runtime import DifyFileReferenceFactory, DifyPromptMessageSerializer, DifyToolFileManager
 from core.workflow.system_variables import default_system_variables
 from graphon.entities import GraphInitParams
 from graphon.file import File, FileTransferMethod, FileType
@@ -71,7 +74,7 @@ from graphon.nodes.llm.exc import (
     NoPromptFoundError,
     VariableNotFoundError,
 )
-from graphon.nodes.llm.file_saver import LLMFileSaver
+from graphon.nodes.llm.file_saver import FileSaverImpl, LLMFileSaver
 from graphon.nodes.llm.node import (
     LLMNode,
     _calculate_rest_token,
@@ -80,9 +83,7 @@ from graphon.nodes.llm.node import (
     _handle_memory_completion_mode,
     _render_jinja2_message,
 )
-from graphon.nodes.llm.protocols import CredentialsProvider, ModelFactory
 from graphon.nodes.llm.reasoning import split_reasoning
-from graphon.nodes.llm.runtime_protocols import PromptMessageSerializerProtocol
 from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.template_rendering import TemplateRenderError
 from graphon.variables import ArrayAnySegment, ArrayFileSegment, NoneSegment
@@ -100,6 +101,46 @@ class MockTokenBufferMemory:
         if message_limit is not None:
             return self.history_messages[-message_limit * 2 :]
         return self.history_messages
+
+
+def _run_context() -> DifyRunContext:
+    return DifyRunContext(
+        tenant_id="tenant",
+        app_id="app",
+        user_id="user",
+        user_from=UserFrom.ACCOUNT,
+        invoke_from=InvokeFrom.DEBUGGER,
+    )
+
+
+def _build_file_saver() -> FileSaverImpl:
+    run_context = _run_context()
+    return FileSaverImpl(
+        tool_file_manager=DifyToolFileManager(run_context),
+        file_reference_factory=DifyFileReferenceFactory(run_context),
+    )
+
+
+class _RecordingFileSaver(LLMFileSaver):
+    """Return a configured file and record the node's save requests without I/O."""
+
+    def __init__(self, saved_file: File | None) -> None:
+        # None means no save request is expected in this scenario.
+        self.saved_file = saved_file
+        self.binary_calls: list[tuple[bytes, str, FileType, str | None]] = []
+        self.remote_calls: list[tuple[str, FileType]] = []
+
+    def save_binary_string(
+        self, data: bytes, mime_type: str, file_type: FileType, extension_override: str | None = None
+    ) -> File:
+        self.binary_calls.append((data, mime_type, file_type, extension_override))
+        assert self.saved_file is not None, "Unexpected binary file save"
+        return self.saved_file
+
+    def save_remote_url(self, url: str, file_type: FileType) -> File:
+        self.remote_calls.append((url, file_type))
+        assert self.saved_file is not None, "Unexpected remote file save"
+        return self.saved_file
 
 
 def _build_prepared_llm_mock() -> mock.MagicMock:
@@ -207,21 +248,21 @@ def graph_runtime_state() -> GraphRuntimeState:
 def llm_node(
     llm_node_data: LLMNodeData, graph_init_params: GraphInitParams, graph_runtime_state: GraphRuntimeState
 ) -> LLMNode:
-    mock_file_saver = mock.MagicMock(spec=LLMFileSaver)
-    mock_credentials_provider = mock.MagicMock(spec=CredentialsProvider)
-    mock_model_factory = mock.MagicMock(spec=ModelFactory)
-    mock_prompt_message_serializer = mock.MagicMock(spec=PromptMessageSerializerProtocol)
+    file_saver = _build_file_saver()
+    credentials_provider = DifyCredentialsProvider(run_context=_run_context())
+    model_factory = DifyModelFactory(run_context=_run_context())
+    prompt_message_serializer = DifyPromptMessageSerializer()
     http_client = mock.MagicMock()
     node = LLMNode(
         node_id="1",
         data=llm_node_data,
         graph_init_params=graph_init_params,
         graph_runtime_state=graph_runtime_state,
-        credentials_provider=mock_credentials_provider,
-        model_factory=mock_model_factory,
+        credentials_provider=credentials_provider,
+        model_factory=model_factory,
         model_instance=_build_prepared_llm_mock(),
-        llm_file_saver=mock_file_saver,
-        prompt_message_serializer=mock_prompt_message_serializer,
+        llm_file_saver=file_saver,
+        prompt_message_serializer=prompt_message_serializer,
         http_client=http_client,
     )
     return node
@@ -284,9 +325,11 @@ def model_config(monkeypatch: pytest.MonkeyPatch):
     )
 
 
-def test_fetch_model_config_hydrates_model_instance_runtime_settings(model_config: ModelConfigWithCredentialsEntity):
-    mock_credentials_provider = mock.MagicMock(spec=CredentialsProvider)
-    mock_model_factory = mock.MagicMock(spec=DifyModelFactory)
+def test_fetch_model_config_hydrates_model_instance_runtime_settings(
+    model_config: ModelConfigWithCredentialsEntity, mocker: MockerFixture
+):
+    credentials_provider = DifyCredentialsProvider(run_context=_run_context())
+    model_factory = DifyModelFactory(run_context=_run_context())
 
     provider_model_bundle = model_config.provider_model_bundle
     model_type_instance = provider_model_bundle.model_type_instance
@@ -297,13 +340,10 @@ def test_fetch_model_config_hydrates_model_instance_runtime_settings(model_confi
         "stop": ["Observation:", "Human:"],
     }
 
-    model_instance = mock.MagicMock(
-        model_type_instance=model_type_instance,
-        provider_model_bundle=provider_model_bundle,
-    )
+    model_instance = ModelInstance(provider_model_bundle=provider_model_bundle, model="gpt-3.5-turbo", credentials={})
 
-    mock_credentials_provider.fetch.return_value = {"api_key": "test"}
-    mock_model_factory.init_model_instance.return_value = model_instance
+    fetch_credentials = mocker.patch.object(credentials_provider, "fetch", return_value={"api_key": "test"})
+    initialize_model = mocker.patch.object(model_factory, "init_model_instance", return_value=model_instance)
 
     with (
         mock.patch.object(
@@ -323,8 +363,8 @@ def test_fetch_model_config_hydrates_model_instance_runtime_settings(model_confi
                 mode="chat",
                 completion_params=completion_params,
             ),
-            credentials_provider=mock_credentials_provider,
-            model_factory=mock_model_factory,
+            credentials_provider=credentials_provider,
+            model_factory=model_factory,
         )
 
     assert hydrated_model_instance is model_instance
@@ -346,8 +386,8 @@ def test_fetch_model_config_hydrates_model_instance_runtime_settings(model_confi
         "max_tokens": 256,
         "stop": ["Observation:", "Human:"],
     }
-    mock_credentials_provider.fetch.assert_called_once_with("openai", "gpt-3.5-turbo")
-    mock_model_factory.init_model_instance.assert_called_once_with("openai", "gpt-3.5-turbo")
+    fetch_credentials.assert_called_once_with("openai", "gpt-3.5-turbo")
+    initialize_model.assert_called_once_with("openai", "gpt-3.5-turbo")
     provider_model.raise_for_status.assert_called_once()
 
 
@@ -358,9 +398,11 @@ def test_fetch_model_config_hydrates_model_instance_runtime_settings(model_confi
         ("openai", ""),
     ],
 )
-def test_fetch_model_config_rejects_unconfigured_model(provider: str, model_name: str):
-    credentials_provider = mock.MagicMock(spec=CredentialsProvider)
-    model_factory = mock.MagicMock(spec=DifyModelFactory)
+def test_fetch_model_config_rejects_unconfigured_model(provider: str, model_name: str, mocker: MockerFixture):
+    credentials_provider = DifyCredentialsProvider(run_context=_run_context())
+    model_factory = DifyModelFactory(run_context=_run_context())
+    fetch_credentials = mocker.spy(credentials_provider, "fetch")
+    initialize_model = mocker.spy(model_factory, "init_model_instance")
 
     with pytest.raises(ValueError, match="LLM provider and model are required"):
         fetch_model_config(
@@ -374,18 +416,19 @@ def test_fetch_model_config_rejects_unconfigured_model(provider: str, model_name
             model_factory=model_factory,
         )
 
-    credentials_provider.fetch.assert_not_called()
-    model_factory.init_model_instance.assert_not_called()
+    fetch_credentials.assert_not_called()
+    initialize_model.assert_not_called()
 
 
 def test_fetch_model_config_reuses_validated_provider_model_from_dify_credentials_provider(
     model_config: ModelConfigWithCredentialsEntity,
+    mocker: MockerFixture,
 ):
     mock_provider_manager = mock.MagicMock()
     mock_configurations = mock.MagicMock()
     mock_provider_configuration = mock.MagicMock()
     mock_provider_model = mock.MagicMock()
-    mock_model_factory = mock.MagicMock(spec=DifyModelFactory)
+    model_factory = DifyModelFactory(run_context=_run_context())
 
     mock_configurations.get.return_value = mock_provider_configuration
     mock_provider_configuration.get_provider_model.return_value = mock_provider_model
@@ -404,11 +447,10 @@ def test_fetch_model_config_reuses_validated_provider_model_from_dify_credential
         provider_manager=mock_provider_manager,
     )
 
-    model_instance = mock.MagicMock(
-        model_type_instance=model_config.provider_model_bundle.model_type_instance,
-        provider_model_bundle=model_config.provider_model_bundle,
+    model_instance = ModelInstance(
+        provider_model_bundle=model_config.provider_model_bundle, model="gpt-3.5-turbo", credentials={}
     )
-    mock_model_factory.init_model_instance.return_value = model_instance
+    mocker.patch.object(model_factory, "init_model_instance", return_value=model_instance)
 
     with mock.patch.object(
         model_instance.model_type_instance.__class__,
@@ -424,7 +466,7 @@ def test_fetch_model_config_reuses_validated_provider_model_from_dify_credential
                 completion_params={},
             ),
             credentials_provider=credentials_provider,
-            model_factory=mock_model_factory,
+            model_factory=model_factory,
         )
 
     mock_provider_configuration.get_provider_model.assert_called_once_with(
@@ -1046,12 +1088,12 @@ def test_fetch_context_rejects_invalid_context_structure(llm_node):
         list(llm_node._fetch_context(node_data))
 
 
-def test_fetch_prompt_messages_chat_mode_appends_memory_query_and_files():
+def test_fetch_prompt_messages_chat_mode_appends_memory_query_and_files(mocker: MockerFixture):
     model_instance = _build_prepared_llm_mock()
     model_instance.get_model_schema.return_value = _build_model_schema(features=[ModelFeature.VISION])
 
-    memory = mock.MagicMock(spec=MockTokenBufferMemory)
-    memory.get_history_prompt_messages.return_value = [AssistantPromptMessage(content="history answer")]
+    memory = MockTokenBufferMemory([AssistantPromptMessage(content="history answer")])
+    history_lookup = mocker.spy(memory, "get_history_prompt_messages")
 
     sys_file = _build_image_file(file_id="sys-file", related_id="sys-related", remote_url="https://example.com/sys.png")
     context_file = _build_image_file(
@@ -1112,18 +1154,19 @@ def test_fetch_prompt_messages_chat_mode_appends_memory_query_and_files():
     assert prompt_messages[2].content[0].url == "https://example.com/context.png"
     assert prompt_messages[2].content[1].url == "https://example.com/sys.png"
     assert prompt_messages[2].content[2].data == "current question"
-    memory.get_history_prompt_messages.assert_called_once_with(max_token_limit=2000, message_limit=None)
+    history_lookup.assert_called_once_with(max_token_limit=2000, message_limit=None)
 
 
 def test_fetch_prompt_messages_completion_mode_injects_histories_and_query():
     model_instance = _build_prepared_llm_mock()
     model_instance.get_model_schema.return_value = _build_model_schema(features=[])
 
-    memory = mock.MagicMock(spec=MockTokenBufferMemory)
-    memory.get_history_prompt_messages.return_value = [
-        UserPromptMessage(content="previous question"),
-        AssistantPromptMessage(content="previous answer"),
-    ]
+    memory = MockTokenBufferMemory(
+        history_messages=[
+            UserPromptMessage(content="previous question"),
+            AssistantPromptMessage(content="previous answer"),
+        ]
+    )
 
     prompt_messages, stop = LLMNode.fetch_prompt_messages(
         sys_query="latest question",
@@ -1219,21 +1262,23 @@ def test_handle_completion_template_replaces_double_brace_context_placeholder(ll
     ]
 
 
-def test_handle_memory_completion_mode_uses_prompt_message_interface():
-    memory = mock.MagicMock(spec=MockTokenBufferMemory)
-    memory.get_history_prompt_messages.return_value = [
-        UserPromptMessage(
-            content=[
-                TextPromptMessageContent(data="first question"),
-                ImagePromptMessageContent(
-                    format="png",
-                    url="https://example.com/image.png",
-                    mime_type="image/png",
-                ),
-            ]
-        ),
-        AssistantPromptMessage(content="first answer"),
-    ]
+def test_handle_memory_completion_mode_uses_prompt_message_interface(mocker: MockerFixture):
+    memory = MockTokenBufferMemory(
+        history_messages=[
+            UserPromptMessage(
+                content=[
+                    TextPromptMessageContent(data="first question"),
+                    ImagePromptMessageContent(
+                        format="png",
+                        url="https://example.com/image.png",
+                        mime_type="image/png",
+                    ),
+                ]
+            ),
+            AssistantPromptMessage(content="first answer"),
+        ]
+    )
+    history_lookup = mocker.spy(memory, "get_history_prompt_messages")
 
     model_instance = _build_prepared_llm_mock()
 
@@ -1251,34 +1296,36 @@ def test_handle_memory_completion_mode_uses_prompt_message_interface():
 
     assert memory_text == "Human: first question\n[image]\nAssistant: first answer"
     mock_rest_token.assert_called_once_with(prompt_messages=[], model_instance=model_instance)
-    memory.get_history_prompt_messages.assert_called_once_with(max_token_limit=2000, message_limit=3)
+    history_lookup.assert_called_once_with(max_token_limit=2000, message_limit=3)
 
 
 @pytest.fixture
-def llm_node_for_multimodal(llm_node_data, graph_init_params, graph_runtime_state) -> tuple[LLMNode, LLMFileSaver]:
-    mock_file_saver: LLMFileSaver = mock.MagicMock(spec=LLMFileSaver)
-    mock_credentials_provider = mock.MagicMock(spec=CredentialsProvider)
-    mock_model_factory = mock.MagicMock(spec=ModelFactory)
-    mock_prompt_message_serializer = mock.MagicMock(spec=PromptMessageSerializerProtocol)
+def llm_node_for_multimodal(
+    llm_node_data, graph_init_params, graph_runtime_state
+) -> tuple[LLMNode, _RecordingFileSaver]:
+    file_saver = _RecordingFileSaver(saved_file=None)
+    credentials_provider = DifyCredentialsProvider(run_context=_run_context())
+    model_factory = DifyModelFactory(run_context=_run_context())
+    prompt_message_serializer = DifyPromptMessageSerializer()
     http_client = mock.MagicMock()
     node = LLMNode(
         node_id="1",
         data=llm_node_data,
         graph_init_params=graph_init_params,
         graph_runtime_state=graph_runtime_state,
-        credentials_provider=mock_credentials_provider,
-        model_factory=mock_model_factory,
+        credentials_provider=credentials_provider,
+        model_factory=model_factory,
         model_instance=_build_prepared_llm_mock(),
-        llm_file_saver=mock_file_saver,
-        prompt_message_serializer=mock_prompt_message_serializer,
+        llm_file_saver=file_saver,
+        prompt_message_serializer=prompt_message_serializer,
         http_client=http_client,
     )
-    return node, mock_file_saver
+    return node, file_saver
 
 
 class TestLLMNodeSaveMultiModalImageOutput:
-    def test_llm_node_save_inline_output(self, llm_node_for_multimodal: tuple[LLMNode, LLMFileSaver]):
-        llm_node, mock_file_saver = llm_node_for_multimodal
+    def test_llm_node_save_inline_output(self, llm_node_for_multimodal: tuple[LLMNode, _RecordingFileSaver]):
+        llm_node, file_saver = llm_node_for_multimodal
         content = ImagePromptMessageContent(
             format="png",
             base64_data=base64.b64encode(b"test-data").decode(),
@@ -1294,24 +1341,19 @@ class TestLLMNodeSaveMultiModalImageOutput:
             mime_type="image/png",
             size=9,
         )
-        mock_file_saver.save_binary_string.return_value = mock_file
+        file_saver.saved_file = mock_file
         file = llm_node.save_multimodal_image_output(
             content=content,
-            file_saver=mock_file_saver,
+            file_saver=file_saver,
         )
         # Manually append to _file_outputs since the static method doesn't do it
         llm_node._file_outputs.append(file)
         assert llm_node._file_outputs == [mock_file]
         assert file == mock_file
-        mock_file_saver.save_binary_string.assert_called_once_with(
-            data=b"test-data",
-            mime_type="image/png",
-            file_type=FileType.IMAGE,
-            extension_override=".png",
-        )
+        assert file_saver.binary_calls == [(b"test-data", "image/png", FileType.IMAGE, ".png")]
 
-    def test_llm_node_save_url_output(self, llm_node_for_multimodal: tuple[LLMNode, LLMFileSaver]):
-        llm_node, mock_file_saver = llm_node_for_multimodal
+    def test_llm_node_save_url_output(self, llm_node_for_multimodal: tuple[LLMNode, _RecordingFileSaver]):
+        llm_node, file_saver = llm_node_for_multimodal
         content = ImagePromptMessageContent(
             format="png",
             url="https://example.com/image.png",
@@ -1327,23 +1369,23 @@ class TestLLMNodeSaveMultiModalImageOutput:
             mime_type="image/png",
             size=9,
         )
-        mock_file_saver.save_remote_url.return_value = mock_file
+        file_saver.saved_file = mock_file
         file = llm_node.save_multimodal_image_output(
             content=content,
-            file_saver=mock_file_saver,
+            file_saver=file_saver,
         )
         # Manually append to _file_outputs since the static method doesn't do it
         llm_node._file_outputs.append(file)
         assert llm_node._file_outputs == [mock_file]
         assert file == mock_file
-        mock_file_saver.save_remote_url.assert_called_once_with(content.url, FileType.IMAGE)
+        assert file_saver.remote_calls == [(content.url, FileType.IMAGE)]
 
 
 def test_llm_node_image_file_to_markdown(llm_node: LLMNode):
-    mock_file = mock.MagicMock(spec=File)
-    mock_file.type = FileType.IMAGE
-    mock_file.generate_url.return_value = "https://example.com/image.png"
-    markdown = llm_node._saved_file_to_markdown(mock_file)
+    image_file = _build_image_file(
+        file_id="image-file", related_id="image-related", remote_url="https://example.com/image.png"
+    )
+    markdown = llm_node._saved_file_to_markdown(image_file)
     assert markdown == "![](https://example.com/image.png)"
 
 
@@ -1353,25 +1395,25 @@ class TestSaveMultimodalOutputAndConvertResultToMarkdown:
             return "<unknown-item>"
 
     def test_str_content(self, llm_node_for_multimodal):
-        llm_node, mock_file_saver = llm_node_for_multimodal
+        llm_node, file_saver = llm_node_for_multimodal
         gen = llm_node._save_multimodal_output_and_convert_result_to_markdown(
-            contents="hello world", file_saver=mock_file_saver, file_outputs=[]
+            contents="hello world", file_saver=file_saver, file_outputs=[]
         )
         assert list(gen) == ["hello world"]
-        mock_file_saver.save_binary_string.assert_not_called()
-        mock_file_saver.save_remote_url.assert_not_called()
+        assert file_saver.binary_calls == []
+        assert file_saver.remote_calls == []
 
     def test_text_prompt_message_content(self, llm_node_for_multimodal):
-        llm_node, mock_file_saver = llm_node_for_multimodal
+        llm_node, file_saver = llm_node_for_multimodal
         gen = llm_node._save_multimodal_output_and_convert_result_to_markdown(
-            contents=[TextPromptMessageContent(data="hello world")], file_saver=mock_file_saver, file_outputs=[]
+            contents=[TextPromptMessageContent(data="hello world")], file_saver=file_saver, file_outputs=[]
         )
         assert list(gen) == ["hello world"]
-        mock_file_saver.save_binary_string.assert_not_called()
-        mock_file_saver.save_remote_url.assert_not_called()
+        assert file_saver.binary_calls == []
+        assert file_saver.remote_calls == []
 
     def test_image_content_with_inline_data(self, llm_node_for_multimodal, monkeypatch: pytest.MonkeyPatch):
-        llm_node, mock_file_saver = llm_node_for_multimodal
+        llm_node, file_saver = llm_node_for_multimodal
 
         image_raw_data = b"PNG_DATA"
         image_b64_data = base64.b64encode(image_raw_data).decode()
@@ -1387,7 +1429,7 @@ class TestSaveMultimodalOutputAndConvertResultToMarkdown:
             url="https://example.com/test.png",
             storage_key="test_storage_key",
         )
-        mock_file_saver.save_binary_string.return_value = mock_saved_file
+        file_saver.saved_file = mock_saved_file
         gen = llm_node._save_multimodal_output_and_convert_result_to_markdown(
             contents=[
                 ImagePromptMessageContent(
@@ -1396,7 +1438,7 @@ class TestSaveMultimodalOutputAndConvertResultToMarkdown:
                     mime_type="image/png",
                 )
             ],
-            file_saver=mock_file_saver,
+            file_saver=file_saver,
             file_outputs=llm_node._file_outputs,
         )
         yielded_strs = list(gen)
@@ -1411,45 +1453,40 @@ class TestSaveMultimodalOutputAndConvertResultToMarkdown:
         assert yielded_strs[0].startswith("![](")
         assert expected_file_url_path in yielded_strs[0]
         assert yielded_strs[0].endswith(")")
-        mock_file_saver.save_binary_string.assert_called_once_with(
-            data=image_raw_data,
-            mime_type="image/png",
-            file_type=FileType.IMAGE,
-            extension_override=".png",
-        )
+        assert file_saver.binary_calls == [(image_raw_data, "image/png", FileType.IMAGE, ".png")]
         assert mock_saved_file in llm_node._file_outputs
 
     def test_unknown_content_type(self, llm_node_for_multimodal):
-        llm_node, mock_file_saver = llm_node_for_multimodal
+        llm_node, file_saver = llm_node_for_multimodal
         gen = llm_node._save_multimodal_output_and_convert_result_to_markdown(
-            contents=frozenset(("hello world",)), file_saver=mock_file_saver, file_outputs=[]
+            contents=frozenset(("hello world",)), file_saver=file_saver, file_outputs=[]
         )
         assert list(gen) == ["hello world"]
-        mock_file_saver.save_binary_string.assert_not_called()
-        mock_file_saver.save_remote_url.assert_not_called()
+        assert file_saver.binary_calls == []
+        assert file_saver.remote_calls == []
 
     def test_unknown_item_type(self, llm_node_for_multimodal, caplog: pytest.LogCaptureFixture):
-        llm_node, mock_file_saver = llm_node_for_multimodal
+        llm_node, file_saver = llm_node_for_multimodal
         unknown_item = self._UnknownItem()
 
         with caplog.at_level(logging.WARNING, logger="graphon.nodes.llm.node"):
             gen = llm_node._save_multimodal_output_and_convert_result_to_markdown(
-                contents=[unknown_item], file_saver=mock_file_saver, file_outputs=[]
+                contents=[unknown_item], file_saver=file_saver, file_outputs=[]
             )
             assert list(gen) == [str(unknown_item)]
 
         assert "unknown item type encountered" in caplog.text
-        mock_file_saver.save_binary_string.assert_not_called()
-        mock_file_saver.save_remote_url.assert_not_called()
+        assert file_saver.binary_calls == []
+        assert file_saver.remote_calls == []
 
     def test_none_content(self, llm_node_for_multimodal):
-        llm_node, mock_file_saver = llm_node_for_multimodal
+        llm_node, file_saver = llm_node_for_multimodal
         gen = llm_node._save_multimodal_output_and_convert_result_to_markdown(
-            contents=None, file_saver=mock_file_saver, file_outputs=[]
+            contents=None, file_saver=file_saver, file_outputs=[]
         )
         assert list(gen) == []
-        mock_file_saver.save_binary_string.assert_not_called()
-        mock_file_saver.save_remote_url.assert_not_called()
+        assert file_saver.binary_calls == []
+        assert file_saver.remote_calls == []
 
 
 class TestReasoningFormat:
@@ -1525,7 +1562,7 @@ class TestReasoningFormat:
 def test_invoke_llm_dispatches_to_expected_model_method(structured_output_enabled, structured_output):
     model_instance = _build_prepared_llm_mock()
     prompt_messages = [UserPromptMessage(content="hello")]
-    file_saver = mock.MagicMock(spec=LLMFileSaver)
+    file_saver = _build_file_saver()
 
     model_instance.invoke_llm.return_value = iter([])
     model_instance.invoke_llm_with_structured_output.return_value = iter([])
@@ -1597,7 +1634,7 @@ def test_handle_invoke_result_streaming_collects_text_metrics_and_structured_out
         events = list(
             LLMNode.handle_invoke_result(
                 invoke_result=iter([first_chunk, final_chunk]),
-                file_saver=mock.MagicMock(spec=LLMFileSaver),
+                file_saver=_build_file_saver(),
                 file_outputs=[],
                 node_id="node-1",
                 model_instance=_build_prepared_llm_mock(),
@@ -1638,7 +1675,7 @@ def test_handle_invoke_result_wraps_structured_output_parse_errors():
         list(
             LLMNode.handle_invoke_result(
                 invoke_result=broken_stream(),
-                file_saver=mock.MagicMock(spec=LLMFileSaver),
+                file_saver=_build_file_saver(),
                 file_outputs=[],
                 node_id="node-1",
                 model_instance=model_instance,
@@ -1657,7 +1694,7 @@ def test_handle_blocking_result_extracts_reasoning_and_structured_output():
 
     event = LLMNode.handle_blocking_result(
         invoke_result=invoke_result,
-        saver=mock.MagicMock(spec=LLMFileSaver),
+        saver=_build_file_saver(),
         file_outputs=[],
         reasoning_format="separated",
         request_latency=1.2345,
@@ -1779,10 +1816,10 @@ def test_calculate_rest_token_uses_context_size_and_max_tokens():
     )
 
 
-def test_handle_memory_chat_mode_uses_calculated_token_budget():
-    memory = mock.MagicMock(spec=MockTokenBufferMemory)
+def test_handle_memory_chat_mode_uses_calculated_token_budget(mocker: MockerFixture):
     history = [UserPromptMessage(content="question")]
-    memory.get_history_prompt_messages.return_value = history
+    memory = MockTokenBufferMemory(history)
+    history_lookup = mocker.spy(memory, "get_history_prompt_messages")
 
     with mock.patch("graphon.nodes.llm.node._calculate_rest_token", return_value=321) as mock_rest_token:
         result = _handle_memory_chat_mode(
@@ -1793,7 +1830,7 @@ def test_handle_memory_chat_mode_uses_calculated_token_budget():
 
     assert result == history
     mock_rest_token.assert_called_once()
-    memory.get_history_prompt_messages.assert_called_once_with(max_token_limit=321, message_limit=2)
+    history_lookup.assert_called_once_with(max_token_limit=321, message_limit=2)
 
 
 def test_dify_model_access_adapters_skip_runtime_build_when_managers_are_injected():
