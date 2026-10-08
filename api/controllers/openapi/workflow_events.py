@@ -14,9 +14,9 @@ from collections.abc import Generator
 from flask import Response
 from flask_restx import Resource
 from pydantic import BaseModel, Field
-from werkzeug.exceptions import NotFound, UnprocessableEntity
 
 from constants.oauth_bearer import Scope
+from controllers.common.errors import NotFoundError, UnprocessableEntityError
 from controllers.common.fields import EventStreamResponse
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.openapi import openapi_ns
@@ -32,16 +32,14 @@ from controllers.openapi.auth.requirements import (
 )
 from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject
 from controllers.openapi.human_input_form import with_form_hints
-from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
-from core.app.apps.base_app_generator import BaseAppGenerator
-from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
-from core.app.apps.message_generator import MessageGenerator
-from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.task_entities import StreamEvent
 from core.db.session_factory import session_factory
 from core.workflow.human_input_policy import HumanInputSurface
 from models.model import AppMode
 from repositories.factory import DifyAPIRepositoryFactory
+from services.app.generation.response import convert_to_event_stream
+from services.workflow.execution.adapters.response_converter import WorkflowResponseConverter
+from services.workflow.execution.adapters.response_stream import WorkflowEventStream
 from services.workflow_event_snapshot_service import build_workflow_event_stream
 
 
@@ -83,7 +81,7 @@ class OpenApiWorkflowEventsApi(Resource):
 
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.WORKFLOW, AppMode.ADVANCED_CHAT}:
-            raise UnprocessableEntity("mode_not_supported_for_event_reconnect")
+            raise UnprocessableEntityError("mode_not_supported_for_event_reconnect")
 
         # The event stream outlives `ctx.session`, so this route needs a maker of its
         # own — the guard's, not a fresh one bound straight to the engine.
@@ -95,15 +93,15 @@ class OpenApiWorkflowEventsApi(Resource):
         )
 
         if workflow_run is None:
-            raise NotFound("Workflow run not found")
+            raise NotFoundError("Workflow run not found")
 
         if workflow_run.app_id != app_model.id:
-            raise NotFound("Workflow run not found")
+            raise NotFoundError("Workflow run not found")
 
         # Ownership is a property of the run row, not of the app, so no pipeline
         # requirement can answer it — the caller may only reconnect to its own run.
         if workflow_run.created_by_role != ctx.subject.caller_role or workflow_run.created_by != caller.id:
-            raise NotFound("Workflow run not found")
+            raise NotFoundError("Workflow run not found")
 
         workflow_run_entity = workflow_run
         tenant_id = app_model.tenant_id
@@ -123,20 +121,14 @@ class OpenApiWorkflowEventsApi(Resource):
 
             event_generator = _generate_finished_events
         else:
-            msg_generator = MessageGenerator()
-            generator: BaseAppGenerator
-            if app_mode == AppMode.ADVANCED_CHAT:
-                generator = AdvancedChatAppGenerator()
-            else:
-                generator = WorkflowAppGenerator()
-
+            msg_generator = WorkflowEventStream
             include_state_snapshot = query.include_state_snapshot
             continue_on_pause = query.continue_on_pause
             terminal_events: list[StreamEvent] | None = [] if continue_on_pause else None
 
             def _generate_stream_events():
                 if include_state_snapshot:
-                    return generator.convert_to_event_stream(
+                    return convert_to_event_stream(
                         build_workflow_event_stream(
                             app_mode=app_mode,
                             workflow_run=workflow_run_entity,
@@ -147,7 +139,7 @@ class OpenApiWorkflowEventsApi(Resource):
                             close_on_pause=not continue_on_pause,
                         )
                     )
-                return generator.convert_to_event_stream(
+                return convert_to_event_stream(
                     msg_generator.retrieve_events(
                         app_mode,
                         workflow_run_entity.id,

@@ -378,8 +378,7 @@ def test_workflow_events_snapshot_can_continue_across_pauses(app: Flask, monkeyp
         def get_workflow_run_by_id_and_tenant_id(self, **_kwargs):
             return workflow_run
 
-    workflow_generator = Mock()
-    workflow_generator.convert_to_event_stream.return_value = iter(["data: snapshot\n\n"])
+    response_stream = Mock(return_value=iter(["data: snapshot\n\n"]))
     snapshot_builder = Mock(return_value=["snapshot-events"])
 
     monkeypatch.setattr(
@@ -392,8 +391,8 @@ def test_workflow_events_snapshot_can_continue_across_pauses(app: Flask, monkeyp
         lambda *_args, **_kwargs: app_model,
     )
     monkeypatch.setattr(
-        "controllers.console.human_input_form.WorkflowAppGenerator",
-        lambda: workflow_generator,
+        "controllers.console.human_input_form.convert_to_event_stream",
+        response_stream,
     )
     monkeypatch.setattr(
         "controllers.console.human_input_form.build_workflow_event_stream",

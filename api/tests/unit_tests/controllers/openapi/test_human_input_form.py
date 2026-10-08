@@ -34,10 +34,10 @@ from controllers.openapi.human_input_form import (
     with_form_hints,
 )
 from core.app.entities.task_entities import HumanInputRequiredResponse
-from core.workflow.nodes.human_input import ParagraphInputConfig, UserActionConfig
 from enums.human_input import RecipientType
 from models.account import Account
 from models.enums import CreatorUserRole, EndUserType
+from models.human_input_entities import ParagraphInputConfig, UserActionConfig
 from models.model import App, AppMode, EndUser
 
 _MODULE = "controllers.openapi.human_input_form"
