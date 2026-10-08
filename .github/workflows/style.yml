@@ -73,47 +73,50 @@ jobs:
         if: inputs.run-python-style
         run: uv sync --project api --dev
 
-      - name: Run Import Linter
-        if: inputs.run-python-style
-        run: uv run --directory api --dev lint-imports
+      # These checks are independent once dependencies are installed, so run them
+      # concurrently. Keep this group at or under the 10 background-step limit.
+      - parallel:
+          - name: Run Import Linter
+            if: inputs.run-python-style
+            run: uv run --directory api --dev lint-imports
 
-      - name: Run Response Contract Linter
-        if: inputs.run-python-style
-        run: uv run --project api --dev python api/dev/lint_response_contracts.py --fail-on-mismatch
+          - name: Run Response Contract Linter
+            if: inputs.run-python-style
+            run: uv run --project api --dev python api/dev/lint_response_contracts.py --fail-on-mismatch
 
-      - name: Run No New Getattr Guard
-        if: inputs.run-python-style
-        run: uv run --project api python scripts/check_no_new_getattr.py --base-rev "${{ inputs.base-rev }}"
+          - name: Run No New Getattr Guard
+            if: inputs.run-python-style
+            run: uv run --project api python scripts/check_no_new_getattr.py --base-rev "${{ inputs.base-rev }}"
 
-      - name: Run No New Controller SQLAlchemy Guard
-        if: inputs.run-python-style
-        run: uv run --project api python scripts/check_no_new_controller_sqlalchemy.py --base-rev "${{ inputs.base-rev }}"
+          - name: Run No New Controller SQLAlchemy Guard
+            if: inputs.run-python-style
+            run: uv run --project api python scripts/check_no_new_controller_sqlalchemy.py --base-rev "${{ inputs.base-rev }}"
 
-      - name: Run No New Session Mock Guard
-        if: inputs.run-python-style
-        run: uv run --project api python scripts/check_no_new_session_mock.py --base-rev "${{ inputs.base-rev }}"
+          - name: Run No New Session Mock Guard
+            if: inputs.run-python-style
+            run: uv run --project api python scripts/check_no_new_session_mock.py --base-rev "${{ inputs.base-rev }}"
 
-      - name: Run No Spec Mock Guard
-        if: inputs.run-python-style
-        run: uv run --project api python scripts/check_no_spec_mock.py
+          - name: Run No Spec Mock Guard
+            if: inputs.run-python-style
+            run: uv run --project api python scripts/check_no_spec_mock.py
 
-      - name: Run Type Checks
-        if: inputs.run-python-style
-        env:
-          PYREFLY_OUTPUT_FORMAT: github
-        run: make type-check-core
+          - name: Run Type Checks
+            if: inputs.run-python-style
+            env:
+              PYREFLY_OUTPUT_FORMAT: github
+            run: make type-check-core
 
-      - name: Run Dify Agent Ruff
-        if: inputs.run-dify-agent-style
-        run: make -C dify-agent check
+          - name: Run Dify Agent Ruff
+            if: inputs.run-dify-agent-style
+            run: make -C dify-agent check
 
-      - name: Run Dify Agent Type Checks
-        if: inputs.run-dify-agent-style
-        run: make -C dify-agent typecheck
+          - name: Run Dify Agent Type Checks
+            if: inputs.run-dify-agent-style
+            run: make -C dify-agent typecheck
 
-      - name: Dotenv check
-        if: inputs.run-python-style
-        run: uv run --project api dotenv-linter ./api/.env.example ./web/.env.example
+          - name: Dotenv check
+            if: inputs.run-python-style
+            run: uv run --project api dotenv-linter ./api/.env.example ./web/.env.example
 
   web-build:
     name: Web Build and Bundle Analysis
