@@ -6,10 +6,9 @@ from core.workflow.human_input_policy import (
     is_recipient_type_allowed_for_surface,
     resolve_variable_select_input_options,
 )
-from core.workflow.nodes.human_input.entities import SelectInputConfig, StringListSource
-from core.workflow.nodes.human_input.enums import ValueSourceType
+from enums.human_input import RecipientType, ValueSourceType
 from graphon.runtime import VariablePool
-from models.human_input import RecipientType
+from models.human_input_entities import SelectInputConfig, StringListSource
 
 
 # Token surfaces (SERVICE_API, OPENAPI) may act only on public web-app forms;

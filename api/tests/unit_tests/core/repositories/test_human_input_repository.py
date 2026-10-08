@@ -20,26 +20,20 @@ from core.repositories.human_input_repository import (
     _InvalidTimeoutStatusError,
     _WorkspaceMemberInfo,
 )
-from core.workflow.human_input_adapter import (
-    DeliveryMethodType,
+from enums.human_input import DeliveryMethodType, HumanInputFormKind, HumanInputFormStatus, RecipientType
+from libs.datetime_utils import naive_utc_now
+from models.account import Account, TenantAccountJoin, TenantAccountRole
+from models.base import TypeBase
+from models.human_input import HumanInputDelivery, HumanInputForm, HumanInputFormRecipient
+from models.human_input_delivery import (
     EmailDeliveryConfig,
     EmailDeliveryMethod,
     EmailRecipients,
     ExternalRecipient,
     MemberRecipient,
-    WebAppDeliveryMethod,
 )
-from core.workflow.nodes.human_input.entities import HumanInputNodeData, UserActionConfig
-from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
-from libs.datetime_utils import naive_utc_now
-from models.account import Account, TenantAccountJoin, TenantAccountRole
-from models.base import TypeBase
-from models.human_input import (
-    HumanInputDelivery,
-    HumanInputForm,
-    HumanInputFormRecipient,
-    RecipientType,
-)
+from models.human_input_delivery import InteractiveSurfaceDeliveryMethod as WebAppDeliveryMethod
+from models.human_input_entities import HumanInputNodeData, UserActionConfig
 
 
 @pytest.fixture

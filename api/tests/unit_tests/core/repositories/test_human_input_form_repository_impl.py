@@ -15,18 +15,7 @@ from core.repositories.human_input_repository import (
     HumanInputFormSubmissionRepository,
     _WorkspaceMemberInfo,
 )
-from core.workflow.human_input_adapter import (
-    EmailDeliveryConfig,
-    EmailDeliveryMethod,
-    EmailRecipients,
-    ExternalRecipient,
-    MemberRecipient,
-)
-from core.workflow.nodes.human_input.entities import (
-    FormDefinition,
-    UserActionConfig,
-)
-from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
+from enums.human_input import HumanInputFormKind, HumanInputFormStatus, RecipientType
 from libs.datetime_utils import naive_utc_now
 from models import Account, TenantAccountJoin
 from models.human_input import (
@@ -34,9 +23,16 @@ from models.human_input import (
     EmailMemberRecipientPayload,
     HumanInputForm,
     HumanInputFormRecipient,
-    RecipientType,
     StandaloneWebAppRecipientPayload,
 )
+from models.human_input_delivery import (
+    EmailDeliveryConfig,
+    EmailDeliveryMethod,
+    EmailRecipients,
+    ExternalRecipient,
+    MemberRecipient,
+)
+from models.human_input_entities import FormDefinition, UserActionConfig
 
 
 def _build_repository() -> HumanInputFormRepositoryImpl:

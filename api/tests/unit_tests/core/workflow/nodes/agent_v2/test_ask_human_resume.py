@@ -11,9 +11,9 @@ from core.workflow.nodes.agent_v2.ask_human_resume import (
     build_deferred_tool_results,
     map_form_to_outcome,
 )
-from core.workflow.nodes.human_input.entities import FormDefinition, ParagraphInputConfig, UserActionConfig
-from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
+from enums.human_input import HumanInputFormStatus
+from models.human_input_entities import FormDefinition, ParagraphInputConfig, UserActionConfig
 
 
 def _form_definition_json() -> str:

@@ -7,8 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.workflow.human_input_adapter import DeliveryMethodType
-from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
+from enums.human_input import DeliveryMethodType, HumanInputFormKind, HumanInputFormStatus, RecipientType
 from graphon.file import FileTransferMethod, FileType
 from models import (
     AgentDebugConversation,
@@ -35,7 +34,7 @@ from models.enums import (
     FeedbackRating,
     MessageChainType,
 )
-from models.human_input import HumanInputDelivery, HumanInputFormRecipient, RecipientType
+from models.human_input import HumanInputDelivery, HumanInputFormRecipient
 from models.tools import ToolConversationVariables, ToolFile
 from tasks.delete_conversation_task import _cleanup_conversation_related_data, sweep_deleted_conversations
 from tests.unit_tests.model_factories import make_conversation, make_message

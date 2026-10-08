@@ -10,11 +10,6 @@ from dify_agent.layers.ask_human import AskHumanToolArgs
 from dify_agent.protocol import DeferredToolCallPayload
 
 from core.repositories.human_input_repository import FormCreateParams, HumanInputFormRepository
-from core.workflow.human_input_adapter import (
-    EmailDeliveryMethod,
-    ExternalRecipient,
-    InteractiveSurfaceDeliveryMethod,
-)
 from core.workflow.nodes.agent_v2.ask_human_hitl import (
     AskHumanFormBuildError,
     ask_human_args_to_node_data,
@@ -22,15 +17,11 @@ from core.workflow.nodes.agent_v2.ask_human_hitl import (
     build_delivery_methods,
     parse_ask_human_args,
 )
-from core.workflow.nodes.human_input.entities import (
-    FileInputConfig,
-    FileListInputConfig,
-    ParagraphInputConfig,
-    SelectInputConfig,
-)
-from core.workflow.nodes.human_input.enums import ButtonStyle, TimeoutUnit
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
+from enums.human_input import ButtonStyle, TimeoutUnit
 from models.agent_config_entities import AgentHumanContactConfig
+from models.human_input_delivery import EmailDeliveryMethod, ExternalRecipient, InteractiveSurfaceDeliveryMethod
+from models.human_input_entities import FileInputConfig, FileListInputConfig, ParagraphInputConfig, SelectInputConfig
 
 
 def _args(**overrides: Any) -> AskHumanToolArgs:

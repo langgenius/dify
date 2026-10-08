@@ -10,9 +10,9 @@ from sqlalchemy.orm import Session, sessionmaker
 
 import core.db.session_factory as session_factory_module
 from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
-from core.workflow.nodes.human_input.entities import FormDefinition
-from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
+from enums.human_input import HumanInputFormKind, HumanInputFormStatus
 from models.human_input import HumanInputForm
+from models.human_input_entities import FormDefinition
 from tasks import human_input_timeout_tasks as task_module
 from tests.unit_tests.config_override import apply_config_overrides
 

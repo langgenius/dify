@@ -41,7 +41,10 @@ from dify_agent.protocol import DeferredToolCallPayload
 from pydantic import ValidationError
 
 from core.repositories.human_input_repository import FormCreateParams, HumanInputFormRepository
-from core.workflow.human_input_adapter import (
+from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
+from enums.human_input import ButtonStyle, TimeoutUnit, ValueSourceType
+from models.agent_config_entities import AgentHumanContactConfig
+from models.human_input_delivery import (
     DeliveryChannelConfig,
     EmailDeliveryConfig,
     EmailDeliveryMethod,
@@ -49,7 +52,7 @@ from core.workflow.human_input_adapter import (
     ExternalRecipient,
     InteractiveSurfaceDeliveryMethod,
 )
-from core.workflow.nodes.human_input.entities import (
+from models.human_input_entities import (
     FileInputConfig,
     FileListInputConfig,
     FormInputConfig,
@@ -60,9 +63,6 @@ from core.workflow.nodes.human_input.entities import (
     StringSource,
     UserActionConfig,
 )
-from core.workflow.nodes.human_input.enums import ButtonStyle, TimeoutUnit, ValueSourceType
-from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
-from models.agent_config_entities import AgentHumanContactConfig
 
 # Default ask_human tool name (see ``DifyAskHumanLayerConfig.tool_name``). The
 # Agent node only knows how to translate this one deferred tool into a form.

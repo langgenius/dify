@@ -8,17 +8,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from core.db.session_factory import session_factory
-from core.workflow.human_input_adapter import (
-    BoundRecipient,
-    DeliveryChannelConfig,
-    EmailDeliveryMethod,
-    EmailRecipients,
-    ExternalRecipient,
-    InteractiveSurfaceDeliveryMethod,
-    is_human_input_webapp_enabled,
-)
-from core.workflow.nodes.human_input.entities import FormDefinition, HumanInputNodeData
-from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
+from core.workflow.human_input_adapter import is_human_input_webapp_enabled
+from enums.human_input import HumanInputFormKind, HumanInputFormStatus, RecipientType
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 from models.account import Account, TenantAccountJoin
@@ -32,9 +23,17 @@ from models.human_input import (
     HumanInputDelivery,
     HumanInputForm,
     HumanInputFormRecipient,
-    RecipientType,
     StandaloneWebAppRecipientPayload,
 )
+from models.human_input_delivery import (
+    BoundRecipient,
+    DeliveryChannelConfig,
+    EmailDeliveryMethod,
+    EmailRecipients,
+    ExternalRecipient,
+    InteractiveSurfaceDeliveryMethod,
+)
+from models.human_input_entities import FormDefinition, HumanInputNodeData
 
 
 @dataclasses.dataclass(frozen=True)

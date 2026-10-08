@@ -5,12 +5,12 @@ from datetime import timedelta
 from decimal import Decimal
 from uuid import uuid4
 
-from core.workflow.nodes.human_input.entities import FormDefinition, UserActionConfig
 from libs.datetime_utils import naive_utc_now
 from models.account import Account, Tenant, TenantAccountJoin
 from models.enums import ConversationFromSource, InvokeFrom
 from models.execution_extra_content import HumanInputContent
 from models.human_input import HumanInputForm, HumanInputFormStatus
+from models.human_input_entities import FormDefinition, UserActionConfig
 from models.model import App, Conversation, Message
 
 

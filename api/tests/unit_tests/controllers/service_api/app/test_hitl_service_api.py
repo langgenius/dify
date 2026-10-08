@@ -33,11 +33,10 @@ from core.app.entities.task_entities import (
 )
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
 from core.workflow.human_input_policy import FormDisposition, HumanInputSurface
-from core.workflow.nodes.human_input.entities import ParagraphInputConfig, UserActionConfig
-from core.workflow.nodes.human_input.enums import FormInputType, HumanInputFormKind, HumanInputFormStatus
 from core.workflow.nodes.human_input.pause_reason import DifyHITLEventType, HumanInputRequired
 from core.workflow.system_variables import build_system_variables
 from enums import DeploymentEdition
+from enums.human_input import FormInputType, HumanInputFormKind, HumanInputFormStatus
 from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.runtime import GraphRuntimeState, VariablePool
@@ -45,6 +44,7 @@ from libs.datetime_utils import to_utc_timestamp
 from models.account import Account
 from models.enums import CreatorUserRole, EndUserType, MessageStatus
 from models.human_input import HumanInputForm
+from models.human_input_entities import ParagraphInputConfig, UserActionConfig
 from models.model import App, AppMode, EndUser
 from models.workflow import Workflow, WorkflowRun, WorkflowType
 from repositories.api_workflow_node_execution_repository import WorkflowNodeExecutionSnapshot

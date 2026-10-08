@@ -15,12 +15,11 @@ from werkzeug.exceptions import Forbidden
 
 import controllers.web.human_input_form as human_input_module
 from controllers.web.error import WebFormRateLimitExceededError
-from core.workflow.nodes.human_input.entities import ParagraphInputConfig, SelectInputConfig, StringListSource
-from core.workflow.nodes.human_input.enums import ValueSourceType
+from enums.human_input import RecipientType, ValueSourceType
 from models import Tenant
 from models.account import TenantStatus
 from models.enums import CustomizeTokenStrategy
-from models.human_input import RecipientType
+from models.human_input_entities import ParagraphInputConfig, SelectInputConfig, StringListSource
 from models.model import App, AppMode, IconType, Site
 from services.entities.feature_entities import FeatureModel
 from services.human_input_service import FormExpiredError

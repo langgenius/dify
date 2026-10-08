@@ -4,16 +4,15 @@ from collections.abc import Mapping, Sequence
 from enum import StrEnum
 from typing import Any, NamedTuple
 
-from core.workflow.nodes.human_input.entities import FormInputConfig, SelectInputConfig
-from core.workflow.nodes.human_input.enums import ValueSourceType
 from core.workflow.nodes.human_input.pause_reason import (
     DifyHITLEventType,
     HumanInputRequired,
     PauseReason,
 )
+from enums.human_input import ApprovalChannel, RecipientType, ValueSourceType
 from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
 from graphon.variables import ArrayStringSegment
-from models.human_input import ApprovalChannel, RecipientType
+from models.human_input_entities import FormInputConfig, SelectInputConfig
 
 
 class HumanInputSurface(StrEnum):

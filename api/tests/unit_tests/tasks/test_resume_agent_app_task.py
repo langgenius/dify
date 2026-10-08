@@ -11,7 +11,7 @@ from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
+from enums.human_input import HumanInputFormKind, HumanInputFormStatus
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import ConversationFromSource, EndUserType
 from models.enums import InvokeFrom as StoredInvokeFrom
