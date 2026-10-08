@@ -1,15 +1,19 @@
 import datetime
 import json
 from collections.abc import Generator, Iterable, Mapping, Sequence
+from decimal import Decimal
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
 from flask import Flask
+from pytest_mock import MockerFixture
+from sqlalchemy import select
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
-from core.app.apps.base_app_queue_manager import AppQueueManager
+from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.app_invoke_entities import (
     DIFY_RUN_CONTEXT_KEY,
     AdvancedChatAppGenerateEntity,
@@ -50,11 +54,12 @@ from graphon.variables.segments import StringSegment
 from libs.datetime_utils import naive_utc_now
 from libs.helper import compact_generate_response
 from models.account import Account
-from models.enums import MessageStatus
-from models.human_input_contracts import HumanInputFormRecord
+from models.enums import ConversationFromSource, MessageStatus
+from models.human_input import HumanInputForm
 from models.human_input_entities import (
     FileInputConfig,
     FileListInputConfig,
+    FormDefinition,
     HumanInputNodeData,
     ParagraphInputConfig,
     SelectInputConfig,
@@ -75,6 +80,33 @@ from services.workflow.execution.adapters.human_input import (
 )
 from services.workflow.execution.adapters.human_input_events import HumanInputFormEventFilter
 from services.workflow.execution.adapters.workflow_entry import WorkflowEntry, iter_dify_graph_engine_events
+from tests.unit_tests.model_factories import make_message
+from tests.unit_tests.workflow_execution import NO_HUMAN_INPUT_FORMS
+
+
+def _persist_form(
+    sessions: sessionmaker[Session],
+    *,
+    form_id: str,
+    app_id: str,
+    node_id: str,
+    expiration_time: datetime.datetime,
+    status: HumanInputFormStatus,
+) -> None:
+    definition = FormDefinition(form_content="content", rendered_content="content", expiration_time=expiration_time)
+    form = HumanInputForm(
+        tenant_id="tenant",
+        app_id=app_id,
+        workflow_run_id="run-1",
+        node_id=node_id,
+        form_definition=definition.model_dump_json(),
+        rendered_content="content",
+        expiration_time=expiration_time,
+        status=status,
+    )
+    form.id = form_id
+    with sessions.begin() as session:
+        session.add(form)
 
 
 class _FakeFormRepository:
@@ -287,11 +319,17 @@ def _build_timeout_node(
     )
 
 
-def _publish_node_events(node: HumanInputNode) -> list[AppQueueEvent]:
-    return _publish_graph_events(_filter_human_input_events(node.run(), node=node))
+def _publish_node_events(node: HumanInputNode, *, sessions: sessionmaker[Session] | None = None) -> list[AppQueueEvent]:
+    form_reader = HumanInputFormSubmissionRepository(sessions=sessions) if sessions else NO_HUMAN_INPUT_FORMS
+    return _publish_graph_events(_filter_human_input_events(node.run(), node=node, form_reader=form_reader))
 
 
-def _filter_human_input_events(events: Iterable[GraphEngineEvent], *, node: HumanInputNode | None = None):
+def _filter_human_input_events(
+    events: Iterable[GraphEngineEvent],
+    *,
+    node: HumanInputNode | None = None,
+    form_reader=NO_HUMAN_INPUT_FORMS,
+):
     node = node or _build_node()
     return filter_graph_events(
         events,
@@ -299,7 +337,7 @@ def _filter_human_input_events(events: Iterable[GraphEngineEvent], *, node: Huma
             graph=Graph(root_node=node),
             runtime_state=ReadOnlyGraphRuntimeStateWrapper(node.graph_runtime_state),
         ),
-        filters=[HumanInputFormEventFilter(form_repository=HumanInputFormSubmissionRepository())],
+        filters=[HumanInputFormEventFilter(form_repository=form_reader)],
     )
 
 
@@ -345,15 +383,31 @@ def test_form_events_keep_titles_for_interleaved_executions_of_one_node():
     ]
 
 
+class _EventQueue(AppQueueManager):
+    """Record events and replay a finite stream without starting a watchdog."""
+
+    def __init__(self, invoke_from: InvokeFrom, runtime_state: GraphRuntimeState) -> None:
+        self.invoke_from = invoke_from
+        self.graph_runtime_state = runtime_state
+        self.events: list[AppQueueEvent] = []
+
+    def _publish(self, event: AppQueueEvent, pub_from: PublishFrom) -> None:
+        assert pub_from in {PublishFrom.APPLICATION_MANAGER, PublishFrom.TASK_PIPELINE}
+        self.events.append(event)
+
+    def listen(self) -> Generator[WorkflowQueueMessage]:
+        for event in self.events:
+            yield WorkflowQueueMessage(task_id="task-1", app_mode=AppMode.ADVANCED_CHAT, event=event)
+
+
 def _publish_graph_events(events: Iterable[GraphEngineEvent]) -> list[AppQueueEvent]:
     published: list[AppQueueEvent] = []
     queue_manager = MagicMock(spec=AppQueueManager)
     queue_manager.publish.side_effect = lambda event, _publish_from: published.append(event)
-    runner = WorkflowEventPublisher(queue_manager, resolve_pause=lambda **_: [], notify_pause=lambda _: None)
+    publisher = WorkflowEventPublisher(queue_manager, resolve_pause=lambda **_: [], notify_pause=lambda _: None)
     workflow_entry = MagicMock(spec=WorkflowEntry)
-
     for event in events:
-        runner.publish(workflow_entry, event)
+        publisher.publish(workflow_entry, event)
 
     return published
 
@@ -378,6 +432,7 @@ def _sse_payloads(
     events: Sequence[AppQueueEvent],
     invoke_from: InvokeFrom,
     app: Flask,
+    sessions: sessionmaker[Session],
     runtime_state: GraphRuntimeState | None = None,
     *,
     workflow_contexts,
@@ -406,12 +461,36 @@ def _sse_payloads(
             ),
             start_at=0,
         )
-    queue_manager = MagicMock(spec=AppQueueManager)
-    queue_manager.invoke_from = invoke_from
-    queue_manager.graph_runtime_state = runtime_state
-    queue_manager.listen.return_value = iter(
-        WorkflowQueueMessage(task_id="task-1", app_mode=AppMode.ADVANCED_CHAT, event=event) for event in events
-    )
+    queue_manager = _EventQueue(invoke_from, runtime_state)
+    queue_manager.events.extend(events)
+    with sessions.begin() as session:
+        session.add(
+            make_message(
+                app_id="app",
+                inputs={},
+                query="hello",
+                message={},
+                answer="",
+                status=MessageStatus.PAUSED,
+                message_unit_price=Decimal(0),
+                answer_unit_price=Decimal(0),
+                total_price=Decimal(0),
+                currency="USD",
+                from_source=ConversationFromSource.API,
+            )
+        )
+        has_form = session.scalar(select(HumanInputForm.id).where(HumanInputForm.workflow_run_id == "run-1"))
+    if has_form is None:
+        for event in events:
+            if isinstance(event, QueueHumanInputFormFilledEvent):
+                _persist_form(
+                    sessions,
+                    form_id=event.node_execution_id,
+                    app_id="app",
+                    node_id=event.node_id,
+                    expiration_time=naive_utc_now() + datetime.timedelta(days=1),
+                    status=HumanInputFormStatus.SUBMITTED,
+                )
     pipeline = AdvancedChatAppGenerateTaskPipeline(
         contexts=workflow_contexts,
         chat_records=StreamMessageWrites(),
@@ -450,12 +529,22 @@ def _sse_payloads(
 
 @pytest.mark.parametrize("invoke_from", [InvokeFrom.DEBUGGER, InvokeFrom.WEB_APP], ids=["full", "simple"])
 def test_submitted_human_input_reaches_response_stream(
-    invoke_from: InvokeFrom, app: Flask, *, workflow_contexts, tool_providers
+    invoke_from: InvokeFrom,
+    app: Flask,
+    sqlite_session_factory: sessionmaker[Session],
+    *,
+    workflow_contexts,
+    tool_providers,
 ):
     events = _publish_node_events(_build_node())
 
     payloads = _sse_payloads(
-        events, invoke_from, app, workflow_contexts=workflow_contexts, tool_providers=tool_providers
+        events,
+        invoke_from,
+        app,
+        sqlite_session_factory,
+        workflow_contexts=workflow_contexts,
+        tool_providers=tool_providers,
     )
 
     # Dify's original HumanInputNode (9c339239850) emitted the form event
@@ -484,11 +573,18 @@ def test_submitted_human_input_reaches_response_stream(
     assert submitted_data["attachments"][0]["type"] == "image"
 
 
-def test_button_only_human_input_reaches_response_stream(app: Flask, *, workflow_contexts, tool_providers):
+def test_button_only_human_input_reaches_response_stream(
+    app: Flask, sqlite_session_factory: sessionmaker[Session], *, workflow_contexts, tool_providers
+):
     events = _publish_node_events(_build_node("Approve deployment?", with_inputs=False))
 
     payloads = _sse_payloads(
-        events, InvokeFrom.WEB_APP, app, workflow_contexts=workflow_contexts, tool_providers=tool_providers
+        events,
+        InvokeFrom.WEB_APP,
+        app,
+        sqlite_session_factory,
+        workflow_contexts=workflow_contexts,
+        tool_providers=tool_providers,
     )
 
     assert [payload["event"] for payload in payloads] == [
@@ -503,26 +599,36 @@ def test_button_only_human_input_reaches_response_stream(app: Flask, *, workflow
 
 @pytest.mark.parametrize("status", [HumanInputFormStatus.TIMEOUT, HumanInputFormStatus.WAITING])
 def test_timed_out_human_input_reaches_response_stream(
-    status: HumanInputFormStatus, monkeypatch: pytest.MonkeyPatch, app: Flask, *, workflow_contexts, tool_providers
+    status: HumanInputFormStatus,
+    sqlite_session_factory: sessionmaker[Session],
+    app: Flask,
+    *,
+    workflow_contexts,
+    tool_providers,
 ):
     expiration_time = datetime.datetime(2025, 1, 1)
-    form = MagicMock(spec=HumanInputFormRecord)
-    form.app_id = "app"
-    form.node_id = "node-1"
-    form.expiration_time = expiration_time
-    repository = MagicMock(spec=HumanInputFormSubmissionRepository)
-    earlier_form = SimpleNamespace(app_id="app", node_id="node-1", expiration_time=datetime.datetime(2024, 1, 1))
-    forms = {
-        "previous-execution": earlier_form,
-        "00000000-0000-4000-8000-000000000001": form,
-    }
-    repository.get_by_form_id.side_effect = forms.get
-    monkeypatch.setattr(HumanInputFormSubmissionRepository, "get_by_form_id", repository.get_by_form_id)
+    for form_id, expiration in (
+        ("previous-execution", datetime.datetime(2024, 1, 1)),
+        ("00000000-0000-4000-8000-000000000001", expiration_time),
+    ):
+        _persist_form(
+            sqlite_session_factory,
+            form_id=form_id,
+            app_id="app",
+            node_id="node-1",
+            expiration_time=expiration,
+            status=status,
+        )
 
-    events = _publish_node_events(_build_timeout_node(expiration_time, status=status))
+    events = _publish_node_events(_build_timeout_node(expiration_time, status=status), sessions=sqlite_session_factory)
 
     payloads = _sse_payloads(
-        events, InvokeFrom.WEB_APP, app, workflow_contexts=workflow_contexts, tool_providers=tool_providers
+        events,
+        InvokeFrom.WEB_APP,
+        app,
+        sqlite_session_factory,
+        workflow_contexts=workflow_contexts,
+        tool_providers=tool_providers,
     )
     assert [payload["event"] for payload in payloads] == [
         "node_started",
@@ -539,7 +645,14 @@ def test_timed_out_human_input_reaches_response_stream(
 @pytest.mark.parametrize("timed_out", [False, True])
 @pytest.mark.parametrize("terminal", ["end", "answer"])
 def test_human_input_completion_and_referenced_answer_reach_response_stream(
-    timed_out: bool, terminal: str, monkeypatch: pytest.MonkeyPatch, app: Flask, *, workflow_contexts, tool_providers
+    timed_out: bool,
+    terminal: str,
+    mocker: MockerFixture,
+    app: Flask,
+    sqlite_session_factory: sessionmaker[Session],
+    *,
+    workflow_contexts,
+    tool_providers,
 ):
     expiration_time = datetime.datetime(2025, 1, 1)
     node = (
@@ -584,19 +697,28 @@ def test_human_input_completion_and_referenced_answer_reach_response_stream(
         command_channel=InMemoryChannel(),
         config=GraphEngineConfig(min_workers=1, max_workers=1),
     )
-    form = MagicMock(spec=HumanInputFormRecord)
-    form.app_id = "app"
-    form.node_id = node.id
-    form.expiration_time = expiration_time
-    repository = MagicMock(spec=HumanInputFormSubmissionRepository)
-    repository.get_by_form_id.return_value = form
-    monkeypatch.setattr(HumanInputFormSubmissionRepository, "get_by_form_id", repository.get_by_form_id)
+    bind_execution_id = node.bind_execution_id
 
+    def bind_form(execution_id: str) -> None:
+        bind_execution_id(execution_id)
+        _persist_form(
+            sqlite_session_factory,
+            form_id=execution_id,
+            app_id="app",
+            node_id=node.id,
+            expiration_time=expiration_time,
+            status=HumanInputFormStatus.TIMEOUT if timed_out else HumanInputFormStatus.SUBMITTED,
+        )
+
+    mocker.patch.object(node, "bind_execution_id", side_effect=bind_form)
+
+    repository = HumanInputFormSubmissionRepository(sessions=sqlite_session_factory)
     events = _publish_graph_events(iter_dify_graph_engine_events(engine, human_form_reader=repository))
     payloads = _sse_payloads(
         events,
         InvokeFrom.WEB_APP,
         app,
+        sqlite_session_factory,
         runtime_state,
         workflow_contexts=workflow_contexts,
         tool_providers=tool_providers,
@@ -623,14 +745,19 @@ def test_human_input_completion_and_referenced_answer_reach_response_stream(
 
 
 @pytest.mark.parametrize("form_owner", [None, ("other-app", "node-1"), ("app", "other-node")])
-def test_timeout_rejects_missing_or_unrelated_form(form_owner: tuple[str, str] | None, monkeypatch: pytest.MonkeyPatch):
-    form = None
+def test_timeout_rejects_missing_or_unrelated_form(
+    form_owner: tuple[str, str] | None, sqlite_session_factory: sessionmaker[Session]
+):
     if form_owner is not None:
-        form = MagicMock(spec=HumanInputFormRecord)
-        form.app_id, form.node_id = form_owner
-    repository = MagicMock(spec=HumanInputFormSubmissionRepository)
-    repository.get_by_form_id.return_value = form
-    monkeypatch.setattr(HumanInputFormSubmissionRepository, "get_by_form_id", repository.get_by_form_id)
+        app_id, node_id = form_owner
+        _persist_form(
+            sqlite_session_factory,
+            form_id="00000000-0000-4000-8000-000000000001",
+            app_id=app_id,
+            node_id=node_id,
+            expiration_time=datetime.datetime(2025, 1, 1),
+            status=HumanInputFormStatus.TIMEOUT,
+        )
 
     with pytest.raises(ValueError, match="Cannot resolve timed-out human input form"):
-        _publish_node_events(_build_timeout_node())
+        _publish_node_events(_build_timeout_node(), sessions=sqlite_session_factory)

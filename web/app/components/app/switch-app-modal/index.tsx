@@ -4,11 +4,11 @@ import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
 import { zIconType } from '@dify/contracts/api/console/apps/zod.gen'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -241,14 +241,14 @@ const SwitchAppModal = ({ show, sourceApp, onClose }: SwitchAppModalProps) => {
               {t(($) => $.deleteAppConfirmContent, { ns: 'app' })}
             </AlertDialogDescription>
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton onClick={() => setShowConfirmDelete(false)}>
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>

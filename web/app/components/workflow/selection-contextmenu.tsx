@@ -3,8 +3,8 @@ import type { I18nKeysWithPrefix } from '@/types/i18n'
 import {
   ContextMenuContent,
   ContextMenuGroup,
+  ContextMenuGroupLabel,
   ContextMenuItem,
-  ContextMenuLabel,
   ContextMenuSeparator,
 } from '@langgenius/dify-ui/context-menu'
 import { produce } from 'immer'
@@ -463,7 +463,8 @@ export function SelectionContextmenu({ onClose }: { onClose: () => void }) {
         <ContextMenuSeparator />
         <ContextMenuGroup>
           <ContextMenuItem
-            className="justify-between px-3 text-text-secondary data-highlighted:bg-state-destructive-hover data-highlighted:text-text-destructive"
+            variant="destructive"
+            className="justify-between px-3"
             onClick={handleDeleteNodes}
           >
             <span>
@@ -476,9 +477,9 @@ export function SelectionContextmenu({ onClose }: { onClose: () => void }) {
         {menuSections.map((section, sectionIndex) => (
           <ContextMenuGroup key={section.titleKey}>
             {sectionIndex > 0 && <ContextMenuSeparator />}
-            <ContextMenuLabel>
+            <ContextMenuGroupLabel>
               {t(($) => $[section.titleKey], { defaultValue: section.titleKey, ns: 'workflow' })}
-            </ContextMenuLabel>
+            </ContextMenuGroupLabel>
             {section.items.map((item) => {
               return (
                 <ContextMenuItem
