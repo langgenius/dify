@@ -45,7 +45,7 @@ jobs:
   python-style:
     name: Python Style
     if: ${{ !inputs.skip-checks && (!inputs.classification-succeeded || inputs.run-python-style || inputs.run-dify-agent-style) }}
-    runs-on: depot-ubuntu-24.04
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Verify changed-file classification
