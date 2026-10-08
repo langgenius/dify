@@ -81,9 +81,16 @@ def _message() -> Message:
 
 
 @pytest.fixture
-def generator(app_records, mocker: MockerFixture, *, annotation_replies, workflow_runtime):
+def generator(
+    app_records,
+    mocker: MockerFixture,
+    *,
+    annotation_replies,
+    workflow_runtime,
+):
     gen = AgentChatAppGenerator(
         dataset_tools=workflow_runtime.dataset_tools,
+        tool_invoker=workflow_runtime.agent_tool_invoker,
         annotations=annotation_replies,
         records=app_records,
     )

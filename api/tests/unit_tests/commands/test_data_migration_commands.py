@@ -6,7 +6,7 @@ CLI parsing and session lifecycle without fabricating the SQLAlchemy boundary.
 
 import json
 from pathlib import Path
-from unittest.mock import Mock
+from unittest.mock import create_autospec
 
 from click.testing import CliRunner
 from sqlalchemy.engine import Engine
@@ -152,8 +152,8 @@ def test_import_command_uses_cli_owned_session(
         }
     )
 
-    publisher = Mock(spec=ConsoleWorkflowService)
-    services = Mock(spec=ext_application_services.ApplicationServices)
+    publisher = create_autospec(ConsoleWorkflowService, instance=True)
+    services = create_autospec(ext_application_services.ApplicationServices, instance=True)
     services.console_workflows = publisher
     services.tools = workflow_application.tools
     monkeypatch.setattr(data_migration, "application_services", lambda: services)

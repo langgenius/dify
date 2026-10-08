@@ -4,7 +4,6 @@ import copy
 from collections.abc import Mapping
 from typing import Any, cast
 
-from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidationError, WorkflowAgentNodeValidator
 from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -25,11 +24,13 @@ from models.agent_config_entities import (
     WorkflowPreviousNodeOutputRef,
 )
 from models.workflow import Workflow
+from repositories.agent.workflow_binding_repository import WorkflowAgentBindingRepository, workflow_binding_scope
 from services.agent.composer_validator import ComposerConfigValidator
 from services.agent.prompt_mentions import (
     extract_workflow_node_output_selectors,
     workflow_previous_node_output_refs_from_selectors,
 )
+from services.agent.workflow_validator import WorkflowAgentNodeValidationError, WorkflowAgentNodeValidator
 from services.entities.agent_entities import (
     ComposerSavePayload,
     ComposerSaveStrategy,
@@ -109,12 +110,14 @@ class WorkflowAgentPublishService:
 
     @classmethod
     def validate_agent_nodes_for_publish(cls, *, session: Session, draft_workflow: Workflow) -> None:
-        WorkflowAgentNodeValidator.validate_published_workflow(session=session, workflow=draft_workflow)
+        validator = WorkflowAgentNodeValidator(repository=WorkflowAgentBindingRepository(session))
+        validator.validate_published_workflow(workflow=workflow_binding_scope(draft_workflow))
         cls._validate_composer_configs_for_publish(session=session, draft_workflow=draft_workflow)
 
     @classmethod
     def validate_agent_nodes_for_draft_sync(cls, *, session: Session, draft_workflow: Workflow) -> None:
-        WorkflowAgentNodeValidator.validate_draft_workflow(session=session, workflow=draft_workflow)
+        validator = WorkflowAgentNodeValidator(repository=WorkflowAgentBindingRepository(session))
+        validator.validate_draft_workflow(workflow=workflow_binding_scope(draft_workflow))
 
     @classmethod
     def _validate_composer_configs_for_publish(cls, *, session: Session, draft_workflow: Workflow) -> None:
@@ -440,40 +443,40 @@ class WorkflowAgentPublishService:
         source_snapshot_id: str,
         account_id: str,
     ) -> tuple[Agent, str]:
-        source_agent = session.scalar(
-            select(Agent)
-            .where(
-                Agent.tenant_id == draft_workflow.tenant_id,
-                Agent.id == source_agent_id,
-                Agent.scope == AgentScope.WORKFLOW_ONLY,
-                Agent.status == AgentStatus.ACTIVE,
-            )
-            .limit(1)
-        )
-        if source_agent is None:
+        binding_repository = WorkflowAgentBindingRepository(session)
+        source_agent = binding_repository.get_agent(draft_workflow.tenant_id, source_agent_id)
+        if (
+            source_agent is None
+            or source_agent.scope != AgentScope.WORKFLOW_ONLY
+            or source_agent.status != AgentStatus.ACTIVE
+        ):
             raise ValueError(f"Workflow Agent node {node_id} references an unavailable inline agent.")
-        source_snapshot = session.scalar(
-            select(AgentConfigSnapshot)
-            .where(
-                AgentConfigSnapshot.tenant_id == draft_workflow.tenant_id,
-                AgentConfigSnapshot.agent_id == source_agent.id,
-                AgentConfigSnapshot.id == source_snapshot_id,
-            )
-            .limit(1)
+        source_snapshot = binding_repository.get_snapshot(
+            draft_workflow.tenant_id,
+            source_agent.id,
+            source_snapshot_id,
         )
         if source_snapshot is None:
             raise ValueError(f"Workflow Agent node {node_id} references a missing inline agent config snapshot.")
 
-        from services.agent.dsl_service import AgentDslService
-
-        agent, snapshot = AgentDslService(session).clone_inline_binding_for_node(
-            workflow=draft_workflow,
+        cloned_agent, snapshot_id = binding_repository.clone(
+            workflow=workflow_binding_scope(draft_workflow),
             node_id=node_id,
             source_agent=source_agent,
             source_snapshot=source_snapshot,
             account_id=account_id,
         )
-        return agent, snapshot.id
+        agent = session.scalar(
+            select(Agent)
+            .where(
+                Agent.tenant_id == draft_workflow.tenant_id,
+                Agent.id == cloned_agent.id,
+            )
+            .limit(1)
+        )
+        if agent is None:
+            raise RuntimeError(f"Workflow Agent clone for node {node_id} was not persisted.")
+        return agent, snapshot_id
 
     @classmethod
     def _resolve_roster_agent_graph_binding(

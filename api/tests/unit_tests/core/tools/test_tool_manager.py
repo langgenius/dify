@@ -568,41 +568,55 @@ def test_get_tool_runtime_workflow_path(
 
 
 def test_get_tool_runtime_plugin_path(*, tool_providers, workflow_queries):
+    tool = SimpleNamespace(runtime=ToolRuntime(tenant_id="tenant-1"))
     with patch.object(
         ToolManager,
         "get_plugin_provider",
-        return_value=SimpleNamespace(get_tool=lambda _: "plugin-tool"),
+        return_value=SimpleNamespace(get_tool=lambda _: tool),
     ):
-        assert (
-            ToolManager.get_tool_runtime(
-                provider_type=ToolProviderType.PLUGIN,
-                provider_id="plugin-1",
-                tool_name="p",
-                tenant_id="tenant-1",
-                tool_providers=tool_providers,
-                workflow_queries=workflow_queries,
-            )
-            == "plugin-tool"
+        result = ToolManager.get_tool_runtime(
+            provider_type=ToolProviderType.PLUGIN,
+            provider_id="plugin-1",
+            tool_name="p",
+            tenant_id="tenant-1",
+            user_id="caller-1",
+            invoke_from=InvokeFrom.SERVICE_API,
+            tool_invoke_from=ToolInvokeFrom.WORKFLOW,
+            tool_providers=tool_providers,
+            workflow_queries=workflow_queries,
         )
+
+    assert result is tool
+    assert tool.runtime.tenant_id == "tenant-1"
+    assert tool.runtime.user_id == "caller-1"
+    assert tool.runtime.invoke_from == InvokeFrom.SERVICE_API
+    assert tool.runtime.tool_invoke_from == ToolInvokeFrom.WORKFLOW
 
 
 def test_get_tool_runtime_mcp_path(*, tool_providers, workflow_queries):
+    tool = SimpleNamespace(runtime=ToolRuntime(tenant_id="tenant-1"))
     with patch.object(
         ToolManager,
         "get_mcp_provider_controller",
-        return_value=SimpleNamespace(get_tool=lambda _: "mcp-tool"),
+        return_value=SimpleNamespace(get_tool=lambda _: tool),
     ):
-        assert (
-            ToolManager.get_tool_runtime(
-                provider_type=ToolProviderType.MCP,
-                provider_id="mcp-1",
-                tool_name="m",
-                tenant_id="tenant-1",
-                tool_providers=tool_providers,
-                workflow_queries=workflow_queries,
-            )
-            == "mcp-tool"
+        result = ToolManager.get_tool_runtime(
+            provider_type=ToolProviderType.MCP,
+            provider_id="mcp-1",
+            tool_name="m",
+            tenant_id="tenant-1",
+            user_id="caller-1",
+            invoke_from=InvokeFrom.SERVICE_API,
+            tool_invoke_from=ToolInvokeFrom.WORKFLOW,
+            tool_providers=tool_providers,
+            workflow_queries=workflow_queries,
         )
+
+    assert result is tool
+    assert tool.runtime.tenant_id == "tenant-1"
+    assert tool.runtime.user_id == "caller-1"
+    assert tool.runtime.invoke_from == InvokeFrom.SERVICE_API
+    assert tool.runtime.tool_invoke_from == ToolInvokeFrom.WORKFLOW
 
 
 def test_get_tool_runtime_app_not_implemented(*, tool_providers, workflow_queries):

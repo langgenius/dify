@@ -1603,7 +1603,11 @@ def test_workflow_impact_returns_empty_without_version(app: Flask) -> None:
 
 
 def test_agent_composer_routes_resolve_app_from_agent_id(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str, *, workflow_application
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    account_id: str,
+    *,
+    workflow_application: ApplicationServices,
 ) -> None:
     agent_id = "00000000-0000-0000-0000-000000000001"
     captured: dict[str, object] = {}

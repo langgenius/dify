@@ -1,7 +1,7 @@
 """Adapt legacy processors to committed document-indexing phases."""
 
 from concurrent.futures import ThreadPoolExecutor
-from typing import cast
+from typing import Protocol, cast, runtime_checkable
 
 from flask import Flask, current_app
 from sqlalchemy.orm import Session, sessionmaker
@@ -36,6 +36,12 @@ from services.knowledge.resource_scope import DocumentRef
 from services.vector_space_admission_service import VectorSpaceAdmissionService
 
 
+@runtime_checkable
+class _DescribedError(Protocol):
+    @property
+    def description(self) -> object: ...
+
+
 class IndexingExecutionAdapter:
     def __init__(
         self,
@@ -54,7 +60,7 @@ class IndexingExecutionAdapter:
 
     def describe_error(self, error: Exception) -> str:
         """Preserve provider and extractor descriptions without their transport prefixes."""
-        description = getattr(error, "description", None)
+        description = error.description if isinstance(error, _DescribedError) else None
         return description if isinstance(description, str) else str(error)
 
     def check_paused(self, ref: DocumentRef) -> None:

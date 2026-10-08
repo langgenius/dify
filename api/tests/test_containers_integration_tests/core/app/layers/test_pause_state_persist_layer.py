@@ -18,6 +18,7 @@ providing more reliable and realistic test scenarios than mocks.
 """
 
 import uuid
+from collections.abc import Iterator
 from time import time
 from unittest.mock import Mock
 
@@ -48,6 +49,7 @@ from models.model import AppMode, UploadFile
 from models.workflow import Workflow, WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
+from repositories.tools.provider_repository import ToolProviderRepository
 from services.file_service import FileService
 from services.workflow_run_service import WorkflowRunService
 
@@ -71,7 +73,7 @@ def _create_initialized_response_stream_filter() -> ResponseStreamFilter:
 class _TestCommandChannelImpl:
     """Real implementation of CommandChannel for testing."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._commands: list[GraphEngineCommand] = []
 
     def fetch_commands(self) -> list[GraphEngineCommand]:
@@ -87,19 +89,19 @@ class TestPauseStatePersistenceLayerTestContainers:
     """Comprehensive TestContainers-based integration tests for PauseStatePersistenceLayer class."""
 
     @pytest.fixture
-    def engine(self, db_session_with_containers: Session):
+    def engine(self, db_session_with_containers: Session) -> Engine:
         """Get database engine from TestContainers session."""
         bind = db_session_with_containers.get_bind()
         assert isinstance(bind, Engine)
         return bind
 
     @pytest.fixture
-    def file_service(self, engine: Engine):
+    def file_service(self, engine: Engine) -> FileService:
         """Create FileService instance with TestContainers engine."""
         return FileService(engine)
 
     @pytest.fixture
-    def workflow_run_service(self, engine: Engine, file_service: FileService):
+    def workflow_run_service(self, engine: Engine, file_service: FileService) -> WorkflowRunService:
         """Create WorkflowRunService instance with TestContainers engine and FileService."""
         session_factory = sessionmaker(bind=engine, expire_on_commit=False)
         workflow_runs = DifyAPISQLAlchemyWorkflowRunRepository(session_maker=session_factory)
@@ -108,10 +110,16 @@ class TestPauseStatePersistenceLayerTestContainers:
             node_executions=DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
                 session_maker=session_factory
             ),
+            tool_providers=ToolProviderRepository(session_factory),
         )
 
     @pytest.fixture(autouse=True)
-    def setup_test_data(self, db_session_with_containers: Session, file_service, workflow_run_service):
+    def setup_test_data(
+        self,
+        db_session_with_containers: Session,
+        file_service: FileService,
+        workflow_run_service: WorkflowRunService,
+    ) -> Iterator[None]:
         """Set up test data for each test method using TestContainers."""
         # Create test tenant and account
         from models.account import AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
@@ -179,8 +187,7 @@ class TestPauseStatePersistenceLayerTestContainers:
 
         # Store session and service instances
         self.session = db_session_with_containers
-        self.file_service = file_service
-        self.workflow_run_service = workflow_run_service
+        self._workflow_run_service = workflow_run_service
 
         # Save test data to database
         self.session.add(self.test_workflow)
@@ -192,7 +199,7 @@ class TestPauseStatePersistenceLayerTestContainers:
         # Cleanup
         self._cleanup_test_data()
 
-    def _cleanup_test_data(self):
+    def _cleanup_test_data(self) -> None:
         """Clean up test data after each test method."""
         try:
             # Clean up workflow pauses
@@ -317,8 +324,10 @@ class TestPauseStatePersistenceLayerTestContainers:
             workflow_id=str(workflow_id),
         )
 
+        bind = self.session.get_bind()
+        assert isinstance(bind, Engine)
         return PauseStatePersistenceLayer(
-            session_factory=self.session.get_bind(),
+            session_factory=sessionmaker(bind=bind, expire_on_commit=False),
             state_owner_user_id=owner_id,
             generate_entity=entity,
             response_stream_filter=_create_initialized_response_stream_filter(),
@@ -412,7 +421,7 @@ class TestPauseStatePersistenceLayerTestContainers:
         layer.on_event(event)
 
         # Assert - Retrieve and verify
-        pause_entity = self.workflow_run_service._workflow_runs.get_workflow_pause(self.test_workflow_run_id)
+        pause_entity = self._workflow_run_service._workflow_runs.get_workflow_pause(self.test_workflow_run_id)
         assert pause_entity is not None
         assert pause_entity.workflow_execution_id == self.test_workflow_run_id
         assert pause_entity.get_pause_reasons() == event.reasons
@@ -551,7 +560,7 @@ class TestPauseStatePersistenceLayerTestContainers:
         assert pause_model is not None
 
         # Verify the state owner is the workflow creator
-        pause_entity = self.workflow_run_service._workflow_runs.get_workflow_pause(different_workflow_run.id)
+        pause_entity = self._workflow_run_service._workflow_runs.get_workflow_pause(different_workflow_run.id)
         assert pause_entity is not None
         resumption_context = WorkflowResumptionContext.loads(pause_entity.get_state().decode())
         assert resumption_context.get_generate_entity().workflow_execution_id == different_workflow_run.id

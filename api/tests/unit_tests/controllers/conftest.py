@@ -32,7 +32,9 @@ from services.workflow.variable_contracts import WorkflowExecutionVariables
 
 @pytest.fixture(autouse=True)
 def datasource_application_dependencies(
-    monkeypatch: pytest.MonkeyPatch, workflow_variables: WorkflowExecutionVariables, sqlite_session_factory
+    monkeypatch: pytest.MonkeyPatch,
+    workflow_variables: WorkflowExecutionVariables,
+    sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     registry = DatasourceApplicationStub(
         tools=build_tool_services(sqlite_session_factory),
@@ -85,7 +87,9 @@ class PipelineApplicationStub:
 
 @pytest.fixture
 def pipeline_application(
-    monkeypatch: pytest.MonkeyPatch, workflow_variables: WorkflowExecutionVariables, sqlite_session_factory
+    monkeypatch: pytest.MonkeyPatch,
+    workflow_variables: WorkflowExecutionVariables,
+    sqlite_session_factory: sessionmaker[Session],
 ) -> PipelineGenerator:
     from controllers.console.datasets.rag_pipeline import rag_pipeline_workflow as console_workflow
     from controllers.service_api.dataset.rag_pipeline import rag_pipeline_workflow as service_api_workflow

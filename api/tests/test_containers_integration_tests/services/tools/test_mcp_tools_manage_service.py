@@ -2,11 +2,12 @@ from unittest.mock import patch
 
 import pytest
 from faker import Faker
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.tools.entities.tool_entities import ToolProviderType
 from models import Account, Tenant
 from models.tools import MCPToolProvider
+from repositories.tools.provider_repository import ToolProviderRepository
 from services.tools.mcp_tools_manage_service import UNCHANGED_SERVER_URL_PLACEHOLDER, MCPToolManageService
 
 
@@ -378,9 +379,7 @@ class TestMCPToolManageService:
         )
 
         # Assert: Verify the expected outcomes
-        assert result is not None
-        assert result.name == "Test MCP Provider"
-        assert result.type == ToolProviderType.MCP
+        assert isinstance(result, str)
 
         # Verify database state
 
@@ -391,6 +390,8 @@ class TestMCPToolManageService:
         )
 
         assert created_provider is not None
+        assert result == created_provider.id
+        assert created_provider.name == "Test MCP Provider"
         assert created_provider.server_identifier == "test_identifier_123"
         assert created_provider.timeout == 30.0
         assert created_provider.sse_read_timeout == 300.0
@@ -401,7 +402,7 @@ class TestMCPToolManageService:
         mock_external_service_dependencies["encrypter"].encrypt_token.assert_called_once_with(
             tenant.id, "https://example.com/mcp"
         )
-        mock_external_service_dependencies["tool_transform_service"].mcp_provider_to_user_provider.assert_called_once()
+        mock_external_service_dependencies["tool_transform_service"].mcp_provider_to_user_provider.assert_not_called()
 
     def test_create_mcp_provider_duplicate_name(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -638,8 +639,10 @@ class TestMCPToolManageService:
 
         # Act: Execute the method under test
 
-        service = MCPToolManageService(db_session_with_containers)
-        result = service.list_providers(tenant_id=tenant.id)
+        tool_providers = ToolProviderRepository(
+            sessionmaker(bind=db_session_with_containers.get_bind(), expire_on_commit=False)
+        )
+        result = MCPToolManageService.list_providers(tenant_id=tenant.id, tool_providers=tool_providers)
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -676,8 +679,10 @@ class TestMCPToolManageService:
 
         # Act: Execute the method under test
 
-        service = MCPToolManageService(db_session_with_containers)
-        result = service.list_providers(tenant_id=tenant.id)
+        tool_providers = ToolProviderRepository(
+            sessionmaker(bind=db_session_with_containers.get_bind(), expire_on_commit=False)
+        )
+        result = MCPToolManageService.list_providers(tenant_id=tenant.id, tool_providers=tool_providers)
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -749,9 +754,11 @@ class TestMCPToolManageService:
 
         # Act: Execute the method under test for both tenants
 
-        service = MCPToolManageService(db_session_with_containers)
-        result1 = service.list_providers(tenant_id=tenant1.id)
-        result2 = service.list_providers(tenant_id=tenant2.id)
+        tool_providers = ToolProviderRepository(
+            sessionmaker(bind=db_session_with_containers.get_bind(), expire_on_commit=False)
+        )
+        result1 = MCPToolManageService.list_providers(tenant_id=tenant1.id, tool_providers=tool_providers)
+        result2 = MCPToolManageService.list_providers(tenant_id=tenant2.id, tool_providers=tool_providers)
 
         # Assert: Verify tenant isolation
         assert len(result1) == 1

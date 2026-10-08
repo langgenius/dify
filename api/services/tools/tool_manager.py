@@ -290,21 +290,17 @@ class ToolManager:
                 raise NotImplementedError("app provider not implemented")
             case ToolProviderType.PLUGIN:
                 plugin_tool = cls.get_plugin_provider(provider_id, tenant_id).get_tool(tool_name)
-                runtime = getattr(plugin_tool, "runtime", None)
-                if runtime is not None:
-                    runtime.user_id = user_id
-                    runtime.invoke_from = invoke_from
-                    runtime.tool_invoke_from = tool_invoke_from
+                plugin_tool.runtime.user_id = user_id
+                plugin_tool.runtime.invoke_from = invoke_from
+                plugin_tool.runtime.tool_invoke_from = tool_invoke_from
                 return plugin_tool
             case ToolProviderType.MCP:
                 mcp_tool = cls.get_mcp_provider_controller(
                     tenant_id, provider_id, tool_providers=tool_providers
                 ).get_tool(tool_name)
-                runtime = getattr(mcp_tool, "runtime", None)
-                if runtime is not None:
-                    runtime.user_id = user_id
-                    runtime.invoke_from = invoke_from
-                    runtime.tool_invoke_from = tool_invoke_from
+                mcp_tool.runtime.user_id = user_id
+                mcp_tool.runtime.invoke_from = invoke_from
+                mcp_tool.runtime.tool_invoke_from = tool_invoke_from
                 return mcp_tool
             case ToolProviderType.DATASET_RETRIEVAL:
                 raise ToolProviderNotFoundError(f"provider type {provider_type.value} not found")

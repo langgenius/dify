@@ -25,6 +25,20 @@ from models.human_input import (
     HumanInputFormRecipient,
     StandaloneWebAppRecipientPayload,
 )
+from models.human_input_contracts import (
+    FormCreateParams,
+    FormNotFoundError,
+    HumanInputFormRecipientEntity,
+)
+from models.human_input_contracts import (
+    HumanInputFormEntity as SharedHumanInputFormEntity,
+)
+from models.human_input_contracts import (
+    HumanInputFormRecord as SharedHumanInputFormRecord,
+)
+from models.human_input_contracts import (
+    HumanInputFormRepository as SharedHumanInputFormRepository,
+)
 from models.human_input_delivery import (
     BoundRecipient,
     DeliveryChannelConfig,
@@ -48,70 +62,18 @@ class _WorkspaceMemberInfo:
     email: str
 
 
-class FormNotFoundError(Exception):
-    pass
-
-
-@dataclasses.dataclass
-class FormCreateParams:
-    workflow_execution_id: str | None
-    node_id: str
-    form_config: HumanInputNodeData
-    rendered_content: str
-    delivery_methods: Sequence[DeliveryChannelConfig]
-    display_in_ui: bool
-    resolved_default_values: Mapping[str, Any]
-    form_kind: HumanInputFormKind = HumanInputFormKind.RUNTIME
-    # ENG-635: the conversation this form belongs to. Set together with
-    # workflow_execution_id for chatflow runs; set alone (workflow_execution_id None)
-    # for Agent v2 chat ask_human forms, which have no workflow run.
-    conversation_id: str | None = None
-    form_id: str | None = None
-
-
-class HumanInputFormRecipientEntity(Protocol):
-    @property
-    def id(self) -> str: ...
-
-    @property
-    def token(self) -> str: ...
-
-
-class HumanInputFormEntity(Protocol):
-    @property
-    def id(self) -> str: ...
+class HumanInputFormEntity(SharedHumanInputFormEntity, Protocol):
+    """Legacy form view with the submission token used by core callers."""
 
     @property
     def submission_token(self) -> str | None: ...
 
-    @property
-    def recipients(self) -> list[HumanInputFormRecipientEntity]: ...
 
-    @property
-    def rendered_content(self) -> str: ...
-
-    @property
-    def selected_action_id(self) -> str | None: ...
-
-    @property
-    def created_at(self) -> datetime: ...
-
-    @property
-    def submitted_data(self) -> Mapping[str, Any] | None: ...
-
-    @property
-    def submitted(self) -> bool: ...
-
-    @property
-    def status(self) -> HumanInputFormStatus: ...
-
-    @property
-    def expiration_time(self) -> datetime: ...
-
-
-class HumanInputFormRepository(Protocol):
+class HumanInputFormRepository(SharedHumanInputFormRepository, Protocol):
+    @override
     def get_form(self, node_id: str, *, form_id: str | None = None) -> HumanInputFormEntity | None: ...
 
+    @override
     def create_form(self, params: FormCreateParams) -> HumanInputFormEntity: ...
 
 
@@ -208,34 +170,8 @@ class _HumanInputFormEntityImpl(HumanInputFormEntity):
 
 
 @dataclasses.dataclass(frozen=True)
-class HumanInputFormRecord:
-    form_id: str
-    workflow_run_id: str | None
-    node_id: str
-    tenant_id: str
-    app_id: str
-    form_kind: HumanInputFormKind
-    definition: FormDefinition
-    rendered_content: str
-    created_at: datetime
-    expiration_time: datetime
-    status: HumanInputFormStatus
-    selected_action_id: str | None
-    submitted_data: Mapping[str, Any] | None
-    submitted_at: datetime | None
-    submission_user_id: str | None
-    submission_end_user_id: str | None
-    completed_by_recipient_id: str | None
-    recipient_id: str | None
-    recipient_type: RecipientType | None
-    access_token: str | None
-    # ENG-635: Agent v2 chat owner (NULL for workflow-owned forms). Trailing +
-    # defaulted so existing record constructions stay source-compatible.
-    conversation_id: str | None = None
-
-    @property
-    def submitted(self) -> bool:
-        return self.submitted_at is not None
+class HumanInputFormRecord(SharedHumanInputFormRecord):
+    """Legacy constructor kept on the shared human-input record contract."""
 
     @classmethod
     def from_models(

@@ -16,6 +16,7 @@ import services.app_generate_service as generation_module
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.features.rate_limiting.rate_limit import RateLimit, RateLimitGenerator
 from enums import DeploymentEdition
+from extensions.application_services.workflow import WorkflowExecutionDependencies
 from extensions.ext_database import db
 from extensions.ext_redis import RedisClientWrapper
 from libs.broadcast_channel.redis.streams_channel import (
@@ -24,9 +25,12 @@ from libs.broadcast_channel.redis.streams_channel import (
     _StreamsSubscription,
 )
 from models import Account, App, AppMode, AppModelConfig, Conversation, Message, Workflow
+from models.annotation_reply import AnnotationReplies
 from models.enums import ConversationFromSource
 from models.workflow import WorkflowType
 from services.account_errors import AccountNotFoundError
+from services.app.generation.ports import ChatRecords
+from services.app.generation.runtime import AppGenerationRuntime
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.errors.app import MoreLikeThisDisabledError
 from services.errors.app_model_config import AppModelConfigBrokenError
@@ -34,8 +38,8 @@ from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError
 from services.installed_app_generation_adapters import AppGenerateServiceRuntime
 from services.installed_app_generation_service import GenerationResponse
+from services.knowledge.retrieval.ports import DatasetRetrievalFactory
 from services.workflow.execution.adapters import response_stream
-from services.workflow.execution.ports import WorkflowRuntime
 from services.workflow.variable_contracts import WorkflowExecutionVariables
 
 _ARGS: dict[str, object] = {"inputs": {"count": 0}, "query": "hello", "auto_generate_name": False}
@@ -57,7 +61,7 @@ def harness(
     sqlite_session_factory: sessionmaker[Session],
     *,
     workflow_variables: WorkflowExecutionVariables,
-    workflow_runtime: WorkflowRuntime,
+    workflow_runtime: WorkflowExecutionDependencies,
 ) -> _RuntimeHarness:
     with sqlite_session_factory.begin() as session:
         app = App(
@@ -130,7 +134,7 @@ def _patch_generation(
     def boundary_generate(
         *,
         variables: WorkflowExecutionVariables,
-        runtime: WorkflowRuntime,
+        runtime: AppGenerationRuntime,
         session: Session,
         app_model: App,
         user: Account,
@@ -147,9 +151,9 @@ def _patch_generation(
 
     def boundary_generate_more_like_this(
         *,
-        retrieval,
-        records,
-        annotations,
+        retrieval: DatasetRetrievalFactory,
+        records: ChatRecords,
+        annotations: AnnotationReplies,
         session: Session,
         app_model: App,
         user: Account,
