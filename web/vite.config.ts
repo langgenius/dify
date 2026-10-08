@@ -82,7 +82,8 @@ export default defineConfig(({ command, mode, isPreview }) => {
     ...(!isTest && !isStorybook
       ? {
           optimizeDeps: {
-            exclude: ['@tanstack/react-query'],
+            // Keep skipToken shared by the unbundled React Query and oRPC clients.
+            exclude: ['@tanstack/react-query', '@tanstack/query-core'],
           },
           server: {
             port: 3000,

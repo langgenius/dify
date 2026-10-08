@@ -3,11 +3,11 @@
 import type { SnippetListItem } from '@/types/snippet'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import {
@@ -199,7 +199,7 @@ const SnippetCard = ({
                     ns: 'common',
                     name: snippet.name,
                   })}
-                  className="flex size-8 items-center justify-center rounded-md border-none bg-transparent p-2 hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:inset-ring-1 focus-visible:inset-ring-components-input-border-active data-popup-open:bg-state-base-hover data-popup-open:shadow-none"
+                  className="flex size-8 items-center justify-center rounded-md border-none bg-transparent p-2 hover:bg-state-base-hover focus-visible:bg-state-base-hover data-popup-open:bg-state-base-hover data-popup-open:shadow-none"
                   onClick={(e) => {
                     e.stopPropagation()
                     e.preventDefault()
@@ -268,7 +268,7 @@ const SnippetCard = ({
               {t(($) => $.deleteConfirmContent)}
             </AlertDialogDescription>
           </div>
-          <AlertDialogActions className="pt-0">
+          <AlertDialogFooter className="pt-0">
             <AlertDialogCancelButton disabled={deleteSnippetMutation.isPending}>
               {tCommon(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
@@ -278,7 +278,7 @@ const SnippetCard = ({
             >
               {t(($) => $['menu.deleteSnippet'])}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>
