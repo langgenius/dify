@@ -48,7 +48,7 @@ class AppInputAdapter:
     ) -> AbstractContextManager[None]:
         """Bind request-scoped file ownership markers for downstream file lookups."""
 
-        user_id = getattr(user, "id", None)
+        user_id = user.id
         if not isinstance(user_id, str) or not user_id:
             return nullcontext()
 

@@ -183,7 +183,11 @@ class MessageBasedAppGenerator(AppInputAdapter):
                     "answer_tokens": 0,
                     "answer_unit_price": 0,
                     "answer_price_unit": 0,
-                    "parent_message_id": getattr(application_generate_entity, "parent_message_id", None),
+                    "parent_message_id": (
+                        application_generate_entity.parent_message_id
+                        if isinstance(application_generate_entity, ConversationAppGenerateEntity)
+                        else None
+                    ),
                     "provider_response_latency": 0,
                     "total_price": 0,
                     "currency": "USD",

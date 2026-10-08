@@ -74,6 +74,8 @@ from models.agent_config_entities import (
 from models.provider_ids import ModelProviderID
 from services.agent.prompt_mentions import (
     MentionKind,
+    MentionResolver,
+    PromptMention,
     build_node_job_mention_resolver,
     build_soul_mention_resolver,
     expand_prompt_mentions,
@@ -428,7 +430,7 @@ class WorkflowAgentRuntimeRequestBuilder:
                     "missing_previous_node_output",
                     f"Workflow Agent node cannot resolve previous node output {'.'.join(selector)}.",
                 )
-            value = getattr(segment, "value", None)
+            value = segment.value
             resolved.append(
                 {
                     "label": ".".join(selector),
@@ -880,7 +882,7 @@ def build_config_aware_soul_mention_resolver(
     agent_soul: AgentSoulConfig,
     *,
     runtime_config_skills: Sequence[DifyConfigSkillConfig] = (),
-):
+) -> MentionResolver:
     """Resolve config skill/file mentions and delegate the rest to Agent Soul."""
 
     base_resolver = build_soul_mention_resolver(agent_soul)
@@ -888,17 +890,15 @@ def build_config_aware_soul_mention_resolver(
     skill_names.update(item.name for item in runtime_config_skills)
     file_names = {item.name for item in agent_soul.config_files if not item.is_missing}
 
-    def _resolve(mention: object) -> str | None:
-        if not hasattr(mention, "kind") or not hasattr(mention, "ref_id"):
-            return None
-        kind = cast(MentionKind, mention.kind)
-        ref_id = cast(str, mention.ref_id)
-        label = cast(str | None, getattr(mention, "label", None))
+    def _resolve(mention: PromptMention) -> str | None:
+        kind = mention.kind
+        ref_id = mention.ref_id
+        label = mention.label
         if kind == MentionKind.SKILL:
             return ref_id if ref_id in skill_names else label or ref_id
         if kind == MentionKind.FILE:
             return ref_id if ref_id in file_names else label or ref_id
-        return base_resolver(cast(Any, mention))
+        return base_resolver(mention)
 
     return _resolve
 

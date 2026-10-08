@@ -1,7 +1,6 @@
 import pytest
 from pytest_mock import MockerFixture
 
-import core.app.apps.pipeline.pipeline_queue_manager as module
 from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.pipeline.pipeline_queue_manager import PipelineQueueManager
@@ -9,6 +8,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import (
     QueueErrorEvent,
     QueueMessageEndEvent,
+    QueuePingEvent,
     QueueStopEvent,
     QueueWorkflowFailedEvent,
     QueueWorkflowPartialSuccessEvent,
@@ -53,6 +53,6 @@ def test_publish_non_stop_event_no_stop_listen(mocker: MockerFixture):
     manager.stop_listen = mocker.MagicMock()
     manager._is_stopped = mocker.MagicMock(return_value=False)
 
-    non_stop_event = mocker.MagicMock(spec=module.AppQueueEvent)
+    non_stop_event = QueuePingEvent()
     manager._publish(non_stop_event, PublishFrom.TASK_PIPELINE)
     manager.stop_listen.assert_not_called()

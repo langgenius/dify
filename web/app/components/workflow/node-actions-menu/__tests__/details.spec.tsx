@@ -1,8 +1,3 @@
-import {
-  DropdownMenu,
-  DropdownMenuPortal,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { detectPlatform } from '@tanstack/react-hotkeys'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -17,7 +12,6 @@ import { useAvailableBlocks } from '../../hooks/use-available-blocks'
 import { useNodesInteractions } from '../../hooks/use-nodes-interactions'
 import { useNodeMetaData } from '../../hooks/use-nodes-meta-data'
 import { useIsChatMode, useNodesReadOnly } from '../../hooks/use-workflow'
-import { NodeActionsDropdownContent } from '../dropdown-content'
 import { NodeActionsDropdown } from '../index'
 
 vi.mock('../../hooks/use-available-blocks', async (importOriginal) => {
@@ -94,7 +88,7 @@ const mockUseHooksStore = vi.mocked(useHooksStore)
 const mockUseNodes = vi.mocked(useNodes)
 const mockUseAllWorkflowTools = vi.mocked(useAllWorkflowTools)
 
-function renderDropdownContent({
+async function renderDropdownContent({
   showHelpLink = true,
   onClose = vi.fn(),
   data = {},
@@ -103,23 +97,20 @@ function renderDropdownContent({
   onClose?: () => void
   data?: Record<string, unknown>
 } = {}) {
-  return renderWorkflowFlowComponent(
-    <DropdownMenu open>
-      <DropdownMenuTrigger render={<button type="button">open</button>} />
-      <DropdownMenuPortal>
-        <NodeActionsDropdownContent
-          id="node-1"
-          data={{ type: BlockEnum.Code, title: 'Code Node', desc: '', ...data } as any}
-          onClose={onClose}
-          showHelpLink={showHelpLink}
-        />
-      </DropdownMenuPortal>
-    </DropdownMenu>,
+  const result = renderWorkflowFlowComponent(
+    <NodeActionsDropdown
+      id="node-1"
+      data={{ type: BlockEnum.Code, title: 'Code Node', desc: '', ...data } as any}
+      onOpenChange={(open) => !open && onClose()}
+      showHelpLink={showHelpLink}
+    />,
     {
       nodes: [],
       edges: [{ id: 'edge-1', source: 'node-0', target: 'node-1', sourceHandle: 'branch-a' }],
     },
   )
+  await userEvent.setup().click(screen.getByRole('button', { name: 'common.operation.more' }))
+  return result
 }
 
 describe('node actions menu details', () => {
@@ -238,16 +229,17 @@ describe('node actions menu details', () => {
 
   it('should run, copy, duplicate, delete, and expose the help link', async () => {
     const user = userEvent.setup()
-    const { store } = renderDropdownContent()
+    const { store } = await renderDropdownContent()
 
     const deleteMenuItem = screen.getByText('common.operation.delete').closest('[role="menuitem"]')
-    expect(deleteMenuItem).toHaveAttribute('data-variant', 'default')
-    expect(deleteMenuItem).toHaveClass('text-text-secondary')
-    expect(deleteMenuItem).toHaveClass('data-highlighted:text-text-destructive')
+    expect(deleteMenuItem).toHaveAttribute('data-variant', 'destructive')
 
     await user.click(screen.getByText('workflow.panel.runThisStep'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
     await user.click(screen.getByText('workflow.common.copy'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
     await user.click(screen.getByText('workflow.common.duplicate'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
     await user.click(screen.getByText('common.operation.delete'))
 
     expect(handleNodeSelect).toHaveBeenCalledWith('node-1')
@@ -256,6 +248,7 @@ describe('node actions menu details', () => {
     expect(handleNodesCopy).toHaveBeenCalledWith('node-1')
     expect(handleNodesDuplicate).toHaveBeenCalledWith('node-1')
     expect(handleNodeDelete).toHaveBeenCalledWith('node-1')
+    await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
     expect(screen.getByRole('menuitem', { name: 'workflow.panel.helpLink' })).toHaveAttribute(
       'href',
       'https://docs.example.com/node',
@@ -264,7 +257,7 @@ describe('node actions menu details', () => {
 
   it('should stop the current single run from the run action when the node is running', async () => {
     const user = userEvent.setup()
-    const { store } = renderDropdownContent({
+    const { store } = await renderDropdownContent({
       data: {
         _singleRunningStatus: NodeRunningStatus.Running,
       },
@@ -277,7 +270,7 @@ describe('node actions menu details', () => {
     expect(store.getState().pendingSingleRun).toEqual({ nodeId: 'node-1', action: 'stop' })
   })
 
-  it('should hide change action when node is undeletable', () => {
+  it('should hide change action when node is undeletable', async () => {
     mockUseNodeMetaData.mockReturnValueOnce({
       isTypeFixed: false,
       isSingleton: true,
@@ -286,44 +279,39 @@ describe('node actions menu details', () => {
       author: 'Dify',
     } as ReturnType<typeof useNodeMetaData>)
 
-    renderDropdownContent({ showHelpLink: false })
+    await renderDropdownContent({ showHelpLink: false })
 
     expect(screen.getByText('workflow.panel.runThisStep')).toBeInTheDocument()
     expect(screen.queryByText('workflow.panel.change')).not.toBeInTheDocument()
     expect(screen.queryByText('common.operation.delete')).not.toBeInTheDocument()
   })
 
-  it('should render workflow-tool and readonly variants', () => {
+  it('should render workflow-tool and readonly variants', async () => {
     mockUseAllWorkflowTools.mockReturnValueOnce({
       data: [{ id: 'workflow-tool', workflow_app_id: 'app-123' }],
     } as any)
 
     const { rerender } = renderWorkflowFlowComponent(
-      <DropdownMenu open>
-        <DropdownMenuTrigger render={<button type="button">open</button>} />
-        <DropdownMenuPortal>
-          <NodeActionsDropdownContent
-            id="node-2"
-            data={
-              {
-                type: BlockEnum.Tool,
-                title: 'Workflow Tool',
-                desc: '',
-                provider_type: 'workflow',
-                provider_id: 'workflow-tool',
-              } as any
-            }
-            onClose={vi.fn()}
-            showHelpLink={false}
-          />
-        </DropdownMenuPortal>
-      </DropdownMenu>,
+      <NodeActionsDropdown
+        id="node-2"
+        data={
+          {
+            type: BlockEnum.Tool,
+            title: 'Workflow Tool',
+            desc: '',
+            provider_type: 'workflow',
+            provider_id: 'workflow-tool',
+          } as any
+        }
+        showHelpLink={false}
+      />,
       {
         nodes: [],
         edges: [],
       },
     )
 
+    await userEvent.setup().click(screen.getByRole('button', { name: 'common.operation.more' }))
     expect(screen.getByRole('menuitem', { name: 'workflow.panel.openWorkflow' })).toHaveAttribute(
       'href',
       '/app/app-123/workflow',
@@ -341,17 +329,11 @@ describe('node actions menu details', () => {
     } as ReturnType<typeof useNodeMetaData>)
 
     rerender(
-      <DropdownMenu open>
-        <DropdownMenuTrigger render={<button type="button">open</button>} />
-        <DropdownMenuPortal>
-          <NodeActionsDropdownContent
-            id="node-3"
-            data={{ type: BlockEnum.End, title: 'Read only node', desc: '' } as any}
-            onClose={vi.fn()}
-            showHelpLink={false}
-          />
-        </DropdownMenuPortal>
-      </DropdownMenu>,
+      <NodeActionsDropdown
+        id="node-3"
+        data={{ type: BlockEnum.End, title: 'Read only node', desc: '' } as any}
+        showHelpLink={false}
+      />,
     )
 
     expect(screen.queryByText('workflow.panel.runThisStep')).not.toBeInTheDocument()

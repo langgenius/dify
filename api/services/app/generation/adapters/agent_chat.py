@@ -7,7 +7,7 @@ from typing import Any, Literal, overload
 
 from flask import Flask, current_app
 from pydantic import ValidationError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from constants import UUID_NIL
@@ -20,20 +20,65 @@ from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity, InvokeFrom
+from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
 from core.helper.trace_id_helper import extract_trace_session_id_from_args
 from core.ops.ops_trace_manager import TraceQueueManager
+from core.tools.__base.tool import Tool
+from core.tools.entities.tool_entities import ToolInvokeMeta
 from factories import file_factory
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from libs.flask_utils import preserve_flask_contexts
 from models import Account, App, EndUser
 from models.annotation_reply import AnnotationReplies
-from services.agent.chat.ports import AgentDatasetTools
+from models.model import Message
+from services.agent.chat.ports import AgentDatasetTools, AgentToolInvoker
 from services.app.generation.adapters.agent_chat_runner import AgentChatAppRunner
 from services.app.generation.message_records import MessageBasedAppGenerator
-from services.app.generation.ports import ChatRecords
+from services.app.generation.ports import ChatRecords, MessageFileWriter
+from services.tools.tool_engine import ToolEngine
 from services.workflow.execution.ports import WorkflowRuntime
 
 logger = logging.getLogger(__name__)
+
+
+class _SessionBoundAgentToolInvoker(AgentToolInvoker):
+    """Own one short-lived Session for each eager Agent tool invocation."""
+
+    def __init__(self, tool_sessions: sessionmaker[Session]) -> None:
+        self._tool_sessions = tool_sessions
+
+    def __call__(
+        self,
+        tool: Tool,
+        tool_parameters: str | dict[str, Any],
+        user_id: str,
+        tenant_id: str,
+        message: Message,
+        invoke_from: InvokeFrom,
+        agent_tool_callback: DifyAgentCallbackHandler,
+        trace_manager: TraceQueueManager | None = None,
+        conversation_id: str | None = None,
+        app_id: str | None = None,
+        message_id: str | None = None,
+        *,
+        records: MessageFileWriter,
+    ) -> tuple[str, list[str], ToolInvokeMeta]:
+        with self._tool_sessions() as session:
+            return ToolEngine.agent_invoke(
+                session=session,
+                tool=tool,
+                tool_parameters=tool_parameters,
+                user_id=user_id,
+                tenant_id=tenant_id,
+                message=message,
+                invoke_from=invoke_from,
+                agent_tool_callback=agent_tool_callback,
+                trace_manager=trace_manager,
+                conversation_id=conversation_id,
+                app_id=app_id,
+                message_id=message_id,
+                records=records,
+            )
 
 
 class AgentChatAppGenerator(MessageBasedAppGenerator):
@@ -43,6 +88,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         dataset_tools: AgentDatasetTools,
         records: ChatRecords,
         annotations: AnnotationReplies,
+        tool_sessions: sessionmaker[Session],
         draft_variable_saver: Callable[[str, Account], DraftVariableSaverFactory] | None = None,
         workflow_runtime: WorkflowRuntime | None = None,
     ):
@@ -53,6 +99,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
             workflow_runtime=workflow_runtime,
         )
         self._dataset_tools = dataset_tools
+        self._tool_invoker = _SessionBoundAgentToolInvoker(tool_sessions)
 
     @overload
     def generate(
@@ -300,7 +347,11 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
                 )
 
                 # chatbot app
-                runner = AgentChatAppRunner(records=self._records, dataset_tools=self._dataset_tools)
+                runner = AgentChatAppRunner(
+                    records=self._records,
+                    dataset_tools=self._dataset_tools,
+                    tool_invoker=self._tool_invoker,
+                )
                 runner.run(
                     draft_variable_saver=self._draft_variable_saver,
                     workflow_runtime=self._workflow_runtime,

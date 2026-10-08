@@ -544,7 +544,14 @@ class AppGenerationRepository:
             for key, value in values.items():
                 setattr(thought, key, value)
             for key, delta in deltas.items():
-                setattr(thought, key, f"{getattr(thought, key) or ''}{delta}")
+                if key == "thought":
+                    thought.thought = f"{thought.thought or ''}{delta}"
+                elif key == "tool_input":
+                    thought.tool_input = f"{thought.tool_input or ''}{delta}"
+                elif key == "answer":
+                    thought.answer = f"{thought.answer or ''}{delta}"
+                else:
+                    raise ValueError(f"unsupported agent thought delta field: {key}")
 
     def delete_agent_thought(self, identity: MessageIdentity, thought_id: str) -> None:
         with self._sessions.begin() as session:

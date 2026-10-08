@@ -141,8 +141,15 @@ class WorkflowDraftVariableRepository:
             .with_for_update()
         )
         if variable is not None:
-            fields = ("node_execution_id", "updated_at", "last_edited_at", "name", "value", "file_id", "editable")
-            if any(getattr(variable, field) != getattr(snapshot, field) for field in fields):
+            if (
+                variable.node_execution_id != snapshot.node_execution_id
+                or variable.updated_at != snapshot.updated_at
+                or variable.last_edited_at != snapshot.last_edited_at
+                or variable.name != snapshot.name
+                or variable.value != snapshot.value
+                or variable.file_id != snapshot.file_id
+                or variable.editable != snapshot.editable
+            ):
                 raise DraftVariableChangedError(snapshot.id)
         return variable
 

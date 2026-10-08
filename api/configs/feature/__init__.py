@@ -1424,6 +1424,10 @@ class CeleryBeatConfig(BaseSettings):
 
 
 class CeleryScheduleTasksConfig(BaseSettings):
+    ENABLE_WORKFLOW_DRAFT_FILE_CLEANUP_TASK: bool = Field(
+        description="Enable recovery of persisted workflow draft upload cleanup requests",
+        default=True,
+    )
     ENABLE_CONVERSATION_CLEANUP_TASK: bool = Field(
         description="Enable periodic recovery of soft-deleted conversation cleanup",
         default=True,
