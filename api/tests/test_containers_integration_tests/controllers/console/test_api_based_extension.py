@@ -10,9 +10,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from constants import HIDDEN_VALUE
+from core.helper.encrypter import encrypt_token
 from libs.rsa import generate_key_pair
 from models.api_based_extension import APIBasedExtension
-from services.api_based_extension_service import APIBasedExtensionService
 from tests.test_containers_integration_tests.controllers.console.helpers import (
     authenticate_console_client,
     create_console_account_and_tenant,
@@ -41,7 +41,7 @@ def api_extension_client(
 
 @pytest.fixture(autouse=True)
 def mock_api_based_extension_ping():
-    with patch("services.api_based_extension_service.APIBasedExtensionRequestor") as requestor:
+    with patch("services.api_based_extension_adapters.APIBasedExtensionRequestor") as requestor:
         requestor.return_value.request.return_value = {"result": "pong"}
         yield requestor
 
@@ -96,15 +96,16 @@ def test_list_scopes_api_based_extensions_to_authenticated_tenant(
     )
     assert account_create_response.status_code == 201
 
-    APIBasedExtensionService.save(
+    # Seed another workspace's extension directly; the list endpoint must not expose it.
+    db_session_with_containers.add(
         APIBasedExtension(
             tenant_id=foreign_tenant_id,
             name="Foreign API",
             api_endpoint="https://foreign.example.com/hook",
-            api_key="foreign-secret-12345",
-        ),
-        session=db_session_with_containers,
+            api_key=encrypt_token(foreign_tenant_id, "foreign-secret-12345"),
+        )
     )
+    db_session_with_containers.commit()
 
     response = test_client_with_containers.get(
         "/console/api/api-based-extension",

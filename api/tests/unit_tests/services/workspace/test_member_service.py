@@ -2,7 +2,7 @@
 
 from collections.abc import Callable
 from contextlib import nullcontext
-from unittest.mock import Mock
+from unittest.mock import Mock, create_autospec
 
 import pytest
 from sqlalchemy import event, select
@@ -352,7 +352,7 @@ def test_bulk_invitation_counts_new_accounts_and_members_before_writing(
         "get_license",
         Mock(return_value=LicenseModel(seats=LicenseLimitationModel(enabled=True, size=3, limit=3))),
     )
-    redis = Mock(spec=RedisClientWrapper)
+    redis = create_autospec(RedisClientWrapper, instance=True)
     gateway = WorkspaceInvitationGateway(tokens=RedisInvitationTokenStore(redis=redis), redis=redis)
     workspace_id, owner_id, _ = members
     account_domain.accounts.create_account("outside@example.com", "Outside", "en-US")
@@ -401,7 +401,7 @@ def test_bulk_invitation_retains_partial_results_under_workspace_lock(
 
 @pytest.fixture
 def owner_transfer(account_domain: AccountDomain) -> tuple[WorkspaceOwnerTransferService, Mock]:
-    challenges = Mock(spec=OwnerTransferGateway)
+    challenges = create_autospec(OwnerTransferGateway, instance=True)
     challenges.is_ip_limited.return_value = False
     challenges.is_verification_limited.return_value = False
     challenges.read_token.return_value = OwnerTransferToken("owner@example.com", "123456")
@@ -551,7 +551,7 @@ def rbac_access(
     monkeypatch.setattr(RBACService.Roles, "list", Mock(return_value=Paginated[RBACRole](data=roles)))
     monkeypatch.setattr(RBACService.MemberRoles, "get", get_roles)
     monkeypatch.setattr(gateway, "permission_keys", lambda _workspace_id, _actor_id: {"workspace.role.manage"})
-    replace = Mock(spec=RBACService.MemberRoles.replace)
+    replace = create_autospec(RBACService.MemberRoles.replace, instance=True)
     monkeypatch.setattr(RBACService.MemberRoles, "replace", replace)
     return gateway, replace
 
@@ -590,7 +590,7 @@ def test_rbac_invitation_assigns_requested_role(
         sqlite_session.commit()
     access, replace = rbac_access
     monkeypatch.setattr(access, "permission_keys", lambda _workspace, _actor: {"workspace.member.manage"})
-    sync = Mock(spec=sync_joined_workspace_member_rbac_access_task.delay)
+    sync = create_autospec(sync_joined_workspace_member_rbac_access_task.delay, instance=True)
     monkeypatch.setattr(sync_joined_workspace_member_rbac_access_task, "delay", sync)
     member_service = WorkspaceMemberService(
         workspaces=account_domain.workspaces, accounts=account_domain.repository, access=access

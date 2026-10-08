@@ -356,25 +356,61 @@ describe('HttpClient', () => {
     })
   })
 
-  it('retries on timeout errors', async () => {
-    const fetchMock = stubFetch()
-    fetchMock
-      .mockRejectedValueOnce(Object.assign(new Error('timeout'), { name: 'AbortError' }))
-      .mockResolvedValueOnce(jsonResponse('ok', { status: 200 }))
-    const client = new HttpClient({ apiKey: 'test', maxRetries: 1, retryDelay: 0 })
+  it.each(['GET', 'PUT', 'DELETE'] as const)(
+    'retries replayable %s after a network failure or timeout',
+    async (method) => {
+      const failures = [
+        new Error('connection lost'),
+        Object.assign(new Error('timeout'), { name: 'AbortError' }),
+      ]
+      for (const failure of failures) {
+        const fetchMock = stubFetch()
+        fetchMock.mockRejectedValueOnce(failure).mockResolvedValueOnce(jsonResponse('ok'))
+        const client = new HttpClient({ apiKey: 'test', maxRetries: 1, retryDelay: 0 })
 
-    await client.requestRaw({ method: 'GET', path: '/meta' })
-    expect(fetchMock).toHaveBeenCalledTimes(2)
+        await client.requestRaw({ method, path: '/resource', data: { name: 'updated' } })
+
+        expect(fetchMock).toHaveBeenCalledTimes(2)
+        expect(getFetchCall(fetchMock, 1)[1]?.method).toBe(method)
+      }
+    },
+  )
+
+  it.each(['POST', 'PATCH'] as const)(
+    'does not retry %s after a network failure',
+    async (method) => {
+      const fetchMock = stubFetch()
+      fetchMock.mockRejectedValueOnce(new Error('connection lost'))
+      const client = new HttpClient({ apiKey: 'test', maxRetries: 2, retryDelay: 0 })
+
+      await expect(
+        client.requestRaw({ method, path: '/workflows/run', data: { inputs: {} } }),
+      ).rejects.toBeInstanceOf(NetworkError)
+
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+    },
+  )
+
+  it.each(['POST', 'PATCH'] as const)('does not retry %s after a timeout', async (method) => {
+    const fetchMock = stubFetch()
+    fetchMock.mockRejectedValueOnce(Object.assign(new Error('timeout'), { name: 'AbortError' }))
+    const client = new HttpClient({ apiKey: 'test', maxRetries: 2, retryDelay: 0 })
+
+    await expect(
+      client.requestRaw({ method, path: '/workflows/run', data: { inputs: {} } }),
+    ).rejects.toBeInstanceOf(TimeoutError)
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
-  it('does not retry non-replayable readable request bodies', async () => {
+  it.each(['POST', 'PUT'] as const)('does not retry %s with a readable body', async (method) => {
     const fetchMock = stubFetch()
     fetchMock.mockRejectedValueOnce(new Error('network'))
     const client = new HttpClient({ apiKey: 'test', maxRetries: 2, retryDelay: 0 })
 
     await expect(
       client.requestRaw({
-        method: 'POST',
+        method,
         path: '/chat-messages',
         data: Readable.from(['chunk']),
       }),
