@@ -13,8 +13,10 @@ from flask import Flask
 from pydantic import ValidationError
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import BadRequest, NotFound
+from werkzeug.exceptions import BadRequest as HttpBadRequest
+from werkzeug.exceptions import NotFound as HttpNotFound
 
+from controllers.common.errors import NotFoundError
 from controllers.console.app import (
     annotation as annotation_module,
 )
@@ -40,9 +42,6 @@ from controllers.console.app import (
     workflow_app_log as workflow_app_log_module,
 )
 from controllers.console.app import (
-    workflow_draft_variable as workflow_draft_variable_module,
-)
-from controllers.console.app import (
     workflow_statistic as workflow_statistic_module,
 )
 from controllers.console.app import (
@@ -64,7 +63,6 @@ from controllers.console.app.workflow import AdvancedChatWorkflowRunPayload, Syn
 from controllers.console.app.workflow_app_log import WorkflowAppLogQuery
 from controllers.console.app.workflow_draft_variable import (
     EnvironmentVariableUpdatePayload,
-    WorkflowDraftVariableListQuery,
     WorkflowDraftVariableUpdatePayload,
 )
 from controllers.console.app.workflow_statistic import WorkflowStatisticQuery
@@ -195,7 +193,7 @@ class TestCompletionEndpoints:
         with (
             Session(sqlite_engine) as session,
             app.test_request_context("/", json={"inputs": {}, "model_config": {}, "query": "hi"}),
-            pytest.raises(NotFound),
+            pytest.raises(NotFoundError),
         ):
             method(
                 api,
@@ -440,7 +438,7 @@ class TestSiteEndpoints:
 
         with (
             patch.object(site_module, "application_services", return_value=services),
-            pytest.raises(NotFound),
+            pytest.raises(HttpNotFound),
         ):
             method(api, context, app_id=uuid.UUID(APP_ID))
 
@@ -510,35 +508,6 @@ class TestWorkflowDraftVariableEndpoints:
         payload = WorkflowDraftVariableUpdatePayload(name="var1", value="test")
         assert payload.name == "var1"
 
-    def test_workflow_variable_collection_get(self, database_app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-        api = workflow_draft_variable_module.WorkflowVariableCollectionApi()
-        method = unwrap(api.get)
-
-        class DummyDraftService:
-            def __init__(self, session: Session):
-                self.session = session
-
-            def list_variables_without_values(self, **_kwargs):
-                assert self.session.get_bind() is db.engine
-                return {"items": [], "total": 0}
-
-        class DummyWorkflowService:
-            def is_workflow_exist(self, *args, **kwargs):
-                return True
-
-        monkeypatch.setattr(workflow_draft_variable_module, "WorkflowDraftVariableService", DummyDraftService)
-        monkeypatch.setattr(workflow_draft_variable_module, "WorkflowService", DummyWorkflowService)
-
-        with database_app.test_request_context("/?page=1&limit=20"):
-            result = method(
-                api,
-                WorkflowDraftVariableListQuery(page=1, limit=20),
-                _make_account(),
-                app_model=_make_app("app-1"),
-            )
-
-        assert result == {"items": [], "total": 0}
-
     def test_environment_variable_update_payload_preserves_full_replace_default(self) -> None:
         payload = EnvironmentVariableUpdatePayload(environment_variables=[])
 
@@ -563,48 +532,6 @@ class TestWorkflowDraftVariableEndpoints:
     def test_environment_variable_patch_payload_rejects_ambiguous_mutations(self, payload: dict) -> None:
         with pytest.raises(ValidationError):
             EnvironmentVariableUpdatePayload.model_validate(payload)
-
-    def test_environment_variable_collection_post_routes_patch_to_service(
-        self, database_app: Flask, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        api = workflow_draft_variable_module.EnvironmentVariableCollectionApi()
-        method = unwrap(api.post)
-        captured: dict = {}
-
-        class DummyWorkflowService:
-            def patch_draft_workflow_environment_variables(self, **kwargs) -> None:
-                captured.update(kwargs)
-
-            def update_draft_workflow_environment_variables(self, **_kwargs) -> None:
-                raise AssertionError("patch request must not use full replacement")
-
-        monkeypatch.setattr(workflow_draft_variable_module, "WorkflowService", DummyWorkflowService)
-
-        with database_app.test_request_context(
-            "/",
-            json={
-                "environment_variables": [{"id": "env-a", "name": "a", "value_type": "string", "value": "new-a"}],
-                "patch": True,
-                "deleted_environment_variable_ids": ["env-b"],
-            },
-        ):
-            result = method(
-                api,
-                EnvironmentVariableUpdatePayload(
-                    environment_variables=[{"id": "env-a", "name": "a", "value_type": "string", "value": "new-a"}],
-                    patch=True,
-                    deleted_environment_variable_ids=["env-b"],
-                ),
-                _make_account(),
-                app_model=_make_app(),
-            )
-
-        assert result == {"result": "success"}
-        assert [(variable.id, variable.value) for variable in captured["environment_variables"]] == [("env-a", "new-a")]
-        assert captured["deleted_environment_variable_ids"] == ["env-b"]
-        assert captured["app_model"].id == APP_ID
-        assert captured["account"].id == USER_ID
-        assert captured["session"].get_bind() is db.engine
 
 
 class TestWorkflowStatisticEndpoints:
@@ -763,7 +690,7 @@ class TestWorkflowStatisticEndpoints:
             MagicMock(side_effect=ValueError("invalid range")),
         )
 
-        with pytest.raises(BadRequest, match="invalid range"):
+        with pytest.raises(HttpBadRequest, match="invalid range"):
             workflow_statistic_module._resolve_statistic_time_range(WorkflowStatisticQuery())
 
     @staticmethod
@@ -849,3 +776,6 @@ class TestPayloadIntegration:
         ]
         assert len(payloads) == 3
         assert all(p is not None for p in payloads)
+
+
+pytestmark = pytest.mark.usefixtures("workflow_application")

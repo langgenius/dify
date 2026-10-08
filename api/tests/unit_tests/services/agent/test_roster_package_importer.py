@@ -31,17 +31,12 @@ from models.agent import (
     AgentSource,
     AgentStatus,
 )
-from models.agent_config_entities import AgentSoulConfig
+from models.agent_config_entities import AgentPackageMetadata, AgentSoulConfig
 from models.base import Base, TypeBase
 from models.model import App, AppModelConfig, InstalledApp, Site, UploadFile
 from models.tools import ToolFile
 from services.agent import roster_package_importer as importer_module
-from services.agent.dsl_entities import (
-    AgentPackage,
-    AgentPackageMetadata,
-    AgentPackageWorkspaceSkill,
-    make_agent_app_dsl,
-)
+from services.agent.dsl_entities import AgentPackage, AgentPackageWorkspaceSkill, make_agent_app_dsl
 from services.agent.errors import (
     AgentNameConflictError,
     InvalidRosterAgentPackageError,

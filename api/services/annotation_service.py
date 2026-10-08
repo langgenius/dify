@@ -3,10 +3,9 @@ import uuid
 from typing import TypedDict
 
 import pandas as pd
-from sqlalchemy import delete, or_, select, update
+from sqlalchemy import delete, or_, select
 from sqlalchemy.orm import Session
 from werkzeug.datastructures import FileStorage
-from werkzeug.exceptions import NotFound
 
 from core.helper.csv_sanitizer import CSVSanitizer
 from enums import DeploymentEdition
@@ -14,9 +13,9 @@ from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_account_with_tenant
 from libs.pagination import paginate_query
-from models.account import Account
 from models.dataset import DatasetCollectionBinding
 from models.model import App, AppAnnotationHitHistory, AppAnnotationSetting, Message, MessageAnnotation
+from services.annotation.errors import AnnotationResourceNotFoundError
 from services.app_ref_service import AnnotationRef, AppRef
 from services.feature_service import FeatureService
 from tasks.annotation.add_annotation_to_index_task import add_annotation_to_index_task
@@ -114,7 +113,7 @@ class AppAnnotationService:
         )
 
         if not app:
-            raise NotFound("App not found")
+            raise AnnotationResourceNotFoundError("App not found")
 
         answer = args.get("answer") or args.get("content")
         if answer is None:
@@ -126,7 +125,7 @@ class AppAnnotationService:
             message = session.scalar(select(Message).where(Message.id == message_id, Message.app_id == app.id).limit(1))
 
             if not message:
-                raise NotFound("Message Not Exists.")
+                raise AnnotationResourceNotFoundError("Message Not Exists.")
 
             question = args.get("question") or message.query or ""
 
@@ -225,7 +224,7 @@ class AppAnnotationService:
         )
 
         if not app:
-            raise NotFound("App not found")
+            raise AnnotationResourceNotFoundError("App not found")
         if keyword:
             from libs.helper import escape_like_pattern
 
@@ -265,7 +264,7 @@ class AppAnnotationService:
         )
 
         if not app:
-            raise NotFound("App not found")
+            raise AnnotationResourceNotFoundError("App not found")
         annotations = session.scalars(
             select(MessageAnnotation)
             .where(MessageAnnotation.app_id == app_id)
@@ -294,7 +293,7 @@ class AppAnnotationService:
         )
 
         if not app:
-            raise NotFound("App not found")
+            raise AnnotationResourceNotFoundError("App not found")
 
         question = args.get("question")
         if question is None:
@@ -329,7 +328,7 @@ class AppAnnotationService:
         annotation = cls._get_annotation_by_ref(annotation_ref, session)
 
         if not annotation:
-            raise NotFound("Annotation not found")
+            raise AnnotationResourceNotFoundError("Annotation not found")
 
         question = args.get("question")
         if question is None:
@@ -364,7 +363,7 @@ class AppAnnotationService:
         annotation = cls._get_annotation_by_ref(annotation_ref, session)
 
         if not annotation:
-            raise NotFound("Annotation not found")
+            raise AnnotationResourceNotFoundError("Annotation not found")
 
         session.delete(annotation)
 
@@ -458,7 +457,7 @@ class AppAnnotationService:
         )
 
         if not app:
-            raise NotFound("App not found")
+            raise AnnotationResourceNotFoundError("App not found")
 
         job_id: str | None = None  # Initialize to avoid unbound variable error
         try:
@@ -577,7 +576,7 @@ class AppAnnotationService:
         annotation = cls._get_annotation_by_ref(annotation_ref, session)
 
         if not annotation:
-            raise NotFound("Annotation not found")
+            raise AnnotationResourceNotFoundError("Annotation not found")
 
         stmt = (
             select(AppAnnotationHitHistory)
@@ -591,61 +590,6 @@ class AppAnnotationService:
         return annotation_hit_histories.items, annotation_hit_histories.total or 0
 
     @classmethod
-    def get_annotation_by_id(cls, annotation_id: str, session: Session) -> MessageAnnotation | None:
-        annotation = session.get(MessageAnnotation, annotation_id)
-
-        if not annotation:
-            return None
-        return annotation
-
-    @classmethod
-    def get_annotation_reply_by_id(
-        cls, annotation_id: str, session: Session
-    ) -> tuple[MessageAnnotation, str | None] | None:
-        """Read a reply and its author together, retaining annotations whose account was deleted."""
-        row = session.execute(
-            select(MessageAnnotation, Account.name)
-            .outerjoin(Account, Account.id == MessageAnnotation.account_id)
-            .where(MessageAnnotation.id == annotation_id)
-        ).one_or_none()
-        return (row[0], row[1]) if row is not None else None
-
-    @classmethod
-    def add_annotation_history(
-        cls,
-        annotation_id: str,
-        app_id: str,
-        annotation_question: str,
-        annotation_content: str,
-        query: str,
-        user_id: str,
-        message_id: str,
-        from_source: str,
-        score: float,
-        session: Session,
-    ) -> None:
-        # add hit count to annotation
-        session.execute(
-            update(MessageAnnotation)
-            .where(MessageAnnotation.id == annotation_id)
-            .values(hit_count=MessageAnnotation.hit_count + 1)
-        )
-
-        annotation_hit_history = AppAnnotationHitHistory(
-            annotation_id=annotation_id,
-            app_id=app_id,
-            account_id=user_id,
-            question=query,
-            source=from_source,
-            score=score,
-            message_id=message_id,
-            annotation_question=annotation_question,
-            annotation_content=annotation_content,
-        )
-        session.add(annotation_hit_history)
-        session.flush()
-
-    @classmethod
     def get_app_annotation_setting_by_app_id(
         cls, app_id: str, session: Session
     ) -> AnnotationSettingDict | AnnotationSettingDisabledDict:
@@ -656,7 +600,7 @@ class AppAnnotationService:
         )
 
         if not app:
-            raise NotFound("App not found")
+            raise AnnotationResourceNotFoundError("App not found")
 
         annotation_setting = session.scalar(
             select(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).limit(1)
@@ -693,7 +637,7 @@ class AppAnnotationService:
         )
 
         if not app:
-            raise NotFound("App not found")
+            raise AnnotationResourceNotFoundError("App not found")
 
         annotation_setting = session.scalar(
             select(AppAnnotationSetting)
@@ -704,7 +648,7 @@ class AppAnnotationService:
             .limit(1)
         )
         if not annotation_setting:
-            raise NotFound("App annotation not found")
+            raise AnnotationResourceNotFoundError("App annotation not found")
         annotation_setting.score_threshold = args["score_threshold"]
         annotation_setting.updated_user_id = current_user.id
         annotation_setting.updated_at = naive_utc_now()
@@ -739,7 +683,7 @@ class AppAnnotationService:
         )
 
         if not app:
-            raise NotFound("App not found")
+            raise AnnotationResourceNotFoundError("App not found")
 
         # if annotation reply is enabled, delete annotation index
         app_annotation_setting = session.scalar(

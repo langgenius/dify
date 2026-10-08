@@ -18,6 +18,7 @@ from sqlalchemy.exc import IntegrityError
 from core.credit_usage import CreditUsageCreatedBy
 from core.db.session_factory import session_factory
 from core.tools.tool_file_manager import ToolFileManager
+from enums.agent import WorkflowAgentBindingType
 from models.account import Account
 from models.agent import (
     Agent,
@@ -29,7 +30,6 @@ from models.agent import (
     AgentScope,
     AgentSource,
     AgentStatus,
-    WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
 from models.agent_config_entities import (

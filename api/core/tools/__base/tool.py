@@ -5,8 +5,6 @@ from collections.abc import Generator
 from copy import deepcopy
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy.orm import Session
-
 if TYPE_CHECKING:  # pragma: no cover
     from models.model import File
 
@@ -48,20 +46,19 @@ class Tool(ABC):
 
     def invoke(
         self,
-        session: Session,
         user_id: str,
         tool_parameters: dict[str, Any],
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
     ) -> Generator[ToolInvokeMessage]:
+        """Invoke a configured provider without carrying persistence resources."""
         if self.runtime and self.runtime.runtime_parameters:
             tool_parameters.update(self.runtime.runtime_parameters)
 
         tool_parameters = self._transform_tool_parameters_type(tool_parameters)
 
         result = self._invoke(
-            session=session,
             user_id=user_id,
             tool_parameters=tool_parameters,
             conversation_id=conversation_id,
@@ -100,7 +97,6 @@ class Tool(ABC):
     @abstractmethod
     def _invoke(
         self,
-        session: Session,
         user_id: str,
         tool_parameters: dict[str, Any],
         conversation_id: str | None = None,

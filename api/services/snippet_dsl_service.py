@@ -15,12 +15,12 @@ from core.plugin.entities.plugin import PluginDependency
 from extensions.ext_redis import redis_client
 from graphon.enums import BuiltinNodeTypes
 from graphon.model_runtime.utils.encoders import jsonable_encoder
+from machinery.context import RequestContext
 from models import Account
 from models.snippet import CustomizedSnippet, SnippetType
 from models.workflow import Workflow
 from services.agent.dsl_service import AgentDslService
-from services.agent.legacy_retirement_service import WorkflowAgentRetirementService
-from services.agent.legacy_workflow_publish_service import WorkflowAgentPublishService
+from services.agent.workflow_contracts import WorkflowAgentBindingStore
 from services.dsl_content import DSL_MAX_SIZE, dsl_content_size
 from services.dsl_version import check_version_compatibility
 from services.entities.dsl_entities import (
@@ -31,7 +31,10 @@ from services.entities.dsl_entities import (
     PendingImportOwner,
 )
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
-from services.snippet_service import SNIPPET_FORBIDDEN_NODE_TYPES, SnippetService
+from services.snippet_service import SnippetService
+from services.workflow.contracts import DraftImportResult, DraftSyncCommand, WorkflowOwner, WorkflowSnapshot
+from services.workflow.draft_service import WorkflowDraftService
+from services.workflow.snippet_policy import SNIPPET_FORBIDDEN_NODE_TYPES
 
 logger = logging.getLogger(__name__)
 
@@ -70,12 +73,17 @@ class CheckDependenciesPendingData(BaseModel):
 
 
 class SnippetDslService:
-    def __init__(self, session: Session):
+    def __init__(
+        self,
+        session: Session,
+        *,
+        snippets: SnippetService,
+        drafts: WorkflowDraftService[WorkflowAgentBindingStore],
+    ):
         self._session = session
+        self._snippets = snippets
+        self._drafts = drafts
         self._warnings: list[DslImportWarning] = []
-
-    def _snippet_service(self) -> SnippetService:
-        return SnippetService(session=self._session)
 
     def import_snippet(
         self,
@@ -382,7 +390,7 @@ class SnippetDslService:
         """
         Check dependencies for a snippet
         """
-        snippet_service = self._snippet_service()
+        snippet_service = self._snippets
         workflow = snippet_service.get_draft_workflow(snippet=snippet)
         if not workflow:
             return CheckDependenciesResult(leaked_dependencies=[])
@@ -447,7 +455,6 @@ class SnippetDslService:
             self._session.flush()
 
         # Create or update draft workflow
-        retirement_candidates: set[str] = set()
         if workflow_data:
             graph = workflow_data.get("graph", {})
             raw_agent_packages = data.get("agent_packages") or {}
@@ -455,49 +462,32 @@ class SnippetDslService:
                 raise ValueError("agent_packages must be a mapping")
             graph_for_sync = AgentDslService.graph_without_package_bindings(graph) if raw_agent_packages else graph
 
-            snippet_service = self._snippet_service()
-            # Get existing workflow hash if exists
-            existing_workflow = snippet_service.get_draft_workflow(snippet=snippet)
-            unique_hash = existing_workflow.unique_hash if existing_workflow else None
-
-            draft_workflow = snippet_service.sync_draft_workflow(
-                snippet=snippet,
-                graph=graph_for_sync,
-                unique_hash=unique_hash,
-                account=account,
-                input_fields=input_fields,
-                sync_agent_bindings=False,
-            )
-            if raw_agent_packages:
-                _, warnings, retirement_candidates = AgentDslService(self._session).import_workflow_packages(
-                    workflow=draft_workflow,
-                    portable_graph=graph,
-                    raw_packages=raw_agent_packages,
-                    account=account,
+            def materialize(workflow: WorkflowSnapshot) -> DraftImportResult:
+                imported_graph, warnings, retired = AgentDslService(self._session).import_workflow_packages(
+                    workflow=workflow, portable_graph=graph, raw_packages=raw_agent_packages, account=account
                 )
                 self._warnings.extend(warnings)
-                WorkflowAgentPublishService.validate_agent_nodes_for_draft_sync(
-                    session=self._session,
-                    draft_workflow=draft_workflow,
-                )
-            else:
-                retirement_candidates = WorkflowAgentPublishService.sync_agent_bindings_for_draft(
-                    session=self._session,
-                    draft_workflow=draft_workflow,
-                    account_id=account.id,
-                )
-                WorkflowAgentPublishService.validate_agent_nodes_for_draft_sync(
-                    session=self._session,
-                    draft_workflow=draft_workflow,
-                )
+                return DraftImportResult(imported_graph, retired)
+
+            self._drafts.sync(
+                RequestContext(str(uuid.uuid4()), None, account.id, snippet.tenant_id),
+                WorkflowOwner(snippet.id, "snippet"),
+                DraftSyncCommand(
+                    graph=graph_for_sync,
+                    features={},
+                    unique_hash=None,
+                    check_hash=False,
+                    is_collaborative=False,
+                    environment_upserts=None,
+                    environment_deletions=[],
+                    environment_variables=[],
+                    conversation_variables=[],
+                    input_fields=input_fields,
+                ),
+                materialize=materialize if raw_agent_packages else None,
+            )
 
         self._session.commit()
-        if workflow_data:
-            WorkflowAgentRetirementService.retire_unowned(
-                tenant_id=snippet.tenant_id,
-                agent_ids=retirement_candidates,
-                account_id=account.id,
-            )
         return snippet
 
     def export_snippet_dsl(
@@ -510,7 +500,7 @@ class SnippetDslService:
         :param workflow_id: Optional published workflow version to export; defaults to the draft workflow
         :return: YAML string
         """
-        snippet_service = self._snippet_service()
+        snippet_service = self._snippets
         workflow = (
             snippet_service.get_published_workflow_by_id(snippet=snippet, workflow_id=workflow_id)
             if workflow_id

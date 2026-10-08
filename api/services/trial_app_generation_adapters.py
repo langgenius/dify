@@ -13,17 +13,27 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.app.entities.app_invoke_entities import InvokeFrom
 from models import Account, App
 from services.account_errors import AccountNotFoundError
+from services.app.generation.runtime import AppGenerationRuntime
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.app_generate_service import AppGenerateService
 from services.trial_app_access_service import TrialAppRef
 from services.trial_app_generation_service import GenerationResponse, TrialAppGenerationRuntime
+from services.workflow.variable_contracts import WorkflowExecutionVariables
 
 logger = logging.getLogger(__name__)
 
 
 class AppGenerateServiceRuntime(TrialAppGenerationRuntime):
-    def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
+    def __init__(
+        self,
+        *,
+        session_factory: sessionmaker[Session],
+        variables: WorkflowExecutionVariables,
+        runtime: AppGenerationRuntime,
+    ) -> None:
         self._session_factory: sessionmaker[Session] = session_factory
+        self._variables = variables
+        self._runtime = runtime
 
     @override
     def generate(
@@ -47,6 +57,8 @@ class AppGenerateServiceRuntime(TrialAppGenerationRuntime):
             # receives its own session, never the admission or usage transaction.
             with self._session_factory(expire_on_commit=False) as session:
                 generated_response: GenerationResponse = AppGenerateService.generate(
+                    variables=self._variables,
+                    runtime=self._runtime,
                     app_model=app_model,
                     user=account,
                     args=args,

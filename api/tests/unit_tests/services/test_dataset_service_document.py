@@ -1,3 +1,5 @@
+from services.errors.document import DocumentNotFoundError
+
 """Unit tests for DocumentService behaviors in dataset_service."""
 
 from collections.abc import Callable
@@ -31,7 +33,6 @@ from .dataset_service_test_helpers import (
     IndexStructureType,
     InfoList,
     KnowledgeConfig,
-    NotFound,
     NotionIcon,
     NotionInfo,
     NotionPage,
@@ -589,7 +590,7 @@ class TestDocumentServiceSaveDocumentWithoutDatasetId:
         with (
             patch("services.knowledge.dataset_service.FeatureService.get_features", return_value=_make_features()),
             patch(
-                "services.knowledge.dataset_service.DatasetCollectionBindingService.get_dataset_collection_binding",
+                "services.knowledge.dataset_service.DatasetCollectionBindingRepository.get_dataset_collection_binding",
                 return_value=binding,
             ),
             patch.object(
@@ -723,7 +724,7 @@ class TestDocumentServiceUpdateDocumentWithDatasetId:
             ),
         )
         with patch.object(DatasetService, "check_dataset_model_setting") as check_model_setting:
-            with pytest.raises(NotFound, match="Document not found"):
+            with pytest.raises(DocumentNotFoundError, match="Document not found"):
                 DocumentService.update_document_with_dataset_id(
                     dataset,
                     document_data,
@@ -1803,7 +1804,7 @@ class TestDocumentServiceSaveDocumentAdditionalBranches:
             patch("services.knowledge.dataset_service.FeatureService.get_features", return_value=_make_features()),
             patch("services.knowledge.dataset_service.ModelManager") as model_manager_cls,
             patch(
-                "services.knowledge.dataset_service.DatasetCollectionBindingService.get_dataset_collection_binding",
+                "services.knowledge.dataset_service.DatasetCollectionBindingRepository.get_dataset_collection_binding",
                 return_value=binding,
             ) as get_binding,
             patch.object(DocumentService, "update_prepared_document", return_value=updated_document),
@@ -1870,7 +1871,7 @@ class TestDocumentServiceSaveDocumentAdditionalBranches:
             patch("services.knowledge.dataset_service.FeatureService.get_features", return_value=_make_features()),
             patch("services.knowledge.dataset_service.ModelManager") as model_manager_cls,
             patch(
-                "services.knowledge.dataset_service.DatasetCollectionBindingService.get_dataset_collection_binding",
+                "services.knowledge.dataset_service.DatasetCollectionBindingRepository.get_dataset_collection_binding",
                 return_value=binding,
             ) as get_binding,
             patch.object(DocumentService, "update_prepared_document", return_value=updated_document),

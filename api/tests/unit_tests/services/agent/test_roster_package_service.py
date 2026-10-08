@@ -30,13 +30,13 @@ from models.agent import (
     AgentSource,
     AgentStatus,
 )
-from models.agent_config_entities import AgentSoulConfig
+from models.agent_config_entities import AgentPackageMetadata, AgentSoulConfig
 from models.enums import AppStatus, CreatorUserRole, CustomizeTokenStrategy
 from models.model import App, AppMode, IconType, Site
 from models.skill import AgentSkillBindingSnapshot, Skill, SkillVersion, SkillVersionManifest
 from models.tools import ToolFile
 from services.agent import roster_package_exporter as roster_package_exporter_module
-from services.agent.dsl_entities import AgentAppDsl, AgentPackage, AgentPackageMetadata, make_agent_app_dsl
+from services.agent.dsl_entities import AgentAppDsl, AgentPackage, make_agent_app_dsl
 from services.agent.errors import (
     AgentVersionNotFoundError,
     InvalidRosterAgentPackageError,
@@ -1063,15 +1063,14 @@ def test_export_uses_current_workspace_skill_bindings(
     pool = sqlite_engine.pool
     assert isinstance(pool, QueuePool)
 
-    def load_legacy_skill(*, tenant_id: str, file_id: str) -> bytes:
-        assert tenant_id == "tenant-1"
-        assert file_id
+    def load_published_skill(storage_key: str) -> bytes:
+        assert storage_key == "tools/workspace.zip"
         assert pool.checkedout() == 0
         return workspace_payload
 
     monkeypatch.setattr(
-        "services.skill_management_service.SkillManagementService._load_tool_file_bytes",
-        staticmethod(load_legacy_skill),
+        "services.skill_management_service.storage.load_once",
+        load_published_skill,
     )
     archive_file = ToolFile(
         user_id="account-1",

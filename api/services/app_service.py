@@ -10,15 +10,15 @@ import sqlalchemy as sa
 from pydantic import JsonValue
 from sqlalchemy import ColumnElement, delete, select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from constants.model_template import default_app_templates
 from core.agent.publish_visibility import agent_has_workflow_callable_active_snapshot
-from core.agent.tool_configuration import mask_agent_tool_parameters
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from enums import DeploymentEdition
+from enums.agent import WorkflowAgentBindingType
 from events.app_event import app_was_created, app_was_deleted, app_was_updated
 from extensions.ext_database import db  # noqa: F401
 from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
@@ -35,18 +35,21 @@ from models.agent import (
     AgentStatus,
     AgentWorkingResourceStatus,
     AgentWorkspaceBinding,
-    WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
 from models.agent_config_entities import AgentSoulConfig, AgentSoulModelConfig
 from models.model import App, AppMode, AppModelConfig, IconType, Site, load_annotation_reply_config
 from models.provider_ids import ModelProviderID
 from models.skill import AgentSkillBinding
+from models.tool_runtime_contracts import WorkflowToolQueries
 from models.workflow import Workflow
+from repositories.agent.home_snapshot_repository import AgentHomeSnapshotRepository
+from repositories.agent.retirement_repository import WorkflowAgentRetirementRepository
+from repositories.app.response import load_app_tool_references
 from services.agent.errors import AgentAccessNotReadyError, AgentNameConflictError
-from services.agent.home_snapshot_service import AgentHomeSnapshotService
-from services.agent.legacy_retirement_service import WorkflowAgentRetirementService
+from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.agent.workspace_service import AgentWorkspaceService
+from services.app.response_gateway import AppResponseGateway
 from services.billing_service import BillingService
 from services.enterprise import rbac_service as enterprise_rbac_service
 from services.enterprise.enterprise_service import EnterpriseService
@@ -65,6 +68,8 @@ from services.openapi.visibility import apply_openapi_gate, is_openapi_visible
 from services.rbac_agent_access_service import initialize_agent_rbac_access
 from services.system_feature_service import SystemFeatureService
 from services.tag_service import TagService
+from services.tools.agent_configuration import mask_agent_tool_parameters
+from services.tools.provider_queries import ToolProviders
 from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 from tasks.remove_app_and_related_data_task import remove_app_and_related_data_task
 
@@ -122,8 +127,17 @@ class AppResponseView:
     """Expose App response properties through one caller-owned database session."""
 
     def __init__(
-        self, app: App, *, session: Session, account: Account | None = None, access_mode: str | None = None
+        self,
+        app: App,
+        *,
+        tool_providers: ToolProviders,
+        workflow_queries: WorkflowToolQueries,
+        session: Session,
+        account: Account | None = None,
+        access_mode: str | None = None,
     ) -> None:
+        self._tool_providers = tool_providers
+        self._workflow_queries = workflow_queries
         self._app = app
         self._session = session
         self._account = account
@@ -151,6 +165,8 @@ class AppResponseView:
             tenant_id = self._account.current_tenant_id
             assert tenant_id is not None
             masked_agent_mode = mask_agent_tool_parameters(
+                tool_providers=self._tool_providers,
+                workflow_queries=self._workflow_queries,
                 agent_mode=cast(Mapping[str, JsonValue], app_model_config.agent_mode_dict),
                 app_id=self._app.id,
                 tenant_id=tenant_id,
@@ -186,7 +202,13 @@ class AppResponseView:
 
     @property
     def deleted_tools(self) -> list[Any]:
-        return self._app.deleted_tools_with_session(session=self._session)
+        config = self._app.app_model_config_with_session(session=self._session)
+        references = load_app_tool_references(
+            session=self._session,
+            tenant_id=self._app.tenant_id,
+            tools=config.agent_mode_dict.get("tools", []) if config is not None else [],
+        )
+        return AppResponseGateway.find_deleted_tools(self._app.tenant_id, references)
 
     @property
     def tags(self) -> Sequence[Any]:
@@ -863,8 +885,7 @@ class AppService:
                         binding_id=binding.id,
                     )
                 retired_binding_ids.append(binding.id)
-            retired_snapshot_ids = AgentHomeSnapshotService.retire_all_for_agent(
-                session=session,
+            retired_snapshot_ids = AgentHomeSnapshotRepository(session).retire_all_for_agent(
                 tenant_id=app.tenant_id,
                 agent_id=backing_agent.id,
             )
@@ -886,7 +907,9 @@ class AppService:
             )
             raise
 
-        WorkflowAgentRetirementService.retire_unowned(
+        WorkflowAgentRetirementService(
+            WorkflowAgentRetirementRepository(sessionmaker(bind=session.get_bind(), expire_on_commit=False))
+        ).retire_unowned(
             tenant_id=app.tenant_id,
             agent_ids=workflow_agent_ids,
             account_id=account_id,
@@ -988,7 +1011,7 @@ class AppService:
             BillingService.clean_billing_info_cache(event.tenant_id)
 
     @staticmethod
-    def notify_deleted_app(deleted: AppDeletion, *, account_id: str | None) -> None:
+    def notify_deleted_app(deleted: AppDeletion, *, account_id: str | None, sessions: sessionmaker[Session]) -> None:
         app = deleted.app
         app_was_deleted.send(app)
         try:
@@ -1000,7 +1023,7 @@ class AppService:
             )
             raise
 
-        WorkflowAgentRetirementService.retire_unowned(
+        WorkflowAgentRetirementService(WorkflowAgentRetirementRepository(sessions)).retire_unowned(
             tenant_id=app.tenant_id,
             agent_ids=deleted.workflow_agent_ids,
             account_id=account_id,

@@ -5,7 +5,7 @@ from collections.abc import Mapping, Sequence
 from typing import Any, NamedTuple, Protocol
 
 from core.app.app_config.common.parameters_mapping import AppParametersDict, get_parameters_from_feature_dict
-from core.app.apps.agent_app.errors import AgentAppGeneratorError, AgentAppNotPublishedError
+from services.app.generation.errors import AgentAppGeneratorError, AgentAppNotPublishedError
 
 
 class AppParameterConfig(NamedTuple):

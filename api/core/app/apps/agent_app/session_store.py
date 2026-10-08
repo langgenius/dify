@@ -17,6 +17,7 @@ from models.agent import (
     AgentWorkspaceOwnerType,
 )
 from models.model import App, Conversation
+from repositories.agent_workspace_repository import AgentWorkspaceRepository
 from services.agent.workspace_service import (
     AgentWorkspaceNotFoundError,
     AgentWorkspaceService,
@@ -128,7 +129,7 @@ class AgentAppWorkspaceStore:
         )
         if binding is None or binding.agent_id != scope.agent_id:
             raise AgentWorkspaceNotFoundError("Caller participant Binding is unavailable")
-        AgentWorkspaceService.validate_binding_generation(
+        AgentWorkspaceRepository.validate_binding_generation(
             binding,
             base_home_snapshot_id=scope.home_snapshot_id,
             agent_config_version_id=scope.agent_config_snapshot_id,

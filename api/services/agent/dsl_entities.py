@@ -9,7 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from core.plugin.entities.plugin import PluginDependency
 from models.agent import Agent
-from models.agent_config_entities import AgentSoulConfig
+from models.agent_config_entities import AgentPackageMetadata, AgentSoulConfig
 from models.model import App
 from services.entities.dsl_entities import make_app_dsl
 from services.entities.site_dsl import SiteDsl
@@ -17,17 +17,6 @@ from services.entities.site_dsl import SiteDsl
 AGENT_PACKAGE_SCHEMA_VERSION = 1
 AGENT_PACKAGE_REF_KEY = "package_ref"
 AGENT_NODE_JOB_DSL_KEY = "agent_job"
-
-
-class AgentPackageMetadata(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    name: str = Field(min_length=1, max_length=255)
-    description: str = ""
-    role: str = ""
-    icon_type: str | None = None
-    icon: str | None = None
-    icon_background: str | None = None
 
 
 class AgentPackageOmittedAsset(BaseModel):

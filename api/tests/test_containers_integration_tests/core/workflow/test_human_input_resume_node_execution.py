@@ -9,13 +9,8 @@ from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
-from core.app.workflow.layers import PersistenceWorkflowInfo, WorkflowPersistenceLayer
-from core.repositories.human_input_repository import HumanInputFormEntity, HumanInputFormRepository
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
-from core.workflow.nodes.human_input.callback import (
-    DifyHITLCallback,
-)
 from core.workflow.system_variables import build_system_variables
 from enums.human_input import HumanInputFormStatus
 from graphon.enums import WorkflowType
@@ -32,9 +27,14 @@ from libs.datetime_utils import naive_utc_now
 from models import Account
 from models.account import AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.human_input_contracts import HumanInputFormEntity, HumanInputFormRepository
 from models.human_input_entities import HumanInputNodeData, UserActionConfig
 from models.model import App, AppMode, IconType
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
+from services.workflow.execution.adapters.human_input import (
+    DifyHITLCallback,
+)
+from services.workflow.execution.adapters.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
@@ -42,7 +42,6 @@ def _mock_form_repository_without_submission() -> HumanInputFormRepository:
     repo = MagicMock(spec=HumanInputFormRepository)
     form_entity = MagicMock(spec=HumanInputFormEntity)
     form_entity.id = "test-form-id"
-    form_entity.submission_token = "test-form-token"
     form_entity.recipients = []
     form_entity.rendered_content = "rendered"
     form_entity.submitted = False
@@ -55,7 +54,6 @@ def _mock_form_repository_with_submission(action_id: str) -> HumanInputFormRepos
     repo = MagicMock(spec=HumanInputFormRepository)
     form_entity = MagicMock(spec=HumanInputFormEntity)
     form_entity.id = "test-form-id"
-    form_entity.submission_token = "test-form-token"
     form_entity.recipients = []
     form_entity.rendered_content = "rendered"
     form_entity.submitted = True

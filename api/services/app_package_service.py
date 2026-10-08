@@ -15,8 +15,7 @@ import yaml
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 from core.db.session_factory import session_factory
-from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidator
-from models.agent import WorkflowAgentBindingType
+from enums.agent import WorkflowAgentBindingType
 from models.agent_config_entities import WorkflowNodeJobConfig
 from models.model import App
 from services.agent.dsl_entities import AgentPackage
@@ -35,6 +34,7 @@ from services.agent.roster_package_entities import (
     validate_icon_references,
 )
 from services.agent.roster_package_reader import RosterAgentPackageReader
+from services.agent.workflow_validator import WorkflowAgentNodeValidator
 from services.dsl_content import DSL_MAX_SIZE
 from services.entities.dsl_entities import DslImportWarning
 from services.entities.site_dsl import SiteDsl

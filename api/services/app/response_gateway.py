@@ -1,3 +1,6 @@
+from models.tool_runtime_contracts import WorkflowToolQueries
+from services.tools.provider_queries import ToolProviders
+
 """App response enrichment through tool runtimes and plugin metadata."""
 
 from collections.abc import Mapping
@@ -7,16 +10,20 @@ from typing import cast
 
 from pydantic import JsonValue
 
-from core.agent.tool_configuration import mask_agent_tool_parameters
 from core.plugin.plugin_service import PluginService
-from core.tools.tool_manager import ToolManager
 from machinery.context import RequestContext
 from models.model import AppMode
 from models.provider_ids import GenericProviderID
 from services.entities.app_entities import AppRecord, AppToolReference
+from services.tools.agent_configuration import mask_agent_tool_parameters
+from services.tools.tool_manager import ToolManager
 
 
 class AppResponseGateway:
+    def __init__(self, tool_providers: ToolProviders, workflow_queries: WorkflowToolQueries) -> None:
+        self._tool_providers = tool_providers
+        self._workflow_queries = workflow_queries
+
     @staticmethod
     def find_deleted_tools(tenant_id: str, references: tuple[AppToolReference, ...]) -> list[dict[str, str]]:
         """Resolve builtin tool availability from detached references, without a database session."""
@@ -47,12 +54,13 @@ class AppResponseGateway:
             or (ref.provider_type == "builtin" and existence.get(ref.provider_id) is False)
         ]
 
-    @staticmethod
-    def mask_record(context: RequestContext, app: AppRecord) -> AppRecord:
+    def mask_record(self, context: RequestContext, app: AppRecord) -> AppRecord:
         if app.mode_compatible_with_agent != AppMode.AGENT_CHAT or app.app_model_config is None:
             return app
         config = deepcopy(app.app_model_config)
         config["agent_mode"] = mask_agent_tool_parameters(
+            tool_providers=self._tool_providers,
+            workflow_queries=self._workflow_queries,
             agent_mode=cast(Mapping[str, JsonValue], config.get("agent_mode", {})),
             tenant_id=context.active_workspace_id,
             app_id=app.id,

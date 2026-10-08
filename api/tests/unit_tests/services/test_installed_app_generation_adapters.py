@@ -12,7 +12,6 @@ from sqlalchemy import event, inspect, update
 from sqlalchemy.orm import Session, sessionmaker
 
 import services.app_generate_service as generation_module
-from core.app.apps import message_based_app_generator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.features.rate_limiting.rate_limit import RateLimit, RateLimitGenerator
 from enums import DeploymentEdition
@@ -24,10 +23,14 @@ from models.workflow import WorkflowType
 from services.account_errors import AccountNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.errors.app import MoreLikeThisDisabledError
+from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError
 from services.installed_app_generation_adapters import AppGenerateServiceRuntime
 from services.installed_app_generation_service import GenerationResponse
+from services.workflow.execution.adapters import response_stream
+from services.workflow.execution.ports import WorkflowRuntime
+from services.workflow.variable_contracts import WorkflowExecutionVariables
 
 _ARGS: dict[str, object] = {"inputs": {"count": 0}, "query": "hello", "auto_generate_name": False}
 _WORKFLOW_ARGS: dict[str, object] = {"inputs": {"count": 0}, "files": []}
@@ -44,7 +47,12 @@ class _RuntimeHarness:
 
 
 @pytest.fixture
-def harness(sqlite_session_factory: sessionmaker[Session]) -> _RuntimeHarness:
+def harness(
+    sqlite_session_factory: sessionmaker[Session],
+    *,
+    workflow_variables: WorkflowExecutionVariables,
+    workflow_runtime: WorkflowRuntime,
+) -> _RuntimeHarness:
     with sqlite_session_factory.begin() as session:
         app = App(
             tenant_id=str(uuid4()), name="Original app", mode=AppMode.COMPLETION, enable_site=True, enable_api=True
@@ -73,7 +81,9 @@ def harness(sqlite_session_factory: sessionmaker[Session]) -> _RuntimeHarness:
         committed_sessions.append(session)
 
     return _RuntimeHarness(
-        AppGenerateServiceRuntime(session_factory=cast(sessionmaker[Session], factory)),
+        AppGenerateServiceRuntime(
+            session_factory=cast(sessionmaker[Session], factory), variables=workflow_variables, runtime=workflow_runtime
+        ),
         app.id,
         account.id,
         closed_sessions,
@@ -111,8 +121,10 @@ def _patch_generation(
         assert streaming is expected_streaming
         return generate(session)
 
-    def legacy_generate(
+    def boundary_generate(
         *,
+        variables: WorkflowExecutionVariables,
+        runtime: WorkflowRuntime,
         session: Session,
         app_model: App,
         user: Account,
@@ -120,13 +132,18 @@ def _patch_generation(
         invoke_from: InvokeFrom,
         streaming: bool,
     ) -> GenerationResponse | Generator[Mapping[str, object] | str, None, None]:
+        assert runtime is harness.runtime._runtime
+        assert variables is harness.runtime._variables
         assert args == _ARGS
         return assert_context(
             session=session, app_model=app_model, user=user, invoke_from=invoke_from, streaming=streaming
         )
 
-    def legacy_generate_more_like_this(
+    def boundary_generate_more_like_this(
         *,
+        retrieval,
+        records,
+        annotations,
         session: Session,
         app_model: App,
         user: Account,
@@ -134,6 +151,9 @@ def _patch_generation(
         invoke_from: InvokeFrom,
         streaming: bool,
     ) -> GenerationResponse | Generator[Mapping[str, object] | str, None, None]:
+        assert records is harness.runtime._runtime.chat_records
+        assert annotations is harness.runtime._runtime.annotation_replies
+        assert retrieval is harness.runtime._runtime.retrieval
         assert message_id == _MESSAGE_ID
         return assert_context(
             session=session, app_model=app_model, user=user, invoke_from=invoke_from, streaming=streaming
@@ -142,10 +162,10 @@ def _patch_generation(
     expected_streaming = streaming
     if more_like_this:
         monkeypatch.setattr(
-            generation_module.AppGenerateService, "generate_more_like_this", legacy_generate_more_like_this
+            generation_module.AppGenerateService, "generate_more_like_this", boundary_generate_more_like_this
         )
     else:
-        monkeypatch.setattr(generation_module.AppGenerateService, "generate", legacy_generate)
+        monkeypatch.setattr(generation_module.AppGenerateService, "generate", boundary_generate)
 
 
 def _invoke_generation(
@@ -481,7 +501,7 @@ def test_more_like_this_requires_historical_config_even_when_current_config_is_e
         assert conversation is not None
         conversation.app_model_config_id = missing_config_id
 
-    with pytest.raises(ValueError, match="Message app_model_config is None"):
+    with pytest.raises(AppModelConfigBrokenError):
         harness.runtime.generate_more_like_this(
             app_id=harness.app_id, account_id=harness.account_id, message_id=message_id, streaming=True
         )
@@ -746,19 +766,19 @@ def test_workflow_dispatch_starts_task_after_subscription_with_runtime_session_c
     channel.topic.return_value = topic
 
     def activate_subscription() -> Subscription:
-        assert len(harness.closed_sessions) == 2
+        assert len(set(harness.closed_sessions)) == 2
         assert all(not session.in_transaction() for session in harness.closed_sessions)
         transport_events.append("subscribe")
         return subscription
 
     subscription.__enter__.side_effect = activate_subscription
     subscription.receive.return_value = b'{"event":"workflow_finished"}'
-    monkeypatch.setattr(message_based_app_generator, "get_pubsub_broadcast_channel", lambda: channel)
+    monkeypatch.setattr(response_stream, "get_pubsub_broadcast_channel", lambda: channel)
     submitted: list[generation_module.AppExecutionParams] = []
 
     def enqueue(payload_json: str) -> None:
         assert transport_events == ["subscribe"]
-        assert len(harness.closed_sessions) == 2
+        assert len(set(harness.closed_sessions)) == 2
         assert all(not session.in_transaction() for session in harness.closed_sessions)
         submitted.append(generation_module.AppExecutionParams.model_validate_json(payload_json))
         transport_events.append("enqueue")
@@ -768,7 +788,7 @@ def test_workflow_dispatch_starts_task_after_subscription_with_runtime_session_c
     result = _generate_workflow(harness, sqlite_session_factory, args)
 
     assert isinstance(result, RateLimitGenerator)
-    assert len(harness.closed_sessions) == 2
+    assert len(set(harness.closed_sessions)) == 2
     assert harness.committed_sessions == [harness.closed_sessions[1]]
     assert submitted == []
     subscriber.prepare_subscription.assert_called_once_with()
@@ -819,7 +839,7 @@ def test_unpublished_workflow_raises_before_subscription_or_task_creation(
         )
 
     channel = MagicMock(spec=BroadcastChannel)
-    monkeypatch.setattr(message_based_app_generator, "get_pubsub_broadcast_channel", lambda: channel)
+    monkeypatch.setattr(response_stream, "get_pubsub_broadcast_channel", lambda: channel)
     enqueue = MagicMock()
     monkeypatch.setattr(generation_module.workflow_based_app_execution_task, "delay", enqueue)
 
@@ -827,7 +847,7 @@ def test_unpublished_workflow_raises_before_subscription_or_task_creation(
         _generate_workflow(harness, sqlite_session_factory, _WORKFLOW_ARGS)
 
     assert type(raised.value) is ValueError
-    assert len(harness.closed_sessions) == 2
+    assert len(set(harness.closed_sessions)) == 2
     assert all(not session.in_transaction() for session in harness.closed_sessions)
     assert harness.committed_sessions == []
     channel.topic.assert_not_called()

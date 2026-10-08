@@ -6,6 +6,7 @@ import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
+from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.plugin.plugin_service import PluginService
 from core.tools.__base.tool import Tool
 from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
@@ -21,7 +22,7 @@ from core.tools.entities.tool_entities import (
     ToolProviderType,
 )
 from models.tools import ApiToolProvider, WorkflowToolProvider
-from services.tools.legacy_tools_transform_service import ToolTransformService
+from services.tools.tools_transform_service import ToolTransformService
 
 
 class TestToolTransformService:
@@ -30,7 +31,7 @@ class TestToolTransformService:
     @pytest.fixture
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
-        with patch("services.tools.legacy_tools_transform_service.dify_config") as mock_dify_config:
+        with patch("services.tools.tools_transform_service.dify_config") as mock_dify_config:
             with patch("core.plugin.plugin_service.dify_config", new=mock_dify_config):
                 # Setup default mock returns
                 mock_dify_config.CONSOLE_API_URL = "https://console.example.com"
@@ -465,7 +466,7 @@ class TestToolTransformService:
         mock_db_provider.credentials = {"api_key": "encrypted_key"}
 
         # Mock encryption
-        with patch("services.tools.legacy_tools_transform_service.create_provider_encrypter") as mock_encrypter:
+        with patch("services.tools.tools_transform_service.create_provider_encrypter") as mock_encrypter:
             mock_encrypter_instance = Mock()
             mock_encrypter_instance.decrypt.return_value = {"api_key": "decrypted_key"}
             mock_encrypter_instance.mask_plugin_credentials.return_value = {"api_key": ""}
@@ -689,7 +690,7 @@ class TestToolTransformService:
         assert hasattr(result, "from_db")
 
     def test_workflow_provider_to_controller_success(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies, *, workflow_queries
     ):
         """
         Test successful conversion of workflow provider to controller.
@@ -718,19 +719,22 @@ class TestToolTransformService:
         db_session_with_containers.commit()
 
         # Mock the WorkflowToolProviderController.from_db method to avoid app dependency
-        with patch(
-            "services.tools.legacy_tools_transform_service.WorkflowToolProviderController.from_db"
-        ) as mock_from_db:
+        with patch("services.tools.tools_transform_service.WorkflowToolProviderController.from_db") as mock_from_db:
             mock_controller = Mock()
             mock_from_db.return_value = mock_controller
 
             # Act: Execute the method under test
-            result = ToolTransformService.workflow_provider_to_controller(provider)
+            result = ToolTransformService.workflow_provider_to_controller(provider, queries=workflow_queries)
 
             # Assert: Verify the expected outcomes
             assert result is not None
             assert result == mock_controller
-            mock_from_db.assert_called_once_with(provider)
+            mock_from_db.assert_called_once_with(
+                provider,
+                queries=workflow_queries,
+                draft_variable_saver=None,
+                workflow_runtime=None,
+            )
 
 
 def _mock_tool(*, base_params, runtime_params):
@@ -842,8 +846,8 @@ class TestWorkflowProviderToUserProvider:
     """Tests for ToolTransformService.workflow_provider_to_user_provider."""
 
     @staticmethod
-    def _make_controller(provider_id="provider_123", **identity_overrides):
-        from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
+    def _make_controller(provider_id="provider_123", *, workflow_queries, **identity_overrides):
+        from services.tools.workflow.provider import WorkflowToolProviderController
 
         defaults = {
             "author": "test_author",
@@ -856,10 +860,15 @@ class TestWorkflowProviderToUserProvider:
         defaults.update(identity_overrides)
         identity = ToolProviderIdentity(**defaults)
         entity = ToolProviderEntity(identity=identity)
-        return WorkflowToolProviderController(entity=entity, provider_id=provider_id)
+        return WorkflowToolProviderController(
+            draft_variable_saver=Mock(return_value=Mock(spec=DraftVariableSaverFactory)),
+            entity=entity,
+            provider_id=provider_id,
+            queries=workflow_queries,
+        )
 
-    def test_with_workflow_app_id(self):
-        ctrl = self._make_controller()
+    def test_with_workflow_app_id(self, *, workflow_queries):
+        ctrl = self._make_controller(workflow_queries=workflow_queries)
 
         result = ToolTransformService.workflow_provider_to_user_provider(
             provider_controller=ctrl,
@@ -874,8 +883,8 @@ class TestWorkflowProviderToUserProvider:
         assert result.labels == ["l1", "l2"]
         assert result.is_team_authorization is True
 
-    def test_without_workflow_app_id(self):
-        ctrl = self._make_controller()
+    def test_without_workflow_app_id(self, *, workflow_queries):
+        ctrl = self._make_controller(workflow_queries=workflow_queries)
 
         result = ToolTransformService.workflow_provider_to_user_provider(
             provider_controller=ctrl,
@@ -884,8 +893,8 @@ class TestWorkflowProviderToUserProvider:
 
         assert result.workflow_app_id is None
 
-    def test_workflow_app_id_none_explicit(self):
-        ctrl = self._make_controller()
+    def test_workflow_app_id_none_explicit(self, *, workflow_queries):
+        ctrl = self._make_controller(workflow_queries=workflow_queries)
 
         result = ToolTransformService.workflow_provider_to_user_provider(
             provider_controller=ctrl,
@@ -896,7 +905,7 @@ class TestWorkflowProviderToUserProvider:
         assert result.workflow_app_id is None
         assert result.labels == []
 
-    def test_preserves_other_fields(self):
+    def test_preserves_other_fields(self, *, workflow_queries):
         ctrl = self._make_controller(
             "provider_456",
             author="another_author",
@@ -905,6 +914,7 @@ class TestWorkflowProviderToUserProvider:
             icon='{"type": "emoji", "content": "⚙️"}',
             icon_dark='{"type": "emoji", "content": "🔧"}',
             label=I18nObject(en_US="Another Tool", zh_Hans="Another Tool"),
+            workflow_queries=workflow_queries,
         )
 
         result = ToolTransformService.workflow_provider_to_user_provider(

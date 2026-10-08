@@ -18,6 +18,8 @@ from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.conversation import ConversationCompletedError, ConversationNotExistsError
 from services.installed_app_generation_adapters import AppGenerateServiceRuntime
 from services.installed_app_generation_service import GenerationResponse, InstalledAppGenerationService
+from services.workflow.execution.ports import WorkflowRuntime
+from services.workflow.variable_contracts import WorkflowExecutionVariables
 from tests.unit_tests.controllers.console.explore.test_installed_app_admission import (
     _assert_json_response,
     _Harness,
@@ -391,6 +393,9 @@ def test_resource_removed_after_admission_is_revalidated_before_generation(
     sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
     deleted_resource: str,
+    *,
+    workflow_variables: WorkflowExecutionVariables,
+    workflow_runtime: WorkflowRuntime,
 ) -> None:
     def delete_resource() -> None:
         with sqlite_session_factory.begin() as session:
@@ -406,7 +411,9 @@ def test_resource_removed_after_admission_is_revalidated_before_generation(
         installed_apps=_InstalledAppServices(
             generation=InstalledAppGenerationService(
                 usage=SQLAlchemyInstalledAppRepository(session_factory=sqlite_session_factory),
-                runtime=AppGenerateServiceRuntime(session_factory=sqlite_session_factory),
+                runtime=AppGenerateServiceRuntime(
+                    session_factory=sqlite_session_factory, variables=workflow_variables, runtime=workflow_runtime
+                ),
             )
         )
     )

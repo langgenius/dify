@@ -8,11 +8,12 @@ from uuid import uuid4
 
 import pytest
 from flask import Flask
-from werkzeug.exceptions import NotFound
 
 from controllers.common.controller_schemas import MessageFeedbackPayload
+from controllers.common.errors import NotFoundError
 from controllers.web.error import (
     AppMoreLikeThisDisabledError,
+    AppUnavailableError,
     NotChatAppError,
     NotCompletionAppError,
 )
@@ -24,8 +25,11 @@ from controllers.web.message import (
 )
 from models.model import App, AppMode, EndUser
 from services.errors.app import MoreLikeThisDisabledError
+from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.message import MessageNotExistsError
 from tests.unit_tests.model_factories import make_end_user
+
+pytestmark = pytest.mark.usefixtures("workflow_application")
 
 
 def _chat_app() -> App:
@@ -81,7 +85,7 @@ class TestMessageFeedbackApi:
         msg_id = uuid4()
 
         with app.test_request_context(f"/messages/{msg_id}/feedbacks", method="POST"):
-            with pytest.raises(NotFound, match="Message Not Exists"):
+            with pytest.raises(NotFoundError, match="Message Not Exists"):
                 _feedback_post(MessageFeedbackApi(), payload, _chat_app(), _end_user(), msg_id)
 
 
@@ -121,7 +125,7 @@ class TestMessageMoreLikeThisApi:
         query = MessageMoreLikeThisQuery.model_validate({"response_mode": "blocking"})
         session = MagicMock()
         with app.test_request_context(f"/messages/{msg_id}/more-like-this?response_mode=blocking"):
-            with pytest.raises(NotFound, match="Message Not Exists"):
+            with pytest.raises(NotFoundError, match="Message Not Exists"):
                 _more_like_this_get(MessageMoreLikeThisApi(), query, session, _completion_app(), _end_user(), msg_id)
 
     @patch(
@@ -164,5 +168,24 @@ class TestMessageSuggestedQuestionApi:
     def test_message_not_found(self, mock_suggest: MagicMock, app: Flask) -> None:
         msg_id = uuid4()
         with app.test_request_context(f"/messages/{msg_id}/suggested-questions"):
-            with pytest.raises(NotFound, match="Message not found"):
+            with pytest.raises(NotFoundError, match="Message not found"):
                 MessageSuggestedQuestionApi().get(_chat_app(), _end_user(), msg_id)
+
+
+def test_more_like_this_maps_missing_historical_configuration(app, sqlite_session, monkeypatch):
+    def unavailable(**_kwargs):
+        raise AppModelConfigBrokenError()
+
+    monkeypatch.setattr("controllers.web.message.AppGenerateService.generate_more_like_this", unavailable)
+    with app.test_request_context("/messages/test/more-like-this?response_mode=blocking"):
+        with pytest.raises(AppUnavailableError) as raised:
+            _more_like_this_get(
+                MessageMoreLikeThisApi(),
+                MessageMoreLikeThisQuery(response_mode="blocking"),
+                sqlite_session,
+                _completion_app(),
+                _end_user(),
+                uuid4(),
+            )
+    assert raised.value.code == 400
+    assert raised.value.error_code == "app_unavailable"

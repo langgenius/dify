@@ -12,17 +12,19 @@ from sqlalchemy import event, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from enums import DeploymentEdition
+from enums.agent import WorkflowAgentBindingType
 from graphon.model_runtime.entities.model_entities import ModelType
 from models import Account, Tenant
 from models.account import TenantAccountJoin, TenantAccountRole
 from models.agent import (
     Agent,
     AgentConfigSnapshot,
+    AgentHomeSnapshot,
     AgentIconType,
     AgentScope,
     AgentSource,
     AgentStatus,
-    WorkflowAgentBindingType,
+    AgentWorkingResourceStatus,
     WorkflowAgentNodeBinding,
 )
 from models.agent_config_entities import AgentSoulConfig
@@ -588,7 +590,12 @@ def test_get_recent_apps_uses_one_tenant_scoped_projection_query(sqlite_session:
 
 class TestAppResponseViewAgentConfig:
     def test_masking_persistent_agent_config_does_not_change_database(
-        self, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+        self,
+        sqlite_session: Session,
+        sqlite_session_factory: sessionmaker[Session],
+        *,
+        tool_providers,
+        workflow_queries,
     ):
         tenant_id = str(uuid4())
         app = _persist_app(sqlite_session, tenant_id=tenant_id)
@@ -609,7 +616,13 @@ class TestAppResponseViewAgentConfig:
             patch("services.app_service.mask_agent_tool_parameters", return_value=masked_agent_mode),
             patch.object(sqlite_session, "refresh", side_effect=AssertionError("App refresh is unnecessary")),
         ):
-            response_config = AppResponseView(app, session=sqlite_session, account=account).app_model_config
+            response_config = AppResponseView(
+                app,
+                session=sqlite_session,
+                account=account,
+                tool_providers=tool_providers,
+                workflow_queries=workflow_queries,
+            ).app_model_config
             assert response_config is not None
             assert response_config.agent_mode_dict == masked_agent_mode
             assert config.agent_mode_dict == original_agent_mode
@@ -848,6 +861,10 @@ class TestAgentAppType:
 
     def test_delete_agent_app_archives_backing_agent(self, sqlite_session: Session):
         app, backing_agent = _persist_agent_app(sqlite_session)
+        home = AgentHomeSnapshot(
+            id="home-1", tenant_id=app.tenant_id, agent_id=backing_agent.id, snapshot_ref="snapshot-ref"
+        )
+        sqlite_session.add(home)
         workflow_app = _persist_app(sqlite_session, tenant_id=app.tenant_id, name="Workflow")
         workflow_app.mode = AppMode.WORKFLOW
         referencing_workflow = Workflow.new(
@@ -905,10 +922,6 @@ class TestAgentAppType:
                 side_effect=lambda **_kwargs: events.append("enqueue-app-cleanup"),
             ),
             patch(
-                "services.app_service.AgentHomeSnapshotService.retire_all_for_agent",
-                return_value=["home-1"],
-            ) as mock_retire_homes,
-            patch(
                 "services.app_service.AgentWorkspaceService.retire_all_for_app",
                 side_effect=lambda **_kwargs: events.append("retire-app-workspaces") or ["workspace-1"],
             ) as mock_retire_workspaces,
@@ -950,11 +963,8 @@ class TestAgentAppType:
             tenant_id=app.tenant_id,
             app_id=app.id,
         )
-        mock_retire_homes.assert_called_once_with(
-            session=sqlite_session,
-            tenant_id=app.tenant_id,
-            agent_id=backing_agent.id,
-        )
+        assert home.status == AgentWorkingResourceStatus.RETIRED
+        assert home.retired_at is not None
         mock_enqueue_collection.assert_called_once_with(
             tenant_id=app.tenant_id,
             workspace_ids=["workspace-1"],

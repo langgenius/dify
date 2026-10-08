@@ -6,14 +6,17 @@ from sqlalchemy import or_, select
 from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
-from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
 from enums.human_input import HumanInputFormKind, HumanInputFormStatus
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from graphon.enums import WorkflowExecutionStatus
 from libs.datetime_utils import ensure_naive_utc, naive_utc_now
+from models.enums import CreatorUserRole
 from models.human_input import HumanInputForm
 from models.workflow import WorkflowPause, WorkflowRun
+from repositories.human_input.form_repository import HumanInputFormSubmissionRepository
+from repositories.workflow.execution_write_repository import sync_debug_lease_status
+from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.human_input_service import HumanInputService
 
 logger = logging.getLogger(__name__)
@@ -32,25 +35,48 @@ def _is_global_timeout(form_model: HumanInputForm, global_timeout_seconds: int, 
 def _handle_global_timeout(*, form_id: str, workflow_run_id: str, node_id: str, session_factory: sessionmaker) -> None:
     now = naive_utc_now()
     with session_factory() as session, session.begin():
-        workflow_run = session.get(WorkflowRun, workflow_run_id)
-        if workflow_run is not None:
+        workflow_run = session.scalar(
+            select(WorkflowRun)
+            .join(
+                HumanInputForm,
+                (HumanInputForm.workflow_run_id == WorkflowRun.id)
+                & (HumanInputForm.tenant_id == WorkflowRun.tenant_id)
+                & (HumanInputForm.app_id == WorkflowRun.app_id),
+            )
+            .where(HumanInputForm.id == form_id, WorkflowRun.id == workflow_run_id)
+            .with_for_update(of=WorkflowRun)
+        )
+        if workflow_run is None:
+            return
+        if not workflow_run.status.is_ended():
             workflow_run.status = WorkflowExecutionStatus.STOPPED
             workflow_run.error = f"Human input global timeout at node {node_id}"
             workflow_run.finished_at = now
             session.add(workflow_run)
+            sync_debug_lease_status(session, workflow_run)
 
         pause_model = session.scalar(select(WorkflowPause).where(WorkflowPause.workflow_run_id == workflow_run_id))
+        state_object_key = None
         if pause_model is not None:
-            try:
-                storage.delete(pause_model.state_object_key)
-            except Exception:
-                logger.exception(
-                    "Failed to delete pause state object for workflow_run_id=%s, pause_id=%s",
-                    workflow_run_id,
-                    pause_model.id,
-                )
+            state_object_key = pause_model.state_object_key
             pause_model.resumed_at = now
             session.add(pause_model)
+        tenant_id, app_id, workflow_id = workflow_run.tenant_id, workflow_run.app_id, workflow_run.workflow_id
+        account_id = workflow_run.created_by if workflow_run.created_by_role == CreatorUserRole.ACCOUNT else None
+
+    if state_object_key is not None:
+        try:
+            storage.delete(state_object_key)
+        except Exception:
+            logger.exception("Failed to delete pause state object for workflow_run_id=%s", workflow_run_id)
+    WorkflowAgentRetirementService.finish_execution(
+        sessions=session_factory,
+        tenant_id=tenant_id,
+        app_id=app_id,
+        workflow_id=workflow_id,
+        execution_id=workflow_run_id,
+        account_id=account_id,
+    )
 
 
 @shared_task(name="human_input_form_timeout.check_and_resume", queue="schedule_executor")

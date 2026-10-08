@@ -51,7 +51,6 @@ from .enums import (
     ProviderQuotaType,
     TagType,
 )
-from .provider_ids import GenericProviderID
 from .types import EnumText, LongText, StringUUID
 
 if TYPE_CHECKING:
@@ -168,12 +167,6 @@ class ImageUploadConfig(TypedDict):
 
 class FileUploadConfig(TypedDict):
     image: ImageUploadConfig
-
-
-class DeletedToolInfo(TypedDict):
-    type: str
-    tool_name: str
-    provider_id: str
 
 
 class ExternalDataToolConfig(TypedDict):
@@ -566,118 +559,6 @@ class App(Base):
             return AppMode.AGENT_CHAT
 
         return str(self.mode)
-
-    def deleted_tools_with_session(self, *, session: Session) -> list[DeletedToolInfo]:
-        from core.plugin.plugin_service import PluginService
-        from core.tools.tool_manager import ToolManager, ToolProviderType
-
-        # get agent mode tools
-        app_model_config = self.app_model_config_with_session(session=session)
-        if not app_model_config:
-            return []
-
-        if not app_model_config.agent_mode:
-            return []
-
-        agent_mode = app_model_config.agent_mode_dict
-        tools = agent_mode.get("tools", [])
-
-        api_provider_ids: list[str] = []
-
-        builtin_provider_ids: list[GenericProviderID] = []
-
-        for tool in tools:
-            keys = list(tool.keys())
-            if len(keys) >= 4:
-                provider_type = tool.get("provider_type", "")
-                provider_id = tool.get("provider_id", "")
-                if provider_type == ToolProviderType.API:
-                    try:
-                        uuid.UUID(provider_id)
-                    except Exception:
-                        continue
-                    api_provider_ids.append(provider_id)
-                if provider_type == ToolProviderType.BUILT_IN:
-                    try:
-                        # check if it's hardcoded
-                        try:
-                            ToolManager.get_hardcoded_provider(provider_id)
-                            is_hardcoded = True
-                        except Exception:
-                            is_hardcoded = False
-
-                        provider_id = GenericProviderID(provider_id, is_hardcoded)
-                    except Exception:
-                        continue
-
-                    builtin_provider_ids.append(provider_id)
-
-        if not api_provider_ids and not builtin_provider_ids:
-            return []
-
-        if api_provider_ids:
-            existing_api_providers = [
-                str(api_provider.id)
-                for api_provider in session.execute(
-                    text("SELECT id FROM tool_api_providers WHERE id IN :provider_ids"),
-                    {"provider_ids": tuple(api_provider_ids)},
-                ).fetchall()
-            ]
-        else:
-            existing_api_providers = []
-
-        if builtin_provider_ids:
-            # get the non-hardcoded builtin providers
-            non_hardcoded_builtin_providers = [
-                provider_id for provider_id in builtin_provider_ids if not provider_id.is_hardcoded
-            ]
-            if non_hardcoded_builtin_providers:
-                existence = list(PluginService.check_tools_existence(self.tenant_id, non_hardcoded_builtin_providers))
-            else:
-                existence = []
-            # add the hardcoded builtin providers
-            existence.extend([True] * (len(builtin_provider_ids) - len(non_hardcoded_builtin_providers)))
-            builtin_provider_ids = non_hardcoded_builtin_providers + [
-                provider_id for provider_id in builtin_provider_ids if provider_id.is_hardcoded
-            ]
-        else:
-            existence = []
-
-        existing_builtin_providers = {
-            provider_id.provider_name: existence[i] for i, provider_id in enumerate(builtin_provider_ids)
-        }
-
-        deleted_tools: list[DeletedToolInfo] = []
-
-        for tool in tools:
-            keys = list(tool.keys())
-            if len(keys) >= 4:
-                provider_type = tool.get("provider_type", "")
-                provider_id = tool.get("provider_id", "")
-
-                if provider_type == ToolProviderType.API:
-                    if provider_id not in existing_api_providers:
-                        deleted_tools.append(
-                            {
-                                "type": ToolProviderType.API,
-                                "tool_name": tool["tool_name"],
-                                "provider_id": provider_id,
-                            }
-                        )
-
-                if provider_type == ToolProviderType.BUILT_IN:
-                    generic_provider_id = GenericProviderID(provider_id)
-
-                    if not existing_builtin_providers[generic_provider_id.provider_name]:
-                        deleted_tools.append(
-                            {
-                                "type": ToolProviderType.BUILT_IN,
-                                "tool_name": tool["tool_name"],
-                                "provider_id": provider_id,  # use the original one
-                            }
-                        )
-
-        return deleted_tools
 
     def tags_with_session(self, *, session: Session) -> Sequence[Tag]:
         tags = session.scalars(

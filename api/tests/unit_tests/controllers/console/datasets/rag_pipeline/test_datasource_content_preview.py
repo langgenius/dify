@@ -1,10 +1,11 @@
 from inspect import unwrap
-from unittest.mock import ANY, MagicMock, patch
+from unittest.mock import ANY, patch
 
 import pytest
 from flask import Flask
 
 from controllers.console import console_ns
+from controllers.console.datasets.rag_pipeline import datasource_content_preview as preview_module
 from controllers.console.datasets.rag_pipeline.datasource_content_preview import (
     DataSourceContentPreviewApi,
     Parser,
@@ -39,21 +40,19 @@ class TestDataSourceContentPreviewApi:
 
         preview_result = {"content": "preview data"}
 
-        service_instance = MagicMock()
-        service_instance.run_datasource_node_preview.return_value = preview_result
-
         with (
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.rag_pipeline.datasource_content_preview.RagPipelineService",
-                return_value=service_instance,
-            ),
+            patch.object(
+                preview_module.application_services().knowledge.pipeline_execution,
+                "run_datasource_node_preview",
+                return_value=preview_result,
+            ) as preview,
         ):
             req_data = Parser.model_validate(payload)
             response, status = method(api, req_data, account, pipeline, node_id)
 
-        service_instance.run_datasource_node_preview.assert_called_once_with(
+        preview.assert_called_once_with(
             pipeline=pipeline,
             node_id=node_id,
             user_inputs=payload["inputs"],
@@ -98,20 +97,18 @@ class TestDataSourceContentPreviewApi:
         pipeline = Pipeline(tenant_id="tenant-id", name="Test Pipeline")
         account = make_account()
 
-        service_instance = MagicMock()
-        service_instance.run_datasource_node_preview.return_value = {"ok": True}
-
         with (
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.rag_pipeline.datasource_content_preview.RagPipelineService",
-                return_value=service_instance,
-            ),
+            patch.object(
+                preview_module.application_services().knowledge.pipeline_execution,
+                "run_datasource_node_preview",
+                return_value={"ok": True},
+            ) as preview,
         ):
             req_data = Parser.model_validate(payload)
             response, status = method(api, req_data, account, pipeline, "node-1")
 
-        service_instance.run_datasource_node_preview.assert_called_once()
+        preview.assert_called_once()
         assert status == 200
         assert response == {"ok": True}

@@ -6,10 +6,11 @@ from typing import cast, override
 
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.app.apps.completion.app_generator import CompletionAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from models import Account, App
 from services.account_errors import AccountNotFoundError
+from services.app.generation.response import convert_to_event_stream
+from services.app.generation.runtime import AppGenerationRuntime
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.app_generate_service import AppGenerateService
 from services.conversation_service import ConversationService
@@ -18,6 +19,7 @@ from services.installed_app_generation_service import (
     GenerationStream,
     InstalledAppGenerationRuntime,
 )
+from services.workflow.variable_contracts import WorkflowExecutionVariables
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +27,7 @@ logger = logging.getLogger(__name__)
 class _MoreLikeThisEventStream:
     def __init__(self, source: Generator[Mapping[str, object] | str, None, None]) -> None:
         self._source: Generator[Mapping[str, object] | str, None, None] = source
-        self._events: GenerationStream = cast(GenerationStream, CompletionAppGenerator.convert_to_event_stream(source))
+        self._events: GenerationStream = cast(GenerationStream, convert_to_event_stream(source))
         self._closed: bool = False
 
     def __iter__(self) -> "_MoreLikeThisEventStream":
@@ -55,8 +57,16 @@ class _MoreLikeThisEventStream:
 
 
 class AppGenerateServiceRuntime(InstalledAppGenerationRuntime):
-    def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
+    def __init__(
+        self,
+        *,
+        session_factory: sessionmaker[Session],
+        variables: WorkflowExecutionVariables,
+        runtime: AppGenerationRuntime,
+    ) -> None:
         self._session_factory: sessionmaker[Session] = session_factory
+        self._variables = variables
+        self._runtime = runtime
 
     @override
     def generate(
@@ -75,6 +85,8 @@ class AppGenerateServiceRuntime(InstalledAppGenerationRuntime):
         )
         return self._run_generation(
             lambda session: AppGenerateService.generate(
+                variables=self._variables,
+                runtime=self._runtime,
                 session=session,
                 app_model=app,
                 user=account,
@@ -97,6 +109,9 @@ class AppGenerateServiceRuntime(InstalledAppGenerationRuntime):
 
         def generate(session: Session) -> GenerationResponse:
             response = AppGenerateService.generate_more_like_this(
+                retrieval=self._runtime.retrieval,
+                annotations=self._runtime.annotation_replies,
+                records=self._runtime.chat_records,
                 session=session,
                 app_model=app,
                 user=account,

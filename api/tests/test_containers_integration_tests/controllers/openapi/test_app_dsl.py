@@ -49,6 +49,7 @@ def external_deps() -> Generator[dict[str, object], None, None]:
     service and DB writes real."""
     with (
         patch("services.app_dsl_service.WorkflowService") as mock_workflow_service,
+        patch("extensions.application_services.workflow.build_workflow_draft_service") as mock_drafts,
         patch("services.app_dsl_service.DependenciesAnalysisService") as mock_dependencies_service,
         patch("services.app_dsl_service.app_was_created") as mock_app_was_created,
         patch("services.app_service.ModelManager.for_tenant") as mock_model_manager,
@@ -56,7 +57,7 @@ def external_deps() -> Generator[dict[str, object], None, None]:
         patch("services.app_service.EnterpriseService") as mock_enterprise_service,
     ):
         mock_workflow_service.return_value.get_draft_workflow.return_value = None
-        mock_workflow_service.return_value.sync_draft_workflow.return_value = None
+        mock_drafts.return_value.sync.return_value = None
         mock_dependencies_service.generate_latest_dependencies.return_value = []  # type: ignore[assignment]
         mock_dependencies_service.get_leaked_dependencies.return_value = []  # type: ignore[assignment]
         mock_dependencies_service.generate_dependencies.return_value = []  # type: ignore[assignment]

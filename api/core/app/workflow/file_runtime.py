@@ -3,7 +3,6 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac
-import os
 import time
 import urllib.parse
 from collections.abc import Generator
@@ -20,6 +19,7 @@ from graphon.file import FileTransferMethod
 from graphon.file.protocols import WorkflowFileRuntimeProtocol
 from graphon.file.runtime import set_workflow_file_runtime
 from graphon.http.protocols import HttpResponseProtocol
+from libs.signed_query import sign_query
 
 if TYPE_CHECKING:
     from graphon.file import File
@@ -121,11 +121,10 @@ class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
         """Resolve a signed UploadFile URI without selecting an origin."""
 
         self._assert_upload_file_access(upload_file_id=upload_file_id)
-        uri = f"/files/{upload_file_id}/file-preview"
-        query = self._sign_query(payload=f"file-preview|{upload_file_id}")
+        query = sign_query(payload=f"file-preview|{upload_file_id}", key=self._secret_key())
         if as_attachment:
             query["as_attachment"] = "true"
-        return f"{uri}?{urllib.parse.urlencode(query)}"
+        return f"/files/{upload_file_id}/file-preview?{urllib.parse.urlencode(query)}"
 
     @override
     def resolve_tool_file_url(self, *, tool_file_id: str, extension: str, for_external: bool = True) -> str:
@@ -163,16 +162,6 @@ class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
     @staticmethod
     def _secret_key() -> bytes:
         return dify_config.SECRET_KEY.encode()
-
-    def _sign_query(self, *, payload: str) -> dict[str, str]:
-        timestamp = str(int(time.time()))
-        nonce = os.urandom(16).hex()
-        sign = hmac.new(self._secret_key(), f"{payload}|{timestamp}|{nonce}".encode(), hashlib.sha256).digest()
-        return {
-            "timestamp": timestamp,
-            "nonce": nonce,
-            "sign": base64.urlsafe_b64encode(sign).decode(),
-        }
 
     def _resolve_storage_key(self, *, file: File) -> str:
         parsed_reference = parse_file_reference(file.reference)

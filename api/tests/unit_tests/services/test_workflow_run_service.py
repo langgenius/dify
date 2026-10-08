@@ -19,11 +19,10 @@ def service_dependencies() -> tuple[MagicMock, MagicMock]:
     return MagicMock(), MagicMock()
 
 
-def _service(dependencies: tuple[MagicMock, MagicMock]) -> WorkflowRunService:
+def _service(dependencies: tuple[MagicMock, MagicMock], *, tool_providers) -> WorkflowRunService:
     node_executions, workflow_runs = dependencies
     return WorkflowRunService(
-        workflow_runs=workflow_runs,
-        node_executions=node_executions,
+        workflow_runs=workflow_runs, node_executions=node_executions, tool_providers=tool_providers
     )
 
 
@@ -57,11 +56,10 @@ def _workflow_run(
 
 class TestWorkflowRunServiceQueries:
     def test_get_paginate_workflow_runs_should_forward_filters_and_parse_limit(
-        self,
-        service_dependencies: tuple[MagicMock, MagicMock],
+        self, service_dependencies: tuple[MagicMock, MagicMock], *, tool_providers
     ) -> None:
         _, workflow_runs = service_dependencies
-        service = _service(service_dependencies)
+        service = _service(service_dependencies, tool_providers=tool_providers)
         expected = MagicMock(name="pagination")
         workflow_runs.get_paginated_workflow_runs.return_value = expected
         args = {"limit": "7", "last_id": "last-1", "status": "succeeded"}
@@ -84,12 +82,10 @@ class TestWorkflowRunServiceQueries:
         )
 
     def test_get_paginate_advanced_chat_workflow_runs_should_attach_message_fields_when_message_exists(
-        self,
-        service_dependencies: tuple[MagicMock, MagicMock],
-        monkeypatch: pytest.MonkeyPatch,
+        self, service_dependencies: tuple[MagicMock, MagicMock], monkeypatch: pytest.MonkeyPatch, *, tool_providers
     ) -> None:
         _, workflow_runs = service_dependencies
-        service = _service(service_dependencies)
+        service = _service(service_dependencies, tool_providers=tool_providers)
         run_with_message = _workflow_run(status=WorkflowExecutionStatus.RUNNING)
         run_without_message = _workflow_run(run_id="run-2")
         pagination = SimpleNamespace(data=[run_with_message, run_without_message])
@@ -117,11 +113,10 @@ class TestWorkflowRunServiceQueries:
         )
 
     def test_get_workflow_run_should_delegate_to_repository_by_tenant_and_app(
-        self,
-        service_dependencies: tuple[MagicMock, MagicMock],
+        self, service_dependencies: tuple[MagicMock, MagicMock], *, tool_providers
     ) -> None:
         _, workflow_runs = service_dependencies
-        service = _service(service_dependencies)
+        service = _service(service_dependencies, tool_providers=tool_providers)
         expected = _workflow_run()
         workflow_runs.get_workflow_run_by_id.return_value = expected
 
@@ -135,11 +130,10 @@ class TestWorkflowRunServiceQueries:
         )
 
     def test_get_workflow_runs_count_should_forward_optional_filters(
-        self,
-        service_dependencies: tuple[MagicMock, MagicMock],
+        self, service_dependencies: tuple[MagicMock, MagicMock], *, tool_providers
     ) -> None:
         _, workflow_runs = service_dependencies
-        service = _service(service_dependencies)
+        service = _service(service_dependencies, tool_providers=tool_providers)
         expected = {"total": 3, "succeeded": 2}
         workflow_runs.get_workflow_runs_count.return_value = expected
 
@@ -161,11 +155,9 @@ class TestWorkflowRunServiceQueries:
         )
 
     def test_get_workflow_run_node_executions_should_return_empty_list_when_run_not_found(
-        self,
-        service_dependencies: tuple[MagicMock, MagicMock],
-        monkeypatch: pytest.MonkeyPatch,
+        self, service_dependencies: tuple[MagicMock, MagicMock], monkeypatch: pytest.MonkeyPatch, *, tool_providers
     ) -> None:
-        service = _service(service_dependencies)
+        service = _service(service_dependencies, tool_providers=tool_providers)
         monkeypatch.setattr(service, "get_workflow_run", MagicMock(return_value=None))
 
         result = service.get_workflow_run_node_executions(
@@ -177,12 +169,10 @@ class TestWorkflowRunServiceQueries:
         assert result == []
 
     def test_get_workflow_run_node_executions_should_use_request_workspace(
-        self,
-        service_dependencies: tuple[MagicMock, MagicMock],
-        monkeypatch: pytest.MonkeyPatch,
+        self, service_dependencies: tuple[MagicMock, MagicMock], monkeypatch: pytest.MonkeyPatch, *, tool_providers
     ) -> None:
         node_executions, _ = service_dependencies
-        service = _service(service_dependencies)
+        service = _service(service_dependencies, tool_providers=tool_providers)
         monkeypatch.setattr(service, "get_workflow_run", MagicMock(return_value=_workflow_run()))
         expected_executions = [SimpleNamespace(id="exec-1"), SimpleNamespace(id="exec-2")]
         expected_traces = [SimpleNamespace(id="exec-1:retry:1"), SimpleNamespace(id="exec-1")]
@@ -202,4 +192,6 @@ class TestWorkflowRunServiceQueries:
             app_id="app-1",
             workflow_run_id="run-1",
         )
-        mock_assemble.assert_called_once_with(expected_executions, node_executions, session=ANY)
+        mock_assemble.assert_called_once_with(
+            expected_executions, node_executions, session=ANY, tool_providers=tool_providers
+        )

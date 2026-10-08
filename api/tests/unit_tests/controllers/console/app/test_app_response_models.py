@@ -351,7 +351,7 @@ def test_app_detail_with_site_includes_nested_serialization(
 
 
 def test_app_response_view_uses_the_caller_session_for_query_backed_fields(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, *, tool_providers, workflow_queries
 ):
     app_obj = _persist_response_graph(sqlite_session)
     decoy_tenant_id = "00000000-0000-0000-0000-000000000002"
@@ -377,7 +377,9 @@ def test_app_response_view_uses_the_caller_session_for_query_backed_fields(
 
     monkeypatch.setattr("services.app_service.load_annotation_reply_config", load_annotation_reply)
 
-    view = AppResponseView(app_obj, session=sqlite_session)
+    view = AppResponseView(
+        app_obj, session=sqlite_session, tool_providers=tool_providers, workflow_queries=workflow_queries
+    )
     site = view.site
     workflow = view.workflow
     model_config = view.app_model_config

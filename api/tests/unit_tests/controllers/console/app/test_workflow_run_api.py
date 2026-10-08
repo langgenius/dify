@@ -332,13 +332,13 @@ def test_workflow_run_detail_maps_missing_run_to_not_found(
 
 
 def test_workflow_run_node_executions_return_frontend_trace_contract(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, *, tool_providers
 ) -> None:
     _account(sqlite_session)
     execution = _workflow_run_node_execution(sqlite_session)
     workflow_runs = Mock()
     workflow_runs.get_workflow_run_node_executions.return_value = [
-        node_execution_response_source(execution, session=sqlite_session)
+        node_execution_response_source(execution, session=sqlite_session, tool_providers=tool_providers)
     ]
     _mock_application_services(monkeypatch, workflow_runs)
     monkeypatch.setattr(db, "session", lambda: sqlite_session)

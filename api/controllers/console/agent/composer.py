@@ -2,8 +2,8 @@ from uuid import UUID
 
 from flask_restx import Resource
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import NotFound
 
+from controllers.common.errors import NotFoundError
 from controllers.common.rbac import AgentId, PlainApp, RBACCheck, Workspace
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.common.session import with_session
@@ -19,6 +19,8 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user_id,
 )
+from extensions.application_services.snippets import build_snippet_service
+from extensions.ext_application_services import application_services
 from fields.agent_fields import (
     AgentAppComposerResponse,
     AgentComposerCandidatesResponse,
@@ -36,7 +38,6 @@ from services.entities.agent_entities import (
     WorkflowAgentComposerQuery,
     WorkflowComposerCopyFromRosterPayload,
 )
-from services.snippet_service import SnippetService
 
 register_schema_models(
     console_ns, ComposerSavePayload, WorkflowAgentComposerQuery, WorkflowComposerCopyFromRosterPayload
@@ -202,11 +203,13 @@ class WorkflowAgentComposerCandidatesApi(Resource):
         return dump_response(
             AgentComposerCandidatesResponse,
             AgentComposerService.get_workflow_candidates(
+                variables=application_services().workflow_variables,
                 session=session,
                 tenant_id=tenant_id,
                 app_id=app_model.id,
                 node_id=node_id,
                 user_id=current_user_id,
+                tool_providers=application_services().tools.tool_providers,
             ),
         )
 
@@ -276,12 +279,12 @@ class WorkflowAgentComposerSaveToRosterApi(Resource):
 
 
 def _require_snippet_app_id(*, session: Session, tenant_id: str, snippet_id: UUID) -> str:
-    snippet = SnippetService(session=session).get_snippet_by_id(
+    snippet = build_snippet_service(session=session).get_snippet_by_id(
         snippet_id=str(snippet_id),  # pyrefly: ignore[unnecessary-type-conversion]
         tenant_id=tenant_id,
     )
     if snippet is None:
-        raise NotFound("Snippet not found")
+        raise NotFoundError("Snippet not found")
     return snippet.id
 
 
@@ -426,11 +429,13 @@ class SnippetAgentComposerCandidatesApi(Resource):
         return dump_response(
             AgentComposerCandidatesResponse,
             AgentComposerService.get_workflow_candidates(
+                variables=application_services().workflow_variables,
                 session=session,
                 tenant_id=tenant_id,
                 app_id=_require_snippet_app_id(session=session, tenant_id=tenant_id, snippet_id=snippet_id),
                 node_id=node_id,
                 user_id=current_user_id,
+                tool_providers=application_services().tools.tool_providers,
             ),
         )
 
@@ -582,5 +587,6 @@ class AgentComposerCandidatesApi(Resource):
                 tenant_id=tenant_id,
                 agent_id=str(agent_id),
                 user_id=current_user_id,
+                tool_providers=application_services().tools.tool_providers,
             ),
         )

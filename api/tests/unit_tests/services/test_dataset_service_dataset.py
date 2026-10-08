@@ -28,19 +28,19 @@ from models.dataset import (
     ExternalKnowledgeBindings,
     Pipeline,
 )
+from repositories.knowledge.collection_binding_repository import DatasetCollectionBindingRepository
 from services.entities.knowledge_entities.rag_pipeline_entities import (
     IconInfo,
     RagPipelineDatasetCreateEntity,
 )
 from services.errors.base import NoPermissionError
 from services.errors.dataset import DatasetNameDuplicateError
-from services.knowledge.dataset_service import DatasetCollectionBindingService, DatasetPermissionService, DatasetService
+from services.knowledge.dataset_service import DatasetPermissionService, DatasetService
 from tests.unit_tests.model_factories import make_account, make_dataset, make_tenant
 
 from .dataset_service_test_helpers import (
     MagicMock,
     TenantAccountRole,
-    _make_knowledge_configuration,
     _make_retrieval_model,
 )
 
@@ -326,15 +326,17 @@ class TestDatasetServiceRetrieval:
         accessible = _dataset(dataset_id="accessible", name="Accessible", maintainer="other")
         owned = _dataset(dataset_id="owned", name="Owned", maintainer=user.id)
         hidden = _dataset(dataset_id="hidden", name="Hidden", maintainer="other")
-        sqlite_session.add_all([accessible, owned, hidden])
+        foreign = _dataset(dataset_id="foreign", tenant_id="other", maintainer=user.id)
+        unrequested = _dataset(dataset_id="not-requested", maintainer=user.id)
+        sqlite_session.add_all([accessible, owned, hidden, foreign, unrequested])
         sqlite_session.commit()
 
         config_overrides(RBAC_ENABLED=True)
         datasets, total = DatasetService.get_datasets_by_ids(
-            [accessible.id, owned.id, hidden.id],
+            [accessible.id, owned.id, hidden.id, foreign.id],
             "tenant-1",
             user=user,
-            accessible_dataset_ids=[accessible.id, "not-requested"],
+            accessible_dataset_ids=[accessible.id, unrequested.id, foreign.id],
             include_own_datasets=True,
             session=sqlite_session,
         )
@@ -691,8 +693,8 @@ class TestDatasetServiceCreationAndUpdate:
             lambda _session, _previous_transaction: transaction_events.append("rollback"),
         )
 
-        with patch("services.knowledge.dataset_service.RagPipelineService") as service_cls:
-            service_cls.return_value.get_published_workflow.side_effect = RuntimeError("boom")
+        with patch("services.knowledge.dataset_service.WorkflowDefinitionStore") as service_cls:
+            service_cls.get_published_workflow.side_effect = RuntimeError("boom")
             with pytest.raises(RuntimeError, match="boom"):
                 DatasetService._update_pipeline_knowledge_base_node_data(dataset, "user-1", sqlite_session)
 
@@ -823,7 +825,7 @@ class TestDatasetServiceEmbeddingSettings:
             patch("services.knowledge.dataset_service.current_user", account),
             patch("services.knowledge.dataset_service.ModelManager") as model_manager_cls,
             patch.object(
-                DatasetCollectionBindingService,
+                DatasetCollectionBindingRepository,
                 "get_dataset_collection_binding",
                 return_value=collection_binding,
             ),
@@ -884,149 +886,6 @@ class TestDatasetServiceEmbeddingSettings:
 
         data = {} if summary_setting is None else {"summary_index_setting": summary_setting}
         assert DatasetService._check_summary_index_setting_model_changed(dataset, data) is expected
-
-
-class TestDatasetServiceRagPipelineSettings:
-    def test_requires_current_tenant(self, unbound_session: Session) -> None:
-        account = _account()
-        account._current_tenant = None
-
-        with (
-            patch("services.knowledge.dataset_service.current_user", account),
-            pytest.raises(ValueError, match="Current user or current tenant not found"),
-        ):
-            DatasetService.update_rag_pipeline_dataset_settings(
-                _dataset(),
-                _make_knowledge_configuration(),
-                session=unbound_session,
-            )
-
-    def test_unpublished_high_quality_settings_use_real_merged_dataset(self, sqlite_session: Session) -> None:
-        dataset = _dataset(indexing_technique=IndexTechniqueType.ECONOMY)
-        sqlite_session.add(dataset)
-        sqlite_session.commit()
-        account = _account()
-        embedding_model = SimpleNamespace(provider="provider-2", model_name="embedding-2")
-        collection_binding = DatasetCollectionBinding(
-            provider_name="provider-2",
-            model_name="embedding-2",
-            type="dataset",
-            collection_name="collection",
-        )
-        collection_binding.id = "collection-binding-2"
-
-        with (
-            patch("services.knowledge.dataset_service.current_user", account),
-            patch("services.knowledge.dataset_service.ModelManager") as model_manager_cls,
-            patch.object(DatasetService, "check_is_multimodal_model", return_value=True),
-            patch.object(
-                DatasetCollectionBindingService,
-                "get_dataset_collection_binding",
-                return_value=collection_binding,
-            ),
-        ):
-            model_manager_cls.for_tenant.return_value.get_model_instance.return_value = embedding_model
-            DatasetService.update_rag_pipeline_dataset_settings(
-                dataset,
-                _make_knowledge_configuration(
-                    embedding_model_provider="provider-2",
-                    embedding_model="embedding-2",
-                    summary_index_setting={"enable": True},
-                ),
-                session=sqlite_session,
-            )
-
-        persisted = sqlite_session.get(Dataset, dataset.id)
-        assert persisted is not None
-        assert persisted.indexing_technique == IndexTechniqueType.HIGH_QUALITY
-        assert persisted.embedding_model == "embedding-2"
-        assert persisted.collection_binding_id == collection_binding.id
-        assert persisted.is_multimodal is True
-
-    def test_unpublished_economy_settings_update_keyword_number(self, sqlite_session: Session) -> None:
-        dataset = _dataset(indexing_technique=IndexTechniqueType.HIGH_QUALITY)
-        sqlite_session.add(dataset)
-        sqlite_session.commit()
-
-        with patch("services.knowledge.dataset_service.current_user", _account()):
-            DatasetService.update_rag_pipeline_dataset_settings(
-                dataset,
-                _make_knowledge_configuration(
-                    indexing_technique=IndexTechniqueType.ECONOMY,
-                    keyword_number=17,
-                ),
-                session=sqlite_session,
-            )
-
-        persisted = sqlite_session.get(Dataset, dataset.id)
-        assert persisted is not None
-        assert persisted.indexing_technique == IndexTechniqueType.ECONOMY
-        assert persisted.keyword_number == 17
-
-    def test_published_economy_settings_commit_keyword_change_and_dispatch_no_task(
-        self, sqlite_session: Session
-    ) -> None:
-        dataset = _dataset(indexing_technique=IndexTechniqueType.ECONOMY, chunk_structure="paragraph")
-        dataset.keyword_number = 4
-        sqlite_session.add(dataset)
-        sqlite_session.commit()
-
-        with (
-            patch("services.knowledge.dataset_service.current_user", _account()),
-            patch("services.knowledge.dataset_service.deal_dataset_index_update_task.delay") as update_task,
-        ):
-            DatasetService.update_rag_pipeline_dataset_settings(
-                dataset,
-                _make_knowledge_configuration(
-                    chunk_structure="paragraph",
-                    indexing_technique=IndexTechniqueType.ECONOMY,
-                    keyword_number=12,
-                ),
-                has_published=True,
-                session=sqlite_session,
-            )
-
-        assert sqlite_session.get(Dataset, dataset.id).keyword_number == 12
-        update_task.assert_not_called()
-
-    @pytest.mark.parametrize(
-        ("dataset", "configuration", "message"),
-        [
-            (
-                _dataset(chunk_structure="paragraph"),
-                _make_knowledge_configuration(chunk_structure="sentence"),
-                "Chunk structure is not allowed",
-            ),
-            (
-                _dataset(indexing_technique=IndexTechniqueType.HIGH_QUALITY, chunk_structure="paragraph"),
-                _make_knowledge_configuration(
-                    chunk_structure="paragraph",
-                    indexing_technique=IndexTechniqueType.ECONOMY,
-                ),
-                "not allowed to be updated to economy",
-            ),
-        ],
-    )
-    def test_published_settings_reject_incompatible_changes(
-        self,
-        sqlite_session: Session,
-        dataset: Dataset,
-        configuration,
-        message: str,
-    ) -> None:
-        sqlite_session.add(dataset)
-        sqlite_session.commit()
-
-        with (
-            patch("services.knowledge.dataset_service.current_user", _account()),
-            pytest.raises(ValueError, match=message),
-        ):
-            DatasetService.update_rag_pipeline_dataset_settings(
-                dataset,
-                configuration,
-                has_published=True,
-                session=sqlite_session,
-            )
 
 
 class TestDatasetPermissions:

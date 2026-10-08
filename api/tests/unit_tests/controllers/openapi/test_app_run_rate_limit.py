@@ -5,8 +5,8 @@ Both render through the ErrorBody formatter: TooManyRequests -> code "too_many_r
 """
 
 import pytest
-from werkzeug.exceptions import BadRequest, TooManyRequests
 
+from controllers.common.errors import InvalidRequestError, TooManyRequestsError
 from controllers.openapi.app_run import _translate_service_errors
 from controllers.service_api.app.error import TriggerWorkflowServiceModeUnavailableError
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
@@ -19,7 +19,7 @@ from services.errors.llm import InvokeRateLimitError
 
 def test_translate_maps_app_concurrency_to_too_many_requests():
     # Regression guard: this used to fall through to a 500 (it was not caught here).
-    with pytest.raises(TooManyRequests) as exc:
+    with pytest.raises(TooManyRequestsError) as exc:
         with _translate_service_errors():
             raise AppInvokeQuotaExceededError("internal: client_id=abc max=10")
     assert exc.value.code == 429
@@ -44,7 +44,7 @@ def test_translate_maps_trigger_workflow_to_stable_unavailable_error():
 def test_translate_maps_value_error_to_a_fixed_bad_request():
     # Regression guard: an unpublished workflow used to surface as a detail-less 500.
     # The service message names internals, so the client gets a fixed text.
-    with pytest.raises(BadRequest) as exc:
+    with pytest.raises(InvalidRequestError) as exc:
         with _translate_service_errors():
             raise ValueError("variable 'secret_key' of node 42 is missing")
     assert exc.value.code == 400

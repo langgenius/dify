@@ -1,8 +1,8 @@
 import logging
-from collections.abc import Callable, Mapping
+from collections.abc import Generator, Mapping
+from contextlib import contextmanager
 from dataclasses import asdict
 from datetime import datetime
-from functools import wraps
 from http import HTTPStatus
 from typing import Any, Literal
 from uuid import UUID
@@ -10,11 +10,16 @@ from uuid import UUID
 from flask import Response, request
 from flask_restx import Resource
 from pydantic import AliasChoices, BaseModel, Field, field_validator
-from werkzeug.exceptions import HTTPException, InternalServerError, NotFound, Unauthorized
 
 import services
 from configs import dify_config
 from controllers.common.audio_response import audio_binary_response
+from controllers.common.errors import (
+    AuthenticationRequiredError,
+    InternalServerError,
+    NotFoundError,
+    raise_unexpected_error,
+)
 from controllers.common.fields import (
     AudioBinaryResponse,
     AudioTranscriptResponse,
@@ -63,7 +68,6 @@ from controllers.console.flask_admission import console_account_admission
 from controllers.console.remote_files import RemoteFileUploadPayload, upload_remote_file
 from controllers.console.wraps import cloud_edition_billing_resource_check, model_validate
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
-from core.app.apps.agent_app.errors import AgentAppGeneratorError, AgentAppNotPublishedError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
     AppInvokeQuotaExceededError,
@@ -89,6 +93,7 @@ from machinery.context import RequestContext
 from models.enums import CreatorUserRole
 from models.model import AppMode
 from services.account_errors import AccountNotFoundError
+from services.app.generation.errors import AgentAppGeneratorError, AgentAppNotPublishedError
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.app_preview_query_service import (
     AppPreviewOwnerUnavailableError,
@@ -531,7 +536,7 @@ class TrialAppWorkflowRunApi(Resource):
         except AppDefinitionUnavailableError as error:
             raise AppUnavailableError() from error
         except AccountNotFoundError as error:
-            raise Unauthorized("Account no longer exists.") from error
+            raise AuthenticationRequiredError("Account no longer exists.") from error
         except services.errors.app_model_config.AppModelConfigBrokenError as error:
             raise AppUnavailableError() from error
         except ProviderTokenNotInitError as ex:
@@ -600,9 +605,9 @@ class TrialChatApi(Resource):
         except AppDefinitionUnavailableError as error:
             raise AppUnavailableError() from error
         except AccountNotFoundError as error:
-            raise Unauthorized("Account no longer exists.") from error
+            raise AuthenticationRequiredError("Account no longer exists.") from error
         except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFoundError("Conversation Not Exists.")
         except services.errors.conversation.ConversationCompletedError:
             raise ConversationCompletedError()
         except services.errors.app_model_config.AppModelConfigBrokenError:
@@ -671,11 +676,11 @@ class TrialMessageSuggestedQuestionApi(Resource):
         except AppDefinitionUnavailableError as error:
             raise AppUnavailableError() from error
         except SuggestedQuestionsActorNotFoundError as error:
-            raise Unauthorized("Account no longer exists.") from error
+            raise AuthenticationRequiredError("Account no longer exists.") from error
         except MessageNotExistsError:
-            raise NotFound("Message not found")
+            raise NotFoundError("Message not found")
         except ConversationNotExistsError:
-            raise NotFound("Conversation not found")
+            raise NotFoundError("Conversation not found")
         except SuggestedQuestionsAfterAnswerDisabledError:
             raise AppSuggestedQuestionsAfterAnswerDisabledError()
         except ProviderTokenNotInitError as ex:
@@ -693,38 +698,34 @@ class TrialMessageSuggestedQuestionApi(Resource):
         return dump_response(SuggestedQuestionsResponse, {"data": questions})
 
 
-def _trial_audio_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
-    @wraps(view)
-    def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
-        try:
-            return view(*args, **kwargs)
-        except (AppDefinitionUnavailableError, services.errors.app_model_config.AppModelConfigBrokenError) as error:
-            raise AppUnavailableError() from error
-        except NoAudioUploadedServiceError as error:
-            raise NoAudioUploadedError() from error
-        except AudioTooLargeServiceError as error:
-            raise AudioTooLargeError(str(error)) from error
-        except UnsupportedAudioTypeServiceError as error:
-            raise UnsupportedAudioTypeError() from error
-        except ProviderNotSupportSpeechToTextServiceError as error:
-            raise ProviderNotSupportSpeechToTextError() from error
-        except SpeechToTextDisabledServiceError as error:
-            raise SpeechToTextDisabledError() from error
-        except ProviderTokenNotInitError as error:
-            raise ProviderNotInitializeError(error.description) from error
-        except QuotaExceededError as error:
-            raise ProviderQuotaExceededError() from error
-        except ModelCurrentlyNotSupportError as error:
-            raise ProviderModelCurrentlyNotSupportError() from error
-        except InvokeError as error:
-            raise CompletionRequestError(error.description) from error
-        except (HTTPException, ValueError):
-            raise
-        except Exception as error:
-            logger.exception("Trial audio operation failed")
-            raise InternalServerError() from error
-
-    return decorated
+@contextmanager
+def _trial_audio_errors() -> Generator[None]:
+    try:
+        yield
+    except (AppDefinitionUnavailableError, services.errors.app_model_config.AppModelConfigBrokenError) as error:
+        raise AppUnavailableError() from error
+    except NoAudioUploadedServiceError as error:
+        raise NoAudioUploadedError() from error
+    except AudioTooLargeServiceError as error:
+        raise AudioTooLargeError(str(error)) from error
+    except UnsupportedAudioTypeServiceError as error:
+        raise UnsupportedAudioTypeError() from error
+    except ProviderNotSupportSpeechToTextServiceError as error:
+        raise ProviderNotSupportSpeechToTextError() from error
+    except SpeechToTextDisabledServiceError as error:
+        raise SpeechToTextDisabledError() from error
+    except ProviderTokenNotInitError as error:
+        raise ProviderNotInitializeError(error.description) from error
+    except QuotaExceededError as error:
+        raise ProviderQuotaExceededError() from error
+    except ModelCurrentlyNotSupportError as error:
+        raise ProviderModelCurrentlyNotSupportError() from error
+    except InvokeError as error:
+        raise CompletionRequestError(error.description) from error
+    except ValueError:
+        raise
+    except Exception as error:
+        raise_unexpected_error(error, message="Trial audio operation failed")
 
 
 @console_ns.route(
@@ -735,16 +736,18 @@ class TrialChatAudioApi(Resource):
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AudioTranscriptResponse.__name__])
     @console_account_admission()
     @get_trial_app
-    @_trial_audio_errors
     def post(self, request_context: RequestContext, trial_app: TrialAppRef) -> dict[str, object]:
         file = request.files.get("file")
         audio = AudioUpload(stream=file.stream, mime_type=file.mimetype) if file is not None else None
-        transcript = application_services().app_audio.transcript_asr(
-            app=AudioAppRef(app_id=trial_app.app_id, tenant_id=trial_app.tenant_id, app_mode=trial_app.app_mode),
-            audio=audio,
-        )
-        application_services().trial_apps.usage.record(app_id=trial_app.app_id, account_id=request_context.account_id)
-        return dump_response(AudioTranscriptResponse, transcript)
+        with _trial_audio_errors():
+            transcript = application_services().app_audio.transcript_asr(
+                app=AudioAppRef(app_id=trial_app.app_id, tenant_id=trial_app.tenant_id, app_mode=trial_app.app_mode),
+                audio=audio,
+            )
+            application_services().trial_apps.usage.record(
+                app_id=trial_app.app_id, account_id=request_context.account_id
+            )
+            return dump_response(AudioTranscriptResponse, transcript)
 
 
 @console_ns.route(
@@ -757,30 +760,30 @@ class TrialChatTextApi(Resource):
     @console_account_admission()
     @get_trial_app
     @model_validate(TextToSpeechRequest)
-    @_trial_audio_errors
     def post(
         self, req_data: TextToSpeechRequest, request_context: RequestContext, trial_app: TrialAppRef
     ) -> Response | None:
-        output = application_services().app_audio.transcript_tts(
-            app=AudioAppRef(app_id=trial_app.app_id, tenant_id=trial_app.tenant_id, app_mode=trial_app.app_mode),
-            account_id=request_context.account_id,
-            text=req_data.text,
-            voice=req_data.voice,
-            message_id=req_data.message_id,
-        )
-        response = audio_binary_response(output)
-        try:
-            # Preserve usage after MIME inspection, including a missing message's
-            # null response. Early provider/MIME failures do not consume a trial.
-            application_services().trial_apps.usage.record(
-                app_id=trial_app.app_id, account_id=request_context.account_id
+        with _trial_audio_errors():
+            output = application_services().app_audio.transcript_tts(
+                app=AudioAppRef(app_id=trial_app.app_id, tenant_id=trial_app.tenant_id, app_mode=trial_app.app_mode),
+                account_id=request_context.account_id,
+                text=req_data.text,
+                voice=req_data.voice,
+                message_id=req_data.message_id,
             )
-        except BaseException:
-            if response is not None:
-                close_stream(response)
-            raise
-        # response-contract:ignore audio_binary_response
-        return response
+            response = audio_binary_response(output)
+            try:
+                # Preserve usage after MIME inspection, including a missing message's
+                # null response. Early provider/MIME failures do not consume a trial.
+                application_services().trial_apps.usage.record(
+                    app_id=trial_app.app_id, account_id=request_context.account_id
+                )
+            except BaseException:
+                if response is not None:
+                    close_stream(response)
+                raise
+            # response-contract:ignore audio_binary_response
+            return response
 
 
 @console_ns.route(
@@ -807,9 +810,9 @@ class TrialCompletionApi(Resource):
         except AppDefinitionUnavailableError as error:
             raise AppUnavailableError() from error
         except AccountNotFoundError as error:
-            raise Unauthorized("Account no longer exists.") from error
+            raise AuthenticationRequiredError("Account no longer exists.") from error
         except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFoundError("Conversation Not Exists.")
         except services.errors.conversation.ConversationCompletedError:
             raise ConversationCompletedError()
         except services.errors.app_model_config.AppModelConfigBrokenError:
@@ -890,7 +893,7 @@ class AppApi(Resource):
         except AppDefinitionUnavailableError as error:
             raise AppUnavailableError() from error
         except AccountNotFoundError as error:
-            raise Unauthorized("Account no longer exists.") from error
+            raise AuthenticationRequiredError("Account no longer exists.") from error
         except AppPreviewSiteUnavailableError as error:
             raise AppPreviewSiteUnavailableHttpError(str(error)) from error
 

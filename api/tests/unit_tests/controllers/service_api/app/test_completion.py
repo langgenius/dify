@@ -22,9 +22,9 @@ from flask import Flask
 from pydantic import ValidationError
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import BadRequest, NotFound
 
 import services
+from controllers.common.errors import InvalidRequestError, NotFoundError
 from controllers.service_api.app.completion import (
     ChatApi,
     ChatRequestPayload,
@@ -42,7 +42,6 @@ from controllers.service_api.app.error import (
     WorkflowVersionExecutionNotAllowedError,
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
-from core.app.apps.agent_app.errors import AgentAppNotPublishedError
 from core.errors.error import QuotaExceededError
 from enums import CloudPlan, DeploymentEdition
 from graphon.model_runtime.errors.invoke import InvokeError
@@ -50,6 +49,7 @@ from graphon.model_runtime.errors.invoke import InvokeRateLimitError as Provider
 from models.base import TypeBase
 from models.enums import ConversationFromSource, EndUserType
 from models.model import App, AppMode, Conversation, EndUser, IconType, Message
+from services.app.generation.errors import AgentAppNotPublishedError
 from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
 from services.billing_service import BillingService
@@ -57,6 +57,8 @@ from services.conversation_service import ConversationService
 from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, WorkflowNotFoundError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.llm import InvokeRateLimitError
+from services.workflow.execution.ports import WorkflowRuntime
+from services.workflow.variable_contracts import WorkflowExecutionVariables
 from tests.unit_tests.config_override import apply_config_overrides
 
 
@@ -318,7 +320,14 @@ class TestAppGenerateService:
         assert callable(AppGenerateService.generate)
 
     @patch.object(AppGenerateService, "generate")
-    def test_generate_returns_response(self, mock_generate, orm_session: Session):
+    def test_generate_returns_response(
+        self,
+        mock_generate,
+        orm_session: Session,
+        *,
+        workflow_variables: WorkflowExecutionVariables,
+        workflow_runtime: WorkflowRuntime,
+    ):
         """Test that generate returns expected response format."""
         expected = {"answer": "Hello!"}
         mock_generate.return_value = expected
@@ -331,12 +340,21 @@ class TestAppGenerateService:
             invoke_from=Mock(),
             session=orm_session,
             streaming=False,
+            variables=workflow_variables,
+            runtime=workflow_runtime,
         )
 
         assert result == expected
 
     @patch.object(AppGenerateService, "generate")
-    def test_generate_raises_conversation_not_exists(self, mock_generate, orm_session: Session):
+    def test_generate_raises_conversation_not_exists(
+        self,
+        mock_generate,
+        orm_session: Session,
+        *,
+        workflow_variables: WorkflowExecutionVariables,
+        workflow_runtime: WorkflowRuntime,
+    ):
         """Test generate raises ConversationNotExistsError."""
         mock_generate.side_effect = services.errors.conversation.ConversationNotExistsError()
         app_model, end_user, _, _ = _persist_completion_state(orm_session, AppMode.COMPLETION)
@@ -349,10 +367,19 @@ class TestAppGenerateService:
                 invoke_from=Mock(),
                 session=orm_session,
                 streaming=False,
+                variables=workflow_variables,
+                runtime=workflow_runtime,
             )
 
     @patch.object(AppGenerateService, "generate")
-    def test_generate_raises_quota_exceeded(self, mock_generate, orm_session: Session):
+    def test_generate_raises_quota_exceeded(
+        self,
+        mock_generate,
+        orm_session: Session,
+        *,
+        workflow_variables: WorkflowExecutionVariables,
+        workflow_runtime: WorkflowRuntime,
+    ):
         """Test generate raises QuotaExceededError."""
         mock_generate.side_effect = QuotaExceededError()
         app_model, end_user, _, _ = _persist_completion_state(orm_session, AppMode.COMPLETION)
@@ -365,10 +392,19 @@ class TestAppGenerateService:
                 invoke_from=Mock(),
                 session=orm_session,
                 streaming=False,
+                variables=workflow_variables,
+                runtime=workflow_runtime,
             )
 
     @patch.object(AppGenerateService, "generate")
-    def test_generate_raises_invoke_error(self, mock_generate, orm_session: Session):
+    def test_generate_raises_invoke_error(
+        self,
+        mock_generate,
+        orm_session: Session,
+        *,
+        workflow_variables: WorkflowExecutionVariables,
+        workflow_runtime: WorkflowRuntime,
+    ):
         """Test generate raises InvokeError."""
         mock_generate.side_effect = InvokeError("Model invocation failed")
         app_model, end_user, _, _ = _persist_completion_state(orm_session, AppMode.COMPLETION)
@@ -381,6 +417,8 @@ class TestAppGenerateService:
                 invoke_from=Mock(),
                 session=orm_session,
                 streaming=False,
+                variables=workflow_variables,
+                runtime=workflow_runtime,
             )
 
 
@@ -526,7 +564,7 @@ class TestCompletionApiController:
         handler = unwrap(api.post)
 
         with app.test_request_context("/completion-messages", method="POST", json={"inputs": {}}):
-            with pytest.raises(NotFound):
+            with pytest.raises(NotFoundError):
                 handler(api, session=orm_session, app_model=app_model, end_user=end_user)
 
 
@@ -687,7 +725,7 @@ class TestChatApiController:
         app_model, end_user, _, _ = _persist_completion_state(orm_session, AppMode.CHAT)
 
         with app.test_request_context("/chat-messages", method="POST", json={"inputs": {}, "query": "hi"}):
-            with pytest.raises(NotFound):
+            with pytest.raises(NotFoundError):
                 handler(api, session=orm_session, app_model=app_model, end_user=end_user)
 
     def test_draft_workflow(self, app: Flask, monkeypatch: pytest.MonkeyPatch, orm_session: Session) -> None:
@@ -702,7 +740,7 @@ class TestChatApiController:
         app_model, end_user, _, _ = _persist_completion_state(orm_session, AppMode.CHAT)
 
         with app.test_request_context("/chat-messages", method="POST", json={"inputs": {}, "query": "hi"}):
-            with pytest.raises(BadRequest):
+            with pytest.raises(InvalidRequestError):
                 handler(api, session=orm_session, app_model=app_model, end_user=end_user)
 
     def test_agent_not_published_error_mapped(
@@ -743,7 +781,7 @@ class TestChatApiController:
             method="POST",
             json={"inputs": {}, "query": "hi", "conversation_id": str(uuid.uuid4())},
         ):
-            with pytest.raises(NotFound):
+            with pytest.raises(NotFoundError):
                 handler(api, session=orm_session, app_model=app_model, end_user=end_user)
 
         # The lookup must run before generation, so the generator is never started.
@@ -760,3 +798,6 @@ class TestChatStopApiController:
         with app.test_request_context("/chat-messages/1/stop", method="POST"):
             with pytest.raises(NotChatAppError):
                 handler(api, app_model=app_model, end_user=end_user, task_id="t1")
+
+
+pytestmark = pytest.mark.usefixtures("workflow_application")

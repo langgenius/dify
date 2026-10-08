@@ -15,6 +15,7 @@ from models import (
 )
 from repositories.api_workflow_node_execution_repository import DifyAPIWorkflowNodeExecutionRepository
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
+from services.tools.provider_queries import ToolProviderIcons
 from services.workflow_node_execution_trace_service import (
     WorkflowNodeExecutionTrace,
     assemble_workflow_node_execution_traces,
@@ -49,9 +50,11 @@ class WorkflowRunService:
         *,
         workflow_runs: DifyAPISQLAlchemyWorkflowRunRepository,
         node_executions: DifyAPIWorkflowNodeExecutionRepository,
+        tool_providers: ToolProviderIcons,
     ) -> None:
         self._workflow_runs = workflow_runs
         self._node_executions = node_executions
+        self._tool_providers = tool_providers
 
     def get_paginate_advanced_chat_workflow_runs(
         self,
@@ -203,7 +206,9 @@ class WorkflowRunService:
             app_id=app_id,
             workflow_run_id=run_id,
         )
-        return assemble_workflow_node_execution_traces(node_executions, self._node_executions, session=db.session())
+        return assemble_workflow_node_execution_traces(
+            node_executions, self._node_executions, session=db.session(), tool_providers=self._tool_providers
+        )
 
     def get_pause_details(
         self,

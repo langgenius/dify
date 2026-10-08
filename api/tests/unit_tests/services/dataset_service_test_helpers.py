@@ -31,18 +31,12 @@ from models.dataset import (
     DocumentSegment,
 )
 from models.model import UploadFile
+from repositories.knowledge.collection_binding_repository import DatasetCollectionBindingRepository
 from services.entities.knowledge_entities.rag_pipeline_entities import (
     IconInfo as PipelineIconInfo,
 )
 from services.entities.knowledge_entities.rag_pipeline_entities import (
-    KnowledgeConfiguration,
     RagPipelineDatasetCreateEntity,
-)
-from services.entities.knowledge_entities.rag_pipeline_entities import (
-    RerankingModelConfig as RagPipelineRerankingModelConfig,
-)
-from services.entities.knowledge_entities.rag_pipeline_entities import (
-    RetrievalSetting as RagPipelineRetrievalSetting,
 )
 from services.errors.base import NoPermissionError
 from services.errors.chunk import ChildChunkDeleteIndexError, ChildChunkIndexingError
@@ -50,7 +44,6 @@ from services.errors.dataset import DatasetNameDuplicateError
 from services.errors.document import DocumentIndexingError
 from services.errors.file import FileNotExistsError
 from services.knowledge.dataset_service import (
-    DatasetCollectionBindingService,
     DatasetPermissionService,
     DatasetService,
     DocumentService,
@@ -81,7 +74,7 @@ __all__ = [
     "CloudPlan",
     "DataSource",
     "Dataset",
-    "DatasetCollectionBindingService",
+    "DatasetCollectionBindingRepository",
     "DatasetNameDuplicateError",
     "DatasetPermissionEnum",
     "DatasetPermissionService",
@@ -98,7 +91,6 @@ __all__ = [
     "IndexStructureType",
     "InfoList",
     "KnowledgeConfig",
-    "KnowledgeConfiguration",
     "LLMBadRequestError",
     "MagicMock",
     "Mock",
@@ -114,8 +106,6 @@ __all__ = [
     "ProcessRule",
     "ProviderTokenNotInitError",
     "RagPipelineDatasetCreateEntity",
-    "RagPipelineRerankingModelConfig",
-    "RagPipelineRetrievalSetting",
     "RerankingModel",
     "RetrievalMethod",
     "RetrievalModel",
@@ -130,7 +120,6 @@ __all__ = [
     "_make_dataset",
     "_make_document",
     "_make_features",
-    "_make_knowledge_configuration",
     "_make_lock_context",
     "_make_retrieval_model",
     "_make_segment",
@@ -425,39 +414,4 @@ def _make_retrieval_model(
         reranking_mode="reranking_model",
         top_k=4,
         score_threshold_enabled=False,
-    )
-
-
-def _make_rag_pipeline_retrieval_setting() -> RagPipelineRetrievalSetting:
-    return RagPipelineRetrievalSetting(
-        search_method=RetrievalMethod.SEMANTIC_SEARCH,
-        top_k=4,
-        score_threshold=0.5,
-        score_threshold_enabled=True,
-        reranking_mode="reranking_model",
-        reranking_enable=True,
-        reranking_model=RagPipelineRerankingModelConfig(
-            reranking_provider_name="rerank-provider",
-            reranking_model_name="rerank-model",
-        ),
-    )
-
-
-def _make_knowledge_configuration(
-    *,
-    chunk_structure: str = "paragraph",
-    indexing_technique: str = "high_quality",
-    embedding_model_provider: str = "provider",
-    embedding_model: str = "embedding-model",
-    keyword_number: int = 8,
-    summary_index_setting: dict | None = None,
-) -> KnowledgeConfiguration:
-    return KnowledgeConfiguration(
-        chunk_structure=chunk_structure,
-        indexing_technique=indexing_technique,
-        embedding_model_provider=embedding_model_provider,
-        embedding_model=embedding_model,
-        keyword_number=keyword_number,
-        retrieval_model=_make_rag_pipeline_retrieval_setting(),
-        summary_index_setting=summary_index_setting,
     )

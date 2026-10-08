@@ -14,14 +14,13 @@ from sqlalchemy import Connection, Engine, ExecutionContext, delete, event, sele
 from sqlalchemy.orm import Session, SessionTransaction, UOWTransaction, sessionmaker
 from sqlalchemy.pool import QueuePool
 
-import core.agent.tool_configuration as tool_configuration_module
 import core.helper.tool_parameter_cache as cache_module
+import services.tools.agent_configuration as tool_configuration_module
 from core.agent.entities import AgentToolEntity
 from core.helper import encrypter
 from core.plugin.plugin_service import PluginService
 from core.tools.__base.tool import Tool
 from core.tools.entities.tool_entities import ApiProviderSchemaType, ToolEntity, ToolParameter
-from core.tools.tool_manager import ToolManager
 from extensions.ext_database import db
 from graphon.variables import SecretVariable
 from models import Account, App
@@ -37,6 +36,7 @@ from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.app_preview_details_adapters import AppPreviewDetailsRuntime
 from services.app_preview_details_service import AppPreviewDetail
 from services.app_preview_query_service import AppPreviewRef, AppPreviewSiteUnavailableError, AppPreviewUnavailableError
+from services.tools.tool_manager import ToolManager
 
 
 @dataclass(frozen=True)
@@ -83,7 +83,9 @@ class _Harness:
 
 
 @pytest.fixture
-def harness(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]) -> Iterator[_Harness]:
+def harness(
+    sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session], *, tool_providers, workflow_queries
+) -> Iterator[_Harness]:
     target = App(
         id=str(uuid4()), tenant_id=str(uuid4()), name="Preview", mode="chat", enable_site=True, enable_api=True
     )
@@ -193,7 +195,11 @@ def harness(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]
         decoy_workflow,
         sqlite_session_factory,
         sqlite_engine,
-        AppPreviewDetailsRuntime(details=AppPreviewQueryRepository(session_factory=factory)),
+        AppPreviewDetailsRuntime(
+            details=AppPreviewQueryRepository(session_factory=factory),
+            tool_providers=tool_providers,
+            workflow_queries=workflow_queries,
+        ),
         closed,
         mutated,
         commits,
@@ -553,7 +559,12 @@ class _EmptyCache:
 
 @pytest.mark.parametrize("failure", ["none", "runtime", "decrypt"])
 def test_agent_tool_masking_returns_a_copy_without_dirtying_or_flushing_models(
-    harness: _Harness, monkeypatch: pytest.MonkeyPatch, failure: Literal["none", "runtime", "decrypt"]
+    harness: _Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    failure: Literal["none", "runtime", "decrypt"],
+    *,
+    tool_providers,
+    workflow_queries,
 ) -> None:
     provider_id = str(uuid4())
     agent_mode = {
@@ -586,7 +597,10 @@ def test_agent_tool_masking_returns_a_copy_without_dirtying_or_flushing_models(
     calls: list[str] = []
     checkedout_during_io: list[int] = []
 
-    def runtime(*, tenant_id: str, app_id: str, agent_tool: AgentToolEntity, user_id: str) -> Tool:
+    def runtime(
+        *, tenant_id: str, app_id: str, agent_tool: AgentToolEntity, user_id: str, tool_providers, workflow_queries
+    ) -> Tool:
+        del workflow_queries, tool_providers
         assert isinstance(harness.engine.pool, QueuePool)
         checkedout_during_io.append(harness.engine.pool.checkedout())
         harness.assert_closed()
@@ -621,6 +635,8 @@ def test_agent_tool_masking_returns_a_copy_without_dirtying_or_flushing_models(
             app_id=harness.target.id,
             tenant_id=harness.active_workspace.id,
             user_id=harness.account.id,
+            tool_providers=tool_providers,
+            workflow_queries=workflow_queries,
         )
     assert result.model_config is not None
     masked_agent_mode = result.model_config["agent_mode"]

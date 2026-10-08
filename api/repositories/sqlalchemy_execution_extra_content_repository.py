@@ -18,7 +18,6 @@ from core.entities.execution_extra_content import (
 from core.entities.execution_extra_content import (
     HumanInputContent as HumanInputContentDomainModel,
 )
-from core.workflow.nodes.human_input.callback import DifyHITLCallback
 from enums.human_input import HumanInputFormStatus, RecipientType
 from models.execution_extra_content import (
     ExecutionExtraContent as ExecutionExtraContentModel,
@@ -29,6 +28,7 @@ from models.execution_extra_content import (
 from models.human_input import HumanInputFormRecipient
 from models.human_input_entities import FormDefinition
 from repositories.execution_extra_content_repository import ExecutionExtraContentRepository
+from services.workflow.execution.adapters.human_input import DifyHITLCallback
 
 logger = logging.getLogger(__name__)
 

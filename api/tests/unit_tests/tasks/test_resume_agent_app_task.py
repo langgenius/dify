@@ -24,8 +24,11 @@ MODULE = "tasks.app_generate.resume_agent_app_task"
 
 
 @pytest.fixture
-def task_session(mocker: MockerFixture, sqlite_session_factory: sessionmaker[Session]) -> Iterator[Session]:
+def task_session(
+    mocker: MockerFixture, sqlite_session_factory: sessionmaker[Session], workflow_application
+) -> Iterator[Session]:
     """Bind the task's Flask-SQLAlchemy session proxy to the shared SQLite database."""
+    assert mod.application_services() is workflow_application
     registry = scoped_session(sqlite_session_factory)
     mocker.patch.object(mod.db, "session", registry)
     session = registry()
@@ -115,7 +118,8 @@ def test_resume_happy_path_account_user_sets_tenant_and_runs(mocker: MockerFixtu
     assert call.kwargs["user"] is account
     assert call.kwargs["app_model"] is app
     assert call.kwargs["invoke_from"] == InvokeFrom.WEB_APP
-    assert isinstance(call.kwargs["session"], Session)
+    assert "session" not in call.kwargs
+    assert not task_session.in_transaction()
     assert account.current_tenant_id == tenant_id
 
 

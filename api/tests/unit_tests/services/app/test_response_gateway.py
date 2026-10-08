@@ -6,7 +6,7 @@ from services.app.response_gateway import AppResponseGateway
 from services.entities.app_entities import AppRecord
 
 
-def test_mask_record_omits_unverified_tool_parameters_without_mutating_record() -> None:
+def test_mask_record_omits_unverified_tool_parameters_without_mutating_record(tool_providers, workflow_queries) -> None:
     agent_mode = {
         "enabled": True,
         "tools": [
@@ -26,7 +26,9 @@ def test_mask_record_omits_unverified_tool_parameters_without_mutating_record() 
     )
     context = RequestContext("request", None, "account", "tenant")
 
-    masked = AppResponseGateway.mask_record(context, app)
+    masked = AppResponseGateway(tool_providers=tool_providers, workflow_queries=workflow_queries).mask_record(
+        context, app
+    )
 
     assert masked is not app
     assert masked.app_model_config is not None

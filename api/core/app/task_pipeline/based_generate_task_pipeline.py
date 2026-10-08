@@ -1,9 +1,6 @@
 import logging
 import time
 
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-
 from clients.agent_backend.errors import AgentBackendError
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import (
@@ -19,8 +16,6 @@ from core.app.entities.task_entities import (
 from core.errors.error import QuotaExceededError
 from core.moderation.output_moderation import ModerationRule, OutputModeration
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
-from models.enums import MessageStatus
-from models.model import Message
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +42,7 @@ class BasedGenerateTaskPipeline[AppGenerateEntityT: AppGenerateEntity]:
         self.output_moderation_handler = self._init_output_moderation()
         self.stream = stream
 
-    def handle_error(self, *, event: QueueErrorEvent, session: Session | None = None, message_id: str = ""):
+    def handle_error(self, *, event: QueueErrorEvent):
         logger.debug("error: %s", event.error)
         e = event.error
         err: Exception
@@ -61,17 +56,6 @@ class BasedGenerateTaskPipeline[AppGenerateEntityT: AppGenerateEntity]:
                 description = getattr(e, "description", None)
                 err = Exception(description if description is not None else str(e))
 
-        if not message_id or not session:
-            return err
-
-        stmt = select(Message).where(Message.id == message_id)
-        message = session.scalar(stmt)
-        if not message:
-            return err
-
-        err_desc = self._error_to_desc(err)
-        message.status = MessageStatus.ERROR
-        message.error = err_desc
         return err
 
     def _error_to_desc(self, e: Exception) -> str:

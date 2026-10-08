@@ -1,3 +1,5 @@
+from repositories.trigger.workflow_repository import WorkflowTriggerRepository
+
 """Testcontainers integration tests for schedule service SQL-backed behavior."""
 
 from datetime import datetime
@@ -10,11 +12,12 @@ from sqlalchemy.orm import Session
 
 from core.workflow.nodes.trigger_schedule.entities import ScheduleConfig, SchedulePlanUpdate
 from core.workflow.nodes.trigger_schedule.exc import ScheduleNotFoundError
-from events.event_handlers.sync_workflow_schedule_when_app_published import sync_schedule_from_workflow
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.trigger import WorkflowSchedulePlan
 from services.account_errors import AccountNotFoundError
 from services.trigger.schedule_service import ScheduleService
+from services.trigger.workflow_policy import schedule_config
+from tests.unit_tests.model_factories import make_app
 
 
 class ScheduleServiceIntegrationFactory:
@@ -117,10 +120,10 @@ class TestScheduleServiceIntegration:
 
         with pytest.MonkeyPatch.context() as monkeypatch:
             monkeypatch.setattr(
-                "services.trigger.schedule_service.calculate_next_run_at",
+                "repositories.trigger.workflow_repository.calculate_next_run_at",
                 lambda *_args, **_kwargs: expected_next_run,
             )
-            schedule = ScheduleService.create_schedule(
+            schedule = WorkflowTriggerRepository.create_schedule(
                 session=db_session_with_containers,
                 tenant_id=tenant.id,
                 app_id=str(uuid4()),
@@ -147,10 +150,10 @@ class TestScheduleServiceIntegration:
 
         with pytest.MonkeyPatch.context() as monkeypatch:
             monkeypatch.setattr(
-                "services.trigger.schedule_service.calculate_next_run_at",
+                "repositories.trigger.workflow_repository.calculate_next_run_at",
                 lambda *_args, **_kwargs: expected_next_run,
             )
-            updated = ScheduleService.update_schedule(
+            updated = WorkflowTriggerRepository.update_schedule(
                 session=db_session_with_containers,
                 schedule_id=schedule.id,
                 updates=SchedulePlanUpdate(
@@ -180,8 +183,8 @@ class TestScheduleServiceIntegration:
                 calls.append((args, kwargs))
                 return datetime(2026, 1, 9, 10, 0, 0)
 
-            monkeypatch.setattr("services.trigger.schedule_service.calculate_next_run_at", _track)
-            updated = ScheduleService.update_schedule(
+            monkeypatch.setattr("repositories.trigger.workflow_repository.calculate_next_run_at", _track)
+            updated = WorkflowTriggerRepository.update_schedule(
                 session=db_session_with_containers,
                 schedule_id=schedule.id,
                 updates=SchedulePlanUpdate(node_id="node-new"),
@@ -194,33 +197,31 @@ class TestScheduleServiceIntegration:
 
     def test_update_schedule_not_found_raises(self, db_session_with_containers: Session):
         with pytest.raises(ScheduleNotFoundError, match="Schedule not found"):
-            ScheduleService.update_schedule(
+            WorkflowTriggerRepository.update_schedule(
                 session=db_session_with_containers,
                 schedule_id=str(uuid4()),
                 updates=SchedulePlanUpdate(node_id="node-new"),
             )
 
-    def test_delete_schedule_removes_row(self, db_session_with_containers: Session):
+    def test_sync_schedule_without_config_removes_row(self, db_session_with_containers: Session):
         _account, tenant = ScheduleServiceIntegrationFactory.create_account_with_tenant(db_session_with_containers)
         schedule = ScheduleServiceIntegrationFactory.create_schedule_plan(
-            db_session_with_containers,
-            tenant_id=tenant.id,
+            db_session_with_containers, tenant_id=tenant.id
         )
-
-        ScheduleService.delete_schedule(
-            session=db_session_with_containers,
-            schedule_id=schedule.id,
-        )
+        app = make_app(app_id=schedule.app_id, tenant_id=tenant.id)
+        WorkflowTriggerRepository.sync_schedule(db_session_with_containers, app, None)
         db_session_with_containers.commit()
-
         assert db_session_with_containers.get(WorkflowSchedulePlan, schedule.id) is None
 
-    def test_delete_schedule_not_found_raises(self, db_session_with_containers: Session):
-        with pytest.raises(ScheduleNotFoundError, match="Schedule not found"):
-            ScheduleService.delete_schedule(
-                session=db_session_with_containers,
-                schedule_id=str(uuid4()),
-            )
+    def test_sync_schedule_without_config_is_idempotent_when_missing(self, db_session_with_containers: Session):
+        app = make_app(app_id=str(uuid4()), tenant_id=str(uuid4()))
+        WorkflowTriggerRepository.sync_schedule(db_session_with_containers, app, None)
+        WorkflowTriggerRepository.sync_schedule(db_session_with_containers, app, None)
+        db_session_with_containers.commit()
+        assert (
+            db_session_with_containers.scalar(select(WorkflowSchedulePlan).where(WorkflowSchedulePlan.app_id == app.id))
+            is None
+        )
 
     def test_get_tenant_owner_returns_owner_account(self, db_session_with_containers: Session):
         owner, tenant = ScheduleServiceIntegrationFactory.create_account_with_tenant(
@@ -272,35 +273,6 @@ class TestScheduleServiceIntegration:
         with pytest.raises(AccountNotFoundError, match=tenant.id):
             ScheduleService.get_tenant_owner(session=db_session_with_containers, tenant_id=tenant.id)
 
-    def test_update_next_run_at_updates_persisted_value(self, db_session_with_containers: Session):
-        _account, tenant = ScheduleServiceIntegrationFactory.create_account_with_tenant(db_session_with_containers)
-        schedule = ScheduleServiceIntegrationFactory.create_schedule_plan(
-            db_session_with_containers,
-            tenant_id=tenant.id,
-        )
-        expected_next_run = datetime(2026, 1, 3, 10, 30, 0)
-
-        with pytest.MonkeyPatch.context() as monkeypatch:
-            monkeypatch.setattr(
-                "services.trigger.schedule_service.calculate_next_run_at",
-                lambda *_args, **_kwargs: expected_next_run,
-            )
-            result = ScheduleService.update_next_run_at(
-                session=db_session_with_containers,
-                schedule_id=schedule.id,
-            )
-
-        db_session_with_containers.refresh(schedule)
-        assert result == expected_next_run
-        assert schedule.next_run_at == expected_next_run
-
-    def test_update_next_run_at_raises_when_schedule_not_found(self, db_session_with_containers: Session):
-        with pytest.raises(ScheduleNotFoundError, match="Schedule not found"):
-            ScheduleService.update_next_run_at(
-                session=db_session_with_containers,
-                schedule_id=str(uuid4()),
-            )
-
 
 class TestSyncScheduleFromWorkflowIntegration:
     def test_sync_schedule_create_new(self, db_session_with_containers: Session):
@@ -310,16 +282,16 @@ class TestSyncScheduleFromWorkflowIntegration:
 
         with pytest.MonkeyPatch.context() as monkeypatch:
             monkeypatch.setattr(
-                "services.trigger.schedule_service.calculate_next_run_at",
+                "repositories.trigger.workflow_repository.calculate_next_run_at",
                 lambda *_args, **_kwargs: expected_next_run,
             )
-            result = sync_schedule_from_workflow(
-                tenant_id=tenant.id,
-                app_id=app_id,
-                workflow=_cron_workflow(),
+            WorkflowTriggerRepository.sync_schedule(
+                db_session_with_containers,
+                make_app(tenant_id=tenant.id, app_id=app_id),
+                schedule_config(_cron_workflow().graph_dict),
             )
+            db_session_with_containers.commit()
 
-        assert result is not None
         persisted = db_session_with_containers.execute(
             select(WorkflowSchedulePlan).where(WorkflowSchedulePlan.app_id == app_id)
         ).scalar_one()
@@ -344,20 +316,22 @@ class TestSyncScheduleFromWorkflowIntegration:
 
         with pytest.MonkeyPatch.context() as monkeypatch:
             monkeypatch.setattr(
-                "services.trigger.schedule_service.calculate_next_run_at",
+                "repositories.trigger.workflow_repository.calculate_next_run_at",
                 lambda *_args, **_kwargs: expected_next_run,
             )
-            result = sync_schedule_from_workflow(
-                tenant_id=tenant.id,
-                app_id=app_id,
-                workflow=_cron_workflow(
-                    node_id="start",
-                    cron_expression="0 12 * * *",
-                    timezone="America/New_York",
+            WorkflowTriggerRepository.sync_schedule(
+                db_session_with_containers,
+                make_app(tenant_id=tenant.id, app_id=app_id),
+                schedule_config(
+                    _cron_workflow(
+                        node_id="start",
+                        cron_expression="0 12 * * *",
+                        timezone="America/New_York",
+                    ).graph_dict
                 ),
             )
+            db_session_with_containers.commit()
 
-        assert result is not None
         db_session_with_containers.expire_all()
         persisted = db_session_with_containers.get(WorkflowSchedulePlan, existing_id)
         assert persisted is not None
@@ -376,12 +350,11 @@ class TestSyncScheduleFromWorkflowIntegration:
         )
         existing_id = existing.id
 
-        result = sync_schedule_from_workflow(
-            tenant_id=tenant.id,
-            app_id=app_id,
-            workflow=_no_schedule_workflow(),
+        WorkflowTriggerRepository.sync_schedule(
+            db_session_with_containers,
+            make_app(tenant_id=tenant.id, app_id=app_id),
+            schedule_config(_no_schedule_workflow().graph_dict),
         )
-
-        assert result is None
+        db_session_with_containers.commit()
         db_session_with_containers.expire_all()
         assert db_session_with_containers.get(WorkflowSchedulePlan, existing_id) is None

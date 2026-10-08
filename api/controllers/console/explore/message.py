@@ -10,9 +10,9 @@ from uuid import UUID
 from flask import Response
 from flask_restx import Resource
 from pydantic import BaseModel
-from werkzeug.exceptions import HTTPException, InternalServerError, Unauthorized
 
 from controllers.common.controller_schemas import MessageFeedbackPayload, MessageListQuery
+from controllers.common.errors import AuthenticationRequiredError, InternalServerError, raise_unexpected_error
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
@@ -46,6 +46,7 @@ from machinery.context import RequestContext
 from services.account_errors import AccountNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.errors.app import MoreLikeThisDisabledError
+from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.base import BaseServiceError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import (
@@ -81,10 +82,10 @@ def _message_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
             return view(*args, **kwargs)
         except InstalledAppNotFoundError as error:
             raise InstalledAppNotFoundHTTPError() from error
-        except AppDefinitionUnavailableError as error:
+        except (AppDefinitionUnavailableError, AppModelConfigBrokenError) as error:
             raise AppUnavailableError() from error
         except (AccountNotFoundError, SuggestedQuestionsActorNotFoundError) as error:
-            raise Unauthorized("Account no longer exists.") from error
+            raise AuthenticationRequiredError("Account no longer exists.") from error
         except MessageNotChatAppError as error:
             raise NotChatAppError() from error
         except InstalledAppNotCompletionError as error:
@@ -109,11 +110,10 @@ def _message_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
             raise ProviderModelCurrentlyNotSupportError() from error
         except InvokeError as error:
             raise CompletionRequestError(error.description) from error
-        except (HTTPException, ValueError):
+        except ValueError:
             raise
         except Exception as error:
-            logger.exception("Installed-app message operation failed")
-            raise InternalServerError() from error
+            raise_unexpected_error(error, message="Installed-app message operation failed")
 
     return decorated
 

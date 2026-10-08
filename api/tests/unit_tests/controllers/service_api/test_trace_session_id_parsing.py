@@ -179,3 +179,6 @@ def test_workflow_run_api_passes_body_trace_session_id(
 
     assert response == {"result": "ok"}
     _assert_generate_trace_session_id(mock_generate_service, "body-session")
+
+
+pytestmark = pytest.mark.usefixtures("workflow_application")

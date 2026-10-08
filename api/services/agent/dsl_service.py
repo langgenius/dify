@@ -9,17 +9,15 @@ It deliberately excludes stored credentials from portable packages.
 from __future__ import annotations
 
 import copy
-import json
 from collections.abc import Mapping
 from typing import Any, cast
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import func, select, update
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
-from core.workflow.nodes.agent_v2.discriminator import is_dify_agent_node_data
-from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidator
+from enums.agent import WorkflowAgentBindingType
 from libs.datetime_utils import naive_utc_now
 from models import Account
 from models.agent import (
@@ -27,29 +25,25 @@ from models.agent import (
     Agent,
     AgentConfigDraft,
     AgentConfigDraftType,
-    AgentConfigRevision,
     AgentConfigRevisionOperation,
     AgentConfigSnapshot,
     AgentIconType,
-    AgentKind,
     AgentScope,
     AgentSource,
     AgentStatus,
-    WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
-from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
+from models.agent_config_entities import AgentPackageMetadata, AgentSoulConfig, WorkflowNodeJobConfig
 from models.model import App, AppModelConfig, UploadFile
 from models.skill import AgentSkillBinding, AgentSkillBindingSnapshot, Skill
 from models.tools import ToolFile
 from models.workflow import Workflow
-from services.agent.agent_soul_state import agent_soul_has_model
+from repositories.agent.creation_repository import WorkflowAgentCreationRepository
 from services.agent.dependency_service import extract_agent_soul_dependencies
 from services.agent.dsl_entities import (
     AGENT_NODE_JOB_DSL_KEY,
     AGENT_PACKAGE_REF_KEY,
     AgentPackage,
-    AgentPackageMetadata,
     AgentPackageWorkspaceSkill,
     make_portable_agent_package,
     portable_ref,
@@ -57,7 +51,9 @@ from services.agent.dsl_entities import (
 from services.agent.knowledge_datasets import get_tenant_knowledge_dataset_rows
 from services.agent.package_resource_exporter import AgentPackageResourceExporter
 from services.agent.roster_service import AgentRosterService
+from services.agent.workflow_validator import WorkflowAgentNodeValidator
 from services.entities.dsl_entities import DslImportWarning
+from services.workflow.contracts import WorkflowBindingScope
 
 
 class AgentPackageImportResult(BaseModel):
@@ -288,12 +284,16 @@ class AgentDslService:
     def import_workflow_packages(
         self,
         *,
-        workflow: Workflow,
+        workflow: WorkflowBindingScope,
         portable_graph: Mapping[str, Any],
         raw_packages: Mapping[str, Any],
         account: Account,
     ) -> tuple[dict[str, Any], list[DslImportWarning], set[str]]:
-        """Materialize every packaged Agent as a node-owned inline Agent."""
+        """Stage node-owned Agent packages and return the resolved graph.
+
+        The draft writer persists the returned graph in this same transaction,
+        keeping the workflow revision and imported bindings atomic.
+        """
 
         graph = copy.deepcopy(dict(portable_graph))
         packages = {key: AgentPackage.model_validate(value) for key, value in raw_packages.items()}
@@ -364,40 +364,8 @@ class AgentDslService:
             node_data.pop(AGENT_NODE_JOB_DSL_KEY, None)
             warnings.extend(imported.warnings)
 
-        workflow.graph = json.dumps(graph)
         self.session.flush()
         return graph, warnings, retirement_candidates
-
-    def clone_inline_binding_for_node(
-        self,
-        *,
-        workflow: Workflow,
-        node_id: str,
-        source_agent: Agent,
-        source_snapshot: AgentConfigSnapshot,
-        account_id: str,
-    ) -> tuple[Agent, AgentConfigSnapshot]:
-        """Clone a same-workspace Inline Agent for a pasted target node."""
-
-        soul = AgentSoulConfig.model_validate(source_snapshot.config_snapshot_dict)
-        metadata = AgentPackageMetadata(
-            name=source_agent.name,
-            description=source_agent.description,
-            role=source_agent.role,
-            icon_type=source_agent.icon_type.value if source_agent.icon_type else None,
-            icon=source_agent.icon,
-            icon_background=source_agent.icon_background,
-        )
-        agent, snapshot = self._create_workflow_only_agent(
-            workflow=workflow,
-            node_id=node_id,
-            account_id=account_id,
-            metadata=metadata,
-            soul=soul,
-            source=AgentSource.WORKFLOW,
-            operation=AgentConfigRevisionOperation.CREATE_VERSION,
-        )
-        return agent, snapshot
 
     def extract_package_dependencies(self, packages: Mapping[str, AgentPackage]) -> list[str]:
         dependencies: list[str] = []
@@ -504,7 +472,7 @@ class AgentDslService:
     def _create_imported_inline_agent(
         self,
         *,
-        workflow: Workflow,
+        workflow: WorkflowBindingScope,
         node_id: str,
         account: Account,
         package: AgentPackage,
@@ -546,7 +514,7 @@ class AgentDslService:
     def _create_workflow_only_agent(
         self,
         *,
-        workflow: Workflow,
+        workflow: WorkflowBindingScope,
         node_id: str,
         account_id: str,
         metadata: AgentPackageMetadata,
@@ -554,48 +522,15 @@ class AgentDslService:
         source: AgentSource,
         operation: AgentConfigRevisionOperation,
     ) -> tuple[Agent, AgentConfigSnapshot]:
-        backing_app = AgentRosterService(self.session).create_hidden_backing_app_for_workflow_agent(
-            tenant_id=workflow.tenant_id,
+        return WorkflowAgentCreationRepository(self.session).create_workflow_agent(
+            workflow=workflow,
+            node_id=node_id,
             account_id=account_id,
-            name=metadata.name,
-            description=metadata.description,
-            icon_type=metadata.icon_type,
-            icon=metadata.icon,
-            icon_background=metadata.icon_background,
-        )
-        agent = Agent(
-            tenant_id=workflow.tenant_id,
-            name=metadata.name,
-            description=metadata.description,
-            role=metadata.role,
-            icon_type=self._agent_icon_type(metadata.icon_type),
-            icon=metadata.icon,
-            icon_background=metadata.icon_background,
-            agent_kind=AgentKind.DIFY_AGENT,
-            scope=AgentScope.WORKFLOW_ONLY,
-            source=source,
-            app_id=workflow.app_id,
-            backing_app_id=backing_app.id,
-            workflow_id=workflow.id,
-            workflow_node_id=node_id,
-            status=AgentStatus.ACTIVE,
-            created_by=account_id,
-            updated_by=account_id,
-        )
-        self.session.add(agent)
-        self.session.flush()
-        snapshot = self._create_snapshot(
-            tenant_id=workflow.tenant_id,
-            agent=agent,
-            account_id=account_id,
+            metadata=metadata,
             soul=soul,
+            source=source,
             operation=operation,
         )
-        agent.active_config_snapshot_id = snapshot.id
-        agent.active_config_has_model = agent_soul_has_model(soul)
-        agent.active_config_is_published = True
-        self.session.flush()
-        return agent, snapshot
 
     def resolve_package_soul(
         self,
@@ -725,46 +660,6 @@ class AgentDslService:
                 )
         return warnings
 
-    def _create_snapshot(
-        self,
-        *,
-        tenant_id: str,
-        agent: Agent,
-        account_id: str,
-        soul: AgentSoulConfig,
-        operation: AgentConfigRevisionOperation,
-    ) -> AgentConfigSnapshot:
-        next_version = (
-            self.session.scalar(
-                select(func.max(AgentConfigSnapshot.version)).where(
-                    AgentConfigSnapshot.tenant_id == tenant_id,
-                    AgentConfigSnapshot.agent_id == agent.id,
-                )
-            )
-            or 0
-        ) + 1
-        snapshot = AgentConfigSnapshot(
-            tenant_id=tenant_id,
-            agent_id=agent.id,
-            version=next_version,
-            config_snapshot=soul,
-            home_snapshot_id=None,
-            created_by=account_id,
-        )
-        self.session.add(snapshot)
-        self.session.flush()
-        revision = AgentConfigRevision(
-            tenant_id=tenant_id,
-            agent_id=agent.id,
-            current_snapshot_id=snapshot.id,
-            revision=1,
-            operation=operation,
-            created_by=account_id,
-        )
-        self.session.add(revision)
-        self.session.flush()
-        return snapshot
-
     def unique_roster_name(self, *, tenant_id: str, requested: str) -> str:
         candidates = [requested]
         for index in range(1, 100):
@@ -807,11 +702,3 @@ class AgentDslService:
     @staticmethod
     def _agent_icon_type(value: str | None) -> AgentIconType | None:
         return AgentIconType(value) if value else None
-
-
-def is_agent_v2_graph(graph: Mapping[str, Any]) -> bool:
-    return any(
-        isinstance(node.get("data"), Mapping) and is_dify_agent_node_data(node["data"])
-        for node in graph.get("nodes", [])
-        if isinstance(node, Mapping)
-    )

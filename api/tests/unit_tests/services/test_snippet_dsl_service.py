@@ -4,9 +4,10 @@ from unittest.mock import Mock
 
 import pytest
 import yaml
-from sqlalchemy import event
+from sqlalchemy import event, select
 from sqlalchemy.orm import Session
 
+from extensions.application_services.snippets import build_snippet_dsl_service
 from graphon.nodes import BuiltinNodeTypes
 from models import Account
 from models.snippet import CustomizedSnippet, SnippetType
@@ -18,6 +19,7 @@ from services.snippet_dsl_service import (
     SnippetPendingData,
     _check_version_compatibility,
 )
+from services.snippet_service import SnippetService
 from tests.unit_tests.model_factories import make_account, make_tenant, make_workflow
 
 SQLITE_MODELS = (CustomizedSnippet,)
@@ -30,7 +32,7 @@ pytestmark = [
 @pytest.fixture
 def service(sqlite_session: Session) -> SnippetDslService:
     """Create the service with a real caller-owned SQLite session."""
-    return SnippetDslService(session=sqlite_session)
+    return build_snippet_dsl_service(session=sqlite_session)
 
 
 def _account(*, account_id: str = "account-1", tenant_id: str = "tenant-1") -> Account:
@@ -547,8 +549,9 @@ def test_check_dependencies_returns_empty_without_draft_workflow(
     service: SnippetDslService, monkeypatch: pytest.MonkeyPatch
 ):
     monkeypatch.setattr(
-        "services.snippet_dsl_service.SnippetService",
-        lambda *_args, **_kwargs: SimpleNamespace(get_draft_workflow=Mock(return_value=None)),
+        service,
+        "_snippets",
+        Mock(spec=SnippetService, get_draft_workflow=Mock(return_value=None)),
     )
 
     result = service.check_dependencies(_snippet())
@@ -565,8 +568,9 @@ def test_check_dependencies_returns_generated_dependencies(service: SnippetDslSe
         }
     ]
     monkeypatch.setattr(
-        "services.snippet_dsl_service.SnippetService",
-        lambda *_args, **_kwargs: SimpleNamespace(get_draft_workflow=Mock(return_value=workflow)),
+        service,
+        "_snippets",
+        Mock(spec=SnippetService, get_draft_workflow=Mock(return_value=workflow)),
     )
     monkeypatch.setattr(service, "_extract_dependencies_from_workflow", Mock(return_value=["langgenius/openai"]))
     monkeypatch.setattr(
@@ -589,23 +593,17 @@ def test_create_or_update_snippet_updates_existing_snippet_and_syncs_workflow(
     )
     sqlite_session.add(snippet)
     sqlite_session.commit()
-    draft_workflow = _workflow()
-    snippet_service = SimpleNamespace(
-        get_draft_workflow=Mock(return_value=draft_workflow),
-        sync_draft_workflow=Mock(return_value=draft_workflow),
-    )
-    monkeypatch.setattr("services.snippet_dsl_service.SnippetService", lambda *_args, **_kwargs: snippet_service)
     monkeypatch.setattr(
-        "services.snippet_dsl_service.WorkflowAgentPublishService.sync_agent_bindings_for_draft",
+        "services.agent.workflow_publish_service.WorkflowAgentPublishService._synchronize_bindings",
         Mock(return_value={"retired-agent"}),
     )
     monkeypatch.setattr(
-        "services.snippet_dsl_service.WorkflowAgentPublishService.validate_agent_nodes_for_draft_sync",
+        "services.agent.workflow_publish_service.WorkflowAgentPublishService.validate_agent_nodes_for_draft_sync",
         Mock(),
     )
     retire_unowned = Mock()
     monkeypatch.setattr(
-        "services.snippet_dsl_service.WorkflowAgentRetirementService.retire_unowned",
+        "services.agent.retirement_service.WorkflowAgentRetirementService.retire_unowned",
         retire_unowned,
     )
 
@@ -628,14 +626,17 @@ def test_create_or_update_snippet_updates_existing_snippet_and_syncs_workflow(
     assert snippet.name == "New"
     assert snippet.type == "node"
     assert snippet.icon_info == {"icon": "x"}
-    snippet_service.sync_draft_workflow.assert_called_once()
     assert not sqlite_session.in_transaction()
+    persisted_draft = sqlite_session.scalar(select(Workflow).where(Workflow.app_id == result.id))
+    assert persisted_draft is not None
+    assert persisted_draft.kind == "snippet"
+    assert persisted_draft.graph_dict == {"nodes": [], "edges": []}
     persisted = sqlite_session.get(CustomizedSnippet, snippet.id)
     assert persisted is not None
     assert persisted.name == "New"
     retire_unowned.assert_called_once_with(
         tenant_id="tenant-1",
-        agent_ids={"retired-agent"},
+        agent_ids=["retired-agent"],
         account_id="account-1",
     )
 
@@ -643,17 +644,12 @@ def test_create_or_update_snippet_updates_existing_snippet_and_syncs_workflow(
 def test_create_or_update_snippet_creates_new_snippet_and_flushes(
     service: SnippetDslService, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ):
-    snippet_service = SimpleNamespace(
-        get_draft_workflow=Mock(return_value=None),
-        sync_draft_workflow=Mock(return_value=_workflow()),
-    )
-    monkeypatch.setattr("services.snippet_dsl_service.SnippetService", lambda *_args, **_kwargs: snippet_service)
     monkeypatch.setattr(
-        "services.snippet_dsl_service.WorkflowAgentPublishService.sync_agent_bindings_for_draft",
+        "services.agent.workflow_publish_service.WorkflowAgentPublishService._synchronize_bindings",
         Mock(return_value=set()),
     )
     monkeypatch.setattr(
-        "services.snippet_dsl_service.WorkflowAgentPublishService.validate_agent_nodes_for_draft_sync",
+        "services.agent.workflow_publish_service.WorkflowAgentPublishService.validate_agent_nodes_for_draft_sync",
         Mock(),
     )
 
@@ -674,14 +670,18 @@ def test_create_or_update_snippet_creates_new_snippet_and_flushes(
     assert result.name == "New Snippet"
     assert result.type == "group"
     assert sqlite_session.get(CustomizedSnippet, result.id) is result
-    snippet_service.sync_draft_workflow.assert_called_once()
     assert not sqlite_session.in_transaction()
+    persisted_draft = sqlite_session.scalar(select(Workflow).where(Workflow.app_id == result.id))
+    assert persisted_draft is not None
+    assert persisted_draft.kind == "snippet"
+    assert persisted_draft.graph_dict == {"nodes": [], "edges": []}
 
 
 def test_export_snippet_dsl_raises_without_draft_workflow(service: SnippetDslService, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(
-        "services.snippet_dsl_service.SnippetService",
-        lambda *_args, **_kwargs: SimpleNamespace(get_draft_workflow=Mock(return_value=None)),
+        service,
+        "_snippets",
+        Mock(spec=SnippetService, get_draft_workflow=Mock(return_value=None)),
     )
 
     with pytest.raises(ValueError, match="Missing draft workflow"):
@@ -697,8 +697,9 @@ def test_export_snippet_dsl_returns_yaml(service: SnippetDslService, monkeypatch
         input_fields=[{"variable": "query"}],
     )
     monkeypatch.setattr(
-        "services.snippet_dsl_service.SnippetService",
-        lambda *_args, **_kwargs: SimpleNamespace(get_draft_workflow=Mock(return_value=workflow)),
+        service,
+        "_snippets",
+        Mock(spec=SnippetService, get_draft_workflow=Mock(return_value=workflow)),
     )
     monkeypatch.setattr(
         "services.snippet_dsl_service.DependenciesAnalysisService.generate_dependencies",
@@ -720,8 +721,10 @@ def test_export_snippet_dsl_uses_requested_published_workflow(
     get_published_workflow_by_id = Mock(return_value=workflow)
     get_draft_workflow = Mock()
     monkeypatch.setattr(
-        "services.snippet_dsl_service.SnippetService",
-        lambda *_args, **_kwargs: SimpleNamespace(
+        service,
+        "_snippets",
+        Mock(
+            spec=SnippetService,
             get_draft_workflow=get_draft_workflow,
             get_published_workflow_by_id=get_published_workflow_by_id,
         ),

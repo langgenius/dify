@@ -10,17 +10,16 @@ from typing import Any, Final
 
 from flask_restx import Resource
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import (
-    BadRequest,
-    HTTPException,
-    InternalServerError,
-    NotFound,
-    TooManyRequests,
-    UnprocessableEntity,
-)
 
 import services
 from constants.oauth_bearer import Scope
+from controllers.common.errors import (
+    InvalidRequestError,
+    NotFoundError,
+    TooManyRequestsError,
+    UnprocessableEntityError,
+    raise_unexpected_error,
+)
 from controllers.common.fields import EventStreamResponse
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.openapi import openapi_ns
@@ -67,6 +66,7 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
+from extensions.ext_application_services import application_services
 from extensions.ext_redis import redis_client
 from graphon.graph_engine.manager import GraphEngineManager
 from graphon.model_runtime.errors.invoke import InvokeError
@@ -95,13 +95,13 @@ def _translate_service_errors() -> Generator[None, None, None]:
     try:
         yield
     except WorkflowNotFoundError as ex:
-        raise NotFound(str(ex))
+        raise NotFoundError(str(ex))
     except (IsDraftWorkflowError, WorkflowIdFormatError) as ex:
-        raise BadRequest(str(ex))
+        raise InvalidRequestError(str(ex))
     except TriggerWorkflowServiceModeUnavailableServiceError:
         raise TriggerWorkflowServiceModeUnavailableError()
     except services.errors.conversation.ConversationNotExistsError:
-        raise NotFound("Conversation Not Exists.")
+        raise NotFoundError("Conversation Not Exists.")
     except services.errors.conversation.ConversationCompletedError:
         raise ConversationCompletedError()
     except services.errors.app_model_config.AppModelConfigBrokenError:
@@ -117,19 +117,16 @@ def _translate_service_errors() -> Generator[None, None, None]:
         # App concurrency limit. Without this it falls through to the bare `except Exception`
         # below and surfaces as a 500. Render as the canonical 429 (code "too_many_requests");
         # the source message is dropped since it carries internal detail (client_id / limits).
-        raise TooManyRequests()
+        raise TooManyRequestsError()
     except InvokeRateLimitError as ex:
         raise InvokeRateLimitHttpError(ex.description)
     except InvokeError as e:
         raise CompletionRequestError(e.description)
     except ValueError:
         logger.warning("run input refused by the service.", exc_info=True)
-        raise BadRequest(_INVALID_RUN_INPUT)
-    except HTTPException:
-        raise
-    except Exception:
-        logger.exception("internal server error.")
-        raise InternalServerError()
+        raise InvalidRequestError(_INVALID_RUN_INPUT)
+    except Exception as error:
+        raise_unexpected_error(error, message="App execution failed")
 
 
 _RUN_GUARDS: Final = (
@@ -145,6 +142,8 @@ _STREAM_RESULT: Final = (200, EventStreamResponse, "Run result (SSE stream)")
 
 def _generate(app: App, caller: Any, args: dict[str, Any], session: Session):
     return AppGenerateService.generate(
+        variables=application_services().workflow_variables,
+        runtime=application_services().workflow_runtime,
         session=session,
         app_model=app,
         user=caller,
@@ -171,7 +170,7 @@ def _stream(ctx: Context, args: dict[str, Any]):
 
 def _require_mode(app: App, *modes: AppMode) -> None:
     if app.mode not in modes:
-        raise UnprocessableEntity("app_mode_mismatch")
+        raise UnprocessableEntityError("app_mode_mismatch")
 
 
 def _respond(ctx: Context, stream: Any):

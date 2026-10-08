@@ -1,7 +1,8 @@
 import json
 import logging
-from collections.abc import Generator, Mapping, Sequence
+from collections.abc import Callable, Generator, Mapping, Sequence
 from contextlib import contextmanager
+from dataclasses import replace
 from datetime import UTC, datetime
 from typing import Any
 
@@ -9,19 +10,12 @@ from sqlalchemy import delete, event, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
-from core.workflow.node_factory import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from enums import DeploymentEdition
-from graphon.enums import BuiltinNodeTypes, NodeType
+from enums.agent import WorkflowAgentBindingType
+from graphon.enums import NodeType
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import Account, TagBinding
-from models.agent import (
-    WORKFLOW_ONLY_AGENT_SOURCES,
-    Agent,
-    AgentScope,
-    AgentStatus,
-    WorkflowAgentBindingType,
-    WorkflowAgentNodeBinding,
-)
+from models.agent import WORKFLOW_ONLY_AGENT_SOURCES, Agent, AgentScope, AgentStatus, WorkflowAgentNodeBinding
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import UploadFile
 from models.snippet import CustomizedSnippet, SnippetType
@@ -35,29 +29,28 @@ from models.workflow import (
     WorkflowKind,
     WorkflowNodeExecutionModel,
     WorkflowRun,
-    WorkflowType,
 )
+from repositories.agent.retirement_repository import WorkflowAgentRetirementRepository
+from repositories.agent.workflow_binding_repository import workflow_binding_scope
 from repositories.factory import DifyAPIRepositoryFactory
-from services.agent.legacy_retirement_service import WorkflowAgentRetirementService
-from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
-from services.errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
+from repositories.workflow.definition_repository import WorkflowDefinitionStore, workflow_from_snapshot, workflow_record
+from repositories.workflow.snippet_publication_repository import SnippetPublicationRepository
+from services.agent.retirement_service import WorkflowAgentRetirementService
+from services.agent.workflow_contracts import AgentSkillReader
+from services.agent.workflow_publish_service import WorkflowAgentPublishService
+from services.errors.app import IsDraftWorkflowError
 from services.tag_application_service import TagTargetQuery
+from services.tools.provider_queries import ToolProviders
+from services.workflow.contracts import WorkflowRecord
+from services.workflow.execution.adapters.node_factory import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
+from services.workflow.snippet_policy import validate_snippet_graph_forbidden_nodes
 from services.workflow_node_execution_trace_service import (
     WorkflowNodeExecutionTrace,
     assemble_workflow_node_execution_traces,
 )
-from services.workflow_restore import apply_published_workflow_snapshot_to_draft
+from services.workflow_ref_service import WorkflowRef
 
 logger = logging.getLogger(__name__)
-
-# Node types not allowed in snippet workflows (sync, publish, DSL import).
-SNIPPET_FORBIDDEN_NODE_TYPES: frozenset[str] = frozenset(
-    {
-        BuiltinNodeTypes.START,
-        BuiltinNodeTypes.HUMAN_INPUT,
-        BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL,
-    }
-)
 
 
 class SnippetService:
@@ -67,6 +60,9 @@ class SnippetService:
         self,
         session_maker: sessionmaker[Session] | Session | None = None,
         session: Session | None = None,
+        *,
+        agent_bindings: Callable[[Session], WorkflowAgentPublishService],
+        skills: AgentSkillReader,
     ):
         """Initialize SnippetService with repository dependencies."""
         if isinstance(session_maker, Session):
@@ -77,7 +73,10 @@ class SnippetService:
         if session_maker is None:
             raise ValueError("SnippetService requires a session or session_maker.")
         self._session = session
+        self._agent_bindings = agent_bindings
         self._session_maker = session_maker
+        self._publication = SnippetPublicationRepository(session_maker)
+        self._skills = skills
         self._node_execution_service_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
             session_maker
         )
@@ -177,30 +176,6 @@ class SnippetService:
             except Exception:
                 logger.exception("Failed to delete snippet archive file %s", key)
 
-    @staticmethod
-    def validate_snippet_graph_forbidden_nodes(graph: Mapping[str, Any]) -> None:
-        """Reject graphs that contain node types not allowed in snippets."""
-        nodes = graph.get("nodes") or []
-        disallowed: list[tuple[str, str]] = []
-        for node in nodes:
-            if not isinstance(node, dict):
-                continue
-            node_data = node.get("data") or {}
-            node_type = node_data.get("type")
-            if not isinstance(node_type, str):
-                continue
-            if node_type in SNIPPET_FORBIDDEN_NODE_TYPES:
-                node_id = node.get("id")
-                disallowed.append((str(node_id) if node_id is not None else "?", node_type))
-        if not disallowed:
-            return
-        detail = ", ".join(f"{nid}:{t}" for nid, t in disallowed)
-        raise ValueError(
-            f"Snippet workflow cannot contain start, human-input, or knowledge-retrieval nodes. Found: {detail}"
-        )
-
-    # --- CRUD Operations ---
-
     def get_snippets(
         self,
         *,
@@ -294,6 +269,7 @@ class SnippetService:
         icon_info: dict | None,
         input_fields: list[dict] | None,
         account: Account,
+        graph: dict[str, Any] | None = None,
     ) -> CustomizedSnippet:
         """
         Create a new snippet.
@@ -307,6 +283,8 @@ class SnippetService:
         :param account: Creator account
         :return: Created CustomizedSnippet
         """
+        if graph is not None:
+            validate_snippet_graph_forbidden_nodes(graph)
         snippet = CustomizedSnippet(
             tenant_id=tenant_id,
             name=name,
@@ -400,7 +378,9 @@ class SnippetService:
             tenant_id = snippet.tenant_id
 
             def collect_agent_resources(_session: Session) -> None:
-                WorkflowAgentRetirementService.retire_unowned(
+                WorkflowAgentRetirementService(
+                    WorkflowAgentRetirementRepository(sessionmaker(bind=session.get_bind(), expire_on_commit=False))
+                ).retire_unowned(
                     tenant_id=tenant_id,
                     agent_ids=candidate_agent_ids,
                     account_id=account_id,
@@ -492,13 +472,20 @@ class SnippetService:
         :return: Draft Workflow or None
         """
         with self._session_scope() as session:
-            stmt = select(Workflow).where(
-                Workflow.tenant_id == snippet.tenant_id,
-                Workflow.app_id == snippet.id,
-                self._snippet_kind_filter(),
-                Workflow.version == "draft",
+            return WorkflowDefinitionStore.get_draft_workflow(snippet, session=session, kind=WorkflowKind.SNIPPET.value)
+
+    def get_draft_workflow_record(self, snippet: CustomizedSnippet) -> WorkflowRecord | None:
+        """Materialize editor data, including Agent bindings, before serialization."""
+        with self._session_scope() as session:
+            workflow = WorkflowDefinitionStore.get_draft_workflow(
+                snippet, session=session, kind=WorkflowKind.SNIPPET.value
             )
-            return session.scalar(stmt)
+            if workflow is None:
+                return None
+            graph = self._agent_bindings(session).project_draft_bindings_to_graph(
+                draft_workflow=workflow_binding_scope(workflow)
+            )
+            return replace(workflow_record(workflow, session), graph=graph, conversation_variables=[])
 
     def get_published_workflow(self, snippet: CustomizedSnippet) -> Workflow | None:
         """
@@ -511,13 +498,16 @@ class SnippetService:
             return None
 
         with self._session_scope() as session:
-            stmt = select(Workflow).where(
-                Workflow.tenant_id == snippet.tenant_id,
-                Workflow.app_id == snippet.id,
-                self._snippet_kind_filter(),
-                Workflow.id == snippet.workflow_id,
+            return WorkflowDefinitionStore.get_published_workflow(
+                snippet, session=session, kind=WorkflowKind.SNIPPET.value
             )
-            return session.scalar(stmt)
+
+    def get_published_workflow_record(self, snippet: CustomizedSnippet) -> WorkflowRecord | None:
+        with self._session_scope() as session:
+            workflow = WorkflowDefinitionStore.get_published_workflow(
+                snippet, session=session, kind=WorkflowKind.SNIPPET.value
+            )
+            return workflow_record(workflow, session) if workflow is not None else None
 
     def get_published_workflow_by_id(self, snippet: CustomizedSnippet, workflow_id: str) -> Workflow | None:
         """
@@ -542,217 +532,28 @@ class SnippetService:
             raise IsDraftWorkflowError("source workflow must be published")
         return workflow
 
-    def sync_draft_workflow(
-        self,
-        *,
-        snippet: CustomizedSnippet,
-        graph: dict,
-        unique_hash: str | None,
-        account: Account,
-        input_fields: list[dict] | None = None,
-        sync_agent_bindings: bool = True,
-    ) -> Workflow:
-        """
-        Sync draft workflow for snippet.
-
-        Snippet workflows do not persist environment variables (always empty) or
-        conversation variables (always empty).
-
-        :param snippet: CustomizedSnippet instance
-        :param graph: Workflow graph configuration
-        :param unique_hash: Hash for conflict detection
-        :param account: Account making the change
-        :param input_fields: Input fields for snippet
-        :return: Synced Workflow
-        :raises WorkflowHashNotEqualError: If hash mismatch
-        """
-        SnippetService.validate_snippet_graph_forbidden_nodes(graph)
-
-        workflow = self.get_draft_workflow(snippet=snippet)
-
-        if workflow and workflow.unique_hash != unique_hash:
-            raise WorkflowHashNotEqualError()
-
-        # Create draft workflow if not found
-        if not workflow:
-            workflow = Workflow(
-                tenant_id=snippet.tenant_id,
-                app_id=snippet.id,
-                features="{}",
-                type=WorkflowType.WORKFLOW,
-                kind=WorkflowKind.SNIPPET,
-                version="draft",
-                graph=json.dumps(graph),
-                created_by=account.id,
-                environment_variables=[],
-                conversation_variables=[],
-            )
-        else:
-            # Update existing draft workflow
-            workflow.graph = json.dumps(graph)
-            workflow.type = WorkflowType.WORKFLOW
-            workflow.kind = WorkflowKind.SNIPPET
-            workflow.updated_by = account.id
-            workflow.updated_at = datetime.now(UTC).replace(tzinfo=None)
-            workflow.environment_variables = []
-            workflow.conversation_variables = []
-
-        # Update snippet's input_fields if provided
-        if input_fields is not None:
-            snippet.input_fields = json.dumps(input_fields)
-            snippet.updated_by = account.id
-            snippet.updated_at = datetime.now(UTC).replace(tzinfo=None)
-
-        from services.agent.legacy_workflow_publish_service import WorkflowAgentPublishService
-
-        retirement_candidates: set[str] = set()
-        with self._session_scope() as session:
-            session.add(workflow)
-            session.add(snippet)
-            if sync_agent_bindings:
-                session.flush()
-                retirement_candidates = WorkflowAgentPublishService.sync_agent_bindings_for_draft(
-                    session=session,
-                    draft_workflow=workflow,
-                    account_id=account.id,
-                )
-                WorkflowAgentPublishService.validate_agent_nodes_for_draft_sync(
-                    session=session,
-                    draft_workflow=workflow,
-                )
-            self._commit_if_owned(session)
-        if self._session is None:
-            WorkflowAgentRetirementService.retire_unowned(
-                tenant_id=snippet.tenant_id,
-                agent_ids=retirement_candidates,
-                account_id=account.id,
-            )
-        return workflow
-
-    def restore_published_workflow_to_draft(
-        self,
-        *,
-        snippet: CustomizedSnippet,
-        workflow_id: str,
-        account: Account,
-    ) -> Workflow:
-        """
-        Restore a published snippet workflow snapshot into the draft workflow.
-
-        :param snippet: CustomizedSnippet instance
-        :param workflow_id: Published workflow ID
-        :param account: Account making the change
-        :return: Restored draft Workflow
-        :raises WorkflowNotFoundError: If the source workflow does not exist
-        :raises IsDraftWorkflowError: If the source workflow is a draft
-        :raises ValueError: If the restored graph is invalid for snippets
-        """
-        source_workflow = self.get_published_workflow_by_id(snippet=snippet, workflow_id=workflow_id)
-        if not source_workflow:
-            raise WorkflowNotFoundError("Workflow not found.")
-
-        SnippetService.validate_snippet_graph_forbidden_nodes(source_workflow.graph_dict)
-
-        draft_workflow = self.get_draft_workflow(snippet=snippet)
-        draft_workflow, _is_new_draft = apply_published_workflow_snapshot_to_draft(
-            tenant_id=snippet.tenant_id,
-            app_id=snippet.id,
-            source_workflow=source_workflow,
-            draft_workflow=draft_workflow,
-            account=account,
-            updated_at_factory=lambda: datetime.now(UTC).replace(tzinfo=None),
-        )
-
-        with self._session_scope() as session:
-            session.add(draft_workflow)
-            session.flush()
-            from services.agent.legacy_workflow_publish_service import WorkflowAgentPublishService
-
-            retirement_candidates = WorkflowAgentPublishService.restore_agent_node_bindings_to_draft(
-                session=session,
-                source_workflow=source_workflow,
-                draft_workflow=draft_workflow,
-                account_id=account.id,
-            )
-            self._commit_if_owned(session)
-        if self._session is None:
-            WorkflowAgentRetirementService.retire_unowned(
-                tenant_id=snippet.tenant_id,
-                agent_ids=retirement_candidates,
-                account_id=account.id,
-            )
-        return draft_workflow
-
-    def publish_workflow(
-        self,
-        *,
-        session: Session,
-        snippet: CustomizedSnippet,
-        account: Account,
-    ) -> Workflow:
-        """
-        Publish the draft workflow as a new version.
-
-        :param session: Database session
-        :param snippet: CustomizedSnippet instance
-        :param account: Account making the change
-        :return: Published Workflow
-        :raises ValueError: If no draft workflow exists
-        """
-        draft_workflow_stmt = select(Workflow).where(
-            Workflow.tenant_id == snippet.tenant_id,
-            Workflow.app_id == snippet.id,
-            self._snippet_kind_filter(),
-            Workflow.version == "draft",
-        )
-        draft_workflow = session.scalar(draft_workflow_stmt)
-        if not draft_workflow:
-            raise ValueError("No valid workflow found.")
-
-        SnippetService.validate_snippet_graph_forbidden_nodes(draft_workflow.graph_dict)
+    def publish_workflow(self, *, snippet: CustomizedSnippet, account: Account) -> Workflow:
+        """Prepare external dependencies without a transaction, then recheck and publish."""
+        with self._publication.draft(tenant_id=snippet.tenant_id, snippet_id=snippet.id) as (source, bindings):
+            agents = WorkflowAgentPublishService(repository=bindings).publication_state(draft_workflow=source)
+        draft = workflow_from_snapshot(source)
+        validate_snippet_graph_forbidden_nodes(draft.graph_dict)
 
         from core.workflow.llm_environment_variable import validate_llm_environment_model_references
 
         validate_llm_environment_model_references(
-            graph=draft_workflow.graph_dict,
-            environment_variables=draft_workflow.environment_variables,
+            graph=draft.graph_dict,
+            environment_variables=draft.environment_variables,
         )
-
-        from services.agent.legacy_workflow_publish_service import WorkflowAgentPublishService
-
-        WorkflowAgentPublishService.validate_agent_nodes_for_publish(
-            session=session,
-            draft_workflow=draft_workflow,
-        )
-
-        # Create new published workflow
-        workflow = Workflow.new(
-            tenant_id=snippet.tenant_id,
-            app_id=snippet.id,
-            type=WorkflowType.WORKFLOW.value,
-            version=str(datetime.now(UTC).replace(tzinfo=None)),
-            graph=draft_workflow.graph,
-            features=draft_workflow.features,
-            created_by=account.id,
-            environment_variables=[],
-            conversation_variables=[],
-            rag_pipeline_variables=draft_workflow.rag_pipeline_variables,
-            kind=WorkflowKind.SNIPPET.value,
-        )
-        session.add(workflow)
-        WorkflowAgentPublishService.copy_agent_node_bindings_to_published(
-            session=session,
-            draft_workflow=draft_workflow,
-            published_workflow=workflow,
-        )
-
-        # Update snippet version
-        snippet.version += 1
-        snippet.is_published = True
-        snippet.workflow_id = workflow.id
-        snippet.updated_by = account.id
-        session.add(snippet)
-
+        WorkflowAgentPublishService.validate_publication_state(agents, skills=self._skills)
+        with self._publication.publication(source) as transaction:
+            agent_service = WorkflowAgentPublishService(repository=transaction.bindings)
+            agent_service.validate_prepared_publication(draft_workflow=transaction.draft, prepared=agents)
+            workflow = transaction.create_version(account_id=account.id)
+            agent_service.copy_agent_node_bindings_to_published(
+                draft_workflow=transaction.draft, published_workflow=workflow_binding_scope(workflow)
+            )
+            transaction.activate(workflow, account_id=account.id)
         return workflow
 
     def get_all_published_workflows(
@@ -762,7 +563,7 @@ class SnippetService:
         snippet: CustomizedSnippet,
         page: int,
         limit: int,
-    ) -> tuple[Sequence[Workflow], bool]:
+    ) -> tuple[Sequence[WorkflowRecord], bool]:
         """
         Get all published workflow versions for snippet.
 
@@ -772,27 +573,17 @@ class SnippetService:
         :param limit: Items per page
         :return: Tuple of (workflows list, has_more flag)
         """
-        if not snippet.workflow_id:
-            return [], False
-
-        stmt = (
-            select(Workflow)
-            .where(
-                Workflow.app_id == snippet.id,
-                self._snippet_kind_filter(),
-                Workflow.version != "draft",
-            )
-            .order_by(Workflow.version.desc())
-            .limit(limit + 1)
-            .offset((page - 1) * limit)
+        workflows, has_more = WorkflowDefinitionStore.get_all_published_workflow(
+            session=session,
+            app_model=snippet,
+            page=page,
+            limit=limit,
+            user_id=None,
+            kind=WorkflowKind.SNIPPET,
+            include_draft=False,
         )
 
-        workflows = list(session.scalars(stmt).all())
-        has_more = len(workflows) > limit
-        if has_more:
-            workflows = workflows[:-1]
-
-        return workflows, has_more
+        return [workflow_record(workflow, session) for workflow in workflows], has_more
 
     def update_workflow(
         self,
@@ -802,7 +593,7 @@ class SnippetService:
         workflow_id: str,
         account: Account,
         data: dict[str, Any],
-    ) -> Workflow | None:
+    ) -> WorkflowRecord | None:
         """
         Update a published snippet workflow version's display metadata.
 
@@ -813,73 +604,15 @@ class SnippetService:
         :param data: Dictionary containing fields to update
         :return: Updated workflow or None if not found
         """
-        stmt = select(Workflow).where(
-            Workflow.id == workflow_id,
-            Workflow.tenant_id == snippet.tenant_id,
-            Workflow.app_id == snippet.id,
-            self._snippet_kind_filter(),
-            Workflow.version != Workflow.VERSION_DRAFT,
+        workflow = WorkflowDefinitionStore.update_workflow(
+            session=session,
+            account_id=account.id,
+            data=data,
+            workflow_ref=WorkflowRef(tenant_id=snippet.tenant_id, owner_id=snippet.id, workflow_id=workflow_id),
+            kind=WorkflowKind.SNIPPET.value,
+            published_only=True,
         )
-        workflow = session.scalar(stmt)
-        if not workflow:
-            return None
-
-        allowed_fields = {"marked_name", "marked_comment"}
-        for field, value in data.items():
-            if field in allowed_fields:
-                setattr(workflow, field, value)
-
-        workflow.updated_by = account.id
-        workflow.updated_at = datetime.now(UTC).replace(tzinfo=None)
-        session.add(workflow)
-        return workflow
-
-    def delete_workflow(
-        self,
-        *,
-        session: Session,
-        snippet: CustomizedSnippet,
-        workflow_id: str,
-    ) -> bool:
-        """
-        Delete a published snippet workflow version.
-
-        :param session: Database session
-        :param snippet: CustomizedSnippet instance
-        :param workflow_id: Workflow ID
-        :return: True if successful
-        :raises: ValueError if workflow not found
-        :raises: WorkflowInUseError if workflow is the snippet's active version or published as a tool
-        :raises: DraftWorkflowDeletionError if workflow is a draft version
-        """
-        stmt = select(Workflow).where(
-            Workflow.id == workflow_id,
-            Workflow.tenant_id == snippet.tenant_id,
-            Workflow.app_id == snippet.id,
-            self._snippet_kind_filter(),
-        )
-        workflow = session.scalar(stmt)
-        if not workflow:
-            raise ValueError(f"Workflow with ID {workflow_id} not found")
-
-        if workflow.version == Workflow.VERSION_DRAFT:
-            raise DraftWorkflowDeletionError("Cannot delete draft workflow versions")
-
-        if snippet.workflow_id == workflow.id:
-            raise WorkflowInUseError(f"Cannot delete workflow that is currently in use by snippet '{snippet.id}'")
-
-        tool_provider = session.scalar(
-            select(WorkflowToolProvider).where(
-                WorkflowToolProvider.tenant_id == snippet.tenant_id,
-                WorkflowToolProvider.app_id == snippet.id,
-                WorkflowToolProvider.version == workflow.version,
-            )
-        )
-        if tool_provider:
-            raise WorkflowInUseError("Cannot delete workflow that is published as a tool")
-
-        session.delete(workflow)
-        return True
+        return workflow_record(workflow, session) if workflow is not None else None
 
     # --- Default Block Configs ---
 
@@ -968,10 +701,7 @@ class SnippetService:
         )
 
     def get_snippet_workflow_run_node_executions(
-        self,
-        *,
-        snippet: CustomizedSnippet,
-        run_id: str,
+        self, *, snippet: CustomizedSnippet, run_id: str, tool_providers: ToolProviders
     ) -> list[WorkflowNodeExecutionTrace]:
         """
         Get workflow run node execution list.
@@ -992,7 +722,7 @@ class SnippetService:
 
         with self._session_scope() as session:
             return assemble_workflow_node_execution_traces(
-                node_executions, self._node_execution_service_repo, session=session
+                node_executions, self._node_execution_service_repo, session=session, tool_providers=tool_providers
             )
 
     # --- Node Execution Operations ---

@@ -43,7 +43,7 @@ def _provide_app_context():
 
 
 @pytest.fixture
-def store(monkeypatch):
+def store(monkeypatch, workflow_variables):
     engine = create_engine("sqlite://", poolclass=QueuePool)
     TypeBase.metadata.create_all(
         engine,
@@ -151,7 +151,7 @@ def store(monkeypatch):
                 message_files='["generated-file"]',
             )
         )
-    service = build_agent_app_services(database_client=sessions).logs
+    service = build_agent_app_services(database_client=sessions, variables=workflow_variables).logs
     try:
         yield sessions, service
     finally:
