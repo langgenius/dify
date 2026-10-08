@@ -1,19 +1,17 @@
 from __future__ import annotations
 
-from datetime import datetime
-from unittest.mock import Mock
+from unittest.mock import MagicMock
 
 import pytest
+from pytest_mock import MockerFixture
+from sqlalchemy import select
+from sqlalchemy.orm import Session, sessionmaker
 
+from enums import DeploymentEdition
+from extensions.ext_application_services import build_application_services
+from extensions.ext_redis import RedisClientWrapper
 from machinery.context import RequestContext
-from services.account_change_email_ports import (
-    AccountEmailPolicyGateway,
-    ChangeEmailCodeGenerator,
-    ChangeEmailNotificationGateway,
-    ChangeEmailSecurityGateway,
-    ChangeEmailSendLimiter,
-    ChangeEmailTokenGateway,
-)
+from models.account import Account, AccountIntegrate
 from services.account_change_email_service import AccountChangeEmailService
 from services.account_errors import (
     AccountEmailAlreadyInUseError,
@@ -22,18 +20,14 @@ from services.account_errors import (
     InvalidChangeEmailCodeError,
     InvalidChangeEmailTokenError,
 )
-from services.account_ports import AccountRepository
 from services.entities.account_entities import (
     AccountChangeEmailNewEmailToken,
     AccountChangeEmailNewEmailVerifiedToken,
     AccountChangeEmailOldEmailToken,
     AccountChangeEmailOldEmailVerifiedToken,
     AccountChangeEmailPhase,
-    AccountEmailResetResult,
-    AccountEmailResetStatus,
-    AccountSnapshot,
 )
-from tests.unit_tests.model_factories import make_account_snapshot
+from tests.unit_tests.model_factories import make_account
 
 
 def _context() -> RequestContext:
@@ -45,41 +39,68 @@ def _context() -> RequestContext:
     )
 
 
-def _account(*, email: str = "old@example.com") -> AccountSnapshot:
-    return make_account_snapshot(email=email, is_password_set=True, initialized_at=datetime(2026, 1, 1))
-
-
-def _service() -> tuple[AccountChangeEmailService, dict[str, Mock]]:
-    dependencies = {
-        "accounts": Mock(spec=AccountRepository),
-        "tokens": Mock(spec=ChangeEmailTokenGateway),
-        "codes": Mock(spec=ChangeEmailCodeGenerator),
-        "notifications": Mock(spec=ChangeEmailNotificationGateway),
-        "send_limits": Mock(spec=ChangeEmailSendLimiter),
-        "security": Mock(spec=ChangeEmailSecurityGateway),
-        "email_policy": Mock(spec=AccountEmailPolicyGateway),
+def _token_payload(
+    token: AccountChangeEmailOldEmailToken
+    | AccountChangeEmailOldEmailVerifiedToken
+    | AccountChangeEmailNewEmailToken
+    | AccountChangeEmailNewEmailVerifiedToken,
+) -> dict[str, str]:
+    return {
+        "account_id": token.account_id,
+        "email": token.email,
+        "old_email": token.old_email,
+        "code": token.code,
+        "email_change_phase": token.phase.value,
     }
-    service = AccountChangeEmailService(
-        accounts=dependencies["accounts"],
-        tokens=dependencies["tokens"],
-        codes=dependencies["codes"],
-        notifications=dependencies["notifications"],
-        send_limits=dependencies["send_limits"],
-        security=dependencies["security"],
-        email_policy=dependencies["email_policy"],
-    )
-    dependencies["accounts"].get.return_value = _account()
-    dependencies["codes"].generate.return_value = "123456"
-    dependencies["tokens"].issue.return_value = "token"
-    dependencies["send_limits"].is_limited.return_value = False
-    dependencies["security"].is_ip_limited.return_value = False
-    dependencies["security"].is_verification_limited.return_value = False
-    dependencies["email_policy"].is_frozen.return_value = False
-    return service, dependencies
 
 
-def test_send_old_email_code_coerces_unexpected_phase_to_initial_state() -> None:
-    service, dependencies = _service()
+@pytest.fixture
+def service(
+    sqlite_session_factory: sessionmaker[Session], redis_transport: tuple[RedisClientWrapper, MagicMock]
+) -> AccountChangeEmailService:
+    redis, commands = redis_transport
+    commands.return_value = 0
+    with sqlite_session_factory.begin() as session:
+        session.add(make_account(email="old@example.com"))
+        session.add(
+            AccountIntegrate(account_id="account-1", provider="github", open_id="external-id", encrypted_token="")
+        )
+    return build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.CLOUD,
+        initialization_password="",
+        redis=redis,
+    ).accounts.change_email
+
+
+@pytest.fixture
+def boundaries(service: AccountChangeEmailService, mocker: MockerFixture) -> dict[str, MagicMock]:
+    mocker.patch("services.account.adapters.secrets.randbelow", side_effect=[1, 2, 3, 4, 5, 6])
+    mocker.patch("services.account.adapters.send_change_mail_task.delay")
+    mocker.patch("services.account.adapters.send_change_mail_completed_notification_task.delay")
+    mocker.patch("services.account.adapters.TokenManager.revoke_token")
+    return {
+        "read_token": mocker.patch("services.account.adapters.TokenManager.get_token_data"),
+        "generate_token": mocker.patch("services.account.adapters.TokenManager.generate_token", return_value="token"),
+        "freeze_flag": mocker.patch("services.account.adapters.BillingService.is_email_in_freeze", return_value=False),
+        "freeze_type": mocker.patch("services.account.adapters.BillingService.get_email_freeze_type"),
+        "issue": mocker.spy(service._tokens, "issue"),
+        "revoke": mocker.spy(service._tokens, "revoke"),
+        "send_code": mocker.spy(service._notifications, "send_code"),
+        "send_completed": mocker.spy(service._notifications, "send_completed"),
+        "record": mocker.spy(service._send_limits, "record"),
+        "reset_email": mocker.spy(service._accounts, "reset_email"),
+        "email_exists": mocker.spy(service._accounts, "email_exists"),
+        "is_frozen": mocker.spy(service._email_policy, "is_frozen"),
+        "reset_verification_failures": mocker.spy(service._security, "reset_verification_failures"),
+        "record_verification_failure": mocker.spy(service._security, "record_verification_failure"),
+    }
+
+
+def test_send_old_email_code_coerces_unexpected_phase_to_initial_state(
+    service: AccountChangeEmailService,
+    boundaries: dict[str, MagicMock],
+) -> None:
 
     token = service.send_code(
         _context(),
@@ -91,29 +112,33 @@ def test_send_old_email_code_coerces_unexpected_phase_to_initial_state() -> None
     )
 
     assert token == "token"
-    issued = dependencies["tokens"].issue.call_args.args[0]
+    issued = boundaries["issue"].call_args.args[0]
     assert issued == AccountChangeEmailOldEmailToken(
         account_id="account-1",
         email="old@example.com",
         old_email="old@example.com",
         code="123456",
     )
-    dependencies["notifications"].send_code.assert_called_once_with(
+    boundaries["send_code"].assert_called_once_with(
         email="old@example.com",
         code="123456",
         language="en-US",
         phase=AccountChangeEmailPhase.OLD_EMAIL,
     )
-    dependencies["send_limits"].record.assert_called_once_with("old@example.com")
+    boundaries["record"].assert_called_once_with("old@example.com")
 
 
-def test_send_new_email_code_requires_account_bound_old_verified_token() -> None:
-    service, dependencies = _service()
-    dependencies["tokens"].get.return_value = AccountChangeEmailOldEmailVerifiedToken(
-        account_id="account-1",
-        email="old@example.com",
-        old_email="old@example.com",
-        code="old-code",
+def test_send_new_email_code_requires_account_bound_old_verified_token(
+    service: AccountChangeEmailService,
+    boundaries: dict[str, MagicMock],
+) -> None:
+    boundaries["read_token"].return_value = _token_payload(
+        AccountChangeEmailOldEmailVerifiedToken(
+            account_id="account-1",
+            email="old@example.com",
+            old_email="old@example.com",
+            code="old-code",
+        )
     )
 
     service.send_code(
@@ -125,7 +150,7 @@ def test_send_new_email_code_requires_account_bound_old_verified_token() -> None
         ip_address="127.0.0.1",
     )
 
-    issued = dependencies["tokens"].issue.call_args.args[0]
+    issued = boundaries["issue"].call_args.args[0]
     assert issued == AccountChangeEmailNewEmailToken(
         account_id="account-1",
         email="new@example.com",
@@ -134,13 +159,17 @@ def test_send_new_email_code_requires_account_bound_old_verified_token() -> None
     )
 
 
-def test_send_new_email_code_rejects_unverified_predecessor() -> None:
-    service, dependencies = _service()
-    dependencies["tokens"].get.return_value = AccountChangeEmailOldEmailToken(
-        account_id="account-1",
-        email="old@example.com",
-        old_email="old@example.com",
-        code="old-code",
+def test_send_new_email_code_rejects_unverified_predecessor(
+    service: AccountChangeEmailService,
+    boundaries: dict[str, MagicMock],
+) -> None:
+    boundaries["read_token"].return_value = _token_payload(
+        AccountChangeEmailOldEmailToken(
+            account_id="account-1",
+            email="old@example.com",
+            old_email="old@example.com",
+            code="old-code",
+        )
     )
 
     with pytest.raises(InvalidChangeEmailTokenError):
@@ -153,7 +182,7 @@ def test_send_new_email_code_rejects_unverified_predecessor() -> None:
             ip_address="127.0.0.1",
         )
 
-    dependencies["tokens"].issue.assert_not_called()
+    boundaries["issue"].assert_not_called()
 
 
 @pytest.mark.parametrize(
@@ -180,12 +209,13 @@ def test_send_new_email_code_rejects_unverified_predecessor() -> None:
     ],
 )
 def test_verify_code_promotes_only_pending_account_bound_token(
+    service: AccountChangeEmailService,
+    boundaries: dict[str, MagicMock],
     pending: AccountChangeEmailOldEmailToken | AccountChangeEmailNewEmailToken,
     verified_type: type[AccountChangeEmailOldEmailVerifiedToken] | type[AccountChangeEmailNewEmailVerifiedToken],
 ) -> None:
-    service, dependencies = _service()
-    dependencies["tokens"].get.return_value = pending
-    dependencies["tokens"].issue.return_value = "verified-token"
+    boundaries["read_token"].return_value = _token_payload(pending)
+    boundaries["generate_token"].return_value = "verified-token"
 
     result = service.verify_code(
         _context(),
@@ -196,18 +226,22 @@ def test_verify_code_promotes_only_pending_account_bound_token(
 
     assert result.email == pending.email
     assert result.token == "verified-token"
-    assert isinstance(dependencies["tokens"].issue.call_args.args[0], verified_type)
-    dependencies["tokens"].revoke.assert_called_once_with("pending-token")
-    dependencies["security"].reset_verification_failures.assert_called_once_with(pending.email)
+    assert isinstance(boundaries["issue"].call_args.args[0], verified_type)
+    boundaries["revoke"].assert_called_once_with("pending-token")
+    boundaries["reset_verification_failures"].assert_called_once_with(pending.email)
 
 
-def test_verify_code_records_invalid_code_without_promoting_token() -> None:
-    service, dependencies = _service()
-    dependencies["tokens"].get.return_value = AccountChangeEmailNewEmailToken(
-        account_id="account-1",
-        email="new@example.com",
-        old_email="old@example.com",
-        code="123456",
+def test_verify_code_records_invalid_code_without_promoting_token(
+    service: AccountChangeEmailService,
+    boundaries: dict[str, MagicMock],
+) -> None:
+    boundaries["read_token"].return_value = _token_payload(
+        AccountChangeEmailNewEmailToken(
+            account_id="account-1",
+            email="new@example.com",
+            old_email="old@example.com",
+            code="123456",
+        )
     )
 
     with pytest.raises(InvalidChangeEmailCodeError):
@@ -218,80 +252,99 @@ def test_verify_code_records_invalid_code_without_promoting_token() -> None:
             token="pending-token",
         )
 
-    dependencies["security"].record_verification_failure.assert_called_once_with("new@example.com")
-    dependencies["tokens"].revoke.assert_not_called()
+    boundaries["record_verification_failure"].assert_called_once_with("new@example.com")
+    boundaries["revoke"].assert_not_called()
 
 
-def test_reset_updates_account_and_unbinds_integrations_before_external_notifications() -> None:
-    service, dependencies = _service()
-    dependencies["tokens"].get.return_value = AccountChangeEmailNewEmailVerifiedToken(
-        account_id="account-1",
-        email="new@example.com",
-        old_email="old@example.com",
-        code="123456",
-    )
-    dependencies["accounts"].reset_email.return_value = AccountEmailResetResult(
-        status=AccountEmailResetStatus.UPDATED,
-        account=_account(email="new@example.com"),
+def test_reset_updates_account_and_unbinds_integrations_before_external_notifications(
+    service: AccountChangeEmailService,
+    boundaries: dict[str, MagicMock],
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    boundaries["read_token"].return_value = _token_payload(
+        AccountChangeEmailNewEmailVerifiedToken(
+            account_id="account-1",
+            email="new@example.com",
+            old_email="old@example.com",
+            code="123456",
+        )
     )
 
     result = service.reset(_context(), new_email="New@Example.com", token="verified-token")
 
     assert result.email == "new@example.com"
-    dependencies["accounts"].reset_email.assert_called_once_with(
+    with sqlite_session_factory() as session:
+        account = session.get(Account, "account-1")
+        assert account is not None
+        assert account.email == "new@example.com"
+        assert session.scalar(select(AccountIntegrate)) is None
+    boundaries["reset_email"].assert_called_once_with(
         "account-1",
         expected_old_email="old@example.com",
         new_email="new@example.com",
     )
-    dependencies["tokens"].revoke.assert_called_once_with("verified-token")
-    dependencies["notifications"].send_completed.assert_called_once_with(
+    boundaries["revoke"].assert_called_once_with("verified-token")
+    boundaries["send_completed"].assert_called_once_with(
         email="new@example.com",
         language="en-US",
     )
 
 
-def test_email_availability_preserves_suspended_domain_policy() -> None:
-    service, dependencies = _service()
-    dependencies["email_policy"].is_frozen.return_value = "email_domain_suspended"
+def test_email_availability_preserves_suspended_domain_policy(
+    service: AccountChangeEmailService,
+    boundaries: dict[str, MagicMock],
+) -> None:
+    boundaries["freeze_flag"].return_value = True
+    boundaries["freeze_type"].return_value = "email_domain_suspended"
 
     with pytest.raises(AccountEmailDomainSuspendedError):
         service.ensure_available("User@Suspended.Example")
 
-    dependencies["email_policy"].is_frozen.assert_called_once_with("user@suspended.example")
-    dependencies["accounts"].email_exists.assert_not_called()
+    boundaries["is_frozen"].assert_called_once_with("user@suspended.example")
+    boundaries["email_exists"].assert_not_called()
 
 
-def test_reset_rejects_existing_email_without_burning_verified_token() -> None:
-    service, dependencies = _service()
-    dependencies["tokens"].get.return_value = AccountChangeEmailNewEmailVerifiedToken(
-        account_id="account-1",
-        email="new@example.com",
-        old_email="old@example.com",
-        code="123456",
+def test_reset_rejects_existing_email_without_burning_verified_token(
+    service: AccountChangeEmailService,
+    boundaries: dict[str, MagicMock],
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    boundaries["read_token"].return_value = _token_payload(
+        AccountChangeEmailNewEmailVerifiedToken(
+            account_id="account-1",
+            email="new@example.com",
+            old_email="old@example.com",
+            code="123456",
+        )
     )
-    dependencies["accounts"].reset_email.return_value = AccountEmailResetResult(
-        status=AccountEmailResetStatus.EMAIL_IN_USE
-    )
+    with sqlite_session_factory.begin() as session:
+        session.add(make_account(account_id="other-account", email="new@example.com"))
 
     with pytest.raises(AccountEmailAlreadyInUseError):
         service.reset(_context(), new_email="new@example.com", token="verified-token")
 
-    dependencies["tokens"].revoke.assert_not_called()
+    boundaries["revoke"].assert_not_called()
 
 
-def test_reset_rejects_token_when_account_email_changed_since_verification() -> None:
-    service, dependencies = _service()
-    dependencies["accounts"].reset_email.return_value = AccountEmailResetResult(
-        status=AccountEmailResetStatus.EMAIL_CHANGED
-    )
-    dependencies["tokens"].get.return_value = AccountChangeEmailNewEmailVerifiedToken(
-        account_id="account-1",
-        email="new@example.com",
-        old_email="old@example.com",
-        code="123456",
+def test_reset_rejects_token_when_account_email_changed_since_verification(
+    service: AccountChangeEmailService,
+    boundaries: dict[str, MagicMock],
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        account = session.get(Account, "account-1")
+        assert account is not None
+        account.email = "changed@example.com"
+    boundaries["read_token"].return_value = _token_payload(
+        AccountChangeEmailNewEmailVerifiedToken(
+            account_id="account-1",
+            email="new@example.com",
+            old_email="old@example.com",
+            code="123456",
+        )
     )
 
     with pytest.raises(AccountNotFoundError):
         service.reset(_context(), new_email="new@example.com", token="verified-token")
 
-    dependencies["tokens"].revoke.assert_not_called()
+    boundaries["revoke"].assert_not_called()
