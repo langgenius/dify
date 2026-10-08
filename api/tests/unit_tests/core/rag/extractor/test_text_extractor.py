@@ -8,7 +8,7 @@ from core.rag.extractor.text_extractor import TextExtractor
 
 
 class TestTextExtractor:
-    def test_extract_autodetect_preserves_full_file_beyond_sample(self, tmp_path: Path):
+    def test_extract_autodetect_preserves_full_file_beyond_sample(self, tmp_path: Path) -> None:
         file_path = tmp_path / "large.txt"
         content = "Document text\n" * 50_000 + "End of document"
         file_path.write_text(content, encoding="utf-16")
@@ -20,7 +20,7 @@ class TestTextExtractor:
         assert docs[0].page_content == content
         assert docs[0].metadata == {"source": str(file_path)}
 
-    def test_extract_success(self, tmp_path: Path):
+    def test_extract_success(self, tmp_path: Path) -> None:
         file_path = tmp_path / "data.txt"
         file_path.write_text("hello world", encoding="utf-8")
 
@@ -31,12 +31,12 @@ class TestTextExtractor:
         assert docs[0].page_content == "hello world"
         assert docs[0].metadata == {"source": str(file_path)}
 
-    def test_extract_autodetect_success_after_decode_error(self, monkeypatch: pytest.MonkeyPatch):
+    def test_extract_autodetect_success_after_decode_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
         extractor = TextExtractor("dummy.txt", autodetect_encoding=True)
 
         calls = []
 
-        def fake_read_text(self, encoding=None):
+        def fake_read_text(self: Path, encoding: str | None = None) -> str:
             calls.append(encoding)
             if encoding is None:
                 raise UnicodeDecodeError("utf-8", b"x", 0, 1, "decode")
@@ -56,10 +56,10 @@ class TestTextExtractor:
         assert docs[0].page_content == "decoded text"
         assert calls == [None, "bad", "utf-8"]
 
-    def test_extract_autodetect_all_fail_raises_runtime_error(self, monkeypatch: pytest.MonkeyPatch):
+    def test_extract_autodetect_all_fail_raises_runtime_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
         extractor = TextExtractor("dummy.txt", autodetect_encoding=True)
 
-        def always_decode_error(self, encoding=None):
+        def always_decode_error(self: Path, encoding: str | None = None) -> str:
             raise UnicodeDecodeError("utf-8", b"x", 0, 1, "decode")
 
         monkeypatch.setattr(Path, "read_text", always_decode_error, raising=True)
@@ -68,10 +68,12 @@ class TestTextExtractor:
         with pytest.raises(RuntimeError, match="all detected encodings failed"):
             extractor.extract()
 
-    def test_extract_decode_error_without_autodetect_raises_runtime_error(self, monkeypatch: pytest.MonkeyPatch):
+    def test_extract_decode_error_without_autodetect_raises_runtime_error(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         extractor = TextExtractor("dummy.txt", autodetect_encoding=False)
 
-        def always_decode_error(self, encoding=None):
+        def always_decode_error(self: Path, encoding: str | None = None) -> str:
             raise UnicodeDecodeError("utf-8", b"x", 0, 1, "decode")
 
         monkeypatch.setattr(Path, "read_text", always_decode_error, raising=True)
@@ -79,10 +81,10 @@ class TestTextExtractor:
         with pytest.raises(RuntimeError, match="specified encoding failed"):
             extractor.extract()
 
-    def test_extract_wraps_non_decode_exceptions(self, monkeypatch: pytest.MonkeyPatch):
+    def test_extract_wraps_non_decode_exceptions(self, monkeypatch: pytest.MonkeyPatch) -> None:
         extractor = TextExtractor("dummy.txt")
 
-        def raise_other(self, encoding=None):
+        def raise_other(self: Path, encoding: str | None = None) -> str:
             raise OSError("io error")
 
         monkeypatch.setattr(Path, "read_text", raise_other, raising=True)
