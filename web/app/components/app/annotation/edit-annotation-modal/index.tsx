@@ -2,10 +2,10 @@
 import type { FC } from 'react'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import {
@@ -142,7 +142,7 @@ const EditAnnotationModal: FC<Props> = ({
                             {t(($) => $['feature.annotation.removeConfirm'], { ns: 'appDebug' })}
                           </AlertDialogTitle>
                         </div>
-                        <AlertDialogActions>
+                        <AlertDialogFooter>
                           <AlertDialogCancelButton>
                             {t(($) => $['operation.cancel'], { ns: 'common' })}
                           </AlertDialogCancelButton>
@@ -156,7 +156,7 @@ const EditAnnotationModal: FC<Props> = ({
                           >
                             {t(($) => $['operation.confirm'], { ns: 'common' })}
                           </AlertDialogConfirmButton>
-                        </AlertDialogActions>
+                        </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
                   </div>
