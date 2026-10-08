@@ -117,6 +117,8 @@
   "common.branch": "分支",
   "common.chooseDSL": "選擇 DSL（yml）檔",
   "common.chooseStartNodeToRun": "選擇要執行的起始節點",
+  "common.clearCanvasConfirmDescription": "儲存將清空此工作流程，確定繼續嗎？",
+  "common.clearCanvasConfirmTitle": "確定清空畫布？",
   "common.clipboardVersionCompatibilityWarning": "此內容複製自不同版本的 Dify 應用，部分內容可能不相容。",
   "common.commentMode": "評論模式",
   "common.configure": "配置",

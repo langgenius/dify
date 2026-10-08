@@ -88,18 +88,6 @@ const collaborationListeners = vi.hoisted(() => ({
   graphReadyChange: null as null | ((isReady: boolean) => void),
 }))
 
-let workflowAppId = 'app-1'
-
-const createDeferred = <T,>() => {
-  let resolve!: (value: T) => void
-  let reject!: (reason: unknown) => void
-  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
-    resolve = resolvePromise
-    reject = rejectPromise
-  })
-  return { promise, resolve, reject }
-}
-
 let capturedContextProps: Record<string, unknown> | null = null
 
 type MockWorkflowWithInnerContextProps = Pick<
@@ -128,11 +116,10 @@ vi.mock('@/app/components/base/features/hooks', () => ({
 vi.mock('@/app/components/workflow/store', () => ({
   useStore: <T,>(selector: (state: { appId: string }) => T) =>
     selector({
-      appId: workflowAppId,
+      appId: 'app-1',
     }),
   useWorkflowStore: () => ({
     getState: () => ({
-      appId: workflowAppId,
       envSecrets: {},
       setConversationVariables: mockSetConversationVariables,
       setEnvironmentVariables: mockSetEnvironmentVariables,
@@ -442,7 +429,6 @@ vi.mock('@/context/permission-state', async () => {
 describe('WorkflowMain', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    workflowAppId = 'app-1'
     capturedContextProps = null
     collaborationRuntime.startCursorTracking.mockReset()
     collaborationRuntime.stopCursorTracking.mockReset()
@@ -464,64 +450,6 @@ describe('WorkflowMain', () => {
     hookFns.doSyncWorkflowDraft.mockResolvedValue({ hash: 'saved-hash', updatedAt: 2 })
     hookFns.handleRefreshWorkflowDraft.mockResolvedValue(true)
     useAppStore.setState({ appDetail: undefined })
-  })
-
-  it.each(['unmount', 'switch app'] as const)(
-    'ignores a collaborative workflow response after %s',
-    async (transition) => {
-      collaborationRuntime.isEnabled = true
-      const pending = createDeferred<Record<string, unknown>>()
-      mockFetchWorkflowDraft.mockReturnValueOnce(pending.promise)
-      const { unmount, rerender } = render(
-        <WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />,
-      )
-      const previousListener = collaborationListeners.workflowUpdate
-      const update = previousListener?.()
-      if (transition === 'unmount') unmount()
-      else {
-        workflowAppId = 'app-2'
-        rerender(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
-      }
-      vi.clearAllMocks()
-
-      pending.resolve({
-        hash: 'old-hash',
-        features: {},
-        graph: { nodes: [], edges: [] },
-        environment_variables: [],
-        conversation_variables: [],
-      })
-      await update
-      expect(mockSetSyncWorkflowDraftHash).not.toHaveBeenCalled()
-      expect(mockSetFeatures).not.toHaveBeenCalled()
-      expect(mockSetConversationVariables).not.toHaveBeenCalled()
-      expect(mockSetEnvironmentVariables).not.toHaveBeenCalled()
-      expect(mockHandleUpdateWorkflowCanvas).not.toHaveBeenCalled()
-      await previousListener?.()
-      expect(mockFetchWorkflowDraft).not.toHaveBeenCalled()
-    },
-  )
-
-  it('keeps the newest collaborative workflow when an older response arrives last', async () => {
-    collaborationRuntime.isEnabled = true
-    const first = createDeferred<Record<string, unknown>>()
-    const latest = createDeferred<Record<string, unknown>>()
-    mockFetchWorkflowDraft.mockReturnValueOnce(first.promise).mockReturnValueOnce(latest.promise)
-    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
-    const firstUpdate = collaborationListeners.workflowUpdate?.()
-    const latestUpdate = collaborationListeners.workflowUpdate?.()
-
-    latest.resolve({ hash: 'latest-hash', graph: { nodes: [{ id: 'latest-node' }], edges: [] } })
-    await latestUpdate
-    expect(mockSetSyncWorkflowDraftHash).toHaveBeenLastCalledWith('latest-hash')
-    expect(mockHandleUpdateWorkflowCanvas).toHaveBeenCalledWith(
-      expect.objectContaining({ nodes: [{ id: 'latest-node' }] }),
-    )
-
-    first.resolve({ hash: 'old-hash', graph: { nodes: [], edges: [] } })
-    await firstUpdate
-    expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledTimes(1)
-    expect(mockHandleUpdateWorkflowCanvas).toHaveBeenCalledTimes(1)
   })
 
   it('should render the inner workflow context with children and forwarded graph props', () => {

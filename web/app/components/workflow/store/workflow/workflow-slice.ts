@@ -62,7 +62,7 @@ export type WorkflowSliceShape = {
   setCommentPreviewHovering: (hovering: boolean) => void
   mousePosition: { pageX: number; pageY: number; elementX: number; elementY: number }
   setMousePosition: (mousePosition: WorkflowSliceShape['mousePosition']) => void
-  showConfirm?: { title: string; desc?: string; onConfirm: () => void }
+  showConfirm?: { title: string; desc?: string; onConfirm: () => void; onCancel?: () => void }
   setShowConfirm: (showConfirm: WorkflowSliceShape['showConfirm']) => void
   controlPromptEditorRerenderKey: number
   setControlPromptEditorRerenderKey: (controlPromptEditorRerenderKey: number) => void

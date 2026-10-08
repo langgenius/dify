@@ -24053,6 +24053,7 @@ The subscription constructor of the trigger provider
 | conversation_variables | [ object ] |  | No |
 | environment_variable_patch | [SyncEnvironmentVariablePatchPayload](#syncenvironmentvariablepatchpayload) |  | No |
 | features | object |  | Yes |
+| force | boolean | Explicitly confirm saving an empty workflow graph. | No |
 | graph | object |  | Yes |
 | hash | string |  | No |
 

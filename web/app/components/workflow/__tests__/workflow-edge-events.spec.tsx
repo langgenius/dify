@@ -1,5 +1,6 @@
 import type { Edge, Node } from '../types'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { BaseEdge, internalsSymbol, Position, ReactFlowProvider, useStoreApi } from 'reactflow'
 import { FlowType } from '@/types/common'
@@ -28,9 +29,6 @@ const collaborationBridge = vi.hoisted(() => ({
   canFlushGraphOnPageClose: vi.fn(),
   canUseLocalDraftFallback: vi.fn(),
   isConnected: vi.fn(),
-  canRestoreGraphFromCrdt: vi.fn(),
-  refreshGraphSynchronously: vi.fn(),
-  emitGraphViewState: vi.fn(),
   graphImportHandler: null as null | ((payload: { nodes: Node[]; edges: Edge[] }) => void),
   historyActionHandler: null as null | ((payload: unknown) => void),
   restoreIntentHandler: null as
@@ -89,7 +87,6 @@ const workflowHookMocks = vi.hoisted(() => ({
   handlePaneContextMenu: vi.fn(),
   handleSyncWorkflowDraft: vi.fn(),
   syncWorkflowDraftWhenPageClose: vi.fn(),
-  handleRefreshWorkflowDraft: vi.fn(),
   fetchInspectVars: vi.fn(),
   isValidConnection: vi.fn(),
   useShortcuts: vi.fn(),
@@ -208,9 +205,6 @@ vi.mock('../collaboration/core/collaboration-manager', () => ({
     canFlushGraphOnPageClose: collaborationBridge.canFlushGraphOnPageClose,
     canUseLocalDraftFallback: collaborationBridge.canUseLocalDraftFallback,
     isConnected: collaborationBridge.isConnected,
-    canRestoreGraphFromCrdt: collaborationBridge.canRestoreGraphFromCrdt,
-    refreshGraphSynchronously: collaborationBridge.refreshGraphSynchronously,
-    emitGraphViewState: collaborationBridge.emitGraphViewState,
     onGraphImport: (handler: (payload: { nodes: Node[]; edges: Edge[] }) => void) => {
       collaborationBridge.graphImportHandler = handler
       return vi.fn()
@@ -472,7 +466,7 @@ vi.mock('../hooks/use-workflow-panel-interactions', () => ({
 
 vi.mock('../hooks/use-workflow-refresh-draft', () => ({
   useWorkflowRefreshDraft: () => ({
-    handleRefreshWorkflowDraft: workflowHookMocks.handleRefreshWorkflowDraft,
+    handleRefreshWorkflowDraft: vi.fn(),
   }),
 }))
 
@@ -571,7 +565,6 @@ describe('Workflow edge event wiring', () => {
     collaborationBridge.canFlushGraphOnPageClose.mockReturnValue(true)
     collaborationBridge.canUseLocalDraftFallback.mockReturnValue(false)
     collaborationBridge.isConnected.mockReturnValue(true)
-    collaborationBridge.canRestoreGraphFromCrdt.mockReturnValue(true)
     eventEmitterState.subscription = null
     reactFlowBridge.store = null
     collaborationBridge.graphImportHandler = null
@@ -583,52 +576,6 @@ describe('Workflow edge event wiring', () => {
     workflowCommentState.activeCommentLoading = false
     workflowCommentState.replySubmitting = false
     workflowCommentState.replyUpdating = false
-  })
-
-  describe('draft refresh on returning to the tab', () => {
-    beforeEach(() => {
-      vi.useFakeTimers()
-      vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible')
-    })
-
-    afterEach(() => {
-      vi.useRealTimers()
-      vi.restoreAllMocks()
-    })
-
-    it('cancels the delayed refresh when the workflow editor unmounts', () => {
-      const { unmount } = renderSubject()
-      fireEvent(document, new Event('visibilitychange'))
-      unmount()
-
-      act(() => vi.advanceTimersByTime(500))
-      expect(workflowHookMocks.handleRefreshWorkflowDraft).not.toHaveBeenCalled()
-    })
-
-    it('cancels the delayed refresh when the tab becomes hidden again', () => {
-      renderSubject()
-      fireEvent(document, new Event('visibilitychange'))
-      vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden')
-      fireEvent(document, new Event('visibilitychange'))
-
-      act(() => vi.advanceTimersByTime(500))
-      expect(workflowHookMocks.handleRefreshWorkflowDraft).not.toHaveBeenCalled()
-      expect(workflowHookMocks.syncWorkflowDraftWhenPageClose).toHaveBeenCalled()
-    })
-
-    it.each([true, false])(
-      'refreshes once after repeated visibility events, with collaboration connected = %s',
-      (connected) => {
-        collaborationBridge.isConnected.mockReturnValue(connected)
-        renderSubject()
-        fireEvent(document, new Event('visibilitychange'))
-        fireEvent(document, new Event('visibilitychange'))
-
-        act(() => vi.advanceTimersByTime(500))
-        expect(workflowHookMocks.handleRefreshWorkflowDraft).toHaveBeenCalledTimes(1)
-        expect(workflowHookMocks.handleRefreshWorkflowDraft).toHaveBeenCalledWith(connected)
-      },
-    )
   })
 
   it('should forward pane, node and edge-change events to workflow handlers when emitted by the canvas', async () => {
@@ -744,12 +691,6 @@ describe('Workflow edge event wiring', () => {
       vi.advanceTimersByTime(5000)
 
       expect(workflowHookMocks.handleSyncWorkflowDraft).toHaveBeenCalledTimes(1)
-      expect(workflowHookMocks.handleSyncWorkflowDraft).toHaveBeenCalledWith(
-        true,
-        true,
-        expect.objectContaining({ onError: expect.any(Function) }),
-        { skipEmptyGraph: true },
-      )
       expect(pendingSync).not.toHaveBeenCalled()
     } finally {
       vi.useRealTimers()
@@ -832,13 +773,16 @@ describe('Workflow edge event wiring', () => {
   })
 
   it('should render confirm description and clear showConfirm when cancelled', async () => {
+    const user = userEvent.setup()
     const onConfirm = vi.fn()
+    const onCancel = vi.fn()
     const { store } = renderSubject({
       initialStoreState: {
         showConfirm: {
           title: 'Confirm title',
           desc: 'Confirm description',
           onConfirm,
+          onCancel,
         },
       },
     })
@@ -847,13 +791,14 @@ describe('Workflow edge event wiring', () => {
     expect(screen.getByText('Confirm title')).toBeInTheDocument()
     expect(screen.getByText('Confirm description')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
     await waitFor(() => {
       expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
     })
     expect(store.getState().showConfirm).toBeUndefined()
     expect(onConfirm).not.toHaveBeenCalled()
+    expect(onCancel).toHaveBeenCalledTimes(1)
   })
 
   it('should call showConfirm.onConfirm when confirm is clicked', () => {

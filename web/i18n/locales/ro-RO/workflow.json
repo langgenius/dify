@@ -117,6 +117,8 @@
   "common.branch": "RAMURĂ",
   "common.chooseDSL": "Alegeți fișierul DSL(yml)",
   "common.chooseStartNodeToRun": "Alegeți nodul de start pentru a rula",
+  "common.clearCanvasConfirmDescription": "Salvarea va goli acest flux de lucru. Continui?",
+  "common.clearCanvasConfirmTitle": "Golești zona de lucru?",
   "common.clipboardVersionCompatibilityWarning": "Acest conținut a fost copiat dintr-o altă versiune a aplicației Dify. Unele părți pot fi incompatibile.",
   "common.commentMode": "Mod comentarii",
   "common.configure": "Configurează",
