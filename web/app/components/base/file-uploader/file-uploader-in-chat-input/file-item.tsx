@@ -64,7 +64,7 @@ export function FileItem({
       )}
       <div className="mb-1 h-8">
         {previewKind ? (
-          <Dialog>
+          <Dialog disablePointerDismissal>
             <DialogTrigger
               title={name}
               className="line-clamp-2 w-full cursor-pointer text-left system-xs-medium break-all text-text-tertiary"
