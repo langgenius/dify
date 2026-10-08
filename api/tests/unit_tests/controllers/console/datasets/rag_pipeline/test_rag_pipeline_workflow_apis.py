@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from inspect import unwrap
 from typing import TypedDict, Unpack
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, Mock, create_autospec, patch
 from uuid import uuid4
 
 import pytest
@@ -54,6 +54,7 @@ from models.account import Account, TenantAccountRole
 from models.dataset import Pipeline
 from models.enums import CreatorUserRole
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
+from repositories.tools.provider_repository import ToolProviderRepository
 from repositories.workflow.definition_repository import workflow_record, workflow_snapshot
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.workflow_service import WorkflowInUseError
@@ -319,7 +320,7 @@ class TestDraftWorkflowApi:
         pipeline = make_pipeline()
         user = make_account()
 
-        service = Mock(spec=WorkflowDraftService)
+        service = create_autospec(WorkflowDraftService, instance=True)
         service.sync.side_effect = WorkflowHashNotEqualError()
 
         with (
@@ -357,7 +358,7 @@ class TestDraftWorkflowApi:
             created_at=datetime(2024, 1, 1),
         )
 
-        service = Mock(spec=WorkflowDraftService)
+        service = create_autospec(WorkflowDraftService, instance=True)
         service.restore.return_value = workflow_snapshot(workflow)
 
         with (
@@ -382,7 +383,7 @@ class TestDraftWorkflowApi:
         pipeline = make_pipeline()
         user = make_account(id="account-1")
 
-        service = Mock(spec=WorkflowDraftService)
+        service = create_autospec(WorkflowDraftService, instance=True)
         service.restore.side_effect = WorkflowNotFoundError("Workflow not found")
 
         with (
@@ -405,7 +406,7 @@ class TestDraftWorkflowApi:
         pipeline = make_pipeline()
         user = make_account(id="account-1")
 
-        service = Mock(spec=WorkflowDraftService)
+        service = create_autospec(WorkflowDraftService, instance=True)
         service.restore.side_effect = IsDraftWorkflowError("source workflow must be published")
 
         with (
@@ -759,7 +760,9 @@ class TestRagPipelineWorkflowLastRunApi:
 
 
 class TestRagPipelineWorkflowRunNodeExecutionListApi:
-    def test_get_node_executions_passes_current_user(self, app: Flask, *, tool_providers) -> None:
+    def test_get_node_executions_passes_current_user(
+        self, app: Flask, *, tool_providers: ToolProviderRepository
+    ) -> None:
         api = RagPipelineWorkflowRunNodeExecutionListApi()
         method = unwrap(api.get)
 

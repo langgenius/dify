@@ -123,6 +123,7 @@ def test_execution_finish_keeps_retry_candidates_including_cancelled_reservation
         if cancel:
             reservation = debug_lease(session, "run")
             assert reservation is not None
+            assert reservation.expires_at is not None
             assert reservation.expires_at <= naive_utc_now()
     assert finish(cancel=cancel) == WorkflowExecutionStatus.STOPPED
     assert repository.finished_agent_ids(

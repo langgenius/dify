@@ -15,10 +15,11 @@ from graphon.nodes.tool.tool_node import ToolNode
 from graphon.runtime import GraphRuntimeState, VariablePool
 from services.workflow.execution.adapters.node_factory import DifyNodeFactory
 from services.workflow.execution.adapters.node_runtime import DifyToolFileManager, DifyToolNodeRuntime
+from services.workflow.execution.ports import WorkflowRuntime
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
-def init_tool_node(config: dict[str, object], *, workflow_runtime) -> ToolNode:
+def init_tool_node(config: dict[str, object], *, workflow_runtime: WorkflowRuntime) -> ToolNode:
     graph_config = {
         "edges": [
             {
@@ -73,7 +74,7 @@ def init_tool_node(config: dict[str, object], *, workflow_runtime) -> ToolNode:
     return node
 
 
-def test_tool_variable_invoke(workflow_runtime) -> None:
+def test_tool_variable_invoke(workflow_runtime: WorkflowRuntime) -> None:
     node = init_tool_node(
         workflow_runtime=workflow_runtime,
         config={
@@ -109,7 +110,7 @@ def test_tool_variable_invoke(workflow_runtime) -> None:
                 assert item.node_run_result.outputs.get("text") is not None
 
 
-def test_tool_mixed_invoke(workflow_runtime) -> None:
+def test_tool_mixed_invoke(workflow_runtime: WorkflowRuntime) -> None:
     node = init_tool_node(
         workflow_runtime=workflow_runtime,
         config={

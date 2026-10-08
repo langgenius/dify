@@ -97,6 +97,34 @@ class TestBasedGenerateTaskPipeline:
         assert "Knowledge retrieval failed" in str(err)
         assert "agent_run_id=run-1" in str(err)
 
+    @pytest.mark.parametrize("sqlite_session", [(Message,)], indirect=True)
+    def test_handle_error_updates_message_when_found(self, pipeline, sqlite_session: Session):
+        event = QueueErrorEvent(error=ValueError("oops"))
+        _persist_message(sqlite_session, message_id="msg-1")
+
+        err = pipeline.handle_error(event=event, session=sqlite_session, message_id="msg-1")
+
+        assert err is event.error
+        sqlite_session.flush()
+        sqlite_session.expire_all()
+        updated_message = sqlite_session.get(Message, "msg-1")
+        assert updated_message is not None
+        assert updated_message.status == MessageStatus.ERROR
+        assert updated_message.error == "oops"
+
+    @pytest.mark.parametrize("sqlite_session", [(Message,)], indirect=True)
+    def test_handle_error_leaves_other_messages_unchanged(self, pipeline, sqlite_session: Session):
+        event = QueueErrorEvent(error=ValueError("oops"))
+        _persist_message(sqlite_session, message_id="other-message")
+
+        err = pipeline.handle_error(event=event, session=sqlite_session, message_id="missing-message")
+
+        assert err is event.error
+        untouched_message = sqlite_session.get(Message, "other-message")
+        assert untouched_message is not None
+        assert untouched_message.status == MessageStatus.NORMAL
+        assert untouched_message.error is None
+
     def test_error_to_stream_response_and_ping(self, pipeline):
         error_response = pipeline.error_to_stream_response(ValueError("boom"))
         ping_response = pipeline.ping_stream_response()

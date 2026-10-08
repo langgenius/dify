@@ -105,6 +105,66 @@ class HumanInputFormRecord:
         return self.submitted_at is not None
 
 
+class HumanInputFormRecordView(Protocol):
+    """Read-only submission state consumed by the Human Input application service."""
+
+    @property
+    def form_id(self) -> str: ...
+
+    @property
+    def workflow_run_id(self) -> str | None: ...
+
+    @property
+    def conversation_id(self) -> str | None: ...
+
+    @property
+    def tenant_id(self) -> str: ...
+
+    @property
+    def app_id(self) -> str: ...
+
+    @property
+    def form_kind(self) -> HumanInputFormKind: ...
+
+    @property
+    def definition(self) -> FormDefinition: ...
+
+    @property
+    def created_at(self) -> datetime: ...
+
+    @property
+    def expiration_time(self) -> datetime: ...
+
+    @property
+    def status(self) -> HumanInputFormStatus: ...
+
+    @property
+    def recipient_id(self) -> str | None: ...
+
+    @property
+    def recipient_type(self) -> RecipientType | None: ...
+
+    @property
+    def submitted(self) -> bool: ...
+
+
+class HumanInputFormSubmissionStore(Protocol):
+    """Persistence port shared by legacy and session-bound Human Input repositories."""
+
+    def get_by_token(self, form_token: str) -> HumanInputFormRecordView | None: ...
+
+    def mark_submitted(
+        self,
+        *,
+        form_id: str,
+        recipient_id: str | None,
+        selected_action_id: str,
+        form_data: Mapping[str, Any],
+        submission_user_id: str | None,
+        submission_end_user_id: str | None,
+    ) -> HumanInputFormRecordView: ...
+
+
 @dataclasses.dataclass(frozen=True)
 class PauseFormSnapshot:
     id: str

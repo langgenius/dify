@@ -4,7 +4,7 @@ from contextlib import nullcontext
 from dataclasses import replace
 from datetime import datetime
 from typing import cast
-from unittest.mock import Mock
+from unittest.mock import Mock, create_autospec
 
 import pytest
 
@@ -46,19 +46,20 @@ CONTEXT = RequestContext("request", None, "account", "tenant")
 
 @pytest.fixture
 def dependencies() -> tuple[ConsoleWorkflowService[WorkflowAgentBindingStore], Mock, Mock, Mock, Mock, Mock]:
-    definitions = Mock(spec=WorkflowDefinitions)
-    runtime = Mock(spec=WorkflowRuntime)
-    apps = Mock(spec=WorkflowAppLookup)
-    presence = Mock(spec=WorkflowPresence)
-    access = Mock(spec=WorkflowAccess)
-    lifecycle = Mock(spec=WorkflowDefinitionLifecycle)
-    definitions.publication.return_value = nullcontext(Mock(spec=WorkflowPublicationTransaction))
+    definitions = create_autospec(WorkflowDefinitions, instance=True, spec_set=True)
+    runtime = create_autospec(WorkflowRuntime, instance=True, spec_set=True)
+    apps = create_autospec(WorkflowAppLookup, instance=True, spec_set=True)
+    presence = create_autospec(WorkflowPresence, instance=True, spec_set=True)
+    access = create_autospec(WorkflowAccess, instance=True, spec_set=True)
+    lifecycle = create_autospec(WorkflowDefinitionLifecycle, instance=True, spec_set=True)
+    publication = create_autospec(WorkflowPublicationTransaction, instance=True, spec_set=True)
+    definitions.publication.return_value = nullcontext(publication)
     lifecycle.validate_publish.return_value = ValidatedWorkflowPublication(SNAPSHOT, ())
     service = ConsoleWorkflowService(
-        conversion=Mock(spec=WorkflowConversion),
+        conversion=create_autospec(WorkflowConversion, instance=True, spec_set=True),
         agent_services=WorkflowAgentPublishService,
         definitions=definitions,
-        drafts=Mock(spec=WorkflowDraftService),
+        drafts=create_autospec(WorkflowDraftService, instance=True, spec_set=True),
         lifecycle=lifecycle,
         runtime=runtime,
         apps=apps,

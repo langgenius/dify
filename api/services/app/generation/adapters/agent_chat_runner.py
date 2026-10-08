@@ -21,7 +21,7 @@ from models.model import App, Conversation, Message
 from services.agent.chat.cot_chat_runner import CotChatAgentRunner
 from services.agent.chat.cot_completion_runner import CotCompletionAgentRunner
 from services.agent.chat.function_call_runner import FunctionCallAgentRunner
-from services.agent.chat.ports import AgentDatasetTools
+from services.agent.chat.ports import AgentDatasetTools, AgentToolInvoker
 from services.app.generation.adapters.base_runner import AppRunner
 from services.app.generation.ports import AgentMessageRecords
 from services.workflow.execution.ports import WorkflowRuntime
@@ -34,9 +34,12 @@ class AgentChatAppRunner(AppRunner):
     Agent Application Runner
     """
 
-    def __init__(self, *, records: AgentMessageRecords, dataset_tools: AgentDatasetTools):
+    def __init__(
+        self, *, records: AgentMessageRecords, dataset_tools: AgentDatasetTools, tool_invoker: AgentToolInvoker
+    ):
         super().__init__(records=records)
         self._dataset_tools = dataset_tools
+        self._tool_invoker = tool_invoker
 
     def run(
         self,
@@ -216,6 +219,7 @@ class AgentChatAppRunner(AppRunner):
         runner = runner_cls(
             records=self._records,
             dataset_tools=self._dataset_tools,
+            tool_invoker=self._tool_invoker,
             draft_variable_saver=draft_variable_saver,
             workflow_runtime=workflow_runtime,
             tenant_id=app_config.tenant_id,

@@ -63,7 +63,6 @@ ignore_imports =
     core.app.apps.workflow.app_generator -> services.workflow_draft_variable_service
     core.app.apps.workflow_app_runner -> tasks.mail_human_input_delivery_task
     core.app.features.annotation_reply.annotation_reply -> services.annotation_service
-    core.app.features.annotation_reply.annotation_reply -> services.knowledge.dataset_service
     core.app.llm.quota -> services.credit_pool_service
     core.app.task_pipeline.message_cycle_manager -> services.annotation_service
     core.app.workflow.layers.persistence -> services.workflow.inspector_events
@@ -1301,9 +1300,21 @@ source_modules =
     services.agent.chat.function_call_runner
     services.agent.chat.cot_runner
     services.app.generation.adapters.agent_chat_runner
-    services.tools.tool_engine
 forbidden_modules =
     sqlalchemy
+    extensions.ext_database
+    core.db
+    repositories
+    extensions.application_services
+    extensions.ext_application_services
+allow_indirect_imports = True
+
+[importlinter:contract:tool-engine-persistence-boundary]
+name = Tool Engine receives Sessions but cannot source persistence dependencies
+type = forbidden
+source_modules =
+    services.tools.tool_engine
+forbidden_modules =
     extensions.ext_database
     core.db
     repositories
