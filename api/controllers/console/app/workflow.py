@@ -152,6 +152,7 @@ class SyncDraftWorkflowPayload(BaseModel):
     graph: dict[str, Any]
     features: dict[str, Any]
     hash: str | None = None
+    force: bool = Field(default=False, strict=True, description="Explicitly confirm saving an empty workflow graph.")
     is_collaborative: bool = Field(default=False, alias="_is_collaborative")
     environment_variable_patch: SyncEnvironmentVariablePatchPayload | None = None
     conversation_variables: list[dict[str, Any]] = Field(
@@ -654,6 +655,12 @@ class DraftWorkflowApi(Resource):
                 return {"message": "Invalid JSON data"}, 400
         else:
             abort(415)
+
+        # Empty autosaves can otherwise replace a populated draft, even with a matching hash.
+        # Require explicit confirmation for both regular saves and text/plain unload beacons.
+        if args_model.graph.get("nodes") == [] and args_model.graph.get("edges") == [] and not args_model.force:
+            raise InvalidArgumentError(description="Saving an empty workflow requires force=true.")
+
         workflow_service = WorkflowService()
 
         try:
