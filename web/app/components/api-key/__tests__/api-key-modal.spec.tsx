@@ -323,12 +323,12 @@ describe('ApiKeyModal', () => {
     expect(screen.getByRole('button', { name: 'common.operation.create' })).toBeDisabled()
     await user.click(screen.getByRole('button', { name: 'appApi.apiKeyModal.addKnowledgeBase' }))
     await user.type(
-      screen.getByPlaceholderText('appApi.apiKeyModal.searchKnowledgeBases'),
+      screen.getByRole('combobox', { name: 'appApi.apiKeyModal.searchKnowledgeBases' }),
       'engineering',
     )
 
-    expect(screen.queryByRole('checkbox', { name: 'Support' })).not.toBeInTheDocument()
-    await user.click(screen.getByRole('checkbox', { name: 'Engineering' }))
+    expect(screen.queryByRole('option', { name: 'Support' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('option', { name: 'Engineering' }))
     await user.keyboard('{Escape}')
     await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
 

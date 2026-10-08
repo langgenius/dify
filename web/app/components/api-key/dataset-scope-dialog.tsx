@@ -3,6 +3,14 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import {
+  Combobox,
+  ComboboxInput,
+  ComboboxInputGroup,
+  ComboboxItem,
+  ComboboxItemText,
+  ComboboxList,
+} from '@langgenius/dify-ui/combobox'
+import {
   Dialog,
   DialogClose,
   DialogContent,
@@ -10,15 +18,8 @@ import {
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { Input } from '@langgenius/dify-ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Radio, RadioGroup } from '@langgenius/dify-ui/radio-group'
-import {
-  ScrollArea,
-  ScrollAreaScrollbar,
-  ScrollAreaThumb,
-  ScrollAreaViewport,
-} from '@langgenius/dify-ui/scroll-area'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useInfiniteDatasets } from '@/service/knowledge/use-dataset'
@@ -53,17 +54,15 @@ export function DatasetScopeDialog({
   // Selection state resets by remounting: the parent bumps this dialog's `key` each time
   // it opens, so every open starts from these defaults with no reset-in-effect.
   const { data: datasetsPages } = useInfiniteDatasets({ keyword }, { enabled: open && pickerOpen })
-  const datasets = useMemo(
-    () => (datasetsPages?.pages ?? []).flatMap((page) => page.data),
+  const datasets = useMemo<SelectedKb[]>(
+    () =>
+      (datasetsPages?.pages ?? []).flatMap((page) =>
+        page.data.map(({ id, name }) => ({ id, name })),
+      ),
     [datasetsPages],
   )
   const selectedIds = useMemo(() => new Set(selected.map((kb) => kb.id)), [selected])
-
-  const toggleKb = (id: string, name: string) => {
-    setSelected((prev) =>
-      prev.some((kb) => kb.id === id) ? prev.filter((kb) => kb.id !== id) : [...prev, { id, name }],
-    )
-  }
+  const searchLabel = t(($) => $['apiKeyModal.searchKnowledgeBases'], { ns: 'appApi' })
 
   const removeKb = (id: string) => setSelected((prev) => prev.filter((kb) => kb.id !== id))
 
@@ -187,39 +186,49 @@ export function DatasetScopeDialog({
                   <PopoverContent
                     placement="bottom"
                     sideOffset={4}
-                    className="flex max-h-[min(20rem,var(--available-height))] w-80 flex-col overflow-hidden p-2"
+                    aria-label={searchLabel}
+                    className="flex max-h-(--available-height) w-80 flex-col p-0"
                   >
-                    <Input
-                      className="shrink-0"
-                      value={keyword}
-                      onChange={(e) => setKeyword(e.target.value)}
-                      placeholder={t(($) => $['apiKeyModal.searchKnowledgeBases'], {
-                        ns: 'appApi',
-                      })}
-                    />
-                    <ScrollArea className="mt-2 min-h-0 overflow-hidden">
-                      <ScrollAreaViewport className="max-h-[min(15rem,calc(var(--available-height)-4rem))] overscroll-contain">
-                        <div className="flex flex-col">
-                          {datasets.map((ds) => (
-                            <label
-                              key={ds.id}
-                              className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 hover:bg-state-base-hover"
-                            >
-                              <Checkbox
-                                checked={selectedIds.has(ds.id)}
-                                onCheckedChange={() => toggleKb(ds.id, ds.name)}
-                              />
-                              <span className="min-w-0 grow truncate system-sm-regular text-text-secondary">
-                                {ds.name}
-                              </span>
-                            </label>
-                          ))}
-                        </div>
-                      </ScrollAreaViewport>
-                      <ScrollAreaScrollbar>
-                        <ScrollAreaThumb />
-                      </ScrollAreaScrollbar>
-                    </ScrollArea>
+                    <Combobox<SelectedKb, true>
+                      inline
+                      multiple
+                      open={pickerOpen}
+                      items={datasets}
+                      filter={null}
+                      value={selected}
+                      inputValue={keyword}
+                      itemToStringLabel={(kb) => kb.name}
+                      isItemEqualToValue={(item, value) => item.id === value.id}
+                      onOpenChange={setPickerOpen}
+                      onValueChange={setSelected}
+                      onInputValueChange={setKeyword}
+                    >
+                      <div className="shrink-0 p-1 pb-0">
+                        <ComboboxInputGroup>
+                          <ComboboxInput aria-label={searchLabel} placeholder={searchLabel} />
+                        </ComboboxInputGroup>
+                      </div>
+                      <ComboboxList<SelectedKb>
+                        aria-label={t(($) => $['apiKeyModal.scopeSpecificDatasets'], {
+                          ns: 'appApi',
+                        })}
+                        className="min-h-0"
+                      >
+                        {(kb) => (
+                          <ComboboxItem<SelectedKb>
+                            key={kb.id}
+                            value={kb}
+                            className="grid-cols-[auto_1fr]"
+                          >
+                            {/* Visual only: the option owns the click target and the selected state. */}
+                            <span aria-hidden inert className="flex">
+                              <Checkbox checked={selectedIds.has(kb.id)} />
+                            </span>
+                            <ComboboxItemText>{kb.name}</ComboboxItemText>
+                          </ComboboxItem>
+                        )}
+                      </ComboboxList>
+                    </Combobox>
                   </PopoverContent>
                 </Popover>
               </div>
