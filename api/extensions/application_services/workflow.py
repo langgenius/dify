@@ -111,4 +111,3 @@ def build_workflow_execution_dependencies(database_client: sessionmaker[Session]
             DifyCoreRepositoryFactory.create_workflow_node_execution_repository, session_factory=database_client
         ),
     )
-
