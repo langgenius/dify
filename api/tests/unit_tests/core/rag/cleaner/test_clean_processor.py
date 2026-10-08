@@ -132,6 +132,18 @@ class TestCleanProcessor:
         expected = "Email: , link: [Click](https://site.com)"
         assert CleanProcessor.clean(text, process_rule) == expected
 
+    def test_clean_remove_urls_emails_keeps_email_like_text_in_markdown_urls(self):
+        """Email-like text inside protected Markdown link/image URLs must not be stripped."""
+        process_rule = {"rules": {"pre_processing_rules": [{"id": "remove_urls_emails", "enabled": True}]}}
+
+        text = "[cal](https://x.io/a?u=bob@corp.com&z=1) and ![img](https://x.io/i.png?u=bob@corp.com)"
+        assert CleanProcessor.clean(text, process_rule) == text
+
+        # Emails in plain prose are still removed
+        assert CleanProcessor.clean("mail bob@corp.com [cal](https://x.io/?u=bob@corp.com)", process_rule) == (
+            "mail  [cal](https://x.io/?u=bob@corp.com)"
+        )
+
     def test_clean_remove_urls_emails_disabled(self):
         """Test remove_urls_emails rule when disabled."""
         process_rule = {"rules": {"pre_processing_rules": [{"id": "remove_urls_emails", "enabled": False}]}}
