@@ -16,6 +16,7 @@ from typing import Any, cast
 from unittest.mock import ANY, MagicMock, patch
 
 import pytest
+from pytest_mock import MockerFixture
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
@@ -298,11 +299,15 @@ class TestWorkflowService:
 
         assert result is workflow
 
-    def test_get_published_workflow_by_id_can_lock_restore_source(self, workflow_service: WorkflowService):
+    def test_get_published_workflow_by_id_can_lock_restore_source(
+        self, workflow_service: WorkflowService, sqlite_session: Session, mocker: MockerFixture
+    ):
         app = TestWorkflowAssociatedDataFactory.create_app()
         workflow = TestWorkflowAssociatedDataFactory.create_workflow(version="v1")
-        session = MagicMock(spec=Session)
-        session.scalar.return_value = workflow
+        session = sqlite_session
+        session.add(workflow)
+        session.commit()
+        lookup = mocker.spy(session, "scalar")
 
         result = workflow_service.get_published_workflow_by_id(
             app,
@@ -311,7 +316,7 @@ class TestWorkflowService:
             for_update=True,
         )
 
-        stmt = session.scalar.call_args.args[0]
+        stmt = lookup.call_args.args[0]
         sql = str(stmt.compile(dialect=postgresql.dialect()))
         assert result is workflow
         assert "FOR UPDATE" in sql

@@ -6,7 +6,7 @@ TestContainers to ensure realistic database interactions and proper isolation.
 """
 
 import json
-from unittest.mock import MagicMock
+from dataclasses import dataclass
 
 import pytest
 from faker import Faker
@@ -23,6 +23,17 @@ from repositories.workflow.definition_repository import WorkflowDefinitionStore
 from services.workflow.contracts import DraftSyncCommand
 from services.workflow_ref_service import WorkflowRef
 from services.workflow_service import WorkflowService
+from tests.unit_tests.core.model_fixtures import make_model_instance
+
+
+@dataclass(frozen=True)
+class _ExecutedNode:
+    """Node metadata consumed by single-step result formatting tests."""
+
+    node_type: str
+    title: str
+    error_strategy: ErrorStrategy | None
+    default_value_dict: dict[str, object]
 
 
 class TestWorkflowService:
@@ -1221,14 +1232,13 @@ class TestWorkflowService:
 
         from unittest.mock import patch
 
-        from core.model_manager import ModelInstance
         from services.workflow.execution.adapters.node_factory import DifyNodeFactory
 
         # Act
         with patch.object(
             DifyNodeFactory,
             "_build_model_instance_for_llm_node",
-            return_value=MagicMock(spec=ModelInstance),
+            return_value=make_model_instance(provider="openai", model="gpt-3.5-turbo"),
             autospec=True,
         ):
             result = workflow_service.run_free_workflow_node(
@@ -1302,13 +1312,10 @@ class TestWorkflowService:
 
             from graphon.graph_events import NodeRunSucceededEvent
             from graphon.node_events import NodeRunResult
-            from graphon.nodes.base.node import Node
 
-            # Create mock node
-            mock_node = MagicMock(spec=Node)
-            mock_node.node_type = BuiltinNodeTypes.START
-            mock_node.title = "Test Node"
-            mock_node.error_strategy = None
+            node = _ExecutedNode(
+                node_type=BuiltinNodeTypes.START, title="Test Node", error_strategy=None, default_value_dict={}
+            )
 
             # Create mock result with valid metadata
             mock_result = NodeRunResult(
@@ -1332,7 +1339,7 @@ class TestWorkflowService:
             def event_generator():
                 yield mock_event
 
-            return mock_node, event_generator()
+            return node, event_generator()
 
         workflow_service = WorkflowService()
 
@@ -1374,13 +1381,10 @@ class TestWorkflowService:
 
             from graphon.graph_events import NodeRunFailedEvent
             from graphon.node_events import NodeRunResult
-            from graphon.nodes.base.node import Node
 
-            # Create mock node
-            mock_node = MagicMock(spec=Node)
-            mock_node.node_type = BuiltinNodeTypes.LLM
-            mock_node.title = "Test Node"
-            mock_node.error_strategy = None
+            node = _ExecutedNode(
+                node_type=BuiltinNodeTypes.LLM, title="Test Node", error_strategy=None, default_value_dict={}
+            )
 
             # Create mock failed result
             mock_result = NodeRunResult(
@@ -1403,7 +1407,7 @@ class TestWorkflowService:
             def event_generator():
                 yield mock_event
 
-            return mock_node, event_generator()
+            return node, event_generator()
 
         workflow_service = WorkflowService()
 
@@ -1441,14 +1445,13 @@ class TestWorkflowService:
 
             from graphon.graph_events import NodeRunFailedEvent
             from graphon.node_events import NodeRunResult
-            from graphon.nodes.base.node import Node
 
-            # Create mock node with continue_on_error
-            mock_node = MagicMock(spec=Node)
-            mock_node.node_type = BuiltinNodeTypes.TOOL
-            mock_node.title = "Test Node"
-            mock_node.error_strategy = ErrorStrategy.DEFAULT_VALUE
-            mock_node.default_value_dict = {"default_output": "default_value"}
+            node = _ExecutedNode(
+                node_type=BuiltinNodeTypes.TOOL,
+                title="Test Node",
+                error_strategy=ErrorStrategy.DEFAULT_VALUE,
+                default_value_dict={"default_output": "default_value"},
+            )
 
             # Create mock failed result
             mock_result = NodeRunResult(
@@ -1471,7 +1474,7 @@ class TestWorkflowService:
             def event_generator():
                 yield mock_event
 
-            return mock_node, event_generator()
+            return node, event_generator()
 
         workflow_service = WorkflowService()
 

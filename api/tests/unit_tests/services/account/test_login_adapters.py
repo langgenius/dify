@@ -3,8 +3,9 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import cast, override
-from unittest.mock import MagicMock
+from datetime import timedelta
+from typing import override
+from unittest.mock import MagicMock, call
 
 import pytest
 from sqlalchemy import select
@@ -58,36 +59,48 @@ def _persist_account(session: Session) -> Account:
     return account
 
 
-def test_security_gateway_owns_login_failure_state() -> None:
-    redis = MagicMock(spec=RedisClientWrapper)
-    redis.get.side_effect = [b"6", b"2"]
-    gateway = adapters.RedisConsoleAuthSecurityGateway(redis=cast(RedisClientWrapper, redis))
+def test_security_gateway_owns_login_failure_state(redis_transport: tuple[RedisClientWrapper, MagicMock]) -> None:
+    redis, commands = redis_transport
+    commands.side_effect = [b"6", b"2", True, 1]
+    gateway = adapters.RedisConsoleAuthSecurityGateway(redis=redis)
 
     assert gateway.is_login_limited("user@example.com") is True
     gateway.record_login_failure("user@example.com")
     gateway.reset_login_failures("user@example.com")
 
-    redis.setex.assert_called_once_with(
-        "login_error_rate_limit:user@example.com",
-        adapters.dify_config.LOGIN_LOCKOUT_DURATION,
-        3,
-    )
-    redis.delete.assert_called_once_with("login_error_rate_limit:user@example.com")
+    key = "login_error_rate_limit:user@example.com"
+    assert commands.call_args_list == [
+        call("GET", key, keys=[key]),
+        call("GET", key, keys=[key]),
+        call("SETEX", key, adapters.dify_config.LOGIN_LOCKOUT_DURATION, 3),
+        call("DEL", key),
+    ]
 
 
-def test_security_gateway_owns_email_send_ip_limit(config_overrides: Callable[..., None]) -> None:
-    redis = MagicMock(spec=RedisClientWrapper)
-    redis.get.side_effect = [None, b"2", None]
-    redis.set.return_value = True
+def test_security_gateway_owns_email_send_ip_limit(
+    redis_transport: tuple[RedisClientWrapper, MagicMock], config_overrides: Callable[..., None]
+) -> None:
+    redis, commands = redis_transport
+    commands.side_effect = [None, b"2", None, True]
     config_overrides(EMAIL_SEND_IP_LIMIT_PER_MINUTE=1)
-    gateway = adapters.RedisConsoleAuthSecurityGateway(redis=cast(RedisClientWrapper, redis))
+    gateway = adapters.RedisConsoleAuthSecurityGateway(redis=redis)
 
     assert gateway.is_email_send_ip_limited("127.0.0.1") is True
-    redis.set.assert_called_once_with("email_send_ip_limit_hour:127.0.0.1", 1, ex=600, nx=True)
+    freeze_key = "email_send_ip_limit_freeze:127.0.0.1"
+    minute_key = "email_send_ip_limit_minute:127.0.0.1"
+    hour_key = "email_send_ip_limit_hour:127.0.0.1"
+    assert commands.call_args_list == [
+        call("GET", freeze_key, keys=[freeze_key]),
+        call("GET", minute_key, keys=[minute_key]),
+        call("GET", hour_key, keys=[hour_key]),
+        call("SET", hour_key, 1, "NX", "EX", 600),
+    ]
 
 
-def test_session_gateway_owns_refresh_token_storage(monkeypatch: pytest.MonkeyPatch) -> None:
-    redis = MagicMock(spec=RedisClientWrapper)
+def test_session_gateway_owns_refresh_token_storage(
+    redis_transport: tuple[RedisClientWrapper, MagicMock], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    redis, commands = redis_transport
     issued_payloads: list[dict[str, object]] = []
 
     class FakePassportService:
@@ -98,20 +111,25 @@ def test_session_gateway_owns_refresh_token_storage(monkeypatch: pytest.MonkeyPa
     monkeypatch.setattr(adapters, "PassportService", FakePassportService)
     monkeypatch.setattr(adapters.secrets, "token_hex", lambda _length: "refresh")
     monkeypatch.setattr(adapters, "generate_csrf_token", lambda _account_id: "csrf")
-    gateway = adapters.RedisAccountSessionGateway(redis=cast(RedisClientWrapper, redis))
+    gateway = adapters.RedisAccountSessionGateway(redis=redis)
 
     result = gateway.issue("account-1")
 
     assert result == AccountSessionTokens(access_token="access", refresh_token="refresh", csrf_token="csrf")
     assert issued_payloads[0]["user_id"] == "account-1"
-    assert redis.setex.call_args_list[0].args[0] == "refresh_token:refresh"
-    assert redis.setex.call_args_list[1].args[0] == "account_refresh_token:account-1"
+    expires_in = int(timedelta(days=adapters.dify_config.REFRESH_TOKEN_EXPIRE_DAYS).total_seconds())
+    assert commands.call_args_list == [
+        call("SETEX", "refresh_token:refresh", expires_in, "account-1"),
+        call("SETEX", "account_refresh_token:account-1", expires_in, "refresh"),
+    ]
 
 
-def test_session_gateway_resolves_rotates_and_revokes_refresh_tokens(monkeypatch: pytest.MonkeyPatch) -> None:
-    redis = MagicMock(spec=RedisClientWrapper)
-    redis.get.side_effect = [b"account-1", b"stored-refresh"]
-    gateway = adapters.RedisAccountSessionGateway(redis=cast(RedisClientWrapper, redis))
+def test_session_gateway_resolves_rotates_and_revokes_refresh_tokens(
+    redis_transport: tuple[RedisClientWrapper, MagicMock], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    redis, commands = redis_transport
+    commands.side_effect = [b"account-1", 1, 1, b"stored-refresh", 1, 1]
+    gateway = adapters.RedisAccountSessionGateway(redis=redis)
     monkeypatch.setattr(
         gateway,
         "_issue",
@@ -124,23 +142,23 @@ def test_session_gateway_resolves_rotates_and_revokes_refresh_tokens(monkeypatch
     assert gateway.rotate(refresh_token="refresh", account_id="account-1").refresh_token == "new-refresh"
     gateway.revoke("account-1")
 
-    deleted_keys = [call.args[0] for call in redis.delete.call_args_list]
+    deleted_keys = [call.args[1] for call in commands.call_args_list if call.args[0] == "DEL"]
     assert deleted_keys == [
         "refresh_token:refresh",
         "account_refresh_token:account-1",
         "refresh_token:stored-refresh",
         "account_refresh_token:account-1",
     ]
+    assert commands.call_count == 6
 
 
-def test_session_gateway_returns_none_for_unknown_refresh_token() -> None:
-    redis = MagicMock(spec=RedisClientWrapper)
-    redis.get.return_value = None
+def test_session_gateway_returns_none_for_unknown_refresh_token(
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+) -> None:
+    redis, commands = redis_transport
+    commands.return_value = None
 
-    assert (
-        adapters.RedisAccountSessionGateway(redis=cast(RedisClientWrapper, redis)).resolve_refresh_token("bad-token")
-        is None
-    )
+    assert adapters.RedisAccountSessionGateway(redis=redis).resolve_refresh_token("bad-token") is None
 
 
 def test_workspace_provisioning_persists_owner_workspace(

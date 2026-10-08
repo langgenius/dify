@@ -6,7 +6,7 @@ from collections.abc import Callable, Iterator
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, create_autospec, patch
 
 import pytest
 from flask import Flask
@@ -179,6 +179,18 @@ def redis_transport(monkeypatch: pytest.MonkeyPatch) -> Iterator[tuple[ext_redis
 
 
 @pytest.fixture
+def tenant_queue_commands(
+    redis_transport: tuple[ext_redis.RedisClientWrapper, MagicMock], monkeypatch: pytest.MonkeyPatch
+) -> MagicMock:
+    """Run tenant queue serialization and command building without Redis I/O."""
+    from core.rag.pipeline import queue
+
+    redis, commands = redis_transport
+    monkeypatch.setattr(queue, "redis_client", redis)
+    return commands
+
+
+@pytest.fixture
 def app() -> Flask:
     return CACHED_APP
 
@@ -205,6 +217,18 @@ def _patch_redis_clients() -> Iterator[None]:
 def reset_redis_mock(_patch_redis_clients: None) -> None:
     """Reset the shared Redis mock after per-test client rebinding."""
     redis_mock.reset_mock()
+    # Restoring a monkeypatched method can leave it detached from the parent's reset traversal.
+    redis_mock.delete.reset_mock()
+    redis_mock.get.reset_mock()
+    redis_mock.setex.reset_mock()
+    redis_mock.setnx.reset_mock()
+    redis_mock.lock.reset_mock()
+    redis_mock.exists.reset_mock()
+    redis_mock.set.reset_mock()
+    redis_mock.expire.reset_mock()
+    redis_mock.hgetall.reset_mock()
+    redis_mock.hdel.reset_mock()
+    redis_mock.incr.reset_mock()
     redis_mock.get.return_value = None
     redis_mock.setex.return_value = None
     redis_mock.setnx.return_value = None
@@ -389,7 +413,6 @@ def account_application_services(
     sqlite_session_factory: sessionmaker[Session], account_domain: AccountDomain
 ) -> ApplicationServices:
     from dataclasses import replace
-    from unittest.mock import Mock
 
     from enums import DeploymentEdition
     from extensions.ext_application_services import build_application_services
@@ -399,7 +422,7 @@ def account_application_services(
         database_client=sqlite_session_factory,
         deployment_edition=DeploymentEdition.COMMUNITY,
         initialization_password="",
-        redis=Mock(spec=RedisClientWrapper),
+        redis=create_autospec(RedisClientWrapper, instance=True),
     )
     return replace(
         services,

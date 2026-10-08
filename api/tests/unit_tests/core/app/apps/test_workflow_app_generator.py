@@ -13,7 +13,7 @@ from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, PauseStatePersistenceLayer
-from core.ops.ops_trace_manager import TraceQueueManager
+from core.ops.ops_trace_manager import OpsTraceManager, TraceQueueManager
 from core.repositories import SQLAlchemyWorkflowExecutionRepository, SQLAlchemyWorkflowNodeExecutionRepository
 from graphon.enums import WorkflowExecutionStatus
 from graphon.runtime import GraphRuntimeState, VariablePool
@@ -23,6 +23,14 @@ from models.workflow import Workflow, WorkflowKind, WorkflowNodeExecutionTrigger
 from services.workflow.execution.adapters.workflow.app_generator import WorkflowAppGenerator
 from services.workflow.execution.ports import WorkflowRuntime
 from tests.unit_tests.model_factories import make_workflow
+
+
+@pytest.fixture(autouse=True)
+def disable_trace_delivery(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Construct real trace managers without provider lookup or background delivery."""
+    monkeypatch.setattr(OpsTraceManager, "get_ops_trace_instance", lambda app_id: None)
+    monkeypatch.setattr(TraceQueueManager, "start_timer", lambda self: None)
+    monkeypatch.setattr("core.telemetry.gateway.is_enterprise_telemetry_enabled", lambda: False)
 
 
 def _workflow(
@@ -94,7 +102,7 @@ def _generate_entity(
         user_id=end_user.id,
         stream=stream,
         invoke_from=invoke_from,
-        trace_manager=MagicMock(spec=TraceQueueManager),
+        trace_manager=TraceQueueManager(app_id=app.id, user_id=end_user.id),
         workflow_execution_id="run",
     )
 
@@ -141,10 +149,6 @@ def test_generate_includes_parent_trace_context_in_extras(
     monkeypatch.setattr(
         "services.workflow.execution.adapters.workflow.app_generator.file_factory.build_from_mappings",
         lambda *args, **kwargs: [],
-    )
-    monkeypatch.setattr(
-        "services.workflow.execution.adapters.workflow.app_generator.TraceQueueManager",
-        MagicMock(return_value=MagicMock(spec=TraceQueueManager)),
     )
     repository_tenant_ids: dict[str, str] = {}
     workflow_execution_factory = workflow_runtime.execution_writer
