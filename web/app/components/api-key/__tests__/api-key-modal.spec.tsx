@@ -329,6 +329,13 @@ describe('ApiKeyModal', () => {
 
     expect(screen.queryByRole('option', { name: 'Support' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('option', { name: 'Engineering' }))
+    expect(screen.getByRole('option', { name: 'Engineering' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+    expect(
+      screen.getByRole('combobox', { name: 'appApi.apiKeyModal.searchKnowledgeBases' }),
+    ).toHaveValue('engineering')
     await user.keyboard('{Escape}')
     await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
 

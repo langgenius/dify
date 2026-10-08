@@ -4,11 +4,12 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import {
   Combobox,
+  ComboboxEmpty,
   ComboboxInput,
   ComboboxInputGroup,
   ComboboxItem,
-  ComboboxItemText,
   ComboboxList,
+  ComboboxStatus,
 } from '@langgenius/dify-ui/combobox'
 import {
   Dialog,
@@ -53,7 +54,10 @@ export function DatasetScopeDialog({
 
   // Selection state resets by remounting: the parent bumps this dialog's `key` each time
   // it opens, so every open starts from these defaults with no reset-in-effect.
-  const { data: datasetsPages } = useInfiniteDatasets({ keyword }, { enabled: open && pickerOpen })
+  const { data: datasetsPages, isLoading } = useInfiniteDatasets(
+    { keyword },
+    { enabled: open && pickerOpen },
+  )
   const datasets = useMemo<SelectedKb[]>(
     () =>
       (datasetsPages?.pages ?? []).flatMap((page) =>
@@ -201,13 +205,20 @@ export function DatasetScopeDialog({
                       isItemEqualToValue={(item, value) => item.id === value.id}
                       onOpenChange={setPickerOpen}
                       onValueChange={setSelected}
-                      onInputValueChange={setKeyword}
+                      onInputValueChange={(value, details) => {
+                        // Keep the query so several results of one search can be picked.
+                        if (details.isItemPress) details.cancel()
+                        else setKeyword(value)
+                      }}
                     >
-                      <div className="shrink-0 p-1 pb-0">
+                      <div className="shrink-0 p-2 pb-1">
                         <ComboboxInputGroup>
                           <ComboboxInput aria-label={searchLabel} placeholder={searchLabel} />
                         </ComboboxInputGroup>
                       </div>
+                      <ComboboxStatus>
+                        {isLoading ? t(($) => $.loading, { ns: 'common' }) : null}
+                      </ComboboxStatus>
                       <ComboboxList<SelectedKb>
                         aria-label={t(($) => $['apiKeyModal.scopeSpecificDatasets'], {
                           ns: 'appApi',
@@ -224,10 +235,15 @@ export function DatasetScopeDialog({
                             <span aria-hidden inert className="flex">
                               <Checkbox checked={selectedIds.has(kb.id)} />
                             </span>
-                            <ComboboxItemText>{kb.name}</ComboboxItemText>
+                            <span className="min-w-0 truncate system-sm-regular text-text-secondary">
+                              {kb.name}
+                            </span>
                           </ComboboxItem>
                         )}
                       </ComboboxList>
+                      <ComboboxEmpty>
+                        {isLoading ? null : t(($) => $.noData, { ns: 'common' })}
+                      </ComboboxEmpty>
                     </Combobox>
                   </PopoverContent>
                 </Popover>
