@@ -113,7 +113,7 @@ function SourceActions({
         <DropdownMenuTrigger
           aria-label={t(($) => $['newKnowledge.sourceActions'], { name: source.name })}
           disabled={Boolean(pendingAction)}
-          className="flex size-7 items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:text-text-disabled"
+          className="flex size-7 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover disabled:cursor-not-allowed disabled:text-text-disabled"
         >
           <span
             aria-hidden
