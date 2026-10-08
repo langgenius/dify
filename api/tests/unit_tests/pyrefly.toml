@@ -354,8 +354,6 @@ project-excludes = [
   "core/extension/test_api_based_extension_requestor.py",
   "core/extension/test_extensible.py",
   "core/extension/test_extension.py",
-  "core/external_data_tool/api/test_api.py",
-  "core/external_data_tool/test_base.py",
   "core/external_data_tool/test_external_data_fetch.py",
   "core/external_data_tool/test_factory.py",
   "core/file/test_models.py",
