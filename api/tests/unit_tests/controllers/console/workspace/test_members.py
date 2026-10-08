@@ -8,6 +8,7 @@ from unittest.mock import Mock, create_autospec, patch
 import pytest
 from flask import Flask
 from flask_restx import Api, Resource
+from pydantic import ValidationError
 from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.console.auth.error import (
@@ -306,6 +307,24 @@ def test_bulk_invite_serializes_results_and_normalizes_input(app: Flask, service
     services.workspaces.invitations.invite_many.assert_called_once_with(
         context, emails=["a@example.com", "b@example.com", "c@example.com"], language=None, role="normal"
     )
+
+
+@pytest.mark.parametrize(
+    "invalid_email",
+    ["", "invalid-email", "@example.com", "user@", "user@example", "user@example.com\n", "user@example.com\r\n"],
+)
+def test_bulk_invite_rejects_invalid_email_before_inviting(app: Flask, services: Mock, invalid_email: str) -> None:
+    api = MemberInviteEmailApi()
+    with (
+        app.test_request_context(
+            "/", method="POST", json={"emails": ["valid@example.com", invalid_email], "role": "normal"}
+        ),
+        pytest.raises(ValidationError, match="not a valid email") as error,
+    ):
+        unwrap(api.post)(api, RequestContext("request", None, "owner", "workspace"))
+
+    assert error.value.errors()[0]["loc"] == ("emails", 1)
+    services.workspaces.invitations.invite_many.assert_not_called()
 
 
 @pytest.mark.parametrize(("seats", "expected"), [(True, SeatsLimitExceeded), (False, WorkspaceMembersLimitExceeded)])

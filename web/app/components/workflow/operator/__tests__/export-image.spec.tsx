@@ -1,7 +1,7 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { act } from 'react'
-import MoreActions from '../more-actions'
+import { ExportImage } from '../export-image'
 
 const mockToPng = vi.fn()
 const mockToJpeg = vi.fn()
@@ -50,10 +50,6 @@ vi.mock('@/utils/download', () => ({
   downloadUrl: (...args: unknown[]) => mockDownloadUrl(...args),
 }))
 
-vi.mock('../tip-popup', () => ({
-  default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-}))
-
 vi.mock('@/app/components/base/image-uploader/image-preview', () => ({
   default: ({ title, onCancel }: { title: string; onCancel: () => void }) => (
     <div data-testid="image-preview">
@@ -65,7 +61,7 @@ vi.mock('@/app/components/base/image-uploader/image-preview', () => ({
   ),
 }))
 
-describe('MoreActions', () => {
+describe('ExportImage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useRealTimers()
@@ -85,10 +81,24 @@ describe('MoreActions', () => {
   it('opens the menu and exports the current view as png', async () => {
     const user = userEvent.setup()
 
-    render(<MoreActions />)
+    render(<ExportImage />)
 
-    await user.click(screen.getByRole('button'))
-    await user.click(screen.getAllByText('workflow.common.exportPNG')[0]!)
+    await user.click(screen.getByRole('button', { name: 'workflow.common.exportImage' }))
+    const menu = screen.getByRole('menu', { name: 'workflow.common.exportImage' })
+    expect(within(menu).getAllByRole('menuitem')).toHaveLength(6)
+    expect(
+      within(menu).getByRole('group', { name: 'workflow.common.currentView' }),
+    ).toBeInTheDocument()
+    expect(
+      within(menu).getByRole('group', { name: 'workflow.common.currentWorkflow' }),
+    ).toBeInTheDocument()
+    expect(within(menu).queryByText('workflow.common.exportImage')).not.toBeInTheDocument()
+    await user.click(
+      within(within(menu).getByRole('group', { name: 'workflow.common.currentView' })).getByRole(
+        'menuitem',
+        { name: 'workflow.common.exportPNG' },
+      ),
+    )
 
     await waitFor(() => {
       expect(mockToPng).toHaveBeenCalledTimes(1)
@@ -97,30 +107,31 @@ describe('MoreActions', () => {
       url: 'data:image/png;base64,current',
       fileName: 'Demo App.png',
     })
+    await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument())
   })
 
   it('does not open the menu when the workflow is read only', async () => {
     const user = userEvent.setup()
     mockGetNodesReadOnly.mockReturnValue(true)
 
-    render(<MoreActions />)
+    render(<ExportImage />)
 
-    const trigger = screen.getByRole('button', { name: 'workflow.common.moreActions' })
+    const trigger = screen.getByRole('button', { name: 'workflow.common.exportImage' })
     expect(trigger).toHaveAttribute('aria-disabled', 'true')
 
     await user.tab()
     expect(trigger).toHaveFocus()
     await user.keyboard('{Enter}')
 
-    expect(screen.queryByText('workflow.common.exportImage')).not.toBeInTheDocument()
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
   })
 
   it('shows a preview when exporting the whole workflow', async () => {
     vi.useFakeTimers()
 
-    render(<MoreActions />)
+    render(<ExportImage />)
 
-    fireEvent.click(screen.getByRole('button'))
+    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.exportImage' }))
     fireEvent.click(screen.getAllByText('workflow.common.exportPNG')[1]!)
     await act(async () => {
       await vi.advanceTimersByTimeAsync(300)
@@ -143,9 +154,9 @@ describe('MoreActions', () => {
   ])('exports the current view with %s', async (label, exporter, fileName) => {
     const user = userEvent.setup()
 
-    render(<MoreActions />)
+    render(<ExportImage />)
 
-    await user.click(screen.getByRole('button'))
+    await user.click(screen.getByRole('button', { name: 'workflow.common.exportImage' }))
     await user.click(screen.getAllByText(label)[0]!)
 
     await waitFor(() => {
@@ -160,9 +171,9 @@ describe('MoreActions', () => {
   it('exports the whole workflow as svg', async () => {
     vi.useFakeTimers()
 
-    render(<MoreActions />)
+    render(<ExportImage />)
 
-    fireEvent.click(screen.getByRole('button'))
+    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.exportImage' }))
     fireEvent.click(screen.getAllByText('workflow.common.exportSVG')[1]!)
     await act(async () => {
       await vi.advanceTimersByTimeAsync(300)
@@ -181,9 +192,9 @@ describe('MoreActions', () => {
     mockWorkflowState.appName = ''
     mockWorkflowState.knowledgeName = ''
 
-    render(<MoreActions />)
+    render(<ExportImage />)
 
-    await user.click(screen.getByRole('button'))
+    await user.click(screen.getByRole('button', { name: 'workflow.common.exportImage' }))
     await user.click(screen.getAllByText('workflow.common.exportPNG')[0]!)
 
     expect(mockToPng).not.toHaveBeenCalled()
@@ -194,9 +205,9 @@ describe('MoreActions', () => {
     const user = userEvent.setup()
     document.querySelector('.react-flow__viewport')?.remove()
 
-    render(<MoreActions />)
+    render(<ExportImage />)
 
-    await user.click(screen.getByRole('button'))
+    await user.click(screen.getByRole('button', { name: 'workflow.common.exportImage' }))
     await user.click(screen.getAllByText('workflow.common.exportPNG')[0]!)
 
     expect(mockToPng).not.toHaveBeenCalled()
@@ -206,9 +217,9 @@ describe('MoreActions', () => {
   it('returns early when the workflow becomes read only before exporting', async () => {
     const user = userEvent.setup()
 
-    render(<MoreActions />)
+    render(<ExportImage />)
 
-    await user.click(screen.getByRole('button'))
+    await user.click(screen.getByRole('button', { name: 'workflow.common.exportImage' }))
     mockGetNodesReadOnly.mockReturnValue(true)
     await user.click(screen.getAllByText('workflow.common.exportJPEG')[0]!)
 
@@ -221,9 +232,9 @@ describe('MoreActions', () => {
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     mockToJpeg.mockRejectedValueOnce(new Error('boom'))
 
-    render(<MoreActions />)
+    render(<ExportImage />)
 
-    await user.click(screen.getByRole('button'))
+    await user.click(screen.getByRole('button', { name: 'workflow.common.exportImage' }))
     await user.click(screen.getAllByText('workflow.common.exportJPEG')[0]!)
 
     await waitFor(() => {
@@ -232,7 +243,7 @@ describe('MoreActions', () => {
     expect(screen.queryByTestId('image-preview')).not.toBeInTheDocument()
 
     mockToPng.mockResolvedValueOnce('data:image/png;base64,current')
-    fireEvent.click(screen.getByRole('button'))
+    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.exportImage' }))
     fireEvent.click(screen.getAllByText('workflow.common.exportPNG')[1]!)
     await waitFor(() => {
       expect(screen.getByTestId('image-preview')).toBeInTheDocument()

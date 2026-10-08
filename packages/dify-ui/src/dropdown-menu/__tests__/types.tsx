@@ -1,9 +1,14 @@
-import type { DropdownMenuHandle } from '@langgenius/dify-ui/dropdown-menu'
+import type {
+  DropdownMenuActions,
+  DropdownMenuHandle,
+  DropdownMenuProps,
+} from '@langgenius/dify-ui/dropdown-menu'
 import {
   createDropdownMenuHandle,
   DropdownMenu,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import * as React from 'react'
 import { expectTypeOf } from 'vite-plus/test'
 
 type Payload = { documentId: string }
@@ -31,4 +36,12 @@ export function dropdownMenuTypeContracts() {
     </DropdownMenuTrigger>
   )
   return { trigger, menu, invalid }
+}
+
+export function dropdownMenuActionsTypeContract() {
+  const actionsRef = React.createRef<DropdownMenuActions>()
+  expectTypeOf(actionsRef.current).toEqualTypeOf<
+    NonNullable<DropdownMenuProps['actionsRef']>['current']
+  >()
+  return <DropdownMenu actionsRef={actionsRef} />
 }
