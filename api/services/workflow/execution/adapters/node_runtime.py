@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable, Generator, Mapping, Sequence
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Literal, Protocol, cast, overload, override
+from typing import TYPE_CHECKING, Any, Literal, Protocol, cast, overload, override, runtime_checkable
 
 from pydantic import JsonValue
 
@@ -109,6 +109,12 @@ class PollingLLMRuntimeProtocol(Protocol):
         credentials: dict[str, Any],
         plugin_state: dict[str, JsonValue],
     ) -> LLMPollingResult: ...
+
+
+@runtime_checkable
+class _ToolUsageProvider(Protocol):
+    @property
+    def latest_usage(self) -> object: ...
 
 
 if TYPE_CHECKING:
@@ -655,7 +661,10 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
         *,
         tool_runtime: ToolRuntimeHandle,
     ) -> LLMUsage:
-        latest = getattr(self._binding_from_handle(tool_runtime).tool, "latest_usage", None)
+        tool = self._binding_from_handle(tool_runtime).tool
+        if not isinstance(tool, _ToolUsageProvider):
+            return LLMUsage.empty_usage()
+        latest = tool.latest_usage
         if isinstance(latest, LLMUsage):
             return latest
         if isinstance(latest, dict):

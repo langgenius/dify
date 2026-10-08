@@ -538,10 +538,7 @@ class DifyNodeFactory(NodeFactory):
         """
         Re-validate the permissive graph payload with the concrete NodeData model declared by the resolved node class.
         """
-        validate_node_data = getattr(node_class, "validate_node_data", None)
-        if callable(validate_node_data):
-            return cast("BaseNodeData", validate_node_data(node_data))
-        return node_data
+        return node_class.validate_node_data(node_data)
 
     @staticmethod
     def _resolve_node_class(

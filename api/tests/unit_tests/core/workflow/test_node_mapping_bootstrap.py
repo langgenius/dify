@@ -5,7 +5,7 @@ import textwrap
 from pathlib import Path
 
 
-def test_adapter_mapping_overrides_moved_nodes_without_mutating_shared_registry():
+def test_adapter_mapping_overrides_moved_nodes_without_mutating_shared_registry() -> None:
     from core.trigger.constants import TRIGGER_WEBHOOK_NODE_TYPE
     from graphon.enums import BuiltinNodeTypes
     from graphon.nodes.base.node import Node
