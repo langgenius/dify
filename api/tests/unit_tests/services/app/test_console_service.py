@@ -26,6 +26,8 @@ from models.provider import TenantDefaultModel
 from models.provider_ids import GenericProviderID
 from models.tools import ApiToolProvider
 from repositories.app.console_repository import ConsoleAppRepository
+from repositories.tools.provider_repository import ToolProviderRepository
+from repositories.tools.workflow_repository import WorkflowToolRepository
 from services.agent.errors import AgentAccessNotReadyError
 from services.agent.roster_package_entities import RosterAgentPackageExport
 from services.agent.roster_service import AgentRosterService
@@ -474,8 +476,8 @@ def test_lifecycle_agent_creation_seeds_workspace_default_model(
     provider_name: str | None,
     expected_model: tuple[str, str, str] | None,
     *,
-    tool_providers,
-    workflow_queries,
+    tool_providers: ToolProviderRepository,
+    workflow_queries: WorkflowToolRepository,
 ) -> None:
     factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False, close_resets_only=False)
     with factory.begin() as session:
@@ -537,7 +539,12 @@ def test_lifecycle_agent_creation_seeds_workspace_default_model(
 @pytest.mark.parametrize("failure", [None, "persist", "external"])
 @pytest.mark.parametrize("mode", [AppMode.WORKFLOW, AppMode.AGENT])
 def test_lifecycle_runs_after_atomic_creation_and_session_close(
-    sqlite_engine: Engine, failure: str | None, mode: AppMode, *, tool_providers, workflow_queries
+    sqlite_engine: Engine,
+    failure: str | None,
+    mode: AppMode,
+    *,
+    tool_providers: ToolProviderRepository,
+    workflow_queries: WorkflowToolRepository,
 ) -> None:
     factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False, close_resets_only=False)
     with factory.begin() as session:
@@ -661,7 +668,10 @@ def test_lifecycle_runs_after_atomic_creation_and_session_close(
 
 
 def test_app_deletion_failure_rolls_back_backing_agent_changes(
-    sqlite_engine: Engine, *, tool_providers, workflow_queries
+    sqlite_engine: Engine,
+    *,
+    tool_providers: ToolProviderRepository,
+    workflow_queries: WorkflowToolRepository,
 ) -> None:
     factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False, close_resets_only=False)
     with factory.begin() as session:
@@ -712,8 +722,8 @@ def test_detail_tool_enrichment_releases_database_before_plugin_io(
     operation: str,
     remote_fails: bool,
     *,
-    tool_providers,
-    workflow_queries,
+    tool_providers: ToolProviderRepository,
+    workflow_queries: WorkflowToolRepository,
 ) -> None:
     factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False, close_resets_only=False)
     missing_api = str(uuid4())
@@ -880,7 +890,12 @@ def test_detail_tool_enrichment_releases_database_before_plugin_io(
 @pytest.mark.parametrize("operation", ["rename", "icon", "site"])
 @pytest.mark.parametrize("commit_fails", [False, True])
 def test_app_mutations_publish_only_after_commit(
-    sqlite_engine: Engine, operation: str, commit_fails: bool, *, tool_providers, workflow_queries
+    sqlite_engine: Engine,
+    operation: str,
+    commit_fails: bool,
+    *,
+    tool_providers: ToolProviderRepository,
+    workflow_queries: WorkflowToolRepository,
 ) -> None:
     factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False, close_resets_only=False)
     context = RequestContext("request", None, str(uuid4()), str(uuid4()))
@@ -970,7 +985,11 @@ def test_app_mutations_publish_only_after_commit(
 
 @pytest.mark.parametrize("surface", ["site", "api"])
 def test_unpublished_agent_cannot_enable_access_through_console_service(
-    sqlite_engine: Engine, surface: str, *, tool_providers, workflow_queries
+    sqlite_engine: Engine,
+    surface: str,
+    *,
+    tool_providers: ToolProviderRepository,
+    workflow_queries: WorkflowToolRepository,
 ) -> None:
     factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
     context = RequestContext("request", None, str(uuid4()), str(uuid4()))

@@ -1,11 +1,11 @@
 import logging
-from collections.abc import Iterator
+from collections.abc import Generator, Iterator
 from contextlib import contextmanager
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from socketio.exceptions import TimeoutError as SocketIOTimeoutError
-from sqlalchemy import Engine
+from sqlalchemy import Engine, Table
 from sqlalchemy.orm import Session
 
 from core.rbac import RBACPermission, RBACResourceScope
@@ -13,7 +13,7 @@ from extensions.ext_redis import RedisClientWrapper
 from models.account import Account, Tenant
 from models.base import TypeBase
 from models.model import App, AppMode
-from repositories.workflow.collaboration_repository import WorkflowCollaborationRepository
+from repositories.workflow.collaboration_repository import WorkflowCollaborationRepository, WorkflowSessionInfo
 from services.workflow_collaboration_service import SYNC_REQUEST_TIMEOUT_SECONDS, WorkflowCollaborationService
 from tests.unit_tests.config_override import config_overrides_context
 from tests.unit_tests.model_factories import make_app
@@ -43,7 +43,9 @@ def real_service(collaboration_redis: RedisClientWrapper) -> ServiceFixture:
 def db_session(sqlite_engine: Engine) -> Iterator[Session]:
     """Provide a real session for tenant-scoped workflow app access checks."""
 
-    TypeBase.metadata.create_all(sqlite_engine, tables=[App.__table__])
+    app_table = App.__table__
+    assert isinstance(app_table, Table)
+    TypeBase.metadata.create_all(sqlite_engine, tables=[app_table])
     with Session(sqlite_engine, expire_on_commit=False) as session:
         yield session
 
@@ -111,7 +113,8 @@ class TestWorkflowCollaborationService:
     ) -> None:
         # Arrange
         collaboration_service, _repository, socketio = real_service
-        socketio.get_session.return_value = {}
+        empty_socket_session: dict[str, object] = {}
+        socketio.get_session.return_value = empty_socket_session
 
         # Act
         result = collaboration_service.authorize_and_join_workflow_room("wf-1", "sid-1", session=db_session)
@@ -703,7 +706,7 @@ class TestWorkflowCollaborationService:
         events: list[str] = []
 
         @contextmanager
-        def graph_view_lock() -> Iterator[None]:
+        def graph_view_lock() -> Generator[None, None, None]:
             events.append("lock_enter")
             yield
             events.append("lock_exit")
@@ -1353,7 +1356,7 @@ class TestWorkflowCollaborationService:
         assert collaboration_service.is_session_active("wf-1", "sid-remote") is False
 
     @staticmethod
-    def _session(sid: str, connected_at: int, graph_active: bool) -> dict:
+    def _session(sid: str, connected_at: int, graph_active: bool) -> WorkflowSessionInfo:
         return {
             "user_id": f"u-{sid}",
             "username": sid,

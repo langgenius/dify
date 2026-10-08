@@ -1,6 +1,8 @@
 """Real conversion, isolated persistence, and failures at the atomic write boundary."""
 
 import json
+from collections.abc import Mapping
+from typing import cast
 
 import pytest
 from sqlalchemy import event, func, select
@@ -17,6 +19,7 @@ from services.app.console_service import ConsoleAppNotFoundError
 from services.entities.app_entities import AppEvent
 from services.errors.workflow_service import WorkflowConversionError
 from services.workflow.conversion_service import WorkflowConversionService
+from services.workflow.workflow_converter import WorkflowConverter
 from tests.unit_tests.model_factories import make_account, make_app, make_tenant
 
 CONTEXT = RequestContext("conversion", None, "account-1", "tenant-1")
@@ -82,7 +85,7 @@ def sessions(sqlite_engine: Engine) -> sessionmaker[Session]:
             ]
         )
         config.id = "config-1"
-    return factory
+    return cast(sessionmaker[Session], factory)
 
 
 @pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.COMPLETION])
@@ -126,7 +129,10 @@ def test_conversion_releases_reads_and_commits_target_once(
         notifications.append(event)
 
     service = WorkflowConversionService(
-        ConsoleAppRepository(session_factory=sessions), decrypt_token=decrypt, notify_created=created
+        ConsoleAppRepository(session_factory=sessions),
+        converter=WorkflowConverter(),
+        decrypt_token=decrypt,
+        notify_created=created,
     )
     new_id = service.convert(CONTEXT, "app-1", {"name": "", "icon_type": "", "icon": "", "icon_background": ""})
     assert len(notifications) == 1
@@ -189,6 +195,7 @@ def test_failed_conversion_rolls_back_entire_target(sessions: sessionmaker[Sessi
     notifications = []
     service = WorkflowConversionService(
         ConsoleAppRepository(session_factory=sessions),
+        converter=WorkflowConverter(),
         decrypt_token=lambda *_: "key",
         notify_created=lambda **kwargs: notifications.append(kwargs),
     )
@@ -224,10 +231,11 @@ def test_conversion_rejects_invalid_owned_data_before_creating_target(
             extension.tenant_id = "another-tenant"
         else:
             session.delete(extension)
-    notifications = []
-    decryptions = []
+    notifications: list[Mapping[str, object]] = []
+    decryptions: list[tuple[object, ...]] = []
     service = WorkflowConversionService(
         ConsoleAppRepository(session_factory=sessions),
+        converter=WorkflowConverter(),
         decrypt_token=lambda *args: decryptions.append(args) or "key",
         notify_created=lambda **kwargs: notifications.append(kwargs),
     )
@@ -242,7 +250,10 @@ def test_conversion_rejects_invalid_owned_data_before_creating_target(
 
 def test_conversion_rejects_other_tenant(sessions: sessionmaker[Session]) -> None:
     service = WorkflowConversionService(
-        ConsoleAppRepository(session_factory=sessions), decrypt_token=lambda *_: "key", notify_created=lambda **_: None
+        ConsoleAppRepository(session_factory=sessions),
+        converter=WorkflowConverter(),
+        decrypt_token=lambda *_: "key",
+        notify_created=lambda **_: None,
     )
     with pytest.raises(ConsoleAppNotFoundError):
         service.convert(CONTEXT._replace(active_workspace_id="other-tenant"), "app-1", {})
@@ -253,7 +264,10 @@ def test_decryption_failure_creates_no_target(sessions: sessionmaker[Session]) -
         raise RuntimeError("key service unavailable")
 
     service = WorkflowConversionService(
-        ConsoleAppRepository(session_factory=sessions), decrypt_token=fail, notify_created=lambda **_: None
+        ConsoleAppRepository(session_factory=sessions),
+        converter=WorkflowConverter(),
+        decrypt_token=fail,
+        notify_created=lambda **_: None,
     )
     with pytest.raises(RuntimeError, match="key service unavailable"):
         service.convert(CONTEXT, "app-1", {})

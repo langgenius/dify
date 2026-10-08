@@ -19,6 +19,7 @@ from models.enums import ConversationFromSource
 from models.model import App, Conversation, Message
 from services.app.generation.adapters.base_runner import AppRunner
 from services.app.generation.ports import AgentMessageRecords
+from services.app.generation.retrieval import ApplicationDatasetRetriever
 from services.knowledge.retrieval.adapters.resource_events import DatasetIndexToolCallbackHandler
 from services.knowledge.retrieval.ports import DatasetRetrievalFactory
 
@@ -158,6 +159,8 @@ class ChatAppRunner(AppRunner):
             hit_callback = DatasetIndexToolCallbackHandler(queue_manager)
 
             dataset_retrieval = self._retrieval(application_generate_entity)
+            if not isinstance(dataset_retrieval, ApplicationDatasetRetriever):
+                raise TypeError("dataset retrieval factory does not support application retrieval")
             context, retrieved_files = dataset_retrieval.retrieve(
                 app_id=app_record.id,
                 user_id=application_generate_entity.user_id,

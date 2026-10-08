@@ -13,7 +13,7 @@ import contextlib
 import inspect
 from decimal import Decimal
 from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import create_autospec
 
 import pytest
 from pytest_mock import MockerFixture
@@ -140,12 +140,12 @@ def generator(
     tool_providers, mocker: MockerFixture, *, annotation_replies, app_records, human_forms
 ) -> AgentAppGenerator:
     gen = AgentAppGenerator(
-        agent_configs=Mock(spec=AgentAppConfigurations),
+        agent_configs=create_autospec(AgentAppConfigurations, instance=True, spec_set=True),
         forms=human_forms,
         annotations=annotation_replies,
         records=app_records,
         tool_providers=tool_providers,
-        workflow_queries=Mock(spec=WorkflowToolQueries),
+        workflow_queries=create_autospec(WorkflowToolQueries, instance=True, spec_set=True),
     )
     mocker.patch(f"{MODULE}.current_app", new=mocker.MagicMock(_get_current_object=mocker.MagicMock()))
     mocker.patch(f"{MODULE}.contextvars.copy_context", return_value="ctx")

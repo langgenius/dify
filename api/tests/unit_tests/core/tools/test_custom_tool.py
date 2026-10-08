@@ -241,7 +241,9 @@ def test_do_http_request_builds_arguments_and_handles_invalid_method(monkeypatch
         invalid_method_tool.do_http_request("https://api.example.com", "TRACE", headers={}, parameters={})
 
 
-def test_do_http_request_handles_file_upload_and_invoke_paths(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
+def test_do_http_request_handles_file_upload_and_invoke_paths(
+    monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+):
     openapi = {
         "parameters": [],
         "requestBody": {
@@ -281,11 +283,11 @@ def test_do_http_request_handles_file_upload_and_invoke_paths(monkeypatch: pytes
     monkeypatch.setattr(tool, "assembling_request", lambda parameters: {})
     monkeypatch.setattr(tool, "do_http_request", lambda *args, **kwargs: httpx.Response(200, text='{"a":1}'))
     monkeypatch.setattr(tool, "validate_and_parse_response", lambda _: ParsedResponse({"a": 1}, True))
-    messages = list(tool.invoke(user_id="u1", tool_parameters={}))
+    messages = list(tool.invoke(session=unbound_session, user_id="u1", tool_parameters={}))
     assert [m.type for m in messages] == [ToolInvokeMessage.MessageType.JSON, ToolInvokeMessage.MessageType.TEXT]
 
     # _invoke text path
     monkeypatch.setattr(tool, "validate_and_parse_response", lambda _: ParsedResponse("plain", False))
-    messages = list(tool.invoke(user_id="u1", tool_parameters={}))
+    messages = list(tool.invoke(session=unbound_session, user_id="u1", tool_parameters={}))
     assert len(messages) == 1
     assert messages[0].message.text == "plain"

@@ -231,7 +231,11 @@ class TestWorkflowVariableService:
         service = build_workflow_variable_service(
             database_client=sessionmaker(bind=db_session_with_containers.get_bind(), expire_on_commit=False)
         )
-        retrieved_variable = service.get_variable(non_existent_id, app_id="missing-app", user_id="missing-user")
+        retrieved_variable = service.get_variable(
+            non_existent_id,
+            app_id=fake.uuid4(),
+            user_id=fake.uuid4(),
+        )
         assert retrieved_variable is None
 
     def test_get_draft_variables_by_selectors_success(

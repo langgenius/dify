@@ -14,23 +14,23 @@ class Provider:
 
 
 class PluginClient:
-    def __init__(self):
-        self.provider = Provider("plugin")
-        self.calls = []
-        self.failure = None
+    def __init__(self) -> None:
+        self.provider: Provider = Provider("plugin")
+        self.calls: list[tuple[str, str | None]] = []
+        self.failure: PluginDaemonClientSideError | None = None
 
-    def fetch_agent_strategy_providers(self, tenant_id):
+    def fetch_agent_strategy_providers(self, tenant_id: str) -> list[Provider]:
         self.calls.append((tenant_id, None))
         return [self.provider]
 
-    def fetch_agent_strategy_provider(self, tenant_id, name):
+    def fetch_agent_strategy_provider(self, tenant_id: str, name: str) -> Provider:
         self.calls.append((tenant_id, name))
         if self.failure:
             raise self.failure
         return self.provider
 
 
-def test_agent_provider_queries_preserve_scope_and_errors(monkeypatch):
+def test_agent_provider_queries_preserve_scope_and_errors(monkeypatch: pytest.MonkeyPatch) -> None:
     client = PluginClient()
     monkeypatch.setattr(agent_service, "PluginAgentClient", lambda: client)
     assert agent_service.AgentService.list_agent_providers("user", "tenant") == [client.provider]

@@ -1,54 +1,16 @@
-from decimal import Decimal
 from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
 from dify_agent.protocol import RunFailureType
-from sqlalchemy.orm import Session
 
 from clients.agent_backend.errors import AgentBackendRunFailedError
 from core.app.apps.base_app_generate_response_converter import AppGenerateResponseConverter
-from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import QueueErrorEvent
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.errors.error import QuotaExceededError
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError, InvokeRateLimitError
-from models.enums import ConversationFromSource, MessageStatus
-from models.model import AppMode, Message
 from services.app.generation.errors import AgentSessionSnapshotIncompatibleError
-
-
-def _persist_message(session: Session, *, message_id: str) -> Message:
-    message = Message(
-        id=message_id,
-        app_id="app-1",
-        model_provider=None,
-        model_id=None,
-        override_model_configs=None,
-        conversation_id="conversation-1",
-        inputs={},
-        query="query",
-        message={},
-        message_unit_price=Decimal(0),
-        answer="",
-        answer_unit_price=Decimal(0),
-        parent_message_id=None,
-        total_price=None,
-        currency="USD",
-        status=MessageStatus.NORMAL,
-        error=None,
-        message_metadata=None,
-        invoke_from=InvokeFrom.WEB_APP,
-        from_source=ConversationFromSource.CONSOLE,
-        from_end_user_id=None,
-        from_account_id="account-1",
-        workflow_run_id=None,
-        app_mode=AppMode.COMPLETION,
-    )
-    session.add(message)
-    session.commit()
-    session.expunge_all()
-    return message
 
 
 class TestBasedGenerateTaskPipeline:

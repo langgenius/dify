@@ -2,11 +2,15 @@
 
 from machinery.context import RequestContext
 from models.model import AppMode
+from repositories.tools.provider_repository import ToolProviderRepository
+from repositories.tools.workflow_repository import WorkflowToolRepository
 from services.app.response_gateway import AppResponseGateway
 from services.entities.app_entities import AppRecord
 
 
-def test_mask_record_omits_unverified_tool_parameters_without_mutating_record(tool_providers, workflow_queries) -> None:
+def test_mask_record_omits_unverified_tool_parameters_without_mutating_record(
+    tool_providers: ToolProviderRepository, workflow_queries: WorkflowToolRepository
+) -> None:
     agent_mode = {
         "enabled": True,
         "tools": [

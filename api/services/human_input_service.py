@@ -18,7 +18,7 @@ from graphon.runtime import GraphRuntimeState
 from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
 from libs.datetime_utils import ensure_naive_utc, naive_utc_now
 from libs.exception import BaseHTTPException
-from models.human_input_contracts import HumanInputFormRecord
+from models.human_input_contracts import HumanInputFormRecordView, HumanInputFormSubmissionStore
 from models.human_input_entities import (
     FileInputConfig,
     FileListInputConfig,
@@ -45,7 +45,7 @@ _MappingSequenceAdapter: TypeAdapter[Sequence[Mapping[str, Any]]] = TypeAdapter(
 
 
 class Form:
-    def __init__(self, record: HumanInputFormRecord):
+    def __init__(self, record: HumanInputFormRecordView):
         self._record = record
 
     def get_definition(self) -> FormDefinition:
@@ -155,7 +155,7 @@ class HumanInputService:
     def __init__(
         self,
         session_factory: sessionmaker[Session] | Engine,
-        form_repository: HumanInputFormSubmissionRepository | None = None,
+        form_repository: HumanInputFormSubmissionStore | None = None,
     ):
         if isinstance(session_factory, Engine):
             session_factory = sessionmaker(bind=session_factory)

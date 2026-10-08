@@ -79,6 +79,7 @@ class _DummyTool(Tool):
 
     def _invoke(
         self,
+        session: Session,
         user_id: str,
         tool_parameters: dict[str, Any],
         conversation_id: str | None = None,
@@ -274,17 +275,18 @@ def test_create_message_files_and_invoke_generator(sqlite_session: Session, *, a
     assert {message_file.message_id for message_file in message_files} == {agent_message.id}
 
     tool = _build_tool()
-    invoked = list(ToolEngine._invoke(tool, {"a": 1}, user_id="u"))
+    invoked = list(ToolEngine._invoke(sqlite_session, tool, {"a": 1}, user_id="u"))
     assert invoked[0].type == ToolInvokeMessage.MessageType.TEXT
     assert isinstance(invoked[-1], ToolInvokeMeta)
     assert invoked[-1].error is None
 
 
-def test_generic_invoke_success_and_error_paths():
+def test_generic_invoke_success_and_error_paths(unbound_session: Session):
     tool = _build_tool()
     callback = DifyWorkflowCallbackHandler()
     response = list(
         ToolEngine.generic_invoke(
+            session=unbound_session,
             tool=tool,
             tool_parameters={"x": 1},
             user_id="u1",
@@ -302,6 +304,7 @@ def test_generic_invoke_success_and_error_paths():
     with pytest.raises(RuntimeError, match="boom"):
         list(
             ToolEngine.generic_invoke(
+                session=unbound_session,
                 tool=tool,
                 tool_parameters={"x": 1},
                 user_id="u1",
@@ -311,7 +314,7 @@ def test_generic_invoke_success_and_error_paths():
         )
 
 
-def test_agent_invoke_success(app_records):
+def test_agent_invoke_success(unbound_session: Session, app_records):
     tool = _build_tool(with_llm_parameter=True)
     callback = DifyAgentCallbackHandler()
     message = _message()
@@ -325,6 +328,7 @@ def test_agent_invoke_success(app_records):
             with patch.object(ToolEngine, "_extract_tool_response_binary_and_text", return_value=iter([])):
                 with patch.object(ToolEngine, "_create_message_files", return_value=[]):
                     result_text, message_files, result_meta = ToolEngine.agent_invoke(
+                        session=unbound_session,
                         records=app_records,
                         tool=tool,
                         tool_parameters="hello",
@@ -340,13 +344,14 @@ def test_agent_invoke_success(app_records):
     assert result_meta.error is None
 
 
-def test_agent_invoke_param_validation_error(app_records):
+def test_agent_invoke_param_validation_error(unbound_session: Session, app_records):
     tool = _build_tool(with_llm_parameter=True)
     callback = DifyAgentCallbackHandler()
     message = _message()
 
     with patch.object(ToolEngine, "_invoke", side_effect=ToolParameterValidationError("bad-param")):
         error_text, files, error_meta = ToolEngine.agent_invoke(
+            session=unbound_session,
             records=app_records,
             tool=tool,
             tool_parameters={"a": 1},
@@ -362,7 +367,7 @@ def test_agent_invoke_param_validation_error(app_records):
     assert error_meta.error
 
 
-def test_agent_invoke_engine_meta_error(app_records):
+def test_agent_invoke_engine_meta_error(unbound_session: Session, app_records):
     tool = _build_tool(with_llm_parameter=True)
     callback = DifyAgentCallbackHandler()
     message = _message()
@@ -370,6 +375,7 @@ def test_agent_invoke_engine_meta_error(app_records):
 
     with patch.object(ToolEngine, "_invoke", side_effect=engine_error):
         error_text, files, error_meta = ToolEngine.agent_invoke(
+            session=unbound_session,
             records=app_records,
             tool=tool,
             tool_parameters={"a": 1},
@@ -407,13 +413,14 @@ def test_convert_tool_response_excludes_variable_messages():
     assert "variable_name" not in result
 
 
-def test_agent_invoke_tool_invoke_error(app_records):
+def test_agent_invoke_tool_invoke_error(unbound_session: Session, app_records):
     tool = _build_tool(with_llm_parameter=True)
     callback = DifyAgentCallbackHandler()
     message = _message()
 
     with patch.object(ToolEngine, "_invoke", side_effect=ToolInvokeError("invoke boom")):
         error_text, files, _ = ToolEngine.agent_invoke(
+            session=unbound_session,
             records=app_records,
             tool=tool,
             tool_parameters={"a": 1},
