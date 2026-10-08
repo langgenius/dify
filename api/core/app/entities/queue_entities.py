@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from core.app.entities.agent_strategy import AgentStrategyInfo
 from core.rag.entities import RetrievalSourceMetadata
+from core.workflow.nodes.human_input.entities import FormInputConfig, UserActionConfig
 from core.workflow.nodes.human_input.pause_reason import PauseReason
 from graphon.entities import WorkflowStartReason
 from graphon.enums import NodeType, WorkflowNodeExecutionMetadataKey
@@ -52,6 +53,7 @@ class QueueEvent(StrEnum):
     PAUSE = "pause"
     HUMAN_INPUT_FORM_FILLED = "human_input_form_filled"
     HUMAN_INPUT_FORM_TIMEOUT = "human_input_form_timeout"
+    HUMAN_INPUT_REQUIRED = "human_input_required"
 
 
 class AppQueueEvent(BaseModel):
@@ -550,6 +552,21 @@ class QueueHumanInputFormTimeoutEvent(AppQueueEvent):
     node_type: NodeType
     node_title: str
     expiration_time: datetime
+
+
+class QueueHumanInputRequiredEvent(AppQueueEvent):
+    """Queue event for Agent App ask_human pauses surfaced through the shared HITL SSE contract."""
+
+    event: QueueEvent = QueueEvent.HUMAN_INPUT_REQUIRED
+
+    form_id: str
+    node_id: str
+    node_title: str
+    form_content: str
+    inputs: Sequence[FormInputConfig] = Field(default_factory=list)
+    actions: Sequence[UserActionConfig] = Field(default_factory=list)
+    resolved_default_values: Mapping[str, Any] = Field(default_factory=dict)
+    display_in_ui: bool = True
 
 
 class QueueMessage(BaseModel):

@@ -61,6 +61,7 @@ from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, Us
 from core.app.entities.queue_entities import (
     QueueAgentMessageEvent,
     QueueAgentThoughtEvent,
+    QueueHumanInputRequiredEvent,
     QueueLLMChunkEvent,
     QueueMessageEndEvent,
 )
@@ -1632,7 +1633,15 @@ def test_ask_human_pauses_turn_creates_form_and_persists_correlation() -> None:
     created_params = fake_repo.create_form.call_args.args[0]
     assert created_params.conversation_id == "conv-1"
     assert created_params.workflow_execution_id is None
+    human_input_events = [e for e in qm.events if isinstance(e, QueueHumanInputRequiredEvent)]
+    assert len(human_input_events) == 1
+    assert human_input_events[0].form_id == "form-1"
+    assert human_input_events[0].node_id == "msg-1"
     assert [e for e in qm.events if isinstance(e, QueueMessageEndEvent)]
+    llm_chunk_index = next(i for i, e in enumerate(qm.events) if isinstance(e, QueueLLMChunkEvent))
+    human_input_index = next(i for i, e in enumerate(qm.events) if isinstance(e, QueueHumanInputRequiredEvent))
+    message_end_index = next(i for i, e in enumerate(qm.events) if isinstance(e, QueueMessageEndEvent))
+    assert llm_chunk_index < human_input_index < message_end_index
     assert _saved_user_query(qm) == "hello"
     assert _llm_result(qm).usage.total_tokens == 8
     # The pause correlation is persisted so a form submission can resume the run.
