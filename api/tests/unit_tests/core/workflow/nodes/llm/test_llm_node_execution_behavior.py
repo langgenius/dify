@@ -12,12 +12,6 @@ from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.app.llm.model_access import DifyCredentialsProvider, DifyModelFactory
 from core.helper.ssrf_proxy import graphon_ssrf_proxy
 from core.llm_generator.output_parser.structured_output import _parse_structured_output
-from core.workflow.node_runtime import (
-    DifyPreparedLLM,
-    DifyPromptMessageSerializer,
-    build_dify_llm_file_saver,
-    resolve_dify_run_context,
-)
 from core.workflow.system_variables import build_system_variables
 from extensions.ext_database import db
 from graphon.enums import WorkflowNodeExecutionStatus
@@ -26,6 +20,12 @@ from graphon.node_events import StreamCompletedEvent
 from graphon.nodes.llm.entities import LLMNodeData
 from graphon.nodes.llm.node import LLMNode
 from graphon.runtime import GraphRuntimeState, VariablePool
+from services.workflow.execution.adapters.node_runtime import (
+    DifyPreparedLLM,
+    DifyPromptMessageSerializer,
+    build_dify_llm_file_saver,
+    resolve_dify_run_context,
+)
 from tests.unit_tests.core.model_fixtures import make_model_config, make_model_instance
 from tests.workflow_test_utils import build_test_graph_init_params
 
