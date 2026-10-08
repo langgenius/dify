@@ -388,7 +388,6 @@ project-excludes = [
   "core/moderation/api/test_api.py",
   "core/moderation/test_input_moderation.py",
   "core/moderation/test_output_moderation.py",
-  "core/moderation/test_sensitive_word_filter.py",
   "core/ops/test_base_trace_instance.py",
   "core/ops/test_config_entity.py",
   "core/ops/test_lookup_helpers.py",
