@@ -609,11 +609,6 @@ class BillingService:
         redis_client.delete(f"tenant:{tenant_id}:billing_info")
 
     @classmethod
-    def sync_partner_tenants_bindings(cls, account_id: str, partner_key: str, click_id: str) -> dict[str, Any]:
-        payload = {"account_id": account_id, "click_id": click_id}
-        return cls._send_request("PUT", f"/partners/{partner_key}/tenants", json=payload)
-
-    @classmethod
     def get_plan_bulk(cls, tenant_ids: Sequence[str]) -> dict[str, SubscriptionPlan]:
         """
         Bulk fetch billing subscription plan via billing API.

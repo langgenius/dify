@@ -12,11 +12,11 @@ import type {
 import type { CompletionParams, ModelModeType } from '@/types/app'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
@@ -143,10 +143,10 @@ const RecoveryDialog = ({
           {description}
         </AlertDialogDescription>
       </div>
-      <AlertDialogActions>
+      <AlertDialogFooter>
         <AlertDialogCancelButton>{cancelLabel}</AlertDialogCancelButton>
         <AlertDialogConfirmButton onClick={onConfirm}>{confirmLabel}</AlertDialogConfirmButton>
-      </AlertDialogActions>
+      </AlertDialogFooter>
     </AlertDialogContent>
   </AlertDialog>
 )

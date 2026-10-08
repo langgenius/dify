@@ -1,10 +1,10 @@
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -86,7 +86,7 @@ export function Item({ apiBasedExtension, onEdit, canManage = true }: ItemProps)
               {`${t(($) => $['operation.delete'], { ns: 'common' })} \u201C${apiBasedExtension.name}\u201D?`}
             </AlertDialogTitle>
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
@@ -96,7 +96,7 @@ export function Item({ apiBasedExtension, onEdit, canManage = true }: ItemProps)
             >
               {t(($) => $['operation.delete'], { ns: 'common' }) || ''}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>
