@@ -1,6 +1,5 @@
 """Commit a Pipeline version, publication pointer and dataset settings together."""
 
-from dataclasses import fields
 from uuid import uuid4
 
 from sqlalchemy.orm import Session, sessionmaker
@@ -28,7 +27,18 @@ from services.workflow.contracts import WorkflowOwner, WorkflowSnapshot
 def _dataset_state(dataset: Dataset | None) -> PipelineDatasetState | None:
     if dataset is None:
         return None
-    return PipelineDatasetState(**{field.name: getattr(dataset, field.name) for field in fields(PipelineDatasetState)})
+    return PipelineDatasetState(
+        id=dataset.id,
+        chunk_structure=dataset.chunk_structure,
+        indexing_technique=dataset.indexing_technique,
+        embedding_model_provider=dataset.embedding_model_provider,
+        embedding_model=dataset.embedding_model,
+        is_multimodal=dataset.is_multimodal,
+        keyword_number=dataset.keyword_number,
+        retrieval_model=dataset.retrieval_model,
+        summary_index_setting=dataset.summary_index_setting,
+        collection_binding_id=dataset.collection_binding_id,
+    )
 
 
 class PipelinePublicationRepository:
@@ -68,9 +78,13 @@ class PipelinePublicationRepository:
                 raise WorkflowHashNotEqualError()
             if prepared is not None:
                 assert dataset is not None
-                for field in fields(PipelineDatasetState):
-                    if field.name not in {"id", "collection_binding_id", "indexing_technique"}:
-                        setattr(dataset, field.name, getattr(prepared.state, field.name))
+                dataset.chunk_structure = prepared.state.chunk_structure
+                dataset.embedding_model_provider = prepared.state.embedding_model_provider
+                dataset.embedding_model = prepared.state.embedding_model
+                dataset.is_multimodal = prepared.state.is_multimodal
+                dataset.keyword_number = prepared.state.keyword_number
+                dataset.retrieval_model = prepared.state.retrieval_model
+                dataset.summary_index_setting = prepared.state.summary_index_setting
                 technique = prepared.state.indexing_technique
                 dataset.indexing_technique = IndexTechniqueType(technique) if technique is not None else None
                 if prepared.embedding is not None:
