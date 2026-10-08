@@ -3,8 +3,9 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from datetime import timedelta
 from typing import override
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, call
 
 import pytest
 from sqlalchemy import select
@@ -67,14 +68,13 @@ def test_security_gateway_owns_login_failure_state(redis_transport: tuple[RedisC
     gateway.record_login_failure("user@example.com")
     gateway.reset_login_failures("user@example.com")
 
-    commands.assert_any_call(
-        "SETEX",
-        "login_error_rate_limit:user@example.com",
-        adapters.dify_config.LOGIN_LOCKOUT_DURATION,
-        3,
-    )
-    commands.assert_any_call("DEL", "login_error_rate_limit:user@example.com")
-    assert commands.call_count == 4
+    key = "login_error_rate_limit:user@example.com"
+    assert commands.call_args_list == [
+        call("GET", key, keys=[key]),
+        call("GET", key, keys=[key]),
+        call("SETEX", key, adapters.dify_config.LOGIN_LOCKOUT_DURATION, 3),
+        call("DEL", key),
+    ]
 
 
 def test_security_gateway_owns_email_send_ip_limit(
@@ -86,8 +86,15 @@ def test_security_gateway_owns_email_send_ip_limit(
     gateway = adapters.RedisConsoleAuthSecurityGateway(redis=redis)
 
     assert gateway.is_email_send_ip_limited("127.0.0.1") is True
-    commands.assert_any_call("SET", "email_send_ip_limit_hour:127.0.0.1", 1, "NX", "EX", 600)
-    assert commands.call_count == 4
+    freeze_key = "email_send_ip_limit_freeze:127.0.0.1"
+    minute_key = "email_send_ip_limit_minute:127.0.0.1"
+    hour_key = "email_send_ip_limit_hour:127.0.0.1"
+    assert commands.call_args_list == [
+        call("GET", freeze_key, keys=[freeze_key]),
+        call("GET", minute_key, keys=[minute_key]),
+        call("GET", hour_key, keys=[hour_key]),
+        call("SET", hour_key, 1, "NX", "EX", 600),
+    ]
 
 
 def test_session_gateway_owns_refresh_token_storage(
@@ -110,9 +117,11 @@ def test_session_gateway_owns_refresh_token_storage(
 
     assert result == AccountSessionTokens(access_token="access", refresh_token="refresh", csrf_token="csrf")
     assert issued_payloads[0]["user_id"] == "account-1"
-    assert commands.call_args_list[0].args[1] == "refresh_token:refresh"
-    assert commands.call_args_list[1].args[1] == "account_refresh_token:account-1"
-    assert commands.call_count == 2
+    expires_in = int(timedelta(days=adapters.dify_config.REFRESH_TOKEN_EXPIRE_DAYS).total_seconds())
+    assert commands.call_args_list == [
+        call("SETEX", "refresh_token:refresh", expires_in, "account-1"),
+        call("SETEX", "account_refresh_token:account-1", expires_in, "refresh"),
+    ]
 
 
 def test_session_gateway_resolves_rotates_and_revokes_refresh_tokens(

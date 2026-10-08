@@ -20,7 +20,7 @@ from core.moderation.keywords.keywords import KeywordsModeration
 class TestConfigValidation:
     """Test configuration validation for KeywordsModeration."""
 
-    def test_valid_config(self):
+    def test_valid_config(self) -> None:
         """Test validation passes with valid configuration."""
         # Arrange: Create a valid configuration with all required fields
         config = {
@@ -31,7 +31,7 @@ class TestConfigValidation:
         # Act & Assert: Validation should pass without raising any exception
         KeywordsModeration.validate_config("tenant-123", config)
 
-    def test_missing_keywords(self):
+    def test_missing_keywords(self) -> None:
         """Test validation fails when keywords are missing."""
         # Arrange: Create config without the required 'keywords' field
         config = {
@@ -43,7 +43,7 @@ class TestConfigValidation:
         with pytest.raises(ValueError, match="keywords is required"):
             KeywordsModeration.validate_config("tenant-123", config)
 
-    def test_keywords_too_long(self):
+    def test_keywords_too_long(self) -> None:
         """Test validation fails when keywords exceed maximum length."""
         # Arrange: Create keywords string that exceeds the 10,000 character limit
         config = {
@@ -55,7 +55,7 @@ class TestConfigValidation:
         with pytest.raises(ValueError, match="keywords length must be less than 10000"):
             KeywordsModeration.validate_config("tenant-123", config)
 
-    def test_too_many_keyword_rows(self):
+    def test_too_many_keyword_rows(self) -> None:
         """Test validation fails when keyword rows exceed maximum count."""
         # Arrange: Create 101 keyword rows (exceeds the 100 row limit)
         # Each keyword is on a separate line, creating 101 rows total
@@ -69,7 +69,7 @@ class TestConfigValidation:
         with pytest.raises(ValueError, match="the number of rows for the keywords must be less than 100"):
             KeywordsModeration.validate_config("tenant-123", config)
 
-    def test_missing_inputs_config(self):
+    def test_missing_inputs_config(self) -> None:
         """Test validation fails when inputs_config is missing."""
         # Arrange: Create config without inputs_config (only outputs_config)
         config = {
@@ -81,7 +81,7 @@ class TestConfigValidation:
         with pytest.raises(ValueError, match="inputs_config must be a dict"):
             KeywordsModeration.validate_config("tenant-123", config)
 
-    def test_missing_outputs_config(self):
+    def test_missing_outputs_config(self) -> None:
         """Test validation fails when outputs_config is missing."""
         # Arrange: Create config without outputs_config (only inputs_config)
         config = {
@@ -93,7 +93,7 @@ class TestConfigValidation:
         with pytest.raises(ValueError, match="outputs_config must be a dict"):
             KeywordsModeration.validate_config("tenant-123", config)
 
-    def test_both_configs_disabled(self):
+    def test_both_configs_disabled(self) -> None:
         """Test validation fails when both input and output configs are disabled."""
         # Arrange: Create config where both input and output moderation are disabled
         # This is invalid because at least one must be enabled for moderation to work
@@ -106,7 +106,7 @@ class TestConfigValidation:
         with pytest.raises(ValueError, match="At least one of inputs_config or outputs_config must be enabled"):
             KeywordsModeration.validate_config("tenant-123", config)
 
-    def test_missing_preset_response_when_enabled(self):
+    def test_missing_preset_response_when_enabled(self) -> None:
         """Test validation fails when preset_response is missing for enabled config."""
         # Arrange: Enable inputs_config but don't provide required preset_response
         # When a config is enabled, it must have a preset_response to show users
@@ -119,7 +119,7 @@ class TestConfigValidation:
         with pytest.raises(ValueError, match="inputs_config.preset_response is required"):
             KeywordsModeration.validate_config("tenant-123", config)
 
-    def test_preset_response_too_long(self):
+    def test_preset_response_too_long(self) -> None:
         """Test validation fails when preset_response exceeds maximum length."""
         # Arrange: Create preset_response with 101 characters (exceeds 100 char limit)
         config = {
@@ -135,7 +135,9 @@ class TestConfigValidation:
 class TestWordListMatching:
     """Test word list matching functionality."""
 
-    def _create_moderation(self, keywords: str, inputs_enabled: bool = True, outputs_enabled: bool = True):
+    def _create_moderation(
+        self, keywords: str, inputs_enabled: bool = True, outputs_enabled: bool = True
+    ) -> KeywordsModeration:
         """Helper method to create KeywordsModeration instance with test configuration."""
         config = {
             "inputs_config": {"enabled": inputs_enabled, "preset_response": "Input contains sensitive words"},
@@ -144,7 +146,7 @@ class TestWordListMatching:
         }
         return KeywordsModeration(app_id="test-app", tenant_id="test-tenant", config=config)
 
-    def test_single_keyword_match_in_input(self):
+    def test_single_keyword_match_in_input(self) -> None:
         """Test detection of single keyword in input."""
         # Arrange: Create moderation with a single keyword "badword"
         moderation = self._create_moderation("badword")
@@ -157,7 +159,7 @@ class TestWordListMatching:
         assert result.action == ModerationAction.DIRECT_OUTPUT
         assert result.preset_response == "Input contains sensitive words"
 
-    def test_single_keyword_no_match_in_input(self):
+    def test_single_keyword_no_match_in_input(self) -> None:
         """Test no detection when keyword is not present in input."""
         # Arrange: Create moderation with keyword "badword"
         moderation = self._create_moderation("badword")
@@ -169,7 +171,7 @@ class TestWordListMatching:
         assert result.flagged is False
         assert result.action == ModerationAction.DIRECT_OUTPUT
 
-    def test_multiple_keywords_match(self):
+    def test_multiple_keywords_match(self) -> None:
         """Test detection of multiple keywords."""
         # Arrange: Create moderation with 3 keywords separated by newlines
         moderation = self._create_moderation("badword1\nbadword2\nbadword3")
@@ -180,7 +182,7 @@ class TestWordListMatching:
         # Assert: Should be flagged even though only one keyword matches
         assert result.flagged is True
 
-    def test_keyword_in_query_parameter(self):
+    def test_keyword_in_query_parameter(self) -> None:
         """Test detection of keyword in query parameter."""
         # Arrange: Create moderation with keyword "sensitive"
         moderation = self._create_moderation("sensitive")
@@ -192,7 +194,7 @@ class TestWordListMatching:
         # Assert: Should be flagged because keyword is in query
         assert result.flagged is True
 
-    def test_keyword_in_multiple_input_fields(self):
+    def test_keyword_in_multiple_input_fields(self) -> None:
         """Test detection across multiple input fields."""
         # Arrange: Create moderation with keyword "badword"
         moderation = self._create_moderation("badword")
@@ -206,7 +208,7 @@ class TestWordListMatching:
         # Assert: Should be flagged because keyword found in field2
         assert result.flagged is True
 
-    def test_empty_keywords_list(self):
+    def test_empty_keywords_list(self) -> None:
         """Test behavior with empty keywords after filtering."""
         # Arrange: Create moderation with only newlines (no actual keywords)
         # Empty lines are filtered out, resulting in zero keywords to check
@@ -218,7 +220,7 @@ class TestWordListMatching:
         # Assert: Should NOT be flagged since there are no keywords to match
         assert result.flagged is False
 
-    def test_keyword_with_whitespace(self):
+    def test_keyword_with_whitespace(self) -> None:
         """Test keywords with leading/trailing whitespace are preserved."""
         # Arrange: Create keyword phrase with space in the middle
         moderation = self._create_moderation("bad word")  # Keyword with space
@@ -229,7 +231,7 @@ class TestWordListMatching:
         # Assert: Should match the phrase including the space
         assert result.flagged is True
 
-    def test_partial_word_match(self):
+    def test_partial_word_match(self) -> None:
         """Test that keywords match as substrings (not whole words only)."""
         # Arrange: Create moderation with short keyword "bad"
         moderation = self._create_moderation("bad")
@@ -241,7 +243,7 @@ class TestWordListMatching:
         # "bad" is found within "badass"
         assert result.flagged is True
 
-    def test_keyword_at_start_of_text(self):
+    def test_keyword_at_start_of_text(self) -> None:
         """Test keyword detection at the start of text."""
         # Arrange: Create moderation with keyword "badword"
         moderation = self._create_moderation("badword")
@@ -252,7 +254,7 @@ class TestWordListMatching:
         # Assert: Should detect keyword regardless of position
         assert result.flagged is True
 
-    def test_keyword_at_end_of_text(self):
+    def test_keyword_at_end_of_text(self) -> None:
         """Test keyword detection at the end of text."""
         # Arrange: Create moderation with keyword "badword"
         moderation = self._create_moderation("badword")
@@ -263,7 +265,7 @@ class TestWordListMatching:
         # Assert: Should detect keyword regardless of position
         assert result.flagged is True
 
-    def test_multiple_occurrences_of_same_keyword(self):
+    def test_multiple_occurrences_of_same_keyword(self) -> None:
         """Test detection when keyword appears multiple times."""
         # Arrange: Create moderation with keyword "bad"
         moderation = self._create_moderation("bad")
@@ -278,7 +280,7 @@ class TestWordListMatching:
 class TestCaseInsensitiveMatching:
     """Test case-insensitive matching behavior."""
 
-    def _create_moderation(self, keywords: str):
+    def _create_moderation(self, keywords: str) -> KeywordsModeration:
         """Helper method to create KeywordsModeration instance."""
         config = {
             "inputs_config": {"enabled": True, "preset_response": "Blocked"},
@@ -287,7 +289,7 @@ class TestCaseInsensitiveMatching:
         }
         return KeywordsModeration(app_id="test-app", tenant_id="test-tenant", config=config)
 
-    def test_lowercase_keyword_matches_uppercase_text(self):
+    def test_lowercase_keyword_matches_uppercase_text(self) -> None:
         """Test lowercase keyword matches uppercase text."""
         # Arrange: Create moderation with lowercase keyword
         moderation = self._create_moderation("badword")
@@ -298,7 +300,7 @@ class TestCaseInsensitiveMatching:
         # Assert: Should match because comparison is case-insensitive
         assert result.flagged is True
 
-    def test_uppercase_keyword_matches_lowercase_text(self):
+    def test_uppercase_keyword_matches_lowercase_text(self) -> None:
         """Test uppercase keyword matches lowercase text."""
         # Arrange: Create moderation with UPPERCASE keyword
         moderation = self._create_moderation("BADWORD")
@@ -309,7 +311,7 @@ class TestCaseInsensitiveMatching:
         # Assert: Should match because comparison is case-insensitive
         assert result.flagged is True
 
-    def test_mixed_case_keyword_matches_mixed_case_text(self):
+    def test_mixed_case_keyword_matches_mixed_case_text(self) -> None:
         """Test mixed case keyword matches mixed case text."""
         # Arrange: Create moderation with MiXeD case keyword
         moderation = self._create_moderation("BaDwOrD")
@@ -320,14 +322,14 @@ class TestCaseInsensitiveMatching:
         # Assert: Should match despite different casing
         assert result.flagged is True
 
-    def test_case_insensitive_with_special_characters(self):
+    def test_case_insensitive_with_special_characters(self) -> None:
         """Test case-insensitive matching with special characters."""
         moderation = self._create_moderation("Bad-Word")
         result = moderation.moderation_for_inputs({"text": "This contains BAD-WORD in it"})
 
         assert result.flagged is True
 
-    def test_case_insensitive_unicode_characters(self):
+    def test_case_insensitive_unicode_characters(self) -> None:
         """Test case-insensitive matching with unicode characters."""
         moderation = self._create_moderation("café")
         result = moderation.moderation_for_inputs({"text": "Welcome to CAFÉ"})
@@ -335,7 +337,7 @@ class TestCaseInsensitiveMatching:
         # Note: Python's lower() handles unicode, but behavior may vary
         assert result.flagged is True
 
-    def test_case_insensitive_in_query(self):
+    def test_case_insensitive_in_query(self) -> None:
         """Test case-insensitive matching in query parameter."""
         moderation = self._create_moderation("sensitive")
         result = moderation.moderation_for_inputs({"field": "clean"}, query="SENSITIVE information")
@@ -346,7 +348,7 @@ class TestCaseInsensitiveMatching:
 class TestOutputModeration:
     """Test output moderation functionality."""
 
-    def _create_moderation(self, keywords: str, outputs_enabled: bool = True):
+    def _create_moderation(self, keywords: str, outputs_enabled: bool = True) -> KeywordsModeration:
         """Helper method to create KeywordsModeration instance."""
         config = {
             "inputs_config": {"enabled": False},
@@ -355,7 +357,7 @@ class TestOutputModeration:
         }
         return KeywordsModeration(app_id="test-app", tenant_id="test-tenant", config=config)
 
-    def test_output_moderation_detects_keyword(self):
+    def test_output_moderation_detects_keyword(self) -> None:
         """Test output moderation detects sensitive keywords."""
         moderation = self._create_moderation("badword")
         result = moderation.moderation_for_outputs("This output contains badword")
@@ -364,28 +366,28 @@ class TestOutputModeration:
         assert result.action == ModerationAction.DIRECT_OUTPUT
         assert result.preset_response == "Output blocked"
 
-    def test_output_moderation_clean_text(self):
+    def test_output_moderation_clean_text(self) -> None:
         """Test output moderation allows clean text."""
         moderation = self._create_moderation("badword")
         result = moderation.moderation_for_outputs("This is clean output")
 
         assert result.flagged is False
 
-    def test_output_moderation_disabled(self):
+    def test_output_moderation_disabled(self) -> None:
         """Test output moderation when disabled."""
         moderation = self._create_moderation("badword", outputs_enabled=False)
         result = moderation.moderation_for_outputs("This output contains badword")
 
         assert result.flagged is False
 
-    def test_output_moderation_case_insensitive(self):
+    def test_output_moderation_case_insensitive(self) -> None:
         """Test output moderation is case-insensitive."""
         moderation = self._create_moderation("badword")
         result = moderation.moderation_for_outputs("This output contains BADWORD")
 
         assert result.flagged is True
 
-    def test_output_moderation_multiple_keywords(self):
+    def test_output_moderation_multiple_keywords(self) -> None:
         """Test output moderation with multiple keywords."""
         moderation = self._create_moderation("bad\nworse\nworst")
         result = moderation.moderation_for_outputs("This is worse than expected")
@@ -396,7 +398,7 @@ class TestOutputModeration:
 class TestInputModeration:
     """Test input moderation specific scenarios."""
 
-    def _create_moderation(self, keywords: str, inputs_enabled: bool = True):
+    def _create_moderation(self, keywords: str, inputs_enabled: bool = True) -> KeywordsModeration:
         """Helper method to create KeywordsModeration instance."""
         config = {
             "inputs_config": {"enabled": inputs_enabled, "preset_response": "Input blocked"},
@@ -405,14 +407,14 @@ class TestInputModeration:
         }
         return KeywordsModeration(app_id="test-app", tenant_id="test-tenant", config=config)
 
-    def test_input_moderation_disabled(self):
+    def test_input_moderation_disabled(self) -> None:
         """Test input moderation when disabled."""
         moderation = self._create_moderation("badword", inputs_enabled=False)
         result = moderation.moderation_for_inputs({"text": "This contains badword"})
 
         assert result.flagged is False
 
-    def test_input_moderation_with_numeric_values(self):
+    def test_input_moderation_with_numeric_values(self) -> None:
         """Test input moderation converts numeric values to strings."""
         moderation = self._create_moderation("123")
         result = moderation.moderation_for_inputs({"number": 123456})
@@ -420,7 +422,7 @@ class TestInputModeration:
         # Should match because 123 is substring of "123456"
         assert result.flagged is True
 
-    def test_input_moderation_with_boolean_values(self):
+    def test_input_moderation_with_boolean_values(self) -> None:
         """Test input moderation handles boolean values."""
         moderation = self._create_moderation("true")
         result = moderation.moderation_for_inputs({"flag": True})
@@ -428,7 +430,7 @@ class TestInputModeration:
         # Should match because str(True) == "True" and case-insensitive
         assert result.flagged is True
 
-    def test_input_moderation_with_none_values(self):
+    def test_input_moderation_with_none_values(self) -> None:
         """Test input moderation handles None values."""
         moderation = self._create_moderation("none")
         result = moderation.moderation_for_inputs({"value": None})
@@ -436,14 +438,14 @@ class TestInputModeration:
         # Should match because str(None) == "None" and case-insensitive
         assert result.flagged is True
 
-    def test_input_moderation_with_empty_string(self):
+    def test_input_moderation_with_empty_string(self) -> None:
         """Test input moderation handles empty string values."""
         moderation = self._create_moderation("badword")
         result = moderation.moderation_for_inputs({"text": ""})
 
         assert result.flagged is False
 
-    def test_input_moderation_with_list_values(self):
+    def test_input_moderation_with_list_values(self) -> None:
         """Test input moderation handles list values (converted to string)."""
         moderation = self._create_moderation("badword")
         result = moderation.moderation_for_inputs({"items": ["good", "badword", "clean"]})
@@ -455,7 +457,7 @@ class TestInputModeration:
 class TestPerformanceWithLargeLists:
     """Test performance with large keyword lists."""
 
-    def _create_moderation(self, keywords: str):
+    def _create_moderation(self, keywords: str) -> KeywordsModeration:
         """Helper method to create KeywordsModeration instance."""
         config = {
             "inputs_config": {"enabled": True, "preset_response": "Blocked"},
@@ -464,7 +466,7 @@ class TestPerformanceWithLargeLists:
         }
         return KeywordsModeration(app_id="test-app", tenant_id="test-tenant", config=config)
 
-    def test_performance_with_100_keywords(self):
+    def test_performance_with_100_keywords(self) -> None:
         """Test performance with maximum allowed keywords (100 rows)."""
         # Arrange: Create 100 keywords (the maximum allowed)
         keywords = "\n".join([f"keyword{i}" for i in range(100)])
@@ -480,7 +482,7 @@ class TestPerformanceWithLargeLists:
         # Performance requirement: < 100ms for 100 keywords
         assert elapsed_time < 0.1
 
-    def test_performance_with_large_text_input(self):
+    def test_performance_with_large_text_input(self) -> None:
         """Test performance with large text input."""
         # Arrange: Create moderation with 3 keywords
         keywords = "badword1\nbadword2\nbadword3"
@@ -499,7 +501,7 @@ class TestPerformanceWithLargeLists:
         # Performance requirement: < 100ms even with large text
         assert elapsed_time < 0.1
 
-    def test_performance_keyword_at_end_of_large_list(self):
+    def test_performance_keyword_at_end_of_large_list(self) -> None:
         """Test performance when matching keyword is at end of list."""
         # Create 99 non-matching keywords + 1 matching keyword at the end
         keywords = "\n".join([f"keyword{i}" for i in range(99)] + ["badword"])
@@ -513,7 +515,7 @@ class TestPerformanceWithLargeLists:
         # Should still complete quickly even though match is at end
         assert elapsed_time < 0.1
 
-    def test_performance_no_match_in_large_list(self):
+    def test_performance_no_match_in_large_list(self) -> None:
         """Test performance when no keywords match (worst case)."""
         keywords = "\n".join([f"keyword{i}" for i in range(100)])
         moderation = self._create_moderation(keywords)
@@ -526,7 +528,7 @@ class TestPerformanceWithLargeLists:
         # Should complete in reasonable time even when checking all keywords
         assert elapsed_time < 0.1
 
-    def test_performance_multiple_input_fields(self):
+    def test_performance_multiple_input_fields(self) -> None:
         """Test performance with multiple input fields."""
         keywords = "\n".join([f"keyword{i}" for i in range(50)])
         moderation = self._create_moderation(keywords)
@@ -542,7 +544,7 @@ class TestPerformanceWithLargeLists:
         # Should complete in reasonable time
         assert elapsed_time < 0.2
 
-    def test_memory_efficiency_with_large_keywords(self):
+    def test_memory_efficiency_with_large_keywords(self) -> None:
         """Test memory efficiency by processing large keyword list multiple times."""
         # Create keywords close to the 10000 character limit
         keywords = "\n".join([f"keyword{i:04d}" for i in range(90)])  # ~900 chars
@@ -557,7 +559,9 @@ class TestPerformanceWithLargeLists:
 class TestEdgeCases:
     """Test edge cases and boundary conditions."""
 
-    def _create_moderation(self, keywords: str, inputs_enabled: bool = True, outputs_enabled: bool = True):
+    def _create_moderation(
+        self, keywords: str, inputs_enabled: bool = True, outputs_enabled: bool = True
+    ) -> KeywordsModeration:
         """Helper method to create KeywordsModeration instance."""
         config = {
             "inputs_config": {"enabled": inputs_enabled, "preset_response": "Input blocked"},
@@ -566,21 +570,21 @@ class TestEdgeCases:
         }
         return KeywordsModeration(app_id="test-app", tenant_id="test-tenant", config=config)
 
-    def test_empty_input_dict(self):
+    def test_empty_input_dict(self) -> None:
         """Test with empty input dictionary."""
         moderation = self._create_moderation("badword")
         result = moderation.moderation_for_inputs({})
 
         assert result.flagged is False
 
-    def test_empty_query_string(self):
+    def test_empty_query_string(self) -> None:
         """Test with empty query string."""
         moderation = self._create_moderation("badword")
         result = moderation.moderation_for_inputs({"text": "clean"}, query="")
 
         assert result.flagged is False
 
-    def test_special_regex_characters_in_keywords(self):
+    def test_special_regex_characters_in_keywords(self) -> None:
         """Test keywords containing special regex characters."""
         moderation = self._create_moderation("bad.*word")
         result = moderation.moderation_for_inputs({"text": "This contains bad.*word literally"})
@@ -588,28 +592,28 @@ class TestEdgeCases:
         # Should match as literal string, not regex pattern
         assert result.flagged is True
 
-    def test_newline_in_text_content(self):
+    def test_newline_in_text_content(self) -> None:
         """Test text content containing newlines."""
         moderation = self._create_moderation("badword")
         result = moderation.moderation_for_inputs({"text": "Line 1\nbadword\nLine 3"})
 
         assert result.flagged is True
 
-    def test_unicode_emoji_in_keywords(self):
+    def test_unicode_emoji_in_keywords(self) -> None:
         """Test keywords containing unicode emoji."""
         moderation = self._create_moderation("🚫")
         result = moderation.moderation_for_inputs({"text": "This is 🚫 prohibited"})
 
         assert result.flagged is True
 
-    def test_unicode_emoji_in_text(self):
+    def test_unicode_emoji_in_text(self) -> None:
         """Test text containing unicode emoji."""
         moderation = self._create_moderation("prohibited")
         result = moderation.moderation_for_inputs({"text": "This is 🚫 prohibited"})
 
         assert result.flagged is True
 
-    def test_very_long_single_keyword(self):
+    def test_very_long_single_keyword(self) -> None:
         """Test with a very long single keyword."""
         long_keyword = "a" * 1000
         moderation = self._create_moderation(long_keyword)
@@ -617,7 +621,7 @@ class TestEdgeCases:
 
         assert result.flagged is True
 
-    def test_keyword_with_only_spaces(self):
+    def test_keyword_with_only_spaces(self) -> None:
         """Test keyword that is only spaces."""
         moderation = self._create_moderation("   ")
 
@@ -625,28 +629,28 @@ class TestEdgeCases:
 
         assert result.flagged is False
 
-    def test_config_not_set_error_for_inputs(self):
+    def test_config_not_set_error_for_inputs(self) -> None:
         """Test error when config is not set for input moderation."""
         moderation = KeywordsModeration(app_id="test-app", tenant_id="test-tenant", config=None)
 
         with pytest.raises(ValueError, match="The config is not set"):
             moderation.moderation_for_inputs({"text": "test"})
 
-    def test_config_not_set_error_for_outputs(self):
+    def test_config_not_set_error_for_outputs(self) -> None:
         """Test error when config is not set for output moderation."""
         moderation = KeywordsModeration(app_id="test-app", tenant_id="test-tenant", config=None)
 
         with pytest.raises(ValueError, match="The config is not set"):
             moderation.moderation_for_outputs("test")
 
-    def test_tabs_in_keywords(self):
+    def test_tabs_in_keywords(self) -> None:
         """Test keywords containing tab characters."""
         moderation = self._create_moderation("bad\tword")
         result = moderation.moderation_for_inputs({"text": "This contains bad\tword"})
 
         assert result.flagged is True
 
-    def test_carriage_return_in_keywords(self):
+    def test_carriage_return_in_keywords(self) -> None:
         """Test keywords containing carriage return."""
         moderation = self._create_moderation("bad\rword")
         result = moderation.moderation_for_inputs({"text": "This contains bad\rword"})
@@ -657,7 +661,7 @@ class TestEdgeCases:
 class TestModerationResult:
     """Test the structure and content of moderation results."""
 
-    def _create_moderation(self, keywords: str):
+    def _create_moderation(self, keywords: str) -> KeywordsModeration:
         """Helper method to create KeywordsModeration instance."""
         config = {
             "inputs_config": {"enabled": True, "preset_response": "Input response"},
@@ -666,7 +670,7 @@ class TestModerationResult:
         }
         return KeywordsModeration(app_id="test-app", tenant_id="test-tenant", config=config)
 
-    def test_input_result_structure_when_flagged(self):
+    def test_input_result_structure_when_flagged(self) -> None:
         """Test input moderation result structure when content is flagged."""
         moderation = self._create_moderation("badword")
         result = moderation.moderation_for_inputs({"text": "badword"})
@@ -678,7 +682,7 @@ class TestModerationResult:
         assert isinstance(result.inputs, dict)
         assert result.query == ""
 
-    def test_input_result_structure_when_not_flagged(self):
+    def test_input_result_structure_when_not_flagged(self) -> None:
         """Test input moderation result structure when content is clean."""
         moderation = self._create_moderation("badword")
         result = moderation.moderation_for_inputs({"text": "clean"})
@@ -688,7 +692,7 @@ class TestModerationResult:
         assert result.action == ModerationAction.DIRECT_OUTPUT
         assert result.preset_response == "Input response"
 
-    def test_output_result_structure_when_flagged(self):
+    def test_output_result_structure_when_flagged(self) -> None:
         """Test output moderation result structure when content is flagged."""
         moderation = self._create_moderation("badword")
         result = moderation.moderation_for_outputs("badword")
@@ -699,7 +703,7 @@ class TestModerationResult:
         assert result.preset_response == "Output response"
         assert result.text == ""
 
-    def test_output_result_structure_when_not_flagged(self):
+    def test_output_result_structure_when_not_flagged(self) -> None:
         """Test output moderation result structure when content is clean."""
         moderation = self._create_moderation("badword")
         result = moderation.moderation_for_outputs("clean")
@@ -718,7 +722,7 @@ class TestWildcardPatterns:
     not true wildcard/regex patterns. These tests document the actual behavior.
     """
 
-    def _create_moderation(self, keywords: str):
+    def _create_moderation(self, keywords: str) -> KeywordsModeration:
         """Helper method to create KeywordsModeration instance."""
         config = {
             "inputs_config": {"enabled": True, "preset_response": "Blocked"},
@@ -727,7 +731,7 @@ class TestWildcardPatterns:
         }
         return KeywordsModeration(app_id="test-app", tenant_id="test-tenant", config=config)
 
-    def test_asterisk_treated_as_literal(self):
+    def test_asterisk_treated_as_literal(self) -> None:
         """Test that asterisk (*) is treated as literal character, not wildcard."""
         moderation = self._create_moderation("bad*word")
 
@@ -739,7 +743,7 @@ class TestWildcardPatterns:
         result2 = moderation.moderation_for_inputs({"text": "This contains badXword"})
         assert result2.flagged is False
 
-    def test_question_mark_treated_as_literal(self):
+    def test_question_mark_treated_as_literal(self) -> None:
         """Test that question mark (?) is treated as literal character, not wildcard."""
         moderation = self._create_moderation("bad?word")
 
@@ -751,7 +755,7 @@ class TestWildcardPatterns:
         result2 = moderation.moderation_for_inputs({"text": "This contains badXword"})
         assert result2.flagged is False
 
-    def test_dot_treated_as_literal(self):
+    def test_dot_treated_as_literal(self) -> None:
         """Test that dot (.) is treated as literal character, not regex wildcard."""
         moderation = self._create_moderation("bad.word")
 
@@ -763,7 +767,7 @@ class TestWildcardPatterns:
         result2 = moderation.moderation_for_inputs({"text": "This contains badXword"})
         assert result2.flagged is False
 
-    def test_substring_matching_behavior(self):
+    def test_substring_matching_behavior(self) -> None:
         """Test that matching is based on substring, not patterns."""
         moderation = self._create_moderation("bad")
 
@@ -811,7 +815,7 @@ class TestConcurrentModeration:
         }
         return KeywordsModeration(app_id="test-app", tenant_id="test-tenant", config=config)
 
-    def test_both_input_and_output_enabled(self):
+    def test_both_input_and_output_enabled(self) -> None:
         """Test that both input and output moderation work when both are enabled."""
         moderation = self._create_moderation("badword", inputs_enabled=True, outputs_enabled=True)
 
@@ -825,7 +829,7 @@ class TestConcurrentModeration:
         assert output_result.flagged is True
         assert output_result.preset_response == "Output blocked"
 
-    def test_different_keywords_in_input_vs_output(self):
+    def test_different_keywords_in_input_vs_output(self) -> None:
         """Test that the same keyword list applies to both input and output."""
         moderation = self._create_moderation("input_bad\noutput_bad")
 
@@ -843,7 +847,7 @@ class TestConcurrentModeration:
         result4 = moderation.moderation_for_outputs("This has output_bad")
         assert result4.flagged is True
 
-    def test_only_input_enabled(self):
+    def test_only_input_enabled(self) -> None:
         """Test that only input moderation works when output is disabled."""
         moderation = self._create_moderation("badword", inputs_enabled=True, outputs_enabled=False)
 
@@ -855,7 +859,7 @@ class TestConcurrentModeration:
         output_result = moderation.moderation_for_outputs("This contains badword")
         assert output_result.flagged is False
 
-    def test_only_output_enabled(self):
+    def test_only_output_enabled(self) -> None:
         """Test that only output moderation works when input is disabled."""
         moderation = self._create_moderation("badword", inputs_enabled=False, outputs_enabled=True)
 
@@ -893,7 +897,7 @@ class TestMultilingualSupport:
         }
         return KeywordsModeration(app_id="test-app", tenant_id="test-tenant", config=config)
 
-    def test_chinese_keywords(self):
+    def test_chinese_keywords(self) -> None:
         """Test filtering of Chinese keywords."""
         # Chinese characters for "sensitive word"
         moderation = self._create_moderation("敏感词\n违禁词")
@@ -902,7 +906,7 @@ class TestMultilingualSupport:
         result = moderation.moderation_for_inputs({"text": "这是一个敏感词测试"})
         assert result.flagged is True
 
-    def test_japanese_keywords(self):
+    def test_japanese_keywords(self) -> None:
         """Test filtering of Japanese keywords (Hiragana, Katakana, Kanji)."""
         moderation = self._create_moderation("禁止\nきんし\nキンシ")
 
@@ -918,7 +922,7 @@ class TestMultilingualSupport:
         result3 = moderation.moderation_for_inputs({"text": "これはキンシです"})
         assert result3.flagged is True
 
-    def test_arabic_keywords(self):
+    def test_arabic_keywords(self) -> None:
         """Test filtering of Arabic keywords (right-to-left text)."""
         # Arabic word for "forbidden"
         moderation = self._create_moderation("محظور")
@@ -926,7 +930,7 @@ class TestMultilingualSupport:
         result = moderation.moderation_for_inputs({"text": "هذا محظور في النظام"})
         assert result.flagged is True
 
-    def test_cyrillic_keywords(self):
+    def test_cyrillic_keywords(self) -> None:
         """Test filtering of Cyrillic (Russian) keywords."""
         # Russian word for "forbidden"
         moderation = self._create_moderation("запрещено")
@@ -934,7 +938,7 @@ class TestMultilingualSupport:
         result = moderation.moderation_for_inputs({"text": "Это запрещено"})
         assert result.flagged is True
 
-    def test_mixed_language_keywords(self):
+    def test_mixed_language_keywords(self) -> None:
         """Test filtering with keywords in multiple languages."""
         moderation = self._create_moderation("bad\n坏\nплохо\nmal")
 
@@ -954,7 +958,7 @@ class TestMultilingualSupport:
         result4 = moderation.moderation_for_inputs({"text": "Esto es mal"})
         assert result4.flagged is True
 
-    def test_accented_characters(self):
+    def test_accented_characters(self) -> None:
         """Test filtering of keywords with accented characters."""
         moderation = self._create_moderation("café\nnaïve\nrésumé")
 
@@ -994,7 +998,7 @@ class TestComplexInputTypes:
         }
         return KeywordsModeration(app_id="test-app", tenant_id="test-tenant", config=config)
 
-    def test_nested_dict_values(self):
+    def test_nested_dict_values(self) -> None:
         """Test that nested dictionaries are converted to strings for matching."""
         moderation = self._create_moderation("badword")
 
@@ -1002,7 +1006,7 @@ class TestComplexInputTypes:
         result = moderation.moderation_for_inputs({"data": {"nested": "badword"}})
         assert result.flagged is True
 
-    def test_float_values(self):
+    def test_float_values(self) -> None:
         """Test filtering with float values."""
         moderation = self._create_moderation("3.14")
 
@@ -1010,14 +1014,14 @@ class TestComplexInputTypes:
         result = moderation.moderation_for_inputs({"pi": 3.14159})
         assert result.flagged is True
 
-    def test_negative_numbers(self):
+    def test_negative_numbers(self) -> None:
         """Test filtering with negative numbers."""
         moderation = self._create_moderation("-100")
 
         result = moderation.moderation_for_inputs({"value": -100})
         assert result.flagged is True
 
-    def test_scientific_notation(self):
+    def test_scientific_notation(self) -> None:
         """Test filtering with scientific notation numbers."""
         moderation = self._create_moderation("1e+10")
 
@@ -1032,21 +1036,21 @@ class TestComplexInputTypes:
         result2 = moderation2.moderation_for_inputs({"value": 1e10})
         assert result2.flagged is True
 
-    def test_tuple_values(self):
+    def test_tuple_values(self) -> None:
         """Test that tuple values are converted to strings for matching."""
         moderation = self._create_moderation("badword")
 
         result = moderation.moderation_for_inputs({"data": ("good", "badword", "clean")})
         assert result.flagged is True
 
-    def test_set_values(self):
+    def test_set_values(self) -> None:
         """Test that set values are converted to strings for matching."""
         moderation = self._create_moderation("badword")
 
         result = moderation.moderation_for_inputs({"data": {"good", "badword", "clean"}})
         assert result.flagged is True
 
-    def test_bytes_values(self):
+    def test_bytes_values(self) -> None:
         """Test that bytes values are converted to strings for matching."""
         moderation = self._create_moderation("badword")
 
@@ -1080,7 +1084,7 @@ class TestBoundaryConditions:
         }
         return KeywordsModeration(app_id="test-app", tenant_id="test-tenant", config=config)
 
-    def test_exactly_100_keyword_rows(self):
+    def test_exactly_100_keyword_rows(self) -> None:
         """Test with exactly 100 keyword rows (boundary case)."""
         # Create exactly 100 rows (at the limit)
         keywords = "\n".join([f"keyword{i}" for i in range(100)])
@@ -1098,7 +1102,7 @@ class TestBoundaryConditions:
         result = moderation.moderation_for_inputs({"text": "This contains keyword50"})
         assert result.flagged is True
 
-    def test_exactly_10000_character_keywords(self):
+    def test_exactly_10000_character_keywords(self) -> None:
         """Test with exactly 10000 characters in keywords (boundary case)."""
         # Create keywords that are exactly 10000 characters
         keywords = "x" * 10000
@@ -1111,7 +1115,7 @@ class TestBoundaryConditions:
         # Should not raise an exception (10000 is allowed)
         KeywordsModeration.validate_config("tenant-123", config)
 
-    def test_exactly_100_character_preset_response(self):
+    def test_exactly_100_character_preset_response(self) -> None:
         """Test with exactly 100 characters in preset_response (boundary case)."""
         preset_response = "x" * 100
         config = {
@@ -1123,7 +1127,7 @@ class TestBoundaryConditions:
         # Should not raise an exception (100 is allowed)
         KeywordsModeration.validate_config("tenant-123", config)
 
-    def test_single_character_keyword(self):
+    def test_single_character_keyword(self) -> None:
         """Test with single character keywords."""
         moderation = self._create_moderation("a")
 
@@ -1131,7 +1135,7 @@ class TestBoundaryConditions:
         result = moderation.moderation_for_inputs({"text": "This has an a"})
         assert result.flagged is True
 
-    def test_empty_string_keyword_filtered_out(self):
+    def test_empty_string_keyword_filtered_out(self) -> None:
         """Test that empty string keywords are filtered out."""
         # Keywords with empty lines
         moderation = self._create_moderation("badword\n\n\ngoodkeyword\n")
@@ -1172,7 +1176,7 @@ class TestRealWorldScenarios:
         }
         return KeywordsModeration(app_id="test-app", tenant_id="test-tenant", config=config)
 
-    def test_profanity_filter(self):
+    def test_profanity_filter(self) -> None:
         """Test common profanity filtering scenario."""
         # Common profanity words (sanitized for testing)
         moderation = self._create_moderation("damn\nhell\ncrap")
@@ -1180,14 +1184,14 @@ class TestRealWorldScenarios:
         result = moderation.moderation_for_inputs({"message": "What the hell is going on?"})
         assert result.flagged is True
 
-    def test_spam_detection(self):
+    def test_spam_detection(self) -> None:
         """Test spam keyword detection."""
         moderation = self._create_moderation("click here\nfree money\nact now\nwin prize")
 
         result = moderation.moderation_for_inputs({"message": "Click here to win prize!"})
         assert result.flagged is True
 
-    def test_personal_information_protection(self):
+    def test_personal_information_protection(self) -> None:
         """Test detection of patterns that might indicate personal information."""
         # Note: This is simplified; real PII detection would use regex
         moderation = self._create_moderation("ssn\ncredit card\npassword\nbank account")
@@ -1195,35 +1199,35 @@ class TestRealWorldScenarios:
         result = moderation.moderation_for_inputs({"text": "My password is 12345"})
         assert result.flagged is True
 
-    def test_brand_name_filtering(self):
+    def test_brand_name_filtering(self) -> None:
         """Test filtering of competitor brand names."""
         moderation = self._create_moderation("CompetitorA\nCompetitorB\nRivalCorp")
 
         result = moderation.moderation_for_inputs({"review": "I prefer CompetitorA over this product"})
         assert result.flagged is True
 
-    def test_url_filtering(self):
+    def test_url_filtering(self) -> None:
         """Test filtering of URLs or URL patterns."""
         moderation = self._create_moderation("http://\nhttps://\nwww.\n.com/spam")
 
         result = moderation.moderation_for_inputs({"message": "Visit http://malicious-site.com"})
         assert result.flagged is True
 
-    def test_code_injection_patterns(self):
+    def test_code_injection_patterns(self) -> None:
         """Test detection of potential code injection patterns."""
         moderation = self._create_moderation("<script>\n<iframe\njavascript:\n<?php")
 
         result = moderation.moderation_for_inputs({"input": "<script>alert('xss')</script>"})
         assert result.flagged is True
 
-    def test_medical_misinformation_keywords(self):
+    def test_medical_misinformation_keywords(self) -> None:
         """Test filtering of medical misinformation keywords."""
         moderation = self._create_moderation("miracle cure\ninstant healing\nguaranteed cure")
 
         result = moderation.moderation_for_inputs({"post": "This miracle cure will solve all your problems!"})
         assert result.flagged is True
 
-    def test_chat_message_moderation(self):
+    def test_chat_message_moderation(self) -> None:
         """Test moderation of chat messages with multiple fields."""
         moderation = self._create_moderation("offensive\nabusive\nthreat")
 
@@ -1233,7 +1237,7 @@ class TestRealWorldScenarios:
         )
         assert result.flagged is True
 
-    def test_form_submission_validation(self):
+    def test_form_submission_validation(self) -> None:
         """Test moderation of form submissions with multiple fields."""
         moderation = self._create_moderation("spam\nbot\nautomated")
 
@@ -1248,7 +1252,7 @@ class TestRealWorldScenarios:
         )
         assert result.flagged is True
 
-    def test_clean_content_passes_through(self):
+    def test_clean_content_passes_through(self) -> None:
         """Test that legitimate clean content is not flagged."""
         moderation = self._create_moderation("badword\noffensive\nspam")
 
@@ -1271,17 +1275,21 @@ class TestErrorHandlingAndRecovery:
     meaningful error messages.
     """
 
-    def test_invalid_config_type(self):
+    def test_invalid_config_type(self) -> None:
         """Test that invalid config types are handled."""
         # Config can be None or dict, string will be accepted but cause issues later
         # The constructor doesn't validate config type, so we test runtime behavior
-        moderation = KeywordsModeration(app_id="test-app", tenant_id="test-tenant", config="invalid")
+        moderation = KeywordsModeration(
+            app_id="test-app",
+            tenant_id="test-tenant",
+            config="invalid",  # pyrefly: ignore[bad-argument-type]
+        )
 
         # Should raise TypeError when trying to use string as dict
         with pytest.raises(TypeError):
             moderation.moderation_for_inputs({"text": "test"})
 
-    def test_missing_inputs_config_key(self):
+    def test_missing_inputs_config_key(self) -> None:
         """Test handling of missing inputs_config key in config."""
         config = {
             "outputs_config": {"enabled": True, "preset_response": "Blocked"},
@@ -1294,7 +1302,7 @@ class TestErrorHandlingAndRecovery:
         with pytest.raises(KeyError):
             moderation.moderation_for_inputs({"text": "test"})
 
-    def test_missing_outputs_config_key(self):
+    def test_missing_outputs_config_key(self) -> None:
         """Test handling of missing outputs_config key in config."""
         config = {
             "inputs_config": {"enabled": True, "preset_response": "Blocked"},
@@ -1307,7 +1315,7 @@ class TestErrorHandlingAndRecovery:
         with pytest.raises(KeyError):
             moderation.moderation_for_outputs("test")
 
-    def test_missing_keywords_key_in_config(self):
+    def test_missing_keywords_key_in_config(self) -> None:
         """Test handling of missing keywords key in config."""
         config = {
             "inputs_config": {"enabled": True, "preset_response": "Blocked"},
@@ -1320,7 +1328,7 @@ class TestErrorHandlingAndRecovery:
         with pytest.raises(KeyError):
             moderation.moderation_for_inputs({"text": "test"})
 
-    def test_graceful_handling_of_unusual_input_values(self):
+    def test_graceful_handling_of_unusual_input_values(self) -> None:
         """Test that unusual but valid input values don't cause crashes."""
         config = {
             "inputs_config": {"enabled": True, "preset_response": "Blocked"},
@@ -1334,8 +1342,8 @@ class TestErrorHandlingAndRecovery:
             {"value": float("inf")},  # Infinity
             {"value": float("-inf")},  # Negative infinity
             {"value": complex(1, 2)},  # Complex number
-            {"value": []},  # Empty list
-            {"value": {}},  # Empty dict
+            {"value": list[object]()},  # Empty list
+            {"value": dict[str, object]()},  # Empty dict
         ]
 
         for inputs in unusual_values:
