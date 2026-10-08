@@ -79,13 +79,12 @@ export function ToolItem({
       )}
     >
       <PopoverTrigger
-        className="focus-visible:ring-0"
         render={
           <button
             ref={triggerRef}
             type="button"
             aria-label={accessibleTriggerLabel}
-            className="absolute inset-0 z-0 cursor-pointer rounded-lg border-0 bg-transparent focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
+            className="absolute inset-0 z-0 cursor-pointer rounded-lg border-0 bg-transparent focus-visible:ring-inset"
           />
         }
       />

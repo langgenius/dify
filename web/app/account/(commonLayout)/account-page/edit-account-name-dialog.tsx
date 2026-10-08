@@ -85,7 +85,7 @@ export function EditAccountNameDialog({ name }: { name: string }) {
           details.cancel()
       }}
     >
-      <DialogTrigger className="cursor-pointer rounded-lg bg-components-button-tertiary-bg px-3 py-2 system-sm-medium text-components-button-tertiary-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-state-accent-solid">
+      <DialogTrigger className="cursor-pointer rounded-lg bg-components-button-tertiary-bg px-3 py-2 system-sm-medium text-components-button-tertiary-text">
         {t(($) => $['operation.edit'])}
       </DialogTrigger>
       <DialogContent className="w-105 p-6">
