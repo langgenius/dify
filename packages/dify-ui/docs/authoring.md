@@ -62,8 +62,8 @@ A type is not public merely because Base UI names it or an implementation once e
 addition to matching component props, export a type only when it pairs with a public factory or a
 real consumer must name it independently.
 
-State, event details and reasons, actions, controlled-state helpers, context values, render
-helpers, styling helpers, and upstream passthrough aliases are private by default. Public props
+State, event details and reasons, controlled-state helpers, context values, render helpers,
+styling helpers, and upstream passthrough aliases are private by default. Public props
 already provide contextual typing for inline render and event callbacks.
 
 Preserve upstream `className` and `style` callbacks. Resolve `className` with the owning Base UI

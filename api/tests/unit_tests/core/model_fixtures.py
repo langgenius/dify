@@ -59,3 +59,11 @@ def make_token_buffer_memory(config: ModelConfigWithCredentialsEntity) -> TokenB
             credentials=config.credentials,
         ),
     )
+
+
+def make_model_instance(*, provider: str, model: str) -> ModelInstance:
+    """Build an LLM instance with explicit credentials and no provider lookup."""
+    config = make_model_config(provider=provider, model=model, mode="chat")
+    return ModelInstance(
+        provider_model_bundle=config.provider_model_bundle, model=config.model, credentials=config.credentials
+    )
