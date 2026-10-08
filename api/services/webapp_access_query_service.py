@@ -1,6 +1,6 @@
 """Application service for resolving web-app access."""
 
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from typing import Protocol
 
 from enums import WebAppAccessMode
@@ -10,6 +10,12 @@ _PERMISSION_CHECK_MODES = frozenset({WebAppAccessMode.PRIVATE, WebAppAccessMode.
 
 class WebAppAccessQuery(Protocol):
     def find_app_id_by_code(self, app_code: str) -> str | None: ...
+
+
+class WebAppAccessPolicyGateway(Protocol):
+    def get_access_mode(self, app_id: str) -> WebAppAccessMode: ...
+
+    def is_user_allowed(self, *, user_id: str, app_id: str) -> bool: ...
 
 
 class WebAppAccessModesQuery(Protocol):
@@ -37,16 +43,14 @@ class WebAppAccessQueryService:
         self,
         *,
         access: WebAppAccessQuery,
+        policy: WebAppAccessPolicyGateway,
         webapp_auth_enabled: bool,
-        access_mode_for_app: Callable[[str], WebAppAccessMode],
-        is_user_allowed_for_app: Callable[[str, str], bool],
         get_access_modes: WebAppAccessModesQuery,
         get_user_permissions: WebAppUserPermissionsQuery,
     ) -> None:
         self._access: WebAppAccessQuery = access
+        self._policy: WebAppAccessPolicyGateway = policy
         self._webapp_auth_enabled: bool = webapp_auth_enabled
-        self._access_mode_for_app: Callable[[str], WebAppAccessMode] = access_mode_for_app
-        self._is_user_allowed_for_app: Callable[[str, str], bool] = is_user_allowed_for_app
         self._get_access_modes: WebAppAccessModesQuery = get_access_modes
         self._get_user_permissions: WebAppUserPermissionsQuery = get_user_permissions
 
@@ -66,10 +70,16 @@ class WebAppAccessQueryService:
         if not app_id:
             raise WebAppAccessReferenceRequiredError("appId or appCode must be provided")
 
-        return self._access_mode_for_app(app_id)
+        return self._policy.get_access_mode(app_id)
+
+    def find_app_id_by_code(self, app_code: str) -> str | None:
+        return self._access.find_app_id_by_code(app_code)
 
     def requires_permission_check(self, app_id: str) -> bool:
-        return self.is_permission_check_required(self._access_mode_for_app(app_id))
+        return self.is_permission_check_required(self._policy.get_access_mode(app_id))
+
+    def requires_authentication(self, app_id: str) -> bool:
+        return self._webapp_auth_enabled and self._policy.get_access_mode(app_id) != WebAppAccessMode.PUBLIC
 
     @staticmethod
     def is_permission_check_required(access_mode: str) -> bool:
@@ -79,7 +89,7 @@ class WebAppAccessQueryService:
         if not self._webapp_auth_enabled:
             return True
 
-        return self._is_user_allowed_for_app(user_id, app_id)
+        return self._policy.is_user_allowed(user_id=user_id, app_id=app_id)
 
     def batch_get_access_modes(self, *, app_ids: Sequence[str]) -> Mapping[str, WebAppAccessMode]:
         """Return successfully parsed modes; missing IDs do not grant access."""

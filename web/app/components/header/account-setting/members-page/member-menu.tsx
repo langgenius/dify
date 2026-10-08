@@ -3,11 +3,11 @@ import type { Role } from '@/models/access-control'
 import type { Member } from '@/models/common'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Avatar } from '@langgenius/dify-ui/avatar'
@@ -259,7 +259,7 @@ const MemberMenu = ({
                 </AlertDialogDescription>
               </div>
             )}
-            <AlertDialogActions>
+            <AlertDialogFooter>
               <AlertDialogCancelButton
                 disabled={removing}
                 className={showContactsRemovalDesign ? 'min-w-20' : undefined}
@@ -277,7 +277,7 @@ const MemberMenu = ({
                     })
                   : t(($) => $['operation.confirm'], { ns: 'common' })}
               </AlertDialogConfirmButton>
-            </AlertDialogActions>
+            </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
       )}

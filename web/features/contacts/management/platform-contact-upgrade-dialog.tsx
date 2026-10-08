@@ -2,11 +2,11 @@
 
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { useTranslation } from 'react-i18next'
@@ -37,7 +37,7 @@ export function PlatformContactUpgradeDialog({
             {t(($) => $['platformPicker.upgrade.description'], { count: conflictCount })}
           </AlertDialogDescription>
         </div>
-        <AlertDialogActions>
+        <AlertDialogFooter>
           <AlertDialogCancelButton variant="secondary" disabled={pending}>
             {t(($) => $['action.cancel'])}
           </AlertDialogCancelButton>
@@ -49,7 +49,7 @@ export function PlatformContactUpgradeDialog({
           >
             {t(($) => $['platformPicker.upgrade.confirm'])}
           </AlertDialogConfirmButton>
-        </AlertDialogActions>
+        </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   )

@@ -19,7 +19,6 @@ import { useStoreApi } from 'reactflow'
 import { handleWorkflowMenuKeyDown } from '../shortcuts/handle-workflow-menu-key-down'
 import { ChangeBlockPopup } from './change-block-popup'
 import {
-  NODE_ACTIONS_MENU_DELETE_ITEM_CLASS_NAME,
   NODE_ACTIONS_MENU_ITEM_WITH_SHORTCUT_CLASS_NAME,
   NODE_ACTIONS_MENU_WIDTH_CLASS_NAME,
   NodeActionsMenuAbout,
@@ -116,7 +115,8 @@ export function NodeActionsContextMenuContent(props: NodeActionsMenuProps) {
       {hasDeleteGroup && (
         <ContextMenuGroup>
           <ContextMenuItem
-            className={NODE_ACTIONS_MENU_DELETE_ITEM_CLASS_NAME}
+            variant="destructive"
+            className={NODE_ACTIONS_MENU_ITEM_WITH_SHORTCUT_CLASS_NAME}
             onClick={handleDelete}
           >
             <NodeActionsMenuItemContent shortcut="workflow.delete">

@@ -35,7 +35,7 @@ from repositories.knowledge.dataset_read_repository import (
 from repositories.knowledge.dataset_repository import _get_dataset
 from repositories.knowledge.document_repository import _get_document
 from services.enterprise import rbac_service
-from services.errors.account import NoPermissionError
+from services.errors.base import NoPermissionError
 from services.errors.document import DocumentIndexingError
 from services.file_service import FileService
 from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError

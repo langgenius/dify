@@ -17,6 +17,8 @@ import {
 } from '../overlay-shared'
 import { parsePlacement } from '../placement'
 
+type SelectActions = BaseSelect.Root.Actions
+
 type SelectProps<Value, Multiple extends boolean | undefined = false> = BaseSelect.Root.Props<
   Value,
   Multiple
@@ -287,6 +289,7 @@ export {
 }
 
 export type {
+  SelectActions,
   SelectContentProps,
   SelectGroupLabelProps,
   SelectGroupProps,

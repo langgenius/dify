@@ -32,7 +32,7 @@ from services.entities.knowledge_entities.rag_pipeline_entities import (
     IconInfo,
     RagPipelineDatasetCreateEntity,
 )
-from services.errors.account import NoPermissionError
+from services.errors.base import NoPermissionError
 from services.errors.dataset import DatasetNameDuplicateError
 from services.knowledge.dataset_service import DatasetCollectionBindingService, DatasetPermissionService, DatasetService
 from tests.unit_tests.model_factories import make_account, make_dataset, make_tenant

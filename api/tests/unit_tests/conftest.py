@@ -6,13 +6,18 @@ from collections.abc import Callable, Iterator
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, create_autospec, patch
 
 import pytest
 from flask import Flask
+from redis import Redis
 from sqlalchemy import create_engine
 from sqlalchemy.engine import URL, Engine
 from sqlalchemy.orm import Session, sessionmaker
+
+if TYPE_CHECKING:
+    from extensions.ext_application_services import ApplicationServices
+    from tests.unit_tests.account_domain import AccountDomain
 
 # Getting the absolute path of the current file's directory
 ABS_PATH = os.path.dirname(os.path.abspath(__file__))
@@ -66,6 +71,28 @@ def _patch_redis_clients_on_loaded_modules() -> None:
 
 
 @pytest.fixture
+def redis_transport(monkeypatch: pytest.MonkeyPatch) -> Iterator[tuple[ext_redis.RedisClientWrapper, MagicMock]]:
+    """Exercise the wrapper and Redis command builders with network dispatch replaced."""
+    apply_config_overrides(monkeypatch, REDIS_KEY_PREFIX="")
+    with Redis() as client, patch.object(client, "execute_command", return_value=None) as commands:
+        wrapper = ext_redis.RedisClientWrapper()
+        wrapper.initialize(client)
+        yield wrapper, commands
+
+
+@pytest.fixture
+def tenant_queue_commands(
+    redis_transport: tuple[ext_redis.RedisClientWrapper, MagicMock], monkeypatch: pytest.MonkeyPatch
+) -> MagicMock:
+    """Run tenant queue serialization and command building without Redis I/O."""
+    from core.rag.pipeline import queue
+
+    redis, commands = redis_transport
+    monkeypatch.setattr(queue, "redis_client", redis)
+    return commands
+
+
+@pytest.fixture
 def app() -> Flask:
     return CACHED_APP
 
@@ -92,6 +119,18 @@ def _patch_redis_clients() -> Iterator[None]:
 def reset_redis_mock(_patch_redis_clients: None) -> None:
     """Reset the shared Redis mock after per-test client rebinding."""
     redis_mock.reset_mock()
+    # Restoring a monkeypatched method can leave it detached from the parent's reset traversal.
+    redis_mock.delete.reset_mock()
+    redis_mock.get.reset_mock()
+    redis_mock.setex.reset_mock()
+    redis_mock.setnx.reset_mock()
+    redis_mock.lock.reset_mock()
+    redis_mock.exists.reset_mock()
+    redis_mock.set.reset_mock()
+    redis_mock.expire.reset_mock()
+    redis_mock.hgetall.reset_mock()
+    redis_mock.hdel.reset_mock()
+    redis_mock.incr.reset_mock()
     redis_mock.get.return_value = None
     redis_mock.setex.return_value = None
     redis_mock.setnx.return_value = None
@@ -251,6 +290,52 @@ def persist_service_api_dataset_owner(
     """Persist the tenant-owner mapping resolved by dataset-token authentication."""
     session.add_all([tenant, tenant_account_join])
     session.commit()
+
+
+@pytest.fixture
+def account_domain(
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+) -> AccountDomain:
+    from blinker import Signal
+
+    from enums import DeploymentEdition
+    from services.workspace import gateways
+    from tests.unit_tests.account_domain import build_account_domain
+
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, RBAC_ENABLED=False)
+    monkeypatch.setattr(gateways, "generate_key_pair", lambda _workspace_id: "public-key")
+    monkeypatch.setattr(gateways, "tenant_was_created", Signal())
+    return build_account_domain(sqlite_session_factory)
+
+
+@pytest.fixture
+def account_application_services(
+    sqlite_session_factory: sessionmaker[Session], account_domain: AccountDomain
+) -> ApplicationServices:
+    from dataclasses import replace
+
+    from enums import DeploymentEdition
+    from extensions.ext_application_services import build_application_services
+    from extensions.ext_redis import RedisClientWrapper
+
+    services = build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=create_autospec(RedisClientWrapper, instance=True),
+    )
+    return replace(
+        services,
+        accounts=replace(services.accounts, lifecycle=account_domain.accounts),
+        workspaces=replace(
+            services.workspaces,
+            members=account_domain.members,
+            provisioning=account_domain.provisioning,
+            invitations=account_domain.invitations,
+        ),
+    )
 
 
 @pytest.fixture
