@@ -1,3 +1,6 @@
+from extensions.application_services.retrieval import build_dataset_retrieval
+from repositories.knowledge import retrieval_repository as retrieval_repository_module
+
 """Published applications sign admin-uploaded images only through valid knowledge bindings."""
 
 from datetime import UTC, datetime
@@ -12,14 +15,13 @@ from core.app.app_config.entities import DatasetEntity, DatasetRetrieveConfigEnt
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.app.file_access import FileAccessScope, bind_file_access_scope, get_current_file_access_scope
 from core.rag.models.document import Document as RagDocument
-from core.rag.retrieval import dataset_retrieval as retrieval_module
-from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.workflow.nodes.knowledge_retrieval.retrieval import KnowledgeRetrievalRequest
 from extensions.storage.storage_type import StorageType
 from models.dataset import Dataset, Document, DocumentSegment, SegmentAttachmentBinding
 from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, SegmentStatus
 from models.model import UploadFile
-from services.knowledge.retrieval.attachments import authorize_retrieved_segment
+from repositories.knowledge.dataset_read_repository import authorize_retrieved_segment
+from services.knowledge.retrieval import dataset_retrieval as retrieval_module
 
 
 @pytest.fixture
@@ -90,15 +92,15 @@ def graph(sqlite_session: Session) -> tuple[Dataset, Document, DocumentSegment, 
 @pytest.mark.parametrize("vision_enabled", [False, True])
 def test_published_retrieval_grants_bound_images_before_signing(
     graph: tuple[Dataset, Document, DocumentSegment, dict[str, str]],
-    sqlite_session: Session,
     monkeypatch: pytest.MonkeyPatch,
     entry: str,
     vision_enabled: bool,
+    sqlite_session_factory,
 ) -> None:
     dataset, document, segment, file_ids = graph
-    retrieval = DatasetRetrieval()
+    retrieval = build_dataset_retrieval(sqlite_session_factory)()
     monkeypatch.setattr(retrieval, "_check_knowledge_rate_limit", MagicMock())
-    monkeypatch.setattr(retrieval, "_get_available_datasets", MagicMock(return_value=[dataset]))
+    monkeypatch.setattr(retrieval._records, "available_datasets", MagicMock(return_value=[dataset]))
     monkeypatch.setattr(retrieval, "get_metadata_filter_condition", MagicMock(return_value=(None, None)))
     monkeypatch.setattr(
         retrieval,
@@ -138,7 +140,6 @@ def test_published_retrieval_grants_bound_images_before_signing(
     with bind_file_access_scope(scope):
         if entry == "chat":
             content, files = retrieval.retrieve(
-                sqlite_session,
                 app_id=str(uuid4()),
                 user_id=scope.user_id,
                 tenant_id=dataset.tenant_id,
@@ -158,7 +159,6 @@ def test_published_retrieval_grants_bound_images_before_signing(
             assert [file.storage_key for file in files] == (["valid.png"] if vision_enabled else [])
         else:
             sources = retrieval.knowledge_retrieval(
-                sqlite_session,
                 KnowledgeRetrievalRequest(
                     tenant_id=dataset.tenant_id,
                     user_id=scope.user_id,
@@ -224,14 +224,15 @@ def test_workflow_retrieval_releases_owned_connections_and_preserves_caller_tran
     monkeypatch: pytest.MonkeyPatch,
     with_image: bool,
     signing_fails: bool,
+    sqlite_session_factory,
 ) -> None:
     dataset, document, segment, _ = graph
     if not with_image:
         segment.content = "Plain text"
         sqlite_session.commit()
-    retrieval = DatasetRetrieval()
+    retrieval = build_dataset_retrieval(sqlite_session_factory)()
     monkeypatch.setattr(retrieval, "_check_knowledge_rate_limit", MagicMock())
-    monkeypatch.setattr(retrieval, "_get_available_datasets", MagicMock(return_value=[dataset]))
+    monkeypatch.setattr(retrieval._records, "available_datasets", MagicMock(return_value=[dataset]))
     monkeypatch.setattr(
         retrieval,
         "multiple_retrieve",
@@ -247,7 +248,7 @@ def test_workflow_retrieval_releases_owned_connections_and_preserves_caller_tran
     )
     if signing_fails:
         monkeypatch.setattr(
-            retrieval_module, "sign_segment_content", MagicMock(side_effect=RuntimeError("signing failed"))
+            retrieval_repository_module, "sign_segment_content", MagicMock(side_effect=RuntimeError("signing failed"))
         )
     request = KnowledgeRetrievalRequest(
         tenant_id=dataset.tenant_id,
@@ -286,9 +287,9 @@ def test_workflow_retrieval_releases_owned_connections_and_preserves_caller_tran
         with bind_file_access_scope(scope), Session(engine) as caller_session, caller_session.begin() as caller_txn:
             if signing_fails:
                 with pytest.raises(RuntimeError, match="signing failed"):
-                    retrieval.knowledge_retrieval(caller_session, request)
+                    retrieval.knowledge_retrieval(request)
             else:
-                sources = retrieval.knowledge_retrieval(caller_session, request)
+                sources = retrieval.knowledge_retrieval(request)
                 assert len(sources) == 1
                 assert sources[0].metadata.segment_id == segment.id
             assert caller_session.get_transaction() is caller_txn

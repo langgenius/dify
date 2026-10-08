@@ -6,8 +6,8 @@ from faker import Faker
 from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
-from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.workflow.nodes.knowledge_retrieval.retrieval import KnowledgeRetrievalRequest
+from extensions.application_services.retrieval import build_dataset_retrieval
 from models.dataset import Dataset, Document
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from tests.test_containers_integration_tests.helpers import accounts as account_fixtures
@@ -16,7 +16,7 @@ from tests.test_containers_integration_tests.helpers import generate_valid_passw
 
 class TestGetAvailableDatasetsIntegration:
     def test_returns_datasets_with_available_documents(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies, sqlite_session_factory
     ):
         # Arrange
         fake = Faker()
@@ -69,8 +69,8 @@ class TestGetAvailableDatasetsIntegration:
         db_session_with_containers.commit()
 
         # Act
-        dataset_retrieval = DatasetRetrieval()
-        result = dataset_retrieval._get_available_datasets(tenant.id, [dataset.id])
+        dataset_retrieval = build_dataset_retrieval(sqlite_session_factory)()
+        result = dataset_retrieval._records.available_datasets(tenant.id, [dataset.id])
 
         # Assert
         assert len(result) == 1
@@ -79,7 +79,7 @@ class TestGetAvailableDatasetsIntegration:
         assert result[0].name == dataset.name
 
     def test_filters_out_datasets_with_only_archived_documents(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies, sqlite_session_factory
     ):
         # Arrange
         fake = Faker()
@@ -126,14 +126,14 @@ class TestGetAvailableDatasetsIntegration:
         db_session_with_containers.commit()
 
         # Act
-        dataset_retrieval = DatasetRetrieval()
-        result = dataset_retrieval._get_available_datasets(tenant.id, [dataset.id])
+        dataset_retrieval = build_dataset_retrieval(sqlite_session_factory)()
+        result = dataset_retrieval._records.available_datasets(tenant.id, [dataset.id])
 
         # Assert
         assert len(result) == 0
 
     def test_filters_out_datasets_with_only_disabled_documents(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies, sqlite_session_factory
     ):
         # Arrange
         fake = Faker()
@@ -180,14 +180,14 @@ class TestGetAvailableDatasetsIntegration:
         db_session_with_containers.commit()
 
         # Act
-        dataset_retrieval = DatasetRetrieval()
-        result = dataset_retrieval._get_available_datasets(tenant.id, [dataset.id])
+        dataset_retrieval = build_dataset_retrieval(sqlite_session_factory)()
+        result = dataset_retrieval._records.available_datasets(tenant.id, [dataset.id])
 
         # Assert
         assert len(result) == 0
 
     def test_filters_out_datasets_with_non_completed_documents(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies, sqlite_session_factory
     ):
         # Arrange
         fake = Faker()
@@ -234,14 +234,14 @@ class TestGetAvailableDatasetsIntegration:
         db_session_with_containers.commit()
 
         # Act
-        dataset_retrieval = DatasetRetrieval()
-        result = dataset_retrieval._get_available_datasets(tenant.id, [dataset.id])
+        dataset_retrieval = build_dataset_retrieval(sqlite_session_factory)()
+        result = dataset_retrieval._records.available_datasets(tenant.id, [dataset.id])
 
         # Assert
         assert len(result) == 0
 
     def test_includes_external_datasets_without_documents(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies, sqlite_session_factory
     ):
         """
         Test that external datasets are returned even with no available documents.
@@ -278,15 +278,17 @@ class TestGetAvailableDatasetsIntegration:
         db_session_with_containers.commit()
 
         # Act
-        dataset_retrieval = DatasetRetrieval()
-        result = dataset_retrieval._get_available_datasets(tenant.id, [dataset.id])
+        dataset_retrieval = build_dataset_retrieval(sqlite_session_factory)()
+        result = dataset_retrieval._records.available_datasets(tenant.id, [dataset.id])
 
         # Assert
         assert len(result) == 1
         assert result[0].id == dataset.id
         assert result[0].provider == "external"
 
-    def test_filters_by_tenant_id(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_filters_by_tenant_id(
+        self, db_session_with_containers: Session, mock_external_service_dependencies, sqlite_session_factory
+    ):
         # Arrange
         fake = Faker()
 
@@ -355,8 +357,8 @@ class TestGetAvailableDatasetsIntegration:
         db_session_with_containers.commit()
 
         # Act - request from tenant1, should only get tenant1's dataset
-        dataset_retrieval = DatasetRetrieval()
-        result = dataset_retrieval._get_available_datasets(tenant1.id, [dataset1.id, dataset2.id])
+        dataset_retrieval = build_dataset_retrieval(sqlite_session_factory)()
+        result = dataset_retrieval._records.available_datasets(tenant1.id, [dataset1.id, dataset2.id])
 
         # Assert
         assert len(result) == 1
@@ -364,7 +366,7 @@ class TestGetAvailableDatasetsIntegration:
         assert result[0].tenant_id == tenant1.id
 
     def test_returns_empty_list_when_no_datasets_found(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies, sqlite_session_factory
     ):
         # Arrange
         fake = Faker()
@@ -382,14 +384,14 @@ class TestGetAvailableDatasetsIntegration:
         # Don't create any datasets
 
         # Act
-        dataset_retrieval = DatasetRetrieval()
-        result = dataset_retrieval._get_available_datasets(tenant.id, [str(uuid.uuid4())])
+        dataset_retrieval = build_dataset_retrieval(sqlite_session_factory)()
+        result = dataset_retrieval._records.available_datasets(tenant.id, [str(uuid.uuid4())])
 
         # Assert
         assert result == []
 
     def test_returns_only_requested_dataset_ids(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies, sqlite_session_factory
     ):
         # Arrange
         fake = Faker()
@@ -439,9 +441,9 @@ class TestGetAvailableDatasetsIntegration:
         db_session_with_containers.commit()
 
         # Act - request only dataset 0 and 2, not dataset 1
-        dataset_retrieval = DatasetRetrieval()
+        dataset_retrieval = build_dataset_retrieval(sqlite_session_factory)()
         requested_ids = [datasets[0].id, datasets[2].id]
-        result = dataset_retrieval._get_available_datasets(tenant.id, requested_ids)
+        result = dataset_retrieval._records.available_datasets(tenant.id, requested_ids)
 
         # Assert
         assert len(result) == 2
@@ -451,7 +453,7 @@ class TestGetAvailableDatasetsIntegration:
 
 class TestKnowledgeRetrievalIntegration:
     def test_knowledge_retrieval_with_available_datasets(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies, sqlite_session_factory
     ):
         # Arrange
         fake = Faker()
@@ -507,7 +509,7 @@ class TestKnowledgeRetrievalIntegration:
             top_k=5,
         )
 
-        dataset_retrieval = DatasetRetrieval()
+        dataset_retrieval = build_dataset_retrieval(sqlite_session_factory)()
 
         # Mock rate limit check and retrieval
         with patch.object(dataset_retrieval, "_check_knowledge_rate_limit"):
@@ -520,7 +522,7 @@ class TestKnowledgeRetrievalIntegration:
                     assert isinstance(result, list)
 
     def test_knowledge_retrieval_no_available_datasets(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies, sqlite_session_factory
     ):
         # Arrange
         fake = Faker()
@@ -558,7 +560,7 @@ class TestKnowledgeRetrievalIntegration:
             top_k=5,
         )
 
-        dataset_retrieval = DatasetRetrieval()
+        dataset_retrieval = build_dataset_retrieval(sqlite_session_factory)()
 
         # Mock rate limit check
         with patch.object(dataset_retrieval, "_check_knowledge_rate_limit"):
@@ -569,7 +571,7 @@ class TestKnowledgeRetrievalIntegration:
             assert result == []
 
     def test_knowledge_retrieval_rate_limit_exceeded(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies, sqlite_session_factory
     ):
         # Arrange
         fake = Faker()
@@ -606,7 +608,7 @@ class TestKnowledgeRetrievalIntegration:
             top_k=5,
         )
 
-        dataset_retrieval = DatasetRetrieval()
+        dataset_retrieval = build_dataset_retrieval(sqlite_session_factory)()
 
         # Mock rate limit check to raise exception
         with patch.object(

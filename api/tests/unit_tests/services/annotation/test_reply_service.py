@@ -1,8 +1,11 @@
+from dataclasses import replace
+
 import pytest
 from sqlalchemy import create_engine, event, select
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import QueuePool
 
+from core.app.entities.queue_entities import QueueAnnotationReplyEvent, QueueStopEvent
 from core.rag.models.document import Document
 from models.base import TypeBase
 from models.dataset import DatasetCollectionBinding
@@ -172,3 +175,25 @@ def test_history_failure_rolls_back_hit_count(annotation_store, monkeypatch):
     with annotation_store() as session:
         assert session.get(MessageAnnotation, "annotation-1").hit_count == 0
         assert session.scalar(select(AppAnnotationHitHistory)) is None
+
+
+def test_chatflow_runner_search_and_publish_are_outside_transaction(build_runner, annotation_store, monkeypatch):
+    runner = build_runner
+    runner._app.id = runner.application_generate_entity.app_config.app_id = "app-1"
+    runner._app.tenant_id = runner.application_generate_entity.app_config.tenant_id = "tenant-1"
+    runner.message.id = "msg-1"
+    runner.application_generate_entity.query = "hi"
+    runner._runtime = replace(runner._runtime, annotation_replies=install_vector(monkeypatch, annotation_store))
+    monkeypatch.setattr(runner, "handle_input_moderation", lambda **_kwargs: (False, {}, "hi"))
+    events = []
+
+    def publish(item):
+        assert annotation_store.kw["bind"].pool.checkedout() == 0
+        with annotation_store() as session:
+            assert session.scalar(select(AppAnnotationHitHistory)) is not None
+        events.append(item)
+
+    monkeypatch.setattr(runner._events, "_publish_event", publish)
+    runner.run()
+    assert isinstance(events[0], QueueAnnotationReplyEvent)
+    assert isinstance(events[-1], QueueStopEvent)

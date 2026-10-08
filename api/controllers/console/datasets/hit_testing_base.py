@@ -3,9 +3,9 @@ from typing import Any, cast
 
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services.errors.base
+from controllers.common.errors import AccessDeniedError, InternalServerError, NotFoundError
 from controllers.console.app.error import (
     CompletionRequestError,
     ProviderModelCurrentlyNotSupportError,
@@ -19,6 +19,7 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
+from extensions.ext_application_services import application_services
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs.login import resolve_account_fallback
 from models.account import Account
@@ -93,12 +94,12 @@ class DatasetsHitTestingBase:
         current_user, _ = resolve_account_fallback(current_user, current_tenant_id)
         dataset = DatasetService.get_dataset(dataset_id, session)
         if dataset is None:
-            raise NotFound("Dataset not found.")
+            raise NotFoundError("Dataset not found.")
 
         try:
             DatasetService.check_dataset_permission(dataset, current_user, session)
         except services.errors.base.NoPermissionError as e:
-            raise Forbidden(str(e))
+            raise AccessDeniedError(str(e)) from e
 
         return dataset
 
@@ -123,6 +124,7 @@ class DatasetsHitTestingBase:
         try:
             current_user, _ = resolve_account_fallback(current_user, current_tenant_id)
             response = HitTestingService.retrieve(
+                retrieval=application_services().workflow_runtime.retrieval,
                 session=session,
                 dataset=dataset,
                 query=cast(str, args.get("query")),

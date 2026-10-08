@@ -8,8 +8,8 @@ from opentelemetry.trace import StatusCode, get_current_span, get_tracer
 from sqlalchemy.orm import Session
 
 from core.rag.rerank.rerank_type import RerankMode
-from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.workflow.nodes.knowledge_retrieval.retrieval import KnowledgeRetrievalRequest
+from extensions.application_services.retrieval import build_dataset_retrieval
 from models.dataset import Dataset
 
 
@@ -19,9 +19,7 @@ def _otel_enabled(config_overrides: Callable[..., None]) -> None:
 
 
 def test_knowledge_retrieval_creates_a_child_otel_span(
-    memory_span_exporter,
-    tracer_provider_with_memory_exporter,
-    sqlite_session: Session,
+    memory_span_exporter, tracer_provider_with_memory_exporter, sqlite_session: Session, sqlite_session_factory
 ) -> None:
     """The retrieval entry point must be visible beneath its workflow node span."""
     request = KnowledgeRetrievalRequest(
@@ -33,19 +31,19 @@ def test_knowledge_retrieval_creates_a_child_otel_span(
         retrieval_mode="multiple",
         query="test query",
     )
-    retrieval = DatasetRetrieval()
+    retrieval = build_dataset_retrieval(sqlite_session_factory)()
 
     with (
         patch.object(retrieval, "_check_knowledge_rate_limit"),
-        patch.object(retrieval, "_get_available_datasets", return_value=[]),
+        patch.object(retrieval._records, "available_datasets", return_value=[]),
         get_tracer(__name__).start_as_current_span("knowledge-retrieval-node") as node_span,
     ):
-        assert retrieval.knowledge_retrieval(sqlite_session, request) == []
+        assert retrieval.knowledge_retrieval(request) == []
 
     retrieval_span = next(
         span
         for span in memory_span_exporter.get_finished_spans()
-        if span.name == "core.rag.retrieval.dataset_retrieval.DatasetRetrieval.knowledge_retrieval"
+        if span.name == "services.knowledge.retrieval.dataset_retrieval.DatasetRetrieval.knowledge_retrieval"
     )
     node_span_context = node_span.get_span_context()
     assert retrieval_span.context.trace_id == node_span_context.trace_id
@@ -54,11 +52,10 @@ def test_knowledge_retrieval_creates_a_child_otel_span(
 
 
 def test_multiple_retrieve_preserves_otel_context_in_dataset_thread(
-    app,
-    tracer_provider_with_memory_exporter,
+    app, tracer_provider_with_memory_exporter, sqlite_session_factory
 ) -> None:
     """Per-dataset retrieval spans must remain in the workflow node trace."""
-    retrieval = DatasetRetrieval()
+    retrieval = build_dataset_retrieval(sqlite_session_factory)()
     dataset = Dataset(
         id=str(uuid4()),
         indexing_technique="high_quality",
@@ -93,11 +90,9 @@ def test_multiple_retrieve_preserves_otel_context_in_dataset_thread(
 
 
 def test_retriever_thread_exception_sets_error_span_and_is_collected(
-    app,
-    memory_span_exporter,
-    tracer_provider_with_memory_exporter,
+    app, memory_span_exporter, tracer_provider_with_memory_exporter, sqlite_session_factory
 ) -> None:
-    retrieval = DatasetRetrieval()
+    retrieval = build_dataset_retrieval(sqlite_session_factory)()
     cancel_event = threading.Event()
     thread_exceptions: list[Exception] = []
     expected_error = RuntimeError("retrieval failed")
@@ -106,7 +101,7 @@ def test_retriever_thread_exception_sets_error_span_and_is_collected(
         patch.object(retrieval, "_retriever", side_effect=expected_error),
     ):
         retrieval._run_retriever_thread_safely(
-            flask_app=app,
+            tenant_id="tenant-1",
             dataset_id=str(uuid4()),
             query="test query",
             top_k=4,
@@ -129,11 +124,9 @@ def test_retriever_thread_exception_sets_error_span_and_is_collected(
 
 
 def test_retriever_thread_exception_emits_skip_event_when_requested(
-    app,
-    memory_span_exporter,
-    tracer_provider_with_memory_exporter,
+    app, memory_span_exporter, tracer_provider_with_memory_exporter, sqlite_session_factory
 ) -> None:
-    retrieval = DatasetRetrieval()
+    retrieval = build_dataset_retrieval(sqlite_session_factory)()
     cancel_event = threading.Event()
     thread_exceptions: list[Exception] = []
     expected_error = RuntimeError("retrieval failed")
@@ -144,7 +137,7 @@ def test_retriever_thread_exception_emits_skip_event_when_requested(
         get_tracer(__name__).start_as_current_span("dataset-retrieval-parent") as parent_span,
     ):
         retrieval._run_retriever_thread_safely(
-            flask_app=app,
+            tenant_id="tenant-1",
             dataset_id=dataset_id,
             query="test query",
             top_k=4,

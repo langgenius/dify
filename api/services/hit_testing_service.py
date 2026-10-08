@@ -11,13 +11,13 @@ from core.rag.datasource.retrieval_service import DefaultRetrievalModelDict, Ret
 from core.rag.embedding.retrieval import RetrievalSegments
 from core.rag.index_processor.constant.query_type import QueryType
 from core.rag.models.document import Document
-from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from graphon.model_runtime.entities import LLMMode
 from models import Account
 from models.dataset import Dataset, DatasetQuery
 from models.dataset import Document as DatasetDocument
 from models.enums import CreatorUserRole, DatasetQuerySource
+from services.knowledge.retrieval.ports import DatasetRetrievalFactory
 
 logger = logging.getLogger(__name__)
 
@@ -112,6 +112,7 @@ class HitTestingService:
         limit: int = 10,
         *,
         session: Session,
+        retrieval: DatasetRetrievalFactory,
     ):
         start = time.perf_counter()
 
@@ -123,20 +124,19 @@ class HitTestingService:
         document_ids_filter = None
         metadata_filtering_conditions_raw = resolved_retrieval_model.get("metadata_filtering_conditions", {})
         if metadata_filtering_conditions_raw and query:
-            dataset_retrieval = DatasetRetrieval()
+            dataset_retrieval = retrieval()
 
             from core.rag.entities import MetadataFilteringCondition
 
             metadata_filtering_conditions = MetadataFilteringCondition.model_validate(metadata_filtering_conditions_raw)
 
             metadata_filter_document_ids, metadata_condition = dataset_retrieval.get_metadata_filter_condition(
-                session=session,
                 dataset_ids=[dataset.id],
                 query=query,
                 metadata_filtering_mode="manual",
                 metadata_filtering_conditions=metadata_filtering_conditions,
                 inputs={},
-                tenant_id="",
+                tenant_id=dataset.tenant_id,
                 user_id="",
                 metadata_model_config=ModelConfig(provider="", name="", mode=LLMMode.CHAT, completion_params={}),
             )
