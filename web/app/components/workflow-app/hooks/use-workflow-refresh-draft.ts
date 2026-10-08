@@ -14,6 +14,7 @@ type RefreshWorkflowDraftOptions = {
 type DraftRefreshRequest = {
   appId: string
   restoreLoaded: boolean
+  applyAdditionalData?: (response: FetchWorkflowDraftResponse) => void
 }
 
 // Multiple refresh hooks share one canvas, hash, and loading guard.
@@ -60,19 +61,32 @@ export const useWorkflowRefreshDraft = () => {
       debouncedSyncWorkflowDraft?.cancel?.()
 
       const previousRequest = pendingRefreshes.get(workflowStore)
+      const generation = lifetime.generation
+      const isCurrentLifetime = () =>
+        lifetime.active &&
+        generation === lifetime.generation &&
+        workflowStore.getState().appId === appId
+      // A metadata-only refresh must still apply a pending broadcast's features
+      // from its newer response, provided the original owner remains valid.
+      let applyAdditionalData =
+        previousRequest?.appId === appId ? previousRequest.applyAdditionalData : undefined
+      if (options?.onSuccess) {
+        const { onSuccess, shouldApply } = options
+        applyAdditionalData = (response) => {
+          if (!isCurrentLifetime() || (shouldApply && !shouldApply())) return
+          onSuccess(response)
+        }
+      }
       const request: DraftRefreshRequest = {
         appId,
+        applyAdditionalData,
         restoreLoaded:
           isWorkflowDataLoaded ||
           (previousRequest?.appId === appId && previousRequest.restoreLoaded),
       }
-      const generation = lifetime.generation
       pendingRefreshes.set(workflowStore, request)
       const isCurrentRequest = () =>
-        lifetime.active &&
-        generation === lifetime.generation &&
-        workflowStore.getState().appId === appId &&
-        pendingRefreshes.get(workflowStore) === request
+        isCurrentLifetime() && pendingRefreshes.get(workflowStore) === request
       const finishRefresh = () => {
         if (!isCurrentRequest()) return
 
@@ -111,7 +125,7 @@ export const useWorkflowRefreshDraft = () => {
             ) || [],
           )
           setConversationVariables(response.conversation_variables || [])
-          options?.onSuccess?.(response)
+          request.applyAdditionalData?.(response)
           setIsWorkflowDataLoaded(true)
           return true
         })

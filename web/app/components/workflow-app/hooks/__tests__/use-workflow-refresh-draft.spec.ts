@@ -1,3 +1,4 @@
+import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -52,6 +53,7 @@ vi.mock('@/service/workflow', () => ({
 const draftResponse = {
   hash: 'server-hash',
   graph: { nodes: [{ id: 'n1' }], edges: [], viewport: { x: 1, y: 2, zoom: 1 } },
+  features: { opening_statement: 'Server opening' },
   environment_variables: [],
   conversation_variables: [],
 }
@@ -164,6 +166,137 @@ describe('useWorkflowRefreshDraft — notUpdateCanvas parameter', () => {
     })
 
     expect(onSuccess).toHaveBeenCalledExactlyOnceWith(draftResponse)
+  })
+
+  it.each(['broadcast first', 'metadata first'] as const)(
+    'applies broadcast features from the newest metadata response when responses settle %s',
+    async (order) => {
+      const broadcast = createPendingDraft()
+      const metadata = createPendingDraft()
+      mockFetchWorkflowDraft
+        .mockReturnValueOnce(broadcast.promise)
+        .mockReturnValueOnce(metadata.promise)
+      const broadcastHook = renderHook(() => useWorkflowRefreshDraft())
+      const metadataHook = renderHook(() => useWorkflowRefreshDraft())
+      let opening = 'Old opening'
+      const onSuccess = vi.fn((response: FetchWorkflowDraftResponse) => {
+        opening = response.features.opening_statement
+      })
+      const broadcastRefresh = broadcastHook.result.current.handleRefreshWorkflowDraft(false, {
+        shouldApply: () => true,
+        onSuccess,
+      })
+      const metadataRefresh = metadataHook.result.current.handleRefreshWorkflowDraft(true, {
+        shouldApply: () => true,
+      })
+      const newestResponse = {
+        ...draftResponse,
+        hash: 'imported-hash',
+        features: { opening_statement: 'Imported opening' },
+      }
+
+      await act(async () => {
+        if (order === 'broadcast first') {
+          broadcast.resolve(draftResponse)
+          await broadcastRefresh
+          metadata.resolve(newestResponse)
+          await metadataRefresh
+        } else {
+          metadata.resolve(newestResponse)
+          await metadataRefresh
+          broadcast.resolve(draftResponse)
+          await broadcastRefresh
+        }
+      })
+
+      await expect(broadcastRefresh).resolves.toBe(false)
+      await expect(metadataRefresh).resolves.toBe(true)
+      expect(opening).toBe('Imported opening')
+      expect(onSuccess).toHaveBeenCalledExactlyOnceWith(newestResponse)
+      expect(workflowStoreState.syncWorkflowDraftHash).toBe('imported-hash')
+      expect(mockHandleUpdateWorkflowCanvas).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each(['unmount', 'guard invalidation'] as const)(
+    'does not apply pending broadcast features after the original owner has %s',
+    async (invalidation) => {
+      const broadcast = createPendingDraft()
+      const metadata = createPendingDraft()
+      mockFetchWorkflowDraft
+        .mockReturnValueOnce(broadcast.promise)
+        .mockReturnValueOnce(metadata.promise)
+      const broadcastHook = renderHook(() => useWorkflowRefreshDraft())
+      const metadataHook = renderHook(() => useWorkflowRefreshDraft())
+      const onSuccess = vi.fn()
+      let shouldApply = true
+      const broadcastRefresh = broadcastHook.result.current.handleRefreshWorkflowDraft(false, {
+        shouldApply: () => shouldApply,
+        onSuccess,
+      })
+      const metadataRefresh = metadataHook.result.current.handleRefreshWorkflowDraft(true)
+      if (invalidation === 'unmount') broadcastHook.unmount()
+      else shouldApply = false
+
+      await act(async () => {
+        metadata.resolve(draftResponse)
+        await metadataRefresh
+        broadcast.resolve(draftResponse)
+        await broadcastRefresh
+      })
+
+      await expect(metadataRefresh).resolves.toBe(true)
+      expect(workflowStoreState.syncWorkflowDraftHash).toBe('server-hash')
+      expect(onSuccess).not.toHaveBeenCalled()
+    },
+  )
+
+  it('does not carry pending broadcast features into a different app', async () => {
+    const broadcast = createPendingDraft()
+    const metadata = createPendingDraft()
+    mockFetchWorkflowDraft
+      .mockReturnValueOnce(broadcast.promise)
+      .mockReturnValueOnce(metadata.promise)
+    const { result } = renderHook(() => useWorkflowRefreshDraft())
+    const onSuccess = vi.fn()
+    const broadcastRefresh = result.current.handleRefreshWorkflowDraft(false, { onSuccess })
+    workflowStoreState.appId = 'app-2'
+    const metadataRefresh = result.current.handleRefreshWorkflowDraft(true)
+
+    await act(async () => {
+      metadata.resolve(draftResponse)
+      await metadataRefresh
+      broadcast.resolve(draftResponse)
+      await broadcastRefresh
+    })
+
+    await expect(metadataRefresh).resolves.toBe(true)
+    expect(onSuccess).not.toHaveBeenCalled()
+  })
+
+  it('uses the newest broadcast callback when overlapping broadcasts both update features', async () => {
+    const first = createPendingDraft()
+    const second = createPendingDraft()
+    mockFetchWorkflowDraft.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise)
+    const { result } = renderHook(() => useWorkflowRefreshDraft())
+    const firstOnSuccess = vi.fn()
+    const secondOnSuccess = vi.fn()
+    const firstRefresh = result.current.handleRefreshWorkflowDraft(false, {
+      onSuccess: firstOnSuccess,
+    })
+    const secondRefresh = result.current.handleRefreshWorkflowDraft(false, {
+      onSuccess: secondOnSuccess,
+    })
+
+    await act(async () => {
+      second.resolve(draftResponse)
+      await secondRefresh
+      first.resolve(draftResponse)
+      await firstRefresh
+    })
+
+    expect(firstOnSuccess).not.toHaveBeenCalled()
+    expect(secondOnSuccess).toHaveBeenCalledExactlyOnceWith(draftResponse)
   })
 
   it('keeps the syncing guard active until the newest overlapping refresh completes', async () => {
