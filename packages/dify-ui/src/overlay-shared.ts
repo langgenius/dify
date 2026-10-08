@@ -4,9 +4,8 @@ export type MenuItemVariant = 'default' | 'destructive'
 export const triggerFocusClassName =
   'outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid'
 
-// A menu row's focus treatment is its highlight, so a trigger composed into the row adds no ring.
 export const menuItemClassName =
-  'mx-1 flex h-8 cursor-pointer select-none items-center gap-1 rounded-lg px-2 outline-hidden focus-visible:ring-0 data-highlighted:bg-state-base-hover data-disabled:cursor-not-allowed data-disabled:opacity-30'
+  'mx-1 flex h-8 cursor-pointer select-none items-center gap-1 rounded-lg px-2 outline-hidden data-highlighted:bg-state-base-hover data-disabled:cursor-not-allowed data-disabled:opacity-30'
 export const menuItemDestructiveClassName =
   'data-[variant=destructive]:text-text-destructive data-[variant=destructive]:data-highlighted:bg-state-destructive-hover'
 export const floatingItemIndicatorClassName = 'ms-auto flex shrink-0 items-center text-text-accent'
