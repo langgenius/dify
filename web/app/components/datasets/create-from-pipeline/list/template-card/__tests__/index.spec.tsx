@@ -95,18 +95,8 @@ vi.mock('../edit-pipeline-info', () => ({
   ),
 }))
 
-// Mock Details component
-vi.mock('../details', () => ({
-  default: ({ onClose, onApplyTemplate }: { onClose: () => void; onApplyTemplate: () => void }) => (
-    <div data-testid="details-component">
-      <button data-testid="details-close" onClick={onClose}>
-        Close
-      </button>
-      <button data-testid="details-apply" onClick={onApplyTemplate}>
-        Apply
-      </button>
-    </div>
-  ),
+vi.mock('@/app/components/workflow/workflow-preview', () => ({
+  default: () => <div>Workflow preview</div>,
 }))
 
 const mockCreateDataset = vi.fn()
@@ -132,6 +122,13 @@ vi.mock('@/service/knowledge/use-dataset', () => ({
 
 vi.mock('@/service/use-pipeline', () => ({
   usePipelineTemplateById: () => ({
+    data: {
+      name: 'Test Pipeline',
+      description: 'Test pipeline description',
+      icon_info: { icon_type: 'emoji', icon: '📊', icon_background: '#FFF4ED', icon_url: '' },
+      chunk_structure: 'text',
+      graph: { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } },
+    },
     refetch: mockGetPipelineTemplateInfo,
   }),
   useDeleteTemplate: () => ({
@@ -321,7 +318,7 @@ describe('TemplateCard', () => {
       fireEvent.click(detailsButton)
 
       await waitFor(() => {
-        expect(screen.getByTestId('details-component')).toBeInTheDocument()
+        expect(screen.getByRole('dialog', { name: 'Test Pipeline' })).toBeInTheDocument()
       })
     })
 
@@ -331,14 +328,14 @@ describe('TemplateCard', () => {
       fireEvent.click(detailsButton)
 
       await waitFor(() => {
-        expect(screen.getByTestId('details-component')).toBeInTheDocument()
+        expect(screen.getByRole('dialog', { name: 'Test Pipeline' })).toBeInTheDocument()
       })
 
-      const closeButton = screen.getByTestId('details-close')
+      const closeButton = screen.getByRole('button', { name: 'common.operation.close' })
       fireEvent.click(closeButton)
 
       await waitFor(() => {
-        expect(screen.queryByTestId('details-component')).not.toBeInTheDocument()
+        expect(screen.queryByRole('dialog', { name: 'Test Pipeline' })).not.toBeInTheDocument()
       })
     })
 
@@ -347,13 +344,13 @@ describe('TemplateCard', () => {
       fireEvent.click(screen.getByTestId('action-details'))
 
       await waitFor(() => {
-        expect(screen.getByTestId('details-component')).toBeInTheDocument()
+        expect(screen.getByRole('dialog', { name: 'Test Pipeline' })).toBeInTheDocument()
       })
 
       fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
 
       await waitFor(() => {
-        expect(screen.queryByTestId('details-component')).not.toBeInTheDocument()
+        expect(screen.queryByRole('dialog', { name: 'Test Pipeline' })).not.toBeInTheDocument()
       })
     })
 
@@ -368,10 +365,12 @@ describe('TemplateCard', () => {
       fireEvent.click(detailsButton)
 
       await waitFor(() => {
-        expect(screen.getByTestId('details-component')).toBeInTheDocument()
+        expect(screen.getByRole('dialog', { name: 'Test Pipeline' })).toBeInTheDocument()
       })
 
-      const applyButton = screen.getByTestId('details-apply')
+      const applyButton = screen.getByRole('button', {
+        name: 'datasetPipeline.operations.useTemplate',
+      })
       fireEvent.click(applyButton)
 
       await waitFor(() => {
