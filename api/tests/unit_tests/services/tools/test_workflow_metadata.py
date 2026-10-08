@@ -171,7 +171,7 @@ def test_workflow_management_updates_and_deletes_through_injected_store(
 
 def test_agent_provider_expansion_uses_injected_workflow_queries(
     published_tool: str,
-    tool_providers,
+    tool_providers: ToolProviderRepository,
     workflow_queries: WorkflowToolQueries,
 ) -> None:
     from core.app.entities.app_invoke_entities import InvokeFrom
