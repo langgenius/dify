@@ -6,6 +6,7 @@ import { consoleQuery } from '@/service/console'
 import {
   createConsoleQueryClient,
   createConsoleQueryWrapper,
+  seedEducationStatus,
   seedFeatures,
 } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
@@ -158,6 +159,58 @@ it('shows yearly pricing immediately for a cached eligible education account', (
   expect(screen.getByText('$590')).toBeVisible()
   expect(screen.getByRole('button', { name: 'education.useEducationDiscount' })).toBeEnabled()
   expect(screen.queryByRole('status')).not.toBeInTheDocument()
+})
+
+it.each(['year', 'month'] as const)(
+  'takes an active education subscription directly to Team checkout with %s billing',
+  async (interval) => {
+    const user = userEvent.setup()
+    const { queryClient, show } = setup()
+    seedFeatures(queryClient, {
+      billing: { subscription: { plan: 'professional', interval: 'year' } },
+      education: { enabled: true, activated: true },
+    })
+    seedEducationStatus(queryClient, { is_student: true })
+    const checkoutUrl = 'https://billing.example.com/team-checkout'
+    const checkout = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ url: checkoutUrl }), {
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    const navigate = vi.spyOn(window.location, 'href', 'set').mockImplementation(() => {})
+    show()
+    if (interval === 'month') await user.click(screen.getByRole('switch'))
+
+    await user.click(screen.getByRole('button', { name: 'billing.plansCommon.getStarted' }))
+
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith(checkoutUrl))
+    expect(checkout).toHaveBeenCalledTimes(1)
+    const requestUrl = new URL((checkout.mock.calls[0]?.[0] as Request).url)
+    expect(requestUrl.pathname).toBe('/console/api/billing/subscription')
+    expect(requestUrl.searchParams.get('plan')).toBe('team')
+    expect(requestUrl.searchParams.get('interval')).toBe(interval)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  },
+)
+
+it('offers education pricing before Team checkout when the discount has not been activated', async () => {
+  const user = userEvent.setup()
+  const { queryClient, show } = setup()
+  seedFeatures(queryClient, { education: { enabled: true, activated: false } })
+  seedEducationStatus(queryClient, { is_student: true })
+  const checkout = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+    new Response(JSON.stringify({ url: 'https://billing.example.com/team-checkout' }), {
+      headers: { 'Content-Type': 'application/json' },
+    }),
+  )
+  show()
+
+  await user.click(screen.getByRole('button', { name: 'billing.plansCommon.getStarted' }))
+
+  expect(
+    await screen.findByRole('dialog', { name: 'education.educationPricingConfirm.title' }),
+  ).toBeVisible()
+  expect(checkout).not.toHaveBeenCalled()
 })
 
 it('keeps plan information visible after a request failure and restores billing on retry', async () => {
