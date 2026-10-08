@@ -13,7 +13,12 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Radio, RadioGroup } from '@langgenius/dify-ui/radio-group'
-import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
+import {
+  ScrollArea,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+} from '@langgenius/dify-ui/scroll-area'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useInfiniteDatasets } from '@/service/knowledge/use-dataset'
@@ -179,31 +184,41 @@ export function DatasetScopeDialog({
                       </Button>
                     }
                   />
-                  <PopoverContent placement="bottom" sideOffset={4} className="w-80 p-2">
+                  <PopoverContent
+                    placement="bottom"
+                    sideOffset={4}
+                    className="flex max-h-[min(20rem,var(--available-height))] w-80 flex-col overflow-hidden p-2"
+                  >
                     <Input
+                      className="shrink-0"
                       value={keyword}
                       onChange={(e) => setKeyword(e.target.value)}
                       placeholder={t(($) => $['apiKeyModal.searchKnowledgeBases'], {
                         ns: 'appApi',
                       })}
                     />
-                    <ScrollArea className="mt-2 max-h-60">
-                      <div className="flex flex-col">
-                        {datasets.map((ds) => (
-                          <label
-                            key={ds.id}
-                            className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 hover:bg-state-base-hover"
-                          >
-                            <Checkbox
-                              checked={selectedIds.has(ds.id)}
-                              onCheckedChange={() => toggleKb(ds.id, ds.name)}
-                            />
-                            <span className="min-w-0 grow truncate system-sm-regular text-text-secondary">
-                              {ds.name}
-                            </span>
-                          </label>
-                        ))}
-                      </div>
+                    <ScrollArea className="mt-2 min-h-0 overflow-hidden">
+                      <ScrollAreaViewport className="max-h-[min(15rem,calc(var(--available-height)-4rem))] overscroll-contain">
+                        <div className="flex flex-col">
+                          {datasets.map((ds) => (
+                            <label
+                              key={ds.id}
+                              className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 hover:bg-state-base-hover"
+                            >
+                              <Checkbox
+                                checked={selectedIds.has(ds.id)}
+                                onCheckedChange={() => toggleKb(ds.id, ds.name)}
+                              />
+                              <span className="min-w-0 grow truncate system-sm-regular text-text-secondary">
+                                {ds.name}
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                      </ScrollAreaViewport>
+                      <ScrollAreaScrollbar>
+                        <ScrollAreaThumb />
+                      </ScrollAreaScrollbar>
                     </ScrollArea>
                   </PopoverContent>
                 </Popover>
