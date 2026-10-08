@@ -7,7 +7,6 @@ from sqlalchemy.pool import QueuePool
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.apps.draft_variable_saver import NoopDraftVariableSaver
-from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import QueueWorkflowStartedEvent
 from core.workflow.system_variables import build_system_variables
@@ -19,6 +18,7 @@ from models.base import TypeBase
 from models.enums import CreatorUserRole
 from models.model import AppMode
 from models.workflow import WorkflowAppLog
+from services.workflow.execution.adapters.workflow.app_queue_manager import WorkflowAppQueueManager
 from services.workflow.execution.adapters.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
 from tests.unit_tests.model_factories import make_account, make_end_user, make_workflow
 from tests.workflow_test_utils import build_test_variable_pool
