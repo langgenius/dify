@@ -46,7 +46,7 @@ const CredentialSelector = ({
         render={
           <button
             type="button"
-            className="flex h-8 w-full items-center justify-between rounded-lg bg-components-input-bg-normal px-2 text-left system-sm-regular focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-state-accent-solid"
+            className="flex h-8 w-full items-center justify-between rounded-lg bg-components-input-bg-normal px-2 text-left system-sm-regular"
           />
         }
       >

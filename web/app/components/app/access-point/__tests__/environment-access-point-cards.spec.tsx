@@ -62,15 +62,6 @@ vi.mock('@/app/components/app/access-point/shared/use-access-point-actions', () 
   }),
 }))
 
-vi.mock('@/app/components/app/overview/customize', () => ({
-  default: ({ api_base_url, isShow }: { api_base_url: string; isShow: boolean }) =>
-    isShow ? (
-      <div role="dialog" aria-label="environment customize">
-        {api_base_url}
-      </div>
-    ) : null,
-}))
-
 vi.mock('@/app/components/app/overview/settings', () => ({
   default: ({ isShow }: { isShow: boolean }) =>
     isShow ? <div role="dialog" aria-label="environment settings" /> : null,
@@ -409,9 +400,12 @@ describe('environment access point cards', () => {
       expect(screen.getByRole('button', { name: /customize\.entry/ })).toBeEnabled(),
     )
     await user.click(screen.getByRole('button', { name: /customize\.entry/ }))
-    expect(screen.getByRole('dialog', { name: 'environment customize' })).toHaveTextContent(
-      'https://api.example.test/v1',
-    )
+    expect(
+      screen.getByRole('dialog', { name: 'appOverview.overview.appInfo.customize.title' }),
+    ).toHaveTextContent('https://api.example.test/v1')
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
 
     await user.click(screen.getByRole('button', { name: /settings\.settings/ }))
     expect(screen.getByRole('dialog', { name: 'environment settings' })).toBeInTheDocument()

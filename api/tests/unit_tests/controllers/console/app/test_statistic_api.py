@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import Callable
 from datetime import UTC, datetime
 from decimal import Decimal
 from inspect import unwrap
@@ -10,22 +9,15 @@ from unittest.mock import MagicMock
 
 import pytest
 from flask import Flask
+from pytest_mock import MockerFixture
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import BadRequest
 
 from controllers.console.app import statistic as statistic_module
 from machinery.context import RequestContext
 from models.model import App
-from services.app_statistic_query import (
-    AppStatisticQuery,
-    AverageResponseTimeStatisticRecord,
-    AverageSessionInteractionStatisticRecord,
-    DailyConversationStatisticRecord,
-    DailyMessageStatisticRecord,
-    DailyTerminalStatisticRecord,
-    DailyTokenCostStatisticRecord,
-    TokensPerSecondStatisticRecord,
-    UserSatisfactionRateStatisticRecord,
-)
+from repositories.app_statistic_query_repository import AppStatisticQueryRepository
+from services.app_statistic_query import AppStatisticQuery
 
 
 def _request_context() -> RequestContext:
@@ -43,7 +35,7 @@ def _app_model() -> App:
 
 def _install_dependencies(
     monkeypatch: pytest.MonkeyPatch,
-    statistics: MagicMock,
+    statistics: AppStatisticQuery,
     *,
     time_range: tuple[datetime | None, datetime | None] = (None, None),
 ) -> None:
@@ -80,66 +72,65 @@ def _invoke(
 
 
 @pytest.mark.parametrize(
-    ("resource_type", "query_call_getter", "record", "expected"),
+    ("resource_type", "query_method", "row", "expected"),
     [
         pytest.param(
             statistic_module.DailyMessageStatistic,
-            lambda query: query.get_daily_messages,
-            DailyMessageStatisticRecord(date="2024-01-01", message_count=3),
+            "get_daily_messages",
+            {"date": "2024-01-01", "message_count": 3},
             {"date": "2024-01-01", "message_count": 3},
             id="daily-messages",
         ),
         pytest.param(
             statistic_module.DailyConversationStatistic,
-            lambda query: query.get_daily_conversations,
-            DailyConversationStatisticRecord(date="2024-01-02", conversation_count=5),
+            "get_daily_conversations",
+            {"date": "2024-01-02", "conversation_count": 5},
             {"date": "2024-01-02", "conversation_count": 5},
             id="daily-conversations",
         ),
         pytest.param(
             statistic_module.DailyTerminalsStatistic,
-            lambda query: query.get_daily_terminals,
-            DailyTerminalStatisticRecord(date="2024-01-03", terminal_count=7),
+            "get_daily_terminals",
+            {"date": "2024-01-03", "terminal_count": 7},
             {"date": "2024-01-03", "terminal_count": 7},
             id="daily-terminals",
         ),
         pytest.param(
             statistic_module.DailyTokenCostStatistic,
-            lambda query: query.get_daily_token_costs,
-            DailyTokenCostStatisticRecord(
-                date="2024-01-04",
-                token_count=10,
-                total_price=Decimal("0.25"),
-                currency="USD",
-            ),
+            "get_daily_token_costs",
+            {
+                "date": "2024-01-04",
+                "token_count": 10,
+                "total_price": Decimal("0.25"),
+            },
             {"date": "2024-01-04", "token_count": 10, "total_price": "0.25", "currency": "USD"},
             id="daily-token-costs",
         ),
         pytest.param(
             statistic_module.AverageSessionInteractionStatistic,
-            lambda query: query.get_average_session_interactions,
-            AverageSessionInteractionStatisticRecord(date="2024-01-05", interactions=2.5),
+            "get_average_session_interactions",
+            {"date": "2024-01-05", "interactions": Decimal("2.5")},
             {"date": "2024-01-05", "interactions": 2.5},
             id="average-session-interactions",
         ),
         pytest.param(
             statistic_module.UserSatisfactionRateStatistic,
-            lambda query: query.get_user_satisfaction_rates,
-            UserSatisfactionRateStatisticRecord(date="2024-01-06", rate=100.0),
+            "get_user_satisfaction_rates",
+            {"date": "2024-01-06", "feedback_count": 1, "message_count": 10},
             {"date": "2024-01-06", "rate": 100.0},
             id="user-satisfaction-rate",
         ),
         pytest.param(
             statistic_module.AverageResponseTimeStatistic,
-            lambda query: query.get_average_response_times,
-            AverageResponseTimeStatisticRecord(date="2024-01-07", latency=1234.0),
+            "get_average_response_times",
+            {"date": "2024-01-07", "latency": 1.234},
             {"date": "2024-01-07", "latency": 1234.0},
             id="average-response-time",
         ),
         pytest.param(
             statistic_module.TokensPerSecondStatistic,
-            lambda query: query.get_tokens_per_second,
-            TokensPerSecondStatisticRecord(date="2024-01-08", tps=15.5),
+            "get_tokens_per_second",
+            {"date": "2024-01-08", "tokens_per_second": 15.5},
             {"date": "2024-01-08", "tps": 15.5},
             id="tokens-per-second",
         ),
@@ -149,13 +140,15 @@ def test_statistic_endpoint_delegates_to_statistic_query(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
     resource_type: type,
-    query_call_getter: Callable[[MagicMock], MagicMock],
-    record: tuple,
+    query_method: str,
+    row: dict[str, object],
+    mocker: MockerFixture,
+    sqlite_session_factory: sessionmaker[Session],
     expected: dict[str, Any],
 ) -> None:
-    statistics = MagicMock(spec=AppStatisticQuery)
-    query_call = query_call_getter(statistics)
-    query_call.return_value = [record]
+    statistics = AppStatisticQueryRepository(session_factory=sqlite_session_factory)
+    mocker.patch.object(statistics, "_execute", return_value=(row,))
+    query_call = mocker.spy(statistics, query_method)
     _install_dependencies(monkeypatch, statistics)
 
     assert _invoke(app, resource_type) == {"data": [expected]}
@@ -167,15 +160,21 @@ def test_statistic_endpoint_delegates_to_statistic_query(
     )
 
 
-def test_statistic_endpoint_passes_time_range(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    statistics = MagicMock(spec=AppStatisticQuery)
-    statistics.get_daily_messages.return_value = []
+def test_statistic_endpoint_passes_time_range(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    mocker: MockerFixture,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    statistics = AppStatisticQueryRepository(session_factory=sqlite_session_factory)
+    query_call = mocker.spy(statistics, "get_daily_messages")
+    mocker.patch.object(statistics, "_execute", return_value=())
     start_date = datetime(2024, 1, 1, tzinfo=UTC)
     end_date = datetime(2024, 1, 2, tzinfo=UTC)
     _install_dependencies(monkeypatch, statistics, time_range=(start_date, end_date))
 
     assert _invoke(app, statistic_module.DailyMessageStatistic, start="start", end="end") == {"data": []}
-    statistics.get_daily_messages.assert_called_once_with(
+    query_call.assert_called_once_with(
         app_id="app-1",
         start_date=start_date,
         end_date=end_date,
@@ -183,8 +182,14 @@ def test_statistic_endpoint_passes_time_range(app: Flask, monkeypatch: pytest.Mo
     )
 
 
-def test_statistic_endpoint_rejects_invalid_time_range(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    statistics = MagicMock(spec=AppStatisticQuery)
+def test_statistic_endpoint_rejects_invalid_time_range(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    mocker: MockerFixture,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    statistics = AppStatisticQueryRepository(session_factory=sqlite_session_factory)
+    query_call = mocker.spy(statistics, "get_daily_messages")
     _install_dependencies(monkeypatch, statistics)
     monkeypatch.setattr(
         statistic_module,
@@ -195,4 +200,4 @@ def test_statistic_endpoint_rejects_invalid_time_range(app: Flask, monkeypatch: 
     with pytest.raises(BadRequest, match="Invalid time range"):
         _invoke(app, statistic_module.DailyMessageStatistic)
 
-    statistics.get_daily_messages.assert_not_called()
+    query_call.assert_not_called()

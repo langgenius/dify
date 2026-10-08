@@ -2,19 +2,51 @@
 
 from __future__ import annotations
 
-from types import SimpleNamespace
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import DatasetRetrieveConfigEntity
+from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
+from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
+from core.tools.utils.dataset_retriever.dataset_retriever_tool import DatasetRetrieverTool as RetrievalTool
 from core.tools.utils.dataset_retriever_tool import DatasetRetrieverTool
+from models.model import AppMode
 
 
 def _retrieve_config() -> DatasetRetrieveConfigEntity:
     return DatasetRetrieveConfigEntity(retrieve_strategy=DatasetRetrieveConfigEntity.RetrieveStrategy.MULTIPLE)
+
+
+def _hit_callback() -> DatasetIndexToolCallbackHandler:
+    with patch("core.app.apps.base_app_queue_manager.redis_client.setex"):
+        queue_manager = MessageBasedAppQueueManager(
+            task_id="task",
+            user_id="u",
+            invoke_from=InvokeFrom.DEBUGGER,
+            conversation_id="conversation",
+            app_mode=AppMode.CHAT,
+            message_id="message",
+        )
+    return DatasetIndexToolCallbackHandler(
+        queue_manager=queue_manager, app_id="app", message_id="message", user_id="u", invoke_from=InvokeFrom.DEBUGGER
+    )
+
+
+def _retrieval_tool() -> RetrievalTool:
+    return RetrievalTool(
+        name="dataset_tool",
+        description="desc",
+        tenant_id="tenant",
+        dataset_id="d1",
+        retrieve_config=_retrieve_config(),
+        inputs={},
+        return_resource=False,
+        retriever_from="dev",
+    )
 
 
 @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
@@ -30,7 +62,7 @@ def test_get_dataset_tools_returns_empty_for_empty_dataset_ids(sqlite_session: S
         retrieve_config=retrieve_config,
         return_resource=False,
         invoke_from=InvokeFrom.DEBUGGER,
-        hit_callback=Mock(),
+        hit_callback=_hit_callback(),
         user_id="u",
         inputs={},
     )
@@ -52,7 +84,7 @@ def test_get_dataset_tools_returns_empty_for_missing_retrieve_config(sqlite_sess
         retrieve_config=None,  # type: ignore[arg-type]
         return_resource=False,
         invoke_from=InvokeFrom.DEBUGGER,
-        hit_callback=Mock(),
+        hit_callback=_hit_callback(),
         user_id="u",
         inputs={},
     )
@@ -65,12 +97,10 @@ def test_get_dataset_tools_returns_empty_for_missing_retrieve_config(sqlite_sess
 def test_get_dataset_tools_builds_tool_and_restores_strategy(sqlite_session: Session) -> None:
     # Arrange
     retrieve_config = _retrieve_config()
-    retrieval_tool = SimpleNamespace(name="dataset_tool", description="desc", run=lambda query: f"result:{query}")
-    feature = Mock()
-    feature.to_dataset_retriever_tool.return_value = [retrieval_tool]
+    retrieval_tool = _retrieval_tool()
 
     # Act
-    with patch("core.tools.utils.dataset_retriever_tool.DatasetRetrieval", return_value=feature):
+    with patch.object(DatasetRetrieval, "to_dataset_retriever_tool", return_value=[retrieval_tool]):
         tools = DatasetRetrieverTool.get_dataset_tools(
             session=sqlite_session,
             tenant_id="tenant",
@@ -78,7 +108,7 @@ def test_get_dataset_tools_builds_tool_and_restores_strategy(sqlite_session: Ses
             retrieve_config=retrieve_config,
             return_resource=True,
             invoke_from=InvokeFrom.DEBUGGER,
-            hit_callback=Mock(),
+            hit_callback=_hit_callback(),
             user_id="u",
             inputs={"x": 1},
         )
@@ -89,15 +119,9 @@ def test_get_dataset_tools_builds_tool_and_restores_strategy(sqlite_session: Ses
     assert retrieve_config.retrieve_strategy == DatasetRetrieveConfigEntity.RetrieveStrategy.MULTIPLE
 
 
-def _build_dataset_tool(sqlite_session: Session) -> tuple[DatasetRetrieverTool, SimpleNamespace]:
-    retrieval_tool = SimpleNamespace(
-        name="dataset_tool",
-        description="desc",
-        run=lambda session, query: f"result:{query}",
-    )
-    feature = Mock()
-    feature.to_dataset_retriever_tool.return_value = [retrieval_tool]
-    with patch("core.tools.utils.dataset_retriever_tool.DatasetRetrieval", return_value=feature):
+def _build_dataset_tool(sqlite_session: Session) -> tuple[DatasetRetrieverTool, RetrievalTool]:
+    retrieval_tool = _retrieval_tool()
+    with patch.object(DatasetRetrieval, "to_dataset_retriever_tool", return_value=[retrieval_tool]):
         tools = DatasetRetrieverTool.get_dataset_tools(
             session=sqlite_session,
             tenant_id="tenant",
@@ -105,7 +129,7 @@ def _build_dataset_tool(sqlite_session: Session) -> tuple[DatasetRetrieverTool, 
             retrieve_config=_retrieve_config(),
             return_resource=False,
             invoke_from=InvokeFrom.DEBUGGER,
-            hit_callback=Mock(),
+            hit_callback=_hit_callback(),
             user_id="u",
             inputs={},
         )
@@ -144,11 +168,13 @@ def test_query_invocation_result(sqlite_session: Session) -> None:
     tool, _ = _build_dataset_tool(sqlite_session)
 
     # Act
-    result = list(tool.invoke(session=sqlite_session, user_id="u", tool_parameters={"query": "hello"}))
+    with patch.object(RetrievalTool, "_run", return_value="result:hello") as retrieve:
+        result = list(tool.invoke(session=sqlite_session, user_id="u", tool_parameters={"query": "hello"}))
 
     # Assert
     assert len(result) == 1
     assert result[0].message.text == "result:hello"
+    retrieve.assert_called_once_with(sqlite_session, "hello")
 
 
 @pytest.mark.parametrize("sqlite_session", [()], indirect=True)

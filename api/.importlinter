@@ -840,6 +840,36 @@ forbidden_modules =
     sqlalchemy
     werkzeug
 
+[importlinter:contract:api-based-extension-application-service-boundary]
+name = API-based extension application service is framework and persistence neutral
+type = forbidden
+source_modules =
+    services.api_based_extension_application_service
+forbidden_modules =
+    configs
+    controllers
+    core
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    werkzeug
+
+[importlinter:contract:console-extension-controller-boundary]
+name = Console extension controller reaches persistence only through the composition root
+type = forbidden
+source_modules =
+    controllers.console.extension
+forbidden_modules =
+    extensions.ext_database
+    models
+    repositories
+    sqlalchemy
+# The composition root (extensions.ext_application_services) wires repositories,
+# so only direct imports are checked here.
+allow_indirect_imports = True
+
 [importlinter:contract:tool-file-download-service-boundary]
 name = Tool file download application service is framework and persistence neutral
 type = forbidden
@@ -945,7 +975,6 @@ type = forbidden
 source_modules =
     services.billing_portal_service
     services.compliance_download_service
-    services.partner_tenant_binding_service
 forbidden_modules =
     configs
     controllers
@@ -1280,9 +1309,21 @@ source_modules =
     services.agent.chat.function_call_runner
     services.agent.chat.cot_runner
     services.app.generation.adapters.agent_chat_runner
-    services.tools.tool_engine
 forbidden_modules =
     sqlalchemy
+    extensions.ext_database
+    core.db
+    repositories
+    extensions.application_services
+    extensions.ext_application_services
+allow_indirect_imports = True
+
+[importlinter:contract:tool-engine-persistence-boundary]
+name = Tool Engine receives Sessions but cannot source persistence dependencies
+type = forbidden
+source_modules =
+    services.tools.tool_engine
+forbidden_modules =
     extensions.ext_database
     core.db
     repositories

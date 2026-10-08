@@ -18,10 +18,10 @@ from unittest.mock import MagicMock, patch
 import pytest
 from dify_vdb_weaviate import weaviate_vector as weaviate_vector_module
 from dify_vdb_weaviate.weaviate_vector import WeaviateConfig, WeaviateVector
-from sqlalchemy.orm import Session
 
 from core.rag.models.document import Document
 from models.dataset import Dataset
+from models.vector import VectorConfiguration
 
 
 class TestWeaviateVector(unittest.TestCase):
@@ -853,29 +853,29 @@ class TestWeaviateVector(unittest.TestCase):
         assert wv._json_serializable("plain") == "plain"
 
 
-@pytest.mark.parametrize("sqlite3_session", [(Dataset,)], indirect=True)
 class TestVectorDefaultAttributes:
     """Tests for Vector class default attributes list."""
 
-    @patch("core.rag.datasource.vdb.vector_factory.Vector._get_embeddings")
-    @patch("core.rag.datasource.vdb.vector_factory.Vector._init_vector")
-    def test_default_attributes_include_doc_type(
-        self,
-        mock_init_vector,
-        mock_get_embeddings,
-        sqlite3_session: Session,
-    ):
+    def test_default_attributes_include_doc_type(self) -> None:
         """Test that Vector class default attributes include doc_type."""
         from core.rag.datasource.vdb.vector_factory import Vector
 
-        mock_get_embeddings.return_value = MagicMock()
-        mock_init_vector.return_value = MagicMock()
-
         mock_dataset = Dataset(id="dataset-default")
+        factory_class = MagicMock()
+        factory = factory_class.return_value
 
-        vector = Vector(dataset=mock_dataset, session=sqlite3_session)
+        with patch.object(Vector, "get_vector_factory", return_value=factory_class) as get_vector_factory:
+            vector = Vector(
+                dataset=mock_dataset,
+                session=None,
+                configuration=VectorConfiguration(weaviate_vector_module.VectorType.WEAVIATE),
+            )
 
         assert "doc_type" in vector._attributes, f"doc_type should be in default attributes, got: {vector._attributes}"
+        get_vector_factory.assert_called_once_with(weaviate_vector_module.VectorType.WEAVIATE)
+        factory_class.assert_called_once_with(collection_name=None)
+        assert factory.init_vector.call_args.args[1] is vector._attributes
+        assert factory.init_vector.call_args.kwargs == {"session": None}
 
 
 class TestWeaviateVectorFactory(unittest.TestCase):
@@ -893,7 +893,7 @@ class TestWeaviateVectorFactory(unittest.TestCase):
             patch("dify_vdb_weaviate.weaviate_vector.WeaviateVector", return_value="vector") as mock_vector,
         ):
             factory = weaviate_vector_module.WeaviateVectorFactory()
-            result = factory.init_vector(dataset, attributes, MagicMock())
+            result = factory.init_vector(dataset, attributes, MagicMock(), session=None)
 
         assert result == "vector"
         config = mock_vector.call_args.kwargs["config"]
@@ -922,7 +922,7 @@ class TestWeaviateVectorFactory(unittest.TestCase):
             patch("dify_vdb_weaviate.weaviate_vector.WeaviateVector", return_value="vector") as mock_vector,
         ):
             factory = weaviate_vector_module.WeaviateVectorFactory()
-            result = factory.init_vector(dataset, attributes, MagicMock())
+            result = factory.init_vector(dataset, attributes, MagicMock(), session=None)
 
         assert result == "vector"
         assert mock_vector.call_args.kwargs["collection_name"] == "GeneratedCollection_Node"

@@ -4,7 +4,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from inspect import unwrap
-from unittest.mock import Mock
+from unittest.mock import Mock, create_autospec
 
 import pytest
 from flask import Flask
@@ -35,10 +35,10 @@ class Services:
 
 @pytest.fixture
 def provisioning(monkeypatch: pytest.MonkeyPatch) -> Mock:
-    provisioning = Mock(spec=WorkspaceProvisioningService)
+    provisioning = create_autospec(WorkspaceProvisioningService, instance=True)
     services = WorkspaceServices(
-        queries=Mock(spec=WorkspaceQueryService),
-        management=Mock(spec=WorkspaceService),
+        queries=create_autospec(WorkspaceQueryService, instance=True),
+        management=create_autospec(WorkspaceService, instance=True),
         provisioning=provisioning,
         members=Mock(),
         member_queries=Mock(),

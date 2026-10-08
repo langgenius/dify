@@ -3,11 +3,11 @@ import type { FC } from 'react'
 import type { BuiltInMetadataItem, MetadataItemWithValueLength } from '../types'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -138,14 +138,14 @@ const Item: FC<ItemProps> = ({ readonly, disabled, payload, onRename, onDelete }
                 })}
               </AlertDialogDescription>
             </div>
-            <AlertDialogActions>
+            <AlertDialogFooter>
               <AlertDialogCancelButton>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </AlertDialogCancelButton>
               <AlertDialogConfirmButton onClick={handleDelete}>
                 {t(($) => $['operation.confirm'], { ns: 'common' })}
               </AlertDialogConfirmButton>
-            </AlertDialogActions>
+            </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
       </div>

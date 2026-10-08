@@ -5,7 +5,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import TabSliderNew from '@/app/components/base/tab-slider-new'
-import UpdateSettingDialog from '@/app/components/header/account-setting/update-setting-dialog'
+import { UpdateSettingDialog } from '@/app/components/header/account-setting/update-setting-dialog'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import LabelFilter from '@/app/components/tools/labels/filter'
 

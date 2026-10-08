@@ -4,6 +4,7 @@ import type { Collapsible as BaseCollapsibleNS } from '@base-ui/react/collapsibl
 import { Collapsible as BaseCollapsible } from '@base-ui/react/collapsible'
 import { cn } from '../cn'
 import { resolveClassName } from '../internals/resolve-class-name'
+import { triggerFocusClassName } from '../overlay-shared'
 
 type CollapsibleProps = BaseCollapsibleNS.Root.Props
 function Collapsible({ className, ...props }: CollapsibleProps) {
@@ -15,8 +16,15 @@ function Collapsible({ className, ...props }: CollapsibleProps) {
   )
 }
 
-const CollapsibleTrigger = BaseCollapsible.Trigger
 type CollapsibleTriggerProps = BaseCollapsibleNS.Trigger.Props
+function CollapsibleTrigger({ className, ...props }: CollapsibleTriggerProps) {
+  return (
+    <BaseCollapsible.Trigger
+      className={(state) => cn(triggerFocusClassName, resolveClassName(className, state))}
+      {...props}
+    />
+  )
+}
 
 type CollapsiblePanelProps = BaseCollapsibleNS.Panel.Props
 function CollapsiblePanel({ className, ...props }: CollapsiblePanelProps) {
