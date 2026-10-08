@@ -11,12 +11,10 @@ import {
   DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { useSuspenseQuery } from '@tanstack/react-query'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AUTO_UPDATE_STRATEGY } from '@/app/components/plugins/reference-setting-modal/auto-update-setting/types'
 import { toast } from '@/app/notifications'
-import { userProfileQueryOptions } from '@/features/account-profile/client'
 import {
   useMutationPluginAutoUpgradeSettings,
   usePluginAutoUpgradeSettings,
@@ -30,10 +28,6 @@ type Props = {
 export function UpdateSettingDialog({ category }: Props) {
   const actionsRef = useRef<DialogActions>(null)
   const { t } = useTranslation(['common', 'plugin'])
-  const { data: timezone } = useSuspenseQuery({
-    ...userProfileQueryOptions(),
-    select: (data) => data.profile.timezone || 'UTC',
-  })
   const {
     data: autoUpgradeSetting,
     error,
@@ -66,7 +60,6 @@ export function UpdateSettingDialog({ category }: Props) {
     ? getStrategyLabel(savedAutoUpgrade.strategy_setting)
     : ''
   const handleSave = (autoUpgrade: AutoUpdateConfig) => {
-    if (isSavePending) return
     saveAutoUpgrade(autoUpgrade)
     actionsRef.current?.close()
   }
@@ -124,10 +117,8 @@ export function UpdateSettingDialog({ category }: Props) {
           <UpdateSettingDialogForm
             initialAutoUpgrade={savedAutoUpgrade}
             category={category}
-            timezone={timezone}
             isSavePending={isSavePending}
             onSave={handleSave}
-            onRequestClose={() => actionsRef.current?.close()}
           />
         )}
       </DialogContent>

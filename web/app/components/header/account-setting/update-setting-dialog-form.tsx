@@ -5,6 +5,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { DialogClose } from '@langgenius/dify-ui/dialog'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useQueryState } from 'nuqs'
 import { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
@@ -28,58 +29,51 @@ import {
   convertLocalSecondsToUTCDaySeconds,
   convertUTCDaySecondsToLocalSeconds,
 } from '@/app/components/plugins/reference-setting-modal/auto-update-setting/utils'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { convertTimezoneToOffsetStr } from '@/utils/timezone'
 import UpdateSettingOptionCard from './update-setting-option-card'
 
 type UpdateSettingDialogFormProps = {
   initialAutoUpgrade: AutoUpdateConfig
   category: PluginCategoryEnum
-  timezone: string
   isSavePending: boolean
   onSave: (autoUpgrade: AutoUpdateConfig) => void
-  onRequestClose: () => void
 }
 
 const updateSettingFormLabelClassName =
   'flex min-h-6 w-full items-center system-sm-medium text-text-secondary'
 
-function SettingTimeZone({
-  children,
-  onRequestClose,
-}: {
-  children?: ReactNode
-  onRequestClose: () => void
-}) {
+function SettingTimeZone({ children }: { children?: ReactNode }) {
   const [settingsDestination, setSettingsDestination] = useQueryState(
     settingsQueryParamName,
     settingsQueryParser,
   )
 
   return (
-    <button
-      type="button"
+    <DialogClose
       className="cursor-pointer border-none bg-transparent p-0 text-left body-xs-regular text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
       onClick={() => {
-        onRequestClose()
         if (settingsDestination)
           setSettingsDestination('preferences', { history: 'replace', shallow: true })
         else setSettingsDestination('preferences')
       }}
     >
       {children}
-    </button>
+    </DialogClose>
   )
 }
 
 export function UpdateSettingDialogForm({
   initialAutoUpgrade,
   category,
-  timezone,
   isSavePending,
   onSave,
-  onRequestClose,
 }: UpdateSettingDialogFormProps) {
   const { t } = useTranslation(['plugin', 'common'])
+  const { data: timezone } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.timezone || 'UTC',
+  })
   const [autoUpgrade, setAutoUpgrade] = useState(initialAutoUpgrade)
   const onAutoUpgradeChange = (payload: Partial<AutoUpdateConfig>) => {
     setAutoUpgrade((current) => ({ ...current, ...payload }))
@@ -155,7 +149,7 @@ export function UpdateSettingDialogForm({
     <form
       onSubmit={(event) => {
         event.preventDefault()
-        if (!isSavePending) onSave(autoUpgrade)
+        onSave(autoUpgrade)
       }}
     >
       <div className="flex w-full flex-col gap-4 px-6 py-3">
@@ -191,7 +185,7 @@ export function UpdateSettingDialogForm({
             <div className="flex w-full flex-col items-start gap-1">
               <TimePicker
                 timeZone={timezone}
-                value={updateTimeValue || null}
+                value={updateTimeValue}
                 onValueChange={onUpdateTimeChange}
                 minuteStep={15}
               >
@@ -206,7 +200,7 @@ export function UpdateSettingDialogForm({
                       i18nKey={($) => $['autoUpdate.changeTimezone']}
                       ns="plugin"
                       components={{
-                        setTimezone: <SettingTimeZone onRequestClose={onRequestClose} />,
+                        setTimezone: <SettingTimeZone />,
                       }}
                     />
                   </div>
@@ -263,7 +257,7 @@ export function UpdateSettingDialogForm({
         <DialogClose render={<Button variant="secondary" className="min-w-18" />}>
           {t(($) => $['operation.cancel'], { ns: 'common' })}
         </DialogClose>
-        <Button type="submit" variant="primary" className="min-w-18" loading={isSavePending}>
+        <Button type="submit" variant="primary" className="min-w-18" disabled={isSavePending}>
           {t(($) => $['operation.save'], { ns: 'common' })}
         </Button>
       </div>

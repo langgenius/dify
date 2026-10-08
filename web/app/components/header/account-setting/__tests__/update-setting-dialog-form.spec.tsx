@@ -1,5 +1,6 @@
 import type { SettingsDestination } from '@/app/components/header/account-setting/query-params'
 import { Dialog } from '@langgenius/dify-ui/dialog'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
@@ -8,6 +9,7 @@ import {
   AUTO_UPDATE_STRATEGY,
 } from '@/app/components/plugins/reference-setting-modal/auto-update-setting/types'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { UpdateSettingDialogForm } from '../update-setting-dialog-form'
 
 const mockSetSettingsDestination = vi.fn()
@@ -57,6 +59,22 @@ vi.mock(
   }),
 )
 
+function renderForm(ui: React.ReactElement) {
+  const client = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity } } })
+  client.setQueryData(userProfileQueryOptions().queryKey, {
+    profile: {
+      id: 'user-1',
+      name: 'Test User',
+      email: 'test@dify.ai',
+      avatar_url: null,
+      is_password_set: false,
+      timezone: 'UTC',
+    },
+    meta: { currentVersion: null, currentEnv: null },
+  })
+  return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>)
+}
+
 describe('UpdateSettingDialogForm', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -65,10 +83,10 @@ describe('UpdateSettingDialogForm', () => {
 
   it('should focus update time from its label and keep the timezone action separate', async () => {
     const user = userEvent.setup()
-    const onRequestClose = vi.fn()
+    const onOpenChange = vi.fn()
 
-    render(
-      <Dialog>
+    renderForm(
+      <Dialog defaultOpen onOpenChange={onOpenChange}>
         <UpdateSettingDialogForm
           initialAutoUpgrade={{
             strategy_setting: AUTO_UPDATE_STRATEGY.fixOnly,
@@ -78,10 +96,8 @@ describe('UpdateSettingDialogForm', () => {
             include_plugins: [],
           }}
           category={PluginCategoryEnum.tool}
-          timezone="UTC"
           isSavePending={false}
           onSave={vi.fn()}
-          onRequestClose={onRequestClose}
         />
       </Dialog>,
     )
@@ -96,14 +112,14 @@ describe('UpdateSettingDialogForm', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     await user.click(screen.getByText('autoUpdate.changeTimezone'))
 
-    expect(onRequestClose).toHaveBeenCalledTimes(1)
+    expect(onOpenChange).toHaveBeenCalledExactlyOnceWith(false, expect.anything())
     expect(mockSetSettingsDestination).toHaveBeenCalledWith('preferences')
   })
 
   it('should replace the current destination when timezone link is clicked inside settings', () => {
     mockSettingsDestination = 'provider'
 
-    render(
+    renderForm(
       <Dialog>
         <UpdateSettingDialogForm
           initialAutoUpgrade={{
@@ -114,10 +130,8 @@ describe('UpdateSettingDialogForm', () => {
             include_plugins: [],
           }}
           category={PluginCategoryEnum.tool}
-          timezone="UTC"
           isSavePending={false}
           onSave={vi.fn()}
-          onRequestClose={vi.fn()}
         />
       </Dialog>,
     )

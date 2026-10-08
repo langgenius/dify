@@ -214,7 +214,7 @@ export default function IntegrationsPage({
           section === 'builtin' ? STEP_BY_STEP_TOUR_TARGETS.integrationUpdateSettings : undefined
         }
       >
-        <UpdateSettingDialog key={pluginSettingCategory} category={pluginSettingCategory} />
+        <UpdateSettingDialog category={pluginSettingCategory} />
       </div>
     ) : undefined
   const marketplaceUrlPath = buildMarketplaceUrlPathByIntegrationSection(section)

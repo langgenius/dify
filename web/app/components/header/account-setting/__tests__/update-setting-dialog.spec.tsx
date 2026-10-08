@@ -59,7 +59,7 @@ function renderSettings(category = PluginCategoryEnum.model) {
   const renderCategory = (currentCategory: PluginCategoryEnum) => (
     <QueryClientProvider client={client}>
       <NuqsTestingAdapter>
-        <UpdateSettingDialog key={currentCategory} category={currentCategory} />
+        <UpdateSettingDialog category={currentCategory} />
       </NuqsTestingAdapter>
     </QueryClientProvider>
   )

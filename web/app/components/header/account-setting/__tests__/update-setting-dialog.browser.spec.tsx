@@ -153,10 +153,7 @@ it('closes an optimistic save immediately, blocks another pending save and resto
 
   await trigger.click()
   const save = screen.getByRole('button', { name: 'common.operation.save' })
-  await expect.element(save).toHaveAttribute('aria-disabled', 'true')
-  await userEvent.tab({ shift: true })
-  await expect.element(save).toHaveFocus()
-  await userEvent.keyboard('{Enter}')
+  await expect.element(save).toBeDisabled()
   expect(saveSettings).toHaveBeenCalledOnce()
   await expect.element(dialog).toBeVisible()
 
@@ -164,7 +161,7 @@ it('closes an optimistic save immediately, blocks another pending save and resto
   await expect
     .element(triggerElement)
     .toHaveTextContent('plugin.autoUpdate.autoUpdateplugin.autoUpdate.strategy.disabled.name')
-  await expect.element(save).not.toHaveAttribute('aria-disabled', 'true')
+  await expect.element(save).toBeEnabled()
   await expect
     .element(screen.getByRole('radio', { name: 'plugin.autoUpdate.strategy.latest.name' }))
     .toBeChecked()
