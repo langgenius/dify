@@ -1,5 +1,5 @@
 import logging
-from unittest.mock import Mock
+from unittest.mock import Mock, call, create_autospec
 
 import pytest
 from sqlalchemy import inspect
@@ -592,14 +592,13 @@ class TestAppInputAdapterExtras:
         assert converted[1] == "event: ping\n\n"
 
     def test_get_draft_var_saver_factory_debugger(self):
-        from unittest.mock import Mock
-
         from core.app.apps.draft_variable_saver import DraftVariableSaver, DraftVariableSaverFactory
         from core.app.entities.app_invoke_entities import InvokeFrom
         from models import Account
 
-        saver = Mock(spec=DraftVariableSaver)
-        factory = Mock(spec=DraftVariableSaverFactory, return_value=saver)
+        saver = create_autospec(DraftVariableSaver, instance=True, spec_set=True)
+        factory = create_autospec(DraftVariableSaverFactory, instance=True, spec_set=True)
+        factory.return_value = saver
         provider = Mock(return_value=factory)
         generator = AppInputAdapter(draft_variable_saver=provider)
         account = Account(name="Tester", email="tester@example.com")
@@ -612,6 +611,7 @@ class TestAppInputAdapterExtras:
             is saver
         )
         provider.assert_called_once_with("tenant-id", account)
-        factory.assert_called_once_with(
+        assert factory.call_count == 1
+        assert factory.call_args == call(
             app_id="app-id", node_id="node-id", node_type=BuiltinNodeTypes.START, node_execution_id="node-exec-id"
         )

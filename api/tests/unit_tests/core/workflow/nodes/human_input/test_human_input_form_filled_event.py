@@ -4,7 +4,7 @@ from collections.abc import Generator, Iterable, Mapping, Sequence
 from decimal import Decimal
 from types import SimpleNamespace
 from typing import Any
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, create_autospec
 
 import pytest
 from flask import Flask
@@ -402,10 +402,10 @@ class _EventQueue(AppQueueManager):
 
 def _publish_graph_events(events: Iterable[GraphEngineEvent]) -> list[AppQueueEvent]:
     published: list[AppQueueEvent] = []
-    queue_manager = MagicMock(spec=AppQueueManager)
+    queue_manager = create_autospec(AppQueueManager, instance=True, spec_set=True)
     queue_manager.publish.side_effect = lambda event, _publish_from: published.append(event)
     publisher = WorkflowEventPublisher(queue_manager, resolve_pause=lambda **_: [], notify_pause=lambda _: None)
-    workflow_entry = MagicMock(spec=WorkflowEntry)
+    workflow_entry = create_autospec(WorkflowEntry, instance=True, spec_set=True)
     for event in events:
         publisher.publish(workflow_entry, event)
 

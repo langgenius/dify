@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Generator, Mapping, Sequence
+from contextlib import closing
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Literal, Protocol, cast, overload, override
+from typing import TYPE_CHECKING, Any, Literal, Protocol, cast, overload, override, runtime_checkable
 
 from pydantic import JsonValue
 
@@ -79,7 +80,6 @@ from models.human_input_entities import (
 )
 from services.files.signature import sign_upload_file_url
 from services.knowledge.entities.segments import SegmentAttachmentRecord
-from services.tools.tool_engine import ToolEngine
 from services.tools.tool_manager import ToolManager
 from services.tools.tools_transform_service import ToolTransformService
 from services.workflow.execution.ports import WorkflowRuntime
@@ -109,6 +109,12 @@ class PollingLLMRuntimeProtocol(Protocol):
         credentials: dict[str, Any],
         plugin_state: dict[str, JsonValue],
     ) -> LLMPollingResult: ...
+
+
+@runtime_checkable
+class _ToolUsageProvider(Protocol):
+    @property
+    def latest_usage(self) -> object: ...
 
 
 if TYPE_CHECKING:
@@ -610,6 +616,10 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
         workflow_call_depth: int,
         provider_name: str,
     ) -> Generator[ToolRuntimeMessage, None, None]:
+        workflow_runtime = self._workflow_runtime
+        if workflow_runtime is None:
+            raise ToolRuntimeInvocationError("Tool nodes require injected execution dependencies")
+
         runtime_binding = self._binding_from_handle(tool_runtime)
         tool = runtime_binding.tool
         callback = DifyWorkflowCallbackHandler()
@@ -630,22 +640,26 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
                 {"app_type": self._run_context.app_type} if self._run_context.app_type is not None else None
             )
             with use_credit_usage_metadata(request_metadata):
-                messages = ToolEngine.generic_invoke(
-                    tool=tool,
-                    tool_parameters=dict(tool_parameters),
-                    user_id=self._run_context.user_id,
-                    workflow_tool_callback=callback,
-                    workflow_call_depth=workflow_call_depth,
-                    app_id=self._run_context.app_id,
-                    conversation_id=runtime_binding.conversation_id,
-                )
-                transformed_messages = ToolFileMessageTransformer.transform_tool_invoke_messages(
-                    messages=messages,
-                    user_id=self._run_context.user_id,
-                    tenant_id=self._run_context.tenant_id,
-                    conversation_id=runtime_binding.conversation_id,
-                )
-                yield from self._adapt_messages(transformed_messages, provider_name=provider_name)
+                with closing(
+                    workflow_runtime.tool_invoker(
+                        tool=tool,
+                        tool_parameters=dict(tool_parameters),
+                        user_id=self._run_context.user_id,
+                        workflow_tool_callback=callback,
+                        workflow_call_depth=workflow_call_depth,
+                        app_id=self._run_context.app_id,
+                        conversation_id=runtime_binding.conversation_id,
+                    )
+                ) as messages:
+                    with closing(
+                        ToolFileMessageTransformer.transform_tool_invoke_messages(
+                            messages=messages,
+                            user_id=self._run_context.user_id,
+                            tenant_id=self._run_context.tenant_id,
+                            conversation_id=runtime_binding.conversation_id,
+                        )
+                    ) as transformed_messages:
+                        yield from self._adapt_messages(transformed_messages, provider_name=provider_name)
         except Exception as exc:
             raise self._map_invocation_exception(exc, provider_name=provider_name) from exc
 
@@ -655,7 +669,10 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
         *,
         tool_runtime: ToolRuntimeHandle,
     ) -> LLMUsage:
-        latest = getattr(self._binding_from_handle(tool_runtime).tool, "latest_usage", None)
+        tool = self._binding_from_handle(tool_runtime).tool
+        if not isinstance(tool, _ToolUsageProvider):
+            return LLMUsage.empty_usage()
+        latest = tool.latest_usage
         if isinstance(latest, LLMUsage):
             return latest
         if isinstance(latest, dict):

@@ -1,15 +1,11 @@
-from collections.abc import Sequence
-from unittest.mock import Mock
-
-from core.workflow.system_variables import SystemVariableKey
+from core.workflow.system_variables import build_system_variables
 from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
-from graphon.graph_engine.command_channels import CommandChannel
+from graphon.graph_engine.command_channels import InMemoryChannel
 from graphon.graph_events import NodeRunSucceededEvent, NodeRunVariableUpdatedEvent
 from graphon.node_events import NodeRunResult
-from graphon.runtime import ReadOnlyGraphRuntimeState
+from graphon.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper, VariablePool
 from graphon.variables import StringVariable
-from graphon.variables.segments import Segment, StringSegment
 from graphon.variables.variables import VariableBase
 from libs.datetime_utils import naive_utc_now
 from services.workflow.execution.adapters.chatflow.conversation_variables import ConversationVariablePersistenceLayer
@@ -25,33 +21,15 @@ class RecordingVariableWriter:
         self.updates.append((conversation_id, variable))
 
 
-class MockReadOnlyVariablePool:
-    def __init__(self, variables: dict[tuple[str, str], Segment] | None = None) -> None:
-        self._variables = variables or {}
-
-    def get(self, selector: Sequence[str]) -> Segment | None:
-        if len(selector) < 2:
-            return None
-        return self._variables.get((selector[0], selector[1]))
-
-    def get_all_by_node(self, node_id: str) -> dict[str, object]:
-        return {key: value for (nid, key), value in self._variables.items() if nid == node_id}
-
-    def get_by_prefix(self, prefix: str) -> dict[str, object]:
-        return {key: value for (nid, key), value in self._variables.items() if nid == prefix}
-
-
-def _build_graph_runtime_state(
-    variable_pool: MockReadOnlyVariablePool,
-    conversation_id: str | None = None,
-) -> ReadOnlyGraphRuntimeState:
-    graph_runtime_state = Mock(spec=ReadOnlyGraphRuntimeState)
-    if conversation_id is not None:
-        variable_pool._variables[("sys", SystemVariableKey.CONVERSATION_ID.value)] = StringSegment(
-            value=conversation_id
+def _build_graph_runtime_state(conversation_id: str) -> ReadOnlyGraphRuntimeState:
+    return ReadOnlyGraphRuntimeStateWrapper(
+        GraphRuntimeState(
+            variable_pool=VariablePool.from_bootstrap(
+                system_variables=build_system_variables(conversation_id=conversation_id)
+            ),
+            start_at=0,
         )
-    graph_runtime_state.variable_pool = variable_pool
-    return graph_runtime_state
+    )
 
 
 def _build_node_run_succeeded_event() -> NodeRunSucceededEvent:
@@ -77,7 +55,7 @@ def _build_variable_updated_event(variable: StringVariable) -> NodeRunVariableUp
     )
 
 
-def test_persists_conversation_variables_from_variable_update_event():
+def test_persists_conversation_variables_from_variable_update_event() -> None:
     conversation_id = "conv-123"
     variable = StringVariable(
         id="var-1",
@@ -87,7 +65,7 @@ def test_persists_conversation_variables_from_variable_update_event():
     )
     updater = RecordingVariableWriter()
     layer = ConversationVariablePersistenceLayer(updater)
-    layer.initialize(_build_graph_runtime_state(MockReadOnlyVariablePool(), conversation_id), Mock(spec=CommandChannel))
+    layer.initialize(_build_graph_runtime_state(conversation_id), InMemoryChannel())
 
     event = _build_variable_updated_event(variable)
     layer.on_event(event)
@@ -95,11 +73,11 @@ def test_persists_conversation_variables_from_variable_update_event():
     assert updater.updates == [(conversation_id, variable)]
 
 
-def test_skips_non_variable_update_events():
+def test_skips_non_variable_update_events() -> None:
     conversation_id = "conv-456"
     updater = RecordingVariableWriter()
     layer = ConversationVariablePersistenceLayer(updater)
-    layer.initialize(_build_graph_runtime_state(MockReadOnlyVariablePool(), conversation_id), Mock(spec=CommandChannel))
+    layer.initialize(_build_graph_runtime_state(conversation_id), InMemoryChannel())
 
     event = _build_node_run_succeeded_event()
     layer.on_event(event)
@@ -107,7 +85,7 @@ def test_skips_non_variable_update_events():
     assert updater.updates == []
 
 
-def test_skips_non_conversation_variables():
+def test_skips_non_conversation_variables() -> None:
     conversation_id = "conv-789"
     non_conversation_variable = StringVariable(
         id="var-3",
@@ -117,7 +95,7 @@ def test_skips_non_conversation_variables():
     )
     updater = RecordingVariableWriter()
     layer = ConversationVariablePersistenceLayer(updater)
-    layer.initialize(_build_graph_runtime_state(MockReadOnlyVariablePool(), conversation_id), Mock(spec=CommandChannel))
+    layer.initialize(_build_graph_runtime_state(conversation_id), InMemoryChannel())
 
     event = _build_variable_updated_event(non_conversation_variable)
     layer.on_event(event)
