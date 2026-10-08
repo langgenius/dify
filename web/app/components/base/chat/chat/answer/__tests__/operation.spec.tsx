@@ -4,7 +4,7 @@ import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
 import { ChatContextProvider } from '../../context-provider'
-import { Operation } from '../operation'
+import Operation from '../operation'
 
 const { mockSetShowAnnotationFullModal, mockT, mockAddAnnotation } = vi.hoisted(() => {
   return {
@@ -240,22 +240,15 @@ describe('Operation', () => {
   })
 
   describe('feedback submission sessions', () => {
-    it.each([
-      { admin: false, failure: 'false' },
-      { admin: true, failure: 'false' },
-      { admin: false, failure: 'rejection' },
-      { admin: true, failure: 'rejection' },
-    ])(
-      'preserves the draft after $failure and retries successfully (admin: $admin)',
-      async ({ admin, failure }) => {
+    it.each([{ admin: false }, { admin: true }])(
+      'preserves the draft after a failed submission and retries successfully (admin: $admin)',
+      async ({ admin }) => {
         mockContextValue.config = makeChatConfig({
           supportFeedback: true,
           supportAnnotation: admin,
         })
         const onFeedback = vi.fn<NonNullable<ChatContextValue['onFeedback']>>()
-        if (failure === 'false') onFeedback.mockResolvedValueOnce(false)
-        else onFeedback.mockRejectedValueOnce(new Error('Feedback failed'))
-        onFeedback.mockResolvedValueOnce(true)
+        onFeedback.mockRejectedValueOnce(new Error('Feedback failed')).mockResolvedValueOnce()
         mockContextValue.onFeedback = onFeedback
         const user = userEvent.setup()
         renderOperation()

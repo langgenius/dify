@@ -83,11 +83,11 @@ vi.mock('@/app/components/app/text-generate/item', () => ({
   }: {
     content: string
     onOpenLog?: (item: IChatItem) => void
-    onFeedback: (value: { rating: string; content?: string }) => Promise<boolean>
+    onFeedback: (value: { rating: string; content?: string }) => void
   }) => (
     <div data-testid="text-generation" data-log-enabled={String(!!onOpenLog)}>
       <div>{content}</div>
-      <button onClick={() => void onFeedback({ rating: 'like', content: 'great' })}>
+      <button onClick={() => onFeedback({ rating: 'like', content: 'great' })}>
         completion-feedback
       </button>
     </div>
@@ -105,7 +105,7 @@ vi.mock('@/app/components/base/chat/chat', () => ({
     onOpenLog,
   }: {
     chatList: Array<{ id: string }>
-    onFeedback: (mid: string, value: { rating: string; content?: string }) => Promise<boolean>
+    onFeedback: (mid: string, value: { rating: string; content?: string }) => Promise<void>
     onAnnotationAdded: (
       annotationId: string,
       authorName: string,
@@ -189,9 +189,11 @@ vi.mock('@/app/components/base/chat/chat', () => ({
         </>
       )}
       <button
-        onClick={async () => {
-          const result = await onFeedback('message-1', { rating: 'like', content: 'nice' })
-          mockFeedbackResult(result)
+        onClick={() => {
+          void onFeedback('message-1', { rating: 'like', content: 'nice' }).then(
+            () => mockFeedbackResult(true),
+            () => mockFeedbackResult(false),
+          )
         }}
       >
         chat-feedback
@@ -433,7 +435,7 @@ describe('ConversationList', () => {
   })
 
   it.each([true, false])(
-    'returns the actual admin feedback result (success: %s)',
+    'settles admin feedback with the request outcome (success: %s)',
     async (succeeded) => {
       mockFeedbackResult.mockClear()
       if (!succeeded)
