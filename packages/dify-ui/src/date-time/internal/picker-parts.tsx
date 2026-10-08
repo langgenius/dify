@@ -7,7 +7,6 @@ import type {
   PopoverProps,
   PopoverTriggerProps,
 } from '../../popover'
-import { Popover as BasePopover } from '@base-ui/react/popover'
 import { useMergedRefs } from '@base-ui/utils/useMergedRefs'
 import * as React from 'react'
 import { cn } from '../../cn'
@@ -15,7 +14,7 @@ import { DirectionProvider, useDirection } from '../../direction-provider'
 import { formLabelClassName } from '../../form-control-shared'
 import { IconButton } from '../../icon-button'
 import { resolveClassName } from '../../internals/resolve-class-name'
-import { Popover, PopoverContent } from '../../popover'
+import { Popover, PopoverContent, PopoverTrigger } from '../../popover'
 
 type PickerOpenChangeDetails = Omit<
   Parameters<NonNullable<PopoverProps['onOpenChange']>>[1],
@@ -256,10 +255,8 @@ function PickerTrigger({
   const field = usePickerContext()
   const mergedRef = useMergedRefs(field.triggerRef, ref)
   const labelId = ariaLabelledBy ?? (ariaLabel ? undefined : field.labelId)
-  // The picker owns its focus outline, so it composes the Base UI part rather than the Dify
-  // UI trigger, which contributes its own focus ring.
   return (
-    <BasePopover.Trigger
+    <PopoverTrigger
       id={field.triggerId}
       dir={field.direction}
       aria-label={ariaLabel}
@@ -285,7 +282,7 @@ function PickerTrigger({
       className={(state) =>
         cn(
           'flex h-8 w-63 max-w-full items-center justify-between gap-0.5 rounded-lg bg-components-input-bg-normal ps-3 pe-2 text-start system-sm-regular text-components-input-text-filled',
-          'hover:bg-state-base-hover-alt focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-state-accent-solid data-disabled:cursor-not-allowed data-disabled:bg-components-input-bg-disabled data-popup-open:bg-state-base-hover-alt',
+          'hover:bg-state-base-hover-alt data-disabled:cursor-not-allowed data-disabled:bg-components-input-bg-disabled data-popup-open:bg-state-base-hover-alt',
           !field.serializedValue && 'text-text-tertiary in-data-[theme=dark]:text-text-secondary',
           resolveClassName(className, state),
         )
@@ -300,7 +297,7 @@ function PickerTrigger({
           />
         </React.Fragment>
       )}
-    </BasePopover.Trigger>
+    </PopoverTrigger>
   )
 }
 
