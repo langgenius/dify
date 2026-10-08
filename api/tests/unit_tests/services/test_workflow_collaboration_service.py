@@ -24,18 +24,17 @@ ServiceFixture = tuple[WorkflowCollaborationService, WorkflowCollaborationReposi
 
 @pytest.fixture
 def collaboration_redis(
-    redis_transport: tuple[RedisClientWrapper, MagicMock], monkeypatch: pytest.MonkeyPatch
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
 ) -> RedisClientWrapper:
     client, commands = redis_transport
     commands.side_effect = RedisState().execute
-    monkeypatch.setattr("repositories.workflow_collaboration_repository.redis_client", client)
     return client
 
 
 @pytest.fixture
 def real_service(collaboration_redis: RedisClientWrapper) -> ServiceFixture:
     assert collaboration_redis._require_client() is not None
-    repository = WorkflowCollaborationRepository()
+    repository = WorkflowCollaborationRepository(redis=collaboration_redis)
     socketio = Mock()
     return WorkflowCollaborationService(repository, socketio, server_id="server-1"), repository, socketio
 
