@@ -1,7 +1,10 @@
 """Transport delegates all three scopes without ORM objects or Sessions."""
 
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from inspect import unwrap
+from types import MethodType, ModuleType
+from typing import Literal
 from uuid import UUID
 
 import pytest
@@ -45,59 +48,92 @@ VARIABLE = DraftVariableView(
     None,
 )
 
+type RecordedCall = tuple[
+    str,
+    RequestContext,
+    WorkflowOwner | str,
+    tuple[object, ...],
+    dict[str, object],
+]
+
 
 @dataclass
 class Variables:
-    calls: list = field(default_factory=list)
+    calls: list[RecordedCall] = field(default_factory=list)
 
-    def record(self, op, context, owner, *args, **kwargs):
+    def record(
+        self,
+        op: str,
+        context: RequestContext,
+        owner: WorkflowOwner | str,
+        *args: object,
+        **kwargs: object,
+    ) -> None:
         self.calls.append((op, context, owner, args, kwargs))
 
-    def list_variables(self, *args, **kwargs):
-        self.record("list_variables", *args, **kwargs)
+    def list_variables(
+        self, context: RequestContext, owner: WorkflowOwner, *, page: int, limit: int
+    ) -> ConsoleVariableList:
+        self.record("list_variables", context, owner, page=page, limit=limit)
         return ConsoleVariableList([VARIABLE], 1)
 
-    def node(self, *args):
-        self.record("node", *args)
+    def node(self, context: RequestContext, owner: WorkflowOwner, node_id: str) -> ConsoleVariableList:
+        self.record("node", context, owner, node_id)
         return ConsoleVariableList([VARIABLE])
 
-    def system(self, *args):
-        self.record("system", *args)
+    def system(self, context: RequestContext, owner: WorkflowOwner) -> ConsoleVariableList:
+        self.record("system", context, owner)
         return ConsoleVariableList([])
 
-    def conversation(self, *args):
-        self.record("conversation", *args)
+    def conversation(self, context: RequestContext, owner: WorkflowOwner) -> ConsoleVariableList:
+        self.record("conversation", context, owner)
         return ConsoleVariableList([])
 
-    def environment(self, *args):
-        self.record("environment", *args)
+    def environment(self, context: RequestContext, owner: WorkflowOwner) -> list[dict[str, object]]:
+        self.record("environment", context, owner)
         return []
 
-    def get(self, *args):
-        self.record("get", *args)
+    def get(self, context: RequestContext, owner: WorkflowOwner, variable_id: str) -> DraftVariableView:
+        self.record("get", context, owner, variable_id)
         return VARIABLE
 
-    def patch(self, *args, **kwargs):
-        self.record("patch", *args, **kwargs)
+    def patch(
+        self,
+        context: RequestContext,
+        owner: WorkflowOwner,
+        variable_id: str,
+        *,
+        name: str | None,
+        value: object,
+    ) -> DraftVariableView:
+        self.record("patch", context, owner, variable_id, name=name, value=value)
         return VARIABLE
 
-    def reset(self, *args):
-        self.record("reset", *args)
+    def reset(self, context: RequestContext, owner: WorkflowOwner, variable_id: str) -> DraftVariableView | None:
+        self.record("reset", context, owner, variable_id)
+        return None
 
-    def delete(self, *args):
-        self.record("delete", *args)
+    def delete(self, context: RequestContext, owner: WorkflowOwner, variable_id: str) -> None:
+        self.record("delete", context, owner, variable_id)
 
-    def delete_all(self, *args):
-        self.record("delete_all", *args)
+    def delete_all(self, context: RequestContext, owner: WorkflowOwner) -> None:
+        self.record("delete_all", context, owner)
 
-    def delete_node(self, *args):
-        self.record("delete_node", *args)
+    def delete_node(self, context: RequestContext, owner: WorkflowOwner, node_id: str) -> None:
+        self.record("delete_node", context, owner, node_id)
 
-    def update_conversation(self, *args):
-        self.record("update_conversation", *args)
+    def update_conversation(self, context: RequestContext, app_id: str, values: Sequence[dict[str, object]]) -> None:
+        self.record("update_conversation", context, app_id, values)
 
-    def update_environment(self, *args, **kwargs):
-        self.record("update_environment", *args, **kwargs)
+    def update_environment(
+        self,
+        context: RequestContext,
+        app_id: str,
+        values: Sequence[dict[str, object]],
+        *,
+        deleted_ids: Sequence[str] | None,
+    ) -> None:
+        self.record("update_environment", context, app_id, values, deleted_ids=deleted_ids)
 
 
 @dataclass
@@ -105,7 +141,22 @@ class Services:
     console_workflow_variables: Variables
 
 
-ENDPOINTS = [
+type EndpointCase = tuple[
+    ModuleType,
+    Literal["app", "pipeline", "snippet"],
+    MethodType,
+    str,
+    object | None,
+    Literal["", "node", "variable"],
+]
+
+
+def response_mapping(value: object) -> dict[str, object]:
+    assert isinstance(value, Mapping)
+    return {key: item for key, item in value.items() if isinstance(key, str)}
+
+
+ENDPOINTS: list[EndpointCase] = [
     (app, "app", app.WorkflowVariableCollectionApi().get, "list_variables", app.WorkflowDraftVariableListQuery(), ""),
     (app, "app", app.WorkflowVariableCollectionApi().delete, "delete_all", None, ""),
     (app, "app", app.NodeVariableCollectionApi().get, "node", None, "node"),
@@ -186,14 +237,22 @@ ENDPOINTS = [
 
 
 @pytest.mark.parametrize(("module", "kind", "endpoint", "operation", "payload", "suffix"), ENDPOINTS)
-def test_endpoint_delegates_and_serializes(monkeypatch, module, kind, endpoint, operation, payload, suffix):
+def test_endpoint_delegates_and_serializes(
+    monkeypatch: pytest.MonkeyPatch,
+    module: ModuleType,
+    kind: Literal["app", "pipeline", "snippet"],
+    endpoint: MethodType,
+    operation: str,
+    payload: object | None,
+    suffix: Literal["", "node", "variable"],
+) -> None:
     variables = Variables()
     monkeypatch.setattr(module, "application_services", lambda: Services(variables))
-    args = [] if payload is None else [payload]
-    args += [CONTEXT, OWNER_ID]
+    arguments: list[object] = [] if payload is None else [payload]
+    arguments += [CONTEXT, OWNER_ID]
     if suffix:
-        args += [VARIABLE_ID if suffix == "variable" else "node"]
-    response = unwrap(endpoint)(endpoint.__self__, *args)
+        arguments.append(VARIABLE_ID if suffix == "variable" else "node")
+    response = unwrap(endpoint)(endpoint.__self__, *arguments)
     assert len(variables.calls) == 1
     call = variables.calls[0]
     assert call[:3] == (
@@ -208,9 +267,11 @@ def test_endpoint_delegates_and_serializes(monkeypatch, module, kind, endpoint, 
         assert response.status_code == 204
         assert response.data == b""
     elif operation in {"get", "patch"}:
-        assert response["value"] == "answer"
+        assert response_mapping(response)["value"] == "answer"
     elif operation == "list_variables":
-        assert response["items"][0]["id"] == str(VARIABLE_ID)
+        items = response_mapping(response)["items"]
+        assert isinstance(items, list)
+        assert response_mapping(items[0])["id"] == str(VARIABLE_ID)
     if kind == "pipeline":
         assert [check.scene for check in rbac_checks(endpoint)] == [RBACPermission.DATASET_EDIT]
     elif kind == "app":
@@ -231,11 +292,15 @@ def test_endpoint_delegates_and_serializes(monkeypatch, module, kind, endpoint, 
         (DraftVariableOwnerNotFoundError("snippet"), 404, "not_found"),
     ],
 )
-def test_domain_errors_use_production_http_mapping(monkeypatch, failure, status, code):
-    def account_admission(**_kwargs):
-        def decorate(view):
-            def admitted(self):
-                return view(self, CONTEXT)
+def test_domain_errors_use_production_http_mapping(
+    monkeypatch: pytest.MonkeyPatch, failure: Exception, status: int, code: str
+) -> None:
+    def account_admission(
+        **_kwargs: object,
+    ) -> Callable[[Callable[..., object]], Callable[..., object]]:
+        def decorate(view: Callable[..., object]) -> Callable[..., object]:
+            def admitted(resource: Resource) -> object:
+                return view(resource, CONTEXT)
 
             return admitted
 
@@ -249,17 +314,17 @@ def test_domain_errors_use_production_http_mapping(monkeypatch, failure, status,
 
     class Endpoint(Resource):
         @admission.console_variable_admission("pipeline")
-        def get(self, _context):
+        def get(self, _context: RequestContext) -> None:
             raise failure
 
     api.add_resource(Endpoint, "/variables")
     response = web.test_client().get("/variables")
     assert response.status_code == status
-    assert response.json["code"] == code
+    assert response_mapping(response.get_json())["code"] == code
 
 
 @pytest.mark.parametrize("patch", [False, True])
-def test_environment_payload_preserves_patch_and_replacement(monkeypatch, patch):
+def test_environment_payload_preserves_patch_and_replacement(monkeypatch: pytest.MonkeyPatch, patch: bool) -> None:
     variables = Variables()
     monkeypatch.setattr(app, "application_services", lambda: Services(variables))
     value = {"id": "env-a", "name": "a", "value_type": "string", "value": "new-a"}
@@ -271,6 +336,8 @@ def test_environment_payload_preserves_patch_and_replacement(monkeypatch, patch)
     assert response == {"result": "success"}
     operation, context, owner, args, kwargs = variables.calls[0]
     assert (operation, context, owner) == ("update_environment", CONTEXT, str(OWNER_ID))
-    assert args[0][0]["id"] == "env-a"
-    assert args[0][0]["value"] == "new-a"
+    values = args[0]
+    assert isinstance(values, Sequence)
+    assert response_mapping(values[0])["id"] == "env-a"
+    assert response_mapping(values[0])["value"] == "new-a"
     assert kwargs == {"deleted_ids": ["env-b"] if patch else None}

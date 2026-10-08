@@ -1,6 +1,7 @@
 import json
 from datetime import datetime
 from decimal import Decimal
+from unittest.mock import MagicMock, create_autospec
 
 import pytest
 from pytest_mock import MockerFixture
@@ -206,7 +207,7 @@ def _dataset_tool(mocker: MockerFixture, name: str, _sessions) -> DatasetRetriev
     return DatasetRetrieverTool(
         entity=_tool_entity(name),
         runtime=ToolRuntime(tenant_id="tenant"),
-        retrieval=mocker.Mock(spec=DatasetRetrieval),
+        retrieval=create_autospec(DatasetRetrieval, instance=True, spec_set=True),
         dataset_id="dataset",
         config=DatasetRetrieveConfigEntity(retrieve_strategy="single"),
         top_k=2,
@@ -242,6 +243,7 @@ def runner(
     mocker: MockerFixture,
     workflow_runtime,
     queue_manager: MessageBasedAppQueueManager,
+    agent_tool_invoker: MagicMock,
     *,
     app_records,
 ) -> BaseAgentRunner:
@@ -261,6 +263,7 @@ def runner(
         dataset_tools=workflow_runtime.dataset_tools,
         records=app_records,
         workflow_runtime=workflow_runtime,
+        tool_invoker=agent_tool_invoker,
         tenant_id="tenant",
         application_generate_entity=_app_generate(app_config=app_config),
         conversation=_conversation(),
@@ -719,6 +722,7 @@ def test_init_uses_real_session_for_count_and_dependencies(
     sqlite_session: Session,
     mocker: MockerFixture,
     queue_manager: MessageBasedAppQueueManager,
+    agent_tool_invoker: MagicMock,
     *,
     app_records,
 ) -> None:
@@ -756,6 +760,7 @@ def test_init_uses_real_session_for_count_and_dependencies(
     initialized = BaseAgentRunner(
         dataset_tools=get_dataset_tools,
         records=app_records,
+        tool_invoker=agent_tool_invoker,
         tenant_id="tenant",
         application_generate_entity=app_generate,
         conversation=_conversation(),

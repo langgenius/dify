@@ -3,6 +3,7 @@ import pkgutil
 from collections.abc import Callable, Iterator, Mapping, MutableMapping, Sequence
 from dataclasses import dataclass
 from functools import lru_cache
+from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, cast, final, override
 
 from configs import dify_config
@@ -146,16 +147,41 @@ def register_nodes() -> None:
         importlib.import_module(module_name)
 
 
+def _adapter_node_classes() -> tuple[type[Node], ...]:
+    """Return workflow adapter classes after legacy registry bootstrap completes."""
+    from services.workflow.execution.adapters.agent_node import AgentNode
+    from services.workflow.execution.adapters.knowledge_retrieval import KnowledgeRetrievalNode
+    from services.workflow.execution.adapters.trigger_webhook import TriggerWebhookNode
+
+    return AgentNode, DifyAgentNode, KnowledgeRetrievalNode, TriggerWebhookNode
+
+
 def get_node_type_classes_mapping() -> Mapping[NodeType, Mapping[str, type[Node]]]:
-    """Return a read-only snapshot of the current production node registry.
+    """Return a read-only registry snapshot with workflow adapter overrides.
 
     The workflow layer owns node bootstrap because it must compose built-in
     `graphon.nodes.*` implementations with application node adapters and the
-    remaining `core.workflow.nodes.*` nodes. Keeping this import side effect here avoids
-    reintroducing registry bootstrapping into lower-level graph primitives.
+    remaining `core.workflow.nodes.*` nodes. Adapter classes are overlaid on a
+    copy so legacy production entry points can keep using the shared registry
+    until their migration to this factory is complete.
     """
     register_nodes()
-    return Node.get_node_type_classes_mapping()
+    mapping = {
+        node_type: dict(version_mapping) for node_type, version_mapping in Node.get_node_type_classes_mapping().items()
+    }
+    affected_node_types: set[NodeType] = set()
+    for node_class in _adapter_node_classes():
+        mapping.setdefault(node_class.node_type, {})[node_class.version()] = node_class
+        affected_node_types.add(node_class.node_type)
+
+    for node_type in affected_node_types:
+        version_mapping = mapping[node_type]
+        latest_version = max((version for version in version_mapping if version != LATEST_VERSION), key=int)
+        version_mapping[LATEST_VERSION] = version_mapping[latest_version]
+
+    return MappingProxyType(
+        {node_type: MappingProxyType(version_mapping) for node_type, version_mapping in mapping.items()}
+    )
 
 
 def resolve_workflow_node_class(
@@ -529,10 +555,7 @@ class DifyNodeFactory(NodeFactory):
         """
         Re-validate the permissive graph payload with the concrete NodeData model declared by the resolved node class.
         """
-        validate_node_data = getattr(node_class, "validate_node_data", None)
-        if callable(validate_node_data):
-            return cast("BaseNodeData", validate_node_data(node_data))
-        return node_data
+        return node_class.validate_node_data(node_data)
 
     @staticmethod
     def _resolve_node_class(

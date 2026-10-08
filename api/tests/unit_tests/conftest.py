@@ -24,102 +24,6 @@ if TYPE_CHECKING:
 ABS_PATH = os.path.dirname(os.path.abspath(__file__))
 
 
-@pytest.fixture
-def workflow_suggestions(sqlite_session_factory: sessionmaker[Session]):
-    from extensions.application_services.workflow import build_workflow_suggestions
-
-    return build_workflow_suggestions(sqlite_session_factory)
-
-
-@pytest.fixture
-def workflow_queries(sqlite_session_factory: sessionmaker[Session]):
-    from repositories.tools.workflow_repository import WorkflowToolRepository
-
-    return WorkflowToolRepository(sqlite_session_factory)
-
-
-@pytest.fixture
-def tool_providers(sqlite_session_factory: sessionmaker[Session]):
-    from repositories.tools.provider_repository import ToolProviderRepository
-
-    return ToolProviderRepository(sqlite_session_factory)
-
-
-@pytest.fixture
-def workflow_tools(sqlite_session_factory: sessionmaker[Session]):
-    from extensions.application_services.tools import build_tool_services
-
-    return build_tool_services(sqlite_session_factory).workflows
-
-
-@pytest.fixture
-def app_records(sqlite_session_factory: sessionmaker[Session]):
-    from repositories.app.generation_repository import AppGenerationRepository
-
-    return AppGenerationRepository(sqlite_session_factory)
-
-
-@pytest.fixture
-def annotation_replies(sqlite_session_factory: sessionmaker[Session]):
-    from extensions.application_services.annotation import build_annotation_replies
-
-    return build_annotation_replies(sqlite_session_factory)
-
-
-@pytest.fixture
-def workflow_contexts(sqlite_session_factory: sessionmaker[Session]):
-    from repositories.workflow.runtime_context_repository import WorkflowRuntimeContextRepository
-
-    return WorkflowRuntimeContextRepository(sqlite_session_factory)
-
-
-@pytest.fixture
-def workflow_runtime(sqlite_session_factory: sessionmaker[Session]):
-    from extensions.application_services.workflow import build_workflow_execution_dependencies
-
-    return build_workflow_execution_dependencies(sqlite_session_factory)
-
-
-@pytest.fixture
-def workflow_variables(sqlite_session_factory: sessionmaker[Session]) -> WorkflowExecutionVariables:
-    from extensions.application_services.workflow_variables import build_workflow_variable_service
-
-    return build_workflow_variable_service(database_client=sqlite_session_factory)
-
-
-@pytest.fixture
-def console_workflow_variables(sqlite_session_factory: sessionmaker[Session]):
-    from extensions.application_services.workflow_variables import (
-        build_console_workflow_variables,
-        build_workflow_variable_service,
-    )
-
-    return build_console_workflow_variables(
-        database_client=sqlite_session_factory,
-        variables=build_workflow_variable_service(database_client=sqlite_session_factory),
-    )
-
-
-@pytest.fixture
-def workflow_application(
-    app: Flask, sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
-) -> ApplicationServices:
-    from unittest.mock import Mock
-
-    from enums import DeploymentEdition
-    from extensions.ext_application_services import build_application_services
-    from extensions.ext_redis import RedisClientWrapper
-
-    services = build_application_services(
-        database_client=sqlite_session_factory,
-        deployment_edition=DeploymentEdition.COMMUNITY,
-        initialization_password="",
-        redis=Mock(spec=RedisClientWrapper),
-    )
-    monkeypatch.setitem(app.extensions, "application_services", services)
-    return services
-
-
 # Getting the absolute path of the project's root directory
 PROJECT_DIR = os.path.abspath(os.path.join(ABS_PATH, os.pardir, os.pardir))
 
@@ -152,7 +56,17 @@ from tests.unit_tests.config_override import apply_config_overrides
 
 if TYPE_CHECKING:
     from extensions.application_services.app import AppServices
+    from extensions.application_services.workflow import WorkflowExecutionDependencies
+    from models.annotation_reply import AnnotationReplies
+    from models.human_input_contracts import HumanInputFormFactory
+    from repositories.app.generation_repository import AppGenerationRepository
+    from repositories.tools.provider_repository import ToolProviderRepository
+    from repositories.tools.workflow_repository import WorkflowToolRepository
+    from repositories.workflow.runtime_context_repository import WorkflowRuntimeContextRepository
     from services.tag_application_service import TagApplicationService
+    from services.tools.workflow_tools_manage_service import WorkflowToolManageService
+    from services.workflow.console_variable_service import ConsoleWorkflowVariableService
+    from services.workflow.generation.suggestions import WorkflowInstructionSuggestions
 
 
 def _patch_redis_clients_on_loaded_modules() -> None:
@@ -463,9 +377,103 @@ def application_tags(sqlite_session_factory: sessionmaker[Session]) -> TagApplic
 
 
 @pytest.fixture
-def human_forms(sqlite_session_factory):
+def workflow_queries(sqlite_session_factory: sessionmaker[Session]) -> WorkflowToolRepository:
+    from repositories.tools.workflow_repository import WorkflowToolRepository
+
+    return WorkflowToolRepository(sqlite_session_factory)
+
+
+@pytest.fixture
+def tool_providers(sqlite_session_factory: sessionmaker[Session]) -> ToolProviderRepository:
+    from repositories.tools.provider_repository import ToolProviderRepository
+
+    return ToolProviderRepository(sqlite_session_factory)
+
+
+@pytest.fixture
+def workflow_tools(sqlite_session_factory: sessionmaker[Session]) -> WorkflowToolManageService:
+    from extensions.application_services.tools import build_tool_services
+
+    return build_tool_services(sqlite_session_factory).workflows
+
+
+@pytest.fixture
+def workflow_variables(sqlite_session_factory: sessionmaker[Session]) -> WorkflowExecutionVariables:
+    from extensions.application_services.workflow_variables import build_workflow_variable_service
+
+    return build_workflow_variable_service(database_client=sqlite_session_factory)
+
+
+@pytest.fixture
+def console_workflow_variables(sqlite_session_factory: sessionmaker[Session]) -> ConsoleWorkflowVariableService:
+    from extensions.application_services.workflow_variables import (
+        build_console_workflow_variables,
+        build_workflow_variable_service,
+    )
+
+    return build_console_workflow_variables(
+        database_client=sqlite_session_factory,
+        variables=build_workflow_variable_service(database_client=sqlite_session_factory),
+    )
+
+
+@pytest.fixture
+def app_records(sqlite_session_factory: sessionmaker[Session]) -> AppGenerationRepository:
+    from repositories.app.generation_repository import AppGenerationRepository
+
+    return AppGenerationRepository(sqlite_session_factory)
+
+
+@pytest.fixture
+def annotation_replies(sqlite_session_factory: sessionmaker[Session]) -> AnnotationReplies:
+    from extensions.application_services.annotation import build_annotation_replies
+
+    return build_annotation_replies(sqlite_session_factory)
+
+
+@pytest.fixture
+def human_forms(sqlite_session_factory: sessionmaker[Session]) -> HumanInputFormFactory:
     from functools import partial
 
     from repositories.human_input.form_repository import HumanInputFormRepositoryImpl
 
     return partial(HumanInputFormRepositoryImpl, sessions=sqlite_session_factory)
+
+
+@pytest.fixture
+def workflow_contexts(sqlite_session_factory: sessionmaker[Session]) -> WorkflowRuntimeContextRepository:
+    from repositories.workflow.runtime_context_repository import WorkflowRuntimeContextRepository
+
+    return WorkflowRuntimeContextRepository(sqlite_session_factory)
+
+
+@pytest.fixture
+def workflow_runtime(sqlite_session_factory: sessionmaker[Session]) -> WorkflowExecutionDependencies:
+    from extensions.application_services.workflow import build_workflow_execution_dependencies
+
+    return build_workflow_execution_dependencies(sqlite_session_factory)
+
+
+@pytest.fixture
+def workflow_suggestions(sqlite_session_factory: sessionmaker[Session]) -> WorkflowInstructionSuggestions:
+    from extensions.application_services.workflow import build_workflow_suggestions
+
+    return build_workflow_suggestions(sqlite_session_factory)
+
+
+@pytest.fixture
+def workflow_application(
+    app: Flask, sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+) -> ApplicationServices:
+    from enums import DeploymentEdition
+    from extensions.ext_application_services import build_application_services
+    from extensions.ext_redis import RedisClientWrapper
+
+    services = build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=create_autospec(RedisClientWrapper, instance=True, spec_set=True),
+    )
+    monkeypatch.setitem(app.extensions, "application_services", services)
+    return services

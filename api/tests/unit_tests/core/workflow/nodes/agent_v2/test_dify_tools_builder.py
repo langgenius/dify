@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Generator
 from typing import Any
-from unittest.mock import Mock
+from unittest.mock import create_autospec
 
 import pytest
 
@@ -26,6 +26,10 @@ from services.workflow.execution.adapters.agent_v2.dify_tools_builder import (
     WorkflowAgentDifyToolsBuilder,
     WorkflowAgentDifyToolsBuildError,
 )
+
+
+def _workflow_queries() -> WorkflowToolQueries:
+    return create_autospec(WorkflowToolQueries, instance=True, spec_set=True)
 
 
 class FakeRuntimeProvider:
@@ -237,7 +241,7 @@ def test_builds_dify_plugin_tools_layer_from_existing_tool_runtime(tool_provider
     builder = WorkflowAgentDifyToolsBuilder(
         tool_runtime_provider=runtime_provider,
         tool_providers=tool_providers,
-        workflow_queries=Mock(spec=WorkflowToolQueries),
+        workflow_queries=_workflow_queries(),
     )
     tools = AgentSoulToolsConfig.model_validate(
         {
@@ -276,7 +280,7 @@ def test_normalizes_fully_qualified_builtin_plugin_provider_for_daemon_transport
     builder = WorkflowAgentDifyToolsBuilder(
         tool_runtime_provider=runtime_provider,
         tool_providers=tool_providers,
-        workflow_queries=Mock(spec=WorkflowToolQueries),
+        workflow_queries=_workflow_queries(),
     )
     tools = AgentSoulToolsConfig.model_validate(
         {
@@ -306,7 +310,7 @@ def test_builds_core_tool_with_file_llm_parameter(tool_providers):
     builder = WorkflowAgentDifyToolsBuilder(
         tool_runtime_provider=runtime_provider,
         tool_providers=tool_providers,
-        workflow_queries=Mock(spec=WorkflowToolQueries),
+        workflow_queries=_workflow_queries(),
     )
     tools = AgentSoulToolsConfig.model_validate(
         {
@@ -345,7 +349,7 @@ def test_builds_plugin_tool_with_file_llm_parameter_schema(tool_providers):
     builder = WorkflowAgentDifyToolsBuilder(
         tool_runtime_provider=runtime_provider,
         tool_providers=tool_providers,
-        workflow_queries=Mock(spec=WorkflowToolQueries),
+        workflow_queries=_workflow_queries(),
     )
     tools = AgentSoulToolsConfig.model_validate(
         {
@@ -380,7 +384,7 @@ def test_builds_plugin_tool_with_files_llm_parameter_schema(tool_providers):
     builder = WorkflowAgentDifyToolsBuilder(
         tool_runtime_provider=runtime_provider,
         tool_providers=tool_providers,
-        workflow_queries=Mock(spec=WorkflowToolQueries),
+        workflow_queries=_workflow_queries(),
     )
     tools = AgentSoulToolsConfig.model_validate(
         {
@@ -410,7 +414,7 @@ def test_builds_builtin_compat_plugin_tool_with_files_llm_parameter_schema(tool_
     builder = WorkflowAgentDifyToolsBuilder(
         tool_runtime_provider=runtime_provider,
         tool_providers=tool_providers,
-        workflow_queries=Mock(spec=WorkflowToolQueries),
+        workflow_queries=_workflow_queries(),
     )
     tools = AgentSoulToolsConfig.model_validate(
         {
@@ -454,7 +458,7 @@ def test_build_layers_routes_plugin_direct_and_builtin_via_core(tool_providers) 
     builder = WorkflowAgentDifyToolsBuilder(
         tool_runtime_provider=runtime_provider,
         tool_providers=tool_providers,
-        workflow_queries=Mock(spec=WorkflowToolQueries),
+        workflow_queries=_workflow_queries(),
     )
     tools = AgentSoulToolsConfig.model_validate(
         {
@@ -504,7 +508,7 @@ def test_build_layers_routes_api_and_workflow_via_core(tool_providers, provider_
     builder = WorkflowAgentDifyToolsBuilder(
         tool_runtime_provider=runtime_provider,
         tool_providers=tool_providers,
-        workflow_queries=Mock(spec=WorkflowToolQueries),
+        workflow_queries=_workflow_queries(),
     )
     tools = AgentSoulToolsConfig.model_validate(
         {
@@ -539,7 +543,7 @@ def test_build_layers_rejects_app_provider_type(tool_providers) -> None:
     builder = WorkflowAgentDifyToolsBuilder(
         tool_runtime_provider=runtime_provider,
         tool_providers=tool_providers,
-        workflow_queries=Mock(spec=WorkflowToolQueries),
+        workflow_queries=_workflow_queries(),
     )
     tools = AgentSoulToolsConfig.model_validate(
         {
@@ -570,7 +574,7 @@ def test_build_layers_rejects_dataset_retrieval_provider_type(tool_providers) ->
     builder = WorkflowAgentDifyToolsBuilder(
         tool_runtime_provider=runtime_provider,
         tool_providers=tool_providers,
-        workflow_queries=Mock(spec=WorkflowToolQueries),
+        workflow_queries=_workflow_queries(),
     )
     tools = AgentSoulToolsConfig.model_validate(
         {
@@ -603,7 +607,7 @@ def test_builds_core_tool_with_missing_required_select_default(tool_providers):
     builder = WorkflowAgentDifyToolsBuilder(
         tool_runtime_provider=runtime_provider,
         tool_providers=tool_providers,
-        workflow_queries=Mock(spec=WorkflowToolQueries),
+        workflow_queries=_workflow_queries(),
     )
     tools = AgentSoulToolsConfig.model_validate(
         {
@@ -638,7 +642,7 @@ def test_rejects_duplicate_exposed_tool_names(tool_providers):
     builder = WorkflowAgentDifyToolsBuilder(
         tool_runtime_provider=runtime_provider,
         tool_providers=tool_providers,
-        workflow_queries=Mock(spec=WorkflowToolQueries),
+        workflow_queries=_workflow_queries(),
     )
     tools = AgentSoulToolsConfig.model_validate(
         {
@@ -674,7 +678,7 @@ def test_rejects_missing_required_runtime_parameter(tool_providers):
     builder = WorkflowAgentDifyToolsBuilder(
         tool_runtime_provider=FakeRuntimeProvider(_tool(runtime_parameters={})),
         tool_providers=tool_providers,
-        workflow_queries=Mock(spec=WorkflowToolQueries),
+        workflow_queries=_workflow_queries(),
     )
     tools = AgentSoulToolsConfig.model_validate(
         {
@@ -713,7 +717,7 @@ def test_invoke_from_is_forwarded_to_tool_runtime_provider(tool_providers):
         builder = WorkflowAgentDifyToolsBuilder(
             tool_runtime_provider=runtime_provider,
             tool_providers=tool_providers,
-            workflow_queries=Mock(spec=WorkflowToolQueries),
+            workflow_queries=_workflow_queries(),
         )
         tools = AgentSoulToolsConfig.model_validate(
             {
@@ -745,7 +749,7 @@ def test_disabled_tools_are_skipped(tool_providers):
     builder = WorkflowAgentDifyToolsBuilder(
         tool_runtime_provider=runtime_provider,
         tool_providers=tool_providers,
-        workflow_queries=Mock(spec=WorkflowToolQueries),
+        workflow_queries=_workflow_queries(),
     )
     tools = AgentSoulToolsConfig.model_validate(
         {
@@ -776,7 +780,7 @@ def test_plugin_id_plus_provider_fallback_when_provider_id_missing(tool_provider
     builder = WorkflowAgentDifyToolsBuilder(
         tool_runtime_provider=runtime_provider,
         tool_providers=tool_providers,
-        workflow_queries=Mock(spec=WorkflowToolQueries),
+        workflow_queries=_workflow_queries(),
     )
     tools = AgentSoulToolsConfig.model_validate(
         {
@@ -817,7 +821,7 @@ def test_unauthorized_tool_without_credentials(tool_providers):
     builder = WorkflowAgentDifyToolsBuilder(
         tool_runtime_provider=runtime_provider,
         tool_providers=tool_providers,
-        workflow_queries=Mock(spec=WorkflowToolQueries),
+        workflow_queries=_workflow_queries(),
     )
     tools = AgentSoulToolsConfig.model_validate(
         {
@@ -867,7 +871,7 @@ def test_tool_provider_not_found_maps_to_declaration_not_found(tool_providers):
     builder = WorkflowAgentDifyToolsBuilder(
         tool_runtime_provider=FakeRuntimeProvider(ToolProviderNotFoundError("provider gone")),
         tool_providers=tool_providers,
-        workflow_queries=Mock(spec=WorkflowToolQueries),
+        workflow_queries=_workflow_queries(),
     )
     with pytest.raises(WorkflowAgentDifyToolsBuildError) as exc_info:
         _build(builder, _standard_tools_payload())
@@ -880,7 +884,7 @@ def test_credential_validation_error_maps_to_credential_invalid(tool_providers):
     builder = WorkflowAgentDifyToolsBuilder(
         tool_runtime_provider=FakeRuntimeProvider(ToolProviderCredentialValidationError("creds expired")),
         tool_providers=tool_providers,
-        workflow_queries=Mock(spec=WorkflowToolQueries),
+        workflow_queries=_workflow_queries(),
     )
     with pytest.raises(WorkflowAgentDifyToolsBuildError) as exc_info:
         _build(builder, _standard_tools_payload())
@@ -896,7 +900,7 @@ def test_generic_value_error_maps_to_config_invalid(tool_providers):
     builder = WorkflowAgentDifyToolsBuilder(
         tool_runtime_provider=FakeRuntimeProvider(ValueError("runtime missing")),
         tool_providers=tool_providers,
-        workflow_queries=Mock(spec=WorkflowToolQueries),
+        workflow_queries=_workflow_queries(),
     )
     with pytest.raises(WorkflowAgentDifyToolsBuildError) as exc_info:
         _build(builder, _standard_tools_payload())
@@ -924,7 +928,7 @@ def test_rejects_non_scalar_credential_value(tool_providers):
     builder = WorkflowAgentDifyToolsBuilder(
         tool_runtime_provider=FakeRuntimeProvider(_dict_credential_tool()),
         tool_providers=tool_providers,
-        workflow_queries=Mock(spec=WorkflowToolQueries),
+        workflow_queries=_workflow_queries(),
     )
     with pytest.raises(WorkflowAgentDifyToolsBuildError) as exc_info:
         _build(builder, _standard_tools_payload())
@@ -1037,7 +1041,7 @@ def test_provider_level_entry_expands_to_all_tools(tool_providers):
         tool_runtime_provider=runtime_provider,
         provider_tools_lister=lister,
         tool_providers=tool_providers,
-        workflow_queries=Mock(spec=WorkflowToolQueries),
+        workflow_queries=_workflow_queries(),
     )
     tools = AgentSoulToolsConfig.model_validate(
         {
@@ -1063,7 +1067,7 @@ def test_explicit_tool_entry_wins_over_provider_expansion(tool_providers):
         tool_runtime_provider=FakeRuntimeProvider(_tool()),
         provider_tools_lister=lambda *, tenant_id, provider_type, provider_id: ["search", "image_search"],
         tool_providers=tool_providers,
-        workflow_queries=Mock(spec=WorkflowToolQueries),
+        workflow_queries=_workflow_queries(),
     )
     tools = AgentSoulToolsConfig.model_validate(
         {
@@ -1096,7 +1100,7 @@ def test_provider_level_entry_with_no_tools_maps_to_declaration_not_found(tool_p
         tool_runtime_provider=FakeRuntimeProvider(_tool()),
         provider_tools_lister=lambda *, tenant_id, provider_type, provider_id: [],
         tool_providers=tool_providers,
-        workflow_queries=Mock(spec=WorkflowToolQueries),
+        workflow_queries=_workflow_queries(),
     )
     tools = AgentSoulToolsConfig.model_validate(
         {
@@ -1125,7 +1129,7 @@ def test_provider_level_entry_unknown_provider_maps_to_declaration_not_found(too
         tool_runtime_provider=FakeRuntimeProvider(_tool()),
         provider_tools_lister=lister,
         tool_providers=tool_providers,
-        workflow_queries=Mock(spec=WorkflowToolQueries),
+        workflow_queries=_workflow_queries(),
     )
     tools = AgentSoulToolsConfig.model_validate(
         {
@@ -1168,7 +1172,7 @@ def test_list_provider_tool_names_reads_builtin_provider(tool_providers, monkeyp
 
     names = module._list_provider_tool_names(
         tool_providers=tool_providers,
-        queries=Mock(spec=WorkflowToolQueries),
+        queries=_workflow_queries(),
         tenant_id="tenant-1",
         provider_type=module.ToolProviderType.BUILT_IN,
         provider_id="langgenius/duckduckgo/duckduckgo",

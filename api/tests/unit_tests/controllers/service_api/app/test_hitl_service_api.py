@@ -49,8 +49,6 @@ from repositories.entities.workflow_pause import WorkflowPauseEntity
 from services.app.generation.ports import ConversationSnapshot, MessageSnapshot, WorkflowSnapshot
 from services.app_generate_service import AppGenerateService
 from services.workflow.execution.adapters.response_converter import WorkflowResponseConverter
-from services.workflow.execution.ports import WorkflowRuntime
-from services.workflow.variable_contracts import WorkflowExecutionVariables
 from services.workflow_event_snapshot_service import _build_snapshot_events
 from tests.unit_tests.config_override import apply_config_overrides
 
@@ -419,9 +417,6 @@ class TestHitlServiceApi:
         self,
         monkeypatch: pytest.MonkeyPatch,
         sqlite_engine: Engine,
-        *,
-        workflow_variables: WorkflowExecutionVariables,
-        workflow_runtime: WorkflowRuntime,
     ) -> None:
         apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
         monkeypatch.setattr(ags_module, "RateLimit", _DummyRateLimit)
@@ -448,14 +443,10 @@ class TestHitlServiceApi:
                 args={"workflow_id": None, "query": "hi", "inputs": {}},
                 invoke_from=InvokeFrom.SERVICE_API,
                 streaming=False,
-                variables=workflow_variables,
-                runtime=workflow_runtime,
             )
 
         assert result == {"result": "advanced-blocking"}
-        dependencies = generator_factory.call_args.kwargs
-        assert callable(dependencies["draft_variable_loader"])
-        assert callable(dependencies["draft_variable_saver"])
+        generator_factory.assert_called_once_with()
         call_kwargs = generator_instance.generate.call_args.kwargs
         assert call_kwargs["streaming"] is False
         assert call_kwargs["pause_state_config"] is not None

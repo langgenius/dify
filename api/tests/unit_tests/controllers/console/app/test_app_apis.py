@@ -508,6 +508,35 @@ class TestWorkflowDraftVariableEndpoints:
         payload = WorkflowDraftVariableUpdatePayload(name="var1", value="test")
         assert payload.name == "var1"
 
+    def test_workflow_variable_collection_get(self, database_app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+        api = workflow_draft_variable_module.WorkflowVariableCollectionApi()
+        method = unwrap(api.get)
+        workflow_variables = MagicMock()
+        empty_items: list[object] = []
+        workflow_variables.list_variables.return_value = {"items": empty_items, "total": 0}
+        monkeypatch.setattr(
+            workflow_draft_variable_module,
+            "application_services",
+            lambda: SimpleNamespace(console_workflow_variables=workflow_variables),
+        )
+        request_context = _make_request_context()
+
+        with database_app.test_request_context("/?page=1&limit=20"):
+            result = method(
+                api,
+                WorkflowDraftVariableListQuery(page=1, limit=20),
+                request_context,
+                app_id=uuid.UUID(APP_ID),
+            )
+
+        assert result == {"items": [], "total": 0}
+        workflow_variables.list_variables.assert_called_once()
+        args = workflow_variables.list_variables.call_args.args
+        assert args[0] == request_context
+        assert args[1].id == APP_ID
+        assert args[1].kind == "app"
+        assert workflow_variables.list_variables.call_args.kwargs == {"page": 1, "limit": 20}
+
     def test_environment_variable_update_payload_preserves_full_replace_default(self) -> None:
         payload = EnvironmentVariableUpdatePayload(environment_variables=[])
 
@@ -532,6 +561,46 @@ class TestWorkflowDraftVariableEndpoints:
     def test_environment_variable_patch_payload_rejects_ambiguous_mutations(self, payload: dict) -> None:
         with pytest.raises(ValidationError):
             EnvironmentVariableUpdatePayload.model_validate(payload)
+
+    def test_environment_variable_collection_post_routes_patch_to_service(
+        self, database_app: Flask, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        api = workflow_draft_variable_module.EnvironmentVariableCollectionApi()
+        method = unwrap(api.post)
+        workflow_variables = MagicMock()
+        monkeypatch.setattr(
+            workflow_draft_variable_module,
+            "application_services",
+            lambda: SimpleNamespace(console_workflow_variables=workflow_variables),
+        )
+        request_context = _make_request_context()
+
+        with database_app.test_request_context(
+            "/",
+            json={
+                "environment_variables": [{"id": "env-a", "name": "a", "value_type": "string", "value": "new-a"}],
+                "patch": True,
+                "deleted_environment_variable_ids": ["env-b"],
+            },
+        ):
+            result = method(
+                api,
+                EnvironmentVariableUpdatePayload(
+                    environment_variables=[{"id": "env-a", "name": "a", "value_type": "string", "value": "new-a"}],
+                    patch=True,
+                    deleted_environment_variable_ids=["env-b"],
+                ),
+                request_context,
+                app_id=uuid.UUID(APP_ID),
+            )
+
+        assert result == {"result": "success"}
+        workflow_variables.update_environment.assert_called_once_with(
+            request_context,
+            APP_ID,
+            [{"id": "env-a", "name": "a", "value_type": "string", "value": "new-a"}],
+            deleted_ids=["env-b"],
+        )
 
 
 class TestWorkflowStatisticEndpoints:

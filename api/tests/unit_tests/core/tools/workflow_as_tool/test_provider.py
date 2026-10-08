@@ -5,7 +5,7 @@ import uuid
 from collections.abc import Iterator
 from types import SimpleNamespace
 from typing import Any, cast
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, create_autospec, patch
 
 import pytest
 from sqlalchemy import Engine
@@ -58,7 +58,9 @@ def _controller(provider_id: str = "provider-1", *, workflow_queries) -> Workflo
         credentials_schema=[],
     )
     return WorkflowToolProviderController(
-        draft_variable_saver=Mock(return_value=Mock(spec=DraftVariableSaverFactory)),
+        draft_variable_saver=Mock(
+            return_value=create_autospec(DraftVariableSaverFactory, instance=True, spec_set=True)
+        ),
         entity=entity,
         provider_id=provider_id,
         queries=workflow_queries,
@@ -115,7 +117,9 @@ def _workflow_tool(
     app = _app(tenant_id=tenant_id)
     workflow = _workflow(app)
     return WorkflowTool(
-        draft_variable_saver=Mock(return_value=Mock(spec=DraftVariableSaverFactory)),
+        draft_variable_saver=Mock(
+            return_value=create_autospec(DraftVariableSaverFactory, instance=True, spec_set=True)
+        ),
         workflow_as_tool_id="provider-1",
         entity=ToolEntity(
             identity=ToolIdentity(
@@ -255,7 +259,9 @@ def test_from_db_builds_controller(database_session: Session, *, workflow_querie
     ):
         built = WorkflowToolProviderController.from_db(
             db_provider,
-            draft_variable_saver=Mock(return_value=Mock(spec=DraftVariableSaverFactory)),
+            draft_variable_saver=Mock(
+                return_value=create_autospec(DraftVariableSaverFactory, instance=True, spec_set=True)
+            ),
             queries=workflow_queries,
         )
 

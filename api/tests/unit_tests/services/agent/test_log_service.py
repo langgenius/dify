@@ -1,19 +1,22 @@
 """Agent log retrieval through production composition and an isolated database."""
 
 import json
+from collections.abc import Iterator
 from datetime import datetime
 from decimal import Decimal
+from typing import Literal, TypedDict
 from uuid import uuid4
 
 import pytest
 from flask import has_app_context
-from sqlalchemy import create_engine, select
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import Table, create_engine, select
+from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import QueuePool
 
 from core.db import session_factory
+from core.tools.entities.tool_entities import ApiProviderSchemaType
 from extensions.application_services.agent import build_agent_app_services
-from graphon.file import FileTransferMethod
+from graphon.file import FileTransferMethod, FileType
 from machinery.context import RequestContext
 from models.account import Account
 from models.base import TypeBase
@@ -32,42 +35,87 @@ from models.model import (
 )
 from models.tools import ApiToolProvider, ToolFile
 from services.agent.log_contracts import AgentLogAppNotFoundError, AgentLogConfigurationError, AgentLogNotFoundError
+from services.agent.log_service import AgentLogService
+from services.workflow.variable_contracts import WorkflowExecutionVariables
 from tests.unit_tests.model_factories import make_account, make_app, make_conversation, make_message, make_upload_file
 
 CONTEXT = RequestContext("request", None, "viewer", "tenant")
 
+type AgentLogStore = tuple[sessionmaker[Session], AgentLogService]
+
+
+class AgentToolCall(TypedDict):
+    status: str
+    error: object | None
+    time_cost: float | int
+    tool_name: str
+    tool_label: str
+    tool_input: object
+    tool_output: object
+    tool_parameters: dict[str, object]
+    tool_icon: object
+
+
+class AgentIteration(TypedDict):
+    tokens: int
+    tool_calls: list[AgentToolCall]
+    tool_raw: dict[str, object]
+    thought: str | None
+    created_at: str
+    files: list[object]
+
+
+class AgentLogMeta(TypedDict):
+    status: str
+    executor: str
+    start_time: str
+    elapsed_time: float
+    total_tokens: int
+    agent_mode: str
+    iterations: int
+
+
+class AgentLogResult(TypedDict):
+    meta: AgentLogMeta
+    iterations: list[AgentIteration]
+    files: list[dict[str, object]]
+
 
 @pytest.fixture(autouse=True)
-def _provide_app_context():
+def _provide_app_context() -> None:
     """This application use case must work without Flask or current_user."""
 
 
 @pytest.fixture
-def store(monkeypatch, workflow_variables):
+def store(
+    monkeypatch: pytest.MonkeyPatch, workflow_variables: WorkflowExecutionVariables
+) -> Iterator[AgentLogStore]:
     engine = create_engine("sqlite://", poolclass=QueuePool)
+    tables: list[Table] = []
+    for model in (
+        App,
+        Account,
+        Conversation,
+        Message,
+        AppModelConfig,
+        MessageAgentThought,
+        MessageFile,
+        UploadFile,
+        ToolFile,
+        ApiToolProvider,
+        AppAnnotationSetting,
+        EndUser,
+    ):
+        table = model.__table__
+        assert isinstance(table, Table)
+        tables.append(table)
     TypeBase.metadata.create_all(
         engine,
-        tables=[
-            m.__table__
-            for m in (
-                App,
-                Account,
-                Conversation,
-                Message,
-                AppModelConfig,
-                MessageAgentThought,
-                MessageFile,
-                UploadFile,
-                ToolFile,
-                ApiToolProvider,
-                AppAnnotationSetting,
-                EndUser,
-            )
-        ],
+        tables=tables,
     )
     sessions = sessionmaker(engine, expire_on_commit=False)
 
-    def reject_global(*_args, **_kwargs):
+    def reject_global(*_args: object, **_kwargs: object) -> None:
         pytest.fail("Agent logs accessed a global database or user")
 
     monkeypatch.setattr(session_factory, "create_session", reject_global)
@@ -128,7 +176,7 @@ def store(monkeypatch, workflow_variables):
             name="api",
             description="Search",
             schema="{}",
-            schema_type_str="openapi",
+            schema_type_str=ApiProviderSchemaType.OPENAPI,
             icon='{"content":"S","background":"#000"}',
             tools_str="[]",
             credentials_str="{}",
@@ -158,13 +206,14 @@ def store(monkeypatch, workflow_variables):
         engine.dispose()
 
 
-def get_log(service, context=CONTEXT, **kwargs):
-    return service.get(
+def get_log(service: AgentLogService, context: RequestContext = CONTEXT, **kwargs: str) -> AgentLogResult:
+    result = service.get(
         context, **{"app_id": "app", "conversation_id": "conversation", "message_id": "message", **kwargs}
     )
+    return AgentLogResult(meta=result["meta"], iterations=result["iterations"], files=result["files"])
 
 
-def test_log_uses_loaded_timezone_configuration_and_tool_metadata(store):
+def test_log_uses_loaded_timezone_configuration_and_tool_metadata(store: AgentLogStore) -> None:
     assert not has_app_context()
     sessions, service = store
     result = get_log(service)
@@ -197,20 +246,31 @@ def test_log_uses_loaded_timezone_configuration_and_tool_metadata(store):
 
 
 @pytest.mark.parametrize("failure", ["workspace", "mode", "conversation", "message", "config"])
-def test_log_enforces_complete_owner_chain(store, failure):
+def test_log_enforces_complete_owner_chain(
+    store: AgentLogStore,
+    failure: Literal["workspace", "mode", "conversation", "message", "config"],
+) -> None:
     sessions, service = store
     context = CONTEXT
     with sessions.begin() as session:
         if failure == "workspace":
             context = CONTEXT._replace(active_workspace_id="foreign")
         elif failure == "mode":
-            session.get(App, "app").mode = AppMode.WORKFLOW
+            app = session.get(App, "app")
+            assert app is not None
+            app.mode = AppMode.WORKFLOW
         elif failure == "conversation":
-            session.get(Conversation, "conversation").app_id = "another-app"
+            conversation = session.get(Conversation, "conversation")
+            assert conversation is not None
+            conversation.app_id = "another-app"
         elif failure == "message":
-            session.get(Message, "message").app_id = "another-app"
+            message = session.get(Message, "message")
+            assert message is not None
+            message.app_id = "another-app"
         else:
-            session.get(App, "app").app_model_config_id = None
+            app = session.get(App, "app")
+            assert app is not None
+            app.app_model_config_id = None
     error = (
         AgentLogAppNotFoundError
         if failure in {"workspace", "mode"}
@@ -223,11 +283,13 @@ def test_log_enforces_complete_owner_chain(store, failure):
 @pytest.mark.parametrize(
     "file_type", [FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL, FileTransferMethod.TOOL_FILE]
 )
-def test_log_releases_read_transaction_before_file_processing(store, monkeypatch, file_type):
+def test_log_releases_read_transaction_before_file_processing(
+    store: AgentLogStore, monkeypatch: pytest.MonkeyPatch, file_type: FileTransferMethod
+) -> None:
     sessions, service = store
-    remote_calls = []
+    remote_calls: list[str] = []
 
-    def remote_info(url):
+    def remote_info(url: str) -> tuple[str, str, int]:
         assert sessions.kw["bind"].pool.checkedout() == 0
         remote_calls.append(url)
         return "text/plain", "remote.txt", 42
@@ -252,7 +314,7 @@ def test_log_releases_read_transaction_before_file_processing(store, monkeypatch
         session.add(
             MessageFile(
                 message_id="message",
-                type="document",
+                type=FileType.DOCUMENT,
                 transfer_method=file_type,
                 url="https://example.com/remote.txt"
                 if file_type == FileTransferMethod.REMOTE_URL
@@ -278,14 +340,18 @@ def test_log_releases_read_transaction_before_file_processing(store, monkeypatch
     with sessions() as session:
         file = session.scalar(select(MessageFile))
         if file_type == FileTransferMethod.TOOL_FILE:
+            assert file is not None
             assert file.upload_file_id is None  # Viewing a log does not rewrite attachment records.
 
 
-def test_log_handles_missing_executor_and_malformed_thought_metadata(store):
+def test_log_handles_missing_executor_and_malformed_thought_metadata(store: AgentLogStore) -> None:
     sessions, service = store
     with sessions.begin() as session:
-        session.get(Conversation, "conversation").from_account_id = "deleted"
+        conversation = session.get(Conversation, "conversation")
+        assert conversation is not None
+        conversation.from_account_id = "deleted"
         thought = session.scalar(select(MessageAgentThought))
+        assert thought is not None
         thought.tool_labels_str = thought.tool_meta_str = thought.tool_input = thought.observation = "invalid-json"
     result = get_log(service)
     assert result["meta"]["executor"] == "Unknown"
@@ -296,7 +362,7 @@ def test_log_handles_missing_executor_and_malformed_thought_metadata(store):
 
 
 @pytest.mark.parametrize("tenant_id", ["tenant", "foreign"])
-def test_log_resolves_end_user_inside_workspace(store, tenant_id):
+def test_log_resolves_end_user_inside_workspace(store: AgentLogStore, tenant_id: Literal["tenant", "foreign"]) -> None:
     sessions, service = store
     with sessions.begin() as session:
         user = EndUser(
@@ -305,15 +371,17 @@ def test_log_resolves_end_user_inside_workspace(store, tenant_id):
         session.add(user)
         session.flush()
         conversation = session.get(Conversation, "conversation")
+        assert conversation is not None
         conversation.from_account_id = None
         conversation.from_end_user_id = user.id
     assert get_log(service)["meta"]["executor"] == ("Customer" if tenant_id == "tenant" else "Unknown")
 
 
-def test_log_preserves_tool_errors_and_empty_iterations(store):
+def test_log_preserves_tool_errors_and_empty_iterations(store: AgentLogStore) -> None:
     sessions, service = store
     with sessions.begin() as session:
         thought = session.scalar(select(MessageAgentThought))
+        assert thought is not None
         thought.tool_meta_str = '{"search":{"error":"Remote unavailable","time_cost":2}}'
         thought.tokens = None
     result = get_log(service)
@@ -321,15 +389,19 @@ def test_log_preserves_tool_errors_and_empty_iterations(store):
     tool = result["iterations"][0]["tool_calls"][0]
     assert (tool["status"], tool["error"], tool["time_cost"]) == ("error", "Remote unavailable", 2)
     with sessions.begin() as session:
-        session.delete(session.scalar(select(MessageAgentThought)))
+        thought = session.scalar(select(MessageAgentThought))
+        assert thought is not None
+        session.delete(thought)
     result = get_log(service)
     assert result["meta"]["iterations"] == 0
     assert result["iterations"] == []
 
 
-def test_log_rejects_disabled_agent_configuration(store):
+def test_log_rejects_disabled_agent_configuration(store: AgentLogStore) -> None:
     sessions, service = store
     with sessions.begin() as session:
-        session.scalar(select(AppModelConfig)).agent_mode = '{"enabled":false}'
+        config = session.scalar(select(AppModelConfig))
+        assert config is not None
+        config.agent_mode = '{"enabled":false}'
     with pytest.raises(AgentLogConfigurationError, match="Agent config not found"):
         get_log(service)
