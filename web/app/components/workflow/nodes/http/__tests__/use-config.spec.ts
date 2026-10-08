@@ -223,13 +223,9 @@ describe('http/use-config', () => {
       headerFieldChange?.('x-token:123')
       paramFieldChange?.('size:20')
       result.current.setBody({ type: BodyType.rawText, data: 'raw payload' })
-      result.current.showAuthorization()
     })
 
-    expect(result.current.isShowAuthorization).toBe(true)
-
     act(() => {
-      result.current.hideAuthorization()
       result.current.setAuthorization({
         type: AuthorizationType.apiKey,
         config: {
@@ -260,7 +256,6 @@ describe('http/use-config', () => {
       result.current.handleSSLVerifyChange(false)
     })
 
-    expect(result.current.isShowAuthorization).toBe(false)
     expect(result.current.isShowCurlPanel).toBe(false)
     expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({ method: Method.delete }))
     expect(mockSetInputs).toHaveBeenCalledWith(

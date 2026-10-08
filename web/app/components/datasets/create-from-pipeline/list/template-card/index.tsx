@@ -41,7 +41,6 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
   const { push } = useRouter()
   const [showEditModal, setShowEditModal] = useState(false)
   const [showDeleteConfirm, setShowConfirmDelete] = useState(false)
-  const [showDetailModal, setShowDetailModal] = useState(false)
 
   const { refetch: getPipelineTemplateInfo } = usePipelineTemplateById(
     {
@@ -100,10 +99,6 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
     setShowEditModal(false)
   }, [])
 
-  const closeDetailsModal = useCallback(() => {
-    setShowDetailModal(false)
-  }, [])
-
   const { mutateAsync: exportPipelineDSL, isPending: isExporting } = useExportTemplateDSL()
 
   const handleExportDSL = useCallback(async () => {
@@ -148,7 +143,7 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
         iconInfo={pipeline.icon}
         chunkStructure={pipeline.chunk_structure}
       />
-      <Dialog open={showDetailModal} onOpenChange={setShowDetailModal}>
+      <Dialog>
         <Actions
           onApplyTemplate={handleUseTemplate}
           showMoreOperations={showMoreOperations}
@@ -160,7 +155,7 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
           <Details
             id={pipeline.id}
             type={type}
-            onClose={closeDetailsModal}
+            name={pipeline.name}
             onApplyTemplate={handleUseTemplate}
           />
         </DialogContent>
