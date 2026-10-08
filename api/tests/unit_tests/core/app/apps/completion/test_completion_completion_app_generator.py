@@ -8,23 +8,29 @@ from pydantic import ValidationError
 from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session
 
-import core.app.apps.completion.app_generator as module
-from core.app.apps.completion.app_generator import CompletionAppGenerator
+import services.app.generation.adapters.completion as module
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
+from extensions.application_services.retrieval import build_dataset_retrieval
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from models import Account
 from models.enums import ConversationFromSource
 from models.model import App, AppMode, AppModelConfig, Conversation, Message
+from services.app.generation.adapters.completion import CompletionAppGenerator
 from services.errors.app import MoreLikeThisDisabledError
+from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.message import MessageNotExistsError
 
-TABLES = (AppModelConfig, Conversation, Message)
+TABLES = (App, AppModelConfig, Conversation, Message)
 
 
 @pytest.fixture
-def generator(mocker: MockerFixture):
-    gen = CompletionAppGenerator()
+def generator(app_records, mocker: MockerFixture, *, annotation_replies, sqlite_session_factory):
+    gen = CompletionAppGenerator(
+        retrieval=build_dataset_retrieval(sqlite_session_factory),
+        annotations=annotation_replies,
+        records=app_records,
+    )
 
     mocker.patch.object(module, "copy_current_request_context", side_effect=lambda fn: fn)
 
@@ -42,12 +48,8 @@ def generator(mocker: MockerFixture):
     )
     gen.generate_entity = generate_entity
 
+    mocker.patch.object(gen._records, "annotation_config", return_value={"enabled": False})
     return gen
-
-
-@pytest.fixture(autouse=True)
-def _bind_db_session(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(module.db, "session", sqlite_session)
 
 
 def _build_app_model() -> App:
@@ -80,6 +82,9 @@ def _persist_message(
     app_id: str = "app1",
     app_model_config: AppModelConfig | None = None,
 ) -> Message:
+    if session.get(App, app_id) is None:
+        session.add(_build_app_model())
+        session.flush()
     conversation = Conversation(
         app_id=app_id,
         app_model_config_id=app_model_config.id if app_model_config else None,
@@ -128,7 +133,7 @@ def _persist_message(
         app_mode=AppMode.COMPLETION,
     )
     session.add(message)
-    session.flush()
+    session.commit()
     return message
 
 
@@ -162,8 +167,8 @@ class TestCompletionAppGenerator:
         to_dict = mocker.patch.object(AppModelConfig, "to_dict", return_value={"model": {"provider": "x"}})
         annotation_reply = {"enabled": False}
         load_annotation_reply_config = mocker.patch.object(
-            module,
-            "load_annotation_reply_config",
+            generator._records,
+            "annotation_config",
             return_value=annotation_reply,
         )
         mocker.patch.object(module.FileUploadConfigManager, "convert", return_value=None)
@@ -217,7 +222,7 @@ class TestCompletionAppGenerator:
         assert result == "converted"
         assert generator.generate_entity.call_args.kwargs["extras"]["trace_session_id"] == "session-1"
         module.file_factory.build_from_mappings.assert_not_called()
-        load_annotation_reply_config.assert_called_once_with(sqlite_session, "app1")
+        load_annotation_reply_config.assert_called_once_with(tenant_id="tenant", app_id="app1")
         to_dict.assert_called_once_with(annotation_reply=annotation_reply)
         assert get_app_config.call_args.kwargs["annotation_reply"] is annotation_reply
 
@@ -383,7 +388,7 @@ class TestCompletionAppGenerator:
         app_model.app_model_config_id = current_config.id
         _persist_message(sqlite_session)
 
-        with pytest.raises(ValueError):
+        with pytest.raises(AppModelConfigBrokenError):
             generator.generate_more_like_this(
                 session=sqlite_session,
                 app_model=app_model,
@@ -409,8 +414,8 @@ class TestCompletionAppGenerator:
         )
         annotation_reply = {"enabled": False}
         load_annotation_reply_config = mocker.patch.object(
-            module,
-            "load_annotation_reply_config",
+            generator._records,
+            "annotation_config",
             return_value=annotation_reply,
         )
         mocker.patch.object(module.FileUploadConfigManager, "convert", return_value=None)
@@ -464,7 +469,7 @@ class TestCompletionAppGenerator:
         )
 
         assert result == "converted"
-        load_annotation_reply_config.assert_called_once_with(sqlite_session, app_model.id)
+        load_annotation_reply_config.assert_called_once_with(tenant_id="tenant", app_id="app1")
         to_dict.assert_called_once_with(annotation_reply=annotation_reply)
         assert generator.generate_entity.call_args.kwargs["inputs"] == {"a": 1}
         override_dict = get_app_config.call_args.kwargs["override_config_dict"]
@@ -499,7 +504,7 @@ class TestCompletionAppGenerator:
         flask_app.app_context.return_value = contextlib.nullcontext()
 
         message = _persist_message(sqlite_session)
-        mocker.patch.object(generator, "_get_message", return_value=message)
+        mocker.patch.object(generator._records, "load", return_value=(_build_app_model(), None, message))
 
         runner_instance = MagicMock()
         runner_instance.run.side_effect = error
@@ -511,6 +516,7 @@ class TestCompletionAppGenerator:
             application_generate_entity=MagicMock(),
             queue_manager=queue_manager,
             message_id="msg",
+            conversation_id="conv",
         )
 
         assert queue_manager.publish_error.called is should_publish

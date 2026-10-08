@@ -1,7 +1,9 @@
+from services.errors.app import WorkflowNotFoundError
+
 """Unit tests for PipelineRunner behavior.
 
 This module validates core control-flow outcomes for
-``core.app.apps.pipeline.pipeline_runner``: app/workflow lookup, graph
+``services.workflow.execution.adapters.pipeline.pipeline_runner``: app/workflow lookup, graph
 initialization guards, invoke-source to user-source resolution, and failed-run
 event handling. Invariants asserted here include strict graph-config
 validation, correct ``InvokeFrom`` to ``UserFrom`` mapping, and publishing
@@ -21,8 +23,7 @@ from sqlalchemy import event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
-import core.app.apps.pipeline.pipeline_runner as module
-from core.app.apps.pipeline.pipeline_runner import PipelineRunner
+import services.workflow.execution.adapters.pipeline.pipeline_runner as module
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from graphon.graph_events import GraphRunFailedEvent
 from models.dataset import Dataset, Document, Pipeline
@@ -30,6 +31,8 @@ from models.enums import DocumentCreatedFrom
 from models.model import EndUser
 from models.workflow import Workflow, WorkflowType
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
+from services.workflow.execution.adapters.pipeline.pipeline_runner import PipelineRunner
+from services.workflow.execution.ports import WorkflowRuntime
 from tests.unit_tests.model_factories import make_dataset, make_document, make_end_user, make_workflow
 
 
@@ -118,7 +121,7 @@ def _build_app_generate_entity() -> SimpleNamespace:
 
 
 @pytest.fixture
-def runner(sqlite_engine: Engine):
+def runner(sqlite_engine: Engine, *, workflow_runtime: WorkflowRuntime):
     app_generate_entity = _build_app_generate_entity()
     queue_manager = MagicMock()
     variable_loader = MagicMock()
@@ -135,19 +138,16 @@ def runner(sqlite_engine: Engine):
         workflow_execution_repository=workflow_execution_repository,
         workflow_node_execution_repository=workflow_node_execution_repository,
         documents=SQLAlchemyDocumentRepository(session_factory=sessionmaker(bind=sqlite_engine)),
+        runtime=workflow_runtime,
     )
-
-
-def test_get_app_id(runner):
-    assert runner._get_app_id() == "pipe"
 
 
 def test_get_workflow_returns_workflow(runner, sqlite_session: Session):
     pipeline, _, workflow = _persist_scope(sqlite_session)
 
-    result = runner.get_workflow(session=sqlite_session, pipeline=pipeline, workflow_id="wf")
+    result = runner._runtime.contexts.workflow(tenant_id=pipeline.tenant_id, app_id=pipeline.id, workflow_id="wf")
 
-    assert result == workflow
+    assert result.id == workflow.id
 
 
 def test_init_rag_pipeline_graph_invalid_config(mocker, runner):
@@ -227,7 +227,7 @@ def test_update_document_status_skips_without_document_ref(runner, sqlite_engine
     assert checkouts == 0
 
 
-def test_run_pipeline_not_found(sqlite_engine: Engine):
+def test_run_pipeline_not_found(sqlite_engine: Engine, *, workflow_runtime: WorkflowRuntime):
     app_generate_entity = _build_app_generate_entity()
     app_generate_entity.invoke_from = InvokeFrom.WEB_APP
     app_generate_entity.single_iteration_run = None
@@ -242,9 +242,10 @@ def test_run_pipeline_not_found(sqlite_engine: Engine):
         workflow_execution_repository=MagicMock(),
         workflow_node_execution_repository=MagicMock(),
         documents=SQLAlchemyDocumentRepository(session_factory=sessionmaker(bind=sqlite_engine)),
+        runtime=workflow_runtime,
     )
 
-    with pytest.raises(ValueError):
+    with pytest.raises(WorkflowNotFoundError):
         runner.run()
 
 
@@ -253,7 +254,7 @@ def test_run_pipeline_from_other_tenant_is_not_found(runner: PipelineRunner, sql
     sqlite_session.add(pipeline)
     sqlite_session.commit()
 
-    with pytest.raises(ValueError, match="Pipeline not found"):
+    with pytest.raises(WorkflowNotFoundError, match="Pipeline not found"):
         runner.run()
 
 
@@ -277,7 +278,7 @@ def test_run_rejects_unowned_pipeline_dataset(
     sqlite_session.commit()
     runner.get_workflow = MagicMock()
 
-    with pytest.raises(ValueError, match="Pipeline dataset not found"):
+    with pytest.raises((ValueError, WorkflowNotFoundError), match="Pipeline dataset not found"):
         runner.run()
 
     runner.get_workflow.assert_not_called()
@@ -307,13 +308,15 @@ def test_run_rejects_original_document_outside_pipeline_dataset_after_async_boun
     _persist_scope(sqlite_session, documents=(_document(),))
     runner.get_workflow = MagicMock()
 
-    with pytest.raises(ValueError, match="Pipeline original document not found"):
+    with pytest.raises(ValueError, match="Pipeline document not found"):
         runner.run()
 
     runner.get_workflow.assert_not_called()
 
 
-def test_run_workflow_not_initialized(sqlite_session: Session, sqlite_engine: Engine):
+def test_run_workflow_not_initialized(
+    sqlite_session: Session, sqlite_engine: Engine, *, workflow_runtime: WorkflowRuntime
+):
     app_generate_entity = _build_app_generate_entity()
 
     pipeline = _pipeline()
@@ -331,12 +334,19 @@ def test_run_workflow_not_initialized(sqlite_session: Session, sqlite_engine: En
         workflow_execution_repository=MagicMock(),
         workflow_node_execution_repository=MagicMock(),
         documents=SQLAlchemyDocumentRepository(session_factory=sessionmaker(bind=sqlite_engine)),
+        runtime=workflow_runtime,
     )
     with pytest.raises(ValueError):
         runner.run()
 
 
-def test_run_single_iteration_path(mocker: MockerFixture, sqlite_session: Session, sqlite_engine: Engine):
+def test_run_single_iteration_path(
+    mocker: MockerFixture,
+    sqlite_session: Session,
+    sqlite_engine: Engine,
+    *,
+    workflow_runtime: WorkflowRuntime,
+):
     app_generate_entity = _build_app_generate_entity()
     app_generate_entity.single_iteration_run = MagicMock()
 
@@ -351,12 +361,13 @@ def test_run_single_iteration_path(mocker: MockerFixture, sqlite_session: Sessio
         workflow_execution_repository=MagicMock(),
         workflow_node_execution_repository=MagicMock(),
         documents=SQLAlchemyDocumentRepository(session_factory=sessionmaker(bind=sqlite_engine)),
+        runtime=workflow_runtime,
     )
 
     runner._resolve_user_from = MagicMock(return_value=UserFrom.ACCOUNT)
-    runner._prepare_single_node_execution = MagicMock(return_value=("graph", "pool", "state"))
+    runner._graphs.build_single_node = MagicMock(return_value=("graph", "pool", "state"))
     runner._update_document_status = MagicMock()
-    runner._handle_event = MagicMock()
+    runner._events.publish = MagicMock()
 
     event = MagicMock()
     workflow_entry = MagicMock()
@@ -368,17 +379,23 @@ def test_run_single_iteration_path(mocker: MockerFixture, sqlite_session: Sessio
 
     runner.run()
 
-    runner._prepare_single_node_execution.assert_called_once()
+    runner._graphs.build_single_node.assert_called_once()
     runner._update_document_status.assert_called_once_with(
         event,
         workspace_id=dataset.tenant_id,
         dataset_id=dataset.id,
         document_id="doc",
     )
-    runner._handle_event.assert_called()
+    runner._events.publish.assert_called()
 
 
-def test_run_normal_path_builds_graph(mocker: MockerFixture, sqlite_session: Session, sqlite_engine: Engine):
+def test_run_normal_path_builds_graph(
+    mocker: MockerFixture,
+    sqlite_session: Session,
+    sqlite_engine: Engine,
+    *,
+    workflow_runtime: WorkflowRuntime,
+):
     app_generate_entity = _build_app_generate_entity()
 
     events = []
@@ -408,12 +425,13 @@ def test_run_normal_path_builds_graph(mocker: MockerFixture, sqlite_session: Ses
         workflow_execution_repository=MagicMock(),
         workflow_node_execution_repository=MagicMock(),
         documents=SQLAlchemyDocumentRepository(session_factory=sessionmaker(bind=sqlite_engine)),
+        runtime=workflow_runtime,
     )
 
     runner._resolve_user_from = MagicMock(return_value=UserFrom.ACCOUNT)
     runner._init_rag_pipeline_graph = MagicMock(return_value="graph")
     runner._update_document_status = MagicMock()
-    runner._handle_event = MagicMock()
+    runner._events.publish = MagicMock()
 
     class FakeVariablePool:
         def add(self, selector, value):

@@ -12,7 +12,6 @@ from unittest.mock import Mock
 import pytest
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
-from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
     QueueEvent,
@@ -30,6 +29,7 @@ from graphon.enums import BuiltinNodeTypes
 from libs.datetime_utils import naive_utc_now
 from models import Account
 from models.model import AppMode
+from services.workflow.execution.adapters.response_converter import WorkflowResponseConverter
 
 
 class TestWorkflowResponseConverter:
@@ -45,7 +45,7 @@ class TestWorkflowResponseConverter:
         mock_entity.inputs = {}
         return mock_entity
 
-    def create_workflow_response_converter(self) -> WorkflowResponseConverter:
+    def create_workflow_response_converter(self, *, workflow_contexts, tool_providers) -> WorkflowResponseConverter:
         """Create a WorkflowResponseConverter for testing."""
 
         mock_entity = self.create_mock_generate_entity()
@@ -57,9 +57,11 @@ class TestWorkflowResponseConverter:
 
         system_variables = build_system_variables(workflow_id="wf-id", workflow_execution_id="initial-run-id")
         return WorkflowResponseConverter(
+            contexts=workflow_contexts,
             application_generate_entity=mock_entity,
             user=mock_user,
             system_variables=system_variables,
+            tool_providers=tool_providers,
         )
 
     def create_node_started_event(self, *, node_execution_id: str | None = None) -> QueueNodeStartedEvent:
@@ -120,9 +122,11 @@ class TestWorkflowResponseConverter:
             in_loop_id=None,
         )
 
-    def test_workflow_node_finish_response_uses_truncated_process_data(self):
+    def test_workflow_node_finish_response_uses_truncated_process_data(self, *, workflow_contexts, tool_providers):
         """Test that node finish response uses get_response_process_data()."""
-        converter = self.create_workflow_response_converter()
+        converter = self.create_workflow_response_converter(
+            workflow_contexts=workflow_contexts, tool_providers=tool_providers
+        )
 
         original_data = {"large_field": "x" * 10000, "metadata": "info"}
         truncated_data = {"large_field": "[TRUNCATED]", "metadata": "info"}
@@ -162,9 +166,11 @@ class TestWorkflowResponseConverter:
         assert response.data.process_data != original_data
         assert response.data.process_data_truncated is True
 
-    def test_workflow_node_finish_response_without_truncation(self):
+    def test_workflow_node_finish_response_without_truncation(self, *, workflow_contexts, tool_providers):
         """Test node finish response when no truncation is applied."""
-        converter = self.create_workflow_response_converter()
+        converter = self.create_workflow_response_converter(
+            workflow_contexts=workflow_contexts, tool_providers=tool_providers
+        )
 
         original_data = {"small": "data"}
 
@@ -200,9 +206,11 @@ class TestWorkflowResponseConverter:
         assert response.data.process_data == original_data
         assert response.data.process_data_truncated is False
 
-    def test_workflow_node_finish_response_with_none_process_data(self):
+    def test_workflow_node_finish_response_with_none_process_data(self, *, workflow_contexts, tool_providers):
         """Test node finish response when process_data is None."""
-        converter = self.create_workflow_response_converter()
+        converter = self.create_workflow_response_converter(
+            workflow_contexts=workflow_contexts, tool_providers=tool_providers
+        )
 
         converter.workflow_start_to_stream_response(
             task_id="bootstrap",
@@ -237,17 +245,18 @@ class TestWorkflowResponseConverter:
         assert response.data.process_data_truncated is False
 
     def test_workflow_node_finish_response_prefers_event_finished_at(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
+        self, monkeypatch: pytest.MonkeyPatch, *, workflow_contexts, tool_providers
     ) -> None:
         """Finished timestamps should come from the event, not delayed queue processing time."""
-        converter = self.create_workflow_response_converter()
+        converter = self.create_workflow_response_converter(
+            workflow_contexts=workflow_contexts, tool_providers=tool_providers
+        )
         start_at = datetime(2024, 1, 1, 0, 0, 0, tzinfo=UTC).replace(tzinfo=None)
         finished_at = datetime(2024, 1, 1, 0, 0, 2, tzinfo=UTC).replace(tzinfo=None)
         delayed_processing_time = datetime(2024, 1, 1, 0, 0, 10, tzinfo=UTC).replace(tzinfo=None)
 
         monkeypatch.setattr(
-            "core.app.apps.common.workflow_response_converter.naive_utc_now",
+            "services.workflow.execution.adapters.response_converter.naive_utc_now",
             lambda: delayed_processing_time,
         )
         converter.workflow_start_to_stream_response(
@@ -280,9 +289,11 @@ class TestWorkflowResponseConverter:
         assert response.data.elapsed_time == 2.0
         assert response.data.finished_at == int(finished_at.timestamp())
 
-    def test_workflow_node_retry_response_uses_truncated_process_data(self):
+    def test_workflow_node_retry_response_uses_truncated_process_data(self, *, workflow_contexts, tool_providers):
         """Test that node retry response uses get_response_process_data()."""
-        converter = self.create_workflow_response_converter()
+        converter = self.create_workflow_response_converter(
+            workflow_contexts=workflow_contexts, tool_providers=tool_providers
+        )
 
         original_data = {"large_field": "x" * 10000, "metadata": "info"}
         truncated_data = {"large_field": "[TRUNCATED]", "metadata": "info"}
@@ -322,9 +333,11 @@ class TestWorkflowResponseConverter:
         assert response.data.process_data != original_data
         assert response.data.process_data_truncated is True
 
-    def test_workflow_node_retry_response_without_truncation(self):
+    def test_workflow_node_retry_response_without_truncation(self, *, workflow_contexts, tool_providers):
         """Test node retry response when no truncation is applied."""
-        converter = self.create_workflow_response_converter()
+        converter = self.create_workflow_response_converter(
+            workflow_contexts=workflow_contexts, tool_providers=tool_providers
+        )
 
         original_data = {"small": "data"}
 
@@ -359,9 +372,11 @@ class TestWorkflowResponseConverter:
         assert response.data.process_data == original_data
         assert response.data.process_data_truncated is False
 
-    def test_iteration_and_loop_nodes_return_none(self):
+    def test_iteration_and_loop_nodes_return_none(self, *, workflow_contexts, tool_providers):
         """Test that iteration and loop nodes return None (no streaming events)."""
-        converter = self.create_workflow_response_converter()
+        converter = self.create_workflow_response_converter(
+            workflow_contexts=workflow_contexts, tool_providers=tool_providers
+        )
 
         iteration_event = QueueNodeSucceededEvent(
             node_id="iteration-node",
@@ -389,9 +404,11 @@ class TestWorkflowResponseConverter:
         )
         assert response is None
 
-    def test_finish_without_start_raises(self):
+    def test_finish_without_start_raises(self, *, workflow_contexts, tool_providers):
         """Ensure finish responses require a prior workflow start."""
-        converter = self.create_workflow_response_converter()
+        converter = self.create_workflow_response_converter(
+            workflow_contexts=workflow_contexts, tool_providers=tool_providers
+        )
         event = self.create_node_succeeded_event(
             node_execution_id=str(uuid.uuid4()),
             process_data={},
@@ -456,16 +473,20 @@ class TestWorkflowResponseConverterServiceApiTruncation:
         """Create test system variables."""
         return build_system_variables()
 
-    def create_test_converter(self, invoke_from: InvokeFrom) -> WorkflowResponseConverter:
+    def create_test_converter(
+        self, invoke_from: InvokeFrom, *, workflow_contexts, tool_providers
+    ) -> WorkflowResponseConverter:
         """Create WorkflowResponseConverter with specified invoke_from."""
         entity = self.create_test_app_generate_entity(invoke_from)
         user = self.create_test_user()
         system_variables = self.create_test_system_variables()
 
         converter = WorkflowResponseConverter(
+            contexts=workflow_contexts,
             application_generate_entity=entity,
             user=user,
             system_variables=system_variables,
+            tool_providers=tool_providers,
         )
         # ensure `workflow_run_id` is set.
         converter.workflow_start_to_stream_response(
@@ -512,9 +533,11 @@ class TestWorkflowResponseConverterServiceApiTruncation:
         ],
         ids=lambda x: x.name,
     )
-    def test_truncator_selection_based_on_invoke_from(self, test_case: TestCase):
+    def test_truncator_selection_based_on_invoke_from(self, test_case: TestCase, *, workflow_contexts, tool_providers):
         """Test that the correct truncator is selected based on invoke_from."""
-        converter = self.create_test_converter(test_case.invoke_from)
+        converter = self.create_test_converter(
+            test_case.invoke_from, workflow_contexts=workflow_contexts, tool_providers=tool_providers
+        )
 
         # Test truncation behavior instead of checking private attribute
 
@@ -555,9 +578,11 @@ class TestWorkflowResponseConverterServiceApiTruncation:
             assert not response.data.process_data_truncated
             assert not response.data.outputs_truncated
 
-    def test_service_api_truncator_no_op_mapping(self):
+    def test_service_api_truncator_no_op_mapping(self, *, workflow_contexts, tool_providers):
         """Test that Service API truncator doesn't truncate variable mappings."""
-        converter = self.create_test_converter(InvokeFrom.SERVICE_API)
+        converter = self.create_test_converter(
+            InvokeFrom.SERVICE_API, workflow_contexts=workflow_contexts, tool_providers=tool_providers
+        )
 
         # Create a test event with large data
         large_value: dict[str, Any] = {
@@ -595,9 +620,11 @@ class TestWorkflowResponseConverterServiceApiTruncation:
         assert data.process_data_truncated is False
         assert data.outputs_truncated is False
 
-    def test_web_app_truncator_works_normally(self):
+    def test_web_app_truncator_works_normally(self, *, workflow_contexts, tool_providers):
         """Test that web app truncator still works normally."""
-        converter = self.create_test_converter(InvokeFrom.WEB_APP)
+        converter = self.create_test_converter(
+            InvokeFrom.WEB_APP, workflow_contexts=workflow_contexts, tool_providers=tool_providers
+        )
 
         # Create a test event with large data
         large_value = {
@@ -695,9 +722,13 @@ class TestWorkflowResponseConverterServiceApiTruncation:
             QueueEvent.NODE_EXCEPTION,
         ],
     )
-    def test_service_api_node_finish_event_no_truncation(self, event_type: QueueEvent):
+    def test_service_api_node_finish_event_no_truncation(
+        self, event_type: QueueEvent, *, workflow_contexts, tool_providers
+    ):
         """Test that Service API doesn't truncate node finish events."""
-        converter = self.create_test_converter(InvokeFrom.SERVICE_API)
+        converter = self.create_test_converter(
+            InvokeFrom.SERVICE_API, workflow_contexts=workflow_contexts, tool_providers=tool_providers
+        )
         # Create test event with large data
         large_inputs = {"input1": "x" * 5000, "input2": list(range(2000))}
         large_process_data = {"process1": "y" * 5000, "process2": {"nested": ["z"] * 2000}}
@@ -723,9 +754,11 @@ class TestWorkflowResponseConverterServiceApiTruncation:
         assert not response.data.process_data_truncated
         assert not response.data.outputs_truncated
 
-    def test_service_api_node_retry_event_no_truncation(self):
+    def test_service_api_node_retry_event_no_truncation(self, *, workflow_contexts, tool_providers):
         """Test that Service API doesn't truncate node retry events."""
-        converter = self.create_test_converter(InvokeFrom.SERVICE_API)
+        converter = self.create_test_converter(
+            InvokeFrom.SERVICE_API, workflow_contexts=workflow_contexts, tool_providers=tool_providers
+        )
 
         # Create test event with large data
         large_inputs = {"retry_input": "x" * 5000}
@@ -784,9 +817,11 @@ class TestWorkflowResponseConverterServiceApiTruncation:
         assert not response.data.process_data_truncated
         assert not response.data.outputs_truncated
 
-    def test_service_api_iteration_events_no_truncation(self):
+    def test_service_api_iteration_events_no_truncation(self, *, workflow_contexts, tool_providers):
         """Test that Service API doesn't truncate iteration events."""
-        converter = self.create_test_converter(InvokeFrom.SERVICE_API)
+        converter = self.create_test_converter(
+            InvokeFrom.SERVICE_API, workflow_contexts=workflow_contexts, tool_providers=tool_providers
+        )
 
         # Test iteration start event
         large_value = {"iteration_input": ["x"] * 2000}
@@ -812,9 +847,11 @@ class TestWorkflowResponseConverterServiceApiTruncation:
         assert response.data.inputs == large_value
         assert not response.data.inputs_truncated
 
-    def test_service_api_loop_events_no_truncation(self):
+    def test_service_api_loop_events_no_truncation(self, *, workflow_contexts, tool_providers):
         """Test that Service API doesn't truncate loop events."""
-        converter = self.create_test_converter(InvokeFrom.SERVICE_API)
+        converter = self.create_test_converter(
+            InvokeFrom.SERVICE_API, workflow_contexts=workflow_contexts, tool_providers=tool_providers
+        )
 
         # Test loop start event
         large_inputs = {"loop_input": ["x"] * 2000}
@@ -840,9 +877,11 @@ class TestWorkflowResponseConverterServiceApiTruncation:
         assert response.data.inputs == large_inputs
         assert not response.data.inputs_truncated
 
-    def test_web_app_node_finish_event_truncation_works(self):
+    def test_web_app_node_finish_event_truncation_works(self, *, workflow_contexts, tool_providers):
         """Test that web app still truncates node finish events."""
-        converter = self.create_test_converter(InvokeFrom.WEB_APP)
+        converter = self.create_test_converter(
+            InvokeFrom.WEB_APP, workflow_contexts=workflow_contexts, tool_providers=tool_providers
+        )
 
         # Create test event with large data that should be truncated
         large_inputs = {"input1": ["x"] * 2000}

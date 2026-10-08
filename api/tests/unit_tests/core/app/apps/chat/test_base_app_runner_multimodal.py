@@ -7,17 +7,39 @@ import pytest
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from core.app.apps.base_app_runner import AppRunner
 from core.app.entities.app_invoke_entities import InvokeFrom
 from graphon.file import FileTransferMethod, FileType
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 from models.enums import CreatorUserRole
 from models.model import MessageFile
 from models.tools import ToolFile
+from services.app.generation.adapters.base_runner import AppRunner
+from tests.unit_tests.model_factories import make_app, make_conversation, make_message
 
 
 class TestBaseAppRunnerMultimodal:
     """Test that BaseAppRunner correctly handles multimodal image content."""
+
+    @pytest.fixture(autouse=True)
+    def message_owner(self, sqlite_session, mock_tenant_id, mock_message_id):
+        sqlite_session.add_all(
+            [
+                make_app(tenant_id=mock_tenant_id),
+                make_conversation(inputs={}, from_source="api"),
+                make_message(
+                    message_id=mock_message_id,
+                    inputs={},
+                    query="hi",
+                    answer="",
+                    message={},
+                    message_unit_price=0,
+                    answer_unit_price=0,
+                    currency="USD",
+                    from_source="api",
+                ),
+            ]
+        )
+        sqlite_session.commit()
 
     @pytest.fixture
     def mock_user_id(self):
@@ -63,6 +85,8 @@ class TestBaseAppRunnerMultimodal:
         mock_queue_manager,
         tool_file,
         sqlite_session: Session,
+        *,
+        app_records,
     ):
         """Test handling image from URL."""
         # Arrange
@@ -73,14 +97,15 @@ class TestBaseAppRunnerMultimodal:
             mime_type="image/png",
         )
 
-        with patch("core.app.apps.base_app_runner.ToolFileManager", autospec=True) as mock_mgr_class:
+        with patch("services.app.generation.adapters.base_runner.ToolFileManager", autospec=True) as mock_mgr_class:
             # Setup mock tool file manager
             mock_mgr = MagicMock()
             mock_mgr.create_file_by_url.return_value = tool_file
             mock_mgr_class.return_value = mock_mgr
 
-            message_file_id = AppRunner()._handle_multimodal_image_content(
-                session=sqlite_session,
+            message_file_id = AppRunner(
+                records=app_records,
+            )._handle_multimodal_image_content(
                 content=content,
                 message_id=mock_message_id,
                 user_id=mock_user_id,
@@ -112,6 +137,8 @@ class TestBaseAppRunnerMultimodal:
         mock_queue_manager,
         tool_file,
         sqlite_session: Session,
+        *,
+        app_records,
     ):
         """Test handling image from base64 data."""
         # Arrange
@@ -127,14 +154,15 @@ class TestBaseAppRunnerMultimodal:
             mime_type="image/png",
         )
 
-        with patch("core.app.apps.base_app_runner.ToolFileManager", autospec=True) as mock_mgr_class:
+        with patch("services.app.generation.adapters.base_runner.ToolFileManager", autospec=True) as mock_mgr_class:
             # Setup mock tool file manager
             mock_mgr = MagicMock()
             mock_mgr.create_file_by_raw.return_value = tool_file
             mock_mgr_class.return_value = mock_mgr
 
-            message_file_id = AppRunner()._handle_multimodal_image_content(
-                session=sqlite_session,
+            message_file_id = AppRunner(
+                records=app_records,
+            )._handle_multimodal_image_content(
                 content=content,
                 message_id=mock_message_id,
                 user_id=mock_user_id,
@@ -162,6 +190,8 @@ class TestBaseAppRunnerMultimodal:
         mock_queue_manager,
         tool_file,
         sqlite_session: Session,
+        *,
+        app_records,
     ):
         """Test handling image from base64 data with URI prefix."""
         # Arrange
@@ -175,14 +205,15 @@ class TestBaseAppRunnerMultimodal:
             mime_type="image/png",
         )
 
-        with patch("core.app.apps.base_app_runner.ToolFileManager", autospec=True) as mock_mgr_class:
+        with patch("services.app.generation.adapters.base_runner.ToolFileManager", autospec=True) as mock_mgr_class:
             # Setup mock tool file manager
             mock_mgr = MagicMock()
             mock_mgr.create_file_by_raw.return_value = tool_file
             mock_mgr_class.return_value = mock_mgr
 
-            message_file_id = AppRunner()._handle_multimodal_image_content(
-                session=sqlite_session,
+            message_file_id = AppRunner(
+                records=app_records,
+            )._handle_multimodal_image_content(
                 content=content,
                 message_id=mock_message_id,
                 user_id=mock_user_id,
@@ -196,12 +227,7 @@ class TestBaseAppRunnerMultimodal:
         assert sqlite_session.get(MessageFile, message_file_id) is not None
 
     def test_handle_multimodal_image_content_without_url_or_base64(
-        self,
-        mock_user_id,
-        mock_tenant_id,
-        mock_message_id,
-        mock_queue_manager,
-        sqlite_session: Session,
+        self, mock_user_id, mock_tenant_id, mock_message_id, mock_queue_manager, sqlite_session: Session, *, app_records
     ):
         """Test handling image content without URL or base64 data."""
         # Arrange
@@ -212,9 +238,10 @@ class TestBaseAppRunnerMultimodal:
             mime_type="image/png",
         )
 
-        with patch("core.app.apps.base_app_runner.ToolFileManager", autospec=True) as mock_mgr_class:
-            result = AppRunner()._handle_multimodal_image_content(
-                session=sqlite_session,
+        with patch("services.app.generation.adapters.base_runner.ToolFileManager", autospec=True) as mock_mgr_class:
+            result = AppRunner(
+                records=app_records,
+            )._handle_multimodal_image_content(
                 content=content,
                 message_id=mock_message_id,
                 user_id=mock_user_id,
@@ -228,12 +255,7 @@ class TestBaseAppRunnerMultimodal:
         mock_queue_manager.publish.assert_not_called()
 
     def test_handle_multimodal_image_content_with_error(
-        self,
-        mock_user_id,
-        mock_tenant_id,
-        mock_message_id,
-        mock_queue_manager,
-        sqlite_session: Session,
+        self, mock_user_id, mock_tenant_id, mock_message_id, mock_queue_manager, sqlite_session: Session, *, app_records
     ):
         """Test handling image content when an error occurs."""
         # Arrange
@@ -244,13 +266,14 @@ class TestBaseAppRunnerMultimodal:
             mime_type="image/png",
         )
 
-        with patch("core.app.apps.base_app_runner.ToolFileManager", autospec=True) as mock_mgr_class:
+        with patch("services.app.generation.adapters.base_runner.ToolFileManager", autospec=True) as mock_mgr_class:
             mock_mgr = MagicMock()
             mock_mgr.create_file_by_url.side_effect = Exception("Network error")
             mock_mgr_class.return_value = mock_mgr
 
-            result = AppRunner()._handle_multimodal_image_content(
-                session=sqlite_session,
+            result = AppRunner(
+                records=app_records,
+            )._handle_multimodal_image_content(
                 content=content,
                 message_id=mock_message_id,
                 user_id=mock_user_id,
@@ -270,6 +293,8 @@ class TestBaseAppRunnerMultimodal:
         mock_queue_manager,
         tool_file,
         sqlite_session: Session,
+        *,
+        app_records,
     ):
         """Test that debugger mode sets correct created_by_role."""
         # Arrange
@@ -281,13 +306,14 @@ class TestBaseAppRunnerMultimodal:
         )
         mock_queue_manager.invoke_from = InvokeFrom.DEBUGGER
 
-        with patch("core.app.apps.base_app_runner.ToolFileManager", autospec=True) as mock_mgr_class:
+        with patch("services.app.generation.adapters.base_runner.ToolFileManager", autospec=True) as mock_mgr_class:
             mock_mgr = MagicMock()
             mock_mgr.create_file_by_url.return_value = tool_file
             mock_mgr_class.return_value = mock_mgr
 
-            message_file_id = AppRunner()._handle_multimodal_image_content(
-                session=sqlite_session,
+            message_file_id = AppRunner(
+                records=app_records,
+            )._handle_multimodal_image_content(
                 content=content,
                 message_id=mock_message_id,
                 user_id=mock_user_id,
@@ -307,6 +333,8 @@ class TestBaseAppRunnerMultimodal:
         mock_queue_manager,
         tool_file,
         sqlite_session: Session,
+        *,
+        app_records,
     ):
         """Test that service API mode sets correct created_by_role."""
         # Arrange
@@ -318,13 +346,14 @@ class TestBaseAppRunnerMultimodal:
         )
         mock_queue_manager.invoke_from = InvokeFrom.SERVICE_API
 
-        with patch("core.app.apps.base_app_runner.ToolFileManager", autospec=True) as mock_mgr_class:
+        with patch("services.app.generation.adapters.base_runner.ToolFileManager", autospec=True) as mock_mgr_class:
             mock_mgr = MagicMock()
             mock_mgr.create_file_by_url.return_value = tool_file
             mock_mgr_class.return_value = mock_mgr
 
-            message_file_id = AppRunner()._handle_multimodal_image_content(
-                session=sqlite_session,
+            message_file_id = AppRunner(
+                records=app_records,
+            )._handle_multimodal_image_content(
                 content=content,
                 message_id=mock_message_id,
                 user_id=mock_user_id,

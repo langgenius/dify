@@ -4,8 +4,8 @@ from types import SimpleNamespace
 import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
-from core.workflow.node_factory import DifyNodeFactory
 from graphon.enums import BuiltinNodeTypes
+from services.workflow.execution.adapters.node_factory import DifyNodeFactory
 
 
 class DummyNode:
@@ -59,7 +59,7 @@ class TestDifyNodeFactory:
     @staticmethod
     def _stub_node_resolution(monkeypatch: pytest.MonkeyPatch, node_class):
         monkeypatch.setattr(
-            "core.workflow.node_factory.resolve_workflow_node_class",
+            "services.workflow.execution.adapters.node_factory.resolve_workflow_node_class",
             lambda **_kwargs: node_class,
         )
 
@@ -85,7 +85,9 @@ class TestDifyNodeFactory:
 
     def test_create_node_missing_mapping(self, monkeypatch: pytest.MonkeyPatch):
         factory = self._factory()
-        monkeypatch.setattr("core.workflow.node_factory.get_node_type_classes_mapping", lambda: {})
+        monkeypatch.setattr(
+            "services.workflow.execution.adapters.node_factory.get_node_type_classes_mapping", lambda: {}
+        )
 
         with pytest.raises(ValueError):
             factory.create_node({"id": "node-1", "data": {"type": BuiltinNodeTypes.START}})
@@ -93,10 +95,10 @@ class TestDifyNodeFactory:
     def test_create_node_missing_latest_class(self, monkeypatch: pytest.MonkeyPatch):
         factory = self._factory()
         monkeypatch.setattr(
-            "core.workflow.node_factory.get_node_type_classes_mapping",
+            "services.workflow.execution.adapters.node_factory.get_node_type_classes_mapping",
             lambda: {BuiltinNodeTypes.START: {"1": None}},
         )
-        monkeypatch.setattr("core.workflow.node_factory.LATEST_VERSION", "latest")
+        monkeypatch.setattr("services.workflow.execution.adapters.node_factory.LATEST_VERSION", "latest")
 
         with pytest.raises(ValueError):
             factory.create_node({"id": "node-1", "data": {"type": BuiltinNodeTypes.START}})
@@ -112,7 +114,9 @@ class TestDifyNodeFactory:
             selected_versions.append(("snapshot", "called"))
             return {BuiltinNodeTypes.START: {"1": DummyNode, "2": DummyNodeV2}}
 
-        monkeypatch.setattr("core.workflow.node_factory.get_node_type_classes_mapping", _get_mapping)
+        monkeypatch.setattr(
+            "services.workflow.execution.adapters.node_factory.get_node_type_classes_mapping", _get_mapping
+        )
 
         node = factory.create_node({"id": "node-1", "data": {"type": BuiltinNodeTypes.START, "version": "2"}})
 
@@ -147,14 +151,15 @@ class TestDifyNodeFactory:
         assert isinstance(node, DummyHttpRequestNode)
         assert "http_request_config" in node.kwargs
 
-    def test_create_node_knowledge_retrieval_branch(self, monkeypatch: pytest.MonkeyPatch):
+    def test_create_node_knowledge_retrieval_branch(self, monkeypatch: pytest.MonkeyPatch, workflow_runtime):
         factory = self._factory()
+        factory._workflow_runtime = workflow_runtime
         self._stub_node_resolution(monkeypatch, DummyKnowledgeRetrievalNode)
 
         node = factory.create_node({"id": "node-1", "data": {"type": BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL}})
 
         assert isinstance(node, DummyKnowledgeRetrievalNode)
-        assert node.kwargs == {}
+        assert "retrieval" in node.kwargs
 
     def test_create_node_document_extractor_branch(self, monkeypatch: pytest.MonkeyPatch):
         factory = self._factory()

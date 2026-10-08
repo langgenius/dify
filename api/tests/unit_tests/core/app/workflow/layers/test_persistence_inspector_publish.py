@@ -22,8 +22,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from core.app.workflow.layers import persistence as persistence_mod
-from core.app.workflow.layers.persistence import WorkflowPersistenceLayer
+from services.workflow.execution.adapters import persistence as persistence_mod
+from services.workflow.execution.adapters.persistence import WorkflowPersistenceLayer
 
 
 @pytest.fixture

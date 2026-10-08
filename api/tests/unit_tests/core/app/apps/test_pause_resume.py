@@ -6,14 +6,9 @@ from types import ModuleType, SimpleNamespace
 from typing import Any
 
 from pytest_mock import MockerFixture
-from sqlalchemy.orm import Session
 
 import models.human_input_entities  # noqa: F401
-from core.app.apps.advanced_chat import app_generator as adv_app_gen_module
-from core.app.apps.workflow import app_generator as wf_app_gen_module
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.workflow import node_factory as node_factory_module
-from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.system_variables import build_system_variables
 from graphon.entities import WorkflowStartReason
 from graphon.entities.base_node_data import BaseNodeData, RetryConfig
@@ -39,6 +34,11 @@ from models.account import Account
 from models.enums import ConversationFromSource
 from models.model import App, AppMode, Conversation, Message
 from models.workflow import Workflow, WorkflowType
+from services.workflow.execution.adapters import node_factory as node_factory_module
+from services.workflow.execution.adapters.chatflow import app_generator as adv_app_gen_module
+from services.workflow.execution.adapters.node_factory import DifyNodeFactory
+from services.workflow.execution.adapters.workflow import app_generator as wf_app_gen_module
+from services.workflow.execution.ports import WorkflowRuntime
 from tests.workflow_test_utils import build_test_graph_init_params
 
 if "core.ops.ops_trace_manager" not in sys.modules:
@@ -271,7 +271,7 @@ def _node_successes(events: list[GraphEngineEvent]) -> list[str]:
     return [evt.node_id for evt in events if isinstance(evt, NodeRunSucceededEvent)]
 
 
-def test_workflow_app_pause_resume_matches_baseline(mocker: MockerFixture):
+def test_workflow_app_pause_resume_matches_baseline(mocker: MockerFixture, *, workflow_runtime: WorkflowRuntime):
     _patch_tool_node(mocker)
 
     baseline_state = _build_runtime_state("baseline")
@@ -288,7 +288,7 @@ def test_workflow_app_pause_resume_matches_baseline(mocker: MockerFixture):
 
     resumed_state = GraphRuntimeState.from_snapshot(snapshot)
 
-    generator = wf_app_gen_module.WorkflowAppGenerator()
+    generator = wf_app_gen_module.WorkflowAppGenerator(runtime=workflow_runtime)
 
     def _fake_generate(**kwargs):
         state: GraphRuntimeState = kwargs["graph_runtime_state"]
@@ -315,7 +315,7 @@ def test_workflow_app_pause_resume_matches_baseline(mocker: MockerFixture):
     assert resumed_state.outputs == baseline_outputs
 
 
-def test_advanced_chat_pause_resume_matches_baseline(mocker: MockerFixture, unbound_session: Session):
+def test_advanced_chat_pause_resume_matches_baseline(mocker: MockerFixture, *, workflow_runtime: WorkflowRuntime):
     _patch_tool_node(mocker)
 
     baseline_state = _build_runtime_state("adv-baseline")
@@ -332,7 +332,7 @@ def test_advanced_chat_pause_resume_matches_baseline(mocker: MockerFixture, unbo
 
     resumed_state = GraphRuntimeState.from_snapshot(snapshot)
 
-    generator = adv_app_gen_module.AdvancedChatAppGenerator()
+    generator = adv_app_gen_module.AdvancedChatAppGenerator(runtime=workflow_runtime)
 
     def _fake_generate(**kwargs):
         state: GraphRuntimeState = kwargs["graph_runtime_state"]
@@ -347,7 +347,6 @@ def test_advanced_chat_pause_resume_matches_baseline(mocker: MockerFixture, unbo
         user=_make_account(),
         conversation=_make_conversation(),
         message=_make_message(),
-        session=unbound_session,
         application_generate_entity=SimpleNamespace(
             stream=False,
             invoke_from=InvokeFrom.SERVICE_API,

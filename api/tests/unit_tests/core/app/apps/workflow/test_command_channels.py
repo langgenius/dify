@@ -5,12 +5,12 @@ from unittest.mock import patch
 
 import pytest
 
-from core.app.apps.workflow.command_channels import (
+from graphon.graph_engine.entities.commands import AbortCommand, PauseCommand
+from services.workflow.execution.adapters.workflow.command_channels import (
     CelerySignalCommandChannel,
     CombinedCommandChannel,
     StopFlagCommandChannel,
 )
-from graphon.graph_engine.entities.commands import AbortCommand, PauseCommand
 
 
 class _CommandChannelStub:
@@ -100,10 +100,14 @@ def test_celery_signal_command_channel_emits_abort_once_per_instance() -> None:
 def test_stop_flag_command_channel_emits_abort_when_flag_is_set() -> None:
     channel = StopFlagCommandChannel(task_id="task-1", abort_reason="User requested stop")
 
-    with patch("core.app.apps.workflow.command_channels.is_app_task_stop_flag_set", return_value=False):
+    with patch(
+        "services.workflow.execution.adapters.workflow.command_channels.is_app_task_stop_flag_set", return_value=False
+    ):
         assert channel.fetch_commands() == []
 
-    with patch("core.app.apps.workflow.command_channels.is_app_task_stop_flag_set", return_value=True):
+    with patch(
+        "services.workflow.execution.adapters.workflow.command_channels.is_app_task_stop_flag_set", return_value=True
+    ):
         commands = channel.fetch_commands()
 
     assert len(commands) == 1
@@ -114,6 +118,8 @@ def test_stop_flag_command_channel_emits_abort_when_flag_is_set() -> None:
 def test_stop_flag_command_channel_emits_abort_once_per_instance() -> None:
     channel = StopFlagCommandChannel(task_id="task-1")
 
-    with patch("core.app.apps.workflow.command_channels.is_app_task_stop_flag_set", return_value=True):
+    with patch(
+        "services.workflow.execution.adapters.workflow.command_channels.is_app_task_stop_flag_set", return_value=True
+    ):
         assert len(channel.fetch_commands()) == 1
         assert channel.fetch_commands() == []

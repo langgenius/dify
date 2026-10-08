@@ -1,14 +1,14 @@
 from types import SimpleNamespace
 
-from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.system_variables import build_system_variables
 from graphon.entities import WorkflowStartReason
 from graphon.runtime import GraphRuntimeState, VariablePool
 from models.account import Account
+from services.workflow.execution.adapters.response_converter import WorkflowResponseConverter
 
 
-def _build_converter() -> WorkflowResponseConverter:
+def _build_converter(*, workflow_contexts, tool_providers) -> WorkflowResponseConverter:
     """Construct a minimal WorkflowResponseConverter for testing."""
     system_variables = build_system_variables(
         files=[],
@@ -30,14 +30,16 @@ def _build_converter() -> WorkflowResponseConverter:
     account = Account(name="tester", email="tester@example.com")
     account.id = "acc-1"
     return WorkflowResponseConverter(
+        contexts=workflow_contexts,
         application_generate_entity=app_entity,
         user=account,
         system_variables=system_variables,
+        tool_providers=tool_providers,
     )
 
 
-def test_workflow_start_stream_response_carries_resumption_reason():
-    converter = _build_converter()
+def test_workflow_start_stream_response_carries_resumption_reason(*, workflow_contexts, tool_providers):
+    converter = _build_converter(workflow_contexts=workflow_contexts, tool_providers=tool_providers)
     resp = converter.workflow_start_to_stream_response(
         task_id="task-1",
         workflow_run_id="run-1",
@@ -47,8 +49,8 @@ def test_workflow_start_stream_response_carries_resumption_reason():
     assert resp.data.reason is WorkflowStartReason.RESUMPTION
 
 
-def test_workflow_start_stream_response_carries_initial_reason():
-    converter = _build_converter()
+def test_workflow_start_stream_response_carries_initial_reason(*, workflow_contexts, tool_providers):
+    converter = _build_converter(workflow_contexts=workflow_contexts, tool_providers=tool_providers)
     resp = converter.workflow_start_to_stream_response(
         task_id="task-1",
         workflow_run_id="run-1",

@@ -3,13 +3,13 @@ from unittest.mock import Mock
 
 import pytest
 
-from core.app.workflow.layers.persistence import (
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus, WorkflowType
+from graphon.node_events import NodeRunResult
+from services.workflow.execution.adapters.persistence import (
     PersistenceWorkflowInfo,
     WorkflowPersistenceLayer,
     _NodeRuntimeSnapshot,
 )
-from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus, WorkflowType
-from graphon.node_events import NodeRunResult
 
 
 def _build_layer() -> WorkflowPersistenceLayer:
@@ -48,7 +48,9 @@ def test_update_node_execution_prefers_event_finished_at(monkeypatch: pytest.Mon
 
     event_finished_at = datetime(2024, 1, 1, 0, 0, 2, tzinfo=UTC).replace(tzinfo=None)
     delayed_processing_time = datetime(2024, 1, 1, 0, 0, 10, tzinfo=UTC).replace(tzinfo=None)
-    monkeypatch.setattr("core.app.workflow.layers.persistence.naive_utc_now", lambda: delayed_processing_time)
+    monkeypatch.setattr(
+        "services.workflow.execution.adapters.persistence.naive_utc_now", lambda: delayed_processing_time
+    )
 
     layer._update_node_execution(
         node_execution,

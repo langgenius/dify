@@ -9,17 +9,18 @@ from datetime import datetime
 from unittest.mock import Mock, patch
 
 import pytest
-from sqlalchemy.engine import Engine
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 
 from core.app.entities.task_entities import MessageEndStreamResponse
-from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from extensions.storage.storage_type import StorageType
 from graphon.file import FileTransferMethod, FileType
 from models.enums import CreatorUserRole
-from models.model import MessageFile, UploadFile
+from models.model import App, Conversation, Message, MessageFile, UploadFile
+from services.app.generation.adapters.message_pipeline import EasyUIBasedGenerateTaskPipeline
+from services.app.generation.ports import MessageIdentity
+from tests.unit_tests.model_factories import make_app, make_conversation, make_message
 
-SQLITE_MODELS = (MessageFile, UploadFile)
+SQLITE_MODELS = (App, Conversation, Message, MessageFile, UploadFile)
 pytestmark = [
     pytest.mark.usefixtures("sqlite_session"),
     pytest.mark.parametrize("sqlite_session", [SQLITE_MODELS], indirect=True),
@@ -29,19 +30,32 @@ pytestmark = [
 class TestMessageEndStreamResponseFiles:
     """Verify message-end file payloads from actual ORM query results."""
 
-    @pytest.fixture(autouse=True)
-    def bind_sqlite_engine(self, sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Bind sessions opened by the pipeline to the per-test SQLite engine."""
-
-        sqlite_session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
-        monkeypatch.setattr("core.db.session_factory._session_maker", sqlite_session_maker)
-
     @pytest.fixture
-    def mock_pipeline(self) -> Mock:
+    def mock_pipeline(self, app_records, sqlite_session: Session) -> Mock:
         """Create the minimal pipeline collaborator required by the method under test."""
 
         pipeline = Mock(spec=EasyUIBasedGenerateTaskPipeline)
         pipeline._message_id = str(uuid.uuid4())
+        pipeline._records = app_records
+        pipeline._identity = MessageIdentity("tenant-1", "app-1", "conversation-1", pipeline._message_id)
+        sqlite_session.add_all(
+            [
+                make_app(),
+                make_conversation(inputs={}, from_source="api"),
+                make_message(
+                    message_id=pipeline._message_id,
+                    inputs={},
+                    query="hello",
+                    message={},
+                    answer="",
+                    message_unit_price=0,
+                    answer_unit_price=0,
+                    currency="USD",
+                    from_source="api",
+                ),
+            ]
+        )
+        sqlite_session.commit()
         pipeline._task_state = Mock()
         pipeline._task_state.metadata = Mock()
         pipeline._task_state.metadata.model_dump = Mock(return_value={"test": "metadata"})
@@ -100,7 +114,7 @@ class TestMessageEndStreamResponseFiles:
         """Create upload metadata matching the local message-file reference."""
 
         upload = UploadFile(
-            tenant_id=str(uuid.uuid4()),
+            tenant_id="tenant-1",
             storage_type=StorageType.LOCAL,
             key="uploads/test_image.png",
             name="test_image.png",
