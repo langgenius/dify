@@ -14,7 +14,12 @@ import sqlalchemy as sa
 from sqlalchemy import func, select, tuple_
 from sqlalchemy.orm import Session, scoped_session
 
-from core.app.file_access import DatabaseFileAccessController
+from core.app.file_access import (
+    DatabaseFileAccessController,
+    get_current_file_access_scope,
+    grant_retriever_segment_access,
+    grant_upload_file_access,
+)
 from core.rag.entities import ParentMode, Rule
 from models.account import Account
 from models.dataset import (
@@ -569,10 +574,13 @@ def get_pipeline_template_creator_name(template: PipelineCustomizedTemplate, ses
     return ""
 
 
-def get_pipeline_dataset(pipeline: Pipeline, session: Session | scoped_session) -> Dataset | None:
-    return session.scalar(
-        select(Dataset).where(Dataset.pipeline_id == pipeline.id, Dataset.tenant_id == pipeline.tenant_id)
-    )
+def get_pipeline_dataset(
+    pipeline: Pipeline, session: Session | scoped_session, *, for_update: bool = False
+) -> Dataset | None:
+    statement = select(Dataset).where(Dataset.pipeline_id == pipeline.id, Dataset.tenant_id == pipeline.tenant_id)
+    if for_update:
+        statement = statement.with_for_update().execution_options(populate_existing=True)
+    return session.scalar(statement)
 
 
 @dataclass(frozen=True)
@@ -753,3 +761,42 @@ def _load_external_knowledge_infos(
         if info is not None:
             infos[(binding.dataset_id, binding.tenant_id)] = info
     return infos
+
+
+def get_datasets_by_ids(
+    tenant_id: str,
+    dataset_ids: Sequence[str],
+    *,
+    session: Session,
+    accessible_dataset_ids: Sequence[str] | None = None,
+    maintainer_id: str | None = None,
+) -> list[Dataset]:
+    """Materialize owner-scoped datasets with optional access and maintainer filters."""
+    if not dataset_ids:
+        return []
+    stmt = select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id.in_(dataset_ids))
+    if accessible_dataset_ids is not None:
+        accessible = Dataset.id.in_(accessible_dataset_ids)
+        if maintainer_id is not None:
+            accessible = sa.or_(accessible, Dataset.maintainer == maintainer_id)
+        stmt = stmt.where(accessible)
+    return list(session.scalars(stmt))
+
+
+def authorize_retrieved_segment(
+    segment: DocumentSegment, *, tenant_id: str, dataset_ids: Sequence[str], session: Session
+) -> Sequence[UploadFile] | None:
+    """Authorize the owner chain and attachments before content links are signed.
+
+    A valid segment with no attachments returns an empty sequence; an invalid
+    retrieval result returns None and must not be included in the response.
+    """
+    scope = get_current_file_access_scope()
+    if scope is not None and scope.tenant_id != tenant_id:
+        return None
+    if not is_retrieved_segment_owned(segment, tenant_id=tenant_id, dataset_ids=dataset_ids, session=session):
+        return None
+    attachments = get_segment_attachment_files(segment, session=session)
+    grant_retriever_segment_access([segment.id])
+    grant_upload_file_access(file.id for file in attachments)
+    return attachments

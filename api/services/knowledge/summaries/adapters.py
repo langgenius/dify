@@ -27,6 +27,7 @@ from models.dataset import Document as DatasetDocument
 from models.enums import SummaryStatus
 from repositories.knowledge.dataset_read_repository import get_segment_document
 from repositories.knowledge.summary_repository import SQLAlchemySummaryRepository
+from repositories.knowledge.vector_configuration_repository import resolve_vector_configuration
 from services.knowledge.resource_scope import DatasetRef
 from services.knowledge.summaries.application import SummaryIndexService, SummaryVectorInput, SummaryVectorResult
 
@@ -36,8 +37,8 @@ logger = logging.getLogger(__name__)
 def _delete_summary_vectors(dataset: Dataset, node_ids: list[str], *, session: Session) -> None:
     # Legacy callers own this transaction; committing here breaks session.begin().
     # Document cleanup tasks materialize their inputs before deleting external indexes.
-    vector_type = Vector.resolve_vector_type(dataset, session=session)
-    Vector(dataset, session=None, vector_type=vector_type).delete_by_ids(node_ids)
+    vector_configuration = resolve_vector_configuration(dataset, session=session)
+    Vector(dataset, session=None, configuration=vector_configuration).delete_by_ids(node_ids)
 
 
 class SummaryEntryDict(TypedDict):
@@ -241,10 +242,10 @@ class SummaryIndexAdapter:
             )
             if owned_dataset is None or owned_segment is None or owned_document is None:
                 raise LookupError("Summary segment no longer exists in this dataset")
-            vector_type = (
-                Vector.resolve_vector_type(owned_dataset, session=read_session) if vector_factory is None else None
+            vector_configuration = (
+                resolve_vector_configuration(owned_dataset, session=read_session) if vector_factory is None else None
             )
-        factory = vector_factory or (lambda: Vector(owned_dataset, session=None, vector_type=vector_type))
+        factory = vector_factory or (lambda: Vector(owned_dataset, session=None, configuration=vector_configuration))
         service = SummaryIndexService(
             store=SQLAlchemySummaryRepository(new_session=create_session),
             vectors=SummaryVectorGateway(owned_dataset, factory),

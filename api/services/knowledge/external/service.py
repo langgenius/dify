@@ -19,6 +19,7 @@ from models.dataset import (
     ExternalKnowledgeApis,
     ExternalKnowledgeBindings,
 )
+from repositories.knowledge.external_retrieval_repository import prepare_external_retrieval
 from services.enterprise import rbac_service as enterprise_rbac_service
 from services.entities.external_knowledge_entities.external_knowledge_entities import (
     Authorization,
@@ -358,63 +359,10 @@ class ExternalDatasetService:
         the inner knowledge retrieval API—can consistently expose
         ``502 external_knowledge_failed``.
         """
-        request = ExternalDatasetService.prepare_external_knowledge_retrieval(
+        request = prepare_external_retrieval(
             tenant_id, dataset_id, query, external_retrieval_parameters, metadata_condition, session=session
         )
         return ExternalDatasetService.execute_external_knowledge_retrieval(request)
-
-    @staticmethod
-    def prepare_external_knowledge_retrieval(
-        tenant_id: str,
-        dataset_id: str,
-        query: str,
-        external_retrieval_parameters: dict[str, Any],
-        metadata_condition: MetadataFilteringCondition | None = None,
-        *,
-        session: Session,
-    ) -> ExternalKnowledgeApiSetting:
-        """Resolve owned configuration into a request that outlives the read session."""
-        external_knowledge_binding = session.scalar(
-            select(ExternalKnowledgeBindings)
-            .where(ExternalKnowledgeBindings.dataset_id == dataset_id, ExternalKnowledgeBindings.tenant_id == tenant_id)
-            .limit(1)
-        )
-        if not external_knowledge_binding:
-            raise ExternalKnowledgeRetrievalError("external knowledge binding not found")
-
-        external_knowledge_api = session.scalar(
-            select(ExternalKnowledgeApis)
-            .where(
-                ExternalKnowledgeApis.id == external_knowledge_binding.external_knowledge_api_id,
-                ExternalKnowledgeApis.tenant_id == tenant_id,
-            )
-            .limit(1)
-        )
-        if external_knowledge_api is None or external_knowledge_api.settings is None:
-            raise ExternalKnowledgeRetrievalError("external api template not found")
-
-        settings = json.loads(external_knowledge_api.settings)
-        headers = {"Content-Type": "application/json"}
-        if settings.get("api_key"):
-            headers["Authorization"] = f"Bearer {settings.get('api_key')}"
-        score_threshold_enabled = external_retrieval_parameters.get("score_threshold_enabled") or False
-        score_threshold = external_retrieval_parameters.get("score_threshold", 0.0) if score_threshold_enabled else 0.0
-        request_params = {
-            "retrieval_setting": {
-                "top_k": external_retrieval_parameters.get("top_k"),
-                "score_threshold": score_threshold,
-            },
-            "query": query,
-            "knowledge_id": external_knowledge_binding.external_knowledge_id,
-            "metadata_condition": metadata_condition.model_dump() if metadata_condition else None,
-        }
-
-        return ExternalKnowledgeApiSetting(
-            url=f"{settings.get('endpoint')}/retrieval",
-            request_method="post",
-            headers=headers,
-            params=request_params,
-        )
 
     @staticmethod
     def execute_external_knowledge_retrieval(request: ExternalKnowledgeApiSetting) -> list[Any]:

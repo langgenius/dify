@@ -1,3 +1,5 @@
+from repositories.knowledge.external_retrieval_repository import prepare_external_retrieval
+
 """External knowledge persistence and network adapters with bounded sessions."""
 
 from collections.abc import Mapping
@@ -127,7 +129,7 @@ class SQLAlchemyExternalKnowledgeOperations:
             dataset = require_dataset(session, ref)
             if dataset.provider != "external":
                 return {"query": {"content": query}, "records": []}
-            request = ExternalDatasetService.prepare_external_knowledge_retrieval(
+            request = prepare_external_retrieval(
                 tenant_id=ref.tenant_id,
                 dataset_id=ref.dataset_id,
                 query=HitTestingService.escape_query_for_search(query),

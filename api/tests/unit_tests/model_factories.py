@@ -487,3 +487,11 @@ __all__ = [
     "make_upload_file",
     "make_workflow",
 ]
+
+
+def upload_reader(sessions, tenant_id="00000000-0000-0000-0000-000000000001"):
+    from functools import partial
+
+    from repositories.knowledge.upload_file_repository import SQLAlchemyKnowledgeUploadRepository
+
+    return partial(SQLAlchemyKnowledgeUploadRepository(session_factory=sessions).get_by_id, workspace_id=tenant_id)

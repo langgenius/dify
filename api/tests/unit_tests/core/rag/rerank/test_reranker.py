@@ -1,3 +1,7 @@
+from sqlalchemy.orm import sessionmaker
+
+from tests.unit_tests.model_factories import upload_reader
+
 """Comprehensive unit tests for Reranker functionality.
 
 This test module covers all aspects of the reranking system including:
@@ -76,7 +80,10 @@ class TestRerankModelRunner(_UsesSQLiteSession):
     @pytest.fixture
     def rerank_runner(self, mock_model_instance):
         """Create a RerankModelRunner with mocked model instance."""
-        return RerankModelRunner(rerank_model_instance=mock_model_instance, session=self.session)
+        return RerankModelRunner(
+            rerank_model_instance=mock_model_instance,
+            load_upload=upload_reader(sessionmaker(bind=self.session.get_bind())),
+        )
 
     @pytest.fixture
     def sample_documents(self):
@@ -432,7 +439,10 @@ class TestRerankModelRunnerMultimodal(_UsesSQLiteSession):
 
     @pytest.fixture
     def rerank_runner(self, mock_model_instance):
-        return RerankModelRunner(rerank_model_instance=mock_model_instance, session=self.session)
+        return RerankModelRunner(
+            rerank_model_instance=mock_model_instance,
+            load_upload=upload_reader(sessionmaker(bind=self.session.get_bind())),
+        )
 
     def test_run_returns_original_documents_for_non_text_query_without_vision_support(
         self, rerank_runner, mock_model_instance
@@ -578,7 +588,6 @@ class TestRerankModelRunnerMultimodal(_UsesSQLiteSession):
         sqlite_session.add(upload_file)
         sqlite_session.commit()
         with (
-            patch.object(rerank_runner, "_session", sqlite_session),
             patch("core.rag.rerank.rerank_model.storage.load_once", return_value=b"query-image-bytes"),
         ):
             result, unique_documents = rerank_runner.fetch_multimodal_rerank(
@@ -1098,7 +1107,7 @@ class TestRerankRunnerFactory(_UsesSQLiteSession):
         runner = RerankRunnerFactory.create_rerank_runner(
             runner_type=RerankMode.RERANKING_MODEL,
             rerank_model_instance=mock_model_instance,
-            session=self.session,
+            load_upload=upload_reader(sessionmaker(bind=self.session.get_bind())),
         )
 
         # Assert: Correct runner type is created
@@ -1161,7 +1170,7 @@ class TestRerankRunnerFactory(_UsesSQLiteSession):
         runner = RerankRunnerFactory.create_rerank_runner(
             runner_type=RerankMode.RERANKING_MODEL.value,
             rerank_model_instance=mock_model_instance,
-            session=self.session,
+            load_upload=upload_reader(sessionmaker(bind=self.session.get_bind())),
         )
 
         # Assert: Runner is created successfully
@@ -1219,7 +1228,7 @@ class TestRerankIntegration(_UsesSQLiteSession):
         runner = RerankRunnerFactory.create_rerank_runner(
             runner_type=RerankMode.RERANKING_MODEL,
             rerank_model_instance=mock_model_instance,
-            session=self.session,
+            load_upload=upload_reader(sessionmaker(bind=self.session.get_bind())),
         )
         result = runner.run(
             query="best programming language",
@@ -1260,7 +1269,10 @@ class TestRerankIntegration(_UsesSQLiteSession):
             Document(page_content="Low relevance", metadata={"doc_id": "doc3"}, provider="dify"),
         ]
 
-        runner = RerankModelRunner(rerank_model_instance=mock_model_instance, session=self.session)
+        runner = RerankModelRunner(
+            rerank_model_instance=mock_model_instance,
+            load_upload=upload_reader(sessionmaker(bind=self.session.get_bind())),
+        )
 
         # Act: Run reranking
         result = runner.run(query="test", documents=documents)
@@ -1315,7 +1327,10 @@ class TestRerankEdgeCases(_UsesSQLiteSession):
             ),
         ]
 
-        runner = RerankModelRunner(rerank_model_instance=mock_model_instance, session=self.session)
+        runner = RerankModelRunner(
+            rerank_model_instance=mock_model_instance,
+            load_upload=upload_reader(sessionmaker(bind=self.session.get_bind())),
+        )
 
         # Act: Run reranking
         result = runner.run(query="test", documents=documents)
@@ -1355,7 +1370,10 @@ class TestRerankEdgeCases(_UsesSQLiteSession):
             Document(page_content="Negative score", metadata={"doc_id": "doc3"}, provider="dify"),
         ]
 
-        runner = RerankModelRunner(rerank_model_instance=mock_model_instance, session=self.session)
+        runner = RerankModelRunner(
+            rerank_model_instance=mock_model_instance,
+            load_upload=upload_reader(sessionmaker(bind=self.session.get_bind())),
+        )
 
         # Act: Run reranking with zero threshold
         result = runner.run(query="test", documents=documents, score_threshold=0.0)
@@ -1391,7 +1409,10 @@ class TestRerankEdgeCases(_UsesSQLiteSession):
             Document(page_content="Perfect 3", metadata={"doc_id": "doc3"}, provider="dify"),
         ]
 
-        runner = RerankModelRunner(rerank_model_instance=mock_model_instance, session=self.session)
+        runner = RerankModelRunner(
+            rerank_model_instance=mock_model_instance,
+            load_upload=upload_reader(sessionmaker(bind=self.session.get_bind())),
+        )
 
         # Act: Run reranking
         result = runner.run(query="test", documents=documents)
@@ -1432,7 +1453,10 @@ class TestRerankEdgeCases(_UsesSQLiteSession):
             ),
         ]
 
-        runner = RerankModelRunner(rerank_model_instance=mock_model_instance, session=self.session)
+        runner = RerankModelRunner(
+            rerank_model_instance=mock_model_instance,
+            load_upload=upload_reader(sessionmaker(bind=self.session.get_bind())),
+        )
 
         # Act: Run reranking
         result = runner.run(query="test 测试", documents=documents)
@@ -1470,7 +1494,10 @@ class TestRerankEdgeCases(_UsesSQLiteSession):
             ),
         ]
 
-        runner = RerankModelRunner(rerank_model_instance=mock_model_instance, session=self.session)
+        runner = RerankModelRunner(
+            rerank_model_instance=mock_model_instance,
+            load_upload=upload_reader(sessionmaker(bind=self.session.get_bind())),
+        )
 
         # Act: Run reranking
         result = runner.run(query="test", documents=documents)
@@ -1506,7 +1533,10 @@ class TestRerankEdgeCases(_UsesSQLiteSession):
             for i in range(num_docs)
         ]
 
-        runner = RerankModelRunner(rerank_model_instance=mock_model_instance, session=self.session)
+        runner = RerankModelRunner(
+            rerank_model_instance=mock_model_instance,
+            load_upload=upload_reader(sessionmaker(bind=self.session.get_bind())),
+        )
 
         # Act: Run reranking with top_n
         result = runner.run(query="test", documents=documents, top_n=10)
@@ -1596,7 +1626,10 @@ class TestRerankEdgeCases(_UsesSQLiteSession):
             ),
         ]
 
-        runner = RerankModelRunner(rerank_model_instance=mock_model_instance, session=self.session)
+        runner = RerankModelRunner(
+            rerank_model_instance=mock_model_instance,
+            load_upload=upload_reader(sessionmaker(bind=self.session.get_bind())),
+        )
 
         # Act: Run reranking with empty query
         result = runner.run(query="", documents=documents)
@@ -1642,7 +1675,10 @@ class TestRerankPerformance(_UsesSQLiteSession):
             for i in range(5)
         ]
 
-        runner = RerankModelRunner(rerank_model_instance=mock_model_instance, session=self.session)
+        runner = RerankModelRunner(
+            rerank_model_instance=mock_model_instance,
+            load_upload=upload_reader(sessionmaker(bind=self.session.get_bind())),
+        )
 
         # Act: Run reranking
         result = runner.run(query="test", documents=documents)
@@ -1747,7 +1783,10 @@ class TestRerankErrorHandling(_UsesSQLiteSession):
             ),
         ]
 
-        runner = RerankModelRunner(rerank_model_instance=mock_model_instance, session=self.session)
+        runner = RerankModelRunner(
+            rerank_model_instance=mock_model_instance,
+            load_upload=upload_reader(sessionmaker(bind=self.session.get_bind())),
+        )
 
         # Act & Assert: Exception is raised
         with pytest.raises(RuntimeError, match="Model invocation failed"):
@@ -1780,7 +1819,10 @@ class TestRerankErrorHandling(_UsesSQLiteSession):
             ),
         ]
 
-        runner = RerankModelRunner(rerank_model_instance=mock_model_instance, session=self.session)
+        runner = RerankModelRunner(
+            rerank_model_instance=mock_model_instance,
+            load_upload=upload_reader(sessionmaker(bind=self.session.get_bind())),
+        )
 
         # Act & Assert: Should raise IndexError or handle gracefully
         with pytest.raises(IndexError):
