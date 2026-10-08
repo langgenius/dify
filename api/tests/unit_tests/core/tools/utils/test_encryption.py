@@ -1,29 +1,15 @@
 import copy
-from types import SimpleNamespace
-from typing import Any
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 
-from core.entities.provider_entities import BasicProviderConfig, ProviderConfigType
+from core.entities.provider_entities import BasicProviderConfig, ProviderConfig, ProviderConfigType
+from core.helper.provider_cache import NoOpProviderCredentialCache, SingletonProviderCredentialsCache
 from core.helper.provider_encryption import ProviderConfigEncrypter
+from core.tools.entities.common_entities import I18nObject
+from core.tools.entities.tool_entities import ToolProviderEntityWithPlugin, ToolProviderIdentity
+from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.utils.encryption import create_tool_provider_encrypter
-
-
-# ---------------------------
-# A no-op cache
-# ---------------------------
-class NoopCache:
-    """Simple cache stub: always returns None, does nothing for set/delete."""
-
-    def get(self) -> Any | None:
-        return None
-
-    def set(self, config: Any) -> None:
-        pass
-
-    def delete(self) -> None:
-        pass
 
 
 @pytest.fixture
@@ -50,12 +36,12 @@ def encrypter_obj(secret_field, normal_field):
     Build ProviderConfigEncrypter with:
     - tenant_id = tenant123
     - one secret field (password) and one normal field (username)
-    - NoopCache as cache
+    - NoOpProviderCredentialCache as cache
     """
     return ProviderConfigEncrypter(
         tenant_id="tenant123",
         config=[secret_field, normal_field],
-        provider_config_cache=NoopCache(),
+        provider_config_cache=NoOpProviderCredentialCache(),
     )
 
 
@@ -186,31 +172,30 @@ def test_decrypt_swallow_exception_and_keep_original(encrypter_obj):
 
 def test_create_tool_provider_encrypter_builds_cache_and_encrypter():
     basic_config = BasicProviderConfig(name="key", type=ProviderConfigType.TEXT_INPUT)
-    credential_schema_item = SimpleNamespace(to_basic_provider_config=lambda: basic_config)
-    controller = SimpleNamespace(
-        provider_type=SimpleNamespace(value="builtin"),
-        entity=SimpleNamespace(identity=SimpleNamespace(name="provider-a")),
-        get_credentials_schema=lambda: [credential_schema_item],
-    )
-
-    cache_instance = Mock()
-    encrypter_instance = Mock()
-
-    with patch(
-        "core.tools.utils.encryption.SingletonProviderCredentialsCache", return_value=cache_instance
-    ) as cache_cls:
-        with patch("core.tools.utils.encryption.ProviderConfigEncrypter", return_value=encrypter_instance) as enc_cls:
-            encrypter, cache = create_tool_provider_encrypter("tenant-1", controller)
-
-    assert encrypter is encrypter_instance
-    assert cache is cache_instance
-    cache_cls.assert_called_once_with(
+    controller = PluginToolProviderController(
+        entity=ToolProviderEntityWithPlugin(
+            identity=ToolProviderIdentity(
+                author="author",
+                name="provider-a",
+                description=I18nObject(en_US="Description"),
+                icon="icon.svg",
+                label=I18nObject(en_US="Provider"),
+            ),
+            credentials_schema=[ProviderConfig(name="key", type=ProviderConfigType.TEXT_INPUT)],
+            plugin_id="plugin-id",
+            tools=[],
+        ),
+        plugin_id="plugin-id",
+        plugin_unique_identifier="plugin-uid",
         tenant_id="tenant-1",
-        provider_type="builtin",
-        provider_identity="provider-a",
     )
-    enc_cls.assert_called_once_with(
-        tenant_id="tenant-1",
-        config=[basic_config],
-        provider_config_cache=cache_instance,
-    )
+
+    encrypter, cache = create_tool_provider_encrypter("tenant-1", controller)
+
+    assert isinstance(encrypter, ProviderConfigEncrypter)
+    assert isinstance(cache, SingletonProviderCredentialsCache)
+    assert encrypter.tenant_id == "tenant-1"
+    assert encrypter.config == [basic_config]
+    assert encrypter.provider_config_cache is cache
+    assert cache.cache_key == "plugin_credentials:tenant_id:tenant-1:id:plugin.provider-a"
+    assert encrypter.encrypt({"key": "value"}) == {"key": "value"}

@@ -5,11 +5,14 @@ from unittest.mock import MagicMock
 import pytest
 from pytest_mock import MockerFixture
 
-from core.app.entities.queue_entities import QueueNodeSucceededEvent, QueueTextChunkEvent
+from core.app.entities.queue_entities import QueueNodeSucceededEvent, QueueTextChunkEvent, WorkflowQueueMessage
 from core.base.tts.app_generator_tts_publisher import AppGeneratorTTSPublisher, AudioTrunk
 from core.plugin.entities.plugin_daemon import TTSAudioChunk
+from graphon.enums import BuiltinNodeTypes
 from graphon.model_runtime.entities.model_entities import ModelPropertyKey
 from graphon.model_runtime.errors.invoke import InvokeBadRequestError
+from libs.datetime_utils import naive_utc_now
+from models.model import AppMode
 
 
 @pytest.fixture
@@ -35,14 +38,25 @@ def patch_threads(mocker: MockerFixture):
     mocker.patch("threading.Thread.start", return_value=None)
 
 
-def _text_event(text: str) -> MagicMock:
-    event = MagicMock()
-    event.event = MagicMock(spec=QueueTextChunkEvent)
-    event.event.text = text
-    return event
+def _text_event(text: str) -> WorkflowQueueMessage:
+    return WorkflowQueueMessage(task_id="task", app_mode=AppMode.WORKFLOW, event=QueueTextChunkEvent(text=text))
 
 
-def _run(publisher: AppGeneratorTTSPublisher, *messages: MagicMock) -> None:
+def _node_event(outputs: dict[str, object] | None) -> WorkflowQueueMessage:
+    event = QueueNodeSucceededEvent(
+        node_execution_id="execution",
+        node_id="node",
+        node_type=BuiltinNodeTypes.END,
+        start_at=naive_utc_now(),
+        outputs=outputs or {},
+    )
+    if outputs is None:
+        # Preserve the publisher's legacy null-output guard beyond the current schema.
+        event = event.model_copy(update={"outputs": None})
+    return WorkflowQueueMessage(task_id="task", app_mode=AppMode.WORKFLOW, event=event)
+
+
+def _run(publisher: AppGeneratorTTSPublisher, *messages: WorkflowQueueMessage | MagicMock) -> None:
     for message in messages:
         publisher._msg_queue.put(message)
     publisher._msg_queue.put(None)
@@ -254,9 +268,7 @@ class TestAppGeneratorTTSPublisher:
 
     def test_runtime_handles_node_succeeded_output(self, mock_model_manager, mock_model_instance: MagicMock):
         publisher = AppGeneratorTTSPublisher("tenant", "voice1")
-        event = MagicMock()
-        event.event = MagicMock(spec=QueueNodeSucceededEvent)
-        event.event.outputs = {"output": "Hello world."}
+        event = _node_event({"output": "Hello world."})
 
         _run(publisher, event)
 
@@ -264,9 +276,7 @@ class TestAppGeneratorTTSPublisher:
 
     def test_runtime_ignores_node_succeeded_without_output(self, mock_model_manager, mock_model_instance: MagicMock):
         publisher = AppGeneratorTTSPublisher("tenant", "voice1")
-        event = MagicMock()
-        event.event = MagicMock(spec=QueueNodeSucceededEvent)
-        event.event.outputs = None
+        event = _node_event(None)
 
         _run(publisher, event)
 
