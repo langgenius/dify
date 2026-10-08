@@ -2,15 +2,15 @@ import uuid
 from collections.abc import Generator, Mapping
 from typing import Any, Protocol, cast
 
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-
-from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.apps.agent_chat.app_generator import AgentChatAppGenerator
 from core.app.apps.chat.app_generator import ChatAppGenerator
 from core.app.apps.completion.app_generator import CompletionAppGenerator
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
 from core.db.session_factory import create_session

@@ -361,7 +361,7 @@ GET /api/form/human_input/<form_token>
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Form retrieved successfully | **application/json**: [HumanInputFormDefinitionResponse](#humaninputformdefinitionresponse)<br> |
-| 403 | Forbidden |  |
+| 403 | AccessDeniedError |  |
 | 404 | Form not found |  |
 | 412 | Form already submitted or expired |  |
 | 429 | Too many requests |  |

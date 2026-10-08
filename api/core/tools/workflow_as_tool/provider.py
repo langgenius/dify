@@ -3,10 +3,10 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import override
 
+from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.db.session_factory import session_factory
 from core.plugin.entities.parameters import PluginParameterOption
 from core.tools.__base.tool_provider import ToolProviderController
