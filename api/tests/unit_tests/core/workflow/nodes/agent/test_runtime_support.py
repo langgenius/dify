@@ -1,7 +1,6 @@
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
-from core.workflow.nodes.agent.runtime_support import AgentRuntimeSupport
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import (
     AIModelEntity,
@@ -12,6 +11,7 @@ from graphon.model_runtime.entities.model_entities import (
     ParameterRule,
     ParameterType,
 )
+from services.workflow.execution.adapters.agent_runtime import AgentRuntimeSupport
 
 
 def test_fetch_model_reuses_single_model_assembly():
@@ -33,7 +33,7 @@ def test_fetch_model_reuses_single_model_assembly():
     assembly.model_manager.get_model_instance.return_value = model_instance
 
     with patch(
-        "core.workflow.nodes.agent.runtime_support.create_plugin_model_assembly",
+        "services.workflow.execution.adapters.agent_runtime.create_plugin_model_assembly",
         return_value=assembly,
     ) as mock_assembly:
         resolved_instance, resolved_schema = AgentRuntimeSupport().fetch_model(

@@ -7,14 +7,14 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from core.repositories.human_input_repository import FormCreateParams, HumanInputFormRepository
-from core.workflow.nodes.human_input.callback import DifyHITLCallback
 from core.workflow.nodes.human_input.session_binding import SessionBinding
 from enums.human_input import HumanInputFormStatus
 from graphon.runtime import VariablePool
 from graphon.variables.factory import build_segment
 from libs.datetime_utils import naive_utc_now
+from models.human_input_contracts import FormCreateParams, HumanInputFormRepository
 from models.human_input_entities import HumanInputNodeData, ParagraphInputConfig, UserActionConfig
+from services.workflow.execution.adapters.human_input import DifyHITLCallback
 
 
 @dataclass(frozen=True, slots=True)

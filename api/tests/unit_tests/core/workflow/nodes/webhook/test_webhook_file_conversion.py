@@ -16,11 +16,11 @@ from core.workflow.nodes.trigger_webhook.entities import (
     WebhookBodyParameter,
     WebhookData,
 )
-from core.workflow.nodes.trigger_webhook.node import TriggerWebhookNode
 from core.workflow.system_variables import default_system_variables
 from graphon.entities import GraphInitParams
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.runtime import GraphRuntimeState, VariablePool
+from services.workflow.execution.adapters.trigger_webhook import TriggerWebhookNode
 from tests.workflow_test_utils import build_test_variable_pool
 
 
@@ -133,8 +133,8 @@ def test_webhook_node_file_conversion_to_file_variable():
     # Mock the file reference boundary and variable factory
     with (
         patch.object(node._file_reference_factory, "build_from_mapping") as mock_file_factory,
-        patch("core.workflow.nodes.trigger_webhook.node.build_segment_with_type") as mock_segment_factory,
-        patch("core.workflow.nodes.trigger_webhook.node.FileVariable") as mock_file_variable,
+        patch("services.workflow.execution.adapters.trigger_webhook.build_segment_with_type") as mock_segment_factory,
+        patch("services.workflow.execution.adapters.trigger_webhook.FileVariable") as mock_file_variable,
     ):
         # Setup mocks
         mock_file_obj = Mock()
@@ -320,8 +320,8 @@ def test_webhook_node_file_conversion_mixed_parameters():
 
     with (
         patch.object(node._file_reference_factory, "build_from_mapping") as mock_file_factory,
-        patch("core.workflow.nodes.trigger_webhook.node.build_segment_with_type") as mock_segment_factory,
-        patch("core.workflow.nodes.trigger_webhook.node.FileVariable") as mock_file_variable,
+        patch("services.workflow.execution.adapters.trigger_webhook.build_segment_with_type") as mock_segment_factory,
+        patch("services.workflow.execution.adapters.trigger_webhook.FileVariable") as mock_file_variable,
     ):
         # Setup mocks for file
         mock_file_obj = Mock()
@@ -386,8 +386,8 @@ def test_webhook_node_different_file_types():
 
     with (
         patch.object(node._file_reference_factory, "build_from_mapping") as mock_file_factory,
-        patch("core.workflow.nodes.trigger_webhook.node.build_segment_with_type") as mock_segment_factory,
-        patch("core.workflow.nodes.trigger_webhook.node.FileVariable") as mock_file_variable,
+        patch("services.workflow.execution.adapters.trigger_webhook.build_segment_with_type") as mock_segment_factory,
+        patch("services.workflow.execution.adapters.trigger_webhook.FileVariable") as mock_file_variable,
     ):
         # Setup mocks for all files
         mock_file_objs = [Mock() for _ in range(3)]

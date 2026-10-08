@@ -1,3 +1,5 @@
+from tests.unit_tests.workflow_execution import NO_HUMAN_INPUT_FORMS
+
 """In-memory regression test: if-else branch + human_input pause + downstream answer nodes.
 
 Reproduces https://github.com/langgenius/dify/issues/38525 at the
@@ -10,14 +12,7 @@ from datetime import timedelta
 from unittest.mock import MagicMock
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from core.repositories.human_input_repository import (
-    HumanInputFormEntity,
-    HumanInputFormRecipientEntity,
-    HumanInputFormRepository,
-)
-from core.workflow.nodes.human_input.callback import DifyHITLCallback
 from core.workflow.system_variables import build_system_variables
-from core.workflow.workflow_entry import iter_dify_graph_engine_events
 from enums.human_input import HumanInputFormStatus
 from graphon.filters import GraphEventFilterContext, ResponseStreamFilter, filter_graph_events
 from graphon.graph import Graph
@@ -35,7 +30,10 @@ from graphon.nodes.start.start_node import StartNode
 from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.utils.condition.entities import Condition
 from libs.datetime_utils import naive_utc_now
+from models.human_input_contracts import HumanInputFormEntity, HumanInputFormRecipientEntity, HumanInputFormRepository
 from models.human_input_entities import HumanInputNodeData, UserActionConfig
+from services.workflow.execution.adapters.human_input import DifyHITLCallback
+from services.workflow.execution.adapters.workflow_entry import iter_dify_graph_engine_events
 from tests.workflow_test_utils import build_test_graph_init_params
 
 WORKFLOW_EXECUTION_ID = "wf-exec-38525"
@@ -45,7 +43,6 @@ def _mock_repo_paused() -> HumanInputFormRepository:
     repo = MagicMock(spec=HumanInputFormRepository)
     form = MagicMock(spec=HumanInputFormEntity)
     form.id = "form-1"
-    form.submission_token = "token-1"
     form.recipients = list[HumanInputFormRecipientEntity]()
     form.rendered_content = "rendered"
     form.submitted = False
@@ -58,7 +55,6 @@ def _mock_repo_resumed(action_id: str = "continue") -> HumanInputFormRepository:
     repo = MagicMock(spec=HumanInputFormRepository)
     form = MagicMock(spec=HumanInputFormEntity)
     form.id = "form-1"
-    form.submission_token = "token-1"
     form.recipients = list[HumanInputFormRecipientEntity]()
     form.rendered_content = "rendered"
     form.submitted = True
@@ -209,7 +205,7 @@ def test_if_else_human_input_pause_resume_answer_chunks_survive_resume() -> None
     filter_2 = ResponseStreamFilter()
     filter_2.loads(response_filter_snapshot)
 
-    phase2_events = list(iter_dify_graph_engine_events(engine_2, filter_2))
+    phase2_events = list(iter_dify_graph_engine_events(engine_2, filter_2, human_form_reader=NO_HUMAN_INPUT_FORMS))
 
     assert any(isinstance(e, GraphRunSucceededEvent) for e in phase2_events)
 

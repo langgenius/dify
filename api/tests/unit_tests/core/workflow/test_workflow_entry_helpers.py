@@ -8,7 +8,6 @@ import pytest
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.credit_usage import CreditUsageAppType
-from core.workflow import workflow_entry
 from core.workflow.system_variables import default_system_variables
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.enums import NodeType, WorkflowNodeExecutionStatus
@@ -21,8 +20,10 @@ from graphon.nodes import BuiltinNodeTypes
 from graphon.runtime import VariablePool
 from graphon.variables.variables import StringVariable
 from models.workflow import Workflow
+from services.workflow.execution.adapters import workflow_entry
 from tests.unit_tests.config_override import config_overrides_context
 from tests.unit_tests.model_factories import make_workflow
+from tests.unit_tests.workflow_execution import NO_HUMAN_INPUT_FORMS
 
 
 def _build_typed_node_config(node_type: NodeType):
@@ -61,6 +62,7 @@ def _build_minimal_workflow_entry(
         variable_pool=sentinel.variable_pool,
         graph_runtime_state=graph_runtime_state,
         response_stream_filter=response_stream_filter,
+        human_form_reader=NO_HUMAN_INPUT_FORMS,
     )
 
 
@@ -81,6 +83,7 @@ class TestWorkflowEntryInit:
                 call_depth=call_depth,
                 variable_pool=sentinel.variable_pool,
                 graph_runtime_state=sentinel.graph_runtime_state,
+                human_form_reader=NO_HUMAN_INPUT_FORMS,
             )
 
     def test_applies_debug_and_observability_layers(self):
@@ -118,6 +121,7 @@ class TestWorkflowEntryInit:
                 variable_pool=sentinel.variable_pool,
                 graph_runtime_state=graph_runtime_state,
                 command_channel=None,
+                human_form_reader=NO_HUMAN_INPUT_FORMS,
             )
 
         assert entry.command_channel is sentinel.command_channel
@@ -161,6 +165,7 @@ class TestWorkflowEntryInit:
 class TestWorkflowEntryRun:
     def test_run_swallows_generate_task_stopped_errors(self):
         entry = object.__new__(workflow_entry.WorkflowEntry)
+        entry._human_form_reader = NO_HUMAN_INPUT_FORMS
         entry.graph_engine = MagicMock()
         entry.graph_engine.run.side_effect = GenerateTaskStoppedError()
         entry._response_stream_filter = ResponseStreamFilter()
@@ -193,7 +198,9 @@ class TestWorkflowEntryRun:
                 return_value=iter([sentinel.filtered_event]),
             ) as filter_graph_events,
         ):
-            events = list(workflow_entry.iter_dify_graph_engine_events(graph_engine))
+            events = list(
+                workflow_entry.iter_dify_graph_engine_events(graph_engine, human_form_reader=NO_HUMAN_INPUT_FORMS)
+            )
 
         assert events == [sentinel.filtered_event]
         from_engine.assert_called_once_with(graph_engine)
@@ -206,6 +213,7 @@ class TestWorkflowEntryRun:
 
     def test_run_delegates_to_dify_event_iterator(self):
         entry = object.__new__(workflow_entry.WorkflowEntry)
+        entry._human_form_reader = NO_HUMAN_INPUT_FORMS
         entry.graph_engine = sentinel.graph_engine
         entry._response_stream_filter = sentinel.response_stream_filter
 
@@ -217,10 +225,13 @@ class TestWorkflowEntryRun:
             events = list(entry.run())
 
         assert events == [sentinel.filtered_event]
-        iter_dify_graph_engine_events.assert_called_once_with(sentinel.graph_engine, sentinel.response_stream_filter)
+        iter_dify_graph_engine_events.assert_called_once_with(
+            sentinel.graph_engine, sentinel.response_stream_filter, human_form_reader=NO_HUMAN_INPUT_FORMS
+        )
 
     def test_run_emits_failed_event_for_unexpected_errors(self):
         entry = object.__new__(workflow_entry.WorkflowEntry)
+        entry._human_form_reader = NO_HUMAN_INPUT_FORMS
         entry.graph_engine = MagicMock()
         entry.graph_engine.run.side_effect = RuntimeError("boom")
         entry._response_stream_filter = ResponseStreamFilter()

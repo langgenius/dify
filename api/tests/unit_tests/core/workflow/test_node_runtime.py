@@ -1,36 +1,15 @@
-from collections.abc import Iterator
-from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, sentinel
-from uuid import uuid4
 
 import pytest
-from sqlalchemy import Engine, event
-from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext, InvokeFrom, UserFrom
-from core.app.file_access import FileAccessScope, bind_file_access_scope, grant_retriever_segment_access
 from core.llm_generator.output_parser.errors import OutputParserError
 from core.model_manager import QuotaManagedModelInstance
 from core.plugin.impl.exc import PluginLLMPollingUnsupportedError
 from core.plugin.impl.model import PluginModelClient
 from core.plugin.impl.model_runtime import PluginModelRuntime
 from core.plugin.plugin_service import PluginService
-from core.workflow import node_runtime
-from core.workflow.file_reference import parse_file_reference
-from core.workflow.node_runtime import (
-    DifyFileReferenceFactory,
-    DifyHumanInputNodeRuntime,
-    DifyPreparedLLM,
-    DifyPreparedPollingLLM,
-    DifyPromptMessageSerializer,
-    DifyRetrieverAttachmentLoader,
-    DifyToolFileManager,
-    DifyToolNodeRuntime,
-    apply_dify_debug_email_recipient,
-    build_dify_llm_file_saver,
-    resolve_dify_run_context,
-)
 from enums.human_input import DeliveryMethodType
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities.common_entities import I18nObject
@@ -41,65 +20,29 @@ from graphon.model_runtime.model_providers.base.large_language_model import Larg
 from graphon.nodes.llm.runtime_protocols import LLMPollingCapableProtocol
 from graphon.nodes.tool.entities import ToolNodeData, ToolProviderType
 from graphon.variables.segments import ArrayFileSegment, FileSegment
-from models.base import TypeBase
-from models.dataset import SegmentAttachmentBinding
-from models.enums import CreatorUserRole
-from models.human_input_delivery import EmailDeliveryConfig, EmailDeliveryMethod, EmailRecipients
-from models.human_input_delivery import InteractiveSurfaceDeliveryMethod as WebAppDeliveryMethod
-from models.human_input_delivery import _InteractiveSurfaceDeliveryConfig as _WebAppDeliveryConfig
+from models.human_input_delivery import (
+    EmailDeliveryConfig,
+    EmailDeliveryMethod,
+    EmailRecipients,
+    InteractiveSurfaceDeliveryMethod,
+    _InteractiveSurfaceDeliveryConfig,
+)
 from models.human_input_entities import FileInputConfig, FileListInputConfig, HumanInputNodeData
-from models.model import StorageType, UploadFile
 from models.tools import ToolFile
+from services.workflow.execution.adapters import node_runtime
+from services.workflow.execution.adapters.node_runtime import (
+    DifyFileReferenceFactory,
+    DifyHumanInputNodeRuntime,
+    DifyPreparedLLM,
+    DifyPreparedPollingLLM,
+    DifyPromptMessageSerializer,
+    DifyToolFileManager,
+    DifyToolNodeRuntime,
+    apply_dify_debug_email_recipient,
+    build_dify_llm_file_saver,
+    resolve_dify_run_context,
+)
 from tests.workflow_test_utils import build_test_run_context
-
-
-@pytest.fixture
-def attachment_session(sqlite_engine: Engine) -> Iterator[Session]:
-    """Provide real attachment and upload-file persistence to node runtime tests."""
-
-    TypeBase.metadata.create_all(sqlite_engine, tables=[SegmentAttachmentBinding.__table__, UploadFile.__table__])
-    with Session(sqlite_engine, expire_on_commit=False) as session:
-        yield session
-
-
-def _persist_attachment(
-    session: Session,
-    *,
-    segment_id: str,
-    upload_file_id: str,
-    upload_file_tenant_id: str = "tenant-id",
-) -> UploadFile:
-    """Persist an attachment binding for the test tenant and its referenced upload file."""
-
-    upload_file = UploadFile(
-        tenant_id=upload_file_tenant_id,
-        storage_type=StorageType.LOCAL,
-        key="storage-key",
-        name="diagram.png",
-        size=128,
-        extension="png",
-        mime_type="image/png",
-        created_by_role=CreatorUserRole.ACCOUNT,
-        created_by="user-id",
-        created_at=datetime.now(UTC).replace(tzinfo=None),
-        used=False,
-        source_url="https://example.com/diagram.png",
-    )
-    upload_file.id = upload_file_id
-    session.add_all(
-        [
-            upload_file,
-            SegmentAttachmentBinding(
-                tenant_id="tenant-id",
-                dataset_id="dataset-id",
-                document_id="document-id",
-                segment_id=segment_id,
-                attachment_id=upload_file_id,
-            ),
-        ]
-    )
-    session.commit()
-    return upload_file
 
 
 def _build_model_schema(*, features: list[ModelFeature] | None = None) -> AIModelEntity:
@@ -202,7 +145,7 @@ def test_apply_dify_debug_email_recipient_rewrites_debug_target() -> None:
     [
         (False, _build_email_method(debug_mode=True)),
         (True, _build_email_method(debug_mode=False)),
-        (True, WebAppDeliveryMethod(enabled=True, config=_WebAppDeliveryConfig())),
+        (True, InteractiveSurfaceDeliveryMethod(enabled=True, config=_InteractiveSurfaceDeliveryConfig())),
     ],
 )
 def test_apply_dify_debug_email_recipient_noops_when_override_is_not_needed(
@@ -550,168 +493,6 @@ def test_dify_prompt_message_serializer_delegates(monkeypatch: pytest.MonkeyPatc
     )
 
 
-def test_dify_retriever_attachment_loader_builds_graph_files(
-    monkeypatch: pytest.MonkeyPatch, attachment_session: Session
-) -> None:
-    _persist_attachment(attachment_session, segment_id="segment-id", upload_file_id="upload-file-id")
-    build_from_mapping = MagicMock(return_value=sentinel.file)
-    monkeypatch.setattr(node_runtime, "db", SimpleNamespace(engine=attachment_session.get_bind()))
-    loader = DifyRetrieverAttachmentLoader(
-        file_reference_factory=SimpleNamespace(build_from_mapping=build_from_mapping)
-    )
-
-    files = loader.load(segment_id="segment-id")
-
-    assert files == [sentinel.file]
-    build_from_mapping.assert_called_once()
-    mapping = build_from_mapping.call_args.kwargs["mapping"]
-    assert mapping["id"] == "upload-file-id"
-    assert mapping["transfer_method"] == FileTransferMethod.LOCAL_FILE
-    assert mapping["type"] == FileType.IMAGE
-    assert parse_file_reference(mapping["reference"]).storage_key is None
-
-
-def test_dify_retriever_attachment_loader_grants_upload_files_for_allowed_segment(
-    monkeypatch: pytest.MonkeyPatch,
-    attachment_session: Session,
-) -> None:
-    from factories.file_factory import builders as file_builders
-
-    upload_file_id = str(uuid4())
-    segment_id = str(uuid4())
-    _persist_attachment(attachment_session, segment_id=segment_id, upload_file_id=upload_file_id)
-    engine = attachment_session.get_bind()
-    assert engine is not None
-    monkeypatch.setattr(node_runtime, "db", SimpleNamespace(engine=engine))
-    session_maker = sessionmaker(engine, expire_on_commit=False)
-    monkeypatch.setattr(file_builders.session_factory, "create_session", session_maker)
-
-    loader = DifyRetrieverAttachmentLoader(file_reference_factory=DifyFileReferenceFactory(_build_run_context()))
-    scope = FileAccessScope(
-        tenant_id="tenant-id",
-        user_id="end-user-id",
-        user_from=UserFrom.END_USER,
-        invoke_from=InvokeFrom.WEB_APP,
-    )
-
-    with bind_file_access_scope(scope):
-        grant_retriever_segment_access([segment_id])
-        files = loader.load(segment_id=segment_id)
-
-    assert files[0].related_id == upload_file_id
-    assert files[0].filename == "diagram.png"
-
-
-def test_dify_retriever_attachment_loader_rejects_granted_upload_file_from_another_tenant(
-    monkeypatch: pytest.MonkeyPatch,
-    attachment_session: Session,
-) -> None:
-    from factories.file_factory import builders as file_builders
-
-    upload_file_id = str(uuid4())
-    segment_id = str(uuid4())
-    _persist_attachment(
-        attachment_session,
-        segment_id=segment_id,
-        upload_file_id=upload_file_id,
-        upload_file_tenant_id="other-tenant-id",
-    )
-    engine = attachment_session.get_bind()
-    assert engine is not None
-    monkeypatch.setattr(node_runtime, "db", SimpleNamespace(engine=engine))
-    monkeypatch.setattr(file_builders.session_factory, "create_session", sessionmaker(engine, expire_on_commit=False))
-
-    loader = DifyRetrieverAttachmentLoader(file_reference_factory=DifyFileReferenceFactory(_build_run_context()))
-    scope = FileAccessScope(
-        tenant_id="tenant-id",
-        user_id="end-user-id",
-        user_from=UserFrom.END_USER,
-        invoke_from=InvokeFrom.WEB_APP,
-    )
-
-    with bind_file_access_scope(scope):
-        grant_retriever_segment_access([segment_id])
-        with pytest.raises(ValueError, match="Invalid upload file"):
-            loader.load(segment_id=segment_id)
-
-
-def test_dify_retriever_attachment_loader_skips_ungranted_segment_for_end_user(
-    monkeypatch: pytest.MonkeyPatch,
-    attachment_session: Session,
-) -> None:
-    build_from_mapping = MagicMock()
-    engine = attachment_session.get_bind()
-    assert engine is not None
-    monkeypatch.setattr(node_runtime, "db", SimpleNamespace(engine=engine))
-    statement_count = 0
-
-    def count_statements(*_args, **_kwargs) -> None:
-        nonlocal statement_count
-        statement_count += 1
-
-    event.listen(engine, "before_cursor_execute", count_statements)
-    loader = DifyRetrieverAttachmentLoader(
-        file_reference_factory=SimpleNamespace(build_from_mapping=build_from_mapping)
-    )
-    scope = FileAccessScope(
-        tenant_id="tenant-id",
-        user_id="end-user-id",
-        user_from=UserFrom.END_USER,
-        invoke_from=InvokeFrom.WEB_APP,
-    )
-
-    with bind_file_access_scope(scope):
-        files = loader.load(segment_id=str(uuid4()))
-
-    try:
-        assert files == []
-        assert statement_count == 0
-        build_from_mapping.assert_not_called()
-    finally:
-        event.remove(engine, "before_cursor_execute", count_statements)
-
-
-def test_dify_retriever_attachment_loader_skips_segment_rejected_by_checker(
-    monkeypatch: pytest.MonkeyPatch,
-    attachment_session: Session,
-) -> None:
-    segment_id = str(uuid4())
-    build_from_mapping = MagicMock()
-    segment_access_checker = MagicMock(return_value=False)
-    engine = attachment_session.get_bind()
-    assert engine is not None
-    monkeypatch.setattr(node_runtime, "db", SimpleNamespace(engine=engine))
-    statement_count = 0
-
-    def count_statements(*_args, **_kwargs) -> None:
-        nonlocal statement_count
-        statement_count += 1
-
-    event.listen(engine, "before_cursor_execute", count_statements)
-    loader = DifyRetrieverAttachmentLoader(
-        file_reference_factory=SimpleNamespace(build_from_mapping=build_from_mapping),
-        segment_access_checker=segment_access_checker,
-    )
-    scope = FileAccessScope(
-        tenant_id="tenant-id",
-        user_id="end-user-id",
-        user_from=UserFrom.END_USER,
-        invoke_from=InvokeFrom.WEB_APP,
-    )
-
-    with bind_file_access_scope(scope):
-        grant_retriever_segment_access([segment_id])
-        files = loader.load(segment_id=segment_id)
-
-    try:
-        assert files == []
-        segment_access_checker.assert_called_once_with(segment_id)
-        assert statement_count == 0
-        build_from_mapping.assert_not_called()
-    finally:
-        event.remove(engine, "before_cursor_execute", count_statements)
-
-
 def test_dify_tool_file_manager_resolves_conversation_id_for_tool_files(monkeypatch: pytest.MonkeyPatch) -> None:
     tool_file = ToolFile(
         user_id="user-id",
@@ -772,6 +553,7 @@ def test_dify_tool_file_manager_delegates_file_generator_lookup(monkeypatch: pyt
 
 def test_dify_tool_node_runtime_injects_outer_workflow_run_id_for_workflow_tools(
     monkeypatch: pytest.MonkeyPatch,
+    workflow_runtime,
 ) -> None:
     runtime_tool = SimpleNamespace(runtime=SimpleNamespace(runtime_parameters={}))
     get_runtime = MagicMock(return_value=runtime_tool)
@@ -784,7 +566,7 @@ def test_dify_tool_node_runtime_injects_outer_workflow_run_id_for_workflow_tools
         ),
     )
 
-    runtime = node_runtime.DifyToolNodeRuntime(_build_run_context())
+    runtime = node_runtime.DifyToolNodeRuntime(_build_run_context(), workflow_runtime=workflow_runtime)
     node_data = ToolNodeData(
         title="Workflow Tool Node",
         desc=None,
@@ -815,6 +597,7 @@ def test_dify_tool_node_runtime_injects_outer_workflow_run_id_for_workflow_tools
 
 def test_dify_tool_node_runtime_stores_trace_session_id_for_workflow_tools(
     monkeypatch: pytest.MonkeyPatch,
+    workflow_runtime,
 ) -> None:
     runtime_tool = SimpleNamespace(runtime=SimpleNamespace(runtime_parameters={}))
     get_runtime = MagicMock(return_value=runtime_tool)
@@ -829,7 +612,7 @@ def test_dify_tool_node_runtime_stores_trace_session_id_for_workflow_tools(
 
     run_context = _build_run_context()
     run_context[DIFY_RUN_CONTEXT_KEY].trace_session_id = "session-1"
-    runtime = node_runtime.DifyToolNodeRuntime(run_context)
+    runtime = node_runtime.DifyToolNodeRuntime(run_context, workflow_runtime=workflow_runtime)
     node_data = ToolNodeData(
         title="Workflow Tool Node",
         desc=None,
@@ -855,13 +638,14 @@ def test_dify_tool_node_runtime_stores_trace_session_id_for_workflow_tools(
 
 def test_dify_tool_node_runtime_does_not_inject_outer_workflow_run_id_for_non_workflow_tools(
     monkeypatch: pytest.MonkeyPatch,
+    workflow_runtime,
 ) -> None:
     runtime_tool = SimpleNamespace(runtime=SimpleNamespace(runtime_parameters={}))
     get_runtime = MagicMock(return_value=runtime_tool)
     monkeypatch.setattr(node_runtime.ToolManager, "get_workflow_tool_runtime", get_runtime)
     monkeypatch.setattr(node_runtime, "get_system_text", lambda _pool, _key: None)
 
-    runtime = node_runtime.DifyToolNodeRuntime(_build_run_context())
+    runtime = node_runtime.DifyToolNodeRuntime(_build_run_context(), workflow_runtime=workflow_runtime)
     node_data = ToolNodeData(
         title="Builtin Tool Node",
         desc=None,
@@ -885,24 +669,30 @@ def test_dify_tool_node_runtime_does_not_inject_outer_workflow_run_id_for_non_wo
     get_runtime.assert_called_once()
 
 
-def test_dify_human_input_runtime_builds_debug_repository(monkeypatch: pytest.MonkeyPatch) -> None:
-    repository = MagicMock()
-    repository_cls = MagicMock(return_value=repository)
-    monkeypatch.setattr(node_runtime, "HumanInputFormRepositoryImpl", repository_cls)
+def test_dify_human_input_runtime_builds_debug_repository() -> None:
+    calls = []
+    repository = object()
+
+    def forms(**kwargs):
+        calls.append(kwargs)
+        return repository
 
     runtime = DifyHumanInputNodeRuntime(
         _build_run_context(),
+        forms=forms,
         workflow_execution_id_getter=lambda: "workflow-execution-id",
     )
 
     assert runtime.build_form_repository() is repository
-    repository_cls.assert_called_once_with(
-        tenant_id="tenant-id",
-        app_id="app-id",
-        workflow_execution_id="workflow-execution-id",
-        invoke_source="debugger",
-        submission_actor_id="user-id",
-    )
+    assert calls == [
+        {
+            "tenant_id": "tenant-id",
+            "app_id": "app-id",
+            "workflow_execution_id": "workflow-execution-id",
+            "invoke_source": "debugger",
+            "submission_actor_id": "user-id",
+        }
+    ]
 
 
 def test_dify_tool_runtime_spec_prefers_tool_parameters_for_runtime_form_values() -> None:
@@ -946,14 +736,14 @@ def test_dify_human_input_runtime_create_form_filters_debugger_delivery_methods(
     node_data = HumanInputNodeData(
         title="Human Input",
         delivery_methods=[
-            WebAppDeliveryMethod(enabled=True, config=_WebAppDeliveryConfig()),
+            InteractiveSurfaceDeliveryMethod(enabled=True, config=_InteractiveSurfaceDeliveryConfig()),
             _build_email_method(debug_mode=True),
         ],
     )
     runtime = DifyHumanInputNodeRuntime(
         _build_run_context(),
         workflow_execution_id_getter=lambda: "workflow-execution-id",
-        form_repository=repository,
+        forms=lambda **_kwargs: repository,
     )
 
     result = runtime.create_form(
@@ -984,13 +774,13 @@ def test_dify_human_input_runtime_create_form_tags_conversation_id_for_chatflow(
     repository.create_form.return_value = sentinel.form
     node_data = HumanInputNodeData(
         title="Human Input",
-        delivery_methods=[WebAppDeliveryMethod(enabled=True, config=_WebAppDeliveryConfig())],
+        delivery_methods=[InteractiveSurfaceDeliveryMethod(enabled=True, config=_InteractiveSurfaceDeliveryConfig())],
     )
     runtime = DifyHumanInputNodeRuntime(
         _build_run_context(),
         workflow_execution_id_getter=lambda: "workflow-execution-id",
         conversation_id_getter=lambda: "conversation-id",
-        form_repository=repository,
+        forms=lambda **_kwargs: repository,
     )
 
     runtime.create_form(
@@ -1011,13 +801,13 @@ def test_dify_human_input_runtime_preserves_webapp_delivery_for_web_invocations(
     node_data = HumanInputNodeData(
         title="Human Input",
         delivery_methods=[
-            WebAppDeliveryMethod(enabled=True, config=_WebAppDeliveryConfig()),
+            InteractiveSurfaceDeliveryMethod(enabled=True, config=_InteractiveSurfaceDeliveryConfig()),
             _build_email_method(debug_mode=True),
         ],
     )
     runtime = DifyHumanInputNodeRuntime(
         _build_run_context(invoke_from=InvokeFrom.WEB_APP),
-        form_repository=repository,
+        forms=lambda **_kwargs: repository,
     )
 
     runtime.create_form(
@@ -1036,8 +826,8 @@ def test_dify_human_input_runtime_preserves_webapp_delivery_for_web_invocations(
     assert params.delivery_methods[1].config.recipients.include_bound_group is True
 
 
-def test_dify_human_input_runtime_restore_submitted_data_rehydrates_files() -> None:
-    runtime = DifyHumanInputNodeRuntime(_build_run_context())
+def test_dify_human_input_runtime_restore_submitted_data_rehydrates_files(workflow_runtime) -> None:
+    runtime = DifyHumanInputNodeRuntime(_build_run_context(), forms=workflow_runtime.human_forms)
     file_value = File(
         file_id="file-1",
         file_type=FileType.DOCUMENT,

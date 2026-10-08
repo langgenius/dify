@@ -1,11 +1,11 @@
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
-from core.workflow.node_factory import DifyNodeFactory
 from graphon.entities import GraphInitParams
 from graphon.graph import Graph
 from graphon.graph_engine import GraphEngine, GraphEngineConfig
 from graphon.graph_engine.command_channels import InMemoryChannel
 from graphon.graph_events import GraphNodeEventBase, GraphRunSucceededEvent
 from graphon.runtime import GraphRuntimeState, VariablePool
+from services.workflow.execution.adapters.node_factory import DifyNodeFactory
 
 
 def test_unconfigured_disconnected_agent_does_not_block_workflow() -> None:

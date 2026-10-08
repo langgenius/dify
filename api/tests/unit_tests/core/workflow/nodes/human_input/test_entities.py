@@ -13,16 +13,6 @@ import pytest
 from pydantic import ValidationError
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY
-from core.repositories.human_input_repository import (
-    FormCreateParams,
-    HumanInputFormEntity,
-    HumanInputFormRecipientEntity,
-    HumanInputFormRepository,
-)
-from core.workflow.node_runtime import DifyHumanInputNodeRuntime
-from core.workflow.nodes.human_input.callback import (
-    DifyHITLCallback,
-)
 from core.workflow.system_variables import build_system_variables
 from enums.human_input import (
     ButtonStyle,
@@ -42,15 +32,21 @@ from graphon.nodes.protocols import FileReferenceFactoryProtocol
 from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.variables.segments import ArrayFileSegment, FileSegment, StringSegment
 from libs.datetime_utils import naive_utc_now
+from models.human_input_contracts import (
+    FormCreateParams,
+    HumanInputFormEntity,
+    HumanInputFormRecipientEntity,
+    HumanInputFormRepository,
+)
 from models.human_input_delivery import (
     EmailDeliveryConfig,
     EmailDeliveryMethod,
     EmailRecipients,
     ExternalRecipient,
+    InteractiveSurfaceDeliveryMethod,
     MemberRecipient,
+    _InteractiveSurfaceDeliveryConfig,
 )
-from models.human_input_delivery import InteractiveSurfaceDeliveryMethod as WebAppDeliveryMethod
-from models.human_input_delivery import _InteractiveSurfaceDeliveryConfig as _WebAppDeliveryConfig
 from models.human_input_entities import (
     FileInputConfig,
     FileListInputConfig,
@@ -61,13 +57,16 @@ from models.human_input_entities import (
     StringSource,
     UserActionConfig,
 )
+from services.workflow.execution.adapters.human_input import (
+    DifyHITLCallback,
+)
+from services.workflow.execution.adapters.node_runtime import DifyHumanInputNodeRuntime
 
 
 @dataclass
 class _InMemoryFormEntity(HumanInputFormEntity):
     form_id: str
     rendered: str
-    token: str | None = None
     action_id: str | None = None
     data: Mapping[str, Any] | None = None
     is_submitted: bool = False
@@ -78,10 +77,6 @@ class _InMemoryFormEntity(HumanInputFormEntity):
     @property
     def id(self) -> str:
         return self.form_id
-
-    @property
-    def submission_token(self) -> str | None:
-        return self.token
 
     @property
     def recipients(self) -> list[HumanInputFormRecipientEntity]:
@@ -132,7 +127,6 @@ class InMemoryHumanInputFormRepository(HumanInputFormRepository):
         entity = _InMemoryFormEntity(
             form_id=form_id,
             rendered=params.rendered_content,
-            token=f"token-{form_id}",
         )
         self.created_forms.append(entity)
         self._forms_by_node_id[params.node_id] = entity
@@ -201,11 +195,11 @@ class TestDeliveryMethod:
 
     def test_webapp_delivery_method(self):
         """Test webapp delivery method creation."""
-        delivery_method = WebAppDeliveryMethod(enabled=True, config=_WebAppDeliveryConfig())
+        delivery_method = InteractiveSurfaceDeliveryMethod(enabled=True, config=_InteractiveSurfaceDeliveryConfig())
 
         assert delivery_method.type == DeliveryMethodType.WEBAPP
         assert delivery_method.enabled is True
-        assert isinstance(delivery_method.config, _WebAppDeliveryConfig)
+        assert isinstance(delivery_method.config, _InteractiveSurfaceDeliveryConfig)
 
     def test_email_delivery_method(self):
         """Test email delivery method creation."""
@@ -312,7 +306,7 @@ class TestHumanInputNodeData:
 
     def test_valid_node_data_creation(self):
         """Test creating valid human input node data."""
-        delivery_methods = [WebAppDeliveryMethod(enabled=True, config=_WebAppDeliveryConfig())]
+        delivery_methods = [InteractiveSurfaceDeliveryMethod(enabled=True, config=_InteractiveSurfaceDeliveryConfig())]
 
         inputs = [
             ParagraphInputConfig(
@@ -346,7 +340,7 @@ class TestHumanInputNodeData:
     def test_node_data_with_multiple_delivery_methods(self):
         """Test node data with multiple delivery methods."""
         delivery_methods = [
-            WebAppDeliveryMethod(enabled=True, config=_WebAppDeliveryConfig()),
+            InteractiveSurfaceDeliveryMethod(enabled=True, config=_InteractiveSurfaceDeliveryConfig()),
             EmailDeliveryMethod(
                 enabled=False,  # Disabled method should be fine
                 config=EmailDeliveryConfig(
@@ -517,13 +511,11 @@ class TestHumanInputNodeVariableResolution:
         mock_repo.create_form.return_value = SimpleNamespace(
             id="form-1",
             rendered_content="Provide your name",
-            submission_token="token",
             recipients=[],
             submitted=False,
         )
 
-        runtime = DifyHumanInputNodeRuntime(graph_init_params.run_context)
-        runtime._build_form_repository = MagicMock(return_value=mock_repo)  # type: ignore[attr-defined]
+        runtime = DifyHumanInputNodeRuntime(graph_init_params.run_context, forms=lambda **_kwargs: mock_repo)
         node = _build_human_input_node(
             node_id=config["id"],
             node_data=config["data"],
@@ -583,13 +575,11 @@ class TestHumanInputNodeVariableResolution:
         mock_repo.create_form.return_value = SimpleNamespace(
             id="form-2",
             rendered_content="Provide your name",
-            submission_token="console-token",
             recipients=[SimpleNamespace(token="recipient-token")],
             submitted=False,
         )
 
-        runtime = DifyHumanInputNodeRuntime(graph_init_params.run_context)
-        runtime._build_form_repository = MagicMock(return_value=mock_repo)  # type: ignore[attr-defined]
+        runtime = DifyHumanInputNodeRuntime(graph_init_params.run_context, forms=lambda **_kwargs: mock_repo)
         node = _build_human_input_node(
             node_id=config["id"],
             node_data=config["data"],
@@ -648,13 +638,11 @@ class TestHumanInputNodeVariableResolution:
         mock_repo.create_form.return_value = SimpleNamespace(
             id="form-4",
             rendered_content="Provide your name",
-            submission_token="token",
             recipients=[],
             submitted=False,
         )
 
-        runtime = DifyHumanInputNodeRuntime(graph_init_params.run_context)
-        runtime._build_form_repository = MagicMock(return_value=mock_repo)  # type: ignore[attr-defined]
+        runtime = DifyHumanInputNodeRuntime(graph_init_params.run_context, forms=lambda **_kwargs: mock_repo)
         node = _build_human_input_node(
             node_id=config["id"],
             node_data=config["data"],
@@ -724,13 +712,11 @@ class TestHumanInputNodeVariableResolution:
         mock_repo.create_form.return_value = SimpleNamespace(
             id="form-3",
             rendered_content="Provide your name",
-            submission_token="token",
             recipients=[],
             submitted=False,
         )
 
-        runtime = DifyHumanInputNodeRuntime(graph_init_params.run_context)
-        runtime._build_form_repository = MagicMock(return_value=mock_repo)  # type: ignore[attr-defined]
+        runtime = DifyHumanInputNodeRuntime(graph_init_params.run_context, forms=lambda **_kwargs: mock_repo)
         node = _build_human_input_node(
             node_id=config["id"],
             node_data=config["data"],
@@ -825,8 +811,7 @@ class TestHumanInputNodeRenderedContent:
         config = {"id": "human", "data": node_data.model_dump()}
 
         form_repository = InMemoryHumanInputFormRepository()
-        runtime = DifyHumanInputNodeRuntime(graph_init_params.run_context)
-        runtime._build_form_repository = MagicMock(return_value=form_repository)  # type: ignore[attr-defined]
+        runtime = DifyHumanInputNodeRuntime(graph_init_params.run_context, forms=lambda **_kwargs: form_repository)
         node = _build_human_input_node(
             node_id=config["id"],
             node_data=config["data"],
@@ -898,8 +883,7 @@ class TestHumanInputNodeRenderedContent:
         config = {"id": "human", "data": node_data.model_dump()}
 
         form_repository = InMemoryHumanInputFormRepository()
-        runtime = DifyHumanInputNodeRuntime(graph_init_params.run_context)
-        runtime._build_form_repository = MagicMock(return_value=form_repository)  # type: ignore[attr-defined]
+        runtime = DifyHumanInputNodeRuntime(graph_init_params.run_context, forms=lambda **_kwargs: form_repository)
         node = _build_human_input_node(
             node_id=config["id"],
             node_data=config["data"],

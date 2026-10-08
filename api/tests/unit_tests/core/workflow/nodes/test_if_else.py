@@ -5,7 +5,6 @@ from unittest.mock import Mock
 import pytest
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
-from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.system_variables import build_system_variables
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.file import File, FileTransferMethod, FileType
@@ -15,6 +14,7 @@ from graphon.nodes.if_else.if_else_node import IfElseNode
 from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.utils.condition.entities import Condition, SubCondition, SubVariableCondition
 from graphon.variables import ArrayFileSegment
+from services.workflow.execution.adapters.node_factory import DifyNodeFactory
 from tests.workflow_test_utils import build_test_graph_init_params
 
 

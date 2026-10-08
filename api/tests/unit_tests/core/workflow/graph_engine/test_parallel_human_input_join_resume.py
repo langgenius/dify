@@ -4,15 +4,6 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any, Protocol
 
-from core.repositories.human_input_repository import (
-    FormCreateParams,
-    HumanInputFormEntity,
-    HumanInputFormRepository,
-)
-from core.workflow.node_runtime import DifyHumanInputNodeRuntime
-from core.workflow.nodes.human_input.callback import (
-    DifyHITLCallback,
-)
 from core.workflow.system_variables import build_system_variables
 from enums.human_input import HumanInputFormStatus, ValueSourceType
 from graphon.entities import WorkflowStartReason
@@ -34,6 +25,7 @@ from graphon.nodes.start.entities import StartNodeData
 from graphon.nodes.start.start_node import StartNode
 from graphon.runtime import GraphRuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
+from models.human_input_contracts import FormCreateParams, HumanInputFormEntity, HumanInputFormRepository
 from models.human_input_entities import (
     FileInputConfig,
     FileListInputConfig,
@@ -41,6 +33,9 @@ from models.human_input_entities import (
     SelectInputConfig,
     StringListSource,
     UserActionConfig,
+)
+from services.workflow.execution.adapters.human_input import (
+    DifyHITLCallback,
 )
 from tests.workflow_test_utils import build_test_graph_init_params
 
@@ -92,10 +87,6 @@ class StaticForm(HumanInputFormEntity):
     @property
     def id(self) -> str:
         return self.form_id
-
-    @property
-    def submission_token(self) -> str | None:
-        return "token"
 
     @property
     def recipients(self) -> list:
@@ -194,8 +185,6 @@ def _build_graph(runtime_state: GraphRuntimeState, repo: HumanInputFormRepositor
     )
 
     human_a_config = {"id": "human_a", "data": human_data.model_dump()}
-    human_a_runtime = DifyHumanInputNodeRuntime(graph_init_params.run_context)
-    human_a_runtime._file_reference_factory = _TestFileReferenceFactory()  # type: ignore[attr-defined]
     human_a_callback = DifyHITLCallback(
         form_repository=repo,
         node_data=human_data,
@@ -210,8 +199,6 @@ def _build_graph(runtime_state: GraphRuntimeState, repo: HumanInputFormRepositor
     )
 
     human_b_config = {"id": "human_b", "data": human_data.model_dump()}
-    human_b_runtime = DifyHumanInputNodeRuntime(graph_init_params.run_context)
-    human_b_runtime._file_reference_factory = _TestFileReferenceFactory()  # type: ignore[attr-defined]
     human_b_callback = DifyHITLCallback(
         form_repository=repo,
         node_data=human_data,
