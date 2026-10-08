@@ -735,7 +735,6 @@ project-excludes = [
   "services/document_service_validation.py",
   "services/enterprise/test_account_deletion_sync.py",
   "services/enterprise/test_app_permitted_service.py",
-  "services/enterprise/test_enterprise_service.py",
   "services/enterprise/test_plugin_manager_service.py",
   "services/enterprise/test_rbac_service.py",
   "services/enterprise/test_traceparent_propagation.py",
