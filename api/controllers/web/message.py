@@ -38,6 +38,7 @@ from models.model import App, AppMode, EndUser
 from services.agent.errors import AgentVersionNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.app_generate_service import AppGenerateService
+from services.entities.message_entities import MessageEndUser
 from services.errors.app import MoreLikeThisDisabledError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import (
@@ -46,7 +47,7 @@ from services.errors.message import (
     SuggestedQuestionsAfterAnswerDisabledError,
 )
 from services.message_service import MessageService
-from services.message_suggested_questions_service import SuggestedQuestionsActorNotFoundError, SuggestedQuestionsEndUser
+from services.message_suggested_questions_service import SuggestedQuestionsActorNotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -260,7 +261,8 @@ class MessageSuggestedQuestionApi(WebApiResource):
                 app_id=app_model.id,
                 app_owner_tenant_id=app_model.tenant_id,
                 expected_app_mode=app_model.mode,
-                actor=SuggestedQuestionsEndUser(end_user_id=end_user.id, invoke_from="web-app"),
+                actor=MessageEndUser(end_user_id=end_user.id),
+                invoke_from="web-app",
                 message_id=message_id_str,
             )
         except AppDefinitionUnavailableError:

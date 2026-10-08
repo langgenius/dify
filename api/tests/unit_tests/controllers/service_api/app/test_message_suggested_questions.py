@@ -36,7 +36,7 @@ from models.model import ApiToken, App, AppMode, AppModelConfig, Conversation, E
 from models.workflow import Workflow, WorkflowType
 from repositories.app_definition_query_repository import AppDefinitionQueryRepository
 from repositories.app_scoped_end_user_repository import AppScopedEndUserRepo
-from repositories.message_suggested_questions_repository import SuggestedQuestionsRepository
+from repositories.message_repository import MessageRepository
 from services.app_definition_query_service import AppDefinitionQueryService, AppDefinitionUnavailableError
 from services.app_scoped_end_user_service import AppScopedEndUserService
 from services.errors.app import AppAbnormalStatusError, AppApiDisabledError
@@ -249,7 +249,7 @@ def harness(
     monkeypatch.setattr(TraceQueueManager, "start_timer", lambda _self: None)
     monkeypatch.setattr(TraceQueueManager, "add_trace_task", record_trace)
 
-    queries = SuggestedQuestionsQuery(session_factory=query_factory, repository_factory=SuggestedQuestionsRepository)
+    queries = SuggestedQuestionsQuery(session_factory=query_factory, repository_factory=MessageRepository)
     service = MessageSuggestedQuestionsService(queries=queries, generator=SuggestedQuestionsGenerator())
     app.extensions["application_services"] = _Services(
         app_definitions=AppDefinitionQueryService(

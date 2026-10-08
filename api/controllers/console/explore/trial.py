@@ -100,6 +100,7 @@ from services.app_preview_query_service import (
     AppPreviewUnavailableError,
 )
 from services.audio_types import AudioAppRef, AudioUpload
+from services.entities.message_entities import MessageAccount
 from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
@@ -114,7 +115,7 @@ from services.errors.message import (
     SuggestedQuestionsAfterAnswerDisabledError,
 )
 from services.file_service import FileUploadActor
-from services.message_suggested_questions_service import SuggestedQuestionsAccount, SuggestedQuestionsActorNotFoundError
+from services.message_suggested_questions_service import SuggestedQuestionsActorNotFoundError
 from services.trial_app_access_service import TrialAppRef
 from services.trial_app_generation_service import (
     TrialAppNotChatError,
@@ -668,7 +669,8 @@ class TrialMessageSuggestedQuestionApi(Resource):
                 app_id=trial_app.app_id,
                 app_owner_tenant_id=trial_app.tenant_id,
                 expected_app_mode=trial_app.app_mode,
-                actor=SuggestedQuestionsAccount(account_id=request_context.account_id, invoke_from="explore"),
+                actor=MessageAccount(account_id=request_context.account_id),
+                invoke_from="explore",
                 message_id=str(message_id),
             )
         except AppDefinitionUnavailableError as error:

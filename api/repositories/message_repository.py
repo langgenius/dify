@@ -9,11 +9,10 @@ from core.memory.token_buffer_memory import PreparedHistory, TokenBufferMemory
 from models import Account, App, Conversation, EndUser, Message
 from models.model import AppModelConfig
 from services.app_definition_query_service import AppDefinitionUnavailableError
+from services.entities.message_entities import MessageAccount, MessageActor
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError
 from services.message_suggested_questions_service import (
-    SuggestedQuestionsAccount,
-    SuggestedQuestionsActor,
     SuggestedQuestionsActorNotFoundError,
     SuggestedQuestionsContext,
 )
@@ -24,7 +23,7 @@ class SuggestedQuestionsRecords(NamedTuple):
     conversation: Conversation
 
 
-class SuggestedQuestionsRepository:
+class MessageRepository:
     def __init__(self, session: Session) -> None:
         self._session: Session = session
 
@@ -34,7 +33,7 @@ class SuggestedQuestionsRepository:
         app_id: str,
         app_owner_tenant_id: str,
         expected_app_mode: str,
-        actor: SuggestedQuestionsActor,
+        actor: MessageActor,
         message_id: str,
     ) -> SuggestedQuestionsRecords:
         app = self._session.scalar(select(App).where(App.id == app_id, App.tenant_id == app_owner_tenant_id))
@@ -45,7 +44,7 @@ class SuggestedQuestionsRepository:
 
         account_id = None
         end_user_id = None
-        if isinstance(actor, SuggestedQuestionsAccount):
+        if isinstance(actor, MessageAccount):
             account_id = actor.account_id
             if self._session.get(Account, account_id) is None:
                 raise SuggestedQuestionsActorNotFoundError(f"Account {account_id} no longer exists")
@@ -107,13 +106,13 @@ class SuggestedQuestionsRepository:
                 f"App {context.app_id} is unavailable in tenant {context.tenant_id} with mode {context.app_mode}"
             )
         actor = context.actor
-        account_id = actor.account_id if isinstance(actor, SuggestedQuestionsAccount) else None
-        end_user_id = None if isinstance(actor, SuggestedQuestionsAccount) else actor.end_user_id
+        account_id = actor.account_id if isinstance(actor, MessageAccount) else None
+        end_user_id = None if isinstance(actor, MessageAccount) else actor.end_user_id
         conversation = self._session.scalar(
             select(Conversation).where(
                 Conversation.id == context.conversation_id,
                 Conversation.app_id == context.app_id,
-                Conversation.from_source == ("console" if isinstance(actor, SuggestedQuestionsAccount) else "api"),
+                Conversation.from_source == ("console" if isinstance(actor, MessageAccount) else "api"),
                 Conversation.from_account_id == account_id,
                 Conversation.from_end_user_id == end_user_id,
                 Conversation.is_deleted.is_(False),

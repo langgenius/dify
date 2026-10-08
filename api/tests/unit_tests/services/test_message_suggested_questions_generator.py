@@ -16,8 +16,9 @@ from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelType, ParameterRule, ParameterType
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
+from services.entities.message_entities import MessageEndUser
 from services.message_suggested_questions_generator import SuggestedQuestionsGenerator
-from services.message_suggested_questions_service import SuggestedQuestionsContext, SuggestedQuestionsEndUser
+from services.message_suggested_questions_service import SuggestedQuestionsContext
 from tests.unit_tests.core.model_fixtures import make_model_config, make_model_instance
 
 
@@ -352,7 +353,8 @@ def test_prepare_without_history_model_yields_none_without_tracing(
         app_mode="chat",
         message_id="message-id",
         conversation_id="conversation-id",
-        actor=SuggestedQuestionsEndUser(end_user_id="user-id", invoke_from="service-api"),
+        actor=MessageEndUser(end_user_id="user-id"),
+        invoke_from="service-api",
         config={"enabled": True},
     )
 

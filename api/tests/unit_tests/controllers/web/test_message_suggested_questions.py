@@ -36,7 +36,7 @@ from models.agent_config_entities import AgentSoulConfig
 from models.enums import ConversationFromSource, CustomizeTokenStrategy
 from models.model import App, AppMode, AppModelConfig, Conversation, EndUser, Message, Site
 from models.workflow import Workflow
-from repositories.message_suggested_questions_repository import SuggestedQuestionsRepository
+from repositories.message_repository import MessageRepository
 from services import message_suggested_questions_generator as generator_module
 from services.message_suggested_questions_generator import SuggestedQuestionsGenerator
 from services.message_suggested_questions_queries import SuggestedQuestionsQuery
@@ -209,7 +209,7 @@ def harness(
     app.config.update(TESTING=True, RESTX_ERROR_404_HELP=False, SQLALCHEMY_DATABASE_URI=str(sqlite_engine.url))
     db.init_app(app)
     event.listen(db.session.session_factory, "after_begin", track_session)
-    queries = SuggestedQuestionsQuery(session_factory=read_factory, repository_factory=SuggestedQuestionsRepository)
+    queries = SuggestedQuestionsQuery(session_factory=read_factory, repository_factory=MessageRepository)
     services = _Services(MessageSuggestedQuestionsService(queries=queries, generator=SuggestedQuestionsGenerator()))
     app.extensions["application_services"] = services
     api = ExternalApi(app)

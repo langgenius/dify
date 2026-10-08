@@ -46,10 +46,11 @@ from models.agent_config_entities import AgentSoulConfig
 from models.enums import ConversationFromSource
 from models.model import App, AppMode, AppModelConfig, Conversation, Message
 from repositories.app.agent_app_repository import AgentAppRepository
-from repositories.message_suggested_questions_repository import SuggestedQuestionsRepository
+from repositories.message_repository import MessageRepository
 from services import message_suggested_questions_generator as generator_module
 from services.app.agent_app_service import AgentAppAccessService
 from services.app_definition_query_service import AppDefinitionUnavailableError
+from services.entities.message_entities import MessageAccount, MessageActor
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError, SuggestedQuestionsAfterAnswerDisabledError
 from services.message_suggested_questions_generator import SuggestedQuestionsGenerator
@@ -57,9 +58,8 @@ from services.message_suggested_questions_queries import SuggestedQuestionsQuery
 from services.message_suggested_questions_service import (
     MessageSuggestedQuestions,
     MessageSuggestedQuestionsService,
-    SuggestedQuestionsAccount,
-    SuggestedQuestionsActor,
     SuggestedQuestionsActorNotFoundError,
+    SuggestedQuestionsInvokeFrom,
 )
 from tests.unit_tests.config_override import apply_config_overrides
 from tests.unit_tests.model_factories import make_account, make_app, make_conversation, make_message
@@ -69,7 +69,7 @@ from tests.unit_tests.model_factories import make_account, make_app, make_conver
 class _Questions:
     questions: list[str] = field(default_factory=lambda: ["Next?"])
     failure: Exception | None = None
-    calls: list[tuple[str, str, str, SuggestedQuestionsActor, str]] = field(default_factory=list)
+    calls: list[tuple[str, str, str, MessageActor, SuggestedQuestionsInvokeFrom, str]] = field(default_factory=list)
 
     def get_suggested_questions(
         self,
@@ -77,10 +77,11 @@ class _Questions:
         app_id: str,
         app_owner_tenant_id: str,
         expected_app_mode: str,
-        actor: SuggestedQuestionsActor,
+        actor: MessageActor,
+        invoke_from: SuggestedQuestionsInvokeFrom,
         message_id: str,
     ) -> list[str]:
-        self.calls.append((app_id, app_owner_tenant_id, expected_app_mode, actor, message_id))
+        self.calls.append((app_id, app_owner_tenant_id, expected_app_mode, actor, invoke_from, message_id))
         if self.failure is not None:
             raise self.failure
         return self.questions
@@ -240,9 +241,7 @@ def harness(
     flask_app = Flask(__name__)
     flask_app.config.update(TESTING=True, RESTX_ERROR_404_HELP=False, SQLALCHEMY_DATABASE_URI=str(sqlite_engine.url))
     db.init_app(flask_app)
-    queries = SuggestedQuestionsQuery(
-        session_factory=sqlite_session_factory, repository_factory=SuggestedQuestionsRepository
-    )
+    queries = SuggestedQuestionsQuery(session_factory=sqlite_session_factory, repository_factory=MessageRepository)
     services = _Services(
         app_services,
         _Agents(AgentAppAccessService(references=AgentAppRepository(session_factory=sqlite_session_factory))),
@@ -299,7 +298,8 @@ def test_app_reference_and_account_are_passed_to_shared_runtime(
             harness.target.id,
             harness.target.tenant_id,
             mode,
-            SuggestedQuestionsAccount(harness.account.id, "debugger"),
+            MessageAccount(harness.account.id),
+            "debugger",
             harness.message.id,
         )
     ]
@@ -347,7 +347,8 @@ def test_agent_resolves_existing_backing_app(harness: _Harness, scope: AgentScop
             harness.target.id,
             harness.target.tenant_id,
             AppMode.AGENT,
-            SuggestedQuestionsAccount(harness.account.id, "debugger"),
+            MessageAccount(harness.account.id),
+            "debugger",
             harness.message.id,
         )
     ]

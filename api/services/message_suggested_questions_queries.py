@@ -18,12 +18,12 @@ from core.memory.token_buffer_memory import PreparedHistory
 from models import AppMode
 from models.agent_config_entities import AgentSoulConfig
 from models.model import AppModelConfig, load_annotation_reply_config
-from repositories.message_suggested_questions_repository import SuggestedQuestionsRecords, SuggestedQuestionsRepository
+from repositories.message_repository import MessageRepository, SuggestedQuestionsRecords
 from services.agent.runtime_config_service import AgentRuntimeConfigService
+from services.entities.message_entities import MessageAccount, MessageActor
 from services.message_suggested_questions_service import (
-    SuggestedQuestionsAccount,
-    SuggestedQuestionsActor,
     SuggestedQuestionsContext,
+    SuggestedQuestionsInvokeFrom,
 )
 from services.workflow_service import WorkflowService
 
@@ -44,10 +44,10 @@ class SuggestedQuestionsQuery:
         self,
         *,
         session_factory: sessionmaker[Session],
-        repository_factory: Callable[[Session], SuggestedQuestionsRepository],
+        repository_factory: Callable[[Session], MessageRepository],
     ) -> None:
         self._session_factory: sessionmaker[Session] = session_factory
-        self._repository_factory: Callable[[Session], SuggestedQuestionsRepository] = repository_factory
+        self._repository_factory: Callable[[Session], MessageRepository] = repository_factory
 
     def prepare(
         self,
@@ -55,7 +55,8 @@ class SuggestedQuestionsQuery:
         app_id: str,
         app_owner_tenant_id: str,
         expected_app_mode: str,
-        actor: SuggestedQuestionsActor,
+        actor: MessageActor,
+        invoke_from: SuggestedQuestionsInvokeFrom,
         message_id: str,
     ) -> SuggestedQuestionsContext | None:
         with self._session_factory(expire_on_commit=False) as session:
@@ -67,7 +68,9 @@ class SuggestedQuestionsQuery:
                 actor=actor,
                 message_id=message_id,
             )
-            config = self._configuration(session=session, repository=repository, records=records, actor=actor)
+            config = self._configuration(
+                session=session, repository=repository, records=records, actor=actor, invoke_from=invoke_from
+            )
             if config is None:
                 return None
             return SuggestedQuestionsContext(
@@ -77,6 +80,7 @@ class SuggestedQuestionsQuery:
                 message_id=message_id,
                 conversation_id=records.conversation.id,
                 actor=actor,
+                invoke_from=invoke_from,
                 config=MappingProxyType(deepcopy(dict(config))),
             )
 
@@ -84,16 +88,17 @@ class SuggestedQuestionsQuery:
     def _configuration(
         *,
         session: Session,
-        repository: SuggestedQuestionsRepository,
+        repository: MessageRepository,
         records: SuggestedQuestionsRecords,
-        actor: SuggestedQuestionsActor,
+        actor: MessageActor,
+        invoke_from: SuggestedQuestionsInvokeFrom,
     ) -> Mapping[str, object] | None:
         app, conversation = records
         if app.mode == AppMode.ADVANCED_CHAT:
             workflows = WorkflowService()
             workflow = (
                 workflows.get_draft_workflow(app_model=app, session=session)
-                if actor.invoke_from == "debugger"
+                if invoke_from == "debugger"
                 else workflows.get_published_workflow(app_model=app, session=session)
             )
             if workflow is None:
@@ -111,8 +116,8 @@ class SuggestedQuestionsQuery:
             soul = AgentRuntimeConfigService(session).resolve_conversation_soul(
                 app_model=app,
                 conversation=conversation,
-                account_id=actor.account_id if isinstance(actor, SuggestedQuestionsAccount) else None,
-                use_debug_draft=actor.invoke_from == "debugger",
+                account_id=actor.account_id if isinstance(actor, MessageAccount) else None,
+                use_debug_draft=invoke_from == "debugger",
             )
             model_config = repository.get_model_config(app_id=app.id, config_id=app.app_model_config_id)
             annotation_reply = load_annotation_reply_config(session, app.id) if model_config else None

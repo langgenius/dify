@@ -968,7 +968,7 @@ source_modules =
     services.message_suggested_questions_service
     services.message_suggested_questions_queries
     services.message_suggested_questions_generator
-    repositories.message_suggested_questions_repository
+    repositories.message_repository
 forbidden_modules =
     services.message_service
     services.app_generate_service
@@ -978,7 +978,7 @@ allow_indirect_imports = True
 name = Suggested questions persistence does not call concrete configuration services
 type = forbidden
 source_modules =
-    repositories.message_suggested_questions_repository
+    repositories.message_repository
 forbidden_modules =
     services.conversation_service
     services.workflow_service

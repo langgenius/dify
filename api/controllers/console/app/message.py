@@ -61,10 +61,11 @@ from services.app.agent_app_contracts import AgentAppNotFoundError
 from services.app.console_service import ConsoleAppNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.conversation_service import ConversationService
+from services.entities.message_entities import MessageAccount
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError, SuggestedQuestionsAfterAnswerDisabledError
 from services.message_service import attach_message_extra_contents
-from services.message_suggested_questions_service import SuggestedQuestionsAccount, SuggestedQuestionsActorNotFoundError
+from services.message_suggested_questions_service import SuggestedQuestionsActorNotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -574,7 +575,8 @@ def _get_message_suggested_questions(
             app_id=app_id,
             app_owner_tenant_id=context.active_workspace_id,
             expected_app_mode=app_mode,
-            actor=SuggestedQuestionsAccount(account_id=context.account_id, invoke_from="debugger"),
+            actor=MessageAccount(account_id=context.account_id),
+            invoke_from="debugger",
             message_id=str(message_id),
         )
     except AppDefinitionUnavailableError as exc:

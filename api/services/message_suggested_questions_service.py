@@ -9,22 +9,10 @@ from contextlib import AbstractContextManager
 from dataclasses import dataclass
 from typing import Literal, Protocol
 
+from services.entities.message_entities import MessageActor
 from services.errors.message import SuggestedQuestionsAfterAnswerDisabledError
 
-
-@dataclass(frozen=True, slots=True)
-class SuggestedQuestionsAccount:
-    account_id: str
-    invoke_from: Literal["explore", "debugger"]
-
-
-@dataclass(frozen=True, slots=True)
-class SuggestedQuestionsEndUser:
-    end_user_id: str
-    invoke_from: Literal["web-app", "service-api"]
-
-
-type SuggestedQuestionsActor = SuggestedQuestionsAccount | SuggestedQuestionsEndUser
+type SuggestedQuestionsInvokeFrom = Literal["explore", "debugger", "web-app", "service-api"]
 
 
 class SuggestedQuestionsActorNotFoundError(LookupError):
@@ -38,7 +26,8 @@ class MessageSuggestedQuestions(Protocol):
         app_id: str,
         app_owner_tenant_id: str,
         expected_app_mode: str,
-        actor: SuggestedQuestionsActor,
+        actor: MessageActor,
+        invoke_from: SuggestedQuestionsInvokeFrom,
         message_id: str,
     ) -> list[str]: ...
 
@@ -52,7 +41,8 @@ class SuggestedQuestionsContext:
     app_mode: str
     message_id: str
     conversation_id: str
-    actor: SuggestedQuestionsActor
+    actor: MessageActor
+    invoke_from: SuggestedQuestionsInvokeFrom
     config: Mapping[str, object]
 
 
@@ -63,7 +53,8 @@ class SuggestedQuestionsContextQuery[HistoryT](Protocol):
         app_id: str,
         app_owner_tenant_id: str,
         expected_app_mode: str,
-        actor: SuggestedQuestionsActor,
+        actor: MessageActor,
+        invoke_from: SuggestedQuestionsInvokeFrom,
         message_id: str,
     ) -> SuggestedQuestionsContext | None:
         """Return message configuration, or None when there is no selected workflow."""
@@ -109,7 +100,8 @@ class MessageSuggestedQuestionsService[HistoryT]:
         app_id: str,
         app_owner_tenant_id: str,
         expected_app_mode: str,
-        actor: SuggestedQuestionsActor,
+        actor: MessageActor,
+        invoke_from: SuggestedQuestionsInvokeFrom,
         message_id: str,
     ) -> list[str]:
         context = self._queries.prepare(
@@ -117,6 +109,7 @@ class MessageSuggestedQuestionsService[HistoryT]:
             app_owner_tenant_id=app_owner_tenant_id,
             expected_app_mode=expected_app_mode,
             actor=actor,
+            invoke_from=invoke_from,
             message_id=message_id,
         )
         if context is None:

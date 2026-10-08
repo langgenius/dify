@@ -46,6 +46,7 @@ from libs.exception import BaseHTTPException
 from machinery.context import RequestContext
 from services.account_errors import AccountNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
+from services.entities.message_entities import MessageAccount
 from services.errors.app import MoreLikeThisDisabledError
 from services.errors.base import BaseServiceError
 from services.errors.conversation import ConversationNotExistsError
@@ -57,7 +58,7 @@ from services.errors.message import (
 from services.installed_app_access_service import InstalledAppNotFoundError, InstalledAppRef
 from services.installed_app_generation_service import InstalledAppNotCompletionError
 from services.installed_app_message_service import FeedbackRatingRequiredError, MessageNotChatAppError
-from services.message_suggested_questions_service import SuggestedQuestionsAccount, SuggestedQuestionsActorNotFoundError
+from services.message_suggested_questions_service import SuggestedQuestionsActorNotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -219,7 +220,8 @@ class MessageSuggestedQuestionApi(Resource):
                 app_id=installed_app.app_id,
                 app_owner_tenant_id=installed_app.app_owner_tenant_id,
                 expected_app_mode=installed_app.app_mode,
-                actor=SuggestedQuestionsAccount(account_id=request_context.account_id, invoke_from="explore"),
+                actor=MessageAccount(account_id=request_context.account_id),
+                invoke_from="explore",
                 message_id=str(message_id),
             )
         except (

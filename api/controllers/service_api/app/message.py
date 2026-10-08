@@ -38,6 +38,7 @@ from models.enums import FeedbackRating
 from models.model import App, AppMode, EndUser
 from services.agent.errors import AgentVersionNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
+from services.entities.message_entities import MessageEndUser
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import (
     FirstMessageNotExistsError,
@@ -45,7 +46,7 @@ from services.errors.message import (
     SuggestedQuestionsAfterAnswerDisabledError,
 )
 from services.message_service import MessageService
-from services.message_suggested_questions_service import SuggestedQuestionsActorNotFoundError, SuggestedQuestionsEndUser
+from services.message_suggested_questions_service import SuggestedQuestionsActorNotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -302,7 +303,8 @@ class MessageSuggestedApi(Resource):
                 app_id=context.app_id,
                 app_owner_tenant_id=context.tenant_id,
                 expected_app_mode=context.app_mode,
-                actor=SuggestedQuestionsEndUser(end_user_id=context.end_user_id, invoke_from="service-api"),
+                actor=MessageEndUser(end_user_id=context.end_user_id),
+                invoke_from="service-api",
                 message_id=message_id_str,
             )
         except AppDefinitionUnavailableError:

@@ -64,7 +64,7 @@ from repositories.file_grant_repository import FileGrantRepository
 from repositories.human_input_file_upload_repository import SQLAlchemyHumanInputFileUploadRepository
 from repositories.installation_state_repository import InstallationStateRepository
 from repositories.message_file_preview_repository import MessageFilePreviewQueryRepository
-from repositories.message_suggested_questions_repository import SuggestedQuestionsRepository
+from repositories.message_repository import MessageRepository
 from repositories.oauth_device_token_repository import SQLAlchemyOAuthDeviceTokenRepository
 from repositories.oauth_server_repository import RedisOAuthServerTokenRepository, SQLAlchemyOAuthServerRepository
 from repositories.plugin_file_upload_repository import SQLAlchemyPluginFileUploadOwnerRepository
@@ -498,7 +498,7 @@ def build_application_services(
     )
     suggested_questions = SuggestedQuestionsQuery(
         session_factory=database_client,
-        repository_factory=SuggestedQuestionsRepository,
+        repository_factory=MessageRepository,
     )
 
     return ApplicationServices(

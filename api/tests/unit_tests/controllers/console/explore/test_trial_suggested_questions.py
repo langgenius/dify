@@ -37,16 +37,16 @@ from models.account import AccountStatus
 from models.agent import Agent, AgentScope, AgentSource, AgentStatus
 from models.enums import ConversationFromSource
 from models.model import AppModelConfig
-from repositories.message_suggested_questions_repository import SuggestedQuestionsRepository
+from repositories.message_repository import MessageRepository
 from repositories.trial_app_repository import TrialAppRepository
 from services.app_definition_query_service import AppDefinitionUnavailableError
+from services.entities.message_entities import MessageAccount, MessageActor
 from services.message_suggested_questions_generator import SuggestedQuestionsGenerator
 from services.message_suggested_questions_queries import SuggestedQuestionsQuery
 from services.message_suggested_questions_service import (
     MessageSuggestedQuestionsService,
-    SuggestedQuestionsAccount,
-    SuggestedQuestionsActor,
     SuggestedQuestionsActorNotFoundError,
+    SuggestedQuestionsInvokeFrom,
 )
 from services.trial_app_access_service import TrialAppAccessService
 
@@ -233,7 +233,7 @@ def harness(
         read_sessions.append(session)
 
     provider = _Provider(read_sessions, target.id)
-    queries = SuggestedQuestionsQuery(session_factory=read_factory, repository_factory=SuggestedQuestionsRepository)
+    queries = SuggestedQuestionsQuery(session_factory=read_factory, repository_factory=MessageRepository)
     services = _ApplicationServices(
         trial_apps=_TrialAppServices(
             access=TrialAppAccessService(apps=TrialAppRepository(session_factory=read_factory))
@@ -597,7 +597,8 @@ def test_reload_errors_have_explicit_http_mapping(
         app_id: str,
         app_owner_tenant_id: str,
         expected_app_mode: str,
-        actor: SuggestedQuestionsActor,
+        actor: MessageActor,
+        invoke_from: SuggestedQuestionsInvokeFrom,
         message_id: str,
     ) -> list[str]:
         assert (app_id, app_owner_tenant_id, expected_app_mode, message_id) == (
@@ -606,7 +607,8 @@ def test_reload_errors_have_explicit_http_mapping(
             harness.target.mode,
             harness.message.id,
         )
-        assert actor == SuggestedQuestionsAccount(account_id=harness.account.id, invoke_from="explore")
+        assert actor == MessageAccount(account_id=harness.account.id)
+        assert invoke_from == "explore"
         raise failure
 
     monkeypatch.setattr(MessageSuggestedQuestionsService, "get_suggested_questions", reject_reload)

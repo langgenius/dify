@@ -31,7 +31,8 @@ from models.enums import ConversationFromSource, ConversationStatus, FeedbackFro
 from models.model import AppModelConfig, Conversation, Message, MessageFeedback
 from repositories.installed_app_message_repository import SQLAlchemyInstalledAppMessageRepository
 from repositories.installed_app_repository import SQLAlchemyInstalledAppRepository
-from repositories.message_suggested_questions_repository import SuggestedQuestionsRepository
+from repositories.message_repository import MessageRepository
+from services.entities.message_entities import MessageAccount, MessageActor
 from services.errors.app import MoreLikeThisDisabledError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError, SuggestedQuestionsAfterAnswerDisabledError
@@ -42,8 +43,7 @@ from services.message_suggested_questions_queries import SuggestedQuestionsQuery
 from services.message_suggested_questions_service import (
     MessageSuggestedQuestions,
     MessageSuggestedQuestionsService,
-    SuggestedQuestionsAccount,
-    SuggestedQuestionsActor,
+    SuggestedQuestionsInvokeFrom,
 )
 from tests.unit_tests.controllers.console.explore.test_installed_app_admission import (
     _assert_json_response,
@@ -81,7 +81,9 @@ class _Messages:
     extra_calls: list[list[str]] = field(default_factory=list)
     feedback_events: list[MessageFeedbackEvent] = field(default_factory=list)
     questions: list[str] = field(default_factory=lambda: ["Next question?", "还有吗？"])
-    question_calls: list[tuple[str, str, str, SuggestedQuestionsActor, str]] = field(default_factory=list)
+    question_calls: list[tuple[str, str, str, MessageActor, SuggestedQuestionsInvokeFrom, str]] = field(
+        default_factory=list
+    )
     generation_calls: list[tuple[str, str, str, bool]] = field(default_factory=list)
     generation_response: GenerationResponse = field(default_factory=lambda: dict(_BLOCKING))
     external_error: Exception | None = None
@@ -109,11 +111,12 @@ class _Messages:
         app_id: str,
         app_owner_tenant_id: str,
         expected_app_mode: str,
-        actor: SuggestedQuestionsActor,
+        actor: MessageActor,
+        invoke_from: SuggestedQuestionsInvokeFrom,
         message_id: str,
     ) -> list[str]:
         self.assert_sessions_closed()
-        self.question_calls.append((app_id, app_owner_tenant_id, expected_app_mode, actor, message_id))
+        self.question_calls.append((app_id, app_owner_tenant_id, expected_app_mode, actor, invoke_from, message_id))
         if self.external_error is not None:
             raise self.external_error
         return self.questions
@@ -293,7 +296,7 @@ def real_questions(
 
     monkeypatch.setattr(generator_module.ModelManager, "for_tenant", model_manager)
     monkeypatch.setattr(generator_module, "TraceQueueManager", trace_manager)
-    queries = SuggestedQuestionsQuery(session_factory=messages.factory, repository_factory=SuggestedQuestionsRepository)
+    queries = SuggestedQuestionsQuery(session_factory=messages.factory, repository_factory=MessageRepository)
     messages.services = replace(
         messages.services,
         message_suggested_questions=MessageSuggestedQuestionsService(
@@ -692,7 +695,8 @@ def test_suggested_questions_preserves_results_and_empty_fallback(messages: _Mes
             messages.harness.target_app.id,
             messages.harness.target_app.tenant_id,
             "chat",
-            SuggestedQuestionsAccount(account_id=messages.harness.account.id, invoke_from="explore"),
+            MessageAccount(account_id=messages.harness.account.id),
+            "explore",
             message_id,
         )
     ]
