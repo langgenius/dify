@@ -24,8 +24,6 @@ export const parsePluginErrorMessage = async (error: any): Promise<string> => {
     rawMessage = error?.message || error?.toString() || 'Unknown error'
   }
 
-  console.log('rawMessage', rawMessage)
-
   // Try to extract nested JSON from PluginInvokeError
   // Use greedy match .+ to capture the complete JSON object with nested braces
   const pluginErrorPattern = /PluginInvokeError:\s*(\{.+\})/
