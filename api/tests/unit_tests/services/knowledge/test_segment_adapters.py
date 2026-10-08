@@ -509,10 +509,12 @@ def indexing_probe(
     event.listen(engine, "rollback", finish)
     probe = VectorProbe(active)
 
-    def vector(dataset: Dataset, *, session: Session | None, configuration: VectorConfiguration) -> VectorProbe:
+    def vector(
+        dataset: Dataset, *, session: Session | None, configuration: VectorConfiguration | None = None
+    ) -> VectorProbe:
         assert dataset.tenant_id == "workspace-1"
         assert session is None
-        assert configuration.vector_type == "qdrant"
+        assert configuration == VectorConfiguration("qdrant")
         assert not active
         return probe
 

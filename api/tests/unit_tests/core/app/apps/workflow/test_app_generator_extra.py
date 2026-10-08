@@ -3,7 +3,7 @@ from __future__ import annotations
 import contextlib
 import json
 from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import Mock, create_autospec
 
 import pytest
 from sqlalchemy import inspect
@@ -262,7 +262,7 @@ class TestWorkflowAppGeneratorValidation:
         *,
         workflow_runtime: WorkflowRuntime,
     ):
-        loader = Mock(spec=VariableLoader)
+        loader = create_autospec(VariableLoader, instance=True)
         loader_factory = Mock(return_value=loader)
         generator = WorkflowAppGenerator(draft_variable_loader=loader_factory, runtime=workflow_runtime)
         app = _persist_app(sqlite_session)
@@ -306,7 +306,7 @@ class TestWorkflowAppGeneratorValidation:
         *,
         workflow_runtime: WorkflowRuntime,
     ):
-        loader = Mock(spec=VariableLoader)
+        loader = create_autospec(VariableLoader, instance=True)
         loader_factory = Mock(return_value=loader)
         generator = WorkflowAppGenerator(draft_variable_loader=loader_factory, runtime=workflow_runtime)
         app = _persist_app(sqlite_session)

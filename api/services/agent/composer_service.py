@@ -33,6 +33,7 @@ from models.agent_config_entities import (
     effective_declared_outputs as _effective_declared_outputs,
 )
 from models.workflow import Workflow
+from repositories.agent.workflow_binding_repository import WorkflowAgentBindingRepository, workflow_binding_scope
 from services.agent.agent_soul_state import agent_soul_has_model
 from services.agent.composer_validator import ComposerConfigValidator
 from services.agent.dsl_entities import make_portable_agent_soul
@@ -207,9 +208,7 @@ class AgentComposerService:
         if payload.save_strategy in _PUBLISH_SAVE_STRATEGIES:
             cls.validate_knowledge_datasets(session=session, tenant_id=tenant_id, agent_soul=payload.agent_soul)
         workflow = cls._get_draft_workflow(session=session, tenant_id=tenant_id, app_id=app_id)
-        binding = cls._get_workflow_binding(
-            session=session, tenant_id=tenant_id, workflow_id=workflow.id, node_id=node_id
-        )
+        binding = cls._lock_workflow_binding(session=session, workflow=workflow, node_id=node_id)
         retirement_candidates = (
             {binding.agent_id}
             if binding is not None
@@ -304,9 +303,7 @@ class AgentComposerService:
         """Copy a callable roster Agent snapshot into a workflow-owned inline Agent."""
 
         workflow = cls._get_draft_workflow(session=session, tenant_id=tenant_id, app_id=app_id)
-        binding = cls._require_binding(
-            cls._get_workflow_binding(session=session, tenant_id=tenant_id, workflow_id=workflow.id, node_id=node_id)
-        )
+        binding = cls._require_binding(cls._lock_workflow_binding(session=session, workflow=workflow, node_id=node_id))
 
         if binding.binding_type == WorkflowAgentBindingType.INLINE_AGENT and idempotency_key:
             agent = cls._get_agent_if_present(session=session, tenant_id=tenant_id, agent_id=binding.agent_id)
@@ -2193,6 +2190,20 @@ class AgentComposerService:
             )
             .limit(1)
         )
+
+    @staticmethod
+    def _lock_workflow_binding(
+        *, session: Session, workflow: Workflow, node_id: str
+    ) -> WorkflowAgentNodeBinding | None:
+        """Lock every draft binding, then its Agent, before returning the requested binding.
+
+        Debug reservation takes the same stable binding-first lock order while
+        materializing execution bindings. Locking the whole workflow prevents a
+        concurrent writer from acquiring a later binding before this transaction
+        reaches it.
+        """
+        bindings = WorkflowAgentBindingRepository(session).lock_bindings(workflow_binding_scope(workflow))
+        return next((binding for binding in bindings if binding.node_id == node_id), None)
 
     @classmethod
     def _require_binding(cls, binding: WorkflowAgentNodeBinding | None) -> WorkflowAgentNodeBinding:

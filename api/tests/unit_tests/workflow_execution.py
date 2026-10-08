@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from enums.agent import WorkflowAgentBindingType
 from models.agent import WORKFLOW_EXECUTION_BINDING_VERSION, WorkflowAgentNodeBinding
 from models.agent_config_entities import WorkflowNodeJobConfig
+from models.human_input_contracts import HumanInputFormRecord
 from models.workflow import WorkflowRun
 from repositories.workflow.execution_write_repository import DebugLease, read_debug_lease, write_debug_lease
 
@@ -42,7 +43,7 @@ def set_debug_deadline(session: Session, execution_id: str, expires_at: datetime
 class NoHumanInputForms:
     """Graphs without timed-out forms must never perform a form lookup."""
 
-    def get_by_form_id(self, form_id):
+    def get_by_form_id(self, form_id: str) -> HumanInputFormRecord | None:
         raise AssertionError(f"Unexpected human input form lookup: {form_id}")
 
 

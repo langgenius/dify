@@ -2496,14 +2496,10 @@ export type AgentToolCallResponse = {
   status: string
   time_cost: number | number
   tool_icon?: unknown
-  tool_input: {
-    [key: string]: unknown
-  }
+  tool_input: unknown
   tool_label: string
   tool_name: string
-  tool_output: {
-    [key: string]: unknown
-  }
+  tool_output: unknown
   tool_parameters: {
     [key: string]: unknown
   }

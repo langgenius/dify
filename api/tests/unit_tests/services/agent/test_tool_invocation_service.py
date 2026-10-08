@@ -1,7 +1,8 @@
 """Unit tests for the Agent tool inner invoke service with SQLite-backed app lookup."""
 
 from collections.abc import Generator
-from unittest.mock import Mock, patch
+from dataclasses import replace
+from unittest.mock import create_autospec, patch
 
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
@@ -14,6 +15,7 @@ from core.tools.errors import (
     ToolProviderCredentialValidationError,
     ToolProviderNotFoundError,
 )
+from extensions.application_services.workflow import WorkflowExecutionDependencies
 from models.enums import AppStatus
 from models.model import App, AppMode
 from repositories.app.agent_app_repository import AgentAppRepository
@@ -21,7 +23,7 @@ from services.agent.tool_invocation_service import AgentToolInnerService
 from services.entities.agent_tool_inner import AgentToolInvokeRequest
 from services.errors.agent_tool_inner import AgentToolInnerServiceError
 from services.tools.agent_invocation_gateway import AgentToolInvocationGateway
-from services.workflow.execution.ports import WorkflowRuntime
+from services.workflow.execution.ports import WorkflowRuntime, WorkflowToolInvoker
 from services.workflow.variable_contracts import WorkflowExecutionVariables
 
 TENANT_ID = "11111111-1111-1111-1111-111111111111"
@@ -84,21 +86,37 @@ def _messages() -> Generator[ToolInvokeMessage, None, None]:
     )
 
 
-def _service(session: Session, runtime: WorkflowRuntime, variables: WorkflowExecutionVariables | None = None):
+def _tool() -> Tool:
+    return create_autospec(Tool, instance=True, spec_set=True)
+
+
+def _variables() -> WorkflowExecutionVariables:
+    return create_autospec(WorkflowExecutionVariables, instance=True, spec_set=True)
+
+
+def _service(
+    session: Session,
+    runtime: WorkflowRuntime,
+    variables: WorkflowExecutionVariables | None = None,
+) -> AgentToolInnerService:
     return AgentToolInnerService(
         apps=AgentAppRepository(session_factory=sessionmaker(bind=session.get_bind(), expire_on_commit=False)),
         tools=AgentToolInvocationGateway(
-            variables=variables if variables is not None else Mock(spec=WorkflowExecutionVariables), runtime=runtime
+            variables=variables if variables is not None else _variables(),
+            runtime=runtime,
         ),
     )
 
 
 @pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
 def test_invoke_uses_agent_tool_runtime_and_returns_observation(
-    sqlite_session: Session, *, workflow_runtime: WorkflowRuntime
+    sqlite_session: Session, *, workflow_runtime: WorkflowExecutionDependencies
 ) -> None:
-    fake_tool = Mock(spec=Tool)
-    variables = Mock(spec=WorkflowExecutionVariables)
+    fake_tool = _tool()
+    variables = _variables()
+    tool_invoker = create_autospec(WorkflowToolInvoker, instance=True, spec_set=True)
+    tool_invoker.return_value = _messages()
+    runtime = replace(workflow_runtime, tool_invoker=tool_invoker)
     _persist_app(sqlite_session)
 
     with (
@@ -107,14 +125,11 @@ def test_invoke_uses_agent_tool_runtime_and_returns_observation(
             return_value=fake_tool,
         ) as mock_get_runtime,
         patch(
-            "services.tools.agent_invocation_gateway.ToolEngine.generic_invoke", return_value=_messages()
-        ) as mock_invoke,
-        patch(
             "services.tools.agent_invocation_gateway.ToolFileMessageTransformer.transform_tool_invoke_messages",
             side_effect=lambda messages, **_kwargs: messages,
         ),
     ):
-        response = _service(sqlite_session, workflow_runtime, variables).invoke(_request())
+        response = _service(sqlite_session, runtime, variables).invoke(_request())
 
     assert response.observation == "ok"
     assert response.metadata == {
@@ -126,8 +141,8 @@ def test_invoke_uses_agent_tool_runtime_and_returns_observation(
     assert mock_get_runtime.call_args.kwargs["draft_variable_saver"] is variables.saver_factory
     assert agent_tool.provider_type is ToolProviderType.PLUGIN
     assert agent_tool.tool_parameters == {"region": "us"}
-    mock_invoke.assert_called_once()
-    assert "session" not in mock_invoke.call_args.kwargs
+    tool_invoker.assert_called_once()
+    assert "session" not in tool_invoker.call_args.kwargs
     assert not sqlite_session.in_transaction()
 
 
@@ -159,19 +174,17 @@ def test_invoke_raises_app_tenant_mismatch_when_app_belongs_to_other_tenant(
 
 @pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
 def test_invoke_maps_tool_runtime_app_not_found_value_error_to_specific_error_code(
-    sqlite_session: Session, *, workflow_runtime: WorkflowRuntime
+    sqlite_session: Session, *, workflow_runtime: WorkflowExecutionDependencies
 ) -> None:
-    fake_tool = Mock(spec=Tool)
+    fake_tool = _tool()
+    tool_invoker = create_autospec(WorkflowToolInvoker, instance=True, spec_set=True)
+    tool_invoker.side_effect = ValueError("app not found")
+    runtime = replace(workflow_runtime, tool_invoker=tool_invoker)
     _persist_app(sqlite_session)
 
-    with (
-        patch("services.tools.agent_invocation_gateway.ToolManager.get_agent_tool_runtime", return_value=fake_tool),
-        patch(
-            "services.tools.agent_invocation_gateway.ToolEngine.generic_invoke", side_effect=ValueError("app not found")
-        ),
-    ):
+    with patch("services.tools.agent_invocation_gateway.ToolManager.get_agent_tool_runtime", return_value=fake_tool):
         with pytest.raises(AgentToolInnerServiceError) as exc_info:
-            _service(sqlite_session, workflow_runtime).invoke(_request())
+            _service(sqlite_session, runtime).invoke(_request())
 
     assert exc_info.value.error_code == "app_not_found"
     assert exc_info.value.status_code == 404
@@ -181,20 +194,17 @@ def test_invoke_maps_tool_runtime_app_not_found_value_error_to_specific_error_co
 
 @pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
 def test_invoke_maps_tool_invoke_error_without_private_tool_engine_helper(
-    sqlite_session: Session, *, workflow_runtime: WorkflowRuntime
+    sqlite_session: Session, *, workflow_runtime: WorkflowExecutionDependencies
 ) -> None:
-    fake_tool = Mock(spec=Tool)
+    fake_tool = _tool()
+    tool_invoker = create_autospec(WorkflowToolInvoker, instance=True, spec_set=True)
+    tool_invoker.side_effect = ToolInvokeError("workflow crashed")
+    runtime = replace(workflow_runtime, tool_invoker=tool_invoker)
     _persist_app(sqlite_session)
 
-    with (
-        patch("services.tools.agent_invocation_gateway.ToolManager.get_agent_tool_runtime", return_value=fake_tool),
-        patch(
-            "services.tools.agent_invocation_gateway.ToolEngine.generic_invoke",
-            side_effect=ToolInvokeError("workflow crashed"),
-        ),
-    ):
+    with patch("services.tools.agent_invocation_gateway.ToolManager.get_agent_tool_runtime", return_value=fake_tool):
         with pytest.raises(AgentToolInnerServiceError) as exc_info:
-            _service(sqlite_session, workflow_runtime).invoke(_request())
+            _service(sqlite_session, runtime).invoke(_request())
 
     assert exc_info.value.error_code == "agent_tool_invoke_failed"
     assert not sqlite_session.in_transaction()

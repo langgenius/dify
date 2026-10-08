@@ -47,12 +47,11 @@ BackendFixture = tuple[
 
 
 @pytest.fixture
-def backend(sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch) -> Iterator[BackendFixture]:
-    apply_config_overrides(monkeypatch, VECTOR_STORE="qdrant", VECTOR_STORE_WHITELIST_ENABLE=False)
+def backend(sqlite_session_factory: sessionmaker[Session]) -> Iterator[BackendFixture]:
+    dataset = _dataset("dataset-1", "workspace-1")
+    dataset.index_struct = json.dumps({"type": "qdrant"})
     with sqlite_session_factory.begin() as session:
-        session.add_all(
-            [_dataset("dataset-1", "workspace-1"), _document("document-1", status=IndexingStatus.SPLITTING)]
-        )
+        session.add_all([dataset, _document("document-1", status=IndexingStatus.SPLITTING)])
     documents = SQLAlchemyDocumentRepository(session_factory=sqlite_session_factory)
     segments = SQLAlchemySegmentRepository(session_factory=sqlite_session_factory)
     sources = MagicMock()
@@ -120,6 +119,7 @@ def test_vector_io_releases_transactions_and_preserves_chunk_structure(
         assert document is not None
         dataset.indexing_technique = IndexTechniqueType.HIGH_QUALITY
         dataset.is_multimodal = True
+        dataset.index_struct = None
         document.doc_form = doc_form
         session.add_all(files)
     child = ChildDocument(page_content="child", metadata={"doc_id": "child-node", "doc_hash": "child-hash"})
@@ -350,7 +350,7 @@ def test_hash_groups_load_worker_owned_inputs_before_completion(
         assert threading.get_ident() != main_thread
         assert inspect(dataset).detached
         assert session is None
-        assert configuration.vector_type == "qdrant"
+        assert configuration == VectorConfiguration("qdrant")
 
         def create(group: list[IndexDocument]) -> None:
             with sqlite_session_factory() as reader:
@@ -367,10 +367,7 @@ def test_hash_groups_load_worker_owned_inputs_before_completion(
         backend.create.side_effect = create
         return backend
 
-    with (
-        Flask(__name__).app_context(),
-        patch(f"{MODULE}.Vector", side_effect=vector),
-    ):
+    with Flask(__name__).app_context(), patch(f"{MODULE}.Vector", side_effect=vector):
         adapter.load(job, chunks)
     assert sum(group.count("same") for _, group in calls) == 2
     assert sum("same" in group for _, group in calls) == 1

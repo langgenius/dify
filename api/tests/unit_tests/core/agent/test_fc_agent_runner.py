@@ -3,7 +3,7 @@ from collections.abc import Iterator
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, create_autospec
 
 import pytest
 from pytest_mock import MockerFixture
@@ -110,7 +110,9 @@ class DummyResult:
 
 
 @pytest.fixture
-def runner(mocker: MockerFixture, sqlite_engine: Engine, app_records) -> Iterator[FunctionCallAgentRunner]:
+def runner(
+    mocker: MockerFixture, sqlite_engine: Engine, app_records, agent_tool_invoker: MagicMock
+) -> Iterator[FunctionCallAgentRunner]:
     # Completely bypass BaseAgentRunner __init__ to avoid DB / Flask context
     mocker.patch(
         "services.agent.chat.base_runner.BaseAgentRunner.__init__",
@@ -142,6 +144,7 @@ def runner(mocker: MockerFixture, sqlite_engine: Engine, app_records) -> Iterato
     conversation = _make_conversation()
 
     runner = FunctionCallAgentRunner(
+        tool_invoker=agent_tool_invoker,
         tenant_id="tenant",
         application_generate_entity=application_generate_entity,
         conversation=conversation,
@@ -165,6 +168,7 @@ def runner(mocker: MockerFixture, sqlite_engine: Engine, app_records) -> Iterato
     runner.message = message
     runner.user_id = "user"
     runner.model_instance = model_instance
+    runner._tool_invoker = agent_tool_invoker
 
     runner.stream_tool_call = False
     runner.memory = None
@@ -420,7 +424,7 @@ class TestBuildDatasetToolImageContents:
                 description=ToolDescription(human=I18nObject(en_US="Retrieve dataset"), llm="Retrieve dataset"),
             ),
             runtime=ToolRuntime(tenant_id=upload_file.tenant_id),
-            retrieval=MagicMock(spec=DatasetRetrieval),
+            retrieval=create_autospec(DatasetRetrieval, instance=True),
             dataset_id="dataset-id",
             config=DatasetRetrieveConfigEntity(retrieve_strategy=DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE),
             top_k=2,
@@ -579,7 +583,7 @@ class TestRunMethod:
         outputs = list(runner.run(message, "query"))
         assert len(outputs) >= 1
 
-    def test_run_with_tool_instance_and_files(self, runner: FunctionCallAgentRunner, mocker: MockerFixture):
+    def test_run_with_tool_instance_and_files(self, runner: FunctionCallAgentRunner):
         message = _make_message()
 
         tool_call = MagicMock()
@@ -600,10 +604,7 @@ class TestRunMethod:
 
         tool_invoke_meta = MagicMock()
         tool_invoke_meta.to_dict.return_value = {"ok": True}
-        mocker.patch(
-            "services.agent.chat.function_call_runner.ToolEngine.agent_invoke",
-            return_value=("ok", ["file1"], tool_invoke_meta),
-        )
+        runner._tool_invoker.return_value = ("ok", ["file1"], tool_invoke_meta)
 
         outputs = list(runner.run(message, "query"))
         assert len(outputs) >= 1

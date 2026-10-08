@@ -1,4 +1,5 @@
 from datetime import datetime
+from unittest.mock import create_autospec
 
 import pytest
 from pytest_mock import MockerFixture
@@ -12,6 +13,7 @@ from graphon.model_runtime.entities.llm_entities import LLMMode
 from graphon.model_runtime.entities.model_entities import ModelFeature, ModelPropertyKey
 from models.enums import ConversationFromSource
 from models.model import App, AppMode, Conversation, Message, MessageAnnotation
+from services.agent.chat.ports import AgentToolInvoker
 from services.app.generation.adapters.agent_chat_runner import AgentChatAppRunner
 
 
@@ -74,6 +76,7 @@ def runner(sqlite_session: Session, *, app_records, workflow_runtime):
     return AgentChatAppRunner(
         dataset_tools=workflow_runtime.dataset_tools,
         records=app_records,
+        tool_invoker=create_autospec(AgentToolInvoker, instance=True, spec_set=True),
     )
 
 
