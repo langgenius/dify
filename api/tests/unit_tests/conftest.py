@@ -401,3 +401,17 @@ def human_forms(sqlite_session_factory):
     from repositories.human_input.form_repository import HumanInputFormRepositoryImpl
 
     return partial(HumanInputFormRepositoryImpl, sessions=sqlite_session_factory)
+
+
+@pytest.fixture
+def workflow_contexts(sqlite_session_factory: sessionmaker[Session]):
+    from repositories.workflow.runtime_context_repository import WorkflowRuntimeContextRepository
+
+    return WorkflowRuntimeContextRepository(sqlite_session_factory)
+
+
+@pytest.fixture
+def workflow_runtime(sqlite_session_factory: sessionmaker[Session]):
+    from extensions.application_services.workflow import build_workflow_execution_dependencies
+
+    return build_workflow_execution_dependencies(sqlite_session_factory)
