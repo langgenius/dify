@@ -5006,28 +5006,6 @@ Delete an API key for an app
 | 502 | Billing operation failed | **application/json**: [BillingOperationFailedErrorResponse](#billingoperationfailederrorresponse)<br> |
 | 503 | Billing unavailable | **application/json**: [BillingUnavailableErrorResponse](#billingunavailableerrorresponse)<br> |
 
-### [PUT] /billing/partners/{partner_key}/tenants
-Sync partner tenants bindings
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| partner_key | path | Partner key | Yes | string |
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [PartnerTenantsPayload](#partnertenantspayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Tenants synced to partner successfully | **application/json**: [BillingResponse](#billingresponse)<br> |
-| 400 | Invalid partner information |  |
-
 ### [GET] /billing/subscription
 #### Parameters
 
@@ -17178,12 +17156,6 @@ ExporleBanner status
 | message | string |  | Yes |
 | status | integer |  | Yes |
 
-#### BillingResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| BillingResponse | object |  |  |
-
 #### BillingSubscriptionResponse
 
 | Name | Type | Description | Required |
@@ -21616,12 +21588,6 @@ Enum class for parameter type.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | data | [ string ] |  | Yes |
-
-#### PartnerTenantsPayload
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| click_id | string | Click Id from partner referral link | Yes |
 
 #### PausedNodeResponse
 
