@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session, sessionmaker
 import controllers.console.explore.completion as completion_module
 import services.installed_app_generation_service as completion_service_module
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from extensions.application_services.workflow import WorkflowExecutionDependencies
 from graphon.model_runtime.errors.invoke import InvokeError
 from models import App, AppMode, InstalledApp, Tenant
 from repositories.installed_app_repository import SQLAlchemyInstalledAppRepository
@@ -18,7 +19,6 @@ from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.conversation import ConversationCompletedError, ConversationNotExistsError
 from services.installed_app_generation_adapters import AppGenerateServiceRuntime
 from services.installed_app_generation_service import GenerationResponse, InstalledAppGenerationService
-from services.workflow.execution.ports import WorkflowRuntime
 from services.workflow.variable_contracts import WorkflowExecutionVariables
 from tests.unit_tests.controllers.console.explore.test_installed_app_admission import (
     _assert_json_response,
@@ -395,7 +395,7 @@ def test_resource_removed_after_admission_is_revalidated_before_generation(
     deleted_resource: str,
     *,
     workflow_variables: WorkflowExecutionVariables,
-    workflow_runtime: WorkflowRuntime,
+    workflow_runtime: WorkflowExecutionDependencies,
 ) -> None:
     def delete_resource() -> None:
         with sqlite_session_factory.begin() as session:

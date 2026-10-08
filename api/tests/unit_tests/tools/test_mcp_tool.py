@@ -1,11 +1,9 @@
 import base64
-from collections.abc import Iterator
 from decimal import Decimal
 from typing import Any
 from unittest.mock import patch
 
 import pytest
-from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
 from core.mcp.types import (
@@ -22,13 +20,6 @@ from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolEntity, ToolIdentity, ToolInvokeMessage
 from core.tools.mcp_tool.tool import MCPTool
 from graphon.model_runtime.entities.llm_entities import LLMUsage
-
-
-@pytest.fixture
-def orm_session(sqlite_engine: Engine) -> Iterator[Session]:
-    """Use a real ORM session while MCP transport remains mocked."""
-    with Session(sqlite_engine) as session:
-        yield session
 
 
 def _make_mcp_tool(output_schema: dict[str, Any] | None = None) -> MCPTool:
@@ -65,7 +56,7 @@ class TestMCPToolInvoke:
             ),
         ],
     )
-    def test_invoke_image_or_audio_yields_blob(self, content_factory, mime_type) -> None:
+    def test_invoke_image_or_audio_yields_blob(self, content_factory, mime_type, unbound_session: Session) -> None:
         tool = _make_mcp_tool()
         raw = b"\x00\x01test-bytes\x02"
         b64 = base64.b64encode(raw).decode()
@@ -73,7 +64,7 @@ class TestMCPToolInvoke:
         result = CallToolResult(content=[content])
 
         with patch.object(tool, "invoke_remote_mcp_tool", return_value=result):
-            messages = list(tool._invoke(user_id="test_user", tool_parameters={}))
+            messages = list(tool._invoke(session=unbound_session, user_id="test_user", tool_parameters={}))
 
         assert len(messages) == 1
         msg = messages[0]
@@ -82,14 +73,14 @@ class TestMCPToolInvoke:
         assert msg.message.blob == raw
         assert msg.meta == {"mime_type": mime_type}
 
-    def test_invoke_embedded_text_resource_yields_text(self) -> None:
+    def test_invoke_embedded_text_resource_yields_text(self, unbound_session: Session) -> None:
         tool = _make_mcp_tool()
         text_resource = TextResourceContents(uri="file://test.txt", mimeType="text/plain", text="hello world")
         content = EmbeddedResource(type="resource", resource=text_resource)
         result = CallToolResult(content=[content])
 
         with patch.object(tool, "invoke_remote_mcp_tool", return_value=result):
-            messages = list(tool._invoke(user_id="test_user", tool_parameters={}))
+            messages = list(tool._invoke(session=unbound_session, user_id="test_user", tool_parameters={}))
 
         assert len(messages) == 1
         msg = messages[0]
@@ -101,7 +92,9 @@ class TestMCPToolInvoke:
         ("mime_type", "expected_mime"),
         [("application/pdf", "application/pdf"), (None, "application/octet-stream")],
     )
-    def test_invoke_embedded_blob_resource_yields_blob(self, mime_type, expected_mime) -> None:
+    def test_invoke_embedded_blob_resource_yields_blob(
+        self, mime_type, expected_mime, unbound_session: Session
+    ) -> None:
         tool = _make_mcp_tool()
         raw = b"binary-data"
         b64 = base64.b64encode(raw).decode()
@@ -110,7 +103,7 @@ class TestMCPToolInvoke:
         result = CallToolResult(content=[content])
 
         with patch.object(tool, "invoke_remote_mcp_tool", return_value=result):
-            messages = list(tool._invoke(user_id="test_user", tool_parameters={}))
+            messages = list(tool._invoke(session=unbound_session, user_id="test_user", tool_parameters={}))
 
         assert len(messages) == 1
         msg = messages[0]
@@ -119,12 +112,12 @@ class TestMCPToolInvoke:
         assert msg.message.blob == raw
         assert msg.meta == {"mime_type": expected_mime}
 
-    def test_invoke_yields_variables_when_structured_content_and_schema(self) -> None:
+    def test_invoke_yields_variables_when_structured_content_and_schema(self, unbound_session: Session) -> None:
         tool = _make_mcp_tool(output_schema={"type": "object"})
         result = CallToolResult(content=[], structuredContent={"a": 1, "b": "x"})
 
         with patch.object(tool, "invoke_remote_mcp_tool", return_value=result):
-            messages = list(tool._invoke(user_id="test_user", tool_parameters={}))
+            messages = list(tool._invoke(session=unbound_session, user_id="test_user", tool_parameters={}))
 
         # Expect two variable messages corresponding to keys a and b
         assert len(messages) == 2
@@ -134,12 +127,12 @@ class TestMCPToolInvoke:
         values = {m.message.variable_name: m.message.variable_value for m in var_msgs}
         assert values == {"a": 1, "b": "x"}
 
-    def test_invoke_yields_json_when_structured_content_has_no_output_schema(self) -> None:
+    def test_invoke_yields_json_when_structured_content_has_no_output_schema(self, unbound_session: Session) -> None:
         tool = _make_mcp_tool()
         result = CallToolResult(content=[], structuredContent={"a": 1, "b": "x"})
 
         with patch.object(tool, "invoke_remote_mcp_tool", return_value=result):
-            messages = list(tool._invoke(user_id="test_user", tool_parameters={}))
+            messages = list(tool._invoke(session=unbound_session, user_id="test_user", tool_parameters={}))
 
         assert len(messages) == 1
         msg = messages[0]
@@ -288,7 +281,7 @@ class TestMCPToolUsageExtraction:
         assert usage.prompt_tokens == 100
         assert usage.completion_tokens == 50
 
-    def test_invoke_sets_latest_usage_from_meta(self) -> None:
+    def test_invoke_sets_latest_usage_from_meta(self, unbound_session: Session) -> None:
         """Test that _invoke sets _latest_usage from result meta."""
         tool = _make_mcp_tool()
         meta = {
@@ -303,7 +296,7 @@ class TestMCPToolUsageExtraction:
         result = CallToolResult(content=[TextContent(type="text", text="test")], _meta=meta)
 
         with patch.object(tool, "invoke_remote_mcp_tool", return_value=result):
-            list(tool._invoke(user_id="test_user", tool_parameters={}))
+            list(tool._invoke(session=unbound_session, user_id="test_user", tool_parameters={}))
 
         # Verify latest_usage was set correctly
         assert tool.latest_usage.prompt_tokens == 200
@@ -311,13 +304,13 @@ class TestMCPToolUsageExtraction:
         assert tool.latest_usage.total_tokens == 300
         assert tool.latest_usage.total_price == Decimal("0.003")
 
-    def test_invoke_with_no_meta_returns_empty_usage(self) -> None:
+    def test_invoke_with_no_meta_returns_empty_usage(self, unbound_session: Session) -> None:
         """Test that _invoke returns empty usage when no meta is present."""
         tool = _make_mcp_tool()
         result = CallToolResult(content=[TextContent(type="text", text="test")], _meta=None)
 
         with patch.object(tool, "invoke_remote_mcp_tool", return_value=result):
-            list(tool._invoke(user_id="test_user", tool_parameters={}))
+            list(tool._invoke(session=unbound_session, user_id="test_user", tool_parameters={}))
 
         # Verify latest_usage is empty
         assert tool.latest_usage.total_tokens == 0

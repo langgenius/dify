@@ -27,7 +27,7 @@ from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from libs.flask_utils import preserve_flask_contexts
 from models import Account, App, EndUser
 from models.annotation_reply import AnnotationReplies
-from services.agent.chat.ports import AgentDatasetTools
+from services.agent.chat.ports import AgentDatasetTools, AgentToolInvoker
 from services.app.generation.adapters.agent_chat_runner import AgentChatAppRunner
 from services.app.generation.message_records import MessageBasedAppGenerator
 from services.app.generation.ports import ChatRecords
@@ -41,6 +41,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         self,
         *,
         dataset_tools: AgentDatasetTools,
+        tool_invoker: AgentToolInvoker,
         records: ChatRecords,
         annotations: AnnotationReplies,
         draft_variable_saver: Callable[[str, Account], DraftVariableSaverFactory] | None = None,
@@ -53,6 +54,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
             workflow_runtime=workflow_runtime,
         )
         self._dataset_tools = dataset_tools
+        self._tool_invoker = tool_invoker
 
     @overload
     def generate(
@@ -300,7 +302,11 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
                 )
 
                 # chatbot app
-                runner = AgentChatAppRunner(records=self._records, dataset_tools=self._dataset_tools)
+                runner = AgentChatAppRunner(
+                    records=self._records,
+                    dataset_tools=self._dataset_tools,
+                    tool_invoker=self._tool_invoker,
+                )
                 runner.run(
                     draft_variable_saver=self._draft_variable_saver,
                     workflow_runtime=self._workflow_runtime,

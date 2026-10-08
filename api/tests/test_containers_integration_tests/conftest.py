@@ -596,8 +596,9 @@ def mock_ssrf_proxy_requests() -> Generator[None, None, None]:
 
 
 @pytest.fixture
-def workflow_variables(app: Flask) -> WorkflowExecutionVariables:
+def workflow_variables(db_session_with_containers: Session) -> WorkflowExecutionVariables:
     from extensions.application_services.workflow_variables import build_workflow_variable_service
 
-    with app.app_context():
-        return build_workflow_variable_service(database_client=sessionmaker(bind=db.engine, expire_on_commit=False))
+    return build_workflow_variable_service(
+        database_client=sessionmaker(bind=db_session_with_containers.get_bind(), expire_on_commit=False)
+    )

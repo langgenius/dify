@@ -1,11 +1,14 @@
 """Exercise selected builtin credentials through real repositories and real tool construction."""
 
 import json
+from collections.abc import Generator, Iterator
+from typing import cast
+from unittest.mock import create_autospec
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import create_engine, event
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import Engine, Table, create_engine, event
+from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import QueuePool
 
 from core.db import session_factory
@@ -23,35 +26,42 @@ from services.errors.agent_tool_inner import AgentToolInnerServiceError
 from services.tools.agent_invocation_gateway import AgentToolInvocationGateway
 from services.tools.builtin import credentials as credentials_module
 from services.tools.tool_manager import ToolManager
+from services.workflow.variable_contracts import WorkflowExecutionVariables
 
 TENANT = "tenant"
 PROVIDER = "vendor/search/search"
 
 
 @pytest.fixture
-def databases(monkeypatch):
-    engines = [create_engine("sqlite://", poolclass=QueuePool) for _ in range(2)]
+def databases(
+    monkeypatch: pytest.MonkeyPatch,
+) -> Generator[tuple[sessionmaker[Session], Session], None, None]:
+    engines: list[Engine] = [create_engine("sqlite://", poolclass=QueuePool) for _ in range(2)]
     for engine in engines:
         TypeBase.metadata.create_all(
             engine,
-            tables=[
-                model.__table__
-                for model in (
-                    Account,
-                    BuiltinToolProvider,
-                    ToolOAuthTenantClient,
-                    ToolOAuthSystemClient,
-                    MCPToolProvider,
-                )
-            ],
+            tables=cast(
+                list[Table],
+                [
+                    model.__table__
+                    for model in (
+                        Account,
+                        BuiltinToolProvider,
+                        ToolOAuthTenantClient,
+                        ToolOAuthSystemClient,
+                        MCPToolProvider,
+                    )
+                ],
+            ),
         )
-    sessions, global_sessions = [sessionmaker(engine, expire_on_commit=False) for engine in engines]
+    sessions: sessionmaker[Session] = sessionmaker(engines[0], expire_on_commit=False)
+    global_sessions: sessionmaker[Session] = sessionmaker(engines[1], expire_on_commit=False)
     with global_sessions() as global_session:
         monkeypatch.setattr(db, "session", global_session)
         monkeypatch.setattr(type(db), "engine", property(lambda _db: engines[1]))
         monkeypatch.setattr(session_factory, "create_session", global_sessions)
 
-        def reject_global(*_args):
+        def reject_global(*_args: object) -> None:
             pytest.fail("Tool runtime read the global database")
 
         event.listen(engines[1], "before_cursor_execute", reject_global)
@@ -63,7 +73,12 @@ def databases(monkeypatch):
                 engine.dispose()
 
 
-def seed(sessions, *, expires_at=1, oauth_client="tenant"):
+def seed(
+    sessions: sessionmaker[Session],
+    *,
+    expires_at: int = 1,
+    oauth_client: str = "tenant",
+) -> str:
     with sessions.begin() as session:
         credential = BuiltinToolProvider(
             tenant_id=TENANT,
@@ -86,7 +101,7 @@ def seed(sessions, *, expires_at=1, oauth_client="tenant"):
     return credential.id
 
 
-def controller():
+def controller() -> PluginToolProviderController:
     entity = ToolProviderEntityWithPlugin.model_validate(
         {
             "identity": {
@@ -112,43 +127,48 @@ def controller():
 
 @pytest.mark.parametrize("client", ["tenant", "system"])
 @pytest.mark.parametrize("outcome", ["success", "refresh-error", "concurrent-edit", "concurrent-delete"])
-def test_selected_oauth_credential_releases_connections_across_full_invocation(databases, monkeypatch, client, outcome):
+def test_selected_oauth_credential_releases_connections_across_full_invocation(
+    databases: tuple[sessionmaker[Session], Session],
+    monkeypatch: pytest.MonkeyPatch,
+    client: str,
+    outcome: str,
+) -> None:
     sessions, global_session = databases
     credential_id = seed(sessions, oauth_client=client)
     runtime = build_workflow_execution_dependencies(sessions)
-    calls = []
+    calls: list[str] = []
 
-    def released():
+    def released() -> None:
         assert sessions.kw["bind"].pool.checkedout() == 0
         assert not global_session.in_transaction()
 
     class Codec:
-        def decrypt(self, values):
+        def decrypt(self, values: dict[str, str]) -> dict[str, str]:
             released()
             calls.append("decrypt")
             return {k: v.removeprefix("encrypted-") for k, v in values.items()}
 
-        def encrypt(self, values):
+        def encrypt(self, values: dict[str, str]) -> dict[str, str]:
             released()
             calls.append("encrypt")
             return {k: "encrypted-" + v for k, v in values.items()}
 
     class Cache:
-        def delete(self):
+        def delete(self) -> None:
             released()
             calls.append("invalidate")
 
-    def encrypter(**_kwargs):
+    def encrypter(**_kwargs: object) -> tuple[Codec, Cache]:
         released()
         return Codec(), Cache()
 
-    def policy(**kwargs):
+    def policy(**kwargs: object) -> None:
         released()
         assert kwargs["check_existence"] is False
         assert kwargs["credential_id"] == credential_id
         calls.append("policy")
 
-    def refresh(_self, **kwargs):
+    def refresh(_self: object, **kwargs: object) -> PluginOAuthCredentialsResponse:
         released()
         calls.append("refresh")
         assert kwargs["credentials"] == {"token": "old"}
@@ -165,18 +185,18 @@ def test_selected_oauth_credential_releases_connections_across_full_invocation(d
                     record.encrypted_credentials = '{"token":"manual-edit"}'
         return PluginOAuthCredentialsResponse(credentials={"token": "new"}, expires_at=4_000_000_000)
 
-    def invoke(_self, **kwargs):
+    def invoke(_self: object, **kwargs: object) -> Iterator[object]:
         released()
         calls.append("invoke")
         assert kwargs["credentials"] == {"token": "new"}
         return iter(())
 
-    def verified(*_args):
+    def verified(*_args: object) -> bool:
         released()
         calls.append("verified")
         return True
 
-    def decrypt_system(params):
+    def decrypt_system(params: str) -> dict[str, str]:
         released()
         assert params == "system"
         return {"client": "client"}
@@ -189,9 +209,8 @@ def test_selected_oauth_credential_releases_connections_across_full_invocation(d
     monkeypatch.setattr(credentials_module, "decrypt_system_params", decrypt_system)
     monkeypatch.setattr("core.plugin.impl.tool.PluginToolManager.invoke", invoke)
 
-    class Variables:
-        def saver_factory(self, *_args, **_kwargs):
-            raise AssertionError("No workflow variables for this tool")
+    variables = create_autospec(WorkflowExecutionVariables, instance=True, spec_set=True)
+    variables.saver_factory.side_effect = AssertionError("No workflow variables for this tool")
 
     request = AgentToolInvokeRequest.model_validate(
         {
@@ -210,7 +229,7 @@ def test_selected_oauth_credential_releases_connections_across_full_invocation(d
             },
         }
     )
-    gateway = AgentToolInvocationGateway(variables=Variables(), runtime=runtime)
+    gateway = AgentToolInvocationGateway(variables=variables, runtime=runtime)
     if outcome == "success":
         gateway.invoke(request)
         assert calls[-1] == "invoke"
@@ -234,11 +253,16 @@ def test_selected_oauth_credential_releases_connections_across_full_invocation(d
 
 
 @pytest.mark.parametrize("wrong_scope", ["tenant", "provider"])
-def test_selected_credential_cannot_cross_owner_scope(databases, monkeypatch, wrong_scope):
+def test_selected_credential_cannot_cross_owner_scope(
+    databases: tuple[sessionmaker[Session], Session],
+    monkeypatch: pytest.MonkeyPatch,
+    wrong_scope: str,
+) -> None:
     sessions, _ = databases
     credential_id = seed(sessions, expires_at=-1)
     with sessions.begin() as session:
         record = session.get(BuiltinToolProvider, credential_id)
+        assert record is not None
         if wrong_scope == "tenant":
             record.tenant_id = "other"
         else:
@@ -258,7 +282,11 @@ def test_selected_credential_cannot_cross_owner_scope(databases, monkeypatch, wr
 
 
 @pytest.mark.parametrize("reference", ["id", "identifier", "uuid-identifier", "missing", "other-tenant"])
-def test_mcp_runtime_resolves_injected_provider_before_decryption(databases, monkeypatch, reference):
+def test_mcp_runtime_resolves_injected_provider_before_decryption(
+    databases: tuple[sessionmaker[Session], Session],
+    monkeypatch: pytest.MonkeyPatch,
+    reference: str,
+) -> None:
     sessions, _ = databases
     with sessions.begin() as session:
         record = MCPToolProvider(
@@ -272,7 +300,7 @@ def test_mcp_runtime_resolves_injected_provider_before_decryption(databases, mon
         )
         session.add(record)
 
-    def build(provider):
+    def build(provider: MCPToolProvider) -> str:
         assert sessions.kw["bind"].pool.checkedout() == 0
         assert provider.id == record.id
         return "controller"

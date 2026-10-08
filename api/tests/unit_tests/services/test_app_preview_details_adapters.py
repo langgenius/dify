@@ -31,6 +31,8 @@ from models.provider_ids import GenericProviderID
 from models.tools import ApiToolProvider
 from models.workflow import Workflow, WorkflowType
 from repositories.app_preview_query_repository import AppPreviewQueryRepository
+from repositories.tools.provider_repository import ToolProviderRepository
+from repositories.tools.workflow_repository import WorkflowToolRepository
 from services.account_errors import AccountNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.app_preview_details_adapters import AppPreviewDetailsRuntime
@@ -84,7 +86,11 @@ class _Harness:
 
 @pytest.fixture
 def harness(
-    sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session], *, tool_providers, workflow_queries
+    sqlite_engine: Engine,
+    sqlite_session_factory: sessionmaker[Session],
+    *,
+    tool_providers: ToolProviderRepository,
+    workflow_queries: WorkflowToolRepository,
 ) -> Iterator[_Harness]:
     target = App(
         id=str(uuid4()), tenant_id=str(uuid4()), name="Preview", mode="chat", enable_site=True, enable_api=True
@@ -563,8 +569,8 @@ def test_agent_tool_masking_returns_a_copy_without_dirtying_or_flushing_models(
     monkeypatch: pytest.MonkeyPatch,
     failure: Literal["none", "runtime", "decrypt"],
     *,
-    tool_providers,
-    workflow_queries,
+    tool_providers: ToolProviderRepository,
+    workflow_queries: WorkflowToolRepository,
 ) -> None:
     provider_id = str(uuid4())
     agent_mode = {
@@ -598,7 +604,13 @@ def test_agent_tool_masking_returns_a_copy_without_dirtying_or_flushing_models(
     checkedout_during_io: list[int] = []
 
     def runtime(
-        *, tenant_id: str, app_id: str, agent_tool: AgentToolEntity, user_id: str, tool_providers, workflow_queries
+        *,
+        tenant_id: str,
+        app_id: str,
+        agent_tool: AgentToolEntity,
+        user_id: str,
+        tool_providers: ToolProviderRepository,
+        workflow_queries: WorkflowToolRepository,
     ) -> Tool:
         del workflow_queries, tool_providers
         assert isinstance(harness.engine.pool, QueuePool)

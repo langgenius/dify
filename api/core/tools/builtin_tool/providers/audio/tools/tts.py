@@ -1,6 +1,8 @@
 from collections.abc import Generator
 from typing import Any, override
 
+from sqlalchemy.orm import Session
+
 from core.base.tts.audio_mime import get_model_audio_mime_type, inspect_audio_stream
 from core.credit_usage import CreditUsageCreatedBy
 from core.model_context import with_credit_usage_created_by
@@ -18,6 +20,7 @@ class TTSTool(BuiltinTool):
     @with_credit_usage_created_by(CreditUsageCreatedBy.AUDIO)
     def _invoke(
         self,
+        session: Session,
         user_id: str,
         tool_parameters: dict[str, Any],
         conversation_id: str | None = None,

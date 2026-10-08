@@ -61,7 +61,7 @@ def test_preparation_commits_documents_and_logs_then_releases_connection(
     documents: SQLAlchemyDocumentRepository,
     sqlite_session_factory: sessionmaker[Session],
     active_transactions: set[Connection],
-):
+) -> None:
     rows = _prepare(documents)
     assert not active_transactions
     assert all(inspect(row).detached for row in rows)
@@ -79,7 +79,7 @@ def test_preparation_rejects_another_owner_without_changing_document(
     documents: SQLAlchemyDocumentRepository,
     sqlite_session_factory: sessionmaker[Session],
     changed_owner: str,
-):
+) -> None:
     with sqlite_session_factory.begin() as session:
         original = _document("original", workspace_id="tenant-1", dataset_id="dataset-1")
         original.indexing_status = IndexingStatus.COMPLETED
@@ -103,7 +103,7 @@ def test_preparation_rejects_another_owner_without_changing_document(
 
 def test_preparation_updates_original_and_logs_in_one_transaction(
     documents: SQLAlchemyDocumentRepository, sqlite_session_factory: sessionmaker[Session]
-):
+) -> None:
     with sqlite_session_factory.begin() as session:
         session.add(_document("original", workspace_id="tenant-1", dataset_id="dataset-1"))
     assert _prepare(documents, "original") == []
@@ -116,7 +116,7 @@ def test_preparation_updates_original_and_logs_in_one_transaction(
 
 def test_log_failure_rolls_back_documents_and_original_status(
     documents: SQLAlchemyDocumentRepository, sqlite_session_factory: sessionmaker[Session]
-):
+) -> None:
     with sqlite_session_factory.begin() as session:
         session.add(_document("original", workspace_id="tenant-1", dataset_id="dataset-1"))
         session.execute(

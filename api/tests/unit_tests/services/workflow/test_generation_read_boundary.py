@@ -1,7 +1,7 @@
 """Generation must release request reads before waiting for a worker's response."""
 
 import json
-from unittest.mock import Mock
+from unittest.mock import Mock, create_autospec
 
 import pytest
 from flask import Flask
@@ -14,10 +14,10 @@ from core.ops.ops_trace_manager import TraceQueueManager
 from models.enums import EndUserType
 from models.model import App, AppMode, EndUser
 from models.workflow import Workflow, WorkflowType
+from services.app.generation.runtime import AppGenerationRuntime
 from services.app_generate_service import AppGenerateService
 from services.workflow.execution.adapters.chatflow import app_generator as chatflow_module
 from services.workflow.execution.adapters.workflow import app_generator as workflow_module
-from services.workflow.execution.ports import WorkflowRuntime
 from services.workflow.variable_contracts import WorkflowExecutionVariables
 from tests.unit_tests.services.test_app_generate_service import _DummyRateLimit
 
@@ -27,7 +27,7 @@ from tests.unit_tests.services.test_app_generate_service import _DummyRateLimit
 def test_blocking_generation_detaches_request_inputs_before_waiting(
     app: Flask,
     sqlite_session: Session,
-    workflow_runtime: WorkflowRuntime,
+    workflow_runtime: AppGenerationRuntime,
     workflow_variables: WorkflowExecutionVariables,
     monkeypatch: pytest.MonkeyPatch,
     mode: AppMode,
@@ -70,21 +70,22 @@ def test_blocking_generation_detaches_request_inputs_before_waiting(
     sqlite_session.refresh(application)
     assert sqlite_session.in_transaction()
 
-    module = chatflow_module if mode == AppMode.ADVANCED_CHAT else workflow_module
-    generator = module.AdvancedChatAppGenerator if mode == AppMode.ADVANCED_CHAT else module.WorkflowAppGenerator
-    converter = (
-        module.AdvancedChatAppGenerateResponseConverter
-        if mode == AppMode.ADVANCED_CHAT
-        else module.WorkflowAppGenerateResponseConverter
-    )
+    trace_queue_manager = create_autospec(TraceQueueManager, instance=True, spec_set=True)
+    if mode == AppMode.ADVANCED_CHAT:
+        generator = chatflow_module.AdvancedChatAppGenerator
+        converter = chatflow_module.AdvancedChatAppGenerateResponseConverter
+        monkeypatch.setattr(chatflow_module, "TraceQueueManager", Mock(return_value=trace_queue_manager))
+    else:
+        generator = workflow_module.WorkflowAppGenerator
+        converter = workflow_module.WorkflowAppGenerateResponseConverter
+        monkeypatch.setattr(workflow_module, "TraceQueueManager", Mock(return_value=trace_queue_manager))
     monkeypatch.setattr("services.app_generate_service.RateLimit", _DummyRateLimit)
     monkeypatch.setattr(base_app_queue_manager.redis_client, "setex", lambda *_args, **_kwargs: None)
-    monkeypatch.setattr(module, "TraceQueueManager", Mock(return_value=Mock(spec=TraceQueueManager)))
     monkeypatch.setattr(generator, "_generate_worker", staticmethod(lambda **_kwargs: None))
     monkeypatch.setattr(converter, "convert", lambda *, response, **_kwargs: response)
-    waits = []
+    waits: list[str] = []
 
-    def wait_for_response(_self, **_kwargs):
+    def wait_for_response(_self: object, **_kwargs: object) -> dict[str, str]:
         assert not sqlite_session.in_transaction()
         for row in (application, user, workflow):
             assert inspect(row).detached

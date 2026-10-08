@@ -1,5 +1,5 @@
 from collections.abc import Iterator
-from unittest.mock import MagicMock, Mock
+from unittest.mock import MagicMock, Mock, create_autospec
 from uuid import uuid4
 
 import pytest
@@ -7,7 +7,7 @@ from agenton.compositor import CompositorSessionSnapshot
 from flask import Flask
 from sqlalchemy import create_engine, event, inspect
 from sqlalchemy.orm import ORMExecuteState, Session, sessionmaker
-from sqlalchemy.sql import Executable
+from sqlalchemy.sql import ClauseElement, Executable
 
 from core.workflow.nodes.agent_v2.session_store import WorkflowAgentSessionScope, WorkflowAgentWorkspaceStore
 from enums.agent import WorkflowAgentBindingType
@@ -61,7 +61,7 @@ def test_node_binding_resolution_uses_injected_database_through_nested_factories
     sessions = sessionmaker(bind=engine, expire_on_commit=False)
     monkeypatch.setattr(
         "clients.agent_backend.factory.create_agent_backend_run_client",
-        Mock(return_value=Mock(spec=AgentBackendRunClient)),
+        Mock(return_value=create_autospec(AgentBackendRunClient, instance=True, spec_set=True)),
     )
     try:
         TypeBase.metadata.create_all(
@@ -90,7 +90,7 @@ def test_node_binding_resolution_uses_injected_database_through_nested_factories
             database_client=sessions,
             deployment_edition=DeploymentEdition.COMMUNITY,
             initialization_password="",
-            redis=Mock(spec=RedisClientWrapper),
+            redis=create_autospec(RedisClientWrapper, instance=True, spec_set=True),
         )
         resolver = WorkflowAgentBindingResolver(sessions) if explicit_worker else services.workflow_agent_bindings
         monkeypatch.delitem(app.extensions, "application_services", raising=False)
@@ -580,8 +580,12 @@ def test_binding_resolver_uses_pinned_snapshot_for_existing_node_execution(
     )
 
     assert bundle.snapshot.id == pinned_snapshot.id
-    assert binding.id in orm_statements[0].compile().params.values()
-    assert pinned_snapshot.id in orm_statements[-1].compile().params.values()
+    first_statement = orm_statements[0]
+    last_statement = orm_statements[-1]
+    assert isinstance(first_statement, ClauseElement)
+    assert isinstance(last_statement, ClauseElement)
+    assert binding.id in first_statement.compile().params.values()
+    assert pinned_snapshot.id in last_statement.compile().params.values()
 
 
 @pytest.mark.parametrize("sqlite_session", [RESOLVER_MODELS], indirect=True)

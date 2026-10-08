@@ -20,11 +20,25 @@ from models.human_input_delivery import (
 from services.feature_service import FeatureService
 from services.human_input.contracts import (
     DeliveryTestContext,
+    DeliveryTestEmailRecipient,
     DeliveryTestError,
     DeliveryTestResult,
     DeliveryTestStatus,
     DeliveryTestUnsupportedError,
 )
+
+__all__ = [
+    "DeliveryTestContext",
+    "DeliveryTestEmailRecipient",
+    "DeliveryTestError",
+    "DeliveryTestHandler",
+    "DeliveryTestRegistry",
+    "DeliveryTestResult",
+    "DeliveryTestStatus",
+    "DeliveryTestUnsupportedError",
+    "EmailDeliveryTestHandler",
+    "HumanInputDeliveryTestService",
+]
 
 
 def _build_form_link(token: str | None) -> str | None:

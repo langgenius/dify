@@ -5,7 +5,7 @@ from controllers.common.rbac import RBACCheck
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from inspect import unwrap
-from unittest.mock import Mock
+from unittest.mock import create_autospec
 from uuid import UUID
 
 import pytest
@@ -113,7 +113,8 @@ def test_context_is_stable_and_app_mode_is_checked(app: Flask, monkeypatch: pyte
     monkeypatch.setattr(flask_admission, "get_request_id", lambda: "request")
     monkeypatch.setattr(flask_admission, "get_trace_id", lambda: None)
     monkeypatch.setattr(flask_admission, "enforce_rbac_checks", lambda **_kwargs: None)
-    apps, use_cases = Mock(spec=ConsoleAppService), Mock(spec=ConsoleWorkflowService)
+    apps = create_autospec(ConsoleAppService, instance=True)
+    use_cases = create_autospec(ConsoleWorkflowService, instance=True)
     apps.get_reference.return_value = AppReference(str(APP_ID), "App", mode, None)
     use_cases.published.return_value = None
     services = Services(Apps(apps), use_cases)
@@ -139,7 +140,8 @@ def test_revision_conflict_is_translated_to_existing_409(app: Flask, monkeypatch
         lambda: AccountWithTenant(make_account(role=TenantAccountRole.EDITOR), "tenant"),
     )
     monkeypatch.setattr(flask_admission, "enforce_rbac_checks", lambda **_kwargs: None)
-    apps, use_cases = Mock(spec=ConsoleAppService), Mock(spec=ConsoleWorkflowService)
+    apps = create_autospec(ConsoleAppService, instance=True)
+    use_cases = create_autospec(ConsoleWorkflowService, instance=True)
     apps.get_reference.return_value = AppReference(str(APP_ID), "App", "workflow", None)
     use_cases.publish.side_effect = WorkflowHashNotEqualError()
     services = Services(Apps(apps), use_cases)

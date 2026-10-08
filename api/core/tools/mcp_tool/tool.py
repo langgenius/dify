@@ -68,6 +68,7 @@ class MCPTool(Tool):
     @override
     def _invoke(
         self,
+        session: Session,
         user_id: str,
         tool_parameters: dict[str, Any],
         conversation_id: str | None = None,
@@ -288,6 +289,8 @@ class MCPTool(Tool):
 
         headers = self.headers.copy() if self.headers else {}
         tool_parameters = self._handle_none_parameter(tool_parameters)
+
+        from sqlalchemy.orm import Session
 
         from extensions.ext_database import db
         from services.tools.mcp_tools_manage_service import MCPToolManageService

@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from enums.human_input import HumanInputFormKind, HumanInputFormStatus
+from extensions.ext_application_services import ApplicationServices
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import ConversationFromSource, EndUserType
 from models.enums import InvokeFrom as StoredInvokeFrom
@@ -25,10 +26,13 @@ MODULE = "tasks.app_generate.resume_agent_app_task"
 
 @pytest.fixture
 def task_session(
-    mocker: MockerFixture, sqlite_session_factory: sessionmaker[Session], workflow_application
+    mocker: MockerFixture,
+    sqlite_session_factory: sessionmaker[Session],
+    workflow_application: ApplicationServices,
 ) -> Iterator[Session]:
-    """Bind the task's Flask-SQLAlchemy session proxy to the shared SQLite database."""
-    assert mod.application_services() is workflow_application
+    """Bind the task to the shared SQLite database and application composition."""
+    application_services = mocker.patch.object(mod, "application_services", return_value=workflow_application)
+    assert application_services() is workflow_application
     registry = scoped_session(sqlite_session_factory)
     mocker.patch.object(mod.db, "session", registry)
     session = registry()
@@ -100,7 +104,11 @@ def _seed_account(session: Session, *, tenant_id: str, account_id: str) -> Accou
     return account
 
 
-def test_resume_happy_path_account_user_sets_tenant_and_runs(mocker: MockerFixture, task_session: Session) -> None:
+def test_resume_happy_path_account_user_sets_tenant_and_runs(
+    mocker: MockerFixture,
+    task_session: Session,
+    workflow_application: ApplicationServices,
+) -> None:
     tenant_id, app_id, conversation_id, form_id, account_id = (str(uuid4()) for _ in range(5))
     app = _app(app_id=app_id, tenant_id=tenant_id)
     account = _seed_account(task_session, tenant_id=tenant_id, account_id=account_id)
@@ -111,6 +119,14 @@ def test_resume_happy_path_account_user_sets_tenant_and_runs(mocker: MockerFixtu
 
     mod.resume_agent_app_execution(conversation_id=conversation_id, form_id=form_id)
 
+    constructor = generator.call_args
+    assert constructor is not None
+    assert constructor.kwargs["forms"] is workflow_application.workflow_runtime.human_forms
+    assert constructor.kwargs["agent_configs"] is workflow_application.workflow_runtime.agent_configs
+    assert constructor.kwargs["tool_providers"] is workflow_application.tools.tool_providers
+    assert constructor.kwargs["workflow_queries"] is workflow_application.tools.workflow_queries
+    assert constructor.kwargs["records"] is workflow_application.workflow_runtime.chat_records
+    assert constructor.kwargs["annotations"] is workflow_application.workflow_runtime.annotation_replies
     call = generator.return_value.resume_after_form_submission.call_args
     assert call is not None
     assert call.kwargs["conversation_id"] == conversation_id
