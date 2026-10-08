@@ -1,13 +1,19 @@
 import type { FileEntity } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Dialog, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { ProgressCircle } from '@langgenius/dify-ui/progress'
 import { useTranslation } from 'react-i18next'
 import { downloadUrl } from '@/utils/download'
 import { formatFileSize } from '@/utils/format'
-import { FilePreviewDialog } from '../file-preview-dialog'
+import { FilePreviewContent } from '../file-preview-content'
 import FileTypeIcon from '../file-type-icon'
-import { fileIsUploaded, getFileAppearanceType, getFileExtension } from '../utils'
+import {
+  fileIsUploaded,
+  getFileAppearanceType,
+  getFileExtension,
+  getFilePreviewKind,
+} from '../utils'
 
 type FileItemProps = {
   file: FileEntity
@@ -30,6 +36,7 @@ export function FileItem({
   const ext = getFileExtension(name, type, isRemote)
   const uploadError = progress === -1
   const download_url = url ? `${url}&as_attachment=true` : base64Url
+  const previewKind = canPreview ? getFilePreviewKind(file) : undefined
 
   return (
     <div
@@ -55,7 +62,23 @@ export function FileItem({
           />
         </IconButton>
       )}
-      <FilePreviewDialog file={file} canPreview={canPreview} />
+      <div className="mb-1 h-8">
+        {previewKind ? (
+          <Dialog>
+            <DialogTrigger
+              title={name}
+              className="line-clamp-2 w-full cursor-pointer text-left system-xs-medium break-all text-text-tertiary"
+            >
+              {name}
+            </DialogTrigger>
+            <FilePreviewContent file={file} kind={previewKind} />
+          </Dialog>
+        ) : (
+          <div className="line-clamp-2 system-xs-medium break-all text-text-tertiary" title={name}>
+            {name}
+          </div>
+        )}
+      </div>
       <div className="relative flex items-center justify-between">
         <div className="flex items-center system-2xs-medium-uppercase text-text-tertiary">
           <FileTypeIcon size="sm" type={getFileAppearanceType(name, type)} className="mr-1" />

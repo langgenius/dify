@@ -885,7 +885,7 @@
       "count": 1
     }
   },
-  "web/app/components/base/file-uploader/file-preview-dialog.tsx": {
+  "web/app/components/base/file-uploader/file-preview-content.tsx": {
     "jsx-a11y/media-has-caption": {
       "count": 2
     }

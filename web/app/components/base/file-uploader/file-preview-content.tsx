@@ -1,38 +1,34 @@
 'use client'
 
-import type { FileEntity } from './types'
+import type { FileEntity, FilePreviewKind } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
-  Dialog,
   DialogBackdrop,
   DialogClose,
   DialogPopup,
   DialogPortal,
   DialogTitle,
-  DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import dynamic from 'next/dynamic'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 
 const PdfPreview = dynamic(() => import('./pdf-preview').then((module) => module.PdfPreview), {
   ssr: false,
   loading: () => <LoadingPlaceholder className="h-64" />,
 })
 
-type PreviewKind = 'audio' | 'video' | 'pdf'
-type FilePreviewDialogProps = {
+type FilePreviewContentProps = {
   file: FileEntity
-  canPreview?: boolean
+  kind: FilePreviewKind
 }
 
-function FilePreviewPopup({ file, kind }: { file: FileEntity; kind: PreviewKind }) {
+function FilePreviewPopup({ file, kind }: FilePreviewContentProps) {
   const { t } = useTranslation(['common'])
-  const media = useBreakpoints()
   const popupRef = useRef<HTMLDivElement>(null)
+  // Close stays last so it paints above the scaled PDF layer; focus it explicitly instead.
   const closeRef = useRef<HTMLButtonElement>(null)
   const [source] = useState(() => ({
     url: file.url || file.base64Url,
@@ -50,13 +46,13 @@ function FilePreviewPopup({ file, kind }: { file: FileEntity; kind: PreviewKind 
 
   return (
     <>
-      <DialogBackdrop className="bg-transparent!" />
+      <DialogBackdrop className="bg-transparent" />
       <DialogPopup
         ref={popupRef}
         initialFocus={closeRef}
         className={cn(
-          'fixed inset-0! top-0! left-0! flex h-dvh! max-h-none! w-screen! max-w-none! translate-0! items-center justify-center overflow-hidden! rounded-none! border-none! bg-black/80 shadow-none!',
-          kind === 'pdf' && media === MediaType.mobile ? 'p-0!' : 'p-8!',
+          'fixed inset-0 flex h-dvh w-screen items-center justify-center overflow-hidden rounded-none border-none bg-black/80 p-8 shadow-none',
+          kind === 'pdf' && 'max-sm:p-0',
         )}
       >
         <DialogTitle className="sr-only">{file.name}</DialogTitle>
@@ -88,32 +84,10 @@ function FilePreviewPopup({ file, kind }: { file: FileEntity; kind: PreviewKind 
   )
 }
 
-export function FilePreviewDialog({ file, canPreview }: FilePreviewDialogProps) {
-  const [category, subtype] = file.type?.split('/') ?? []
-  const kind: PreviewKind | undefined =
-    category === 'audio' || category === 'video' ? category : subtype === 'pdf' ? 'pdf' : undefined
-  const filenameClassName = 'mb-1 line-clamp-2 h-8 system-xs-medium break-all text-text-tertiary'
-  if (!canPreview || !kind || !(file.url || file.base64Url || file.originalFile))
-    return (
-      <div className={filenameClassName} title={file.name}>
-        {file.name}
-      </div>
-    )
-
+export function FilePreviewContent(props: FilePreviewContentProps) {
   return (
-    <Dialog disablePointerDismissal>
-      <DialogTrigger
-        title={file.name}
-        className={cn(
-          filenameClassName,
-          'w-full cursor-pointer text-left focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
-        )}
-      >
-        {file.name}
-      </DialogTrigger>
-      <DialogPortal>
-        <FilePreviewPopup file={file} kind={kind} />
-      </DialogPortal>
-    </Dialog>
+    <DialogPortal>
+      <FilePreviewPopup {...props} />
+    </DialogPortal>
   )
 }
