@@ -16,6 +16,8 @@ import {
 } from '../overlay-shared'
 import { parsePlacement } from '../placement'
 
+type ComboboxActions = BaseCombobox.Root.Actions
+
 type ComboboxProps<
   Value,
   Multiple extends boolean | undefined = false,
@@ -565,6 +567,7 @@ export {
 }
 
 export type {
+  ComboboxActions,
   ComboboxChangeEventDetails,
   ComboboxChipProps,
   ComboboxChipRemoveProps,

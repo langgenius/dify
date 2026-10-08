@@ -209,6 +209,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   const selectedLanguage = LANGUAGE_OPTIONS.find((item) => item.value === language)
   const inputPlaceholderLabelId = React.useId()
   const inputPlaceholderDescriptionId = React.useId()
+  const invertedThemeLabelId = React.useId()
   const inputPlaceholderValue = inputInfo.inputPlaceholder ?? ''
   const copyrightSwitchValue = inputInfo.copyrightSwitchValue
   const showInputPlaceholderPreview =
@@ -565,12 +566,13 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                           placeholder="E.g #A020F0"
                         />
                         <div className="flex items-center justify-between gap-2 body-xs-regular text-text-tertiary">
-                          <span>
+                          <span id={invertedThemeLabelId}>
                             {t(($) => $[`${prefixSettings}.chatColorThemeInverted`], {
                               ns: 'appOverview',
                             })}
                           </span>
                           <Switch
+                            aria-labelledby={invertedThemeLabelId}
                             checked={inputInfo.chatColorThemeInverted}
                             onCheckedChange={(v) =>
                               setInputInfo({ ...inputInfo, chatColorThemeInverted: v })

@@ -3,11 +3,11 @@
 import type { NetworkAccessGroupResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -194,7 +194,7 @@ export function PolicyItem({ group, canMutate, onView, onEdit }: PolicyItemProps
               </div>
             )}
           </div>
-          <AlertDialogActions className="p-0 pt-2">
+          <AlertDialogFooter className="p-0 pt-2">
             <AlertDialogCancelButton variant="secondary" disabled={deleteGroup.isPending}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
@@ -205,7 +205,7 @@ export function PolicyItem({ group, canMutate, onView, onEdit }: PolicyItemProps
             >
               {t(($) => $['operation.delete'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>

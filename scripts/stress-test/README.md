@@ -1,541 +1,98 @@
-# Dify Stress Test Suite
+# Dify SSE stress tests
 
-A high-performance stress test suite for Dify workflow execution using **Locust** - optimized for measuring Server-Sent Events (SSE) streaming performance.
+This Locust suite exercises streaming `POST /v1/workflows/run` requests against a local Dify instance with a mock OpenAI server. It measures connection counts, event throughput, time to first event (TTFE), stream duration, inter-event latency, and failures.
 
-## Key Metrics Tracked
+Run the following commands from the repository root. Keep long-running services in separate terminals.
 
-The stress test focuses on four critical SSE performance indicators:
+## Prepare the runtime
 
-1. **Active SSE Connections** - Real-time count of open SSE connections
-1. **New Connection Rate** - Connections per second (conn/sec)
-1. **Time to First Event (TTFE)** - Latency until first SSE event arrives
-1. **Event Throughput** - Events per second (events/sec)
-
-## Features
-
-- **True SSE Support**: Properly handles Server-Sent Events streaming without premature connection closure
-- **Real-time Metrics**: Live reporting every 5 seconds during tests
-- **Comprehensive Tracking**:
-  - Active connection monitoring
-  - Connection establishment rate
-  - Event processing throughput
-  - TTFE distribution analysis
-- **Multiple Interfaces**:
-  - Web UI for real-time monitoring (<http://localhost:8089>)
-  - Headless mode with periodic console updates
-- **Detailed Reports**: Final statistics with overall rates and averages
-- **Easy Configuration**: Uses existing API key configuration from setup
-
-## What Gets Measured
-
-The stress test focuses on SSE streaming performance with these key metrics:
-
-### Primary Endpoint: `/v1/workflows/run`
-
-The stress test tests a single endpoint with comprehensive SSE metrics tracking:
-
-- **Request Type**: POST request to workflow execution API
-- **Response Type**: Server-Sent Events (SSE) stream
-- **Payload**: Random questions from a configurable pool
-- **Concurrency**: Configurable from 1 to 1000+ simultaneous users
-
-### Key Performance Metrics
-
-#### 1. **Active Connections**
-
-- **What it measures**: Number of concurrent SSE connections open at any moment
-- **Why it matters**: Shows system's ability to handle parallel streams
-- **Good values**: Should remain stable under load without drops
-
-#### 2. **Connection Rate (conn/sec)**
-
-- **What it measures**: How fast new SSE connections are established
-- **Why it matters**: Indicates system's ability to handle connection spikes
-- **Good values**:
-  - Light load: 5-10 conn/sec
-  - Medium load: 20-50 conn/sec
-  - Heavy load: 100+ conn/sec
-
-#### 3. **Time to First Event (TTFE)**
-
-- **What it measures**: Latency from request sent to first SSE event received
-- **Why it matters**: Critical for user experience - faster TTFE = better perceived performance
-- **Good values**:
-  - Excellent: < 50ms
-  - Good: 50-100ms
-  - Acceptable: 100-500ms
-  - Poor: > 500ms
-
-#### 4. **Event Throughput (events/sec)**
-
-- **What it measures**: Rate of SSE events being delivered across all connections
-- **Why it matters**: Shows actual data delivery performance
-- **Expected values**: Depends on workflow complexity and number of connections
-  - Single connection: 10-20 events/sec
-  - 10 connections: 50-100 events/sec
-  - 100 connections: 200-500 events/sec
-
-#### 5. **Request/Response Times**
-
-- **P50 (Median)**: 50% of requests complete within this time
-- **P95**: 95% of requests complete within this time
-- **P99**: 99% of requests complete within this time
-- **Min/Max**: Best and worst case response times
-
-## Prerequisites
-
-1. **Dependencies**:
-
-   - Locust runs through `uvx --from locust`, outside the API project environment.
-   - `sseclient-py` is included in the API project dependencies.
-
-1. **Complete Dify setup**:
-
-   ```bash
-   # Run the complete setup
-   python scripts/stress-test/setup_all.py
-   ```
-
-   For a brand-new Dify instance, the setup script creates the first admin account. Override the defaults if needed:
-
-   ```bash
-   STRESS_TEST_ADMIN_EMAIL='your-admin@example.com' \
-   STRESS_TEST_ADMIN_USERNAME='dify' \
-   STRESS_TEST_ADMIN_PASSWORD='your-password' \
-   python scripts/stress-test/setup_all.py
-   ```
-
-   For an already-initialized Dify instance with an admin account, provide the existing admin login:
-
-   ```bash
-   STRESS_TEST_ADMIN_EMAIL='your-admin@example.com' \
-   STRESS_TEST_ADMIN_PASSWORD='your-password' \
-   python scripts/stress-test/setup_all.py
-   ```
-
-   `STRESS_TEST_ADMIN_USERNAME` is only used in the brand-new instance case, when `/console/api/setup` creates the first admin account.
-
-1. **Ensure services are running**:
-
-   **IMPORTANT**: For accurate stress testing, run the API server with Gunicorn in production mode:
-
-   ```bash
-   # Run from the api directory
-   cd api
-   uv run gunicorn \
-     --bind 0.0.0.0:5001 \
-     --workers 4 \
-     --worker-class gevent \
-     --timeout 120 \
-     --keep-alive 5 \
-     --log-level info \
-     --access-logfile - \
-     --error-logfile - \
-     app:app
-   ```
-
-   **Configuration options explained**:
-
-   - `--workers 4`: Number of worker processes (adjust based on CPU cores)
-   - `--worker-class gevent`: Async worker for handling concurrent connections
-   - `--timeout 120`: Worker timeout for long-running requests
-   - `--keep-alive 5`: Keep connections alive for SSE streaming
-
-   **NOT RECOMMENDED for stress testing**:
-
-   ```bash
-   # Debug mode - DO NOT use for stress testing (slow performance)
-   ./dev/start-api  # This runs Flask in debug mode with single-threaded execution
-   ```
-
-   **Also start the Mock OpenAI server**:
-
-   ```bash
-   python scripts/stress-test/setup/mock_openai_server.py
-   ```
-
-## Running the Stress Test
+Complete the [backend setup](../../api/README.md), including middleware, migrations, the plugin daemon, and workers. For measurements, run the API with Gunicorn instead of the development server:
 
 ```bash
-# Run with default configuration (headless mode)
+uv run --project api gunicorn --chdir api \
+  --bind 0.0.0.0:5001 --workers 4 --worker-class gevent \
+  --timeout 120 --keep-alive 5 app:app
+```
+
+The worker count is a starting configuration; tune it for the machine and record it with the results.
+
+Start the mock provider before running setup:
+
+```bash
+uv run --project api python scripts/stress-test/setup/mock_openai_server.py
+```
+
+Then provision the benchmark app, plugin configuration, and API key:
+
+```bash
+STRESS_TEST_ADMIN_EMAIL='your-admin@example.com' \
+STRESS_TEST_ADMIN_USERNAME='dify' \
+STRESS_TEST_ADMIN_PASSWORD='your-password' \
+uv run --project api python scripts/stress-test/setup_all.py
+```
+
+Setup creates the first admin on an uninitialized instance or signs in with the supplied account on an existing instance. `STRESS_TEST_ADMIN_USERNAME` is used only for initial setup. It writes credentials and the app API key to `scripts/stress-test/setup/config/stress_test_state.json`; keep that local file private.
+
+## Run
+
+```bash
 ./scripts/stress-test/run_locust_stress_test.sh
-
-# Or run directly with uvx
-uvx --from locust locust -f scripts/stress-test/sse_benchmark.py --host http://localhost:5001
-
-# Run with Web UI (access at http://localhost:8089)
-uvx --from locust locust -f scripts/stress-test/sse_benchmark.py --host http://localhost:5001 --web-port 8089
 ```
 
-The script will:
+The runner checks the API on port 5001, the mock provider on port 5004, and the saved API key. It prompts for headless mode or the Web UI at <http://localhost:8089>. Locust runs in its own environment through `uvx --from locust`.
 
-1. Validate that all required services are running
-1. Check API token availability
-1. Execute the Locust stress test with SSE support
-1. Generate comprehensive reports in the `reports/` directory
-
-## Configuration
-
-The stress test configuration is in `locust.conf`:
-
-```ini
-users = 10           # Number of concurrent users
-spawn-rate = 2       # Users spawned per second
-run-time = 1m        # Test duration (30s, 5m, 1h)
-headless = true      # Run without web UI
-```
-
-### Custom Question Sets
-
-Modify the questions list in `sse_benchmark.py`:
-
-```python
-self.questions = [
-    "Your custom question 1",
-    "Your custom question 2",
-    # Add more questions...
-]
-```
-
-## Understanding the Results
-
-### Report Structure
-
-After running the stress test, you'll find one directory per run under `reports/`:
-
-- `YYYYMMDD_HHMMSS/locust_summary.txt` - Complete console output with metrics
-- `YYYYMMDD_HHMMSS/locust_report.html` - Interactive HTML report with charts
-- `YYYYMMDD_HHMMSS/locust_stats.csv` - CSV with detailed statistics
-- `YYYYMMDD_HHMMSS/locust_stats_history.csv` - Time-series data
-- `YYYYMMDD_HHMMSS/sse_metrics_YYYYMMDD_HHMMSS.json` - Custom SSE metrics
-
-### Key Metrics
-
-**Requests Per Second (RPS)**:
-
-- **Excellent**: > 50 RPS
-- **Good**: 20-50 RPS
-- **Acceptable**: 10-20 RPS
-- **Needs Improvement**: < 10 RPS
-
-**Response Time Percentiles**:
-
-- **P50 (Median)**: 50% of requests complete within this time
-- **P95**: 95% of requests complete within this time
-- **P99**: 99% of requests complete within this time
-
-**Success Rate**:
-
-- Should be > 99% for production readiness
-- Lower rates indicate errors or timeouts
-
-### Example Output
-
-```text
-============================================================
-DIFY SSE STRESS TEST
-============================================================
-
-[2025-09-12 15:45:44,468] Starting test run with 10 users at 2 users/sec
-
-============================================================
-SSE Metrics | Active:   8 | Total Conn:   142 | Events:   2841
-Rates: 2.4 conn/s | 47.3 events/s | TTFE: 43ms
-============================================================
-
-Type     Name                          # reqs  # fails |    Avg     Min     Max    Med | req/s  failures/s
----------|------------------------------|--------|--------|--------|--------|--------|--------|--------|-----------
-POST     /v1/workflows/run                  142   0(0.00%) |     41      18     192     38 |   2.37        0.00
----------|------------------------------|--------|--------|--------|--------|--------|--------|--------|-----------
-         Aggregated                         142   0(0.00%) |     41      18     192     38 |   2.37        0.00
-
-============================================================
-FINAL RESULTS
-============================================================
-Total Connections: 142
-Total Events:      2841
-Average TTFE:      43 ms
-============================================================
-```
-
-### How to Read the Results
-
-**Live SSE Metrics Box (Updates every 10 seconds):**
-
-```text
-SSE Metrics | Active:   8 | Total Conn:   142 | Events:   2841
-Rates: 2.4 conn/s | 47.3 events/s | TTFE: 43ms
-```
-
-- **Active**: Current number of open SSE connections
-- **Total Conn**: Cumulative connections established
-- **Events**: Total SSE events received
-- **conn/s**: Connection establishment rate
-- **events/s**: Event delivery rate
-- **TTFE**: Average time to first event
-
-**Standard Locust Table:**
-
-```text
-Type     Name                # reqs  # fails |    Avg     Min     Max    Med | req/s
-POST     /v1/workflows/run      142   0(0.00%) |     41      18     192     38 |   2.37
-```
-
-- **Type**: Always POST for our SSE requests
-- **Name**: The API endpoint being tested
-- **# reqs**: Total requests made
-- **# fails**: Failed requests (should be 0)
-- **Avg/Min/Max/Med**: Response time percentiles (ms)
-- **req/s**: Request throughput
-
-**Performance Targets:**
-
-✅ **Good Performance**:
-
-- Zero failures (0.00%)
-- TTFE < 100ms
-- Stable active connections
-- Consistent event throughput
-
-⚠️ **Warning Signs**:
-
-- Failures > 1%
-- TTFE > 500ms
-- Dropping active connections
-- Declining event rate over time
-
-## Test Scenarios
-
-### Light Load
-
-```yaml
-concurrency: 10
-iterations: 100
-```
-
-### Normal Load
-
-```yaml
-concurrency: 100
-iterations: 1000
-```
-
-### Heavy Load
-
-```yaml
-concurrency: 500
-iterations: 5000
-```
-
-### Stress Test
-
-```yaml
-concurrency: 1000
-iterations: 10000
-```
-
-## Performance Tuning
-
-### API Server Optimization
-
-**Gunicorn Tuning for Different Load Levels**:
+For headless runs, the wrapper reads `users`, `spawn-rate`, and `run-time` from [`locust.conf`](locust.conf). To set options directly, invoke Locust from the repository root:
 
 ```bash
-# Light load (10-50 concurrent users)
-uv run gunicorn --bind 0.0.0.0:5001 --workers 2 --worker-class gevent app:app
-
-# Medium load (50-200 concurrent users)
-uv run gunicorn --bind 0.0.0.0:5001 --workers 4 --worker-class gevent --worker-connections 1000 app:app
-
-# Heavy load (200-1000 concurrent users)
-uv run gunicorn --bind 0.0.0.0:5001 --workers 8 --worker-class gevent --worker-connections 2000 --max-requests 1000 app:app
-```
-
-**Worker calculation formula**:
-
-- Workers = (2 × CPU cores) + 1
-- For SSE/WebSocket: Use gevent worker class
-- For CPU-bound tasks: Use sync workers
-
-### Database Optimization
-
-**PostgreSQL Connection Pool Tuning**:
-
-For high-concurrency stress testing, increase the PostgreSQL max connections in `docker/middleware.env`:
-
-```bash
-# Edit docker/middleware.env
-POSTGRES_MAX_CONNECTIONS=200  # Default is 100
-
-# Recommended values for different load levels:
-# Light load (10-50 users): 100 (default)
-# Medium load (50-200 users): 200
-# Heavy load (200-1000 users): 500
-```
-
-After changing, restart the PostgreSQL container:
-
-```bash
-docker compose -f docker/docker-compose.middleware.yaml down db
-docker compose -f docker/docker-compose.middleware.yaml up -d db
-```
-
-**Note**: Each connection uses ~10MB of RAM. Ensure your database server has sufficient memory:
-
-- 100 connections: ~1GB RAM
-- 200 connections: ~2GB RAM
-- 500 connections: ~5GB RAM
-
-### System Optimizations
-
-1. **Increase file descriptor limits**:
-
-   ```bash
-   ulimit -n 65536
-   ```
-
-1. **TCP tuning for high concurrency** (Linux):
-
-   ```bash
-   # Increase TCP buffer sizes
-   sudo sysctl -w net.core.rmem_max=134217728
-   sudo sysctl -w net.core.wmem_max=134217728
-
-   # Enable TCP fast open
-   sudo sysctl -w net.ipv4.tcp_fastopen=3
-   ```
-
-1. **macOS specific**:
-
-   ```bash
-   # Increase maximum connections
-   sudo sysctl -w kern.ipc.somaxconn=2048
-   ```
-
-## Troubleshooting
-
-### Common Issues
-
-1. **"ModuleNotFoundError: No module named 'locust'"**:
-
-   ```bash
-   # Locust is intentionally run outside the api project environment:
-   uvx --from locust locust --version
-   ```
-
-1. **"API key configuration not found"**:
-
-   ```bash
-   # Run setup
-   python scripts/stress-test/setup_all.py
-   ```
-
-1. **Services not running**:
-
-   ```bash
-   # Start Dify API with Gunicorn (production mode)
-   cd api
-   uv run gunicorn --bind 0.0.0.0:5001 --workers 4 --worker-class gevent app:app
-
-   # Start Mock OpenAI server
-   python scripts/stress-test/setup/mock_openai_server.py
-   ```
-
-1. **High error rate**:
-
-   - Reduce concurrency level
-   - Check system resources (CPU, memory)
-   - Review API server logs for errors
-   - Increase timeout values if needed
-
-1. **Permission denied running script**:
-
-   ```bash
-   chmod +x run_benchmark.sh
-   ```
-
-## Advanced Usage
-
-### Running Multiple Iterations
-
-```bash
-# Run stress test 3 times with 60-second intervals
-for i in {1..3}; do
-    echo "Run $i of 3"
-    ./run_locust_stress_test.sh
-    sleep 60
-done
-```
-
-### Custom Locust Options
-
-Run Locust directly with custom options:
-
-```bash
-# With specific user count and spawn rate
 uvx --from locust locust -f scripts/stress-test/sse_benchmark.py \
-  --host http://localhost:5001 --users 50 --spawn-rate 5
-
-# Generate CSV reports
-uvx --from locust locust -f scripts/stress-test/sse_benchmark.py \
-  --host http://localhost:5001 --csv reports/results
-
-# Run for specific duration
-uvx --from locust locust -f scripts/stress-test/sse_benchmark.py \
-  --host http://localhost:5001 --run-time 5m --headless
+  --host http://localhost:5001 --users 50 --spawn-rate 5 \
+  --run-time 1m --headless
 ```
 
-### Comparing Results
+For the Web UI:
 
 ```bash
-# Compare multiple stress test runs
-ls -la scripts/stress-test/reports/*/locust_summary.txt | tail -5
+uvx --from locust locust -f scripts/stress-test/sse_benchmark.py \
+  --host http://localhost:5001 --web-port 8089
 ```
 
-## Interpreting Performance Issues
+The wrapper fixes the target to localhost; use the direct invocation to change the host. Direct invocations must set their own options or explicitly load `scripts/stress-test/locust.conf` with `--config`.
 
-### High Response Times
+## Workload configuration
 
-Possible causes:
+[`sse_benchmark.py`](sse_benchmark.py) reads these environment variables:
 
-- Database query performance
-- External API latency
-- Insufficient server resources
-- Network congestion
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `WORKFLOW_PATH` | `/v1/workflows/run` | Request path |
+| `CONNECT_TIMEOUT` | `10` | Connection timeout in seconds |
+| `READ_TIMEOUT` | `60` | Stream read timeout in seconds |
+| `TERMINAL_EVENTS` | `workflow_finished,error` | Comma-separated terminal event names |
+| `QUESTIONS_FILE` | Empty | Text file with one nonempty question per line; otherwise uses built-in questions |
+| `WAIT_TIME` | `0` | `0` sends the next request immediately; any other value selects a random 1–3 second wait |
 
-### Low Throughput (RPS < 10)
+Requests pass the selected question as `inputs.question`. Keep this aligned with the benchmark workflow. A custom question file avoids editing the benchmark source.
 
-Check for:
+## Reports and interpretation
 
-- CPU bottlenecks
-- Memory constraints
-- Database connection pooling
-- API rate limiting
+Headless wrapper runs create `scripts/stress-test/reports/YYYYMMDD_HHMMSS/` containing:
 
-### High Error Rate
+- `locust_summary.txt`: console output.
+- `locust_report.html`: Locust report.
+- `locust_stats.csv` and `locust_stats_history.csv`: request statistics.
+- `sse_metrics_YYYYMMDD_HHMMSS.json`: custom SSE metrics.
 
-Investigate:
+Direct runs write custom SSE JSON under `scripts/stress-test/reports/`; request CSV or HTML explicitly with Locust options. Live SSE metrics update every five seconds.
 
-- Server error logs
-- Resource exhaustion
-- Timeout configurations
-- Connection limits
+Compare results with the same workflow, mock response behavior, hardware, worker configuration, and load profile. TTFE measures arrival of the first SSE event, not necessarily the first model token. Use the custom stream-duration metrics to assess stream completion separately from the standard Locust request timings. This mock-provider workload does not establish real-model latency or a universal production capacity threshold.
 
-## Why Locust?
+For failures, inspect API, worker, plugin-daemon, and mock-server logs. Check timeouts, CPU, memory, database connections, and client resource limits before changing concurrency or server settings.
 
-Locust was chosen over Drill for this stress test because:
+## Maintenance
 
-1. **Proper SSE Support**: Correctly handles streaming responses without premature closure
-1. **Custom Metrics**: Can track SSE-specific metrics like TTFE and stream duration
-1. **Web UI**: Real-time monitoring and control via web interface
-1. **Python Integration**: Seamlessly integrates with existing Python setup code
-1. **Extensibility**: Easy to customize for specific testing scenarios
+- Setup and fixture provisioning: `setup_all.py` and `setup/`.
+- Load defaults: `locust.conf`.
+- Stream parsing and metrics: `sse_benchmark.py`.
+- Service checks and report collection: `run_locust_stress_test.sh`.
 
-## Contributing
-
-To improve the stress test suite:
-
-1. Edit `stress_test.yml` for configuration changes
-1. Modify `run_locust_stress_test.sh` for workflow improvements
-1. Update question sets for better coverage
-1. Add new metrics or analysis features
+`cleanup.py` removes local setup state and reports, not the resources created in Dify. Preserve reports you need before running it; it asks for confirmation only in an interactive terminal.

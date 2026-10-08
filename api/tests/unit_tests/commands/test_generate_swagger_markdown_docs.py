@@ -431,7 +431,11 @@ def test_convert_spec_to_markdown_logs_converter_failure_without_overwriting_doc
     assert output_path.read_text(encoding="utf-8") == "Existing documentation\n"
 
 
-def test_convert_spec_to_markdown_patches_generated_union_tables(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+@pytest.mark.parametrize("required", ["Yes", "No"])
+@pytest.mark.parametrize("content_count", [1, 2, 3])
+def test_convert_spec_to_markdown_patches_generated_union_tables(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, required: str, content_count: int
+):
     module = _load_generate_swagger_markdown_docs_module()
     spec_path = tmp_path / "console-openapi.json"
     output_path = tmp_path / "console-openapi.md"
@@ -463,6 +467,9 @@ def test_convert_spec_to_markdown_patches_generated_union_tables(tmp_path: Path,
         encoding="utf-8",
     )
 
+    media_types = ["application/json", "multipart/form-data", "application/x-www-form-urlencoded"][:content_count]
+    body_schema = "".join(f"**{media_type}**: string, enum: a\\|b<br>" for media_type in media_types)
+
     def run_converter(args, **kwargs):
         assert kwargs["check"] is False
         converter_spec_path = Path(args[args.index("-i") + 1])
@@ -490,7 +497,11 @@ def test_convert_spec_to_markdown_patches_generated_union_tables(tmp_path: Path,
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | default |  |  | No |
-""",
+"""
+            + "\n#### Request Body\n\n| Required | Schema |\n| -------- | ------ |\n"
+            + f"|  {required} | "
+            + " | ".join([body_schema] * content_count)
+            + " |\n",
             encoding="utf-8",
         )
         return module.subprocess.CompletedProcess(args=args, returncode=0, stdout="", stderr="")
@@ -504,3 +515,18 @@ def test_convert_spec_to_markdown_patches_generated_union_tables(tmp_path: Path,
     assert "Intro line\n" in converted
     assert "| FormInputConfig | [ParagraphInputConfig](#paragraphinputconfig) |  |  |" in converted
     assert "| default | [StringSource](#stringsource) |  | No |" in converted
+    body_row = converted.split("| -------- | ------ |\n", 1)[1].strip()
+    assert [cell.strip() for cell in body_row.strip("|").split(" | ")] == [required, body_schema]
+
+
+def test_request_body_patch_preserves_distinct_cells_and_other_tables():
+    module = _load_generate_swagger_markdown_docs_module()
+    markdown = """| Required | Schema |
+| -------- | ------ |
+| Yes | first | second |
+
+| Name | Schema | Description |
+| ---- | ------ | ----------- |
+| Yes | same | same |
+"""
+    assert module._patch_request_body_markdown(markdown) == markdown

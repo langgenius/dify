@@ -146,17 +146,17 @@ catalog:
   '@typescript/native': npm:typescript@7.0.2
   '@vitejs/plugin-react': 6.1.1
   '@vitejs/plugin-rsc': 0.5.35
-  '@vitest/browser-playwright': 5.0.1
-  '@vitest/coverage-v8': 5.0.1
+  '@vitest/browser-playwright': 5.0.3
+  '@vitest/coverage-v8': 5.0.3
   '@xmldom/xmldom': 0.9.12
   abcjs: 6.7.1
   agentation: 3.1.2
   ahooks: 3.10.0
+  ajv: 8.20.0
   bowser: 2.14.1
-  c12: 4.0.0-rc.1
+  c12: 4.0.0-rc.2
   chokidar: 5.0.0
   class-variance-authority: 0.7.1
-  cli-table3: 0.6.5
   cn: 0.4.0
   code-inspector-plugin: 1.6.6
   concurrently: 10.0.5
@@ -223,11 +223,10 @@ catalog:
   mitt: 3.0.1
   motion: 13.4.4
   negotiator: 1.1.0
-  next: 16.3.6
+  next: 16.3.8
   next-themes: 0.4.6
   nuqs: 2.10.1
   open: 11.0.4
-  ora: 9.4.1
   picocolors: 1.1.1
   picomatch: 4.0.7
   pinyin-pro: 3.29.4
@@ -267,10 +266,10 @@ catalog:
   use-context-selector: 2.0.0
   uuid: 14.0.2
   vinext: 1.0.0
-  vite: npm:@voidzero-dev/vite-plus-core@1.0.0
+  vite: npm:@voidzero-dev/vite-plus-core@1.1.0
   vite-plugin-inspect: 12.0.2
-  vite-plus: 1.0.0
-  vitest: 5.0.1
+  vite-plus: 1.1.0
+  vitest: 5.0.3
   vitest-browser-react: 2.3.0
   vitest-canvas-mock: 1.2.0
   zod: 4.6.5

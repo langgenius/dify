@@ -14,11 +14,11 @@ import {
 
 function Parts() {
   return (
-    <>
+    <React.Fragment>
       <DatePickerTrigger />
       <DatePickerClear aria-label="Clear date" />
       <DatePickerContent />
-    </>
+    </React.Fragment>
   )
 }
 
@@ -27,7 +27,7 @@ describe('DatePicker keyboard and form contract', () => {
     function Example() {
       const [visible, setVisible] = React.useState(true)
       return (
-        <>
+        <React.Fragment>
           <button type="button" onClick={() => setVisible(!visible)}>
             Toggle label
           </button>
@@ -36,7 +36,7 @@ describe('DatePicker keyboard and form contract', () => {
             <DatePickerTrigger id="custom-departure" aria-label={visible ? undefined : 'Date'} />
             <DatePickerContent aria-label={visible ? undefined : 'Choose date'} />
           </DatePicker>
-        </>
+        </React.Fragment>
       )
     }
     const screen = await render(<Example />)

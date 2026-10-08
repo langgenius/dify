@@ -5,11 +5,11 @@ import type { AccessControlAppIcon } from './index'
 import type { AccessPoint } from '@/app/components/app/deploy/utils/access-point'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -211,7 +211,7 @@ export function AccessControlStatusPanel({
               })}
             </AlertDialogDescription>
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton variant="secondary">
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
@@ -225,7 +225,7 @@ export function AccessControlStatusPanel({
             >
               {t(($) => $['studio.accessControl.turnOffConfirm'], { ns: 'deployments' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>

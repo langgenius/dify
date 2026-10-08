@@ -35,13 +35,14 @@ const GlobalVariablePanel = dynamic(
   },
 )
 
-const WorkflowPanelOnLeft = () => {
+const WorkflowPanelOnLeft = ({ appId }: { appId: string }) => {
   const messageLogItem = useStore((state) => state.messageLogItem)
   const setMessageLogItem = useStore((state) => state.setMessageLogItem)
   return (
     <>
       {messageLogItem && (
         <MessageLogModal
+          appId={appId}
           fixedWidth
           width={400}
           currentLogItem={messageLogItem}
@@ -88,12 +89,12 @@ const WorkflowPanel = () => {
   const panelProps: PanelProps = useMemo(() => {
     return {
       components: {
-        left: <WorkflowPanelOnLeft />,
+        left: appDetail && <WorkflowPanelOnLeft appId={appDetail.id} />,
         right: <WorkflowPanelOnRight />,
       },
       versionHistoryPanelProps,
     }
-  }, [versionHistoryPanelProps])
+  }, [appDetail, versionHistoryPanelProps])
 
   return <Panel {...panelProps} />
 }

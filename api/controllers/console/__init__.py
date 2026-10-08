@@ -7,6 +7,7 @@ from flask import Blueprint, current_app, got_request_exception
 from flask_restx import Namespace
 
 from controllers.common.app_access_error import register_app_access_error_metadata
+from controllers.common.errors import register_permission_error_handler
 from libs.external_api import ExternalApi
 from machinery.errors import ActiveWorkspaceRequiredError
 
@@ -19,6 +20,7 @@ api = ExternalApi(
     title="Console API",
     description="Console management APIs for app configuration, monitoring, and administration",
 )
+register_permission_error_handler(api)
 
 
 @api.errorhandler(ActiveWorkspaceRequiredError)

@@ -57,14 +57,6 @@ vi.mock('@/app/components/workflow/collaboration/utils/user-color', () => ({
   getUserColor: () => '#22c55e',
 }))
 
-vi.mock('@/app/components/base/inline-delete-confirm', () => ({
-  default: ({ onConfirm }: { onConfirm: () => void }) => (
-    <button type="button" data-testid="confirm-delete-reply" onClick={onConfirm}>
-      confirm delete
-    </button>
-  ),
-}))
-
 vi.mock('./mention-input', () => ({
   MentionInput: ({
     placeholder,
@@ -254,7 +246,7 @@ describe('CommentThread', () => {
     })
     await user.click(screen.getByLabelText('workflowComments.comments.aria.replyActions'))
     await user.click(await screen.findByText('workflowComments.comments.actions.deleteReply'))
-    await user.click(screen.getByTestId('confirm-delete-reply'))
+    await user.click(await screen.findByRole('button', { name: 'common.operation.delete' }))
 
     expect(onReplyDeleteDirect).toHaveBeenCalledWith('reply-1')
   })

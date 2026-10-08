@@ -1,12 +1,13 @@
 'use client'
 
-import type { PublisherEnvironmentTabsProps } from './types'
+import type { PublisherEnvironment, PublisherEnvironmentTabsProps } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
-  DropdownMenuLabel,
+  DropdownMenuGroupLabel,
+  DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
@@ -14,7 +15,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { useTranslation } from 'react-i18next'
 import { BUILT_IN_ENVIRONMENT_ID } from '../state'
 import { EnvironmentButton } from './environment-button'
-import { EnvironmentMenuItem } from './environment-menu-item'
 import {
   ENVIRONMENT_TAB_HORIZONTAL_PADDING,
   ENVIRONMENT_TAB_MAX_WIDTH,
@@ -24,6 +24,23 @@ import {
 } from './layout-calculations'
 import { EnvironmentTabsMeasurementProbe } from './measurement-probe'
 import { useEnvironmentTabMeasurements } from './use-measurements'
+
+function EnvironmentMenuItem({
+  environment,
+  onClick,
+}: {
+  environment: PublisherEnvironment
+  onClick: () => void
+}) {
+  return (
+    <DropdownMenuItem className="mx-0 gap-2 py-1.5" onClick={onClick}>
+      <span aria-hidden className="i-ri-instance-line size-4 shrink-0 text-text-tertiary" />
+      <span className="grow truncate system-md-regular text-text-secondary">
+        {environment.name}
+      </span>
+    </DropdownMenuItem>
+  )
+}
 
 export function PublisherEnvironmentTabs({
   environments,
@@ -150,11 +167,7 @@ export function PublisherEnvironmentTabs({
               </button>
             }
           />
-          <DropdownMenuContent
-            placement="bottom-end"
-            sideOffset={4}
-            className="w-42 rounded-xl p-0"
-          >
+          <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-42 p-0">
             {overflowEnvironments.length > 0 && (
               <DropdownMenuGroup className="p-1">
                 {overflowEnvironments.map((environment) => (
@@ -167,13 +180,13 @@ export function PublisherEnvironmentTabs({
               </DropdownMenuGroup>
             )}
             {overflowEnvironments.length > 0 && undeployedEnvironments.length > 0 && (
-              <DropdownMenuSeparator className="my-0 bg-divider-subtle" />
+              <DropdownMenuSeparator className="my-0" />
             )}
             {undeployedEnvironments.length > 0 && (
               <DropdownMenuGroup className="p-1">
-                <DropdownMenuLabel className="px-2 py-1 system-xs-medium-uppercase text-text-tertiary">
+                <DropdownMenuGroupLabel className="px-2 py-1">
                   {t(($) => $['card.notDeployed'], { ns: 'deployments' })}
-                </DropdownMenuLabel>
+                </DropdownMenuGroupLabel>
                 {undeployedEnvironments.map((environment) => (
                   <EnvironmentMenuItem
                     key={environment.id}
