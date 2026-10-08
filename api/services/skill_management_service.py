@@ -4617,10 +4617,13 @@ class SkillManagementService:
             with zipfile.ZipFile(io.BytesIO(payload)) as archive:
                 shared_strings: list[str] = []
                 if "xl/sharedStrings.xml" in archive.namelist():
-                    shared_strings = SkillManagementService._xml_text_content(
-                        archive.read("xl/sharedStrings.xml"),
-                        text_tags={"t"},
-                    )
+                    shared_strings_root = ET.fromstring(archive.read("xl/sharedStrings.xml"))
+                    # Cell indices reference shared-string items, not individual rich-text runs.
+                    shared_strings = [
+                        "".join(node.text or "" for node in item.findall("{*}t") + item.findall("{*}r/{*}t"))
+                        for item in shared_strings_root
+                        if item.tag.rsplit("}", 1)[-1] == "si"
+                    ]
                 worksheet_names = sorted(
                     name
                     for name in archive.namelist()
