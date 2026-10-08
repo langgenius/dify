@@ -5,7 +5,7 @@ import type { Placement } from '../placement'
 import { Popover as BasePopover } from '@base-ui/react/popover'
 import { cn } from '../cn'
 import { resolveClassName } from '../internals/resolve-class-name'
-import { floatingPopupAnimationClassName, triggerInteractionClassName } from '../overlay-shared'
+import { floatingPopupAnimationClassName, triggerFocusClassName } from '../overlay-shared'
 import { parsePlacement } from '../placement'
 
 const Popover = BasePopover.Root
@@ -27,7 +27,7 @@ type PopoverTriggerProps<Payload = unknown> = BasePopover.Trigger.Props<Payload>
 function PopoverTrigger<Payload = unknown>({ className, ...props }: PopoverTriggerProps<Payload>) {
   return (
     <BasePopover.Trigger
-      className={(state) => cn(triggerInteractionClassName, resolveClassName(className, state))}
+      className={(state) => cn(triggerFocusClassName, resolveClassName(className, state))}
       {...props}
     />
   )

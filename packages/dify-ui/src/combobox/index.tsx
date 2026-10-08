@@ -13,6 +13,7 @@ import {
   floatingItemIndicatorClassName,
   floatingPopupAnimationClassName,
   floatingSeparatorClassName,
+  triggerFocusClassName,
 } from '../overlay-shared'
 import { parsePlacement } from '../placement'
 
@@ -98,12 +99,7 @@ function ComboboxTrigger({ className, type = 'button', ...props }: ComboboxTrigg
   return (
     <BaseCombobox.Trigger
       type={type}
-      className={(state) =>
-        cn(
-          'outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
-          resolveClassName(className, state),
-        )
-      }
+      className={(state) => cn(triggerFocusClassName, resolveClassName(className, state))}
       {...props}
     />
   )

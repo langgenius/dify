@@ -4,7 +4,7 @@ import type { Collapsible as BaseCollapsibleNS } from '@base-ui/react/collapsibl
 import { Collapsible as BaseCollapsible } from '@base-ui/react/collapsible'
 import { cn } from '../cn'
 import { resolveClassName } from '../internals/resolve-class-name'
-import { triggerInteractionClassName } from '../overlay-shared'
+import { triggerFocusClassName } from '../overlay-shared'
 
 type CollapsibleProps = BaseCollapsibleNS.Root.Props
 function Collapsible({ className, ...props }: CollapsibleProps) {
@@ -20,7 +20,7 @@ type CollapsibleTriggerProps = BaseCollapsibleNS.Trigger.Props
 function CollapsibleTrigger({ className, ...props }: CollapsibleTriggerProps) {
   return (
     <BaseCollapsible.Trigger
-      className={(state) => cn(triggerInteractionClassName, resolveClassName(className, state))}
+      className={(state) => cn(triggerFocusClassName, resolveClassName(className, state))}
       {...props}
     />
   )

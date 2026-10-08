@@ -15,7 +15,7 @@ import {
   menuItemDestructiveClassName,
   menuPopupBaseClassName,
   menuPopupSurfaceClassName,
-  triggerInteractionClassName,
+  triggerFocusClassName,
 } from '../overlay-shared'
 import { parsePlacement } from '../placement'
 
@@ -38,7 +38,7 @@ function DropdownMenuTrigger<Payload = unknown>({
 }: DropdownMenuTriggerProps<Payload>) {
   return (
     <Menu.Trigger
-      className={(state) => cn(triggerInteractionClassName, resolveClassName(className, state))}
+      className={(state) => cn(triggerFocusClassName, resolveClassName(className, state))}
       {...props}
     />
   )
