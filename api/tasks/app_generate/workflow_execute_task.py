@@ -41,6 +41,7 @@ from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.errors.workflow_service import WorkflowDebugReservationExpiredError
 from services.workflow.contracts import WorkflowSnapshot
 from services.workflow.debug_cancellation import DebugExecutionCancellation
+from services.workflow.debug_worker_lease import keep_debug_worker_alive
 from services.workflow.execution.adapters.chatflow.app_generator import AdvancedChatAppGenerator
 from services.workflow.execution.adapters.response_converter import WorkflowResponseConverter
 from services.workflow.execution.adapters.response_stream import WorkflowEventStream
@@ -277,7 +278,17 @@ class _AppRunner:
                 topic.publish(json.dumps(response.model_dump(mode="json"), ensure_ascii=False).encode())
             return None
 
-        with contextlib.nullcontext() if self._validated_snapshot else contextlib.nullcontext() as self._cancellation:
+        with (
+            keep_debug_worker_alive(
+                WorkflowDebugReservationRepository(self._session_factory),
+                tenant_id=exec_params.tenant_id,
+                app_id=exec_params.app_id,
+                workflow_id=exec_params.workflow_id,
+                execution_id=exec_params.workflow_run_id,
+            )
+            if self._validated_snapshot
+            else contextlib.nullcontext()
+        ) as self._cancellation:
             pause_config = PauseStateLayerConfig(
                 session_factory=self._session_factory,
                 state_owner_user_id=workflow.created_by,
@@ -933,7 +944,13 @@ def _resume_workflow(
     )
 
     with (
-        contextlib.nullcontext()
+        keep_debug_worker_alive(
+            WorkflowDebugReservationRepository(session_factory),
+            tenant_id=workflow.tenant_id,
+            app_id=workflow.app_id,
+            workflow_id=workflow.id,
+            execution_id=workflow_run_id,
+        )
         if workflow_run.graph_dict.get("_agent_bindings", {}).get("execution_id") == workflow_run_id
         else contextlib.nullcontext()
     ) as cancellation:
