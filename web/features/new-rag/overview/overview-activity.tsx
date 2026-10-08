@@ -27,10 +27,11 @@ import {
 } from '@langgenius/dify-ui/select'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
-import { useAtomValueRawSync, useSetAtom } from 'jotai'
+import { useAtomValue, useAtomValueRawSync, useSetAtom } from 'jotai'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import DatePicker from '@/app/components/base/date-and-time-picker/date-picker'
+import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
 import { useMembers } from '@/service/use-common'
 import { activityDatesForRange } from './overview-activity-types'
@@ -338,9 +339,11 @@ export function OverviewActivity() {
 
 function ActivityDateRangePicker({
   dates,
+  minDate,
   onChange,
 }: {
   dates: ActivityDateRange
+  minDate?: ActivityDateRange['start']
   onChange: (dates: ActivityDateRange) => void
 }) {
   const { t, i18n } = useTranslation(['knowledgeOverview'])
@@ -387,7 +390,11 @@ function ActivityDateRangePicker({
         onChange={(start) => start && onChange({ end: dates.end, start: start.startOf('day') })}
         onClear={() => undefined}
         renderTrigger={renderTrigger('start')}
-        getIsDateDisabled={(date) => date.isAfter(today, 'day') || date.isAfter(dates.end, 'day')}
+        getIsDateDisabled={(date) =>
+          date.isAfter(today, 'day') ||
+          date.isAfter(dates.end, 'day') ||
+          (!!minDate && date.isBefore(minDate, 'day'))
+        }
       />
       <span aria-hidden className="text-text-quaternary">
         –
@@ -400,7 +407,9 @@ function ActivityDateRangePicker({
         onClear={() => undefined}
         renderTrigger={renderTrigger('end')}
         getIsDateDisabled={(date) =>
-          date.isAfter(today, 'day') || date.isBefore(dates.start, 'day')
+          date.isAfter(today, 'day') ||
+          date.isBefore(dates.start, 'day') ||
+          (!!minDate && date.isBefore(minDate, 'day'))
         }
       />
     </div>
@@ -417,13 +426,20 @@ function ActivityDrawer({
   const { t, i18n } = useTranslation(['knowledgeSpace', 'knowledgeOverview', 'knowledgeTasks'])
   const { t: tCommon } = useTranslation(['common'])
   const { t: tActivityLog } = useTranslation(['appLog'])
+  const isCloudEdition = useAtomValue(deploymentEditionAtom) === 'CLOUD'
   const knowledgeSpaceId = useAtomValueRawSync(overviewKnowledgeSpaceIdAtom)
   const members = useMembers().data?.accounts ?? []
   const [range, setRange] = useState<ActivityRange>('today')
   const [dates, setDates] = useState<ActivityDateRange>(() => activityDatesForRange('today'))
   const [operator, setOperator] = useState<ActivityOperator>('all')
-  const activityFrom = range === 'all' ? undefined : dates.start.toISOString()
-  const activityTo = range === 'all' ? undefined : dates.end.toISOString()
+  const minDate = isCloudEdition ? activityDatesForRange('90d').start : undefined
+  const activityStart = minDate && dates.start.isBefore(minDate) ? minDate : dates.start
+  const activityEnd = minDate && dates.end.isBefore(minDate) ? minDate.endOf('day') : dates.end
+  const activityFrom = range === 'all' && !isCloudEdition ? undefined : activityStart.toISOString()
+  const activityTo = range === 'all' && !isCloudEdition ? undefined : activityEnd.toISOString()
+  const activityRanges = isCloudEdition
+    ? ACTIVITY_RANGES.filter((value) => value !== 'all')
+    : ACTIVITY_RANGES
   const activityActorType =
     operator === 'all' ? undefined : operator === 'system' ? 'system' : 'member'
   const activityActorId = operator.startsWith('member:')
@@ -572,7 +588,7 @@ function ActivityDrawer({
                     <span className="truncate">{rangeTriggerLabel[range]}</span>
                   </SelectTrigger>
                   <SelectContent>
-                    {ACTIVITY_RANGES.map((value) => (
+                    {activityRanges.map((value) => (
                       <SelectItem key={value} value={value}>
                         <SelectItemText>{rangeLabel[value]}</SelectItemText>
                         <SelectItemIndicator />
@@ -585,7 +601,11 @@ function ActivityDrawer({
                     {rangeLabel.all}
                   </div>
                 ) : (
-                  <ActivityDateRangePicker dates={dates} onChange={handleDatesChange} />
+                  <ActivityDateRangePicker
+                    dates={dates}
+                    minDate={minDate}
+                    onChange={handleDatesChange}
+                  />
                 )}
                 <Select
                   value={operator}

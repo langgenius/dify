@@ -5,6 +5,7 @@ import { atomWithInfiniteQuery, atomWithQuery, queryClientAtom } from 'jotai-tan
 import { atomWithLazy, selectAtom } from 'jotai/utils'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
+import { activityDatesForRange } from './overview-activity-types'
 import { OVERVIEW_REFRESH_INTERVAL, overviewRefreshInterval } from './overview-format'
 import { overviewQueryGroup } from './query-state'
 
@@ -183,7 +184,12 @@ const activityPreviewQueryAtom = atomWithQuery((get) =>
   consoleQuery.knowledgeFs.spaces.byControlSpaceId.overview.activity.get.queryOptions({
     input: {
       params: { control_space_id: get(overviewKnowledgeSpaceIdAtom) },
-      query: { limit: ACTIVITY_PREVIEW_PAGE_SIZE },
+      query: {
+        limit: ACTIVITY_PREVIEW_PAGE_SIZE,
+        ...(get(deploymentEditionAtom) === 'CLOUD'
+          ? { from_at: activityDatesForRange('90d').start.toISOString() }
+          : {}),
+      },
     },
     refetchInterval: get(overviewHasActiveTasksAtom) ? OVERVIEW_REFRESH_INTERVAL : false,
   }),

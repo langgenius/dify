@@ -30,6 +30,8 @@ const infiniteOptionsMocks = vi.hoisted(() => ({
 
 const chartOptions = vi.hoisted(() => ({ current: undefined as unknown }))
 
+const editionMock = vi.hoisted(() => ({ value: 'COMMUNITY' }))
+
 const queryData = vi.hoisted(() => ({
   activity: {
     data: [
@@ -190,9 +192,13 @@ vi.mock('@/context/permission-state', () => ({
   workspacePermissionKeysAtom: permissionState.workspaceKeysAtom,
 }))
 
-vi.mock('@/features/system-features/state', () => ({
-  knowledgeFsUploadEnabledAtom: systemFeaturesState.uploadAvailableAtom,
-}))
+vi.mock('@/features/system-features/state', async () => {
+  const { atom } = await import('jotai')
+  return {
+    deploymentEditionAtom: atom(() => editionMock.value),
+    knowledgeFsUploadEnabledAtom: systemFeaturesState.uploadAvailableAtom,
+  }
+})
 
 vi.mock('../../space/context', () => ({
   useKnowledgeSpacePermission: (permission: string) =>
@@ -367,6 +373,7 @@ function renderOverviewWithNuqs(
 describe('KnowledgeOverviewPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    editionMock.value = 'COMMUNITY'
     tasksQueryState.isError = false
     tasksQueryState.isPending = false
     tasksQueryState.isRefetching = false
@@ -820,6 +827,83 @@ describe('KnowledgeOverviewPage', () => {
       true,
     )
   })
+
+  it('limits cloud activity filters to the most recent 90 calendar days', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(2026, 8, 8, 12))
+    editionMock.value = 'CLOUD'
+    const user = userEvent.setup()
+    const earliest = dayjs().subtract(89, 'day').startOf('day')
+
+    renderOverviewWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
+    expect(queryOptionsMocks.activity.mock.lastCall?.[0]).toMatchObject({
+      input: { query: { from_at: earliest.toISOString() } },
+    })
+    await user.click(screen.getByRole('button', { name: 'knowledgeOverview.overview.allActivity' }))
+    await user.click(screen.getByRole('combobox', { name: 'knowledgeOverview.overview.timeRange' }))
+    expect(
+      screen.queryByRole('option', { name: 'knowledgeOverview.overview.allTime' }),
+    ).not.toBeInTheDocument()
+    await user.click(
+      await screen.findByRole('option', { name: 'knowledgeOverview.overview.last90Days' }),
+    )
+
+    const options = infiniteOptionsMocks.activity.mock.lastCall?.[0] as {
+      input: (cursor: string | null) => { query: Record<string, unknown> }
+    }
+    expect(options.input(null).query.from_at).toBe(earliest.toISOString())
+    expect(options.input('older').query).toMatchObject({
+      cursor: 'older',
+      from_at: earliest.toISOString(),
+      to_at: dayjs().endOf('day').toISOString(),
+    })
+
+    const calendarLabel = (date: dayjs.Dayjs) =>
+      new Intl.DateTimeFormat('en-US', { dateStyle: 'full', timeZone: 'UTC' }).format(
+        new Date(Date.UTC(date.year(), date.month(), date.date())),
+      )
+    await user.click(
+      screen.getByRole('button', { name: 'knowledgeOverview.overview.timeRange start' }),
+    )
+    expect(
+      screen.getByRole('button', { name: calendarLabel(earliest.subtract(1, 'day')) }),
+    ).toBeDisabled()
+    expect(screen.getByRole('button', { name: calendarLabel(earliest) })).toBeEnabled()
+    await user.click(screen.getByRole('button', { name: calendarLabel(earliest.add(1, 'day')) }))
+    expect(
+      screen.getByRole('combobox', { name: 'knowledgeOverview.overview.timeRange' }),
+    ).toHaveTextContent('filter.period.custom')
+    expect(infiniteOptionsMocks.activity.mock.lastCall?.[0].input(null).query.from_at).toBe(
+      earliest.add(1, 'day').toISOString(),
+    )
+  })
+
+  it.each(['COMMUNITY', 'ENTERPRISE'])(
+    'preserves all-time activity queries for %s',
+    async (edition) => {
+      editionMock.value = edition
+      const user = userEvent.setup()
+      renderOverviewWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
+      expect(queryOptionsMocks.activity.mock.lastCall?.[0].input.query).not.toHaveProperty(
+        'from_at',
+      )
+      await user.click(
+        screen.getByRole('button', { name: 'knowledgeOverview.overview.allActivity' }),
+      )
+      await user.click(
+        screen.getByRole('combobox', { name: 'knowledgeOverview.overview.timeRange' }),
+      )
+      await user.click(
+        await screen.findByRole('option', { name: 'knowledgeOverview.overview.allTime' }),
+      )
+
+      const options = infiniteOptionsMocks.activity.mock.lastCall?.[0] as {
+        input: (cursor: string | null) => { query: Record<string, unknown> }
+      }
+      expect(options.input(null).query).not.toHaveProperty('from_at')
+      expect(options.input(null).query).not.toHaveProperty('to_at')
+    },
+  )
 
   it('shows safe activity details and relative times for today in the drawer', async () => {
     // At midnight, "two hours ago" is yesterday and deliberately uses an absolute date.
