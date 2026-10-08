@@ -55,7 +55,7 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({ id, data }) => {
                 onChange={setAuthorization}
                 readOnly={readOnly}
               />
-              <CurlImportDialog nodeId={id} readOnly={readOnly} onImport={handleCurlImport} />
+              <CurlImportDialog readOnly={readOnly} onImport={handleCurlImport} />
             </div>
           }
         >

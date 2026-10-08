@@ -5,6 +5,7 @@ import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import { useNodesReadOnly } from '../../../hooks/use-workflow'
 import useVarList from '../../_base/hooks/use-var-list'
+import { parseCurl } from '../components/curl-parser'
 import useKeyValueList from '../hooks/use-key-value-list'
 import { APIType, AuthorizationType, BodyPayloadValueType, BodyType, Method } from '../types'
 import useConfig from '../use-config'
@@ -207,6 +208,36 @@ describe('http/use-config', () => {
       )
     })
   })
+
+  it.each([
+    [
+      'a JSON body',
+      `curl --json '{"ok":true}' https://example.com/items`,
+      BodyType.json,
+      [{ type: BodyPayloadValueType.text, value: '{"ok":true}' }],
+    ],
+    [
+      'form fields',
+      'curl --form "name=openai" https://example.com/upload',
+      BodyType.formData,
+      [expect.objectContaining({ key: 'name', value: 'openai' })],
+    ],
+  ])(
+    'stores %s from a parsed curl command as an editable body payload',
+    async (_label, command, type, data) => {
+      const { result } = renderHook(() => useConfig('http-node', currentInputs))
+      await waitFor(() => expect(result.current.isDataReady).toBe(true))
+      mockSetInputs.mockClear()
+      const parsed = parseCurl(command)
+      expect(parsed.error).toBeNull()
+
+      act(() => result.current.handleCurlImport(parsed.node!))
+
+      expect(mockSetInputs).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({ body: { type, data } }),
+      )
+    },
+  )
 
   it('updates request fields, authorization state, curl imports, and ssl verification', async () => {
     const { result } = renderHook(() => useConfig('http-node', currentInputs))

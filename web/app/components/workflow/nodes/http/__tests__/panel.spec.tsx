@@ -46,10 +46,6 @@ vi.mock('@/app/components/workflow/nodes/_base/hooks/use-available-var-list', ()
   default: () => ({ availableVars: [], availableNodesWithParent: [] }),
 }))
 
-vi.mock('@/app/components/workflow/hooks/use-nodes-interactions', () => ({
-  useNodesInteractions: () => ({ handleNodeSelect: vi.fn() }),
-}))
-
 vi.mock('../components/api-input', () => ({
   __esModule: true,
   default: (props: ApiInputProps) => {

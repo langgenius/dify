@@ -11,44 +11,33 @@ import {
   DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import { useRef, useState } from 'react'
+import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
-import { useNodesInteractions } from '../../../hooks/use-nodes-interactions'
 import { parseCurl } from './curl-parser'
 
 type CurlImportDialogProps = {
-  nodeId: string
   readOnly: boolean
   onImport: (node: HttpNodeType) => void
 }
 
-function CurlImportForm({ nodeId, onImport }: Pick<CurlImportDialogProps, 'nodeId' | 'onImport'>) {
-  const { handleNodeSelect } = useNodesInteractions()
-  const [inputString, setInputString] = useState('')
+function CurlImportForm({ onImport }: Pick<CurlImportDialogProps, 'onImport'>) {
   const { t } = useTranslation(['common', 'workflowIntegrations'])
 
   return (
     <form
       onSubmit={(event) => {
         event.preventDefault()
-        const { node, error } = parseCurl(inputString)
-        if (error) {
-          toast.error(error)
-          return
-        }
-        if (!node) return
-        onImport(node)
-        // Rebuild the selected node panel so its request editors read the imported values.
-        handleNodeSelect(nodeId, true)
-        setTimeout(() => handleNodeSelect(nodeId), 0)
+        const command = new FormData(event.currentTarget).get('curl')
+        const result = parseCurl(typeof command === 'string' ? command : '')
+        if (result.error === null) onImport(result.node)
+        else toast.error(result.error)
       }}
     >
       <Textarea
+        name="curl"
         aria-label={t(($) => $['nodes.http.curl.title'], { ns: 'workflowIntegrations' })}
-        value={inputString}
         className="my-3 h-40 w-full grow"
-        onValueChange={setInputString}
         placeholder={t(($) => $['nodes.http.curl.placeholder'], { ns: 'workflowIntegrations' })}
       />
       <div className="mt-4 flex justify-end space-x-2">
@@ -63,7 +52,7 @@ function CurlImportForm({ nodeId, onImport }: Pick<CurlImportDialogProps, 'nodeI
   )
 }
 
-export function CurlImportDialog({ nodeId, readOnly, onImport }: CurlImportDialogProps) {
+export function CurlImportDialog({ readOnly, onImport }: CurlImportDialogProps) {
   const actionsRef = useRef<DialogActions>(null)
   const { t } = useTranslation(['workflowIntegrations'])
   const label = (
@@ -76,8 +65,8 @@ export function CurlImportDialog({ nodeId, readOnly, onImport }: CurlImportDialo
     return <div className="flex h-6 items-center space-x-1 rounded-md px-2">{label}</div>
 
   const handleImport = (node: HttpNodeType) => {
-    actionsRef.current?.close()
     onImport(node)
+    actionsRef.current?.close()
   }
 
   return (
@@ -93,7 +82,7 @@ export function CurlImportDialog({ nodeId, readOnly, onImport }: CurlImportDialo
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
           {t(($) => $['nodes.http.curl.title'], { ns: 'workflowIntegrations' })}
         </DialogTitle>
-        <CurlImportForm nodeId={nodeId} onImport={handleImport} />
+        <CurlImportForm onImport={handleImport} />
       </DialogContent>
     </Dialog>
   )
