@@ -11,6 +11,19 @@ import useKeyValueList from './hooks/use-key-value-list'
 import { BodyType } from './types'
 import { transformToBodyPayload } from './utils'
 
+const keyValueBodyTypes: readonly BodyType[] = [BodyType.formData, BodyType.xWwwFormUrlencoded]
+
+// Stored and imported bodies may still carry the legacy string form of their data.
+const normalizeBody = (body: Body): Body => {
+  if (typeof body.data === 'string') {
+    return {
+      ...body,
+      data: transformToBodyPayload(body.data, keyValueBodyTypes.includes(body.type)),
+    }
+  }
+  return body.data ? body : { ...body, data: [] }
+}
+
 const useConfig = (id: string, payload: HttpNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
 
@@ -32,21 +45,7 @@ const useConfig = (id: string, payload: HttpNodeType) => {
         ...defaultConfig,
         ...inputs,
       }
-      const bodyData = newInputs.body.data
-      if (typeof bodyData === 'string') {
-        newInputs.body = {
-          ...newInputs.body,
-          data: transformToBodyPayload(
-            bodyData,
-            [BodyType.formData, BodyType.xWwwFormUrlencoded].includes(newInputs.body.type),
-          ),
-        }
-      } else if (!bodyData) {
-        newInputs.body = {
-          ...newInputs.body,
-          data: [],
-        }
-      }
+      newInputs.body = normalizeBody(newInputs.body)
 
       setInputs(newInputs)
       setIsDataReady(true)
@@ -137,9 +136,6 @@ const useConfig = (id: string, payload: HttpNodeType) => {
     return textVariableTypes.includes(varPayload.type)
   }, [])
 
-  // curl import panel
-  const [isShowCurlPanel, setIsShowCurlPanel] = useState(false)
-
   const handleCurlImport = useCallback(
     (newNode: HttpNodeType) => {
       const newInputs = produce(inputs, (draft: HttpNodeType) => {
@@ -147,7 +143,7 @@ const useConfig = (id: string, payload: HttpNodeType) => {
         draft.url = newNode.url
         draft.headers = newNode.headers
         draft.params = newNode.params
-        draft.body = newNode.body
+        draft.body = normalizeBody(newNode.body)
       })
       setInputs(newInputs)
     },
@@ -193,9 +189,6 @@ const useConfig = (id: string, payload: HttpNodeType) => {
     setAuthorization,
     setTimeout,
     // curl import
-    isShowCurlPanel,
-    showCurlPanel: () => setIsShowCurlPanel(true),
-    hideCurlPanel: () => setIsShowCurlPanel(false),
     handleCurlImport,
   }
 }
