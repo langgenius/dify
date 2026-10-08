@@ -3,11 +3,11 @@
 import type { SkillVersionResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -68,14 +68,14 @@ export function RestoreVersionDialog({
             version: versionTitle,
           })}
         </AlertDialogDescription>
-        <AlertDialogActions className="p-0 pt-6">
+        <AlertDialogFooter className="p-0 pt-6">
           <AlertDialogCancelButton disabled={loading}>
             {tCommon(($) => $['operation.cancel'])}
           </AlertDialogCancelButton>
           <AlertDialogConfirmButton loading={loading} onClick={onConfirm}>
             {t(($) => $['skillManagement.detail.restoreVersion'])}
           </AlertDialogConfirmButton>
-        </AlertDialogActions>
+        </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   )
@@ -476,7 +476,7 @@ function VersionRow({
           <AlertDialogDescription className="mt-2 system-md-regular text-text-tertiary">
             {versionTitle}
           </AlertDialogDescription>
-          <AlertDialogActions className="p-0 pt-6">
+          <AlertDialogFooter className="p-0 pt-6">
             <AlertDialogCancelButton disabled={deleteMutation.isPending}>
               {tCommon(($) => $['operation.cancel'])}
             </AlertDialogCancelButton>
@@ -487,7 +487,7 @@ function VersionRow({
             >
               {tCommon(($) => $['operation.delete'])}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>

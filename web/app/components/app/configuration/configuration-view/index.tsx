@@ -5,11 +5,11 @@ import type { InstallBundleCompleteCallback } from '@/app/components/plugins/ins
 import { CodeBracketIcon } from '@heroicons/react/20/solid'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -208,7 +208,7 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
                   {t(($) => $['trailUseGPT4Info.description'], { ns: 'appDebug' })}
                 </AlertDialogDescription>
               </div>
-              <AlertDialogActions>
+              <AlertDialogFooter>
                 <AlertDialogCancelButton tone="default">
                   {t(($) => $['operation.cancel'], { ns: 'common' })}
                 </AlertDialogCancelButton>
@@ -219,7 +219,7 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
                 >
                   {t(($) => $['operation.confirm'], { ns: 'common' })}
                 </AlertDialogConfirmButton>
-              </AlertDialogActions>
+              </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
 
