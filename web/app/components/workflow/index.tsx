@@ -389,7 +389,10 @@ export const Workflow: FC<WorkflowProps> = memo(
     }, [setCommentPlacing, setCommentQuickAdd, setPendingCommentState])
 
     const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
+    const refreshDraftTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
     const handleSyncWorkflowDraftWhenPageClose = useCallback(() => {
+      clearTimeout(refreshDraftTimerRef.current)
+      refreshDraftTimerRef.current = undefined
       if (document.visibilityState === 'hidden') {
         // Update the local guard synchronously. Waiting for the server's leader
         // status would leave a window where this hidden tab saves a stale canvas.
@@ -412,12 +415,11 @@ export const Workflow: FC<WorkflowProps> = memo(
         const collaborationConnected = collaborationManager.isConnected()
         if (collaborationConnected && !collaborationManager.canRestoreGraphFromCrdt()) return
 
-        if (collaborationConnected) {
-          collaborationManager.refreshGraphSynchronously()
-          setTimeout(() => handleRefreshWorkflowDraft(true), 500)
-        } else {
-          setTimeout(() => handleRefreshWorkflowDraft(), 500)
-        }
+        if (collaborationConnected) collaborationManager.refreshGraphSynchronously()
+        refreshDraftTimerRef.current = setTimeout(() => {
+          refreshDraftTimerRef.current = undefined
+          handleRefreshWorkflowDraft(collaborationConnected)
+        }, 500)
       }
     }, [syncWorkflowDraftWhenPageClose, handleRefreshWorkflowDraft, workflowStore])
 
@@ -466,6 +468,8 @@ export const Workflow: FC<WorkflowProps> = memo(
       window.addEventListener('beforeunload', handleBeforeUnload)
 
       return () => {
+        clearTimeout(refreshDraftTimerRef.current)
+        refreshDraftTimerRef.current = undefined
         document.removeEventListener('visibilitychange', handleSyncWorkflowDraftWhenPageClose)
         window.removeEventListener('beforeunload', handleBeforeUnload)
       }
