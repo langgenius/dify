@@ -602,7 +602,6 @@ project-excludes = [
   "core/workflow/test_node_mapping_bootstrap.py",
   "core/workflow/test_node_runtime.py",
   "core/workflow/test_system_variable.py",
-  "core/workflow/test_variable_pool.py",
   "core/workflow/test_workflow_entry.py",
   "core/workflow/test_workflow_entry_helpers.py",
   "core/workflow/test_workflow_entry_redis_channel.py",
