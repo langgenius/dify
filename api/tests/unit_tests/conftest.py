@@ -358,3 +358,23 @@ def workflow_tools(sqlite_session_factory: sessionmaker[Session]):
     from extensions.application_services.tools import build_tool_services
 
     return build_tool_services(sqlite_session_factory).workflows
+
+
+@pytest.fixture
+def workflow_variables(sqlite_session_factory: sessionmaker[Session]):
+    from extensions.application_services.workflow_variables import build_workflow_variable_service
+
+    return build_workflow_variable_service(database_client=sqlite_session_factory)
+
+
+@pytest.fixture
+def console_workflow_variables(sqlite_session_factory: sessionmaker[Session]):
+    from extensions.application_services.workflow_variables import (
+        build_console_workflow_variables,
+        build_workflow_variable_service,
+    )
+
+    return build_console_workflow_variables(
+        database_client=sqlite_session_factory,
+        variables=build_workflow_variable_service(database_client=sqlite_session_factory),
+    )

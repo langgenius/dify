@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import asdict
 from typing import Any, override
 
 from pydantic import model_validator
@@ -9,6 +10,7 @@ from graphon.file import helpers as file_helpers
 from graphon.variables.segment_group import SegmentGroup
 from graphon.variables.segments import ArrayFileSegment, FileSegment, Segment
 from models.workflow import WorkflowDraftVariable
+from services.workflow.variable_contracts import DraftVariableView
 
 type JSONValue = str | int | float | bool | dict[str, "JSONValue"] | list["JSONValue"] | None
 
@@ -27,6 +29,10 @@ def _convert_values_to_json_serializable_object(value: Segment) -> JSONValue:
 
 def _serialize_var_value(variable: WorkflowDraftVariable) -> JSONValue:
     value = variable.get_value()
+    return _serialize_segment(value)
+
+
+def _serialize_segment(value: Segment) -> JSONValue:
     # Create a copy to avoid mutating the model's cached deserialized value.
     value = value.model_copy(deep=True)
     # Refresh URL signatures immediately before returning file values to the client.
@@ -92,6 +98,8 @@ class WorkflowDraftVariableWithoutValueResponse(ResponseModel):
     @model_validator(mode="before")
     @classmethod
     def _from_workflow_draft_variable(cls, value: Any) -> Any:
+        if isinstance(value, DraftVariableView):
+            return asdict(value)
         if isinstance(value, WorkflowDraftVariable):
             return _serialize_without_value(value)
         return value
@@ -105,6 +113,21 @@ class WorkflowDraftVariableResponse(WorkflowDraftVariableWithoutValueResponse):
     @classmethod
     @override
     def _from_workflow_draft_variable(cls, value: Any) -> Any:
+        if isinstance(value, DraftVariableView):
+            assert value.value is not None
+            file = value.full_content
+            return {
+                **asdict(value),
+                "value": _serialize_segment(value.value),
+                "full_content": {
+                    "size_bytes": file.size,
+                    "length": file.length,
+                    "value_type": file.value_type,
+                    "download_url": file_helpers.get_signed_file_url(file.upload_file_id, as_attachment=True),
+                }
+                if file is not None
+                else None,
+            }
         if isinstance(value, WorkflowDraftVariable):
             return {
                 **_serialize_without_value(value),
