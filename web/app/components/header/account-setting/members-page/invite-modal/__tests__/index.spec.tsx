@@ -5,7 +5,6 @@ import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vite-plus/test'
 import { useWorkspaceRoleList } from '@/service/access-control/use-workspace-roles'
-import { commonQueryKeys } from '@/service/use-common'
 import { seedCurrentWorkspaceQuery } from '@/test/console/current-workspace'
 import { seedFeatures, seedSystemFeatures } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
@@ -200,9 +199,7 @@ describe('InviteModal', () => {
       invitation_results: [],
       tenant_id: 'tenant-id',
     } satisfies MemberInviteResponse)
-    const queryClient = createQueryClient()
-    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
-    await renderModal({ queryClient })
+    await renderModal()
 
     await addRecipients(user, 'First@Example.com, second@example.com; first@example.com')
     await selectAdminRole(user)
@@ -217,7 +214,6 @@ describe('InviteModal', () => {
         },
       })
     })
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['features'] })
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(onSend).toHaveBeenCalledWith([])
   })
@@ -490,35 +486,23 @@ describe('InviteModal', () => {
     })
   })
 
-  it('keeps the request session open until both cache refreshes complete', async () => {
+  it('closes once the invitation succeeds without waiting for the seat refresh', async () => {
     const user = userEvent.setup()
-    const queryClient = createQueryClient()
-    const refreshes: Array<() => void> = []
-    const invalidateQueries = vi
-      .spyOn(queryClient, 'invalidateQueries')
-      .mockImplementation(() => new Promise<void>((resolve) => refreshes.push(resolve)))
     inviteMember.mockResolvedValue({
       result: 'success',
       invitation_results: [],
       tenant_id: 'tenant-id',
     })
-    await renderModal({ queryClient })
+    await renderModal()
+    // The refresh started by a successful invitation never settles.
+    fetchFeatures.mockReturnValue(new Promise(() => {}))
     await addRecipients(user, 'person@example.com')
     await selectAdminRole(user)
     await user.click(screen.getByRole('button', { name: /members\.sendInvite/ }))
-    await waitFor(() => expect(invalidateQueries).toHaveBeenCalledTimes(2))
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['features'] })
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: commonQueryKeys.members })
-    await user.keyboard('{Escape}')
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
-    expect(onSend).not.toHaveBeenCalled()
-    await act(async () => refreshes[0]!())
-    expect(onSend).not.toHaveBeenCalled()
-    expect(screen.getByRole('button', { name: /operation\.close/ })).toBeDisabled()
-    await act(async () => refreshes[1]!())
-    await waitFor(() => expect(onSend).toHaveBeenCalledExactlyOnceWith([]))
+
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-    expect(invalidateQueries).toHaveBeenCalledTimes(2)
+    expect(onSend).toHaveBeenCalledExactlyOnceWith([])
+    await waitFor(() => expect(fetchFeatures).toHaveBeenCalled())
   })
 
   it('warns but lets the backend decide whether recipients consume remaining seats', async () => {
@@ -603,6 +587,33 @@ describe('InviteModal', () => {
     await user.click(screen.getByRole('option', { name: /Editor/i }))
 
     expect(screen.queryByText(/members\.invalidRole/i)).not.toBeInTheDocument()
+  })
+
+  it('moves focus to the recipients when the server rejects them after the form was frozen', async () => {
+    const user = userEvent.setup()
+    let rejectInvite!: (error: unknown) => void
+    inviteMember.mockReturnValue(
+      new Promise((_resolve, reject) => {
+        rejectInvite = reject
+      }),
+    )
+    await renderModal()
+    await addRecipients(user, 'first@example.com')
+    await selectAdminRole(user)
+    await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
+    const input = screen.getByRole('textbox', { name: /members\.emailRecipients/i })
+    await waitFor(() => expect(input).toBeDisabled())
+
+    await act(async () =>
+      rejectInvite({
+        code: 'BAD_REQUEST',
+        data: { body: { code: 'limit_exceeded', message: 'Backend message' } },
+      }),
+    )
+
+    expect(await screen.findByText(/members\.inviteLimitExceeded/i)).toBeInTheDocument()
+    expect(input).toBeEnabled()
+    await waitFor(() => expect(input).toHaveFocus())
   })
 
   it('should clear an email server error when the user edits and successfully retries', async () => {
