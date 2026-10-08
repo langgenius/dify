@@ -231,10 +231,9 @@ def test_style_workflow_wires_no_new_getattr_guard() -> None:
     guard_command = 'scripts/check_no_new_getattr.py --base-rev "${{ inputs.base-rev }}"'
     assert guard_command in job_text
 
-    # Guard steps may be nested in a `parallel:` group, so allow deeper indentation.
     guard_step = re.search(
-        rf"(?ms)^ +- name: Run No New Getattr Guard\n"
-        rf"(?P<step>.*?{re.escape(guard_command)}.*?)(?=^ +- name: |\Z)",
+        rf"(?ms)^      - name: Run No New Getattr Guard\n"
+        rf"(?P<step>.*?{re.escape(guard_command)}.*?)(?=^      - name: |\Z)",
         job_text,
     )
     assert guard_step is not None
