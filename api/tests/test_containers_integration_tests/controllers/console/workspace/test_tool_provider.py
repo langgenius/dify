@@ -82,7 +82,7 @@ def test_create_mcp_provider_populates_tools(
     with (
         patch("controllers.console.workspace.tool_providers.MCPToolManageService", return_value=service, autospec=True),
         patch(
-            "services.tools.tools_transform_service.ToolTransformService.mcp_provider_to_user_provider",
+            "services.tools.legacy_tools_transform_service.ToolTransformService.mcp_provider_to_user_provider",
             return_value=_provider_entity(),
             autospec=True,
         ),

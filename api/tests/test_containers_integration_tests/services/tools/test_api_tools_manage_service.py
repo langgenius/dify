@@ -13,7 +13,7 @@ from core.tools.errors import ApiToolProviderNotFoundError
 from core.tools.tool_label_manager import ToolLabelManager
 from models import Account, AccountStatus, Tenant, TenantStatus
 from models.tools import ApiToolProvider
-from services.tools.api_tools_manage_service import ApiToolManageService
+from services.tools.legacy_api_tools_manage_service import ApiToolManageService
 
 MockDependencies = dict[str, MagicMock]
 
@@ -25,9 +25,11 @@ class TestApiToolManageService:
     def mock_external_service_dependencies(self) -> Iterator[MockDependencies]:
         """Mock setup for external service dependencies."""
         with (
-            patch("services.tools.api_tools_manage_service.ToolLabelManager") as mock_tool_label_manager,
-            patch("services.tools.api_tools_manage_service.create_tool_provider_encrypter") as mock_encrypter,
-            patch("services.tools.api_tools_manage_service.ApiToolProviderController") as mock_provider_controller,
+            patch("services.tools.legacy_api_tools_manage_service.ToolLabelManager") as mock_tool_label_manager,
+            patch("services.tools.legacy_api_tools_manage_service.create_tool_provider_encrypter") as mock_encrypter,
+            patch(
+                "services.tools.legacy_api_tools_manage_service.ApiToolProviderController"
+            ) as mock_provider_controller,
         ):
             # Setup default mock returns
             mock_tool_label_manager.update_tool_labels.return_value = None

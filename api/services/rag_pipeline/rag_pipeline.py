@@ -88,7 +88,7 @@ from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
 from services.knowledge.resource_scope import DatasetRef
 from services.rag_pipeline.pipeline_template.pipeline_template_factory import PipelineTemplateRetrievalFactory
 from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineDslService
-from services.tools.builtin_tools_manage_service import BuiltinToolManageService
+from services.tools.legacy_builtin_tools_manage_service import BuiltinToolManageService
 from services.workflow_draft_variable_service import DraftVariableSaver, DraftVarLoader
 from services.workflow_node_execution_trace_service import (
     WorkflowNodeExecutionTrace,

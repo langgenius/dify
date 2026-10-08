@@ -4,9 +4,9 @@ from core.tools.__base.tool import Tool
 from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ApiProviderAuthType, ToolParameter, ToolProviderType
-from services.tools.tools_transform_service import ToolTransformService
+from services.tools.legacy_tools_transform_service import ToolTransformService
 
-MODULE = "services.tools.tools_transform_service"
+MODULE = "services.tools.legacy_tools_transform_service"
 
 
 def _parameter(

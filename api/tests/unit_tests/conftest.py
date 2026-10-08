@@ -337,3 +337,24 @@ def application_tags(sqlite_session_factory: sessionmaker[Session]) -> TagApplic
     from services.tag_application_service import TagApplicationService
 
     return TagApplicationService(tags=TagRepository(sqlite_session_factory))
+
+
+@pytest.fixture
+def workflow_queries(sqlite_session_factory: sessionmaker[Session]):
+    from repositories.tools.workflow_repository import WorkflowToolRepository
+
+    return WorkflowToolRepository(sqlite_session_factory)
+
+
+@pytest.fixture
+def tool_providers(sqlite_session_factory: sessionmaker[Session]):
+    from repositories.tools.provider_repository import ToolProviderRepository
+
+    return ToolProviderRepository(sqlite_session_factory)
+
+
+@pytest.fixture
+def workflow_tools(sqlite_session_factory: sessionmaker[Session]):
+    from extensions.application_services.tools import build_tool_services
+
+    return build_tool_services(sqlite_session_factory).workflows
