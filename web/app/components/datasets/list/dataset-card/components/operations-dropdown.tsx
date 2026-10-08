@@ -81,7 +81,13 @@ const OperationsDropdown = ({
 
   return (
     <div
-      className={cn('absolute right-2 z-5', dataset.embedding_available ? 'top-2' : 'top-6')}
+      className={cn(
+        'absolute right-2 z-5',
+        dataset.embedding_available ? 'top-2' : 'top-6',
+        open
+          ? 'pointer-events-auto opacity-100'
+          : 'pointer-events-none opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 [@media(hover:none)]:pointer-events-auto [@media(hover:none)]:opacity-100',
+      )}
       onClick={(e) => e.stopPropagation()}
     >
       <DropdownMenu modal={false} open={open} onOpenChange={setOpen}>
