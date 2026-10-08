@@ -162,7 +162,7 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
                       render={
                         <button
                           type="button"
-                          className="flex size-3.5 items-center justify-center rounded-sm outline-hidden hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
+                          className="flex size-3.5 items-center justify-center rounded-sm hover:bg-state-base-hover"
                         >
                           <RiInformation2Line className="size-3.5" />
                         </button>

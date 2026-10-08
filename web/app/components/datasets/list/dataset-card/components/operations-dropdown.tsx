@@ -90,7 +90,7 @@ const OperationsDropdown = ({
             'inline-flex size-9 cursor-pointer items-center justify-center rounded-[10px] border-[0.5px]',
             'border-components-actionbar-border bg-components-button-secondary-bg p-0 shadow-lg inset-ring-2 shadow-shadow-shadow-5 inset-ring-components-button-secondary-bg',
             'transition-colors hover:border-components-actionbar-border hover:bg-state-base-hover',
-            'focus-visible:bg-state-base-hover focus-visible:inset-ring-1 focus-visible:inset-ring-components-input-border-hover focus-visible:outline-hidden',
+            'focus-visible:bg-state-base-hover',
             'data-popup-open:bg-state-base-hover',
           )}
           aria-label="Dataset operations"
