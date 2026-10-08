@@ -671,6 +671,21 @@ describe('Agent access surface cards', () => {
           name: /appOverview\.overview\.appInfo\.customize\.way1\.step1Operation/,
         }),
       ).toHaveAttribute('href', 'https://github.com/langgenius/webapp-conversation')
+      await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      const trigger = screen.getByRole('button', {
+        name: 'agentV2.agentDetail.access.webApp.actions.customFrontend',
+      })
+      await waitFor(() => expect(trigger).toHaveFocus())
+      await user.keyboard('{Enter}')
+      expect(
+        await screen.findByRole('dialog', {
+          name: 'appOverview.overview.appInfo.customize.title',
+        }),
+      ).toBeInTheDocument()
+      await user.keyboard('{Escape}')
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      await waitFor(() => expect(trigger).toHaveFocus())
     })
 
     it('should open the embedded dialog with the Agent web app route', async () => {

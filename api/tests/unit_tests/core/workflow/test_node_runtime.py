@@ -315,7 +315,7 @@ def test_dify_prepared_polling_llm_delegates_to_plugin_runtime() -> None:
     plugin_runtime = PluginModelRuntime(
         tenant_id="tenant-id",
         user_id="user-id",
-        client=Mock(spec=PluginModelClient),
+        client=PluginModelClient(),
         plugin_service=PluginService,
     )
     plugin_runtime.start_llm_polling = Mock(return_value=polling_result)  # type: ignore[method-assign]
@@ -380,7 +380,7 @@ def test_dify_prepared_polling_llm_commits_successful_reservation() -> None:
     plugin_runtime = PluginModelRuntime(
         tenant_id="tenant-id",
         user_id="user-id",
-        client=Mock(spec=PluginModelClient),
+        client=PluginModelClient(),
         plugin_service=PluginService,
     )
     plugin_runtime.start_llm_polling = Mock(return_value=running_result)  # type: ignore[method-assign]
@@ -414,7 +414,7 @@ def test_dify_prepared_polling_llm_releases_previous_reservation_on_restart() ->
     plugin_runtime = PluginModelRuntime(
         tenant_id="tenant-id",
         user_id="user-id",
-        client=Mock(spec=PluginModelClient),
+        client=PluginModelClient(),
         plugin_service=PluginService,
     )
     plugin_runtime.start_llm_polling = Mock(return_value=running_result)  # type: ignore[method-assign]
