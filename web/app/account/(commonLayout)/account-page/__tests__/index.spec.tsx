@@ -1,6 +1,7 @@
 import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import AccountPage from '../index'
@@ -39,12 +40,13 @@ const renderPage = ({ isPasswordSet = false, passwordLoginEnabled = true } = {})
     { data: [], has_more: false, limit: 100, page: 1, total: 0 },
   )
 
-  return renderWithConsoleQuery(<AccountPage />, {
+  renderWithConsoleQuery(<AccountPage />, {
     queryClient,
     accountProfile: { ...createAccountResponse(), is_password_set: isPasswordSet },
     systemFeatures: { enable_email_password_login: passwordLoginEnabled },
     features: { education: { enabled: false } },
   })
+  return { queryClient }
 }
 
 function pendingResponse() {
@@ -347,6 +349,33 @@ describe('AccountPage', () => {
       new_password: 'NewPassword123',
       repeat_new_password: 'NewPassword123',
     })
+  })
+
+  it('keeps the set-password form when the profile reports a password during the session', async () => {
+    const user = userEvent.setup()
+    const { queryClient } = renderPage()
+    await user.click(screen.getByRole('button', { name: 'accountSettings.account.setPassword' }))
+    const dialog = screen.getByRole('dialog', { name: 'accountSettings.account.setPassword' })
+
+    act(() => {
+      queryClient.setQueryData(userProfileQueryOptions().queryKey, (current) =>
+        current ? { ...current, profile: { ...current.profile, is_password_set: true } } : current,
+      )
+    })
+
+    // The page behind the modal already reflects the refreshed profile.
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'accountSettings.account.resetPassword', hidden: true }),
+      ).toBeInTheDocument(),
+    )
+    expect(dialog).toHaveAccessibleName('accountSettings.account.setPassword')
+    expect(
+      within(dialog).queryByLabelText('accountSettings.account.currentPassword'),
+    ).not.toBeInTheDocument()
+    expect(
+      within(dialog).getByRole('button', { name: 'common.operation.save' }),
+    ).toBeInTheDocument()
   })
 
   it('does not offer password editing when password login is disabled', () => {
