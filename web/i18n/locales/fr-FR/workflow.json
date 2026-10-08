@@ -117,6 +117,8 @@
   "common.branch": "BRANCHE",
   "common.chooseDSL": "Choisir le fichier DSL(yml)",
   "common.chooseStartNodeToRun": "Choisissez le nœud de départ pour lancer",
+  "common.clearCanvasConfirmDescription": "L’enregistrement videra ce workflow. Continuer ?",
+  "common.clearCanvasConfirmTitle": "Vider le canevas ?",
   "common.clipboardVersionCompatibilityWarning": "Ce contenu a été copié depuis une version différente de l'application Dify. Certaines parties peuvent être incompatibles.",
   "common.commentMode": "Mode commentaires",
   "common.configure": "Configurer",

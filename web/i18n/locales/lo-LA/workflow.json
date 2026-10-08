@@ -117,6 +117,8 @@
   "common.branch": "BRANCH",
   "common.chooseDSL": "ເລືອກໄຟລ໌ DSL",
   "common.chooseStartNodeToRun": "ເລືອກໂນດເລີ່ມຕົ້ນເພື່ອລັນ",
+  "common.clearCanvasConfirmDescription": "ການບັນທຶກຈະລ້າງຂັ້ນຕອນການເຮັດວຽກນີ້. ຕ້ອງການດຳເນີນຕໍ່ບໍ?",
+  "common.clearCanvasConfirmTitle": "ຕ້ອງການລ້າງ Canvas ບໍ?",
   "common.clipboardVersionCompatibilityWarning": "ເນື້ອໃນນີ້ຖືກກັອບປີ້ມາຈາກເວີຊັນ Dify ທີ່ແຕກຕ່າງ. ບາງສ່ວນອາດຈະບໍ່ເຂົ້າກັນໄດ້.",
   "common.commentMode": "ໂໝດຄຳເຫັນ",
   "common.configure": "ຕັ້ງຄ່າ",

@@ -117,6 +117,8 @@
   "common.branch": "ブランチ",
   "common.chooseDSL": "DSL(yml) ファイルを選択",
   "common.chooseStartNodeToRun": "実行する開始ノードを選択",
+  "common.clearCanvasConfirmDescription": "保存すると、このワークフローが空になります。続行しますか？",
+  "common.clearCanvasConfirmTitle": "キャンバスを空にしますか？",
   "common.clipboardVersionCompatibilityWarning": "このコンテンツは別の Dify アプリバージョンからコピーされました。一部が互換性のない可能性があります。",
   "common.commentMode": "コメントモード",
   "common.configure": "設定",

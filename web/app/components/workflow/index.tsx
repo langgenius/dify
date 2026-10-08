@@ -640,7 +640,12 @@ export const Workflow: FC<WorkflowProps> = memo(
         <HelpLine />
         <AlertDialog
           open={!!showConfirm}
-          onOpenChange={(open) => !open && setShowConfirm(undefined)}
+          onOpenChange={(open) => {
+            if (!open) {
+              showConfirm?.onCancel?.()
+              setShowConfirm(undefined)
+            }
+          }}
         >
           <AlertDialogContent>
             <div className="flex flex-col gap-2 px-6 pt-6 pb-4">

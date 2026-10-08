@@ -117,6 +117,8 @@
   "common.branch": "Qol",
   "common.chooseDSL": "DSL faylını seç",
   "common.chooseStartNodeToRun": "İcra etmək üçün başlanğıc qovşağını seç",
+  "common.clearCanvasConfirmDescription": "Yadda saxlamaq bu iş axınını təmizləyəcək. Davam edilsin?",
+  "common.clearCanvasConfirmTitle": "Kətanı təmizləmək istəyirsiniz?",
   "common.clipboardVersionCompatibilityWarning": "Bu məzmun Dify tətbiqinin fərqli versiyasından kopyalanıb. Bəzi hissələr uyğun olmaya bilər.",
   "common.commentMode": "Şərh rejimi",
   "common.configure": "Konfiqurasiya et",
