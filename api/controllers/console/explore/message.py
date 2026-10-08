@@ -12,7 +12,7 @@ from flask_restx import Resource
 from pydantic import BaseModel
 
 from controllers.common.controller_schemas import MessageFeedbackPayload, MessageListQuery
-from controllers.common.errors import AuthenticationRequiredError, InternalServerError, raise_unexpected_error
+from controllers.common.errors import AuthenticationRequiredError, InternalServerError
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
@@ -42,6 +42,7 @@ from fields.conversation_fields import ResultResponse
 from fields.message_fields import ExploreMessageInfiniteScrollPagination, SuggestedQuestionsResponse
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
+from libs.exception import BaseHTTPException
 from machinery.context import RequestContext
 from services.account_errors import AccountNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
@@ -110,10 +111,11 @@ def _message_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
             raise ProviderModelCurrentlyNotSupportError() from error
         except InvokeError as error:
             raise CompletionRequestError(error.description) from error
-        except ValueError:
+        except (BaseHTTPException, ValueError):
             raise
         except Exception as error:
-            raise_unexpected_error(error, message="Installed-app message operation failed")
+            logger.exception("Installed-app message operation failed")
+            raise InternalServerError() from error
 
     return decorated
 

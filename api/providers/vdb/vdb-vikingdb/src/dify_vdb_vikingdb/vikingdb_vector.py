@@ -2,6 +2,7 @@ import json
 from typing import Any, override
 
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
 from volcengine.viking_db import (  # type: ignore
     Data,
     DistanceType,
@@ -220,7 +221,9 @@ class VikingDBVector(BaseVector):
 
 class VikingDBVectorFactory(AbstractVectorFactory):
     @override
-    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> VikingDBVector:
+    def init_vector(
+        self, dataset: Dataset, attributes: list, embeddings: Embeddings, *, session: Session | None
+    ) -> VikingDBVector:
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]
             collection_name = class_prefix.lower()

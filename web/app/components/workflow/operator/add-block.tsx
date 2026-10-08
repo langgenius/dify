@@ -21,6 +21,7 @@ import {
 
 type AddBlockProps = {
   renderTrigger?: BlockSelectorProps['trigger']
+  triggerClassName?: BlockSelectorProps['triggerClassName']
   sideOffset?: BlockSelectorProps['sideOffset']
   alignOffset?: BlockSelectorProps['alignOffset']
   onClose?: () => void
@@ -28,6 +29,7 @@ type AddBlockProps = {
 }
 const AddBlock = ({
   renderTrigger,
+  triggerClassName,
   sideOffset,
   alignOffset,
   onClose,
@@ -105,8 +107,12 @@ const AddBlock = ({
       sideOffset={sideOffset ?? 4}
       alignOffset={alignOffset ?? -8}
       trigger={renderTrigger || renderTriggerElement}
+      triggerClassName={triggerClassName}
       triggerAriaLabel={t(($) => $['common.addBlock'], { ns: 'workflow' })}
-      triggerTooltip={t(($) => $['common.addBlock'], { ns: 'workflow' })}
+      // A caller-provided trigger, such as a menu row, already shows its own label.
+      triggerTooltip={
+        renderTrigger ? undefined : t(($) => $['common.addBlock'], { ns: 'workflow' })
+      }
       popupClassName="min-w-[256px]!"
       availableBlocksTypes={availableNextBlocks}
       showStartTab={showStartTab}
