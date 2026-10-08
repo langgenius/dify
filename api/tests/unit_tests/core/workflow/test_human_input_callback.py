@@ -1,19 +1,22 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from datetime import timedelta
-from types import SimpleNamespace
-from unittest.mock import MagicMock
 
 import pytest
+from pytest_mock import MockerFixture
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.workflow.nodes.human_input.session_binding import SessionBinding
 from enums.human_input import HumanInputFormStatus
 from graphon.runtime import VariablePool
 from graphon.variables.factory import build_segment
 from libs.datetime_utils import naive_utc_now
-from models.human_input_contracts import FormCreateParams, HumanInputFormRepository
+from models.human_input import HumanInputForm
+from models.human_input_contracts import FormCreateParams
 from models.human_input_entities import HumanInputNodeData, ParagraphInputConfig, UserActionConfig
+from repositories.human_input.form_repository import HumanInputFormRepositoryImpl
 from services.workflow.execution.adapters.human_input import DifyHITLCallback
 
 
@@ -29,6 +32,18 @@ def _ctx(workflow_execution_id: str, node_id: str, node_title: str = "Human Inpu
     return _Context(workflow_execution_id=workflow_execution_id, node_id=node_id, node_title=node_title)
 
 
+@pytest.fixture
+def repository(
+    sqlite_session_factory: sessionmaker[Session],
+) -> HumanInputFormRepositoryImpl:
+    return HumanInputFormRepositoryImpl(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_execution_id="run-1",
+        sessions=sqlite_session_factory,
+    )
+
+
 def test_session_binding_identity_mapping() -> None:
     binding = SessionBinding()
 
@@ -36,10 +51,10 @@ def test_session_binding_identity_mapping() -> None:
     assert binding.resolve_form_id_from_session_id(session_id="form-1") == "form-1"
 
 
-def test_dify_hitl_callback_creates_pause_requested_for_new_form() -> None:
-    repository = MagicMock(spec=HumanInputFormRepository)
-    repository.get_form.return_value = None
-    repository.create_form.return_value = SimpleNamespace(id="form-1")
+def test_dify_hitl_callback_creates_pause_requested_for_new_form(
+    repository: HumanInputFormRepositoryImpl, mocker: MockerFixture
+) -> None:
+    create = mocker.spy(repository, "create_form")
     callback = DifyHITLCallback(
         form_repository=repository,
         node_data=HumanInputNodeData(
@@ -53,16 +68,20 @@ def test_dify_hitl_callback_creates_pause_requested_for_new_form() -> None:
 
     decision = callback(_ctx("run-1", "node-1"))
 
-    assert decision == callback.pause_requested_type(session_id="form-1")
-    params: FormCreateParams = repository.create_form.call_args.args[0]
+    assert decision == callback.pause_requested_type(session_id=create.spy_return.id)
+    form = repository.get_form("node-1")
+    assert form is not None
+    assert form.id == decision.session_id
+    params: FormCreateParams = create.call_args.args[0]
     assert params.workflow_execution_id == "run-1"
     assert params.node_id == "node-1"
 
 
-def test_dify_hitl_callback_scopes_form_to_node_execution() -> None:
-    repository = MagicMock(spec=HumanInputFormRepository)
-    repository.get_form.return_value = None
-    repository.create_form.return_value = SimpleNamespace(id="execution-1")
+def test_dify_hitl_callback_scopes_form_to_node_execution(
+    repository: HumanInputFormRepositoryImpl, mocker: MockerFixture
+) -> None:
+    create = mocker.spy(repository, "create_form")
+    lookup = mocker.spy(repository, "get_form")
     callback = DifyHITLCallback(
         form_repository=repository,
         node_data=HumanInputNodeData(
@@ -75,22 +94,34 @@ def test_dify_hitl_callback_scopes_form_to_node_execution() -> None:
 
     callback(_ctx("run-1", "node-1"))
 
-    repository.get_form.assert_called_once_with("node-1", form_id="execution-1")
-    params: FormCreateParams = repository.create_form.call_args.args[0]
+    lookup.assert_called_once_with("node-1", form_id="execution-1")
+    params: FormCreateParams = create.call_args.args[0]
     assert params.form_id == "execution-1"
+    form = repository.get_form("node-1", form_id="execution-1")
+    assert form is not None
+    assert form.id == "execution-1"
 
 
-def test_dify_hitl_callback_returns_completed_for_submitted_form() -> None:
-    repository = MagicMock(spec=HumanInputFormRepository)
-    repository.get_form.return_value = SimpleNamespace(
+def test_dify_hitl_callback_returns_completed_for_submitted_form(
+    repository: HumanInputFormRepositoryImpl, sqlite_session: Session
+) -> None:
+    form = HumanInputForm(
         id="form-1",
         rendered_content="<p>Please approve</p>",
         selected_action_id="approve",
-        submitted_data={"answer": "yes"},
-        submitted=True,
+        submitted_data=json.dumps({"answer": "yes"}),
         status=HumanInputFormStatus.SUBMITTED,
         expiration_time=naive_utc_now() + timedelta(hours=1),
+        submitted_at=naive_utc_now(),
+        created_at=naive_utc_now(),
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_run_id="run-1",
+        node_id="node-1",
+        form_definition="{}",
     )
+    sqlite_session.add(form)
+    sqlite_session.commit()
     callback = DifyHITLCallback(
         form_repository=repository,
         node_data=HumanInputNodeData(
@@ -113,18 +144,26 @@ def test_dify_hitl_callback_returns_completed_for_submitted_form() -> None:
     }
 
 
-def test_dify_hitl_callback_returns_timeout_for_explicit_timeout_form() -> None:
-    repository = MagicMock(spec=HumanInputFormRepository)
-    repository.get_form.return_value = SimpleNamespace(
+def test_dify_hitl_callback_returns_timeout_for_explicit_timeout_form(
+    repository: HumanInputFormRepositoryImpl, sqlite_session: Session
+) -> None:
+    form = HumanInputForm(
         id="form-1",
         rendered_content="<p>Please approve</p>",
         selected_action_id=None,
         submitted_data=None,
-        submitted=False,
         status=HumanInputFormStatus.TIMEOUT,
         created_at=naive_utc_now(),
         expiration_time=naive_utc_now() + timedelta(hours=1),
+        submitted_at=None,
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_run_id="run-1",
+        node_id="node-1",
+        form_definition="{}",
     )
+    sqlite_session.add(form)
+    sqlite_session.commit()
     callback = DifyHITLCallback(
         form_repository=repository,
         node_data=HumanInputNodeData(title="Approval", form_content="Please approve"),
@@ -140,18 +179,26 @@ def test_dify_hitl_callback_returns_timeout_for_explicit_timeout_form() -> None:
     }
 
 
-def test_dify_hitl_callback_returns_timeout_for_waiting_form_past_node_deadline() -> None:
-    repository = MagicMock(spec=HumanInputFormRepository)
-    repository.get_form.return_value = SimpleNamespace(
+def test_dify_hitl_callback_returns_timeout_for_waiting_form_past_node_deadline(
+    repository: HumanInputFormRepositoryImpl, sqlite_session: Session
+) -> None:
+    form = HumanInputForm(
         id="form-1",
         rendered_content="<p>Please approve</p>",
         selected_action_id=None,
         submitted_data=None,
-        submitted=False,
         status=HumanInputFormStatus.WAITING,
         created_at=naive_utc_now(),
         expiration_time=naive_utc_now() - timedelta(minutes=1),
+        submitted_at=None,
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_run_id="run-1",
+        node_id="node-1",
+        form_definition="{}",
     )
+    sqlite_session.add(form)
+    sqlite_session.commit()
     callback = DifyHITLCallback(
         form_repository=repository,
         node_data=HumanInputNodeData(title="Approval", form_content="Please approve"),
@@ -167,18 +214,26 @@ def test_dify_hitl_callback_returns_timeout_for_waiting_form_past_node_deadline(
     }
 
 
-def test_dify_hitl_callback_rejects_expired_form_as_invalid_resume_state() -> None:
-    repository = MagicMock(spec=HumanInputFormRepository)
-    repository.get_form.return_value = SimpleNamespace(
+def test_dify_hitl_callback_rejects_expired_form_as_invalid_resume_state(
+    repository: HumanInputFormRepositoryImpl, sqlite_session: Session
+) -> None:
+    form = HumanInputForm(
         id="form-1",
         rendered_content="<p>Please approve</p>",
         selected_action_id=None,
         submitted_data=None,
-        submitted=False,
         status=HumanInputFormStatus.EXPIRED,
         created_at=naive_utc_now() - timedelta(days=8),
         expiration_time=naive_utc_now() + timedelta(hours=1),
+        submitted_at=None,
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_run_id="run-1",
+        node_id="node-1",
+        form_definition="{}",
     )
+    sqlite_session.add(form)
+    sqlite_session.commit()
     callback = DifyHITLCallback(
         form_repository=repository,
         node_data=HumanInputNodeData(title="Approval", form_content="Please approve"),
@@ -188,18 +243,26 @@ def test_dify_hitl_callback_rejects_expired_form_as_invalid_resume_state() -> No
         callback(_ctx("run-1", "node-1"))
 
 
-def test_dify_hitl_callback_rejects_waiting_form_past_global_deadline_as_invalid_resume_state() -> None:
-    repository = MagicMock(spec=HumanInputFormRepository)
-    repository.get_form.return_value = SimpleNamespace(
+def test_dify_hitl_callback_rejects_waiting_form_past_global_deadline_as_invalid_resume_state(
+    repository: HumanInputFormRepositoryImpl, sqlite_session: Session
+) -> None:
+    form = HumanInputForm(
         id="form-1",
         rendered_content="<p>Please approve</p>",
         selected_action_id=None,
         submitted_data=None,
-        submitted=False,
         status=HumanInputFormStatus.WAITING,
         created_at=naive_utc_now() - timedelta(days=8),
         expiration_time=naive_utc_now() + timedelta(hours=1),
+        submitted_at=None,
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_run_id="run-1",
+        node_id="node-1",
+        form_definition="{}",
     )
+    sqlite_session.add(form)
+    sqlite_session.commit()
     callback = DifyHITLCallback(
         form_repository=repository,
         node_data=HumanInputNodeData(title="Approval", form_content="Please approve"),

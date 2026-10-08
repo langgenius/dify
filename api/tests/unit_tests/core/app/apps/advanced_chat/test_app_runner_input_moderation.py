@@ -5,6 +5,7 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.orm import Session
 
+from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
 from core.app.entities.queue_entities import QueueStopEvent
 from core.moderation.base import ModerationError
@@ -52,10 +53,9 @@ def build_runner(sqlite_session: Session, *, workflow_runtime: WorkflowRuntime):
         created_by=str(uuid4()),
     )
 
-    mock_app_config = MagicMock()
-    mock_app_config.app_id = app_id
-    mock_app_config.workflow_id = workflow_id
-    mock_app_config.tenant_id = tenant_id
+    app_config = WorkflowUIBasedAppConfig(
+        app_id=app_id, workflow_id=workflow_id, tenant_id=tenant_id, app_mode=AppMode.ADVANCED_CHAT
+    )
 
     app = App(
         id=app_id,
@@ -71,20 +71,17 @@ def build_runner(sqlite_session: Session, *, workflow_runtime: WorkflowRuntime):
     sqlite_session.add_all([app, conversation])
     sqlite_session.commit()
 
-    gen = MagicMock(spec=AdvancedChatAppGenerateEntity)
-    gen.app_config = mock_app_config
-    gen.inputs = {"q": "raw"}
-    gen.query = "raw-query"
-    gen.files = []
-    gen.user_id = str(uuid4())
-    gen.invoke_from = InvokeFrom.SERVICE_API
-    gen.workflow_run_id = str(uuid4())
-    gen.task_id = str(uuid4())
-    gen.call_depth = 0
-    gen.single_iteration_run = None
-    gen.single_loop_run = None
-    gen.extras = {}
-    gen.trace_manager = None
+    gen = AdvancedChatAppGenerateEntity(
+        app_config=app_config,
+        inputs={"q": "raw"},
+        query="raw-query",
+        files=[],
+        user_id=str(uuid4()),
+        invoke_from=InvokeFrom.SERVICE_API,
+        workflow_run_id=str(uuid4()),
+        task_id=str(uuid4()),
+        stream=True,
+    )
 
     runner = AdvancedChatAppRunner(
         application_generate_entity=gen,

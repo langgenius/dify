@@ -32,11 +32,10 @@ from core.datasource.online_document.online_document_provider import (
 from core.rag.extractor import notion_extractor as notion_extractor_module
 from core.rag.extractor.notion_extractor import NotionExtractor
 from core.rag.models.document import Document
+from extensions.application_services.data_sources import build_data_source_credentials
 from models.base import TypeBase
 from models.dataset import Document as DocumentModel
 from models.enums import DataSourceType, DocumentCreatedFrom
-from services.data_source.credential_gateway import DatasourceProviderCredentialStore
-from services.data_source.provider_service import DatasourceProviderService
 
 
 @dataclass(frozen=True)
@@ -140,12 +139,14 @@ class TestNotionExtractorAuthentication:
         )
 
     @patch("services.data_source.provider_service.DatasourceProviderService.get_datasource_credentials")
-    def test_init_with_integration_token_fallback(self, mock_get_token, mock_document_model, config_overrides):
+    def test_init_with_integration_token_fallback(
+        self, mock_get_token, mock_document_model, config_overrides, sqlite_session_factory
+    ):
         """Test NotionExtractor falls back to integration token when credential not found."""
         # Arrange
         mock_get_token.side_effect = Exception("No credential id found")
         config_overrides(NOTION_INTEGRATION_TOKEN="integration-token-fallback")
-        providers = DatasourceProviderService(credentials=Mock(spec=DatasourceProviderCredentialStore))
+        providers = build_data_source_credentials(database_client=sqlite_session_factory).providers
 
         # Act
         extractor = NotionExtractor(
@@ -164,12 +165,14 @@ class TestNotionExtractorAuthentication:
         assert extractor._notion_access_token == "integration-token-fallback"
 
     @patch("services.data_source.provider_service.DatasourceProviderService.get_datasource_credentials")
-    def test_init_missing_credentials_raises_error(self, mock_get_token, mock_document_model, config_overrides):
+    def test_init_missing_credentials_raises_error(
+        self, mock_get_token, mock_document_model, config_overrides, sqlite_session_factory
+    ):
         """Test NotionExtractor raises error when no credentials available."""
         # Arrange
         mock_get_token.side_effect = Exception("No credential id found")
         config_overrides(NOTION_INTEGRATION_TOKEN=None)
-        providers = DatasourceProviderService(credentials=Mock(spec=DatasourceProviderCredentialStore))
+        providers = build_data_source_credentials(database_client=sqlite_session_factory).providers
 
         # Act & Assert
         with pytest.raises(ValueError) as exc_info:
