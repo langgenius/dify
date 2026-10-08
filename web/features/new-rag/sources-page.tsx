@@ -4,11 +4,11 @@ import type { Source } from '@dify/contracts/knowledge-fs/types.gen'
 import type { StatusDotStatus } from '@langgenius/dify-ui/status-dot'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -185,7 +185,7 @@ function SourceActions({
               {tCommon(($) => $['operation.confirmAction'])}
             </AlertDialogDescription>
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton variant="secondary">
               {tCommon(($) => $['operation.cancel'])}
             </AlertDialogCancelButton>
@@ -200,7 +200,7 @@ function SourceActions({
             >
               {t(($) => $['newKnowledge.removeSource'])}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>

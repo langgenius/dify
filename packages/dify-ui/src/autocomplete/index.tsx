@@ -16,6 +16,8 @@ import {
 } from '../overlay-shared'
 import { parsePlacement } from '../placement'
 
+type AutocompleteActions = BaseAutocomplete.Root.Actions
+
 type AutocompleteProps<ItemValue> = BaseAutocomplete.Root.Props<ItemValue>
 type AutocompleteChangeEventDetails = BaseAutocomplete.Root.ChangeEventDetails
 type AutocompleteGroupedProps<Items extends readonly { items: readonly unknown[] }[]> = Omit<
@@ -428,6 +430,7 @@ export {
 }
 
 export type {
+  AutocompleteActions,
   AutocompleteChangeEventDetails,
   AutocompleteClearProps,
   AutocompleteCollectionProps,

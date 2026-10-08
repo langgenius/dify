@@ -14,6 +14,8 @@ const DialogPortal = BaseDialog.Portal
 const DialogClose = BaseDialog.Close
 const createDialogHandle = BaseDialog.createHandle
 
+type DialogActions = BaseDialog.Root.Actions
+
 type DialogProps<Payload = unknown> = BaseDialog.Root.Props<Payload>
 type DialogHandle<Payload = unknown> = BaseDialog.Handle<Payload>
 type DialogTriggerProps<Payload = unknown> = BaseDialog.Trigger.Props<Payload>
@@ -100,6 +102,7 @@ export {
 }
 
 export type {
+  DialogActions,
   DialogBackdropProps,
   DialogCloseProps,
   DialogContentProps,

@@ -3,11 +3,11 @@
 import type { SnippetListItem } from '@/types/snippet'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import {
@@ -268,7 +268,7 @@ const SnippetCard = ({
               {t(($) => $.deleteConfirmContent)}
             </AlertDialogDescription>
           </div>
-          <AlertDialogActions className="pt-0">
+          <AlertDialogFooter className="pt-0">
             <AlertDialogCancelButton disabled={deleteSnippetMutation.isPending}>
               {tCommon(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
@@ -278,7 +278,7 @@ const SnippetCard = ({
             >
               {t(($) => $['menu.deleteSnippet'])}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>

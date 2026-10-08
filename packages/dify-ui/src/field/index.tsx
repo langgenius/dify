@@ -6,6 +6,8 @@ import { cn } from '../cn'
 import { formLabelClassName } from '../form-control-shared'
 import { resolveClassName } from '../internals/resolve-class-name'
 
+type FieldActions = BaseFieldNS.Root.Actions
+
 type FieldProps = BaseFieldNS.Root.Props
 
 function Field({ className, ...props }: FieldProps) {
@@ -74,6 +76,7 @@ const FieldValidity = BaseField.Validity
 export { Field, FieldDescription, FieldError, FieldItem, FieldLabel, FieldValidity }
 
 export type {
+  FieldActions,
   FieldDescriptionProps,
   FieldErrorProps,
   FieldItemProps,
