@@ -1,26 +1,23 @@
 from typing import Any
+from uuid import UUID
 
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy.orm import Session
 
 from controllers.common.rbac import PlainApp, RBACCheck
 from controllers.common.schema import query_params_from_model, register_response_schema_models
-from controllers.common.session import with_session
 from controllers.console import console_ns
-from controllers.console.app.wraps import get_app_model
+from controllers.console.app.error import AppNotFoundError
+from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import (
     RBACPermission,
-    account_initialization_required,
     model_validate,
-    rbac_permission_required,
-    setup_required,
 )
+from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
-from libs.helper import uuid_value
-from libs.login import login_required
-from models.model import App, AppMode
-from services.agent_service import AgentService
+from libs.helper import dump_response, uuid_value
+from machinery.context import RequestContext
+from services.agent.log_contracts import AgentLogAppNotFoundError
 
 
 class AgentLogQuery(BaseModel):
@@ -49,8 +46,8 @@ class AgentToolCallResponse(ResponseModel):
     time_cost: float | int
     tool_name: str
     tool_label: str
-    tool_input: dict[str, Any]
-    tool_output: dict[str, Any]
+    tool_input: Any
+    tool_output: Any
     tool_parameters: dict[str, Any]
     tool_icon: Any = Field(default=None)
 
@@ -81,14 +78,18 @@ class AgentLogApi(Resource):
     @console_ns.doc(params=query_params_from_model(AgentLogQuery))
     @console_ns.response(200, "Agent logs retrieved successfully", console_ns.models[AgentLogResponse.__name__])
     @console_ns.response(400, "Invalid request parameters")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
-    @with_session(write=False)
-    @get_app_model(mode=[AppMode.AGENT_CHAT])
+    @console_account_admission(rbac_checks=[RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp())])
     @model_validate(AgentLogQuery)
-    def get(self, req_data: AgentLogQuery, session: Session, app_model: App):
+    def get(self, req_data: AgentLogQuery, request_context: RequestContext, app_id: UUID):
         """Get agent logs."""
 
-        return AgentService.get_agent_logs(app_model, req_data.conversation_id, req_data.message_id, session)
+        try:
+            result = application_services().agent_apps.logs.get(
+                request_context,
+                app_id=str(app_id),
+                conversation_id=req_data.conversation_id,
+                message_id=req_data.message_id,
+            )
+        except AgentLogAppNotFoundError as error:
+            raise AppNotFoundError() from error
+        return dump_response(AgentLogResponse, result)
