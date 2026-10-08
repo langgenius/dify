@@ -2,11 +2,11 @@
 import type { Role, RoleCategory } from '@/models/access-control'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import {
@@ -173,14 +173,14 @@ const RowMenu = ({ roleCategory, role, onView, onEdit }: RowMenuProps) => {
               {t(($) => $['role.deleteDescription'], { ns: 'permission' })}
             </AlertDialogDescription>
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton disabled={isDeletingRole} onClick={handleDelete}>
               {t(($) => $['operation.delete'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
       {showCopyMembersConfirm && (

@@ -7,14 +7,10 @@ from faker import Faker
 from sqlalchemy.orm import Session
 
 from core.plugin.plugin_service import PluginService
-from core.tools.__base.tool import Tool
 from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import (
     ApiProviderSchemaType,
-    ToolDescription,
-    ToolEntity,
-    ToolIdentity,
     ToolParameter,
     ToolProviderEntity,
     ToolProviderIdentity,
@@ -22,6 +18,7 @@ from core.tools.entities.tool_entities import (
 )
 from models.tools import ApiToolProvider, WorkflowToolProvider
 from services.tools.tools_transform_service import ToolTransformService
+from tests.tool_fixtures import make_runtime_tool
 
 
 class TestToolTransformService:
@@ -731,34 +728,6 @@ class TestToolTransformService:
             mock_from_db.assert_called_once_with(provider)
 
 
-def _mock_tool(*, base_params, runtime_params):
-    """Helper to build a Mock tool with real entity objects.
-
-    Tool is abstract and requires runtime behaviour (fork_tool_runtime,
-    get_runtime_parameters), so it stays as a Mock.  Everything else uses
-    real Pydantic instances.
-    """
-    entity = ToolEntity(
-        identity=ToolIdentity(
-            author="test_author",
-            name="test_tool",
-            label=I18nObject(en_US="Test Tool"),
-            provider="test_provider",
-        ),
-        parameters=base_params or [],
-        description=ToolDescription(
-            human=I18nObject(en_US="Test description"),
-            llm="Test description for LLM",
-        ),
-        output_schema={},
-    )
-    mock_tool = Mock(spec=Tool)
-    mock_tool.entity = entity
-    mock_tool.get_runtime_parameters.return_value = runtime_params
-    mock_tool.fork_tool_runtime.return_value = mock_tool
-    return mock_tool
-
-
 def _param(name, *, form=ToolParameter.ToolParameterForm.FORM, label=None):
     return ToolParameter(
         name=name,
@@ -775,7 +744,7 @@ class TestConvertToolEntityToApiEntity:
     def test_parameter_override(self):
         base = [_param("param1", label="Base 1"), _param("param2", label="Base 2")]
         runtime = [_param("param1", label="Runtime 1")]
-        tool = _mock_tool(base_params=base, runtime_params=runtime)
+        tool = make_runtime_tool(base_params=base, runtime_params=runtime)
 
         result = ToolTransformService.convert_tool_entity_to_api_entity(tool, "t", None)
 
@@ -787,7 +756,7 @@ class TestConvertToolEntityToApiEntity:
     def test_additional_runtime_parameters(self):
         base = [_param("param1", label="Base 1")]
         runtime = [_param("param1", label="Runtime 1"), _param("runtime_only", label="Runtime Only")]
-        tool = _mock_tool(base_params=base, runtime_params=runtime)
+        tool = make_runtime_tool(base_params=base, runtime_params=runtime)
 
         result = ToolTransformService.convert_tool_entity_to_api_entity(tool, "t", None)
 
@@ -802,7 +771,7 @@ class TestConvertToolEntityToApiEntity:
             _param("param1", label="Runtime 1"),
             _param("llm_param", form=ToolParameter.ToolParameterForm.LLM),
         ]
-        tool = _mock_tool(base_params=base, runtime_params=runtime)
+        tool = make_runtime_tool(base_params=base, runtime_params=runtime)
 
         result = ToolTransformService.convert_tool_entity_to_api_entity(tool, "t", None)
 
@@ -810,7 +779,7 @@ class TestConvertToolEntityToApiEntity:
         assert result.parameters[0].name == "param1"
 
     def test_empty_parameters(self):
-        tool = _mock_tool(base_params=[], runtime_params=[])
+        tool = make_runtime_tool(base_params=[], runtime_params=[])
 
         result = ToolTransformService.convert_tool_entity_to_api_entity(tool, "t", None)
 
@@ -818,7 +787,7 @@ class TestConvertToolEntityToApiEntity:
         assert len(result.parameters) == 0
 
     def test_none_parameters(self):
-        tool = _mock_tool(base_params=None, runtime_params=[])
+        tool = make_runtime_tool(base_params=None, runtime_params=[])
 
         result = ToolTransformService.convert_tool_entity_to_api_entity(tool, "t", None)
 
@@ -828,7 +797,7 @@ class TestConvertToolEntityToApiEntity:
     def test_parameter_order_preserved(self):
         base = [_param("p1", label="B1"), _param("p2", label="B2"), _param("p3", label="B3")]
         runtime = [_param("p2", label="R2"), _param("p4", label="R4")]
-        tool = _mock_tool(base_params=base, runtime_params=runtime)
+        tool = make_runtime_tool(base_params=base, runtime_params=runtime)
 
         result = ToolTransformService.convert_tool_entity_to_api_entity(tool, "t", None)
 

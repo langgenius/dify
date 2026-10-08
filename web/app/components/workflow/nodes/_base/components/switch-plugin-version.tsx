@@ -6,7 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
-import { Badge as Badge2, BadgeState } from '@/app/components/base/badge/index'
+import { Badge as Badge2 } from '@/app/components/base/badge/index'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
 import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import { pluginManifestToCardPluginProps } from '@/app/components/plugins/install-plugin/utils'
@@ -92,7 +92,7 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
           description={t(($) => $['nodes.agent.installPlugin.desc'], { ns: 'workflowAgent' })}
           cardTitleLeft={
             <>
-              <Badge2 className="mx-1" size="s" state={BadgeState.Warning}>
+              <Badge2 className="mx-1" size="s" variant="warning">
                 {`${pluginDetail.version} -> ${target!.version}`}
               </Badge2>
             </>

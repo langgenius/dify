@@ -155,7 +155,8 @@ def _delete_batch(
                 trigger_repo = SQLAlchemyWorkflowTriggerLogRepository(active_session)
                 return trigger_repo.delete_by_run_ids(run_ids)
 
-            workflow_run_repo.delete_runs_with_related(
+            workflow_run_repo.delete_runs_with_related_in_session(
+                session,
                 workflow_runs,
                 delete_node_executions=_delete_node_executions,
                 delete_trigger_logs=_delete_trigger_logs,

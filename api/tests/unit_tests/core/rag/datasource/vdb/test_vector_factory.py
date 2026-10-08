@@ -210,6 +210,29 @@ def test_vector_init_uses_default_and_custom_attributes(vector_factory_module, u
     assert [call.kwargs["session"] for call in resolve.call_args_list] == [unbound_session, unbound_session]
 
 
+@pytest.mark.parametrize("with_session", [True, False])
+def test_vector_with_resolved_configuration_passes_session(
+    vector_factory_module, unbound_session: Session, with_session: bool
+):
+    dataset = _dataset()
+    session = unbound_session if with_session else None
+    factory = MagicMock()
+    with (
+        patch.object(vector_factory_module.Vector, "get_vector_factory", return_value=factory),
+        patch.object(vector_factory_module, "resolve_vector_configuration") as resolve_configuration,
+    ):
+        vector = vector_factory_module.Vector(
+            dataset, session=session, configuration=VectorConfiguration("qdrant", "resolved-collection")
+        )
+
+    resolve_configuration.assert_not_called()
+    factory.assert_called_once_with(collection_name="resolved-collection")
+    factory.return_value.init_vector.assert_called_once_with(
+        dataset, vector._attributes, vector._embeddings, session=session
+    )
+    assert vector._vector_processor is factory.return_value.init_vector.return_value
+
+
 def test_lazy_embeddings_defer_real_load_until_first_embed_call(vector_factory_module, monkeypatch: pytest.MonkeyPatch):
     """``Vector(dataset, session=...)`` must not transitively call ``ModelManager`` during
     construction. The real embedding model should only be materialized on the
@@ -272,8 +295,8 @@ def test_init_vector_prefers_dataset_index_struct(
     calls = {"vector_type": None, "init_args": None}
 
     class _Factory(vector_factory_module.AbstractVectorFactory):
-        def init_vector(self, dataset, attributes, embeddings):
-            calls["init_args"] = (dataset, attributes, embeddings)
+        def init_vector(self, dataset, attributes, embeddings, *, session):
+            calls["init_args"] = (dataset, attributes, embeddings, session)
             return "vector-processor"
 
     monkeypatch.setattr(
@@ -290,7 +313,7 @@ def test_init_vector_prefers_dataset_index_struct(
 
     assert vector._vector_processor == "vector-processor"
     assert calls["vector_type"] == vector_factory_module.VectorType.UPSTASH
-    assert calls["init_args"] == (vector._dataset, ["doc_id"], vector._embeddings)
+    assert calls["init_args"] == (vector._dataset, ["doc_id"], vector._embeddings, unbound_session)
 
 
 def test_init_vector_uses_whitelist_override(
@@ -299,7 +322,7 @@ def test_init_vector_uses_whitelist_override(
     calls = {"vector_type": None}
 
     class _Factory(vector_factory_module.AbstractVectorFactory):
-        def init_vector(self, dataset, attributes, embeddings):
+        def init_vector(self, dataset, attributes, embeddings, *, session):
             return "vector-processor"
 
     tenant_id = str(uuid4())
