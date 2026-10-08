@@ -4252,7 +4252,7 @@
       "count": 1
     },
     "typescript/no-explicit-any": {
-      "count": 5
+      "count": 4
     }
   },
   "web/service/datasets.ts": {
