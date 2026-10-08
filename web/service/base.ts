@@ -310,7 +310,10 @@ export const buildSigninUrlWithRedirect = (): string => {
 function unicodeToChar(text: string) {
   if (!text) return ''
 
-  return text.replace(/\\u([0-9a-f]{4})/g, (_match, p1) => {
+  // A `\uXXXX` escape is case-insensitive: JSON and ECMAScript both accept
+  // `\u4F60` as well as `\u4f60`. Without the `i` flag an uppercase escape
+  // reaches the UI verbatim instead of being decoded.
+  return text.replace(/\\u([0-9a-f]{4})/gi, (_match, p1) => {
     return String.fromCharCode(Number.parseInt(p1, 16))
   })
 }
