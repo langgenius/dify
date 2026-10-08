@@ -30,7 +30,17 @@ describe('useNodesSyncDraft', () => {
     const callback = { onSuccess: vi.fn() }
     result.current.handleSyncWorkflowDraft(true, false, callback)
 
-    expect(mockDoSync).toHaveBeenCalledWith(false, callback)
+    expect(mockDoSync).toHaveBeenCalledWith(false, callback, undefined)
+  })
+
+  it('passes page-exit save options through to the app draft hook', () => {
+    const mockDoSync = vi.fn().mockResolvedValue(null)
+    const { result } = renderWorkflowHook(() => useNodesSyncDraft(), {
+      hooksStoreProps: { doSyncWorkflowDraft: mockDoSync },
+    })
+    const callbacks = { onError: vi.fn() }
+    result.current.handleSyncWorkflowDraft(true, true, callbacks, { skipEmptyGraph: true })
+    expect(mockDoSync).toHaveBeenCalledWith(true, callbacks, { skipEmptyGraph: true })
   })
 
   it('should use debounced path when sync is falsy, then flush triggers doSync', () => {
@@ -74,6 +84,6 @@ describe('useNodesSyncDraft', () => {
 
     result.current.handleSyncWorkflowDraft(true, true)
 
-    expect(mockDoSync).toHaveBeenCalledWith(true, undefined)
+    expect(mockDoSync).toHaveBeenCalledWith(true, undefined, undefined)
   })
 })
