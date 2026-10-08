@@ -551,12 +551,10 @@ function CreateKnowledgeSession() {
                         title={t(($) => $.connectSource)}
                         description={t(($) => $.connectSourceDescription)}
                         endAdornment={
-                          startMode === 'upload' ? (
-                            <span
-                              aria-hidden
-                              className="h-4 w-20.5 shrink-0 bg-[url('/images/new-rag/create-knowledge-connectors.svg')] bg-contain bg-center bg-no-repeat"
-                            />
-                          ) : undefined
+                          <span
+                            aria-hidden
+                            className="h-4 w-20.5 shrink-0 bg-[url('/images/new-rag/create-knowledge-connectors.svg')] bg-contain bg-center bg-no-repeat"
+                          />
                         }
                       >
                         <CreateSourceSetup
