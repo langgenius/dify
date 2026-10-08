@@ -120,7 +120,7 @@ function DatasourceParameterField({
         <FieldLabel
           htmlFor={generatedId}
           className={cn(
-            'flex cursor-pointer items-start gap-2 py-0 font-normal',
+            'relative flex cursor-pointer items-start gap-2 py-0 font-normal',
             disabled && 'cursor-not-allowed',
           )}
         >
