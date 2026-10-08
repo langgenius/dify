@@ -1095,6 +1095,7 @@ export function AgentPromptEditor() {
         </div>
         <Tooltip>
           <TooltipTrigger
+            closeOnClick={false}
             render={
               <button
                 type="button"

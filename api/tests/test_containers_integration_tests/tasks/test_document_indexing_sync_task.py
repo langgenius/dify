@@ -13,14 +13,14 @@ from uuid import uuid4
 
 import pytest
 from sqlalchemy import delete, func, select, update
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
+from services.knowledge.indexing.adapters.execution import build_document_indexing_service
 from services.knowledge.indexing.errors import DocumentIsPausedError
-from services.knowledge.indexing.execution import DocumentIndexingService
 from services.knowledge.resource_scope import DatasetRef
 from tasks.document_indexing_sync_task import document_indexing_sync_task
 
@@ -132,7 +132,7 @@ class TestDocumentIndexingSyncTask:
     """Integration tests for document_indexing_sync_task with real database assertions."""
 
     @pytest.fixture
-    def mock_external_dependencies(self):
+    def mock_external_dependencies(self, db_session_with_containers: Session):
         """Patch only external collaborators; keep DB access real."""
         with (
             patch("tasks.document_indexing_sync_task.build_data_source_credentials") as mock_credentials,
@@ -152,7 +152,9 @@ class TestDocumentIndexingSyncTask:
             index_processor.clean = Mock()
             mock_index_processor_factory.return_value.init_index_processor.return_value = index_processor
 
-            indexing_runner = Mock(spec=DocumentIndexingService)
+            indexing_runner = build_document_indexing_service(
+                session_factory=sessionmaker(bind=db_session_with_containers.get_bind(), expire_on_commit=False)
+            )
             indexing_runner.run = Mock()
             mock_indexing_runner_class.return_value = indexing_runner
 
