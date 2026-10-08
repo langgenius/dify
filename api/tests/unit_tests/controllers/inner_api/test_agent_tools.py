@@ -2,14 +2,13 @@
 
 from collections.abc import Generator
 from contextlib import contextmanager
+from dataclasses import dataclass
 from unittest.mock import Mock, create_autospec, patch
 
 import pytest
 from flask import Flask
 
 from controllers.inner_api import bp as inner_api_bp
-from extensions.application_services.agent import AgentAppServices
-from extensions.ext_application_services import ApplicationServices
 from services.agent.tool_invocation_service import AgentToolInnerService
 from services.entities.agent_tool_inner import AgentToolInvokeRequest, AgentToolInvokeResponse
 from services.errors.agent_tool_inner import AgentToolInnerServiceError
@@ -58,10 +57,20 @@ def _agent_inner_auth() -> Generator[None]:
         yield
 
 
+@dataclass(frozen=True)
+class _AgentApps:
+    tools: AgentToolInnerService
+
+
+@dataclass(frozen=True)
+class _ApplicationServices:
+    agent_apps: _AgentApps
+
+
 @contextmanager
 def _tool_service() -> Generator[Mock]:
     service = create_autospec(AgentToolInnerService, instance=True, spec_set=True)
-    services = Mock(spec=ApplicationServices, agent_apps=Mock(spec=AgentAppServices, tools=service))
+    services = _ApplicationServices(agent_apps=_AgentApps(tools=service))
     with patch("controllers.inner_api.agent.tools.application_services", return_value=services):
         yield service.invoke
 

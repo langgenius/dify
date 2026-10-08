@@ -1,6 +1,6 @@
 import json
 from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import Mock, create_autospec
 
 import pytest
 import yaml
@@ -548,10 +548,12 @@ def test_confirm_import_returns_failed_when_create_or_update_raises(
 def test_check_dependencies_returns_empty_without_draft_workflow(
     service: SnippetDslService, monkeypatch: pytest.MonkeyPatch
 ):
+    snippets = create_autospec(SnippetService, instance=True)
+    snippets.get_draft_workflow.return_value = None
     monkeypatch.setattr(
         service,
         "_snippets",
-        Mock(spec=SnippetService, get_draft_workflow=Mock(return_value=None)),
+        snippets,
     )
 
     result = service.check_dependencies(_snippet())
@@ -567,10 +569,12 @@ def test_check_dependencies_returns_generated_dependencies(service: SnippetDslSe
             "value": {"marketplace_plugin_unique_identifier": "langgenius/openai:0.0.1"},
         }
     ]
+    snippets = create_autospec(SnippetService, instance=True)
+    snippets.get_draft_workflow.return_value = workflow
     monkeypatch.setattr(
         service,
         "_snippets",
-        Mock(spec=SnippetService, get_draft_workflow=Mock(return_value=workflow)),
+        snippets,
     )
     monkeypatch.setattr(service, "_extract_dependencies_from_workflow", Mock(return_value=["langgenius/openai"]))
     monkeypatch.setattr(
@@ -678,10 +682,12 @@ def test_create_or_update_snippet_creates_new_snippet_and_flushes(
 
 
 def test_export_snippet_dsl_raises_without_draft_workflow(service: SnippetDslService, monkeypatch: pytest.MonkeyPatch):
+    snippets = create_autospec(SnippetService, instance=True)
+    snippets.get_draft_workflow.return_value = None
     monkeypatch.setattr(
         service,
         "_snippets",
-        Mock(spec=SnippetService, get_draft_workflow=Mock(return_value=None)),
+        snippets,
     )
 
     with pytest.raises(ValueError, match="Missing draft workflow"):
@@ -696,10 +702,12 @@ def test_export_snippet_dsl_returns_yaml(service: SnippetDslService, monkeypatch
         icon_info=None,
         input_fields=[{"variable": "query"}],
     )
+    snippets = create_autospec(SnippetService, instance=True)
+    snippets.get_draft_workflow.return_value = workflow
     monkeypatch.setattr(
         service,
         "_snippets",
-        Mock(spec=SnippetService, get_draft_workflow=Mock(return_value=workflow)),
+        snippets,
     )
     monkeypatch.setattr(
         "services.snippet_dsl_service.DependenciesAnalysisService.generate_dependencies",
@@ -720,14 +728,13 @@ def test_export_snippet_dsl_uses_requested_published_workflow(
     snippet = _snippet(name="Exported")
     get_published_workflow_by_id = Mock(return_value=workflow)
     get_draft_workflow = Mock()
+    snippets = create_autospec(SnippetService, instance=True)
+    snippets.get_draft_workflow = get_draft_workflow
+    snippets.get_published_workflow_by_id = get_published_workflow_by_id
     monkeypatch.setattr(
         service,
         "_snippets",
-        Mock(
-            spec=SnippetService,
-            get_draft_workflow=get_draft_workflow,
-            get_published_workflow_by_id=get_published_workflow_by_id,
-        ),
+        snippets,
     )
     monkeypatch.setattr(
         "services.snippet_dsl_service.DependenciesAnalysisService.generate_dependencies",

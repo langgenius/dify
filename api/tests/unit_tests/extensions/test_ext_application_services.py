@@ -56,6 +56,7 @@ from repositories.plugin_file_upload_repository import SQLAlchemyPluginFileUploa
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from repositories.upload_file_delivery_repository import UploadFileDeliveryQueryRepository
 from repositories.workflow.app_log_repository import WorkflowAppLogRepository
+from repositories.workflow.runtime_context_repository import WorkflowRuntimeContextRepository
 from repositories.workflow_run_archive_repository import WorkflowRunArchiveBundleQueryRepository
 from repositories.workspace.workspace_repository import WorkspaceRepository
 from services import audio_provider_gateway, recommended_app_catalog_gateway
@@ -269,7 +270,9 @@ def test_build_application_services_preserves_composed_boundaries(
     assert isinstance(services.dataset_api_keys, DatasetApiKeyService)
     assert services.dataset_api_keys._access is services.knowledge.datasets._dataset_access
     assert services.snippet_generation._variables is services.workflow_variables
-    assert services.snippet_generation._runtime.contexts._sessions is sqlite_session_factory
+    runtime_contexts = services.snippet_generation._runtime.contexts
+    assert isinstance(runtime_contexts, WorkflowRuntimeContextRepository)
+    assert runtime_contexts._sessions is sqlite_session_factory
     assert services.knowledge.pipeline_generator._draft_variable_loader == services.workflow_variables.workflow_loader
     assert services.knowledge.pipeline_generator._draft_variable_saver == services.workflow_variables.saver_factory
     assert isinstance(services.oauth_device, OAuthDeviceApplicationService)

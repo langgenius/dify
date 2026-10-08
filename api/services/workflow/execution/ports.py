@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
-from typing import TYPE_CHECKING, Protocol
+from collections.abc import Callable, Generator, Sequence
+from typing import TYPE_CHECKING, Any, Protocol
 
 from graphon.entities.pause_reason import HitlRequired
 from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
@@ -18,7 +18,10 @@ from services.tools.provider_queries import ToolProviders
 from services.workflow.execution.node_queries import ConversationHistory, DatasourceCredentials, RetrieverAttachments
 
 if TYPE_CHECKING:
+    from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
     from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
+    from core.tools.__base.tool import Tool
+    from core.tools.entities.tool_entities import ToolInvokeMessage
     from core.workflow.nodes.human_input.pause_reason import PauseReason
 
 
@@ -69,6 +72,23 @@ class WorkflowExecutionLogs(Protocol):
     ) -> None: ...
 
 
+class WorkflowToolInvoker(Protocol):
+    """Invoke one workflow tool while keeping persistence ownership outside execution adapters."""
+
+    def __call__(
+        self,
+        *,
+        tool: Tool,
+        tool_parameters: dict[str, Any],
+        user_id: str,
+        workflow_tool_callback: DifyWorkflowCallbackHandler,
+        workflow_call_depth: int,
+        conversation_id: str | None = None,
+        app_id: str | None = None,
+        message_id: str | None = None,
+    ) -> Generator[ToolInvokeMessage, None, None]: ...
+
+
 from services.human_input.ports import HumanInputFormReader
 from services.knowledge.retrieval.ports import DatasetRetrievalFactory
 
@@ -92,6 +112,8 @@ class WorkflowRuntime(Protocol):
     def tools(self) -> WorkflowToolQueries: ...
     @property
     def tool_providers(self) -> ToolProviders: ...
+    @property
+    def tool_invoker(self) -> WorkflowToolInvoker: ...
     @property
     def agent_bindings(self) -> WorkflowAgentRuntimeBindings: ...
     @property

@@ -13,12 +13,14 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.orm import Session
 
+from core.tools.entities.tool_entities import ToolProviderType
 from fields.workflow_run_fields import WorkflowRunNodeExecutionResponse, node_execution_response_source
 from graphon.enums import BuiltinNodeTypes
 from models.account import Account
 from models.enums import CreatorUserRole, EndUserType
 from models.model import EndUser
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
+from services.tools.provider_queries import ToolProviderIcons
 from services.tools.tool_manager import ToolManager
 
 
@@ -101,8 +103,13 @@ class TestCreatedByEndUser:
 class TestNodeExecutionResponseSource:
     @pytest.mark.parametrize("node_type", [BuiltinNodeTypes.TOOL, BuiltinNodeTypes.DATASOURCE])
     def test_provider_icons_survive_response_serialization(
-        self, sqlite_session, monkeypatch, node_type, *, tool_providers
-    ):
+        self,
+        sqlite_session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+        node_type: str,
+        *,
+        tool_providers: ToolProviderIcons,
+    ) -> None:
         execution = _execution(CreatorUserRole.ACCOUNT, created_by="account")
         execution.id = "execution"
         execution.node_type = node_type
@@ -113,7 +120,9 @@ class TestNodeExecutionResponseSource:
             }
         )
 
-        def tool_icon(*, tenant_id, provider_type, provider_id, tool_providers):
+        def tool_icon(
+            *, tenant_id: str, provider_type: ToolProviderType, provider_id: str, tool_providers: ToolProviderIcons
+        ) -> str:
             assert tool_providers is not None
             assert (tenant_id, provider_type, provider_id) == (execution.tenant_id, "builtin", "provider")
             return "tool-icon"
@@ -125,7 +134,7 @@ class TestNodeExecutionResponseSource:
         assert response.extras == {"icon": "tool-icon" if node_type == BuiltinNodeTypes.TOOL else "source-icon"}
 
     def test_accessors_resolve_via_wrapped_session_and_other_attributes_proxy(
-        self, sqlite_session: Session, *, tool_providers
+        self, sqlite_session: Session, *, tool_providers: ToolProviderIcons
     ) -> None:
         account = Account(name="Test Account", email="test@example.com")
         sqlite_session.add(account)
