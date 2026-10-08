@@ -81,7 +81,6 @@ describe('InstallPluginDropdown', () => {
         rootClassName="custom-root"
         triggerClassName="custom-trigger"
         triggerLabel="Install"
-        triggerOpenClassName="custom-open"
         triggerVariant="primary"
         popupClassName="custom-popup"
       />,
@@ -98,7 +97,6 @@ describe('InstallPluginDropdown', () => {
 
     fireEvent.click(trigger)
 
-    expect(trigger).toHaveClass('custom-open')
     expect(trigger).toHaveAttribute('data-popup-open', '')
     expect(screen.getByRole('menu')).toHaveClass('custom-popup')
   })

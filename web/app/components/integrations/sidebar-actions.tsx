@@ -105,20 +105,15 @@ function IntegrationSidebarInstallActions({
           disabled={!canManagement}
           rootClassName="w-full"
           triggerVariant="primary"
-          triggerClassName="h-8 min-w-0 justify-start gap-2 px-2.5 py-2 system-sm-medium transition-[width]"
+          triggerClassName="h-8 min-w-0 justify-start gap-2 px-2.5 py-2 system-sm-medium transition-[width] data-popup-open:bg-components-button-primary-bg-hover"
           triggerLabel={installLabel}
-          triggerOpenClassName="bg-components-button-primary-bg-hover"
           popupClassName="w-[200px]"
           installContextCategory={installContextCategory}
           showTriggerArrow={false}
           onSwitchToMarketplaceTab={onSwitchToMarketplace}
         />
       </PermissionTooltipWrapper>
-      <PluginTasks
-        animatedSlot
-        dropdownAnchor={() => actionRowRef.current}
-        dropdownPlacement="bottom-start"
-      />
+      <PluginTasks animatedSlot anchor={() => actionRowRef.current} placement="bottom-start" />
     </div>
   )
 }
