@@ -1,9 +1,16 @@
 'use client'
-import type { FC } from 'react'
+import type { DialogActions } from '@langgenius/dify-ui/dialog'
 import type { Param } from '../../types'
 import type { MoreInfo } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogTitle,
+  DialogTrigger,
+} from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import {
   Select,
@@ -16,8 +23,7 @@ import {
 } from '@langgenius/dify-ui/select'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import * as React from 'react'
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Field from '@/app/components/app/configuration/config-var/config-modal/field'
 import ConfigSelect from '@/app/components/app/configuration/config-var/config-select'
@@ -37,11 +43,9 @@ const DEFAULT_PARAM: Param = {
 }
 
 type Props = Readonly<{
-  type: 'add' | 'edit'
-  payload?: Param
   onSave: (payload: Param, moreInfo?: MoreInfo) => void
-  onCancel?: () => void
-}>
+}> &
+  ({ type: 'add'; payload?: never } | { type: 'edit'; payload: Param })
 
 const TYPES = [
   ParamType.string,
@@ -53,60 +57,56 @@ const TYPES = [
   ParamType.arrayBool,
 ]
 
-const AddExtractParameter: FC<Props> = ({ type, payload, onSave, onCancel }) => {
+export function ParameterDialog(props: Props) {
+  const { t } = useTranslation(['common', 'workflowModels'])
+  const actionsRef = useRef<DialogActions>(null)
+  const isAdd = props.type === 'add'
+  const triggerLabel = isAdd
+    ? t(($) => $[`${i18nPrefix}.addExtractParameter`], { ns: 'workflowModels' })
+    : `${t(($) => $['operation.edit'], { ns: 'common' })} ${props.payload.name}`
+
+  return (
+    <Dialog actionsRef={actionsRef}>
+      <DialogTrigger
+        render={
+          <IconButton aria-label={triggerLabel} className={isAdd ? 'mx-1' : undefined}>
+            <span
+              aria-hidden="true"
+              className={isAdd ? 'i-ri-add-line size-4' : 'i-ri-edit-line size-4'}
+            />
+          </IconButton>
+        }
+      />
+      <DialogContent className="w-100! max-w-100! overflow-hidden! border-none p-4! text-left align-middle">
+        <DialogTitle className="title-2xl-semi-bold text-text-primary">{triggerLabel}</DialogTitle>
+        <ParameterForm {...props} onSaved={() => actionsRef.current?.close()} />
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function ParameterForm({ type, payload, onSave, onSaved }: Props & { onSaved: () => void }) {
   const { t } = useTranslation(['appDebug', 'common', 'workflow', 'workflowModels'])
   const nameLabel = t(($) => $[`${i18nPrefix}.addExtractParameterContent.name`], {
     ns: 'workflowModels',
   })
   const isAdd = type === 'add'
-  const [param, setParam] = useState<Param>(isAdd ? DEFAULT_PARAM : (payload as Param))
-  const [renameInfo, setRenameInfo] = useState<MoreInfo | undefined>(undefined)
-  const handleParamChange = useCallback(
-    (key: string) => {
-      return (value: any) => {
-        if (key === 'name') {
-          const { isValid, errorKey, errorMessageKey } = checkKeys([value], true)
-          if (!isValid) {
-            toast.error(
-              t(($) => $[`varKeyError.${errorMessageKey}`], { ns: 'appDebug', key: errorKey }),
-            )
-            return
-          }
+  const [initialParam] = useState(isAdd ? DEFAULT_PARAM : payload)
+  const [param, setParam] = useState<Param>(initialParam)
+  const handleParamChange =
+    <K extends keyof Param>(key: K) =>
+    (value: Param[K]) => {
+      if (key === 'name') {
+        const { isValid, errorKey, errorMessageKey } = checkKeys([value as string], true)
+        if (!isValid) {
+          toast.error(
+            t(($) => $[`varKeyError.${errorMessageKey}`], { ns: 'appDebug', key: errorKey }),
+          )
+          return
         }
-        setRenameInfo(
-          key === 'name'
-            ? {
-                type: ChangeType.changeVarName,
-                payload: {
-                  beforeKey: param.name,
-                  afterKey: value,
-                },
-              }
-            : undefined,
-        )
-        setParam((prev) => {
-          return {
-            ...prev,
-            [key]: value,
-          }
-        })
       }
-    },
-    [param.name, t],
-  )
-
-  const [isShowModal, setIsShowModal] = useState(!isAdd)
-
-  const hideModal = useCallback(() => {
-    setIsShowModal(false)
-    onCancel?.()
-  }, [onCancel])
-
-  const showAddModal = useCallback(() => {
-    if (isAdd) setParam(DEFAULT_PARAM)
-
-    setIsShowModal(true)
-  }, [isAdd])
+      setParam((prev) => ({ ...prev, [key]: value }))
+    }
 
   const checkValid = useCallback(() => {
     let errMessage = ''
@@ -141,134 +141,119 @@ const AddExtractParameter: FC<Props> = ({ type, payload, onSave, onCancel }) => 
     return true
   }, [param, t])
 
-  const handleSave = useCallback(() => {
+  const handleSave = () => {
     if (!checkValid()) return
-
+    const renameInfo: MoreInfo | undefined =
+      !isAdd && initialParam.name !== param.name
+        ? {
+            type: ChangeType.changeVarName,
+            payload: { beforeKey: initialParam.name, afterKey: param.name },
+          }
+        : undefined
     onSave(param, renameInfo)
-    hideModal()
-  }, [checkValid, onSave, param, hideModal, renameInfo])
+    onSaved()
+  }
 
   return (
-    <div>
-      {isAdd && (
-        <button
-          type="button"
-          aria-label={t(($) => $[`${i18nPrefix}.addExtractParameter`], { ns: 'workflowModels' })}
-          className="mx-1 cursor-pointer rounded-md border-none bg-transparent p-1 select-none hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-          onClick={showAddModal}
+    <form
+      onSubmit={(event) => {
+        event.preventDefault()
+        event.stopPropagation()
+        handleSave()
+      }}
+    >
+      <div className="space-y-2">
+        <Field title={nameLabel}>
+          <Input
+            aria-label={nameLabel}
+            value={param.name}
+            onValueChange={(value) => handleParamChange('name')(value)}
+            placeholder={t(($) => $[`${i18nPrefix}.addExtractParameterContent.namePlaceholder`], {
+              ns: 'workflow',
+            })!}
+          />
+        </Field>
+        <Field
+          title={t(($) => $[`${i18nPrefix}.addExtractParameterContent.type`], {
+            ns: 'workflowModels',
+          })}
         >
-          <span className="i-ri-add-line size-4 text-text-tertiary" aria-hidden="true" />
-        </button>
-      )}
-      {isShowModal && (
-        <Dialog
-          open
-          onOpenChange={(open) => {
-            if (!open) hideModal()
-          }}
+          <Select<ParamType>
+            value={param.type}
+            onValueChange={(value) => value && handleParamChange('type')(value)}
+          >
+            <SelectTrigger
+              aria-label={t(($) => $[`${i18nPrefix}.addExtractParameterContent.type`], {
+                ns: 'workflowModels',
+              })}
+              className="w-full capitalize"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {TYPES.map((type) => (
+                <SelectItem<ParamType> key={type} value={type} className="capitalize">
+                  <SelectItemText className="capitalize">{type}</SelectItemText>
+                  <SelectItemIndicator />
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
+        {param.type === ParamType.select && (
+          <Field title={t(($) => $['variableConfig.options'], { ns: 'appDebug' })}>
+            <ConfigSelect options={param.options || []} onChange={handleParamChange('options')} />
+          </Field>
+        )}
+        <Field
+          title={t(($) => $[`${i18nPrefix}.addExtractParameterContent.description`], {
+            ns: 'workflowModels',
+          })}
         >
-          <DialogContent className="w-100! max-w-100! overflow-hidden! border-none p-4! text-left align-middle">
-            <DialogTitle className="title-2xl-semi-bold text-text-primary">
-              {t(($) => $[`${i18nPrefix}.addExtractParameter`], { ns: 'workflowModels' })}
-            </DialogTitle>
-
-            <div>
-              <div className="space-y-2">
-                <Field title={nameLabel}>
-                  <Input
-                    aria-label={nameLabel}
-                    value={param.name}
-                    onValueChange={(value) => handleParamChange('name')(value)}
-                    placeholder={t(
-                      ($) => $[`${i18nPrefix}.addExtractParameterContent.namePlaceholder`],
-                      {
-                        ns: 'workflow',
-                      },
-                    )!}
-                  />
-                </Field>
-                <Field
-                  title={t(($) => $[`${i18nPrefix}.addExtractParameterContent.type`], {
-                    ns: 'workflowModels',
-                  })}
-                >
-                  <Select<ParamType>
-                    value={param.type}
-                    onValueChange={(value) => value && handleParamChange('type')(value)}
-                  >
-                    <SelectTrigger className="w-full capitalize">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {TYPES.map((type) => (
-                        <SelectItem<ParamType> key={type} value={type} className="capitalize">
-                          <SelectItemText className="capitalize">{type}</SelectItemText>
-                          <SelectItemIndicator />
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </Field>
-                {param.type === ParamType.select && (
-                  <Field title={t(($) => $['variableConfig.options'], { ns: 'appDebug' })}>
-                    <ConfigSelect
-                      options={param.options || []}
-                      onChange={handleParamChange('options')}
-                    />
-                  </Field>
-                )}
-                <Field
-                  title={t(($) => $[`${i18nPrefix}.addExtractParameterContent.description`], {
-                    ns: 'workflowModels',
-                  })}
-                >
-                  <Textarea
-                    aria-label={t(
-                      ($) => $[`${i18nPrefix}.addExtractParameterContent.description`],
-                      { ns: 'workflowModels' },
-                    )}
-                    value={param.description}
-                    onValueChange={(value) => handleParamChange('description')(value)}
-                    placeholder={t(
-                      ($) => $[`${i18nPrefix}.addExtractParameterContent.descriptionPlaceholder`],
-                      { ns: 'workflow' },
-                    )!}
-                  />
-                </Field>
-                <Field
-                  title={t(($) => $[`${i18nPrefix}.addExtractParameterContent.required`], {
-                    ns: 'workflowModels',
-                  })}
-                >
-                  <>
-                    <div className="mb-1.5 text-xs leading-4.5 font-normal text-text-tertiary">
-                      {t(($) => $[`${i18nPrefix}.addExtractParameterContent.requiredContent`], {
-                        ns: 'workflowModels',
-                      })}
-                    </div>
-                    <Switch
-                      size="lg"
-                      checked={param.required ?? false}
-                      onCheckedChange={handleParamChange('required')}
-                    />
-                  </>
-                </Field>
-              </div>
-              <div className="mt-4 flex justify-end space-x-2">
-                <Button className="w-23.75!" onClick={hideModal}>
-                  {t(($) => $['operation.cancel'], { ns: 'common' })}
-                </Button>
-                <Button className="w-23.75!" variant="primary" onClick={handleSave}>
-                  {isAdd
-                    ? t(($) => $['operation.add'], { ns: 'common' })
-                    : t(($) => $['operation.save'], { ns: 'common' })}
-                </Button>
-              </div>
+          <Textarea
+            aria-label={t(($) => $[`${i18nPrefix}.addExtractParameterContent.description`], {
+              ns: 'workflowModels',
+            })}
+            value={param.description}
+            onValueChange={(value) => handleParamChange('description')(value)}
+            placeholder={t(
+              ($) => $[`${i18nPrefix}.addExtractParameterContent.descriptionPlaceholder`],
+              { ns: 'workflow' },
+            )!}
+          />
+        </Field>
+        <Field
+          title={t(($) => $[`${i18nPrefix}.addExtractParameterContent.required`], {
+            ns: 'workflowModels',
+          })}
+        >
+          <>
+            <div className="mb-1.5 text-xs leading-4.5 font-normal text-text-tertiary">
+              {t(($) => $[`${i18nPrefix}.addExtractParameterContent.requiredContent`], {
+                ns: 'workflowModels',
+              })}
             </div>
-          </DialogContent>
-        </Dialog>
-      )}
-    </div>
+            <Switch
+              size="lg"
+              aria-label={t(($) => $[`${i18nPrefix}.addExtractParameterContent.required`], {
+                ns: 'workflowModels',
+              })}
+              checked={param.required ?? false}
+              onCheckedChange={handleParamChange('required')}
+            />
+          </>
+        </Field>
+      </div>
+      <div className="mt-4 flex justify-end space-x-2">
+        <DialogClose render={<Button className="w-23.75!" />}>
+          {t(($) => $['operation.cancel'], { ns: 'common' })}
+        </DialogClose>
+        <Button type="submit" className="w-23.75!" variant="primary">
+          {isAdd
+            ? t(($) => $['operation.add'], { ns: 'common' })
+            : t(($) => $['operation.save'], { ns: 'common' })}
+        </Button>
+      </div>
+    </form>
   )
 }
-export default React.memo(AddExtractParameter)

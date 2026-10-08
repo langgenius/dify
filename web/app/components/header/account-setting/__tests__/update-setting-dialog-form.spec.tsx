@@ -1,4 +1,6 @@
 import type { SettingsDestination } from '@/app/components/header/account-setting/query-params'
+import { Dialog } from '@langgenius/dify-ui/dialog'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
@@ -7,7 +9,8 @@ import {
   AUTO_UPDATE_STRATEGY,
 } from '@/app/components/plugins/reference-setting-modal/auto-update-setting/types'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import UpdateSettingDialogForm from '../update-setting-dialog-form'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { UpdateSettingDialogForm } from '../update-setting-dialog-form'
 
 const mockSetSettingsDestination = vi.fn()
 let mockSettingsDestination: SettingsDestination | null = null
@@ -56,6 +59,22 @@ vi.mock(
   }),
 )
 
+function renderForm(ui: React.ReactElement) {
+  const client = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity } } })
+  client.setQueryData(userProfileQueryOptions().queryKey, {
+    profile: {
+      id: 'user-1',
+      name: 'Test User',
+      email: 'test@dify.ai',
+      avatar_url: null,
+      is_password_set: false,
+      timezone: 'UTC',
+    },
+    meta: { currentVersion: null, currentEnv: null },
+  })
+  return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>)
+}
+
 describe('UpdateSettingDialogForm', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -64,28 +83,23 @@ describe('UpdateSettingDialogForm', () => {
 
   it('should focus update time from its label and keep the timezone action separate', async () => {
     const user = userEvent.setup()
-    const onRequestClose = vi.fn()
+    const onOpenChange = vi.fn()
 
-    render(
-      <UpdateSettingDialogForm
-        autoUpgrade={{
-          strategy_setting: AUTO_UPDATE_STRATEGY.fixOnly,
-          upgrade_time_of_day: 0,
-          upgrade_mode: AUTO_UPDATE_MODE.update_all,
-          exclude_plugins: [],
-          include_plugins: [],
-        }}
-        category={PluginCategoryEnum.tool}
-        plugins={[]}
-        scopeOptions={[{ value: AUTO_UPDATE_MODE.update_all, label: 'All' }]}
-        strategyOptions={[{ value: AUTO_UPDATE_STRATEGY.fixOnly, label: 'Fix only' }]}
-        timezone="UTC"
-        updateTimeValue="00:00"
-        onAutoUpgradeChange={vi.fn()}
-        onPluginsChange={vi.fn()}
-        onRequestClose={onRequestClose}
-        onUpdateTimeChange={vi.fn()}
-      />,
+    renderForm(
+      <Dialog defaultOpen onOpenChange={onOpenChange}>
+        <UpdateSettingDialogForm
+          initialAutoUpgrade={{
+            strategy_setting: AUTO_UPDATE_STRATEGY.fixOnly,
+            upgrade_time_of_day: 0,
+            upgrade_mode: AUTO_UPDATE_MODE.update_all,
+            exclude_plugins: [],
+            include_plugins: [],
+          }}
+          category={PluginCategoryEnum.tool}
+          isSavePending={false}
+          onSave={vi.fn()}
+        />
+      </Dialog>,
     )
 
     expect(
@@ -98,33 +112,28 @@ describe('UpdateSettingDialogForm', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     await user.click(screen.getByText('autoUpdate.changeTimezone'))
 
-    expect(onRequestClose).toHaveBeenCalledTimes(1)
+    expect(onOpenChange).toHaveBeenCalledExactlyOnceWith(false, expect.anything())
     expect(mockSetSettingsDestination).toHaveBeenCalledWith('preferences')
   })
 
   it('should replace the current destination when timezone link is clicked inside settings', () => {
     mockSettingsDestination = 'provider'
 
-    render(
-      <UpdateSettingDialogForm
-        autoUpgrade={{
-          strategy_setting: AUTO_UPDATE_STRATEGY.fixOnly,
-          upgrade_time_of_day: 0,
-          upgrade_mode: AUTO_UPDATE_MODE.update_all,
-          exclude_plugins: [],
-          include_plugins: [],
-        }}
-        category={PluginCategoryEnum.tool}
-        plugins={[]}
-        scopeOptions={[{ value: AUTO_UPDATE_MODE.update_all, label: 'All' }]}
-        strategyOptions={[{ value: AUTO_UPDATE_STRATEGY.fixOnly, label: 'Fix only' }]}
-        timezone="UTC"
-        updateTimeValue="00:00"
-        onAutoUpgradeChange={vi.fn()}
-        onPluginsChange={vi.fn()}
-        onRequestClose={vi.fn()}
-        onUpdateTimeChange={vi.fn()}
-      />,
+    renderForm(
+      <Dialog>
+        <UpdateSettingDialogForm
+          initialAutoUpgrade={{
+            strategy_setting: AUTO_UPDATE_STRATEGY.fixOnly,
+            upgrade_time_of_day: 0,
+            upgrade_mode: AUTO_UPDATE_MODE.update_all,
+            exclude_plugins: [],
+            include_plugins: [],
+          }}
+          category={PluginCategoryEnum.tool}
+          isSavePending={false}
+          onSave={vi.fn()}
+        />
+      </Dialog>,
     )
 
     fireEvent.click(screen.getByText('autoUpdate.changeTimezone'))

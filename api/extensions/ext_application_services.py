@@ -49,6 +49,7 @@ from models.model import EndUser
 from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
+from repositories.api_based_extension_repository import APIBasedExtensionRepository
 from repositories.app.mcp_server_repository import AppMCPServerRepository
 from repositories.app.site_command_repository import AppSiteCommandRepository
 from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfigRepository
@@ -92,6 +93,8 @@ from services.account.login_adapters import RedisConsoleAuthSecurityGateway
 from services.account.service import AccountSetupProvisioner
 from services.account_password_hasher import DefaultAccountPasswordHasher
 from services.agent.roster_package_exporter import RosterAgentPackageExporter
+from services.api_based_extension_adapters import APIBasedExtensionPingProbe, WorkspaceTokenCipher
+from services.api_based_extension_application_service import APIBasedExtensionApplicationService
 from services.app.advanced_prompt_template_service import AdvancedPromptTemplateService
 from services.app.api_key_service import AppApiKeyService
 from services.app.mcp_server_service import AppMCPServerService
@@ -144,7 +147,6 @@ from services.oauth_device_application_service import (
 )
 from services.oauth_device_flow import DeviceFlowRedis
 from services.oauth_server_service import OAUTH_ACCESS_TOKEN_EXPIRES_IN, OAuthServerService
-from services.partner_tenant_binding_service import PartnerTenantBindingService
 from services.plugin_file_upload_gateway import ToolFilePluginUploadGateway
 from services.plugin_file_upload_service import PluginFileUploadService
 from services.recommended_app_catalog_gateway import (
@@ -240,6 +242,7 @@ class AppScopedEndUserServices:
 class ApplicationServices:
     agent_apps: AgentAppServices
     advanced_prompt_templates: AdvancedPromptTemplateService
+    api_based_extensions: APIBasedExtensionApplicationService
     credential_queries: CredentialQuery
     accounts: AccountServices
     app_api_keys: AppApiKeyService
@@ -278,7 +281,6 @@ class ApplicationServices:
     installed_apps: InstalledAppServices
     notifications: NotificationService
     step_by_step_tour: StepByStepTourService
-    partner_tenant_bindings: PartnerTenantBindingService
     recommended_app_queries: RecommendedAppQueryService
     recommended_app_packages: RecommendedAppPackageService
     remote_files: RemoteFileService
@@ -637,9 +639,6 @@ def build_application_services(
             enabled=dify_config.ENABLE_STEP_BY_STEP_TOUR,
             rollout_started_at=dify_config.STEP_BY_STEP_TOUR_ROLLOUT_STARTED_AT,
         ),
-        partner_tenant_bindings=PartnerTenantBindingService(
-            sync_bindings=BillingService.sync_partner_tenants_bindings,
-        ),
         recommended_app_queries=recommended_app_queries,
         recommended_app_packages=recommended_app_packages,
         remote_files=remote_file_service,
@@ -676,6 +675,11 @@ def build_application_services(
             tokens=PassportTokenGateway(passport=PassportService()),
             now=lambda: datetime.now(UTC),
             access_token_expire_minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES,
+        ),
+        api_based_extensions=APIBasedExtensionApplicationService(
+            extensions=APIBasedExtensionRepository(session_factory=database_client),
+            secrets=WorkspaceTokenCipher(),
+            probe=APIBasedExtensionPingProbe(),
         ),
         tags=tags,
         workflow_statistics=WorkflowStatisticQueryService(
