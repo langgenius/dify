@@ -8,7 +8,10 @@ from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock
 
 import pytest
+from pytest_mock import MockerFixture
 
+from core.tools.tool_file_manager import ToolFileManager
+from core.workflow.node_runtime import DifyToolFileManager
 from core.workflow.system_variables import build_system_variables
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities.llm_entities import LLMUsage
@@ -71,7 +74,6 @@ def tool_node(monkeypatch) -> ToolNode:
         ops_stub.TraceTask = object  # pragma: no cover - stub attribute
         monkeypatch.setitem(sys.modules, module_name, ops_stub)
 
-    from graphon.nodes.protocols import ToolFileManagerProtocol
     from graphon.nodes.tool.tool_node import ToolNode
 
     graph_config: dict[str, Any] = {
@@ -111,8 +113,7 @@ def tool_node(monkeypatch) -> ToolNode:
 
     config = graph_config["nodes"][0]
 
-    # Provide a stub ToolFileManager to satisfy the ToolNode constructor.
-    tool_file_manager = MagicMock(spec=ToolFileManagerProtocol)
+    tool_file_manager = DifyToolFileManager(init_params.run_context)
     runtime = _StubToolRuntime()
 
     node = ToolNode(
@@ -204,7 +205,7 @@ def test_plain_link_messages_remain_links(tool_node: ToolNode):
     assert files_segment.value == []
 
 
-def test_image_link_messages_use_tool_file_id_metadata(tool_node: ToolNode):
+def test_image_link_messages_use_tool_file_id_metadata(tool_node: ToolNode, mocker: MockerFixture):
     file_obj = File(
         file_type=FileType.DOCUMENT,
         transfer_method=FileTransferMethod.TOOL_FILE,
@@ -215,9 +216,10 @@ def test_image_link_messages_use_tool_file_id_metadata(tool_node: ToolNode):
         size=123,
         storage_key="file-key",
     )
-    tool_node._tool_file_manager.get_file_generator_by_tool_file_id.return_value = (
-        None,
-        SimpleNamespace(mime_type="application/pdf"),
+    download = mocker.patch.object(
+        ToolFileManager,
+        "get_file_generator_by_tool_file_id",
+        return_value=(None, SimpleNamespace(mime_type="application/pdf")),
     )
     tool_node._runtime.build_file_reference = MagicMock(return_value=file_obj)
     message = ToolRuntimeMessage(
@@ -228,7 +230,7 @@ def test_image_link_messages_use_tool_file_id_metadata(tool_node: ToolNode):
 
     events, _ = _run_transform(tool_node, message)
 
-    tool_node._tool_file_manager.get_file_generator_by_tool_file_id.assert_called_once_with("file-id")
+    download.assert_called_once_with("file-id")
     completed_events = [event for event in events if isinstance(event, StreamCompletedEvent)]
     assert len(completed_events) == 1
     files_segment = completed_events[0].node_run_result.outputs["files"]

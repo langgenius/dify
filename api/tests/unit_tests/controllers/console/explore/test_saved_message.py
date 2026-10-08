@@ -7,9 +7,9 @@ from uuid import uuid4
 
 import pytest
 from flask import Flask
-from werkzeug.exceptions import NotFound
 
 import controllers.console.explore.saved_message as module
+from controllers.common.errors import NotFoundError
 from controllers.console.explore.error import NotCompletionAppError
 from graphon.file import File, FileTransferMethod, FileType
 from libs.external_api import ExternalApi
@@ -284,13 +284,14 @@ class TestSavedMessageListApi:
     def test_post_maps_missing_message_to_not_found(self, services: _ApplicationServiceMocks) -> None:
         services.saved_messages.save.side_effect = MessageNotExistsError()
 
-        with pytest.raises(NotFound, match="Message Not Exists"):
+        with pytest.raises(NotFoundError, match="Message Not Exists") as raised:
             unwrap(module.SavedMessageListApi().post)(
                 module.SavedMessageListApi(),
                 module.SavedMessageCreatePayload.model_validate({"message_id": str(uuid4())}),
                 _REQUEST_CONTEXT,
                 _installed_app(),
             )
+        assert raised.value.data == {"code": "not_found", "message": "Message Not Exists.", "status": 404}
 
 
 class TestSavedMessageApi:
