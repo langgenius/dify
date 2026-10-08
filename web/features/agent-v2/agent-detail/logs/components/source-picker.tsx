@@ -11,6 +11,7 @@ import {
   ComboboxEmpty,
   ComboboxGroup,
   ComboboxGroupLabel,
+  ComboboxIcon,
   ComboboxInput,
   ComboboxInputGroup,
   ComboboxItem,
@@ -92,22 +93,25 @@ export function AgentLogSourcePicker({
     >
       <ComboboxTrigger
         aria-label={t(($) => $['agentDetail.logs.filters.source.label'])}
-        className="mt-0 w-fit max-w-full min-w-22"
+        className="group/source-trigger flex h-8 w-fit max-w-full min-w-22 items-center gap-0.5 rounded-lg bg-components-input-bg-normal px-3 py-2 text-start system-sm-regular text-components-input-text-filled transition-colors hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-placeholder:text-components-input-text-placeholder data-popup-open:bg-state-base-hover-alt motion-reduce:transition-none"
       >
-        <ComboboxValue<AgentLogSourceResponse['id'], true>
-          placeholder={t(($) => $['agentDetail.logs.filters.source.all'])}
-        >
-          {(selectedValue) => {
-            if (!selectedValue?.length) return t(($) => $['agentDetail.logs.filters.source.all'])
-            if (selectedValue.length === 1) {
-              return (
-                sourceById.get(selectedValue[0]!)?.app_name ??
-                tCommon(($) => $['dynamicSelect.selected'], { count: 1 })
-              )
-            }
-            return tCommon(($) => $['dynamicSelect.selected'], { count: selectedValue.length })
-          }}
-        </ComboboxValue>
+        <span className="min-w-0 grow truncate">
+          <ComboboxValue<AgentLogSourceResponse['id'], true>
+            placeholder={t(($) => $['agentDetail.logs.filters.source.all'])}
+          >
+            {(selectedValue) => {
+              if (!selectedValue?.length) return t(($) => $['agentDetail.logs.filters.source.all'])
+              if (selectedValue.length === 1) {
+                return (
+                  sourceById.get(selectedValue[0]!)?.app_name ??
+                  tCommon(($) => $['dynamicSelect.selected'], { count: 1 })
+                )
+              }
+              return tCommon(($) => $['dynamicSelect.selected'], { count: selectedValue.length })
+            }}
+          </ComboboxValue>
+        </span>
+        <ComboboxIcon className="block text-text-quaternary transition-colors group-hover/source-trigger:text-text-secondary group-data-popup-open/source-trigger:text-text-secondary" />
       </ComboboxTrigger>
       <ComboboxPortal>
         <ComboboxPositioner>

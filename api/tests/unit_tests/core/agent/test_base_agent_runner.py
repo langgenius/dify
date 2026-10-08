@@ -1,6 +1,7 @@
 import json
 from datetime import datetime
 from decimal import Decimal
+from unittest.mock import MagicMock, create_autospec
 
 import pytest
 from pytest_mock import MockerFixture
@@ -17,11 +18,10 @@ from core.app.app_config.entities import (
     PromptTemplateEntity,
 )
 from core.app.apps.agent_chat.app_config_manager import AgentChatAppConfig
-from core.app.apps.base_app_queue_manager import AppQueueManager
+from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import (
     AgentChatAppGenerateEntity,
     InvokeFrom,
-    ModelConfigWithCredentialsEntity,
 )
 from core.model_manager import ModelInstance
 from core.tools.__base.tool import Tool
@@ -31,13 +31,13 @@ from core.tools.entities.tool_entities import (
     ToolDescription,
     ToolEntity,
     ToolIdentity,
+    ToolParameter,
     ToolProviderType,
 )
 from extensions.ext_storage import storage
 from extensions.storage.storage_type import StorageType
 from graphon.file import FileTransferMethod, FileType
 from graphon.model_runtime.entities import LLMUsage, PromptMessageTool
-from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from models.enums import ConversationFromSource, CreatorUserRole, MessageFileBelongsTo
 from models.model import (
     AppMode,
@@ -52,6 +52,8 @@ from services.agent.chat.base_runner import BaseAgentRunner
 from services.app.generation.ports import AgentHistoryMessage
 from services.knowledge.retrieval.dataset_retrieval import DatasetRetrieval
 from services.tools.dataset.tool import DatasetRetrieverTool
+from tests.tool_fixtures import make_runtime_tool
+from tests.unit_tests.core.model_fixtures import make_model_config
 from tests.unit_tests.model_factories import make_app
 
 
@@ -205,7 +207,7 @@ def _dataset_tool(mocker: MockerFixture, name: str, _sessions) -> DatasetRetriev
     return DatasetRetrieverTool(
         entity=_tool_entity(name),
         runtime=ToolRuntime(tenant_id="tenant"),
-        retrieval=mocker.Mock(spec=DatasetRetrieval),
+        retrieval=create_autospec(DatasetRetrieval, instance=True, spec_set=True),
         dataset_id="dataset",
         config=DatasetRetrieveConfigEntity(retrieve_strategy="single"),
         top_k=2,
@@ -223,34 +225,76 @@ def database_session(sqlite_session: Session) -> Session:
 
 
 @pytest.fixture
-def runner(sqlite_session: Session, mocker: MockerFixture, workflow_runtime, *, app_records) -> BaseAgentRunner:
-    app_config = _app_config()
-    llm = mocker.Mock(spec=LargeLanguageModel)
-    llm.get_model_schema.return_value = None
-    model_instance = mocker.Mock(
-        spec=ModelInstance,
-        model_type_instance=llm,
-        model_name="model",
-        credentials={},
+def queue_manager(mocker: MockerFixture) -> MessageBasedAppQueueManager:
+    mocker.patch("core.app.apps.base_app_queue_manager.redis_client.setex")
+    return MessageBasedAppQueueManager(
+        task_id="task",
+        user_id="user",
+        invoke_from=InvokeFrom.DEBUGGER,
+        conversation_id="conv1",
+        app_mode=AppMode.AGENT_CHAT,
+        message_id="msg_current",
     )
+
+
+@pytest.fixture
+def runner(
+    sqlite_session: Session,
+    mocker: MockerFixture,
+    workflow_runtime,
+    queue_manager: MessageBasedAppQueueManager,
+    agent_tool_invoker: MagicMock,
+    *,
+    app_records,
+) -> BaseAgentRunner:
+    app_config = _app_config()
+    model_config = make_model_config(provider="provider", model="model", mode="chat")
+    model_instance = ModelInstance(
+        provider_model_bundle=model_config.provider_model_bundle,
+        model=model_config.model,
+        credentials=model_config.credentials,
+    )
+    mocker.patch.object(model_instance.model_type_instance, "get_model_schema", return_value=None)
 
     sqlite_session.add_all([make_app(app_id="app1", tenant_id="tenant"), _conversation(), _message()])
     sqlite_session.commit()
+
     return BaseAgentRunner(
         dataset_tools=workflow_runtime.dataset_tools,
         records=app_records,
         workflow_runtime=workflow_runtime,
+        tool_invoker=agent_tool_invoker,
         tenant_id="tenant",
         application_generate_entity=_app_generate(app_config=app_config),
         conversation=_conversation(),
         app_config=app_config,
-        model_config=ModelConfigWithCredentialsEntity.model_construct(),
+        model_config=model_config,
         config=_agent(),
-        queue_manager=mocker.Mock(spec=AppQueueManager),
+        queue_manager=queue_manager,
         message=_message(),
         user_id="user",
         model_instance=model_instance,
     )
+
+
+def _tool(name: str, parameter_names: list[str]) -> Tool:
+    tool = make_runtime_tool(
+        base_params=[
+            ToolParameter(
+                name=parameter_name,
+                label=I18nObject(en_US=parameter_name),
+                human_description=I18nObject(en_US="desc"),
+                llm_description="desc",
+                type=ToolParameter.ToolParameterType.STRING,
+                form=ToolParameter.ToolParameterForm.LLM,
+                required=True,
+            )
+            for parameter_name in parameter_names
+        ],
+        runtime_params=[],
+    )
+    tool.entity.identity.name = name
+    return tool
 
 
 class TestRepack:
@@ -265,14 +309,13 @@ class TestRepack:
         assert result.app_config.prompt_template.simple_prompt_template == "abc"
 
 
-def test_update_prompt_tool_replaces_parameters(runner: BaseAgentRunner, mocker: MockerFixture) -> None:
-    tool = mocker.Mock(spec=Tool)
+def test_update_prompt_tool_replaces_parameters(runner: BaseAgentRunner) -> None:
+    tool = _tool("tool", ["p1"])
     schema = {
         "type": "object",
         "properties": {"p1": {"type": "string", "description": "desc"}},
         "required": ["p1"],
     }
-    tool.get_llm_parameters_json_schema.return_value = schema
     prompt_tool = PromptMessageTool(name="tool", description="", parameters={"properties": {}, "required": []})
 
     result = runner.update_prompt_message_tool(tool, prompt_tool)
@@ -625,13 +668,12 @@ def test_organize_history_without_tool_name(runner: BaseAgentRunner, sqlite_sess
 
 def test_convert_tool_to_prompt_message_tool(runner: BaseAgentRunner, mocker: MockerFixture) -> None:
     tool = _agent_tool("tool1")
-    tool_entity = mocker.Mock(spec=Tool, entity=_tool_entity("tool1"))
+    tool_entity = _tool("tool1", ["param1"])
     schema = {
         "type": "object",
         "properties": {"param1": {"type": "string", "description": "desc"}},
         "required": ["param1"],
     }
-    tool_entity.get_llm_parameters_json_schema.return_value = schema
     mocker.patch.object(module.ToolManager, "get_agent_tool_runtime", return_value=tool_entity)
 
     prompt_tool, entity = runner._convert_tool_to_prompt_message_tool(tool)
@@ -653,8 +695,7 @@ def test_init_prompt_tools_adds_agent_and_dataset_tools(
     runner: BaseAgentRunner, mocker: MockerFixture, sqlite_session_factory
 ) -> None:
     agent_tool = _agent_tool("agent_tool")
-    agent_runtime = mocker.Mock(spec=Tool, entity=_tool_entity("agent_tool"))
-    agent_runtime.get_llm_parameters_json_schema.return_value = {"type": "object", "properties": {}}
+    agent_runtime = _tool("agent_tool", [])
     mocker.patch.object(module.ToolManager, "get_agent_tool_runtime", return_value=agent_runtime)
     dataset_tool = _dataset_tool(mocker, "dataset_tool", sqlite_session_factory)
     runner.app_config.agent = _agent(agent_tool)
@@ -678,7 +719,12 @@ def test_init_prompt_tools_skips_deleted_agent_tool(runner: BaseAgentRunner, moc
 
 
 def test_init_uses_real_session_for_count_and_dependencies(
-    sqlite_session: Session, mocker: MockerFixture, *, app_records
+    sqlite_session: Session,
+    mocker: MockerFixture,
+    queue_manager: MessageBasedAppQueueManager,
+    agent_tool_invoker: MagicMock,
+    *,
+    app_records,
 ) -> None:
     sqlite_session.add_all(
         [
@@ -689,16 +735,14 @@ def test_init_uses_real_session_for_count_and_dependencies(
     )
     sqlite_session.commit()
     get_dataset_tools = mocker.Mock(return_value=["ds_tool"])
-    llm = mocker.Mock(spec=LargeLanguageModel)
-    llm.get_model_schema.return_value = mocker.Mock(
-        features=[module.ModelFeature.STREAM_TOOL_CALL, module.ModelFeature.VISION]
+    model_config = make_model_config(provider="provider", model="m", mode="chat")
+    model_config.model_schema.features = [module.ModelFeature.STREAM_TOOL_CALL, module.ModelFeature.VISION]
+    model_instance = ModelInstance(
+        provider_model_bundle=model_config.provider_model_bundle,
+        model=model_config.model,
+        credentials=model_config.credentials,
     )
-    model_instance = mocker.Mock(
-        spec=ModelInstance,
-        model_type_instance=llm,
-        model_name="m",
-        credentials="c",
-    )
+    mocker.patch.object(model_instance.model_type_instance, "get_model_schema", return_value=model_config.model_schema)
     app_config = _app_config(
         dataset=DatasetEntity(
             dataset_ids=["d1"],
@@ -716,13 +760,14 @@ def test_init_uses_real_session_for_count_and_dependencies(
     initialized = BaseAgentRunner(
         dataset_tools=get_dataset_tools,
         records=app_records,
+        tool_invoker=agent_tool_invoker,
         tenant_id="tenant",
         application_generate_entity=app_generate,
         conversation=_conversation(),
         app_config=app_config,
-        model_config=ModelConfigWithCredentialsEntity.model_construct(),
+        model_config=model_config,
         config=_agent(),
-        queue_manager=mocker.Mock(spec=AppQueueManager),
+        queue_manager=queue_manager,
         message=message,
         user_id="user",
         model_instance=model_instance,

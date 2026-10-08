@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy import create_engine, event, select
@@ -7,10 +7,12 @@ from sqlalchemy.pool import QueuePool
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.apps.draft_variable_saver import NoopDraftVariableSaver
+from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import QueueWorkflowStartedEvent
 from core.workflow.system_variables import build_system_variables
 from extensions.application_services.workflow import build_workflow_execution_dependencies
+from extensions.ext_redis import RedisClientWrapper
 from graphon.entities import WorkflowStartReason
 from graphon.runtime import GraphRuntimeState
 from models.base import TypeBase
@@ -22,10 +24,9 @@ from tests.unit_tests.model_factories import make_account, make_end_user, make_w
 from tests.workflow_test_utils import build_test_variable_pool
 
 
-@dataclass
-class WorkflowQueue:
-    invoke_from: InvokeFrom
-    graph_runtime_state: GraphRuntimeState
+@pytest.fixture(autouse=True)
+def bind_queue_redis(monkeypatch: pytest.MonkeyPatch, redis_transport: tuple[RedisClientWrapper, MagicMock]) -> None:
+    monkeypatch.setattr("core.app.apps.base_app_queue_manager.redis_client", redis_transport[0])
 
 
 @pytest.fixture
@@ -61,12 +62,19 @@ def build_pipeline(runtime, invoke_from, user, *, tool_providers):
         variable_pool=build_test_variable_pool(variables=build_system_variables(workflow_execution_id="run-id")),
         start_at=0,
     )
+    queue_manager = WorkflowAppQueueManager(
+        task_id=entity.task_id,
+        user_id=user.id,
+        invoke_from=invoke_from,
+        app_mode=AppMode.WORKFLOW,
+    )
+    queue_manager.graph_runtime_state = state
     return WorkflowAppGenerateTaskPipeline(
         contexts=runtime.contexts,
         logs=runtime.logs,
         application_generate_entity=entity,
         workflow=workflow,
-        queue_manager=WorkflowQueue(invoke_from, state),
+        queue_manager=queue_manager,
         user=user,
         stream=False,
         draft_var_saver_factory=lambda **_kwargs: NoopDraftVariableSaver(),

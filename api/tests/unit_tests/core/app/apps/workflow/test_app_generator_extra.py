@@ -3,7 +3,7 @@ from __future__ import annotations
 import contextlib
 import json
 from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import Mock, create_autospec
 
 import pytest
 from sqlalchemy import inspect
@@ -12,16 +12,24 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.app.app_config.entities import AppAdditionalFeatures, WorkflowUIBasedAppConfig
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
-from core.ops.ops_trace_manager import TraceQueueManager
+from core.ops.ops_trace_manager import OpsTraceManager, TraceQueueManager
 from graphon.variable_loader import VariableLoader
 from models.enums import EndUserType
 from models.model import App, AppMode, EndUser
 from models.snippet import CustomizedSnippet
 from models.workflow import Workflow, WorkflowKind, WorkflowType
 from repositories.agent.runtime_repository import WorkflowAgentBindingResolver
-from services.workflow.execution.adapters.workflow import app_generator as app_generator_module
 from services.workflow.execution.adapters.workflow.app_generator import WorkflowAppGenerator
 from services.workflow.execution.ports import WorkflowRuntime
+
+
+@pytest.fixture(autouse=True)
+def disable_trace_delivery(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Construct real trace managers without provider lookup or background delivery."""
+    monkeypatch.setattr(OpsTraceManager, "get_ops_trace_instance", lambda app_id: None)
+    monkeypatch.setattr(TraceQueueManager, "start_timer", lambda self: None)
+    monkeypatch.setattr("core.telemetry.gateway.is_enterprise_telemetry_enabled", lambda: False)
+
 
 TENANT_ID = "00000000-0000-0000-0000-000000000001"
 OTHER_TENANT_ID = "00000000-0000-0000-0000-000000000002"
@@ -254,7 +262,7 @@ class TestWorkflowAppGeneratorValidation:
         *,
         workflow_runtime: WorkflowRuntime,
     ):
-        loader = Mock(spec=VariableLoader)
+        loader = create_autospec(VariableLoader, instance=True)
         loader_factory = Mock(return_value=loader)
         generator = WorkflowAppGenerator(draft_variable_loader=loader_factory, runtime=workflow_runtime)
         app = _persist_app(sqlite_session)
@@ -298,7 +306,7 @@ class TestWorkflowAppGeneratorValidation:
         *,
         workflow_runtime: WorkflowRuntime,
     ):
-        loader = Mock(spec=VariableLoader)
+        loader = create_autospec(VariableLoader, instance=True)
         loader_factory = Mock(return_value=loader)
         generator = WorkflowAppGenerator(draft_variable_loader=loader_factory, runtime=workflow_runtime)
         app = _persist_app(sqlite_session)
@@ -411,7 +419,6 @@ class TestWorkflowAppGeneratorGenerate:
         app = _persist_app(sqlite_session)
         workflow = _persist_workflow(sqlite_session)
         user = _persist_end_user(sqlite_session)
-        monkeypatch.setattr(app_generator_module, "TraceQueueManager", Mock(return_value=Mock(spec=TraceQueueManager)))
         execute = Mock(return_value={"ok": True})
         monkeypatch.setattr(generator, "_generate", execute)
         return generator, app, workflow, user, execute

@@ -6,14 +6,15 @@ from unittest.mock import MagicMock, patch
 import pytest
 from faker import Faker
 from pydantic import TypeAdapter, ValidationError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.tools.entities.tool_entities import ApiProviderSchemaType
 from core.tools.errors import ApiToolProviderNotFoundError
-from core.tools.tool_label_manager import ToolLabelManager
 from models import Account, AccountStatus, Tenant, TenantStatus
 from models.tools import ApiToolProvider
-from services.tools.legacy_api_tools_manage_service import ApiToolManageService
+from repositories.tools.provider_repository import ToolProviderRepository
+from services.tools.api_tools_manage_service import ApiToolManageService
+from services.tools.tool_label_manager import ToolLabelManager
 
 MockDependencies = dict[str, MagicMock]
 
@@ -25,17 +26,15 @@ class TestApiToolManageService:
     def mock_external_service_dependencies(self) -> Iterator[MockDependencies]:
         """Mock setup for external service dependencies."""
         with (
-            patch("services.tools.legacy_api_tools_manage_service.ToolLabelManager") as mock_tool_label_manager,
-            patch("services.tools.legacy_api_tools_manage_service.create_tool_provider_encrypter") as mock_encrypter,
-            patch(
-                "services.tools.legacy_api_tools_manage_service.ApiToolProviderController"
-            ) as mock_provider_controller,
+            patch("services.tools.api_tools_manage_service.ToolLabelManager") as mock_tool_label_manager,
+            patch("services.tools.api_tools_manage_service.create_tool_provider_encrypter") as mock_encrypter,
+            patch("services.tools.api_tools_manage_service.ApiToolProviderController") as mock_provider_controller,
         ):
             # Setup default mock returns
             mock_tool_label_manager.update_tool_labels.return_value = None
             mock_encrypter.return_value = (mock_encrypter, None)
             mock_encrypter.encrypt.return_value = {"encrypted": "credentials"}
-            mock_provider_controller.from_db.return_value = mock_provider_controller
+            mock_provider_controller.from_provider.return_value = mock_provider_controller
             mock_provider_controller.load_bundled_tools.return_value = None
 
             yield {
@@ -376,8 +375,7 @@ class TestApiToolManageService:
         # Verify mock interactions
         mock_external_service_dependencies["tool_label_manager"].update_tool_labels.assert_called_once()
         mock_external_service_dependencies["encrypter"].assert_called_once()
-        mock_external_service_dependencies["provider_controller"].from_db.assert_called_once()
-        mock_external_service_dependencies["provider_controller"].load_bundled_tools.assert_called_once()
+        mock_external_service_dependencies["provider_controller"].from_provider.assert_called_once()
 
     def test_create_api_tool_provider_duplicate_name(
         self,
@@ -582,7 +580,7 @@ class TestApiToolManageService:
 
         # Verify mock interactions
         mock_external_service_dependencies["encrypter"].assert_called_once()
-        mock_external_service_dependencies["provider_controller"].from_db.assert_called_once()
+        mock_external_service_dependencies["provider_controller"].from_provider.assert_called_once()
 
     def test_delete_api_tool_provider_success(
         self,
@@ -682,7 +680,7 @@ class TestApiToolManageService:
 
         # Reset mock history so assertions focus on update path only
         mock_external_service_dependencies["encrypter"].reset_mock()
-        mock_external_service_dependencies["provider_controller"].from_db.reset_mock()
+        mock_external_service_dependencies["provider_controller"].from_provider.reset_mock()
         mock_external_service_dependencies["tool_label_manager"].update_tool_labels.reset_mock()
 
         # Act: Update the provider with new values
@@ -739,7 +737,7 @@ class TestApiToolManageService:
         assert original_provider is None
 
         # Verify update flow calls critical collaborators
-        mock_external_service_dependencies["provider_controller"].from_db.assert_called_once()
+        mock_external_service_dependencies["provider_controller"].from_provider.assert_called_once()
         mock_external_service_dependencies["encrypter"].assert_called_once()
         mock_cache.delete.assert_called_once()
 
@@ -793,7 +791,7 @@ class TestApiToolManageService:
         # Reset mock history so assertions focus on update failure path only
         mock_external_service_dependencies["tool_label_manager"].update_tool_labels.reset_mock()
         mock_external_service_dependencies["encrypter"].reset_mock()
-        mock_external_service_dependencies["provider_controller"].from_db.reset_mock()
+        mock_external_service_dependencies["provider_controller"].from_provider.reset_mock()
 
         # Act & Assert: Verify update fails with clear error message
         target_new_name = "new-provider-name"
@@ -838,7 +836,7 @@ class TestApiToolManageService:
         # Assert: Early failure should skip all downstream external interactions
         mock_external_service_dependencies["tool_label_manager"].update_tool_labels.assert_not_called()
         mock_external_service_dependencies["encrypter"].assert_not_called()
-        mock_external_service_dependencies["provider_controller"].from_db.assert_not_called()
+        mock_external_service_dependencies["provider_controller"].from_provider.assert_not_called()
 
     def test_update_api_tool_provider_missing_auth_type(
         self,
@@ -891,8 +889,13 @@ class TestApiToolManageService:
             db_session_with_containers, mock_external_service_dependencies
         )
 
+        tool_providers = ToolProviderRepository(
+            sessionmaker(bind=db_session_with_containers.get_bind(), expire_on_commit=False)
+        )
         with pytest.raises(ValueError, match="you have not added provider"):
-            ApiToolManageService.list_api_tool_provider_tools(account.id, tenant.id, "nonexistent")
+            ApiToolManageService.list_api_tool_provider_tools(
+                account.id, tenant.id, "nonexistent", tool_providers=tool_providers
+            )
 
     def test_test_api_tool_preview_invalid_schema_type(
         self, db_session_with_containers: Session, mock_external_service_dependencies: MockDependencies

@@ -47,9 +47,11 @@ class FakeRagPipelineGenerateEntity(SimpleNamespace):
 
 @pytest.fixture
 def generator(mocker: MockerFixture, sqlite_engine: Engine, *, workflow_runtime: WorkflowRuntime):
+    variable_loader = create_autospec(VariableLoader, instance=True, spec_set=True)
+    draft_variable_saver = create_autospec(DraftVariableSaverFactory, instance=True, spec_set=True)
     gen = module.PipelineGenerator(
-        draft_variable_loader=Mock(return_value=Mock(spec=VariableLoader)),
-        draft_variable_saver=Mock(return_value=Mock(spec=DraftVariableSaverFactory)),
+        draft_variable_loader=Mock(return_value=variable_loader),
+        draft_variable_saver=Mock(return_value=draft_variable_saver),
         documents=SQLAlchemyDocumentRepository(session_factory=sessionmaker(bind=sqlite_engine)),
         datasource_providers=DatasourceProviderService(
             credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)

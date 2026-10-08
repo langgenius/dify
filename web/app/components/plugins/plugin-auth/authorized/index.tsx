@@ -3,10 +3,10 @@ import type { PopoverContentProps } from '@langgenius/dify-ui/popover'
 import type { Credential, PluginPayload } from '../types'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -341,7 +341,7 @@ const Authorized = ({
               {t(($) => $['list.delete.title'], { ns: 'datasetDocuments' })}
             </AlertDialogTitle>
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
@@ -351,7 +351,7 @@ const Authorized = ({
             >
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
       {!!editValues && (

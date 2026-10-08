@@ -65,12 +65,12 @@ class TestKeywordsModeration:
             config=keywords_config,
         )
 
-    def test_validate_config_success(self, keywords_config: dict[str, Any]):
+    def test_validate_config_success(self, keywords_config: dict[str, Any]) -> None:
         """Test successful validation of keywords moderation configuration."""
         # Should not raise any exception
         KeywordsModeration.validate_config("test-tenant", keywords_config)
 
-    def test_validate_config_missing_keywords(self):
+    def test_validate_config_missing_keywords(self) -> None:
         """Test validation fails when keywords are missing."""
         config = {
             "inputs_config": {"enabled": True, "preset_response": "Blocked"},
@@ -80,7 +80,7 @@ class TestKeywordsModeration:
         with pytest.raises(ValueError, match="keywords is required"):
             KeywordsModeration.validate_config("test-tenant", config)
 
-    def test_validate_config_keywords_too_long(self):
+    def test_validate_config_keywords_too_long(self) -> None:
         """Test validation fails when keywords exceed length limit."""
         config = {
             "inputs_config": {"enabled": True, "preset_response": "Blocked"},
@@ -91,7 +91,7 @@ class TestKeywordsModeration:
         with pytest.raises(ValueError, match="keywords length must be less than 10000"):
             KeywordsModeration.validate_config("test-tenant", config)
 
-    def test_validate_config_too_many_rows(self):
+    def test_validate_config_too_many_rows(self) -> None:
         """Test validation fails when keyword rows exceed limit."""
         config = {
             "inputs_config": {"enabled": True, "preset_response": "Blocked"},
@@ -102,7 +102,7 @@ class TestKeywordsModeration:
         with pytest.raises(ValueError, match="the number of rows for the keywords must be less than 100"):
             KeywordsModeration.validate_config("test-tenant", config)
 
-    def test_validate_config_missing_preset_response(self):
+    def test_validate_config_missing_preset_response(self) -> None:
         """Test validation fails when preset response is missing for enabled config."""
         config = {
             "inputs_config": {"enabled": True},  # Missing preset_response
@@ -113,7 +113,7 @@ class TestKeywordsModeration:
         with pytest.raises(ValueError, match="inputs_config.preset_response is required"):
             KeywordsModeration.validate_config("test-tenant", config)
 
-    def test_validate_config_preset_response_too_long(self):
+    def test_validate_config_preset_response_too_long(self) -> None:
         """Test validation fails when preset response exceeds character limit."""
         config = {
             "inputs_config": {
@@ -127,7 +127,7 @@ class TestKeywordsModeration:
         with pytest.raises(ValueError, match="inputs_config.preset_response must be less than 100 characters"):
             KeywordsModeration.validate_config("test-tenant", config)
 
-    def test_moderation_for_inputs_crlf_keywords_match(self, keywords_config: dict[str, Any]):
+    def test_moderation_for_inputs_crlf_keywords_match(self, keywords_config: dict[str, Any]) -> None:
         """Keywords pasted with Windows line endings still match."""
         keywords_config["keywords"] = "spam\r\nfree money"
         moderation = KeywordsModeration(app_id="app", tenant_id="tenant", config=keywords_config)
@@ -136,7 +136,7 @@ class TestKeywordsModeration:
 
         assert result.flagged is True
 
-    def test_moderation_whitespace_only_keyword_row_is_ignored(self, keywords_config: dict[str, Any]):
+    def test_moderation_whitespace_only_keyword_row_is_ignored(self, keywords_config: dict[str, Any]) -> None:
         """A whitespace-only keyword row must not flag every message."""
         keywords_config["keywords"] = "spam\n   \n "
         moderation = KeywordsModeration(app_id="app", tenant_id="tenant", config=keywords_config)
@@ -145,7 +145,7 @@ class TestKeywordsModeration:
 
         assert result.flagged is False
 
-    def test_moderation_for_inputs_no_violation(self, keywords_moderation: KeywordsModeration):
+    def test_moderation_for_inputs_no_violation(self, keywords_moderation: KeywordsModeration) -> None:
         """Test input moderation when no keywords are matched."""
         inputs = {"user_input": "This is a clean message"}
         query = "What is the weather?"
@@ -156,7 +156,7 @@ class TestKeywordsModeration:
         assert result.action == ModerationAction.DIRECT_OUTPUT
         assert result.preset_response == "Your input contains inappropriate content."
 
-    def test_moderation_for_inputs_with_violation_in_query(self, keywords_moderation: KeywordsModeration):
+    def test_moderation_for_inputs_with_violation_in_query(self, keywords_moderation: KeywordsModeration) -> None:
         """Test input moderation detects keywords in query string."""
         inputs = {"user_input": "Hello"}
         query = "Tell me about badword"
@@ -167,7 +167,7 @@ class TestKeywordsModeration:
         assert result.action == ModerationAction.DIRECT_OUTPUT
         assert result.preset_response == "Your input contains inappropriate content."
 
-    def test_moderation_for_inputs_with_violation_in_inputs(self, keywords_moderation: KeywordsModeration):
+    def test_moderation_for_inputs_with_violation_in_inputs(self, keywords_moderation: KeywordsModeration) -> None:
         """Test input moderation detects keywords in input fields."""
         inputs = {"user_input": "This contains offensive content"}
         query = ""
@@ -177,7 +177,7 @@ class TestKeywordsModeration:
         assert result.flagged is True
         assert result.action == ModerationAction.DIRECT_OUTPUT
 
-    def test_moderation_for_inputs_case_insensitive(self, keywords_moderation: KeywordsModeration):
+    def test_moderation_for_inputs_case_insensitive(self, keywords_moderation: KeywordsModeration) -> None:
         """Test keyword matching is case-insensitive."""
         inputs = {"user_input": "This has BADWORD in caps"}
         query = ""
@@ -186,7 +186,7 @@ class TestKeywordsModeration:
 
         assert result.flagged is True
 
-    def test_moderation_for_inputs_partial_match(self, keywords_moderation: KeywordsModeration):
+    def test_moderation_for_inputs_partial_match(self, keywords_moderation: KeywordsModeration) -> None:
         """Test keywords are matched as substrings."""
         inputs = {"user_input": "This has badwords (plural)"}
         query = ""
@@ -195,7 +195,7 @@ class TestKeywordsModeration:
 
         assert result.flagged is True
 
-    def test_moderation_for_inputs_disabled(self):
+    def test_moderation_for_inputs_disabled(self) -> None:
         """Test input moderation when inputs_config is disabled."""
         config = {
             "inputs_config": {"enabled": False},
@@ -209,7 +209,7 @@ class TestKeywordsModeration:
 
         assert result.flagged is False
 
-    def test_moderation_for_outputs_no_violation(self, keywords_moderation: KeywordsModeration):
+    def test_moderation_for_outputs_no_violation(self, keywords_moderation: KeywordsModeration) -> None:
         """Test output moderation when no keywords are matched."""
         text = "This is a clean response from the AI"
 
@@ -219,7 +219,7 @@ class TestKeywordsModeration:
         assert result.action == ModerationAction.DIRECT_OUTPUT
         assert result.preset_response == "The response was blocked due to policy."
 
-    def test_moderation_for_outputs_with_violation(self, keywords_moderation: KeywordsModeration):
+    def test_moderation_for_outputs_with_violation(self, keywords_moderation: KeywordsModeration) -> None:
         """Test output moderation detects keywords in output text."""
         text = "This response contains spam content"
 
@@ -229,7 +229,7 @@ class TestKeywordsModeration:
         assert result.action == ModerationAction.DIRECT_OUTPUT
         assert result.preset_response == "The response was blocked due to policy."
 
-    def test_moderation_for_outputs_case_insensitive(self, keywords_moderation: KeywordsModeration):
+    def test_moderation_for_outputs_case_insensitive(self, keywords_moderation: KeywordsModeration) -> None:
         """Test output keyword matching is case-insensitive."""
         text = "This has OFFENSIVE in uppercase"
 
@@ -237,7 +237,7 @@ class TestKeywordsModeration:
 
         assert result.flagged is True
 
-    def test_moderation_for_outputs_disabled(self):
+    def test_moderation_for_outputs_disabled(self) -> None:
         """Test output moderation when outputs_config is disabled."""
         config = {
             "inputs_config": {"enabled": True, "preset_response": "Blocked"},
@@ -250,7 +250,7 @@ class TestKeywordsModeration:
 
         assert result.flagged is False
 
-    def test_empty_keywords_filtered(self):
+    def test_empty_keywords_filtered(self) -> None:
         """Test that empty lines in keywords are properly filtered out."""
         config = {
             "inputs_config": {"enabled": True, "preset_response": "Blocked"},
@@ -266,7 +266,7 @@ class TestKeywordsModeration:
         result = moderation.moderation_for_inputs({"input": "clean"}, "")
         assert result.flagged is False
 
-    def test_multiple_inputs_any_violation(self, keywords_moderation: KeywordsModeration):
+    def test_multiple_inputs_any_violation(self, keywords_moderation: KeywordsModeration) -> None:
         """Test that violation in any input field triggers flagging."""
         inputs = {
             "field1": "clean text",
@@ -278,7 +278,7 @@ class TestKeywordsModeration:
 
         assert result.flagged is True
 
-    def test_config_not_set_raises_error(self):
+    def test_config_not_set_raises_error(self) -> None:
         """Test that moderation fails gracefully when config is None."""
         moderation = KeywordsModeration("app-id", "tenant-id", None)
 
@@ -328,12 +328,12 @@ class TestOpenAIModeration:
             config=openai_config,
         )
 
-    def test_validate_config_success(self, openai_config: dict[str, Any]):
+    def test_validate_config_success(self, openai_config: dict[str, Any]) -> None:
         """Test successful validation of OpenAI moderation configuration."""
         # Should not raise any exception
         OpenAIModeration.validate_config("test-tenant", openai_config)
 
-    def test_validate_config_both_disabled_fails(self):
+    def test_validate_config_both_disabled_fails(self) -> None:
         """Test validation fails when both inputs and outputs are disabled."""
         config = {
             "inputs_config": {"enabled": False},
@@ -344,7 +344,9 @@ class TestOpenAIModeration:
             OpenAIModeration.validate_config("test-tenant", config)
 
     @patch("core.moderation.openai_moderation.openai_moderation.ModelManager.for_tenant", autospec=True)
-    def test_moderation_for_inputs_no_violation(self, mock_model_manager: Mock, openai_moderation: OpenAIModeration):
+    def test_moderation_for_inputs_no_violation(
+        self, mock_model_manager: Mock, openai_moderation: OpenAIModeration
+    ) -> None:
         """Test input moderation when OpenAI API returns no violations."""
         # Mock the model manager and instance
         mock_instance = MagicMock()
@@ -361,7 +363,9 @@ class TestOpenAIModeration:
         assert result.preset_response == "Content flagged by OpenAI moderation."
 
     @patch("core.moderation.openai_moderation.openai_moderation.ModelManager.for_tenant", autospec=True)
-    def test_moderation_for_inputs_with_violation(self, mock_model_manager: Mock, openai_moderation: OpenAIModeration):
+    def test_moderation_for_inputs_with_violation(
+        self, mock_model_manager: Mock, openai_moderation: OpenAIModeration
+    ) -> None:
         """Test input moderation when OpenAI API detects violations."""
         # Mock the model manager to return violation
         mock_instance = MagicMock()
@@ -378,7 +382,9 @@ class TestOpenAIModeration:
         assert result.preset_response == "Content flagged by OpenAI moderation."
 
     @patch("core.moderation.openai_moderation.openai_moderation.ModelManager.for_tenant", autospec=True)
-    def test_moderation_for_inputs_query_included(self, mock_model_manager: Mock, openai_moderation: OpenAIModeration):
+    def test_moderation_for_inputs_query_included(
+        self, mock_model_manager: Mock, openai_moderation: OpenAIModeration
+    ) -> None:
         """Test that query is included in moderation check with special key."""
         mock_instance = MagicMock()
         mock_instance.invoke_moderation.return_value = False
@@ -405,7 +411,7 @@ class TestOpenAIModeration:
         assert "e" in moderated_text
 
     @patch("core.moderation.openai_moderation.openai_moderation.ModelManager.for_tenant", autospec=True)
-    def test_moderation_for_inputs_disabled(self, mock_model_manager: Mock):
+    def test_moderation_for_inputs_disabled(self, mock_model_manager: Mock) -> None:
         """Test input moderation when inputs_config is disabled."""
         config = {
             "inputs_config": {"enabled": False},
@@ -420,7 +426,9 @@ class TestOpenAIModeration:
         mock_model_manager.assert_not_called()
 
     @patch("core.moderation.openai_moderation.openai_moderation.ModelManager.for_tenant", autospec=True)
-    def test_moderation_for_outputs_no_violation(self, mock_model_manager: Mock, openai_moderation: OpenAIModeration):
+    def test_moderation_for_outputs_no_violation(
+        self, mock_model_manager: Mock, openai_moderation: OpenAIModeration
+    ) -> None:
         """Test output moderation when OpenAI API returns no violations."""
         mock_instance = MagicMock()
         mock_instance.invoke_moderation.return_value = False
@@ -434,7 +442,9 @@ class TestOpenAIModeration:
         assert result.preset_response == "Response blocked by moderation."
 
     @patch("core.moderation.openai_moderation.openai_moderation.ModelManager.for_tenant", autospec=True)
-    def test_moderation_for_outputs_with_violation(self, mock_model_manager: Mock, openai_moderation: OpenAIModeration):
+    def test_moderation_for_outputs_with_violation(
+        self, mock_model_manager: Mock, openai_moderation: OpenAIModeration
+    ) -> None:
         """Test output moderation when OpenAI API detects violations."""
         mock_instance = MagicMock()
         mock_instance.invoke_moderation.return_value = True
@@ -447,7 +457,7 @@ class TestOpenAIModeration:
         assert result.action == ModerationAction.DIRECT_OUTPUT
 
     @patch("core.moderation.openai_moderation.openai_moderation.ModelManager.for_tenant", autospec=True)
-    def test_moderation_for_outputs_disabled(self, mock_model_manager: Mock):
+    def test_moderation_for_outputs_disabled(self, mock_model_manager: Mock) -> None:
         """Test output moderation when outputs_config is disabled."""
         config = {
             "inputs_config": {"enabled": True, "preset_response": "Blocked"},
@@ -463,7 +473,7 @@ class TestOpenAIModeration:
     @patch("core.moderation.openai_moderation.openai_moderation.ModelManager.for_tenant", autospec=True)
     def test_model_manager_called_with_correct_params(
         self, mock_model_manager: Mock, openai_moderation: OpenAIModeration
-    ):
+    ) -> None:
         """Test that ModelManager is called with correct parameters."""
         mock_instance = MagicMock()
         mock_instance.invoke_moderation.return_value = False
@@ -478,7 +488,7 @@ class TestOpenAIModeration:
         assert call_kwargs["provider"] == "openai"
         assert call_kwargs["model"] == "omni-moderation-latest"
 
-    def test_config_not_set_raises_error(self):
+    def test_config_not_set_raises_error(self) -> None:
         """Test that moderation fails when config is None."""
         moderation = OpenAIModeration("app-id", "tenant-id", None)
 
@@ -492,7 +502,7 @@ class TestOpenAIModeration:
 class TestModerationRuleStructure:
     """Test suite for ModerationRule data structure."""
 
-    def test_moderation_rule_structure(self):
+    def test_moderation_rule_structure(self) -> None:
         """Test ModerationRule structure for output moderation."""
         from core.moderation.output_moderation import ModerationRule
 
@@ -514,7 +524,7 @@ class TestModerationFactoryIntegration:
     """Test suite for ModerationFactory integration."""
 
     @patch("core.moderation.factory.code_based_extension", autospec=True)
-    def test_factory_delegates_to_extension(self, mock_extension: Mock):
+    def test_factory_delegates_to_extension(self, mock_extension: Mock) -> None:
         """Test ModerationFactory delegates to extension system."""
         from core.moderation.factory import ModerationFactory
 
@@ -538,7 +548,7 @@ class TestModerationFactoryIntegration:
         mock_instance.moderation_for_inputs.assert_called_once()
 
     @patch("core.moderation.factory.code_based_extension", autospec=True)
-    def test_factory_validate_config_delegates(self, mock_extension: Mock):
+    def test_factory_validate_config_delegates(self, mock_extension: Mock) -> None:
         """Test ModerationFactory.validate_config delegates to extension."""
         from core.moderation.factory import ModerationFactory
 
@@ -553,12 +563,12 @@ class TestModerationFactoryIntegration:
 class TestModerationBase:
     """Test suite for base moderation classes and enums."""
 
-    def test_moderation_action_enum_values(self):
+    def test_moderation_action_enum_values(self) -> None:
         """Test ModerationAction enum has expected values."""
         assert ModerationAction.DIRECT_OUTPUT == "direct_output"
         assert ModerationAction.OVERRIDDEN == "overridden"
 
-    def test_moderation_inputs_result_defaults(self):
+    def test_moderation_inputs_result_defaults(self) -> None:
         """Test ModerationInputsResult default values."""
         result = ModerationInputsResult(action=ModerationAction.DIRECT_OUTPUT)
 
@@ -567,7 +577,7 @@ class TestModerationBase:
         assert result.inputs == {}
         assert result.query == ""
 
-    def test_moderation_outputs_result_defaults(self):
+    def test_moderation_outputs_result_defaults(self) -> None:
         """Test ModerationOutputsResult default values."""
         result = ModerationOutputsResult(action=ModerationAction.DIRECT_OUTPUT)
 
@@ -575,12 +585,12 @@ class TestModerationBase:
         assert result.preset_response == ""
         assert result.text == ""
 
-    def test_moderation_error_exception(self):
+    def test_moderation_error_exception(self) -> None:
         """Test ModerationError can be raised and caught."""
         with pytest.raises(ModerationError, match="Test error message"):
             raise ModerationError("Test error message")
 
-    def test_moderation_inputs_result_with_values(self):
+    def test_moderation_inputs_result_with_values(self) -> None:
         """Test ModerationInputsResult with custom values."""
         result = ModerationInputsResult(
             flagged=True,
@@ -596,7 +606,7 @@ class TestModerationBase:
         assert result.inputs == {"field": "sanitized"}
         assert result.query == "sanitized query"
 
-    def test_moderation_outputs_result_with_values(self):
+    def test_moderation_outputs_result_with_values(self) -> None:
         """Test ModerationOutputsResult with custom values."""
         result = ModerationOutputsResult(
             flagged=True,
@@ -614,7 +624,7 @@ class TestModerationBase:
 class TestPresetManagement:
     """Test suite for preset response management across moderation types."""
 
-    def test_keywords_preset_response_in_inputs(self):
+    def test_keywords_preset_response_in_inputs(self) -> None:
         """Test preset response is properly returned for keyword input violations."""
         config = {
             "inputs_config": {
@@ -631,7 +641,7 @@ class TestPresetManagement:
         assert result.flagged is True
         assert result.preset_response == "Custom input blocked message"
 
-    def test_keywords_preset_response_in_outputs(self):
+    def test_keywords_preset_response_in_outputs(self) -> None:
         """Test preset response is properly returned for keyword output violations."""
         config = {
             "inputs_config": {"enabled": False},
@@ -649,7 +659,7 @@ class TestPresetManagement:
         assert result.preset_response == "Custom output blocked message"
 
     @patch("core.moderation.openai_moderation.openai_moderation.ModelManager.for_tenant", autospec=True)
-    def test_openai_preset_response_in_inputs(self, mock_model_manager: Mock):
+    def test_openai_preset_response_in_inputs(self, mock_model_manager: Mock) -> None:
         """Test preset response is properly returned for OpenAI input violations."""
         mock_instance = MagicMock()
         mock_instance.invoke_moderation.return_value = True
@@ -670,7 +680,7 @@ class TestPresetManagement:
         assert result.preset_response == "OpenAI input blocked"
 
     @patch("core.moderation.openai_moderation.openai_moderation.ModelManager.for_tenant", autospec=True)
-    def test_openai_preset_response_in_outputs(self, mock_model_manager: Mock):
+    def test_openai_preset_response_in_outputs(self, mock_model_manager: Mock) -> None:
         """Test preset response is properly returned for OpenAI output violations."""
         mock_instance = MagicMock()
         mock_instance.invoke_moderation.return_value = True
@@ -690,7 +700,7 @@ class TestPresetManagement:
         assert result.flagged is True
         assert result.preset_response == "OpenAI output blocked"
 
-    def test_preset_response_length_validation(self):
+    def test_preset_response_length_validation(self) -> None:
         """Test that preset responses exceeding 100 characters are rejected."""
         config = {
             "inputs_config": {
@@ -704,7 +714,7 @@ class TestPresetManagement:
         with pytest.raises(ValueError, match="must be less than 100 characters"):
             KeywordsModeration.validate_config("tenant-id", config)
 
-    def test_different_preset_responses_for_inputs_and_outputs(self):
+    def test_different_preset_responses_for_inputs_and_outputs(self) -> None:
         """Test that inputs and outputs can have different preset responses."""
         config = {
             "inputs_config": {
@@ -737,7 +747,7 @@ class TestKeywordsModerationAdvanced:
     - Complex input structures
     """
 
-    def test_unicode_keywords_matching(self):
+    def test_unicode_keywords_matching(self) -> None:
         """
         Test that keyword moderation correctly handles Unicode characters.
 
@@ -763,7 +773,7 @@ class TestKeywordsModerationAdvanced:
         result = moderation.moderation_for_outputs("This is 🚫 content")
         assert result.flagged is True
 
-    def test_special_regex_characters_in_keywords(self):
+    def test_special_regex_characters_in_keywords(self) -> None:
         """
         Test that special regex characters in keywords are treated as literals.
 
@@ -793,7 +803,7 @@ class TestKeywordsModerationAdvanced:
         result = moderation.moderation_for_inputs({"text": "Get $money fast"}, "")
         assert result.flagged is True
 
-    def test_whitespace_variations_in_keywords(self):
+    def test_whitespace_variations_in_keywords(self) -> None:
         """
         Test keyword matching with various whitespace characters.
 
@@ -815,7 +825,7 @@ class TestKeywordsModerationAdvanced:
         result = moderation.moderation_for_inputs({"text": "tab\there"}, "")
         assert result.flagged is True
 
-    def test_maximum_keyword_length_boundary(self):
+    def test_maximum_keyword_length_boundary(self) -> None:
         """
         Test behavior at the maximum allowed keyword list length (10000 chars).
 
@@ -848,7 +858,7 @@ class TestKeywordsModerationAdvanced:
         with pytest.raises(ValueError, match="keywords length must be less than 10000"):
             KeywordsModeration.validate_config("tenant-id", config_over)
 
-    def test_maximum_keyword_rows_boundary(self):
+    def test_maximum_keyword_rows_boundary(self) -> None:
         """
         Test behavior at the maximum allowed keyword rows (100 rows).
 
@@ -878,7 +888,7 @@ class TestKeywordsModerationAdvanced:
         with pytest.raises(ValueError, match="the number of rows for the keywords must be less than 100"):
             KeywordsModeration.validate_config("tenant-id", config_over)
 
-    def test_nested_dict_input_values(self):
+    def test_nested_dict_input_values(self) -> None:
         """
         Test moderation with nested dictionary structures in inputs.
 
@@ -902,7 +912,7 @@ class TestKeywordsModerationAdvanced:
         result = moderation.moderation_for_inputs(nested_input, "")
         assert result.flagged is True
 
-    def test_numeric_input_values(self):
+    def test_numeric_input_values(self) -> None:
         """
         Test moderation with numeric input values.
 
@@ -928,7 +938,7 @@ class TestKeywordsModerationAdvanced:
         result = moderation.moderation_for_inputs({"text": "Room 666"}, "")
         assert result.flagged is True
 
-    def test_boolean_input_values(self):
+    def test_boolean_input_values(self) -> None:
         """
         Test moderation with boolean input values.
 
@@ -950,7 +960,7 @@ class TestKeywordsModerationAdvanced:
         result = moderation.moderation_for_inputs({"flag": False}, "")
         assert result.flagged is True
 
-    def test_empty_string_inputs(self):
+    def test_empty_string_inputs(self) -> None:
         """
         Test moderation with empty string inputs.
 
@@ -972,7 +982,7 @@ class TestKeywordsModerationAdvanced:
         result = moderation.moderation_for_inputs({"text": "clean"}, "")
         assert result.flagged is False
 
-    def test_very_long_input_text(self):
+    def test_very_long_input_text(self) -> None:
         """
         Test moderation performance with very long input text.
 
@@ -1009,7 +1019,7 @@ class TestOpenAIModerationAdvanced:
     """
 
     @patch("core.moderation.openai_moderation.openai_moderation.ModelManager.for_tenant", autospec=True)
-    def test_openai_api_timeout_handling(self, mock_model_manager: Mock):
+    def test_openai_api_timeout_handling(self, mock_model_manager: Mock) -> None:
         """
         Test graceful handling of OpenAI API timeouts.
 
@@ -1032,7 +1042,7 @@ class TestOpenAIModerationAdvanced:
             moderation.moderation_for_inputs({"text": "test"}, "")
 
     @patch("core.moderation.openai_moderation.openai_moderation.ModelManager.for_tenant", autospec=True)
-    def test_openai_api_rate_limit_handling(self, mock_model_manager: Mock):
+    def test_openai_api_rate_limit_handling(self, mock_model_manager: Mock) -> None:
         """
         Test handling of OpenAI API rate limit errors.
 
@@ -1055,7 +1065,7 @@ class TestOpenAIModerationAdvanced:
             moderation.moderation_for_inputs({"text": "test"}, "")
 
     @patch("core.moderation.openai_moderation.openai_moderation.ModelManager.for_tenant", autospec=True)
-    def test_openai_with_multiple_input_fields(self, mock_model_manager: Mock):
+    def test_openai_with_multiple_input_fields(self, mock_model_manager: Mock) -> None:
         """
         Test OpenAI moderation with multiple input fields.
 
@@ -1099,7 +1109,7 @@ class TestOpenAIModerationAdvanced:
         assert "e" in moderated_text
 
     @patch("core.moderation.openai_moderation.openai_moderation.ModelManager.for_tenant", autospec=True)
-    def test_openai_empty_text_handling(self, mock_model_manager: Mock):
+    def test_openai_empty_text_handling(self, mock_model_manager: Mock) -> None:
         """
         Test OpenAI moderation with empty text inputs.
 
@@ -1123,7 +1133,7 @@ class TestOpenAIModerationAdvanced:
         mock_instance.invoke_moderation.assert_called_once()
 
     @patch("core.moderation.openai_moderation.openai_moderation.ModelManager.for_tenant", autospec=True)
-    def test_openai_model_instance_fetched_on_each_call(self, mock_model_manager: Mock):
+    def test_openai_model_instance_fetched_on_each_call(self, mock_model_manager: Mock) -> None:
         """
         Test that ModelManager fetches a fresh model instance on each call.
 
@@ -1158,7 +1168,7 @@ class TestModerationActionBehavior:
     - OVERRIDDEN: Returns sanitized/modified content
     """
 
-    def test_direct_output_action_blocks_completely(self):
+    def test_direct_output_action_blocks_completely(self) -> None:
         """
         Test that DIRECT_OUTPUT action completely blocks content.
 
@@ -1179,7 +1189,7 @@ class TestModerationActionBehavior:
         assert result.inputs == {}
         assert result.query == ""
 
-    def test_overridden_action_sanitizes_content(self):
+    def test_overridden_action_sanitizes_content(self) -> None:
         """
         Test that OVERRIDDEN action provides sanitized content.
 
@@ -1200,7 +1210,7 @@ class TestModerationActionBehavior:
         assert result.query == "Tell me about ***"
         assert result.preset_response == ""
 
-    def test_action_enum_string_values(self):
+    def test_action_enum_string_values(self) -> None:
         """
         Test that ModerationAction enum has correct string values.
 
@@ -1222,7 +1232,7 @@ class TestConfigurationEdgeCases:
     proper validation and error messages.
     """
 
-    def test_missing_inputs_config_dict(self):
+    def test_missing_inputs_config_dict(self) -> None:
         """
         Test validation fails when inputs_config is not a dict.
 
@@ -1238,7 +1248,7 @@ class TestConfigurationEdgeCases:
         with pytest.raises(ValueError, match="inputs_config must be a dict"):
             KeywordsModeration.validate_config("tenant-id", config)
 
-    def test_missing_outputs_config_dict(self):
+    def test_missing_outputs_config_dict(self) -> None:
         """
         Test validation fails when outputs_config is not a dict.
 
@@ -1254,7 +1264,7 @@ class TestConfigurationEdgeCases:
         with pytest.raises(ValueError, match="outputs_config must be a dict"):
             KeywordsModeration.validate_config("tenant-id", config)
 
-    def test_both_inputs_and_outputs_disabled(self):
+    def test_both_inputs_and_outputs_disabled(self) -> None:
         """
         Test validation fails when both inputs and outputs are disabled.
 
@@ -1270,7 +1280,7 @@ class TestConfigurationEdgeCases:
         with pytest.raises(ValueError, match="At least one of inputs_config or outputs_config must be enabled"):
             KeywordsModeration.validate_config("tenant-id", config)
 
-    def test_preset_response_exactly_100_characters(self):
+    def test_preset_response_exactly_100_characters(self) -> None:
         """
         Test that preset response length validation works correctly.
 
@@ -1304,7 +1314,7 @@ class TestConfigurationEdgeCases:
         with pytest.raises(ValueError, match="must be less than 100 characters"):
             KeywordsModeration.validate_config("tenant-id", config_101)
 
-    def test_empty_preset_response_when_enabled(self):
+    def test_empty_preset_response_when_enabled(self) -> None:
         """
         Test validation fails when preset_response is empty but config is enabled.
 
@@ -1332,7 +1342,7 @@ class TestConcurrentModerationScenarios:
     multiple requests or checking multiple fields simultaneously.
     """
 
-    def test_multiple_keywords_in_single_input(self):
+    def test_multiple_keywords_in_single_input(self) -> None:
         """
         Test detection when multiple keywords appear in one input.
 
@@ -1351,7 +1361,7 @@ class TestConcurrentModerationScenarios:
 
         assert result.flagged is True
 
-    def test_keyword_at_start_middle_end_of_text(self):
+    def test_keyword_at_start_middle_end_of_text(self) -> None:
         """
         Test keyword detection at different positions in text.
 
@@ -1377,7 +1387,7 @@ class TestConcurrentModerationScenarios:
         result = moderation.moderation_for_inputs({"text": "this is a flag"}, "")
         assert result.flagged is True
 
-    def test_case_variations_of_same_keyword(self):
+    def test_case_variations_of_same_keyword(self) -> None:
         """
         Test that different case variations of keywords are all detected.
 

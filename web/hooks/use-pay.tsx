@@ -2,10 +2,10 @@
 
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { useCallback, useEffect, useState } from 'react'
@@ -132,7 +132,7 @@ export const CheckModal = () => {
             </AlertDialogDescription>
           )}
         </div>
-        <AlertDialogActions>
+        <AlertDialogFooter>
           <AlertDialogConfirmButton
             tone={confirmInfo.type !== 'info' ? 'destructive' : 'default'}
             onClick={handleCancelShowPayStatusModal}
@@ -141,7 +141,7 @@ export const CheckModal = () => {
               ? t(($) => $['operation.ok'], { ns: 'common' })
               : t(($) => $['operation.confirm'], { ns: 'common' })}
           </AlertDialogConfirmButton>
-        </AlertDialogActions>
+        </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   )

@@ -53,7 +53,7 @@ const PermissionRoleChip = ({
         render={
           <button
             type="button"
-            className="min-w-0 truncate rounded-sm border-none bg-transparent p-0 text-start leading-4 outline-hidden"
+            className="min-w-0 truncate rounded-sm border-none bg-transparent p-0 text-start leading-4"
           >
             {label}
           </button>

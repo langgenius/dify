@@ -1,10 +1,13 @@
 from __future__ import annotations
 
-from unittest.mock import Mock, patch
+import json
+from unittest.mock import patch
 
+import httpx
 import pytest
 from sqlalchemy.orm import Session
 
+import core.plugin.impl.base as plugin_client_module
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.common_entities import I18nObject
@@ -43,19 +46,29 @@ def _build_plugin_tool(*, has_runtime_parameters: bool) -> PluginTool:
 @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
 def test_plugin_tool_invoke_and_fork_runtime(sqlite_session: Session):
     tool = _build_plugin_tool(has_runtime_parameters=False)
-    manager = Mock()
-    manager.invoke.return_value = iter([tool.create_text_message("ok")])
+    requests: list[httpx.Request] = []
 
-    with patch("core.tools.plugin_tool.tool.PluginToolManager", return_value=manager):
-        with patch(
-            "core.tools.plugin_tool.tool.convert_parameters_to_plugin_format",
-            return_value={"converted": 1},
+    def handle_request(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(
+            200,
+            text='data: {"code": 0, "message": "", "data": {"type": "text", "message": {"text": "ok"}}}\n\n',
+        )
+
+    with httpx.Client(transport=httpx.MockTransport(handle_request)) as client:
+        with (
+            patch.object(plugin_client_module, "_httpx_client", client),
+            patch(
+                "core.tools.plugin_tool.tool.convert_parameters_to_plugin_format",
+                return_value={"converted": 1},
+            ),
         ):
             messages = list(tool.invoke(session=sqlite_session, user_id="user-1", tool_parameters={"raw": 1}))
 
     assert [m.message.text for m in messages] == ["ok"]
-    manager.invoke.assert_called_once()
-    assert manager.invoke.call_args.kwargs["tool_parameters"] == {"converted": 1}
+    assert len(requests) == 1
+    request_data = json.loads(requests[0].content)
+    assert request_data["data"]["tool_parameters"] == {"converted": 1}
 
     forked = tool.fork_tool_runtime(ToolRuntime(tenant_id="tenant-2"))
     assert isinstance(forked, PluginTool)
@@ -80,7 +93,6 @@ def test_plugin_tool_get_runtime_parameters_branches():
     assert tool.get_runtime_parameters() == cached
 
     tool.runtime_parameters = None
-    manager = Mock()
     returned = [
         ToolParameter.get_simple_instance(
             name="dyn",
@@ -89,7 +101,19 @@ def test_plugin_tool_get_runtime_parameters_branches():
             required=False,
         )
     ]
-    manager.get_runtime_parameters.return_value = returned
-    with patch("core.tools.plugin_tool.tool.PluginToolManager", return_value=manager):
-        assert tool.get_runtime_parameters(conversation_id="c1", app_id="a1", message_id="m1") == returned
+    requests: list[httpx.Request] = []
+
+    def handle_request(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        payload = {"code": 0, "message": "", "data": {"parameters": [returned[0].model_dump(mode="json")]}}
+        return httpx.Response(200, text=f"data: {json.dumps(payload)}\n\n")
+
+    with httpx.Client(transport=httpx.MockTransport(handle_request)) as client:
+        with patch.object(plugin_client_module, "_httpx_client", client):
+            assert tool.get_runtime_parameters(conversation_id="c1", app_id="a1", message_id="m1") == returned
     assert tool.runtime_parameters == returned
+    assert len(requests) == 1
+    request_data = json.loads(requests[0].content)
+    assert request_data["conversation_id"] == "c1"
+    assert request_data["app_id"] == "a1"
+    assert request_data["message_id"] == "m1"
