@@ -343,7 +343,6 @@ project-excludes = [
   "core/datasource/test_datasource_file_manager.py",
   "core/datasource/test_datasource_manager.py",
   "core/datasource/test_errors.py",
-  "core/datasource/test_file_upload.py",
   "core/datasource/test_notion_provider.py",
   "core/datasource/test_website_crawl.py",
   "core/datasource/utils/test_message_transformer.py",
