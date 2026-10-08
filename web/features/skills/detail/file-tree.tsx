@@ -1355,7 +1355,7 @@ export function FileTree({
               <DropdownMenu modal={false}>
                 <DropdownMenuTrigger
                   aria-label={tCommon(($) => $['operation.add'])}
-                  className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-secondary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover"
+                  className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-secondary hover:bg-state-base-hover data-popup-open:bg-state-base-hover"
                   disabled={!detail || isMutating}
                 >
                   <span aria-hidden className="i-ri-add-line size-4" />
@@ -1595,7 +1595,7 @@ export function FileTree({
                   render={
                     <button
                       type="button"
-                      className="-mx-2 flex h-6 w-[calc(100%+16px)] cursor-pointer items-center gap-2 rounded-md px-2.5 text-left system-xs-regular text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary"
+                      className="-mx-2 flex h-6 w-[calc(100%+16px)] cursor-pointer items-center gap-2 rounded-md px-2.5 text-left system-xs-regular text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary"
                     >
                       <span aria-hidden className="i-ri-apps-2-line size-4 shrink-0" />
                       <span className="min-w-0 flex-1 truncate">{referenceCountLabel}</span>
