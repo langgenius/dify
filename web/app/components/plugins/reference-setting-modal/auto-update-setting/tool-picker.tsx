@@ -32,7 +32,7 @@ const ToolPicker: FC<Props> = ({
   onShowChange,
   integrationCategory,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
 
   const allTabs = [
     { key: PLUGIN_TYPE_SEARCH_MAP.all, name: t(($) => $['category.all'], { ns: 'plugin' }) },

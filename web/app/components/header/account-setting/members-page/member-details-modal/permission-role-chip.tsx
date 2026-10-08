@@ -23,7 +23,7 @@ const PermissionRoleChip = ({
   onRemove,
   className,
 }: PermissionRoleChipProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'permissionKeys', 'workspaceMembers'])
   const permissions = permissionKeys
   const canRemoveRole = !isOwner && !!onRemove
   // Permission keys come from the catalog API, so this is a reviewed open-key boundary with a server-provided fallback.
@@ -53,7 +53,7 @@ const PermissionRoleChip = ({
         render={
           <button
             type="button"
-            className="min-w-0 truncate rounded-sm border-none bg-transparent p-0 text-start leading-4 outline-hidden"
+            className="min-w-0 truncate rounded-sm border-none bg-transparent p-0 text-start leading-4"
           >
             {label}
           </button>
@@ -81,7 +81,7 @@ const PermissionRoleChip = ({
         {hasPermissionLabels ? (
           <Trans
             i18nKey={($) => $['members.memberDetails.rolePermissionSummary']}
-            ns="common"
+            ns="workspaceMembers"
             values={{
               role: label,
               permissions: permissionLabels,
@@ -92,7 +92,7 @@ const PermissionRoleChip = ({
           />
         ) : (
           t(($) => $['members.memberDetails.roleNoPermissionSummary'], {
-            ns: 'common',
+            ns: 'workspaceMembers',
             defaultValue: 'Current role has no permissions.',
           })
         )}

@@ -15,7 +15,7 @@ type AppTriggerProps = {
 }
 
 export function AppTrigger({ open, appDetail }: AppTriggerProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
   const appIconType = zIconType.safeParse(appDetail?.icon_type).data ?? null
 
   return (

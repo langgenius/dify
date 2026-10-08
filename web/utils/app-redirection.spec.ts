@@ -30,14 +30,14 @@ describe('app-redirection', () => {
       expect(getRedirectionPath(app)).toBe('/apps')
     })
 
-    it('returns the access point path for Access Point managers', () => {
+    it('does not redirect Access Point managers to a page they cannot view', () => {
       const app = {
         id: 'app-123',
         mode: AppModeEnum.CHAT,
         permission_keys: [AppACLPermission.AccessPointManage],
       }
 
-      expect(getRedirectionPath(app)).toBe('/app/app-123/access-point')
+      expect(getRedirectionPath(app)).toBe('/apps')
     })
 
     it('returns workflow path for workflow mode when app ACL can access layout', () => {

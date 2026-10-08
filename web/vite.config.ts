@@ -2,14 +2,14 @@ import { fileURLToPath } from 'node:url'
 import { configDefaults, defineConfig, lazyPlugins } from 'vite-plus'
 import { playwright } from 'vite-plus/test/browser-playwright'
 import { customI18nHmrPlugin } from './plugins/vite/custom-i18n-hmr.ts'
-import { i18nPrunePlugin } from './plugins/vite/i18n-prune.ts'
+import { i18nAnalysisPlugin } from './plugins/vite/i18n-analysis.ts'
 import { getRootClientInjectTarget } from './plugins/vite/inject-target.ts'
 import { nextStaticImageTestPlugin } from './plugins/vite/next-static-image-test.ts'
 
 const projectRoot = fileURLToPath(new URL('.', import.meta.url))
 const isCI = !!process.env.CI
 const rootClientInjectTarget = getRootClientInjectTarget(projectRoot)
-const browserTestPattern = 'app/**/*.browser.spec.{ts,tsx}'
+const browserTestPattern = '{app,features}/**/*.browser.spec.{ts,tsx}'
 
 export default defineConfig(({ command, mode, isPreview }) => {
   const isTest = mode === 'test'
@@ -40,7 +40,24 @@ export default defineConfig(({ command, mode, isPreview }) => {
           : undefined
 
       return [
-        i18nPrunePlugin(),
+        i18nAnalysisPlugin({
+          adapters: [
+            { module: 'i18n/lib.client.ts', exportName: 'useTranslation', namespaceArgument: 0 },
+            {
+              module: 'i18n/lib.server.ts',
+              exportName: 'useTranslation',
+              namespaceArgument: 0,
+              implementationFunctions: ['getI18nConfig'],
+            },
+            { module: 'i18n/server.ts', exportName: 'getTranslation', namespaceArgument: 1 },
+            {
+              module: 'app/route-metadata.ts',
+              exportName: 'getRouteMetadata',
+              namespaceArgument: 0,
+              selectorArgument: 1,
+            },
+          ],
+        }),
         Inspect(),
         inspector,
         tailwindcss(),
@@ -56,16 +73,17 @@ export default defineConfig(({ command, mode, isPreview }) => {
     resolve: {
       tsconfigPaths: true,
       alias: [
+        { find: '~@', replacement: projectRoot },
         // Use the base64 build in Vite-based pipelines (vinext/vitest) to avoid wasm loader incompatibilities.
         { find: /^loro-crdt$/, replacement: 'loro-crdt/base64' },
       ],
     },
-
     // vinext related config
     ...(!isTest && !isStorybook
       ? {
           optimizeDeps: {
-            exclude: ['@tanstack/react-query'],
+            // Keep skipToken shared by the unbundled React Query and oRPC clients.
+            exclude: ['@tanstack/react-query', '@tanstack/query-core'],
           },
           server: {
             port: 3000,
@@ -117,6 +135,9 @@ export default defineConfig(({ command, mode, isPreview }) => {
             setupFiles: ['./vitest.browser.setup.ts'],
             include: [browserTestPattern],
             browser: {
+              expect: {
+                toMatchScreenshot: { screenshotDirectory: './.vitest-browser/screenshots' },
+              },
               enabled: true,
               provider: playwright(),
               instances: [{ browser: 'chromium' }],

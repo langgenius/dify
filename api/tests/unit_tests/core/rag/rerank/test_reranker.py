@@ -19,7 +19,9 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 from sqlalchemy.orm import Session
 
+from core.entities.provider_configuration import ProviderModelBundle
 from core.model_manager import ModelInstance
+from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.query_type import QueryType
 from core.rag.models.document import Document
@@ -30,21 +32,35 @@ from core.rag.rerank.rerank_model import RerankModelRunner
 from core.rag.rerank.rerank_type import RerankMode
 from core.rag.rerank.weight_rerank import WeightRerankRunner
 from extensions.storage.storage_type import StorageType
+from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
 from graphon.model_runtime.entities.rerank_entities import RerankDocument, RerankResult
+from graphon.model_runtime.model_providers.base.rerank_model import RerankModel
 from models.enums import CreatorUserRole
 from models.model import UploadFile
+from tests.unit_tests.core.model_fixtures import make_model_config
 
 
-def create_mock_model_instance() -> ModelInstance:
-    """Create a properly configured mock ModelInstance for reranking tests."""
-    mock_instance = Mock(spec=ModelInstance)
-    # Setup provider_model_bundle chain for check_model_support_vision
-    mock_instance.provider_model_bundle = Mock()
-    mock_instance.provider_model_bundle.configuration = Mock()
-    mock_instance.provider_model_bundle.configuration.tenant_id = "test-tenant-id"
-    mock_instance.provider = "test-provider"
-    mock_instance.model_name = "test-model"
-    return mock_instance
+def create_model_instance() -> ModelInstance:
+    """Build a rerank model with isolated schema and plugin invocation boundaries."""
+    config = make_model_config(provider="test-provider", model="test-model", mode="chat")
+    configuration = config.provider_model_bundle.configuration
+    configuration.provider.supported_model_types = [ModelType.RERANK]
+    schema = config.model_schema.model_copy(update={"model_type": ModelType.RERANK, "features": []})
+    instance = ModelInstance(
+        provider_model_bundle=ProviderModelBundle(
+            configuration=configuration,
+            model_type_instance=RerankModel(
+                provider_schema=configuration.provider,
+                model_runtime=create_plugin_model_runtime(tenant_id=configuration.tenant_id),
+            ),
+        ),
+        model=config.model,
+        credentials={},
+    )
+    instance.get_model_schema = Mock(return_value=schema)
+    instance.invoke_rerank = Mock()
+    instance.invoke_multimodal_rerank = Mock()
+    return instance
 
 
 class _UsesSQLiteSession:
@@ -66,17 +82,10 @@ class TestRerankModelRunner(_UsesSQLiteSession):
     - Metadata preservation and score injection
     """
 
-    @pytest.fixture(autouse=True)
-    def mock_model_manager(self):
-        """Auto-use fixture to patch ModelManager for all tests in this class."""
-        with patch("core.rag.rerank.rerank_model.ModelManager.for_tenant", autospec=True) as mock_mm:
-            mock_mm.return_value.check_model_support_vision.return_value = False
-            yield mock_mm
-
     @pytest.fixture
     def mock_model_instance(self):
-        """Create a mock ModelInstance for reranking."""
-        return create_mock_model_instance()
+        """Create the model with plugin I/O isolated."""
+        return create_model_instance()
 
     @pytest.fixture
     def rerank_runner(self, mock_model_instance):
@@ -374,14 +383,12 @@ class TestRerankModelRunner(_UsesSQLiteSession):
         # Assert: Empty result is returned
         assert len(result) == 0
 
-    def test_run_uses_bound_model_instance(
-        self, rerank_runner, mock_model_instance, sample_documents, mock_model_manager
-    ):
+    def test_run_uses_bound_model_instance(self, rerank_runner, mock_model_instance, sample_documents):
         """Test that rerank uses the bound model instance directly.
 
         Verifies:
         - The injected model instance is used for invocation
-        - No late rebinding occurs through ModelManager.get_model_instance
+        - Capability detection uses the already-bound model instance
         """
         # Arrange: Mock rerank result
         mock_rerank_result = RerankResult(
@@ -400,7 +407,7 @@ class TestRerankModelRunner(_UsesSQLiteSession):
 
         # Assert: The injected model instance is invoked directly.
         assert len(result) == 1
-        mock_model_manager.return_value.get_model_instance.assert_not_called()
+        mock_model_instance.get_model_schema.assert_called_once_with()
         call_kwargs = mock_model_instance.invoke_rerank.call_args.kwargs
         assert call_kwargs["query"] == "test"
         assert "user" not in call_kwargs
@@ -435,7 +442,7 @@ class TestBaseRerankRunner:
 class TestRerankModelRunnerMultimodal(_UsesSQLiteSession):
     @pytest.fixture
     def mock_model_instance(self):
-        return create_mock_model_instance()
+        return create_model_instance()
 
     @pytest.fixture
     def rerank_runner(self, mock_model_instance):
@@ -448,9 +455,7 @@ class TestRerankModelRunnerMultimodal(_UsesSQLiteSession):
             Document(page_content="doc", metadata={"doc_id": "doc1"}, provider="dify"),
         ]
 
-        with patch("core.rag.rerank.rerank_model.ModelManager.for_tenant") as mock_mm:
-            mock_mm.return_value.check_model_support_vision.return_value = False
-            result = rerank_runner.run(query="image-file-id", documents=documents, query_type=QueryType.IMAGE_QUERY)
+        result = rerank_runner.run(query="image-file-id", documents=documents, query_type=QueryType.IMAGE_QUERY)
 
         assert result == documents
         mock_model_instance.invoke_rerank.assert_not_called()
@@ -464,15 +469,13 @@ class TestRerankModelRunnerMultimodal(_UsesSQLiteSession):
             docs=[RerankDocument(index=0, text="doc", score=0.88)],
         )
 
-        with (
-            patch("core.rag.rerank.rerank_model.ModelManager.for_tenant") as mock_mm,
-            patch.object(
-                rerank_runner,
-                "fetch_multimodal_rerank",
-                return_value=(rerank_result, documents),
-            ) as mock_multimodal,
-        ):
-            mock_mm.return_value.check_model_support_vision.return_value = True
+        schema = rerank_runner.rerank_model_instance.get_model_schema.return_value
+        schema.features = [ModelFeature.VISION]
+        with patch.object(
+            rerank_runner,
+            "fetch_multimodal_rerank",
+            return_value=(rerank_result, documents),
+        ) as mock_multimodal:
             result = rerank_runner.run(query="python", documents=documents, query_type=QueryType.TEXT_QUERY)
 
         mock_multimodal.assert_called_once()
@@ -1104,7 +1107,7 @@ class TestRerankRunnerFactory(_UsesSQLiteSession):
         - Parameters are forwarded to runner constructor
         """
         # Arrange: Mock model instance
-        mock_model_instance = create_mock_model_instance()
+        mock_model_instance = create_model_instance()
 
         # Act: Create runner via factory
         runner = RerankRunnerFactory.create_rerank_runner(
@@ -1167,7 +1170,7 @@ class TestRerankRunnerFactory(_UsesSQLiteSession):
         - String values are properly matched
         """
         # Arrange: Mock model instance
-        mock_model_instance = create_mock_model_instance()
+        mock_model_instance = create_model_instance()
 
         # Act: Create runner using enum value
         runner = RerankRunnerFactory.create_rerank_runner(
@@ -1189,13 +1192,6 @@ class TestRerankIntegration(_UsesSQLiteSession):
     - Real-world usage scenarios
     """
 
-    @pytest.fixture(autouse=True)
-    def mock_model_manager(self):
-        """Auto-use fixture to patch ModelManager for all tests in this class."""
-        with patch("core.rag.rerank.rerank_model.ModelManager.for_tenant", autospec=True) as mock_mm:
-            mock_mm.return_value.check_model_support_vision.return_value = False
-            yield mock_mm
-
     def test_model_reranking_full_workflow(self):
         """Test complete model-based reranking workflow.
 
@@ -1205,7 +1201,7 @@ class TestRerankIntegration(_UsesSQLiteSession):
         - Top results are returned correctly
         """
         # Arrange: Create mock model and documents
-        mock_model_instance = create_mock_model_instance()
+        mock_model_instance = create_model_instance()
         mock_rerank_result = RerankResult(
             model="bge-reranker-base",
             docs=[
@@ -1262,7 +1258,7 @@ class TestRerankIntegration(_UsesSQLiteSession):
         - Normalization is consistent
         """
         # Arrange: Create mock model with various scores
-        mock_model_instance = create_mock_model_instance()
+        mock_model_instance = create_model_instance()
         mock_rerank_result = RerankResult(
             model="bge-reranker-base",
             docs=[
@@ -1302,13 +1298,6 @@ class TestRerankEdgeCases(_UsesSQLiteSession):
     - Concurrent reranking scenarios
     """
 
-    @pytest.fixture(autouse=True)
-    def mock_model_manager(self):
-        """Auto-use fixture to patch ModelManager for all tests in this class."""
-        with patch("core.rag.rerank.rerank_model.ModelManager.for_tenant", autospec=True) as mock_mm:
-            mock_mm.return_value.check_model_support_vision.return_value = False
-            yield mock_mm
-
     def test_rerank_with_empty_metadata(self):
         """Test reranking when documents have empty metadata.
 
@@ -1318,7 +1307,7 @@ class TestRerankEdgeCases(_UsesSQLiteSession):
         - Empty metadata documents are processed correctly
         """
         # Arrange: Create documents with empty metadata
-        mock_model_instance = create_mock_model_instance()
+        mock_model_instance = create_model_instance()
         mock_rerank_result = RerankResult(
             model="bge-reranker-base",
             docs=[
@@ -1364,7 +1353,7 @@ class TestRerankEdgeCases(_UsesSQLiteSession):
         - Score comparison logic works at boundary
         """
         # Arrange: Create mock with various scores including negatives
-        mock_model_instance = create_mock_model_instance()
+        mock_model_instance = create_model_instance()
         mock_rerank_result = RerankResult(
             model="bge-reranker-base",
             docs=[
@@ -1400,7 +1389,7 @@ class TestRerankEdgeCases(_UsesSQLiteSession):
         - No overflow or precision issues
         """
         # Arrange: All documents with perfect scores
-        mock_model_instance = create_mock_model_instance()
+        mock_model_instance = create_model_instance()
         mock_rerank_result = RerankResult(
             model="bge-reranker-base",
             docs=[
@@ -1435,7 +1424,7 @@ class TestRerankEdgeCases(_UsesSQLiteSession):
         - Content encoding is preserved
         """
         # Arrange: Documents with special characters
-        mock_model_instance = create_mock_model_instance()
+        mock_model_instance = create_model_instance()
         mock_rerank_result = RerankResult(
             model="bge-reranker-base",
             docs=[
@@ -1477,7 +1466,7 @@ class TestRerankEdgeCases(_UsesSQLiteSession):
         - Content is not truncated unexpectedly
         """
         # Arrange: Documents with very long content
-        mock_model_instance = create_mock_model_instance()
+        mock_model_instance = create_model_instance()
         long_content = "This is a very long document. " * 1000  # ~30,000 characters
 
         mock_rerank_result = RerankResult(
@@ -1514,7 +1503,7 @@ class TestRerankEdgeCases(_UsesSQLiteSession):
         - All documents are processed correctly
         """
         # Arrange: Create 100 documents
-        mock_model_instance = create_mock_model_instance()
+        mock_model_instance = create_model_instance()
         num_docs = 100
 
         # Create rerank results for all documents
@@ -1605,7 +1594,7 @@ class TestRerankEdgeCases(_UsesSQLiteSession):
         - Documents can still be ranked
         """
         # Arrange: Empty query
-        mock_model_instance = create_mock_model_instance()
+        mock_model_instance = create_model_instance()
         mock_rerank_result = RerankResult(
             model="bge-reranker-base",
             docs=[
@@ -1643,13 +1632,6 @@ class TestRerankPerformance(_UsesSQLiteSession):
     - Score calculation optimization
     """
 
-    @pytest.fixture(autouse=True)
-    def mock_model_manager(self):
-        """Auto-use fixture to patch ModelManager for all tests in this class."""
-        with patch("core.rag.rerank.rerank_model.ModelManager.for_tenant", autospec=True) as mock_mm:
-            mock_mm.return_value.check_model_support_vision.return_value = False
-            yield mock_mm
-
     def test_rerank_batch_processing(self):
         """Test that documents are processed in a single batch.
 
@@ -1659,7 +1641,7 @@ class TestRerankPerformance(_UsesSQLiteSession):
         - Efficient batch processing
         """
         # Arrange: Multiple documents
-        mock_model_instance = create_mock_model_instance()
+        mock_model_instance = create_model_instance()
         mock_rerank_result = RerankResult(
             model="bge-reranker-base",
             docs=[RerankDocument(index=i, text=f"Doc {i}", score=0.9 - i * 0.1) for i in range(5)],
@@ -1760,13 +1742,6 @@ class TestRerankErrorHandling(_UsesSQLiteSession):
     - Error propagation
     """
 
-    @pytest.fixture(autouse=True)
-    def mock_model_manager(self):
-        """Auto-use fixture to patch ModelManager for all tests in this class."""
-        with patch("core.rag.rerank.rerank_model.ModelManager.for_tenant", autospec=True) as mock_mm:
-            mock_mm.return_value.check_model_support_vision.return_value = False
-            yield mock_mm
-
     def test_rerank_model_invocation_error(self):
         """Test handling of model invocation errors.
 
@@ -1776,7 +1751,7 @@ class TestRerankErrorHandling(_UsesSQLiteSession):
         - Error context is preserved
         """
         # Arrange: Mock model that raises exception
-        mock_model_instance = create_mock_model_instance()
+        mock_model_instance = create_model_instance()
         mock_model_instance.invoke_rerank.side_effect = RuntimeError("Model invocation failed")
 
         documents = [
@@ -1802,7 +1777,7 @@ class TestRerankErrorHandling(_UsesSQLiteSession):
         - Invalid results don't corrupt output
         """
         # Arrange: Rerank result with invalid index
-        mock_model_instance = create_mock_model_instance()
+        mock_model_instance = create_model_instance()
         mock_rerank_result = RerankResult(
             model="bge-reranker-base",
             docs=[

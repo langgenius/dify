@@ -5,12 +5,10 @@ import { useInvalidateDefaultModel } from '@/app/components/header/account-setti
 import { consoleQuery } from '@/service/console'
 import { commonQueryKeys } from '@/service/use-common'
 import { useInvalidDataSourceListAuth } from '@/service/use-datasource'
-import { useInvalidDataSourceList } from '@/service/use-pipeline'
 import {
   useInvalidateCheckInstalled,
   useInvalidateInstalledPluginList,
 } from '@/service/use-plugins'
-import { useInvalidateStrategyProviders } from '@/service/use-strategy'
 import {
   useInvalidateAllBuiltInTools,
   useInvalidateAllToolProviders,
@@ -64,11 +62,8 @@ const useRefreshPluginList = () => {
 
   const invalidateAllToolProviders = useInvalidateAllToolProviders()
   const invalidateAllBuiltInTools = useInvalidateAllBuiltInTools()
-  const invalidateAllDataSources = useInvalidDataSourceList()
 
   const invalidateDataSourceListAuth = useInvalidDataSourceListAuth()
-
-  const invalidateStrategyProviders = useInvalidateStrategyProviders()
 
   const invalidateAllTriggerPlugins = useInvalidateAllTriggerPlugins()
 
@@ -98,7 +93,9 @@ const useRefreshPluginList = () => {
         (manifest && PluginCategoryEnum.datasource.includes(manifest.category)) ||
         refreshAllType
       ) {
-        invalidateAllDataSources()
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.rag.pipelines.datasourcePlugins.get.key(),
+        })
         invalidateDataSourceListAuth()
       }
 
@@ -117,8 +114,14 @@ const useRefreshPluginList = () => {
       }
 
       // agent select
-      if ((manifest && PluginCategoryEnum.agent.includes(manifest.category)) || refreshAllType)
-        invalidateStrategyProviders()
+      if ((manifest && PluginCategoryEnum.agent.includes(manifest.category)) || refreshAllType) {
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.workspaces.current.agentProviders.get.key(),
+        })
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.workspaces.current.agentProvider.byProviderName.get.key(),
+        })
+      }
     },
   }
 }

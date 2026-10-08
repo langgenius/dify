@@ -1,3 +1,6 @@
+from collections.abc import Callable
+
+import httpx
 import pytest
 from pytest_mock import MockerFixture
 
@@ -6,13 +9,46 @@ from core.plugin.impl.exc import PluginDaemonInternalServerError
 
 
 class TestPluginEndpointClientImpl:
+    @pytest.mark.parametrize(
+        "mutate",
+        [
+            pytest.param(
+                lambda client: client.create_endpoint("tenant-1", "user-1", "org/plugin:1", "endpoint-a", {}),
+                id="create",
+            ),
+            pytest.param(
+                lambda client: client.update_endpoint("tenant-1", "user-1", "endpoint-1", "renamed", {}),
+                id="update",
+            ),
+            pytest.param(lambda client: client.delete_endpoint("tenant-1", "user-1", "endpoint-1"), id="delete"),
+            pytest.param(lambda client: client.enable_endpoint("tenant-1", "user-1", "endpoint-1"), id="enable"),
+            pytest.param(lambda client: client.disable_endpoint("tenant-1", "user-1", "endpoint-1"), id="disable"),
+        ],
+    )
+    def test_mutation_rejects_false_daemon_result(
+        self, mocker: MockerFixture, mutate: Callable[[PluginEndpointClient], bool]
+    ) -> None:
+        client = PluginEndpointClient()
+        mocker.patch.object(
+            client,
+            "_request",
+            return_value=httpx.Response(
+                200,
+                request=httpx.Request("POST", "https://daemon.test/endpoint"),
+                json={"code": 0, "message": "success", "data": False},
+            ),
+        )
+
+        with pytest.raises(PluginDaemonInternalServerError, match="Plugin daemon failed to"):
+            mutate(client)
+
     def test_create_endpoint(self, mocker: MockerFixture):
         client = PluginEndpointClient()
         request_mock = mocker.patch.object(client, "_request_with_plugin_daemon_response", return_value=True)
 
         result = client.create_endpoint("tenant-1", "user-1", "org/plugin:1", "endpoint-a", {"k": "v"})
 
-        assert result is True
+        assert result
         assert request_mock.call_count == 1
         args = request_mock.call_args.args
         kwargs = request_mock.call_args.kwargs
@@ -49,15 +85,15 @@ class TestPluginEndpointClientImpl:
 
         result = client.update_endpoint("tenant-1", "user-1", "endpoint-1", "renamed", {"x": 1})
 
-        assert result is True
+        assert result
         assert request_mock.call_args.args[:3] == ("POST", "plugin/tenant-1/endpoint/update", bool)
 
     def test_enable_and_disable_endpoint(self, mocker: MockerFixture):
         client = PluginEndpointClient()
         request_mock = mocker.patch.object(client, "_request_with_plugin_daemon_response", return_value=True)
 
-        assert client.enable_endpoint("tenant-1", "user-1", "endpoint-1") is True
-        assert client.disable_endpoint("tenant-1", "user-1", "endpoint-1") is True
+        assert client.enable_endpoint("tenant-1", "user-1", "endpoint-1")
+        assert client.disable_endpoint("tenant-1", "user-1", "endpoint-1")
 
         calls = request_mock.call_args_list
         assert calls[0].args[1] == "plugin/tenant-1/endpoint/enable"
@@ -68,7 +104,7 @@ class TestPluginEndpointClientImpl:
         request_mock = mocker.patch.object(client, "_request_with_plugin_daemon_response")
 
         request_mock.side_effect = PluginDaemonInternalServerError("record not found")
-        assert client.delete_endpoint("tenant-1", "user-1", "endpoint-1") is True
+        assert client.delete_endpoint("tenant-1", "user-1", "endpoint-1")
 
         request_mock.side_effect = PluginDaemonInternalServerError("permission denied")
         with pytest.raises(PluginDaemonInternalServerError) as exc_info:

@@ -5,6 +5,7 @@ import type { ReactNode } from 'react'
 import type { TemplateDetailSelection } from './template-links'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from '@/next/navigation'
+import { useMarketplaceDetailNavigation } from '../use-detail-navigation'
 import TemplateDetailDialog from './template-detail-dialog'
 import { buildTemplateDetailHref, parseTemplateDetailPath } from './template-links'
 import { TemplateDetailRouteContext } from './use-optional-template-detail-route'
@@ -30,13 +31,49 @@ function templateFromSelection(
   }
 }
 
-export function TemplateDetailRouteProvider({
-  children,
-  initialSelection,
-}: {
+type TemplateDetailRouteProps = {
   children: ReactNode
   initialSelection?: TemplateDetailSelection
-}) {
+}
+
+export function TemplateDetailRouteProvider(props: TemplateDetailRouteProps) {
+  const navigation = useMarketplaceDetailNavigation()
+  if (!navigation.opensExternally) return <CloudTemplateDetailRouteProvider {...props} />
+
+  return (
+    <TemplateDetailRouteContext
+      value={{
+        close: () => {},
+        isOpen: () => false,
+        open: (template) => {
+          navigation.openTemplate(template)
+        },
+      }}
+    >
+      {props.children}
+      {props.initialSelection && (
+        <ExternalTemplateDetailRedirect selection={props.initialSelection} />
+      )}
+    </TemplateDetailRouteContext>
+  )
+}
+
+function ExternalTemplateDetailRedirect({ selection }: { selection: TemplateDetailSelection }) {
+  const navigation = useMarketplaceDetailNavigation()
+  const href = navigation.templateHref(templateFromSelection(selection))
+  const redirectedRef = useRef(false)
+  useEffect(() => {
+    if (!href || !navigation.source || redirectedRef.current) return
+    redirectedRef.current = true
+    window.location.replace(href)
+  }, [href, navigation.source])
+  return null
+}
+
+function CloudTemplateDetailRouteProvider({
+  children,
+  initialSelection,
+}: TemplateDetailRouteProps) {
   const router = useRouter()
   const catalogHrefRef = useRef('/templates')
   const [template, setTemplate] = useState<MarketplaceTemplate | null>(() =>
@@ -90,7 +127,7 @@ export function TemplateDetailRouteProvider({
   )
 
   return (
-    <TemplateDetailRouteContext.Provider value={value}>
+    <TemplateDetailRouteContext value={value}>
       {children}
       {template && (
         <TemplateDetailDialog
@@ -102,6 +139,6 @@ export function TemplateDetailRouteProvider({
           }}
         />
       )}
-    </TemplateDetailRouteContext.Provider>
+    </TemplateDetailRouteContext>
   )
 }

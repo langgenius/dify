@@ -1,11 +1,11 @@
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -22,7 +22,7 @@ type TagItemEditorProps = {
   onTagsChange?: () => void
 }
 export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const updateTagMutation = useMutation(consoleQuery.tags.byTagId.patch.mutationOptions())
   const deleteTagMutation = useMutation(consoleQuery.tags.byTagId.delete.mutationOptions())
   const [isEditing, setIsEditing] = useState(false)
@@ -102,7 +102,7 @@ export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
                   {tag.binding_count}
                 </div>
               </TooltipTrigger>
-              <TooltipContent>{t(($) => $['common.tagBound'], { ns: 'workflow' })}</TooltipContent>
+              <TooltipContent>{t(($) => $['tag.boundItems'], { ns: 'common' })}</TooltipContent>
             </Tooltip>
             <button
               type="button"
@@ -163,7 +163,7 @@ export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
               {t(($) => $['tag.deleteTip'], { ns: 'common' })}
             </AlertDialogDescription>
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
@@ -175,7 +175,7 @@ export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
             >
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>

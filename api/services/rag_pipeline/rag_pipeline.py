@@ -15,6 +15,7 @@ import contexts
 from configs import dify_config
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.datasource.datasource_manager import DatasourceManager
 from core.datasource.entities.datasource_entities import (
     DatasourceMessage,
     DatasourceProviderType,
@@ -75,15 +76,18 @@ from models.workflow import (
     WorkflowType,
 )
 from repositories.factory import DifyAPIRepositoryFactory
-from services.dataset_ref_service import DatasetRefService
-from services.datasource_provider_service import DatasourceProviderService
+from repositories.knowledge.dataset_read_repository import get_pipeline_dataset
+from services.credentials.query import CredentialQuery
+from services.data_source.provider_service import DatasourceProviderService
 from services.entities.knowledge_entities.rag_pipeline_entities import (
     KnowledgeConfiguration,
     PipelineTemplateInfoEntity,
 )
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
+from services.knowledge.resource_scope import DatasetRef
 from services.rag_pipeline.pipeline_template.pipeline_template_factory import PipelineTemplateRetrievalFactory
+from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineDslService
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 from services.workflow_draft_variable_service import DraftVariableSaver, DraftVarLoader
 from services.workflow_node_execution_trace_service import (
@@ -491,7 +495,8 @@ class RagPipelineService:
 
         graph = workflow.graph_dict
         nodes = graph.get("nodes", [])
-        from services.dataset_service import DatasetService
+        # dataset_service imports RagPipelineService, so defer this reverse dependency.
+        from services.knowledge.dataset_service import DatasetService
 
         for node in nodes:
             if node.get("data", {}).get("type") == "knowledge-index":
@@ -499,7 +504,7 @@ class RagPipelineService:
                 knowledge_configuration = KnowledgeConfiguration.model_validate(knowledge_configuration)
 
                 # update dataset
-                dataset = pipeline.retrieve_dataset(session=session)
+                dataset = get_pipeline_dataset(pipeline, session=session)
                 if not dataset:
                     raise ValueError("Dataset not found")
                 DatasetService.update_rag_pipeline_dataset_settings(
@@ -667,6 +672,8 @@ class RagPipelineService:
         datasource_type: str,
         is_published: bool,
         credential_id: str | None = None,
+        *,
+        datasource_providers: DatasourceProviderService,
     ) -> Generator[Mapping[str, Any], None, None]:
         """
         Run published workflow datasource
@@ -718,16 +725,13 @@ class RagPipelineService:
                         # other type directly use original value
                         variables_map[key] = param_value
 
-            from core.datasource.datasource_manager import DatasourceManager
-
             datasource_runtime = DatasourceManager.get_datasource_runtime(
                 provider_id=f"{datasource_node_data.get('plugin_id')}/{datasource_node_data.get('provider_name')}",
                 datasource_name=datasource_node_data.get("datasource_name"),
                 tenant_id=pipeline.tenant_id,
                 datasource_type=DatasourceProviderType(datasource_type),
             )
-            datasource_provider_service = DatasourceProviderService()
-            credentials = datasource_provider_service.get_datasource_credentials(
+            credentials = datasource_providers.get_datasource_credentials(
                 tenant_id=pipeline.tenant_id,
                 provider=datasource_node_data.get("provider_name"),
                 plugin_id=datasource_node_data.get("plugin_id"),
@@ -835,6 +839,8 @@ class RagPipelineService:
         datasource_type: str,
         is_published: bool,
         credential_id: str | None = None,
+        *,
+        datasource_providers: DatasourceProviderService,
     ) -> Mapping[str, Any]:
         """
         Run published workflow datasource
@@ -863,16 +869,13 @@ class RagPipelineService:
                 if not user_inputs.get(key):
                     user_inputs[key] = value["value"]
 
-            from core.datasource.datasource_manager import DatasourceManager
-
             datasource_runtime = DatasourceManager.get_datasource_runtime(
                 provider_id=f"{datasource_node_data.get('plugin_id')}/{datasource_node_data.get('provider_name')}",
                 datasource_name=datasource_node_data.get("datasource_name"),
                 tenant_id=pipeline.tenant_id,
                 datasource_type=DatasourceProviderType(datasource_type),
             )
-            datasource_provider_service = DatasourceProviderService()
-            credentials = datasource_provider_service.get_datasource_credentials(
+            credentials = datasource_providers.get_datasource_credentials(
                 tenant_id=pipeline.tenant_id,
                 provider=datasource_node_data.get("provider_name"),
                 plugin_id=datasource_node_data.get("plugin_id"),
@@ -1065,9 +1068,19 @@ class RagPipelineService:
                             .limit(1)
                         )
                         if dataset:
-                            dataset_ref = DatasetRefService.create_dataset_ref(dataset)
-                            document_ref = DatasetRefService.create_document_ref_from_id(dataset_ref, document_id.value)
-                            document = DatasetRefService.get_document_by_ref(document_ref, session=self._session)
+                            dataset_ref = DatasetRef(tenant_id=dataset.tenant_id, dataset_id=dataset.id)
+                            document_ref = dataset_ref.document(document_id.value)
+                            # dataset_service imports RagPipelineService; importing here avoids the cycle.
+                            from services.knowledge.dataset_service import DocumentService
+
+                            document = next(
+                                iter(
+                                    DocumentService.get_documents_by_ids(
+                                        document_ref.dataset, [document_ref.document_id], self._session
+                                    )
+                                ),
+                                None,
+                            )
                             if document:
                                 document.indexing_status = IndexingStatus.ERROR
                                 document.error = error
@@ -1319,8 +1332,6 @@ class RagPipelineService:
             )
         )
 
-        from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineDslService
-
         rag_pipeline_dsl_service = RagPipelineDslService(session)
         dsl = rag_pipeline_dsl_service.export_rag_pipeline_dsl(pipeline=pipeline, include_secret=True)
         pipeline_customized_template = PipelineCustomizedTemplate(
@@ -1499,7 +1510,9 @@ class RagPipelineService:
             "uninstalled_recommended_plugins": uninstalled_plugin_list,
         }
 
-    def retry_error_document(self, dataset: Dataset, document: Document, user: Account | EndUser):
+    def retry_error_document(
+        self, dataset: Dataset, document: Document, user: Account | EndUser, *, generator: PipelineGenerator
+    ):
         """
         Retry error document
         """
@@ -1515,7 +1528,7 @@ class RagPipelineService:
         workflow = self.get_published_workflow(pipeline)
         if not workflow:
             raise ValueError("Workflow not found")
-        PipelineGenerator().generate(
+        generator.generate(
             session=self._session,
             pipeline=pipeline,
             workflow=workflow,
@@ -1534,7 +1547,15 @@ class RagPipelineService:
             is_retry=True,
         )
 
-    def get_datasource_plugins(self, tenant_id: str, dataset_id: str, is_published: bool) -> list[dict]:
+    def get_datasource_plugins(
+        self,
+        tenant_id: str,
+        dataset_id: str,
+        is_published: bool,
+        *,
+        credential_query: CredentialQuery,
+        datasource_providers: DatasourceProviderService,
+    ) -> list[dict]:
         """
         Get datasource plugins
         """
@@ -1601,12 +1622,11 @@ class RagPipelineService:
                         user_input_variables.append(value)
 
                 # get credentials
-                datasource_provider_service: DatasourceProviderService = DatasourceProviderService()
-                credentials: list[dict[Any, Any]] = datasource_provider_service.list_datasource_credentials(
+                credentials: list[dict[Any, Any]] = datasource_providers.list_datasource_credentials(
                     tenant_id=tenant_id,
                     provider=datasource_node_data.get("provider_name"),
                     plugin_id=datasource_node_data.get("plugin_id"),
-                    session=self._session,
+                    credential_query=credential_query,
                 )
                 credential_info_list: list[Any] = []
                 for credential in credentials:

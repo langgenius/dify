@@ -1,8 +1,8 @@
 import type { APIRequestContext, APIResponse } from '@playwright/test'
 import { Buffer } from 'node:buffer'
 import { describe, expect, it, vi } from 'vite-plus/test'
-import { createConsoleClient } from '../support/api/console-client'
-import { createPlaywrightFetch } from '../support/api/playwright-fetch'
+import { createConsoleClient } from '../support/api/console-client.ts'
+import { createPlaywrightFetch } from '../support/api/playwright-fetch.ts'
 
 const createApiResponse = ({
   body = '',

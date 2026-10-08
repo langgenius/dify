@@ -32,11 +32,11 @@ const Operation: FC<Props> = ({
   isShowDelete,
   onDelete,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['explore'])
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="flex cursor-pointer items-center rounded-lg border-none bg-transparent p-1.5 pl-2 text-text-secondary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover">
+      <DropdownMenuTrigger className="flex cursor-pointer items-center rounded-lg border-none bg-transparent p-1.5 pl-2 text-text-secondary hover:bg-state-base-hover data-popup-open:bg-state-base-hover">
         <span className="system-md-semibold">{title}</span>
         <span aria-hidden className="i-ri-arrow-down-s-line size-4" />
       </DropdownMenuTrigger>

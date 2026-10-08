@@ -107,6 +107,11 @@ class AppTracingConfigInvalidProviderError(AppTracingConfigError):
         super().__init__(f"Invalid tracing provider: {tracing_provider}")
 
 
+class AppTracingConfigProviderUnavailableError(AppTracingConfigError):
+    def __init__(self) -> None:
+        super().__init__("The tracing provider is not available in this deployment.")
+
+
 class AppTracingConfigInvalidConfigurationError(AppTracingConfigError):
     """The submitted provider configuration does not match its schema."""
 

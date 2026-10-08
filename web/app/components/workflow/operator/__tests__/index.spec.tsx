@@ -106,7 +106,9 @@ describe('Operator', () => {
       rightPanelWidth: 350,
     })
 
-    expect(screen.getByText('workflow.debug.variableInspect.trigger.normal')).toBeInTheDocument()
+    expect(
+      screen.getByText('workflowDebug.debug.variableInspect.trigger.normal'),
+    ).toBeInTheDocument()
     expect(container.querySelector('div[style*="width: 400px"]')).toBeInTheDocument()
   })
 

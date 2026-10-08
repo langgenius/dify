@@ -9,7 +9,7 @@ type Props = Readonly<{
 }>
 
 const NoPluginSelected: FC<Props> = ({ updateMode }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const text = `${t(($) => $[`autoUpdate.upgradeModePlaceholder.${updateMode === AUTO_UPDATE_MODE.partial ? 'partial' : 'exclude'}`], { ns: 'plugin' })}`
   return <div className="text-center system-xs-regular text-text-tertiary">{text}</div>
 }

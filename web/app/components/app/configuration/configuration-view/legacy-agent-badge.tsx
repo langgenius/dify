@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
 
 export function LegacyAgentBadge() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   const description = t(($) => $['legacyAgentBadge.description'], { ns: 'appDebug' })
 
   return (
@@ -15,7 +15,7 @@ export function LegacyAgentBadge() {
         delay={300}
         closeDelay={200}
         type="button"
-        className="inline-flex h-5 shrink-0 cursor-pointer items-center gap-0.5 rounded-[5px] border border-text-warning bg-components-badge-bg-dimm px-1.25 system-2xs-medium-uppercase whitespace-nowrap text-text-warning outline-hidden hover:bg-state-warning-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+        className="inline-flex h-5 shrink-0 cursor-pointer items-center gap-0.5 rounded-[5px] border border-text-warning bg-components-badge-bg-dimm px-1.25 system-2xs-medium-uppercase whitespace-nowrap text-text-warning hover:bg-state-warning-hover"
       >
         <span aria-hidden className="i-ri-alert-fill size-3 shrink-0" />
         {t(($) => $['legacyAgentBadge.label'], { ns: 'appDebug' })}

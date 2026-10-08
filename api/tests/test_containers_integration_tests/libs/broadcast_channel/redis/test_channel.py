@@ -18,7 +18,7 @@ import pytest
 import redis
 from testcontainers.redis import RedisContainer
 
-from libs.broadcast_channel.channel import BroadcastChannel, Subscription, Topic
+from libs.broadcast_channel.channel import BroadcastChannel, Subscription
 from libs.broadcast_channel.exc import SubscriptionClosedError
 from libs.broadcast_channel.redis.pubsub_channel import BroadcastChannel as RedisBroadcastChannel
 
@@ -189,37 +189,63 @@ class TestRedisBroadcastChannelIntegration:
         message1 = b"message for topic1"
         message2 = b"message for topic2"
 
-        # Create producers and subscribers for different topics
         topic1 = broadcast_channel.topic(topic1_name)
         topic2 = broadcast_channel.topic(topic2_name)
 
+        # Subscriptions are created here so they can be closed from the finally block
+        # if a future times out, preventing consumers from blocking executor shutdown.
+        subscription1 = topic1.subscribe()
+        subscription2 = topic2.subscribe()
+        ready_event1 = threading.Event()
+        ready_event2 = threading.Event()
+
         def producer_thread():
-            time.sleep(0.1)
+            # Wait until both subscriptions are provably active before publishing.
+            # Redis Pub/Sub does not replay a message published before SUBSCRIBE is active.
+            deadline = time.time() + 5.0
+            for ev in (ready_event1, ready_event2):
+                remaining = deadline - time.time()
+                ev.wait(timeout=max(0.0, remaining))
             topic1.publish(message1)
             topic2.publish(message2)
 
-        def consumer_by_thread(topic: Topic) -> list[bytes]:
-            subscription = topic.subscribe()
-            received = []
-            with subscription:
-                for msg in subscription:
-                    received.append(msg)
-                    if len(received) >= 1:
-                        break
+        def consumer_by_thread(subscription: Subscription, ready_event: threading.Event) -> list[bytes]:
+            received: list[bytes] = []
+            # Prime the subscription so the underlying SUBSCRIBE is sent to Redis,
+            # then signal readiness before the producer publishes.
+            try:
+                _ = subscription.receive(0.01)
+            except SubscriptionClosedError:
+                ready_event.set()
+                return received
+            ready_event.set()
+            while True:
+                try:
+                    msg = subscription.receive(0.1)
+                except SubscriptionClosedError:
+                    break
+                if msg is None:
+                    continue
+                received.append(msg)
+                if len(received) >= 1:
+                    break
             return received
 
-        # Run all threads
         with ThreadPoolExecutor(max_workers=3) as executor:
+            consumer1_future = executor.submit(consumer_by_thread, subscription1, ready_event1)
+            consumer2_future = executor.submit(consumer_by_thread, subscription2, ready_event2)
             producer_future = executor.submit(producer_thread)
-            consumer1_future = executor.submit(consumer_by_thread, topic1)
-            consumer2_future = executor.submit(consumer_by_thread, topic2)
 
-            # Wait for completion
-            producer_future.result(timeout=5.0)
-            received_by_topic1 = consumer1_future.result(timeout=5.0)
-            received_by_topic2 = consumer2_future.result(timeout=5.0)
+            try:
+                producer_future.result(timeout=10.0)
+                received_by_topic1 = consumer1_future.result(timeout=10.0)
+                received_by_topic2 = consumer2_future.result(timeout=10.0)
+            finally:
+                # Closing here unblocks any consumer still in receive() so the
+                # executor can shut down cleanly even when a future timed out.
+                subscription1.close()
+                subscription2.close()
 
-        # Verify topic isolation
         assert len(received_by_topic1) == 1
         assert len(received_by_topic2) == 1
         assert received_by_topic1[0] == message1

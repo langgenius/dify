@@ -5,6 +5,8 @@ import posixpath
 import uuid
 from collections.abc import Generator, Sequence  # Changed Iterator to Generator
 from contextlib import contextmanager, suppress
+from dataclasses import dataclass
+from datetime import datetime
 from tempfile import NamedTemporaryFile
 from typing import Literal
 from zipfile import ZIP_DEFLATED, ZipFile
@@ -36,6 +38,27 @@ from .errors.file import BlockedFileExtensionError, FileNotExistsError, FileTooL
 PREVIEW_WORDS_LIMIT = 3000
 
 
+@dataclass(frozen=True, slots=True)
+class FileUploadActor:
+    """Creator identity, independent of the tenant receiving the upload."""
+
+    id: str
+    creator_role: CreatorUserRole
+
+
+@dataclass(frozen=True, slots=True)
+class FileUploadResult:
+    id: str
+    name: str
+    size: int
+    extension: str
+    mime_type: str
+    created_by: str
+    created_at: datetime
+    tenant_id: str
+    source_url: str
+
+
 class FileService:
     _session_maker: sessionmaker[Session]
 
@@ -54,12 +77,26 @@ class FileService:
         filename: str,
         content: bytes,
         mimetype: str,
-        user: Account | EndUser,
+        user: Account | EndUser | FileUploadActor,
         tenant_id: str | None = None,
         source: Literal["datasets"] | None = None,
         source_url: str = "",
         default_file_size_limit: int | None = None,
     ) -> UploadFile:
+        """Persist a file with the given creator and resource tenant.
+
+        For Account or EndUser, tenant_id=None (including when omitted) uses
+        the account's current workspace or the end user's tenant. An explicit
+        tenant_id takes precedence. FileUploadActor carries no tenant, so it
+        requires an explicit tenant_id.
+
+        default_file_size_limit is the non-media limit in MiB; None uses
+        dify_config.UPLOAD_FILE_SIZE_LIMIT, and 0 permits only empty files.
+        Images, video and audio always use their dedicated configured limits.
+        """
+        if isinstance(user, FileUploadActor) and tenant_id is None:
+            raise TypeError("tenant_id is required when uploading with FileUploadActor")
+
         # get file extension
         extension = os.path.splitext(filename)[1].lstrip(".").lower()
 
@@ -92,7 +129,12 @@ class FileService:
         # generate file key
         file_uuid = str(uuid.uuid4())
 
-        resource_tenant_id = tenant_id if tenant_id is not None else extract_tenant_id(user)
+        if isinstance(user, FileUploadActor):
+            resource_tenant_id = tenant_id
+            creator_role = user.creator_role
+        else:
+            resource_tenant_id = tenant_id if tenant_id is not None else extract_tenant_id(user)
+            creator_role = CreatorUserRole.ACCOUNT if isinstance(user, Account) else CreatorUserRole.END_USER
 
         file_key = "upload_files/" + (resource_tenant_id or "") + "/" + file_uuid + "." + extension
 
@@ -108,7 +150,7 @@ class FileService:
             size=file_size,
             extension=extension,
             mime_type=mimetype,
-            created_by_role=(CreatorUserRole.ACCOUNT if isinstance(user, Account) else CreatorUserRole.END_USER),
+            created_by_role=creator_role,
             created_by=user.id,
             created_at=naive_utc_now(),
             used=False,
@@ -124,6 +166,46 @@ class FileService:
             upload_file.source_url = file_helpers.get_signed_file_url(upload_file_id=upload_file.id)
 
         return upload_file
+
+    def upload_file_for_actor(
+        self,
+        *,
+        actor: FileUploadActor,
+        resource_tenant_id: str,
+        filename: str,
+        content: bytes,
+        mimetype: str,
+        source: Literal["datasets"] | None = None,
+        source_url: str = "",
+        default_file_size_limit: int | None = None,
+    ) -> FileUploadResult:
+        """Upload into the explicitly admitted tenant and return detached values.
+
+        default_file_size_limit overrides the non-media limit in MiB, including
+        0 for empty files only. None uses dify_config.UPLOAD_FILE_SIZE_LIMIT.
+        Images, video and audio retain their dedicated configured limits.
+        """
+        upload_file = self.upload_file(
+            filename=filename,
+            content=content,
+            mimetype=mimetype,
+            user=actor,
+            tenant_id=resource_tenant_id,
+            source=source,
+            source_url=source_url,
+            default_file_size_limit=default_file_size_limit,
+        )
+        return FileUploadResult(
+            id=upload_file.id,
+            name=upload_file.name,
+            size=upload_file.size,
+            extension=upload_file.extension,
+            mime_type=upload_file.mime_type,
+            created_by=upload_file.created_by,
+            created_at=upload_file.created_at,
+            tenant_id=upload_file.tenant_id,
+            source_url=upload_file.source_url,
+        )
 
     @staticmethod
     def is_file_size_within_limit(
@@ -143,7 +225,13 @@ class FileService:
         extension: str,
         default_file_size_limit: int | None = None,
     ) -> int:
-        """Return the size an extension is allowed, in bytes."""
+        """Return the size an extension is allowed, in bytes.
+
+        default_file_size_limit is a non-media override in MiB. None uses
+        dify_config.UPLOAD_FILE_SIZE_LIMIT; 0 allows only empty files.
+        Images, video and audio use their dedicated limits regardless of this
+        override.
+        """
 
         if extension in IMAGE_EXTENSIONS:
             file_size_limit = dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT

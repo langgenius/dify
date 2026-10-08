@@ -67,7 +67,7 @@ class _FakeBeginContext:
 
 
 def _sessionmaker_factory(calls, execute_results=None):
-    def _sessionmaker(*args, **kwargs):
+    def _sessionmaker[**P](*args: P.args, **kwargs: P.kwargs):
         session = _FakeSessionContext(calls=calls, execute_results=execute_results)
         return MagicMock(begin=MagicMock(return_value=_FakeBeginContext(session)))
 
@@ -334,8 +334,8 @@ def test_factory_uses_existing_or_generated_collection(pgvecto_module, monkeypat
     embeddings.embed_query.return_value = [0.1, 0.2, 0.3]
 
     with patch.object(module, "PGVectoRS", return_value="vector") as vector_cls:
-        result_1 = factory.init_vector(dataset_with_index, attributes=[], embeddings=embeddings)
-        result_2 = factory.init_vector(dataset_without_index, attributes=[], embeddings=embeddings)
+        result_1 = factory.init_vector(dataset_with_index, attributes=[], embeddings=embeddings, session=None)
+        result_2 = factory.init_vector(dataset_without_index, attributes=[], embeddings=embeddings, session=None)
 
     assert result_1 == "vector"
     assert result_2 == "vector"

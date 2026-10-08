@@ -1,5 +1,9 @@
 export type MenuItemVariant = 'default' | 'destructive'
 
+// The focus indicator a trigger owns. The caller owns the appearance, directly or through `render`.
+export const triggerFocusClassName =
+  'outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid'
+
 export const menuItemClassName =
   'mx-1 flex h-8 cursor-pointer select-none items-center gap-1 rounded-lg px-2 outline-hidden data-highlighted:bg-state-base-hover data-disabled:cursor-not-allowed data-disabled:opacity-30'
 export const menuItemDestructiveClassName =
@@ -15,6 +19,8 @@ export const menuPopupSurfaceClassName =
 export const menuPopupClassName = `${menuPopupBaseClassName} ${menuPopupSurfaceClassName}`
 export const floatingPopupAnimationClassName =
   'origin-(--transform-origin) transition-[transform,scale,opacity] data-ending-style:scale-95 data-starting-style:scale-95 data-ending-style:opacity-0 data-starting-style:opacity-0 data-instant:transition-none motion-reduce:transition-none'
+export const hintPopupClassName =
+  'max-w-75 rounded-lg border-[0.5px] border-components-panel-border bg-components-tooltip-bg p-1.5 text-start system-xs-medium wrap-break-word text-text-secondary shadow-[0px_12px_16px_-4px_var(--color-shadow-shadow-5),0px_4px_6px_-2px_var(--color-shadow-shadow-1)] backdrop-blur-[5px] origin-(--transform-origin) transition-opacity data-ending-style:opacity-0 data-instant:transition-none data-starting-style:opacity-0 motion-reduce:transition-none'
 export const modalBackdropClassName =
   'absolute inset-0 z-50 bg-background-overlay transition-opacity duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0 motion-reduce:transition-none'
 export const modalPopupAnimationClassName =

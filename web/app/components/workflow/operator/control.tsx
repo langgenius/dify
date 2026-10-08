@@ -1,24 +1,24 @@
 import type { MouseEvent } from 'react'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { Toggle } from '@langgenius/dify-ui/toggle'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '../../base/divider'
 import { useNodesReadOnly } from '../hooks/use-workflow'
 import { useWorkflowOrganize } from '../hooks/use-workflow-organize'
 import { useWorkflowMoveMode } from '../hooks/use-workflow-panel-interactions'
 import { useStore } from '../store'
 import { ControlMode } from '../types'
 import AddBlock from './add-block'
+import { ExportImage } from './export-image'
 import { useOperator } from './hooks'
-import MoreActions from './more-actions'
 import TipPopup from './tip-popup'
 
 const pressedModeClassName =
   'data-pressed:bg-state-accent-active data-pressed:text-text-accent data-pressed:hover:bg-state-base-hover data-pressed:hover:text-text-secondary data-disabled:data-pressed:text-text-disabled data-disabled:data-pressed:hover:bg-transparent data-disabled:data-pressed:hover:text-text-disabled'
 
 const Control = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const controlMode = useStore((s) => s.controlMode)
   const {
     handleModePointer,
@@ -53,7 +53,7 @@ const Control = () => {
           <span aria-hidden className="i-ri-sticky-note-add-line size-4" />
         </IconButton>
       </TipPopup>
-      <Divider className="my-1 w-3.5" />
+      <Separator className="my-1 h-[0.5px] w-3.5" />
       <TipPopup
         title={t(($) => $['common.pointerMode'], { ns: 'workflow' })}
         shortcut="workflow.pointer-mode"
@@ -122,7 +122,7 @@ const Control = () => {
           />
         </TipPopup>
       )}
-      <Divider className="my-1 w-3.5" />
+      <Separator className="my-1 h-[0.5px] w-3.5" />
       <TipPopup
         title={t(($) => $['panel.organizeBlocks'], { ns: 'workflow' })}
         shortcut="workflow.organize"
@@ -138,7 +138,7 @@ const Control = () => {
           <span aria-hidden className="i-ri-function-add-line size-4" />
         </IconButton>
       </TipPopup>
-      <MoreActions />
+      <ExportImage />
     </div>
   )
 }

@@ -108,7 +108,7 @@ const CollectionSection = ({
   installedPluginIds,
   deferMount,
 }: CollectionSectionProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const locale = useLocale()
   const collectionLabelId = useId()
   const sectionRef = useRef<HTMLDivElement>(null)

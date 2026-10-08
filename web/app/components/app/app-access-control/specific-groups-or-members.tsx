@@ -6,7 +6,6 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { AccessMode } from '@/models/access-control'
-import { Infotip } from '../../base/infotip'
 import AddMemberOrGroupDialog from './add-member-or-group-pop'
 
 export type AccessControlSubjects = {
@@ -31,7 +30,7 @@ export default function SpecificGroupsOrMembers({
   onSubjectsChange,
   onRetrySubjects,
 }: SpecificGroupsOrMembersProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common'])
 
   if (accessMode !== AccessMode.SPECIFIC_GROUPS_MEMBERS) {
     return (
@@ -91,7 +90,7 @@ type RenderGroupsAndMembersProps = {
 }
 
 function RenderGroupsAndMembers({ subjects, onChange }: RenderGroupsAndMembersProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
   const { groups, members } = subjects
 
   if (groups.length <= 0 && members.length <= 0) {
@@ -192,7 +191,7 @@ type BaseItemProps = {
 }
 
 function BaseItem({ icon, onRemove, children }: BaseItemProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
     <div className="group flex flex-row items-center gap-x-1 rounded-full border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark p-1 pr-1.5 shadow-xs">
@@ -214,20 +213,5 @@ function BaseItem({ icon, onRemove, children }: BaseItemProps) {
         />
       </IconButton>
     </div>
-  )
-}
-
-export function WebAppSSONotEnabledTip() {
-  const { t } = useTranslation()
-  const tip = t(($) => $['accessControlDialog.webAppSSONotEnabledTip'], { ns: 'app' })
-
-  return (
-    <Infotip
-      aria-label={tip}
-      className="text-text-warning-secondary hover:text-text-warning-secondary"
-      iconSize="large"
-    >
-      {tip}
-    </Infotip>
   )
 }

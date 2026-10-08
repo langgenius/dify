@@ -31,7 +31,7 @@ const Form: FC<FormProps> = React.memo(
     formSchemas,
     inputClassName,
   }) => {
-    const { t, i18n } = useTranslation()
+    const { t, i18n } = useTranslation(['common', 'dataset'])
     const docLink = useDocLink()
 
     const handleFormChange = (key: string, val: string) => {

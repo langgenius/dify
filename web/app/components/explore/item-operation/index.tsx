@@ -8,7 +8,6 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Pin02 } from '../../base/icons/src/vender/line/general'
 import s from './style.module.css'
 
 type IItemOperationProps = {
@@ -17,9 +16,7 @@ type IItemOperationProps = {
   isPinned: boolean
   isShowRenameConversation?: boolean
   onRenameConversation?: () => void
-  isShowDelete: boolean
   togglePin: () => void
-  onDelete: () => void
 }
 
 function ItemOperation({
@@ -29,18 +26,16 @@ function ItemOperation({
   togglePin,
   isShowRenameConversation,
   onRenameConversation,
-  isShowDelete,
-  onDelete,
 }: IItemOperationProps) {
-  const { t } = useTranslation('explore')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['explore'])
+  const { t: tCommon } = useTranslation(['common'])
 
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger
         aria-label={tCommon(($) => $['operation.moreActionsFor'], { name: itemName })}
         className={cn(
-          'group/operation flex size-6 items-center justify-center rounded-md border-none p-0 text-text-tertiary transition-colors group-focus-within:bg-components-actionbar-bg! group-hover:bg-components-actionbar-bg! hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-popup-open:bg-components-actionbar-bg! data-popup-open:shadow-none!',
+          'group/operation flex size-6 items-center justify-center rounded-md border-none p-0 text-text-tertiary transition-colors group-focus-within:bg-components-actionbar-bg! group-hover:bg-components-actionbar-bg! hover:bg-state-base-hover focus-visible:bg-state-base-hover data-popup-open:bg-components-actionbar-bg! data-popup-open:shadow-none!',
           className,
         )}
         onClick={(e) => {
@@ -60,7 +55,10 @@ function ItemOperation({
             togglePin()
           }}
         >
-          <Pin02 className="size-4 shrink-0 text-text-secondary" />
+          <span
+            aria-hidden
+            className="i-custom-vender-line-general-pin-02 size-4 shrink-0 text-text-secondary"
+          />
           <span className={s.actionName}>
             {isPinned ? t(($) => $['sidebar.action.unpin']) : t(($) => $['sidebar.action.pin'])}
           </span>
@@ -75,30 +73,6 @@ function ItemOperation({
           >
             <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-secondary" />
             <span className={s.actionName}>{t(($) => $['sidebar.action.rename'])}</span>
-          </DropdownMenuItem>
-        )}
-        {isShowDelete && (
-          <DropdownMenuItem
-            className={cn(
-              s.actionItem,
-              s.deleteActionItem,
-              'gap-2 px-3 data-highlighted:bg-state-destructive-hover data-highlighted:text-text-destructive',
-            )}
-            onClick={(e) => {
-              e.stopPropagation()
-              onDelete()
-            }}
-          >
-            <span
-              aria-hidden
-              className={cn(
-                s.deleteActionItemChild,
-                'i-ri-delete-bin-line size-4 shrink-0 text-inherit',
-              )}
-            />
-            <span className={cn(s.actionName, s.deleteActionItemChild, 'text-inherit')}>
-              {t(($) => $['sidebar.action.delete'])}
-            </span>
           </DropdownMenuItem>
         )}
       </DropdownMenuContent>

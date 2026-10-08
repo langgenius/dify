@@ -2,10 +2,10 @@
 import type { FC } from 'react'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import * as React from 'react'
@@ -18,7 +18,7 @@ type Props = Readonly<{
 }>
 
 const RemoveAnnotationConfirmModal: FC<Props> = ({ isShow, onHide, onRemove }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common'])
   const title = t(($) => $['feature.annotation.removeConfirm'], { ns: 'appDebug' })
 
   return (
@@ -32,14 +32,14 @@ const RemoveAnnotationConfirmModal: FC<Props> = ({ isShow, onHide, onRemove }) =
             {title}
           </AlertDialogTitle>
         </div>
-        <AlertDialogActions>
+        <AlertDialogFooter>
           <AlertDialogCancelButton>
             {t(($) => $['operation.cancel'], { ns: 'common' })}
           </AlertDialogCancelButton>
           <AlertDialogConfirmButton tone="destructive" onClick={onRemove}>
             {t(($) => $['operation.confirm'], { ns: 'common' })}
           </AlertDialogConfirmButton>
-        </AlertDialogActions>
+        </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   )

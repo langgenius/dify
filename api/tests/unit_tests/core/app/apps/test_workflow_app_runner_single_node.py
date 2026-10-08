@@ -1,18 +1,18 @@
 from __future__ import annotations
 
 import json
-from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
+from pydantic import ValidationError
 
-from core.app.apps.base_app_queue_manager import AppQueueManager
+from core.app.app_config.entities import WorkflowUIBasedAppConfig
+from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
 from core.app.apps.workflow.app_runner import WorkflowAppRunner
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.credit_usage import CreditUsageAppType
 from core.workflow.system_variables import default_system_variables
-from graphon.entities.graph_config import NodeConfigDictAdapter
 from graphon.runtime import GraphRuntimeState, VariablePool
 from models.model import AppMode
 from models.workflow import Workflow, WorkflowKind
@@ -28,6 +28,13 @@ def _make_graph_state():
     return MagicMock(), variable_pool, GraphRuntimeState(variable_pool=variable_pool, start_at=0.0)
 
 
+@pytest.fixture
+def queue_manager() -> WorkflowAppQueueManager:
+    return WorkflowAppQueueManager(
+        task_id="task-id", user_id="user", invoke_from=InvokeFrom.SERVICE_API, app_mode=AppMode.WORKFLOW
+    )
+
+
 @pytest.mark.parametrize(
     ("single_iteration_run", "single_loop_run"),
     [
@@ -36,28 +43,25 @@ def _make_graph_state():
     ],
 )
 def test_run_uses_single_node_execution_branch(
-    single_iteration_run: Any,
-    single_loop_run: Any,
+    single_iteration_run: WorkflowAppGenerateEntity.SingleIterationRunEntity | None,
+    single_loop_run: WorkflowAppGenerateEntity.SingleLoopRunEntity | None,
+    queue_manager: WorkflowAppQueueManager,
 ) -> None:
-    app_config = MagicMock()
-    app_config.app_id = "app"
-    app_config.tenant_id = "tenant"
-    app_config.workflow_id = "workflow"
-    app_config.app_mode = AppMode.WORKFLOW
-
-    app_generate_entity = MagicMock(spec=WorkflowAppGenerateEntity)
-    app_generate_entity.app_config = app_config
-    app_generate_entity.inputs = {}
-    app_generate_entity.files = []
-    app_generate_entity.user_id = "user"
-    app_generate_entity.invoke_from = InvokeFrom.SERVICE_API
-    app_generate_entity.workflow_execution_id = "execution-id"
-    app_generate_entity.task_id = "task-id"
-    app_generate_entity.call_depth = 0
-    app_generate_entity.trace_manager = None
-    app_generate_entity.extras = {"trace_session_id": "session-1"}
-    app_generate_entity.single_iteration_run = single_iteration_run
-    app_generate_entity.single_loop_run = single_loop_run
+    app_generate_entity = WorkflowAppGenerateEntity(
+        app_config=WorkflowUIBasedAppConfig(
+            app_id="app", tenant_id="tenant", workflow_id="workflow", app_mode=AppMode.WORKFLOW
+        ),
+        inputs={},
+        files=[],
+        user_id="user",
+        invoke_from=InvokeFrom.SERVICE_API,
+        workflow_execution_id="execution-id",
+        task_id="task-id",
+        stream=True,
+        extras={"trace_session_id": "session-1"},
+        single_iteration_run=single_iteration_run,
+        single_loop_run=single_loop_run,
+    )
 
     workflow = Workflow(
         tenant_id="tenant",
@@ -71,7 +75,7 @@ def test_run_uses_single_node_execution_branch(
 
     runner = WorkflowAppRunner(
         application_generate_entity=app_generate_entity,
-        queue_manager=MagicMock(spec=AppQueueManager),
+        queue_manager=queue_manager,
         variable_loader=MagicMock(),
         workflow=workflow,
         system_user_id="system-user",
@@ -118,9 +122,9 @@ def test_run_uses_single_node_execution_branch(
     assert entry_kwargs["graph_runtime_state"] is graph_runtime_state
 
 
-def test_single_node_run_validates_target_node_config(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_single_node_run_validates_target_node_config(queue_manager: WorkflowAppQueueManager) -> None:
     runner = WorkflowBasedAppRunner(
-        queue_manager=MagicMock(spec=AppQueueManager),
+        queue_manager=queue_manager,
         variable_loader=MagicMock(),
         app_id="app",
     )
@@ -133,14 +137,7 @@ def test_single_node_run_validates_target_node_config(monkeypatch: pytest.Monkey
                 "nodes": [
                     {
                         "id": "loop-node",
-                        "data": {
-                            "type": "loop",
-                            "title": "Loop",
-                            "loop_count": 1,
-                            "start_node_id": "loop-start",
-                            "break_conditions": [],
-                            "logical_operator": "and",
-                        },
+                        "data": {},
                     }
                 ],
                 "edges": [],
@@ -149,21 +146,8 @@ def test_single_node_run_validates_target_node_config(monkeypatch: pytest.Monkey
     )
 
     _, _, graph_runtime_state = _make_graph_state()
-    seen_configs: list[object] = []
-    original_validate_python = NodeConfigDictAdapter.validate_python
 
-    def record_validate_python(value: object):
-        seen_configs.append(value)
-        return original_validate_python(value)
-
-    monkeypatch.setattr(NodeConfigDictAdapter, "validate_python", record_validate_python)
-
-    with (
-        patch("core.app.apps.workflow_app_runner.DifyNodeFactory"),
-        patch("core.app.apps.workflow_app_runner.Graph.init", return_value=MagicMock()),
-        patch("core.app.apps.workflow_app_runner.load_into_variable_pool"),
-        patch("core.app.apps.workflow_app_runner.WorkflowEntry.mapping_user_inputs_to_variable_pool"),
-    ):
+    with pytest.raises(ValidationError, match="nodes.0.data.type"):
         runner._get_graph_and_variable_pool_for_single_node_run(
             workflow=workflow,
             node_id="loop-node",
@@ -174,28 +158,20 @@ def test_single_node_run_validates_target_node_config(monkeypatch: pytest.Monkey
             user_id="00000000-0000-0000-0000-000000000001",
         )
 
-    assert seen_configs == [workflow.graph_dict["nodes"][0]]
 
-
-def test_run_adds_inputs_with_snippet_compatible_start_aliases() -> None:
-    app_config = MagicMock()
-    app_config.app_id = "app"
-    app_config.tenant_id = "tenant"
-    app_config.workflow_id = "workflow"
-
-    app_generate_entity = MagicMock(spec=WorkflowAppGenerateEntity)
-    app_generate_entity.app_config = app_config
-    app_generate_entity.inputs = {"question": "hello"}
-    app_generate_entity.files = []
-    app_generate_entity.user_id = "user"
-    app_generate_entity.invoke_from = InvokeFrom.SERVICE_API
-    app_generate_entity.workflow_execution_id = "execution-id"
-    app_generate_entity.task_id = "task-id"
-    app_generate_entity.call_depth = 0
-    app_generate_entity.trace_manager = None
-    app_generate_entity.extras = {}
-    app_generate_entity.single_iteration_run = None
-    app_generate_entity.single_loop_run = None
+def test_run_adds_inputs_with_snippet_compatible_start_aliases(queue_manager: WorkflowAppQueueManager) -> None:
+    app_generate_entity = WorkflowAppGenerateEntity(
+        app_config=WorkflowUIBasedAppConfig(
+            app_id="app", tenant_id="tenant", workflow_id="workflow", app_mode=AppMode.WORKFLOW
+        ),
+        inputs={"question": "hello"},
+        files=[],
+        user_id="user",
+        invoke_from=InvokeFrom.SERVICE_API,
+        workflow_execution_id="execution-id",
+        task_id="task-id",
+        stream=True,
+    )
 
     workflow = Workflow(
         tenant_id="tenant",
@@ -210,7 +186,7 @@ def test_run_adds_inputs_with_snippet_compatible_start_aliases() -> None:
 
     runner = WorkflowAppRunner(
         application_generate_entity=app_generate_entity,
-        queue_manager=MagicMock(spec=AppQueueManager),
+        queue_manager=queue_manager,
         variable_loader=MagicMock(),
         workflow=workflow,
         system_user_id="system-user",

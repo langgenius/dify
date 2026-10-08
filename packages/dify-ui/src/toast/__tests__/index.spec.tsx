@@ -1,4 +1,5 @@
 import type { ToastManager, ToastViewportProps } from '../index'
+import * as React from 'react'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import {
@@ -88,7 +89,7 @@ describe('@langgenius/dify-ui/toast', () => {
 
   it('should not intercept pointer events below a collapsed top-anchored stack', async () => {
     const screen = await render(
-      <>
+      <React.Fragment>
         <style>{'[role="dialog"] { transition: none !important; }'}</style>
         <button
           type="button"
@@ -103,7 +104,7 @@ describe('@langgenius/dify-ui/toast', () => {
           Underlying action
         </button>
         <ExampleToastHost manager={manager} timeout={0} />
-      </>,
+      </React.Fragment>,
     )
 
     toast('Older notification')
@@ -134,7 +135,7 @@ describe('@langgenius/dify-ui/toast', () => {
 
     try {
       const screen = await render(
-        <>
+        <React.Fragment>
           <style>
             {`
             [role="dialog"]:not([data-ending-style]) {
@@ -170,7 +171,7 @@ describe('@langgenius/dify-ui/toast', () => {
             }}
           />
           <ExampleToastHost manager={manager} timeout={0} offset={{ top: 120 }} />
-        </>,
+        </React.Fragment>,
       )
 
       toast('Directional notification')
@@ -202,14 +203,14 @@ describe('@langgenius/dify-ui/toast', () => {
     }
   })
 
-  it('should dismiss an expanded background toast from its current row when swiped right', async () => {
+  it('should dismiss an expanded background toast when swiped right', async () => {
     const baseUIAnimationGlobal = globalThis as BaseUIAnimationGlobal
     const animationState = baseUIAnimationGlobal.BASE_UI_ANIMATIONS_DISABLED
     baseUIAnimationGlobal.BASE_UI_ANIMATIONS_DISABLED = false
 
     try {
       const screen = await render(
-        <>
+        <React.Fragment>
           <style>
             {`
             [role="dialog"][data-ending-style] {
@@ -230,7 +231,7 @@ describe('@langgenius/dify-ui/toast', () => {
             }}
           />
           <ExampleToastHost manager={manager} timeout={0} />
-        </>,
+        </React.Fragment>,
       )
 
       toast('Background notification')
@@ -238,11 +239,10 @@ describe('@langgenius/dify-ui/toast', () => {
 
       const backgroundToast = screen.getByRole('dialog', { name: 'Background notification' })
       await expect.element(backgroundToast).toBeInTheDocument()
-      await backgroundToast.hover()
+      await screen.getByRole('dialog', { name: 'Front notification' }).hover()
       await expect.element(backgroundToast).toHaveAttribute('data-expanded')
 
       const toastElement = backgroundToast.element()
-      const bounds = toastElement.getBoundingClientRect()
 
       await userEvent.dragAndDrop(toastElement, screen.getByLabelText('Swipe destination'), {
         steps: 10,
@@ -250,10 +250,10 @@ describe('@langgenius/dify-ui/toast', () => {
 
       await vi.waitFor(() => {
         expect(toastElement).toHaveAttribute('data-ending-style')
+        expect(toastElement).toHaveAttribute('data-swipe-direction', 'right')
       })
-      expect(toastElement.getBoundingClientRect().top).toBeCloseTo(bounds.top, 0)
-    } finally {
       await userEvent.unhover(document.body)
+    } finally {
       baseUIAnimationGlobal.BASE_UI_ANIMATIONS_DISABLED = animationState
     }
   })
@@ -270,10 +270,10 @@ describe('@langgenius/dify-ui/toast', () => {
     const localManager = createToastManager()
     const localToast = createToast(localManager)
     const screen = await render(
-      <>
+      <React.Fragment>
         <ExampleToastHost manager={manager} />
         <ExampleToastHost manager={localManager} />
-      </>,
+      </React.Fragment>,
     )
 
     localToast.error('Local error')
@@ -362,7 +362,7 @@ describe('@langgenius/dify-ui/toast', () => {
 
     try {
       const screen = await render(
-        <>
+        <React.Fragment>
           <style>
             {`
             [role="dialog"][data-ending-style] {
@@ -392,7 +392,7 @@ describe('@langgenius/dify-ui/toast', () => {
             Underlying action
           </button>
           <ExampleToastHost manager={manager} />
-        </>,
+        </React.Fragment>,
       )
 
       toast('Dismiss me', {

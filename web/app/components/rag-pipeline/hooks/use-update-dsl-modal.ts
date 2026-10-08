@@ -44,7 +44,7 @@ const getImportErrorMessage = async (error: unknown): Promise<string | undefined
   return undefined
 }
 export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParams) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { eventEmitter } = useEventEmitterContextContext()
   const workflowStore = useWorkflowStore()
   const { handleCheckPluginDependencies } = usePluginDependencies()

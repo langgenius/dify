@@ -5,6 +5,23 @@ module-local and publish the complete surface through separate `export { ... }` 
 `export type { ... }` manifests at the bottom of the file. Do not mix scattered inline exports
 with the manifest or use wildcard exports.
 
+## React imports
+
+Use React namespace imports throughout this package, including stories and tests. Use
+`import * as React from 'react'` when calling React runtime APIs, and
+`import type * as React from 'react'` when referencing only React types. A runtime namespace
+import also covers React types; do not add separate named type imports. JSX alone does not
+require an explicit React import.
+
+Use namespace imports for `react-dom`, `react-dom/client`, and `react-dom/server` as well.
+Write grouping fragments as `<React.Fragment>` and remove unnecessary fragment wrappers.
+
+## Component writing style
+
+Define named components with function declarations or function expressions. Arrow functions
+remain appropriate for event handlers, render props, and Storybook render callbacks. Name function
+expressions when JavaScript cannot infer their name. Use `event` or `error` instead of `e`.
+
 ## Subpaths and names
 
 Every public primitive needs a matching `package.json#exports` subpath. Import relatively between
@@ -12,8 +29,8 @@ package components; consumers import only through public subpaths.
 
 Use the primitive name without a `Root` suffix for the canonical boundary and matching props type:
 `Select` and `SelectProps`, `Drawer` and `DrawerProps`. Keep `Root` only when the same subpath
-exports both low-level anatomy and a higher-level convenience component, such as `CheckboxRoot`
-and `Checkbox`.
+exports both low-level anatomy and a higher-level convenience component, such as `AvatarRoot`
+and `Avatar`.
 
 Every runtime component must have an accurate, importable props type with the matching name. Use a
 direct alias for an unchanged Base UI part. Define Dify-authored composite props at the Dify UI
@@ -45,15 +62,19 @@ A type is not public merely because Base UI names it or an implementation once e
 addition to matching component props, export a type only when it pairs with a public factory or a
 real consumer must name it independently.
 
-State, event details and reasons, actions, controlled-state helpers, context values, render
-helpers, styling helpers, and upstream passthrough aliases are private by default. Public props
+State, event details and reasons, controlled-state helpers, context values, render helpers,
+styling helpers, and upstream passthrough aliases are private by default. Public props
 already provide contextual typing for inline render and event callbacks.
 
-When a wrapper consumes `className` through `cn()`, omit the upstream state-callback form and
-expose `className?: string`. Public types must describe behavior the wrapper actually implements.
+Preserve upstream `className` and `style` callbacks. Resolve `className` with the owning Base UI
+part's state before merging default classes with `cn()`, including through composite wrappers.
+Forward `style` unchanged unless the wrapper needs to merge styles; then resolve its callback first.
+Do not add state callbacks to native DOM props or unrelated custom APIs. See [Styling].
 
 ## Evidence
 
 Use local public-subpath type tests to protect generic inference, required relationships, and
 intentional errors. Read current official Base UI documentation and installed type declarations
 before changing an upstream-derived contract.
+
+[Styling]: ./styling.md

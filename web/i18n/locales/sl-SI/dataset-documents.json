@@ -257,6 +257,7 @@
   "segment.searchResults_one": "REZULTAT",
   "segment.searchResults_other": "REZULTATI",
   "segment.searchResults_zero": "REZULTAT",
+  "segment.statusFilterLabel": "Filtriraj segmente po stanju",
   "segment.summary": "POVZETEK",
   "segment.summaryPlaceholder": "Napišite kratek povzetek za boljše iskanje…"
 }

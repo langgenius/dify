@@ -1,14 +1,18 @@
-import type { ConfigParams } from '@/app/components/app/overview/settings'
+import type {
+  AppSiteResponse,
+  AppSiteUpdatePayload,
+} from '@dify/contracts/api/console/apps/types.gen'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { createQueryClientWrapper } from '@/test/console/query-client'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createTestQueryClient } from '@/test/query-client'
 import { useAccessPointActions } from '../shared/use-access-point-actions'
 
 const mocks = vi.hoisted(() => ({
-  fetchAppDetail: vi.fn().mockResolvedValue({ id: 'app-1' }),
+  fetchAppDetail: vi.fn(),
   setAppDetail: vi.fn(),
   toast: vi.fn(),
-  updateAppSiteConfig: vi.fn().mockResolvedValue({}),
+  updateAppSiteConfig: vi.fn(),
 }))
 
 vi.mock('@/app/notifications', () => ({ toast: mocks.toast }))
@@ -18,12 +22,10 @@ vi.mock('@/app/components/app/store', () => ({
     selector({ setAppDetail: mocks.setAppDetail }),
 }))
 
-vi.mock('@/service/apps', () => ({
-  fetchAppDetail: mocks.fetchAppDetail,
-  updateAppSiteConfig: mocks.updateAppSiteConfig,
-}))
-
 vi.mock('@/service/console', () => ({
+  consoleClient: {
+    apps: { byAppId: { get: mocks.fetchAppDetail, site: { post: mocks.updateAppSiteConfig } } },
+  },
   consoleQuery: {
     apps: {
       get: { key: () => ['apps'] },
@@ -56,7 +58,7 @@ const siteConfig = {
   show_workflow_steps: false,
   title: 'App',
   use_icon_as_answer_icon: false,
-} satisfies ConfigParams
+} satisfies AppSiteUpdatePayload
 
 function renderActions(appId = 'app-1', canManageAccessPoint = true) {
   const queryClient = createTestQueryClient()
@@ -70,6 +72,16 @@ function renderActions(appId = 'app-1', canManageAccessPoint = true) {
 describe('useAccessPointActions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.fetchAppDetail.mockResolvedValue(createAppDetailFixture())
+    mocks.updateAppSiteConfig.mockResolvedValue({
+      app_id: 'app-1',
+      customize_token_strategy: 'not_allow',
+      default_language: 'en-US',
+      prompt_public: false,
+      show_workflow_steps: false,
+      title: 'Updated site',
+      use_icon_as_answer_icon: false,
+    } satisfies AppSiteResponse)
   })
 
   it('refreshes after a successful access point result', async () => {
@@ -78,8 +90,8 @@ describe('useAccessPointActions', () => {
     act(() => result.current.handleResult(null))
 
     await waitFor(() => {
-      expect(mocks.fetchAppDetail).toHaveBeenCalledWith({ url: '/apps', id: 'app-1' })
-      expect(mocks.setAppDetail).toHaveBeenCalledWith({ id: 'app-1' })
+      expect(mocks.fetchAppDetail).toHaveBeenCalledWith({ params: { app_id: 'app-1' } })
+      expect(mocks.setAppDetail).toHaveBeenCalledWith(createAppDetailFixture())
     })
     expect(mocks.toast).toHaveBeenCalledWith('common.actionMsg.modifiedSuccessfully', {
       type: 'success',
@@ -97,7 +109,7 @@ describe('useAccessPointActions', () => {
     })
   })
 
-  it('invalidates app detail and lists after saving legacy site configuration', async () => {
+  it('invalidates app detail and lists after saving site configuration', async () => {
     const { queryClient, result } = renderActions()
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
 
@@ -106,13 +118,14 @@ describe('useAccessPointActions', () => {
     })
 
     expect(mocks.updateAppSiteConfig).toHaveBeenCalledWith({
-      url: '/apps/app-1/site',
+      params: { app_id: 'app-1' },
       body: siteConfig,
     })
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['app-detail', 'app-1'] })
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['apps'] })
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['apps', 'starred'] })
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['apps', 'recent'] })
+    await waitFor(() => expect(mocks.setAppDetail).toHaveBeenCalledWith(createAppDetailFixture()))
   })
 
   it('keeps site configuration behind Access Point management permission', async () => {

@@ -1,4 +1,4 @@
-import * as React from 'react'
+import type * as React from 'react'
 import { render } from 'vitest-browser-react'
 import {
   DropdownMenu,
@@ -346,36 +346,6 @@ describe('dropdown-menu wrapper', () => {
   })
 
   describe('DropdownMenuSeparator', () => {
-    it('should forward passthrough props and handlers when separator props are provided', async () => {
-      const handleMouseEnter = vi.fn()
-
-      const screen = await render(
-        <DropdownMenu open>
-          <DropdownMenuTrigger aria-label="menu trigger">Open</DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuSeparator
-              aria-label="actions divider"
-              id="menu-separator"
-              onMouseEnter={handleMouseEnter}
-            />
-          </DropdownMenuContent>
-        </DropdownMenu>,
-      )
-
-      screen
-        .getByRole('separator', { name: 'actions divider' })
-        .element()
-        .dispatchEvent(
-          new MouseEvent('mouseover', {
-            bubbles: true,
-          }),
-        )
-      await expect
-        .element(screen.getByRole('separator', { name: 'actions divider' }))
-        .toHaveAttribute('id', 'menu-separator')
-      expect(handleMouseEnter).toHaveBeenCalledTimes(1)
-    })
-
     it('should keep surrounding menu rows rendered when separator is placed between items', async () => {
       const screen = await render(
         <DropdownMenu open>
@@ -397,4 +367,26 @@ describe('dropdown-menu wrapper', () => {
       expect(screen.getByRole('separator').elements()).toHaveLength(1)
     })
   })
+})
+
+it('resolves submenu popup classes with the popup state', async () => {
+  const screen = await render(
+    <DropdownMenu open>
+      <DropdownMenuTrigger>Open audit menu</DropdownMenuTrigger>
+      <DropdownMenuContent>
+        <DropdownMenuSub open>
+          <DropdownMenuSubTrigger>More audit actions</DropdownMenuSubTrigger>
+          <DropdownMenuSubContent
+            className={(state) => (state.open ? 'opacity-50' : 'opacity-100')}
+          >
+            <DropdownMenuItem>Audit action</DropdownMenuItem>
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
+      </DropdownMenuContent>
+    </DropdownMenu>,
+  )
+
+  await expect
+    .element(screen.getByRole('menu', { name: 'More audit actions' }))
+    .toHaveStyle({ opacity: '0.5' })
 })

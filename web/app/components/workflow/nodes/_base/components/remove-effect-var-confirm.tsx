@@ -2,11 +2,11 @@
 import type { FC } from 'react'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import * as React from 'react'
@@ -20,7 +20,7 @@ type Props = Readonly<{
 const i18nPrefix = 'common.effectVarConfirm'
 
 const RemoveVarConfirm: FC<Props> = ({ isShow, onConfirm, onCancel }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const title = t(($) => $[`${i18nPrefix}.title`], { ns: 'workflow' })
   const content = t(($) => $[`${i18nPrefix}.content`], { ns: 'workflow' })
 
@@ -38,14 +38,14 @@ const RemoveVarConfirm: FC<Props> = ({ isShow, onConfirm, onCancel }) => {
             {content}
           </AlertDialogDescription>
         </div>
-        <AlertDialogActions>
+        <AlertDialogFooter>
           <AlertDialogCancelButton>
             {t(($) => $['operation.cancel'], { ns: 'common' })}
           </AlertDialogCancelButton>
           <AlertDialogConfirmButton onClick={onConfirm}>
             {t(($) => $['operation.confirm'], { ns: 'common' })}
           </AlertDialogConfirmButton>
-        </AlertDialogActions>
+        </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   )

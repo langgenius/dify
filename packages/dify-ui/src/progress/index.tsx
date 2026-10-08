@@ -4,6 +4,7 @@ import type { VariantProps } from 'class-variance-authority'
 import { Progress as BaseProgress } from '@base-ui/react/progress'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
+import { resolveClassName } from '../internals/resolve-class-name'
 
 const progressCircleRootVariants = cva('inline-flex shrink-0 items-center justify-center', {
   variants: {
@@ -67,10 +68,9 @@ type ProgressCircleAccessibleNameProps =
 
 type ProgressCircleProps = Omit<
   BaseProgress.Root.Props,
-  'children' | 'className' | 'aria-label' | 'aria-labelledby'
+  'children' | 'aria-label' | 'aria-labelledby'
 > &
   ProgressCircleAccessibleNameProps & {
-    className?: string
     color?: ProgressCircleColor
     size?: ProgressCircleSize
     circleStrokeWidth?: number
@@ -130,7 +130,9 @@ function ProgressCircle({
 
   return (
     <BaseProgress.Root
-      className={cn(progressCircleRootVariants({ size }), className)}
+      className={(state) =>
+        cn(progressCircleRootVariants({ size }), resolveClassName(className, state))
+      }
       value={value}
       min={min}
       max={max}

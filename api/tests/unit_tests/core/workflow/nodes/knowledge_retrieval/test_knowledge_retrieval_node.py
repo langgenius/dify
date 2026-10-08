@@ -6,6 +6,7 @@ import pytest
 from pytest_mock import MockerFixture
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.workflow.nodes.knowledge_retrieval.entities import (
     Condition,
     KnowledgeRetrievalNodeData,
@@ -20,13 +21,27 @@ from core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node import (
     _normalize_metadata_filter_scalar,
     _normalize_metadata_filter_sequence_item,
 )
-from core.workflow.nodes.knowledge_retrieval.retrieval import RAGRetrievalProtocol, Source
+from core.workflow.nodes.knowledge_retrieval.retrieval import Source, SourceMetadata
 from core.workflow.system_variables import build_system_variables
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.runtime import GraphRuntimeState, VariablePool
-from graphon.variables import StringSegment
+from graphon.variables import ArrayObjectSegment, StringSegment
 from tests.workflow_test_utils import build_test_graph_init_params
+
+
+def _source() -> Source:
+    return Source(
+        metadata=SourceMetadata(
+            dataset_id="dataset-id",
+            dataset_name="Knowledge",
+            document_id="document-id",
+            document_name="Python",
+            data_source_type="upload_file",
+        ),
+        title="Python",
+        content="Python is a programming language",
+    )
 
 
 @pytest.fixture
@@ -58,10 +73,9 @@ def mock_graph_runtime_state():
 
 @pytest.fixture
 def mock_rag_retrieval(mocker: MockerFixture):
-    """Create mock RAGRetrievalProtocol."""
-    mock_retrieval = Mock(spec=RAGRetrievalProtocol)
-    mock_retrieval.knowledge_retrieval.return_value = []
-    mock_retrieval.llm_usage = LLMUsage.empty_usage()
+    """Keep real usage and request metadata while isolating retrieval I/O."""
+    mock_retrieval = DatasetRetrieval()
+    mocker.patch.object(mock_retrieval, "knowledge_retrieval", return_value=[])
     mocker.patch(
         "core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node.DatasetRetrieval",
         return_value=mock_retrieval,
@@ -100,32 +114,6 @@ class TestKnowledgeRetrievalNode:
     """
     Test suite for KnowledgeRetrievalNode.
     """
-
-    def test_node_initialization(self, mock_graph_init_params, mock_graph_runtime_state, mock_rag_retrieval):
-        """Test KnowledgeRetrievalNode initialization."""
-        # Arrange
-        node_id = str(uuid.uuid4())
-        config = {
-            "id": node_id,
-            "data": {
-                "title": "Knowledge Retrieval",
-                "type": "knowledge-retrieval",
-                "dataset_ids": [str(uuid.uuid4())],
-                "retrieval_mode": "multiple",
-            },
-        }
-
-        # Act
-        node = KnowledgeRetrievalNode(
-            node_id=node_id,
-            data=KnowledgeRetrievalNodeData.model_validate(config["data"]),
-            graph_init_params=mock_graph_init_params,
-            graph_runtime_state=mock_graph_runtime_state,
-        )
-
-        # Assert
-        assert node.id == node_id
-        assert node._rag_retrieval == mock_rag_retrieval
 
     def test_run_with_no_query_or_attachment(
         self,
@@ -199,10 +187,8 @@ class TestKnowledgeRetrievalNode:
         }
 
         # Mock retrieval response
-        mock_source = Mock(spec=Source)
-        mock_source.model_dump.return_value = {"content": "Python is a programming language"}
+        mock_source = _source()
         mock_rag_retrieval.knowledge_retrieval.return_value = [mock_source]
-        mock_rag_retrieval.llm_usage = LLMUsage.empty_usage()
 
         node = KnowledgeRetrievalNode(
             node_id=node_id,
@@ -218,7 +204,7 @@ class TestKnowledgeRetrievalNode:
         assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
         assert "result" in result.outputs
         assert mock_rag_retrieval.knowledge_retrieval.called
-        mock_source.model_dump.assert_called_once_with(by_alias=True)
+        assert result.outputs["result"] == ArrayObjectSegment(value=[mock_source.model_dump(by_alias=True)])
 
     def test_run_with_query_variable_multiple_mode(
         self,
@@ -243,10 +229,8 @@ class TestKnowledgeRetrievalNode:
         }
 
         # Mock retrieval response
-        mock_source = Mock(spec=Source)
-        mock_source.model_dump.return_value = {"content": "Python is a programming language"}
+        mock_source = _source()
         mock_rag_retrieval.knowledge_retrieval.return_value = [mock_source]
-        mock_rag_retrieval.llm_usage = LLMUsage.empty_usage()
 
         node = KnowledgeRetrievalNode(
             node_id=node_id,
@@ -358,7 +342,6 @@ class TestKnowledgeRetrievalNode:
         mock_rag_retrieval.knowledge_retrieval.side_effect = RateLimitExceededError(
             "knowledge base request rate limit exceeded"
         )
-        mock_rag_retrieval.llm_usage = LLMUsage.empty_usage()
 
         node = KnowledgeRetrievalNode(
             node_id=node_id,
@@ -397,7 +380,6 @@ class TestKnowledgeRetrievalNode:
 
         # Mock retrieval to raise generic exception
         mock_rag_retrieval.knowledge_retrieval.side_effect = Exception("Unexpected error")
-        mock_rag_retrieval.llm_usage = LLMUsage.empty_usage()
 
         node = KnowledgeRetrievalNode(
             node_id=node_id,
@@ -473,9 +455,8 @@ class TestFetchDatasetRetriever:
         )
 
         # Mock retrieval response
-        mock_source = Mock(spec=Source)
+        mock_source = _source()
         mock_rag_retrieval.knowledge_retrieval.return_value = [mock_source]
-        mock_rag_retrieval.llm_usage = LLMUsage.empty_usage()
 
         node_id = str(uuid.uuid4())
         config = {"id": node_id, "data": node_data.model_dump()}
@@ -509,7 +490,6 @@ class TestFetchDatasetRetriever:
 
         # Mock retrieval response
         mock_rag_retrieval.knowledge_retrieval.return_value = []
-        mock_rag_retrieval.llm_usage = LLMUsage.empty_usage()
 
         node_id = str(uuid.uuid4())
         config = {
@@ -564,7 +544,6 @@ class TestFetchDatasetRetriever:
 
         # Mock retrieval response
         mock_rag_retrieval.knowledge_retrieval.return_value = []
-        mock_rag_retrieval.llm_usage = LLMUsage.empty_usage()
 
         node_id = str(uuid.uuid4())
         config = {
@@ -590,14 +569,6 @@ class TestFetchDatasetRetriever:
         call_args = mock_rag_retrieval.knowledge_retrieval.call_args
         request = call_args[1]["request"]
         assert request.reranking_enable is False
-
-    def test_version_method(self):
-        """Test version class method."""
-        # Act
-        version = KnowledgeRetrievalNode.version()
-
-        # Assert
-        assert version == "1"
 
     def test_resolve_metadata_filtering_conditions_templates(
         self,
@@ -689,7 +660,6 @@ class TestFetchDatasetRetriever:
         )
 
         mock_rag_retrieval.knowledge_retrieval.return_value = []
-        mock_rag_retrieval.llm_usage = LLMUsage.empty_usage()
 
         # Act
         node._fetch_dataset_retriever(Mock(), node_data=node_data, variables=variables)

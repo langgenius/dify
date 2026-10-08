@@ -15,7 +15,7 @@ type Props = Readonly<{
 }>
 
 const MemberSelector: FC<Props> = ({ value, onSelect, exclude = [] }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workspaceMembers'])
   const [open, setOpen] = useState(false)
   const [searchValue, setSearchValue] = useState('')
   const searchLabel = t(($) => $['operation.search'], { ns: 'common' })
@@ -49,13 +49,13 @@ const MemberSelector: FC<Props> = ({ value, onSelect, exclude = [] }) => {
         render={
           <button
             type="button"
-            className="group flex cursor-pointer appearance-none items-center gap-1.5 rounded-lg bg-components-input-bg-normal px-2 py-1 text-start outline-hidden hover:bg-state-base-hover-alt focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover-alt"
+            className="group flex cursor-pointer appearance-none items-center gap-1.5 rounded-lg bg-components-input-bg-normal px-2 py-1 text-start hover:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt"
           />
         }
       >
         {!currentValue && (
           <span className="grow p-1 system-sm-regular text-components-input-text-placeholder">
-            {t(($) => $['members.transferModal.transferPlaceholder'], { ns: 'common' })}
+            {t(($) => $['members.transferModal.transferPlaceholder'], { ns: 'workspaceMembers' })}
           </span>
         )}
         {currentValue && (

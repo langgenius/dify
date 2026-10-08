@@ -15,18 +15,12 @@ from models.model import App, Conversation
 from services.agent.runtime_config_service import AgentRuntimeConfigService
 
 
-def _app() -> MagicMock:
-    app = MagicMock(spec=App)
-    app.id = "app-1"
-    app.tenant_id = "tenant-1"
-    return app
+def _app() -> App:
+    return App(id="app-1", tenant_id="tenant-1")
 
 
-def _conversation(*, binding_id: str | None = None) -> MagicMock:
-    conversation = MagicMock(spec=Conversation)
-    conversation.id = "conversation-1"
-    conversation.agent_workspace_binding_id = binding_id
-    return conversation
+def _conversation(*, binding_id: str | None = None) -> Conversation:
+    return Conversation(id="conversation-1", agent_workspace_binding_id=binding_id)
 
 
 def _soul(prompt: str) -> AgentSoulConfig:
@@ -45,13 +39,13 @@ def _patch_published_soul(monkeypatch: pytest.MonkeyPatch, soul: AgentSoulConfig
     return roster_service
 
 
-def test_debug_without_mapping_falls_back_to_published_soul(monkeypatch: pytest.MonkeyPatch) -> None:
-    session = MagicMock(spec=Session)
-    session.scalar.return_value = None
+def test_debug_without_mapping_falls_back_to_published_soul(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
     published = _soul("published")
     roster_service = _patch_published_soul(monkeypatch, published)
 
-    result = AgentRuntimeConfigService(session).resolve_conversation_soul(
+    result = AgentRuntimeConfigService(sqlite_session).resolve_conversation_soul(
         app_model=_app(),
         conversation=_conversation(),
         account_id="account-1",
@@ -65,16 +59,23 @@ def test_debug_without_mapping_falls_back_to_published_soul(monkeypatch: pytest.
     )
 
 
-def test_debug_without_draft_falls_back_to_published_soul(monkeypatch: pytest.MonkeyPatch) -> None:
-    session = MagicMock(spec=Session)
-    debug_conversation = MagicMock(spec=AgentDebugConversation)
-    debug_conversation.agent_id = "agent-1"
-    debug_conversation.draft_type = AgentConfigDraftType.DRAFT
-    session.scalar.side_effect = [debug_conversation, None]
+def test_debug_without_draft_falls_back_to_published_soul(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    debug_conversation = AgentDebugConversation(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        account_id="account-1",
+        conversation_id="conversation-1",
+        agent_id="agent-1",
+        draft_type=AgentConfigDraftType.DRAFT,
+    )
+    sqlite_session.add(debug_conversation)
+    sqlite_session.flush()
     published = _soul("published")
     _patch_published_soul(monkeypatch, published)
 
-    result = AgentRuntimeConfigService(session).resolve_conversation_soul(
+    result = AgentRuntimeConfigService(sqlite_session).resolve_conversation_soul(
         app_model=_app(),
         conversation=_conversation(),
         account_id="account-1",
@@ -84,13 +85,11 @@ def test_debug_without_draft_falls_back_to_published_soul(monkeypatch: pytest.Mo
     assert result == published
 
 
-def test_missing_binding_falls_back_to_published_soul(monkeypatch: pytest.MonkeyPatch) -> None:
-    session = MagicMock(spec=Session)
-    session.scalar.return_value = None
+def test_missing_binding_falls_back_to_published_soul(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
     published = _soul("published")
     _patch_published_soul(monkeypatch, published)
 
-    result = AgentRuntimeConfigService(session).resolve_conversation_soul(
+    result = AgentRuntimeConfigService(sqlite_session).resolve_conversation_soul(
         app_model=_app(),
         conversation=_conversation(binding_id="binding-1"),
         account_id=None,
@@ -104,17 +103,24 @@ def test_missing_binding_falls_back_to_published_soul(monkeypatch: pytest.Monkey
 def test_missing_bound_version_falls_back_to_published_soul(
     version_kind: AgentConfigVersionKind,
     monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
 ) -> None:
-    session = MagicMock(spec=Session)
-    binding = MagicMock(spec=AgentWorkspaceBinding)
-    binding.agent_id = "agent-1"
-    binding.agent_config_version_id = "version-1"
-    binding.agent_config_version_kind = version_kind
-    session.scalar.side_effect = [binding, None]
+    binding = AgentWorkspaceBinding(
+        id="binding-1",
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workspace_id="workspace-1",
+        backend_binding_ref="binding-ref-1",
+        agent_id="agent-1",
+        agent_config_version_id="version-1",
+        agent_config_version_kind=version_kind,
+    )
+    sqlite_session.add(binding)
+    sqlite_session.flush()
     published = _soul("published")
     _patch_published_soul(monkeypatch, published)
 
-    result = AgentRuntimeConfigService(session).resolve_conversation_soul(
+    result = AgentRuntimeConfigService(sqlite_session).resolve_conversation_soul(
         app_model=_app(),
         conversation=_conversation(binding_id="binding-1"),
         account_id=None,
@@ -124,19 +130,31 @@ def test_missing_bound_version_falls_back_to_published_soul(
     assert result == published
 
 
-def test_bound_draft_returns_its_soul(monkeypatch: pytest.MonkeyPatch) -> None:
-    session = MagicMock(spec=Session)
-    binding = MagicMock(spec=AgentWorkspaceBinding)
-    binding.agent_id = "agent-1"
-    binding.agent_config_version_id = "draft-1"
-    binding.agent_config_version_kind = AgentConfigVersionKind.DRAFT
-    draft = MagicMock(spec=AgentConfigDraft)
+def test_bound_draft_returns_its_soul(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
+    binding = AgentWorkspaceBinding(
+        id="binding-1",
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workspace_id="workspace-1",
+        backend_binding_ref="binding-ref-1",
+        agent_id="agent-1",
+        agent_config_version_id="draft-1",
+        agent_config_version_kind=AgentConfigVersionKind.DRAFT,
+    )
     bound = _soul("bound draft")
-    draft.config_snapshot_dict = bound.model_dump(mode="json")
-    session.scalar.side_effect = [binding, draft]
+    draft = AgentConfigDraft(
+        id="draft-1",
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        draft_type=AgentConfigDraftType.DRAFT,
+        config_snapshot=bound,
+    )
+    sqlite_session.add_all([binding, draft])
+    sqlite_session.flush()
+    sqlite_session.expire_all()
     roster_service = _patch_published_soul(monkeypatch, _soul("published"))
 
-    result = AgentRuntimeConfigService(session).resolve_conversation_soul(
+    result = AgentRuntimeConfigService(sqlite_session).resolve_conversation_soul(
         app_model=_app(),
         conversation=_conversation(binding_id="binding-1"),
         account_id=None,

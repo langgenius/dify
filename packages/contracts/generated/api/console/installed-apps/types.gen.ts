@@ -10,14 +10,6 @@ export type InstalledAppListResponse = {
   next_cursor: string | null
 }
 
-export type InstalledAppCreatePayload = {
-  app_id: string
-}
-
-export type SimpleMessageResponse = {
-  message: string
-}
-
 export type InstalledAppResponse = {
   app: InstalledAppInfoResponse
   app_owner_tenant_id: string
@@ -25,7 +17,6 @@ export type InstalledAppResponse = {
   id: string
   is_pinned: boolean
   last_used_at: number | null
-  uninstallable: boolean
 }
 
 export type InstalledAppUpdatePayload = {
@@ -642,17 +633,26 @@ export type RetrieverResource = {
   data_source_type?: string | null
   dataset_id?: string | null
   dataset_name?: string | null
+  doc_metadata?: {
+    [key: string]: JsonValueType
+  } | null
   document_id?: string | null
   document_name?: string | null
+  files?: Array<{
+    [key: string]: JsonValueType
+  }> | null
   hit_count?: number | null
   id?: string
   index_node_hash?: string | null
   message_id?: string
+  page?: number | null
   position: number
+  retriever_from?: string | null
   score?: number | null
   segment_id?: string | null
   segment_position?: number | null
   summary?: string | null
+  title?: string | null
   word_count?: number | null
 }
 
@@ -768,7 +768,6 @@ export type InstalledAppResponseWritable = {
   id: string
   is_pinned: boolean
   last_used_at: number | null
-  uninstallable: boolean
 }
 
 export type ExploreMessageInfiniteScrollPaginationWritable = {
@@ -830,35 +829,6 @@ export type GetInstalledAppsResponses = {
 }
 
 export type GetInstalledAppsResponse = GetInstalledAppsResponses[keyof GetInstalledAppsResponses]
-
-export type PostInstalledAppsData = {
-  body: InstalledAppCreatePayload
-  path?: never
-  query?: never
-  url: '/installed-apps'
-}
-
-export type PostInstalledAppsResponses = {
-  200: SimpleMessageResponse
-}
-
-export type PostInstalledAppsResponse = PostInstalledAppsResponses[keyof PostInstalledAppsResponses]
-
-export type DeleteInstalledAppsByInstalledAppIdData = {
-  body?: never
-  path: {
-    installed_app_id: string
-  }
-  query?: never
-  url: '/installed-apps/{installed_app_id}'
-}
-
-export type DeleteInstalledAppsByInstalledAppIdResponses = {
-  204: void
-}
-
-export type DeleteInstalledAppsByInstalledAppIdResponse =
-  DeleteInstalledAppsByInstalledAppIdResponses[keyof DeleteInstalledAppsByInstalledAppIdResponses]
 
 export type GetInstalledAppsByInstalledAppIdData = {
   body?: never

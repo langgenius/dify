@@ -12,7 +12,7 @@ type IProps = {
 }
 
 const WebsitePreview = ({ payload, hidePreview }: IProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetCreation'])
 
   return (
     <div className={cn(s.filePreview, 'h-full')}>

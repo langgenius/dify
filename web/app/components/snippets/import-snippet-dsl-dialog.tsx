@@ -4,11 +4,11 @@ import type { MouseEventHandler } from 'react'
 import type { SnippetDSLImportResponse } from '@/types/snippet'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -61,7 +61,7 @@ function SnippetDSLConfirmDialog({
   onCancel: () => void
   onConfirm: MouseEventHandler
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'snippet'])
 
   return (
     <AlertDialog
@@ -92,14 +92,14 @@ function SnippetDSLConfirmDialog({
             </div>
           </AlertDialogDescription>
         </div>
-        <AlertDialogActions>
+        <AlertDialogFooter>
           <AlertDialogCancelButton variant="secondary">
             {t(($) => $['operation.cancel'], { ns: 'common' })}
           </AlertDialogCancelButton>
           <AlertDialogConfirmButton onClick={onConfirm} disabled={confirmDisabled}>
             {t(($) => $['operation.confirm'], { ns: 'common' })}
           </AlertDialogConfirmButton>
-        </AlertDialogActions>
+        </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   )
@@ -107,7 +107,7 @@ function SnippetDSLConfirmDialog({
 
 function ImportSnippetDSLDialog({ isOpen, onClose }: ImportSnippetDSLDialogProps) {
   const dslUrlInputId = useId()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'snippet'])
   const { push } = useRouter()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canCreateAndModifySnippet = canCreateAndModifySnippets(workspacePermissionKeys)

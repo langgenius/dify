@@ -1,16 +1,17 @@
+import type { RagPipelineDatasourceProviderResponse } from '@dify/contracts/api/console/rag/types.gen'
 import type { PluginDetail } from '@/app/components/plugins/types'
 import { create } from 'zustand'
 
 export type ReadmePanelPresentation = 'drawer' | 'dialog'
 
-type ReadmePanelState = {
-  detail: PluginDetail
+export type ReadmePanelState = {
+  detail: PluginDetail | RagPipelineDatasourceProviderResponse
   presentation: ReadmePanelPresentation
   triggerId?: string
 }
 
 type OpenReadmePanelPayload = {
-  detail: PluginDetail
+  detail: ReadmePanelState['detail']
   presentation?: ReadmePanelPresentation
   triggerId?: string
 }

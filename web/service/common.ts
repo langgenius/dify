@@ -60,16 +60,6 @@ export const fetchInitValidateStatus = (): Promise<InitValidateStatusResponse> =
 export const fetchSetupStatus = (): Promise<SetupStatusResponse> => {
   return get<SetupStatusResponse>('/setup')
 }
-export const updateUserProfile = ({
-  url,
-  body,
-}: {
-  url: string
-  body: Record<string, any>
-}): Promise<CommonResponse> => {
-  return post<CommonResponse>(url, { body })
-}
-
 export const deleteMemberOrCancelInvitation = ({
   url,
 }: {
@@ -104,9 +94,6 @@ export const ownershipTransfer = (
     { body },
   )
 
-export const fetchFilePreview = ({ fileID }: { fileID: string }): Promise<{ content: string }> => {
-  return get<{ content: string }>(`/files/${fileID}/preview`)
-}
 export const updateWorkspaceInfo = ({
   url,
   body,
@@ -154,16 +141,6 @@ export const activateMember = ({
 
 export const fetchDefaultModal = (url: string): Promise<{ data: DefaultModelResponse }> => {
   return get<{ data: DefaultModelResponse }>(url)
-}
-
-export const updateDefaultModel = ({
-  url,
-  body,
-}: {
-  url: string
-  body: any
-}): Promise<CommonResponse> => {
-  return post<CommonResponse>(url, { body })
 }
 
 export const fetchModelParameterRules = (url: string): Promise<{ data: ModelParameterRule[] }> => {

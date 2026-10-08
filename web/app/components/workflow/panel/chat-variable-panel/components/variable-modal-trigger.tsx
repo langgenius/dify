@@ -17,7 +17,7 @@ type Props = Readonly<{
 }>
 
 const VariableModalTrigger = ({ open, setOpen, showTip, chatVar, onClose, onSave }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const handleOpenChange = React.useCallback(
     (nextOpen: boolean) => {
       setOpen(nextOpen)

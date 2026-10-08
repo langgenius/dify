@@ -49,7 +49,7 @@ function TaskTrigger({
   tasksButtonLabel: string
   tasksLiveStatus: string
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation(['dataset'])
   return (
     <>
       <Button aria-label={tasksButtonLabel} data-has-error={hasTaskError} onClick={onOpenTasks}>
@@ -109,8 +109,8 @@ const DocumentRow = memo(
     status: DocumentDisplayStatus
     statusPending: boolean
   }) => {
-    const { t } = useTranslation('dataset')
-    const { t: tCommon } = useTranslation('common')
+    const { t } = useTranslation(['dataset'])
+    const { t: tCommon } = useTranslation(['common'])
     const titleId = `new-document-${document.id}`
     const revision = document.activeRevision ?? document.active?.revision
     const updatedTime = Date.parse(document.updatedAt)
@@ -194,7 +194,7 @@ const DocumentRow = memo(
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger
               aria-label={t(($) => $['newKnowledge.documentActions'], { name: document.title })}
-              className="flex size-7 items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+              className="flex size-7 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover"
             >
               <span aria-hidden className="i-ri-more-fill size-4" />
             </DropdownMenuTrigger>
@@ -248,7 +248,7 @@ export function DocumentsEmpty({
   tasksLiveStatus: string
   uploading: boolean
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation(['dataset'])
   const tasksVisible = activeTaskCount > 0 || Boolean(attentionTaskBadge) || hasTaskError
 
   return (
@@ -377,8 +377,8 @@ export function DocumentsList({
   tasksLiveStatus: string
   uploading: boolean
 }) {
-  const { t } = useTranslation('dataset')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['dataset'])
+  const { t: tCommon } = useTranslation(['common'])
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const [visibleDocumentLimit, setVisibleDocumentLimit] = useState(DOCUMENT_RENDER_BATCH_SIZE)
   const loadMoreButtonRef = useRef<HTMLButtonElement>(null)
@@ -643,7 +643,7 @@ export function DocumentBulkActions({
   reindexing: boolean
   selectedCount: number
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation(['dataset'])
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-[calc(1.75rem+env(safe-area-inset-bottom,0px))] z-20 flex justify-center pr-[calc(1rem+env(safe-area-inset-right,0px))] pl-[calc(1rem+env(safe-area-inset-left,0px))]">
       <div

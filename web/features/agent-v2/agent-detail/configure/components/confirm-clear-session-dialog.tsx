@@ -3,11 +3,11 @@
 import type { ReactElement, ReactNode } from 'react'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@langgenius/dify-ui/alert-dialog'
@@ -29,8 +29,8 @@ export function AgentConfigureClearSessionConfirmDialog({
   onOpenChange?: (open: boolean) => void
   onConfirm: () => boolean | void | Promise<boolean | void>
 }) {
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['agentV2'])
+  const { t: tCommon } = useTranslation(['common'])
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
   const [isConfirming, setIsConfirming] = useState(false)
   const open = controlledOpen ?? uncontrolledOpen
@@ -66,7 +66,7 @@ export function AgentConfigureClearSessionConfirmDialog({
             {t(($) => $['agentDetail.configure.clearSessionConfirm.description'])}
           </AlertDialogDescription>
         </div>
-        <AlertDialogActions className="pt-6">
+        <AlertDialogFooter className="pt-6">
           <AlertDialogCancelButton disabled={confirmDisabled || isConfirming}>
             {tCommon(($) => $['operation.cancel'])}
           </AlertDialogCancelButton>
@@ -77,7 +77,7 @@ export function AgentConfigureClearSessionConfirmDialog({
           >
             {tCommon(($) => $['operation.confirm'])}
           </AlertDialogConfirmButton>
-        </AlertDialogActions>
+        </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   )

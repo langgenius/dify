@@ -6,7 +6,7 @@ import type { ChecklistItem } from '../use-checklist'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { zWorkflowAgentComposerResponse } from '@dify/contracts/api/console/apps/zod.gen'
 import { QueryClient } from '@tanstack/react-query'
-import { act, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import { createElement, Fragment } from 'react'
 import { CollectionType } from '@/app/components/tools/types'
 import { consoleQuery } from '@/service/console'
@@ -21,6 +21,15 @@ import { useChecklist, useChecklistBeforePublish, useWorkflowRunValidation } fro
 // ---------------------------------------------------------------------------
 // Mocks
 // ---------------------------------------------------------------------------
+
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  request: vi.fn((url: string) => {
+    if (url.endsWith('/workspaces/current/agent-providers'))
+      return Promise.resolve(Response.json([]))
+    throw new Error(`Unexpected request: ${url}`)
+  }),
+}))
 
 const toolServiceState = vi.hoisted(() => ({
   buildInTools: [] as ToolWithProvider[] | undefined,
@@ -76,10 +85,6 @@ vi.mock('@/service/use-plugins', () => ({
 vi.mock('@/service/use-triggers', async () =>
   (await import('../../__tests__/service-mock-factory')).createTriggerServiceMock(),
 )
-
-vi.mock('@/service/use-strategy', () => ({
-  useStrategyProviders: () => ({ data: [] }),
-}))
 
 type CheckValidFn = (data: CommonNodeType, t: unknown, extra?: unknown) => { errorMessage: string }
 const mockNodesMap: Record<
@@ -255,6 +260,7 @@ function buildInlineAgentGraph({
   })
   const appId = 'app-id'
   const nodeId = 'inline-agent-node'
+  queryClient.setQueryData(consoleQuery.workspaces.current.agentProviders.get.queryKey(), [])
   queryClient.setQueryData(
     consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey({
       input: {
@@ -413,17 +419,19 @@ describe('useChecklist', () => {
     expect(warning!.errorMessages).toContain('Model not configured')
   })
 
-  it('should validate legacy Agent nodes when their metadata is hidden by Agent v2', () => {
+  it('should validate legacy Agent nodes when their metadata is hidden by Agent v2', async () => {
     const { nodes, edges } = buildLegacyAgentGraph()
 
     const { result } = renderWorkflowHook(() => useChecklist(nodes, edges))
 
-    expect(result.current).toEqual([
-      expect.objectContaining({
-        id: 'legacy-agent',
-        errorMessages: ['workflow.nodes.agent.checkList.strategyNotSelected'],
-      }),
-    ])
+    await waitFor(() =>
+      expect(result.current).toEqual([
+        expect.objectContaining({
+          id: 'legacy-agent',
+          errorMessages: ['workflow.nodes.agent.checkList.strategyNotSelected'],
+        }),
+      ]),
+    )
   })
 
   it.each([
@@ -806,13 +814,7 @@ describe('useChecklistBeforePublish', () => {
     rfState.edges = edges as unknown as typeof rfState.edges
 
     const { result } = renderWorkflowHook(() => useChecklistBeforePublish())
-    let isValid: boolean | undefined
-
-    await act(async () => {
-      isValid = await result.current.handleCheckBeforePublish()
-    })
-
-    expect(isValid).toBe(false)
+    await waitFor(async () => expect(await result.current.handleCheckBeforePublish()).toBe(false))
   })
 })
 

@@ -4,10 +4,10 @@ import type { SkillDetailResponse } from '@dify/contracts/api/console/workspaces
 import type { SkillFileMutationCoordinator } from './shared'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -34,7 +34,7 @@ import { DetailSkeleton } from './shell'
 import { RestoreVersionDialog, VersionPanel } from './version-panel'
 
 export function SkillDetailPage({ skillId }: { skillId: string }) {
-  const { t } = useTranslation('skill')
+  const { t } = useTranslation(['skill'])
   const queryClient = useQueryClient()
   const { canEdit, canPublish, canDelete } = useSkillPermissions()
   const [selectedPath, setSelectedPath] = useState<string>()
@@ -416,7 +416,7 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
             <AlertDialogDescription className="mt-2 system-md-regular text-text-tertiary">
               {t(($) => $['skillManagement.detail.saveConflictConfirmDescription'])}
             </AlertDialogDescription>
-            <AlertDialogActions className="p-0 pt-6">
+            <AlertDialogFooter className="p-0 pt-6">
               <AlertDialogConfirmButton
                 loading={saveConflictReloading}
                 tone="default"
@@ -434,7 +434,7 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
               >
                 {t(($) => $['skillManagement.detail.saveConflictReload'])}
               </AlertDialogConfirmButton>
-            </AlertDialogActions>
+            </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
         {canEdit && rightPanelMode === 'builder' && (

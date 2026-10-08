@@ -13,7 +13,8 @@ from sqlalchemy.orm import Session
 
 from models.account import Account, Tenant, TenantAccountJoin
 from models.model import DifySetup
-from services.account_service import RegisterService
+from services.account.contracts import SetupInput
+from services.account.service import AccountSetupProvisioner
 from services.setup_adapters import RedisSetupLock
 from tests.test_containers_integration_tests.helpers import generate_valid_password
 
@@ -21,9 +22,9 @@ from tests.test_containers_integration_tests.helpers import generate_valid_passw
 @pytest.fixture
 def setup_dependencies() -> Iterator[MagicMock]:
     with (
-        patch("services.account_service.SystemFeatureService") as feature_service,
-        patch("services.account_service.BillingService") as billing_service,
-        patch("services.account_service.CommunityTelemetryService.report_install") as report_install,
+        patch("services.account.login_adapters.SystemFeatureService") as feature_service,
+        patch("services.account.login_adapters.BillingService") as billing_service,
+        patch("services.account.adapters.CommunityTelemetryService.report_install") as report_install,
     ):
         feature_service.is_registration_allowed.return_value = True
         feature_service.get_license.return_value.seats.is_available.return_value = True
@@ -93,29 +94,14 @@ def test_concurrent_setup_requests_create_only_one_bootstrap_identity(
     second_lock_attempted = Event()
     attempt_guard = Lock()
     lock_attempts = 0
-    original_setup = RegisterService.setup
+    original_setup = AccountSetupProvisioner.provision
     original_acquire = RedisSetupLock.acquire
 
-    def blocking_setup(
-        email: str,
-        name: str,
-        password: str,
-        ip_address: str,
-        language: str | None,
-        *,
-        session: Session,
-    ) -> None:
+    def blocking_setup(self: AccountSetupProvisioner, setup: SetupInput) -> None:
         if not provision_started.is_set():
             provision_started.set()
             assert allow_provision_to_finish.wait(timeout=10)
-        original_setup(
-            email=email,
-            name=name,
-            password=password,
-            ip_address=ip_address,
-            language=language,
-            session=session,
-        )
+        original_setup(self, setup)
 
     def tracked_acquire(self: RedisSetupLock) -> AbstractContextManager[None]:
         nonlocal lock_attempts
@@ -134,7 +120,7 @@ def test_concurrent_setup_requests_create_only_one_bootstrap_identity(
             return response.status_code
 
     with (
-        patch.object(RegisterService, "setup", side_effect=blocking_setup),
+        patch.object(AccountSetupProvisioner, "provision", blocking_setup),
         patch.object(RedisSetupLock, "acquire", tracked_acquire),
         ThreadPoolExecutor(max_workers=2) as executor,
     ):
