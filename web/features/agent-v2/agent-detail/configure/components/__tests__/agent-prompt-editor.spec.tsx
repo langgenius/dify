@@ -361,6 +361,30 @@ describe('AgentPromptEditor', () => {
       expect(mockCopy).toHaveBeenCalledWith('Review these tenders')
     })
 
+    it('should keep copied feedback visible after clicking the copy control', async () => {
+      const user = userEvent.setup()
+      const { useClipboard } =
+        await vi.importActual<typeof import('foxact/use-clipboard')>('foxact/use-clipboard')
+      mockUseClipboard.mockImplementation(useClipboard)
+      renderAgentPromptEditor('Review these tenders')
+      const copyButton = screen.getByRole('button', {
+        name: /agentDetail\.configure\.prompt\.copy/i,
+      })
+
+      await user.hover(copyButton)
+      expect(await screen.findByText(/agentDetail\.configure\.prompt\.copy$/)).toBeVisible()
+      await user.click(copyButton)
+
+      expect(await screen.findByText(/agentDetail\.configure\.prompt\.copied$/)).toBeVisible()
+      expect(await navigator.clipboard.readText()).toBe('Review these tenders')
+      await user.unhover(copyButton)
+      await waitFor(() => {
+        expect(
+          screen.queryByText(/agentDetail\.configure\.prompt\.copied$/),
+        ).not.toBeInTheDocument()
+      })
+    })
+
     it('should let clipboard timeout restore the copied state instead of resetting on mouse leave', () => {
       renderAgentPromptEditor('Review these tenders')
 
