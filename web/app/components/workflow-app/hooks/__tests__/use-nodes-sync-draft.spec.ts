@@ -150,99 +150,6 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
     isCollaborationEnabled = false
   })
 
-  it.each(['empty', 'placeholder-only', 'temporary-only'] as const)(
-    'skips an unconfirmed %s graph when leaving the editor',
-    async (canvas) => {
-      mockGetNodes.mockReturnValue(
-        canvas === 'empty'
-          ? []
-          : [
-              {
-                id: 'local-node',
-                position: { x: 0, y: 0 },
-                data:
-                  canvas === 'placeholder-only'
-                    ? { type: BlockEnum.StartPlaceholder }
-                    : { type: BlockEnum.Start, _isTempNode: true },
-              },
-            ],
-      )
-      if (canvas !== 'empty')
-        reactFlowState.edges = [
-          { id: 'local-edge', source: 'local-node', target: 'other', data: {} },
-        ]
-      const callbacks = { onSuccess: vi.fn(), onError: vi.fn(), onSettled: vi.fn() }
-      const { result } = renderUseNodesSyncDraft()
-
-      await act(async () => {
-        await expect(
-          result.current.doSyncWorkflowDraft(true, callbacks, { skipEmptyGraph: true }),
-        ).resolves.toBeNull()
-        result.current.syncWorkflowDraftWhenPageClose()
-      })
-
-      expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
-      expect(mockPostWithKeepalive).not.toHaveBeenCalled()
-      expect(callbacks.onSuccess).not.toHaveBeenCalled()
-      expect(callbacks.onError).not.toHaveBeenCalled()
-      expect(callbacks.onSettled).toHaveBeenCalledOnce()
-    },
-  )
-
-  it('does not request a leader save for an empty graph when leaving the editor', async () => {
-    isCollaborationEnabled = true
-    mockCollaborationIsConnected.mockReturnValue(true)
-    mockCollaborationGetIsLeader.mockReturnValue(false)
-    mockGetNodes.mockReturnValue([])
-    const { result } = renderUseNodesSyncDraft()
-
-    await act(async () => {
-      await expect(
-        result.current.doSyncWorkflowDraft(true, undefined, { skipEmptyGraph: true }),
-      ).resolves.toBeNull()
-    })
-
-    expect(mockCollaborationRequestWorkflowSync).not.toHaveBeenCalled()
-    expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
-  })
-
-  it('keeps ordinary empty saves subject to the backend guard and reports their rejection', async () => {
-    mockGetNodes.mockReturnValue([])
-    mockSyncWorkflowDraft.mockRejectedValueOnce({ json: async () => ({ code: 'invalid_param' }) })
-    const callbacks = { onSuccess: vi.fn(), onError: vi.fn(), onSettled: vi.fn() }
-    const { result } = renderUseNodesSyncDraft()
-
-    await act(async () => {
-      await result.current.doSyncWorkflowDraft(false, callbacks)
-    })
-
-    expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(
-      expect.objectContaining({
-        params: expect.objectContaining({
-          graph: expect.objectContaining({ nodes: [], edges: [] }),
-        }),
-      }),
-    )
-    expect(mockSyncWorkflowDraft.mock.lastCall?.[0].params).not.toHaveProperty('force')
-    expect(callbacks.onError).toHaveBeenCalledOnce()
-    expect(callbacks.onSuccess).not.toHaveBeenCalled()
-  })
-
-  it('still reports a failed nonempty save when leaving the editor', async () => {
-    mockSyncWorkflowDraft.mockRejectedValueOnce(new Error('save failed'))
-    const callbacks = { onSuccess: vi.fn(), onError: vi.fn(), onSettled: vi.fn() }
-    const { result } = renderUseNodesSyncDraft()
-
-    await act(async () => {
-      await result.current.doSyncWorkflowDraft(true, callbacks, { skipEmptyGraph: true })
-    })
-
-    expect(mockSyncWorkflowDraft).toHaveBeenCalledOnce()
-    expect(callbacks.onError).toHaveBeenCalledOnce()
-    expect(callbacks.onSuccess).not.toHaveBeenCalled()
-    expect(callbacks.onSettled).toHaveBeenCalledOnce()
-  })
-
   it('should call handleRefreshWorkflowDraft(true) — not updating canvas — on draft_workflow_not_sync', async () => {
     const error = {
       json: vi.fn().mockResolvedValue({ code: 'draft_workflow_not_sync' }),
@@ -353,7 +260,7 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
     let syncPromise!: ReturnType<typeof result.current.doSyncWorkflowDraft>
 
     act(() => {
-      syncPromise = result.current.doSyncWorkflowDraft(true, undefined, { skipEmptyGraph: true })
+      syncPromise = result.current.doSyncWorkflowDraft(false)
 
       // Simulate ReactFlow clearing its store immediately after the page starts unmounting.
       mockGetNodes.mockReturnValue([])

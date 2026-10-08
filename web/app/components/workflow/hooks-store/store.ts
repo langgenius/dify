@@ -35,7 +35,6 @@ export type SyncDraftResult = {
 export type SyncDraftOptions = {
   environmentVariablePatch?: EnvironmentVariablePatch
   forceLocal?: boolean
-  skipEmptyGraph?: boolean
 }
 
 export type WorkflowAccessControl = {

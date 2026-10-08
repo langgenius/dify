@@ -41,96 +41,88 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
     select: (s) => s.enable_collaboration_mode,
   })
 
-  const getPostParams = useCallback(
-    (skipEmptyGraph = false) => {
-      const { getNodes, edges, transform } = store.getState()
-      const allNodes = getNodes()
-      const nodes = allNodes.filter((node) => {
-        if (node.data?.type === BlockEnum.StartPlaceholder) return false
+  const getPostParams = useCallback(() => {
+    const { getNodes, edges, transform } = store.getState()
+    const allNodes = getNodes()
+    const nodes = allNodes.filter((node) => {
+      if (node.data?.type === BlockEnum.StartPlaceholder) return false
 
-        if (!node.data?._isTempNode) return true
+      if (!node.data?._isTempNode) return true
 
-        return isAgentV2NodeData(node.data) && needsInlineAgentBindingCreation(node.data)
-      })
-      const skippedNodeIds = new Set(
-        allNodes
-          .filter((node) => {
-            if (node.data?.type === BlockEnum.StartPlaceholder) return true
+      return isAgentV2NodeData(node.data) && needsInlineAgentBindingCreation(node.data)
+    })
+    const skippedNodeIds = new Set(
+      allNodes
+        .filter((node) => {
+          if (node.data?.type === BlockEnum.StartPlaceholder) return true
 
-            if (!node.data?._isTempNode) return false
+          if (!node.data?._isTempNode) return false
 
-            return !(isAgentV2NodeData(node.data) && needsInlineAgentBindingCreation(node.data))
-          })
-          .map((node) => node.id),
-      )
-      const [x, y, zoom] = transform
-      const { appId, conversationVariables, syncWorkflowDraftHash, isWorkflowDataLoaded } =
-        workflowStore.getState()
+          return !(isAgentV2NodeData(node.data) && needsInlineAgentBindingCreation(node.data))
+        })
+        .map((node) => node.id),
+    )
+    const [x, y, zoom] = transform
+    const { appId, conversationVariables, syncWorkflowDraftHash, isWorkflowDataLoaded } =
+      workflowStore.getState()
 
-      if (shouldSkipDraftSync(appId, isWorkflowDataLoaded)) return null
+    if (shouldSkipDraftSync(appId, isWorkflowDataLoaded)) return null
 
-      const features = featuresStore!.getState().features
-      const producedNodes = produce(nodes, (draft) => {
-        draft.forEach((node) => {
-          Object.keys(node.data).forEach((key) => {
-            if (key.startsWith('_')) delete node.data[key]
-          })
+    const features = featuresStore!.getState().features
+    const producedNodes = produce(nodes, (draft) => {
+      draft.forEach((node) => {
+        Object.keys(node.data).forEach((key) => {
+          if (key.startsWith('_')) delete node.data[key]
         })
       })
-      const producedEdges = produce(
-        edges.filter(
-          (edge) =>
-            !edge.data?._isTemp &&
-            !skippedNodeIds.has(edge.source) &&
-            !skippedNodeIds.has(edge.target),
-        ),
-        (draft) => {
-          draft.forEach((edge) => {
-            Object.keys(edge.data).forEach((key) => {
-              if (key.startsWith('_')) delete edge.data[key]
-            })
+    })
+    const producedEdges = produce(
+      edges.filter(
+        (edge) =>
+          !edge.data?._isTemp &&
+          !skippedNodeIds.has(edge.source) &&
+          !skippedNodeIds.has(edge.target),
+      ),
+      (draft) => {
+        draft.forEach((edge) => {
+          Object.keys(edge.data).forEach((key) => {
+            if (key.startsWith('_')) delete edge.data[key]
           })
-        },
-      )
-      // Leaving a blank editor cannot confirm clearing its persisted draft.
-      if (skipEmptyGraph && producedNodes.length === 0 && producedEdges.length === 0) return null
+        })
+      },
+    )
+    const featuresPayload: WorkflowDraftFeaturesPayload = {
+      opening_statement: features.opening?.enabled ? features.opening?.opening_statement || '' : '',
+      suggested_questions: features.opening?.enabled
+        ? features.opening?.suggested_questions || []
+        : [],
+      suggested_questions_after_answer: features.suggested,
+      text_to_speech: features.text2speech,
+      speech_to_text: features.speech2text,
+      retriever_resource: features.citation,
+      sensitive_word_avoidance: features.moderation,
+      file_upload: features.file,
+    }
 
-      const featuresPayload: WorkflowDraftFeaturesPayload = {
-        opening_statement: features.opening?.enabled
-          ? features.opening?.opening_statement || ''
-          : '',
-        suggested_questions: features.opening?.enabled
-          ? features.opening?.suggested_questions || []
-          : [],
-        suggested_questions_after_answer: features.suggested,
-        text_to_speech: features.text2speech,
-        speech_to_text: features.speech2text,
-        retriever_resource: features.citation,
-        sensitive_word_avoidance: features.moderation,
-        file_upload: features.file,
-      }
-
-      return {
-        url: `/apps/${appId}/workflows/draft`,
-        params: {
-          graph: {
-            nodes: producedNodes,
-            edges: producedEdges,
-            viewport: {
-              x,
-              y,
-              zoom,
-            },
+    return {
+      url: `/apps/${appId}/workflows/draft`,
+      params: {
+        graph: {
+          nodes: producedNodes,
+          edges: producedEdges,
+          viewport: {
+            x,
+            y,
+            zoom,
           },
-          features: featuresPayload,
-          conversation_variables: conversationVariables,
-          hash: syncWorkflowDraftHash,
-          ...(isCollaborationEnabled ? { _is_collaborative: true } : {}),
         },
-      }
-    },
-    [store, featuresStore, workflowStore, isCollaborationEnabled],
-  )
+        features: featuresPayload,
+        conversation_variables: conversationVariables,
+        hash: syncWorkflowDraftHash,
+        ...(isCollaborationEnabled ? { _is_collaborative: true } : {}),
+      },
+    }
+  }, [store, featuresStore, workflowStore, isCollaborationEnabled])
 
   const syncWorkflowDraftWhenPageClose = useCallback(() => {
     if (getNodesReadOnly()) return
@@ -141,7 +133,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       collaborationManager.canUseLocalDraftFallback()
     if (!canPersistOnPageClose) return
 
-    const postParams = getPostParams(true)
+    const postParams = getPostParams()
 
     if (postParams) postWithKeepalive(`${API_PREFIX}${postParams.url}`, postParams.params)
   }, [getPostParams, getNodesReadOnly, isCollaborationEnabled])
@@ -240,18 +232,13 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
 
       if (!shouldRequestLeader) {
         // Capture before ReactFlow resets its store during route unmount.
-        const baseParams = getPostParams(options?.skipEmptyGraph)
+        const baseParams = getPostParams()
         if (!baseParams) {
           callback?.onSettled?.()
           return null
         }
 
         return doSyncWorkflowDraftLocally(baseParams, notRefreshWhenSyncError, callback, options)
-      }
-
-      if (options?.skipEmptyGraph && !getPostParams(options?.skipEmptyGraph)) {
-        callback?.onSettled?.()
-        return null
       }
 
       try {

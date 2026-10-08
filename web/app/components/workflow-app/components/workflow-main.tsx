@@ -315,16 +315,9 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
   useEffect(() => {
     if (!appId || !isCollaborationEnabled) return
 
-    let disposed = false
-    let latestRequest = 0
     const unsubscribe = collaborationManager.onWorkflowUpdate(async () => {
-      if (disposed) return
-      const request = ++latestRequest
-      const isCurrent = () =>
-        !disposed && request === latestRequest && workflowStore.getState().appId === appId
       try {
         const response = await fetchWorkflowDraft(`/apps/${appId}/workflows/draft`)
-        if (!isCurrent()) return
 
         if (response.hash) workflowStore.getState().setSyncWorkflowDraftHash(response.hash)
 
@@ -335,14 +328,11 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
         if (response.graph)
           handleUpdateWorkflowCanvas(getWorkflowDraftGraphForCanvas(response.graph))
       } catch (error) {
-        if (isCurrent()) console.error('Failed to fetch updated workflow:', error)
+        console.error('Failed to fetch updated workflow:', error)
       }
     })
 
-    return () => {
-      disposed = true
-      unsubscribe()
-    }
+    return unsubscribe
   }, [
     appId,
     getWorkflowDraftGraphForCanvas,

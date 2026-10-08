@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useRef } from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
 import { useWorkflowStore } from '@/app/components/workflow/store'
@@ -12,35 +12,16 @@ type RefreshWorkflowDraftOptions = {
 export const useWorkflowRefreshDraft = () => {
   const appDetail = useAppStore((s) => s.appDetail)
   const workflowStore = useWorkflowStore()
-  const appId = appDetail?.id
-  const refreshSessionRef = useRef<{
-    appId: string | undefined
-    sequence: number
-    restoreLoaded: boolean
-  } | null>(null)
-
-  useEffect(() => {
-    refreshSessionRef.current = { appId, sequence: 0, restoreLoaded: false }
-    return () => {
-      refreshSessionRef.current = null
-    }
-  }, [appId, workflowStore])
+  const refreshSequenceRef = useRef(0)
   const { handleUpdateWorkflowCanvas } = useWorkflowUpdate()
   const { getWorkflowDraftGraphForCanvas } = useWorkflowDraftGraphForCanvas(appDetail?.mode)
 
   const handleRefreshWorkflowDraft = useCallback(
     (notUpdateCanvas?: boolean, options?: RefreshWorkflowDraftOptions) => {
-      const session = refreshSessionRef.current
-      if (
-        !session ||
-        !appId ||
-        session.appId !== appId ||
-        workflowStore.getState().appId !== appId ||
-        (options?.shouldApply && !options.shouldApply())
-      )
-        return Promise.resolve(false)
+      if (options?.shouldApply && !options.shouldApply()) return Promise.resolve(false)
 
       const {
+        appId,
         setSyncWorkflowDraftHash,
         setIsSyncingWorkflowDraft,
         setEnvironmentVariables,
@@ -53,21 +34,13 @@ export const useWorkflowRefreshDraft = () => {
 
       debouncedSyncWorkflowDraft?.cancel?.()
 
-      if (isWorkflowDataLoaded && !options?.shouldApply) {
-        session.restoreLoaded = true
-        setIsWorkflowDataLoaded(false)
-      }
-      const refreshSequence = ++session.sequence
-      // A response belongs to the editor session and request that started it.
-      // The canvas update event is shared, so a stale response can affect another app.
-      const isCurrent = () =>
-        refreshSessionRef.current === session &&
-        workflowStore.getState().appId === appId &&
-        refreshSequence === session.sequence
+      const wasLoaded = isWorkflowDataLoaded
+      if (wasLoaded && !options?.shouldApply) setIsWorkflowDataLoaded(false)
+      const refreshSequence = ++refreshSequenceRef.current
       setIsSyncingWorkflowDraft(true)
       return fetchWorkflowDraft(`/apps/${appId}/workflows/draft`)
         .then((response) => {
-          if (!isCurrent() || (options?.shouldApply && !options.shouldApply())) return false
+          if (options?.shouldApply && !options.shouldApply()) return false
 
           // Ensure we have a valid workflow structure with viewport
           if (!notUpdateCanvas)
@@ -90,20 +63,18 @@ export const useWorkflowRefreshDraft = () => {
             ) || [],
           )
           setConversationVariables(response.conversation_variables || [])
-          session.restoreLoaded = false
           setIsWorkflowDataLoaded(true)
           return true
         })
-        .catch(() => false)
+        .catch(() => {
+          if (wasLoaded && !options?.shouldApply) setIsWorkflowDataLoaded(true)
+          return false
+        })
         .finally(() => {
-          if (isCurrent()) {
-            if (session.restoreLoaded) setIsWorkflowDataLoaded(true)
-            session.restoreLoaded = false
-            setIsSyncingWorkflowDraft(false)
-          }
+          if (refreshSequence === refreshSequenceRef.current) setIsSyncingWorkflowDraft(false)
         })
     },
-    [appId, getWorkflowDraftGraphForCanvas, handleUpdateWorkflowCanvas, workflowStore],
+    [getWorkflowDraftGraphForCanvas, handleUpdateWorkflowCanvas, workflowStore],
   )
 
   return {
