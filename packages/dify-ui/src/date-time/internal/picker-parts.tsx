@@ -7,6 +7,7 @@ import type {
   PopoverProps,
   PopoverTriggerProps,
 } from '../../popover'
+import { Popover as BasePopover } from '@base-ui/react/popover'
 import { useMergedRefs } from '@base-ui/utils/useMergedRefs'
 import * as React from 'react'
 import { cn } from '../../cn'
@@ -14,7 +15,7 @@ import { DirectionProvider, useDirection } from '../../direction-provider'
 import { formLabelClassName } from '../../form-control-shared'
 import { IconButton } from '../../icon-button'
 import { resolveClassName } from '../../internals/resolve-class-name'
-import { Popover, PopoverContent, PopoverTrigger } from '../../popover'
+import { Popover, PopoverContent } from '../../popover'
 
 type PickerOpenChangeDetails = Omit<
   Parameters<NonNullable<PopoverProps['onOpenChange']>>[1],
@@ -255,8 +256,10 @@ function PickerTrigger({
   const field = usePickerContext()
   const mergedRef = useMergedRefs(field.triggerRef, ref)
   const labelId = ariaLabelledBy ?? (ariaLabel ? undefined : field.labelId)
+  // The picker owns its focus outline, so it composes the Base UI part rather than the Dify
+  // UI trigger, which contributes its own focus ring.
   return (
-    <PopoverTrigger
+    <BasePopover.Trigger
       id={field.triggerId}
       dir={field.direction}
       aria-label={ariaLabel}
@@ -297,7 +300,7 @@ function PickerTrigger({
           />
         </React.Fragment>
       )}
-    </PopoverTrigger>
+    </BasePopover.Trigger>
   )
 }
 
