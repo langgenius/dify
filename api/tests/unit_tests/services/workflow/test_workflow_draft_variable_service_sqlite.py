@@ -301,7 +301,7 @@ class TestDraftVariableLoader(unittest.TestCase):
                     repository=WorkflowDraftVariableRepository(
                         sessions=sessionmaker(bind=session.get_bind(), expire_on_commit=False)
                     ),
-                    files=FileService(session.get_bind()),
+                    files=FileService(self._engine),
                     tenant_id=self._test_tenant_id,
                     app_id=self._test_app_id,
                     node_id="test_offload_node",

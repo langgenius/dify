@@ -2,6 +2,8 @@ import io
 from collections.abc import Generator
 from typing import Any, override
 
+from sqlalchemy.orm import Session
+
 from core.credit_usage import CreditUsageCreatedBy
 from core.model_context import with_credit_usage_created_by
 from core.model_manager import ModelManager
@@ -20,6 +22,7 @@ class ASRTool(BuiltinTool):
     @with_credit_usage_created_by(CreditUsageCreatedBy.AUDIO)
     def _invoke(
         self,
+        session: Session,
         user_id: str,
         tool_parameters: dict[str, Any],
         conversation_id: str | None = None,

@@ -1590,9 +1590,23 @@ source_modules =
     services.agent.chat.function_call_runner
     services.agent.chat.cot_runner
     services.app.generation.adapters.agent_chat_runner
-    services.tools.tool_engine
 forbidden_modules =
     sqlalchemy
+    extensions.ext_database
+    core.db
+    repositories
+    extensions.application_services
+    extensions.ext_application_services
+allow_indirect_imports = True
+
+[importlinter:contract:tool-engine-persistence-boundary]
+name = Tool invocation receives Sessions but cannot source persistence dependencies
+type = forbidden
+source_modules =
+    services.tools.tool_engine
+    core.tools.__base.tool
+    services.tools.dataset.tool
+forbidden_modules =
     extensions.ext_database
     core.db
     repositories
@@ -1621,12 +1635,10 @@ source_modules =
     core.rag.rerank.rerank_model
     services.knowledge.retrieval.reranking
     services.knowledge_retrieval_inner_service
-    services.tools.dataset.tool
     services.app.generation.adapters.chat_runner
     services.app.generation.adapters.completion_runner
     services.workflow.execution.adapters.knowledge_retrieval
     services.workflow.execution.adapters.human_input_events
-    core.tools.__base.tool
 forbidden_modules =
     sqlalchemy
     repositories

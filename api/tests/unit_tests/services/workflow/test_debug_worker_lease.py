@@ -1,19 +1,19 @@
+from collections.abc import Callable
 from threading import Event
-from unittest.mock import Mock
+from unittest.mock import Mock, create_autospec
 
 import pytest
 
-from configs import dify_config
 from repositories.workflow.debug_reservation_repository import WorkflowDebugReservationRepository
 from services.errors.workflow_service import WorkflowDebugReservationExpiredError
 from services.workflow.debug_worker_lease import keep_debug_worker_alive
 from services.workflow.execution.ports import WorkflowRuntime
 
 
-def test_silent_worker_renews_until_execution_scope_exits(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(dify_config, "WORKFLOW_DEBUG_RESERVATION_TIMEOUT", 1)
+def test_silent_worker_renews_until_execution_scope_exits(config_overrides: Callable[..., None]) -> None:
+    config_overrides(WORKFLOW_DEBUG_RESERVATION_TIMEOUT=1)
     renewed = Event()
-    reservations = Mock(spec=WorkflowDebugReservationRepository)
+    reservations = create_autospec(WorkflowDebugReservationRepository, instance=True, spec_set=True)
 
     def renew(**_kwargs: object) -> bool:
         if reservations.renew.call_count > 1:
@@ -33,7 +33,7 @@ def test_silent_worker_renews_until_execution_scope_exits(monkeypatch: pytest.Mo
 
 
 def test_reclaimed_debug_lease_cannot_enter_engine() -> None:
-    reservations = Mock(spec=WorkflowDebugReservationRepository)
+    reservations = create_autospec(WorkflowDebugReservationRepository, instance=True, spec_set=True)
     reservations.renew.return_value = False
     with pytest.raises(WorkflowDebugReservationExpiredError):
         with keep_debug_worker_alive(
@@ -43,13 +43,15 @@ def test_reclaimed_debug_lease_cannot_enter_engine() -> None:
 
 
 @pytest.mark.parametrize("failure", ["rejected", "database_unavailable"])
-def test_lease_lost_during_execution_is_reported_to_owner(monkeypatch: pytest.MonkeyPatch, failure: str) -> None:
-    monkeypatch.setattr(dify_config, "WORKFLOW_DEBUG_RESERVATION_TIMEOUT", 1)
+def test_lease_lost_during_execution_is_reported_to_owner(
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None], failure: str
+) -> None:
+    config_overrides(WORKFLOW_DEBUG_RESERVATION_TIMEOUT=1)
     clock = [0.0]
     monkeypatch.setattr("services.workflow.debug_worker_lease.monotonic", lambda: clock[0])
     monkeypatch.setattr("services.workflow.debug_cancellation.monotonic", lambda: clock[0])
     checked = Event()
-    reservations = Mock(spec=WorkflowDebugReservationRepository)
+    reservations = create_autospec(WorkflowDebugReservationRepository, instance=True, spec_set=True)
 
     def renew(**_kwargs: object) -> bool:
         if reservations.renew.call_count == 1:
@@ -68,14 +70,16 @@ def test_lease_lost_during_execution_is_reported_to_owner(monkeypatch: pytest.Mo
             assert checked.wait(timeout=2)
 
 
-def test_lost_lease_aborts_real_graph_and_prevents_successor_node(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_lost_lease_aborts_real_graph_and_prevents_successor_node(
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+) -> None:
     from graphon.graph_engine import GraphEngine, GraphEngineConfig
     from graphon.graph_engine.command_channels import InMemoryChannel
     from graphon.graph_events import GraphEngineEvent, GraphRunAbortedEvent
     from services.workflow.execution.adapters.workflow.stop_aware_ready_queue import attach_stop_aware_ready_queue
     from tests.unit_tests.core.workflow.graph_engine.test_table_runner import WorkflowRunner
 
-    monkeypatch.setattr(dify_config, "WORKFLOW_DEBUG_RESERVATION_TIMEOUT", 3)
+    config_overrides(WORKFLOW_DEBUG_RESERVATION_TIMEOUT=3)
     runner = WorkflowRunner()
     graph, state = runner.create_graph_from_fixture(
         fixture_data=runner.load_fixture("basic_chatflow"), query="hello", use_mock_factory=True
@@ -99,7 +103,7 @@ def test_lost_lease_aborts_real_graph_and_prevents_successor_node(monkeypatch: p
     monkeypatch.setattr(graph.nodes["llm"], "_run", delayed_node)
     successor = Mock(side_effect=AssertionError("successor executed after lease loss"))
     monkeypatch.setattr(graph.nodes["answer"], "_run", successor)
-    reservations = Mock(spec=WorkflowDebugReservationRepository)
+    reservations = create_autospec(WorkflowDebugReservationRepository, instance=True, spec_set=True)
 
     def renew(**_kwargs: object) -> bool:
         return not started_node.is_set()
@@ -170,10 +174,12 @@ def test_blocked_renewal_or_suspended_process_cannot_start_queued_node(monkeypat
         cancellation.raise_if_cancelled()
 
 
-def test_blocked_database_renewal_still_aborts_active_execution(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_blocked_database_renewal_still_aborts_active_execution(
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+) -> None:
     from graphon.graph_engine.domain.graph_execution import GraphExecution
 
-    monkeypatch.setattr(dify_config, "WORKFLOW_DEBUG_RESERVATION_TIMEOUT", 1)
+    config_overrides(WORKFLOW_DEBUG_RESERVATION_TIMEOUT=1)
     clock = [0.0]
     monkeypatch.setattr("services.workflow.debug_worker_lease.monotonic", lambda: clock[0])
     monkeypatch.setattr("services.workflow.debug_cancellation.monotonic", lambda: clock[0])
@@ -188,7 +194,7 @@ def test_blocked_database_renewal_still_aborts_active_execution(monkeypatch: pyt
         aborted.set()
 
     monkeypatch.setattr(state, "abort", abort)
-    reservations = Mock(spec=WorkflowDebugReservationRepository)
+    reservations = create_autospec(WorkflowDebugReservationRepository, instance=True, spec_set=True)
 
     def renew(**_kwargs: object) -> bool:
         if reservations.renew.call_count > 1:
@@ -246,12 +252,16 @@ def test_resumed_runner_does_not_treat_previous_pause_as_current_completion(
     )
     runner = WorkflowAppRunner(
         application_generate_entity=entity,
-        queue_manager=Mock(spec=AppQueueManager),
+        queue_manager=create_autospec(AppQueueManager, instance=True, spec_set=True),
         variable_loader=DUMMY_VARIABLE_LOADER,
         workflow=make_workflow(),
         system_user_id="account",
-        workflow_execution_repository=Mock(spec=WorkflowExecutionRepository),
-        workflow_node_execution_repository=Mock(spec=WorkflowNodeExecutionRepository),
+        workflow_execution_repository=create_autospec(
+            WorkflowExecutionRepository, instance=True, spec_set=True
+        ),
+        workflow_node_execution_repository=create_autospec(
+            WorkflowNodeExecutionRepository, instance=True, spec_set=True
+        ),
         graph_runtime_state=state,
         cancellation=cancellation,
         runtime=workflow_runtime,

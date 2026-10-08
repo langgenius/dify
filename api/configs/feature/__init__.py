@@ -1432,6 +1432,10 @@ class CeleryScheduleTasksConfig(BaseSettings):
         description="Maximum seconds to start a trigger-debug worker or renew its running lease",
         default=600,
     )
+    ENABLE_WORKFLOW_DRAFT_FILE_CLEANUP_TASK: bool = Field(
+        description="Enable recovery of persisted workflow draft upload cleanup requests",
+        default=True,
+    )
     ENABLE_CONVERSATION_CLEANUP_TASK: bool = Field(
         description="Enable periodic recovery of soft-deleted conversation cleanup",
         default=True,

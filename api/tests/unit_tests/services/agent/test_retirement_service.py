@@ -1,6 +1,6 @@
 from datetime import timedelta
 from functools import partial
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, create_autospec
 
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
@@ -34,7 +34,7 @@ from tests.unit_tests.workflow_execution import debug_lease, execution_binding, 
 
 
 def test_retire_unowned_failure_propagates() -> None:
-    repository = MagicMock(spec=WorkflowAgentRetirementRepository)
+    repository = create_autospec(WorkflowAgentRetirementRepository, instance=True, spec_set=True)
     error = RuntimeError("retirement failed")
     repository.retire.side_effect = error
     with pytest.raises(RuntimeError) as exc_info:
@@ -239,7 +239,7 @@ def test_retire_unowned_archives_orphan_and_retires_resources(
 
 
 def test_hidden_app_enqueue_failure_prevents_agent_purge_enqueue(monkeypatch: pytest.MonkeyPatch) -> None:
-    repository = MagicMock(spec=WorkflowAgentRetirementRepository)
+    repository = create_autospec(WorkflowAgentRetirementRepository, instance=True, spec_set=True)
     repository.retire.return_value = AgentRetirement(
         ["agent-1", "agent-2"], ["hidden-app-1", "hidden-app-2"], [], [], []
     )
@@ -391,6 +391,7 @@ def test_cancel_execution_retries_retirement_with_persisted_candidates(
     assert pending_run is not None
     assert pending_run.status == WorkflowExecutionStatus.STOPPED
     assert pending_reservation is not None
+    assert pending_reservation.expires_at is not None
     assert pending_reservation.expires_at <= naive_utc_now()
     assert WorkflowAgentExecutionRepository(sqlite_session_factory).finished_agent_ids(
         tenant_id="tenant-1", app_id="workflow-app", workflow_id="workflow-1", execution_id=run_id

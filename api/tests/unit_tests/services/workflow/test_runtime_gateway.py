@@ -2,8 +2,8 @@
 
 import json
 from collections.abc import Callable, Generator, Iterable
-from typing import Self, cast, override
-from unittest.mock import Mock
+from typing import Literal, NoReturn, Self, cast, override
+from unittest.mock import Mock, create_autospec
 
 import pytest
 from flask import Flask
@@ -42,6 +42,7 @@ from services import workflow_service as workflow_module
 from services.agent.workflow_publish_service import WorkflowAgentPublishService
 from services.app_generate_service import AppGenerateService
 from services.file_service import FileService
+from services.tools.provider_queries import ToolProviderIcons
 from services.workflow import runtime_gateway as module
 from services.workflow.console_service import (
     ConsoleWorkflowService,
@@ -57,6 +58,7 @@ from services.workflow.runtime_gateway import WorkflowRuntimeGateway
 from services.workflow.variable_contracts import WorkflowExecutionVariables
 from services.workflow.variable_service import WorkflowVariableService
 from services.workflow_service import WorkflowService
+from tests.unit_tests.config_override import apply_config_overrides
 from tests.unit_tests.model_factories import make_account, make_app, make_tenant, make_workflow
 from tests.unit_tests.workflow_execution import debug_lease, set_debug_deadline
 
@@ -109,7 +111,7 @@ def runtime_gateway(
 
         return events()
 
-    generator = Mock(spec=AppGenerateService)
+    generator = create_autospec(AppGenerateService, spec_set=True)
     generator.generate_workflow_stream.side_effect = generate
     gateway = WorkflowRuntimeGateway(
         runtime=build_workflow_execution_dependencies(factory),
@@ -119,7 +121,7 @@ def runtime_gateway(
         reservations=WorkflowDebugReservationRepository(factory),
         executions=WorkflowNodeExecutionRepository(factory),
         generator=generator,
-        graph_engine=Mock(spec=GraphEngineManager),
+        graph_engine=create_autospec(GraphEngineManager, instance=True, spec_set=True),
         file_access=DatabaseFileAccessController(),
         variables=workflow_variables,
     )
@@ -747,8 +749,11 @@ def test_real_stream_preparation_releases_reads_before_external_io(
         assert app is not None
         app.mode = mode
         app.max_active_requests = 2
-    monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
-    monkeypatch.setattr(dify_config, "PUBSUB_REDIS_CHANNEL_TYPE", "streams")
+    apply_config_overrides(
+        monkeypatch,
+        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+        PUBSUB_REDIS_CHANNEL_TYPE="streams",
+    )
     monkeypatch.setattr(limiter_module.RateLimit, "_instance_dict", {})
     observed: list[str] = []
 
@@ -866,7 +871,7 @@ def test_node_response_materializes_actor_extras_and_offload_flags(
     )
     monkeypatch.setattr(gateway._workflows, "run_draft_workflow_node", lambda **_kwargs: execution)
 
-    def extras(_execution: WorkflowNodeExecutionModel, *, tool_providers) -> dict[str, object]:
+    def extras(_execution: WorkflowNodeExecutionModel, *, tool_providers: ToolProviderIcons) -> dict[str, object]:
         assert tool_providers is gateway._runtime.tool_providers
         assert all(session.closed for session in sessions)
         return {}
@@ -1013,15 +1018,15 @@ def test_trigger_consumption_and_real_execution_share_detached_revision(
 
     monkeypatch.setattr(module, "create_event_poller", poller)
     service = ConsoleWorkflowService(
-        conversion=Mock(spec=WorkflowConversion),
+        conversion=create_autospec(WorkflowConversion, instance=True, spec_set=True),
         agent_services=WorkflowAgentPublishService,
-        drafts=Mock(spec=WorkflowDraftService),
-        definitions=Mock(spec=WorkflowDefinitions),
-        lifecycle=Mock(spec=WorkflowDefinitionLifecycle),
+        drafts=create_autospec(WorkflowDraftService, instance=True, spec_set=True),
+        definitions=create_autospec(WorkflowDefinitions, instance=True, spec_set=True),
+        lifecycle=create_autospec(WorkflowDefinitionLifecycle, instance=True, spec_set=True),
         runtime=gateway,
-        apps=Mock(spec=WorkflowAppLookup),
-        presence=Mock(spec=WorkflowPresence),
-        access=Mock(spec=WorkflowAccess),
+        apps=create_autospec(WorkflowAppLookup, instance=True, spec_set=True),
+        presence=create_autospec(WorkflowPresence, instance=True, spec_set=True),
+        access=create_autospec(WorkflowAccess, instance=True, spec_set=True),
     )
     result = service.trigger(CONTEXT, "app-1", ["trigger"], single_node=True, select_all=False)
     assert isinstance(result, dict)
@@ -1049,8 +1054,11 @@ def test_single_node_reads_offloaded_outputs_after_repository_session_closes(
     content = "complete output " * 1000
     objects: dict[str, bytes] = {}
     reads: list[str] = []
-    monkeypatch.setattr(dify_config, "WORKFLOW_VARIABLE_TRUNCATION_MAX_SIZE", 256)
-    monkeypatch.setattr(dify_config, "WORKFLOW_VARIABLE_TRUNCATION_STRING_LENGTH", 128)
+    apply_config_overrides(
+        monkeypatch,
+        WORKFLOW_VARIABLE_TRUNCATION_MAX_SIZE=256,
+        WORKFLOW_VARIABLE_TRUNCATION_STRING_LENGTH=128,
+    )
     monkeypatch.setattr(storage, "save", lambda key, data: objects.__setitem__(key, data))
 
     def load(key: str) -> bytes:
@@ -1218,7 +1226,6 @@ def test_full_trigger_execution_preserves_revision_through_task_and_worker(
     *,
     workflow_variables: WorkflowExecutionVariables,
 ) -> None:
-    from configs import dify_config
     from core.app.apps import base_app_queue_manager
     from core.app.features.rate_limiting.rate_limit import RateLimit
     from core.ops.ops_trace_manager import TraceQueueManager
@@ -1270,8 +1277,8 @@ def test_full_trigger_execution_preserves_revision_through_task_and_worker(
 
     monkeypatch.setattr(module, "create_event_poller", poller)
     monkeypatch.setattr(module, "select_trigger_debug_events", select_events)
-    monkeypatch.setattr(dify_config, "PUBSUB_REDIS_CHANNEL_TYPE", "streams")
-    limiter = Mock(spec=RateLimit)
+    apply_config_overrides(monkeypatch, PUBSUB_REDIS_CHANNEL_TYPE="streams")
+    limiter = create_autospec(RateLimit, instance=True, spec_set=True)
     limiter.generate.side_effect = lambda response, *_args: response
 
     def guardrails(*, action: Callable[[RateLimit, str], object], **_kwargs: object) -> object:
@@ -1288,15 +1295,15 @@ def test_full_trigger_execution_preserves_revision_through_task_and_worker(
 
     monkeypatch.setattr(WorkflowEventStream, "retrieve_events", retrieve_events)
     service = ConsoleWorkflowService(
-        conversion=Mock(spec=WorkflowConversion),
+        conversion=create_autospec(WorkflowConversion, instance=True, spec_set=True),
         agent_services=WorkflowAgentPublishService,
-        drafts=Mock(spec=WorkflowDraftService),
-        definitions=Mock(spec=WorkflowDefinitions),
-        lifecycle=Mock(spec=WorkflowDefinitionLifecycle),
+        drafts=create_autospec(WorkflowDraftService, instance=True, spec_set=True),
+        definitions=create_autospec(WorkflowDefinitions, instance=True, spec_set=True),
+        lifecycle=create_autospec(WorkflowDefinitionLifecycle, instance=True, spec_set=True),
         runtime=gateway,
-        apps=Mock(spec=WorkflowAppLookup),
-        presence=Mock(spec=WorkflowPresence),
-        access=Mock(spec=WorkflowAccess),
+        apps=create_autospec(WorkflowAppLookup, instance=True, spec_set=True),
+        presence=create_autospec(WorkflowPresence, instance=True, spec_set=True),
+        access=create_autospec(WorkflowAccess, instance=True, spec_set=True),
     )
     with Flask(__name__).app_context():
         response = service.trigger(CONTEXT, "app-1", ["trigger"], single_node=False, select_all=select_all)
@@ -1329,7 +1336,8 @@ def test_full_trigger_execution_preserves_revision_through_task_and_worker(
         yield from ()
 
     monkeypatch.setattr(base_app_queue_manager.redis_client, "setex", lambda *_args, **_kwargs: None)
-    monkeypatch.setattr(generator_module, "TraceQueueManager", Mock(return_value=Mock(spec=TraceQueueManager)))
+    trace_manager = create_autospec(TraceQueueManager, instance=True, spec_set=True)
+    monkeypatch.setattr(generator_module, "TraceQueueManager", lambda **_kwargs: trace_manager)
     monkeypatch.setattr(generator_module, "WorkflowAppRunner", GraphRunner)
     monkeypatch.setattr(WorkflowAppGenerator, "_handle_response", empty_response)
     monkeypatch.setattr(task_module, "_publish_streaming_response", lambda response, *_args, **_kwargs: list(response))
@@ -1389,7 +1397,7 @@ def test_container_debug_prepares_database_records_before_redis(
     sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
     mode: AppMode,
-    entry: str,
+    entry: Literal["iteration", "loop"],
 ) -> None:
     import threading
 
@@ -1418,7 +1426,7 @@ def test_container_debug_prepares_database_records_before_redis(
     def response(*_args: object, **_kwargs: object) -> Generator[str, None, None]:
         yield from ()
 
-    def unexpected_gateway_session():
+    def unexpected_gateway_session() -> NoReturn:
         raise AssertionError("Single-node generation must use the repositories' sessions")
 
     monkeypatch.setattr(gateway, "_sessions", unexpected_gateway_session)
@@ -1429,8 +1437,12 @@ def test_container_debug_prepares_database_records_before_redis(
     monkeypatch.setattr(threading.Thread, "join", lambda _thread, **_kwargs: None)
     monkeypatch.setattr(WorkflowAppGenerator, "_handle_response", response)
     monkeypatch.setattr(AdvancedChatAppGenerator, "_handle_advanced_chat_response", response)
+    debug_entries = {
+        "iteration": gateway.iteration,
+        "loop": gateway.loop,
+    }
     with Flask(__name__).app_context():
-        result = getattr(gateway, entry)(CONTEXT, "app-1", "container", {"item": "value"})
+        result = debug_entries[entry](CONTEXT, "app-1", "container", {"item": "value"})
         list(result)
     assert writes
     assert all(session.closed and not session.in_transaction() for session in sessions)
@@ -1541,8 +1553,8 @@ def test_trigger_pins_agent_job_and_soul_until_worker_finishes(
 
     monkeypatch.setattr(module, "create_event_poller", lambda **_kwargs: Poller())
     monkeypatch.setattr(module, "select_trigger_debug_events", lambda **_kwargs: Poller().poll())
-    monkeypatch.setattr(dify_config, "PUBSUB_REDIS_CHANNEL_TYPE", "streams")
-    limiter = Mock(spec=RateLimit)
+    apply_config_overrides(monkeypatch, PUBSUB_REDIS_CHANNEL_TYPE="streams")
+    limiter = create_autospec(RateLimit, instance=True, spec_set=True)
     limiter.generate.side_effect = lambda response, *_args: response
     monkeypatch.setattr(
         AppGenerateService, "_run_with_guardrails", lambda *, action, **_kwargs: action(limiter, "request")
@@ -1745,7 +1757,7 @@ def test_reserved_trigger_stream_owns_cleanup_until_enqueue(
             == []
         )
     monkeypatch.setattr("services.agent.retirement_service.enqueue_agent_resource_collection", lambda **_kwargs: None)
-    monkeypatch.setattr(dify_config, "PUBSUB_REDIS_CHANNEL_TYPE", channel_type)
+    apply_config_overrides(monkeypatch, PUBSUB_REDIS_CHANNEL_TYPE=channel_type)
 
     def unexpected_timer(*_args: object, **_kwargs: object) -> None:
         pytest.fail("a reservation must not enqueue after the stream releases its references")
@@ -1896,7 +1908,7 @@ def test_global_timeout_retires_paused_trigger_agent_after_last_execution(
         )
         assert session.scalar(select(WorkflowAgentNodeBinding.agent_id)) == "agent-1"
     monkeypatch.setattr(timeout_module, "db", SimpleNamespace(engine=sqlite_session_factory.kw["bind"]))
-    monkeypatch.setattr(dify_config, "HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS", 3600)
+    apply_config_overrides(monkeypatch, HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS=3600)
     collector = Mock()
     monkeypatch.setattr("tasks.collect_agent_resources_task.collect_agent_resources.delay", collector)
 
@@ -2028,6 +2040,7 @@ def test_paused_debug_lease_is_protected_and_refreshed_atomically_on_resume(
         assert run is not None
         assert lease is not None
         assert run.status == WorkflowExecutionStatus.RUNNING
+        assert lease.expires_at is not None
         assert lease.expires_at > now
     assert reservations.expire(snapshot.execution_id, now) is None
 

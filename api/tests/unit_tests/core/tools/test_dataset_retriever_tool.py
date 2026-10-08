@@ -54,7 +54,7 @@ def dataset_tools(sqlite_session: Session, sqlite_session_factory):
     return tools, retrieval, config
 
 
-def test_tool_metadata_and_fork_preserve_injected_retrieval(dataset_tools):
+def test_tool_metadata_and_fork_preserve_injected_retrieval(dataset_tools, unbound_session: Session):
     tools, retrieval, config = dataset_tools
     assert len(tools) == 1
     tool = tools[0]
@@ -62,15 +62,17 @@ def test_tool_metadata_and_fork_preserve_injected_retrieval(dataset_tools):
     assert [parameter.name for parameter in tool.get_runtime_parameters()] == ["query"]
     assert config.retrieve_strategy == "multiple"
     forked = tool.fork_tool_runtime(ToolRuntime(tenant_id="tenant"))
-    result = list(forked.invoke(user_id="user", tool_parameters={"query": "hello"}))
+    result = list(forked.invoke(session=unbound_session, user_id="user", tool_parameters={"query": "hello"}))
     assert result[0].message.text == "result:hello"
     assert retrieval.calls[0]["inputs"] == {"x": 1}
     assert retrieval.calls[0]["app_id"] == "app"
 
 
-def test_empty_query_does_not_start_retrieval(dataset_tools):
+def test_empty_query_does_not_start_retrieval(dataset_tools, unbound_session: Session):
     tools, retrieval, _ = dataset_tools
-    assert list(tools[0].invoke(user_id="user", tool_parameters={}))[0].message.text == "please input query"
+    assert list(tools[0].invoke(session=unbound_session, user_id="user", tool_parameters={}))[0].message.text == (
+        "please input query"
+    )
     assert not retrieval.calls
 
 

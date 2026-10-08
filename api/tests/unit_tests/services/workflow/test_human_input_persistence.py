@@ -1,11 +1,13 @@
 """Human Input nodes persist through the execution's injected database."""
 
 import json
+from collections.abc import Iterator
 from datetime import timedelta
+from typing import cast
 
 import pytest
-from sqlalchemy import create_engine, event, select
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import Table, create_engine, event, select
+from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import QueuePool
 
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -14,25 +16,33 @@ from core.workflow.system_variables import build_system_variables
 from enums.human_input import HumanInputFormStatus, RecipientType
 from extensions.application_services.workflow import build_workflow_execution_dependencies
 from extensions.application_services.workflow_variables import build_workflow_variable_service
-from graphon.node_events import PauseRequestedEvent
+from graphon.graph_engine import GraphEngine
+from graphon.graph_events import NodeRunSucceededEvent
+from graphon.node_events import PauseRequestedEvent, StreamCompletedEvent
 from graphon.runtime import GraphRuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
 from models.base import TypeBase
 from models.human_input import HumanInputDelivery, HumanInputForm, HumanInputFormRecipient
 from models.human_input_entities import HumanInputNodeData, UserActionConfig
 from services.workflow.execution.adapters.node_factory import DifyNodeFactory
+from services.workflow.execution.ports import WorkflowRuntime
 from tasks.app_generate.workflow_execute_task import AppExecutionParams, _Account, _AppRunner
 from tests.workflow_test_utils import build_test_graph_init_params
 
+type FormDatabases = tuple[sessionmaker[Session], sessionmaker[Session]]
+
 
 @pytest.fixture(params=[False, True], ids=["retain-after-commit", "expire-after-commit"])
-def form_databases(monkeypatch, request):
+def form_databases(monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureRequest) -> Iterator[FormDatabases]:
     engines = [create_engine("sqlite://", poolclass=QueuePool) for _ in range(2)]
     for engine in engines:
-        TypeBase.metadata.create_all(
-            engine, tables=[model.__table__ for model in (HumanInputForm, HumanInputDelivery, HumanInputFormRecipient)]
-        )
-    injected, global_sessions = [sessionmaker(engine, expire_on_commit=request.param) for engine in engines]
+        tables: list[Table] = []
+        for model in (HumanInputForm, HumanInputDelivery, HumanInputFormRecipient):
+            table = model.__table__
+            assert isinstance(table, Table)
+            tables.append(table)
+        TypeBase.metadata.create_all(engine, tables=tables)
+    injected, global_sessions = [sessionmaker(engine, expire_on_commit=bool(request.param)) for engine in engines]
     monkeypatch.setattr(session_factory, "create_session", global_sessions)
     try:
         yield injected, global_sessions
@@ -41,7 +51,7 @@ def form_databases(monkeypatch, request):
             engine.dispose()
 
 
-def factory(runtime, invoke_from=InvokeFrom.DEBUGGER):
+def factory(runtime: WorkflowRuntime | None, invoke_from: InvokeFrom = InvokeFrom.DEBUGGER) -> DifyNodeFactory:
     state = GraphRuntimeState(
         variable_pool=VariablePool.from_bootstrap(
             system_variables=build_system_variables(app_id="app", workflow_execution_id="run")
@@ -55,7 +65,7 @@ def factory(runtime, invoke_from=InvokeFrom.DEBUGGER):
     )
 
 
-def node_config():
+def node_config() -> dict[str, object]:
     return {
         "id": "human-node",
         "data": HumanInputNodeData(
@@ -69,7 +79,9 @@ def node_config():
 @pytest.mark.parametrize("invoke_from", [InvokeFrom.DEBUGGER, InvokeFrom.SERVICE_API])
 @pytest.mark.parametrize("rebind", [False, True])
 @pytest.mark.parametrize("entry", ["factory", "engine-worker"])
-def test_node_creates_and_resumes_form_in_injected_database(form_databases, invoke_from, rebind, entry):
+def test_node_creates_and_resumes_form_in_injected_database(
+    form_databases: FormDatabases, invoke_from: InvokeFrom, rebind: bool, entry: str
+) -> None:
     sessions, global_sessions = form_databases
     if entry == "engine-worker":
         runner = _AppRunner(
@@ -119,6 +131,7 @@ def test_node_creates_and_resumes_form_in_injected_database(form_databases, invo
 
     completed = list(node._run())
     assert not any(isinstance(event, PauseRequestedEvent) for event in completed)
+    assert isinstance(completed[-1], StreamCompletedEvent)
     assert completed[-1].node_run_result.outputs["__action_id"].value == "approve"
     with sessions() as session:
         assert session.scalars(select(HumanInputForm)).one().id == form_id
@@ -127,17 +140,19 @@ def test_node_creates_and_resumes_form_in_injected_database(form_databases, invo
     assert sessions.kw["bind"].pool.checkedout() == 0
 
 
-def test_human_input_node_requires_persistence_dependency():
+def test_human_input_node_requires_persistence_dependency() -> None:
     with pytest.raises(ValueError, match="execution dependencies are required for Human Input"):
         factory(None).create_node(node_config())
 
 
-def test_create_form_commit_failure_does_not_return_a_pause_or_persist_form(form_databases):
+def test_create_form_commit_failure_does_not_return_a_pause_or_persist_form(
+    form_databases: FormDatabases,
+) -> None:
     sessions, _ = form_databases
     node = factory(build_workflow_execution_dependencies(sessions)).create_node(node_config())
     node.bind_execution_id("human-execution")
 
-    def fail_commit(_session):
+    def fail_commit(_session: Session) -> None:
         raise RuntimeError("commit failed")
 
     event.listen(sessions, "before_commit", fail_commit)
@@ -152,11 +167,11 @@ def test_create_form_commit_failure_does_not_return_a_pause_or_persist_form(form
         assert session.scalar(select(HumanInputDelivery)) is None
 
 
-def test_created_form_timeout_reaches_event_stream_in_same_database(form_databases):
+def test_created_form_timeout_reaches_event_stream_in_same_database(form_databases: FormDatabases) -> None:
     from dataclasses import dataclass
 
     from graphon.graph import Graph
-    from graphon.graph_events import NodeRunHumanInputFormTimeoutEvent, NodeRunSucceededEvent
+    from graphon.graph_events import NodeRunHumanInputFormTimeoutEvent
     from services.workflow.execution.adapters.workflow_entry import iter_dify_graph_engine_events
 
     sessions, global_sessions = form_databases
@@ -175,12 +190,13 @@ def test_created_form_timeout_reaches_event_stream_in_same_database(form_databas
         graph: Graph
         graph_runtime_state: GraphRuntimeState
 
-        def run(self):
+        def run(self) -> Iterator[object]:
             yield from node.run()
 
     events = list(
         iter_dify_graph_engine_events(
-            NodeEvents(Graph(root_node=node), node.graph_runtime_state), human_form_reader=runtime.human_form_reader
+            cast(GraphEngine, NodeEvents(Graph(root_node=node), node.graph_runtime_state)),
+            human_form_reader=runtime.human_form_reader,
         )
     )
     timeout = next(event for event in events if isinstance(event, NodeRunHumanInputFormTimeoutEvent))

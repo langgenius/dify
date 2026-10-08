@@ -1,11 +1,13 @@
 """Exercise Agent API-tool invocation through real provider and credentials reads."""
 
 import json
+from collections.abc import Iterator
+from typing import cast
 
 import httpx
 import pytest
-from sqlalchemy import create_engine, event
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import Table, create_engine, event
+from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import QueuePool
 
 from core.db import session_factory
@@ -20,6 +22,7 @@ from models.model import App
 from models.tools import ApiToolProvider
 from services.entities.agent_tool_inner import AgentToolInvokeRequest
 from services.errors.agent_tool_inner import AgentToolInnerServiceError
+from services.tools.api.provider import ApiToolProviderController
 from tests.unit_tests.model_factories import make_account
 from tests.unit_tests.services.agent.test_tool_invocation_service import (
     TENANT_ID,
@@ -29,19 +32,26 @@ from tests.unit_tests.services.agent.test_tool_invocation_service import (
     _service,
 )
 
+type Databases = tuple[sessionmaker[Session], Session]
+
 
 @pytest.fixture
-def databases(monkeypatch):
+def databases(monkeypatch: pytest.MonkeyPatch) -> Iterator[Databases]:
     engines = [create_engine("sqlite://", poolclass=QueuePool) for _ in range(2)]
     for engine in engines:
-        TypeBase.metadata.create_all(engine, tables=[model.__table__ for model in (App, Account, ApiToolProvider)])
+        tables: list[Table] = []
+        for model in (App, Account, ApiToolProvider):
+            table = model.__table__
+            assert isinstance(table, Table)
+            tables.append(table)
+        TypeBase.metadata.create_all(engine, tables=tables)
     sessions, global_sessions = [sessionmaker(engine, expire_on_commit=False) for engine in engines]
     with global_sessions() as global_session:
         monkeypatch.setattr(db, "session", global_session)
         monkeypatch.setattr(type(db), "engine", property(lambda _db: engines[1]))
         monkeypatch.setattr(session_factory, "create_session", global_sessions)
 
-        def reject_global(*_args):
+        def reject_global(*_args: object) -> None:
             pytest.fail("Tool runtime queried the global database")
 
         event.listen(engines[1], "before_cursor_execute", reject_global)
@@ -54,7 +64,9 @@ def databases(monkeypatch):
 
 
 @pytest.mark.parametrize("http_failure", [False, True])
-def test_api_tool_provider_read_finishes_before_decryption_and_http(databases, monkeypatch, http_failure):
+def test_api_tool_provider_read_finishes_before_decryption_and_http(
+    databases: Databases, monkeypatch: pytest.MonkeyPatch, http_failure: bool
+) -> None:
     sessions, global_session = databases
     with sessions() as session:
         _persist_app(session)
@@ -85,29 +97,30 @@ def test_api_tool_provider_read_finishes_before_decryption_and_http(databases, m
         session.add(provider)
         session.commit()
     engine = sessions.kw["bind"]
-    calls = []
+    calls: list[str] = []
 
-    def released():
+    def released() -> None:
         assert engine.pool.checkedout() == 0
         assert not global_session.in_transaction()
 
     class Decrypter:
-        def decrypt(self, credentials):
+        def decrypt(self, credentials: dict[str, object]) -> dict[str, object]:
             released()
             assert credentials["api_key_value"] == "encrypted"
             calls.append("decrypt")
             return {**credentials, "api_key_value": "clear-secret"}
 
-    def encryption(*, tenant_id, controller):
+    def encryption(*, tenant_id: str, controller: ApiToolProviderController) -> tuple[Decrypter, None]:
         released()
         assert tenant_id == TENANT_ID
         assert controller.entity.identity.author == "Injected author"
         return Decrypter(), None
 
-    def http_get(url, **kwargs):
+    def http_get(url: str, **kwargs: object) -> httpx.Response:
         released()
         assert url == "https://api.example.com/search"
-        assert kwargs["headers"]["Authorization"] == "clear-secret"
+        headers = cast(dict[str, str], kwargs["headers"])
+        assert headers["Authorization"] == "clear-secret"
         calls.append("http")
         if http_failure:
             raise ToolInvokeError("remote unavailable")
@@ -131,7 +144,7 @@ def test_api_tool_provider_read_finishes_before_decryption_and_http(databases, m
     released()
 
 
-def test_api_provider_lookup_is_tenant_scoped(databases):
+def test_api_provider_lookup_is_tenant_scoped(databases: Databases) -> None:
     sessions, _ = databases
     with sessions.begin() as session:
         provider = ApiToolProvider(

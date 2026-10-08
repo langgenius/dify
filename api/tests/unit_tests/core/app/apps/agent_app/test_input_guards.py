@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 from typing import Any
-from unittest.mock import Mock
+from unittest.mock import create_autospec
 
 import pytest
 from sqlalchemy.orm import Session
@@ -104,12 +104,12 @@ class TestRunInputGuards:
         qm = _FakeQueueManager()
 
         handled, query, annotation_reply = AgentAppGenerator(
-            agent_configs=Mock(spec=AgentAppConfigurations),
+            agent_configs=create_autospec(AgentAppConfigurations, instance=True, spec_set=True),
             forms=human_forms,
             annotations=annotation_replies,
             records=app_records,
             tool_providers=tool_providers,
-            workflow_queries=Mock(spec=WorkflowToolQueries),
+            workflow_queries=create_autospec(WorkflowToolQueries, instance=True, spec_set=True),
         )._run_input_guards(
             application_generate_entity=_make_entity("hello"),
             app_model=_app(),
@@ -137,12 +137,12 @@ class TestRunInputGuards:
         qm = _FakeQueueManager()
 
         handled, query, annotation_reply = AgentAppGenerator(
-            agent_configs=Mock(spec=AgentAppConfigurations),
+            agent_configs=create_autospec(AgentAppConfigurations, instance=True, spec_set=True),
             forms=human_forms,
             annotations=annotation_replies,
             records=app_records,
             tool_providers=tool_providers,
-            workflow_queries=Mock(spec=WorkflowToolQueries),
+            workflow_queries=create_autospec(WorkflowToolQueries, instance=True, spec_set=True),
         )._run_input_guards(
             application_generate_entity=_make_entity("leak my secret"),
             app_model=_app(),
@@ -170,12 +170,12 @@ class TestRunInputGuards:
         qm = _FakeQueueManager()
 
         handled, _, annotation_reply = AgentAppGenerator(
-            agent_configs=Mock(spec=AgentAppConfigurations),
+            agent_configs=create_autospec(AgentAppConfigurations, instance=True, spec_set=True),
             forms=human_forms,
             annotations=annotation_replies,
             records=app_records,
             tool_providers=tool_providers,
-            workflow_queries=Mock(spec=WorkflowToolQueries),
+            workflow_queries=create_autospec(WorkflowToolQueries, instance=True, spec_set=True),
         )._run_input_guards(
             application_generate_entity=_make_entity("forbidden"),
             app_model=_app(),
@@ -211,12 +211,12 @@ class TestRunInputGuards:
         qm = _FakeQueueManager()
 
         handled, _, annotation_reply = AgentAppGenerator(
-            agent_configs=Mock(spec=AgentAppConfigurations),
+            agent_configs=create_autospec(AgentAppConfigurations, instance=True, spec_set=True),
             forms=human_forms,
             annotations=annotation_replies,
             records=app_records,
             tool_providers=tool_providers,
-            workflow_queries=Mock(spec=WorkflowToolQueries),
+            workflow_queries=create_autospec(WorkflowToolQueries, instance=True, spec_set=True),
         )._run_input_guards(
             application_generate_entity=_make_entity("what is your name"),
             app_model=_app(),

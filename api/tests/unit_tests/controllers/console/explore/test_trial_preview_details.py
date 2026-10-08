@@ -124,8 +124,8 @@ class _ExternalIO:
         app_id: str,
         agent_tool: AgentToolEntity,
         user_id: str,
-        tool_providers,
-        workflow_queries,
+        tool_providers: ToolProviderRepository,
+        workflow_queries: WorkflowToolRepository,
     ) -> Tool:
         del workflow_queries, tool_providers
         assert isinstance(self.engine.pool, QueuePool)
@@ -244,8 +244,8 @@ def harness(
     sqlite_engine: Engine,
     sqlite_session_factory: sessionmaker[Session],
     *,
-    tool_providers,
-    workflow_queries,
+    tool_providers: ToolProviderRepository,
+    workflow_queries: WorkflowToolRepository,
 ) -> _Harness:
     config_overrides(
         LOGIN_DISABLED=False,
@@ -541,7 +541,13 @@ def test_invalid_builtin_config_does_not_break_detail_or_valid_tool_masking(
         raise KeyError(provider_id)
 
     def tool_runtime(
-        *, tenant_id: str, app_id: str, agent_tool: AgentToolEntity, user_id: str, tool_providers, workflow_queries
+        *,
+        tenant_id: str,
+        app_id: str,
+        agent_tool: AgentToolEntity,
+        user_id: str,
+        tool_providers: ToolProviderRepository,
+        workflow_queries: WorkflowToolRepository,
     ) -> Tool:
         if agent_tool.provider_id != "example":
             raise ValueError("Invalid historical provider ID")
@@ -629,7 +635,13 @@ def test_unmaskable_tool_parameters_are_removed_from_detail_without_changing_sto
     )
 
     def tool_runtime(
-        *, tenant_id: str, app_id: str, agent_tool: AgentToolEntity, user_id: str, tool_providers, workflow_queries
+        *,
+        tenant_id: str,
+        app_id: str,
+        agent_tool: AgentToolEntity,
+        user_id: str,
+        tool_providers: ToolProviderRepository,
+        workflow_queries: WorkflowToolRepository,
     ) -> Tool:
         if agent_tool.provider_id == "example":
             return harness.io.tool_runtime(

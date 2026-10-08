@@ -212,9 +212,9 @@ class TestWorkflowToolManageService:
 
         # Verify external service calls
         assert set(db_session_with_containers.scalars(select(ToolLabelBinding.label_name))) == set(tool_labels)
-        assert (
-            mock_external_service_dependencies["tool_transform_service"].workflow_provider_to_controller.call_count == 2
-        )
+        mock_external_service_dependencies[
+            "tool_transform_service"
+        ].workflow_provider_to_controller.assert_called_once()
 
     def test_create_workflow_tool_duplicate_name_error(
         self, db_session_with_containers: Session, mock_external_service_dependencies, *, workflow_tools

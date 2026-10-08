@@ -47,9 +47,9 @@ from models.workflow import Workflow, WorkflowRun, WorkflowType
 from repositories.api_workflow_node_execution_repository import WorkflowNodeExecutionSnapshot
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from services.app.generation.ports import ConversationSnapshot, MessageSnapshot, WorkflowSnapshot
+from services.app.generation.runtime import AppGenerationRuntime
 from services.app_generate_service import AppGenerateService
 from services.workflow.execution.adapters.response_converter import WorkflowResponseConverter
-from services.workflow.execution.ports import WorkflowRuntime
 from services.workflow.variable_contracts import WorkflowExecutionVariables
 from services.workflow_event_snapshot_service import _build_snapshot_events
 from tests.unit_tests.config_override import apply_config_overrides
@@ -421,7 +421,7 @@ class TestHitlServiceApi:
         sqlite_engine: Engine,
         *,
         workflow_variables: WorkflowExecutionVariables,
-        workflow_runtime: WorkflowRuntime,
+        workflow_runtime: AppGenerationRuntime,
     ) -> None:
         apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
         monkeypatch.setattr(ags_module, "RateLimit", _DummyRateLimit)
@@ -433,9 +433,9 @@ class TestHitlServiceApi:
 
         generator_instance = Mock()
         generator_instance.generate.return_value = {"result": "advanced-blocking"}
-        generator_instance.convert_to_event_stream.side_effect = lambda payload: payload
         generator_factory = Mock(return_value=generator_instance)
         monkeypatch.setattr(ags_module, "AdvancedChatAppGenerator", generator_factory)
+        monkeypatch.setattr(ags_module, "convert_to_event_stream", lambda payload: payload)
 
         app_model = _app(app_id="app-id", tenant_id="tenant-id", mode=AppMode.ADVANCED_CHAT)
         user = _end_user(user_id="user-id", app_id="app-id", tenant_id="tenant-id")
@@ -453,9 +453,11 @@ class TestHitlServiceApi:
             )
 
         assert result == {"result": "advanced-blocking"}
-        dependencies = generator_factory.call_args.kwargs
-        assert callable(dependencies["draft_variable_loader"])
-        assert callable(dependencies["draft_variable_saver"])
+        generator_factory.assert_called_once_with(
+            runtime=workflow_runtime,
+            draft_variable_loader=workflow_variables.workflow_loader,
+            draft_variable_saver=workflow_variables.saver_factory,
+        )
         call_kwargs = generator_instance.generate.call_args.kwargs
         assert call_kwargs["streaming"] is False
         assert call_kwargs["pause_state_config"] is not None

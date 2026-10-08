@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from unittest.mock import patch
 
 import pytest
@@ -5,7 +6,6 @@ from flask import Flask
 from werkzeug.exceptions import RequestEntityTooLarge
 
 import controllers.trigger.webhook as module
-from configs import dify_config
 from controllers.common.errors import NotFoundError
 from models.trigger import WorkflowWebhookTrigger
 from models.workflow import Workflow
@@ -61,9 +61,11 @@ def _workflow() -> Workflow:
 
 
 @pytest.mark.parametrize("path", ["webhook", "webhook-debug"])
-def test_webhook_body_limit_remains_http_413(monkeypatch, path):
+def test_webhook_body_limit_remains_http_413(
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None], path: str
+) -> None:
     app = Flask(__name__)
-    monkeypatch.setattr(dify_config, "WEBHOOK_REQUEST_BODY_MAX_SIZE", 8)
+    config_overrides(WEBHOOK_REQUEST_BODY_MAX_SIZE=8)
     monkeypatch.setattr(
         module.WebhookService,
         "get_webhook_trigger_and_workflow",
@@ -76,10 +78,12 @@ def test_webhook_body_limit_remains_http_413(monkeypatch, path):
 
 
 @pytest.mark.parametrize("path", ["webhook", "webhook-debug"])
-def test_framework_body_limit_is_not_translated_to_internal_error(monkeypatch, path):
+def test_framework_body_limit_is_not_translated_to_internal_error(
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None], path: str
+) -> None:
     app = Flask(__name__)
     app.config["MAX_CONTENT_LENGTH"] = 8
-    monkeypatch.setattr(dify_config, "WEBHOOK_REQUEST_BODY_MAX_SIZE", 1024)
+    config_overrides(WEBHOOK_REQUEST_BODY_MAX_SIZE=1024)
     monkeypatch.setattr(
         module.WebhookService,
         "get_webhook_trigger_and_workflow",

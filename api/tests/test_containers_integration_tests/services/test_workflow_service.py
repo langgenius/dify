@@ -20,7 +20,7 @@ from models.enums import CreatorUserRole
 from models.model import AppMode
 from models.workflow import WorkflowType
 from repositories.workflow.definition_repository import WorkflowDefinitionStore
-from services.workflow.contracts import DraftSyncCommand
+from services.workflow.contracts import DraftSyncCommand, WorkflowOwner
 from services.workflow_ref_service import WorkflowRef
 from services.workflow_service import WorkflowService
 from tests.unit_tests.core.model_fixtures import make_model_instance
@@ -685,7 +685,7 @@ class TestWorkflowService:
         # Act
         result = drafts.sync(
             RequestContext("test", None, account.id, app.tenant_id),
-            app.id,
+            WorkflowOwner(app.id),
             DraftSyncCommand(
                 graph=graph,
                 features=features,
@@ -754,7 +754,7 @@ class TestWorkflowService:
         # Act
         result = drafts.sync(
             RequestContext("test", None, account.id, app.tenant_id),
-            app.id,
+            WorkflowOwner(app.id),
             DraftSyncCommand(
                 graph=new_graph,
                 features=new_features,
@@ -819,7 +819,7 @@ class TestWorkflowService:
         with pytest.raises(WorkflowHashNotEqualError):
             drafts.sync(
                 RequestContext("test", None, account.id, app.tenant_id),
-                app.id,
+                WorkflowOwner(app.id),
                 DraftSyncCommand(
                     graph=new_graph,
                     features=new_features,
