@@ -1,39 +1,19 @@
-import logging
-from collections.abc import Callable
-from functools import wraps
-from typing import Any, Concatenate, Self
+from typing import Any, Self
 from uuid import UUID
 
 from flask import Response
 from flask_restx import Resource
 from pydantic import BaseModel, ConfigDict, Field, model_validator
-from sqlalchemy.orm import sessionmaker
 
-from controllers.common.errors import InvalidArgumentError, NotFoundError
 from controllers.common.fields import SimpleResultResponse
-from controllers.common.rbac import PlainApp, RBACCheck
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
-from controllers.console.app.error import (
-    DraftWorkflowNotExist,
-)
-from controllers.console.app.wraps import get_app_model
+from controllers.console.app.workflow_variable_admission import console_variable_admission
 from controllers.console.wraps import (
     RBACPermission,
-    account_initialization_required,
-    edit_permission_required,
     model_validate,
-    rbac_permission_required,
-    setup_required,
-    with_current_user,
 )
-from core.app.file_access import DatabaseFileAccessController
-from core.workflow.llm_environment_variable import environment_variable_value_type
-from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
-from extensions.ext_database import db
-from factories import variable_factory
-from factories.file_factory import build_from_mapping, build_from_mappings
-from factories.variable_factory import build_segment_with_type
+from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from fields.workflow_draft_variable_fields import (
     WorkflowDraftVariableFullContentResponse,
@@ -42,16 +22,9 @@ from fields.workflow_draft_variable_fields import (
     WorkflowDraftVariableResponse,
     WorkflowDraftVariableWithoutValueResponse,
 )
-from graphon.variables.types import SegmentType
 from libs.helper import dump_response
-from libs.login import login_required
-from models import Account, App, AppMode
-from models.workflow import WorkflowDraftVariable
-from services.workflow_draft_variable_service import WorkflowDraftVariableList, WorkflowDraftVariableService
-from services.workflow_service import WorkflowService
-
-logger = logging.getLogger(__name__)
-_file_access_controller = DatabaseFileAccessController()
+from machinery.context import RequestContext
+from services.workflow.contracts import WorkflowOwner
 
 
 class WorkflowDraftVariableListQuery(BaseModel):
@@ -162,46 +135,6 @@ register_response_schema_models(
 )
 
 
-def ensure_variable_access(
-    variable: WorkflowDraftVariable | None,
-    app_id: str,
-    variable_id: str,
-    current_user_id: str,
-) -> WorkflowDraftVariable:
-    if variable is None:
-        raise NotFoundError(description=f"variable not found, id={variable_id}")
-    if variable.app_id != app_id or variable.user_id != current_user_id:
-        raise NotFoundError(description=f"variable not found, id={variable_id}")
-    return variable
-
-
-def _api_prerequisite[T, **P, R](
-    f: Callable[Concatenate[T, Account, P], R],
-) -> Callable[Concatenate[T, P], R | Response]:
-    """Common prerequisites for all draft workflow variable APIs.
-
-    It ensures the following conditions are satisfied:
-
-    - Dify has been property setup.
-    - The request user has logged in and initialized.
-    - The requested app is a workflow or a chat flow.
-    - The request user has the edit permission for the app.
-    """
-
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    @with_current_user
-    @wraps(f)
-    def wrapper(self: T, current_user: Account, *args: P.args, **kwargs: P.kwargs) -> R | Response:
-        return f(self, current_user, *args, **kwargs)
-
-    return wrapper
-
-
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/variables")
 class WorkflowVariableCollectionApi(Resource):
     @console_ns.doc(params=query_params_from_model(WorkflowDraftVariableListQuery))
@@ -214,62 +147,22 @@ class WorkflowVariableCollectionApi(Resource):
         "Workflow variables retrieved successfully",
         console_ns.models[WorkflowDraftVariableListWithoutValueResponse.__name__],
     )
-    @_api_prerequisite
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
+    @console_variable_admission("app")
     @model_validate(WorkflowDraftVariableListQuery)
-    def get(self, req_data: WorkflowDraftVariableListQuery, current_user: Account, app_model: App):
-        """
-        Get draft workflow
-        """
-
-        # fetch draft workflow by app_model
-        workflow_service = WorkflowService()
-        workflow_exist = workflow_service.is_workflow_exist(app_model=app_model, session=db.session())
-        if not workflow_exist:
-            raise DraftWorkflowNotExist()
-
-        # fetch draft workflow by app_model
-        with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
-            draft_var_srv = WorkflowDraftVariableService(
-                session=session,
-            )
-            workflow_vars = draft_var_srv.list_variables_without_values(
-                app_id=app_model.id,
-                page=req_data.page,
-                limit=req_data.limit,
-                user_id=current_user.id,
-            )
-
-        return dump_response(WorkflowDraftVariableListWithoutValueResponse, workflow_vars)
+    def get(self, req_data: WorkflowDraftVariableListQuery, request_context: RequestContext, app_id: UUID):
+        """List draft workflow variables without loading their values."""
+        variables = application_services().console_workflow_variables.list_variables(
+            request_context, WorkflowOwner(str(app_id), "app"), page=req_data.page, limit=req_data.limit
+        )
+        return dump_response(WorkflowDraftVariableListWithoutValueResponse, variables)
 
     @console_ns.doc("delete_workflow_variables")
     @console_ns.doc(description="Delete all draft workflow variables")
     @console_ns.response(204, "Workflow variables deleted successfully")
-    @_api_prerequisite
-    def delete(self, current_user: Account, app_model: App):
-        draft_var_srv = WorkflowDraftVariableService(
-            session=db.session(),
-        )
-        draft_var_srv.delete_user_workflow_variables(app_model.id, user_id=current_user.id)
-        db.session.commit()
+    @console_variable_admission("app")
+    def delete(self, request_context: RequestContext, app_id: UUID):
+        application_services().console_workflow_variables.delete_all(request_context, WorkflowOwner(str(app_id), "app"))
         return Response("", 204)
-
-
-def validate_node_id(node_id: str) -> None:
-    if node_id in [
-        CONVERSATION_VARIABLE_NODE_ID,
-        SYSTEM_VARIABLE_NODE_ID,
-    ]:
-        # NOTE(QuantumGhost): While we store the system and conversation variables as node variables
-        # with specific `node_id` in database, we still want to make the API separated. By disallowing
-        # accessing system and conversation variables in `WorkflowDraftNodeVariableListApi`,
-        # we mitigate the risk that user of the API depending on the implementation detail of the API.
-        #
-        # ref: [Hyrum's Law](https://www.hyrumslaw.com/)
-
-        raise InvalidArgumentError(
-            f"invalid node_id, please use correspond api for conversation and system variables, node_id={node_id}",
-        )
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/variables")
@@ -282,35 +175,26 @@ class NodeVariableCollectionApi(Resource):
         "Node variables retrieved successfully",
         console_ns.models[WorkflowDraftVariableListResponse.__name__],
     )
-    @_api_prerequisite
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
-    def get(self, current_user: Account, app_model: App, node_id: str):
-        validate_node_id(node_id)
-        with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
-            draft_var_srv = WorkflowDraftVariableService(
-                session=session,
-            )
-            node_vars = draft_var_srv.list_node_variables(app_model.id, node_id, user_id=current_user.id)
-
-        return dump_response(WorkflowDraftVariableListResponse, node_vars)
+    @console_variable_admission("app")
+    def get(self, request_context: RequestContext, app_id: UUID, node_id: str):
+        variables = application_services().console_workflow_variables.node(
+            request_context, WorkflowOwner(str(app_id), "app"), node_id
+        )
+        return dump_response(WorkflowDraftVariableListResponse, variables)
 
     @console_ns.doc("delete_node_variables")
     @console_ns.doc(description="Delete all variables for a specific node")
     @console_ns.response(204, "Node variables deleted successfully")
-    @_api_prerequisite
-    def delete(self, current_user: Account, app_model: App, node_id: str):
-        validate_node_id(node_id)
-        srv = WorkflowDraftVariableService(db.session())
-        srv.delete_node_variables(app_model.id, node_id, user_id=current_user.id)
-        db.session.commit()
+    @console_variable_admission("app")
+    def delete(self, request_context: RequestContext, app_id: UUID, node_id: str):
+        application_services().console_workflow_variables.delete_node(
+            request_context, WorkflowOwner(str(app_id), "app"), node_id
+        )
         return Response("", 204)
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/variables/<uuid:variable_id>")
 class VariableApi(Resource):
-    _PATCH_NAME_FIELD = "name"
-    _PATCH_VALUE_FIELD = "value"
-
     @console_ns.doc("get_variable")
     @console_ns.doc(description="Get a specific workflow variable")
     @console_ns.doc(params={"app_id": "Application ID", "variable_id": "Variable ID"})
@@ -320,18 +204,10 @@ class VariableApi(Resource):
         console_ns.models[WorkflowDraftVariableResponse.__name__],
     )
     @console_ns.response(404, "Variable not found")
-    @_api_prerequisite
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
-    def get(self, current_user: Account, app_model: App, variable_id: UUID):
-        draft_var_srv = WorkflowDraftVariableService(
-            session=db.session(),
-        )
-        variable_id_str = str(variable_id)
-        variable = ensure_variable_access(
-            variable=draft_var_srv.get_variable(variable_id=variable_id_str),
-            app_id=app_model.id,
-            variable_id=variable_id_str,
-            current_user_id=current_user.id,
+    @console_variable_admission("app")
+    def get(self, request_context: RequestContext, app_id: UUID, variable_id: UUID):
+        variable = application_services().console_workflow_variables.get(
+            request_context, WorkflowOwner(str(app_id), "app"), str(variable_id)
         )
         return dump_response(WorkflowDraftVariableResponse, variable)
 
@@ -344,99 +220,33 @@ class VariableApi(Resource):
         console_ns.models[WorkflowDraftVariableResponse.__name__],
     )
     @console_ns.response(404, "Variable not found")
-    @_api_prerequisite
+    @console_variable_admission("app")
     @model_validate(WorkflowDraftVariableUpdatePayload)
     def patch(
         self,
         req_data: WorkflowDraftVariableUpdatePayload,
-        current_user: Account,
-        app_model: App,
+        request_context: RequestContext,
+        app_id: UUID,
         variable_id: UUID,
     ):
-        # Request payload for file types:
-        #
-        # Local File:
-        #
-        #     {
-        #         "type": "image",
-        #         "transfer_method": "local_file",
-        #         "url": "",
-        #         "upload_file_id": "daded54f-72c7-4f8e-9d18-9b0abdd9f190"
-        #     }
-        #
-        # Remote File:
-        #
-        #
-        #     {
-        #         "type": "image",
-        #         "transfer_method": "remote_url",
-        #         "url": "http://127.0.0.1:5001/files/1602650a-4fe4-423c-85a2-af76c083e3c4/file-preview?timestamp=1750041099&nonce=...&sign=...=",
-        #         "upload_file_id": "1602650a-4fe4-423c-85a2-af76c083e3c4"
-        #     }
-
-        draft_var_srv = WorkflowDraftVariableService(
-            session=db.session(),
+        variable = application_services().console_workflow_variables.patch(
+            request_context,
+            WorkflowOwner(str(app_id), "app"),
+            str(variable_id),
+            name=req_data.name,
+            value=req_data.value,
         )
-
-        variable_id_str = str(variable_id)
-        variable = ensure_variable_access(
-            variable=draft_var_srv.get_variable(variable_id=variable_id_str),
-            app_id=app_model.id,
-            variable_id=variable_id_str,
-            current_user_id=current_user.id,
-        )
-
-        new_name = req_data.name
-        raw_value = req_data.value
-        if new_name is None and raw_value is None:
-            return dump_response(WorkflowDraftVariableResponse, variable)
-
-        new_value = None
-        if raw_value is not None:
-            match variable.value_type:
-                case SegmentType.FILE:
-                    if not isinstance(raw_value, dict):
-                        raise InvalidArgumentError(description=f"expected dict for file, got {type(raw_value)}")
-                    raw_value = build_from_mapping(
-                        mapping=raw_value,
-                        tenant_id=app_model.tenant_id,
-                        access_controller=_file_access_controller,
-                    )
-                case SegmentType.ARRAY_FILE:
-                    if not isinstance(raw_value, list):
-                        raise InvalidArgumentError(description=f"expected list for files, got {type(raw_value)}")
-                    if len(raw_value) > 0 and not isinstance(raw_value[0], dict):
-                        raise InvalidArgumentError(description=f"expected dict for files[0], got {type(raw_value)}")
-                    raw_value = build_from_mappings(
-                        mappings=raw_value,
-                        tenant_id=app_model.tenant_id,
-                        access_controller=_file_access_controller,
-                    )
-                case _:
-                    pass
-            new_value = build_segment_with_type(variable.value_type, raw_value)
-        draft_var_srv.update_variable(variable, name=new_name, value=new_value)
-        db.session.commit()
         return dump_response(WorkflowDraftVariableResponse, variable)
 
     @console_ns.doc("delete_variable")
     @console_ns.doc(description="Delete a workflow variable")
     @console_ns.response(204, "Variable deleted successfully")
     @console_ns.response(404, "Variable not found")
-    @_api_prerequisite
-    def delete(self, current_user: Account, app_model: App, variable_id: UUID):
-        draft_var_srv = WorkflowDraftVariableService(
-            session=db.session(),
+    @console_variable_admission("app")
+    def delete(self, request_context: RequestContext, app_id: UUID, variable_id: UUID):
+        application_services().console_workflow_variables.delete(
+            request_context, WorkflowOwner(str(app_id), "app"), str(variable_id)
         )
-        variable_id_str = str(variable_id)
-        variable = ensure_variable_access(
-            variable=draft_var_srv.get_variable(variable_id=variable_id_str),
-            app_id=app_model.id,
-            variable_id=variable_id_str,
-            current_user_id=current_user.id,
-        )
-        draft_var_srv.delete_variable(variable)
-        db.session.commit()
         return Response("", 204)
 
 
@@ -452,49 +262,14 @@ class VariableResetApi(Resource):
     )
     @console_ns.response(204, "Variable reset (no content)")
     @console_ns.response(404, "Variable not found")
-    @_api_prerequisite
-    def put(self, current_user: Account, app_model: App, variable_id: UUID):
-        draft_var_srv = WorkflowDraftVariableService(
-            session=db.session(),
+    @console_variable_admission("app")
+    def put(self, request_context: RequestContext, app_id: UUID, variable_id: UUID):
+        variable = application_services().console_workflow_variables.reset(
+            request_context, WorkflowOwner(str(app_id), "app"), str(variable_id)
         )
-
-        workflow_srv = WorkflowService()
-        draft_workflow = workflow_srv.get_draft_workflow(app_model, session=db.session())
-        if draft_workflow is None:
-            raise NotFoundError(
-                f"Draft workflow not found, app_id={app_model.id}",
-            )
-        variable_id_str = str(variable_id)
-        variable = ensure_variable_access(
-            variable=draft_var_srv.get_variable(variable_id=variable_id_str),
-            app_id=app_model.id,
-            variable_id=variable_id_str,
-            current_user_id=current_user.id,
-        )
-
-        resetted = draft_var_srv.reset_variable(draft_workflow, variable)
-        db.session.commit()
-        if resetted is None:
+        if variable is None:
             return Response("", 204)
-        return dump_response(WorkflowDraftVariableResponse, resetted)
-
-
-def _get_variable_list(app_model: App, node_id: str, current_user_id: str) -> WorkflowDraftVariableList:
-    with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
-        draft_var_srv = WorkflowDraftVariableService(
-            session=session,
-        )
-        if node_id == CONVERSATION_VARIABLE_NODE_ID:
-            draft_vars = draft_var_srv.list_conversation_variables(app_model.id, user_id=current_user_id)
-        elif node_id == SYSTEM_VARIABLE_NODE_ID:
-            draft_vars = draft_var_srv.list_system_variables(app_model.id, user_id=current_user_id)
-        else:
-            draft_vars = draft_var_srv.list_node_variables(
-                app_id=app_model.id,
-                node_id=node_id,
-                user_id=current_user_id,
-            )
-    return draft_vars
+        return dump_response(WorkflowDraftVariableResponse, variable)
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/conversation-variables")
@@ -508,22 +283,12 @@ class ConversationVariableCollectionApi(Resource):
         console_ns.models[WorkflowDraftVariableListResponse.__name__],
     )
     @console_ns.response(404, "Draft workflow not found")
-    @_api_prerequisite
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
-    def get(self, current_user: Account, app_model: App):
-        # NOTE(QuantumGhost): Prefill conversation variables into the draft variables table
-        # so their IDs can be returned to the caller.
-        workflow_srv = WorkflowService()
-        draft_workflow = workflow_srv.get_draft_workflow(app_model, session=db.session())
-        if draft_workflow is None:
-            raise NotFoundError(description=f"draft workflow not found, id={app_model.id}")
-        draft_var_srv = WorkflowDraftVariableService(db.session())
-        draft_var_srv.prefill_conversation_variable_default_values(draft_workflow, user_id=current_user.id)
-        db.session.commit()
-        return dump_response(
-            WorkflowDraftVariableListResponse,
-            _get_variable_list(app_model, CONVERSATION_VARIABLE_NODE_ID, current_user.id),
+    @console_variable_admission("app")
+    def get(self, request_context: RequestContext, app_id: UUID):
+        variables = application_services().console_workflow_variables.conversation(
+            request_context, WorkflowOwner(str(app_id), "app")
         )
+        return dump_response(WorkflowDraftVariableListResponse, variables)
 
     @console_ns.expect(console_ns.models[ConversationVariableUpdatePayload.__name__])
     @console_ns.doc("update_conversation_variables")
@@ -534,32 +299,11 @@ class ConversationVariableCollectionApi(Resource):
         "Conversation variables updated successfully",
         console_ns.models[SimpleResultResponse.__name__],
     )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_EDIT, PlainApp()))
-    @with_current_user
-    @get_app_model(mode=AppMode.ADVANCED_CHAT)
+    @console_variable_admission("app", permission=RBACPermission.APP_EDIT)
     @model_validate(ConversationVariableUpdatePayload)
-    def post(self, req_data: ConversationVariableUpdatePayload, current_user: Account, app_model: App):
-
-        workflow_service = WorkflowService()
-
-        conversation_variables_list = [
-            variable.model_dump(mode="json", exclude_unset=True) for variable in req_data.conversation_variables
-        ]
-        conversation_variables = [
-            variable_factory.build_conversation_variable_from_mapping(obj) for obj in conversation_variables_list
-        ]
-
-        workflow_service.update_draft_workflow_conversation_variables(
-            app_model=app_model,
-            account=current_user,
-            conversation_variables=conversation_variables,
-            session=db.session(),
-        )
-
+    def post(self, req_data: ConversationVariableUpdatePayload, request_context: RequestContext, app_id: UUID):
+        values = [variable.model_dump(mode="json", exclude_unset=True) for variable in req_data.conversation_variables]
+        application_services().console_workflow_variables.update_conversation(request_context, str(app_id), values)
         return {"result": "success"}
 
 
@@ -573,18 +317,17 @@ class SystemVariableCollectionApi(Resource):
         "System variables retrieved successfully",
         console_ns.models[WorkflowDraftVariableListResponse.__name__],
     )
-    @_api_prerequisite
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
-    def get(self, current_user: Account, app_model: App):
-        return dump_response(
-            WorkflowDraftVariableListResponse,
-            _get_variable_list(app_model, SYSTEM_VARIABLE_NODE_ID, current_user.id),
+    @console_variable_admission("app")
+    def get(self, request_context: RequestContext, app_id: UUID):
+        variables = application_services().console_workflow_variables.system(
+            request_context, WorkflowOwner(str(app_id), "app")
         )
+        return dump_response(WorkflowDraftVariableListResponse, variables)
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/environment-variables")
 class EnvironmentVariableCollectionApi(Resource):
-    @console_ns.doc("get_environment_variables")
+    @console_ns.doc("get_environment_variables", summary="Get environment variables")
     @console_ns.doc(description="Get environment variables for workflow")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.response(
@@ -593,38 +336,12 @@ class EnvironmentVariableCollectionApi(Resource):
         console_ns.models[EnvironmentVariableListResponse.__name__],
     )
     @console_ns.response(404, "Draft workflow not found")
-    @_api_prerequisite
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
-    def get(self, _current_user: Account, app_model: App):
-        """
-        Get draft workflow
-        """
-        # fetch draft workflow by app_model
-        workflow_service = WorkflowService()
-        workflow = workflow_service.get_draft_workflow(app_model=app_model, session=db.session())
-        if workflow is None:
-            raise DraftWorkflowNotExist()
-
-        env_vars = workflow.environment_variables
-        env_vars_list = []
-        for v in env_vars:
-            env_vars_list.append(
-                {
-                    "id": v.id,
-                    "type": "env",
-                    "name": v.name,
-                    "description": v.description,
-                    "selector": v.selector,
-                    "value_type": environment_variable_value_type(v),
-                    "value": v.value,
-                    # Do not track edited for env vars.
-                    "edited": False,
-                    "visible": True,
-                    "editable": True,
-                }
-            )
-
-        return {"items": env_vars_list}
+    @console_variable_admission("app")
+    def get(self, request_context: RequestContext, app_id: UUID):
+        items = application_services().console_workflow_variables.environment(
+            request_context, WorkflowOwner(str(app_id), "app")
+        )
+        return dump_response(EnvironmentVariableListResponse, {"items": items})
 
     @console_ns.expect(console_ns.models[EnvironmentVariableUpdatePayload.__name__])
     @console_ns.doc("update_environment_variables")
@@ -635,39 +352,14 @@ class EnvironmentVariableCollectionApi(Resource):
         "Environment variables updated successfully",
         console_ns.models[SimpleResultResponse.__name__],
     )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_EDIT, PlainApp()))
-    @with_current_user
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    @console_variable_admission("app", permission=RBACPermission.APP_EDIT)
     @model_validate(EnvironmentVariableUpdatePayload)
-    def post(self, req_data: EnvironmentVariableUpdatePayload, current_user: Account, app_model: App):
-
-        workflow_service = WorkflowService()
-
-        environment_variables_list = [
-            variable.model_dump(mode="json", exclude_unset=True) for variable in req_data.environment_variables
-        ]
-        environment_variables = [
-            variable_factory.build_environment_variable_from_mapping(obj) for obj in environment_variables_list
-        ]
-
-        if req_data.patch:
-            workflow_service.patch_draft_workflow_environment_variables(
-                app_model=app_model,
-                account=current_user,
-                environment_variables=environment_variables,
-                deleted_environment_variable_ids=req_data.deleted_environment_variable_ids,
-                session=db.session(),
-            )
-        else:
-            workflow_service.update_draft_workflow_environment_variables(
-                app_model=app_model,
-                account=current_user,
-                environment_variables=environment_variables,
-                session=db.session(),
-            )
-
+    def post(self, req_data: EnvironmentVariableUpdatePayload, request_context: RequestContext, app_id: UUID):
+        values = [variable.model_dump(mode="json", exclude_unset=True) for variable in req_data.environment_variables]
+        application_services().console_workflow_variables.update_environment(
+            request_context,
+            str(app_id),
+            values,
+            deleted_ids=req_data.deleted_environment_variable_ids if req_data.patch else None,
+        )
         return {"result": "success"}

@@ -10,7 +10,7 @@ from graphon.file import helpers as file_helpers
 from graphon.variables.segment_group import SegmentGroup
 from graphon.variables.segments import ArrayFileSegment, FileSegment, Segment
 from models.workflow import WorkflowDraftVariable
-from services.workflow.variable_contracts import DraftVariableView
+from services.workflow.variable_contracts import ConsoleVariableList, DraftVariableView, WorkflowDraftVariableList
 
 type JSONValue = str | int | float | bool | dict[str, "JSONValue"] | list["JSONValue"] | None
 
@@ -144,7 +144,7 @@ class WorkflowDraftVariableListWithoutValueResponse(ResponseModel):
     @model_validator(mode="before")
     @classmethod
     def _from_workflow_draft_variable_list(cls, value: Any) -> Any:
-        if hasattr(value, "variables") and hasattr(value, "total"):
+        if isinstance(value, WorkflowDraftVariableList | ConsoleVariableList):
             return {"items": value.variables, "total": value.total}
         return value
 
@@ -155,6 +155,6 @@ class WorkflowDraftVariableListResponse(ResponseModel):
     @model_validator(mode="before")
     @classmethod
     def _from_workflow_draft_variable_list(cls, value: Any) -> Any:
-        if hasattr(value, "variables"):
+        if isinstance(value, WorkflowDraftVariableList | ConsoleVariableList):
             return {"items": value.variables}
         return value

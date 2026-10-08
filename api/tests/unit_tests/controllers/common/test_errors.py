@@ -25,6 +25,7 @@ from libs.exception import BaseHTTPException
 from libs.external_api import ExternalApi
 from services.errors.base import NoPermissionError
 from services.errors.workspace import WorkspaceApplicationError
+from services.workflow.variable_contracts import DraftVariableChangedError
 
 
 @pytest.mark.parametrize("source_api", [console_api, service_api], ids=["console", "service_api"])
@@ -68,6 +69,26 @@ def test_permission_error_mapping_is_not_registered_on_generic_apis() -> None:
     response = app.test_client().get("/error")
     assert response.status_code == 500
     assert response.json == {"code": "unknown", "message": "Internal Server Error", "status": 500}
+
+
+def test_console_maps_draft_variable_concurrency_error() -> None:
+    app = Flask(__name__)
+    api = Api(app, doc=False)
+    api.error_handlers = console_api.error_handlers.copy()
+
+    class Endpoint(Resource):
+        def put(self) -> ResponseReturnValue:
+            raise DraftVariableChangedError("internal-variable-id")
+
+    api.add_resource(Endpoint, "/variable")
+    response = app.test_client().put("/variable")
+
+    assert response.status_code == 409
+    assert response.json == {
+        "code": "draft_variable_changed",
+        "message": "Variable changed; refresh and retry with the current value.",
+        "status": 409,
+    }
 
 
 class TestFilenameNotExistsError:
@@ -181,3 +202,49 @@ class TestNoFileUploadedError:
         assert error.code == 400
         assert error.error_code == "no_file_uploaded"
         assert error.description == "Please upload your file."
+
+
+@pytest.mark.parametrize("surface", ["console", "service_api"])
+@pytest.mark.parametrize(
+    ("kind", "status", "code"),
+    [
+        ("annotation", 404, "not_found"),
+        ("dataset", 404, "not_found"),
+        ("document", 404, "not_found"),
+        ("source", 404, "not_found"),
+        ("permission", 403, "forbidden"),
+    ],
+)
+def test_resource_domain_failures_keep_http_contract(surface, kind, status, code):
+    from importlib import import_module
+
+    from flask import Flask
+    from flask_restx import Resource
+
+    from libs.external_api import ExternalApi
+    from services.annotation.errors import AnnotationResourceNotFoundError
+    from services.errors.dataset import DatasetNotFoundError
+    from services.errors.document import DocumentAccessDeniedError, DocumentNotFoundError, DocumentSourceNotFoundError
+
+    failures = {
+        "annotation": AnnotationResourceNotFoundError,
+        "dataset": DatasetNotFoundError,
+        "document": DocumentNotFoundError,
+        "source": DocumentSourceNotFoundError,
+        "permission": DocumentAccessDeniedError,
+    }
+    domain_error = failures[kind]("resource unavailable")
+    app = Flask(__name__)
+    app.config.update(TESTING=True, RESTX_ERROR_404_HELP=False)
+    api = ExternalApi(app)
+    # Exercise the production surface's handlers and ordering, including the generic catch-all.
+    api.error_handlers = import_module(f"controllers.{surface}").api.error_handlers.copy()
+
+    class Failure(Resource):
+        def get(self):
+            raise domain_error
+
+    api.add_resource(Failure, "/failure")
+    response = app.test_client().get("/failure")
+    assert response.status_code == status
+    assert response.json == {"code": code, "status": status, "message": "resource unavailable"}

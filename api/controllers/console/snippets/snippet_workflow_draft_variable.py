@@ -10,90 +10,31 @@ reject them; `GET .../system-variables` and `GET .../conversation-variables` ret
 Other routes mirror `workflow_draft_variable` app APIs under `/snippets/...`.
 """
 
-from collections.abc import Callable
-from functools import wraps
-from typing import Any, Concatenate
+from uuid import UUID
 
 from flask import Response
 from flask_restx import Resource
-from sqlalchemy.orm import Session
 
-from controllers.common.errors import InvalidArgumentError, NotFoundError
 from controllers.common.schema import query_params_from_model
-from controllers.common.session import with_session
 from controllers.console import console_ns
-from controllers.console.app.error import DraftWorkflowNotExist
 from controllers.console.app.workflow_draft_variable import (
     EnvironmentVariableListResponse,
     WorkflowDraftVariableListQuery,
     WorkflowDraftVariableUpdatePayload,
-    ensure_variable_access,
-    validate_node_id,
 )
-from controllers.console.snippets.snippet_workflow import get_snippet
+from controllers.console.app.workflow_variable_admission import console_variable_admission
 from controllers.console.wraps import (
-    account_initialization_required,
-    edit_permission_required,
     model_validate,
-    setup_required,
-    with_current_user,
 )
-from core.app.file_access import DatabaseFileAccessController
-from core.db.session_factory import session_factory
-from core.workflow.llm_environment_variable import environment_variable_value_type
-from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
-from factories.file_factory import build_from_mapping, build_from_mappings
-from factories.variable_factory import build_segment_with_type
+from extensions.ext_application_services import application_services
 from fields.workflow_draft_variable_fields import (
     WorkflowDraftVariableListResponse,
     WorkflowDraftVariableListWithoutValueResponse,
     WorkflowDraftVariableResponse,
 )
-from graphon.variables.types import SegmentType
 from libs.helper import dump_response
-from libs.login import login_required
-from models import Account
-from models.snippet import CustomizedSnippet
-from models.workflow import WorkflowDraftVariable
-from services.snippet_service import SnippetService
-from services.workflow_draft_variable_service import WorkflowDraftVariableList, WorkflowDraftVariableService
-
-_SNIPPET_EXCLUDED_DRAFT_VARIABLE_NODE_IDS: frozenset[str] = frozenset(
-    {SYSTEM_VARIABLE_NODE_ID, CONVERSATION_VARIABLE_NODE_ID}
-)
-_file_access_controller = DatabaseFileAccessController()
-
-
-def _snippet_service() -> SnippetService:
-    return SnippetService(session_factory.get_session_maker())
-
-
-def _ensure_snippet_draft_variable_row_allowed(
-    *,
-    variable: WorkflowDraftVariable,
-    variable_id: str,
-) -> None:
-    """Snippet scope only supports canvas-node draft variables; treat sys/conversation rows as not found."""
-    if variable.node_id in _SNIPPET_EXCLUDED_DRAFT_VARIABLE_NODE_IDS:
-        raise NotFoundError(description=f"variable not found, id={variable_id}")
-
-
-def _snippet_draft_var_prerequisite[T, **P, R](
-    f: Callable[Concatenate[T, Account, P], R],
-) -> Callable[Concatenate[T, P], R | Response]:
-    """Setup, auth, snippet resolution, and tenant edit permission (same stack as snippet workflow APIs)."""
-
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @get_snippet
-    @edit_permission_required
-    @with_current_user
-    @wraps(f)
-    def wrapper(self: T, current_user: Account, *args: P.args, **kwargs: P.kwargs) -> R | Response:
-        return f(self, current_user, *args, **kwargs)
-
-    return wrapper
+from machinery.context import RequestContext
+from services.workflow.contracts import WorkflowOwner
 
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/draft/variables")
@@ -106,39 +47,22 @@ class SnippetWorkflowVariableCollectionApi(Resource):
         "Workflow variables retrieved successfully",
         console_ns.models[WorkflowDraftVariableListWithoutValueResponse.__name__],
     )
-    @_snippet_draft_var_prerequisite
+    @console_variable_admission("snippet")
     @model_validate(WorkflowDraftVariableListQuery)
-    @with_session(write=False)
-    def get(
-        self,
-        session: Session,
-        args: WorkflowDraftVariableListQuery,
-        current_user: Account,
-        snippet: CustomizedSnippet,
-    ) -> dict[str, Any]:
-        snippet_service = _snippet_service()
-        if snippet_service.get_draft_workflow(snippet=snippet) is None:
-            raise DraftWorkflowNotExist()
-
-        draft_var_srv = WorkflowDraftVariableService(session=session)
-        workflow_vars = draft_var_srv.list_variables_without_values(
-            app_id=snippet.id,
-            page=args.page,
-            limit=args.limit,
-            user_id=current_user.id,
-            exclude_node_ids=_SNIPPET_EXCLUDED_DRAFT_VARIABLE_NODE_IDS,
+    def get(self, req_data: WorkflowDraftVariableListQuery, request_context: RequestContext, snippet_id: UUID):
+        variables = application_services().console_workflow_variables.list_variables(
+            request_context, WorkflowOwner(str(snippet_id), "snippet"), page=req_data.page, limit=req_data.limit
         )
-
-        return dump_response(WorkflowDraftVariableListWithoutValueResponse, workflow_vars)
+        return dump_response(WorkflowDraftVariableListWithoutValueResponse, variables)
 
     @console_ns.doc("delete_snippet_workflow_variables")
     @console_ns.doc(description="Delete all draft workflow variables for the current user (snippet scope)")
     @console_ns.response(204, "Workflow variables deleted successfully")
-    @_snippet_draft_var_prerequisite
-    @with_session
-    def delete(self, session: Session, current_user: Account, snippet: CustomizedSnippet) -> Response:
-        draft_var_srv = WorkflowDraftVariableService(session=session)
-        draft_var_srv.delete_user_workflow_variables(snippet.id, user_id=current_user.id)
+    @console_variable_admission("snippet")
+    def delete(self, request_context: RequestContext, snippet_id: UUID):
+        application_services().console_workflow_variables.delete_all(
+            request_context, WorkflowOwner(str(snippet_id), "snippet")
+        )
         return Response("", 204)
 
 
@@ -151,24 +75,21 @@ class SnippetNodeVariableCollectionApi(Resource):
         "Node variables retrieved successfully",
         console_ns.models[WorkflowDraftVariableListResponse.__name__],
     )
-    @_snippet_draft_var_prerequisite
-    @with_session(write=False)
-    def get(self, session: Session, current_user: Account, snippet: CustomizedSnippet, node_id: str) -> dict[str, Any]:
-        validate_node_id(node_id)
-        draft_var_srv = WorkflowDraftVariableService(session=session)
-        node_vars = draft_var_srv.list_node_variables(snippet.id, node_id, user_id=current_user.id)
-
-        return dump_response(WorkflowDraftVariableListResponse, node_vars)
+    @console_variable_admission("snippet")
+    def get(self, request_context: RequestContext, snippet_id: UUID, node_id: str):
+        variables = application_services().console_workflow_variables.node(
+            request_context, WorkflowOwner(str(snippet_id), "snippet"), node_id
+        )
+        return dump_response(WorkflowDraftVariableListResponse, variables)
 
     @console_ns.doc("delete_snippet_node_variables")
     @console_ns.doc(description="Delete all variables for a specific node (snippet draft workflow)")
     @console_ns.response(204, "Node variables deleted successfully")
-    @_snippet_draft_var_prerequisite
-    @with_session
-    def delete(self, session: Session, current_user: Account, snippet: CustomizedSnippet, node_id: str) -> Response:
-        validate_node_id(node_id)
-        srv = WorkflowDraftVariableService(session)
-        srv.delete_node_variables(snippet.id, node_id, user_id=current_user.id)
+    @console_variable_admission("snippet")
+    def delete(self, request_context: RequestContext, snippet_id: UUID, node_id: str):
+        application_services().console_workflow_variables.delete_node(
+            request_context, WorkflowOwner(str(snippet_id), "snippet"), node_id
+        )
         return Response("", 204)
 
 
@@ -182,19 +103,11 @@ class SnippetVariableApi(Resource):
         console_ns.models[WorkflowDraftVariableResponse.__name__],
     )
     @console_ns.response(404, "Variable not found")
-    @_snippet_draft_var_prerequisite
-    @with_session(write=False)
-    def get(
-        self, session: Session, current_user: Account, snippet: CustomizedSnippet, variable_id: str
-    ) -> dict[str, Any]:
-        draft_var_srv = WorkflowDraftVariableService(session=session)
-        variable = ensure_variable_access(
-            variable=draft_var_srv.get_variable(variable_id=variable_id),
-            app_id=snippet.id,
-            variable_id=variable_id,
-            current_user_id=current_user.id,
+    @console_variable_admission("snippet")
+    def get(self, request_context: RequestContext, snippet_id: UUID, variable_id: UUID):
+        variable = application_services().console_workflow_variables.get(
+            request_context, WorkflowOwner(str(snippet_id), "snippet"), str(variable_id)
         )
-        _ensure_snippet_draft_variable_row_allowed(variable=variable, variable_id=variable_id)
         return dump_response(WorkflowDraftVariableResponse, variable)
 
     @console_ns.doc("update_snippet_workflow_variable")
@@ -206,72 +119,33 @@ class SnippetVariableApi(Resource):
         console_ns.models[WorkflowDraftVariableResponse.__name__],
     )
     @console_ns.response(404, "Variable not found")
-    @_snippet_draft_var_prerequisite
-    @with_session
+    @console_variable_admission("snippet")
     @model_validate(WorkflowDraftVariableUpdatePayload)
     def patch(
         self,
         req_data: WorkflowDraftVariableUpdatePayload,
-        session: Session,
-        current_user: Account,
-        snippet: CustomizedSnippet,
-        variable_id: str,
-    ) -> dict[str, Any]:
-        draft_var_srv = WorkflowDraftVariableService(session=session)
-
-        variable = ensure_variable_access(
-            variable=draft_var_srv.get_variable(variable_id=variable_id),
-            app_id=snippet.id,
-            variable_id=variable_id,
-            current_user_id=current_user.id,
+        request_context: RequestContext,
+        snippet_id: UUID,
+        variable_id: UUID,
+    ):
+        variable = application_services().console_workflow_variables.patch(
+            request_context,
+            WorkflowOwner(str(snippet_id), "snippet"),
+            str(variable_id),
+            name=req_data.name,
+            value=req_data.value,
         )
-        _ensure_snippet_draft_variable_row_allowed(variable=variable, variable_id=variable_id)
-
-        new_name = req_data.name
-        raw_value = req_data.value
-        if new_name is None and raw_value is None:
-            return dump_response(WorkflowDraftVariableResponse, variable)
-
-        new_value = None
-        if raw_value is not None:
-            if variable.value_type == SegmentType.FILE:
-                if not isinstance(raw_value, dict):
-                    raise InvalidArgumentError(description=f"expected dict for file, got {type(raw_value)}")
-                raw_value = build_from_mapping(
-                    mapping=raw_value,
-                    tenant_id=snippet.tenant_id,
-                    access_controller=_file_access_controller,
-                )
-            elif variable.value_type == SegmentType.ARRAY_FILE:
-                if not isinstance(raw_value, list):
-                    raise InvalidArgumentError(description=f"expected list for files, got {type(raw_value)}")
-                if len(raw_value) > 0 and not isinstance(raw_value[0], dict):
-                    raise InvalidArgumentError(description=f"expected dict for files[0], got {type(raw_value)}")
-                raw_value = build_from_mappings(
-                    mappings=raw_value,
-                    tenant_id=snippet.tenant_id,
-                    access_controller=_file_access_controller,
-                )
-            new_value = build_segment_with_type(variable.value_type, raw_value)
-        draft_var_srv.update_variable(variable, name=new_name, value=new_value)
         return dump_response(WorkflowDraftVariableResponse, variable)
 
     @console_ns.doc("delete_snippet_workflow_variable")
     @console_ns.doc(description="Delete a draft workflow variable (snippet scope)")
     @console_ns.response(204, "Variable deleted successfully")
     @console_ns.response(404, "Variable not found")
-    @_snippet_draft_var_prerequisite
-    @with_session
-    def delete(self, session: Session, current_user: Account, snippet: CustomizedSnippet, variable_id: str) -> Response:
-        draft_var_srv = WorkflowDraftVariableService(session=session)
-        variable = ensure_variable_access(
-            variable=draft_var_srv.get_variable(variable_id=variable_id),
-            app_id=snippet.id,
-            variable_id=variable_id,
-            current_user_id=current_user.id,
+    @console_variable_admission("snippet")
+    def delete(self, request_context: RequestContext, snippet_id: UUID, variable_id: UUID):
+        application_services().console_workflow_variables.delete(
+            request_context, WorkflowOwner(str(snippet_id), "snippet"), str(variable_id)
         )
-        _ensure_snippet_draft_variable_row_allowed(variable=variable, variable_id=variable_id)
-        draft_var_srv.delete_variable(variable)
         return Response("", 204)
 
 
@@ -286,30 +160,14 @@ class SnippetVariableResetApi(Resource):
     )
     @console_ns.response(204, "Variable reset (no content)")
     @console_ns.response(404, "Variable not found")
-    @_snippet_draft_var_prerequisite
-    @with_session
-    def put(
-        self, session: Session, current_user: Account, snippet: CustomizedSnippet, variable_id: str
-    ) -> Response | Any:
-        draft_var_srv = WorkflowDraftVariableService(session=session)
-        snippet_service = _snippet_service()
-        draft_workflow = snippet_service.get_draft_workflow(snippet=snippet)
-        if draft_workflow is None:
-            raise NotFoundError(
-                f"Draft workflow not found, snippet_id={snippet.id}",
-            )
-        variable = ensure_variable_access(
-            variable=draft_var_srv.get_variable(variable_id=variable_id),
-            app_id=snippet.id,
-            variable_id=variable_id,
-            current_user_id=current_user.id,
+    @console_variable_admission("snippet")
+    def put(self, request_context: RequestContext, snippet_id: UUID, variable_id: UUID):
+        variable = application_services().console_workflow_variables.reset(
+            request_context, WorkflowOwner(str(snippet_id), "snippet"), str(variable_id)
         )
-        _ensure_snippet_draft_variable_row_allowed(variable=variable, variable_id=variable_id)
-
-        resetted = draft_var_srv.reset_variable(draft_workflow, variable)
-        if resetted is None:
+        if variable is None:
             return Response("", 204)
-        return dump_response(WorkflowDraftVariableResponse, resetted)
+        return dump_response(WorkflowDraftVariableResponse, variable)
 
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/draft/conversation-variables")
@@ -323,9 +181,12 @@ class SnippetConversationVariableCollectionApi(Resource):
         "Conversation variables retrieved successfully",
         console_ns.models[WorkflowDraftVariableListResponse.__name__],
     )
-    @_snippet_draft_var_prerequisite
-    def get(self, _current_user: Account, snippet: CustomizedSnippet) -> dict[str, Any]:
-        return dump_response(WorkflowDraftVariableListResponse, WorkflowDraftVariableList(variables=[]))
+    @console_variable_admission("snippet")
+    def get(self, request_context: RequestContext, snippet_id: UUID):
+        variables = application_services().console_workflow_variables.conversation(
+            request_context, WorkflowOwner(str(snippet_id), "snippet")
+        )
+        return dump_response(WorkflowDraftVariableListResponse, variables)
 
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/draft/system-variables")
@@ -339,9 +200,12 @@ class SnippetSystemVariableCollectionApi(Resource):
         "System variables retrieved successfully",
         console_ns.models[WorkflowDraftVariableListResponse.__name__],
     )
-    @_snippet_draft_var_prerequisite
-    def get(self, _current_user: Account, snippet: CustomizedSnippet) -> dict[str, Any]:
-        return dump_response(WorkflowDraftVariableListResponse, WorkflowDraftVariableList(variables=[]))
+    @console_variable_admission("snippet")
+    def get(self, request_context: RequestContext, snippet_id: UUID):
+        variables = application_services().console_workflow_variables.system(
+            request_context, WorkflowOwner(str(snippet_id), "snippet")
+        )
+        return dump_response(WorkflowDraftVariableListResponse, variables)
 
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/draft/environment-variables")
@@ -354,28 +218,9 @@ class SnippetEnvironmentVariableCollectionApi(Resource):
         console_ns.models[EnvironmentVariableListResponse.__name__],
     )
     @console_ns.response(404, "Draft workflow not found")
-    @_snippet_draft_var_prerequisite
-    def get(self, _current_user: Account, snippet: CustomizedSnippet) -> dict[str, list[dict[str, Any]]]:
-        snippet_service = _snippet_service()
-        workflow = snippet_service.get_draft_workflow(snippet=snippet)
-        if workflow is None:
-            raise DraftWorkflowNotExist()
-
-        env_vars_list: list[dict[str, Any]] = []
-        for v in workflow.environment_variables:
-            env_vars_list.append(
-                {
-                    "id": v.id,
-                    "type": "env",
-                    "name": v.name,
-                    "description": v.description,
-                    "selector": v.selector,
-                    "value_type": environment_variable_value_type(v),
-                    "value": v.value,
-                    "edited": False,
-                    "visible": True,
-                    "editable": True,
-                }
-            )
-
-        return {"items": env_vars_list}
+    @console_variable_admission("snippet")
+    def get(self, request_context: RequestContext, snippet_id: UUID):
+        items = application_services().console_workflow_variables.environment(
+            request_context, WorkflowOwner(str(snippet_id), "snippet")
+        )
+        return dump_response(EnvironmentVariableListResponse, {"items": items})
