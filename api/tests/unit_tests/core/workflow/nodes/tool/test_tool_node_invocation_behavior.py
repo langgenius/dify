@@ -2,7 +2,7 @@
 
 import time
 import uuid
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.tools.utils.configuration import ToolParameterConfigurationManager
@@ -10,12 +10,11 @@ from core.workflow.system_variables import build_system_variables
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.graph import Graph
 from graphon.node_events import StreamCompletedEvent
-from graphon.nodes.protocols import ToolFileManagerProtocol
 from graphon.nodes.tool.entities import ToolNodeData
 from graphon.nodes.tool.tool_node import ToolNode
 from graphon.runtime import GraphRuntimeState, VariablePool
 from services.workflow.execution.adapters.node_factory import DifyNodeFactory
-from services.workflow.execution.adapters.node_runtime import DifyToolNodeRuntime
+from services.workflow.execution.adapters.node_runtime import DifyToolFileManager, DifyToolNodeRuntime
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
@@ -60,7 +59,7 @@ def init_tool_node(config: dict[str, object], *, workflow_runtime) -> ToolNode:
 
     graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
 
-    tool_file_manager = MagicMock(spec=ToolFileManagerProtocol)
+    tool_file_manager = DifyToolFileManager(init_params.run_context)
 
     node = ToolNode(
         node_id=str(uuid.uuid4()),

@@ -1,16 +1,17 @@
 import os
 from collections import UserDict
-from unittest.mock import MagicMock
 
 import pytest
 from tos import TosClientV2
 from tos.clientv2 import DeleteObjectOutput, GetObjectOutput, HeadObjectOutput, PutObjectOutput
+from tos.http import Response as TosResponse
 
 from tests.unit_tests.oss.__mock.base import (
     get_example_bucket,
     get_example_data,
     get_example_filename,
     get_example_filepath,
+    object_response,
 )
 
 
@@ -51,9 +52,7 @@ class MockVolcengineTosClass:
         assert bucket == self.bucket_name
         assert key == self.key
 
-        get_object_output = MagicMock(GetObjectOutput)
-        get_object_output.read.return_value = self.content
-        return get_object_output
+        return GetObjectOutput(TosResponse(object_response(self.content)))
 
     def get_object_to_file(self, bucket: str, key: str, file_path: str):
         assert bucket == self.bucket_name

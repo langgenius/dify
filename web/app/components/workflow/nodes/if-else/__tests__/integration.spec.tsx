@@ -4,6 +4,7 @@ import type { PanelProps } from '@/types/workflow'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { BlockEnum, VarType } from '../../../types'
 import ConditionAdd from '../components/condition-add'
 import ConditionFilesListValue from '../components/condition-files-list-value'
@@ -269,7 +270,7 @@ describe('if-else path', () => {
       const user = userEvent.setup()
       const onToggleConditionLogicalOperator = vi.fn()
 
-      render(
+      renderWithConsoleQuery(
         <ConditionList
           caseId="case-1"
           caseItem={{

@@ -921,11 +921,26 @@ def test_set_datasource_variables_success(
     draft_wf.get_enclosing_node_type_and_id.return_value = None  # Avoid unpacking error
     mocker.patch.object(rag_pipeline_service.execution._workflows, "get_draft_workflow", return_value=draft_wf)
 
-    execution = mocker.Mock(spec=WorkflowNodeExecution)
-    execution.id = "exec-1"
-    execution.process_data = {}
-    execution.inputs = {}
-    execution.outputs = {}
+    execution = WorkflowNodeExecution(
+        id="exec-1",
+        node_execution_id="node-exec-1",
+        workflow_id="wf-1",
+        workflow_execution_id="run-1",
+        index=1,
+        predecessor_node_id=None,
+        node_id="node-1",
+        node_type=BuiltinNodeTypes.DATASOURCE,
+        title="Datasource",
+        process_data={},
+        inputs={},
+        outputs={},
+        status=WorkflowNodeExecutionStatus.SUCCEEDED,
+        error=None,
+        elapsed_time=0,
+        metadata={},
+        created_at=datetime(2026, 1, 1),
+        finished_at=None,
+    )
     mocker.patch.object(rag_pipeline_service.execution, "_handle_node_run_result", return_value=execution)
 
     # Mock Repository
