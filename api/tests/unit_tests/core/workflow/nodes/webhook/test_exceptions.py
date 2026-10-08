@@ -9,7 +9,7 @@ from core.workflow.nodes.trigger_webhook.exc import (
 from graphon.entities.exc import BaseNodeError
 
 
-def test_webhook_node_error_inheritance():
+def test_webhook_node_error_inheritance() -> None:
     """Test WebhookNodeError inherits from BaseNodeError."""
     assert issubclass(WebhookNodeError, BaseNodeError)
 
@@ -19,7 +19,7 @@ def test_webhook_node_error_inheritance():
     assert isinstance(error, BaseNodeError)
 
 
-def test_webhook_timeout_error():
+def test_webhook_timeout_error() -> None:
     """Test WebhookTimeoutError functionality."""
     # Test inheritance
     assert issubclass(WebhookTimeoutError, WebhookNodeError)
@@ -34,7 +34,7 @@ def test_webhook_timeout_error():
     assert isinstance(error_no_msg, WebhookTimeoutError)
 
 
-def test_webhook_not_found_error():
+def test_webhook_not_found_error() -> None:
     """Test WebhookNotFoundError functionality."""
     # Test inheritance
     assert issubclass(WebhookNotFoundError, WebhookNodeError)
@@ -49,7 +49,7 @@ def test_webhook_not_found_error():
     assert isinstance(error_no_msg, WebhookNotFoundError)
 
 
-def test_webhook_config_error():
+def test_webhook_config_error() -> None:
     """Test WebhookConfigError functionality."""
     # Test inheritance
     assert issubclass(WebhookConfigError, WebhookNodeError)
@@ -64,7 +64,7 @@ def test_webhook_config_error():
     assert isinstance(error_no_msg, WebhookConfigError)
 
 
-def test_webhook_error_hierarchy():
+def test_webhook_error_hierarchy() -> None:
     """Test the complete webhook error hierarchy."""
     # All webhook errors should inherit from WebhookNodeError
     webhook_errors = [
@@ -78,7 +78,7 @@ def test_webhook_error_hierarchy():
         assert issubclass(error_class, BaseNodeError)
 
 
-def test_webhook_error_instantiation_with_args():
+def test_webhook_error_instantiation_with_args() -> None:
     """Test webhook error instantiation with various arguments."""
     # Test with single string argument
     error1 = WebhookNodeError("Simple error message")
@@ -94,7 +94,7 @@ def test_webhook_error_instantiation_with_args():
     assert "Config error in field: timeout" in str(error3)
 
 
-def test_webhook_error_as_exceptions():
+def test_webhook_error_as_exceptions() -> None:
     """Test that webhook errors can be raised and caught properly."""
     # Test raising and catching WebhookNodeError
     with pytest.raises(WebhookNodeError) as exc_info:
@@ -115,7 +115,7 @@ def test_webhook_error_as_exceptions():
     assert str(exc_info.value) == "Invalid config"
 
 
-def test_webhook_error_catching_hierarchy():
+def test_webhook_error_catching_hierarchy() -> None:
     """Test that webhook errors can be caught by their parent classes."""
     # WebhookTimeoutError should be catchable as WebhookNodeError
     with pytest.raises(WebhookNodeError):
@@ -140,7 +140,7 @@ def test_webhook_error_catching_hierarchy():
         raise WebhookConfigError("Config as base error")
 
 
-def test_webhook_error_attributes():
+def test_webhook_error_attributes() -> None:
     """Test webhook error class attributes."""
     # Test that all error classes have proper __name__
     assert WebhookNodeError.__name__ == "WebhookNodeError"
@@ -156,7 +156,7 @@ def test_webhook_error_attributes():
     assert WebhookConfigError.__module__ == expected_module
 
 
-def test_webhook_error_docstrings():
+def test_webhook_error_docstrings() -> None:
     """Test webhook error class docstrings."""
     assert WebhookNodeError.__doc__ == "Base webhook node error."
     assert WebhookTimeoutError.__doc__ == "Webhook timeout error."
@@ -164,7 +164,7 @@ def test_webhook_error_docstrings():
     assert WebhookConfigError.__doc__ == "Webhook configuration error."
 
 
-def test_webhook_error_repr_and_str():
+def test_webhook_error_repr_and_str() -> None:
     """Test webhook error string representations."""
     error = WebhookNodeError("Test message")
 
@@ -177,7 +177,7 @@ def test_webhook_error_repr_and_str():
     assert "Test message" in repr_str
 
 
-def test_webhook_error_with_no_message():
+def test_webhook_error_with_no_message() -> None:
     """Test webhook errors with no message."""
     # Test that errors can be instantiated without messages
     errors = [

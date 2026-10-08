@@ -13,7 +13,13 @@ from core.helper.trace_id_helper import (
 
 
 class DummyRequest:
-    def __init__(self, headers=None, args=None, json=None, is_json=False):
+    def __init__(
+        self,
+        headers: dict[str, object] | None = None,
+        args: dict[str, object] | None = None,
+        json: dict[str, object] | None = None,
+        is_json: bool = False,
+    ) -> None:
         self.headers = headers or {}
         self.args = args or {}
         self.json = json
@@ -21,14 +27,21 @@ class DummyRequest:
 
 
 class _Request:
-    def __init__(self, *, headers=None, args=None, json=None, is_json=True):
+    def __init__(
+        self,
+        *,
+        headers: dict[str, object] | None = None,
+        args: dict[str, object] | None = None,
+        json: dict[str, object] | None = None,
+        is_json: bool = True,
+    ) -> None:
         self.headers = headers or {}
         self.args = args or {}
         self.json = json
         self.is_json = is_json
 
 
-def test_get_trace_session_id_prefers_header_over_query_and_body():
+def test_get_trace_session_id_prefers_header_over_query_and_body() -> None:
     request = _Request(
         headers={"X-Trace-Session-Id": "  header-session  "},
         args={"trace_session_id": "query-session"},
@@ -38,7 +51,7 @@ def test_get_trace_session_id_prefers_header_over_query_and_body():
     assert get_trace_session_id(request) == "header-session"
 
 
-def test_get_trace_session_id_prefers_query_over_body():
+def test_get_trace_session_id_prefers_query_over_body() -> None:
     request = _Request(
         args={"trace_session_id": "  query-session  "},
         json={"trace_session_id": "body-session"},
@@ -47,13 +60,13 @@ def test_get_trace_session_id_prefers_query_over_body():
     assert get_trace_session_id(request) == "query-session"
 
 
-def test_get_trace_session_id_reads_body_when_no_higher_priority_input():
+def test_get_trace_session_id_reads_body_when_no_higher_priority_input() -> None:
     request = _Request(json={"trace_session_id": "  body/session:123  "})
 
     assert get_trace_session_id(request) == "body/session:123"
 
 
-def test_get_trace_session_id_ignores_invalid_lower_priority_value():
+def test_get_trace_session_id_ignores_invalid_lower_priority_value() -> None:
     request = _Request(
         headers={"X-Trace-Session-Id": "header-session"},
         json={"trace_session_id": "   "},
@@ -70,14 +83,14 @@ def test_get_trace_session_id_ignores_invalid_lower_priority_value():
         _Request(headers={"X-Trace-Session-Id": "x" * 201}),
     ],
 )
-def test_get_trace_session_id_rejects_invalid_highest_priority_input(trace_session_request):
+def test_get_trace_session_id_rejects_invalid_highest_priority_input(trace_session_request: _Request) -> None:
     with pytest.raises(BadRequest) as exc_info:
         get_trace_session_id(trace_session_request)
 
     assert "trace_session_id" in str(exc_info.value)
 
 
-def test_get_trace_session_id_does_not_read_trace_id_or_traceparent():
+def test_get_trace_session_id_does_not_read_trace_id_or_traceparent() -> None:
     request = _Request(
         headers={
             "X-Trace-Id": "trace-id",
@@ -90,17 +103,17 @@ def test_get_trace_session_id_does_not_read_trace_id_or_traceparent():
     assert get_trace_session_id(request) is None
 
 
-def test_extract_trace_session_id_from_args_returns_trimmed_value():
+def test_extract_trace_session_id_from_args_returns_trimmed_value() -> None:
     args = {"trace_session_id": "  session-1  "}
 
     assert extract_trace_session_id_from_args(args) == {"trace_session_id": "session-1"}
 
 
-def test_extract_trace_session_id_from_args_returns_empty_dict_when_missing():
+def test_extract_trace_session_id_from_args_returns_empty_dict_when_missing() -> None:
     assert extract_trace_session_id_from_args({}) == {}
 
 
-def test_extract_trace_session_id_from_args_returns_empty_dict_when_blank_after_trim():
+def test_extract_trace_session_id_from_args_returns_empty_dict_when_blank_after_trim() -> None:
     assert extract_trace_session_id_from_args({"trace_session_id": "   "}) == {}
 
 
@@ -120,26 +133,26 @@ class TestTraceIdHelper:
             ("with space", False),
         ],
     )
-    def test_is_valid_trace_id(self, trace_id, expected):
+    def test_is_valid_trace_id(self, trace_id: str, expected: bool) -> None:
         """Test trace_id validation for various cases"""
         assert is_valid_trace_id(trace_id) is expected
 
-    def test_get_external_trace_id_from_header(self):
+    def test_get_external_trace_id_from_header(self) -> None:
         """Should extract valid trace_id from header"""
         req = DummyRequest(headers={"X-Trace-Id": "abc123"})
         assert get_external_trace_id(req) == "abc123"
 
-    def test_get_external_trace_id_from_args(self):
+    def test_get_external_trace_id_from_args(self) -> None:
         """Should extract valid trace_id from args if header missing"""
         req = DummyRequest(args={"trace_id": "abc123"})
         assert get_external_trace_id(req) == "abc123"
 
-    def test_get_external_trace_id_from_json(self):
+    def test_get_external_trace_id_from_json(self) -> None:
         """Should extract valid trace_id from JSON body if header and args missing"""
         req = DummyRequest(is_json=True, json={"trace_id": "abc123"})
         assert get_external_trace_id(req) == "abc123"
 
-    def test_get_external_trace_id_priority(self):
+    def test_get_external_trace_id_priority(self) -> None:
         """Header > args > json priority"""
         req = DummyRequest(
             headers={"X-Trace-Id": "header_id"},
@@ -162,7 +175,7 @@ class TestTraceIdHelper:
             DummyRequest(),
         ],
     )
-    def test_get_external_trace_id_invalid(self, req):
+    def test_get_external_trace_id_invalid(self, req: DummyRequest) -> None:
         """Should return None for invalid or missing trace_id"""
         assert get_external_trace_id(req) is None
 
@@ -174,7 +187,7 @@ class TestTraceIdHelper:
             ({}, {}),
         ],
     )
-    def test_extract_external_trace_id_from_args(self, args, expected):
+    def test_extract_external_trace_id_from_args(self, args: dict[str, object], expected: dict[str, object]) -> None:
         """Test extraction of external_trace_id from args mapping"""
         assert extract_external_trace_id_from_args(args) == expected
 
@@ -232,11 +245,11 @@ class TestTraceIdHelper:
             ({}, {}),
         ],
     )
-    def test_extract_parent_trace_context_from_args(self, args, expected):
+    def test_extract_parent_trace_context_from_args(self, args: dict[str, object], expected: dict[str, object]) -> None:
         """Test extraction of parent_trace_context from args mapping"""
         assert extract_parent_trace_context_from_args(args) == expected
 
-    def test_extract_parent_trace_context_returns_typed_context(self):
+    def test_extract_parent_trace_context_returns_typed_context(self) -> None:
         """Parent trace context is parsed into a Pydantic value object."""
         result = extract_parent_trace_context_from_args(
             {
@@ -254,7 +267,7 @@ class TestTraceIdHelper:
             )
         }
 
-    def test_extract_parent_trace_context_rejects_incomplete_typed_context(self):
+    def test_extract_parent_trace_context_rejects_incomplete_typed_context(self) -> None:
         """Typed parent trace context follows the same completeness rule as raw mappings."""
         result = extract_parent_trace_context_from_args(
             {

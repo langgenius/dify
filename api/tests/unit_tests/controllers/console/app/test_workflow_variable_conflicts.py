@@ -1,8 +1,10 @@
 """Real draft snapshot conflicts use the Console HTTP error contract."""
 
 import json
+from collections.abc import Callable
 from dataclasses import dataclass
 from inspect import unwrap
+from typing import Concatenate
 
 import pytest
 from flask import Flask
@@ -109,11 +111,13 @@ def test_variable_update_conflict_uses_production_http_error_mapping(
         context: RequestContext, owner: WorkflowOwner, *, include_draft: bool
     ) -> DraftVariableContext:
         snapshot = read_snapshot(context, owner, include_draft=include_draft)
+        workflow_snapshot = snapshot.snapshot
+        assert workflow_snapshot is not None
         if concurrent_change is not None:
             # Commit a second editor's update after the read and before the
             # original request reaches the repository's snapshot comparison.
             with sqlite_session_factory.begin() as session:
-                current = session.get(Workflow, snapshot.snapshot.id)
+                current = session.get(Workflow, workflow_snapshot.id)
                 assert current is not None
                 if concurrent_change == "canvas":
                     current.graph = json.dumps({"nodes": [], "edges": [], "viewport": {"zoom": 2}})
@@ -139,10 +143,14 @@ def test_variable_update_conflict_uses_production_http_error_mapping(
 
     monkeypatch.setattr(controller, "application_services", lambda: Services(service))
 
-    def account_admission(**_kwargs):
-        def decorate(view):
-            def admitted(self, app_id):
-                return view(self, context, app_id)
+    def account_admission[T, **P, R](
+        **_kwargs: object,
+    ) -> Callable[[Callable[Concatenate[T, RequestContext, P], R]], Callable[Concatenate[T, P], R]]:
+        def decorate(
+            view: Callable[Concatenate[T, RequestContext, P], R],
+        ) -> Callable[Concatenate[T, P], R]:
+            def admitted(self: T, /, *args: P.args, **kwargs: P.kwargs) -> R:
+                return view(self, context, *args, **kwargs)
 
             return admitted
 

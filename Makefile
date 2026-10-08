@@ -80,6 +80,7 @@ lint:
 	@uv run --project api --dev ruff format ./api
 	@uv run --project api --dev ruff check --fix ./api
 	@$(MAKE) api-contract-lint
+	@uv run --project api python scripts/check_no_spec_mock.py
 	@uv run --directory api --dev lint-imports
 	@uv run --project api --dev dotenv-linter ./api/.env.example ./web/.env.example
 	@echo "✅ Linting complete"

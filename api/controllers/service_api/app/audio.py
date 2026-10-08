@@ -2,12 +2,14 @@ import logging
 
 from flask import request
 from flask_restx import Resource
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import InternalServerError
 
 import services
 from controllers.common.controller_schemas import TextToAudioPayload
 from controllers.common.fields import AudioBinaryResponse, AudioTranscriptResponse
 from controllers.common.schema import register_response_schema_models, register_schema_model
+from controllers.common.session import with_session
 from controllers.console.wraps import model_validate
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import (
@@ -26,7 +28,6 @@ from controllers.service_api.schema import binary_response, expect_with_user, mu
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from core.base.tts.audio_mime import SUPPORTED_TTS_AUDIO_MIME_TYPES
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
-from extensions.ext_database import db
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs.helper import dump_response
 from models.model import App, EndUser
@@ -98,7 +99,8 @@ class AudioApi(Resource):
         service_api_ns.models[AudioTranscriptResponse.__name__],
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.FORM))
-    def post(self, app_model: App, end_user: EndUser):
+    @with_session(write=False)
+    def post(self, session: Session, app_model: App, end_user: EndUser):
         """Convert audio to text using speech-to-text.
 
         Accepts an audio file upload and returns the transcribed text.
@@ -109,7 +111,7 @@ class AudioApi(Resource):
             response = AudioService.transcript_asr(
                 app_model=app_model,
                 file=file,
-                session=db.session(),
+                session=session,
                 end_user=end_user.id,
             )
 
@@ -182,8 +184,9 @@ class TextApi(Resource):
     # TTS returns provider audio bytes, so the success response is intentionally schema-less.
     @service_api_ns.response(200, "Text successfully converted to audio")
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON))
+    @with_session(write=False)
     @model_validate(TextToAudioPayload)
-    def post(self, payload: TextToAudioPayload, app_model: App, end_user: EndUser):
+    def post(self, payload: TextToAudioPayload, session: Session, app_model: App, end_user: EndUser):
         """Convert text to audio using text-to-speech.
 
         Converts the provided text to audio using the specified voice.
@@ -202,7 +205,7 @@ class TextApi(Resource):
                 )
             return AudioService.transcript_tts(
                 app_model=app_model,
-                session=db.session(),
+                session=session,
                 text=text,
                 voice=voice,
                 end_user=end_user.external_user_id,

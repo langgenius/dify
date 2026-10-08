@@ -15,8 +15,8 @@ import MemoryConfig from '../_base/components/memory-config'
 import Editor from '../_base/components/prompt/editor'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
 import ImportFromTool from './components/extract-parameter/import-from-tool'
-import ExtractParameter from './components/extract-parameter/list'
-import AddExtractParameter from './components/extract-parameter/update'
+import { ExtractParameterList } from './components/extract-parameter/list'
+import { ParameterDialog } from './components/extract-parameter/update'
 import ReasoningModePicker from './components/reasoning-mode-picker'
 import useConfig from './use-config'
 
@@ -105,12 +105,12 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({ id, data }) => 
               <div className="flex items-center space-x-1">
                 {!readOnly && <ImportFromTool onImport={handleImportFromTool} />}
                 {!readOnly && <div className="h-3 w-px bg-divider-regular"></div>}
-                <AddExtractParameter type="add" onSave={addExtractParameter} />
+                <ParameterDialog type="add" onSave={addExtractParameter} />
               </div>
             ) : undefined
           }
         >
-          <ExtractParameter
+          <ExtractParameterList
             readonly={readOnly}
             list={inputs.parameters || []}
             onChange={handleExactParamsChange}

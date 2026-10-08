@@ -9,11 +9,11 @@ import type { FormEvent } from 'react'
 import type { NewKnowledgeWebsiteSourceDraft } from './routes'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -1337,14 +1337,14 @@ export function WebsiteCrawlPreview({
               </p>
             )}
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton disabled={discarding}>
               {t(($) => $['newKnowledge.keepEditing'])}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton loading={discarding} onClick={() => void discardAndCancel()}>
               {t(($) => $['newKnowledge.discardSourceChangesConfirm'])}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </section>

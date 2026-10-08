@@ -1,9 +1,12 @@
 """Expiry uses the lease index, independently of the number of historical graphs."""
 
+from collections.abc import Mapping, Sequence
 from datetime import timedelta
 from uuid import UUID
 
-from sqlalchemy import Engine, event
+from sqlalchemy import Engine, Table, event
+from sqlalchemy.engine import Connection, ExecutionContext
+from sqlalchemy.engine.interfaces import DBAPICursor
 from sqlalchemy.orm import Session, sessionmaker
 
 from graphon.enums import WorkflowExecutionStatus
@@ -12,15 +15,19 @@ from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowDebugReservation, WorkflowRun, WorkflowType
 from repositories.workflow.debug_reservation_repository import WorkflowDebugReservationRepository
 
+type DriverParameters = Mapping[str, object] | Sequence[object] | None
+
 
 def test_due_scan_uses_covering_range_index_with_large_run_history(
     sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]
 ) -> None:
     now = naive_utc_now()
     ids = [str(UUID(int=i + 1)) for i in range(10_004)]
+    workflow_run_table = WorkflowRun.__table__
+    assert isinstance(workflow_run_table, Table)
     with sqlite_session_factory.begin() as session:
         session.execute(
-            WorkflowRun.__table__.insert(),
+            workflow_run_table.insert(),
             [
                 {
                     "id": execution_id,
@@ -46,9 +53,16 @@ def test_due_scan_uses_covering_range_index_with_large_run_history(
                 WorkflowDebugReservation(workflow_run_id=ids[-1], expires_at=None, started_at=now),
             ]
         )
-    queries: list[tuple[str, object]] = []
+    queries: list[tuple[str, DriverParameters]] = []
 
-    def record_query(_connection, _cursor, statement, parameters, _context, _executemany):
+    def record_query(
+        _connection: Connection,
+        _cursor: DBAPICursor,
+        statement: str,
+        parameters: DriverParameters,
+        _context: ExecutionContext | None,
+        _executemany: bool,
+    ) -> None:
         if statement.lstrip().upper().startswith("SELECT"):
             queries.append((statement, parameters))
 

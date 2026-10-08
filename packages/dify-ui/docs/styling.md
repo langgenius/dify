@@ -58,6 +58,13 @@ Use semantic Dify tokens and existing component variants before hard-coded value
 primitive classes. Use an important modifier only for a tightly scoped compatibility override
 after the owning variant, data attribute, and selector structure cannot express the state.
 
+## Focus indicator
+
+Controls own their focus indicator, so callers never write one. That includes every trigger that
+opens a surface (Popover, DropdownMenu, Collapsible, Combobox, Dialog, AlertDialog, Drawer); they
+share one ring. Rows inside a composite defer to its highlight. Parts that only attach behavior
+(Tooltip, PreviewCard, and ContextMenu triggers, and Close parts) add no styles.
+
 Attach focus-visible styling to the element that visually represents focus. If a visible wrapper
 contains the native focus target, select that descendant state from the wrapper; for example,
 `SliderThumb` uses `has-[:focus-visible]` because its internal range input receives focus.

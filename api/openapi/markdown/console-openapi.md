@@ -3947,7 +3947,7 @@ Update conversation variables for workflow draft
 | 200 | Conversation variables updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/draft/environment-variables
-**Get draft workflow**
+**Get environment variables**
 
 Get environment variables for workflow
 
@@ -4517,7 +4517,7 @@ Delete all draft workflow variables
 | 204 | Workflow variables deleted successfully |
 
 ### [GET] /apps/{app_id}/workflows/draft/variables
-**Get draft workflow**
+**List draft workflow variables without loading their values**
 
 Get draft workflow variables
 
@@ -5005,28 +5005,6 @@ Delete an API key for an app
 | 403 | Forbidden |  |
 | 502 | Billing operation failed | **application/json**: [BillingOperationFailedErrorResponse](#billingoperationfailederrorresponse)<br> |
 | 503 | Billing unavailable | **application/json**: [BillingUnavailableErrorResponse](#billingunavailableerrorresponse)<br> |
-
-### [PUT] /billing/partners/{partner_key}/tenants
-Sync partner tenants bindings
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| partner_key | path | Partner key | Yes | string |
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [PartnerTenantsPayload](#partnertenantspayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Tenants synced to partner successfully | **application/json**: [BillingResponse](#billingresponse)<br> |
-| 400 | Invalid partner information |  |
 
 ### [GET] /billing/subscription
 #### Parameters
@@ -7877,7 +7855,7 @@ Update account-level Step-by-step Tour state
 | 200 | Datasource variables set successfully | **application/json**: [WorkflowRunNodeExecutionResponse](#workflowrunnodeexecutionresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/draft/environment-variables
-**Get draft workflow**
+**Get environment variables**
 
 #### Parameters
 
@@ -8079,7 +8057,7 @@ Update account-level Step-by-step Tour state
 | 204 | Workflow variables deleted successfully |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/draft/variables
-**Get draft workflow**
+**List draft pipeline variables without loading their values**
 
 #### Parameters
 
@@ -8130,6 +8108,12 @@ Update account-level Step-by-step Tour state
 | ---- | ---------- | ----------- | -------- | ------ |
 | pipeline_id | path |  | Yes | string (uuid) |
 | variable_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WorkflowDraftVariablePatchPayload](#workflowdraftvariablepatchpayload)<br> |
 
 #### Responses
 
@@ -10337,7 +10321,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Success | **application/json**: [MemberInviteResponse](#memberinviteresponse)<br> |
-| 400 | Invalid role or workspace member limit exceeded | **application/json**: [MemberInviteErrorResponse](#memberinviteerrorresponse)<br> |
+| 400 | Invalid email, role, or workspace member limit exceeded | **application/json**: [MemberInviteErrorResponse](#memberinviteerrorresponse)<br> |
 
 ### [POST] /workspaces/current/members/owner-transfer-check
 #### Request Body
@@ -17178,12 +17162,6 @@ ExporleBanner status
 | message | string |  | Yes |
 | status | integer |  | Yes |
 
-#### BillingResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| BillingResponse | object |  |  |
-
 #### BillingSubscriptionResponse
 
 | Name | Type | Description | Required |
@@ -21617,12 +21595,6 @@ Enum class for parameter type.
 | ---- | ---- | ----------- | -------- |
 | data | [ string ] |  | Yes |
 
-#### PartnerTenantsPayload
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| click_id | string | Click Id from partner referral link | Yes |
-
 #### PausedNodeResponse
 
 | Name | Type | Description | Required |
@@ -22868,17 +22840,22 @@ Resource types understood by access policies.
 | data_source_type | string |  | No |
 | dataset_id | string |  | No |
 | dataset_name | string |  | No |
+| doc_metadata | object |  | No |
 | document_id | string |  | No |
 | document_name | string |  | No |
+| files | [ object ] |  | No |
 | hit_count | integer |  | No |
 | id | string (uuid) |  | No |
 | index_node_hash | string |  | No |
 | message_id | string (uuid) |  | No |
+| page | integer |  | No |
 | position | integer |  | Yes |
+| retriever_from | string |  | No |
 | score | number |  | No |
 | segment_id | string |  | No |
 | segment_position | integer |  | No |
 | summary | string |  | No |
+| title | string |  | No |
 | word_count | integer |  | No |
 
 #### RoleBindingsResponse

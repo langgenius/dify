@@ -1210,7 +1210,7 @@ describe('AppDeploy', () => {
 
     const menu = await screen.findByRole('menu')
     expect(within(menu).getByRole('alert')).toHaveTextContent('deployments.common.loadFailed')
-    await user.click(within(menu).getByRole('button', { name: 'common.operation.retry' }))
+    await user.click(within(menu).getByRole('menuitem', { name: 'common.operation.retry' }))
 
     expect(await screen.findByText('8 of 12 environments in use')).toBeInTheDocument()
     expect(requestCount).toBe(2)
