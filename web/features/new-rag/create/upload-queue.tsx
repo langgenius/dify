@@ -7,6 +7,7 @@ import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { createRequestId } from '../request-id'
 import { DocumentUploadFileList } from '../upload/file-list'
+import { DocumentUploadPlanNotice } from '../upload/plan-notice'
 import {
   DOCUMENT_UPLOAD_ACCEPT,
   documentUploadIssue,
@@ -42,6 +43,7 @@ function mergeFiles(current: QueuedUpload[], files: File[], fileSizeLimitMb: num
 export function CreateUploadQueue({
   disabled,
   fileSizeLimitMb,
+  supportBatchUpload,
   uploadPhases = new Map(),
   uploading,
   uploads,
@@ -49,6 +51,7 @@ export function CreateUploadQueue({
 }: {
   disabled: boolean
   fileSizeLimitMb: number
+  supportBatchUpload: boolean
   uploadPhases?: ReadonlyMap<File, KnowledgeFsUploadPhase>
   uploading: boolean
   uploads: QueuedUpload[]
@@ -68,7 +71,7 @@ export function CreateUploadQueue({
       <input
         id={inputId}
         className="peer sr-only"
-        multiple
+        multiple={supportBatchUpload}
         type="file"
         accept={DOCUMENT_UPLOAD_ACCEPT}
         aria-label={t(($) => $.uploadFiles)}
@@ -121,6 +124,8 @@ export function CreateUploadQueue({
           {t(($) => $.documentUploadFormats, { size: fileSizeLimitMb })}
         </span>
       </label>
+
+      <DocumentUploadPlanNotice fileSizeLimitMb={fileSizeLimitMb} />
 
       {!!uploads.length && (
         <section aria-label={t(($) => $.uploadFiles)}>

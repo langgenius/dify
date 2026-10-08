@@ -67,6 +67,17 @@ vi.mock('../../upload/quota', () => ({
   getKnowledgeFsUploadQuotaFailure: uploadQuotaMock,
 }))
 
+const uploadPlanMock = vi.hoisted(() => ({
+  plan: 'professional' as string | undefined,
+  useLiveQuery: false,
+}))
+
+vi.mock('@/app/components/billing/upgrade-btn', () => ({
+  default: ({ labelKey }: { labelKey: string }) => (
+    <button type="button">{`billing.${labelKey}`}</button>
+  ),
+}))
+
 const fileUploadConfigMock = vi.hoisted(() => ({
   knowledgeFileSizeLimit: 15,
 }))
@@ -169,9 +180,11 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   return {
     ...original,
     useQuery: (options: Parameters<typeof original.useQuery>[0]) =>
-      options.queryKey[0] === 'datasource-plugins'
-        ? datasourceQueryMock.plugins
-        : original.useQuery(options),
+      options.queryKey[0] === 'features' && !uploadPlanMock.useLiveQuery
+        ? { data: uploadPlanMock.plan }
+        : options.queryKey[0] === 'datasource-plugins'
+          ? datasourceQueryMock.plugins
+          : original.useQuery(options),
   }
 })
 
@@ -239,7 +252,15 @@ vi.mock('@/service/console', () => ({
   },
   consoleQuery: {
     features: {
-      get: { key: () => ['features'] },
+      get: {
+        key: () => ['features'],
+        queryOptions: (options: object) => ({
+          queryKey: ['features'],
+          queryFn: () =>
+            Promise.resolve({ billing: { subscription: { plan: uploadPlanMock.plan } } }),
+          ...options,
+        }),
+      },
       vectorSpace: { get: { key: () => ['vector-space'] } },
     },
     rag: {
@@ -858,6 +879,8 @@ describe('CreateKnowledgePage', () => {
     )
     serviceMock.discardUpload.mockResolvedValue(undefined)
     permissionStateMock.keys = ['dataset.acl.access_config']
+    uploadPlanMock.plan = 'professional'
+    uploadPlanMock.useLiveQuery = false
     fileUploadConfigMock.knowledgeFileSizeLimit = 15
     systemFeaturesStateMock.uploadEnabled = true
     systemFeaturesStateMock.rbacEnabled = true
@@ -2649,7 +2672,222 @@ describe('CreateKnowledgePage', () => {
     expect(serviceMock.create).not.toHaveBeenCalled()
   })
 
-  it('uses the workspace knowledge file size limit for upload validation and guidance', async () => {
+  it.each(['sandbox', 'professional', 'team'])(
+    'shows the upload rules before file selection for the %s plan',
+    async (plan) => {
+      navigationMock.startMode = 'upload'
+      systemFeaturesStateMock.deploymentEdition = 'CLOUD'
+      uploadPlanMock.plan = plan
+      renderPage()
+      expect(serviceMock.stageUpload).not.toHaveBeenCalled()
+      expect(screen.getByText(/knowledgeSpace\.documentUploadFormats:.*"size":15/)).toBeVisible()
+      const title = screen.queryByText('billing.upgrade.uploadMultiplePages.title')
+      if (plan === 'sandbox') {
+        expect(title).toBeVisible()
+        const notice = title!.parentElement!.parentElement!
+        expect(
+          within(notice).getByText(
+            /datasetCreation\.stepOne\.uploader\.tip:.*"size":15.*"batchCount":1/,
+          ),
+        ).toBeVisible()
+        expect(
+          within(notice).getByRole('button', { name: 'billing.triggerLimitModal.upgrade' }),
+        ).toBeVisible()
+        expect(notice).not.toHaveTextContent('50')
+      } else expect(title).not.toBeInTheDocument()
+    },
+  )
+
+  it.each(['picker', 'drop'])('blocks Sandbox multi-file creation through %s', async (entry) => {
+    const user = userEvent.setup()
+    navigationMock.startMode = 'upload'
+    systemFeaturesStateMock.deploymentEdition = 'CLOUD'
+    uploadPlanMock.plan = 'sandbox'
+    renderPage()
+    await fillRequiredFields(user)
+    const input = screen.getByLabelText('knowledgeSpace.uploadFiles', {
+      selector: 'input[type="file"]',
+    })
+    expect(input).not.toHaveAttribute('multiple')
+    const files = [new File(['one'], 'one.md'), new File(['two'], 'two.md')]
+    if (entry === 'picker') fireEvent.change(input, { target: { files } })
+    else
+      fireEvent.drop(screen.getByText('knowledgeCreate.uploadDropZoneTitle').closest('label')!, {
+        dataTransfer: { files },
+      })
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'datasetCreation.stepOne.uploader.validation.filesNumber',
+    )
+    expect(serviceMock.stageUpload).not.toHaveBeenCalled()
+    expect(serviceMock.create).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' })).toBeDisabled()
+  })
+
+  it('allows one Sandbox file and blocks accumulated selections before staging', async () => {
+    const user = userEvent.setup()
+    navigationMock.startMode = 'upload'
+    systemFeaturesStateMock.deploymentEdition = 'CLOUD'
+    uploadPlanMock.plan = 'sandbox'
+    renderPage()
+    await fillRequiredFields(user)
+    const input = screen.getByLabelText('knowledgeSpace.uploadFiles', {
+      selector: 'input[type="file"]',
+    })
+    await user.upload(input, new File(['one'], 'one.md'))
+    await waitFor(() => expect(input).toBeEnabled())
+    await user.upload(input, new File(['two'], 'two.md'))
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'datasetCreation.stepOne.uploader.validation.filesNumber',
+    )
+    expect(serviceMock.stageUpload).toHaveBeenCalledTimes(1)
+    expect(screen.queryByText('two.md')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
+    await waitFor(() => expect(serviceMock.upload).toHaveBeenCalledTimes(1))
+  })
+
+  it('recovers single-file creation by removing queued files after a paid-to-Sandbox query refresh', async () => {
+    const user = userEvent.setup()
+    navigationMock.startMode = 'upload'
+    systemFeaturesStateMock.deploymentEdition = 'CLOUD'
+    uploadPlanMock.useLiveQuery = true
+    const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } })
+    queryClient.setQueryDefaults(consoleQuery.features.get.key(), { staleTime: Infinity })
+    queryClient.setQueryData(consoleQuery.features.get.key(), {
+      billing: { subscription: { plan: 'professional' } },
+    })
+    vi.mocked(crypto.randomUUID)
+      .mockReturnValueOnce('00000000-0000-4000-8000-000000000001')
+      .mockReturnValueOnce('00000000-0000-4000-8000-000000000002')
+      .mockReturnValueOnce('00000000-0000-4000-8000-000000000003')
+    renderPage(queryClient)
+    await fillRequiredFields(user)
+    const input = screen.getByLabelText('knowledgeSpace.uploadFiles', {
+      selector: 'input[type="file"]',
+    })
+    const createButton = screen.getByRole('button', { name: 'knowledgeCreate.createTitle' })
+    await user.upload(input, [
+      new File(['one'], 'one.md'),
+      new File(['two'], 'two.md'),
+      new File(['three'], 'three.md'),
+    ])
+    await waitFor(() => expect(createButton).toBeEnabled())
+    expect(serviceMock.stageUpload).toHaveBeenCalledTimes(3)
+
+    act(() =>
+      queryClient.setQueryData(consoleQuery.features.get.key(), {
+        billing: { subscription: { plan: 'sandbox' } },
+      }),
+    )
+    await waitFor(() => expect(createButton).toBeDisabled())
+    expect(input).not.toHaveAttribute('multiple')
+    await user.click(screen.getByRole('button', { name: 'common.operation.remove one.md' }))
+    expect(screen.queryByText('one.md')).not.toBeInTheDocument()
+    expect(screen.getByText('two.md')).toBeVisible()
+    expect(screen.getByText('three.md')).toBeVisible()
+    expect(createButton).toBeDisabled()
+    expect(serviceMock.discardUpload).toHaveBeenCalledWith('staged-one.md')
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.remove two.md' }))
+    expect(screen.queryByText('two.md')).not.toBeInTheDocument()
+    expect(screen.getByText('three.md')).toBeVisible()
+    expect(createButton).toBeEnabled()
+    expect(serviceMock.discardUpload).toHaveBeenCalledWith('staged-two.md')
+    expect(serviceMock.discardUpload).toHaveBeenCalledTimes(2)
+
+    await user.upload(input, new File(['four'], 'four.md'))
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'datasetCreation.stepOne.uploader.validation.filesNumber',
+    )
+    expect(screen.queryByText('four.md')).not.toBeInTheDocument()
+    expect(serviceMock.stageUpload).toHaveBeenCalledTimes(3)
+    expect(createButton).toBeEnabled()
+    await user.click(createButton)
+    await waitFor(() => expect(serviceMock.upload).toHaveBeenCalledTimes(1))
+    expect(serviceMock.upload).toHaveBeenCalledWith({
+      body: { upload_id: 'staged-three.md' },
+      params: { control_space_id: createdKnowledge.control_space_id },
+    })
+  })
+
+  it('keeps a pending Sandbox quota check from staging a second selection', async () => {
+    navigationMock.startMode = 'upload'
+    systemFeaturesStateMock.deploymentEdition = 'CLOUD'
+    uploadPlanMock.plan = 'sandbox'
+    let resolveQuota!: (value: undefined) => void
+    uploadQuotaMock.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveQuota = resolve
+        }),
+    )
+    renderPage()
+    const input = screen.getByLabelText('knowledgeSpace.uploadFiles', {
+      selector: 'input[type="file"]',
+    })
+    fireEvent.change(input, { target: { files: [new File(['one'], 'one.md')] } })
+    fireEvent.change(input, { target: { files: [new File(['two'], 'two.md')] } })
+    await act(async () => resolveQuota(undefined))
+    await waitFor(() => expect(serviceMock.stageUpload).toHaveBeenCalledTimes(1))
+    expect(screen.getByText('one.md')).toBeVisible()
+    expect(screen.queryByText('two.md')).not.toBeInTheDocument()
+  })
+
+  it.each(['professional', 'team'])('allows multi-file creation for the %s plan', async (plan) => {
+    const user = userEvent.setup()
+    navigationMock.startMode = 'upload'
+    systemFeaturesStateMock.deploymentEdition = 'CLOUD'
+    uploadPlanMock.plan = plan
+    vi.mocked(crypto.randomUUID)
+      .mockReturnValueOnce('00000000-0000-4000-8000-000000000001')
+      .mockReturnValueOnce('00000000-0000-4000-8000-000000000002')
+    renderPage()
+    await fillRequiredFields(user)
+    const input = screen.getByLabelText('knowledgeSpace.uploadFiles', {
+      selector: 'input[type="file"]',
+    })
+    expect(input).toHaveAttribute('multiple')
+    await user.upload(input, [new File(['one'], 'one.md'), new File(['two'], 'two.md')])
+    await waitFor(() => expect(input).toBeEnabled())
+    expect(serviceMock.stageUpload).toHaveBeenCalledTimes(2)
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
+    await waitFor(() => expect(serviceMock.upload).toHaveBeenCalledTimes(2))
+  })
+
+  it.each([
+    ['sandbox', 0],
+    ['sandbox', 1],
+    ['professional', 0],
+    ['professional', 1],
+  ] as const)(
+    'enforces the %s 15MB creation boundary despite legacy 50MB configuration with %s extra bytes',
+    async (plan, extraBytes) => {
+      const user = userEvent.setup()
+      navigationMock.startMode = 'upload'
+      systemFeaturesStateMock.deploymentEdition = 'CLOUD'
+      uploadPlanMock.plan = plan
+      fileUploadConfigMock.knowledgeFileSizeLimit = 50
+      renderPage()
+      await fillRequiredFields(user)
+      const file = new File(['content'], 'boundary.pdf', { type: 'application/pdf' })
+      Object.defineProperty(file, 'size', { value: 15 * 1024 * 1024 + extraBytes })
+      await user.upload(
+        screen.getByLabelText('knowledgeSpace.uploadFiles', { selector: 'input[type="file"]' }),
+        file,
+      )
+      if (extraBytes) {
+        expect(serviceMock.stageUpload).not.toHaveBeenCalled()
+        expect(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' })).toBeDisabled()
+        expect(screen.getByText(/knowledgeSpace\.documentUploadExclusion\.fileSize/)).toBeVisible()
+      } else {
+        await waitFor(() => expect(serviceMock.stageUpload).toHaveBeenCalledTimes(1))
+        await waitFor(() =>
+          expect(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' })).toBeEnabled(),
+        )
+      }
+    },
+  )
+
+  it('keeps the new RAG limit at 15MB when the legacy workspace limit is 50MB', async () => {
     const user = userEvent.setup()
     navigationMock.startMode = 'upload'
     fileUploadConfigMock.knowledgeFileSizeLimit = 50
@@ -2657,23 +2895,16 @@ describe('CreateKnowledgePage', () => {
     await fillRequiredFields(user)
     const file = new File(['content'], 'handbook.pdf', { type: 'application/pdf' })
     Object.defineProperty(file, 'size', { value: 16 * 1024 * 1024 })
-
-    expect(screen.getByText(/knowledgeSpace\.documentUploadFormats:.*"size":50/)).toBeVisible()
+    expect(screen.getByText(/knowledgeSpace\.documentUploadFormats:.*"size":15/)).toBeVisible()
     await user.upload(
-      screen.getByLabelText('knowledgeSpace.uploadFiles', {
-        selector: 'input[type="file"]',
-      }),
+      screen.getByLabelText('knowledgeSpace.uploadFiles', { selector: 'input[type="file"]' }),
       file,
     )
-
-    await waitFor(() =>
-      expect(serviceMock.stageUpload).toHaveBeenCalledWith({
-        body: { file: expect.objectContaining({ name: 'handbook.pdf' }) },
-      }),
-    )
+    expect(serviceMock.stageUpload).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' })).toBeDisabled()
     expect(
-      screen.queryByText(/knowledgeSpace\.documentUploadExclusion\.fileSize/),
-    ).not.toBeInTheDocument()
+      screen.getByText(/knowledgeSpace\.documentUploadExclusion\.fileSize:.*"size":15/),
+    ).toBeVisible()
   })
 
   it('rejects an empty upload before staging or creating the knowledge space', async () => {

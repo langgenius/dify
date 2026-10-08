@@ -5,7 +5,9 @@ import type { KnowledgeFsUploadPhase } from './knowledge-fs-upload'
 import { Button } from '@langgenius/dify-ui/button'
 import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { DocumentUploadFileList } from './file-list'
+import { DocumentUploadPlanNotice } from './plan-notice'
 import {
   DOCUMENT_UPLOAD_ACCEPT,
   documentUploadFingerprint,
@@ -19,6 +21,7 @@ export type DocumentUploadFormHandle = {
 
 type DocumentUploadFormProps = {
   fileSizeLimitMb: number
+  supportBatchUpload: boolean
   initialFiles?: File[]
   onCancel: () => void
   onFilesAdded: (files: File[]) => Promise<void>
@@ -31,6 +34,7 @@ type DocumentUploadFormProps = {
 
 export function DocumentUploadForm({
   fileSizeLimitMb,
+  supportBatchUpload,
   initialFiles = [],
   onCancel,
   onFilesAdded,
@@ -42,6 +46,7 @@ export function DocumentUploadForm({
 }: DocumentUploadFormProps) {
   const { t } = useTranslation(['knowledgeSpace', 'knowledgeCreate'])
   const { t: tCommon } = useTranslation(['common'])
+  const { t: tDatasetCreation } = useTranslation(['datasetCreation'])
   const inputRef = useRef<HTMLInputElement>(null)
   const initialFilesAnnouncedRef = useRef(false)
   const filesRef = useRef(initialFiles)
@@ -81,6 +86,12 @@ export function DocumentUploadForm({
   const addFiles = useCallback(
     (nextFiles: File[]) => {
       const uniqueFiles = uniqueDocumentUploadFiles(filesRef.current, nextFiles)
+      if (!supportBatchUpload && filesRef.current.length + uniqueFiles.length > 1) {
+        toast.error(
+          tDatasetCreation(($) => $['stepOne.uploader.validation.filesNumber'], { filesNumber: 1 }),
+        )
+        return
+      }
       const validUniqueFiles = uniqueFiles.filter(
         (file) => !documentUploadIssue(file, fileSizeLimitMb),
       )
@@ -88,7 +99,7 @@ export function DocumentUploadForm({
       setFiles(filesRef.current)
       stageAddedFiles(validUniqueFiles)
     },
-    [fileSizeLimitMb, stageAddedFiles],
+    [fileSizeLimitMb, stageAddedFiles, supportBatchUpload, tDatasetCreation],
   )
 
   useImperativeHandle(ref, () => ({ addFiles }), [addFiles])
@@ -123,7 +134,7 @@ export function DocumentUploadForm({
     >
       <input
         ref={inputRef}
-        multiple
+        multiple={supportBatchUpload}
         hidden
         accept={DOCUMENT_UPLOAD_ACCEPT}
         aria-label={t(($) => $.uploadDocuments, { ns: 'knowledgeCreate' })}
@@ -158,6 +169,8 @@ export function DocumentUploadForm({
           {t(($) => $.documentUploadFormats, { size: fileSizeLimitMb })}
         </span>
       </button>
+
+      <DocumentUploadPlanNotice fileSizeLimitMb={fileSizeLimitMb} />
 
       {files.length > 0 && (
         <section

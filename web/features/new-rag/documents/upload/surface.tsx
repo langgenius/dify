@@ -16,9 +16,12 @@ import {
 import { consoleQuery } from '@/service/console'
 import { knowledgeFsRequestFailureMessageKey } from '../../knowledge-fs-task-error'
 import { DocumentUploadForm } from '../../upload/form'
-import { documentUploadIssue } from '../../upload/policy'
+import {
+  documentUploadIssue,
+  DOCUMENT_UPLOAD_FILE_SIZE_LIMIT_MB as fileSizeLimitMb,
+} from '../../upload/policy'
 import { getKnowledgeFsUploadQuotaFailure } from '../../upload/quota'
-import { useKnowledgeFileSizeLimit } from '../../upload/use-file-size-limit'
+import { useKnowledgeBatchUpload } from '../../upload/use-batch-upload'
 import { DocumentDropOverlay } from '../list'
 import { responseStatus } from '../request-error'
 import { documentsKnowledgeSpaceIdAtom, documentUploadAtom } from '../state/inputs'
@@ -72,6 +75,7 @@ function DocumentUploadHeader() {
 export function DocumentUploadSurface({ children }: { children: ReactNode }) {
   const { t } = useTranslation(['knowledgeSpace', 'dataset', 'knowledgeDocuments'])
   const { t: tError } = useTranslation(['knowledgeErrors'])
+  const { t: tDatasetCreation } = useTranslation(['datasetCreation'])
   const queryClient = useQueryClient()
   const deploymentEdition = useAtomValueRawSync(deploymentEditionAtom)
   const knowledgeSpaceId = useAtomValueRawSync(documentsKnowledgeSpaceIdAtom)
@@ -79,7 +83,7 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
   const bulkActionsVisible = useAtomValueRawSync(documentBulkActionsVisibleAtom)
   const denyWrite = useSetAtom(denyDocumentWriteAtom)
   const ensureModelReady = useSetAtom(ensureDocumentModelReadyAtom)
-  const fileSizeLimitMb = useKnowledgeFileSizeLimit()
+  const supportBatchUpload = useKnowledgeBatchUpload()
   const uploadAvailable = useAtomValueRawSync(knowledgeFsUploadEnabledAtom)
   const uploadRequest = useAtomValueRawSync(documentUploadAtom)
   const setUploadRequest = useSetAtom(documentUploadAtom)
@@ -133,13 +137,19 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
 
   const openUpload = useCallback(
     (files: File[] = []) => {
+      if (!supportBatchUpload && files.length > 1) {
+        toast.error(
+          tDatasetCreation(($) => $['stepOne.uploader.validation.filesNumber'], { filesNumber: 1 }),
+        )
+        return
+      }
       fileDragDepthRef.current = 0
       setFileDragActive(false)
       resetProgress()
       setFormInitialFiles(files)
       void setUploadRequest('1')
     },
-    [resetProgress, setUploadRequest],
+    [resetProgress, setUploadRequest, supportBatchUpload, tDatasetCreation],
   )
 
   const cancel = useCallback(() => {
@@ -173,7 +183,7 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
         )
       return detailItems.join('; ')
     },
-    [fileSizeLimitMb, t],
+    [t],
   )
 
   const checkUploadQuota = useCallback(
@@ -191,6 +201,12 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
   const uploadFiles = useCallback(
     async (files: File[]): Promise<boolean> => {
       if (!canUpload || !files.length) return false
+      if (!supportBatchUpload && files.length > 1) {
+        toast.error(
+          tDatasetCreation(($) => $['stepOne.uploader.validation.filesNumber'], { filesNumber: 1 }),
+        )
+        return false
+      }
       const uploadableFiles: File[] = []
       const localExclusions: Array<{
         filename: string
@@ -265,12 +281,13 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
       checkUploadQuota,
       completedUploadCount,
       ensureModelReady,
-      fileSizeLimitMb,
       formatExclusionDetails,
       denyWrite,
       refreshDocuments,
       stageFiles,
+      supportBatchUpload,
       t,
+      tDatasetCreation,
       tError,
       uploadStagedFiles,
     ],
@@ -327,9 +344,12 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
       onDrop={(event) => {
         const types = Array.from(event.dataTransfer.types ?? [])
         if (types.length && !types.includes('Files')) return
+        const handledByChild = event.defaultPrevented
         event.preventDefault()
         fileDragDepthRef.current = 0
         setFileDragActive(false)
+        // The inner form handles selection, but the surface still owns drag cleanup.
+        if (handledByChild) return
         if (!canUpload || uploading) return
         const files = [...event.dataTransfer.files]
         if (!files.length) return
@@ -347,6 +367,7 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
         <DocumentUploadForm
           ref={formRef}
           fileSizeLimitMb={fileSizeLimitMb}
+          supportBatchUpload={supportBatchUpload}
           initialFiles={formInitialFiles}
           uploadProgress={stagedUploadProgress}
           uploading={uploading}

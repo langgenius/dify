@@ -54,8 +54,9 @@ import {
   stageKnowledgeFsDocument,
   uploadKnowledgeFsDocuments,
 } from '../upload/knowledge-fs-upload'
+import { DOCUMENT_UPLOAD_FILE_SIZE_LIMIT_MB as fileSizeLimitMb } from '../upload/policy'
 import { getKnowledgeFsUploadQuotaFailure } from '../upload/quota'
-import { useKnowledgeFileSizeLimit } from '../upload/use-file-size-limit'
+import { useKnowledgeBatchUpload } from '../upload/use-batch-upload'
 import { KnowledgeIllustration, StartMode } from './components/dialog-parts'
 import { KnowledgeCreationPermissions } from './permissions'
 import { CreateSourceSetup } from './source-setup'
@@ -92,7 +93,7 @@ function CreateKnowledgeSession() {
   const { t: tWorkflow } = useTranslation(['workflow'])
   const { t: tError } = useTranslation(['knowledgeErrors'])
   const { t: tDocuments } = useTranslation(['knowledgeDocuments'])
-  const fileSizeLimitMb = useKnowledgeFileSizeLimit()
+  const supportBatchUpload = useKnowledgeBatchUpload()
   useDocumentTitle(t(($) => $.createTitle, { ns: 'knowledgeCreate' }))
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -132,6 +133,7 @@ function CreateKnowledgeSession() {
   const [uploadError, setUploadError] = useState<string>()
   const idempotencyKeyRef = useRef<string | undefined>(undefined)
   const uploadsRef = useRef<QueuedUpload[]>([])
+  const uploadSelectionPendingRef = useRef(false)
   const uploadProgressRef = useRef<KnowledgeFsUploadProgress>(new Map())
   const createMutation = useMutation({ mutationFn: createKnowledge })
   const submissionPending = createMutation.isPending || uploading || stagingCount > 0
@@ -144,6 +146,7 @@ function CreateKnowledgeSession() {
   const uploadSubmissionBlocked =
     startMode === 'upload' &&
     (!uploadAvailable ||
+      (!supportBatchUpload && validUploads.length > 1) ||
       !validUploads.length ||
       validUploads.some((upload) => upload.stagingFailed || !upload.stagedUploadId))
   const sourceSubmissionBlocked = startMode === 'source' && !initialSource
@@ -170,17 +173,30 @@ function CreateKnowledgeSession() {
   }
 
   const handleUploadsChange = async (nextUploads: QueuedUpload[]) => {
+    if (uploadSelectionPendingRef.current) return
     const previousUploads = uploadsRef.current
     const nextIds = new Set(nextUploads.map(({ id }) => id))
     const previousIds = new Set(previousUploads.map(({ id }) => id))
     const removedUploads = previousUploads.filter(({ id }) => !nextIds.has(id))
     const addedUploads = nextUploads.filter(({ id }) => !previousIds.has(id))
+    if (
+      !supportBatchUpload &&
+      nextUploads.length > 1 &&
+      (addedUploads.length > 0 || nextUploads.length > previousUploads.length)
+    ) {
+      setUploadError(
+        tDatasetCreation(($) => $['stepOne.uploader.validation.filesNumber'], { filesNumber: 1 }),
+      )
+      return
+    }
     resetUnsubmittedError()
     if (deploymentEdition === 'CLOUD' && addedUploads.some((upload) => !upload.issue)) {
+      uploadSelectionPendingRef.current = true
       setStagingCount((count) => count + 1)
       try {
         if (!(await checkUploadQuota())) return
       } finally {
+        uploadSelectionPendingRef.current = false
         setStagingCount((count) => Math.max(0, count - 1))
       }
     }
@@ -567,6 +583,7 @@ function CreateKnowledgeSession() {
                         description={t(($) => $.uploadFilesDescription)}
                       >
                         <CreateUploadQueue
+                          supportBatchUpload={supportBatchUpload}
                           disabled={submissionPending}
                           fileSizeLimitMb={fileSizeLimitMb}
                           uploads={uploads}

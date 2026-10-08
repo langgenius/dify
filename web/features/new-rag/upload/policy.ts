@@ -1,5 +1,8 @@
 const BYTES_PER_MEBIBYTE = 1024 * 1024
 
+// New RAG uses 15 MiB for every plan, independently of legacy RAG billing.
+export const DOCUMENT_UPLOAD_FILE_SIZE_LIMIT_MB = 15
+
 const DOCUMENT_UPLOAD_EXTENSIONS = [
   'csv',
   'doc',

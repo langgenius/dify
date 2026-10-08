@@ -179,6 +179,14 @@ const systemFeaturesStateMock = vi.hoisted(() => ({
   deploymentEditionAtom: Symbol('deploymentEditionAtom'),
   uploadEnabled: true,
 }))
+const uploadPlanMock = vi.hoisted(() => ({ plan: 'professional' as string | undefined }))
+
+vi.mock('@/app/components/billing/upgrade-btn', () => ({
+  default: ({ labelKey }: { labelKey: string }) => (
+    <button type="button">{`billing.${labelKey}`}</button>
+  ),
+}))
+
 const fileUploadConfigMock = vi.hoisted(() => ({
   knowledgeFileSizeLimit: 15,
 }))
@@ -301,6 +309,10 @@ vi.mock('jotai', async (importOriginal) => {
   const original = await importOriginal<typeof import('jotai')>()
   return {
     ...original,
+    useAtomValue: (atom: unknown) =>
+      atom === systemFeaturesStateMock.deploymentEditionAtom
+        ? systemFeaturesStateMock.deploymentEdition
+        : original.useAtomValue(atom as Parameters<typeof original.useAtomValue>[0]),
     useAtomValueRawSync: (atom: unknown) => {
       if (atom === permissionStateMock.datasetAtom) return permissionStateMock.datasetKeys
       if (atom === permissionStateMock.errorAtom) return permissionStateMock.error
@@ -503,6 +515,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
       return uploadMutation
     },
     useQuery: (options: { queryKey?: readonly unknown[] }) => {
+      if (options.queryKey?.[0] === 'features') return { data: uploadPlanMock.plan }
       if (options.queryKey?.includes('metadata-fields')) return metadataFieldsQuery
       return {
         data: {
@@ -612,7 +625,10 @@ vi.mock('@/service/console', () => ({
   },
   consoleQuery: {
     features: {
-      get: { key: () => ['features'] },
+      get: {
+        key: () => ['features'],
+        queryOptions: (options: object) => ({ queryKey: ['features'], ...options }),
+      },
       vectorSpace: { get: { key: () => ['features', 'vector-space'] } },
     },
     knowledgeFs: {
@@ -822,6 +838,7 @@ async function waitForDocumentFilesStaged() {
 describe('DocumentsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    uploadPlanMock.plan = 'professional'
     fileUploadConfigMock.knowledgeFileSizeLimit = 15
     systemFeaturesStateMock.uploadEnabled = true
     systemFeaturesStateMock.deploymentEdition = 'ENTERPRISE'
@@ -3051,28 +3068,205 @@ describe('DocumentsPage', () => {
     ).toBeVisible()
   })
 
-  it('accepts files within the workspace knowledge file size limit', async () => {
+  it.each(['sandbox', 'professional', 'team'])(
+    'shows the append rules before file selection for the %s plan',
+    async (plan) => {
+      const user = userEvent.setup()
+      systemFeaturesStateMock.deploymentEdition = 'CLOUD'
+      uploadPlanMock.plan = plan
+      render(<DocumentsPage knowledgeSpaceId="space-1" />)
+      await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
+      expect(stageUploadMutation).not.toHaveBeenCalled()
+      expect(screen.getByText(/knowledgeSpace\.documentUploadFormats:.*"size":15/)).toBeVisible()
+      const title = screen.queryByText('billing.upgrade.uploadMultiplePages.title')
+      if (plan === 'sandbox') {
+        expect(title).toBeVisible()
+        const notice = title!.parentElement!.parentElement!
+        expect(
+          within(notice).getByText(
+            /datasetCreation\.stepOne\.uploader\.tip:.*"size":15.*"batchCount":1/,
+          ),
+        ).toBeVisible()
+        expect(
+          within(notice).getByRole('button', { name: 'billing.triggerLimitModal.upgrade' }),
+        ).toBeVisible()
+        expect(notice).not.toHaveTextContent('50')
+      } else expect(title).not.toBeInTheDocument()
+    },
+  )
+
+  it.each(['single-file', 'multiple-files'] as const)(
+    'clears the drag overlay and handles a Sandbox inner drop once for %s',
+    async (selection) => {
+      systemFeaturesStateMock.deploymentEdition = 'CLOUD'
+      uploadPlanMock.plan = 'sandbox'
+      render(<DocumentsPage knowledgeSpaceId="space-1" />, { searchParams: '?upload=1' })
+      const surface = screen
+        .getByRole('heading', { name: 'knowledgeSpace.addDocument' })
+        .closest('section')!
+      const dropZone = screen.getByText('knowledgeCreate.uploadDropZoneTitle').closest('button')!
+      const files = [new File(['one'], 'one.md')]
+      if (selection === 'multiple-files') files.push(new File(['two'], 'two.md'))
+      const dataTransfer = { files, types: ['Files'] }
+
+      fireEvent.dragEnter(surface, { dataTransfer })
+      fireEvent.dragEnter(dropZone, { dataTransfer })
+      expect(screen.getByText('knowledgeDocuments.dropFilesHere')).toBeVisible()
+      fireEvent.drop(dropZone, { dataTransfer })
+
+      expect(screen.queryByText('knowledgeDocuments.dropFilesHere')).not.toBeInTheDocument()
+      if (selection === 'single-file') {
+        await waitForDocumentFilesStaged()
+        expect(stageUploadMutation).toHaveBeenCalledTimes(1)
+        expect(screen.getByText('one.md')).toBeVisible()
+        expect(toastMock.error).not.toHaveBeenCalled()
+      } else {
+        expect(stageUploadMutation).not.toHaveBeenCalled()
+        expect(screen.queryByText('one.md')).not.toBeInTheDocument()
+        expect(toastMock.error).toHaveBeenCalledTimes(1)
+        expect(toastMock.error).toHaveBeenCalledWith(
+          expect.stringContaining('datasetCreation.stepOne.uploader.validation.filesNumber'),
+        )
+      }
+      expect(uploadMutation.mutateAsync).not.toHaveBeenCalled()
+
+      // A fresh gesture must not inherit the nested drag depth from the completed drop.
+      fireEvent.dragEnter(surface, { dataTransfer })
+      expect(screen.getByText('knowledgeDocuments.dropFilesHere')).toBeVisible()
+      fireEvent.dragLeave(surface, { dataTransfer })
+      expect(screen.queryByText('knowledgeDocuments.dropFilesHere')).not.toBeInTheDocument()
+    },
+  )
+
+  it.each(['picker', 'page-drop', 'form-drop'])(
+    'blocks Sandbox multi-file append through %s',
+    async (entry) => {
+      systemFeaturesStateMock.deploymentEdition = 'CLOUD'
+      uploadPlanMock.plan = 'sandbox'
+      render(
+        <DocumentsPage knowledgeSpaceId="space-1" />,
+        entry === 'page-drop' ? undefined : { searchParams: '?upload=1' },
+      )
+      const files = [new File(['one'], 'one.md'), new File(['two'], 'two.md')]
+      if (entry === 'picker') {
+        const input = screen.getByLabelText('knowledgeCreate.uploadDocuments')
+        expect(input).not.toHaveAttribute('multiple')
+        fireEvent.change(input, { target: { files } })
+      } else {
+        const target =
+          entry === 'page-drop'
+            ? screen.getByRole('heading', { name: 'knowledgeSpace.documents' }).closest('section')!
+            : screen.getByText('knowledgeCreate.uploadDropZoneTitle').closest('button')!
+        fireEvent.drop(target, { dataTransfer: { files, types: ['Files'] } })
+      }
+      expect(toastMock.error).toHaveBeenCalledTimes(1)
+      expect(toastMock.error).toHaveBeenCalledWith(
+        expect.stringContaining('datasetCreation.stepOne.uploader.validation.filesNumber'),
+      )
+      expect(stageUploadMutation).not.toHaveBeenCalled()
+      expect(uploadMutation.mutateAsync).not.toHaveBeenCalled()
+      expect(screen.queryByText('one.md')).not.toBeInTheDocument()
+    },
+  )
+
+  it('blocks accumulated Sandbox append selections and permits another upload after completion', async () => {
+    const user = userEvent.setup()
+    systemFeaturesStateMock.deploymentEdition = 'CLOUD'
+    uploadPlanMock.plan = 'sandbox'
+    render(<DocumentsPage knowledgeSpaceId="space-1" />, { searchParams: '?upload=1' })
+    const first = new File(['one'], 'one.md')
+    const second = new File(['two'], 'two.md')
+    await user.upload(
+      screen.getByLabelText('knowledgeCreate.uploadDocuments', { selector: 'input[type="file"]' }),
+      first,
+    )
+    await waitForDocumentFilesStaged()
+    await user.upload(
+      screen.getByLabelText('knowledgeCreate.uploadDocuments', { selector: 'input[type="file"]' }),
+      second,
+    )
+    const surface = screen
+      .getByRole('heading', { name: 'knowledgeSpace.addDocument' })
+      .closest('section')!
+    fireEvent.drop(surface, { dataTransfer: { files: [second], types: ['Files'] } })
+    expect(screen.queryByText('two.md')).not.toBeInTheDocument()
+    expect(stageUploadMutation).toHaveBeenCalledTimes(1)
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
+    await waitFor(() => expect(uploadMutation.mutateAsync).toHaveBeenCalledTimes(1))
+    await waitFor(() =>
+      expect(
+        screen.queryByLabelText('knowledgeCreate.uploadDocuments', {
+          selector: 'input[type="file"]',
+        }),
+      ).not.toBeInTheDocument(),
+    )
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
+    await user.upload(
+      screen.getByLabelText('knowledgeCreate.uploadDocuments', { selector: 'input[type="file"]' }),
+      second,
+    )
+    await waitForDocumentFilesStaged()
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
+    await waitFor(() => expect(uploadMutation.mutateAsync).toHaveBeenCalledTimes(2))
+  })
+
+  it.each(['professional', 'team'])('allows multi-file append for the %s plan', async (plan) => {
+    const user = userEvent.setup()
+    systemFeaturesStateMock.deploymentEdition = 'CLOUD'
+    uploadPlanMock.plan = plan
+    render(<DocumentsPage knowledgeSpaceId="space-1" />, { searchParams: '?upload=1' })
+    const input = screen.getByLabelText('knowledgeCreate.uploadDocuments')
+    expect(input).toHaveAttribute('multiple')
+    await user.upload(input, [new File(['one'], 'one.md'), new File(['two'], 'two.md')])
+    await waitForDocumentFilesStaged()
+    expect(stageUploadMutation).toHaveBeenCalledTimes(2)
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
+    await waitFor(() => expect(uploadMutation.mutateAsync).toHaveBeenCalledTimes(2))
+  })
+
+  it.each([
+    ['sandbox', 0],
+    ['sandbox', 1],
+    ['professional', 0],
+    ['professional', 1],
+  ] as const)(
+    'enforces the %s 15MB append boundary despite legacy 50MB configuration with %s extra bytes',
+    async (plan, extraBytes) => {
+      const user = userEvent.setup()
+      systemFeaturesStateMock.deploymentEdition = 'CLOUD'
+      uploadPlanMock.plan = plan
+      fileUploadConfigMock.knowledgeFileSizeLimit = 50
+      render(<DocumentsPage knowledgeSpaceId="space-1" />, { searchParams: '?upload=1' })
+      const file = new File(['content'], 'boundary.pdf', { type: 'application/pdf' })
+      Object.defineProperty(file, 'size', { value: 15 * 1024 * 1024 + extraBytes })
+      await user.upload(screen.getByLabelText('knowledgeCreate.uploadDocuments'), file)
+      if (extraBytes) {
+        expect(stageUploadMutation).not.toHaveBeenCalled()
+        expect(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' })).toBeDisabled()
+        expect(screen.getByText(/knowledgeSpace\.documentUploadExclusion\.fileSize/)).toBeVisible()
+      } else {
+        await waitForDocumentFilesStaged()
+        expect(stageUploadMutation).toHaveBeenCalledTimes(1)
+        expect(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' })).toBeEnabled()
+      }
+    },
+  )
+
+  it('rejects new RAG files above 15MB even when the legacy workspace limit is 50MB', async () => {
     const user = userEvent.setup()
     fileUploadConfigMock.knowledgeFileSizeLimit = 50
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
     const file = new File(['one'], 'handbook.pdf', { type: 'application/pdf' })
     Object.defineProperty(file, 'size', { value: 16 * 1024 * 1024 })
-
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
     fireEvent.change(screen.getByLabelText('knowledgeCreate.uploadDocuments'), {
       target: { files: [file] },
     })
-
-    await waitFor(() =>
-      expect(stageUploadMutation).toHaveBeenCalledWith(
-        {
-          body: { file: expect.objectContaining({ name: 'handbook.pdf' }) },
-        },
-        { signal: expect.any(AbortSignal) },
-      ),
-    )
-    expect(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' })).toBeEnabled()
-    expect(screen.queryByText(/knowledgeSpace\.documentUploadExclusion\.fileSize/)).toBeNull()
+    expect(stageUploadMutation).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' })).toBeDisabled()
+    expect(
+      screen.getByText(/knowledgeSpace\.documentUploadExclusion\.fileSize:.*"size":15/),
+    ).toBeVisible()
   })
 
   it('rejects empty files locally with a field-level reason', async () => {
