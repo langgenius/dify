@@ -6,6 +6,7 @@ from uuid import uuid4
 from opensearchpy import OpenSearch, Urllib3AWSV4SignerAuth, Urllib3HttpConnection, helpers
 from opensearchpy.helpers import BulkIndexError
 from pydantic import BaseModel, model_validator
+from sqlalchemy.orm import Session
 from typing_extensions import TypedDict
 
 from configs import dify_config
@@ -310,7 +311,9 @@ class OpenSearchVector(BaseVector):
 
 class OpenSearchVectorFactory(AbstractVectorFactory):
     @override
-    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> OpenSearchVector:
+    def init_vector(
+        self, dataset: Dataset, attributes: list, embeddings: Embeddings, *, session: Session | None
+    ) -> OpenSearchVector:
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]
             collection_name = class_prefix.lower()

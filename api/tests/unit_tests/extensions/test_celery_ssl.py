@@ -1,7 +1,10 @@
 """Tests for Celery SSL configuration."""
 
 import ssl
+from datetime import timedelta
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 from enums import DeploymentEdition
 
@@ -163,6 +166,7 @@ class TestCelerySSLConfiguration:
         # Mock all the scheduler configs
         mock_config.CELERY_BEAT_SCHEDULER_TIME = 1
         mock_config.AGENT_SANDBOX_METERING_ENABLED = False
+        mock_config.ENABLE_WORKFLOW_DRAFT_FILE_CLEANUP_TASK = False
         mock_config.ENABLE_CONVERSATION_CLEANUP_TASK = False
         mock_config.CONVERSATION_CLEANUP_TASK_INTERVAL = 5
         mock_config.ENABLE_CLEAN_EMBEDDING_CACHE_TASK = False
@@ -198,7 +202,8 @@ class TestCelerySSLConfiguration:
             assert "redis_backend_use_ssl" in celery_app.conf
             assert celery_app.conf["redis_backend_use_ssl"] is not None
 
-    def test_celery_init_registers_required_agent_and_conversation_tasks(self):
+    @pytest.mark.parametrize("draft_cleanup_enabled", [True, False])
+    def test_celery_init_registers_required_agent_and_conversation_tasks(self, draft_cleanup_enabled: bool):
         mock_config = MagicMock()
         mock_config.BROKER_USE_SSL = False
         mock_config.REDIS_KEY_PREFIX = "enterprise-a"
@@ -214,6 +219,7 @@ class TestCelerySSLConfiguration:
 
         mock_config.CELERY_BEAT_SCHEDULER_TIME = 1
         mock_config.AGENT_SANDBOX_METERING_ENABLED = False
+        mock_config.ENABLE_WORKFLOW_DRAFT_FILE_CLEANUP_TASK = draft_cleanup_enabled
         mock_config.ENABLE_CONVERSATION_CLEANUP_TASK = True
         mock_config.CONVERSATION_CLEANUP_TASK_INTERVAL = 5
         mock_config.ENABLE_CLEAN_EMBEDDING_CACHE_TASK = False
@@ -247,6 +253,15 @@ class TestCelerySSLConfiguration:
         assert celery_app.conf["broker_transport_options"]["global_keyprefix"] == "enterprise-a:"
         assert celery_app.conf["result_backend_transport_options"]["global_keyprefix"] == "enterprise-a:"
         assert "tasks.collect_agent_resources_task" in celery_app.conf["imports"]
+        if draft_cleanup_enabled:
+            assert "tasks.workflow_draft_var_tasks" in celery_app.conf["imports"]
+            assert celery_app.conf["beat_schedule"]["workflow_draft_file_cleanup"] == {
+                "task": "tasks.workflow_draft_var_tasks.recover_draft_variable_file_cleanup_task",
+                "schedule": timedelta(minutes=5),
+            }
+        else:
+            assert "tasks.workflow_draft_var_tasks" not in celery_app.conf["imports"]
+            assert "workflow_draft_file_cleanup" not in celery_app.conf["beat_schedule"]
         assert "tasks.delete_conversation_task" in celery_app.conf["imports"]
         assert celery_app.conf["beat_schedule"]["conversation_cleanup_sweeper"]["task"] == (
             "tasks.delete_conversation_task.sweep_deleted_conversations"

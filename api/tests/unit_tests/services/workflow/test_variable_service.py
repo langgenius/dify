@@ -1,13 +1,12 @@
 """Debug execution uses injected stores, with file I/O outside transactions."""
 
-from collections.abc import Iterator, Sequence
+from collections.abc import Callable, Iterator, Sequence
 from uuid import UUID
 
 import pytest
 from sqlalchemy import Engine, event, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.application_services.workflow_variables import build_workflow_variable_service
 from extensions.ext_storage import storage
@@ -28,10 +27,12 @@ from tests.unit_tests.model_factories import make_account, make_app, make_tenant
 
 @pytest.fixture
 def tracked_sessions(
-    sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch
+    sqlite_engine: Engine, config_overrides: Callable[..., None]
 ) -> Iterator[tuple[sessionmaker[Session], list[Session]]]:
-    monkeypatch.setattr(dify_config, "WORKFLOW_VARIABLE_TRUNCATION_STRING_LENGTH", 128)
-    monkeypatch.setattr(dify_config, "WORKFLOW_VARIABLE_TRUNCATION_MAX_SIZE", 256)
+    config_overrides(
+        WORKFLOW_VARIABLE_TRUNCATION_STRING_LENGTH=128,
+        WORKFLOW_VARIABLE_TRUNCATION_MAX_SIZE=256,
+    )
     factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
     opened: list[Session] = []
 
