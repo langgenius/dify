@@ -1,8 +1,10 @@
 """Management, declaration and execution reads share one tenant-scoped repository."""
 
+from typing import NoReturn
+
 import pytest
-from sqlalchemy import inspect, select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy import Connection, inspect, select
+from sqlalchemy.orm import Mapper, Session, sessionmaker
 
 from core.agent.entities import AgentToolEntity
 from core.db.session_factory import session_factory
@@ -12,6 +14,7 @@ from models.account import TenantAccountJoin, TenantAccountRole
 from models.model import AppMode
 from models.tool_runtime_contracts import WorkflowToolQueries
 from models.tools import ToolLabelBinding, WorkflowToolProvider
+from repositories.tools.provider_repository import ToolProviderRepository
 from services.tools.tool_manager import ToolManager
 from services.tools.workflow_tools_manage_service import WorkflowToolManageService
 from tests.unit_tests.model_factories import make_account, make_app, make_tenant, make_workflow
@@ -75,7 +78,7 @@ def published_tool(
 def test_metadata_management_and_runtime_declaration_without_execution_dependency(
     published_tool: str,
     workflow_tools: WorkflowToolManageService,
-    tool_providers,
+    tool_providers: ToolProviderRepository,
     workflow_queries: WorkflowToolQueries,
 ) -> None:
     provider_id = published_tool
@@ -108,7 +111,7 @@ def test_metadata_management_and_runtime_declaration_without_execution_dependenc
 def test_workflow_queries_enforce_tenant_ownership_for_all_entry_points(
     published_tool: str,
     workflow_tools: WorkflowToolManageService,
-    tool_providers,
+    tool_providers: ToolProviderRepository,
     workflow_queries: WorkflowToolQueries,
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
@@ -168,7 +171,7 @@ def test_workflow_management_updates_and_deletes_through_injected_store(
 
 def test_agent_provider_expansion_uses_injected_workflow_queries(
     published_tool: str,
-    tool_providers,
+    tool_providers: ToolProviderRepository,
     workflow_queries: WorkflowToolQueries,
 ) -> None:
     from core.app.entities.app_invoke_entities import InvokeFrom
@@ -207,7 +210,9 @@ def test_metadata_update_and_labels_roll_back_together(
 
     original_labels = workflow_queries.labels(tenant_id="tenant-1", provider_ids=[published_tool])
 
-    def fail_label_insert(_mapper, _connection, _target):
+    def fail_label_insert(
+        _mapper: Mapper[ToolLabelBinding], _connection: Connection, _target: ToolLabelBinding
+    ) -> NoReturn:
         raise RuntimeError("label write failed")
 
     event.listen(ToolLabelBinding, "before_insert", fail_label_insert)

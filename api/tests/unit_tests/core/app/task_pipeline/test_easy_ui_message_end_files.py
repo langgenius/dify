@@ -6,7 +6,8 @@ and the fallback used when a local message file references a missing upload.
 
 import uuid
 from datetime import datetime
-from unittest.mock import patch
+from decimal import Decimal
+from unittest.mock import MagicMock, patch
 
 import pytest
 from sqlalchemy.orm import Session
@@ -20,10 +21,12 @@ from core.app.app_config.entities import (
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import ChatAppGenerateEntity, InvokeFrom
 from core.app.entities.task_entities import MessageEndStreamResponse
+from extensions import ext_redis
 from extensions.storage.storage_type import StorageType
 from graphon.file import FileTransferMethod, FileType
 from models.enums import ConversationFromSource, CreatorUserRole
 from models.model import App, Conversation, Message, MessageFile, UploadFile
+from repositories.app.generation_repository import AppGenerationRepository
 from services.app.generation.adapters.message_pipeline import EasyUIBasedGenerateTaskPipeline
 from tests.unit_tests.core.model_fixtures import make_model_config
 from tests.unit_tests.model_factories import make_app, make_conversation, make_message
@@ -42,8 +45,8 @@ class TestMessageEndStreamResponseFiles:
     def pipeline(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        redis_transport,
-        app_records,
+        redis_transport: tuple[ext_redis.RedisClientWrapper, MagicMock],
+        app_records: AppGenerationRepository,
         sqlite_session: Session,
     ) -> EasyUIBasedGenerateTaskPipeline:
         """Construct the service adapter with real request models and injected records."""
@@ -56,8 +59,8 @@ class TestMessageEndStreamResponseFiles:
             query="hello",
             message={},
             answer="",
-            message_unit_price=0,
-            answer_unit_price=0,
+            message_unit_price=Decimal(0),
+            answer_unit_price=Decimal(0),
             currency="USD",
             from_source=ConversationFromSource.API,
             created_at=datetime.now(),

@@ -1,15 +1,15 @@
 """Convert a basic app with external preparation and one atomic persistence operation."""
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import replace
 from typing import Any, Protocol
 
+from core.app.app_config.entities import EasyUIBasedAppConfig
 from machinery.context import RequestContext
 from models.model import AppMode
 from models.workflow_conversion import ConversionExtension, ConvertedWorkflow, WorkflowConversionSource
 from services.entities.app_entities import AppCreationSettings, AppEvent, CreateAppParams
 from services.errors.workflow_service import WorkflowConversionError
-from services.workflow.workflow_converter import WorkflowConverter
 
 
 class WorkflowConversionApps(Protocol):
@@ -29,18 +29,26 @@ class AppCreatedNotifier(Protocol):
     def __call__(self, *, event: AppEvent, account_id: str, backing_agent_id: str | None) -> None: ...
 
 
+class WorkflowConversionBuilder(Protocol):
+    def app_config(self, source: WorkflowConversionSource) -> EasyUIBasedAppConfig: ...
+    def convert(
+        self, app_config: EasyUIBasedAppConfig, extensions: Mapping[str, ConversionExtension]
+    ) -> ConvertedWorkflow: ...
+
+
 class WorkflowConversionService:
     def __init__(
         self,
         apps: WorkflowConversionApps,
         *,
+        converter: WorkflowConversionBuilder,
         decrypt_token: Callable[[str, str], str],
         notify_created: AppCreatedNotifier,
     ) -> None:
         self._apps = apps
         self._decrypt_token = decrypt_token
         self._notify_created = notify_created
-        self._converter = WorkflowConverter()
+        self._converter = converter
 
     def convert(self, context: RequestContext, app_id: str, args: dict[str, Any]) -> str:
         source = self._apps.conversion_source(context, app_id)

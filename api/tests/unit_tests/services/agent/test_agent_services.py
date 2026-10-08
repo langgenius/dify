@@ -472,7 +472,7 @@ def test_save_workflow_composer_dispatches_save_strategy(monkeypatch, strategy, 
 
     monkeypatch.setattr(composer_service.ComposerConfigValidator, "validate_draft_save_payload", lambda payload: None)
     monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **kwargs: _workflow())
-    monkeypatch.setattr(AgentComposerService, "_get_workflow_binding", lambda **kwargs: None)
+    monkeypatch.setattr(AgentComposerService, "_lock_workflow_binding", lambda **kwargs: None)
     monkeypatch.setattr(
         AgentComposerService,
         "_get_agent_if_present",
@@ -533,7 +533,7 @@ def test_save_workflow_composer_commits_before_retiring_replaced_inline_agent(
         current_snapshot_id="version-1",
     )
     monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **_kwargs: _workflow())
-    monkeypatch.setattr(AgentComposerService, "_get_workflow_binding", lambda **_kwargs: old_binding)
+    monkeypatch.setattr(AgentComposerService, "_lock_workflow_binding", lambda **_kwargs: old_binding)
     monkeypatch.setattr(AgentComposerService, "_save_as_new_agent", lambda **_kwargs: new_binding)
     monkeypatch.setattr(
         AgentComposerService,
@@ -2997,7 +2997,7 @@ def test_copy_workflow_composer_from_roster_creates_inline_agent_and_preserves_n
     captured: dict[str, object] = {}
 
     monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **kwargs: workflow)
-    monkeypatch.setattr(AgentComposerService, "_get_workflow_binding", lambda **kwargs: binding)
+    monkeypatch.setattr(AgentComposerService, "_lock_workflow_binding", lambda **kwargs: binding)
     monkeypatch.setattr(AgentComposerService, "_require_agent", lambda **kwargs: roster_agent)
     monkeypatch.setattr(AgentComposerService, "_require_version", lambda **kwargs: source_version)
 
@@ -3046,7 +3046,7 @@ def test_copy_workflow_composer_from_roster_rejects_stale_source_snapshot(
     monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **kwargs: _workflow())
     monkeypatch.setattr(
         AgentComposerService,
-        "_get_workflow_binding",
+        "_lock_workflow_binding",
         lambda **kwargs: WorkflowAgentNodeBinding(
             tenant_id="tenant-1",
             app_id="app-1",
@@ -3126,7 +3126,7 @@ def test_copy_workflow_composer_from_roster_rejects_unpublished_source(
         active_config_snapshot_id="roster-version-1",
     )
     monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **kwargs: _workflow())
-    monkeypatch.setattr(AgentComposerService, "_get_workflow_binding", lambda **kwargs: binding)
+    monkeypatch.setattr(AgentComposerService, "_lock_workflow_binding", lambda **kwargs: binding)
     monkeypatch.setattr(AgentComposerService, "_require_agent", lambda **kwargs: source_agent)
     require_version = MagicMock(side_effect=AssertionError("unpublished source must fail before loading snapshot"))
     monkeypatch.setattr(AgentComposerService, "_require_version", require_version)
@@ -3178,7 +3178,7 @@ def test_copy_workflow_composer_from_roster_is_idempotent_when_already_inline(
     serialize_calls = []
     session = sqlite_session
     monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **kwargs: _workflow())
-    monkeypatch.setattr(AgentComposerService, "_get_workflow_binding", lambda **kwargs: inline_binding)
+    monkeypatch.setattr(AgentComposerService, "_lock_workflow_binding", lambda **kwargs: inline_binding)
     monkeypatch.setattr(AgentComposerService, "_get_agent_if_present", lambda **kwargs: inline_agent)
     monkeypatch.setattr(AgentComposerService, "_get_version_if_present", lambda **kwargs: inline_version)
 
@@ -3266,7 +3266,7 @@ def test_copy_workflow_composer_from_roster_rejects_invalid_source_binding(
         active_config_snapshot_id="version-1",
     )
     monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **kwargs: _workflow())
-    monkeypatch.setattr(AgentComposerService, "_get_workflow_binding", lambda **kwargs: binding)
+    monkeypatch.setattr(AgentComposerService, "_lock_workflow_binding", lambda **kwargs: binding)
     monkeypatch.setattr(AgentComposerService, "_require_agent", lambda **kwargs: source_agent)
 
     with pytest.raises(InvalidComposerConfigError, match=expected_message):
