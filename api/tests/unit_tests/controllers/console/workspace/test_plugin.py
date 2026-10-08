@@ -7,8 +7,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask import Flask
 from werkzeug.datastructures import FileStorage
-from werkzeug.exceptions import Forbidden
 
+from controllers.common.errors import AccessDeniedError
 from controllers.console.workspace.plugin import (
     ParserAsset,
     ParserAutoUpgradeChange,
@@ -503,7 +503,7 @@ class TestPluginCategoryListApi:
             language="zh_Hans",
         )
 
-    def test_builtin_tool_providers_use_the_category_list_filters(self):
+    def test_builtin_tool_providers_use_the_category_list_filters(self, *, workflow_application):
         search_provider = ToolProviderApiEntity(
             id="search-provider",
             author="dify",
@@ -526,7 +526,7 @@ class TestPluginCategoryListApi:
         )
 
         with (
-            patch("controllers.console.workspace.plugin.ToolManager.list_default_builtin_providers", return_value=[]),
+            patch.object(workflow_application.tools.tool_providers, "default_builtin", return_value=[]),
             patch(
                 "controllers.console.workspace.plugin.ToolManager.list_hardcoded_providers",
                 return_value=[MagicMock(), MagicMock()],
@@ -720,7 +720,7 @@ class TestPluginChangePermissionApi:
         with (
             app.test_request_context("/", json=payload),
         ):
-            with pytest.raises(Forbidden):
+            with pytest.raises(AccessDeniedError):
                 method(api, ParserPermissionChange(), "t1", user)
 
     def test_change_permission_success(self, app: Flask):

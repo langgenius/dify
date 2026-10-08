@@ -9,8 +9,8 @@ from unittest.mock import MagicMock, create_autospec, patch
 
 import pytest
 from flask import Flask
-from werkzeug.exceptions import Forbidden
 
+from controllers.common.errors import AccessDeniedError
 from controllers.console.workspace.tool_providers import (
     ApiToolProviderAddPayload,
     ApiToolProviderDeletePayload,
@@ -236,6 +236,7 @@ class TestUtils:
         assert not is_valid_url(None)  # type: ignore[arg-type]
 
 
+@pytest.mark.usefixtures("workflow_application")
 class TestToolProviderListApi:
     def test_get_success(self, app: Flask) -> None:
         api = ToolProviderListApi()
@@ -258,6 +259,7 @@ class TestToolProviderListApi:
 
 
 class TestBuiltinProviderApis:
+    @pytest.mark.usefixtures("workflow_application")
     def test_list_tools(self, app: Flask) -> None:
         api = ToolBuiltinProviderListToolsApi()
         method = unwrap(api.get)
@@ -472,6 +474,7 @@ class TestApiProviderApis:
         ):
             assert method(api, "t", make_account()) == {"schema": openapi_schema}
 
+    @pytest.mark.usefixtures("workflow_application")
     def test_list_tools(self, app: Flask) -> None:
         api = ToolApiProviderListToolsApi()
         method = unwrap(api.get)
@@ -526,6 +529,7 @@ class TestApiProviderApis:
             req = ApiToolProviderDeletePayload(provider="p")
             assert method(api, req, "t", make_account())["result"] == "success"
 
+    @pytest.mark.usefixtures("workflow_application")
     def test_get(self, app: Flask) -> None:
         api = ToolApiProviderGetApi()
         method = unwrap(api.get)
@@ -540,6 +544,7 @@ class TestApiProviderApis:
             assert method(api, "t", make_account())["schema"] == "{}"
 
 
+@pytest.mark.usefixtures("workflow_application")
 class TestWorkflowApis:
     def test_create(self, app: Flask) -> None:
         api = ToolWorkflowProviderCreateApi()
@@ -557,7 +562,7 @@ class TestWorkflowApis:
         with (
             app.test_request_context("/", json=payload),
             patch(
-                "controllers.console.workspace.tool_providers.WorkflowToolManageService.create_workflow_tool",
+                "services.tools.workflow_tools_manage_service.WorkflowToolManageService.create_workflow_tool",
                 return_value={"result": "success"},
             ) as create_workflow_tool,
         ):
@@ -581,7 +586,7 @@ class TestWorkflowApis:
         with (
             app.test_request_context("/", json=payload),
             patch(
-                "controllers.console.workspace.tool_providers.WorkflowToolManageService.update_workflow_tool",
+                "services.tools.workflow_tools_manage_service.WorkflowToolManageService.update_workflow_tool",
                 return_value={"result": "success"},
             ) as update_workflow_tool,
         ):
@@ -598,7 +603,7 @@ class TestWorkflowApis:
         with (
             app.test_request_context("/", json={"workflow_tool_id": "123e4567-e89b-12d3-a456-426614174000"}),
             patch(
-                "controllers.console.workspace.tool_providers.WorkflowToolManageService.delete_workflow_tool",
+                "services.tools.workflow_tools_manage_service.WorkflowToolManageService.delete_workflow_tool",
                 return_value={"result": "success"},
             ),
         ):
@@ -616,6 +621,7 @@ class TestWorkflowApis:
                 method(api, "t", make_account())
 
 
+@pytest.mark.usefixtures("workflow_application")
 class TestLists:
     def test_builtin_list(self, app: Flask) -> None:
         api = ToolBuiltinListApi()
@@ -650,7 +656,7 @@ class TestLists:
         with (
             app.test_request_context("/"),
             patch(
-                "controllers.console.workspace.tool_providers.WorkflowToolManageService.list_tenant_workflow_tools",
+                "services.tools.workflow_tools_manage_service.WorkflowToolManageService.list_tenant_workflow_tools",
                 return_value=[provider_entity(provider_id="workflow-1", provider_type="workflow")],
             ),
         ):
@@ -672,6 +678,7 @@ class TestLabels:
             assert method(api)[0]["name"] == "utilities"
 
 
+@pytest.mark.usefixtures("workflow_application")
 class TestOAuth:
     def test_oauth_no_client(self, app: Flask) -> None:
         api = ToolPluginOAuthApi()
@@ -684,7 +691,7 @@ class TestOAuth:
                 return_value=None,
             ),
         ):
-            with pytest.raises(Forbidden):
+            with pytest.raises(AccessDeniedError):
                 method(api, "t", make_account(), "provider")
 
     def test_oauth_callback_no_cookie(self, app: Flask) -> None:
@@ -692,7 +699,7 @@ class TestOAuth:
         method = unwrap(api.get)
 
         with app.test_request_context("/"):
-            with pytest.raises(Forbidden):
+            with pytest.raises(AccessDeniedError):
                 method(api, "provider")
 
 
