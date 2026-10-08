@@ -679,7 +679,7 @@ def test_build_application_services_wires_network_access_group_boundary(
         database_client=sqlite_session_factory,
         deployment_edition=DeploymentEdition.CLOUD,
         initialization_password="",
-        redis=MagicMock(spec=RedisClientWrapper),
+        redis=_redis(),
     )
 
     network_access_groups = services.network_access_groups
