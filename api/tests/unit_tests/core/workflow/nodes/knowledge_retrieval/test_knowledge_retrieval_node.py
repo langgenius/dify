@@ -5,7 +5,6 @@ import pytest
 from pytest_mock import MockerFixture
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.workflow.nodes.knowledge_retrieval.entities import (
     Condition,
     KnowledgeRetrievalNodeData,
@@ -21,6 +20,8 @@ from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.variables import ArrayObjectSegment, StringSegment
+from services.knowledge.retrieval.dataset_retrieval import DatasetRetrieval
+from services.knowledge.retrieval.ports import KnowledgeRetrievalRecords, RetrievalReranker, RetrievalThreadFactory
 from services.workflow.execution.adapters.knowledge_retrieval import (
     KnowledgeRetrievalNode,
     _normalize_metadata_filter_scalar,
@@ -73,7 +74,11 @@ def mock_graph_runtime_state():
 @pytest.fixture
 def mock_rag_retrieval(mocker: MockerFixture):
     """Keep real usage and request metadata while isolating retrieval I/O."""
-    mock_retrieval = DatasetRetrieval()
+    mock_retrieval = DatasetRetrieval(
+        records=mocker.create_autospec(KnowledgeRetrievalRecords, instance=True),
+        rerank=mocker.create_autospec(RetrievalReranker, instance=True),
+        thread=mocker.create_autospec(RetrievalThreadFactory, instance=True),
+    )
     mocker.patch.object(mock_retrieval, "knowledge_retrieval", return_value=[])
     return mock_retrieval
 
