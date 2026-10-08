@@ -378,3 +378,26 @@ def console_workflow_variables(sqlite_session_factory: sessionmaker[Session]):
         database_client=sqlite_session_factory,
         variables=build_workflow_variable_service(database_client=sqlite_session_factory),
     )
+
+
+@pytest.fixture
+def app_records(sqlite_session_factory: sessionmaker[Session]):
+    from repositories.app.generation_repository import AppGenerationRepository
+
+    return AppGenerationRepository(sqlite_session_factory)
+
+
+@pytest.fixture
+def annotation_replies(sqlite_session_factory: sessionmaker[Session]):
+    from extensions.application_services.annotation import build_annotation_replies
+
+    return build_annotation_replies(sqlite_session_factory)
+
+
+@pytest.fixture
+def human_forms(sqlite_session_factory):
+    from functools import partial
+
+    from repositories.human_input.form_repository import HumanInputFormRepositoryImpl
+
+    return partial(HumanInputFormRepositoryImpl, sessions=sqlite_session_factory)
