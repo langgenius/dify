@@ -9,6 +9,7 @@ from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.credit_usage import CreditUsageAppType
 from core.workflow import workflow_entry
+from core.workflow.response_stream_filter import DifyResponseStreamFilter
 from core.workflow.system_variables import default_system_variables
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.enums import NodeType, WorkflowNodeExecutionStatus
@@ -155,7 +156,7 @@ class TestWorkflowEntryInit:
     def test_workflow_entry_defaults_to_fresh_response_stream_filter(self, monkeypatch: pytest.MonkeyPatch) -> None:
         entry = _build_minimal_workflow_entry(monkeypatch, response_stream_filter=None)
 
-        assert isinstance(entry._response_stream_filter, ResponseStreamFilter)
+        assert isinstance(entry._response_stream_filter, DifyResponseStreamFilter)
 
 
 class TestWorkflowEntryRun:
@@ -179,7 +180,7 @@ class TestWorkflowEntryRun:
             ) as from_engine,
             patch.object(
                 workflow_entry,
-                "ResponseStreamFilter",
+                "DifyResponseStreamFilter",
                 return_value=sentinel.response_stream_filter,
             ) as response_stream_filter_cls,
             patch.object(
