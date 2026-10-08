@@ -5,6 +5,8 @@ import logging
 from collections.abc import Callable, Generator, Mapping, Sequence
 from typing import Any, cast, override
 
+from sqlalchemy.orm import Session
+
 from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.app.file_access import DatabaseFileAccessController
 from core.helper.trace_id_helper import (
@@ -86,6 +88,7 @@ class WorkflowTool(Tool):
     @override
     def _invoke(
         self,
+        session: Session,
         user_id: str,
         tool_parameters: dict[str, Any],
         conversation_id: str | None = None,
@@ -101,14 +104,9 @@ class WorkflowTool(Tool):
         # transform the tool parameters
         tool_parameters, files = self._transform_args(tool_parameters=tool_parameters)
 
-        from services.workflow.execution.adapters.workflow.app_generator import WorkflowAppGenerator
+        from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 
-        if self._workflow_runtime is None:
-            raise ToolInvokeError("Workflow execution dependencies are required")
-        generator = WorkflowAppGenerator(
-            runtime=self._workflow_runtime,
-            draft_variable_saver=self._draft_variable_saver,
-        )
+        generator = WorkflowAppGenerator()
         assert self.runtime is not None
         assert self.runtime.invoke_from is not None
 
