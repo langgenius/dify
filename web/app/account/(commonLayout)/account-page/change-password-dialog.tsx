@@ -156,8 +156,10 @@ export function ChangePasswordDialog({ isPasswordSet }: { isPasswordSet: boolean
   const queryClient = useQueryClient()
   const updatePassword = useMutation(
     consoleQuery.account.password.post.mutationOptions({
-      onSuccess: () =>
-        queryClient.invalidateQueries({ queryKey: userProfileQueryOptions().queryKey }),
+      onSuccess: () => {
+        // The request alone decides success; a slow profile refresh must not keep the dialog locked.
+        void queryClient.invalidateQueries({ queryKey: userProfileQueryOptions().queryKey })
+      },
     }),
   )
 

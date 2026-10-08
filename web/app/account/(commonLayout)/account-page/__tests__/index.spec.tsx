@@ -294,7 +294,7 @@ describe('AccountPage', () => {
     })
   })
 
-  it('keeps password setting open until the refreshed profile confirms the new password', async () => {
+  it('closes password setting once the request succeeds and refreshes the profile in the background', async () => {
     const user = userEvent.setup()
     const saving = pendingResponse()
     const refreshing = pendingResponse()
@@ -325,23 +325,19 @@ describe('AccountPage', () => {
         new Response(JSON.stringify({ ...createAccountResponse(), is_password_set: true })),
       ),
     )
-    await waitFor(() => expect(mocks.get).toHaveBeenCalled())
-    expect(cancel).toBeDisabled()
-    expect(within(dialog).getByRole('button', { name: 'common.operation.save' })).toHaveAttribute(
-      'aria-disabled',
-      'true',
-    )
-    await user.keyboard('{Escape}')
-    expect(dialog).toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(mocks.get).toHaveBeenCalled()
+    expect(
+      screen.getByRole('button', { name: 'accountSettings.account.setPassword' }),
+    ).toBeInTheDocument()
 
     await act(async () =>
       refreshing.resolve(
         new Response(JSON.stringify({ ...createAccountResponse(), is_password_set: true })),
       ),
     )
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(
-      screen.getByRole('button', { name: 'accountSettings.account.resetPassword' }),
+      await screen.findByRole('button', { name: 'accountSettings.account.resetPassword' }),
     ).toBeInTheDocument()
     const request = mocks.request.mock.calls[0]?.[2]?.request as Request
     await expect(request.json()).resolves.toEqual({
