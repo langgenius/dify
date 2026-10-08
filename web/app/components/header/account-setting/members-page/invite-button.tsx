@@ -1,12 +1,12 @@
 import type { ButtonProps } from '@langgenius/dify-ui/button'
 import { Button } from '@langgenius/dify-ui/button'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { currentWorkspaceIdAtom } from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { useWorkspacePermissions } from '@/service/use-workspace'
+import { consoleQuery } from '@/service/console'
 
 type InviteButtonProps = Omit<ButtonProps, 'children' | 'variant'>
 
@@ -14,8 +14,12 @@ export function InviteButton(props: InviteButtonProps) {
   const { t } = useTranslation(['workspaceMembers'])
   const currentWorkspaceId = useAtomValue(currentWorkspaceIdAtom)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const { data: workspacePermissions, isFetching: isFetchingWorkspacePermissions } =
-    useWorkspacePermissions(currentWorkspaceId, systemFeatures.branding.enabled)
+  const { data: workspacePermissions, isFetching: isFetchingWorkspacePermissions } = useQuery(
+    consoleQuery.workspaces.current.permission.get.queryOptions({
+      queryKey: [...consoleQuery.workspaces.current.permission.get.queryKey(), currentWorkspaceId],
+      enabled: systemFeatures.branding.enabled && !!currentWorkspaceId,
+    }),
+  )
   if (systemFeatures.branding.enabled) {
     if (isFetchingWorkspacePermissions) {
       return <LoadingPlaceholder />
