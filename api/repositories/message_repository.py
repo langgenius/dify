@@ -11,11 +11,8 @@ from models.model import AppModelConfig
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.entities.message_entities import MessageAccount, MessageActor
 from services.errors.conversation import ConversationNotExistsError
-from services.errors.message import MessageNotExistsError
-from services.message_suggested_questions_service import (
-    SuggestedQuestionsActorNotFoundError,
-    SuggestedQuestionsContext,
-)
+from services.errors.message import MessageActorNotFoundError, MessageNotExistsError
+from services.message_suggested_questions_service import SuggestedQuestionsContext
 
 
 class SuggestedQuestionsRecords(NamedTuple):
@@ -47,7 +44,7 @@ class MessageRepository:
         if isinstance(actor, MessageAccount):
             account_id = actor.account_id
             if self._session.get(Account, account_id) is None:
-                raise SuggestedQuestionsActorNotFoundError(f"Account {account_id} no longer exists")
+                raise MessageActorNotFoundError(f"Account {account_id} no longer exists")
             source = "console"
         else:
             end_user_id = actor.end_user_id
@@ -57,7 +54,7 @@ class MessageRepository:
                 )
             )
             if end_user is None:
-                raise SuggestedQuestionsActorNotFoundError(
+                raise MessageActorNotFoundError(
                     f"End user {end_user_id} does not exist for app {app_id} in tenant {app_owner_tenant_id}"
                 )
             source = "api"

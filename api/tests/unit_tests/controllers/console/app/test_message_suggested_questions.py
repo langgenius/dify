@@ -52,13 +52,16 @@ from services.app.agent_app_service import AgentAppAccessService
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.entities.message_entities import MessageAccount, MessageActor
 from services.errors.conversation import ConversationNotExistsError
-from services.errors.message import MessageNotExistsError, SuggestedQuestionsAfterAnswerDisabledError
+from services.errors.message import (
+    MessageActorNotFoundError,
+    MessageNotExistsError,
+    SuggestedQuestionsAfterAnswerDisabledError,
+)
 from services.message_suggested_questions_generator import SuggestedQuestionsGenerator
 from services.message_suggested_questions_queries import SuggestedQuestionsQuery
 from services.message_suggested_questions_service import (
     MessageSuggestedQuestions,
     MessageSuggestedQuestionsService,
-    SuggestedQuestionsActorNotFoundError,
     SuggestedQuestionsInvokeFrom,
 )
 from tests.unit_tests.config_override import apply_config_overrides
@@ -413,7 +416,7 @@ def test_real_rbac_admission_keeps_resource_scene(
     ("error", "status", "code"),
     [
         (AppDefinitionUnavailableError("stale app"), 400, "app_unavailable"),
-        (SuggestedQuestionsActorNotFoundError("deleted account"), 401, "unauthorized"),
+        (MessageActorNotFoundError("deleted account"), 401, "unauthorized"),
         (MessageNotExistsError(), 404, "not_found"),
         (ConversationNotExistsError(), 404, "not_found"),
         (ProviderTokenNotInitError(), 400, "provider_not_initialize"),

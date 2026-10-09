@@ -15,10 +15,6 @@ from services.errors.message import SuggestedQuestionsAfterAnswerDisabledError
 type SuggestedQuestionsInvokeFrom = Literal["explore", "debugger", "web-app", "service-api"]
 
 
-class SuggestedQuestionsActorNotFoundError(LookupError):
-    """The account is missing, or the end user is outside the admitted app scope."""
-
-
 class MessageSuggestedQuestions(Protocol):
     def get_suggested_questions(
         self,

@@ -41,11 +41,11 @@ from repositories.message_repository import MessageRepository
 from repositories.trial_app_repository import TrialAppRepository
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.entities.message_entities import MessageAccount, MessageActor
+from services.errors.message import MessageActorNotFoundError
 from services.message_suggested_questions_generator import SuggestedQuestionsGenerator
 from services.message_suggested_questions_queries import SuggestedQuestionsQuery
 from services.message_suggested_questions_service import (
     MessageSuggestedQuestionsService,
-    SuggestedQuestionsActorNotFoundError,
     SuggestedQuestionsInvokeFrom,
 )
 from services.trial_app_access_service import TrialAppAccessService
@@ -580,7 +580,7 @@ def test_advanced_chat_without_published_workflow_keeps_empty_success(harness: _
     ("failure", "status", "code", "message"),
     [
         (AppDefinitionUnavailableError("App changed after admission"), 400, "app_unavailable", None),
-        (SuggestedQuestionsActorNotFoundError("Account disappeared"), 401, "unauthorized", "Account no longer exists."),
+        (MessageActorNotFoundError("Account disappeared"), 401, "unauthorized", "Account no longer exists."),
     ],
 )
 def test_reload_errors_have_explicit_http_mapping(

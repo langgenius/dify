@@ -46,12 +46,15 @@ from repositories.message_repository import MessageRepository
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.entities.message_entities import MessageAccount, MessageActor, MessageEndUser
 from services.errors.conversation import ConversationNotExistsError
-from services.errors.message import MessageNotExistsError, SuggestedQuestionsAfterAnswerDisabledError
+from services.errors.message import (
+    MessageActorNotFoundError,
+    MessageNotExistsError,
+    SuggestedQuestionsAfterAnswerDisabledError,
+)
 from services.message_suggested_questions_generator import SuggestedQuestionsGenerator
 from services.message_suggested_questions_queries import SuggestedQuestionsQuery
 from services.message_suggested_questions_service import (
     MessageSuggestedQuestionsService,
-    SuggestedQuestionsActorNotFoundError,
     SuggestedQuestionsInvokeFrom,
 )
 from tests.unit_tests.core.model_fixtures import make_model_config, make_model_instance
@@ -330,7 +333,7 @@ def test_service_rejects_stale_reference_before_model_queries(
 ) -> None:
     account_id = str(uuid4()) if change == "account" else harness.account.id
     app_id = str(uuid4()) if change == "app_id" else harness.target.id
-    error_type = SuggestedQuestionsActorNotFoundError if change == "account" else AppDefinitionUnavailableError
+    error_type = MessageActorNotFoundError if change == "account" else AppDefinitionUnavailableError
     with pytest.raises(error_type, match=account_id if change == "account" else app_id):
         harness.service.get_suggested_questions(
             app_id=app_id,
@@ -354,7 +357,7 @@ def test_end_user_reload_requires_the_admitted_app_owner(
         values = {"tenant_id" if change == "tenant" else "app_id": str(uuid4())}
         with harness.factory.begin() as session:
             session.execute(update(EndUser).where(EndUser.id == end_user_id).values(values))
-    with pytest.raises(SuggestedQuestionsActorNotFoundError, match=end_user_id):
+    with pytest.raises(MessageActorNotFoundError, match=end_user_id):
         harness.get(MessageEndUser(end_user_id=end_user_id), invoke_from="service-api")
     assert not harness.scoped_sessions
     harness.assert_closed()

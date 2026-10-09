@@ -63,9 +63,12 @@ from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.conversation_service import ConversationService
 from services.entities.message_entities import MessageAccount
 from services.errors.conversation import ConversationNotExistsError
-from services.errors.message import MessageNotExistsError, SuggestedQuestionsAfterAnswerDisabledError
+from services.errors.message import (
+    MessageActorNotFoundError,
+    MessageNotExistsError,
+    SuggestedQuestionsAfterAnswerDisabledError,
+)
 from services.message_service import attach_message_extra_contents
-from services.message_suggested_questions_service import SuggestedQuestionsActorNotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -581,7 +584,7 @@ def _get_message_suggested_questions(
         )
     except AppDefinitionUnavailableError as exc:
         raise AppUnavailableError() from exc
-    except SuggestedQuestionsActorNotFoundError as exc:
+    except MessageActorNotFoundError as exc:
         raise UnauthorizedError("Account no longer exists") from exc
     except MessageNotExistsError:
         raise NotFoundError("Message not found")

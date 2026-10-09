@@ -52,13 +52,13 @@ from services.errors.base import BaseServiceError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import (
     FirstMessageNotExistsError,
+    MessageActorNotFoundError,
     MessageNotExistsError,
     SuggestedQuestionsAfterAnswerDisabledError,
 )
 from services.installed_app_access_service import InstalledAppNotFoundError, InstalledAppRef
 from services.installed_app_generation_service import InstalledAppNotCompletionError
 from services.installed_app_message_service import FeedbackRatingRequiredError, MessageNotChatAppError
-from services.message_suggested_questions_service import SuggestedQuestionsActorNotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +85,7 @@ def _message_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
             raise InstalledAppNotFoundHTTPError() from error
         except AppDefinitionUnavailableError as error:
             raise AppUnavailableError() from error
-        except (AccountNotFoundError, SuggestedQuestionsActorNotFoundError) as error:
+        except (AccountNotFoundError, MessageActorNotFoundError) as error:
             raise UnauthorizedError("Account no longer exists.") from error
         except MessageNotChatAppError as error:
             raise NotChatAppError() from error

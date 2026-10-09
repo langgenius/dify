@@ -111,11 +111,11 @@ from services.errors.audio import (
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.llm import InvokeRateLimitError
 from services.errors.message import (
+    MessageActorNotFoundError,
     MessageNotExistsError,
     SuggestedQuestionsAfterAnswerDisabledError,
 )
 from services.file_service import FileUploadActor
-from services.message_suggested_questions_service import SuggestedQuestionsActorNotFoundError
 from services.trial_app_access_service import TrialAppRef
 from services.trial_app_generation_service import (
     TrialAppNotChatError,
@@ -675,7 +675,7 @@ class TrialMessageSuggestedQuestionApi(Resource):
             )
         except AppDefinitionUnavailableError as error:
             raise AppUnavailableError() from error
-        except SuggestedQuestionsActorNotFoundError as error:
+        except MessageActorNotFoundError as error:
             raise UnauthorizedError("Account no longer exists.") from error
         except MessageNotExistsError:
             raise NotFoundError("Message not found")

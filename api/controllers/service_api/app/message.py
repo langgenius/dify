@@ -42,11 +42,11 @@ from services.entities.message_entities import MessageEndUser
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import (
     FirstMessageNotExistsError,
+    MessageActorNotFoundError,
     MessageNotExistsError,
     SuggestedQuestionsAfterAnswerDisabledError,
 )
 from services.message_service import MessageService
-from services.message_suggested_questions_service import SuggestedQuestionsActorNotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -309,7 +309,7 @@ class MessageSuggestedApi(Resource):
             )
         except AppDefinitionUnavailableError:
             raise AppUnavailableError() from None
-        except SuggestedQuestionsActorNotFoundError:
+        except MessageActorNotFoundError:
             raise NotFoundError("End user not found") from None
         except MessageNotExistsError:
             raise NotFoundError("Message Not Exists.")
