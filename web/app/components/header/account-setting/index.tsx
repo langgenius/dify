@@ -23,6 +23,7 @@ import {
   isCurrentWorkspaceManagerAtom,
   isCurrentWorkspaceOwnerAtom,
 } from '@/context/workspace-state'
+import { env } from '@/env'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { consoleQuery } from '@/service/console'
@@ -70,6 +71,7 @@ export default function AccountSetting({
   const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
   const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)
   const isRbacEnabled = systemFeatures.rbac_enabled
+  const canViewAccessTokens = env.NEXT_PUBLIC_ENABLE_ACCESS_TOKEN && isCurrentWorkspaceOwner
   const canManageWorkspaceRoles =
     isRbacEnabled && hasPermission(workspacePermissionKeys, 'workspace.role.manage')
   const canViewBilling =
@@ -87,7 +89,7 @@ export default function AccountSetting({
       !canManageWorkspaceRoles
     )
       return ACCOUNT_SETTING_TAB.MEMBERS
-    if (activeTab === ACCOUNT_SETTING_TAB.ACCESS_TOKEN && !isCurrentWorkspaceOwner)
+    if (activeTab === ACCOUNT_SETTING_TAB.ACCESS_TOKEN && !canViewAccessTokens)
       return ACCOUNT_SETTING_TAB.MEMBERS
     return activeTab
   })()
@@ -160,7 +162,7 @@ export default function AccountSetting({
       visibleTabs.push(ACCOUNT_SETTING_TAB.PERMISSION_SET)
     }
 
-    if (isCurrentWorkspaceOwner) visibleTabs.push(ACCOUNT_SETTING_TAB.ACCESS_TOKEN)
+    if (canViewAccessTokens) visibleTabs.push(ACCOUNT_SETTING_TAB.ACCESS_TOKEN)
 
     if (canViewBilling) visibleTabs.push(ACCOUNT_SETTING_TAB.BILLING)
 

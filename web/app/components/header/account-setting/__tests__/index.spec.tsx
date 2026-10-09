@@ -11,6 +11,10 @@ import AccountSetting from '../index'
 
 let canReplaceLogo = true
 
+const mockFeatureFlags = vi.hoisted(() => ({ NEXT_PUBLIC_ENABLE_ACCESS_TOKEN: true }))
+
+vi.mock('@/env', () => ({ env: mockFeatureFlags }))
+
 const mockConsoleState = vi.hoisted(() => ({
   current: null as unknown,
 }))
@@ -219,6 +223,7 @@ describe('AccountSetting', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     canReplaceLogo = true
+    mockFeatureFlags.NEXT_PUBLIC_ENABLE_ACCESS_TOKEN = true
     mockConsoleState.current = baseConsoleState
     vi.mocked(useBreakpoints).mockReturnValue(MediaType.pc)
   })
@@ -449,6 +454,18 @@ describe('AccountSetting', () => {
       expect(
         screen.getByRole('button', { name: 'navigation.settings.accessToken' }),
       ).toBeInTheDocument()
+    })
+
+    it('should hide access tokens and fall back to members when the feature is disabled', () => {
+      mockFeatureFlags.NEXT_PUBLIC_ENABLE_ACCESS_TOKEN = false
+
+      renderAccountSetting({ initialTab: ACCOUNT_SETTING_TAB.ACCESS_TOKEN })
+
+      expect(
+        screen.queryByRole('button', { name: 'navigation.settings.accessToken' }),
+      ).not.toBeInTheDocument()
+      expect(screen.queryByTestId('resource-access-token-page')).not.toBeInTheDocument()
+      expect(screen.getAllByText('navigation.settings.members').length).toBeGreaterThan(1)
     })
 
     it('should hide access tokens from non-owner workspaces', () => {
