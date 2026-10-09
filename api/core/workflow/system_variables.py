@@ -218,7 +218,7 @@ def inject_default_system_variable_mappings(
     supports_conversation: bool,
 ) -> Mapping[str, Sequence[str]]:
     """Add workflow-owned implicit sys mappings that `graphon` should not know about.
-    
+
     `supports_conversation` is False for apps without conversations, such as Workflow apps.
     Those apps never provide `sys.query`, so the implicit query mapping is skipped.
     """
