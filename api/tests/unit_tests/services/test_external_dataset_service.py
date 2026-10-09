@@ -12,6 +12,7 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
+from httpx import UnsupportedProtocol
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -661,14 +662,18 @@ class TestExternalDatasetServiceCheckEndpoint:
         with pytest.raises(ValueError, match="invalid endpoint.*must start with http"):
             ExternalDatasetService.check_endpoint_and_api_key(settings)
 
-    def test_check_endpoint_invalid_scheme(self, factory: ExternalDatasetServiceTestDataFactory):
-        """Test validation fails for URL with invalid scheme."""
-        # Arrange
+    @patch("services.knowledge.external.service.ssrf_proxy.post")
+    def test_check_endpoint_invalid_scheme(self, mock_post, factory: ExternalDatasetServiceTestDataFactory):
+        """Translate the transport's unsupported-scheme error without waiting for retries."""
         settings = {"endpoint": "ftp://api.example.com", "api_key": "test-key"}
+        mock_post.side_effect = UnsupportedProtocol("Unsupported URL scheme: ftp")
 
-        # Act & Assert
-        with pytest.raises(ValueError, match="failed to connect to the endpoint"):
+        with pytest.raises(ValueError, match="failed to connect to the endpoint") as exc:
             ExternalDatasetService.check_endpoint_and_api_key(settings)
+
+        mock_post.assert_called_once()
+        assert mock_post.call_args.args[0] == "ftp://api.example.com/retrieval"
+        assert exc.value.__cause__ is mock_post.side_effect
 
     def test_check_endpoint_no_netloc(self, factory: ExternalDatasetServiceTestDataFactory):
         """Test validation fails for URL without network location."""

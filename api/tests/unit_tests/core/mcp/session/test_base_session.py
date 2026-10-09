@@ -560,9 +560,13 @@ def test_session_exit_timeout(streams):
     session._receiver_future = future
     with ThreadPoolExecutor(max_workers=1) as executor:
         session._executor = executor
-        with patch.object(executor, "shutdown", wraps=executor.shutdown) as shutdown:
+        with (
+            patch.object(future, "result", side_effect=TimeoutError) as result,
+            patch.object(executor, "shutdown", wraps=executor.shutdown) as shutdown,
+        ):
             session.__exit__(None, None, None)
 
+            result.assert_called_once_with(timeout=5.0)
             assert future.cancelled()
             shutdown.assert_called_once_with(wait=False)
             with pytest.raises(RuntimeError, match="cannot schedule new futures after shutdown"):
