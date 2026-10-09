@@ -1,5 +1,5 @@
 import logging
-from collections.abc import Callable, Generator, Iterable, Mapping, Sequence
+from collections.abc import Callable, Generator, Iterable, Iterator, Mapping, Sequence
 from copy import deepcopy
 from typing import IO, Any, Literal, Optional, ParamSpec, TypeVar, Union, cast, overload, override
 from uuid import UUID
@@ -35,6 +35,7 @@ from graphon.model_runtime.model_providers.base.rerank_model import RerankModel
 from graphon.model_runtime.model_providers.base.speech2text_model import Speech2TextModel
 from graphon.model_runtime.model_providers.base.text_embedding_model import TextEmbeddingModel
 from graphon.model_runtime.model_providers.base.tts_model import TTSModel
+from libs.stream import close_stream
 from models.provider import ProviderType
 
 logger = logging.getLogger(__name__)
@@ -806,17 +807,25 @@ class QuotaManagedModelInstance(ModelInstance):
     ) -> Generator[bytes, None, None]:
         effective_request_metadata = self._resolve_request_metadata(request_metadata)
         reservation = self._reserve_quota_for_request(effective_request_metadata)
+        response: Iterable[bytes] | None = None
+        iterator: Iterator[bytes] | None = None
         try:
             response = super().invoke_tts(
                 content_text=content_text,
                 voice=voice,
                 request_metadata=effective_request_metadata,
             )
-            for chunk in response:
+            iterator = iter(response)
+            for chunk in iterator:
                 reservation.commit()
                 yield chunk
         finally:
-            self.release_quota_safely(reservation)
+            try:
+                close_stream(iterator)
+                if response is not iterator:
+                    close_stream(response)
+            finally:
+                self.release_quota_safely(reservation)
 
 
 class ModelManager:

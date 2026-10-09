@@ -25,6 +25,7 @@ from core.app.features.rate_limiting.rate_limit import RateLimitGenerator
 from extensions.ext_redis import redis_client
 from graphon.file import helpers as file_helpers
 from graphon.model_runtime.utils.encoders import jsonable_encoder
+from libs.stream import close_stream
 
 if TYPE_CHECKING:
     from models import Account
@@ -484,19 +485,32 @@ def length_prefixed_response(
             )
 
     stream_response = response
+    closed = False
+
+    def close_response() -> None:
+        nonlocal closed
+        if not closed:
+            closed = True
+            close_stream(stream_response)
 
     def generate() -> Generator[bytes, None, None]:
-        for chunk in stream_response:
-            if isinstance(chunk, str):
-                yield pack_response_with_length_prefix(chunk.encode("utf-8"))
-            else:
-                yield pack_response_with_length_prefix(chunk)
+        try:
+            for chunk in stream_response:
+                if isinstance(chunk, str):
+                    yield pack_response_with_length_prefix(chunk.encode("utf-8"))
+                else:
+                    yield pack_response_with_length_prefix(chunk)
+        finally:
+            close_response()
 
-    return Response(
+    http_response = Response(
         _stream_with_request_context(generate()),
         status=200,
         mimetype="text/event-stream",
     )
+    # Flask's wrapper may be closed before generate() enters its finally block.
+    http_response.call_on_close(close_response)
+    return http_response
 
 
 class TokenManager:

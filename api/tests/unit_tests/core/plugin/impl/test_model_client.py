@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import io
 import json
+from collections.abc import Generator, Iterator
 from types import SimpleNamespace
+from typing import override
 
 import pytest
 from pytest_mock import MockerFixture
 
-from core.plugin.entities.plugin_daemon import PluginDaemonInnerError
+from core.plugin.entities.plugin_daemon import PluginDaemonInnerError, PluginTTSResultResponse
 from core.plugin.impl.exc import PluginInvokeError, PluginLLMPollingUnsupportedError
 from core.plugin.impl.model import PluginModelClient
 from graphon.model_runtime.entities.llm_entities import LLMPollingResult, LLMPollingStatus, LLMResult, LLMUsage
@@ -546,6 +548,85 @@ class TestPluginModelClient:
 
         with pytest.raises(ValueError, match="tts error-400"):
             list(client.invoke_tts("tenant-1", "user-1", "org/plugin:1", "provider-a", "tts-a", {}, "hello", "alloy"))
+
+    @pytest.mark.parametrize("consume_all", [False, True])
+    def test_invoke_tts_closes_retained_daemon_stream(self, mocker: MockerFixture, consume_all: bool) -> None:
+        client = PluginModelClient()
+        closed: list[bool] = []
+
+        def daemon_stream() -> Generator[PluginTTSResultResponse, None, None]:
+            try:
+                yield PluginTTSResultResponse(result="6869", mime_type="audio/wav")
+                yield PluginTTSResultResponse(result="21", mime_type="audio/wav")
+            finally:
+                closed.append(True)
+
+        daemon = daemon_stream()
+        mocker.patch.object(client, "_request_with_plugin_daemon_response_stream", return_value=daemon)
+        response = client.invoke_tts("tenant-1", "user-1", "org/plugin:1", "provider-a", "tts-a", {}, "hi", "alloy")
+        assert next(response) == b"hi"
+        if consume_all:
+            assert list(response) == [b"!"]
+        response.close()
+        response.close()
+
+        assert closed == [True]
+
+    @pytest.mark.parametrize("valid_first_chunk", [False, True])
+    def test_invoke_tts_closes_daemon_on_hex_decode_failure(
+        self, mocker: MockerFixture, valid_first_chunk: bool
+    ) -> None:
+        client = PluginModelClient()
+        closed: list[bool] = []
+
+        def daemon_stream() -> Generator[PluginTTSResultResponse, None, None]:
+            try:
+                if valid_first_chunk:
+                    yield PluginTTSResultResponse(result="6869")
+                yield PluginTTSResultResponse(result="not-hex")
+            finally:
+                closed.append(True)
+
+        daemon = daemon_stream()
+        mocker.patch.object(client, "_request_with_plugin_daemon_response_stream", return_value=daemon)
+        response = client.invoke_tts("tenant-1", "user-1", "org/plugin:1", "provider-a", "tts-a", {}, "hi", "alloy")
+        with pytest.raises(ValueError):
+            list(response)
+
+        assert closed == [True]
+
+    @pytest.mark.parametrize("valid_first_chunk", [False, True])
+    def test_invoke_tts_preserves_daemon_error_when_cleanup_fails(
+        self, mocker: MockerFixture, valid_first_chunk: bool
+    ) -> None:
+        error = RuntimeError("daemon failed")
+
+        class DaemonStream(Iterator[PluginTTSResultResponse]):
+            def __init__(self) -> None:
+                self._chunks: Iterator[PluginTTSResultResponse] = iter(
+                    [PluginTTSResultResponse(result="6869")] if valid_first_chunk else []
+                )
+                self.close_calls: int = 0
+
+            @override
+            def __next__(self) -> PluginTTSResultResponse:
+                try:
+                    return next(self._chunks)
+                except StopIteration:
+                    raise error
+
+            def close(self) -> None:
+                self.close_calls += 1
+                raise RuntimeError("close failed")
+
+        client = PluginModelClient()
+        daemon = DaemonStream()
+        mocker.patch.object(client, "_request_with_plugin_daemon_response_stream", return_value=daemon)
+        with pytest.raises(RuntimeError) as exc_info:
+            list(client.invoke_tts("tenant-1", "user-1", "org/plugin:1", "provider-a", "tts-a", {}, "hi", "alloy"))
+
+        assert exc_info.value is error
+        assert daemon.close_calls == 1
 
     def test_get_tts_model_voices(self, mocker: MockerFixture):
         client = PluginModelClient()

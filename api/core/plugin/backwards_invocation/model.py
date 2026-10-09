@@ -1,7 +1,6 @@
 import tempfile
 from binascii import hexlify, unhexlify
 from collections.abc import Generator
-from typing import Any
 
 from core.base.tts.audio_mime import get_model_audio_mime_type, inspect_audio_stream
 from core.credit_usage import CreditUsageCreatedBy
@@ -34,6 +33,7 @@ from graphon.model_runtime.entities.message_entities import (
     UserPromptMessage,
 )
 from graphon.model_runtime.entities.model_entities import ModelType
+from libs.stream import close_stream
 from models.account import Tenant
 
 
@@ -206,7 +206,9 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
         return response
 
     @classmethod
-    def invoke_tts(cls, user_id: str, tenant: Tenant, payload: RequestInvokeTTS):
+    def invoke_tts(
+        cls, user_id: str, tenant: Tenant, payload: RequestInvokeTTS
+    ) -> Generator[dict[str, str], None, None]:
         """
         invoke tts
         """
@@ -218,11 +220,14 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
             model=payload.model,
         )
 
-        def handle() -> Generator[dict[str, Any], None, None]:
+        def handle() -> Generator[dict[str, str], None, None]:
             response = model_instance.invoke_tts(content_text=payload.content_text, voice=payload.voice)
             audio_stream, mime_type = inspect_audio_stream(response, get_model_audio_mime_type(model_instance))
-            for chunk in audio_stream:
-                yield {"result": hexlify(chunk).decode("utf-8"), "mime_type": mime_type}
+            try:
+                for chunk in audio_stream:
+                    yield {"result": hexlify(chunk).decode("utf-8"), "mime_type": mime_type}
+            finally:
+                close_stream(audio_stream)
 
         return handle()
 
