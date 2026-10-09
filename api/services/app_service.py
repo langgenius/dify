@@ -4,6 +4,7 @@ from collections.abc import Callable, Mapping, Sequence
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime
+from types import EllipsisType
 from typing import Any, NotRequired, TypedDict, cast
 
 import sqlalchemy as sa
@@ -796,8 +797,10 @@ class AppService:
 
         return app
 
-    def delete_app(self, app: App, *, session: Session) -> None:
+    def delete_app(self, app: App, *, session: Session, account_id: str | None | EllipsisType = ...) -> None:
         """Delete an App and commit the passed session.
+
+        Omit account_id to use the logged-in actor; pass None for system cleanup.
 
         The transaction releases all of a Workflow App's binding owners across
         draft and published versions, archives a backing Roster Agent, retires
@@ -850,7 +853,8 @@ class AppService:
                     AgentSkillBinding.agent_id.in_(agent_ids_to_unbind),
                 )
             )
-        account_id = current_user.id if current_user else None
+        if account_id is ...:
+            account_id = current_user.id if current_user else None
         if backing_agent is not None:
             now = naive_utc_now()
             backing_agent.status = AgentStatus.ARCHIVED
