@@ -4,7 +4,7 @@ import type { SearchDoc } from '@/discovery/search'
 import type { View } from '@/sys/io/view'
 import { search, searchDoc } from '@/discovery/search'
 import { byHead, groupsOf, namespacesOf, under } from '@/discovery/tree'
-import { COMMAND_SEPARATOR, OP_SEPARATOR, spacedId } from '@/protocol/op-id'
+import { COMMAND_SEPARATOR, commandWords, OP_SEPARATOR } from '@/protocol/op-id'
 import { view } from '@/sys/io/view'
 import { BINARY } from '@/version/info'
 import { HELP_WORD } from './command'
@@ -13,6 +13,7 @@ import { collectCommands } from './registry'
 const SEARCH_LIMIT = 20
 const NEWLINE = '\n'
 const SKILL_WORDS = 'install skills <dir>'
+export const SKILL_NOTICE = `AI agents: run \`${BINARY} ${SKILL_WORDS.replace('<dir>', '<skills root>')}\` once to learn how to use ${BINARY}.`
 const POINTER_MESSAGE = `${BINARY} has no built-in business commands; every server operation is a command`
 
 export type HelpEntry = {
@@ -41,7 +42,7 @@ export function pointer(): View<Record<string, string>> {
 export function spacedWords(words: readonly string[]): readonly string[] {
   const [only] = words
   if (words.length !== 1 || only === undefined || !only.includes(OP_SEPARATOR)) return words
-  return spacedId(only).split(COMMAND_SEPARATOR)
+  return commandWords(only)
 }
 
 function entryOf(ctor: CommandConstructor, id: string): HelpEntry {

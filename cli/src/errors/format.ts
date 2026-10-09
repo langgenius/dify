@@ -1,4 +1,4 @@
-import type { ErrorEnvelope } from './base'
+import type { ErrorEnvelope, ServerErrorDetail } from './base'
 import type { Style } from '@/sys/io/color'
 import { redactBearer } from '@/errors/sanitize'
 
@@ -15,15 +15,18 @@ function resolveHint(e: ErrorEnvelope['error'], opts: RenderOptions): string | u
   return rawHiddenAndUnparsed ? RAW_RESPONSE_HINT : undefined
 }
 
+function detailLine(d: ServerErrorDetail): string {
+  if (d.field !== undefined) return `${d.field}: ${d.msg}`
+  const loc = (d.loc ?? []).join('.')
+  return `${loc ? `${loc}: ` : ''}${d.msg} (${d.type})`
+}
+
 export function renderEnvelope(env: ErrorEnvelope, style: Style, opts: RenderOptions): string {
   const e = env.error
   const server = e.server
   const headerCode = server?.code ?? e.code
   const lines: string[] = [`${headerCode}: ${e.message}`]
-  for (const d of e.details ?? server?.details ?? []) {
-    const loc = (d.loc ?? []).join('.')
-    lines.push(`  - ${loc ? `${loc}: ` : ''}${d.msg} (${d.type})`)
-  }
+  for (const d of e.details ?? server?.details ?? []) lines.push(`  - ${detailLine(d)}`)
   const hint = resolveHint(e, opts)
   if (hint !== undefined) lines.push(`${style.magenta('hint:')} ${style.cyan(hint)}`)
   if (e.method !== undefined && e.url !== undefined) lines.push(`request: ${e.method} ${e.url}`)

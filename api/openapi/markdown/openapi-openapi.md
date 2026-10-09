@@ -139,6 +139,216 @@ Machine-readable catalog of every op on this surface
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
+### [GET] /apps/{app_id}/app-info/advanced-chat
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | App info | **application/json**: [ChatAppInfo](#chatappinfo)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PATCH] /apps/{app_id}/app-info/advanced-chat
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ChatAppInfoPatch](#chatappinfopatch)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | App info | **application/json**: [ChatAppInfo](#chatappinfo)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /apps/{app_id}/app-info/agent
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | App info | **application/json**: [AgentAppInfo](#agentappinfo)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PATCH] /apps/{app_id}/app-info/agent
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AgentAppInfoPatch](#agentappinfopatch)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | App info | **application/json**: [AgentAppInfo](#agentappinfo)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /apps/{app_id}/app-info/agent-chat
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | App info | **application/json**: [ChatAppInfo](#chatappinfo)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PATCH] /apps/{app_id}/app-info/agent-chat
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ChatAppInfoPatch](#chatappinfopatch)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | App info | **application/json**: [ChatAppInfo](#chatappinfo)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /apps/{app_id}/app-info/chat
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | App info | **application/json**: [ChatAppInfo](#chatappinfo)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PATCH] /apps/{app_id}/app-info/chat
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ChatAppInfoPatch](#chatappinfopatch)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | App info | **application/json**: [ChatAppInfo](#chatappinfo)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /apps/{app_id}/app-info/completion
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | App info | **application/json**: [AppSettingsInfo](#appsettingsinfo)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PATCH] /apps/{app_id}/app-info/completion
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AppInfoPatch](#appinfopatch)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | App info | **application/json**: [AppSettingsInfo](#appsettingsinfo)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /apps/{app_id}/app-info/workflow
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | App info | **application/json**: [AppSettingsInfo](#appsettingsinfo)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PATCH] /apps/{app_id}/app-info/workflow
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AppInfoPatch](#appinfopatch)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | App info | **application/json**: [AppSettingsInfo](#appsettingsinfo)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
 ### [POST] /apps/{app_id}/chat:run
 #### Parameters
 
@@ -192,7 +402,93 @@ Machine-readable catalog of every op on this surface
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Dependencies checked | **application/json**: [CheckDependenciesResult](#checkdependenciesresult)<br> |
+| 200 | Dependencies checked | **application/json**: [CheckDependenciesResponse](#checkdependenciesresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /apps/{app_id}/draft/advanced-chat/nodes/{node_id}:run
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+| node_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AdvancedChatNodeRunPayload](#advancedchatnoderunpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Node execution | **application/json**: [WorkflowRunNodeExecutionResponse](#workflowrunnodeexecutionresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /apps/{app_id}/draft/advanced-chat:run
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+| Yes | **application/json**: [ChatRunPayload](#chatrunpayload)<br>**multipart/form-data**: [ChatRunPayload](#chatrunpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Run result (SSE stream) | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /apps/{app_id}/draft/workflow/nodes/{node_id}:run
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+| node_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [NodeRunPayload](#noderunpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Node execution | **application/json**: [WorkflowRunNodeExecutionResponse](#workflowrunnodeexecutionresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /apps/{app_id}/draft/workflow:run
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+| Yes | **application/json**: [DraftWorkflowRunPayload](#draftworkflowrunpayload)<br>**multipart/form-data**: [DraftWorkflowRunPayload](#draftworkflowrunpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Run result (SSE stream) | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [GET] /apps/{app_id}/dsl
@@ -209,6 +505,57 @@ Machine-readable catalog of every op on this surface
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Export successful | **application/json**: [AppDslExportResponse](#appdslexportresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /apps/{app_id}/env
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Environment variables | **application/json**: [EnvVariableListResponse](#envvariablelistresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [DELETE] /apps/{app_id}/env/{env_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+| env_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Variable removed | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PUT] /apps/{app_id}/env/{env_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+| env_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [EnvVariableSetPayload](#envvariablesetpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Variable set | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
@@ -276,6 +623,265 @@ Upload a file to use as an input variable when running the app
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
+### [GET] /apps/{app_id}/runs
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| last_id | query | Cursor: id of the last run on the previous page | No | string (uuid) |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| status | query |  | No | string, <br>**Available values:** "failed", "partial-succeeded", "running", "stopped", "succeeded" |
+| triggered_from | query | debugging: draft test runs; app-run: real use. Omitted: debugging, as in the console | No | string, <br>**Available values:** "app-run", "debugging" |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Run list | **application/json**: [RunListResponse](#runlistresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /apps/{app_id}/runs/{run_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+| run_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Run detail | **application/json**: [WorkflowRunDetailResponse](#workflowrundetailresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /apps/{app_id}/runs/{run_id}/nodes
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+| run_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Node steps | **application/json**: [WorkflowRunNodeExecutionListResponse](#workflowrunnodeexecutionlistresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /apps/{app_id}/service-api/advanced-chat
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Service API | **application/json**: [ServiceApi](#serviceapi)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PATCH] /apps/{app_id}/service-api/advanced-chat
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ServiceApiPatch](#serviceapipatch)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Service API | **application/json**: [ServiceApi](#serviceapi)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /apps/{app_id}/service-api/agent
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Service API | **application/json**: [AgentServiceApi](#agentserviceapi)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PATCH] /apps/{app_id}/service-api/agent
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ServiceApiPatch](#serviceapipatch)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Service API | **application/json**: [AgentServiceApi](#agentserviceapi)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /apps/{app_id}/service-api/agent-chat
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Service API | **application/json**: [ServiceApi](#serviceapi)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PATCH] /apps/{app_id}/service-api/agent-chat
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ServiceApiPatch](#serviceapipatch)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Service API | **application/json**: [ServiceApi](#serviceapi)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /apps/{app_id}/service-api/chat
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Service API | **application/json**: [ServiceApi](#serviceapi)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PATCH] /apps/{app_id}/service-api/chat
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ServiceApiPatch](#serviceapipatch)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Service API | **application/json**: [ServiceApi](#serviceapi)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /apps/{app_id}/service-api/completion
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Service API | **application/json**: [ServiceApi](#serviceapi)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PATCH] /apps/{app_id}/service-api/completion
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ServiceApiPatch](#serviceapipatch)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Service API | **application/json**: [ServiceApi](#serviceapi)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /apps/{app_id}/service-api/workflow
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Service API | **application/json**: [ServiceApi](#serviceapi)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PATCH] /apps/{app_id}/service-api/workflow
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ServiceApiPatch](#serviceapipatch)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Service API | **application/json**: [ServiceApi](#serviceapi)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
 ### [GET] /apps/{app_id}/tasks/{task_id}/events
 #### Parameters
 
@@ -309,6 +915,543 @@ Upload a file to use as an input variable when running the app
 | 200 | Task stopped | **application/json**: [TaskStopResponse](#taskstopresponse)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
+### [GET] /apps/{app_id}/versions
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| named_only | query | Only versions that have a name | No | boolean |
+| page | query |  | No | integer, <br>**Default:** 1 |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Version list | **application/json**: [VersionListResponse](#versionlistresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /apps/{app_id}/versions/{version_id}:restore
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+| version_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Restored into the draft | **application/json**: [RestoreResponse](#restoreresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /apps/{app_id}/webapp-access/advanced-chat
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Web-app access | **application/json**: [WebAppAccess](#webappaccess)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PUT] /apps/{app_id}/webapp-access/advanced-chat
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WebAppAccessPayload](#webappaccesspayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Web-app access | **application/json**: [WebAppAccess](#webappaccess)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /apps/{app_id}/webapp-access/agent
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Web-app access | **application/json**: [WebAppAccess](#webappaccess)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PUT] /apps/{app_id}/webapp-access/agent
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WebAppAccessPayload](#webappaccesspayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Web-app access | **application/json**: [WebAppAccess](#webappaccess)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /apps/{app_id}/webapp-access/agent-chat
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Web-app access | **application/json**: [WebAppAccess](#webappaccess)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PUT] /apps/{app_id}/webapp-access/agent-chat
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WebAppAccessPayload](#webappaccesspayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Web-app access | **application/json**: [WebAppAccess](#webappaccess)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /apps/{app_id}/webapp-access/chat
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Web-app access | **application/json**: [WebAppAccess](#webappaccess)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PUT] /apps/{app_id}/webapp-access/chat
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WebAppAccessPayload](#webappaccesspayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Web-app access | **application/json**: [WebAppAccess](#webappaccess)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /apps/{app_id}/webapp-access/completion
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Web-app access | **application/json**: [WebAppAccess](#webappaccess)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PUT] /apps/{app_id}/webapp-access/completion
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WebAppAccessPayload](#webappaccesspayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Web-app access | **application/json**: [WebAppAccess](#webappaccess)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /apps/{app_id}/webapp-access/workflow
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Web-app access | **application/json**: [WebAppAccess](#webappaccess)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PUT] /apps/{app_id}/webapp-access/workflow
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WebAppAccessPayload](#webappaccesspayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Web-app access | **application/json**: [WebAppAccess](#webappaccess)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /apps/{app_id}/webapp/advanced-chat
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Web app | **application/json**: [AdvancedChatWebApp](#advancedchatwebapp)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PATCH] /apps/{app_id}/webapp/advanced-chat
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AdvancedChatWebAppPatch](#advancedchatwebapppatch)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Web app | **application/json**: [AdvancedChatWebApp](#advancedchatwebapp)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /apps/{app_id}/webapp/advanced-chat:reset
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | New URL token | **application/json**: [WebAppToken](#webapptoken)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /apps/{app_id}/webapp/agent
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Web app | **application/json**: [AgentWebApp](#agentwebapp)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PATCH] /apps/{app_id}/webapp/agent
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ChatWebAppPatch](#chatwebapppatch)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Web app | **application/json**: [AgentWebApp](#agentwebapp)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /apps/{app_id}/webapp/agent-chat
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Web app | **application/json**: [ChatWebApp](#chatwebapp)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PATCH] /apps/{app_id}/webapp/agent-chat
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ChatWebAppPatch](#chatwebapppatch)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Web app | **application/json**: [ChatWebApp](#chatwebapp)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /apps/{app_id}/webapp/agent-chat:reset
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | New URL token | **application/json**: [WebAppToken](#webapptoken)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /apps/{app_id}/webapp/agent:reset
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | New URL token | **application/json**: [WebAppToken](#webapptoken)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /apps/{app_id}/webapp/chat
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Web app | **application/json**: [ChatWebApp](#chatwebapp)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PATCH] /apps/{app_id}/webapp/chat
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ChatWebAppPatch](#chatwebapppatch)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Web app | **application/json**: [ChatWebApp](#chatwebapp)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /apps/{app_id}/webapp/chat:reset
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | New URL token | **application/json**: [WebAppToken](#webapptoken)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /apps/{app_id}/webapp/completion
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Web app | **application/json**: [WebApp](#webapp)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PATCH] /apps/{app_id}/webapp/completion
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WebAppPatch](#webapppatch)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Web app | **application/json**: [WebApp](#webapp)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /apps/{app_id}/webapp/completion:reset
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | New URL token | **application/json**: [WebAppToken](#webapptoken)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /apps/{app_id}/webapp/workflow
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Web app | **application/json**: [WorkflowWebApp](#workflowwebapp)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PATCH] /apps/{app_id}/webapp/workflow
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WorkflowWebAppPatch](#workflowwebapppatch)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Web app | **application/json**: [WorkflowWebApp](#workflowwebapp)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /apps/{app_id}/webapp/workflow:reset
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | New URL token | **application/json**: [WebAppToken](#webapptoken)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
 ### [POST] /apps/{app_id}/workflow:run
 #### Parameters
 
@@ -328,6 +1471,49 @@ Upload a file to use as an input variable when running the app
 | ---- | ----------- | ------ |
 | 200 | Run result (SSE stream) | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /apps/{app_id}:publish
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [PublishPayload](#publishpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Published | **application/json**: [PublishResponse](#publishresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /node-types
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Node types | **application/json**: [NodeTypeListResponse](#nodetypelistresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /node-types/{node_type}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| node_type | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Node type | **application/json**: [NodeTypeDetailResponse](#nodetypedetailresponse)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [POST] /oauth/device/approve
@@ -459,6 +1645,46 @@ Upload a file to use as an input variable when running the app
 | 200 | Workspace detail | **application/json**: [WorkspaceDetailResponse](#workspacedetailresponse)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
+### [GET] /workspaces/{workspace_id}/access-subjects
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| group_id | query | Search only inside this group | No | string |
+| keyword | query | Name or email to search for | No | string |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| page | query |  | No | integer, <br>**Default:** 1 |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Members and groups | **application/json**: [AccessSubjectListResponse](#accesssubjectlistresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /workspaces/{workspace_id}/apps/advanced-chat
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| workspace_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [CreateAppPayload](#createapppayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Created | **application/json**: [CreatedAppResponse](#createdappresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
 ### [POST] /workspaces/{workspace_id}/apps/imports
 #### Parameters
 
@@ -496,6 +1722,82 @@ Upload a file to use as an input variable when running the app
 | ---- | ----------- | ------ |
 | 200 | Import confirmed | **application/json**: [Import](#import)<br> |
 | 400 | Import failed | **application/json**: [Import](#import)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /workspaces/{workspace_id}/apps/workflow
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| workspace_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [CreateAppPayload](#createapppayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Created | **application/json**: [CreatedAppResponse](#createdappresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /workspaces/{workspace_id}/default-models
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Default models | **application/json**: [DefaultModelListResponse](#defaultmodellistresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PUT] /workspaces/{workspace_id}/default-models/{model_type}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| model_type | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [DefaultModelPayload](#defaultmodelpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Default model set | **application/json**: [DefaultModelResponse](#defaultmodelresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /workspaces/{workspace_id}/marketplace/plugins
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| category | query | Only plugins of this category | No | string, <br>**Available values:** "agent-strategy", "datasource", "extension", "model", "tool", "trigger" |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| page | query |  | No | integer, <br>**Default:** 1 |
+| query | query | Words to search for; empty lists the most installed plugins | No | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Marketplace plugins | **application/json**: [MarketplacePluginListResponse](#marketplacepluginlistresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [GET] /workspaces/{workspace_id}/members
@@ -573,6 +1875,410 @@ Upload a file to use as an input variable when running the app
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
+### [GET] /workspaces/{workspace_id}/model-providers
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| model_type | query | Only providers that serve this model type | No | string, <br>**Available values:** "llm", "moderation", "rerank", "speech2text", "text-embedding", "tts" |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Model providers | **application/json**: [ModelProviderListResponse](#modelproviderlistresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /workspaces/{workspace_id}/model-providers/{provider}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| provider | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Model provider | **application/json**: [ModelProviderDetailResponse](#modelproviderdetailresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /workspaces/{workspace_id}/model-providers/{provider}/credentials
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| provider | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ProviderCredentialCreatePayload](#providercredentialcreatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Credential saved | **application/json**: [CredentialWriteResponse](#credentialwriteresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [DELETE] /workspaces/{workspace_id}/model-providers/{provider}/credentials/{credential_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| credential_id | path |  | Yes | string |
+| provider | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Credential deleted | **application/json**: [CredentialRef](#credentialref)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PATCH] /workspaces/{workspace_id}/model-providers/{provider}/credentials/{credential_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| credential_id | path |  | Yes | string |
+| provider | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ProviderCredentialUpdatePayload](#providercredentialupdatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Credential replaced | **application/json**: [CredentialWriteResponse](#credentialwriteresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /workspaces/{workspace_id}/model-providers/{provider}/credentials/{credential_id}:switch
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| credential_id | path |  | Yes | string |
+| provider | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Credential active | **application/json**: [CredentialWriteResponse](#credentialwriteresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /workspaces/{workspace_id}/model-providers/{provider}/models
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| provider | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Models | **application/json**: [ModelListResponse](#modellistresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /workspaces/{workspace_id}/model-providers/{provider}/models/credentials
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| provider | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ModelCredentialCreatePayload](#modelcredentialcreatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Credential saved | **application/json**: [CredentialWriteResponse](#credentialwriteresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [DELETE] /workspaces/{workspace_id}/model-providers/{provider}/models/credentials/{credential_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| model | query | Model name, as in get.model | Yes | string |
+| model_type | query | Enum class for model type. | Yes | string, <br>**Available values:** "llm", "moderation", "rerank", "speech2text", "text-embedding", "tts" |
+| credential_id | path |  | Yes | string |
+| provider | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Credential deleted | **application/json**: [CredentialRef](#credentialref)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PATCH] /workspaces/{workspace_id}/model-providers/{provider}/models/credentials/{credential_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| credential_id | path |  | Yes | string |
+| provider | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ModelCredentialUpdatePayload](#modelcredentialupdatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Credential replaced | **application/json**: [CredentialWriteResponse](#credentialwriteresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /workspaces/{workspace_id}/model-providers/{provider}/models/credentials/{credential_id}:switch
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| credential_id | path |  | Yes | string |
+| provider | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ModelRef](#modelref)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Credential active | **application/json**: [CredentialWriteResponse](#credentialwriteresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /workspaces/{workspace_id}/plugin-tasks/{task_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| task_id | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Install task | **application/json**: [PluginTaskResponse](#plugintaskresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /workspaces/{workspace_id}/plugins
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| category | query | Only plugins of this category | No | string, <br>**Available values:** "agent-strategy", "datasource", "extension", "model", "tool", "trigger" |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Installed plugins | **application/json**: [PluginListResponse](#pluginlistresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [DELETE] /workspaces/{workspace_id}/plugins/{plugin_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| plugin_id | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Plugin uninstalled | **application/json**: [PluginDeleteResponse](#plugindeleteresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /workspaces/{workspace_id}/plugins:install
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| workspace_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [PluginInstallPayload](#plugininstallpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Install started | **application/json**: [PluginTaskStartResponse](#plugintaskstartresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /workspaces/{workspace_id}/plugins:upgrade
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| workspace_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [PluginUpgradePayload](#pluginupgradepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Upgrade started | **application/json**: [PluginTaskStartResponse](#plugintaskstartresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /workspaces/{workspace_id}/tool-providers
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Tool providers | **application/json**: [ToolProviderListResponse](#toolproviderlistresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /workspaces/{workspace_id}/tool-providers/{provider}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| provider | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Tool provider | **application/json**: [ToolProviderDetailResponse](#toolproviderdetailresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /workspaces/{workspace_id}/tool-providers/{provider}/credentials
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| provider | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ToolCredentialCreatePayload](#toolcredentialcreatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Credential saved | **application/json**: [CredentialWriteResponse](#credentialwriteresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [DELETE] /workspaces/{workspace_id}/tool-providers/{provider}/credentials/{credential_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| credential_id | path |  | Yes | string |
+| provider | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Credential deleted | **application/json**: [CredentialRef](#credentialref)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PATCH] /workspaces/{workspace_id}/tool-providers/{provider}/credentials/{credential_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| credential_id | path |  | Yes | string |
+| provider | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ToolCredentialUpdatePayload](#toolcredentialupdatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Credential replaced | **application/json**: [CredentialWriteResponse](#credentialwriteresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /workspaces/{workspace_id}/tool-providers/{provider}/credentials/{credential_id}:switch
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| credential_id | path |  | Yes | string |
+| provider | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Credential is the default | **application/json**: [CredentialWriteResponse](#credentialwriteresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
 ### [POST] /workspaces/{workspace_id}:switch
 #### Parameters
 
@@ -589,6 +2295,34 @@ Upload a file to use as an input variable when running the app
 
 ---
 ### Schemas
+
+#### AccessSubjectListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [AccessSubjectRow](#accesssubjectrow) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+
+#### AccessSubjectQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| group_id | string | Search only inside this group | No |
+| keyword | string | Name or email to search for | No |
+| limit | integer, <br>**Default:** 20 |  | No |
+| page | integer, <br>**Default:** 1 |  | No |
+
+#### AccessSubjectRow
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| email | string |  | No |
+| id | string |  | Yes |
+| member_count | integer |  | No |
+| name | string |  | No |
+| type | string |  | Yes |
 
 #### AccountPayload
 
@@ -609,20 +2343,129 @@ Upload a file to use as an input variable when running the app
 | subject_type | [SubjectType](#subjecttype) |  | Yes |
 | workspaces | [ [WorkspacePayload](#workspacepayload) ], <br>**Default:**  |  | No |
 
+#### AdvancedChatNodeRunPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| inputs | object | Overrides for what the last draft run saved, keyed by variable reference such as #llm.text# | No |
+| query | string | The user message the node sees as sys.query | No |
+
 #### AdvancedChatRunPayload
 
 A chat run against an advanced-chat (chatflow) app, which can also pin a workflow version.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| attachments | [ string ] | Local files attached to the run itself (the app's `sys.files`), not to a variable | No |
+| attachments | [ string ] | Local file paths attached to the run itself (the app's `sys.files`), not to a variable | No |
 | auto_generate_name | boolean, <br>**Default:** true | Let the server name a new conversation | No |
 | conversation_id | string | Continue an existing conversation | No |
-| files | object | Local files keyed by the app's file variable name; the server uploads each one and sets `inputs[<name>]`. Send a list (part name `files[<name>][]`) for a file-list variable | No |
-| inputs | object | Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local file in `files`, not both. | Yes |
+| files | object | Local file paths keyed by the app's file variable name; each file is uploaded and becomes that variable's value. Give a list of paths for a file-list variable | No |
+| inputs | object | Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local path in `files`, not both. | No |
 | query | string | User message | Yes |
 | workflow_id | string | Pin a published workflow version | No |
 | workspace_id | string | Workspace that owns the app | No |
+
+#### AdvancedChatWebApp
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_token | string |  | No |
+| app_base_url | string |  | Yes |
+| chat_color_theme | string |  | No |
+| chat_color_theme_inverted | boolean |  | No |
+| copyright | string |  | No |
+| custom_disclaimer | string |  | No |
+| default_language | string |  | No |
+| description | string |  | No |
+| enabled | boolean |  | Yes |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| icon_type | string |  | No |
+| input_placeholder | string |  | No |
+| privacy_policy | string |  | No |
+| show_workflow_steps | boolean |  | No |
+| title | string |  | No |
+| url | string |  | No |
+| use_icon_as_answer_icon | boolean |  | No |
+
+#### AdvancedChatWebAppPatch
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| chat_color_theme | string | Chat colour, e.g. #1C64F2 | No |
+| chat_color_theme_inverted | boolean | Invert the chat colours | No |
+| copyright | string | Footer copyright text | No |
+| custom_disclaimer | string | Disclaimer shown on the page | No |
+| default_language | string | Language code, e.g. en-US | No |
+| description | string | Page description | No |
+| enabled | boolean | Turn the web app on or off | No |
+| icon | string | Emoji, file id or URL, per icon_type | No |
+| icon_background | string | Background colour for an emoji icon | No |
+| icon_type | string, <br>**Available values:** "emoji", "image", "link" | emoji, image or link | No |
+| input_placeholder | string | Placeholder of the chat input | No |
+| privacy_policy | string | Privacy policy URL | No |
+| show_workflow_steps | boolean | Show each node step to users | No |
+| title | string | Page title | No |
+| use_icon_as_answer_icon | boolean | Show the app icon on answers | No |
+
+#### AgentAppInfo
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| icon_type | string |  | No |
+| max_active_requests | integer |  | No |
+| name | string |  | Yes |
+| role | string |  | No |
+| use_icon_as_answer_icon | boolean |  | No |
+
+#### AgentAppInfoPatch
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string | Pass an empty string to clear | No |
+| icon | string | Emoji, file id or URL, per icon_type | No |
+| icon_background | string | Background colour for an emoji icon | No |
+| icon_type | string, <br>**Available values:** "emoji", "image", "link" | emoji, image or link | No |
+| max_active_requests | integer | Concurrent run cap; 0 means no cap | No |
+| name | string | App name | No |
+| role | string | The agent's role; empty string clears it | No |
+| use_icon_as_answer_icon | boolean | Show the app icon on answers | No |
+
+#### AgentServiceApi
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_ready | boolean |  | Yes |
+| api_rph | integer |  | No |
+| api_rpm | integer |  | No |
+| base_url | string |  | Yes |
+| enabled | boolean |  | Yes |
+
+#### AgentWebApp
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_ready | boolean |  | Yes |
+| access_token | string |  | No |
+| app_base_url | string |  | Yes |
+| chat_color_theme | string |  | No |
+| chat_color_theme_inverted | boolean |  | No |
+| copyright | string |  | No |
+| custom_disclaimer | string |  | No |
+| default_language | string |  | No |
+| description | string |  | No |
+| enabled | boolean |  | Yes |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| icon_type | string |  | No |
+| input_placeholder | string |  | No |
+| privacy_policy | string |  | No |
+| title | string |  | No |
+| url | string |  | No |
+| use_icon_as_answer_icon | boolean |  | No |
 
 #### AppDescribeInfo
 
@@ -670,6 +2513,7 @@ Export DSL response.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | data | string | DSL YAML string | Yes |
+| draft_hash | string | Hash of the draft's graph, features, environment variables and conversation variables; pass it to the import to refuse overwriting newer edits | No |
 
 #### AppDslImportPayload
 
@@ -679,6 +2523,7 @@ Request body for POST /workspaces/<workspace_id>/apps/imports.
 | ---- | ---- | ----------- | -------- |
 | app_id | string | Existing app ID to overwrite (workflow/advanced-chat apps only) | No |
 | description | string | Override the app description from the DSL | No |
+| draft_hash | string | draft_hash from the export or restore this import is based on. The import fails if the draft's graph, features, environment variables or conversation variables changed since. Requires app_id | No |
 | icon | string |  | No |
 | icon_background | string |  | No |
 | icon_type | string |  | No |
@@ -712,6 +2557,17 @@ Request body for POST /workspaces/<workspace_id>/apps/imports.
 | id | string |  | Yes |
 | mode | string |  | Yes |
 | name | string |  | Yes |
+
+#### AppInfoPatch
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string | Pass an empty string to clear | No |
+| icon | string | Emoji, file id or URL, per icon_type | No |
+| icon_background | string | Background colour for an emoji icon | No |
+| icon_type | string, <br>**Available values:** "emoji", "image", "link" | emoji, image or link | No |
+| max_active_requests | integer | Concurrent run cap; 0 means no cap | No |
+| name | string | App name | No |
 
 #### AppListQuery
 
@@ -754,17 +2610,100 @@ mode is a closed enum of listable app types.
 | ---- | ---- | ----------- | -------- |
 | AppMode | string |  |  |
 
+#### AppSettingsInfo
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| icon_type | string |  | No |
+| max_active_requests | integer |  | No |
+| name | string |  | Yes |
+
+#### ChatAppInfo
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| icon_type | string |  | No |
+| max_active_requests | integer |  | No |
+| name | string |  | Yes |
+| use_icon_as_answer_icon | boolean |  | No |
+
+#### ChatAppInfoPatch
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string | Pass an empty string to clear | No |
+| icon | string | Emoji, file id or URL, per icon_type | No |
+| icon_background | string | Background colour for an emoji icon | No |
+| icon_type | string, <br>**Available values:** "emoji", "image", "link" | emoji, image or link | No |
+| max_active_requests | integer | Concurrent run cap; 0 means no cap | No |
+| name | string | App name | No |
+| use_icon_as_answer_icon | boolean | Show the app icon on answers | No |
+
 #### ChatRunPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| attachments | [ string ] | Local files attached to the run itself (the app's `sys.files`), not to a variable | No |
+| attachments | [ string ] | Local file paths attached to the run itself (the app's `sys.files`), not to a variable | No |
 | auto_generate_name | boolean, <br>**Default:** true | Let the server name a new conversation | No |
 | conversation_id | string | Continue an existing conversation | No |
-| files | object | Local files keyed by the app's file variable name; the server uploads each one and sets `inputs[<name>]`. Send a list (part name `files[<name>][]`) for a file-list variable | No |
-| inputs | object | Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local file in `files`, not both. | Yes |
+| files | object | Local file paths keyed by the app's file variable name; each file is uploaded and becomes that variable's value. Give a list of paths for a file-list variable | No |
+| inputs | object | Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local path in `files`, not both. | No |
 | query | string | User message | Yes |
 | workspace_id | string | Workspace that owns the app | No |
+
+#### ChatWebApp
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_token | string |  | No |
+| app_base_url | string |  | Yes |
+| chat_color_theme | string |  | No |
+| chat_color_theme_inverted | boolean |  | No |
+| copyright | string |  | No |
+| custom_disclaimer | string |  | No |
+| default_language | string |  | No |
+| description | string |  | No |
+| enabled | boolean |  | Yes |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| icon_type | string |  | No |
+| input_placeholder | string |  | No |
+| privacy_policy | string |  | No |
+| title | string |  | No |
+| url | string |  | No |
+| use_icon_as_answer_icon | boolean |  | No |
+
+#### ChatWebAppPatch
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| chat_color_theme | string | Chat colour, e.g. #1C64F2 | No |
+| chat_color_theme_inverted | boolean | Invert the chat colours | No |
+| copyright | string | Footer copyright text | No |
+| custom_disclaimer | string | Disclaimer shown on the page | No |
+| default_language | string | Language code, e.g. en-US | No |
+| description | string | Page description | No |
+| enabled | boolean | Turn the web app on or off | No |
+| icon | string | Emoji, file id or URL, per icon_type | No |
+| icon_background | string | Background colour for an emoji icon | No |
+| icon_type | string, <br>**Available values:** "emoji", "image", "link" | emoji, image or link | No |
+| input_placeholder | string | Placeholder of the chat input | No |
+| privacy_policy | string | Privacy policy URL | No |
+| title | string | Page title | No |
+| use_icon_as_answer_icon | boolean | Show the app icon on answers | No |
+
+#### CheckDependenciesResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+| leaked_dependencies | [ [PluginDependency](#plugindependency) ] |  | No |
 
 #### CheckDependenciesResult
 
@@ -776,11 +2715,96 @@ mode is a closed enum of listable app types.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| attachments | [ string ] | Local files attached to the run itself (the app's `sys.files`), not to a variable | No |
-| files | object | Local files keyed by the app's file variable name; the server uploads each one and sets `inputs[<name>]`. Send a list (part name `files[<name>][]`) for a file-list variable | No |
-| inputs | object | Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local file in `files`, not both. | Yes |
+| attachments | [ string ] | Local file paths attached to the run itself (the app's `sys.files`), not to a variable | No |
+| files | object | Local file paths keyed by the app's file variable name; each file is uploaded and becomes that variable's value. Give a list of paths for a file-list variable | No |
+| inputs | object | Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local path in `files`, not both. | No |
 | query | string | Prompt text; most completion apps take their input through `inputs` | No |
 | workspace_id | string | Workspace that owns the app | No |
+
+#### CreateAppPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string | App description | No |
+| icon | string | Emoji, file id or URL, per icon_type | No |
+| icon_background | string | Background colour for an emoji icon | No |
+| icon_type | string, <br>**Available values:** "emoji", "image", "link" | emoji, image or link | No |
+| name | string | App name | Yes |
+
+#### CreatedAppResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_id | string |  | Yes |
+| mode | string |  | Yes |
+| name | string |  | Yes |
+
+#### CredentialFormField
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| label | string |  | Yes |
+| name | string |  | Yes |
+| options | [ string ] | Allowed values, when the field is a choice | Yes |
+| placeholder | string |  | Yes |
+| required | boolean |  | Yes |
+| show_on | [ object ] | Show this field only when these other fields have these values | Yes |
+| type | string |  | Yes |
+
+#### CredentialRef
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| name | string |  | Yes |
+
+#### CredentialWriteResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| active | boolean |  | Yes |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+| id | string |  | Yes |
+| name | string |  | Yes |
+
+#### CustomModelRow
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| active_credential | [CredentialRef](#credentialref) |  | Yes |
+| model | string |  | Yes |
+| model_type | string |  | Yes |
+
+#### DefaultModelListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [DefaultModelRow](#defaultmodelrow) ] |  | Yes |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+
+#### DefaultModelPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| model | string | Model name, as in get.model | Yes |
+| provider | string | Provider id such as langgenius/openai/openai | Yes |
+
+#### DefaultModelResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+| model | string |  | Yes |
+| model_type | string |  | Yes |
+| provider | string |  | Yes |
+
+#### DefaultModelRow
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| model | string |  | Yes |
+| model_type | string |  | Yes |
+| provider | string |  | Yes |
 
 #### DeploymentEdition
 
@@ -854,6 +2878,15 @@ Enum representing the deployment edition of the platform.
 | token_id | string |  | Yes |
 | workspaces | [ [WorkspacePayload](#workspacepayload) ], <br>**Default:**  |  | No |
 
+#### DraftWorkflowRunPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| attachments | [ string ] | Local file paths attached to the run itself (the app's `sys.files`), not to a variable | No |
+| files | object | Local file paths keyed by the app's file variable name; each file is uploaded and becomes that variable's value. Give a list of paths for a file-list variable | No |
+| inputs | object | Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local path in `files`, not both. | No |
+| workspace_id | string | Workspace that owns the app | No |
+
 #### DslImportWarning
 
 Portable DSL reference that could not be restored in the target workspace.
@@ -864,6 +2897,43 @@ Portable DSL reference that could not be restored in the target workspace.
 | details | object |  | No |
 | message | string |  | Yes |
 | path | string |  | Yes |
+
+#### EnvVariableListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [EnvVariableRow](#envvariablerow) ] |  | Yes |
+
+#### EnvVariableRow
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| id | string | What set and delete take to address this variable | Yes |
+| name | string | What nodes use to refer to this variable | Yes |
+| value |  | The value; a secret with a value is masked, an empty one reads as empty | Yes |
+| value_type | string |  | Yes |
+
+#### EnvVariableSetPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string | What the variable is for | No |
+| name | string | Variable name | Yes |
+| value |  | The value; sending the masked value of an existing secret keeps the stored one | Yes |
+| value_type | [EnvVariableValueType](#envvariablevaluetype) | string, number or secret | Yes |
+
+#### EnvVariableValueType
+
+Value types the draft environment-variable ``set`` op accepts.
+
+A curated subset of ``SegmentType``: what the console's environment-variable editor
+allows (``ENVIRONMENT_VARIABLE_SUPPORTED_TYPES`` in controllers/console/app/workflow.py).
+Members reference ``SegmentType.*.value`` so the subset relationship is type-checked.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EnvVariableValueType | string | Value types the draft environment-variable ``set`` op accepts.  A curated subset of ``SegmentType``: what the console's environment-variable editor allows (``ENVIRONMENT_VARIABLE_SUPPORTED_TYPES`` in controllers/console/app/workflow.py). Members reference ``SegmentType.*.value`` so the subset relationship is type-checked. |  |
 
 #### ErrorBody
 
@@ -951,7 +3021,7 @@ A next step the caller can hand straight to `call <op> --input <input>`.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| form | [ object ] | Form fields behind `input.inputs`, copied from the pausing event | No |
+| form | [ object ] | Form fields behind the hint's input: a paused run's form inputs, or credentials | No |
 | input | object | Ready-to-send input for `op`; unknown values are null | Yes |
 | op | string |  | Yes |
 | summary | string |  | Yes |
@@ -998,6 +3068,41 @@ A next step the caller can hand straight to `call <op> --input <input>`.
 | ---- | ---- | ----------- | -------- |
 | marketplace_plugin_unique_identifier | string |  | Yes |
 | version | string |  | No |
+
+#### MarketplacePluginListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [MarketplacePluginRow](#marketplacepluginrow) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+| total | integer |  | Yes |
+
+#### MarketplacePluginQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| category | [PluginCategory](#plugincategory) | Only plugins of this category | No |
+| limit | integer, <br>**Default:** 20 |  | No |
+| page | integer, <br>**Default:** 1 |  | No |
+| query | string | Words to search for; empty lists the most installed plugins | No |
+
+#### MarketplacePluginRow
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| authorized_category | string | Who vouches for the plugin: langgenius (official), partner or community; workspace install-scope rules check this | Yes |
+| brief | string |  | Yes |
+| category | string |  | Yes |
+| identifier | string | Latest versioned id; pass it to install.plugin | Yes |
+| install_count | integer |  | Yes |
+| installed | boolean |  | Yes |
+| installed_version | string |  | Yes |
+| label | string |  | Yes |
+| plugin_id | string |  | Yes |
+| version | string |  | Yes |
 
 #### MemberActionResponse
 
@@ -1067,6 +3172,122 @@ Strict (extra='forbid').
 | retriever_resources | [ object ], <br>**Default:**  |  | No |
 | usage | [UsageInfo](#usageinfo) |  | No |
 
+#### ModelCredentialCreatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credentials | object | Secret values. Pass with --credentials @- (stdin) or @file, never inline. Field names come from credential_form in the describe op. | Yes |
+| model | string | Model name, as in get.model | Yes |
+| model_type | [ModelType](#modeltype) |  | Yes |
+| name | string |  | No |
+
+#### ModelCredentialUpdatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credentials | object | Secret values. Pass with --credentials @- (stdin) or @file, never inline. Field names come from credential_form in the describe op. Send [__HIDDEN__] for a secret you keep unchanged. | Yes |
+| model | string | Model name, as in get.model | Yes |
+| model_type | [ModelType](#modeltype) |  | Yes |
+| name | string |  | No |
+
+#### ModelListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ModelRow](#modelrow) ] |  | Yes |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+
+#### ModelProviderDetailResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| active_credential | [CredentialRef](#credentialref) |  | Yes |
+| configured | boolean |  | Yes |
+| credential_form | [ [CredentialFormField](#credentialformfield) ] |  | Yes |
+| credentials | [ [CredentialRef](#credentialref) ] |  | Yes |
+| custom_model_form | [ [CredentialFormField](#credentialformfield) ] |  | Yes |
+| custom_models | [ [CustomModelRow](#custommodelrow) ] |  | Yes |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+| label | string |  | Yes |
+| model_types | [ string ] |  | Yes |
+| provider | string | Provider id such as langgenius/openai/openai | Yes |
+
+#### ModelProviderListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| model_type | [ModelType](#modeltype) | Only providers that serve this model type | No |
+
+#### ModelProviderListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ModelProviderRow](#modelproviderrow) ] |  | Yes |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+
+#### ModelProviderRow
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| active_credential | [CredentialRef](#credentialref) |  | Yes |
+| configured | boolean |  | Yes |
+| label | string |  | Yes |
+| model_types | [ string ] |  | Yes |
+| provider | string | Provider id such as langgenius/openai/openai | Yes |
+
+#### ModelRef
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| model | string | Model name, as in get.model | Yes |
+| model_type | [ModelType](#modeltype) |  | Yes |
+
+#### ModelRow
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| features | [ string ] |  | Yes |
+| label | string |  | Yes |
+| model | string |  | Yes |
+| model_type | string |  | Yes |
+| status | string |  | Yes |
+
+#### ModelType
+
+Enum class for model type.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ModelType | string | Enum class for model type. |  |
+
+#### NodeRunPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| inputs | object | Overrides for what the last draft run saved, keyed by variable reference such as #llm.text# | No |
+
+#### NodeTypeDetailResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default_config | object |  | Yes |
+| schema | object |  | Yes |
+| type | string |  | Yes |
+| version | string |  | Yes |
+
+#### NodeTypeListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [NodeTypeRow](#nodetyperow) ] |  | Yes |
+
+#### NodeTypeRow
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| type | string |  | Yes |
+| version | string |  | Yes |
+
 #### OpenApiErrorCode
 
 | Name | Type | Description | Required |
@@ -1080,7 +3301,7 @@ The console payload plus local file parts; `_files.merge_files` sets them on `in
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | action | string | ID of the action button the recipient selected. Must match one of the `id` values from the form's `user_actions` list. | Yes |
-| files | object | Local files keyed by the form's file input name, same convention as the run ops' `files` | No |
+| files | object | Local file paths keyed by the form's file input name, same convention as the run ops' `files` | No |
 | inputs | object | Submitted human input values keyed by output variable name. Use a string for paragraph or select input values, a file mapping for file inputs, and a list of file mappings for file-list inputs. Local file mappings use `transfer_method=local_file` with `upload_file_id`; remote file mappings use `transfer_method=remote_url` with `url` or `remote_url`. | Yes |
 
 #### Package
@@ -1112,6 +3333,19 @@ Strict (extra='forbid').
 | page | integer |  | Yes |
 | total | integer |  | Yes |
 
+#### PluginCategory
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| PluginCategory | string |  |  |
+
+#### PluginDeleteResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| deleted | boolean |  | Yes |
+| plugin_id | string |  | Yes |
+
 #### PluginDependency
 
 | Name | Type | Description | Required |
@@ -1126,11 +3360,139 @@ Strict (extra='forbid').
 | ---- | ---- | ----------- | -------- |
 | PluginDependencyType | string |  |  |
 
+#### PluginInstallPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| identifiers | [ string ] | Versioned plugin ids such as langgenius/openai:0.2.1@sha256…, from get.marketplace.plugin (identifier) or check.console_app.dependency | Yes |
+
+#### PluginListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| category | [PluginCategory](#plugincategory) | Only plugins of this category | No |
+
+#### PluginListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [PluginRow](#pluginrow) ] |  | Yes |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+
+#### PluginProvides
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| model_provider | string | Model provider id this plugin adds, for describe.model_provider | Yes |
+| tool_provider | string | Tool provider id this plugin adds, for describe.tool_provider | Yes |
+
+#### PluginRow
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| category | string |  | Yes |
+| identifier | string |  | Yes |
+| label | string |  | Yes |
+| latest_version | string |  | Yes |
+| plugin_id | string |  | Yes |
+| provides | [PluginProvides](#pluginprovides) |  | Yes |
+| source | string |  | Yes |
+| version | string |  | Yes |
+
+#### PluginTaskItem
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| identifier | string |  | Yes |
+| message | string |  | Yes |
+| plugin_id | string |  | Yes |
+| status | string |  | Yes |
+
+#### PluginTaskResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+| plugins | [ [PluginTaskItem](#plugintaskitem) ] |  | Yes |
+| status | string | pending, running, success or failed | Yes |
+| task_id | string |  | Yes |
+
+#### PluginTaskStartResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| all_installed | boolean |  | Yes |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+| task_id | string |  | Yes |
+
+#### PluginUpgradePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| identifier | string | Versioned id to upgrade to, from get.marketplace.plugin | Yes |
+| plugin_id | string | Installed plugin id such as langgenius/openai | Yes |
+
+#### ProviderCredentialCreatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credentials | object | Secret values. Pass with --credentials @- (stdin) or @file, never inline. Field names come from credential_form in the describe op. | Yes |
+| name | string | Credential name; the server makes one when absent | No |
+
+#### ProviderCredentialUpdatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credentials | object | Secret values. Pass with --credentials @- (stdin) or @file, never inline. Field names come from credential_form in the describe op. Send [__HIDDEN__] for a secret you keep unchanged. | Yes |
+| name | string |  | No |
+
+#### PublishPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| marked_comment | string | Version note | No |
+| marked_name | string | Version name | No |
+
+#### PublishResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | integer |  | Yes |
+| version_id | string |  | Yes |
+| warning | string | Variable references that may read a skipped branch | No |
+
+#### RestoreResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| draft_hash | string | Hash of the restored draft's graph, features, environment variables and conversation variables; pass it to a DSL import as draft_hash | Yes |
+| result | string |  | Yes |
+
 #### RevokeResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | status | string |  | Yes |
+
+#### RunListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| last_id | string | Cursor: id of the last run on the previous page | No |
+| limit | integer, <br>**Default:** 20 |  | No |
+| status | string, <br>**Available values:** "failed", "partial-succeeded", "running", "stopped", "succeeded" |  | No |
+| triggered_from | string, <br>**Available values:** "app-run", "debugging" | debugging: draft test runs; app-run: real use. Omitted: debugging, as in the console | No |
+
+#### RunListResponse
+
+Cursor page of runs; `hints` carries the next page.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [WorkflowRunForListResponse](#workflowrunforlistresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+| limit | integer |  | Yes |
 
 #### ServerVersionResponse
 
@@ -1140,6 +3502,19 @@ Meta endpoint payload for `GET /openapi/v1/_version` — no auth required.
 | ---- | ---- | ----------- | -------- |
 | edition | [DeploymentEdition](#deploymentedition) |  | Yes |
 | version | string |  | Yes |
+
+#### ServiceApi
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| base_url | string |  | Yes |
+| enabled | boolean |  | Yes |
+
+#### ServiceApiPatch
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean | Turn the app's Service API on or off | Yes |
 
 #### SessionListQuery
 
@@ -1172,6 +3547,23 @@ Pagination for GET /account/sessions. Strict (extra='forbid').
 | id | string |  | Yes |
 | last_used_at | string |  | No |
 | prefix | string |  | Yes |
+
+#### SimpleAccountResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| email | string |  | Yes |
+| id | string |  | Yes |
+| name | string |  | Yes |
+
+#### SimpleEndUser
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| is_anonymous | boolean |  | Yes |
+| session_id | string |  | No |
+| type | string |  | Yes |
 
 #### SimpleResultResponse
 
@@ -1213,6 +3605,49 @@ types it as a required `'success'` rather than an optional field.
 | ---- | ---- | ----------- | -------- |
 | result | string |  | Yes |
 
+#### ToolCredentialCreatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credentials | object | Secret values. Pass with --credentials @- (stdin) or @file, never inline. Field names come from credential_form in the describe op. | Yes |
+| name | string |  | No |
+
+#### ToolCredentialUpdatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credentials | object | Secret values. Pass with --credentials @- (stdin) or @file, never inline. Field names come from credential_form in the describe op. Send [__HIDDEN__] for a secret you keep unchanged. | Yes |
+| name | string |  | No |
+
+#### ToolProviderDetailResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| configured | boolean | Ready to use: needs no credential, or the workspace has one | Yes |
+| credential_form | [ [CredentialFormField](#credentialformfield) ] | Fields of an api-key credential | Yes |
+| credential_types | [ string ] | api-key can be set here; oauth2 needs the console | Yes |
+| credentials | [ [CredentialRef](#credentialref) ] |  | Yes |
+| default_credential | [CredentialRef](#credentialref) |  | Yes |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+| label | string |  | Yes |
+| provider | string | Tool provider id such as langgenius/tavily/tavily | Yes |
+
+#### ToolProviderListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ToolProviderRow](#toolproviderrow) ] |  | Yes |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+
+#### ToolProviderRow
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| configured | boolean | Ready to use: needs no credential, or the workspace has one | Yes |
+| credential_types | [ string ] | api-key can be set here; oauth2 needs the console | Yes |
+| label | string |  | Yes |
+| provider | string | Tool provider id such as langgenius/tavily/tavily | Yes |
+
 #### UsageInfo
 
 | Name | Type | Description | Required |
@@ -1220,6 +3655,98 @@ types it as a required `'success'` rather than an optional field.
 | completion_tokens | integer |  | No |
 | prompt_tokens | integer |  | No |
 | total_tokens | integer |  | No |
+
+#### VersionListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| limit | integer, <br>**Default:** 20 |  | No |
+| named_only | boolean | Only versions that have a name | No |
+| page | integer, <br>**Default:** 1 |  | No |
+
+#### VersionListResponse
+
+Page of published versions, newest first; there is no total, `hints` carries the next page.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [VersionRow](#versionrow) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+
+#### VersionRow
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | integer |  | Yes |
+| created_by | string |  | No |
+| current | boolean |  | No |
+| id | string |  | Yes |
+| marked_comment | string |  | Yes |
+| marked_name | string |  | Yes |
+
+#### WebApp
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_token | string |  | No |
+| app_base_url | string |  | Yes |
+| copyright | string |  | No |
+| custom_disclaimer | string |  | No |
+| default_language | string |  | No |
+| description | string |  | No |
+| enabled | boolean |  | Yes |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| icon_type | string |  | No |
+| privacy_policy | string |  | No |
+| title | string |  | No |
+| url | string |  | No |
+
+#### WebAppAccess
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_mode | string |  | Yes |
+| subjects | [ [AccessSubjectRow](#accesssubjectrow) ] |  | Yes |
+
+#### WebAppAccessMode
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| WebAppAccessMode | string |  |  |
+
+#### WebAppAccessPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_mode | [WebAppAccessMode](#webappaccessmode) | public, private, private_all or sso_verified | Yes |
+| subjects | [ object ] | For private only: who may open the web app, as {id, type} with type account or group. Replaces the whole list. Find ids with get.access_subject | No |
+
+#### WebAppPatch
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| copyright | string | Footer copyright text | No |
+| custom_disclaimer | string | Disclaimer shown on the page | No |
+| default_language | string | Language code, e.g. en-US | No |
+| description | string | Page description | No |
+| enabled | boolean | Turn the web app on or off | No |
+| icon | string | Emoji, file id or URL, per icon_type | No |
+| icon_background | string | Background colour for an emoji icon | No |
+| icon_type | string, <br>**Available values:** "emoji", "image", "link" | emoji, image or link | No |
+| privacy_policy | string | Privacy policy URL | No |
+| title | string | Page title | No |
+
+#### WebAppToken
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_token | string |  | No |
+| app_base_url | string |  | Yes |
+| url | string |  | No |
 
 #### WorkflowRunData
 
@@ -1236,15 +3763,121 @@ types it as a required `'success'` rather than an optional field.
 | total_tokens | integer |  | No |
 | workflow_id | string |  | Yes |
 
+#### WorkflowRunDetailResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | integer |  | No |
+| created_by_account | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
+| created_by_end_user | [SimpleEndUser](#simpleenduser) |  | No |
+| created_by_role | string |  | No |
+| elapsed_time | number |  | No |
+| error | string |  | No |
+| exceptions_count | integer |  | No |
+| finished_at | integer |  | No |
+| graph |  |  | Yes |
+| id | string |  | Yes |
+| inputs |  |  | Yes |
+| outputs |  |  | Yes |
+| status | string |  | No |
+| total_steps | integer |  | No |
+| total_tokens | integer |  | No |
+| version | string |  | No |
+
+#### WorkflowRunForListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | integer |  | No |
+| created_by_account | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
+| elapsed_time | number |  | No |
+| exceptions_count | integer |  | No |
+| finished_at | integer |  | No |
+| id | string |  | Yes |
+| retry_index | integer |  | No |
+| status | string |  | No |
+| total_steps | integer |  | No |
+| total_tokens | integer |  | No |
+| version | string |  | No |
+
+#### WorkflowRunNodeExecutionListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [WorkflowRunNodeExecutionResponse](#workflowrunnodeexecutionresponse) ] |  | Yes |
+
+#### WorkflowRunNodeExecutionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | integer |  | No |
+| created_by_account | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
+| created_by_end_user | [SimpleEndUser](#simpleenduser) |  | No |
+| created_by_role | string |  | No |
+| elapsed_time | number |  | No |
+| error | string |  | No |
+| execution_metadata |  |  | No |
+| extras |  |  | No |
+| finished_at | integer |  | No |
+| id | string |  | Yes |
+| index | integer |  | No |
+| inputs |  |  | No |
+| inputs_truncated | boolean |  | No |
+| node_id | string |  | No |
+| node_type | string |  | No |
+| outputs |  |  | No |
+| outputs_truncated | boolean |  | No |
+| predecessor_node_id | string |  | No |
+| process_data |  |  | No |
+| process_data_truncated | boolean |  | No |
+| retry_index | integer |  | No |
+| status | string |  | No |
+| title | string |  | No |
+
 #### WorkflowRunPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| attachments | [ string ] | Local files attached to the run itself (the app's `sys.files`), not to a variable | No |
-| files | object | Local files keyed by the app's file variable name; the server uploads each one and sets `inputs[<name>]`. Send a list (part name `files[<name>][]`) for a file-list variable | No |
-| inputs | object | Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local file in `files`, not both. | Yes |
+| attachments | [ string ] | Local file paths attached to the run itself (the app's `sys.files`), not to a variable | No |
+| files | object | Local file paths keyed by the app's file variable name; each file is uploaded and becomes that variable's value. Give a list of paths for a file-list variable | No |
+| inputs | object | Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local path in `files`, not both. | No |
 | workflow_id | string | Pin a published workflow version | No |
 | workspace_id | string | Workspace that owns the app | No |
+
+#### WorkflowWebApp
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_token | string |  | No |
+| app_base_url | string |  | Yes |
+| copyright | string |  | No |
+| custom_disclaimer | string |  | No |
+| default_language | string |  | No |
+| description | string |  | No |
+| enabled | boolean |  | Yes |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| icon_type | string |  | No |
+| privacy_policy | string |  | No |
+| show_workflow_steps | boolean |  | No |
+| title | string |  | No |
+| url | string |  | No |
+
+#### WorkflowWebAppPatch
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| copyright | string | Footer copyright text | No |
+| custom_disclaimer | string | Disclaimer shown on the page | No |
+| default_language | string | Language code, e.g. en-US | No |
+| description | string | Page description | No |
+| enabled | boolean | Turn the web app on or off | No |
+| icon | string | Emoji, file id or URL, per icon_type | No |
+| icon_background | string | Background colour for an emoji icon | No |
+| icon_type | string, <br>**Available values:** "emoji", "image", "link" | emoji, image or link | No |
+| privacy_policy | string | Privacy policy URL | No |
+| show_workflow_steps | boolean | Show each node step to users | No |
+| title | string | Page title | No |
 
 #### WorkspaceDetailResponse
 

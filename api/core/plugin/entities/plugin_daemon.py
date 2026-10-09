@@ -194,7 +194,7 @@ class PluginInstallTaskStatus(StrEnum):
 class PluginInstallTaskPluginStatus(BaseModel):
     plugin_unique_identifier: str = Field(description="The plugin unique identifier of the install task.")
     plugin_id: str = Field(description="The plugin ID of the install task.")
-    status: PluginInstallTaskStatus = Field(description="The status of the install task.")
+    status: PluginInstallTaskStatus | str = Field(description="The status of the install task.")
     message: str = Field(description="The message of the install task.")
     icon: str = Field(description="The icon of the plugin.")
     labels: I18nObject = Field(description="The labels of the plugin.")
@@ -202,7 +202,7 @@ class PluginInstallTaskPluginStatus(BaseModel):
 
 
 class PluginInstallTask(BasePluginEntity):
-    status: PluginInstallTaskStatus = Field(description="The status of the install task.")
+    status: PluginInstallTaskStatus | str = Field(description="The status of the install task.")
     total_plugins: int = Field(description="The total number of plugins to be installed.")
     completed_plugins: int = Field(description="The number of plugins that have been installed.")
     plugins: list[PluginInstallTaskPluginStatus] = Field(description="The status of the plugins.")

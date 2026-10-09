@@ -8,13 +8,19 @@ from typing import Any, Final, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from constants.languages import supported_language
 from constants.oauth_bearer import SubjectType
 from controllers.common.human_input import HumanInputFormSubmitPayload
 from controllers.openapi._upload import UploadPart, UploadParts
-from enums import DeploymentEdition
-from libs.helper import EmailStr, UUIDStr, UUIDStrOrEmpty, uuid_value
-from models.model import AppMode
+from core.plugin.entities.plugin import PluginCategory
+from enums import DeploymentEdition, WebAppAccessMode
+from fields.workflow_run_fields import WorkflowRunPaginationResponse
+from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.variables import SegmentType
+from libs.helper import EmailStr, UUIDStr, UUIDStrOrEmpty, to_timestamp, uuid_value
+from models.model import AppMode, IconType
 from services.app_dsl_service import Import
+from services.entities.dsl_entities import CheckDependenciesResult
 
 # Server-side cap on `limit` query param for /openapi/v1/* list endpoints.
 MAX_PAGE_LIMIT = 100
@@ -62,7 +68,7 @@ class Hint(BaseModel):
     op: str
     input: dict[str, Any] = Field(description="Ready-to-send input for `op`; unknown values are null")
     form: list[dict[str, Any]] | None = Field(
-        default=None, description="Form fields behind `input.inputs`, copied from the pausing event"
+        default=None, description="Form fields behind the hint's input: a paused run's form inputs, or credentials"
     )
 
 
@@ -343,26 +349,32 @@ class RunPayloadBase(BaseModel):
     """What every run takes; each mode's payload adds its own fields and forbids the rest."""
 
     inputs: dict[str, Any] = Field(
+        default_factory=dict,
         description=(
             "Variables declared by the app. The exact shape is per app: read `input_schema` from "
             "describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, "
-            "or a local file in `files`, not both."
-        )
+            "or a local path in `files`, not both."
+        ),
     )
     files: UploadParts | None = Field(
         default=None,
         description=(
-            "Local files keyed by the app's file variable name; the server uploads each one and sets "
-            "`inputs[<name>]`. Send a list (part name `files[<name>][]`) for a file-list variable"
+            "Local file paths keyed by the app's file variable name; each file is uploaded and becomes "
+            "that variable's value. Give a list of paths for a file-list variable"
         ),
     )
     attachments: list[UploadPart] | None = Field(
-        default=None, description="Local files attached to the run itself (the app's `sys.files`), not to a variable"
+        default=None,
+        description="Local file paths attached to the run itself (the app's `sys.files`), not to a variable",
     )
     workspace_id: UUIDStrOrEmpty | None = Field(default=None, description="Workspace that owns the app")
 
 
 class WorkflowRunPayload(RunPayloadBase, _WorkflowVersionFields):
+    model_config = ConfigDict(extra="forbid")
+
+
+class DraftWorkflowRunPayload(RunPayloadBase):
     model_config = ConfigDict(extra="forbid")
 
 
@@ -476,6 +488,107 @@ class MemberActionResponse(BaseModel):
     result: Literal["success"] = "success"
 
 
+class MarketplacePluginQuery(PageQuery):
+    model_config = ConfigDict(extra="forbid")
+
+    query: str = Field("", description="Words to search for; empty lists the most installed plugins")
+    category: PluginCategory | None = Field(None, description="Only plugins of this category")
+
+
+class MarketplacePluginRow(BaseModel):
+    plugin_id: str
+    identifier: str = Field(description="Latest versioned id; pass it to install.plugin")
+    version: str
+    category: str
+    label: str | None
+    brief: str | None
+    authorized_category: str | None = Field(
+        description=(
+            "Who vouches for the plugin: langgenius (official), partner or community; "
+            "workspace install-scope rules check this"
+        )
+    )
+    install_count: int
+    installed: bool
+    installed_version: str | None
+
+
+class MarketplacePluginListResponse(PaginationEnvelope[MarketplacePluginRow]):
+    pass
+
+
+class PluginListQuery(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    category: PluginCategory | None = Field(None, description="Only plugins of this category")
+
+
+class PluginProvides(BaseModel):
+    model_provider: str | None = Field(description="Model provider id this plugin adds, for describe.model_provider")
+    tool_provider: str | None = Field(description="Tool provider id this plugin adds, for describe.tool_provider")
+
+
+class PluginRow(BaseModel):
+    plugin_id: str
+    identifier: str
+    version: str
+    latest_version: str | None
+    category: str
+    label: str | None
+    source: str
+    provides: PluginProvides
+
+
+class PluginListResponse(Hinted):
+    data: list[PluginRow]
+
+
+class PluginInstallPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    identifiers: list[str] = Field(
+        min_length=1,
+        description=(
+            "Versioned plugin ids such as langgenius/openai:0.2.1@sha256…, from get.marketplace.plugin "
+            "(identifier) or check.console_app.dependency"
+        ),
+    )
+
+
+class PluginUpgradePayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    plugin_id: str = Field(description="Installed plugin id such as langgenius/openai")
+    identifier: str = Field(description="Versioned id to upgrade to, from get.marketplace.plugin")
+
+
+class PluginTaskStartResponse(Hinted):
+    task_id: str
+    all_installed: bool
+
+
+class PluginTaskItem(BaseModel):
+    plugin_id: str
+    identifier: str
+    status: str
+    message: str
+
+
+class PluginTaskResponse(Hinted):
+    task_id: str
+    status: str = Field(description="pending, running, success or failed")
+    plugins: list[PluginTaskItem]
+
+
+class PluginDeleteResponse(BaseModel):
+    plugin_id: str
+    deleted: bool
+
+
+class CheckDependenciesResponse(CheckDependenciesResult, Hinted):
+    pass
+
+
 class TaskStopResponse(BaseModel):
     """200 body for POST /apps/<id>/tasks/<task_id>:stop. The handler always returns
     {"result": "success"}, so `result` is required (no default) — the generated contract
@@ -498,6 +611,11 @@ class AppDslImportPayload(BaseModel):
     icon: str | None = Field(None)
     icon_background: str | None = Field(None)
     app_id: str | None = Field(None, description="Existing app ID to overwrite (workflow/advanced-chat apps only)")
+    draft_hash: str | None = Field(
+        None,
+        description="draft_hash from the export or restore this import is based on. The import fails if the "
+        "draft's graph, features, environment variables or conversation variables changed since. Requires app_id",
+    )
 
     @model_validator(mode="after")
     def _validate_source_by_mode(self) -> AppDslImportPayload:
@@ -521,6 +639,11 @@ class AppDslExportResponse(BaseModel):
     """Export DSL response."""
 
     data: str = Field(..., description="DSL YAML string")
+    draft_hash: str | None = Field(
+        None,
+        description="Hash of the draft's graph, features, environment variables and conversation variables; "
+        "pass it to the import to refuse overwriting newer edits",
+    )
 
 
 class AppDslImportResponse(Import, Hinted):
@@ -540,7 +663,7 @@ class OpenApiFormSubmitPayload(HumanInputFormSubmitPayload):
 
     files: UploadParts | None = Field(
         default=None,
-        description="Local files keyed by the form's file input name, same convention as the run ops' `files`",
+        description="Local file paths keyed by the form's file input name, same convention as the run ops' `files`",
     )
 
 
@@ -550,3 +673,473 @@ class HumanInputFormDefinitionResponse(BaseModel):
     resolved_default_values: dict[str, str]
     user_actions: list[dict[str, Any]] = Field(default_factory=list)
     expiration_time: int | None = None
+
+
+class RunListQuery(BaseModel):
+    last_id: UUIDStr | None = Field(None, description="Cursor: id of the last run on the previous page")
+    limit: int = Field(20, ge=1, le=MAX_PAGE_LIMIT)
+    status: Literal["running", "succeeded", "failed", "stopped", "partial-succeeded"] | None = None
+    triggered_from: Literal["debugging", "app-run"] | None = Field(
+        None, description="debugging: draft test runs; app-run: real use. Omitted: debugging, as in the console"
+    )
+
+
+class RunListResponse(WorkflowRunPaginationResponse, Hinted):
+    """Cursor page of runs; `hints` carries the next page."""
+
+
+class PublishPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    marked_name: str = Field("", max_length=20, description="Version name")
+    marked_comment: str = Field("", max_length=100, description="Version note")
+
+
+class PublishResponse(BaseModel):
+    version_id: str
+    created_at: int
+    warning: str | None = Field(None, description="Variable references that may read a skipped branch")
+
+
+class VersionListQuery(PageQuery):
+    named_only: bool = Field(False, description="Only versions that have a name")
+
+
+class VersionRow(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    marked_name: str
+    marked_comment: str
+    created_by: str | None = None
+    created_at: int
+    current: bool = False
+
+    @field_validator("created_at", mode="before")
+    @classmethod
+    def _timestamp(cls, value: datetime | int) -> int | None:
+        return to_timestamp(value)
+
+
+class VersionListResponse(Hinted):
+    """Page of published versions, newest first; there is no total, `hints` carries the next page."""
+
+    page: int
+    limit: int
+    has_more: bool
+    data: list[VersionRow]
+
+
+class EnvVariableRow(BaseModel):
+    id: str = Field(description="What set and delete take to address this variable")
+    name: str = Field(description="What nodes use to refer to this variable")
+    description: str = ""
+    value_type: str
+    value: Any = Field(description="The value; a secret with a value is masked, an empty one reads as empty")
+
+
+class EnvVariableListResponse(BaseModel):
+    data: list[EnvVariableRow]
+
+
+class EnvVariableValueType(StrEnum):
+    """Value types the draft environment-variable ``set`` op accepts.
+
+    A curated subset of ``SegmentType``: what the console's environment-variable editor
+    allows (``ENVIRONMENT_VARIABLE_SUPPORTED_TYPES`` in controllers/console/app/workflow.py).
+    Members reference ``SegmentType.*.value`` so the subset relationship is type-checked.
+    """
+
+    STRING = SegmentType.STRING.value
+    NUMBER = SegmentType.NUMBER.value
+    SECRET = SegmentType.SECRET.value
+
+
+class EnvVariableSetPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(description="Variable name")
+    value_type: EnvVariableValueType = Field(description="string, number or secret")
+    value: Any = Field(description="The value; sending the masked value of an existing secret keeps the stored one")
+    description: str = Field("", description="What the variable is for")
+
+
+class RestoreResponse(BaseModel):
+    result: Literal["success"]
+    draft_hash: str = Field(
+        description="Hash of the restored draft's graph, features, environment variables and conversation "
+        "variables; pass it to a DSL import as draft_hash"
+    )
+
+
+class NodeTypeRow(BaseModel):
+    type: str
+    version: str
+
+
+class NodeTypeListResponse(BaseModel):
+    data: list[NodeTypeRow]
+
+
+class NodeTypeDetailResponse(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    type: str
+    version: str
+    schema_: dict[str, Any] = Field(alias="schema", serialization_alias="schema")
+    default_config: dict[str, Any]
+
+
+AppIconType = Literal[IconType.EMOJI, IconType.IMAGE, IconType.LINK]
+
+
+class CreateAppPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, description="App name")
+    description: str | None = Field(default=None, max_length=400, description="App description")
+    icon_type: AppIconType | None = Field(default=None, description="emoji, image or link")
+    icon: str | None = Field(default=None, description="Emoji, file id or URL, per icon_type")
+    icon_background: str | None = Field(default=None, description="Background colour for an emoji icon")
+
+
+class CreatedAppResponse(BaseModel):
+    app_id: str
+    mode: str
+    name: str
+
+
+class AppSettingsInfo(BaseModel):
+    name: str
+    description: str | None = None
+    icon_type: str | None = None
+    icon: str | None = None
+    icon_background: str | None = None
+    max_active_requests: int | None = None
+
+
+class ChatAppInfo(AppSettingsInfo):
+    use_icon_as_answer_icon: bool = False
+
+
+class AgentAppInfo(ChatAppInfo):
+    role: str | None = None
+
+
+class AppInfoPatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str | None = Field(default=None, min_length=1, description="App name")
+    description: str | None = Field(default=None, max_length=400, description="Pass an empty string to clear")
+    icon_type: AppIconType | None = Field(default=None, description="emoji, image or link")
+    icon: str | None = Field(default=None, description="Emoji, file id or URL, per icon_type")
+    icon_background: str | None = Field(default=None, description="Background colour for an emoji icon")
+    max_active_requests: int | None = Field(default=None, ge=0, description="Concurrent run cap; 0 means no cap")
+
+
+class ChatAppInfoPatch(AppInfoPatch):
+    use_icon_as_answer_icon: bool | None = Field(default=None, description="Show the app icon on answers")
+
+
+class AgentAppInfoPatch(ChatAppInfoPatch):
+    role: str | None = Field(default=None, max_length=255, description="The agent's role; empty string clears it")
+
+
+class ServiceApi(BaseModel):
+    enabled: bool
+    base_url: str
+
+
+class AgentServiceApi(ServiceApi):
+    access_ready: bool
+    api_rpm: int = 0
+    api_rph: int = 0
+
+
+class ServiceApiPatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: bool = Field(description="Turn the app's Service API on or off")
+
+
+class NodeRunPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    inputs: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Overrides for what the last draft run saved, keyed by variable reference such as #llm.text#",
+    )
+
+
+class AdvancedChatNodeRunPayload(NodeRunPayload):
+    query: str = Field(default="", description="The user message the node sees as sys.query")
+
+
+class WebApp(BaseModel):
+    enabled: bool
+    access_token: str | None = None
+    app_base_url: str
+    url: str | None = None
+    title: str | None = None
+    description: str | None = None
+    icon_type: str | None = None
+    icon: str | None = None
+    icon_background: str | None = None
+    default_language: str | None = None
+    copyright: str | None = None
+    privacy_policy: str | None = None
+    custom_disclaimer: str | None = None
+
+
+class WorkflowWebApp(WebApp):
+    show_workflow_steps: bool = False
+
+
+class ChatWebApp(WebApp):
+    chat_color_theme: str | None = None
+    chat_color_theme_inverted: bool = False
+    use_icon_as_answer_icon: bool = False
+    input_placeholder: str | None = None
+
+
+class AdvancedChatWebApp(ChatWebApp):
+    show_workflow_steps: bool = False
+
+
+class AgentWebApp(ChatWebApp):
+    access_ready: bool
+
+
+class WebAppPatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: bool | None = Field(default=None, description="Turn the web app on or off")
+    title: str | None = Field(default=None, description="Page title")
+    description: str | None = Field(default=None, description="Page description")
+    icon_type: AppIconType | None = Field(default=None, description="emoji, image or link")
+    icon: str | None = Field(default=None, description="Emoji, file id or URL, per icon_type")
+    icon_background: str | None = Field(default=None, description="Background colour for an emoji icon")
+    default_language: str | None = Field(default=None, description="Language code, e.g. en-US")
+    copyright: str | None = Field(default=None, description="Footer copyright text")
+    privacy_policy: str | None = Field(default=None, description="Privacy policy URL")
+    custom_disclaimer: str | None = Field(default=None, description="Disclaimer shown on the page")
+
+    @field_validator("default_language")
+    @classmethod
+    def _language(cls, value: str | None) -> str | None:
+        return value if value is None else supported_language(value)
+
+
+class WorkflowWebAppPatch(WebAppPatch):
+    show_workflow_steps: bool | None = Field(default=None, description="Show each node step to users")
+
+
+class ChatWebAppPatch(WebAppPatch):
+    chat_color_theme: str | None = Field(default=None, description="Chat colour, e.g. #1C64F2")
+    chat_color_theme_inverted: bool | None = Field(default=None, description="Invert the chat colours")
+    use_icon_as_answer_icon: bool | None = Field(default=None, description="Show the app icon on answers")
+    input_placeholder: str | None = Field(default=None, description="Placeholder of the chat input")
+
+
+class AdvancedChatWebAppPatch(ChatWebAppPatch):
+    show_workflow_steps: bool | None = Field(default=None, description="Show each node step to users")
+
+
+class WebAppToken(BaseModel):
+    access_token: str | None = None
+    app_base_url: str
+    url: str | None = None
+
+
+class AccessSubjectRow(BaseModel):
+    id: str
+    type: str
+    name: str | None = None
+    email: str | None = None
+    member_count: int | None = None
+
+
+class WebAppAccess(BaseModel):
+    access_mode: str
+    subjects: list[AccessSubjectRow]
+
+
+class WebAppAccessPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    access_mode: WebAppAccessMode = Field(description="public, private, private_all or sso_verified")
+    subjects: list[dict[str, str]] = Field(
+        default_factory=list,
+        description="For private only: who may open the web app, as {id, type} with type account or group. "
+        "Replaces the whole list. Find ids with get.access_subject",
+    )
+
+
+class AccessSubjectQuery(BaseModel):
+    keyword: str = Field(default="", description="Name or email to search for")
+    group_id: str | None = Field(default=None, description="Search only inside this group")
+    page: int = Field(default=1, ge=1)
+    limit: int = Field(default=20, ge=1, le=100)
+
+
+class AccessSubjectListResponse(BaseModel):
+    page: int
+    limit: int
+    has_more: bool
+    data: list[AccessSubjectRow]
+
+
+class CredentialFormField(BaseModel):
+    name: str
+    type: str
+    required: bool
+    label: str | None
+    placeholder: str | None
+    options: list[str] | None = Field(description="Allowed values, when the field is a choice")
+    show_on: list[dict[str, str]] = Field(description="Show this field only when these other fields have these values")
+
+
+class CredentialRef(BaseModel):
+    id: str
+    name: str | None
+
+
+class ModelProviderListQuery(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    model_type: ModelType | None = Field(None, description="Only providers that serve this model type")
+
+
+class ModelProviderRow(BaseModel):
+    provider: str = Field(description="Provider id such as langgenius/openai/openai")
+    label: str | None
+    model_types: list[str]
+    configured: bool
+    active_credential: CredentialRef | None
+
+
+class ModelProviderListResponse(Hinted):
+    data: list[ModelProviderRow]
+
+
+class CustomModelRow(BaseModel):
+    model: str
+    model_type: str
+    active_credential: CredentialRef | None
+
+
+class ModelProviderDetailResponse(ModelProviderRow, Hinted):
+    credential_form: list[CredentialFormField]
+    credentials: list[CredentialRef]
+    custom_model_form: list[CredentialFormField] | None
+    custom_models: list[CustomModelRow]
+
+
+_CREDENTIALS_DESCRIPTION: Final = (
+    "Secret values. Pass with --credentials @- (stdin) or @file, never inline. "
+    "Field names come from credential_form in the describe op."
+)
+_CREDENTIALS_UPDATE_DESCRIPTION: Final = (
+    _CREDENTIALS_DESCRIPTION + " Send [__HIDDEN__] for a secret you keep unchanged."
+)
+
+
+class ProviderCredentialCreatePayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    credentials: dict[str, Any] = Field(description=_CREDENTIALS_DESCRIPTION)
+    name: str | None = Field(None, description="Credential name; the server makes one when absent")
+
+
+class ProviderCredentialUpdatePayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    credentials: dict[str, Any] = Field(description=_CREDENTIALS_UPDATE_DESCRIPTION)
+    name: str | None = None
+
+
+class CredentialWriteResponse(Hinted):
+    id: str
+    name: str | None
+    active: bool
+
+
+class ToolProviderRow(BaseModel):
+    provider: str = Field(description="Tool provider id such as langgenius/tavily/tavily")
+    label: str | None
+    configured: bool = Field(description="Ready to use: needs no credential, or the workspace has one")
+    credential_types: list[str] = Field(description="api-key can be set here; oauth2 needs the console")
+
+
+class ToolProviderListResponse(Hinted):
+    data: list[ToolProviderRow]
+
+
+class ToolProviderDetailResponse(ToolProviderRow, Hinted):
+    credential_form: list[CredentialFormField] = Field(description="Fields of an api-key credential")
+    credentials: list[CredentialRef]
+    default_credential: CredentialRef | None
+
+
+class ToolCredentialCreatePayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    credentials: dict[str, Any] = Field(description=_CREDENTIALS_DESCRIPTION)
+    name: str | None = Field(None, max_length=30)
+
+
+class ToolCredentialUpdatePayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    credentials: dict[str, Any] = Field(description=_CREDENTIALS_UPDATE_DESCRIPTION)
+    name: str | None = Field(None, max_length=30)
+
+
+class ModelRow(BaseModel):
+    model: str
+    model_type: str
+    label: str | None
+    status: str
+    features: list[str]
+
+
+class ModelListResponse(Hinted):
+    data: list[ModelRow]
+
+
+class ModelRef(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    model: str = Field(description="Model name, as in get.model")
+    model_type: ModelType
+
+
+class ModelCredentialCreatePayload(ModelRef):
+    credentials: dict[str, Any] = Field(description=_CREDENTIALS_DESCRIPTION)
+    name: str | None = None
+
+
+class ModelCredentialUpdatePayload(ModelRef):
+    credentials: dict[str, Any] = Field(description=_CREDENTIALS_UPDATE_DESCRIPTION)
+    name: str | None = None
+
+
+class DefaultModelRow(BaseModel):
+    model_type: str
+    provider: str | None
+    model: str | None
+
+
+class DefaultModelListResponse(Hinted):
+    data: list[DefaultModelRow]
+
+
+class DefaultModelPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    provider: str = Field(description="Provider id such as langgenius/openai/openai")
+    model: str = Field(description="Model name, as in get.model")
+
+
+class DefaultModelResponse(DefaultModelRow, Hinted):
+    pass

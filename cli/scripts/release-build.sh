@@ -41,6 +41,10 @@ DIFYCTL_BUILD_DATE="${DIFYCTL_BUILD_DATE:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
 
 [[ "$CLI_VERSION" != "undefined" ]] || die "CLI_VERSION could not be derived from package.json"
 
+repo_root="$(cd "${cli_root}/.." && pwd)"
+skill_dir="${repo_root}/skills/difyctl"
+[[ -f "${skill_dir}/SKILL.md" ]] || die "skill not found: ${skill_dir}"
+
 [[ -f "$entry" ]] || die "entry not found: $entry"
 
 rm -rf "$out_dir"
@@ -60,12 +64,13 @@ defines=(
 while IFS=$'\t' read -r bun_target asset_target _exe; do
     out="${out_dir}/$(naming asset "$CLI_VERSION" "$asset_target")"
     log::info "compiling ${asset_target} -> $(basename "$out")..."
-    bun build "$entry" \
+    (cd "$repo_root" && bun build "$entry" \
+        --asset "$skill_dir" \
         --target="$bun_target" \
         --compile \
         --minify \
         "${defines[@]}" \
-        --outfile="$out" >/dev/null
+        --outfile="$out") >/dev/null
 done < <(naming targets)
 
 log::info "built $(find "$out_dir" -type f | wc -l | tr -d ' ') binaries:"

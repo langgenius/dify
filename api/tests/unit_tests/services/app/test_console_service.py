@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.plugin.impl.plugin import PluginInstaller
 from core.tools.entities.tool_entities import ApiProviderSchemaType
 from core.tools.tool_manager import ToolManager
+from enums import WebAppAccessMode
 from events.app_event import app_was_updated
 from graphon.model_runtime.entities.model_entities import ModelType
 from machinery.context import RequestContext
@@ -40,6 +41,8 @@ from services.app.console_service import (
     InvalidAppExportError,
 )
 from services.entities.app_entities import (
+    AccessSubject,
+    AccessSubjectPage,
     AppCreationSettings,
     AppDeletion,
     AppExportOptions,
@@ -150,6 +153,20 @@ class Access:
     def access_mode(self, app_id: str) -> str | None:
         del app_id
         return "private"
+
+    def access_subjects(self, app_id: str) -> list[AccessSubject]:
+        del app_id
+        pytest.fail("Unexpected access subjects lookup")
+
+    def update_access(self, app_id: str, access_mode: WebAppAccessMode, subjects: list[dict[str, str]]) -> None:
+        del app_id, access_mode, subjects
+        pytest.fail("Unexpected access update")
+
+    def search_access_subjects(
+        self, context: RequestContext, *, keyword: str, page: int, limit: int, group_id: str | None
+    ) -> AccessSubjectPage:
+        del context, keyword, page, limit, group_id
+        pytest.fail("Unexpected access subject search")
 
     def can_export_version(self, workspace_id: str) -> bool:
         self.calls.append(("paid", workspace_id))
@@ -433,6 +450,10 @@ class Lifecycle:
         assert context is CONTEXT
         assert settings.app == {"mode": params.mode}
         return RECORD
+
+    def create_draft(self, context: RequestContext, app_id: str) -> None:
+        del context, app_id
+        pytest.fail("Unexpected draft creation")
 
     def prepare_creation(self, context: RequestContext, params: CreateAppParams) -> AppCreationSettings:
         assert context is CONTEXT

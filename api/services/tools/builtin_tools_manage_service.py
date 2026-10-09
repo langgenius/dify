@@ -226,7 +226,7 @@ class BuiltinToolManageService:
         expires_at: int = -1,
         name: str | None = None,
         visibility: str | None = None,
-    ):
+    ) -> dict[str, str]:
         """
         add builtin tool provider
         """
@@ -303,10 +303,11 @@ class BuiltinToolManageService:
 
                     session.add(db_provider)
                     session.flush()
+                    new_credential_id = db_provider.id
             except Exception as e:
                 raise ValueError(str(e))
 
-        return {"result": "success"}
+        return {"result": "success", "id": new_credential_id}
 
     @staticmethod
     def create_tool_encrypter(

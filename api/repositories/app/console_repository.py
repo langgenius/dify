@@ -252,6 +252,11 @@ class ConsoleAppRepository(ConsoleApps, AppQueryStore):
             return AppChange(app_record(app, session=session, projection="detail"), changed)
 
     @override
+    def access_ready(self, context: RequestContext, app_id: str) -> bool:
+        with self._session_factory() as session:
+            return self.is_agent_app_access_ready(require_console_app(session, context, app_id), session=session)
+
+    @override
     def set_starred(self, context: RequestContext, app_id: str, starred: bool) -> None:
         with self._session_factory.begin() as session:
             app = require_console_app(session, context, app_id)

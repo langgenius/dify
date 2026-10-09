@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 from http import HTTPStatus
+from typing import Final
 from uuid import UUID
 
 from flask_restx import Resource
 from werkzeug.exceptions import Forbidden
 
 from constants.oauth_bearer import Scope
-from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission, Workspace
+from controllers.common.rbac import RBACCheck, RBACPermission, Workspace
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint, op_of
 from controllers.openapi._models import (
@@ -15,26 +16,32 @@ from controllers.openapi._models import (
     AppDslExportResponse,
     AppDslImportPayload,
     AppDslImportResponse,
+    CheckDependenciesResponse,
     Hint,
 )
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import (
-    CheckAppApiEnabled,
+    EDITOR_ROLES,
     CheckRBACPermission,
     CheckScope,
     CheckSubject,
     CheckWorkspaceMember,
     CheckWorkspaceRole,
+    account_app_guards,
 )
 from controllers.openapi.auth.subjects import AccountSubject
+from controllers.openapi.plugins import PluginInstallApi
+from core.plugin.entities.plugin import PluginDependencyType
 from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from machinery.context import RequestContext
-from models.account import TenantAccountRole
 from services.app_dsl_service import AppDslService
-from services.entities.dsl_entities import AppImportParams, CheckDependenciesResult, Import, ImportStatus
+from services.entities.dsl_entities import AppImportParams, Import, ImportStatus
 from services.errors.app import WorkflowNotFoundError
 from services.errors.base import NoPermissionError
+from services.workflow_service import WorkflowService
+
+_DSL_READ_GUARDS: Final = account_app_guards(RBACPermission.APP_IMPORT_EXPORT_DSL, scope=Scope.APPS_READ, editor=True)
 
 
 def _import_response(result: Import, *, workspace_id: str) -> AppDslImportResponse:
@@ -88,7 +95,7 @@ class AppDslImportApi(Resource):
             CheckScope(Scope.WORKSPACE_WRITE),
             CheckWorkspaceMember(),
             CheckRBACPermission(RBACCheck(RBACPermission.APP_IMPORT_EXPORT_DSL, Workspace())),
-            CheckWorkspaceRole(frozenset({TenantAccountRole.EDITOR, TenantAccountRole.ADMIN, TenantAccountRole.OWNER})),
+            CheckWorkspaceRole(EDITOR_ROLES),
         ),
         body=AppDslImportPayload,
         returns=(
@@ -138,7 +145,7 @@ class AppDslImportConfirmApi(Resource):
             CheckScope(Scope.WORKSPACE_WRITE),
             CheckWorkspaceMember(),
             CheckRBACPermission(RBACCheck(RBACPermission.APP_IMPORT_EXPORT_DSL, Workspace())),
-            CheckWorkspaceRole(frozenset({TenantAccountRole.EDITOR, TenantAccountRole.ADMIN, TenantAccountRole.OWNER})),
+            CheckWorkspaceRole(EDITOR_ROLES),
         ),
         returns=((HTTPStatus.OK, Import, "Import confirmed"), (HTTPStatus.BAD_REQUEST, Import, "Import failed")),
     )
@@ -177,18 +184,12 @@ class AppDslExportApi(Resource):
                 input={"app_id": "<app_id>", "workflow_id": "<workflow_id>", "include_secret": True},
             ),
         ),
-        requirements=(
-            CheckSubject(allowed=(AccountSubject,)),
-            CheckAppApiEnabled(),
-            CheckWorkspaceMember(),
-            CheckScope(Scope.APPS_READ),
-            CheckRBACPermission(RBACCheck(RBACPermission.APP_IMPORT_EXPORT_DSL, PlainApp())),
-            CheckWorkspaceRole(frozenset({TenantAccountRole.EDITOR, TenantAccountRole.ADMIN, TenantAccountRole.OWNER})),
-        ),
+        requirements=_DSL_READ_GUARDS,
         query=AppDslExportQuery,
         returns=(200, AppDslExportResponse, "Export successful"),
     )
     def get(self, ctx: Context, app_id: str, *, query: AppDslExportQuery):
+        draft = WorkflowService().get_draft_workflow(app_model=ctx.app, session=db.session())
         try:
             data = AppDslService.export_dsl(
                 app_model=ctx.app,
@@ -198,7 +199,7 @@ class AppDslExportApi(Resource):
             )
         except WorkflowNotFoundError as exc:
             return str(exc), 404
-        return AppDslExportResponse(data=data), 200
+        return AppDslExportResponse(data=data, draft_hash=draft.content_hash if draft else None), 200
 
 
 @openapi_ns.route("/apps/<string:app_id>/dependencies:check")
@@ -217,17 +218,25 @@ class AppDslCheckDependenciesApi(Resource):
         kind=Kind.OBJECT,
         summary="Check plugin dependencies of an app",
         examples=(Example(title="Check which plugins an app needs", input={"app_id": "<app_id>"}),),
-        requirements=(
-            CheckSubject(allowed=(AccountSubject,)),
-            CheckAppApiEnabled(),
-            CheckWorkspaceMember(),
-            CheckScope(Scope.APPS_READ),
-            CheckRBACPermission(RBACCheck(RBACPermission.APP_IMPORT_EXPORT_DSL, PlainApp())),
-            CheckWorkspaceRole(frozenset({TenantAccountRole.EDITOR, TenantAccountRole.ADMIN, TenantAccountRole.OWNER})),
-        ),
-        returns=(HTTPStatus.OK, CheckDependenciesResult, "Dependencies checked"),
+        requirements=_DSL_READ_GUARDS,
+        returns=(HTTPStatus.OK, CheckDependenciesResponse, "Dependencies checked"),
     )
     def get(self, ctx: RequestContext, app_id: str):
         result = application_services().apps.imports.check_dependencies(ctx, str(UUID(app_id)))
-
-        return result, HTTPStatus.OK
+        missing = [
+            dependency.value.plugin_unique_identifier
+            for dependency in result.leaked_dependencies
+            if dependency.type == PluginDependencyType.Marketplace
+        ]
+        hints = (
+            [
+                Hint(
+                    summary="Install the missing marketplace plugins",
+                    op=op_of(PluginInstallApi.post),
+                    input={"workspace_id": ctx.active_workspace_id, "identifiers": missing},
+                )
+            ]
+            if missing
+            else []
+        )
+        return CheckDependenciesResponse(**result.model_dump(), hints=hints), HTTPStatus.OK

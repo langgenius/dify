@@ -1,7 +1,9 @@
 import type { JsonSchema } from '@/plugins/catalog'
 import { inputInvalid } from '@/call/errors'
+import { CALL_FLAG } from '@/call/flags'
 import { errorMessage } from '@/errors/message'
 import { isScalar, propertiesOf, shapeOf } from '@/protocol/shape'
+import { flagToken } from '@/util/flag-name'
 import { isRecord } from '@/util/is-record'
 
 export type InputSource = {
@@ -18,8 +20,7 @@ type Referenced = Readonly<{ text: string; source: string }>
 const FILE_PREFIX = '@'
 const STDIN_MARKER = '-'
 const STDIN_SOURCE = `${FILE_PREFIX}${STDIN_MARKER}`
-const FLAG_PREFIX = '--'
-const INLINE_SOURCE = '--input'
+const INLINE_SOURCE = flagToken(CALL_FLAG.Input)
 const STDIN_LABEL = 'stdin'
 
 export function parseJsonValue(raw: string, source: string): unknown {
@@ -69,7 +70,7 @@ export async function resolveFileRefs(
     if (typeof value !== 'string' || !value.startsWith(FILE_PREFIX)) continue
     if (isScalar(shapeOf(property))) continue
     const { text } = await readRef(value, src)
-    resolved[name] = parseJsonValue(text, `${FLAG_PREFIX}${name}`)
+    resolved[name] = parseJsonValue(text, flagToken(name))
   }
   return resolved
 }
