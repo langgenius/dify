@@ -1424,6 +1424,10 @@ class CeleryBeatConfig(BaseSettings):
 
 
 class CeleryScheduleTasksConfig(BaseSettings):
+    ENABLE_WORKFLOW_DEBUG_RESERVATION_CLEANUP_TASK: bool = Field(
+        description="Recover trigger-debug reservations abandoned by API processes or workers",
+        default=True,
+    )
     WORKFLOW_DEBUG_RESERVATION_TIMEOUT: PositiveInt = Field(
         description="Maximum seconds to start a trigger-debug worker or renew its running lease",
         default=600,

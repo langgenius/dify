@@ -1080,6 +1080,7 @@ source_modules =
     services.rag_pipeline.publication_service
     services.rag_pipeline.publication_contracts
     services.workflow.draft_service
+    services.workflow.debug_reservation_service
     services.workflow.contracts
     services.trigger.workflow_policy
     services.trigger.schedule_policy

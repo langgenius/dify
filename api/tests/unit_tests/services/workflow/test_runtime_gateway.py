@@ -138,6 +138,131 @@ def test_generate_closes_session_before_stream_is_consumed(
     assert list(stream) == ["data: ready\n\n"]
 
 
+@pytest.mark.parametrize("handoff", ["abandoned", "fresh", "running", "paused", "lost_worker"])
+@pytest.mark.parametrize("broker_failure", [False, True])
+def test_recover_abandoned_debug_reservation_without_global_database(
+    agent_runtime: tuple[WorkflowRuntimeGateway, list[RecordingSession]],
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    handoff: str,
+    broker_failure: bool,
+) -> None:
+    from datetime import timedelta
+
+    from core.app.entities.app_invoke_entities import InvokeFrom
+    from graphon.enums import WorkflowExecutionStatus
+    from libs.datetime_utils import naive_utc_now
+    from models.agent import Agent, AgentHomeSnapshot, AgentStatus, AgentWorkingResourceStatus, WorkflowAgentNodeBinding
+    from models.workflow import WorkflowRun
+    from repositories.agent.runtime_repository import WorkflowAgentExecutionRepository
+    from repositories.workflow.debug_reservation_repository import WorkflowDebugReservationRepository
+    from services.agent.retirement_service import WorkflowAgentRetirementService
+    from services.workflow.debug_reservation_service import WorkflowDebugReservationService
+    from tasks.app_generate import workflow_execute_task as task_module
+
+    gateway, _ = agent_runtime
+    _, snapshot = gateway._reservations.reserve_trigger_debug(CONTEXT, "app-1")
+    assert snapshot.execution_id is not None
+    app, actor, workflow = gateway._definitions.debug_context(CONTEXT, "app-1", workflow_id=None, snapshot=snapshot)
+    params = task_module.AppExecutionParams.new(
+        app_model=app,
+        workflow=workflow,
+        user=actor,
+        args={},
+        invoke_from=InvokeFrom.DEBUGGER,
+        workflow_run_id=snapshot.execution_id,
+        workflow_snapshot=snapshot,
+    )
+    now = naive_utc_now()
+    with sqlite_session_factory.begin() as session:
+        binding = session.get(WorkflowAgentNodeBinding, "binding")
+        reservation = debug_lease(session, snapshot.execution_id)
+        run = session.get(WorkflowRun, snapshot.execution_id)
+        assert binding is not None
+        assert reservation is not None
+        assert run is not None
+        session.delete(binding)
+        session.add(
+            AgentHomeSnapshot(
+                id="home",
+                tenant_id="tenant-1",
+                agent_id="agent-1",
+                snapshot_ref="home-ref",
+                status=AgentWorkingResourceStatus.ACTIVE,
+            )
+        )
+        if handoff in ("running", "paused", "lost_worker"):
+            WorkflowDebugReservationRepository.claim(session, run, now)
+            if handoff == "paused":
+                run.status = WorkflowExecutionStatus.PAUSED
+        set_debug_deadline(
+            session, snapshot.execution_id, now + timedelta(seconds=1 if handoff in ("fresh", "running") else -1)
+        )
+
+    # The complete operation must use its injected database, including retirement.
+    monkeypatch.setattr("core.db.session_factory._session_maker", sessionmaker())
+    engine = Mock()
+    monkeypatch.setattr(task_module._AppRunner, "_run_app", engine)
+    topic = Mock()
+    monkeypatch.setattr(task_module.WorkflowEventStream, "get_response_topic", lambda *_args: topic)
+    if handoff == "abandoned":
+        # An expired lease is fenced even before the periodic sweep gets to it.
+        with pytest.raises(ValueError, match="expired before worker startup"):
+            task_module._AppRunner(sqlite_session_factory, params, variables=gateway._variables).run()
+        payloads = [json.loads(call.args[0]) for call in topic.publish.call_args_list]
+        assert [payload["event"] for payload in payloads] == ["workflow_started", "workflow_finished"]
+        assert payloads[-1]["data"]["status"] == "failed"
+        assert "expired before worker startup" in payloads[-1]["data"]["error"]
+    collector = Mock(side_effect=[RuntimeError("broker unavailable"), None] if broker_failure else None)
+    monkeypatch.setattr("tasks.collect_agent_resources_task.collect_agent_resources.delay", collector)
+    recovery = WorkflowDebugReservationService(
+        WorkflowDebugReservationRepository(sqlite_session_factory),
+        WorkflowAgentExecutionRepository(sqlite_session_factory),
+        WorkflowAgentRetirementService(WorkflowAgentRetirementRepository(sqlite_session_factory)),
+    )
+    recovery.recover_expired(now)
+    if handoff in ("abandoned", "lost_worker"):
+        with sqlite_session_factory() as session:
+            assert (debug_lease(session, snapshot.execution_id) is not None) == broker_failure
+        # Cleanup publication can fail after the terminal state commits; retry
+        # still discovers the reservation and republishes all resource IDs.
+        recovery.recover_expired(now)
+        with sqlite_session_factory() as session:
+            run = session.get(WorkflowRun, snapshot.execution_id)
+            agent = session.get(Agent, "agent-1")
+            home = session.get(AgentHomeSnapshot, "home")
+            assert run is not None
+            assert run.status == WorkflowExecutionStatus.FAILED
+            assert agent is not None
+            assert agent.status == AgentStatus.ARCHIVED
+            assert home is not None
+            assert home.status == AgentWorkingResourceStatus.RETIRED
+            assert debug_lease(session, snapshot.execution_id) is None
+            assert (
+                WorkflowAgentExecutionRepository.retained_execution_agent_ids(session, "tenant-1", ["agent-1"]) == set()
+            )
+        assert collector.call_count == (2 if broker_failure else 1)
+        assert collector.call_args.kwargs["home_snapshot_ids"] == ["home"]
+        # A delivery after recovery replays the persisted failure, including
+        # the distinct reason for a lost worker, without a synthetic restart.
+        topic.publish.reset_mock()
+        assert task_module._AppRunner(sqlite_session_factory, params, variables=gateway._variables).run() is None
+        payloads = [json.loads(call.args[0]) for call in topic.publish.call_args_list]
+        assert [payload["event"] for payload in payloads] == ["workflow_finished"]
+        assert payloads[0]["data"]["status"] == "failed"
+        assert payloads[0]["data"]["error"] == run.error
+        engine.assert_not_called()
+    else:
+        collector.assert_not_called()
+        with sqlite_session_factory() as session:
+            agent = session.get(Agent, "agent-1")
+            assert agent is not None
+            assert agent.status == AgentStatus.ACTIVE
+            assert WorkflowAgentExecutionRepository.retained_execution_agent_ids(session, "tenant-1", ["agent-1"]) == {
+                "agent-1"
+            }
+
+
 @pytest.mark.parametrize("rejection", ["expired", "claimed", "paused", "tenant", "app", "workflow", "mode"])
 def test_rejected_debug_handoff_only_notifies_owned_expired_stream(
     agent_runtime: tuple[WorkflowRuntimeGateway, list[RecordingSession]],
@@ -1920,6 +2045,76 @@ def test_paused_debug_lease_is_protected_and_refreshed_atomically_on_resume(
         assert lease.expires_at is not None
         assert lease.expires_at > now
     assert reservations.expire(snapshot.execution_id, now) is None
+
+
+@pytest.mark.parametrize("failing_prefix", [1, 100, 101])
+def test_expiry_scans_past_failed_cleanup_batches(
+    agent_runtime: tuple[WorkflowRuntimeGateway, list[RecordingSession]],
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    failing_prefix: int,
+) -> None:
+    from collections.abc import Iterable
+    from datetime import timedelta
+
+    from graphon.enums import WorkflowExecutionStatus
+    from libs.datetime_utils import naive_utc_now
+    from models.workflow import WorkflowRun
+    from repositories.agent.runtime_repository import WorkflowAgentExecutionRepository
+    from services.agent.retirement_service import WorkflowAgentRetirementService
+    from services.workflow.debug_reservation_service import WorkflowDebugReservationService
+
+    gateway, _ = agent_runtime
+    execution_ids = []
+    for _ in range(101):
+        _, snapshot = gateway._reservations.reserve_trigger_debug(CONTEXT, "app-1")
+        assert snapshot.execution_id is not None
+        execution_ids.append(snapshot.execution_id)
+    now = naive_utc_now()
+    with sqlite_session_factory.begin() as session:
+        for index, execution_id in enumerate(sorted(execution_ids)):
+            reservation = debug_lease(session, execution_id)
+            assert reservation is not None
+            # Equal timestamps exercise the ID tie-breaker, including failed
+            # records retained while successful ones disappear from the batch.
+            set_debug_deadline(session, execution_id, now - timedelta(seconds=1))
+            run = session.get(WorkflowRun, execution_id)
+            assert run is not None
+            run.created_by = "fail" if index < failing_prefix else "ok"
+
+    class Retirement:
+        calls: list[str]
+
+        def __init__(self) -> None:
+            self.calls = []
+            self.failing = True
+            self.delegate = WorkflowAgentRetirementService(WorkflowAgentRetirementRepository(sqlite_session_factory))
+
+        def retire_unowned(self, *, tenant_id: str, agent_ids: Iterable[str], account_id: str | None) -> None:
+            assert account_id is not None
+            self.calls.append(account_id)
+            if account_id == "fail" and self.failing:
+                raise RuntimeError("cleanup broker unavailable")
+            self.delegate.retire_unowned(tenant_id=tenant_id, agent_ids=agent_ids, account_id=account_id)
+
+    monkeypatch.setattr("services.agent.retirement_service.enqueue_agent_resource_collection", lambda **_kwargs: None)
+    retirement = Retirement()
+    recovery = WorkflowDebugReservationService(
+        gateway._reservations, WorkflowAgentExecutionRepository(sqlite_session_factory), retirement
+    )
+    for _ in range(3):
+        recovery.recover_expired(now)
+        with sqlite_session_factory() as session:
+            assert set(session.scalars(select(WorkflowRun.status))) == {WorkflowExecutionStatus.FAILED}
+            assert (
+                sum(debug_lease(session, execution_id) is not None for execution_id in execution_ids) == failing_prefix
+            )
+    assert retirement.calls.count("ok") == 101 - failing_prefix
+    assert retirement.calls.count("fail") == failing_prefix * 3
+    retirement.failing = False
+    recovery.recover_expired(now)
+    with sqlite_session_factory() as session:
+        assert not gateway._reservations.pending_batch(now, limit=100)
 
 
 @pytest.mark.parametrize("failed_row", ["reservation", "reference"])

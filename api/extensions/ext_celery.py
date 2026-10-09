@@ -189,6 +189,12 @@ def init_app(app: DifyApp) -> Celery:
 
     # if you add a new task, please add the switch to CeleryScheduleTasksConfig
     beat_schedule: dict[str, CeleryBeatScheduleEntry] = {}
+    if dify_config.ENABLE_WORKFLOW_DEBUG_RESERVATION_CLEANUP_TASK:
+        imports.append("tasks.workflow_debug_reservation_tasks")
+        beat_schedule["workflow_debug_reservation_cleanup"] = {
+            "task": "tasks.workflow_debug_reservation_tasks.recover_workflow_debug_reservations",
+            "schedule": timedelta(minutes=1),
+        }
     if dify_config.ENABLE_WORKFLOW_DRAFT_FILE_CLEANUP_TASK:
         imports.append("tasks.workflow_draft_var_tasks")
         beat_schedule["workflow_draft_file_cleanup"] = {

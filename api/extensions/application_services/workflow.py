@@ -208,6 +208,7 @@ if TYPE_CHECKING:
     from services.agent.workflow_contracts import WorkflowAgentBindingStore
     from services.app_dsl_service import AppDslService
     from services.workflow.console_service import ConsoleWorkflowService
+    from services.workflow.debug_reservation_service import WorkflowDebugReservationService
     from services.workflow.definition_gateway import (
         WorkflowDefinitionGateway,
         WorkflowDefinitionReader,
@@ -326,6 +327,20 @@ def build_workflow_draft_service(
         definitions=definitions,
         lifecycle=lifecycle,
         retirement=WorkflowAgentRetirementService(WorkflowAgentRetirementRepository(sessions)),
+    )
+
+
+def build_workflow_debug_recovery_service(database_client: sessionmaker[Session]) -> WorkflowDebugReservationService:
+    from repositories.agent.retirement_repository import WorkflowAgentRetirementRepository
+    from repositories.agent.runtime_repository import WorkflowAgentExecutionRepository
+    from repositories.workflow.debug_reservation_repository import WorkflowDebugReservationRepository
+    from services.agent.retirement_service import WorkflowAgentRetirementService
+    from services.workflow.debug_reservation_service import WorkflowDebugReservationService
+
+    return WorkflowDebugReservationService(
+        WorkflowDebugReservationRepository(database_client),
+        WorkflowAgentExecutionRepository(database_client),
+        WorkflowAgentRetirementService(WorkflowAgentRetirementRepository(database_client)),
     )
 
 
