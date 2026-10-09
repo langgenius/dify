@@ -1,10 +1,11 @@
 from collections.abc import Mapping
 from dataclasses import dataclass
+from unittest.mock import create_autospec
 
 import pytest
 from sqlalchemy.orm import Session
 
-from core.app.apps.workflow.app_generator import WorkflowAppGenerator
+from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.common_entities import I18nObject
@@ -14,6 +15,8 @@ from models.model import App, AppMode, EndUser
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow
 from services.tools.workflow.tool import WorkflowTool
+from services.workflow.execution.adapters.workflow.app_generator import WorkflowAppGenerator
+from services.workflow.execution.ports import WorkflowRuntime
 from tests.unit_tests.model_factories import make_account, make_app, make_workflow
 
 
@@ -63,16 +66,21 @@ class _GenerateCall:
     pause_state_config: object | None
 
 
-def test_public_invoke_passes_explicit_session_and_uses_available_workflow_generator(
+def test_public_invoke_passes_explicit_session_and_injects_service_generator_dependencies(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     app = make_app(mode=AppMode.WORKFLOW)
     workflow = make_workflow(version="published")
     actor = make_account()
     calls: list[_GenerateCall] = []
+    generators: list[WorkflowAppGenerator] = []
+    workflow_runtime: WorkflowRuntime = create_autospec(WorkflowRuntime, instance=True, spec_set=True)
+
+    def draft_variable_saver(_tenant_id: str, _account: Account) -> DraftVariableSaverFactory:
+        raise AssertionError("draft-variable saver lookup is not expected for a published workflow")
 
     def generate(
-        _generator: WorkflowAppGenerator,
+        generator: WorkflowAppGenerator,
         *,
         app_model: App,
         workflow: Workflow,
@@ -83,6 +91,7 @@ def test_public_invoke_passes_explicit_session_and_uses_available_workflow_gener
         call_depth: int,
         pause_state_config: object | None,
     ) -> dict[str, object]:
+        generators.append(generator)
         calls.append(
             _GenerateCall(
                 app_model=app_model,
@@ -122,7 +131,8 @@ def test_public_invoke_passes_explicit_session_and_uses_available_workflow_gener
         ),
         runtime=ToolRuntime(tenant_id="tenant-1", invoke_from=InvokeFrom.EXPLORE),
         queries=_WorkflowQueries(app_model=app, workflow_model=workflow, actor_model=actor),
-        draft_variable_saver=None,
+        draft_variable_saver=draft_variable_saver,
+        workflow_runtime=workflow_runtime,
     )
 
     with Session() as session:
@@ -146,6 +156,9 @@ def test_public_invoke_passes_explicit_session_and_uses_available_workflow_gener
             pause_state_config=None,
         )
     ]
+    assert len(generators) == 1
+    assert generators[0]._runtime is workflow_runtime
+    assert generators[0]._draft_variable_saver is draft_variable_saver
     assert [message.type for message in messages] == [
         ToolInvokeMessage.MessageType.VARIABLE,
         ToolInvokeMessage.MessageType.TEXT,

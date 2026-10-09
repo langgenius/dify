@@ -60,7 +60,7 @@ class WorkflowTool(Tool):
         queries: WorkflowToolQueries,
         draft_variable_saver: Callable[[str, Account], DraftVariableSaverFactory] | None,
         workflow_runtime: WorkflowRuntime | None = None,
-    ):
+    ) -> None:
         self.workflow_app_id = workflow_app_id
         self.workflow_as_tool_id = workflow_as_tool_id
         self.version = version
@@ -98,15 +98,21 @@ class WorkflowTool(Tool):
         """
         invoke the tool
         """
+        if self._workflow_runtime is None:
+            raise ToolInvokeError("Workflow execution dependencies are required")
+
         app = self._get_app(app_id=self.workflow_app_id)
         workflow = self._get_workflow(app_id=self.workflow_app_id, version=self.version)
 
         # transform the tool parameters
         tool_parameters, files = self._transform_args(tool_parameters=tool_parameters)
 
-        from core.app.apps.workflow.app_generator import WorkflowAppGenerator
+        from services.workflow.execution.adapters.workflow.app_generator import WorkflowAppGenerator
 
-        generator = WorkflowAppGenerator()
+        generator = WorkflowAppGenerator(
+            runtime=self._workflow_runtime,
+            draft_variable_saver=self._draft_variable_saver,
+        )
         assert self.runtime is not None
         assert self.runtime.invoke_from is not None
 
@@ -145,7 +151,7 @@ class WorkflowTool(Tool):
 
         outputs = data.get("outputs")
         if outputs is None:
-            outputs = {}
+            outputs = dict[str, Any]()
         else:
             outputs, files = self._extract_files(outputs)  # type: ignore
             for file in files:
@@ -300,7 +306,7 @@ class WorkflowTool(Tool):
                         file_var_list = [
                             build_file_from_stored_mapping(
                                 file_mapping=cast(Mapping[str, Any], f),
-                                tenant_id=str(self.runtime.tenant_id),
+                                tenant_id=self.runtime.tenant_id,
                             )
                             for f in file
                             if isinstance(f, Mapping)
@@ -326,7 +332,7 @@ class WorkflowTool(Tool):
             elif parameter.type == ToolParameter.ToolParameterType.FILES:
                 value = tool_parameters.get(parameter.name)
                 if not parameter.required and self._is_empty_files_parameter_value(value):
-                    value = []
+                    value = list[Any]()
                 parameters_result[parameter.name] = value
             else:
                 parameters_result[parameter.name] = tool_parameters.get(parameter.name)
@@ -357,7 +363,7 @@ class WorkflowTool(Tool):
                             item = self._update_file_mapping(item)
                             file = build_from_mapping(
                                 mapping=item,
-                                tenant_id=str(self.runtime.tenant_id),
+                                tenant_id=self.runtime.tenant_id,
                                 access_controller=_file_access_controller,
                             )
                             files.append(file)
@@ -365,7 +371,7 @@ class WorkflowTool(Tool):
                     value = self._update_file_mapping(value)
                     file = build_from_mapping(
                         mapping=value,
-                        tenant_id=str(self.runtime.tenant_id),
+                        tenant_id=self.runtime.tenant_id,
                         access_controller=_file_access_controller,
                     )
                     files.append(file)
