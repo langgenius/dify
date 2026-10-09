@@ -906,7 +906,7 @@ describe('ResourceAccessTokenPage', () => {
 
     await screen.findByText('Production clients')
     await user.click(screen.getAllByRole('button', { name: 'common.operation.delete' })[0]!)
-    const dialog = screen.getByRole('dialog')
+    const dialog = screen.getByRole('alertdialog')
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.delete' }))
 
     await waitFor(() => {

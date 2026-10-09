@@ -1,8 +1,15 @@
 'use client'
 
 import type { ResourceAccessTokenRowResponse } from '@dify/contracts/api/console/resource-access-tokens/types.gen'
-import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
 import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
@@ -43,28 +50,23 @@ export default function DeleteTokenDialog({
   }
 
   return (
-    <Dialog open={!!row} onOpenChange={onOpenChange}>
-      <DialogContent className="w-120 p-6 text-left" backdropProps={{ forceRender: true }}>
-        <DialogTitle className="title-2xl-semi-bold text-text-primary">
+    <AlertDialog open={!!row} onOpenChange={onOpenChange}>
+      <AlertDialogContent className="w-120 p-6 text-left" backdropProps={{ forceRender: true }}>
+        <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
           {t(($) => $['resourceAccessToken.deleteTitle'], { ns: 'accountSettings' })}
-        </DialogTitle>
-        <div className="mt-2 system-sm-regular text-text-tertiary">
+        </AlertDialogTitle>
+        <AlertDialogDescription className="mt-2 system-sm-regular text-text-tertiary">
           {t(($) => $['resourceAccessToken.deleteDescription'], { ns: 'accountSettings' })}
-        </div>
-        <div className="mt-6 flex justify-end gap-2">
-          <Button onClick={() => onOpenChange(false)}>
+        </AlertDialogDescription>
+        <AlertDialogActions className="mt-6 p-0">
+          <AlertDialogCancelButton>
             {t(($) => $['operation.cancel'], { ns: 'common' })}
-          </Button>
-          <Button
-            variant="primary"
-            tone="destructive"
-            disabled={deleteMutation.isPending}
-            onClick={confirmDelete}
-          >
+          </AlertDialogCancelButton>
+          <AlertDialogConfirmButton disabled={deleteMutation.isPending} onClick={confirmDelete}>
             {t(($) => $['operation.delete'], { ns: 'common' })}
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+          </AlertDialogConfirmButton>
+        </AlertDialogActions>
+      </AlertDialogContent>
+    </AlertDialog>
   )
 }
