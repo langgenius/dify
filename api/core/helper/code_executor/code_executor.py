@@ -93,7 +93,7 @@ class CodeExecutor:
             connect=dify_config.CODE_EXECUTION_CONNECT_TIMEOUT,
             read=dify_config.CODE_EXECUTION_READ_TIMEOUT,
             write=dify_config.CODE_EXECUTION_WRITE_TIMEOUT,
-            pool=None,
+            pool=dify_config.CODE_EXECUTION_POOL_TIMEOUT,
         )
 
         client = get_pooled_http_client(_CODE_EXECUTOR_CLIENT_KEY, _build_code_executor_client)

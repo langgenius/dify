@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from math import isfinite
+from types import SimpleNamespace
 from typing import Any, cast
 from unittest.mock import MagicMock
 
@@ -52,6 +54,35 @@ def test_execute_code_returns_stdout_on_success(mocker: MockerFixture) -> None:
     mocker.patch("core.helper.code_executor.code_executor.get_pooled_http_client", return_value=client)
 
     assert code_executor_module.CodeExecutor.execute_code(cast(Any, "python3"), preload="", code="print(1)") == "done"
+
+
+@pytest.mark.parametrize("pool_timeout", [1.25, 4.5])
+def test_execute_code_sets_a_finite_pool_timeout(mocker: MockerFixture, pool_timeout: float) -> None:
+    config = SimpleNamespace(
+        CODE_EXECUTION_API_KEY=code_executor_module.dify_config.CODE_EXECUTION_API_KEY,
+        CODE_EXECUTION_CONNECT_TIMEOUT=code_executor_module.dify_config.CODE_EXECUTION_CONNECT_TIMEOUT,
+        CODE_EXECUTION_READ_TIMEOUT=code_executor_module.dify_config.CODE_EXECUTION_READ_TIMEOUT,
+        CODE_EXECUTION_WRITE_TIMEOUT=code_executor_module.dify_config.CODE_EXECUTION_WRITE_TIMEOUT,
+        CODE_EXECUTION_POOL_TIMEOUT=pool_timeout,
+    )
+    mocker.patch.object(code_executor_module, "dify_config", config)
+    response = MagicMock()
+    response.status_code = 200
+    response.json.return_value = {"code": 0, "message": "ok", "data": {"stdout": "done", "error": None}}
+    client = MagicMock()
+    client.post.return_value = response
+    mocker.patch("core.helper.code_executor.code_executor.get_pooled_http_client", return_value=client)
+
+    code_executor_module.CodeExecutor.execute_code(cast(Any, "python3"), preload="", code="print(1)")
+
+    timeout = client.post.call_args.kwargs["timeout"]
+    assert timeout.pool is not None
+    assert isfinite(timeout.pool)
+    assert timeout.pool > 0
+    assert timeout.pool == pool_timeout
+    assert timeout.connect == config.CODE_EXECUTION_CONNECT_TIMEOUT
+    assert timeout.read == config.CODE_EXECUTION_READ_TIMEOUT
+    assert timeout.write == config.CODE_EXECUTION_WRITE_TIMEOUT
 
 
 def test_execute_code_raises_for_non_200_status(mocker: MockerFixture) -> None:
