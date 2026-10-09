@@ -91,7 +91,7 @@ def generation(monkeypatch: pytest.MonkeyPatch) -> Iterator[GenerationObservatio
         assert tenant_id == TENANT_ID
         return observed.providers
 
-    def dispatch(_client: PluginModelClient, **kwargs: object) -> Generator[LLMResultChunk, None, None]:
+    def dispatch(_client: PluginModelClient, **kwargs: object) -> Generator[LLMResultChunk]:
         observed.daemon_calls.append(kwargs)
         data = kwargs["data"]
         assert isinstance(data, dict)
