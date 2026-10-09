@@ -15,7 +15,6 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CustomizeDialog } from '@/app/components/app/overview/customize'
 import SettingsModal from '@/app/components/app/overview/settings'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { AccessPointCard } from '@/app/components/base/access-point/card'
 import { AccessPointUrl } from '@/app/components/base/access-point/url'
 import AppIcon from '@/app/components/base/app-icon'
@@ -61,7 +60,9 @@ export function EnvironmentWebAppCard({
     'navigation',
   ])
   const queryClient = useQueryClient()
-  const appInfo = useAppStore((state) => state.appDetail)
+  const { data: appInfo } = useSuspenseQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId } } }),
+  )
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const actions = useAccessPointActions(appId, canManageAccessPoint)
   const [showSettings, setShowSettings] = useState(false)

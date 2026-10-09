@@ -10,7 +10,6 @@
   "actionMsg.generatedUnsuccessfully": "Generierung nicht erfolgreich",
   "actionMsg.modifiedSuccessfully": "Erfolgreich geändert",
   "actionMsg.modifiedUnsuccessfully": "Änderung nicht erfolgreich",
-  "actionMsg.noModification": "Im Moment keine Änderungen.",
   "actionMsg.payCancelled": "Zahlung abgebrochen",
   "actionMsg.paySucceeded": "Zahlung erfolgreich",
   "agentStrategyPage.description": "Lege fest, wie dein AI Agent denkt und Entscheidungen trifft — einschließlich Tool-Auswahl, Ergebnisverarbeitung und autonomer Problemlösung.",

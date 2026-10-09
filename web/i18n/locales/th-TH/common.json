@@ -10,7 +10,6 @@
   "actionMsg.generatedUnsuccessfully": "สร้างไม่สําเร็จ",
   "actionMsg.modifiedSuccessfully": "แก้ไขสําเร็จแล้ว",
   "actionMsg.modifiedUnsuccessfully": "แก้ไขไม่สําเร็จ",
-  "actionMsg.noModification": "ไม่มีการดัดแปลงในขณะนี้",
   "actionMsg.payCancelled": "ยกเลิกการชําระเงิน",
   "actionMsg.paySucceeded": "การชําระเงินสําเร็จ",
   "agentStrategyPage.description": "กำหนดวิธีที่ AI Agent ของคุณใช้เหตุผลและตัดสินใจ — รวมถึงการเลือกเครื่องมือ การจัดการผลลัพธ์ และการแก้ปัญหาโดยอัตโนมัติ",
