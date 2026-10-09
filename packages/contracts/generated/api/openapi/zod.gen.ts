@@ -923,14 +923,6 @@ export const zModelProviderRow = z.object({
 })
 
 /**
- * ModelProviderListResponse
- */
-export const zModelProviderListResponse = z.object({
-  data: z.array(zModelProviderRow),
-  hints: z.array(zHint).optional(),
-})
-
-/**
  * ModelRow
  */
 export const zModelRow = z.object({
@@ -938,6 +930,8 @@ export const zModelRow = z.object({
   label: z.string().nullable(),
   model: z.string(),
   model_type: z.string(),
+  provider: z.string(),
+  provider_label: z.string().nullable(),
   status: z.string(),
 })
 
@@ -946,7 +940,11 @@ export const zModelRow = z.object({
  */
 export const zModelListResponse = z.object({
   data: z.array(zModelRow),
+  has_more: z.boolean(),
   hints: z.array(zHint).optional(),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
 })
 
 /**
@@ -984,10 +982,14 @@ export const zModelCredentialUpdatePayload = z.object({
 })
 
 /**
- * ModelProviderListQuery
+ * ModelListQuery
  */
-export const zModelProviderListQuery = z.object({
+export const zModelListQuery = z.object({
+  limit: z.int().gte(1).lte(100).optional().default(20),
   model_type: zModelType.nullish(),
+  page: z.int().gte(1).optional().default(1),
+  provider: z.string().nullish(),
+  query: z.string().optional().default(''),
 })
 
 /**
@@ -1495,6 +1497,57 @@ export const zToolCredentialUpdatePayload = z.object({
 })
 
 /**
+ * ToolInputType
+ *
+ * Binding modes for persisted tool input values.
+ */
+export const zToolInputType = z.enum(['constant', 'mixed', 'variable'])
+
+/**
+ * ToolInputValue
+ */
+export const zToolInputValue = z.object({
+  type: zToolInputType.optional().default('constant'),
+  value: z.unknown().optional(),
+})
+
+/**
+ * ToolNodeTemplate
+ *
+ * A tool node's data with every value as {type, value}.
+ */
+export const zToolNodeTemplate = z.object({
+  plugin_id: z.string().nullable(),
+  plugin_unique_identifier: z.string().nullable(),
+  provider_id: z.string(),
+  provider_name: z.string(),
+  provider_type: z.string(),
+  title: z.string(),
+  tool_configurations: z.record(z.string(), zToolInputValue),
+  tool_label: z.string(),
+  tool_name: z.string(),
+  tool_node_version: z.string().optional().default('2'),
+  tool_parameters: z.record(z.string(), zToolInputValue),
+  type: z.string().optional().default('tool'),
+})
+
+/**
+ * ToolParameterRow
+ */
+export const zToolParameterRow = z.object({
+  default: z.unknown(),
+  form: z.string(),
+  label: z.string().nullable(),
+  llm_description: z.string().nullable(),
+  max: z.number().nullable(),
+  min: z.number().nullable(),
+  name: z.string(),
+  options: z.array(z.string()),
+  required: z.boolean(),
+  type: z.string(),
+})
+
+/**
  * ToolProviderDetailResponse
  */
 export const zToolProviderDetailResponse = z.object({
@@ -1519,11 +1572,48 @@ export const zToolProviderRow = z.object({
 })
 
 /**
- * ToolProviderListResponse
+ * ToolRow
  */
-export const zToolProviderListResponse = z.object({
-  data: z.array(zToolProviderRow),
+export const zToolRow = z.object({
+  configured: z.boolean(),
+  description: z.string().nullable(),
+  label: z.string(),
+  name: z.string(),
+  node_data: zToolNodeTemplate,
+  parameters: z.array(zToolParameterRow),
+  provider: z.string(),
+  provider_label: z.string().nullable(),
+  provider_type: z.string(),
+})
+
+/**
+ * ToolListResponse
+ */
+export const zToolListResponse = z.object({
+  data: z.array(zToolRow),
+  has_more: z.boolean(),
   hints: z.array(zHint).optional(),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
+})
+
+/**
+ * ToolSource
+ *
+ * Tool provider types a workflow tool node can call; values match the node's provider_type.
+ */
+export const zToolSource = z.enum(['api', 'builtin', 'mcp', 'workflow'])
+
+/**
+ * ToolListQuery
+ */
+export const zToolListQuery = z.object({
+  limit: z.int().gte(1).lte(100).optional().default(20),
+  page: z.int().gte(1).optional().default(1),
+  provider: z.string().nullish(),
+  provider_type: zToolSource.nullish(),
+  query: z.string().optional().default(''),
 })
 
 /**
@@ -2986,21 +3076,6 @@ export const zPatchWorkspacesByWorkspaceIdMembersByMemberIdPath = z.object({
  */
 export const zPatchWorkspacesByWorkspaceIdMembersByMemberIdResponse = zMemberActionResponse
 
-export const zGetWorkspacesByWorkspaceIdModelProvidersPath = z.object({
-  workspace_id: z.string(),
-})
-
-export const zGetWorkspacesByWorkspaceIdModelProvidersQuery = z.object({
-  model_type: z
-    .enum(['llm', 'moderation', 'rerank', 'speech2text', 'text-embedding', 'tts'])
-    .optional(),
-})
-
-/**
- * Model providers
- */
-export const zGetWorkspacesByWorkspaceIdModelProvidersResponse = zModelProviderListResponse
-
 export const zGetWorkspacesByWorkspaceIdModelProvidersByProviderPath = z.object({
   provider: z.string(),
   workspace_id: z.string(),
@@ -3055,29 +3130,6 @@ export const zPatchWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByC
 export const zPatchWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdResponse =
   zCredentialWriteResponse
 
-export const zPostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdSwitchPath =
-  z.object({
-    credential_id: z.string(),
-    provider: z.string(),
-    workspace_id: z.string(),
-  })
-
-/**
- * Credential active
- */
-export const zPostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdSwitchResponse =
-  zCredentialWriteResponse
-
-export const zGetWorkspacesByWorkspaceIdModelProvidersByProviderModelsPath = z.object({
-  provider: z.string(),
-  workspace_id: z.string(),
-})
-
-/**
- * Models
- */
-export const zGetWorkspacesByWorkspaceIdModelProvidersByProviderModelsResponse = zModelListResponse
-
 export const zPostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsBody =
   zModelCredentialCreatePayload
 
@@ -3127,21 +3179,24 @@ export const zPatchWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredenti
 export const zPatchWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdResponse =
   zCredentialWriteResponse
 
-export const zPostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdSwitchBody =
-  zModelRef
+export const zGetWorkspacesByWorkspaceIdModelsPath = z.object({
+  workspace_id: z.string(),
+})
 
-export const zPostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdSwitchPath =
-  z.object({
-    credential_id: z.string(),
-    provider: z.string(),
-    workspace_id: z.string(),
-  })
+export const zGetWorkspacesByWorkspaceIdModelsQuery = z.object({
+  limit: z.int().gte(1).lte(100).optional().default(20),
+  model_type: z
+    .enum(['llm', 'moderation', 'rerank', 'speech2text', 'text-embedding', 'tts'])
+    .optional(),
+  page: z.int().gte(1).optional().default(1),
+  provider: z.string().optional(),
+  query: z.string().optional().default(''),
+})
 
 /**
- * Credential active
+ * Models
  */
-export const zPostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdSwitchResponse =
-  zCredentialWriteResponse
+export const zGetWorkspacesByWorkspaceIdModelsResponse = zModelListResponse
 
 export const zGetWorkspacesByWorkspaceIdPluginTasksByTaskIdPath = z.object({
   task_id: z.string(),
@@ -3200,15 +3255,6 @@ export const zPostWorkspacesByWorkspaceIdPluginsUpgradePath = z.object({
  */
 export const zPostWorkspacesByWorkspaceIdPluginsUpgradeResponse = zPluginTaskStartResponse
 
-export const zGetWorkspacesByWorkspaceIdToolProvidersPath = z.object({
-  workspace_id: z.string(),
-})
-
-/**
- * Tool providers
- */
-export const zGetWorkspacesByWorkspaceIdToolProvidersResponse = zToolProviderListResponse
-
 export const zGetWorkspacesByWorkspaceIdToolProvidersByProviderPath = z.object({
   provider: z.string(),
   workspace_id: z.string(),
@@ -3263,18 +3309,22 @@ export const zPatchWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCr
 export const zPatchWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdResponse =
   zCredentialWriteResponse
 
-export const zPostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdSwitchPath =
-  z.object({
-    credential_id: z.string(),
-    provider: z.string(),
-    workspace_id: z.string(),
-  })
+export const zGetWorkspacesByWorkspaceIdToolsPath = z.object({
+  workspace_id: z.string(),
+})
+
+export const zGetWorkspacesByWorkspaceIdToolsQuery = z.object({
+  limit: z.int().gte(1).lte(100).optional().default(20),
+  page: z.int().gte(1).optional().default(1),
+  provider: z.string().optional(),
+  provider_type: z.enum(['api', 'builtin', 'mcp', 'workflow']).optional(),
+  query: z.string().optional().default(''),
+})
 
 /**
- * Credential is the default
+ * Tools
  */
-export const zPostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdSwitchResponse =
-  zCredentialWriteResponse
+export const zGetWorkspacesByWorkspaceIdToolsResponse = zToolListResponse
 
 export const zPostWorkspacesByWorkspaceIdSwitchPath = z.object({
   workspace_id: z.string(),

@@ -4,6 +4,7 @@
 
 - Where things go
 - What import refuses
+- Tool node
 - Minimal Workflow
 - Minimal Chatflow
 
@@ -33,6 +34,13 @@ This is the shape of an exported draft. Values vary. Both examples below are tri
 - No `answer` node in a Workflow app.
 - No `end` node and no trigger nodes in a Chatflow app.
 - Don't use `datasource` or `knowledge-index`. They belong to knowledge pipelines.
+
+## Tool node
+
+- Start from the tool's `node_data` in `difyctl get tool`. Put it in the node's `data` as it is.
+- Keep `tool_node_version: "2"`. Every value in `tool_parameters` and `tool_configurations` stays `{type, value}`.
+- Fill every `null` value. A constant is `{type: constant, value: …}`. Text with references is `{type: mixed, value: "{{#node_id.var#}}"}`. A single variable is `{type: variable, value: [node_id, var]}`.
+- Leave out `credential_id`; the workspace's default credential is used.
 
 ## Minimal Workflow
 

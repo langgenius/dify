@@ -1762,33 +1762,33 @@
       "path": "/openapi/v1/workspaces/{workspace_id}/model-providers/{provider}/credentials",
       "summary": "Save a credential for a model provider; the provider checks it first"
     },
-    "switch.model_provider.credential": {
-      "bind": { "credential_id": "path", "provider": "path", "workspace_id": "path" },
-      "deprecated": false,
-      "input": {
-        "type": "object",
-        "properties": { "credential_id": {}, "provider": {}, "workspace_id": {} },
-        "required": ["credential_id", "provider", "workspace_id"]
-      },
-      "internal": false,
-      "kind": "object",
-      "method": "POST",
-      "path": "/openapi/v1/workspaces/{workspace_id}/model-providers/{provider}/credentials/{credential_id}:switch",
-      "summary": "Make a saved credential the active one for its provider"
-    },
     "get.model": {
-      "bind": { "provider": "path", "workspace_id": "path" },
+      "bind": {
+        "limit": "query",
+        "model_type": "query",
+        "page": "query",
+        "provider": "query",
+        "query": "query",
+        "workspace_id": "path"
+      },
       "deprecated": false,
       "input": {
         "type": "object",
-        "properties": { "provider": {}, "workspace_id": {} },
-        "required": ["provider", "workspace_id"]
+        "properties": {
+          "limit": {},
+          "model_type": {},
+          "page": {},
+          "provider": {},
+          "query": {},
+          "workspace_id": {}
+        },
+        "required": ["workspace_id"]
       },
       "internal": false,
-      "kind": "object",
+      "kind": "list",
       "method": "GET",
-      "path": "/openapi/v1/workspaces/{workspace_id}/model-providers/{provider}/models",
-      "summary": "Models a provider offers, with whether each can be used now"
+      "path": "/openapi/v1/workspaces/{workspace_id}/models",
+      "summary": "Models in the workspace across providers, with whether each can be used now"
     },
     "create.model.credential": {
       "bind": {
@@ -1845,6 +1845,34 @@
       "method": "PUT",
       "path": "/openapi/v1/workspaces/{workspace_id}/default-models/{model_type}",
       "summary": "Set the workspace's default model for one model type"
+    },
+    "get.tool": {
+      "bind": {
+        "limit": "query",
+        "page": "query",
+        "provider": "query",
+        "provider_type": "query",
+        "query": "query",
+        "workspace_id": "path"
+      },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": {
+          "limit": {},
+          "page": {},
+          "provider": {},
+          "provider_type": {},
+          "query": {},
+          "workspace_id": {}
+        },
+        "required": ["workspace_id"]
+      },
+      "internal": false,
+      "kind": "list",
+      "method": "GET",
+      "path": "/openapi/v1/workspaces/{workspace_id}/tools",
+      "summary": "Tools a workflow can call here, each with a ready tool node data"
     },
     "describe.tool_provider": {
       "bind": { "provider": "path", "workspace_id": "path" },

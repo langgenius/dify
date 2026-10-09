@@ -1856,22 +1856,6 @@ Upload a file to use as an input variable when running the app
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
-### [GET] /workspaces/{workspace_id}/model-providers
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| model_type | query | Only providers that serve this model type | No | string, <br>**Available values:** "llm", "moderation", "rerank", "speech2text", "text-embedding", "tts" |
-| workspace_id | path |  | Yes | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Model providers | **application/json**: [ModelProviderListResponse](#modelproviderlistresponse)<br> |
-| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
-| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
-
 ### [GET] /workspaces/{workspace_id}/model-providers/{provider}
 #### Parameters
 
@@ -1948,37 +1932,6 @@ Upload a file to use as an input variable when running the app
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
-### [POST] /workspaces/{workspace_id}/model-providers/{provider}/credentials/{credential_id}:switch
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| credential_id | path |  | Yes | string |
-| provider | path |  | Yes | string |
-| workspace_id | path |  | Yes | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Credential active | **application/json**: [CredentialWriteResponse](#credentialwriteresponse)<br> |
-| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
-
-### [GET] /workspaces/{workspace_id}/model-providers/{provider}/models
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| provider | path |  | Yes | string |
-| workspace_id | path |  | Yes | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Models | **application/json**: [ModelListResponse](#modellistresponse)<br> |
-| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
-
 ### [POST] /workspaces/{workspace_id}/model-providers/{provider}/models/credentials
 #### Parameters
 
@@ -2043,26 +1996,23 @@ Upload a file to use as an input variable when running the app
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
-### [POST] /workspaces/{workspace_id}/model-providers/{provider}/models/credentials/{credential_id}:switch
+### [GET] /workspaces/{workspace_id}/models
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| credential_id | path |  | Yes | string |
-| provider | path |  | Yes | string |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| model_type | query | Only models of this type | No | string, <br>**Available values:** "llm", "moderation", "rerank", "speech2text", "text-embedding", "tts" |
+| page | query |  | No | integer, <br>**Default:** 1 |
+| provider | query | Only this provider's models, such as langgenius/openai/openai | No | string |
+| query | query | Words to match in the model name, label or provider | No | string |
 | workspace_id | path |  | Yes | string |
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [ModelRef](#modelref)<br> |
 
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Credential active | **application/json**: [CredentialWriteResponse](#credentialwriteresponse)<br> |
+| 200 | Models | **application/json**: [ModelListResponse](#modellistresponse)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
@@ -2154,20 +2104,6 @@ Upload a file to use as an input variable when running the app
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
-### [GET] /workspaces/{workspace_id}/tool-providers
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| workspace_id | path |  | Yes | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Tool providers | **application/json**: [ToolProviderListResponse](#toolproviderlistresponse)<br> |
-| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
-
 ### [GET] /workspaces/{workspace_id}/tool-providers/{provider}
 #### Parameters
 
@@ -2244,20 +2180,24 @@ Upload a file to use as an input variable when running the app
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
-### [POST] /workspaces/{workspace_id}/tool-providers/{provider}/credentials/{credential_id}:switch
+### [GET] /workspaces/{workspace_id}/tools
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| credential_id | path |  | Yes | string |
-| provider | path |  | Yes | string |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| page | query |  | No | integer, <br>**Default:** 1 |
+| provider | query | Only this provider's tools | No | string |
+| provider_type | query | Only tools of this provider type | No | string, <br>**Available values:** "api", "builtin", "mcp", "workflow" |
+| query | query | Words to match in the tool name or label, or the provider id or label | No | string |
 | workspace_id | path |  | Yes | string |
 
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Credential is the default | **application/json**: [CredentialWriteResponse](#credentialwriteresponse)<br> |
+| 200 | Tools | **application/json**: [ToolListResponse](#toollistresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [POST] /workspaces/{workspace_id}:switch
@@ -3143,12 +3083,26 @@ Strict (extra='forbid').
 | model_type | [ModelType](#modeltype) |  | Yes |
 | name | string |  | No |
 
+#### ModelListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| limit | integer, <br>**Default:** 20 |  | No |
+| model_type | [ModelType](#modeltype) | Only models of this type | No |
+| page | integer, <br>**Default:** 1 |  | No |
+| provider | string | Only this provider's models, such as langgenius/openai/openai | No |
+| query | string | Words to match in the model name, label or provider | No |
+
 #### ModelListResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | data | [ [ModelRow](#modelrow) ] |  | Yes |
+| has_more | boolean |  | Yes |
 | hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+| total | integer |  | Yes |
 
 #### ModelProviderDetailResponse
 
@@ -3164,19 +3118,6 @@ Strict (extra='forbid').
 | label | string |  | Yes |
 | model_types | [ string ] |  | Yes |
 | provider | string | Provider id such as langgenius/openai/openai | Yes |
-
-#### ModelProviderListQuery
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| model_type | [ModelType](#modeltype) | Only providers that serve this model type | No |
-
-#### ModelProviderListResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| data | [ [ModelProviderRow](#modelproviderrow) ] |  | Yes |
-| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
 
 #### ModelProviderRow
 
@@ -3203,7 +3144,9 @@ Strict (extra='forbid').
 | label | string |  | Yes |
 | model | string |  | Yes |
 | model_type | string |  | Yes |
-| status | string |  | Yes |
+| provider | string |  | Yes |
+| provider_label | string |  | Yes |
+| status | string | active means usable now; anything else needs the provider set up | Yes |
 
 #### ModelType
 
@@ -3572,6 +3515,76 @@ types it as a required `'success'` rather than an optional field.
 | credentials | object | Secret values. Pass with --credentials @- (stdin) or @file, never inline. Field names come from credential_form in the describe op. Send [__HIDDEN__] for a secret you keep unchanged. | Yes |
 | name | string |  | No |
 
+#### ToolInputType
+
+Binding modes for persisted tool input values.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ToolInputType | string | Binding modes for persisted tool input values. |  |
+
+#### ToolInputValue
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| type | [ToolInputType](#toolinputtype) |  | No |
+| value |  |  | No |
+
+#### ToolListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| limit | integer, <br>**Default:** 20 |  | No |
+| page | integer, <br>**Default:** 1 |  | No |
+| provider | string | Only this provider's tools | No |
+| provider_type | [ToolSource](#toolsource) | Only tools of this provider type | No |
+| query | string | Words to match in the tool name or label, or the provider id or label | No |
+
+#### ToolListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ToolRow](#toolrow) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+| total | integer |  | Yes |
+
+#### ToolNodeTemplate
+
+A tool node's data with every value as {type, value}.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| plugin_id | string |  | Yes |
+| plugin_unique_identifier | string |  | Yes |
+| provider_id | string |  | Yes |
+| provider_name | string |  | Yes |
+| provider_type | string |  | Yes |
+| title | string |  | Yes |
+| tool_configurations | object |  | Yes |
+| tool_label | string |  | Yes |
+| tool_name | string |  | Yes |
+| tool_node_version | string, <br>**Default:** 2 |  | No |
+| tool_parameters | object |  | Yes |
+| type | string, <br>**Default:** tool |  | No |
+
+#### ToolParameterRow
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default |  |  | Yes |
+| form | string | llm: goes in tool_parameters; form: goes in tool_configurations; schema: fixed | Yes |
+| label | string |  | Yes |
+| llm_description | string |  | Yes |
+| max | number |  | Yes |
+| min | number |  | Yes |
+| name | string |  | Yes |
+| options | [ string ] |  | Yes |
+| required | boolean |  | Yes |
+| type | string |  | Yes |
+
 #### ToolProviderDetailResponse
 
 | Name | Type | Description | Required |
@@ -3585,13 +3598,6 @@ types it as a required `'success'` rather than an optional field.
 | label | string |  | Yes |
 | provider | string | Tool provider id such as langgenius/tavily/tavily | Yes |
 
-#### ToolProviderListResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| data | [ [ToolProviderRow](#toolproviderrow) ] |  | Yes |
-| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
-
 #### ToolProviderRow
 
 | Name | Type | Description | Required |
@@ -3600,6 +3606,28 @@ types it as a required `'success'` rather than an optional field.
 | credential_types | [ string ] | api-key can be set here; oauth2 needs the console | Yes |
 | label | string |  | Yes |
 | provider | string | Tool provider id such as langgenius/tavily/tavily | Yes |
+
+#### ToolRow
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| configured | boolean | Ready to use: needs no credential, or the workspace has one. MCP: authorize or refresh in the console | Yes |
+| description | string |  | Yes |
+| label | string |  | Yes |
+| name | string |  | Yes |
+| node_data | [ToolNodeTemplate](#toolnodetemplate) | Use as the tool node's data; fill every null value; pass upstream values as {type: mixed, value: "{{#node.var#}}"} or {type: variable, value: [node, var]} | Yes |
+| parameters | [ [ToolParameterRow](#toolparameterrow) ] |  | Yes |
+| provider | string |  | Yes |
+| provider_label | string |  | Yes |
+| provider_type | string |  | Yes |
+
+#### ToolSource
+
+Tool provider types a workflow tool node can call; values match the node's provider_type.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ToolSource | string | Tool provider types a workflow tool node can call; values match the node's provider_type. |  |
 
 #### UsageInfo
 

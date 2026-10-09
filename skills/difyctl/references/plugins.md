@@ -1,6 +1,13 @@
 # Plugins, models and credentials
 
-Read this when a build needs a plugin, a model or a tool that the workspace lacks, or when the user asks to install, upgrade or remove a plugin.
+Read this in the spec phase to find tools and models, and whenever a plugin, model, tool or credential is missing, or the user asks to install, upgrade or remove a plugin.
+
+## Find tools and models
+
+1. `difyctl get tool --query <service>` lists tools the workspace can use: built-in and plugin tools, workflows published as tools, API tools and MCP tools. Each row has `configured` and a ready `node_data`.
+2. `difyctl get model --model-type llm` lists models across providers. Use one whose `status` is `active`.
+3. Nothing fits: `difyctl get marketplace plugin --query <service> --category tool` (or `--category model`).
+4. Show the human the options and let them pick. Never install or choose for them.
 
 ## Missing plugins after an import
 
@@ -22,12 +29,12 @@ Read this when a build needs a plugin, a model or a tool that the workspace lack
 2. Ask the user for each form value. Never invent one, never print it, never write it into the working folder.
 3. Pass the values on stdin: `difyctl create model_provider credential --provider <id> --credentials @-` (for tools, `difyctl create tool_provider credential --provider <id> --credentials @-`), then write the JSON object to stdin.
 4. A 422 means the provider rejected the values; nothing was saved. Show the user the message and ask again.
-5. If the new credential isn't active, follow the `switch` hint.
+5. If another credential is already active, the hint offers to replace its values with `set`.
 6. A tool provider whose `credential_types` lacks `api-key` uses OAuth. Ask the user to authorize it in the console.
 
 ## Models
 
-- `difyctl get model --provider <id>` lists models; use one whose `status` is `active`.
+- `difyctl get model --provider <id>` lists one provider's models; use one whose `status` is `active`.
 - Self-hosted or OpenAI-compatible models: `create model credential` with `--model`, `--model-type` and `--credentials @-`.
 - `get.default_model` and `set.default_model` read and set the workspace defaults. Change a default only when the user asks.
 

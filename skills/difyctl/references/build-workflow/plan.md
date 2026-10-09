@@ -15,7 +15,7 @@ Start only when the human has approved `spec.md`. The plan phase ends when the h
 2. Settle every config in full:
    - LLM: model, prompt text and outputs.
    - If-else: conditions.
-   - Tool: which tool and its parameters.
+   - Tool: the chosen tool's row from `difyctl get tool --provider <id>`, and a value for every parameter. Never guess a parameter.
    - Code: the code itself.
    - Variable references, written as `{{#node_id.var#}}`.
 
@@ -28,7 +28,7 @@ Start only when the human has approved `spec.md`. The plan phase ends when the h
 5. Map the tests.
    - Give each new node a `difyctl test node <mode>` call with specific inputs. `<mode>` is `workflow` for a Workflow app and `advanced_chat` for a Chatflow app.
    - End each slice with a full draft run (`difyctl test console_app workflow` or `difyctl test console_app advanced_chat`) on the acceptance cases that slice can already pass.
-6. Check coverage. Every requirement maps to a node and a test. Every resource is confirmed. An open resource blocks approval.
+6. Check coverage. Every requirement maps to a node and a test. Every resource is confirmed. An open resource blocks approval. Each chosen plugin is installed and configured. An HTTP Request or Code node that calls an outside service needs that choice recorded in the spec.
 7. Ask the human to review the plan. Offer two ways to build:
    - you build it alone;
    - one subagent per slice, one after another.

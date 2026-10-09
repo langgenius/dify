@@ -22,7 +22,11 @@ The spec phase ends when the human approves `difyctl/<app-slug>/spec.md`. Don't 
      - **failure**: what happens when something goes wrong.
    - **Process graph.** A Mermaid graph of business steps, not nodes. If you have a way to draw richer visuals, offer that too.
 4. Walk scenarios with the human. Take 3 to 6 realistic cases through the graph. Include edge cases: empty input, wrong language, a tool failing, an answer too long. Each walk confirms or changes the graph and the requirements.
-5. Collect resources: models, tools and plugins, knowledge bases, agents, credentials. Ask the human for each. Never invent a name. Write an unknown item as open; don't guess it.
+5. Collect resources: models, tools and plugins, knowledge bases, agents, credentials.
+   - For each step that calls an outside service or needs a model, search before you suggest anything: `difyctl get tool --query <service>`, `difyctl get model --model-type llm`, then `difyctl get marketplace plugin --query <service>`.
+   - Show the human a short list per step: name, brief, official, partner or community, install count, installed and configured or not. List HTTP Request or Code last. Say which you recommend and why: an installed and configured tool first, then an official or partner plugin, then a workflow tool.
+   - The human picks. Record the choice and the options shown.
+   - Never invent a name. Write an unknown item as open; don't guess it.
 6. Before you ask for approval:
    - Read the requirements back and ask "anything missing?"
    - Trace both ways. Each requirement names its graph step, or "every step". Each requirement has at least one acceptance case. A requirement missing either is a gap. Raise it with the human.
@@ -38,7 +42,7 @@ The spec phase ends when the human approves `difyctl/<app-slug>/spec.md`. Don't 
 | Inputs and outputs              | Each variable: name, type, required or optional, example. Chatflow: query and conversation memory too |
 | Process                         | The final Mermaid graph; steps may be tagged with requirement ids                                     |
 | Acceptance cases                | Id, scenario, inputs, expected result, check type, covers (`R` ids)                                   |
-| Resources                       | Each need, confirmed or open, and who provides it                                                     |
+| Resources                       | Each need, the options shown, the human's choice, confirmed or open, and who provides it              |
 | Out of scope and open questions |                                                                                                       |
 
 ## Check types for acceptance cases
@@ -91,9 +95,9 @@ flowchart LR
 
 ## Resources
 
-| Need                                               | Status              | Provided by |
-| -------------------------------------------------- | ------------------- | ----------- |
-| <model, tool, knowledge base, agent or credential> | <confirmed or open> | <who>       |
+| Need                                               | Choice   | Options shown        | Status              | Provided by |
+| -------------------------------------------------- | -------- | -------------------- | ------------------- | ----------- |
+| <model, tool, knowledge base, agent or credential> | <picked> | <what the human saw> | <confirmed or open> | <who>       |
 
 ## Out of scope and open questions
 

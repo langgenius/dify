@@ -118,13 +118,11 @@ import {
   zGetWorkspacesByWorkspaceIdMembersPath,
   zGetWorkspacesByWorkspaceIdMembersQuery,
   zGetWorkspacesByWorkspaceIdMembersResponse,
-  zGetWorkspacesByWorkspaceIdModelProvidersByProviderModelsPath,
-  zGetWorkspacesByWorkspaceIdModelProvidersByProviderModelsResponse,
   zGetWorkspacesByWorkspaceIdModelProvidersByProviderPath,
   zGetWorkspacesByWorkspaceIdModelProvidersByProviderResponse,
-  zGetWorkspacesByWorkspaceIdModelProvidersPath,
-  zGetWorkspacesByWorkspaceIdModelProvidersQuery,
-  zGetWorkspacesByWorkspaceIdModelProvidersResponse,
+  zGetWorkspacesByWorkspaceIdModelsPath,
+  zGetWorkspacesByWorkspaceIdModelsQuery,
+  zGetWorkspacesByWorkspaceIdModelsResponse,
   zGetWorkspacesByWorkspaceIdPath,
   zGetWorkspacesByWorkspaceIdPluginsPath,
   zGetWorkspacesByWorkspaceIdPluginsQuery,
@@ -134,8 +132,9 @@ import {
   zGetWorkspacesByWorkspaceIdResponse,
   zGetWorkspacesByWorkspaceIdToolProvidersByProviderPath,
   zGetWorkspacesByWorkspaceIdToolProvidersByProviderResponse,
-  zGetWorkspacesByWorkspaceIdToolProvidersPath,
-  zGetWorkspacesByWorkspaceIdToolProvidersResponse,
+  zGetWorkspacesByWorkspaceIdToolsPath,
+  zGetWorkspacesByWorkspaceIdToolsQuery,
+  zGetWorkspacesByWorkspaceIdToolsResponse,
   zGetWorkspacesQuery,
   zGetWorkspacesResponse,
   zPatchAppsByAppIdAppInfoAdvancedChatBody,
@@ -276,14 +275,9 @@ import {
   zPostWorkspacesByWorkspaceIdMembersPath,
   zPostWorkspacesByWorkspaceIdMembersResponse,
   zPostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsBody,
-  zPostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdSwitchPath,
-  zPostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdSwitchResponse,
   zPostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsPath,
   zPostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsResponse,
   zPostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsBody,
-  zPostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdSwitchBody,
-  zPostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdSwitchPath,
-  zPostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdSwitchResponse,
   zPostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsPath,
   zPostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsResponse,
   zPostWorkspacesByWorkspaceIdPluginsInstallBody,
@@ -295,8 +289,6 @@ import {
   zPostWorkspacesByWorkspaceIdSwitchPath,
   zPostWorkspacesByWorkspaceIdSwitchResponse,
   zPostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsBody,
-  zPostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdSwitchPath,
-  zPostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdSwitchResponse,
   zPostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsPath,
   zPostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsResponse,
   zPutAppsByAppIdEnvByEnvIdBody,
@@ -2226,29 +2218,6 @@ export const members = {
   byMemberId,
 }
 
-export const post29 = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId:
-      'postWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdSwitch',
-    path: '/workspaces/{workspace_id}/model-providers/{provider}/credentials/{credential_id}:switch',
-    tags: ['openapi'],
-  })
-  .input(
-    z.object({
-      params:
-        zPostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdSwitchPath,
-    }),
-  )
-  .output(
-    zPostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdSwitchResponse,
-  )
-
-export const switch_ = {
-  post: post29,
-}
-
 export const delete5 = oc
   .route({
     inputStructure: 'detailed',
@@ -2283,10 +2252,9 @@ export const patch20 = oc
 export const byCredentialId = {
   delete: delete5,
   patch: patch20,
-  switch: switch_,
 }
 
-export const post30 = oc
+export const post29 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2304,32 +2272,8 @@ export const post30 = oc
   .output(zPostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsResponse)
 
 export const credentials = {
-  post: post30,
+  post: post29,
   byCredentialId,
-}
-
-export const post31 = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId:
-      'postWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdSwitch',
-    path: '/workspaces/{workspace_id}/model-providers/{provider}/models/credentials/{credential_id}:switch',
-    tags: ['openapi'],
-  })
-  .input(
-    z.object({
-      body: zPostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdSwitchBody,
-      params:
-        zPostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdSwitchPath,
-    }),
-  )
-  .output(
-    zPostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdSwitchResponse,
-  )
-
-export const switch2 = {
-  post: post31,
 }
 
 export const delete6 = oc
@@ -2376,10 +2320,9 @@ export const patch21 = oc
 export const byCredentialId2 = {
   delete: delete6,
   patch: patch21,
-  switch: switch2,
 }
 
-export const post32 = oc
+export const post30 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2397,27 +2340,15 @@ export const post32 = oc
   .output(zPostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsResponse)
 
 export const credentials2 = {
-  post: post32,
+  post: post30,
   byCredentialId: byCredentialId2,
 }
 
-export const get49 = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'GET',
-    operationId: 'getWorkspacesByWorkspaceIdModelProvidersByProviderModels',
-    path: '/workspaces/{workspace_id}/model-providers/{provider}/models',
-    tags: ['openapi'],
-  })
-  .input(z.object({ params: zGetWorkspacesByWorkspaceIdModelProvidersByProviderModelsPath }))
-  .output(zGetWorkspacesByWorkspaceIdModelProvidersByProviderModelsResponse)
-
 export const models = {
-  get: get49,
   credentials: credentials2,
 }
 
-export const get50 = oc
+export const get49 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2429,33 +2360,36 @@ export const get50 = oc
   .output(zGetWorkspacesByWorkspaceIdModelProvidersByProviderResponse)
 
 export const byProvider = {
-  get: get50,
+  get: get49,
   credentials,
   models,
 }
 
-export const get51 = oc
+export const modelProviders = {
+  byProvider,
+}
+
+export const get50 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
-    operationId: 'getWorkspacesByWorkspaceIdModelProviders',
-    path: '/workspaces/{workspace_id}/model-providers',
+    operationId: 'getWorkspacesByWorkspaceIdModels',
+    path: '/workspaces/{workspace_id}/models',
     tags: ['openapi'],
   })
   .input(
     z.object({
-      params: zGetWorkspacesByWorkspaceIdModelProvidersPath,
-      query: zGetWorkspacesByWorkspaceIdModelProvidersQuery.optional(),
+      params: zGetWorkspacesByWorkspaceIdModelsPath,
+      query: zGetWorkspacesByWorkspaceIdModelsQuery.optional(),
     }),
   )
-  .output(zGetWorkspacesByWorkspaceIdModelProvidersResponse)
+  .output(zGetWorkspacesByWorkspaceIdModelsResponse)
 
-export const modelProviders = {
-  get: get51,
-  byProvider,
+export const models2 = {
+  get: get50,
 }
 
-export const get52 = oc
+export const get51 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2467,7 +2401,7 @@ export const get52 = oc
   .output(zGetWorkspacesByWorkspaceIdPluginTasksByTaskIdResponse)
 
 export const byTaskId2 = {
-  get: get52,
+  get: get51,
 }
 
 export const pluginTasks = {
@@ -2489,7 +2423,7 @@ export const byPluginId = {
   delete: delete7,
 }
 
-export const post33 = oc
+export const post31 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2506,10 +2440,10 @@ export const post33 = oc
   .output(zPostWorkspacesByWorkspaceIdPluginsInstallResponse)
 
 export const install = {
-  post: post33,
+  post: post31,
 }
 
-export const post34 = oc
+export const post32 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2526,10 +2460,10 @@ export const post34 = oc
   .output(zPostWorkspacesByWorkspaceIdPluginsUpgradeResponse)
 
 export const upgrade = {
-  post: post34,
+  post: post32,
 }
 
-export const get53 = oc
+export const get52 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2546,33 +2480,10 @@ export const get53 = oc
   .output(zGetWorkspacesByWorkspaceIdPluginsResponse)
 
 export const plugins2 = {
-  get: get53,
+  get: get52,
   byPluginId,
   install,
   upgrade,
-}
-
-export const post35 = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId:
-      'postWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdSwitch',
-    path: '/workspaces/{workspace_id}/tool-providers/{provider}/credentials/{credential_id}:switch',
-    tags: ['openapi'],
-  })
-  .input(
-    z.object({
-      params:
-        zPostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdSwitchPath,
-    }),
-  )
-  .output(
-    zPostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdSwitchResponse,
-  )
-
-export const switch3 = {
-  post: post35,
 }
 
 export const delete8 = oc
@@ -2609,10 +2520,9 @@ export const patch22 = oc
 export const byCredentialId3 = {
   delete: delete8,
   patch: patch22,
-  switch: switch3,
 }
 
-export const post36 = oc
+export const post33 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2630,11 +2540,11 @@ export const post36 = oc
   .output(zPostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsResponse)
 
 export const credentials3 = {
-  post: post36,
+  post: post33,
   byCredentialId: byCredentialId3,
 }
 
-export const get54 = oc
+export const get53 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2646,27 +2556,35 @@ export const get54 = oc
   .output(zGetWorkspacesByWorkspaceIdToolProvidersByProviderResponse)
 
 export const byProvider2 = {
-  get: get54,
+  get: get53,
   credentials: credentials3,
 }
 
-export const get55 = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'GET',
-    operationId: 'getWorkspacesByWorkspaceIdToolProviders',
-    path: '/workspaces/{workspace_id}/tool-providers',
-    tags: ['openapi'],
-  })
-  .input(z.object({ params: zGetWorkspacesByWorkspaceIdToolProvidersPath }))
-  .output(zGetWorkspacesByWorkspaceIdToolProvidersResponse)
-
 export const toolProviders = {
-  get: get55,
   byProvider: byProvider2,
 }
 
-export const post37 = oc
+export const get54 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesByWorkspaceIdTools',
+    path: '/workspaces/{workspace_id}/tools',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      params: zGetWorkspacesByWorkspaceIdToolsPath,
+      query: zGetWorkspacesByWorkspaceIdToolsQuery.optional(),
+    }),
+  )
+  .output(zGetWorkspacesByWorkspaceIdToolsResponse)
+
+export const tools = {
+  get: get54,
+}
+
+export const post34 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2677,11 +2595,11 @@ export const post37 = oc
   .input(z.object({ params: zPostWorkspacesByWorkspaceIdSwitchPath }))
   .output(zPostWorkspacesByWorkspaceIdSwitchResponse)
 
-export const switch4 = {
-  post: post37,
+export const switch_ = {
+  post: post34,
 }
 
-export const get56 = oc
+export const get55 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2693,19 +2611,21 @@ export const get56 = oc
   .output(zGetWorkspacesByWorkspaceIdResponse)
 
 export const byWorkspaceId = {
-  get: get56,
+  get: get55,
   apps: apps2,
   defaultModels,
   marketplace,
   members,
   modelProviders,
+  models: models2,
   pluginTasks,
   plugins: plugins2,
   toolProviders,
-  switch: switch4,
+  tools,
+  switch: switch_,
 }
 
-export const get57 = oc
+export const get56 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2717,7 +2637,7 @@ export const get57 = oc
   .output(zGetWorkspacesResponse)
 
 export const workspaces = {
-  get: get57,
+  get: get56,
   byWorkspaceId,
 }
 

@@ -701,9 +701,21 @@ export type ModelCredentialUpdatePayload = {
   name?: string | null
 }
 
+export type ModelListQuery = {
+  limit?: number
+  model_type?: ModelType | null
+  page?: number
+  provider?: string | null
+  query?: string
+}
+
 export type ModelListResponse = {
   data: Array<ModelRow>
+  has_more: boolean
   hints?: Array<Hint>
+  limit: number
+  page: number
+  total: number
 }
 
 export type ModelProviderDetailResponse = {
@@ -717,15 +729,6 @@ export type ModelProviderDetailResponse = {
   label: string | null
   model_types: Array<string>
   provider: string
-}
-
-export type ModelProviderListQuery = {
-  model_type?: ModelType | null
-}
-
-export type ModelProviderListResponse = {
-  data: Array<ModelProviderRow>
-  hints?: Array<Hint>
 }
 
 export type ModelProviderRow = {
@@ -746,6 +749,8 @@ export type ModelRow = {
   label: string | null
   model: string
   model_type: string
+  provider: string
+  provider_label: string | null
   status: string
 }
 
@@ -1065,6 +1070,62 @@ export type ToolCredentialUpdatePayload = {
   name?: string | null
 }
 
+export type ToolInputType = 'constant' | 'mixed' | 'variable'
+
+export type ToolInputValue = {
+  type?: ToolInputType
+  value?: unknown
+}
+
+export type ToolListQuery = {
+  limit?: number
+  page?: number
+  provider?: string | null
+  provider_type?: ToolSource | null
+  query?: string
+}
+
+export type ToolListResponse = {
+  data: Array<ToolRow>
+  has_more: boolean
+  hints?: Array<Hint>
+  limit: number
+  page: number
+  total: number
+}
+
+export type ToolNodeTemplate = {
+  plugin_id: string | null
+  plugin_unique_identifier: string | null
+  provider_id: string
+  provider_name: string
+  provider_type: string
+  title: string
+  tool_configurations: {
+    [key: string]: ToolInputValue
+  }
+  tool_label: string
+  tool_name: string
+  tool_node_version?: string
+  tool_parameters: {
+    [key: string]: ToolInputValue
+  }
+  type?: string
+}
+
+export type ToolParameterRow = {
+  default: unknown
+  form: string
+  label: string | null
+  llm_description: string | null
+  max: number | null
+  min: number | null
+  name: string
+  options: Array<string>
+  required: boolean
+  type: string
+}
+
 export type ToolProviderDetailResponse = {
   configured: boolean
   credential_form: Array<CredentialFormField>
@@ -1076,17 +1137,26 @@ export type ToolProviderDetailResponse = {
   provider: string
 }
 
-export type ToolProviderListResponse = {
-  data: Array<ToolProviderRow>
-  hints?: Array<Hint>
-}
-
 export type ToolProviderRow = {
   configured: boolean
   credential_types: Array<string>
   label: string | null
   provider: string
 }
+
+export type ToolRow = {
+  configured: boolean
+  description: string | null
+  label: string
+  name: string
+  node_data: ToolNodeTemplate
+  parameters: Array<ToolParameterRow>
+  provider: string
+  provider_label: string | null
+  provider_type: string
+}
+
+export type ToolSource = 'api' | 'builtin' | 'mcp' | 'workflow'
 
 export type UsageInfo = {
   completion_tokens?: number
@@ -3857,32 +3927,6 @@ export type PatchWorkspacesByWorkspaceIdMembersByMemberIdResponses = {
 export type PatchWorkspacesByWorkspaceIdMembersByMemberIdResponse =
   PatchWorkspacesByWorkspaceIdMembersByMemberIdResponses[keyof PatchWorkspacesByWorkspaceIdMembersByMemberIdResponses]
 
-export type GetWorkspacesByWorkspaceIdModelProvidersData = {
-  body?: never
-  path: {
-    workspace_id: string
-  }
-  query?: {
-    model_type?: 'llm' | 'moderation' | 'rerank' | 'speech2text' | 'text-embedding' | 'tts'
-  }
-  url: '/workspaces/{workspace_id}/model-providers'
-}
-
-export type GetWorkspacesByWorkspaceIdModelProvidersErrors = {
-  422: ErrorBody
-  default: ErrorBody
-}
-
-export type GetWorkspacesByWorkspaceIdModelProvidersError =
-  GetWorkspacesByWorkspaceIdModelProvidersErrors[keyof GetWorkspacesByWorkspaceIdModelProvidersErrors]
-
-export type GetWorkspacesByWorkspaceIdModelProvidersResponses = {
-  200: ModelProviderListResponse
-}
-
-export type GetWorkspacesByWorkspaceIdModelProvidersResponse =
-  GetWorkspacesByWorkspaceIdModelProvidersResponses[keyof GetWorkspacesByWorkspaceIdModelProvidersResponses]
-
 export type GetWorkspacesByWorkspaceIdModelProvidersByProviderData = {
   body?: never
   path: {
@@ -3985,58 +4029,6 @@ export type PatchWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCre
 export type PatchWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdResponse =
   PatchWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdResponses[keyof PatchWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdResponses]
 
-export type PostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdSwitchData =
-  {
-    body?: never
-    path: {
-      credential_id: string
-      provider: string
-      workspace_id: string
-    }
-    query?: never
-    url: '/workspaces/{workspace_id}/model-providers/{provider}/credentials/{credential_id}:switch'
-  }
-
-export type PostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdSwitchErrors =
-  {
-    default: ErrorBody
-  }
-
-export type PostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdSwitchError =
-  PostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdSwitchErrors[keyof PostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdSwitchErrors]
-
-export type PostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdSwitchResponses =
-  {
-    200: CredentialWriteResponse
-  }
-
-export type PostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdSwitchResponse =
-  PostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdSwitchResponses[keyof PostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdSwitchResponses]
-
-export type GetWorkspacesByWorkspaceIdModelProvidersByProviderModelsData = {
-  body?: never
-  path: {
-    provider: string
-    workspace_id: string
-  }
-  query?: never
-  url: '/workspaces/{workspace_id}/model-providers/{provider}/models'
-}
-
-export type GetWorkspacesByWorkspaceIdModelProvidersByProviderModelsErrors = {
-  default: ErrorBody
-}
-
-export type GetWorkspacesByWorkspaceIdModelProvidersByProviderModelsError =
-  GetWorkspacesByWorkspaceIdModelProvidersByProviderModelsErrors[keyof GetWorkspacesByWorkspaceIdModelProvidersByProviderModelsErrors]
-
-export type GetWorkspacesByWorkspaceIdModelProvidersByProviderModelsResponses = {
-  200: ModelListResponse
-}
-
-export type GetWorkspacesByWorkspaceIdModelProvidersByProviderModelsResponse =
-  GetWorkspacesByWorkspaceIdModelProvidersByProviderModelsResponses[keyof GetWorkspacesByWorkspaceIdModelProvidersByProviderModelsResponses]
-
 export type PostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsData = {
   body: ModelCredentialCreatePayload
   path: {
@@ -4123,34 +4115,35 @@ export type PatchWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredential
 export type PatchWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdResponse =
   PatchWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdResponses[keyof PatchWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdResponses]
 
-export type PostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdSwitchData =
-  {
-    body: ModelRef
-    path: {
-      credential_id: string
-      provider: string
-      workspace_id: string
-    }
-    query?: never
-    url: '/workspaces/{workspace_id}/model-providers/{provider}/models/credentials/{credential_id}:switch'
+export type GetWorkspacesByWorkspaceIdModelsData = {
+  body?: never
+  path: {
+    workspace_id: string
   }
-
-export type PostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdSwitchErrors =
-  {
-    422: ErrorBody
-    default: ErrorBody
+  query?: {
+    limit?: number
+    model_type?: 'llm' | 'moderation' | 'rerank' | 'speech2text' | 'text-embedding' | 'tts'
+    page?: number
+    provider?: string
+    query?: string
   }
+  url: '/workspaces/{workspace_id}/models'
+}
 
-export type PostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdSwitchError =
-  PostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdSwitchErrors[keyof PostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdSwitchErrors]
+export type GetWorkspacesByWorkspaceIdModelsErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
 
-export type PostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdSwitchResponses =
-  {
-    200: CredentialWriteResponse
-  }
+export type GetWorkspacesByWorkspaceIdModelsError =
+  GetWorkspacesByWorkspaceIdModelsErrors[keyof GetWorkspacesByWorkspaceIdModelsErrors]
 
-export type PostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdSwitchResponse =
-  PostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdSwitchResponses[keyof PostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdSwitchResponses]
+export type GetWorkspacesByWorkspaceIdModelsResponses = {
+  200: ModelListResponse
+}
+
+export type GetWorkspacesByWorkspaceIdModelsResponse =
+  GetWorkspacesByWorkspaceIdModelsResponses[keyof GetWorkspacesByWorkspaceIdModelsResponses]
 
 export type GetWorkspacesByWorkspaceIdPluginTasksByTaskIdData = {
   body?: never
@@ -4274,29 +4267,6 @@ export type PostWorkspacesByWorkspaceIdPluginsUpgradeResponses = {
 export type PostWorkspacesByWorkspaceIdPluginsUpgradeResponse =
   PostWorkspacesByWorkspaceIdPluginsUpgradeResponses[keyof PostWorkspacesByWorkspaceIdPluginsUpgradeResponses]
 
-export type GetWorkspacesByWorkspaceIdToolProvidersData = {
-  body?: never
-  path: {
-    workspace_id: string
-  }
-  query?: never
-  url: '/workspaces/{workspace_id}/tool-providers'
-}
-
-export type GetWorkspacesByWorkspaceIdToolProvidersErrors = {
-  default: ErrorBody
-}
-
-export type GetWorkspacesByWorkspaceIdToolProvidersError =
-  GetWorkspacesByWorkspaceIdToolProvidersErrors[keyof GetWorkspacesByWorkspaceIdToolProvidersErrors]
-
-export type GetWorkspacesByWorkspaceIdToolProvidersResponses = {
-  200: ToolProviderListResponse
-}
-
-export type GetWorkspacesByWorkspaceIdToolProvidersResponse =
-  GetWorkspacesByWorkspaceIdToolProvidersResponses[keyof GetWorkspacesByWorkspaceIdToolProvidersResponses]
-
 export type GetWorkspacesByWorkspaceIdToolProvidersByProviderData = {
   body?: never
   path: {
@@ -4399,33 +4369,35 @@ export type PatchWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCred
 export type PatchWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdResponse =
   PatchWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdResponses[keyof PatchWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdResponses]
 
-export type PostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdSwitchData =
-  {
-    body?: never
-    path: {
-      credential_id: string
-      provider: string
-      workspace_id: string
-    }
-    query?: never
-    url: '/workspaces/{workspace_id}/tool-providers/{provider}/credentials/{credential_id}:switch'
+export type GetWorkspacesByWorkspaceIdToolsData = {
+  body?: never
+  path: {
+    workspace_id: string
   }
-
-export type PostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdSwitchErrors =
-  {
-    default: ErrorBody
+  query?: {
+    limit?: number
+    page?: number
+    provider?: string
+    provider_type?: 'api' | 'builtin' | 'mcp' | 'workflow'
+    query?: string
   }
+  url: '/workspaces/{workspace_id}/tools'
+}
 
-export type PostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdSwitchError =
-  PostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdSwitchErrors[keyof PostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdSwitchErrors]
+export type GetWorkspacesByWorkspaceIdToolsErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
 
-export type PostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdSwitchResponses =
-  {
-    200: CredentialWriteResponse
-  }
+export type GetWorkspacesByWorkspaceIdToolsError =
+  GetWorkspacesByWorkspaceIdToolsErrors[keyof GetWorkspacesByWorkspaceIdToolsErrors]
 
-export type PostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdSwitchResponse =
-  PostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdSwitchResponses[keyof PostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdSwitchResponses]
+export type GetWorkspacesByWorkspaceIdToolsResponses = {
+  200: ToolListResponse
+}
+
+export type GetWorkspacesByWorkspaceIdToolsResponse =
+  GetWorkspacesByWorkspaceIdToolsResponses[keyof GetWorkspacesByWorkspaceIdToolsResponses]
 
 export type PostWorkspacesByWorkspaceIdSwitchData = {
   body?: never

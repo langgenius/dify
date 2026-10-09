@@ -23,7 +23,7 @@ Four phases. Each ends with a gate; never skip one, even for a small app.
 - [`build-workflow/build.md`](build-workflow/build.md): read in the build phase.
 - [`build-workflow/handover.md`](build-workflow/handover.md): read when the build is done.
 - [`build-workflow/dsl.md`](build-workflow/dsl.md): read when writing or reading app YAML.
-- Read [`plugins.md`](plugins.md) when the spec's resources include a plugin, model or tool the workspace lacks, or a credential is missing.
+- Read [`plugins.md`](plugins.md) in the spec phase to find tools and models, and when a plugin, model, tool or credential is missing.
 
 ## Limits
 
