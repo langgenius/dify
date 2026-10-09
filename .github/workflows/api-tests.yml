@@ -177,10 +177,12 @@ jobs:
         run: uv sync --project api --dev
 
       - name: Run Controller Tests
-        # Controller tests register Flask routes at import time, so keep them out of xdist.
+        # Workers have separate Flask registries; keep collection separate from the other unit suites.
         run: |
           uv run --project api pytest \
+            -p no:benchmark \
             --timeout "${PYTEST_TIMEOUT:-20}" \
+            -n auto \
             -o 'addopts=-p no:opik -p no:langsmith_plugin --cov=./api --cov-branch --import-mode=importlib' \
             --cov-report= \
             --junitxml=test-results/controllers.xml \
