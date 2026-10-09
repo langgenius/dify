@@ -761,7 +761,7 @@ class WorkflowService:
             )
 
         # trigger app workflow events
-        app_published_workflow_was_updated.send(app_model, published_workflow=workflow)
+        app_published_workflow_was_updated.send(app_model, published_workflow=workflow, session=session)
 
         # return new workflow
         return workflow
