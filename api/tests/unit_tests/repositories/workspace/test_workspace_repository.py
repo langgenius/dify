@@ -139,6 +139,34 @@ def test_write_rolls_back_on_commit_failure(
     assert snapshot.name == "First"
 
 
+@pytest.mark.parametrize("limit", [0, 12])
+def test_settings_commit_without_changing_name(
+    seeded: WorkspaceRepository, sqlite_session_factory: sessionmaker[Session], limit: int
+) -> None:
+    snapshot = seeded.update_settings(workspace_id="w1", account_id="a1", max_active_requests=limit)
+    assert snapshot.max_active_requests == limit
+    assert snapshot.name == "First"
+    with sqlite_session_factory() as session:
+        tenant = session.get(Tenant, "w1")
+        assert tenant is not None
+        assert tenant.max_active_requests == limit
+        assert tenant.name == "First"
+        other = session.get(Tenant, "w2")
+        assert other is not None
+        assert other.max_active_requests is None
+
+
+@pytest.mark.parametrize(("workspace", "account"), [("w1", "other"), ("missing", "a1")])
+def test_settings_reject_missing_workspace_or_membership(
+    seeded: WorkspaceRepository, workspace: str, account: str
+) -> None:
+    with pytest.raises(WorkspaceNotFoundError):
+        seeded.update_settings(workspace_id=workspace, account_id=account, max_active_requests=12)
+    snapshot = seeded.get_for_account("w1", "a1")
+    assert snapshot is not None
+    assert snapshot.max_active_requests == 0
+
+
 def test_sessions_are_closed_before_feature_and_plan_io(
     seeded: WorkspaceRepository, sqlite_session_factory: sessionmaker[Session], sqlite_engine: Engine
 ) -> None:

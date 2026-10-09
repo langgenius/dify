@@ -30,6 +30,7 @@ import AccessRulesPage from './access-rules-page'
 import MembersPage from './members-page'
 import PermissionsPage from './permissions-page'
 import PreferencePage from './preference-page'
+import UsageLimitsPage from './usage-limits-page'
 import WorkflowLogArchivesPage from './workflow-log-archives-page'
 
 const iconClassName = `
@@ -123,6 +124,12 @@ export default function AccountSetting({
       activeIcon: <span className={cn('i-ri-archive-drawer-fill', iconClassName)} />,
     },
     {
+      key: ACCOUNT_SETTING_TAB.USAGE_LIMITS,
+      name: t(($) => $['settings.usageLimits'], { ns: 'navigation' }),
+      icon: <span className={cn('i-ri-speed-line', iconClassName)} />,
+      activeIcon: <span className={cn('i-ri-speed-fill', iconClassName)} />,
+    },
+    {
       key: ACCOUNT_SETTING_TAB.CUSTOM,
       name: t(($) => $.custom, { ns: 'custom' }),
       icon: <span className={cn('i-ri-color-filter-line', iconClassName)} />,
@@ -154,6 +161,7 @@ export default function AccountSetting({
       visibleTabs.push(ACCOUNT_SETTING_TAB.CUSTOM)
 
     if (canViewWorkflowLogArchives) visibleTabs.push(ACCOUNT_SETTING_TAB.WORKFLOW_LOG_ARCHIVES)
+    if (!isCurrentWorkspaceDatasetOperator) visibleTabs.push(ACCOUNT_SETTING_TAB.USAGE_LIMITS)
 
     return visibleTabs
       .map((tab) => settingItems.find((item) => item.key === tab))
@@ -262,6 +270,7 @@ export default function AccountSetting({
                   {activeMenu === ACCOUNT_SETTING_TAB.WORKFLOW_LOG_ARCHIVES && (
                     <WorkflowLogArchivesPage />
                   )}
+                  {activeMenu === ACCOUNT_SETTING_TAB.USAGE_LIMITS && <UsageLimitsPage />}
                   {activeMenu === ACCOUNT_SETTING_TAB.CUSTOM && <CustomPage />}
                   {activeMenu === ACCOUNT_SETTING_TAB.PREFERENCES && <PreferencePage />}
                 </div>

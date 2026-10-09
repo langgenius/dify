@@ -44,6 +44,7 @@
   "settings.settings": "ການຕັ້ງຄ່າ",
   "settings.swaggerAPIAsTool": "Swagger API ເປັນເຄື່ອງມື",
   "settings.trigger": "ຕົວຈຸດຊະນວນ (Trigger)",
+  "settings.usageLimits": "Usage & Limits",
   "settings.workspace": "ພື້ນທີ່ເຮັດວຽກ",
   "toolsPage.description": "ເຄື່ອງມືທັງໝົດທີ່ມີໃນພື້ນທີ່ເຮັດວຽກຂອງທ່ານ — ທັງແບບພາຍໃນ ແລະ ທີ່ຕິດຕັ້ງຈາກຕະຫຼາດແອັບ.",
   "toolsPage.toolPlugin": "ປລັກອິນເຄື່ອງມື"

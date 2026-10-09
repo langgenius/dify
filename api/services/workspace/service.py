@@ -39,6 +39,8 @@ class WorkspaceStore(Protocol):
 
     def rename(self, *, workspace_id: str, account_id: str, name: str) -> WorkspaceSnapshot: ...
 
+    def update_settings(self, *, workspace_id: str, account_id: str, max_active_requests: int) -> WorkspaceSnapshot: ...
+
     def update_custom_config(
         self, *, workspace_id: str, account_id: str, changes: WorkspaceCustomConfig
     ) -> WorkspaceSnapshot: ...
@@ -109,6 +111,7 @@ class WorkspaceService:
             "role": workspace.role,
             "plan": credits.plan,
             "credits": credits.remaining_credits,
+            "max_active_requests": workspace.max_active_requests,
         }
 
     def get_effective_credit_pool(self, workspace_id: str) -> EffectiveCreditPool:
@@ -147,6 +150,14 @@ class WorkspaceService:
             raise UnsupportedFileTypeError()
         return self._logos.upload(context, filename=filename, content=content, mimetype=mimetype)
 
+    def update_settings(self, context: RequestContext, max_active_requests: int) -> dict[str, object]:
+        workspace = self._workspaces.update_settings(
+            workspace_id=context.active_workspace_id,
+            account_id=context.account_id,
+            max_active_requests=max_active_requests,
+        )
+        return self._tenant_info(workspace)
+
     def permission(self, context: RequestContext) -> WorkspacePermission:
         return self._features.get_permission(context.active_workspace_id)
 
@@ -170,6 +181,7 @@ class WorkspaceService:
             "role": workspace.role,
             "plan": credits.plan,
             "trial_end_reason": None,
+            "max_active_requests": workspace.max_active_requests,
         }
         # Preserve the existing workspace-wide privileged-member check.
         if features.can_replace_logo and workspace.has_privileged_member:

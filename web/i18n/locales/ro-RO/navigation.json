@@ -44,6 +44,7 @@
   "settings.settings": "Settings",
   "settings.swaggerAPIAsTool": "Swagger API as Tool",
   "settings.trigger": "Trigger",
+  "settings.usageLimits": "Usage & Limits",
   "settings.workspace": "WORKSPACE",
   "toolsPage.description": "Toate instrumentele disponibile în workspace — instrumente integrate și integrări instalate din Marketplace.",
   "toolsPage.toolPlugin": "Tool Plugin"

@@ -17,7 +17,6 @@ import json
 import threading
 import uuid
 from collections.abc import Callable
-from contextlib import contextmanager
 from unittest.mock import MagicMock
 
 import pytest
@@ -28,7 +27,7 @@ import services.app_generate_service as ags_module
 from core.app.entities.app_invoke_entities import InvokeFrom
 from enums import DeploymentEdition, QuotaType
 from graphon.enums import WorkflowExecutionStatus
-from models.account import Account
+from models.account import Account, Tenant
 from models.enums import AppStatus, CreatorUserRole
 from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowRun, WorkflowRunTriggeredFrom, WorkflowType
@@ -63,7 +62,7 @@ class _DummyRateLimit:
         return "dummy-request-id"
 
     def enter(self, request_id: str | None = None) -> str:
-        return request_id or "dummy-request-id"
+        return request_id or f"{self.client_id}-request-id"
 
     def exit(self, request_id: str) -> None:
         self._exited.append(request_id)
@@ -99,8 +98,9 @@ def _make_user() -> Account:
 
 class _RealSessionTest:
     @pytest.fixture(autouse=True)
-    def _bind_unbound_session(self, unbound_session: Session) -> None:
+    def _bind_unbound_session(self, unbound_session: Session, mocker: MockerFixture) -> None:
         self.session = unbound_session
+        mocker.patch.object(AppGenerateService, "_get_workspace_max_active_requests", return_value=0)
 
 
 def _make_workflow(
@@ -144,12 +144,6 @@ def _make_workflow_run(*, run_id: str, ended: bool) -> WorkflowRun:
     )
     run.id = run_id
     return run
-
-
-@contextmanager
-def _noop_rate_limit_context(rate_limit, request_id):
-    """Drop-in replacement for rate_limit_context that doesn't touch Redis."""
-    yield
 
 
 # ---------------------------------------------------------------------------
@@ -308,6 +302,25 @@ class TestGetMaxActiveRequests:
         assert AppGenerateService._get_max_active_requests(app) == 15
 
 
+class TestGetWorkspaceMaxActiveRequests:
+    def test_reads_limit_from_current_workspace(self, mocker: MockerFixture):
+        app = _make_app(AppMode.CHAT)
+        tenant = Tenant(name="Workspace")
+        tenant.max_active_requests = 9
+        with Session() as session:
+            get_tenant = mocker.patch.object(session, "get", return_value=tenant)
+
+            assert AppGenerateService._get_workspace_max_active_requests(app, session=session) == 9
+            get_tenant.assert_called_once_with(Tenant, "tenant-id")
+
+    def test_missing_workspace_is_unlimited(self, mocker: MockerFixture):
+        app = _make_app(AppMode.CHAT)
+        with Session() as session:
+            mocker.patch.object(session, "get", return_value=None)
+
+            assert AppGenerateService._get_workspace_max_active_requests(app, session=session) == 0
+
+
 # ---------------------------------------------------------------------------
 # generate – every AppMode branch
 # ---------------------------------------------------------------------------
@@ -318,11 +331,6 @@ class TestGenerate(_RealSessionTest):
     def _common(self, mocker: MockerFixture, config_overrides: Callable[..., None]):
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
         mocker.patch("services.app_generate_service.RateLimit", _DummyRateLimit)
-        # Prevent AppExecutionParams.new from touching real models via isinstance
-        mocker.patch(
-            "services.app_generate_service.rate_limit_context",
-            _noop_rate_limit_context,
-        )
 
     # -- COMPLETION ---------------------------------------------------------
     def test_completion_mode(self, mocker: MockerFixture):
@@ -661,10 +669,6 @@ class TestGenerateBilling(_RealSessionTest):
     @pytest.fixture(autouse=True)
     def _common(self, mocker: MockerFixture):
         mocker.patch("services.app_generate_service.RateLimit", _DummyRateLimit)
-        mocker.patch(
-            "services.app_generate_service.rate_limit_context",
-            _noop_rate_limit_context,
-        )
 
     def test_cloud_edition_consumes_quota(self, mocker: MockerFixture, config_overrides: Callable[..., None]):
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
@@ -775,7 +779,7 @@ class TestGenerateBilling(_RealSessionTest):
             session=self.session,
         )
         # exit is called in finally block for non-streaming
-        assert exit_calls == ["dummy-request-id"]
+        assert exit_calls == ["app-id-request-id", "workspace:tenant-id-request-id"]
 
     def test_blocking_failure_exits_rate_limit_once(self, mocker: MockerFixture, config_overrides: Callable[..., None]):
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
@@ -807,7 +811,7 @@ class TestGenerateBilling(_RealSessionTest):
             )
 
         quota_charge.refund.assert_called_once()
-        assert exit_calls == ["dummy-request-id"]
+        assert exit_calls == ["app-id-request-id", "workspace:tenant-id-request-id"]
 
     def test_streaming_failure_exits_rate_limit_once(
         self, mocker: MockerFixture, config_overrides: Callable[..., None]
@@ -841,7 +845,7 @@ class TestGenerateBilling(_RealSessionTest):
             )
 
         quota_charge.refund.assert_called_once()
-        assert exit_calls == ["dummy-request-id"]
+        assert exit_calls == ["app-id-request-id", "workspace:tenant-id-request-id"]
 
 
 # ---------------------------------------------------------------------------

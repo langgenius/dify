@@ -1,11 +1,11 @@
 import threading
 import time
 from datetime import timedelta
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 
-from core.app.features.rate_limiting.rate_limit import RateLimit
+from core.app.features.rate_limiting.rate_limit import RateLimit, RateLimitLease
 from core.errors.error import AppInvokeQuotaExceededError
 
 
@@ -449,6 +449,65 @@ class TestRateLimitGenerator:
 
         with pytest.raises(StopIteration):
             next(wrapped_gen)
+
+
+class TestRateLimitLease:
+    """Tests for combined rate limit cleanup."""
+
+    def test_should_release_all_entries_when_mapping_returned(self):
+        """Test immediate cleanup for non-streaming mapping results."""
+        app_rate_limit = RateLimit("lease_app", 0)
+        workspace_rate_limit = RateLimit("lease_workspace", 0)
+        app_rate_limit.exit = Mock()
+        workspace_rate_limit.exit = Mock()
+
+        lease = RateLimitLease()
+        lease.add(workspace_rate_limit, "workspace-request")
+        lease.add(app_rate_limit, "app-request")
+
+        result = lease.generate({"answer": "ok"})
+
+        assert result == {"answer": "ok"}
+        workspace_rate_limit.exit.assert_called_once_with("workspace-request")
+        app_rate_limit.exit.assert_called_once_with("app-request")
+
+    def test_should_release_all_entries_when_stream_closed(self):
+        """Test cleanup for streaming results."""
+        app_rate_limit = RateLimit("lease_app_stream", 0)
+        workspace_rate_limit = RateLimit("lease_workspace_stream", 0)
+        app_rate_limit.exit = Mock()
+        workspace_rate_limit.exit = Mock()
+
+        def stream():
+            yield "chunk"
+
+        lease = RateLimitLease()
+        lease.add(workspace_rate_limit, "workspace-request")
+        lease.add(app_rate_limit, "app-request")
+        wrapped = lease.generate(stream())
+
+        assert next(wrapped) == "chunk"
+        wrapped.close()
+
+        workspace_rate_limit.exit.assert_called_once_with("workspace-request")
+        app_rate_limit.exit.assert_called_once_with("app-request")
+
+    def test_should_release_workspace_entry_when_app_entry_fails(self):
+        """Test cleanup after workspace entry succeeds but app entry fails."""
+        workspace_rate_limit = RateLimit("lease_workspace_partial", 0)
+        app_rate_limit = RateLimit("lease_app_partial", 0)
+        workspace_rate_limit.exit = Mock()
+        app_rate_limit.exit = Mock()
+
+        lease = RateLimitLease()
+        lease.add(workspace_rate_limit, "workspace-request")
+
+        with pytest.raises(RuntimeError):
+            raise RuntimeError("app limit exceeded")
+
+        lease.close()
+        workspace_rate_limit.exit.assert_called_once_with("workspace-request")
+        app_rate_limit.exit.assert_not_called()
 
 
 class TestRateLimitConcurrency:

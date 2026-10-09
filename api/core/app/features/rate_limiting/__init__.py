@@ -1,3 +1,3 @@
-from .rate_limit import RateLimit
+from .rate_limit import RateLimit, RateLimitLease
 
-__all__ = ["RateLimit"]
+__all__ = ["RateLimit", "RateLimitLease"]

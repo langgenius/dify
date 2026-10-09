@@ -275,6 +275,7 @@ class WorkspaceRepository(
                 replace_webapp_logo=config.get("replace_webapp_logo"),
             ),
             has_privileged_member=has_privileged_member,
+            max_active_requests=tenant.max_active_requests or 0,
         )
 
     @classmethod
@@ -544,6 +545,16 @@ class WorkspaceRepository(
             snapshot = self._account_snapshot(session, tenant, account_id)
             tenant.name = name
             return replace(snapshot, name=name)
+
+    @override
+    def update_settings(self, *, workspace_id: str, account_id: str, max_active_requests: int) -> WorkspaceSnapshot:
+        with self._session_factory.begin() as session:
+            tenant = session.get(Tenant, workspace_id)
+            if tenant is None:
+                raise WorkspaceNotFoundError()
+            snapshot = self._account_snapshot(session, tenant, account_id)
+            tenant.max_active_requests = max_active_requests
+            return replace(snapshot, max_active_requests=max_active_requests)
 
     @override
     def update_custom_config(

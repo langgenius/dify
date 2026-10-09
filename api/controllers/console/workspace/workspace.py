@@ -57,6 +57,10 @@ class WorkspaceInfoPayload(BaseModel):
     name: str
 
 
+class WorkspaceSettingsPayload(BaseModel):
+    max_active_requests: int = Field(ge=0)
+
+
 class TenantInfoResponse(ResponseModel):
     id: str
     name: str | None = None
@@ -71,6 +75,7 @@ class TenantInfoResponse(ResponseModel):
     trial_credits_used: int | None = None
     trial_credits_exhausted_at: int | None = None
     next_credit_reset_date: int | None = None
+    max_active_requests: int | None = None
 
     @field_validator("status", "trial_end_reason", mode="before")
     @classmethod
@@ -93,6 +98,7 @@ class CurrentWorkspaceSummaryResponse(ResponseModel):
     role: TenantAccountRole
     plan: CloudPlan | None
     credits: int | None = Field(description="Remaining credits in the effective pool; -1 means unlimited.")
+    max_active_requests: int
 
 
 class TenantListItemResponse(ResponseModel):
@@ -188,6 +194,7 @@ register_schema_models(
     SwitchWorkspacePayload,
     WorkspaceCustomConfigPayload,
     WorkspaceInfoPayload,
+    WorkspaceSettingsPayload,
 )
 register_response_schema_models(
     console_ns,
@@ -279,6 +286,22 @@ class CustomConfigWorkspaceApi(Resource):
                     remove_webapp_brand=args.remove_webapp_brand, replace_webapp_logo=args.replace_webapp_logo
                 ),
             )
+        except WorkspaceNotFoundError as exc:
+            raise NotFound() from exc
+        return dump_response(WorkspaceTenantResultResponse, {"result": "success", "tenant": tenant})
+
+
+@console_ns.route("/workspaces/current/settings")
+class WorkspaceSettingsApi(Resource):
+    """Update the current workspace's concurrent request limit."""
+
+    @console_ns.expect(console_ns.models[WorkspaceSettingsPayload.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[WorkspaceTenantResultResponse.__name__])
+    @console_account_admission(allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN}))
+    def post(self, context: RequestContext):
+        args = WorkspaceSettingsPayload.model_validate(console_ns.payload or {})
+        try:
+            tenant = application_services().workspaces.management.update_settings(context, args.max_active_requests)
         except WorkspaceNotFoundError as exc:
             raise NotFound() from exc
         return dump_response(WorkspaceTenantResultResponse, {"result": "success", "tenant": tenant})

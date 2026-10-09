@@ -238,6 +238,9 @@ describe('AccountSetting', () => {
       ).toBeInTheDocument()
       expect(screen.getByText('navigation.settings.billing'))!.toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'appLog.archives.title' })).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'navigation.settings.usageLimits' }),
+      ).toBeInTheDocument()
       expect(screen.queryByText('navigation.settings.dataSource'))!.not.toBeInTheDocument()
       expect(screen.queryByText('navigation.settings.customEndpoint'))!.not.toBeInTheDocument()
       expect(screen.getByText('custom.custom'))!.toBeInTheDocument()
