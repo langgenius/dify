@@ -8,11 +8,12 @@ from uuid import uuid4
 import pytest
 from pydantic import BaseModel, ConfigDict, TypeAdapter
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.rag.embedding.retrieval import RetrievalSegments
 from core.rag.models.document import Document
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
+from extensions.application_services.retrieval import build_dataset_retrieval
 from models.dataset import Dataset, DatasetQuery, DocumentSegment
 from models.dataset import Document as DatasetDocument
 from models.enums import DataSourceType, DocumentCreatedFrom, SegmentStatus
@@ -277,12 +278,13 @@ class TestHitTestingService:
 
         response = _RetrieveResponse.model_validate(
             HitTestingService.retrieve(
+                session=db_session_with_containers,
+                retrieval=build_dataset_retrieval(sessionmaker(bind=db_session_with_containers.get_bind())),
                 dataset=dataset,
                 query="test query",
                 account=account,
                 retrieval_model=None,
                 external_retrieval_model=external_retrieval_model,
-                session=db_session_with_containers,
             )
         )
 
@@ -295,7 +297,7 @@ class TestHitTestingService:
         assert after_count == before_count + 1
 
     @patch("core.rag.datasource.retrieval_service.RetrievalService.retrieve")
-    @patch("core.rag.retrieval.dataset_retrieval.DatasetRetrieval.get_metadata_filter_condition")
+    @patch("services.knowledge.retrieval.dataset_retrieval.DatasetRetrieval.get_metadata_filter_condition")
     def test_retrieve_should_handle_metadata_filtering(
         self, mock_get_meta: MagicMock, mock_retrieve: MagicMock, db_session_with_containers: Session
     ) -> None:
@@ -320,12 +322,13 @@ class TestHitTestingService:
         mock_retrieve.return_value = retrieved_documents
 
         HitTestingService.retrieve(
+            session=db_session_with_containers,
+            retrieval=build_dataset_retrieval(sessionmaker(bind=db_session_with_containers.get_bind())),
             dataset=dataset,
             query="test query",
             account=account,
             retrieval_model=retrieval_model,
             external_retrieval_model=external_retrieval_model,
-            session=db_session_with_containers,
         )
 
         mock_get_meta.assert_called_once()
@@ -333,7 +336,7 @@ class TestHitTestingService:
         assert mock_retrieve.call_args.kwargs["document_ids_filter"] == ["doc_id1"]
 
     @patch("core.rag.datasource.retrieval_service.RetrievalService.retrieve")
-    @patch("core.rag.retrieval.dataset_retrieval.DatasetRetrieval.get_metadata_filter_condition")
+    @patch("services.knowledge.retrieval.dataset_retrieval.DatasetRetrieval.get_metadata_filter_condition")
     def test_retrieve_should_return_empty_if_metadata_filtering_fails(
         self, mock_get_meta: MagicMock, mock_retrieve: MagicMock, db_session_with_containers: Session
     ) -> None:
@@ -357,12 +360,13 @@ class TestHitTestingService:
 
         response = _RetrieveResponse.model_validate(
             HitTestingService.retrieve(
+                session=db_session_with_containers,
+                retrieval=build_dataset_retrieval(sessionmaker(bind=db_session_with_containers.get_bind())),
                 dataset=dataset,
                 query="test query",
                 account=account,
                 retrieval_model=retrieval_model,
                 external_retrieval_model=external_retrieval_model,
-                session=db_session_with_containers,
             )
         )
 
@@ -389,13 +393,14 @@ class TestHitTestingService:
         mock_retrieve.return_value = retrieved_documents
 
         HitTestingService.retrieve(
+            session=db_session_with_containers,
+            retrieval=build_dataset_retrieval(sessionmaker(bind=db_session_with_containers.get_bind())),
             dataset=dataset,
             query="test query",
             account=account,
             retrieval_model=retrieval_model,
             external_retrieval_model=external_retrieval_model,
             attachment_ids=attachment_ids,
-            session=db_session_with_containers,
         )
 
         mock_retrieve.assert_called_once_with(
@@ -449,12 +454,13 @@ class TestHitTestingService:
         mock_retrieve.return_value = retrieved_documents
 
         HitTestingService.retrieve(
+            session=db_session_with_containers,
+            retrieval=build_dataset_retrieval(sessionmaker(bind=db_session_with_containers.get_bind())),
             dataset=dataset,
             query="test query",
             account=account,
             retrieval_model=retrieval_model,
             external_retrieval_model=external_retrieval_model,
-            session=db_session_with_containers,
         )
 
         mock_retrieve.assert_called_once()
