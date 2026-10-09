@@ -126,7 +126,7 @@ def model_runtime(monkeypatch: pytest.MonkeyPatch) -> tuple[ProviderModelBundle,
         assert (tenant_id, provider, model_type) == (TENANT_ID, PROVIDER, ModelType.LLM)
         return bundle
 
-    def dispatch(_client: PluginModelClient, **kwargs: object) -> Generator[LLMResultChunk, None, None]:
+    def dispatch(_client: PluginModelClient, **kwargs: object) -> Generator[LLMResultChunk]:
         calls.append(RecordedCall(args=(), kwargs=kwargs))
         events.append("invoke")
         events.append("first-chunk")
@@ -446,7 +446,7 @@ class TestCompletionAppRunner:
         runner.recalc_llm_max_tokens = CallRecorder()  # type: ignore[method-assign]
         results: list[LLMResult | list[LLMResultChunk]] = []
 
-        def handle_result(invoke_result: LLMResult | Generator[LLMResultChunk, None, None], **_kwargs: object) -> None:
+        def handle_result(invoke_result: LLMResult | Generator[LLMResultChunk], **_kwargs: object) -> None:
             results.append(invoke_result if isinstance(invoke_result, LLMResult) else list(invoke_result))
 
         runner._handle_invoke_result = handle_result  # type: ignore[method-assign]
