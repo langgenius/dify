@@ -6,6 +6,7 @@ from unittest.mock import patch
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.app.file_access import DatabaseFileAccessController
 from core.workflow.system_variables import SystemVariableKey
 from core.workflow.variable_prefixes import (
     CONVERSATION_VARIABLE_NODE_ID,
@@ -36,6 +37,7 @@ from services.variable_truncator import TruncationResult
 from services.workflow.draft_variable_service import (
     DraftVariableSaver,
 )
+from services.workflow.variable_file_gateway import WorkflowVariableFileGateway
 
 SQLITE_MODELS = (Workflow, WorkflowDraftVariable, WorkflowDraftVariableFile, WorkflowNodeExecutionModel)
 pytestmark = [
@@ -54,6 +56,9 @@ class TestDraftVariableSaver:
         mock_user.id = str(uuid.uuid4())
         test_app_id = self._get_test_app_id()
         saver = DraftVariableSaver(
+            file_inputs=WorkflowVariableFileGateway(
+                sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False), DatabaseFileAccessController()
+            ),
             cleanup_files=lambda _ids: pytest.fail("Unexpected failed-upload cleanup"),
             repository=WorkflowDraftVariableRepository(
                 sessions=sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False)
@@ -121,6 +126,9 @@ class TestDraftVariableSaver:
         mock_user.id = str(uuid.uuid4())
         test_app_id = self._get_test_app_id()
         saver = DraftVariableSaver(
+            file_inputs=WorkflowVariableFileGateway(
+                sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False), DatabaseFileAccessController()
+            ),
             cleanup_files=lambda _ids: pytest.fail("Unexpected failed-upload cleanup"),
             repository=WorkflowDraftVariableRepository(
                 sessions=sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False)
@@ -143,6 +151,9 @@ class TestDraftVariableSaver:
         mock_user = Account(name="Test Account", email="test@example.com")
         mock_user.id = str(uuid.uuid4())
         saver = DraftVariableSaver(
+            file_inputs=WorkflowVariableFileGateway(
+                sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False), DatabaseFileAccessController()
+            ),
             cleanup_files=lambda _ids: pytest.fail("Unexpected failed-upload cleanup"),
             repository=WorkflowDraftVariableRepository(
                 sessions=sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False)
@@ -171,15 +182,16 @@ class TestDraftVariableSaver:
             "tenant_id": "legacy-tenant",
         }
 
-        with patch(
-            "services.workflow.draft_variable_service.build_file_from_stored_mapping",
+        with patch.object(
+            saver._file_inputs,
+            "restore",
             return_value=rebuilt_file,
         ) as rebuild_file:
             draft_vars = saver._build_variables_from_start_mapping({"sys.files": [raw_file]})
 
         sys_var = draft_vars[0]
         assert sys_var.get_value().value[0] == rebuilt_file
-        rebuild_file.assert_called_once_with(file_mapping=raw_file, tenant_id="tenant-1")
+        rebuild_file.assert_called_once_with(mapping=raw_file, tenant_id="tenant-1")
 
     @pytest.fixture
     def draft_saver(self, sqlite_session: Session):
@@ -189,6 +201,9 @@ class TestDraftVariableSaver:
         mock_user.id = "test-user-id"
 
         return DraftVariableSaver(
+            file_inputs=WorkflowVariableFileGateway(
+                sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False), DatabaseFileAccessController()
+            ),
             cleanup_files=lambda _ids: pytest.fail("Unexpected failed-upload cleanup"),
             repository=WorkflowDraftVariableRepository(
                 sessions=sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False)
@@ -242,6 +257,9 @@ class TestDraftVariableSaver:
         mock_user = Account(name="Test Account", email="test@example.com")
         mock_user.id = "test-user-id"
         saver = DraftVariableSaver(
+            file_inputs=WorkflowVariableFileGateway(
+                sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False), DatabaseFileAccessController()
+            ),
             cleanup_files=lambda _ids: pytest.fail("Unexpected failed-upload cleanup"),
             repository=WorkflowDraftVariableRepository(
                 sessions=sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False)
@@ -311,6 +329,9 @@ class TestDraftVariableSaver:
         mock_user.tenant_id = "test-tenant-id"
 
         saver = DraftVariableSaver(
+            file_inputs=WorkflowVariableFileGateway(
+                sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False), DatabaseFileAccessController()
+            ),
             cleanup_files=lambda _ids: pytest.fail("Unexpected failed-upload cleanup"),
             repository=WorkflowDraftVariableRepository(
                 sessions=sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False)
@@ -350,6 +371,9 @@ class TestDraftVariableSaver:
         mock_user.tenant_id = "test-tenant-id"
 
         saver = DraftVariableSaver(
+            file_inputs=WorkflowVariableFileGateway(
+                sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False), DatabaseFileAccessController()
+            ),
             cleanup_files=lambda _ids: pytest.fail("Unexpected failed-upload cleanup"),
             repository=WorkflowDraftVariableRepository(
                 sessions=sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False)
