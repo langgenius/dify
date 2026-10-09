@@ -46,7 +46,7 @@ from core.workflow.nodes.agent.plugin_strategy_adapter import (
     PluginAgentStrategyResolver,
 )
 from core.workflow.nodes.agent.runtime_support import AgentRuntimeSupport
-from core.workflow.nodes.agent_v2 import DifyAgentNode
+from core.workflow.nodes.agent_v2.agent_node import DifyAgentNode
 from core.workflow.nodes.agent_v2.binding_resolver import WorkflowAgentBindingResolver
 from core.workflow.nodes.agent_v2.discriminator import is_dify_agent_node_data
 from core.workflow.nodes.agent_v2.output_adapter import WorkflowAgentOutputAdapter
@@ -383,7 +383,9 @@ class DifyNodeFactory(NodeFactory):
         self._agent_strategy_resolver = PluginAgentStrategyResolver()
         self._agent_strategy_presentation_provider = PluginAgentStrategyPresentationProvider()
         self._agent_runtime_support = AgentRuntimeSupport()
-        self._agent_message_transformer = AgentMessageTransformer()
+        self._agent_message_transformer = AgentMessageTransformer(
+            lambda name, default: self._tool_runtime.resolve_provider_icons(provider_name=name, default_icon=default)
+        )
 
     def with_runtime_state(self, graph_runtime_state: "GraphRuntimeState") -> "DifyNodeFactory":
         return DifyNodeFactory(

@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Any, cast
 
 import pytest
+from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.tools.__base.tool import Tool
@@ -51,6 +52,7 @@ class DummyTool(Tool):
 
     def _invoke(
         self,
+        session: Session,
         user_id: str,
         tool_parameters: dict[str, Any],
         conversation_id: str | None = None,
@@ -92,7 +94,7 @@ def _build_tool(runtime: ToolRuntime | None = None) -> DummyTool:
     return DummyTool(entity=entity, runtime=runtime)
 
 
-def test_invoke_supports_single_message_and_parameter_casting():
+def test_invoke_supports_single_message_and_parameter_casting(unbound_session: Session):
     runtime = ToolRuntime(
         tenant_id="tenant-1",
         invoke_from=InvokeFrom.DEBUGGER,
@@ -110,6 +112,7 @@ def test_invoke_supports_single_message_and_parameter_casting():
 
     messages = list(
         tool.invoke(
+            session=unbound_session,
             user_id="user-1",
             tool_parameters={"age": "18", "raw": "keep"},
             conversation_id="conv-1",
@@ -129,7 +132,7 @@ def test_invoke_supports_single_message_and_parameter_casting():
     }
 
 
-def test_invoke_preserves_multiple_select_values():
+def test_invoke_preserves_multiple_select_values(unbound_session: Session):
     tool = _build_tool()
     parameter = ToolParameter.get_simple_instance(
         name="choice",
@@ -141,18 +144,18 @@ def test_invoke_preserves_multiple_select_values():
     parameter.multiple = True
     tool.entity.parameters = [parameter]
 
-    list(tool.invoke(user_id="user-1", tool_parameters={"choice": ["a", "b"]}))
+    list(tool.invoke(session=unbound_session, user_id="user-1", tool_parameters={"choice": ["a", "b"]}))
 
     assert tool.last_invocation is not None
     assert tool.last_invocation["tool_parameters"] == {"choice": ["a", "b"]}
     with pytest.raises(ValueError, match="must be a list"):
-        tool.invoke(user_id="user-1", tool_parameters={"choice": "a"})
+        tool.invoke(session=unbound_session, user_id="user-1", tool_parameters={"choice": "a"})
 
 
-def test_invoke_supports_list_and_generator_results():
+def test_invoke_supports_list_and_generator_results(unbound_session: Session):
     tool = _build_tool()
     tool.result = [tool.create_text_message("a"), tool.create_text_message("b")]
-    list_messages = list(tool.invoke(user_id="user-1", tool_parameters={}))
+    list_messages = list(tool.invoke(session=unbound_session, user_id="user-1", tool_parameters={}))
     assert [msg.message.text for msg in list_messages] == ["a", "b"]
 
     def _message_generator() -> Generator[ToolInvokeMessage, None, None]:
@@ -160,7 +163,7 @@ def test_invoke_supports_list_and_generator_results():
         yield tool.create_text_message("g2")
 
     tool.result = _message_generator()
-    generated_messages = list(tool.invoke(user_id="user-2", tool_parameters={}))
+    generated_messages = list(tool.invoke(session=unbound_session, user_id="user-2", tool_parameters={}))
     assert [msg.message.text for msg in generated_messages] == ["g1", "g2"]
 
 
@@ -369,6 +372,6 @@ def test_message_factory_helpers():
     assert variable_message.message.stream is False
 
 
-def test_base_abstract_invoke_placeholder_returns_none():
+def test_base_abstract_invoke_placeholder_returns_none(unbound_session: Session):
     tool = _build_tool()
-    assert Tool._invoke(tool, user_id="u", tool_parameters={}) is None
+    assert Tool._invoke(tool, session=unbound_session, user_id="u", tool_parameters={}) is None

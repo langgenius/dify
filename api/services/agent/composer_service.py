@@ -1986,6 +1986,23 @@ class AgentComposerService:
         return agent
 
     @classmethod
+    def get_or_create_normal_agent_draft(
+        cls,
+        *,
+        session: Session,
+        tenant_id: str,
+        agent: Agent,
+        created_by: str | None,
+    ) -> AgentConfigDraft:
+        """Resolve the normal draft for legacy Agent App execution callers."""
+        return AgentConfigRepository.normal_draft(
+            session=session,
+            tenant_id=tenant_id,
+            agent=agent,
+            created_by=created_by,
+        )
+
+    @classmethod
     def _save_agent_draft(
         cls,
         *,

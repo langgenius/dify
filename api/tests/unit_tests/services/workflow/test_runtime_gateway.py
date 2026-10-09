@@ -2,7 +2,7 @@
 
 import json
 from collections.abc import Callable, Generator, Iterable
-from typing import NoReturn, Self, cast, override
+from typing import Literal, NoReturn, Self, cast, override
 from unittest.mock import Mock, create_autospec
 
 import pytest
@@ -1272,7 +1272,7 @@ def test_container_debug_prepares_database_records_before_redis(
     sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
     mode: AppMode,
-    entry: str,
+    entry: Literal["iteration", "loop"],
 ) -> None:
     import threading
 
@@ -1312,8 +1312,12 @@ def test_container_debug_prepares_database_records_before_redis(
     monkeypatch.setattr(threading.Thread, "join", lambda _thread, **_kwargs: None)
     monkeypatch.setattr(WorkflowAppGenerator, "_handle_response", response)
     monkeypatch.setattr(AdvancedChatAppGenerator, "_handle_advanced_chat_response", response)
+    debug_entries = {
+        "iteration": gateway.iteration,
+        "loop": gateway.loop,
+    }
     with Flask(__name__).app_context():
-        result = getattr(gateway, entry)(CONTEXT, "app-1", "container", {"item": "value"})
+        result = debug_entries[entry](CONTEXT, "app-1", "container", {"item": "value"})
         list(result)
     assert writes
     assert all(session.closed and not session.in_transaction() for session in sessions)

@@ -365,6 +365,22 @@ class AgentWorkspaceService:
             session.commit()
 
     @staticmethod
+    def validate_binding_generation(
+        binding: AgentWorkspaceBinding,
+        *,
+        base_home_snapshot_id: str | None,
+        agent_config_version_id: str,
+        agent_config_version_kind: AgentConfigVersionKind,
+    ) -> None:
+        """Validate a legacy execution caller against the repository-owned generation policy."""
+        AgentWorkspaceRepository.validate_binding_generation(
+            binding,
+            base_home_snapshot_id=base_home_snapshot_id,
+            agent_config_version_id=agent_config_version_id,
+            agent_config_version_kind=agent_config_version_kind,
+        )
+
+    @staticmethod
     def _client() -> Client:
         base_url = dify_config.AGENT_BACKEND_BASE_URL
         if not base_url:

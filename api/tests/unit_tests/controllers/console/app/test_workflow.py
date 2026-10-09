@@ -1,6 +1,7 @@
 """Transport contracts; workflow behavior is tested at the use-case and adapter boundaries."""
 
 import inspect
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from unittest.mock import MagicMock, Mock, create_autospec
@@ -39,9 +40,14 @@ def workflow_use_cases(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     return use_cases
 
 
-def invoke(resource: type[Resource], method: str = "post", *args: object, **kwargs: object) -> object:
+def invoke(
+    resource: type[Resource],
+    handler: Callable[..., object],
+    *args: object,
+    **kwargs: object,
+) -> object:
     api = resource()
-    return inspect.unwrap(getattr(api, method))(api, *args, request_context=CONTEXT, app_id=APP_ID, **kwargs)
+    return inspect.unwrap(handler)(api, *args, request_context=CONTEXT, app_id=APP_ID, **kwargs)
 
 
 @pytest.mark.parametrize("content_type", ["application/json", "text/plain"])
@@ -60,7 +66,7 @@ def test_sync_parses_transport_and_preserves_patch(app: Flask, workflows: Mock, 
     import json
 
     with app.test_request_context(method="POST", data=json.dumps(body), content_type=content_type):
-        response = invoke(controller.DraftWorkflowApi)
+        response = invoke(controller.DraftWorkflowApi, controller.DraftWorkflowApi.post)
     assert response == {"result": "success", "hash": "new-hash", "updated_at": 1704067200}
     context, app_id, command = workflows.sync.call_args.args
     assert (context, app_id) == (CONTEXT, str(APP_ID))
@@ -82,10 +88,13 @@ def test_sync_invalid_input_does_not_dispatch(
     with app.test_request_context(method="POST", data=data, content_type=content_type):
         if status == 415:
             with pytest.raises(HTTPException) as error:
-                invoke(controller.DraftWorkflowApi)
+                invoke(controller.DraftWorkflowApi, controller.DraftWorkflowApi.post)
             assert error.value.code == status
         else:
-            assert invoke(controller.DraftWorkflowApi) == ({"message": "Invalid JSON data"}, status)
+            assert invoke(controller.DraftWorkflowApi, controller.DraftWorkflowApi.post) == (
+                {"message": "Invalid JSON data"},
+                status,
+            )
     workflows.sync.assert_not_called()
 
 
@@ -96,7 +105,7 @@ def test_sync_invalid_input_does_not_dispatch(
 def test_sync_domain_errors(app: Flask, workflows: Mock, failure: Exception, error_type: type[Exception]) -> None:
     workflows.sync.side_effect = failure
     with app.test_request_context(method="POST", json={"graph": {}, "features": {}}), pytest.raises(error_type):
-        invoke(controller.DraftWorkflowApi)
+        invoke(controller.DraftWorkflowApi, controller.DraftWorkflowApi.post)
 
 
 @pytest.mark.parametrize(
@@ -123,7 +132,11 @@ def test_sync_rejects_removed_full_environment_payload() -> None:
 @pytest.mark.parametrize("warning", [None, "branch may be skipped"])
 def test_publish_serializes_advisory(workflows: Mock, warning: str | None) -> None:
     workflows.publish.return_value = (WorkflowPublication(datetime(2024, 1, 1, tzinfo=UTC), "{}"), warning)
-    response = invoke(controller.PublishedWorkflowApi, "post", controller.PublishWorkflowPayload())
+    response = invoke(
+        controller.PublishedWorkflowApi,
+        controller.PublishedWorkflowApi.post,
+        controller.PublishWorkflowPayload(),
+    )
     assert isinstance(response, dict)
     assert response["created_at"] == 1704067200
     assert response.get("warning") == warning
@@ -142,7 +155,11 @@ def test_publish_serializes_advisory(workflows: Mock, warning: str | None) -> No
 def test_restore_error_contract(workflows: Mock, failure: Exception, error_type: type[Exception]) -> None:
     workflows.restore.side_effect = failure
     with pytest.raises(error_type):
-        invoke(controller.DraftWorkflowRestoreApi, workflow_id="version")
+        invoke(
+            controller.DraftWorkflowRestoreApi,
+            controller.DraftWorkflowRestoreApi.post,
+            workflow_id="version",
+        )
 
 
 @pytest.mark.parametrize(
@@ -160,7 +177,11 @@ def test_restore_domain_error_http_response(workflows: Mock, failure: Exception,
 
     class Restore(Resource):
         def post(self) -> object:
-            return invoke(controller.DraftWorkflowRestoreApi, workflow_id="version")
+            return invoke(
+                controller.DraftWorkflowRestoreApi,
+                controller.DraftWorkflowRestoreApi.post,
+                workflow_id="version",
+            )
 
     api.add_resource(Restore, "/restore")
     response = app.test_client().post("/restore")
@@ -170,7 +191,11 @@ def test_restore_domain_error_http_response(workflows: Mock, failure: Exception,
 
 def test_restore_serializes_change(workflows: Mock) -> None:
     workflows.restore.return_value = WorkflowChange("hash", datetime(2024, 1, 1, tzinfo=UTC))
-    assert invoke(controller.DraftWorkflowRestoreApi, workflow_id="version") == {
+    assert invoke(
+        controller.DraftWorkflowRestoreApi,
+        controller.DraftWorkflowRestoreApi.post,
+        workflow_id="version",
+    ) == {
         "result": "success",
         "hash": "hash",
         "updated_at": 1704067200,
@@ -178,37 +203,69 @@ def test_restore_serializes_change(workflows: Mock) -> None:
 
 
 @pytest.mark.parametrize(
-    ("resource", "payload", "kwargs"),
+    ("resource", "handler", "payload", "kwargs"),
     [
-        (controller.DraftWorkflowTriggerRunApi, controller.DraftWorkflowTriggerRunPayload(node_id="node"), {}),
-        (controller.DraftWorkflowTriggerRunAllApi, controller.DraftWorkflowTriggerRunAllPayload(node_ids=["node"]), {}),
-        (controller.DraftWorkflowTriggerNodeApi, None, {"node_id": "node"}),
+        (
+            controller.DraftWorkflowTriggerRunApi,
+            controller.DraftWorkflowTriggerRunApi.post,
+            controller.DraftWorkflowTriggerRunPayload(node_id="node"),
+            {},
+        ),
+        (
+            controller.DraftWorkflowTriggerRunAllApi,
+            controller.DraftWorkflowTriggerRunAllApi.post,
+            controller.DraftWorkflowTriggerRunAllPayload(node_ids=["node"]),
+            {},
+        ),
+        (
+            controller.DraftWorkflowTriggerNodeApi,
+            controller.DraftWorkflowTriggerNodeApi.post,
+            None,
+            {"node_id": "node"},
+        ),
     ],
 )
 def test_trigger_waiting_and_error_contract(
-    workflows: Mock, resource: type[Resource], payload: BaseModel | None, kwargs: dict[str, str]
+    workflows: Mock,
+    resource: type[Resource],
+    handler: Callable[..., object],
+    payload: BaseModel | None,
+    kwargs: dict[str, str],
 ) -> None:
     args = (payload,) if payload is not None else ()
     workflows.trigger.return_value = None
-    assert invoke(resource, "post", *args, **kwargs) == {"status": "waiting", "retry_in": 2000}
+    assert invoke(resource, handler, *args, **kwargs) == {"status": "waiting", "retry_in": 2000}
     workflows.trigger.side_effect = WorkflowTriggerError("plugin unavailable")
-    assert invoke(resource, "post", *args, **kwargs) == ({"status": "error", "error": "plugin unavailable"}, 400)
+    assert invoke(resource, handler, *args, **kwargs) == ({"status": "error", "error": "plugin unavailable"}, 400)
 
 
 @pytest.mark.parametrize(
-    ("resource", "payload"),
+    ("resource", "handler", "payload"),
     [
-        (controller.DraftWorkflowRunApi, controller.DraftWorkflowRunPayload(inputs={})),
-        (controller.AdvancedChatDraftWorkflowRunApi, controller.AdvancedChatWorkflowRunPayload(inputs={})),
+        (
+            controller.DraftWorkflowRunApi,
+            controller.DraftWorkflowRunApi.post,
+            controller.DraftWorkflowRunPayload(inputs={}),
+        ),
+        (
+            controller.AdvancedChatDraftWorkflowRunApi,
+            controller.AdvancedChatDraftWorkflowRunApi.post,
+            controller.AdvancedChatWorkflowRunPayload(inputs={}),
+        ),
     ],
 )
 def test_debug_run_passes_external_trace_and_stream(
-    app: Flask, workflows: Mock, monkeypatch: pytest.MonkeyPatch, resource: type[Resource], payload: BaseModel
+    app: Flask,
+    workflows: Mock,
+    monkeypatch: pytest.MonkeyPatch,
+    resource: type[Resource],
+    handler: Callable[..., object],
+    payload: BaseModel,
 ) -> None:
     workflows.generate.return_value = {"task_id": "task"}
     monkeypatch.setattr(controller, "get_external_trace_id", lambda request: "external-trace")
     with app.test_request_context(method="POST", json={}):
-        response = invoke(resource, "post", payload)
+        response = invoke(resource, handler, payload)
         assert isinstance(response, Response)
         assert response.get_json() == {"task_id": "task"}
     assert workflows.generate.call_args.args[2]["external_trace_id"] == "external-trace"
@@ -217,12 +274,24 @@ def test_debug_run_passes_external_trace_and_stream(
 def test_convert_delegates_permissions_result(workflows: Mock) -> None:
     result = {"new_app_id": "new-app", "permission_keys": ["app.acl.edit"]}
     workflows.convert.return_value = result
-    assert invoke(controller.ConvertToWorkflowApi, "post", controller.ConvertToWorkflowPayload(name="Copy")) == result
+    assert (
+        invoke(
+            controller.ConvertToWorkflowApi,
+            controller.ConvertToWorkflowApi.post,
+            controller.ConvertToWorkflowPayload(name="Copy"),
+        )
+        == result
+    )
     workflows.convert.assert_called_once_with(CONTEXT, str(APP_ID), {"name": "Copy"})
 
 
 def test_update_empty_payload_does_not_dispatch(workflows: Mock) -> None:
-    assert invoke(controller.WorkflowByIdApi, "patch", controller.WorkflowUpdatePayload(), workflow_id="version") == (
+    assert invoke(
+        controller.WorkflowByIdApi,
+        controller.WorkflowByIdApi.patch,
+        controller.WorkflowUpdatePayload(),
+        workflow_id="version",
+    ) == (
         {"message": "No valid fields to update"},
         400,
     )
@@ -230,7 +299,11 @@ def test_update_empty_payload_does_not_dispatch(workflows: Mock) -> None:
 
 
 def test_delete_has_no_response_body(workflows: Mock) -> None:
-    assert invoke(controller.WorkflowByIdApi, "delete", workflow_id="version") == (None, 204)
+    assert invoke(
+        controller.WorkflowByIdApi,
+        controller.WorkflowByIdApi.delete,
+        workflow_id="version",
+    ) == (None, 204)
     workflows.delete.assert_called_once_with(CONTEXT, WorkflowOwner(str(APP_ID)), "version")
 
 

@@ -228,6 +228,11 @@ class SnippetGenerateService:
         return workflow
 
     @classmethod
+    def ensure_start_node_for_worker(cls, workflow: Workflow, snippet: CustomizedSnippet) -> Workflow:
+        """Inject the virtual Start node after a worker reloads a snippet workflow."""
+        return cls._ensure_start_node(workflow, snippet)
+
+    @classmethod
     def _inject_virtual_start_node(
         cls,
         graph_dict: Mapping[str, Any],

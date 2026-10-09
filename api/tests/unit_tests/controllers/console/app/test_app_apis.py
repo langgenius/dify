@@ -42,6 +42,9 @@ from controllers.console.app import (
     workflow_app_log as workflow_app_log_module,
 )
 from controllers.console.app import (
+    workflow_draft_variable as workflow_draft_variable_module,
+)
+from controllers.console.app import (
     workflow_statistic as workflow_statistic_module,
 )
 from controllers.console.app import (
@@ -63,6 +66,7 @@ from controllers.console.app.workflow import AdvancedChatWorkflowRunPayload, Syn
 from controllers.console.app.workflow_app_log import WorkflowAppLogQuery
 from controllers.console.app.workflow_draft_variable import (
     EnvironmentVariableUpdatePayload,
+    WorkflowDraftVariableListQuery,
     WorkflowDraftVariableUpdatePayload,
 )
 from controllers.console.app.workflow_statistic import WorkflowStatisticQuery
