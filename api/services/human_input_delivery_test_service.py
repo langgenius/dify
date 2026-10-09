@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from enum import StrEnum
 from typing import Protocol
 
 from sqlalchemy import Engine, select
@@ -10,7 +8,6 @@ from sqlalchemy.orm import sessionmaker
 from configs import dify_config
 from extensions.ext_database import db
 from extensions.ext_mail import mail
-from graphon.runtime import VariablePool
 from libs.email_template_renderer import render_email_template
 from models import Account, TenantAccountJoin
 from models.human_input_delivery import (
@@ -21,44 +18,27 @@ from models.human_input_delivery import (
     MemberRecipient,
 )
 from services.feature_service import FeatureService
+from services.human_input.contracts import (
+    DeliveryTestContext,
+    DeliveryTestEmailRecipient,
+    DeliveryTestError,
+    DeliveryTestResult,
+    DeliveryTestStatus,
+    DeliveryTestUnsupportedError,
+)
 
-
-class DeliveryTestStatus(StrEnum):
-    OK = "ok"
-    FAILED = "failed"
-
-
-@dataclass(frozen=True)
-class DeliveryTestEmailRecipient:
-    email: str
-    form_token: str
-
-
-@dataclass(frozen=True)
-class DeliveryTestContext:
-    tenant_id: str
-    app_id: str
-    node_id: str
-    node_title: str | None
-    rendered_content: str
-    template_vars: dict[str, str] = field(default_factory=dict)
-    recipients: list[DeliveryTestEmailRecipient] = field(default_factory=list)
-    variable_pool: VariablePool | None = None
-
-
-@dataclass(frozen=True)
-class DeliveryTestResult:
-    status: DeliveryTestStatus
-    delivered_to: list[str] = field(default_factory=list)
-    warnings: list[str] = field(default_factory=list)
-
-
-class DeliveryTestError(Exception):
-    pass
-
-
-class DeliveryTestUnsupportedError(DeliveryTestError):
-    pass
+__all__ = [
+    "DeliveryTestContext",
+    "DeliveryTestEmailRecipient",
+    "DeliveryTestError",
+    "DeliveryTestHandler",
+    "DeliveryTestRegistry",
+    "DeliveryTestResult",
+    "DeliveryTestStatus",
+    "DeliveryTestUnsupportedError",
+    "EmailDeliveryTestHandler",
+    "HumanInputDeliveryTestService",
+]
 
 
 def _build_form_link(token: str | None) -> str | None:
