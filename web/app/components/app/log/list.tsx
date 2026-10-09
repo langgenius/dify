@@ -499,7 +499,9 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
               onRetry={noop}
               supportFeedback
               feedback={detail.message.feedbacks.find((item: any) => item.from_source === 'admin')}
-              onFeedback={(feedback) => onFeedback(detail.message.id, feedback)}
+              onFeedback={(feedback) => {
+                onFeedback(detail.message.id, feedback).catch(noop)
+              }}
               isShowTextToSpeech
               siteInfo={null}
             />
@@ -634,22 +636,13 @@ const CompletionConversationDetailComp: FC<ConversationDetailProps> = ({
     useCompletionConversationDetail(appDetail.id, conversationId)
   const { t } = useTranslation(['appLog', 'common'])
 
-  const handleFeedback = async (
-    mid: string,
-    { rating, content }: FeedbackType,
-  ): Promise<boolean> => {
-    try {
-      await updateLogMessageFeedbacks({
-        url: `/apps/${appDetail.id}/feedbacks`,
-        body: { message_id: mid, rating, content: content ?? undefined },
-      })
-      conversationDetailMutate()
-      toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
-      return true
-    } catch {
-      toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
-      return false
-    }
+  const handleFeedback = async (mid: string, { rating, content }: FeedbackType) => {
+    await updateLogMessageFeedbacks({
+      url: `/apps/${appDetail.id}/feedbacks`,
+      body: { message_id: mid, rating, content: content ?? undefined },
+    })
+    conversationDetailMutate()
+    toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
   }
 
   const handleAnnotation = async (mid: string, value: string): Promise<boolean> => {
@@ -698,21 +691,12 @@ const ChatConversationDetailComp: FC<ConversationDetailProps> = ({
   const { data: conversationDetail } = useChatConversationDetail(appDetail.id, conversationId)
   const { t } = useTranslation(['appLog', 'common'])
 
-  const handleFeedback = async (
-    mid: string,
-    { rating, content }: FeedbackType,
-  ): Promise<boolean> => {
-    try {
-      await updateLogMessageFeedbacks({
-        url: `/apps/${appDetail.id}/feedbacks`,
-        body: { message_id: mid, rating, content: content ?? undefined },
-      })
-      toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
-      return true
-    } catch {
-      toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
-      return false
-    }
+  const handleFeedback = async (mid: string, { rating, content }: FeedbackType) => {
+    await updateLogMessageFeedbacks({
+      url: `/apps/${appDetail.id}/feedbacks`,
+      body: { message_id: mid, rating, content: content ?? undefined },
+    })
+    toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
   }
 
   const handleAnnotation = async (mid: string, value: string): Promise<boolean> => {
@@ -1027,7 +1011,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
                   <td className="w-40 p-3 pr-2">
                     <DrawerTrigger
                       data-log-detail-trigger
-                      className="w-full cursor-pointer rounded-sm text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-state-accent-solid"
+                      className="w-full cursor-pointer rounded-sm text-left"
                       onClick={(event) => {
                         event.stopPropagation()
                         handleRowClick(log)

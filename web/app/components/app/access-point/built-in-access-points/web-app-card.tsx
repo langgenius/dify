@@ -17,12 +17,13 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
+import { Dialog, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AccessControl from '@/app/components/app/app-access-control'
 import { CustomizeDialog } from '@/app/components/app/overview/customize'
-import EmbeddedModal from '@/app/components/app/overview/embedded'
+import { EmbeddedDialogContent } from '@/app/components/app/overview/embedded'
 import SettingsModal from '@/app/components/app/overview/settings'
 import { WorkflowLaunchDialog } from '@/app/components/app/overview/workflow-launch-dialog'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -92,7 +93,6 @@ export function WebAppAccessPointCard({
   ])
   const setAppDetail = useAppStore((state) => state.setAppDetail)
   const [showSettings, setShowSettings] = useState(false)
-  const [showEmbedded, setShowEmbedded] = useState(false)
   const [showAccess, setShowAccess] = useState(false)
   const [showRegenerate, setShowRegenerate] = useState(false)
   const [showWorkflowLaunch, setShowWorkflowLaunch] = useState(false)
@@ -218,15 +218,23 @@ export function WebAppAccessPointCard({
               </Button>
             )}
             {supportsEmbedded && (
-              <Button
-                className="flex items-center gap-1 px-3"
-                variant="secondary"
-                disabled={!actionsAvailable || !canManageAccessPoint}
-                onClick={() => setShowEmbedded(true)}
-              >
-                <span aria-hidden className="i-ri-window-line size-4" />
-                {t(($) => $['studio.accessPoint.embedIntoSite'], { ns: 'deployments' })}
-              </Button>
+              <Dialog>
+                <DialogTrigger
+                  disabled={!actionsAvailable || !canManageAccessPoint || !site?.access_token}
+                  render={<Button variant="secondary" className="px-3" />}
+                >
+                  <span aria-hidden className="i-ri-window-line size-4" />
+                  {t(($) => $['studio.accessPoint.embedIntoSite'], { ns: 'deployments' })}
+                </DialogTrigger>
+                {site?.access_token && (
+                  <EmbeddedDialogContent
+                    siteInfo={site}
+                    appBaseUrl={site.app_base_url}
+                    accessToken={site.access_token}
+                    hiddenInputs={hiddenLaunchVariables}
+                  />
+                )}
+              </Dialog>
             )}
             <CustomizeDialog
               appId={appInfo.id}
@@ -292,16 +300,6 @@ export function WebAppAccessPointCard({
           isShow={showSettings}
           onClose={() => setShowSettings(false)}
           onSave={onSaveSiteConfig}
-        />
-      )}
-      {supportsEmbedded && site?.access_token && (
-        <EmbeddedModal
-          siteInfo={site}
-          isShow={showEmbedded}
-          onClose={() => setShowEmbedded(false)}
-          appBaseUrl={site.app_base_url}
-          accessToken={site.access_token}
-          hiddenInputs={hiddenLaunchVariables}
         />
       )}
       {showAccess && (

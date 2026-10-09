@@ -4,8 +4,9 @@ import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dif
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import DynamicPdfPreview from '@/app/components/base/file-uploader/dynamic-pdf-preview'
+import { FilePreviewContent } from '@/app/components/base/file-uploader/file-preview-content'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { TransferMethod } from '@/types/app'
 import { documentUploadFileExtension } from './policy'
 
 function LocalPdfFilePreview({ file, onClose }: { file: File; onClose: () => void }) {
@@ -29,7 +30,28 @@ function LocalPdfFilePreview({ file, onClose }: { file: File; onClose: () => voi
 
   if (!previewUrl) return null
 
-  return <DynamicPdfPreview url={previewUrl} onCancel={onClose} />
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) onClose()
+      }}
+    >
+      <FilePreviewContent
+        kind="pdf"
+        file={{
+          id: file.name,
+          name: file.name,
+          size: file.size,
+          type: 'application/pdf',
+          progress: 100,
+          transferMethod: TransferMethod.local_file,
+          supportFileType: 'document',
+          url: previewUrl,
+        }}
+      />
+    </Dialog>
+  )
 }
 
 function LocalTextFilePreview({ file, onClose }: { file: File; onClose: () => void }) {

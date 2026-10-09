@@ -144,6 +144,21 @@ vi.mock('@/service/console', () => ({
   },
 }))
 
+vi.mock('@/service/knowledge/use-dataset', () => ({
+  useInfiniteDatasets: ({ keyword = '' }: { keyword?: string }) => ({
+    data: {
+      pages: [
+        {
+          data: [
+            { id: 'engineering', name: 'Engineering' },
+            { id: 'support', name: 'Support' },
+          ].filter((dataset) => dataset.name.toLowerCase().includes(keyword.toLowerCase())),
+        },
+      ],
+    },
+  }),
+}))
+
 const mockCurrentWorkspace = vi.fn().mockReturnValue({
   id: 'workspace-1',
   name: 'Test Workspace',
@@ -156,11 +171,6 @@ vi.mock('@/context/workspace-state', async () => {
     isCurrentWorkspaceManager: true,
   }))
 })
-
-// The scope picker lists legacy datasets through this hook; keep it off the network.
-vi.mock('@/service/knowledge/use-dataset', () => ({
-  useInfiniteDatasets: () => ({ data: { pages: [{ data: [] }] } }),
-}))
 
 // KnowledgeFS spaces only show up in the scope picker when the workspace has KnowledgeFS.
 vi.mock('@/features/system-features/state', async () => {
@@ -343,7 +353,8 @@ describe('ApiKeyModal', () => {
     await user.click(screen.getByText('appApi.apiKeyModal.addKnowledgeBase'))
     // KnowledgeFS spaces are listed under their own heading and picked like any dataset.
     expect(await screen.findByText('appApi.apiKeyModal.pickerKnowledgeSpaces')).toBeInTheDocument()
-    await user.click(await screen.findByText('Space One'))
+    await user.click(await screen.findByRole('option', { name: 'Space One' }))
+    await user.keyboard('{Escape}')
     await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
 
     // The space id travels in knowledge_space_ids, never in the legacy dataset_ids list.
@@ -379,6 +390,41 @@ describe('ApiKeyModal', () => {
         params: { resource_id: 'app-123', api_key_id: 'app-key-1' },
       })
     })
+  })
+
+  it('searches for a knowledge base and creates a key scoped to the selection', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    await renderModal(datasetScope)
+
+    await user.click(screen.getByText('appApi.apiKeyModal.createNewSecretKey'))
+    await user.click(await screen.findByRole('radio', { name: /scopeSpecificDatasets/ }))
+    expect(screen.getByRole('button', { name: 'common.operation.create' })).toBeDisabled()
+    await user.click(screen.getByRole('combobox', { name: 'appApi.apiKeyModal.addKnowledgeBase' }))
+    await user.type(
+      await screen.findByRole('combobox', { name: 'appApi.apiKeyModal.searchKnowledgeBases' }),
+      'engineering',
+    )
+
+    expect(screen.queryByRole('option', { name: 'Support' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('option', { name: 'Engineering' }))
+    expect(screen.getByRole('option', { name: 'Engineering' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+    expect(
+      screen.getByRole('combobox', { name: 'appApi.apiKeyModal.searchKnowledgeBases' }),
+    ).toHaveValue('engineering')
+    await user.keyboard('{Escape}')
+    await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
+
+    await waitFor(() => {
+      expect(apiMocks.createDataset).toHaveBeenCalledWith({
+        body: { dataset_ids: ['engineering'], knowledge_space_ids: [] },
+      })
+    })
+    expect(
+      await screen.findByRole('textbox', { name: 'appApi.apiKeyModal.secretKey' }),
+    ).toHaveValue('new-dataset-token-123')
   })
 
   it('deletes a dataset API key through the generated mutation input', async () => {

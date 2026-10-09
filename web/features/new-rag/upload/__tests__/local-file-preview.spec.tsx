@@ -3,11 +3,11 @@ import userEvent from '@testing-library/user-event'
 import { LocalFilePreview } from '../local-file-preview'
 import { canPreviewLocalFile } from '../local-file-preview-policy'
 
-vi.mock('@/app/components/base/file-uploader/dynamic-pdf-preview', () => ({
-  default: ({ onCancel, url }: { onCancel: () => void; url: string }) => (
-    <button type="button" aria-label="PDF preview" data-url={url} onClick={onCancel}>
+vi.mock('@/app/components/base/file-uploader/pdf-preview', () => ({
+  PdfPreview: ({ url }: { url: string }) => (
+    <div role="img" aria-label="PDF preview" data-url={url}>
       PDF preview
-    </button>
+    </div>
   ),
 }))
 
@@ -69,13 +69,13 @@ describe('LocalFilePreview', () => {
 
     const { unmount } = render(<LocalFilePreview file={file} onClose={onClose} />)
 
-    const preview = await screen.findByRole('button', { name: 'PDF preview' })
+    const preview = await screen.findByRole('img', { name: 'PDF preview' })
     expect(preview).toHaveAttribute('data-url', 'blob:pdf-preview')
     expect(createObjectUrl).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'application/pdf' }),
     )
 
-    await user.click(preview)
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
     expect(onClose).toHaveBeenCalledOnce()
 
     unmount()

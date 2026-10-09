@@ -20,14 +20,6 @@ export type BillingUnavailableErrorResponse = {
   status: 503
 }
 
-export type PartnerTenantsPayload = {
-  click_id: string
-}
-
-export type BillingResponse = {
-  [key: string]: unknown
-}
-
 export type BillingSubscriptionResponse = {
   url: string
 }
@@ -59,26 +51,6 @@ export type GetBillingInvoicesResponses = {
 
 export type GetBillingInvoicesResponse =
   GetBillingInvoicesResponses[keyof GetBillingInvoicesResponses]
-
-export type PutBillingPartnersByPartnerKeyTenantsData = {
-  body: PartnerTenantsPayload
-  path: {
-    partner_key: string
-  }
-  query?: never
-  url: '/billing/partners/{partner_key}/tenants'
-}
-
-export type PutBillingPartnersByPartnerKeyTenantsErrors = {
-  400: unknown
-}
-
-export type PutBillingPartnersByPartnerKeyTenantsResponses = {
-  200: BillingResponse
-}
-
-export type PutBillingPartnersByPartnerKeyTenantsResponse =
-  PutBillingPartnersByPartnerKeyTenantsResponses[keyof PutBillingPartnersByPartnerKeyTenantsResponses]
 
 export type GetBillingSubscriptionData = {
   body?: never

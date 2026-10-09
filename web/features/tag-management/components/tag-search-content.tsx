@@ -62,7 +62,7 @@ export const TagSearchContentView = ({
   }
 
   return (
-    <div className="relative w-full">
+    <>
       <div className="p-2 pb-1">
         <ComboboxInputGroup className="border-divider-subtle bg-components-input-bg-normal">
           <span
@@ -154,7 +154,7 @@ export const TagSearchContentView = ({
           </div>
         </>
       )}
-    </div>
+    </>
   )
 }
 

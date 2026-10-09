@@ -13,11 +13,11 @@ vi.mock('../../components/knowledge-model-readiness-banner', () => ({
   KnowledgeModelReadinessBanner: () => null,
 }))
 
-vi.mock('@/app/components/base/file-uploader/dynamic-pdf-preview', () => ({
-  default: ({ onCancel, url }: { onCancel: () => void; url: string }) => (
-    <button type="button" aria-label="PDF preview" data-url={url} onClick={onCancel}>
+vi.mock('@/app/components/base/file-uploader/pdf-preview', () => ({
+  PdfPreview: ({ url }: { url: string }) => (
+    <div role="img" aria-label="PDF preview" data-url={url}>
       PDF preview
-    </button>
+    </div>
   ),
 }))
 
@@ -2726,14 +2726,14 @@ describe('DocumentsPage', () => {
     await waitForDocumentFilesStaged()
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.preview' }))
 
-    const preview = await screen.findByRole('button', { name: 'PDF preview' })
+    const preview = await screen.findByRole('img', { name: 'PDF preview' })
     expect(preview).toHaveAttribute('data-url', 'blob:handbook')
     expect(createObjectUrl).toHaveBeenCalledWith(expect.any(Blob))
     expect((createObjectUrl.mock.calls[0]?.[0] as Blob).type).toBe('application/pdf')
     expect(open).not.toHaveBeenCalled()
     expect(uploadMutation.mutateAsync).not.toHaveBeenCalled()
 
-    await user.click(preview)
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
     await waitFor(() => expect(revokeObjectUrl).toHaveBeenCalledWith('blob:handbook'))
   })
 
