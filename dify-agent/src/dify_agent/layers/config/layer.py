@@ -19,7 +19,6 @@ from dify_agent.layers.config.configs import (
     DifyConfigRuntimeState,
 )
 from dify_agent.layers.shell.layer import DifyShellLayer
-from dify_agent.layers.shell.output_text import utf8_prefix
 
 _CONFIG_CONTEXT_HEADING = "Current Agent config manifest for this run:"
 _CONFIG_CONTEXT_COMMAND = "dify-agent config manifest"
@@ -55,7 +54,6 @@ _AGENT_FILE_CLI_HELP_COMMANDS: dict[str, tuple[str, ...]] = {
     "dify-agent file download --help": ("file", "download"),
 }
 _CONFIG_CONTEXT_EXCLUDE = {"mentioned_skill_names": True, "mentioned_file_names": True}
-_SKILL_READ_PAGE_BYTES = 4 * 1024
 
 
 class DifyConfigLayerError(RuntimeError):
@@ -68,7 +66,7 @@ class DifyConfigDeps(LayerDeps):
 
 @dataclass(slots=True)
 class DifyConfigLayer(PydanticAILayer[DifyConfigDeps, object, DifyConfigLayerConfig, DifyConfigRuntimeState]):
-    """Materialize prompt-mentioned assets and expose paged reads for config skills."""
+    """Materialize prompt-mentioned assets and expose a full SKILL.md reader for config skills."""
 
     type_id: ClassVar[str | None] = DIFY_CONFIG_LAYER_TYPE_ID
 
@@ -94,52 +92,28 @@ class DifyConfigLayer(PydanticAILayer[DifyConfigDeps, object, DifyConfigLayerCon
     def tools(self) -> list[PydanticAITool[object]]:
         if not self.config.skills:
             return []
-        return [Tool(self._read_skill, name="config_skill_read")]
+        return [Tool(self._read_skill, name="read_config_skill_md")]
 
-    async def _read_skill(self, name: str, offset: int = 0) -> dict[str, str | int | bool]:
-        """Read one page of a configured skill, continuing with next_offset until complete."""
+    async def _read_skill(self, name: str) -> str:
+        """Return the full SKILL.md of one configured skill."""
         try:
-            return await self._read_skill_page(name, offset)
+            return await self._read_skill_md(name)
         except (RuntimeError, ValueError) as exc:
             # Tool callers can correct input or retry a pull; eager context pulls still fail fast.
             raise ModelRetry(str(exc)) from exc
 
-    async def _read_skill_page(self, name: str, offset: int) -> dict[str, str | int | bool]:
+    async def _read_skill_md(self, name: str) -> str:
         if name not in {skill.name for skill in self.config.skills}:
             raise ValueError(f"unknown config skill: {name}")
-        if offset < 0:
-            raise ValueError("offset must be non-negative")
-
-        content = self.runtime_state.skill_read_content.get(name)
-        if offset == 0 or content is None:
-            output = await self._run_mentioned_pull(
-                script=self._build_shell_skill_pull_script([name]),
-                target_kind="skill",
-            )
-            items = _parse_pull_items(output, target_kind="skill")
-            item = items.get(name)
-            if item is None or not isinstance(item.get("skill_md"), str):
-                raise DifyConfigLayerError(f"missing skill content in pull output for {name}")
-            content = item["skill_md"]
-            self.runtime_state.skill_read_content[name] = content
-        encoded = content.encode("utf-8")
-        if offset > len(encoded):
-            raise ValueError("offset exceeds skill content length")
-        try:
-            remaining = encoded[offset:].decode("utf-8")
-        except UnicodeDecodeError as exc:
-            raise ValueError("offset must be at a UTF-8 character boundary") from exc
-
-        page = utf8_prefix(remaining, _SKILL_READ_PAGE_BYTES)
-        next_offset = offset + len(page.encode("utf-8"))
-        return {
-            "name": name,
-            "content": page,
-            "offset": offset,
-            "next_offset": next_offset,
-            "total_bytes": len(encoded),
-            "complete": next_offset == len(encoded),
-        }
+        output = await self._run_mentioned_pull(
+            script=self._build_shell_skill_pull_script([name]),
+            target_kind="skill",
+        )
+        item = _parse_pull_items(output, target_kind="skill").get(name)
+        skill_md = item.get("skill_md") if item is not None else None
+        if not isinstance(skill_md, str):
+            raise DifyConfigLayerError(f"missing skill content in pull output for {name}")
+        return skill_md
 
     @override
     async def on_context_create(self) -> None:
@@ -205,8 +179,8 @@ class DifyConfigLayer(PydanticAILayer[DifyConfigDeps, object, DifyConfigLayerCon
         usage_lines = [_CONFIG_CLI_USAGE_PROMPT]
         if self.config.skills:
             usage_lines.append(
-                "Use config_skill_read to read a skill's instructions. If complete is false, call it again with "
-                "next_offset until every page has been read. Shell output can omit the middle of a large SKILL.md."
+                "Use read_config_skill_md(name) to read a configured skill's full SKILL.md. "
+                "Shell output can omit the middle of a large SKILL.md."
             )
         if cli_help := self._format_config_cli_help():
             usage_lines.append(cli_help)
@@ -251,7 +225,6 @@ class DifyConfigLayer(PydanticAILayer[DifyConfigDeps, object, DifyConfigLayerCon
 
     async def _pull_mentioned_targets(self) -> None:
         self.runtime_state.pulled_skill_outputs = {}
-        self.runtime_state.skill_read_content = {}
         self.runtime_state.pulled_file_outputs = {}
         if not self.config.mentioned_skill_names and not self.config.mentioned_file_names:
             return

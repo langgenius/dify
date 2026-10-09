@@ -156,7 +156,7 @@ async def test_on_context_create_computes_runtime_fields_and_pulls_mentioned_ass
 
 
 @pytest.mark.anyio
-async def test_config_skill_read_recovers_instructions_hidden_from_shell_output(
+async def test_read_config_skill_md_returns_full_instructions_hidden_from_shell_output(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     layer = _build_layer()
@@ -178,27 +178,24 @@ async def test_config_skill_read_recovers_instructions_hidden_from_shell_output(
     monkeypatch.setattr(DifyShellLayer, "run_remote_script", fake_run_remote_script)
 
     tool = layer.tools[0]
-    assert tool.name == "config_skill_read"
-    pages: list[str] = []
-    offset = 0
-    while True:
-        result = await tool.function_schema.call({"name": "alpha", "offset": offset}, None)  # pyright: ignore[reportArgumentType]
-        assert result["offset"] == offset
-        assert len(result["content"].encode("utf-8")) <= 4096
-        pages.append(result["content"])
-        offset = result["next_offset"]
-        if result["complete"]:
-            break
+    assert tool.name == "read_config_skill_md"
+    result = await tool.function_schema.call({"name": "alpha"}, None)  # pyright: ignore[reportArgumentType]
 
-    assert "".join(pages) == skill_md
-    assert decisive_instruction in pages[1]
+    assert result == skill_md
     assert scripts == ["set -eu\ndify-agent config skills pull --json alpha"]
-    assert "call it again with next_offset" in layer.build_suffix_prompt()
+    assert "read_config_skill_md(name)" in layer.build_suffix_prompt()
+
+
+def test_read_config_skill_md_tool_is_absent_without_configured_skills() -> None:
+    layer = _build_layer()
+    layer.config = layer.config.model_copy(update={"skills": []})
+
+    assert layer.tools == []
 
 
 async def _read_skill_after_retry(
     layer: DifyConfigLayer,
-    first_args: dict[str, str | int],
+    first_args: dict[str, str],
     expected_error: str,
 ) -> None:
     requests = 0
@@ -207,18 +204,17 @@ async def _read_skill_after_retry(
         nonlocal requests
         requests += 1
         if requests == 1:
-            return ModelResponse(parts=[ToolCallPart("config_skill_read", first_args)])
+            return ModelResponse(parts=[ToolCallPart("read_config_skill_md", first_args)])
         if requests == 2:
             retry = messages[-1].parts[0]
             assert isinstance(retry, RetryPromptPart)
-            assert retry.tool_name == "config_skill_read"
+            assert retry.tool_name == "read_config_skill_md"
             assert expected_error in str(retry.content)
-            return ModelResponse(parts=[ToolCallPart("config_skill_read", {"name": "runtime-skill"})])
+            return ModelResponse(parts=[ToolCallPart("read_config_skill_md", {"name": "runtime-skill"})])
         assert requests == 3
         result = messages[-1].parts[0]
         assert isinstance(result, ToolReturnPart)
-        assert result.content["content"] == "é"
-        assert result.content["complete"] is True
+        assert result.content == "é"
         return ModelResponse(parts=[TextPart("Read the skill successfully.")])
 
     result = await Agent(FunctionModel(respond), tools=layer.tools).run("Read the configured skill.")
@@ -226,22 +222,10 @@ async def _read_skill_after_retry(
 
 
 @pytest.mark.anyio
-@pytest.mark.parametrize(
-    ("first_args", "expected_error"),
-    [
-        ({"name": "other"}, "unknown config skill"),
-        ({"name": "runtime-skill", "offset": -1}, "offset must be non-negative"),
-        ({"name": "runtime-skill", "offset": 3}, "offset exceeds skill content length"),
-        ({"name": "runtime-skill", "offset": 1}, "UTF-8 character boundary"),
-    ],
-)
-async def test_config_skill_read_allows_model_to_correct_invalid_arguments(
+async def test_read_config_skill_md_allows_model_to_correct_unknown_skill_name(
     monkeypatch: pytest.MonkeyPatch,
-    first_args: dict[str, str | int],
-    expected_error: str,
 ) -> None:
     layer = _build_layer()
-    layer.runtime_state.skill_read_content["runtime-skill"] = "é"
 
     async def fake_run_remote_script(self, script: str, *, inject_agent_stub_env: bool = False, timeout: float = 10.0):
         del self, inject_agent_stub_env, timeout
@@ -250,7 +234,7 @@ async def test_config_skill_read_allows_model_to_correct_invalid_arguments(
 
     monkeypatch.setattr(DifyShellLayer, "run_remote_script", fake_run_remote_script)
 
-    await _read_skill_after_retry(layer, first_args, expected_error)
+    await _read_skill_after_retry(layer, {"name": "other"}, "unknown config skill")
 
 
 @pytest.mark.anyio
@@ -266,7 +250,7 @@ async def test_config_skill_read_allows_model_to_correct_invalid_arguments(
         (_remote_result('{"items": []}'), "missing skill content"),
     ],
 )
-async def test_config_skill_read_returns_pull_errors_to_model_for_retry(
+async def test_read_config_skill_md_returns_pull_errors_to_model_for_retry(
     monkeypatch: pytest.MonkeyPatch,
     failed_pull: CompleteRemoteCommandResult,
     expected_error: str,
@@ -286,28 +270,6 @@ async def test_config_skill_read_returns_pull_errors_to_model_for_retry(
 
     await _read_skill_after_retry(layer, {"name": "runtime-skill"}, expected_error)
     assert pulls == 2
-
-
-@pytest.mark.anyio
-async def test_config_skill_read_preserves_multibyte_characters_at_page_boundary(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    layer = _build_layer()
-    skill_md = "A" * 4095 + "验" + "B"
-
-    async def fake_run_remote_script(self, script: str, *, inject_agent_stub_env: bool = False, timeout: float = 10.0):
-        del self, script, inject_agent_stub_env, timeout
-        return _remote_result(json.dumps({"items": [{"name": "runtime-skill", "skill_md": skill_md}]}))
-
-    monkeypatch.setattr(DifyShellLayer, "run_remote_script", fake_run_remote_script)
-
-    first = await layer._read_skill("runtime-skill")
-    second = await layer._read_skill("runtime-skill", offset=first["next_offset"])
-
-    assert first["content"] == "A" * 4095
-    assert first["complete"] is False
-    assert second["content"] == "验B"
-    assert second["complete"] is True
 
 
 @pytest.mark.anyio
