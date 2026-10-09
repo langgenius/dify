@@ -1,5 +1,5 @@
 from collections.abc import Callable, Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from decimal import Decimal
 from typing import Literal, Protocol, cast
 
@@ -9,7 +9,9 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import QueuePool
 
+from core.app.entities.queue_entities import AppQueueEvent, QueueAnnotationReplyEvent, QueueStopEvent
 from core.rag.models.document import Document
+from extensions.application_services.workflow import WorkflowExecutionDependencies
 from models.annotation_reply import AnnotationReply
 from models.base import TypeBase
 from models.dataset import Dataset, DatasetCollectionBinding
@@ -20,6 +22,7 @@ from repositories.annotation.reply_repository import AnnotationReplyRepository
 from services.annotation import retrieval_gateway
 from services.annotation.reply_service import AnnotationReplyService
 from services.annotation.retrieval_gateway import AnnotationVectorRetrieval
+from services.workflow.execution.adapters.chatflow.app_runner import AdvancedChatAppRunner
 from tests.unit_tests.core.app.apps.advanced_chat.test_app_runner_input_moderation import (
     build_runner as _runner_fixture,
 )
@@ -247,3 +250,30 @@ def test_history_failure_rolls_back_hit_count(
         assert annotation is not None
         assert annotation.hit_count == 0
         assert session.scalar(select(AppAnnotationHitHistory)) is None
+
+
+def test_chatflow_runner_search_and_publish_are_outside_transaction(
+    build_runner: AdvancedChatAppRunner,
+    annotation_store: AnnotationStore,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    runner = build_runner
+    runner._app.id = runner.application_generate_entity.app_config.app_id = "app-1"
+    runner._app.tenant_id = runner.application_generate_entity.app_config.tenant_id = "tenant-1"
+    runner.message.id = "msg-1"
+    runner.application_generate_entity.query = "hi"
+    runtime = cast(WorkflowExecutionDependencies, runner._runtime)
+    runner._runtime = replace(runtime, annotation_replies=install_vector(monkeypatch, annotation_store))
+    monkeypatch.setattr(runner, "handle_input_moderation", lambda **_kwargs: (False, {}, "hi"))
+    events: list[AppQueueEvent] = []
+
+    def publish(item: AppQueueEvent) -> None:
+        assert annotation_store.pool.checkedout() == 0
+        with annotation_store.sessions() as session:
+            assert session.scalar(select(AppAnnotationHitHistory)) is not None
+        events.append(item)
+
+    monkeypatch.setattr(runner._events, "_publish_event", publish)
+    runner.run()
+    assert isinstance(events[0], QueueAnnotationReplyEvent)
+    assert isinstance(events[-1], QueueStopEvent)

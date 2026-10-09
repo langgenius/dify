@@ -8,11 +8,13 @@ from sqlalchemy.orm import Session, sessionmaker
 from configs import dify_config
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.rag.extractor.entity.datasource_type import DatasourceType
+from extensions.application_services.retrieval import build_dataset_retrieval
 from libs.helper import generate_text_hash
 from repositories.knowledge.dataset_api_key_repository import DatasetApiKeyRepository
 from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepository
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
 from repositories.knowledge.metadata_repository import SQLAlchemyMetadataRepository
+from repositories.knowledge.retrieval_repository import KnowledgeRetrievalRepository
 from repositories.knowledge.segment_repository import SQLAlchemySegmentRepository
 from repositories.knowledge.upload_file_repository import SQLAlchemyKnowledgeUploadRepository
 from services.api_token_service import ApiTokenCache
@@ -50,6 +52,7 @@ from services.knowledge.segments.adapters import (
 )
 from services.knowledge.segments.application import DatasetSegmentApplicationService
 from services.knowledge.segments.indexing import SegmentIndexingGateway
+from services.knowledge_retrieval_inner_service import InnerKnowledgeRetrievalService
 from services.tag_application_service import TagTargetQuery
 from tasks.batch_create_segment_to_index_task import batch_create_segment_to_index_task
 from tasks.delete_segment_from_index_task import delete_segment_from_index_task
@@ -60,6 +63,7 @@ from tasks.enable_segments_to_index_task import enable_segments_to_index_task
 
 @dataclass(frozen=True, slots=True)
 class KnowledgeServices:
+    inner_retrieval: InnerKnowledgeRetrievalService
     metadata: MetadataService
     datasets: DatasetApplicationService
     external: ExternalKnowledgeApplicationService
@@ -121,6 +125,9 @@ def build_knowledge_services(
         disable_task=disable_segments_from_index_task.delay,
     )
     return KnowledgeServices(
+        inner_retrieval=InnerKnowledgeRetrievalService(
+            scopes=KnowledgeRetrievalRepository(database_client), retrieval=build_dataset_retrieval(database_client)
+        ),
         metadata=MetadataService(
             store=SQLAlchemyMetadataRepository(session_factory=database_client), dataset_access=dataset_access
         ),
