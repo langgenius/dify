@@ -1,9 +1,13 @@
 import type { EnvironmentVariablePatch } from '@/service/workflow'
+import { noop } from '@tanstack/react-query'
 import { act } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { markAppDeletionFailed, markAppDeletionStarted } from '@/service/app-deletion'
-import { renderHookWithConsoleQuery } from '@/test/console/query-data'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderHookWithConsoleQuery } from '@/test/console/query-data'
+import { createAppDetailFixture } from '@/test/fixtures/app'
+import { AppModeEnum } from '@/types/app'
 import { useNodesSyncDraft } from '../use-nodes-sync-draft'
 
 const mockGetNodes = vi.fn()
@@ -18,6 +22,7 @@ const mockCollaborationCanPersistLocalGraph = vi.fn()
 const mockCollaborationCanFlushGraphOnPageClose = vi.fn()
 const mockCollaborationCanUseLocalDraftFallback = vi.fn()
 let isCollaborationEnabled = false
+let appMode: AppModeEnum | undefined
 
 let reactFlowState: {
   getNodes: typeof mockGetNodes
@@ -51,6 +56,8 @@ vi.mock('reactflow', () => ({
 }))
 
 vi.mock('@/app/components/workflow/store', () => ({
+  useStore: (selector: (state: typeof workflowStoreState) => unknown) =>
+    selector(workflowStoreState),
   useWorkflowStore: () => ({
     getState: () => workflowStoreState,
   }),
@@ -101,10 +108,27 @@ vi.mock('../use-workflow-refresh-draft', () => ({
   useWorkflowRefreshDraft: () => ({ handleRefreshWorkflowDraft: mockHandleRefreshWorkflowDraft }),
 }))
 
-const renderUseNodesSyncDraft = () =>
-  renderHookWithConsoleQuery(() => useNodesSyncDraft(), {
+const renderUseNodesSyncDraft = () => {
+  const queryClient = createConsoleQueryClient()
+  const appId = workflowStoreState.appId
+  const appQueryKey = consoleQuery.apps.byAppId.get.queryKey({
+    input: { params: { app_id: appId } },
+  })
+  if (appMode)
+    queryClient.setQueryData(appQueryKey, createAppDetailFixture({ id: appId, mode: appMode }))
+  else
+    void queryClient
+      .query({
+        queryKey: appQueryKey,
+        queryFn: () => new Promise<ReturnType<typeof createAppDetailFixture>>(() => {}),
+      })
+      .catch(noop)
+
+  return renderHookWithConsoleQuery(() => useNodesSyncDraft(), {
+    queryClient,
     systemFeatures: { enable_collaboration_mode: isCollaborationEnabled },
   })
+}
 
 describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => {
   beforeEach(() => {
@@ -148,7 +172,104 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
       updatedAt: 2,
     })
     isCollaborationEnabled = false
+    appMode = AppModeEnum.WORKFLOW
   })
+
+  it.each(['draft sync', 'page close'] as const)(
+    'should remove Workflow LLM memory from %s without changing the canvas nodes',
+    async (savePath) => {
+      const memory = {
+        enabled: false,
+        role_prefix: { user: '', assistant: '' },
+        window: { enabled: false, size: 10 },
+      }
+      const canvasNodes = [
+        {
+          id: 'llm',
+          position: { x: 0, y: 0 },
+          data: { type: BlockEnum.LLM, title: 'LLM', memory },
+        },
+        {
+          id: 'iteration-llm',
+          parentId: 'iteration',
+          position: { x: 0, y: 0 },
+          data: { type: BlockEnum.LLM, title: 'Iteration LLM', memory },
+        },
+        {
+          id: 'loop-llm',
+          parentId: 'loop',
+          position: { x: 0, y: 0 },
+          data: { type: BlockEnum.LLM, title: 'Loop LLM', memory },
+        },
+      ]
+      mockGetNodes.mockReturnValue(canvasNodes)
+      const { result } = renderUseNodesSyncDraft()
+
+      await act(async () => {
+        if (savePath === 'draft sync') await result.current.doSyncWorkflowDraft()
+        else result.current.syncWorkflowDraftWhenPageClose()
+      })
+
+      const expectedPayload = expect.objectContaining({
+        graph: expect.objectContaining({
+          nodes: canvasNodes.map((node) => ({
+            ...node,
+            data: { type: BlockEnum.LLM, title: node.data.title },
+          })),
+        }),
+      })
+      if (savePath === 'draft sync')
+        expect(mockSyncWorkflowDraft).toHaveBeenCalledWith({
+          url: '/apps/app-1/workflows/draft',
+          params: expectedPayload,
+        })
+      else
+        expect(mockPostWithKeepalive).toHaveBeenCalledWith(
+          '/api/apps/app-1/workflows/draft',
+          expectedPayload,
+        )
+      canvasNodes.forEach((node) => expect(node.data.memory).toEqual(memory))
+    },
+  )
+
+  it.each([AppModeEnum.ADVANCED_CHAT, undefined])(
+    'should preserve LLM memory when app mode is %s',
+    async (mode) => {
+      appMode = mode
+      const canvasNodes = [
+        {
+          id: 'llm',
+          position: { x: 0, y: 0 },
+          data: {
+            type: BlockEnum.LLM,
+            memory: {
+              role_prefix: { user: 'Human', assistant: 'Assistant' },
+              window: { enabled: true, size: 10 },
+            },
+          },
+        },
+      ]
+      mockGetNodes.mockReturnValue(canvasNodes)
+      const { result } = renderUseNodesSyncDraft()
+
+      await act(async () => {
+        await result.current.doSyncWorkflowDraft()
+        result.current.syncWorkflowDraftWhenPageClose()
+      })
+
+      const expectedPayload = expect.objectContaining({
+        graph: expect.objectContaining({ nodes: canvasNodes }),
+      })
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledWith({
+        url: '/apps/app-1/workflows/draft',
+        params: expectedPayload,
+      })
+      expect(mockPostWithKeepalive).toHaveBeenCalledWith(
+        '/api/apps/app-1/workflows/draft',
+        expectedPayload,
+      )
+    },
+  )
 
   it('should call handleRefreshWorkflowDraft(true) — not updating canvas — on draft_workflow_not_sync', async () => {
     const error = {
