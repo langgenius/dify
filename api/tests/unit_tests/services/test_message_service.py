@@ -13,8 +13,6 @@ from models.account import Account, AccountStatus
 from models.enums import (
     ConversationFromSource,
     EndUserType,
-    FeedbackFromSource,
-    FeedbackRating,
 )
 from models.model import (
     App,
@@ -22,7 +20,6 @@ from models.model import (
     Conversation,
     EndUser,
     Message,
-    MessageFeedback,
 )
 from repositories.sqlalchemy_execution_extra_content_repository import SQLAlchemyExecutionExtraContentRepository
 from services.errors.message import (
@@ -132,26 +129,6 @@ class MessageServiceTestDataFactory:
         message.created_at = timestamp
         message.updated_at = timestamp
         return message
-
-    @staticmethod
-    def create_feedback(
-        feedback_id: str,
-        message: Message,
-        *,
-        source: FeedbackFromSource,
-        rating: FeedbackRating = FeedbackRating.LIKE,
-    ) -> MessageFeedback:
-        feedback = MessageFeedback(
-            app_id=message.app_id,
-            conversation_id=message.conversation_id,
-            message_id=message.id,
-            rating=rating,
-            from_source=source,
-            from_end_user_id="user-456" if source == FeedbackFromSource.USER else None,
-            from_account_id="account-123" if source == FeedbackFromSource.ADMIN else None,
-        )
-        feedback.id = feedback_id
-        return feedback
 
 
 @pytest.fixture
@@ -553,107 +530,3 @@ class TestMessageServiceGetMessage:
                 message_id="missing",
                 session=sqlite_session,
             )
-
-
-class TestMessageServiceFeedback:
-    def test_create_new_end_user_feedback(
-        self,
-        factory: MessageServiceTestDataFactory,
-        sqlite_session: Session,
-        sqlite_engine: Engine,
-    ) -> None:
-        user = factory.create_end_user()
-        message = factory.create_message("msg-123")
-        _persist(sqlite_session, message)
-
-        feedback = MessageService.create_feedback(
-            app_model=factory.create_app(),
-            message_id=message.id,
-            user=user,
-            rating=FeedbackRating.LIKE,
-            content="Good answer",
-            session=sqlite_session,
-        )
-
-        with Session(sqlite_engine) as verification_session:
-            persisted = verification_session.get(MessageFeedback, feedback.id)
-            assert persisted is not None
-            assert persisted.rating == FeedbackRating.LIKE
-            assert persisted.content == "Good answer"
-            assert persisted.from_source == FeedbackFromSource.USER
-
-    def test_update_account_feedback(
-        self,
-        factory: MessageServiceTestDataFactory,
-        sqlite_session: Session,
-        sqlite_engine: Engine,
-    ) -> None:
-        user = factory.create_account()
-        message = factory.create_message(
-            "msg-123",
-            from_source=ConversationFromSource.CONSOLE,
-            from_end_user_id=None,
-            from_account_id=user.id,
-        )
-        feedback = factory.create_feedback("feedback-1", message, source=FeedbackFromSource.ADMIN)
-        _persist(sqlite_session, message, feedback)
-
-        result = MessageService.create_feedback(
-            app_model=factory.create_app(),
-            message_id=message.id,
-            user=user,
-            rating=FeedbackRating.DISLIKE,
-            content="Bad answer",
-            session=sqlite_session,
-        )
-
-        assert result.id == feedback.id
-        with Session(sqlite_engine) as verification_session:
-            persisted = verification_session.get(MessageFeedback, feedback.id)
-            assert persisted is not None
-            assert persisted.rating == FeedbackRating.DISLIKE
-            assert persisted.content == "Bad answer"
-
-    def test_delete_feedback(
-        self,
-        factory: MessageServiceTestDataFactory,
-        sqlite_session: Session,
-        sqlite_engine: Engine,
-    ) -> None:
-        user = factory.create_end_user()
-        message = factory.create_message("msg-123")
-        feedback = factory.create_feedback("feedback-1", message, source=FeedbackFromSource.USER)
-        _persist(sqlite_session, message, feedback)
-
-        MessageService.create_feedback(
-            app_model=factory.create_app(),
-            message_id=message.id,
-            user=user,
-            rating=None,
-            content=None,
-            session=sqlite_session,
-        )
-
-        with Session(sqlite_engine) as verification_session:
-            assert verification_session.get(MessageFeedback, feedback.id) is None
-
-    def test_get_all_feedbacks_is_app_scoped_and_paginated(
-        self,
-        factory: MessageServiceTestDataFactory,
-        sqlite_session: Session,
-    ) -> None:
-        message = factory.create_message("msg-123")
-        newest = factory.create_feedback("feedback-new", message, source=FeedbackFromSource.USER)
-        oldest = factory.create_feedback("feedback-old", message, source=FeedbackFromSource.USER)
-        other_message = factory.create_message("other-msg", app_id="app-456")
-        other_app = factory.create_feedback("feedback-other", other_message, source=FeedbackFromSource.USER)
-        newest.created_at = datetime(2024, 1, 2)
-        oldest.created_at = datetime(2024, 1, 1)
-        other_app.created_at = datetime(2024, 1, 3)
-        _persist(sqlite_session, newest, oldest, other_app)
-
-        result = MessageService.get_all_messages_feedbacks(
-            app_model=factory.create_app(), page=1, limit=1, session=sqlite_session
-        )
-
-        assert [record["id"] for record in result] == [newest.id]

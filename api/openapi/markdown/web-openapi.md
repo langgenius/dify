@@ -523,7 +523,7 @@ Submit feedback (like/dislike) for a specific message.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Feedback submitted successfully | **application/json**: [ResultResponse](#resultresponse)<br> |
-| 400 | Bad Request |  |
+| 400 | `message_feedback_rating_required`: Cannot revoke feedback that does not exist. `app_unavailable`: App is no longer available. |  |
 | 401 | Unauthorized |  |
 | 403 | Forbidden |  |
 | 404 | Message Not Found |  |

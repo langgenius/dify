@@ -2456,6 +2456,7 @@ export type GetAppFeedbacksData = {
 }
 
 export type GetAppFeedbacksErrors = {
+  400: unknown
   401: unknown
   403: unknown
 }

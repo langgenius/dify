@@ -13,7 +13,7 @@ from services.installed_app_access_service import InstalledAppAccessService
 from services.installed_app_conversation_service import InstalledAppConversationService
 from services.installed_app_generation_adapters import AppGenerateServiceRuntime
 from services.installed_app_generation_service import InstalledAppGenerationService
-from services.installed_app_message_adapters import InstalledAppMessageRuntime, emit_installed_app_feedback
+from services.installed_app_message_adapters import InstalledAppMessageRuntime
 from services.installed_app_message_service import InstalledAppMessageService
 from services.installed_app_service import InstalledAppService, WorkspaceRoleLookup
 from services.webapp_access_query_service import WebAppAccessQueryService
@@ -74,6 +74,5 @@ def build_installed_app_services(
         messages=InstalledAppMessageService(
             messages=SQLAlchemyInstalledAppMessageRepository(session_factory=database_client),
             get_extra_contents=message_runtime.get_extra_contents,
-            emit_feedback=emit_installed_app_feedback,
         ),
     )

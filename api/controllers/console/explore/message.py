@@ -12,7 +12,7 @@ from flask_restx import Resource
 from pydantic import BaseModel
 
 from controllers.common.controller_schemas import MessageFeedbackPayload, MessageListQuery
-from controllers.common.errors import InternalServerError, UnauthorizedError
+from controllers.common.errors import InternalServerError, MessageFeedbackRatingRequiredError, UnauthorizedError
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
@@ -28,7 +28,6 @@ from controllers.console.explore.error import (
     ConversationNotFoundHTTPError,
     InstalledAppNotFoundHTTPError,
     MessageCursorNotFoundHTTPError,
-    MessageFeedbackRatingRequiredHTTPError,
     MessageNotFoundHTTPError,
     NotChatAppError,
     NotCompletionAppError,
@@ -44,6 +43,7 @@ from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.exception import BaseHTTPException
 from machinery.context import RequestContext
+from models.enums import FeedbackRating
 from services.account_errors import AccountNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.entities.message_entities import MessageAccount
@@ -52,13 +52,14 @@ from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.base import BaseServiceError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import (
+    FeedbackRatingRequiredError,
     FirstMessageNotExistsError,
     MessageActorNotFoundError,
     MessageNotExistsError,
     SuggestedQuestionsAfterAnswerDisabledError,
 )
 from services.installed_app_access_service import InstalledAppNotFoundError, InstalledAppRef
-from services.installed_app_message_service import FeedbackRatingRequiredError, MessageNotChatAppError
+from services.installed_app_message_service import MessageNotChatAppError
 from services.message_more_like_this_service import (
     MoreLikeThisConfigNotFoundError,
     MoreLikeThisNotCompletionError,
@@ -102,7 +103,7 @@ def _message_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
         except ConversationNotExistsError as error:
             raise ConversationNotFoundHTTPError() from error
         except FeedbackRatingRequiredError as error:
-            raise MessageFeedbackRatingRequiredHTTPError() from error
+            raise MessageFeedbackRatingRequiredError() from error
         except MoreLikeThisDisabledError as error:
             raise AppMoreLikeThisDisabledError() from error
         except SuggestedQuestionsAfterAnswerDisabledError as error:
@@ -166,11 +167,13 @@ class MessageFeedbackApi(Resource):
         installed_app: InstalledAppRef,
         message_id: UUID,
     ) -> dict[str, object]:
-        application_services().installed_apps.messages.set_feedback(
+        application_services().message_feedbacks.set_feedback(
+            app_id=installed_app.app_id,
+            app_owner_tenant_id=installed_app.app_owner_tenant_id,
+            actor=MessageAccount(account_id=request_context.account_id),
             installed_app=installed_app,
-            account_id=request_context.account_id,
             message_id=str(message_id),
-            rating=payload.rating,
+            rating=FeedbackRating(payload.rating) if payload.rating is not None else None,
             content=payload.content,
         )
         return helper.dump_response(ResultResponse, {"result": "success"})

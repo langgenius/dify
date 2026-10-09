@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field, TypeAdapter, WithJsonSchema
 
 import services
 from controllers.common.controller_schemas import MessageFeedbackPayload, MessageListQuery
-from controllers.common.errors import InternalServerError, NotFoundError
+from controllers.common.errors import InternalServerError, MessageFeedbackRatingRequiredError, NotFoundError
 from controllers.common.fields import SimpleResultStringListResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console.wraps import model_validate
@@ -22,7 +22,7 @@ from controllers.service_api.app.error import (
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
 )
-from controllers.service_api.flask_admission import service_api_end_user_admission
+from controllers.service_api.flask_admission import service_api_app_admission, service_api_end_user_admission
 from controllers.service_api.schema import expect_with_user
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
@@ -33,7 +33,7 @@ from fields.conversation_fields import MessageResponseSource, ResultResponse
 from fields.message_fields import MessageInfiniteScrollPagination, MessageListItem
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs.helper import dump_response
-from machinery.context import ServiceApiEndUserContext
+from machinery.context import ServiceApiEndUserContext, ServiceApiRequestContext
 from models.enums import FeedbackRating
 from models.model import App, AppMode, EndUser
 from services.agent.errors import AgentVersionNotFoundError
@@ -41,6 +41,7 @@ from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.entities.message_entities import MessageEndUser
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import (
+    FeedbackRatingRequiredError,
     FirstMessageNotExistsError,
     MessageActorNotFoundError,
     MessageNotExistsError,
@@ -155,7 +156,9 @@ class MessageListApi(Resource):
 @service_api_ns.route("/messages/<uuid:message_id>/feedbacks")
 class MessageFeedbackApi(Resource):
     @expect_with_user(service_api_ns, MessageFeedbackPayload)
-    @service_api_ns.response(200, "Feedback submitted successfully", service_api_ns.models[ResultResponse.__name__])
+    @service_api_ns.response(
+        HTTPStatus.OK, "Feedback submitted successfully", service_api_ns.models[ResultResponse.__name__]
+    )
     @service_api_ns.doc("create_message_feedback")
     @service_api_ns.doc(
         summary="Submit Message Feedback",
@@ -165,22 +168,30 @@ class MessageFeedbackApi(Resource):
         ),
         tags=["Feedback"],
         responses={
-            404: "`not_found` : Message does not exist.",
+            HTTPStatus.NOT_FOUND: "`not_found` : Message does not exist.",
         },
     )
     @service_api_ns.doc(description="Submit feedback for a message")
     @service_api_ns.doc(params={"message_id": "Message ID."})
     @service_api_ns.doc(
         responses={
-            200: "Feedback submitted successfully",
-            400: "Bad request - invalid feedback payload",
-            401: "Unauthorized - invalid API token",
-            404: "Message not found",
+            HTTPStatus.OK: "Feedback submitted successfully",
+            HTTPStatus.BAD_REQUEST: (
+                "`message_feedback_rating_required`: Cannot revoke feedback that does not exist. "
+                "`app_unavailable`: App is no longer available."
+            ),
+            HTTPStatus.UNAUTHORIZED: "Unauthorized - invalid API token",
+            HTTPStatus.NOT_FOUND: "Message not found",
         }
     )
-    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
+    @service_api_end_user_admission(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
     @model_validate(MessageFeedbackPayload)
-    def post(self, payload: MessageFeedbackPayload, app_model: App, end_user: EndUser, message_id: UUID):
+    def post(
+        self,
+        payload: MessageFeedbackPayload,
+        context: ServiceApiEndUserContext,
+        message_id: UUID,
+    ) -> dict[str, object]:
         """Submit feedback for a message.
 
         Allows users to rate messages as like/dislike and provide optional feedback content.
@@ -188,18 +199,24 @@ class MessageFeedbackApi(Resource):
         message_id_str = str(message_id)
 
         try:
-            MessageService.create_feedback(
-                app_model=app_model,
+            application_services().message_feedbacks.set_feedback(
+                app_id=context.app_id,
+                app_owner_tenant_id=context.tenant_id,
                 message_id=message_id_str,
-                user=end_user,
+                actor=MessageEndUser(end_user_id=context.end_user_id),
                 rating=FeedbackRating(payload.rating) if payload.rating else None,
                 content=payload.content,
-                session=db.session(),
             )
-        except MessageNotExistsError:
-            raise NotFoundError("Message Not Exists.")
+        except AppDefinitionUnavailableError as error:
+            raise AppUnavailableError() from error
+        except MessageActorNotFoundError as error:
+            raise NotFoundError("End user not found") from error
+        except MessageNotExistsError as error:
+            raise NotFoundError("Message Not Exists.") from error
+        except FeedbackRatingRequiredError as error:
+            raise MessageFeedbackRatingRequiredError() from error
 
-        return ResultResponse(result="success").model_dump(mode="json")
+        return dump_response(ResultResponse, {"result": "success"})
 
 
 @service_api_ns.route("/app/feedbacks")
@@ -213,33 +230,40 @@ class AppGetFeedbacksApi(Resource):
         ),
         tags=["Feedback"],
         responses={
-            200: "A list of application feedbacks.",
+            HTTPStatus.OK: "A list of application feedbacks.",
         },
     )
     @service_api_ns.doc(params=query_params_from_model(FeedbackListQuery))
     @service_api_ns.doc(description="Get all feedbacks for the application")
     @service_api_ns.doc(
         responses={
-            200: "Feedbacks retrieved successfully",
-            401: "Unauthorized - invalid API token",
+            HTTPStatus.OK: "Feedbacks retrieved successfully",
+            HTTPStatus.BAD_REQUEST: "`app_unavailable`: App is no longer available.",
+            HTTPStatus.UNAUTHORIZED: "Unauthorized - invalid API token",
         }
     )
     @service_api_ns.response(
-        200,
+        HTTPStatus.OK,
         "Feedbacks retrieved successfully",
         service_api_ns.models[AppFeedbackListResponse.__name__],
     )
-    @validate_app_token
+    @service_api_app_admission
     @model_validate(FeedbackListQuery)
-    def get(self, query_args: FeedbackListQuery, app_model: App):
+    def get(self, query_args: FeedbackListQuery, context: ServiceApiRequestContext) -> dict[str, object]:
         """Get all feedbacks for the application.
 
         Returns paginated list of all feedback submitted for messages in this app.
         """
-        feedbacks = MessageService.get_all_messages_feedbacks(
-            app_model, page=query_args.page, limit=query_args.limit, session=db.session()
-        )
-        return AppFeedbackListResponse(data=feedbacks).model_dump(mode="json")
+        try:
+            feedbacks = application_services().message_feedbacks.get_feedbacks(
+                app_id=context.app_id,
+                app_owner_tenant_id=context.tenant_id,
+                page=query_args.page,
+                limit=query_args.limit,
+            )
+        except AppDefinitionUnavailableError as error:
+            raise AppUnavailableError() from error
+        return dump_response(AppFeedbackListResponse, {"data": feedbacks})
 
 
 @service_api_ns.route("/messages/<uuid:message_id>/suggested")

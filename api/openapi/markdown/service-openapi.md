@@ -103,6 +103,7 @@ Retrieve a paginated list of all feedback submitted for messages in this applica
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | A list of application feedbacks. | **application/json**: [AppFeedbackListResponse](#appfeedbacklistresponse)<br> |
+| 400 | `app_unavailable`: App is no longer available. |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 
@@ -128,7 +129,7 @@ Submit feedback for a message. End users can rate messages as `like` or `dislike
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Feedback submitted successfully | **application/json**: [ResultResponse](#resultresponse)<br> |
-| 400 | Bad request - invalid feedback payload |  |
+| 400 | `message_feedback_rating_required`: Cannot revoke feedback that does not exist. `app_unavailable`: App is no longer available. |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 | 404 | `not_found` : Message does not exist. |  |

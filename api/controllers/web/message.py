@@ -7,7 +7,7 @@ from flask import Response
 from pydantic import BaseModel, Field, TypeAdapter
 
 from controllers.common.controller_schemas import MessageFeedbackPayload, MessageListQuery
-from controllers.common.errors import InternalServerError, NotFoundError
+from controllers.common.errors import InternalServerError, MessageFeedbackRatingRequiredError, NotFoundError
 from controllers.common.fields import GeneratedAppResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console.wraps import model_validate
@@ -41,6 +41,7 @@ from services.errors.app import MoreLikeThisDisabledError
 from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import (
+    FeedbackRatingRequiredError,
     FirstMessageNotExistsError,
     MessageActorNotFoundError,
     MessageNotExistsError,
@@ -132,33 +133,44 @@ class MessageFeedbackApi(WebApiResource):
     )
     @web_ns.doc(
         responses={
-            200: "Feedback submitted successfully",
-            400: "Bad Request",
-            401: "Unauthorized",
-            403: "Forbidden",
-            404: "Message Not Found",
-            500: "Internal Server Error",
+            HTTPStatus.OK: "Feedback submitted successfully",
+            HTTPStatus.BAD_REQUEST: (
+                "`message_feedback_rating_required`: Cannot revoke feedback that does not exist. "
+                "`app_unavailable`: App is no longer available."
+            ),
+            HTTPStatus.UNAUTHORIZED: "Unauthorized",
+            HTTPStatus.FORBIDDEN: "Forbidden",
+            HTTPStatus.NOT_FOUND: "Message Not Found",
+            HTTPStatus.INTERNAL_SERVER_ERROR: "Internal Server Error",
         }
     )
-    @web_ns.response(200, "Feedback submitted successfully", web_ns.models[ResultResponse.__name__])
+    @web_ns.response(HTTPStatus.OK, "Feedback submitted successfully", web_ns.models[ResultResponse.__name__])
     @web_ns.expect(web_ns.models[MessageFeedbackPayload.__name__])
     @model_validate(MessageFeedbackPayload)
-    def post(self, payload: MessageFeedbackPayload, app_model: App, end_user: EndUser, message_id: UUID):
+    def post(
+        self, payload: MessageFeedbackPayload, app_model: App, end_user: EndUser, message_id: UUID
+    ) -> dict[str, object]:
         message_id_str = str(message_id)
 
         try:
-            MessageService.create_feedback(
-                app_model=app_model,
+            application_services().message_feedbacks.set_feedback(
+                app_id=app_model.id,
+                app_owner_tenant_id=app_model.tenant_id,
                 message_id=message_id_str,
-                user=end_user,
+                actor=MessageEndUser(end_user_id=end_user.id),
                 rating=FeedbackRating(payload.rating) if payload.rating else None,
                 content=payload.content,
-                session=db.session(),
             )
-        except MessageNotExistsError:
-            raise NotFoundError("Message Not Exists.")
+        except AppDefinitionUnavailableError as error:
+            raise AppUnavailableError() from error
+        except MessageActorNotFoundError as error:
+            raise NotFoundError("End user not found") from error
+        except MessageNotExistsError as error:
+            raise NotFoundError("Message Not Exists.") from error
+        except FeedbackRatingRequiredError as error:
+            raise MessageFeedbackRatingRequiredError() from error
 
-        return ResultResponse(result="success").model_dump(mode="json")
+        return helper.dump_response(ResultResponse, {"result": "success"})
 
 
 @web_ns.route("/messages/<uuid:message_id>/more-like-this")
