@@ -51,7 +51,7 @@ from graphon.node_events import NodeRunResult
 from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.variables.segments import StringSegment
 from graphon.variables.variables import StringVariable
-from models.workflow import Workflow
+from models.workflow import Workflow, WorkflowType
 from tests.unit_tests.model_factories import make_workflow
 
 
@@ -214,7 +214,9 @@ class TestWorkflowBasedAppRunner:
             ],
         }
         expected_graph_config = deepcopy(graph_config)
-        workflow = SimpleNamespace(tenant_id="tenant", id="workflow", graph_dict=graph_config)
+        workflow = SimpleNamespace(
+            tenant_id="tenant", id="workflow", type=WorkflowType.WORKFLOW, graph_dict=graph_config
+        )
         user_inputs = {"question": "hello"}
         expected_user_inputs = dict(user_inputs)
         captured_graph_config = {}
