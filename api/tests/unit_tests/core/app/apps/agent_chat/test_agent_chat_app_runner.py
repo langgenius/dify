@@ -329,7 +329,7 @@ class TestAgentChatAppRunnerRun:
 
         def observe_run(
             agent: CotAgentRunner, *, session: Session, message: Message, query: str, inputs: Mapping[str, str]
-        ) -> Generator[LLMResultChunk, None, None]:
+        ) -> Generator[LLMResultChunk]:
             assert not sqlite_session.in_transaction()
             selected_runners.append(agent)
             events.append("agent-run")
