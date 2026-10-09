@@ -4,8 +4,10 @@ Unit tests for API Token Cache module.
 
 import json
 from datetime import datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
+from models.enums import ApiTokenType
+from models.model import ApiToken
 from services.api_token_service import (
     CACHE_KEY_PREFIX,
     CACHE_NULL_TTL_SECONDS,
@@ -20,11 +22,11 @@ class TestApiTokenCache:
 
     def setup_method(self):
         """Setup test fixtures."""
-        self.mock_token = MagicMock()
+        self.mock_token = ApiToken()
         self.mock_token.id = "test-token-id-123"
         self.mock_token.app_id = "test-app-id-456"
         self.mock_token.tenant_id = "test-tenant-id-789"
-        self.mock_token.type = "app"
+        self.mock_token.type = ApiTokenType.APP
         self.mock_token.token = "test-token-value-abc"
         self.mock_token.last_used_at = datetime(2026, 2, 3, 10, 0, 0)
         self.mock_token.created_at = datetime(2026, 1, 1, 0, 0, 0)
@@ -54,11 +56,11 @@ class TestApiTokenCache:
 
     def test_serialize_token_with_nulls(self):
         """Test token serialization with None values."""
-        mock_token = MagicMock()
+        mock_token = ApiToken()
         mock_token.id = "test-id"
         mock_token.app_id = None
         mock_token.tenant_id = None
-        mock_token.type = "dataset"
+        mock_token.type = ApiTokenType.DATASET
         mock_token.token = "test-token"
         mock_token.last_used_at = None
         mock_token.created_at = datetime(2026, 1, 1, 0, 0, 0)
@@ -213,12 +215,12 @@ class TestApiTokenCacheIntegration:
     @patch("services.api_token_service.redis_client")
     def test_full_cache_lifecycle(self, mock_redis):
         """Test complete cache lifecycle: set -> get -> delete."""
-        # Setup mock token
-        mock_token = MagicMock()
+        # Use the persisted model's fields for the cache lifecycle.
+        mock_token = ApiToken()
         mock_token.id = "id-123"
         mock_token.app_id = "app-456"
         mock_token.tenant_id = "tenant-789"
-        mock_token.type = "app"
+        mock_token.type = ApiTokenType.APP
         mock_token.token = "token-abc"
         mock_token.last_used_at = datetime(2026, 2, 3, 10, 0, 0)
         mock_token.created_at = datetime(2026, 1, 1, 0, 0, 0)
