@@ -6,9 +6,10 @@ from typing import cast
 from flask import Blueprint, current_app, got_request_exception
 from flask_restx import Namespace
 
-from controllers.common.errors import register_permission_error_handler
+from controllers.common.errors import register_permission_error_handler, register_resource_error_handlers
 from libs.external_api import ExternalApi
 from machinery.errors import ActiveWorkspaceRequiredError
+from services.workflow.variable_contracts import DraftVariableChangedError
 
 bp = Blueprint("console", __name__, url_prefix="/console/api")
 
@@ -19,6 +20,7 @@ api = ExternalApi(
     description="Console management APIs for app configuration, monitoring, and administration",
 )
 register_permission_error_handler(api)
+register_resource_error_handlers(api)
 
 
 @api.errorhandler(ActiveWorkspaceRequiredError)
@@ -36,6 +38,21 @@ def _handle_active_workspace_required_error(error: ActiveWorkspaceRequiredError)
 # Flask-RESTX dispatches in registration order; the shared Exception handler
 # must not shadow this Console-specific error mapping.
 cast(OrderedDict[type[Exception], object], api.error_handlers).move_to_end(ActiveWorkspaceRequiredError, last=False)
+
+
+@api.errorhandler(DraftVariableChangedError)
+def _handle_draft_variable_changed_error(error: DraftVariableChangedError):
+    """Expose a concurrent variable edit consistently across Console use cases."""
+    got_request_exception.send(current_app, exception=error)
+    status = HTTPStatus.CONFLICT
+    return {
+        "code": "draft_variable_changed",
+        "message": "Variable changed; refresh and retry with the current value.",
+        "status": status.value,
+    }, status.value
+
+
+cast(OrderedDict[type[Exception], object], api.error_handlers).move_to_end(DraftVariableChangedError, last=False)
 
 
 console_ns = Namespace("console", description="Console management API operations", path="/")
