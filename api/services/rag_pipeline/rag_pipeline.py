@@ -56,14 +56,12 @@ from graphon.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, build_htt
 from graphon.runtime import VariablePool
 from graphon.variables.variables import Variable, VariableBase
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
-from libs.login import resolve_account_fallback, resolve_tenant_id_fallback
 from models import Account
 from models.dataset import (  # type: ignore
     Dataset,
     Document,
     DocumentPipelineExecutionLog,
     Pipeline,
-    PipelineCustomizedTemplate,
     PipelineRecommendedPlugin,
 )
 from models.enums import IndexingStatus, WorkflowRunTriggeredFrom
@@ -81,13 +79,9 @@ from services.credentials.query import CredentialQuery
 from services.data_source.provider_service import DatasourceProviderService
 from services.entities.knowledge_entities.rag_pipeline_entities import (
     KnowledgeConfiguration,
-    PipelineTemplateInfoEntity,
 )
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
-from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
 from services.knowledge.resource_scope import DatasetRef
-from services.rag_pipeline.pipeline_template.pipeline_template_factory import PipelineTemplateRetrievalFactory
-from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineDslService
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 from services.workflow_draft_variable_service import DraftVariableSaver, DraftVarLoader
 from services.workflow_node_execution_trace_service import (
@@ -124,146 +118,6 @@ class RagPipelineService:
         return session.scalar(
             select(Pipeline).where(Pipeline.id == pipeline_id, Pipeline.tenant_id == tenant_id).limit(1)
         )
-
-    @classmethod
-    def get_pipeline_templates(
-        cls,
-        type: str = "built-in",
-        language: str = "en-US",
-        current_tenant_id: str | None = None,
-        *,
-        session: Session,
-    ) -> dict[str, Any]:
-        if type == "built-in":
-            mode = dify_config.HOSTED_FETCH_PIPELINE_TEMPLATES_MODE
-            retrieval_instance = PipelineTemplateRetrievalFactory.get_pipeline_template_factory(mode)()
-            result = retrieval_instance.get_pipeline_templates(language, current_tenant_id, session=session)
-            if not result.get("pipeline_templates") and language != "en-US":
-                template_retrieval = PipelineTemplateRetrievalFactory.get_built_in_pipeline_template_retrieval()
-                result = template_retrieval.fetch_pipeline_templates_from_builtin("en-US")
-            return result
-        else:
-            mode = "customized"
-            retrieval_instance = PipelineTemplateRetrievalFactory.get_pipeline_template_factory(mode)()
-            result = retrieval_instance.get_pipeline_templates(language, current_tenant_id, session=session)
-            return result
-
-    @classmethod
-    def get_pipeline_template_detail(
-        cls,
-        template_id: str,
-        current_tenant_id: str,
-        type: str = "built-in",
-        *,
-        session: Session,
-    ) -> dict[str, Any] | None:
-        """
-        Get pipeline template detail.
-
-        :param template_id: template id
-        :param type: template type, "built-in" or "customized"
-        :return: template detail dict, or None if not found
-        """
-        if type == "built-in":
-            mode = dify_config.HOSTED_FETCH_PIPELINE_TEMPLATES_MODE
-            retrieval_instance = PipelineTemplateRetrievalFactory.get_pipeline_template_factory(mode)()
-            built_in_result: dict[str, Any] | None = retrieval_instance.get_pipeline_template_detail(
-                template_id, current_tenant_id, session=session
-            )
-            if built_in_result is None:
-                logger.warning(
-                    "pipeline template retrieval returned empty result, template_id: %s, mode: %s",
-                    template_id,
-                    mode,
-                )
-            return built_in_result
-        else:
-            mode = "customized"
-            retrieval_instance = PipelineTemplateRetrievalFactory.get_pipeline_template_factory(mode)()
-            customized_result: dict[str, Any] | None = retrieval_instance.get_pipeline_template_detail(
-                template_id, current_tenant_id, session=session
-            )
-            return customized_result
-
-    @staticmethod
-    def get_customized_pipeline_template_yaml(template_id: str, current_tenant_id: str, *, session: Session) -> str:
-        yaml_content = session.scalar(
-            select(PipelineCustomizedTemplate.yaml_content).where(
-                PipelineCustomizedTemplate.id == template_id,
-                PipelineCustomizedTemplate.tenant_id == current_tenant_id,
-            )
-        )
-        if yaml_content is None:
-            raise RagPipelineResourceNotFoundError("Customized pipeline template not found.")
-        return yaml_content
-
-    @classmethod
-    def update_customized_pipeline_template(
-        cls,
-        template_id: str,
-        template_info: PipelineTemplateInfoEntity,
-        current_user: Account | None = None,
-        current_tenant_id: str | None = None,
-        *,
-        session: Session,
-    ):
-        """
-        Update pipeline template.
-        :param template_id: template id
-        :param template_info: template info
-        """
-        current_user, current_tenant_id = resolve_account_fallback(current_user, current_tenant_id)
-        customized_template: PipelineCustomizedTemplate | None = session.scalar(
-            select(PipelineCustomizedTemplate)
-            .where(
-                PipelineCustomizedTemplate.id == template_id,
-                PipelineCustomizedTemplate.tenant_id == current_tenant_id,
-            )
-            .limit(1)
-        )
-        if not customized_template:
-            raise ValueError("Customized pipeline template not found.")
-        # check template name is exist
-        template_name = template_info.name
-        if template_name:
-            template = session.scalar(
-                select(PipelineCustomizedTemplate)
-                .where(
-                    PipelineCustomizedTemplate.name == template_name,
-                    PipelineCustomizedTemplate.tenant_id == current_tenant_id,
-                    PipelineCustomizedTemplate.id != template_id,
-                )
-                .limit(1)
-            )
-            if template:
-                raise ValueError("Template name is already exists")
-        customized_template.name = template_info.name
-        customized_template.description = template_info.description
-        customized_template.icon = template_info.icon_info.model_dump()
-        customized_template.updated_by = current_user.id
-        session.commit()
-        return customized_template
-
-    @classmethod
-    def delete_customized_pipeline_template(
-        cls, template_id: str, current_tenant_id: str | None = None, *, session: Session
-    ):
-        """
-        Delete customized pipeline template.
-        """
-        current_tenant_id = resolve_tenant_id_fallback(current_tenant_id)
-        customized_template: PipelineCustomizedTemplate | None = session.scalar(
-            select(PipelineCustomizedTemplate)
-            .where(
-                PipelineCustomizedTemplate.id == template_id,
-                PipelineCustomizedTemplate.tenant_id == current_tenant_id,
-            )
-            .limit(1)
-        )
-        if not customized_template:
-            raise ValueError("Customized pipeline template not found.")
-        session.delete(customized_template)
-        session.commit()
 
     def get_draft_workflow(self, pipeline: Pipeline) -> Workflow | None:
         """
@@ -1282,72 +1136,6 @@ class RagPipelineService:
         return assemble_workflow_node_execution_traces(
             node_executions, self._node_execution_service_repo, session=self._session
         )
-
-    @staticmethod
-    def publish_customized_pipeline_template(
-        pipeline: Pipeline,
-        dataset: Dataset,
-        args: dict[str, Any],
-        current_user: Account,
-        *,
-        session: Session,
-    ) -> None:
-        """Publish a customized template from a caller-validated pipeline and dataset."""
-        if not pipeline.workflow_id:
-            raise RagPipelineResourceNotFoundError("Pipeline workflow not found")
-        workflow = session.scalar(
-            select(Workflow).where(
-                Workflow.id == pipeline.workflow_id,
-                Workflow.tenant_id == pipeline.tenant_id,
-                Workflow.app_id == pipeline.id,
-            )
-        )
-        if not workflow:
-            raise RagPipelineResourceNotFoundError("Workflow not found")
-        draft_workflow_id = session.scalar(
-            select(Workflow.id).where(
-                Workflow.tenant_id == pipeline.tenant_id,
-                Workflow.app_id == pipeline.id,
-                Workflow.version == Workflow.VERSION_DRAFT,
-            )
-        )
-        if not draft_workflow_id:
-            raise RagPipelineResourceNotFoundError("Draft workflow not found")
-
-        # check template name is exist
-        template = session.scalar(
-            select(PipelineCustomizedTemplate)
-            .where(
-                PipelineCustomizedTemplate.name == args["name"],
-                PipelineCustomizedTemplate.tenant_id == pipeline.tenant_id,
-            )
-            .limit(1)
-        )
-        if template:
-            raise ValueError("Template name is already exists")
-
-        max_position = session.scalar(
-            select(func.max(PipelineCustomizedTemplate.position)).where(
-                PipelineCustomizedTemplate.tenant_id == pipeline.tenant_id
-            )
-        )
-
-        rag_pipeline_dsl_service = RagPipelineDslService(session)
-        dsl = rag_pipeline_dsl_service.export_rag_pipeline_dsl(pipeline=pipeline, include_secret=True)
-        pipeline_customized_template = PipelineCustomizedTemplate(
-            name=args["name"],
-            description=args["description"],
-            icon=args["icon_info"],
-            tenant_id=pipeline.tenant_id,
-            yaml_content=dsl,
-            install_count=0,
-            position=max_position + 1 if max_position else 1,
-            chunk_structure=dataset.chunk_structure,
-            language="en-US",
-            created_by=current_user.id,
-        )
-        session.add(pipeline_customized_template)
-        session.commit()
 
     def is_workflow_exist(self, pipeline: Pipeline) -> bool:
         return (
