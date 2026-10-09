@@ -39,7 +39,14 @@ def test_debug_reservation_and_composer_use_the_same_lock_order(
     account = Account(name="Editor", email=f"{uuid4()}@example.com")
     session.add_all([tenant, account])
     session.flush()
-    app = App(tenant_id=tenant.id, name="Workflow", mode="workflow", created_by=account.id)
+    app = App(
+        tenant_id=tenant.id,
+        name="Workflow",
+        mode="workflow",
+        created_by=account.id,
+        enable_site=True,
+        enable_api=True,
+    )
     session.add(app)
     session.flush()
     workflow = Workflow.new(
