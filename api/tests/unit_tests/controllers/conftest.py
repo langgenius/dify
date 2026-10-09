@@ -1,32 +1,32 @@
-"""Application dependencies shared by controller tests."""
+"""Application dependencies shared by controller tests.
+
+Keep service imports inside fixtures so xdist coordinators can load this module
+without initializing the application dependency graph.
+"""
+
+from __future__ import annotations
 
 import sys
 from dataclasses import dataclass
 from functools import cache
 from types import SimpleNamespace
+from typing import TYPE_CHECKING
 from unittest.mock import create_autospec
 
 import pytest
 from flask import Flask
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
-from extensions.application_services.app import AppServices
-from extensions.ext_application_services import (
-    _batch_get_enterprise_webapp_access_modes,
-    _batch_get_enterprise_webapp_user_permissions,
-)
-from repositories.app.console_repository import ConsoleAppRepository
-from repositories.webapp_access_query_repository import WebAppAccessQueryRepository
-from services.app.console_service import ConsoleAppService
-from services.app.import_service import AppImportService
-from services.app.query_service import AppQueryService
-from services.credentials.query import CredentialQuery
-from services.data_source.provider_service import DatasourceProviderService
-from services.enterprise.enterprise_service import EnterpriseService
-from services.tag_application_service import TagApplicationService
-from services.webapp_access_adapters import EnterpriseWebAppAccessPolicyGateway
-from services.webapp_access_query_service import WebAppAccessQueryService
+if TYPE_CHECKING:
+    from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
+    from extensions.application_services.app import AppServices
+    from services.app.console_service import ConsoleAppService
+    from services.app.import_service import AppImportService
+    from services.app.query_service import AppQueryService
+    from services.credentials.query import CredentialQuery
+    from services.data_source.provider_service import DatasourceProviderService
+    from services.tag_application_service import TagApplicationService
+    from services.webapp_access_query_service import WebAppAccessQueryService
 
 
 @pytest.fixture(autouse=True)
@@ -35,6 +35,8 @@ def datasource_application_dependencies(monkeypatch: pytest.MonkeyPatch) -> None
     # with a fresh cache for each test to preserve mock isolation.
     @cache
     def application_services() -> SimpleNamespace:
+        from services.data_source.provider_service import DatasourceProviderService
+
         return SimpleNamespace(
             data_sources=SimpleNamespace(
                 providers=create_autospec(DatasourceProviderService, instance=True, spec_set=True)
@@ -70,8 +72,15 @@ class PipelineApplicationStub:
 
 @pytest.fixture
 def pipeline_application(monkeypatch: pytest.MonkeyPatch) -> PipelineGenerator:
-    from controllers.console.datasets.rag_pipeline import rag_pipeline_workflow as console_workflow
-    from controllers.service_api.dataset.rag_pipeline import rag_pipeline_workflow as service_api_workflow
+    from controllers.console.datasets.rag_pipeline import (
+        rag_pipeline_workflow as console_workflow,
+    )
+    from controllers.service_api.dataset.rag_pipeline import (
+        rag_pipeline_workflow as service_api_workflow,
+    )
+    from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
+    from services.credentials.query import CredentialQuery
+    from services.data_source.provider_service import DatasourceProviderService
 
     generator = create_autospec(PipelineGenerator, instance=True, spec_set=True)
     registry = PipelineApplicationStub(
@@ -108,6 +117,17 @@ def app_query_services(
     sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
 ) -> ControllerTestServices:
+    from extensions.ext_application_services import (
+        _batch_get_enterprise_webapp_access_modes,
+        _batch_get_enterprise_webapp_user_permissions,
+    )
+    from repositories.app.console_repository import ConsoleAppRepository
+    from repositories.webapp_access_query_repository import WebAppAccessQueryRepository
+    from services.app.query_service import AppQueryService
+    from services.enterprise.enterprise_service import EnterpriseService
+    from services.webapp_access_adapters import EnterpriseWebAppAccessPolicyGateway
+    from services.webapp_access_query_service import WebAppAccessQueryService
+
     repository = ConsoleAppRepository(session_factory=sqlite_session_factory)
     services = ControllerTestServices(
         tags=application_tags,

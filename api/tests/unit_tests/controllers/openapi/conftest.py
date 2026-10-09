@@ -4,6 +4,7 @@ import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
 from types import SimpleNamespace
+from typing import TYPE_CHECKING
 
 import pytest
 from flask import Flask
@@ -12,12 +13,14 @@ from sqlalchemy.orm import Session
 
 from constants.oauth_bearer import TokenType
 from enums import DeploymentEdition
-from extensions.ext_application_services import ApplicationServices
 from libs.oauth_bearer import AuthContext
 from models import Account, App, Tenant, TenantAccountJoin
 from models.account import AccountStatus, TenantAccountRole, TenantStatus
 from models.enums import AppStatus
 from models.model import AppMode, IconType
+
+if TYPE_CHECKING:
+    from extensions.ext_application_services import ApplicationServices
 
 
 @pytest.fixture
