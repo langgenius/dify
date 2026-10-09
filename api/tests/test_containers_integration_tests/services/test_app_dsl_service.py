@@ -56,6 +56,7 @@ from services.app_dsl_service import (
 )
 from services.app_service import AppService, CreateAppParams
 from services.dsl_version import check_version_compatibility
+from services.entities.dsl_entities import AppDslOverwriteStore
 from services.errors.app import WorkflowNotFoundError
 from services.workflow.draft_service import WorkflowDraftService
 from tests.test_containers_integration_tests.helpers import accounts as account_fixtures
@@ -722,7 +723,11 @@ class TestAppDslService:
             updated_by=None,
             updated_at=None,
         )
-        service = AppDslService(db_session_with_containers, drafts=drafts)
+        service = AppDslService(
+            db_session_with_containers,
+            drafts=drafts,
+            overwrites=create_autospec(AppDslOverwriteStore, instance=True, spec_set=True),
+        )
         updated = service._create_or_update_app(
             app=app,
             data={

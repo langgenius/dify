@@ -617,9 +617,23 @@ class TestToolTransformService:
         result = ToolTransformService.api_provider_to_controller(provider_record)
 
         # Assert: Verify the expected outcomes
-        assert result is not None
-        assert hasattr(result, "from_db")
-        # Additional assertions would depend on the actual controller implementation
+        assert result.provider_id == provider_record.id
+        assert result.tenant_id == provider_record.tenant_id
+        assert result.provider_type is ToolProviderType.API
+        assert result.entity.identity.name == provider_record.name
+        assert result.entity.identity.author == provider_record.author
+        assert result.entity.identity.icon == provider_record.icon
+        assert result.tools == []
+        assert provider_record.credentials == {"auth_type": "api_key_header", "api_key": "test_key"}
+        credentials_schema = {config.name: config for config in result.entity.credentials_schema}
+        assert set(credentials_schema) == {
+            "auth_type",
+            "api_key_header",
+            "api_key_value",
+            "api_key_header_prefix",
+        }
+        assert credentials_schema["api_key_header"].default == "Authorization"
+        assert credentials_schema["api_key_header_prefix"].default == "basic"
 
     def test_api_provider_to_controller_api_key_query(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -658,8 +672,16 @@ class TestToolTransformService:
         result = ToolTransformService.api_provider_to_controller(provider_record)
 
         # Assert: Verify the expected outcomes
-        assert result is not None
-        assert hasattr(result, "from_db")
+        assert result.provider_id == provider_record.id
+        assert result.tenant_id == provider_record.tenant_id
+        assert result.provider_type is ToolProviderType.API
+        assert result.entity.identity.name == provider_record.name
+        assert result.entity.identity.author == provider_record.author
+        assert result.tools == []
+        assert provider_record.credentials == {"auth_type": "api_key_query", "api_key": "test_key"}
+        credentials_schema = {config.name: config for config in result.entity.credentials_schema}
+        assert set(credentials_schema) == {"auth_type", "api_key_query_param", "api_key_value"}
+        assert credentials_schema["api_key_query_param"].default == "key"
 
     def test_api_provider_to_controller_backward_compatibility(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -699,8 +721,20 @@ class TestToolTransformService:
         result = ToolTransformService.api_provider_to_controller(provider_record)
 
         # Assert: Verify the expected outcomes
-        assert result is not None
-        assert hasattr(result, "from_db")
+        assert result.provider_id == provider_record.id
+        assert result.tenant_id == provider_record.tenant_id
+        assert result.provider_type is ToolProviderType.API
+        assert result.entity.identity.name == provider_record.name
+        assert result.entity.identity.author == provider_record.author
+        assert result.tools == []
+        assert provider_record.credentials == {"auth_type": "api_key", "api_key": "test_key"}
+        credentials_schema = {config.name: config for config in result.entity.credentials_schema}
+        assert set(credentials_schema) == {
+            "auth_type",
+            "api_key_header",
+            "api_key_value",
+            "api_key_header_prefix",
+        }
 
     def test_workflow_provider_to_controller_success(
         self, db_session_with_containers: Session, mock_external_service_dependencies, *, workflow_queries
