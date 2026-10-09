@@ -10,7 +10,7 @@ from machinery.context import AppRequestContext, RequestContext
 from models.enums import AppStatus
 from services.app.access import AppAccessFilter
 from services.app_definition_query_service import AppParameterConfig
-from services.entities.app_entities import SUPPORTED_APP_TYPES, AppListParams, AppSummary, PermittedAppsPage
+from services.entities.app_entities import SUPPORTED_APP_TYPES, AppListParams, AppRecord, AppSummary, PermittedAppsPage
 
 
 @dataclass(frozen=True)
@@ -42,6 +42,10 @@ class DiscoveryApps(Protocol):
     def query_apps(self, user_id: str, tenant_id: str, params: AppListParams) -> PaginatedResult[AppSummary] | None: ...
 
     def describe(self, context: AppRequestContext, *, include_config: bool) -> AppDescription: ...
+
+
+class RelatedApps(Protocol):
+    def related_apps(self, tenant_id: str, app_ids: Sequence[str]) -> list[AppRecord]: ...
 
 
 class DiscoveryWorkspaces(Protocol):

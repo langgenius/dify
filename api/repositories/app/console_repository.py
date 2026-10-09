@@ -48,7 +48,7 @@ from services.agent.errors import (
     AgentNameConflictError,
 )
 from services.app.console_service import ConsoleAppNotFoundError, ConsoleApps
-from services.app.query_service import AppDescription, DiscoveryApps
+from services.app.query_service import AppDescription, DiscoveryApps, RelatedApps
 from services.app_creation_records import create_installed_app_record, create_site_record
 from services.entities.app_entities import (
     RECENT_APP_MODES,
@@ -73,7 +73,6 @@ from services.entities.app_entities import (
 )
 from services.errors.app import AppDiscoveryNotFoundError
 from services.errors.base import NoPermissionError
-from services.knowledge.datasets.application import RelatedApps
 from services.openapi.visibility import apply_openapi_gate
 
 logger = logging.getLogger(__name__)

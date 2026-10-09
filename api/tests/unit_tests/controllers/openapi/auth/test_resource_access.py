@@ -305,7 +305,7 @@ def test_app_list_filters_unbound_apps_before_pagination(
         headers={"Authorization": "Bearer sk-test", CATALOG_HEADER: catalog_for(flask_app)[1]},
     ):
         result, status = AppListApi().get()
-    expected_ids = [] if empty_bindings or search == "unbound" else [app_id]
+    expected_ids: list[str] = [] if empty_bindings or search == "unbound" else [app_id]
     assert status == 200
     assert result["total"] == len(expected_ids)
     assert [app["id"] for app in result["data"]] == expected_ids
