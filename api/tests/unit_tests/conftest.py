@@ -462,8 +462,6 @@ def workflow_suggestions(sqlite_session_factory: sessionmaker[Session]) -> Workf
 def workflow_application(
     app: Flask, sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
 ) -> ApplicationServices:
-    from unittest.mock import Mock
-
     from enums import DeploymentEdition
     from extensions.ext_application_services import build_application_services
     from extensions.ext_redis import RedisClientWrapper
@@ -472,7 +470,7 @@ def workflow_application(
         database_client=sqlite_session_factory,
         deployment_edition=DeploymentEdition.COMMUNITY,
         initialization_password="",
-        redis=Mock(spec=RedisClientWrapper),
+        redis=create_autospec(RedisClientWrapper, instance=True, spec_set=True),
     )
     monkeypatch.setitem(app.extensions, "application_services", services)
     return services
