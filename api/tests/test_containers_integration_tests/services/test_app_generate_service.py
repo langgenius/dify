@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import uuid
 from collections.abc import Generator
+from types import MethodType
 from typing import TYPE_CHECKING, Literal
 from unittest.mock import ANY, MagicMock, patch
 
@@ -370,7 +371,12 @@ class TestAppGenerateService:
         generator_factory.assert_called_once()
         constructor_args = generator_factory.call_args.kwargs
         assert constructor_args["tool_invoker"] is workflow_runtime.agent_tool_invoker
-        assert constructor_args["draft_variable_saver"] is workflow_variables.saver_factory
+        draft_variable_saver = constructor_args["draft_variable_saver"]
+        expected_saver = workflow_variables.saver_factory
+        assert isinstance(draft_variable_saver, MethodType)
+        assert isinstance(expected_saver, MethodType)
+        assert draft_variable_saver.__self__ is expected_saver.__self__
+        assert draft_variable_saver.__func__ is expected_saver.__func__
         assert constructor_args["workflow_runtime"] is workflow_runtime
         generator = generator_factory.return_value
         generator.generate.assert_called_once()

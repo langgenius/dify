@@ -4,7 +4,7 @@ from unittest.mock import Mock, create_autospec, patch
 
 import pytest
 from faker import Faker
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.plugin.plugin_service import PluginService
@@ -18,6 +18,7 @@ from core.tools.entities.tool_entities import (
     ToolProviderType,
 )
 from models.tools import ApiToolProvider, WorkflowToolProvider
+from repositories.tools.provider_repository import ToolProviderRepository
 from services.tools.tools_transform_service import ToolTransformService
 from tests.tool_fixtures import make_runtime_tool
 
@@ -608,7 +609,12 @@ class TestToolTransformService:
         db_session_with_containers.commit()
 
         # Act: Execute the method under test
-        result = ToolTransformService.api_provider_to_controller(provider)
+        tool_providers = ToolProviderRepository(
+            sessionmaker(bind=db_session_with_containers.get_bind(), expire_on_commit=False)
+        )
+        provider_record = tool_providers.get(tenant_id=provider.tenant_id, provider_id=provider.id)
+        assert provider_record is not None
+        result = ToolTransformService.api_provider_to_controller(provider_record)
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -644,7 +650,12 @@ class TestToolTransformService:
         db_session_with_containers.commit()
 
         # Act: Execute the method under test
-        result = ToolTransformService.api_provider_to_controller(provider)
+        tool_providers = ToolProviderRepository(
+            sessionmaker(bind=db_session_with_containers.get_bind(), expire_on_commit=False)
+        )
+        provider_record = tool_providers.get(tenant_id=provider.tenant_id, provider_id=provider.id)
+        assert provider_record is not None
+        result = ToolTransformService.api_provider_to_controller(provider_record)
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -680,7 +691,12 @@ class TestToolTransformService:
         db_session_with_containers.commit()
 
         # Act: Execute the method under test
-        result = ToolTransformService.api_provider_to_controller(provider)
+        tool_providers = ToolProviderRepository(
+            sessionmaker(bind=db_session_with_containers.get_bind(), expire_on_commit=False)
+        )
+        provider_record = tool_providers.get(tenant_id=provider.tenant_id, provider_id=provider.id)
+        assert provider_record is not None
+        result = ToolTransformService.api_provider_to_controller(provider_record)
 
         # Assert: Verify the expected outcomes
         assert result is not None
