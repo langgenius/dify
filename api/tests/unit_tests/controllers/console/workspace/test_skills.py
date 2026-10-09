@@ -39,9 +39,17 @@ from services.skill_management_service import (
     DraftSkillArchive,
     PublishedSkillArchive,
     SkillAssistAttachmentPayload,
+    SkillDraftFileCheckPayload,
+    SkillDraftFileOperationPayload,
+    SkillDraftTreePayload,
     SkillFileContent,
+    SkillImportPayload,
     SkillManagementService,
     SkillManagementServiceError,
+    SkillMetadataPayload,
+    SkillPublishPayload,
+    SkillRestorePayload,
+    SkillVersionUpdatePayload,
 )
 
 
@@ -344,8 +352,10 @@ def test_import_skill_uploads_zip(app: Flask, request_context: RequestContext) -
     call = import_skill.calls[0].kwargs
     assert call["tenant_id"] == "tenant-1"
     assert call["user_id"] == "user-1"
-    assert call["payload"].content == b"zip-bytes"
-    assert call["payload"].filename == "skill.zip"
+    imported = call["payload"]
+    assert isinstance(imported, SkillImportPayload)
+    assert imported.content == b"zip-bytes"
+    assert imported.filename == "skill.zip"
 
 
 def test_import_skill_requires_file(app: Flask, request_context: RequestContext) -> None:
@@ -438,7 +448,9 @@ def test_update_skill_metadata_validates_payload(app: Flask, request_context: Re
     assert call["tenant_id"] == "tenant-1"
     assert call["user_id"] == "user-1"
     assert call["skill_id"] == "skill-1"
-    assert call["payload"].tags == ["finance"]
+    metadata = call["payload"]
+    assert isinstance(metadata, SkillMetadataPayload)
+    assert metadata.tags == ["finance"]
 
 
 @pytest.mark.parametrize(
@@ -706,7 +718,9 @@ def test_patch_skill_file_operation_validates_payload_and_returns_detail(
     assert call["tenant_id"] == "tenant-1"
     assert call["user_id"] == "user-1"
     assert call["skill_id"] == "skill-1"
-    assert call["payload"].operation == "upsert_text"
+    operation = call["payload"]
+    assert isinstance(operation, SkillDraftFileOperationPayload)
+    assert operation.operation == "upsert_text"
 
 
 def test_patch_skill_file_operation_returns_error_details(app: Flask, request_context: RequestContext) -> None:
@@ -778,7 +792,9 @@ def test_check_skill_files_validates_payload_and_returns_results(app: Flask, req
     call = check_draft_files.calls[0].kwargs
     assert call["tenant_id"] == "tenant-1"
     assert call["skill_id"] == "skill-1"
-    assert call["payload"].files[0].filename == "policy.md"
+    checked_files = call["payload"]
+    assert isinstance(checked_files, SkillDraftFileCheckPayload)
+    assert checked_files.files[0].filename == "policy.md"
 
 
 def test_replace_skill_draft_tree_validates_payload_and_returns_detail(
@@ -805,7 +821,9 @@ def test_replace_skill_draft_tree_validates_payload_and_returns_detail(
     assert call["tenant_id"] == "tenant-1"
     assert call["user_id"] == "user-1"
     assert call["skill_id"] == "skill-1"
-    assert call["payload"].files[0].path == "SKILL.md"
+    tree = call["payload"]
+    assert isinstance(tree, SkillDraftTreePayload)
+    assert tree.files[0].path == "SKILL.md"
 
 
 def test_preview_skill_file_validates_query(app: Flask, request_context: RequestContext) -> None:
@@ -924,7 +942,9 @@ def test_publish_skill_validates_payload(app: Flask, request_context: RequestCon
     assert call["tenant_id"] == "tenant-1"
     assert call["user_id"] == "user-1"
     assert call["skill_id"] == "skill-1"
-    assert call["payload"].publish_note == "Initial"
+    publication = call["payload"]
+    assert isinstance(publication, SkillPublishPayload)
+    assert publication.publish_note == "Initial"
 
 
 def test_restore_skill_version_validates_payload(app: Flask, request_context: RequestContext) -> None:
@@ -968,7 +988,9 @@ def test_restore_skill_version_validates_payload(app: Flask, request_context: Re
     assert call["tenant_id"] == "tenant-1"
     assert call["user_id"] == "user-1"
     assert call["skill_id"] == "skill-1"
-    assert call["payload"].version_id == "version-1"
+    restoration = call["payload"]
+    assert isinstance(restoration, SkillRestorePayload)
+    assert restoration.version_id == "version-1"
 
 
 def test_list_skill_references_returns_reference_data(app: Flask, request_context: RequestContext) -> None:
@@ -1112,7 +1134,9 @@ def test_patch_skill_version_renames_version(app: Flask, request_context: Reques
 
     assert payload["version_name"] == "Approval threshold"
     assert len(update_version.calls) == 1
-    assert update_version.calls[0].kwargs["payload"].version_name == "Approval threshold"
+    version = update_version.calls[0].kwargs["payload"]
+    assert isinstance(version, SkillVersionUpdatePayload)
+    assert version.version_name == "Approval threshold"
 
 
 def test_delete_skill_version_returns_new_latest(app: Flask, request_context: RequestContext) -> None:
