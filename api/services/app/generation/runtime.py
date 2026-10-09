@@ -4,10 +4,10 @@ from typing import Protocol
 
 from services.agent.chat.ports import AgentDatasetTools
 from services.app.generation.agent_config import AgentAppConfigurations
-from services.workflow.execution.ports import WorkflowRuntime
+from services.workflow.execution.chatflow_ports import ChatflowRuntime
 
 
-class AppGenerationRuntime(WorkflowRuntime, Protocol):
+class AppGenerationRuntime(ChatflowRuntime, Protocol):
     @property
     def dataset_tools(self) -> AgentDatasetTools: ...
     @property
