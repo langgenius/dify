@@ -754,6 +754,24 @@ class WorkflowRunDict(TypedDict):
     exceptions_count: int
 
 
+class WorkflowDebugReservation(Base):
+    """Outstanding debug handoff, worker lease, or cleanup retry.
+
+    A NULL deadline suspends expiry while the execution waits for human input.
+    The owning WorkflowRun remains authoritative for execution status, and its
+    row lock serializes all lease changes. Successful cleanup removes this row.
+    """
+
+    __tablename__ = "workflow_debug_reservations"
+    __table_args__ = (Index("workflow_debug_reservation_due_idx", "expires_at", "workflow_run_id"),)
+
+    workflow_run_id: Mapped[str] = mapped_column(
+        StringUUID, sa.ForeignKey("workflow_runs.id", ondelete="CASCADE"), primary_key=True
+    )
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
 class WorkflowRun(Base):
     """
     Workflow Run

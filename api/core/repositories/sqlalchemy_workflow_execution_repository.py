@@ -20,6 +20,7 @@ from models import (
     WorkflowRun,
 )
 from models.enums import WorkflowRunTriggeredFrom
+from repositories.workflow.execution_write_repository import save_workflow_run
 
 logger = logging.getLogger(__name__)
 
@@ -180,14 +181,9 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
         """
         Save or update a WorkflowExecution domain entity to the database.
 
-        This method serves as a domain-to-database adapter that:
-        1. Converts the domain entity to its database representation
-        2. Persists the database model using SQLAlchemy's merge operation
-        3. Maintains proper multi-tenancy by including tenant context during conversion
-        4. Updates the in-memory cache for faster subsequent lookups
-
-        The method handles both creating new records and updating existing ones through
-        SQLAlchemy's merge operation.
+        Conversion stays in this engine adapter. The shared persistence boundary
+        locks and validates the owner and status, then the adapter commits and
+        updates its cache only when the write was accepted.
 
         Args:
             execution: The WorkflowExecution domain entity to persist
@@ -197,16 +193,8 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
 
         # Create a new database session
         with self._session_factory() as session:
-            existing_model = session.get(WorkflowRun, db_model.id)
-            if existing_model:
-                if existing_model.tenant_id != self._tenant_id:
-                    raise ValueError("Unauthorized access to workflow run")
-                # Preserve the original start time for pause/resume flows.
-                db_model.created_at = existing_model.created_at
-
-            # SQLAlchemy merge intelligently handles both insert and update operations
-            # based on the presence of the primary key
-            session.merge(db_model)
+            if not save_workflow_run(session, db_model):
+                return
             session.commit()
 
             # Update the in-memory cache for faster subsequent lookups
