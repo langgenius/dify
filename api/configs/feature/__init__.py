@@ -1436,6 +1436,10 @@ class CeleryScheduleTasksConfig(BaseSettings):
         description="Enable recovery of persisted workflow draft upload cleanup requests",
         default=True,
     )
+    WORKFLOW_DRAFT_FILE_CLEANUP_INTERVAL: PositiveInt = Field(
+        description="Workflow draft upload cleanup recovery interval in minutes",
+        default=5,
+    )
     ENABLE_CONVERSATION_CLEANUP_TASK: bool = Field(
         description="Enable periodic recovery of soft-deleted conversation cleanup",
         default=True,
