@@ -5,8 +5,11 @@ import json
 import os
 import subprocess
 import sys
+from collections.abc import Callable
+from functools import cache
 from pathlib import Path
 
+import pytest
 from jsonschema import Draft202012Validator
 
 from tests.unit_tests.config_override import apply_config_overrides
@@ -71,10 +74,22 @@ def _reset_schema_cache(api):
     api.__dict__.pop("__schema__", None)
 
 
-def test_generate_specs_writes_console_web_and_service_openapi_files(tmp_path: Path):
-    module = _load_generate_swagger_specs_module()
+@pytest.fixture(scope="module")
+def exported_spec_paths(tmp_path_factory: pytest.TempPathFactory) -> Callable[[], tuple[Path, ...]]:
+    # Generate lazily inside a test, after its configuration overrides are active.
+    # Content assertions read fresh JSON values from these shared output files.
+    @cache
+    def generate() -> tuple[Path, ...]:
+        module = _load_generate_swagger_specs_module()
+        return tuple(module.generate_specs(tmp_path_factory.mktemp("swagger-specs")))
 
-    written_paths = module.generate_specs(tmp_path)
+    return generate
+
+
+def test_generate_specs_writes_console_web_and_service_openapi_files(
+    exported_spec_paths: Callable[[], tuple[Path, ...]],
+):
+    written_paths = exported_spec_paths()
 
     assert [path.name for path in written_paths] == [
         "console-openapi.json",
@@ -171,10 +186,10 @@ def test_apply_runtime_defaults_forces_swagger_routes_on(monkeypatch):
     assert dify_config.SWAGGER_UI_ENABLED is True
 
 
-def test_generate_specs_writes_openapi_with_resolvable_references_and_null_defaults(tmp_path: Path):
-    module = _load_generate_swagger_specs_module()
-
-    written_paths = module.generate_specs(tmp_path)
+def test_generate_specs_writes_openapi_with_resolvable_references_and_null_defaults(
+    exported_spec_paths: Callable[[], tuple[Path, ...]],
+):
+    written_paths = exported_spec_paths()
 
     for path in written_paths:
         payload = json.loads(path.read_text(encoding="utf-8"))
@@ -190,7 +205,8 @@ def test_generate_specs_writes_openapi_with_resolvable_references_and_null_defau
         assert refs <= set(schemas)
         assert all("nullable" not in value for value in _walk_values(payload) if isinstance(value, dict))
 
-    service_payload = json.loads((tmp_path / "service-openapi.json").read_text(encoding="utf-8"))
+    service_path = next(path for path in written_paths if path.name == "service-openapi.json")
+    service_payload = json.loads(service_path.read_text(encoding="utf-8"))
     conversation_id = service_payload["components"]["schemas"]["ChatRequestPayload"]["properties"]["conversation_id"]
     assert "default" in conversation_id
     assert conversation_id["default"] is None
@@ -209,10 +225,8 @@ def test_generate_specs_writes_openapi_with_resolvable_references_and_null_defau
     assert document_detail["properties"]["tokens"]["default"] is None
 
 
-def test_generate_specs_writes_unique_operation_ids(tmp_path: Path):
-    module = _load_generate_swagger_specs_module()
-
-    written_paths = module.generate_specs(tmp_path)
+def test_generate_specs_writes_unique_operation_ids(exported_spec_paths: Callable[[], tuple[Path, ...]]):
+    written_paths = exported_spec_paths()
 
     for path in written_paths:
         payload = json.loads(path.read_text(encoding="utf-8"))
@@ -279,10 +293,8 @@ def test_finalize_openapi_payload_only_marks_explicit_binary_responses():
     assert "x-dify-binary-response-media-types" not in operation
 
 
-def test_system_features_specs_exclude_backend_only_fields(tmp_path: Path):
-    module = _load_generate_swagger_specs_module()
-
-    written_paths = module.generate_specs(tmp_path)
+def test_system_features_specs_exclude_backend_only_fields(exported_spec_paths: Callable[[], tuple[Path, ...]]):
+    written_paths = exported_spec_paths()
     excluded_fields = {
         "enable_trial_app",
         "is_allow_create_workspace",
@@ -300,10 +312,10 @@ def test_system_features_specs_exclude_backend_only_fields(tmp_path: Path):
         assert "PluginManagerModel" not in schemas
 
 
-def test_generate_specs_writes_get_operations_without_request_bodies(tmp_path: Path):
-    module = _load_generate_swagger_specs_module()
-
-    written_paths = module.generate_specs(tmp_path)
+def test_generate_specs_writes_get_operations_without_request_bodies(
+    exported_spec_paths: Callable[[], tuple[Path, ...]],
+):
+    written_paths = exported_spec_paths()
 
     for path in written_paths:
         payload = json.loads(path.read_text(encoding="utf-8"))
@@ -311,10 +323,8 @@ def test_generate_specs_writes_get_operations_without_request_bodies(tmp_path: P
         assert all("requestBody" not in operation for operation in _get_operations(payload))
 
 
-def test_generate_specs_writes_service_api_reference_descriptions(tmp_path: Path):
-    module = _load_generate_swagger_specs_module()
-
-    written_paths = module.generate_specs(tmp_path)
+def test_generate_specs_writes_service_api_reference_descriptions(exported_spec_paths: Callable[[], tuple[Path, ...]]):
+    written_paths = exported_spec_paths()
     service_path = next(path for path in written_paths if path.name == "service-openapi.json")
     payload = json.loads(service_path.read_text(encoding="utf-8"))
 
@@ -618,10 +628,8 @@ def test_generate_specs_writes_service_api_reference_descriptions(tmp_path: Path
     }
 
 
-def test_generate_specs_writes_web_file_upload_error_codes(tmp_path: Path):
-    module = _load_generate_swagger_specs_module()
-
-    written_paths = module.generate_specs(tmp_path)
+def test_generate_specs_writes_web_file_upload_error_codes(exported_spec_paths: Callable[[], tuple[Path, ...]]):
+    written_paths = exported_spec_paths()
     web_path = next(path for path in written_paths if path.name == "web-openapi.json")
     payload = json.loads(web_path.read_text(encoding="utf-8"))
 
@@ -657,10 +665,10 @@ def test_generate_specs_is_idempotent(tmp_path: Path):
         assert first_path.read_text(encoding="utf-8") == second_path.read_text(encoding="utf-8")
 
 
-def test_generate_specs_include_agent_v2_knowledge_set_schema_and_query_enums(tmp_path: Path):
-    module = _load_generate_swagger_specs_module()
-
-    written_paths = module.generate_specs(tmp_path)
+def test_generate_specs_include_agent_v2_knowledge_set_schema_and_query_enums(
+    exported_spec_paths: Callable[[], tuple[Path, ...]],
+):
+    written_paths = exported_spec_paths()
     console_path = next(path for path in written_paths if path.name == "console-openapi.json")
     payload = json.loads(console_path.read_text(encoding="utf-8"))
     schemas = payload["components"]["schemas"]
@@ -672,10 +680,10 @@ def test_generate_specs_include_agent_v2_knowledge_set_schema_and_query_enums(tm
     assert schemas["AgentKnowledgeQueryMode"]["enum"] == ["generated_query", "user_query"]
 
 
-def test_generate_specs_include_console_contract_shapes_for_schema_migration(tmp_path: Path):
-    module = _load_generate_swagger_specs_module()
-
-    written_paths = module.generate_specs(tmp_path)
+def test_generate_specs_include_console_contract_shapes_for_schema_migration(
+    exported_spec_paths: Callable[[], tuple[Path, ...]],
+):
+    written_paths = exported_spec_paths()
     console_path = next(path for path in written_paths if path.name == "console-openapi.json")
     payload = json.loads(console_path.read_text(encoding="utf-8"))
     schemas = payload["components"]["schemas"]
