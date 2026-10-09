@@ -336,7 +336,7 @@ class TestWorkflowPauseIntegration:
         assert pause_entity is not None
         assert pause_entity.id is not None
         assert pause_entity.workflow_execution_id == workflow_run.id
-        assert list(pause_entity.get_pause_reasons()) == []
+        assert list(repository.get_legacy_pause_reasons(self.session, pause_entity.id)) == []
         # Convert both to strings for comparison
         retrieved_state = pause_entity.get_state()
         if isinstance(retrieved_state, bytes):
@@ -363,7 +363,7 @@ class TestWorkflowPauseIntegration:
         if isinstance(retrieved_state, bytes):
             retrieved_state = retrieved_state.decode()
         assert retrieved_state == test_state
-        assert list(retrieved_entity.get_pause_reasons()) == []
+        assert list(repository.get_legacy_pause_reasons(self.session, retrieved_entity.id)) == []
 
         # Act - Resume workflow
         resumed_entity = repository.resume_workflow_pause(

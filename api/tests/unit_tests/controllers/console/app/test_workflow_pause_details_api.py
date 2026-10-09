@@ -18,8 +18,10 @@ from controllers.console.app import workflow_run as workflow_run_module
 from core.workflow.nodes.human_input.entities import ParagraphInputConfig, UserActionConfig
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from graphon.enums import WorkflowExecutionStatus
+from graphon.runtime import GraphRuntimeState, VariablePool
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowPause, WorkflowRun, WorkflowType
+from services.workflow_pause_service import WorkflowPauseSnapshot
 from tests.unit_tests.config_override import apply_config_overrides
 
 
@@ -67,12 +69,8 @@ def _persist_run(
 
 
 class _PauseEntity:
-    def __init__(self, paused_at: datetime, reasons: list[HumanInputRequired]):
+    def __init__(self, paused_at: datetime):
         self.paused_at = paused_at
-        self._reasons = reasons
-
-    def get_pause_reasons(self):
-        return self._reasons
 
 
 def test_pause_details_returns_backstage_input_url(
@@ -103,7 +101,18 @@ def test_pause_details_returns_backstage_input_url(
         node_id="node-1",
         node_title="Ask Name",
     )
-    pause_entity = _PauseEntity(paused_at=datetime(2024, 1, 1, 12, 0, 0), reasons=[reason])
+    pause_entity = _PauseEntity(paused_at=datetime(2024, 1, 1, 12, 0, 0))
+    monkeypatch.setattr(
+        workflow_run_module,
+        "load_workflow_pause_snapshot",
+        Mock(
+            return_value=WorkflowPauseSnapshot(
+                runtime_state=GraphRuntimeState(variable_pool=VariablePool(), start_at=0),
+                reasons=[reason],
+                v2_forms={},
+            )
+        ),
+    )
 
     repo = Mock()
     repo.get_workflow_pause.return_value = pause_entity

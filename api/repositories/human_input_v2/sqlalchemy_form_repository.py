@@ -1,8 +1,8 @@
-"""Owner-bound persistence for Human Input v2 forms."""
+"""Owner-bound form persistence and cross-owner expiration discovery."""
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from datetime import datetime
 from typing import Self, override
 
@@ -21,7 +21,15 @@ from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 from models.human_input_v2 import HumanInputForm
 
-from .form_repository import Form, FormCreateParams, FormRepository, FormSubmission, FormSubmissionFailure
+from .form_repository import (
+    Form,
+    FormCreateParams,
+    FormExpirationBatch,
+    FormExpirationRun,
+    FormRepository,
+    FormSubmission,
+    FormSubmissionFailure,
+)
 
 _RAW_INPUTS = TypeAdapter(Mapping[str, JsonValue])
 _NORMALIZED_INPUTS = TypeAdapter(Mapping[str, Segment])
@@ -155,6 +163,18 @@ class SQLAlchemyFormRepository(FormRepository):
     def get_form_by_id(self, form_id: str) -> Form | None:
         record = self._session.scalar(self._query().where(HumanInputForm.id == form_id))
         return _form_from_record(record) if record is not None else None
+
+    @override
+    def get_forms_by_ids(self, *, workflow_run_id: str, form_ids: Sequence[str]) -> tuple[Form, ...]:
+        if not form_ids:
+            return ()
+        records = self._session.scalars(
+            self._query().where(
+                HumanInputForm.id.in_(form_ids),
+                HumanInputForm.workflow_run_id == workflow_run_id,
+            )
+        )
+        return tuple(_form_from_record(record) for record in records)
 
     @override
     def create_form(self, params: FormCreateParams) -> Form:
@@ -322,6 +342,19 @@ class SQLAlchemyFormRepository(FormRepository):
         )
 
     @override
+    def list_waiting_forms_for_run(self, workflow_run_id: str) -> FormExpirationBatch:
+        records = self._session.scalars(
+            self._query()
+            .where(
+                HumanInputForm.workflow_run_id == workflow_run_id,
+                HumanInputForm.form_kind == HumanInputFormKind.RUNTIME,
+                HumanInputForm.status == HumanInputFormStatus.WAITING,
+            )
+            .order_by(HumanInputForm.id)
+        ).all()
+        return FormExpirationBatch(tuple(_form_from_record(record) for record in records), self._database_now())
+
+    @override
     def expire_form(self, form_id: str) -> Form | None:
         record = self._lock_form(form_id)
         if record is None:
@@ -330,12 +363,90 @@ class SQLAlchemyFormRepository(FormRepository):
         if form.status != HumanInputFormStatus.WAITING:
             return form
         now = self._database_now()
-        if now >= form.global_timeout_deadline:
-            record.status = HumanInputFormStatus.EXPIRED
-        elif now >= form.expiration_time:
-            record.status = HumanInputFormStatus.TIMEOUT
-        else:
+        if now < form.global_timeout_deadline:
             return form
+        record.status = HumanInputFormStatus.EXPIRED
         record.updated_at = now
         self._session.flush([record])
         return _form_from_record(record)
+
+    @override
+    def timeout_form(self, form_id: str) -> Form | None:
+        record = self._lock_form(form_id)
+        if record is None:
+            return None
+        form = _form_from_record(record)
+        if form.status != HumanInputFormStatus.WAITING:
+            return form
+        now = self._database_now()
+        if now < form.expiration_time or now >= form.global_timeout_deadline:
+            return form
+        record.status = HumanInputFormStatus.TIMEOUT
+        record.updated_at = now
+        self._session.flush([record])
+        return _form_from_record(record)
+
+
+class SQLAlchemyFormExpirationRepository:
+    """Discover runs with due forms across owners using the scheduler's Session.
+
+    This read does not claim forms or inspect workflow state. Handling must
+    recheck each form through its owner-bound repository in a write transaction.
+    """
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def list_expired_runs(self, *, now: datetime, limit: int) -> tuple[FormExpirationRun, ...]:
+        """Find at most limit runs from bounded scans of both deadline indexes.
+
+        A branch may discover multiple forms from the same run, so the result
+        can contain fewer than limit runs. Aggregate every waiting form of the
+        selected runs, including forms outside either branch's limit.
+        """
+        if limit <= 0:
+            raise ValueError("Expiration scan limit must be positive")
+        candidates = []
+        for deadline in (HumanInputForm.expiration_time, HumanInputForm.global_timeout_deadline):
+            due_forms = (
+                sa.select(HumanInputForm.tenant_id, HumanInputForm.app_id, HumanInputForm.workflow_run_id)
+                .where(
+                    HumanInputForm.form_kind == HumanInputFormKind.RUNTIME,
+                    HumanInputForm.status == HumanInputFormStatus.WAITING,
+                    HumanInputForm.workflow_run_id.is_not(None),
+                    deadline <= now,
+                )
+                .order_by(deadline, HumanInputForm.id)
+                .limit(limit)
+                .subquery()
+            )
+            candidates.append(sa.select(due_forms))
+        candidate_forms = sa.union(*candidates).subquery()
+        candidate_runs = (
+            sa.select(candidate_forms)
+            .order_by(candidate_forms.c.workflow_run_id, candidate_forms.c.tenant_id, candidate_forms.c.app_id)
+            .limit(limit)
+            .cte("candidate_runs")
+        )
+        global_deadline = (
+            sa.select(sa.func.min(HumanInputForm.global_timeout_deadline))
+            .where(
+                HumanInputForm.workflow_run_id == candidate_runs.c.workflow_run_id,
+                HumanInputForm.tenant_id == candidate_runs.c.tenant_id,
+                HumanInputForm.app_id == candidate_runs.c.app_id,
+                HumanInputForm.form_kind == HumanInputFormKind.RUNTIME,
+                HumanInputForm.status == HumanInputFormStatus.WAITING,
+            )
+            .correlate(candidate_runs)
+            .scalar_subquery()
+        )
+        query = sa.select(
+            candidate_runs.c.tenant_id,
+            candidate_runs.c.app_id,
+            candidate_runs.c.workflow_run_id,
+            global_deadline,
+        ).order_by(candidate_runs.c.workflow_run_id, candidate_runs.c.tenant_id, candidate_runs.c.app_id)
+        return tuple(
+            FormExpirationRun(TenantId(tenant_id), app_id, run_id, deadline)
+            for tenant_id, app_id, run_id, deadline in self._session.execute(query)
+        )

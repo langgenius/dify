@@ -131,7 +131,14 @@ def test_graph_run_paused_event_emits_queue_pause_event(monkeypatch: pytest.Monk
     )
     event = GraphRunPausedEvent(reasons=[graph_reason], outputs={"foo": "bar"})
     workflow_entry = SimpleNamespace(
-        graph_engine=SimpleNamespace(graph_runtime_state=_FakeRuntimeState()),
+        graph_engine=SimpleNamespace(
+            graph_runtime_state=_FakeRuntimeState(),
+            graph=SimpleNamespace(
+                nodes={
+                    "node-human": SimpleNamespace(node_type="human-input", version=lambda: "1"),
+                }
+            ),
+        ),
     )
 
     enriched_reason = HumanInputRequired(
@@ -143,10 +150,10 @@ def test_graph_run_paused_event_emits_queue_pause_event(monkeypatch: pytest.Monk
         node_title="Human Step",
     )
     monkeypatch.setattr(
-        "core.app.apps.workflow_app_runner.enrich_graph_pause_reasons",
-        lambda **_: [enriched_reason],
+        "core.app.apps.workflow_app_runner.resolve_human_input_v1_pause_reason",
+        lambda **_: enriched_reason,
     )
-    monkeypatch.setattr("core.app.apps.workflow_app_runner.dispatch_human_input_email_task", MagicMock())
+    monkeypatch.setattr("core.app.apps.workflow_app_runner.dispatch_human_input_form_delivery_task", MagicMock())
 
     runner._handle_event(workflow_entry, event)
 
@@ -178,6 +185,89 @@ def _build_converter(*, invoke_from: InvokeFrom = InvokeFrom.SERVICE_API):
         user=user,
         system_variables=system_variables,
     )
+
+
+@pytest.mark.parametrize("sqlite_session", [(HumanInputForm, HumanInputFormRecipient)], indirect=True)
+def test_mixed_human_input_versions_preserve_order_and_wire_payloads(sqlite_pause_session: Session):
+    from pydantic import SecretStr
+
+    from core.human_input_v2.resolved_form import ResolvedForm, SelectInput
+    from core.human_input_v2.shared.values import TenantId
+    from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
+    from core.workflow.nodes.human_input_v2.presentation import build_human_input_v2_pause_reason
+    from core.workflow.nodes.human_input_v2.runtime import PreparedForm
+    from graphon.entities.pause_reason import SchedulingPause
+    from repositories.human_input_v2.form_repository import Form
+
+    _persist_human_input_form(sqlite_pause_session)
+    now = datetime(2024, 1, 1)
+    form = Form(
+        id="form-2",
+        tenant_id=TenantId("tenant-id"),
+        app_id="app-id",
+        workflow_run_id="run-id",
+        node_execution_id="execution-2",
+        form_kind=HumanInputFormKind.RUNTIME,
+        status=HumanInputFormStatus.WAITING,
+        created_at=now,
+        updated_at=now,
+        expiration_time=now,
+        global_timeout_deadline=now,
+        submission=None,
+        resolved_form=ResolvedForm(
+            title="Frozen V2",
+            legacy_form_content="Choose",
+            actions=(),
+            parts=(SelectInput(output_variable_name="choice", options=("Frozen",), default_value=None),),
+        ),
+    )
+    v1_reason = HumanInputRequired(
+        form_id="form-1",
+        node_id="node-1",
+        node_title="V1",
+        form_content="Choose",
+        inputs=[
+            SelectInputConfig(
+                output_variable_name="choice",
+                option_source=StringListSource(
+                    type=ValueSourceType.VARIABLE,
+                    selector=["upstream", "options"],
+                ),
+            )
+        ],
+    )
+    event = QueueWorkflowPausedEvent(
+        reasons=[
+            build_human_input_v2_pause_reason(form.resolved_form, form_id=form.id, node_id="node-2"),
+            SchedulingPause(message="scheduled"),
+            v1_reason,
+        ],
+        paused_nodes=["node-2", "node-1"],
+        human_input_v2_forms={form.id: PreparedForm(form, SecretStr("v2-token"))},
+    )
+    state = GraphRuntimeState(variable_pool=VariablePool(), start_at=0)
+    state.variable_pool.add(["upstream", "options"], ["One", "Two"])
+    converter = _build_converter()
+    converter.workflow_start_to_stream_response(
+        task_id="task",
+        workflow_run_id="run-id",
+        workflow_id="workflow-id",
+        reason=WorkflowStartReason.INITIAL,
+    )
+    responses = converter.workflow_pause_to_stream_response(event=event, task_id="task", graph_runtime_state=state)
+    v2, v1, paused = [response.model_dump(mode="json")["data"] for response in responses]
+    assert [v2["form_id"], v1["form_id"]] == ["form-2", "form-1"]
+    assert v2["inputs"][0]["option_source"]["value"] == ["Frozen"]
+    assert v1["inputs"][0]["option_source"]["value"] == ["One", "Two"]
+    assert v2["form_token"] == "v2-token"
+    assert v1["form_token"] is None
+    reasons = paused["reasons"]
+    assert reasons[0]["form_id"] == "form-2"
+    assert reasons[1]["message"] == "scheduled"
+    assert reasons[2]["form_id"] == "form-1"
+    assert "display_in_ui" in reasons[0]
+    assert "display_in_ui" not in reasons[2]
+    assert all({"version", "form_version"}.isdisjoint(payload) for payload in [v2, v1, *reasons])
 
 
 @pytest.mark.parametrize(

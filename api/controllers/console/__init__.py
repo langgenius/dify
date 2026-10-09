@@ -142,6 +142,7 @@ from .explore import (
     trial,
 )
 from .human_input_v2 import channel as human_input_channel
+from .human_input_v2 import form as human_input_v2_form
 from .snippets import snippet_workflow, snippet_workflow_draft_variable
 from .socketio import workflow as socketio_workflow
 
@@ -213,6 +214,7 @@ __all__ = [
     "human_input",
     "human_input_channel",
     "human_input_form",
+    "human_input_v2_form",
     "init_validate",
     "installed_app",
     "knowledge_fs_proxy",

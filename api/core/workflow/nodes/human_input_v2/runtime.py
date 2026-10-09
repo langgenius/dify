@@ -56,8 +56,10 @@ class HumanInputRuntime(Protocol):
         """Initialize or revisit the approval for this exact node execution.
 
         Look up the form first. If it exists, return its frozen content, status,
-        submission, and initiator token without creating or sending anything.
-        In particular, an unfilled form does not trigger another delivery round.
+        submission, and initiator token without changing its content or recipients.
+        Recover unconfirmed deliveries from the frozen notification plan; never
+        resend a confirmed success. Duplicate notifications are allowed when a
+        provider accepted a send but its result was not committed locally.
 
         Otherwise create Form and resolved/merged Recipients in one transaction.
         After commit, deliver independently to each Recipient; shared endpoints

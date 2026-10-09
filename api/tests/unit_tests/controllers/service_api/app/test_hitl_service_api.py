@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import sys
-from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from inspect import unwrap
@@ -38,6 +37,7 @@ from core.workflow.nodes.human_input.pause_reason import DifyHITLEventType, Huma
 from core.workflow.system_variables import build_system_variables
 from enums import DeploymentEdition
 from graphon.entities import WorkflowStartReason
+from graphon.entities.pause_reason import HitlRequired
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.runtime import GraphRuntimeState, VariablePool
 from libs.datetime_utils import to_utc_timestamp
@@ -45,11 +45,11 @@ from models.account import Account
 from models.enums import CreatorUserRole, MessageStatus
 from models.human_input import HumanInputForm
 from models.model import AppMode
-from models.workflow import WorkflowRun
+from models.workflow import WorkflowPauseReason, WorkflowRun
 from repositories.api_workflow_node_execution_repository import WorkflowNodeExecutionSnapshot
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from services.app_generate_service import AppGenerateService
-from services.workflow_event_snapshot_service import _build_snapshot_events
+from services.workflow_event_snapshot_service import _build_paused_snapshot_events
 from tests.unit_tests.config_override import apply_config_overrides
 
 
@@ -181,7 +181,6 @@ class _FakePauseEntity(WorkflowPauseEntity):
     pause_id: str
     workflow_run_id: str
     paused_at_value: datetime
-    pause_reasons: Sequence[HumanInputRequired]
 
     @property
     @override
@@ -206,10 +205,6 @@ class _FakePauseEntity(WorkflowPauseEntity):
     @override
     def paused_at(self) -> datetime:
         return self.paused_at_value
-
-    @override
-    def get_pause_reasons(self) -> Sequence[HumanInputRequired]:
-        return self.pause_reasons
 
 
 def _build_workflow_run(status: WorkflowExecutionStatus) -> WorkflowRun:
@@ -272,6 +267,7 @@ def _build_resumption_context(task_id: str) -> WorkflowResumptionContext:
         workflow_execution_id="run-1",
     )
     runtime_state = GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0)
+    runtime_state.graph_execution.pause(HitlRequired(session_id="form-1", node_id="node-1", node_title="Human Input"))
     runtime_state.set_output("result", "value")
     wrapper = _WorkflowGenerateEntityWrapper(entity=generate_entity)
     return WorkflowResumptionContext(
@@ -705,6 +701,18 @@ class TestHitlServiceApi:
         resumption_context = _build_resumption_context("task-ctx")
         expiration_time = datetime(2024, 1, 1, tzinfo=UTC)
         _persist_human_input_form(sqlite_session, expiration_time=expiration_time)
+        sqlite_session.add(
+            WorkflowPauseReason.from_entity(
+                pause_id="pause-1",
+                pause_reason=HumanInputRequired(
+                    form_id="form-1",
+                    form_content="content",
+                    node_id="node-1",
+                    node_title="Human Input",
+                ),
+            )
+        )
+        sqlite_session.commit()
         monkeypatch.setattr(
             "services.workflow_event_snapshot_service.load_form_dispositions_by_form_id",
             lambda form_ids, session=None, surface=None: {
@@ -718,18 +726,9 @@ class TestHitlServiceApi:
             pause_id="pause-1",
             workflow_run_id="run-1",
             paused_at_value=datetime(2024, 1, 1, tzinfo=UTC),
-            pause_reasons=[
-                HumanInputRequired(
-                    form_id="form-1",
-                    form_content="content",
-                    node_id="node-1",
-                    node_title="Human Input",
-                    form_token="wtok",
-                )
-            ],
         )
 
-        events = _build_snapshot_events(
+        events = _build_paused_snapshot_events(
             workflow_run=workflow_run,
             node_snapshots=[snapshot],
             task_id="task-ctx",

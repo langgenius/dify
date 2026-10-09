@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import override
@@ -12,17 +11,23 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
-from core.workflow.nodes.human_input.entities import SelectInputConfig, StringListSource, UserActionConfig
+from core.workflow.nodes.human_input.entities import (
+    FormDefinition,
+    SelectInputConfig,
+    StringListSource,
+    UserActionConfig,
+)
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus, ValueSourceType
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
+from graphon.entities.pause_reason import HitlRequired
 from graphon.enums import WorkflowExecutionStatus
 from graphon.runtime import GraphRuntimeState, VariablePool
 from models.enums import CreatorUserRole
 from models.human_input import HumanInputForm
 from models.model import AppMode
-from models.workflow import WorkflowRun
+from models.workflow import WorkflowPauseReason, WorkflowRun
 from repositories.entities.workflow_pause import WorkflowPauseEntity
-from services.workflow_event_snapshot_service import _build_snapshot_events
+from services.workflow_event_snapshot_service import _build_paused_snapshot_events
 
 
 @dataclass(frozen=True)
@@ -30,7 +35,6 @@ class _FakePauseEntity(WorkflowPauseEntity):
     pause_id: str
     workflow_run_id: str
     paused_at_value: datetime
-    pause_reasons: Sequence[HumanInputRequired]
 
     @property
     @override
@@ -56,12 +60,8 @@ class _FakePauseEntity(WorkflowPauseEntity):
     def paused_at(self) -> datetime:
         return self.paused_at_value
 
-    @override
-    def get_pause_reasons(self) -> Sequence[HumanInputRequired]:
-        return self.pause_reasons
 
-
-def _build_resumption_context(workflow_run_id: str) -> WorkflowResumptionContext:
+def _build_resumption_context(workflow_run_id: str, form_id: str) -> WorkflowResumptionContext:
     app_config = WorkflowUIBasedAppConfig(
         tenant_id=str(uuid4()),
         app_id=str(uuid4()),
@@ -81,6 +81,7 @@ def _build_resumption_context(workflow_run_id: str) -> WorkflowResumptionContext
     )
     runtime_state = GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0)
     runtime_state.variable_pool.add(("start", "options"), ["approve", "reject"])
+    runtime_state.graph_execution.pause(HitlRequired(session_id=form_id, node_id="node-id", node_title="Human Input"))
     wrapper = _WorkflowGenerateEntityWrapper(entity=generate_entity)
     return WorkflowResumptionContext(
         generate_entity=wrapper,
@@ -152,17 +153,26 @@ def test_build_snapshot_events_resolves_variable_select_options(db_session_with_
         pause_id=str(uuid4()),
         workflow_run_id=workflow_run_id,
         paused_at_value=datetime.now(UTC),
-        pause_reasons=[reason],
     )
 
+    form.form_definition = FormDefinition(
+        form_content=reason.form_content,
+        inputs=reason.inputs,
+        user_actions=reason.actions,
+        expiration_time=form.expiration_time,
+        display_in_ui=True,
+    ).model_dump_json()
+    db_session_with_containers.add(WorkflowPauseReason.from_entity(pause_id=pause_entity.id, pause_reason=reason))
+    db_session_with_containers.commit()
+
     session_maker = sessionmaker(bind=engine, expire_on_commit=False)
-    events = _build_snapshot_events(
+    events = _build_paused_snapshot_events(
         workflow_run=_build_workflow_run(workflow_run_id),
         node_snapshots=[],
         task_id="task-1",
         message_context=None,
         pause_entity=pause_entity,
-        resumption_context=_build_resumption_context(workflow_run_id),
+        resumption_context=_build_resumption_context(workflow_run_id, form.id),
         session_maker=session_maker,
     )
 
@@ -170,5 +180,8 @@ def test_build_snapshot_events_resolves_variable_select_options(db_session_with_
     assert len(human_input_events) == 1
     assert human_input_events[0]["data"]["inputs"][0]["option_source"]["value"] == ["approve", "reject"]
 
+    db_session_with_containers.execute(
+        delete(WorkflowPauseReason).where(WorkflowPauseReason.pause_id == pause_entity.id)
+    )
     db_session_with_containers.execute(delete(HumanInputForm).where(HumanInputForm.id == form.id))
     db_session_with_containers.commit()

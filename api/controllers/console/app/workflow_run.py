@@ -39,6 +39,7 @@ from libs.login import login_required
 from models import Account, App, AppMode, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
+from services.workflow_pause_service import load_workflow_pause_snapshot
 from services.workflow_run_service import WorkflowRunListArgs, WorkflowRunService
 
 
@@ -409,10 +410,24 @@ class ConsoleWorkflowPauseDetailsApi(Resource):
             return empty_response.model_dump(mode="json"), 200
 
         pause_entity = workflow_run_repo.get_workflow_pause(workflow_run_id)
-        pause_reasons = pause_entity.get_pause_reasons() if pause_entity else []
+        snapshot = load_workflow_pause_snapshot(pause_entity, session_factory=session_maker) if pause_entity else None
+        pause_reasons = snapshot.reasons if snapshot is not None else []
         form_tokens_by_form_id = _load_form_tokens_by_form_id(
-            [reason.form_id for reason in pause_reasons if isinstance(reason, HumanInputRequired)]
+            [
+                reason.form_id
+                for reason in pause_reasons
+                if isinstance(reason, HumanInputRequired) and reason.form_version == "1"
+            ]
         )
+
+        if snapshot is not None:
+            form_tokens_by_form_id.update(
+                {
+                    form_id: prepared.form_token.get_secret_value()
+                    for form_id, prepared in snapshot.v2_forms.items()
+                    if prepared.form_token is not None
+                }
+            )
 
         # Build response
         paused_at = pause_entity.paused_at if pause_entity else None

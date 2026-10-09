@@ -406,11 +406,11 @@ class TestPauseStatePersistenceLayerTestContainers:
         pause_entity = self.workflow_run_service._workflow_run_repo.get_workflow_pause(self.test_workflow_run_id)
         assert pause_entity is not None
         assert pause_entity.workflow_execution_id == self.test_workflow_run_id
-        assert pause_entity.get_pause_reasons() == event.reasons
 
         state_bytes = pause_entity.get_state()
         resumption_context = WorkflowResumptionContext.loads(state_bytes.decode())
         retrieved_state = GraphRuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
+        assert list(retrieved_state.graph_execution.pause_reasons) == event.reasons
 
         assert retrieved_state.outputs == complex_outputs
         assert retrieved_state.total_tokens == 250

@@ -18,6 +18,7 @@ from core.human_input_v2.resolved_form import (
     SelectInput,
 )
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus
+from core.workflow.nodes.human_input.session_binding import default_session_binding
 from graphon.entities.graph_init_params import GraphInitParams
 from graphon.entities.pause_reason import HitlRequired
 from graphon.enums import BuiltinNodeTypes, NodeExecutionType, WorkflowNodeExecutionStatus
@@ -30,6 +31,7 @@ from graphon.runtime.graph_runtime_state import GraphRuntimeState
 from graphon.variables.segments import ArrayFileSegment, Segment, StringSegment
 
 from .entities import HUMAN_INPUT_V2_VERSION, DynamicEmail, HumanInputNodeData
+from .events import NodeRunHumanInputV2FormRequiredEvent
 from .runtime import HumanInputDeliveryError, HumanInputRuntime
 
 
@@ -82,11 +84,20 @@ class HumanInputNode(Node[HumanInputNodeData]):
         resolved = form.resolved_form
         match form.status:
             case HumanInputFormStatus.WAITING:
-                # Graphon's pause union is closed. Presentation and access tokens
-                # belong to Dify's output boundary, not to a reason subtype.
+                # Keep the live Dify presentation separate from graphon's persisted
+                # pause reason, which carries only the reference needed to resume.
+                yield NodeRunHumanInputV2FormRequiredEvent(
+                    id=self.execution_id,
+                    node_id=self.id,
+                    node_type=self.node_type,
+                    node_version=self.version(),
+                    prepared_form=prepared,
+                )
                 yield PauseRequestedEvent(
                     reason=HitlRequired(
-                        session_id=form.id,
+                        session_id=default_session_binding.issue_session_id_for_form(
+                            node_version=self.version(), form_id=form.id
+                        ),
                         node_id=self.id,
                         node_title=resolved.title,
                     )

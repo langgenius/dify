@@ -22,6 +22,9 @@ class DifyHITLEventType(StrEnum):
 
 
 class HumanInputRequired(BaseModel):
+    # The referenced form determines its storage owner; this is not an entity version.
+    # Keep this routing information out of the shared response contract.
+    form_version: Literal["1", "2"] = Field(default="1", exclude=True)
     TYPE: Literal[DifyHITLEventType.HUMAN_INPUT_REQUIRED] = DifyHITLEventType.HUMAN_INPUT_REQUIRED
     form_id: str
     form_content: str

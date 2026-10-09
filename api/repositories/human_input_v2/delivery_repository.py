@@ -41,6 +41,11 @@ class DeliveryTargetType(StrEnum):
     INITIATOR = "initiator"
 
 
+class IMMessageType(StrEnum):
+    CARD = "card"
+    LINK = "link"
+
+
 class IMUserTargetSnapshot(BaseModel):
     model_config = ConfigDict(frozen=True, strict=True, validate_default=True)
 
@@ -49,6 +54,8 @@ class IMUserTargetSnapshot(BaseModel):
     im_provider: IMProvider
     im_tenant_id: str
     im_provider_user_id: str
+    # Records the assessed presentation; auth_type governs submission.
+    message_type: IMMessageType = Field(strict=False)
 
 
 class EmailTargetSnapshot(BaseModel):
@@ -65,6 +72,8 @@ class InitiatorSnapshot(BaseModel):
     model_config = ConfigDict(frozen=True, strict=True, validate_default=True)
 
     type: Literal[DeliveryTargetType.INITIATOR] = DeliveryTargetType.INITIATOR
+    # Store tenant-encrypted ciphertext, never plaintext.
+    protected_form_token: str = Field(repr=False)
 
 
 type TargetSnapshot = Annotated[
@@ -128,5 +137,15 @@ class DeliveryRepository(Protocol):
         Ambiguous hashes, including matches across different owners, must fail
         instead of selecting an arbitrary recipient. Lookup alone does not
         authenticate an actor or check whether the form may still be submitted.
+        """
+        ...
+
+    def get_initiator_delivery(self, *, tenant_id: TenantId, form_id: str) -> Delivery | None:
+        """Read the original interaction entry when a waiting form is revisited.
+
+        Scope by tenant/form and the persisted Initiator target type. Missing
+        returns None; multiple entries for the form fail rather than selecting
+        a token. The caller establishes app ownership before this lookup.
+        This read neither creates another delivery nor authenticates an actor.
         """
         ...

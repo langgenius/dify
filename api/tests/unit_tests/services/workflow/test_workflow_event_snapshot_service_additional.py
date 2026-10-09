@@ -172,9 +172,6 @@ class _PauseEntity(WorkflowPauseEntity):
     def get_state(self) -> bytes:
         return self.state
 
-    def get_pause_reasons(self) -> list[Any]:
-        return []
-
 
 class TestWorkflowEventSnapshotHelpers:
     def test_get_message_context_by_conversation_should_return_none_when_no_message(
@@ -400,7 +397,7 @@ class TestBuildWorkflowEventStream:
         monkeypatch.setattr(service_module, "_resolve_task_id", MagicMock(return_value="task-1"))
         monkeypatch.setattr(
             service_module,
-            "_build_snapshot_events",
+            "_build_paused_snapshot_events",
             MagicMock(return_value=[{"event": StreamEvent.WORKFLOW_FINISHED, "task_id": "task-1"}]),
         )
 
@@ -554,4 +551,5 @@ class TestBuildWorkflowEventStream:
         )
 
         assert events[0] == StreamEvent.PING
-        assert snapshot_builder.call_args.kwargs["pause_entity"] is None
+        assert events == [StreamEvent.PING, {"event": StreamEvent.WORKFLOW_FINISHED}]
+        assert buffer_state.stop_event.is_set()

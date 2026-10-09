@@ -16,6 +16,7 @@ from .delivery_repository import (
     Delivery,
     DeliveryCreateParams,
     DeliveryRepository,
+    DeliveryTargetType,
 )
 
 
@@ -51,6 +52,7 @@ class SQLAlchemyDeliveryRepository(DeliveryRepository):
             "recipient_id": params.recipient_id,
             "token_hash": params.token_hash,
             "auth_type": params.auth_type,
+            "target_type": params.target_snapshot.type,
             "target_snapshot": params.target_snapshot,
             "created_at": now,
             "updated_at": now,
@@ -66,4 +68,15 @@ class SQLAlchemyDeliveryRepository(DeliveryRepository):
     @override
     def get_delivery_by_token_hash(self, token_hash: str) -> Delivery | None:
         record = self._session.scalars(self._query().where(HumanInputDelivery.token_hash == token_hash)).one_or_none()
+        return _to_delivery(record) if record is not None else None
+
+    @override
+    def get_initiator_delivery(self, *, tenant_id: TenantId, form_id: str) -> Delivery | None:
+        record = self._session.scalars(
+            self._query().where(
+                HumanInputDelivery.tenant_id == tenant_id,
+                HumanInputDelivery.form_id == form_id,
+                HumanInputDelivery.target_type == DeliveryTargetType.INITIATOR,
+            )
+        ).one_or_none()
         return _to_delivery(record) if record is not None else None

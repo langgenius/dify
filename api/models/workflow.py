@@ -2180,6 +2180,12 @@ class WorkflowPause(DefaultFieldsDCMixin, TypeBase):
 
 
 class WorkflowPauseReason(DefaultFieldsDCMixin, TypeBase):
+    """Legacy HITL v1 pause details. New code must use the Graph State snapshot.
+
+    Historical scheduling rows remain readable; new pause kinds must not write
+    this table. HITL v2 forms are never referenced here.
+    """
+
     __tablename__ = "workflow_pause_reasons"
 
     # `pause_id` represents the identifier of the pause,
@@ -2234,13 +2240,20 @@ class WorkflowPauseReason(DefaultFieldsDCMixin, TypeBase):
     ) -> "WorkflowPauseReason":
         match pause_reason:
             case HitlRequired():
+                node_version, form_id = default_session_binding.resolve_form_id_from_session_id(
+                    session_id=pause_reason.session_id
+                )
+                if node_version != "1":
+                    raise ValueError("The legacy pause reason table only accepts HITL v1 forms")
                 return cls(
                     pause_id=pause_id,
                     type_=PauseReasonType.HITL_REQUIRED,
-                    form_id=default_session_binding.resolve_form_id_from_session_id(session_id=pause_reason.session_id),
+                    form_id=form_id,
                     node_id=pause_reason.node_id,
                 )
             case HumanInputRequired():
+                if pause_reason.form_version != "1":
+                    raise ValueError("The legacy pause reason table only accepts HITL v1 forms")
                 return cls(
                     pause_id=pause_id,
                     type_=PauseReasonType.HITL_REQUIRED,
@@ -2262,7 +2275,7 @@ class WorkflowPauseReason(DefaultFieldsDCMixin, TypeBase):
             )
         elif self.type_ == PauseReasonType.HITL_REQUIRED:
             return HitlRequired(
-                session_id=default_session_binding.issue_session_id_for_form(form_id=self.form_id),
+                session_id=default_session_binding.issue_session_id_for_form(node_version="1", form_id=self.form_id),
                 node_id=self.node_id,
                 node_title="",
             )
