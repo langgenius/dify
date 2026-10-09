@@ -1,7 +1,6 @@
 {
   "accessRule.accessPermission": "Permiso de acceso",
   "accessRule.actions": "Acciones",
-  "accessRule.addMemberAria": "Añadir {{name}}",
   "accessRule.addMembersTitle": "Añadir miembros",
   "accessRule.agentDescription": "Gestiona quién puede acceder a este agente y sus permisos.",
   "accessRule.agentTitle": "Conjunto de permisos de agente",
