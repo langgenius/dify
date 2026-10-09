@@ -40,7 +40,6 @@ from models.enums import ConversationFromSource, CreatorUserRole, EndUserType
 from models.model import AppModelConfig, EndUser, MessageFile, UploadFile
 from models.workflow import Workflow, WorkflowType
 from repositories.message_repository import MessageRepository
-from repositories.sqlalchemy_execution_extra_content_repository import SQLAlchemyExecutionExtraContentRepository
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.entities.message_entities import MessageAccount, MessageActor, MessageEndUser
 from services.errors.conversation import ConversationNotExistsError
@@ -189,7 +188,6 @@ def harness(
         session_factory=read_factory,
         repository=MessageRepository(
             session_factory=read_factory,
-            extra_contents=SQLAlchemyExecutionExtraContentRepository(session_maker=read_factory),
         ),
     )
     with flask_app.app_context():

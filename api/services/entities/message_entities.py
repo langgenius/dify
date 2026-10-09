@@ -44,6 +44,25 @@ class MessageFileRecord:
 
 
 @dataclass(frozen=True, slots=True)
+class MessageFileReference:
+    """Persisted reference; file metadata and URLs are resolved after the read."""
+
+    id: str
+    type: str
+    transfer_method: str
+    url: str | None
+    upload_file_id: str | None
+    belongs_to: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class MessageFileProjection:
+    inputs: dict[str, MessageInputValue]
+    answer: str
+    files: list[MessageFileRecord]
+
+
+@dataclass(frozen=True, slots=True)
 class MessageAgentThoughtRecord:
     id: str
     message_id: str
@@ -88,6 +107,18 @@ class MessagePage[RecordT]:
     limit: int
     has_more: bool
     data: tuple[RecordT, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class MessageSource[RecordT: MessageRecord]:
+    """Database projection before file restoration and extra-content loading.
+
+    The record retains stored JSON inputs and the original answer. Its
+    message_files and extra_contents are filled by the shared query service.
+    """
+
+    record: RecordT
+    files: tuple[MessageFileReference, ...]
 
 
 @dataclass(frozen=True, slots=True)

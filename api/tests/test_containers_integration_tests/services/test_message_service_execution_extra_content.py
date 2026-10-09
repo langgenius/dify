@@ -7,6 +7,7 @@ from models.human_input import HumanInputFormStatus
 from repositories.message_repository import MessageRepository
 from repositories.sqlalchemy_execution_extra_content_repository import SQLAlchemyExecutionExtraContentRepository
 from services.entities.message_entities import MessageAccount
+from services.message_query_adapters import ExecutionExtraContentReader, MessageFileResolver
 from services.message_query_service import MessageQueryService
 from tests.test_containers_integration_tests.helpers.execution_extra_content import (
     create_human_input_message_fixture,
@@ -19,8 +20,10 @@ def test_pagination_returns_extra_contents(db_session_with_containers: Session) 
 
     sessions = sessionmaker(bind=db_session_with_containers.get_bind(), expire_on_commit=False)
     service = MessageQueryService(
-        messages=MessageRepository(
-            session_factory=sessions, extra_contents=SQLAlchemyExecutionExtraContentRepository(session_maker=sessions)
+        messages=MessageRepository(session_factory=sessions),
+        files=MessageFileResolver(),
+        extra_contents=ExecutionExtraContentReader(
+            repository=SQLAlchemyExecutionExtraContentRepository(session_maker=sessions)
         ),
     )
     pagination = service.get_page(
@@ -65,8 +68,10 @@ def test_pagination_returns_waiting_human_input_extra_contents(db_session_with_c
 
     sessions = sessionmaker(bind=db_session_with_containers.get_bind(), expire_on_commit=False)
     service = MessageQueryService(
-        messages=MessageRepository(
-            session_factory=sessions, extra_contents=SQLAlchemyExecutionExtraContentRepository(session_maker=sessions)
+        messages=MessageRepository(session_factory=sessions),
+        files=MessageFileResolver(),
+        extra_contents=ExecutionExtraContentReader(
+            repository=SQLAlchemyExecutionExtraContentRepository(session_maker=sessions)
         ),
     )
     pagination = service.get_page(

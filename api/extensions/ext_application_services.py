@@ -134,6 +134,7 @@ from services.message_feedback_service import MessageFeedbackService
 from services.message_file_preview_service import MessageFilePreviewService
 from services.message_more_like_this_generator import MessageMoreLikeThisGenerator
 from services.message_more_like_this_service import MessageMoreLikeThisService
+from services.message_query_adapters import ExecutionExtraContentReader, MessageFileResolver
 from services.message_query_service import MessageQueryService
 from services.message_suggested_questions_generator import SuggestedQuestionsGenerator
 from services.message_suggested_questions_queries import SuggestedQuestionsQuery
@@ -502,10 +503,7 @@ def build_application_services(
         registration=account_services.lifecycle,
         invitation_tokens=invitation_tokens,
     )
-    messages = MessageRepository(
-        session_factory=database_client,
-        extra_contents=SQLAlchemyExecutionExtraContentRepository(session_maker=database_client),
-    )
+    messages = MessageRepository(session_factory=database_client)
     suggested_questions = SuggestedQuestionsQuery(
         session_factory=database_client,
         repository=messages,
@@ -624,7 +622,13 @@ def build_application_services(
             remote_files=remote_file_service,
         ),
         message_feedbacks=MessageFeedbackService(repository=messages),
-        message_queries=MessageQueryService(messages=messages),
+        message_queries=MessageQueryService(
+            messages=messages,
+            files=MessageFileResolver(),
+            extra_contents=ExecutionExtraContentReader(
+                repository=SQLAlchemyExecutionExtraContentRepository(session_maker=database_client)
+            ),
+        ),
         message_file_previews=MessageFilePreviewService(
             files=MessageFilePreviewQueryRepository(session_factory=database_client),
             storage=storage,

@@ -12,7 +12,6 @@ return detached data too; configuration selection stays in the query/service lay
 
 import json
 from copy import deepcopy
-from dataclasses import replace
 from typing import NamedTuple, cast
 
 from pydantic import JsonValue
@@ -23,7 +22,6 @@ from core.memory.token_buffer_memory import PreparedHistory, TokenBufferMemory
 from models import Account, App, AppModelConfig, Conversation, EndUser, Message, MessageFile
 from models.enums import FeedbackFromSource, FeedbackRating
 from models.model import AppMode, InstalledApp, MessageAgentThought, MessageFeedback, load_annotation_reply_config
-from repositories.execution_extra_content_repository import ExecutionExtraContentRepository
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.entities.message_entities import (
     ConsoleMessageFeedbackRecord,
@@ -34,11 +32,12 @@ from services.entities.message_entities import (
     MessageAgentThoughtRecord,
     MessageAnnotationHitRecord,
     MessageAnnotationRecord,
-    MessageFileRecord,
+    MessageFileReference,
     MessageInputValue,
     MessagePage,
     MessageRating,
     MessageRecord,
+    MessageSource,
 )
 from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.conversation import ConversationNotExistsError
@@ -64,11 +63,8 @@ class SuggestedQuestionsRecords(NamedTuple):
 
 
 class MessageRepository:
-    def __init__(
-        self, *, session_factory: sessionmaker[Session], extra_contents: ExecutionExtraContentRepository
-    ) -> None:
+    def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory: sessionmaker[Session] = session_factory
-        self._extra_contents: ExecutionExtraContentRepository = extra_contents
 
     def get_message_page(
         self,
@@ -80,8 +76,8 @@ class MessageRepository:
         first_id: str | None,
         limit: int,
         installed_app: InstalledAppRef | None,
-    ) -> MessagePage[MessageRecord]:
-        """Read an actor's live conversation and detach all response data."""
+    ) -> MessagePage[MessageSource[MessageRecord]]:
+        """Read an actor's live conversation as detached database snapshots."""
         with self._session_factory() as session:
             self._require_page_app(
                 session, app_id=app_id, app_owner_tenant_id=app_owner_tenant_id, installed_app=installed_app
@@ -93,14 +89,14 @@ class MessageRepository:
             statement = self._page_statement(session, app_id=app_id, conversation_id=conversation_id, first_id=first_id)
             messages = list(session.scalars(statement.order_by(Message.created_at.desc()).limit(limit + 1)))
             has_more = len(messages) > limit
-            page = MessagePage(
+            return MessagePage(
                 limit=limit,
                 has_more=has_more,
                 data=tuple(
-                    self._to_message_record(message=message, session=session) for message in reversed(messages[:limit])
+                    self._to_source(record=self._to_message_record(message=message, session=session), session=session)
+                    for message in reversed(messages[:limit])
                 ),
             )
-        return replace(page, data=self._with_extra_contents(page.data))
 
     def get_console_message_page(
         self,
@@ -111,7 +107,7 @@ class MessageRepository:
         conversation_id: str,
         first_id: str | None,
         limit: int,
-    ) -> MessagePage[ConsoleMessageRecord]:
+    ) -> MessagePage[MessageSource[ConsoleMessageRecord]]:
         """Read Console history; Agent conversations remain account-owned."""
         with self._session_factory() as session:
             app = self._require_page_app(
@@ -134,15 +130,16 @@ class MessageRepository:
                 and messages
                 and session.scalar(select(statement.where(Message.created_at < messages[-1].created_at).exists()))
             )
-            page = MessagePage(
+            return MessagePage(
                 limit=limit,
                 has_more=has_more,
                 data=tuple(
-                    self._to_console_message_record(message=message, session=session) for message in reversed(messages)
+                    self._to_source(
+                        record=self._to_console_message_record(message=message, session=session), session=session
+                    )
+                    for message in reversed(messages)
                 ),
             )
-
-        return replace(page, data=self._with_extra_contents(page.data))
 
     def get_console_message(
         self,
@@ -151,7 +148,7 @@ class MessageRepository:
         app_owner_tenant_id: str,
         account_id: str,
         message_id: str,
-    ) -> ConsoleMessageRecord:
+    ) -> MessageSource[ConsoleMessageRecord]:
         """Read an admitted Console app's message, including other users' history.
 
         Detail access is app-wide even for Agent apps and deleted conversations;
@@ -166,17 +163,25 @@ class MessageRepository:
             if message is None:
                 raise MessageNotExistsError(f"Message {message_id} is unavailable for app {app_id}")
             record = self._to_console_message_record(message=message, session=session)
-        return self._with_extra_contents((record,))[0]
+            return self._to_source(record=record, session=session)
 
-    def _with_extra_contents[RecordT: MessageRecord](self, records: tuple[RecordT, ...]) -> tuple[RecordT, ...]:
-        if not records:
-            return records
-        # All message projections are detached and their session is closed before
-        # the independent execution-content repository opens its read session.
-        contents = self._extra_contents.get_by_message_ids([record.id for record in records])
-        return tuple(
-            replace(record, extra_contents=[item.model_dump(mode="json", exclude_none=True) for item in items])
-            for record, items in zip(records, contents, strict=True)
+    @staticmethod
+    def _to_source[RecordT: MessageRecord](*, record: RecordT, session: Session) -> MessageSource[RecordT]:
+        """Snapshot file references without restoring files or signing URLs."""
+        files = session.scalars(select(MessageFile).where(MessageFile.message_id == record.id))
+        return MessageSource(
+            record=record,
+            files=tuple(
+                MessageFileReference(
+                    id=file.id,
+                    type=file.type.value,
+                    transfer_method=file.transfer_method.value,
+                    url=file.url,
+                    upload_file_id=file.upload_file_id,
+                    belongs_to=file.belongs_to.value if file.belongs_to is not None else None,
+                )
+                for file in files
+            ),
         )
 
     def _require_page_app(
@@ -632,27 +637,13 @@ class MessageRepository:
 
     @staticmethod
     def _to_message_record(*, message: Message, session: Session) -> MessageRecord:
-        # Retain model input/file restoration (including its file I/O and legacy
-        # commit) until that boundary is migrated; do not recreate the file factory.
-        inputs = cast(dict[str, MessageInputValue], message.inputs_with_session(session=session))
+        # Snapshot stored JSON; restoration and URL signing belong to the query
+        # service's file adapter after this database session has closed.
+        inputs = deepcopy(cast(dict[str, MessageInputValue], message._inputs))
         feedback = message.user_feedback_with_session(session=session)
         thoughts = [
             MessageRepository._thought_record(thought)
             for thought in message.agent_thoughts_with_session(session=session)
-        ]
-        files = [
-            MessageFileRecord(
-                id=file["id"],
-                filename=file["filename"],
-                type=file["type"],
-                url=file.get("url"),
-                mime_type=file.get("mime_type"),
-                size=file.get("size"),
-                transfer_method=file["transfer_method"],
-                belongs_to=file.get("belongs_to"),
-                upload_file_id=file.get("upload_file_id"),
-            )
-            for file in message.message_files_with_session(session=session)
         ]
         return MessageRecord(
             id=message.id,
@@ -660,12 +651,12 @@ class MessageRepository:
             parent_message_id=message.parent_message_id,
             inputs=inputs,
             query=message.query,
-            answer=message.re_sign_file_url_answer,
+            answer=message.answer,
             feedback=MessageRating(rating=feedback.rating.value) if feedback is not None else None,
             retriever_resources=cast(list[dict[str, JsonValue]] | None, message.retriever_resources),
             created_at=message.created_at,
             agent_thoughts=thoughts,
-            message_files=files,
+            message_files=[],
             message_tokens=message.message_tokens,
             answer_tokens=message.answer_tokens,
             provider_response_latency=message.provider_response_latency,

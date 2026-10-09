@@ -28,7 +28,6 @@ from models.workflow import Workflow, WorkflowType
 from repositories.app_definition_query_repository import AppDefinitionQueryRepository
 from repositories.app_scoped_end_user_repository import AppScopedEndUserRepo
 from repositories.message_repository import MessageRepository
-from repositories.sqlalchemy_execution_extra_content_repository import SQLAlchemyExecutionExtraContentRepository
 from services.app_definition_query_service import AppDefinitionQueryService, AppDefinitionUnavailableError
 from services.app_scoped_end_user_service import AppScopedEndUserService
 from services.errors.app import AppAbnormalStatusError, AppApiDisabledError
@@ -164,7 +163,6 @@ def harness(
         session_factory=query_factory,
         repository=MessageRepository(
             session_factory=query_factory,
-            extra_contents=SQLAlchemyExecutionExtraContentRepository(session_maker=query_factory),
         ),
     )
     service = MessageSuggestedQuestionsService(queries=queries, generator=SuggestedQuestionsGenerator())

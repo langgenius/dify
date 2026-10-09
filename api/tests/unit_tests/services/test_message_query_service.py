@@ -2,6 +2,7 @@ from datetime import timedelta
 from typing import Literal
 
 import pytest
+from pydantic import JsonValue
 from sqlalchemy import delete, event
 from sqlalchemy.engine import Connection
 from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
@@ -13,6 +14,7 @@ from models.model import Message
 from repositories.message_repository import MessageRepository
 from repositories.sqlalchemy_execution_extra_content_repository import SQLAlchemyExecutionExtraContentRepository
 from services.entities.message_entities import MessageAccount
+from services.message_query_adapters import ExecutionExtraContentReader, MessageFileResolver
 from services.message_query_service import MessageQueryService
 from tests.test_containers_integration_tests.helpers.execution_extra_content import create_human_input_message_fixture
 
@@ -34,6 +36,8 @@ def test_extra_contents_are_loaded_after_message_session_closes(
         app_id, tenant_id = fixture.app.id, fixture.app.tenant_id
         account_id, conversation_id = fixture.account.id, fixture.conversation.id
         message_id, form_id = fixture.message.id, fixture.form.id
+        workflow_run_id = fixture.message.workflow_run_id
+        expiration_time = int(fixture.form.expiration_time.timestamp())
         later = Message(
             app_id=app_id,
             conversation_id=conversation_id,
@@ -67,9 +71,10 @@ def test_extra_contents_are_loaded_after_message_session_closes(
     event.listen(sqlite_session_factory, "after_begin", record_page_session)
     event.listen(contents_factory, "after_begin", check_page_closed)
     service = MessageQueryService(
-        messages=MessageRepository(
-            session_factory=sqlite_session_factory,
-            extra_contents=SQLAlchemyExecutionExtraContentRepository(session_maker=contents_factory),
+        messages=MessageRepository(session_factory=sqlite_session_factory),
+        files=MessageFileResolver(),
+        extra_contents=ExecutionExtraContentReader(
+            repository=SQLAlchemyExecutionExtraContentRepository(session_maker=contents_factory)
         ),
     )
     try:
@@ -110,14 +115,32 @@ def test_extra_contents_are_loaded_after_message_session_closes(
     assert all(not session.in_transaction() and not session.identity_map for session in content_sessions)
     expected_ids = [message_id] if query_kind == "detail" else [message_id, later_id]
     assert [message.id for message in records] == expected_ids
-    content = records[0].extra_contents[0]
-    assert content["type"] == "human_input"
-    assert content["submitted"] is submitted
-    assert ("form_submission_data" in content) is submitted
-    definition = content["form_definition"]
-    assert isinstance(definition, dict)
-    assert definition["form_id"] == form_id
-    assert definition["node_title"] == "Approval"
+    expected_content: dict[str, JsonValue] = {
+        "workflow_run_id": workflow_run_id,
+        "type": "human_input",
+        "submitted": submitted,
+        "form_definition": {
+            "form_id": form_id,
+            "node_id": "node-id",
+            "node_title": "Approval",
+            "form_content": "Rendered block",
+            "inputs": [],
+            "actions": [{"id": "approve", "title": "Approve request", "button_style": "default"}],
+            "display_in_ui": True,
+            "resolved_default_values": {},
+            "expiration_time": expiration_time,
+        },
+    }
+    if submitted:
+        expected_content["form_submission_data"] = {
+            "node_id": "node-id",
+            "node_title": "Approval",
+            "rendered_content": "Rendered block",
+            "action_id": "approve",
+            "action_text": "Approve request",
+            "submitted_data": {"name": "Alice"},
+        }
+    assert records[0].extra_contents == [expected_content]
     if query_kind != "detail":
         assert [message.extra_contents for message in records[1:]] == [[]]
 
@@ -140,9 +163,10 @@ def test_empty_page_does_not_open_extra_content_session(sqlite_session_factory: 
     event.listen(contents_factory, "after_begin", record_content_session)
     try:
         page = MessageQueryService(
-            messages=MessageRepository(
-                session_factory=sqlite_session_factory,
-                extra_contents=SQLAlchemyExecutionExtraContentRepository(session_maker=contents_factory),
+            messages=MessageRepository(session_factory=sqlite_session_factory),
+            files=MessageFileResolver(),
+            extra_contents=ExecutionExtraContentReader(
+                repository=SQLAlchemyExecutionExtraContentRepository(session_maker=contents_factory)
             ),
         ).get_page(
             app_id=app_id,

@@ -1,19 +1,18 @@
 import json
+import sys
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 from decimal import Decimal
 from uuid import uuid4
 
 import pytest
-from pydantic import JsonValue
 from sqlalchemy import Connection, event, inspect, update
-from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from extensions.storage.storage_type import StorageType
-from graphon.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
+from graphon.file import FILE_MODEL_IDENTITY, FileTransferMethod, FileType
 from models import Account, EndUser
 from models.enums import ConversationFromSource, CreatorUserRole, EndUserType, FeedbackFromSource, FeedbackRating
-from models.human_input import HumanInputFormStatus
 from models.model import (
     App,
     AppAnnotationHitHistory,
@@ -28,13 +27,18 @@ from models.model import (
     UploadFile,
 )
 from repositories.message_repository import MessageRepository
-from repositories.sqlalchemy_execution_extra_content_repository import SQLAlchemyExecutionExtraContentRepository
 from services.app_definition_query_service import AppDefinitionUnavailableError
-from services.entities.message_entities import MessageAccount, MessageActor, MessageEndUser, MessagePage, MessageRecord
+from services.entities.message_entities import (
+    MessageAccount,
+    MessageActor,
+    MessageEndUser,
+    MessagePage,
+    MessageRecord,
+    MessageSource,
+)
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import FirstMessageNotExistsError, MessageActorNotFoundError, MessageNotExistsError
 from services.installed_app_access_service import InstalledAppNotFoundError, InstalledAppRef
-from tests.test_containers_integration_tests.helpers.execution_extra_content import create_human_input_message_fixture
 
 _ACCOUNT_ID = "11111111-1111-4111-8111-111111111111"
 _OWNER_TENANT_ID = "22222222-2222-4222-8222-222222222222"
@@ -155,7 +159,6 @@ def test_page_keeps_cursor_order_and_detaches_complete_message_data(
         session.add_all([later, earlier])
     repository = MessageRepository(
         session_factory=sqlite_session_factory,
-        extra_contents=SQLAlchemyExecutionExtraContentRepository(session_maker=sqlite_session_factory),
     )
     page = repository.get_message_page(
         installed_app=installation,
@@ -176,11 +179,11 @@ def test_page_keeps_cursor_order_and_detaches_complete_message_data(
         limit=2,
     )
 
-    assert [item.id for item in page.data] == [middle.id, newest.id]
+    assert [item.record.id for item in page.data] == [middle.id, newest.id]
     assert (page.limit, page.has_more) == (2, True)
-    assert [item.id for item in final.data] == [old.id]
+    assert [item.record.id for item in final.data] == [old.id]
     assert final.has_more is False
-    record = page.data[0]
+    record = page.data[0].record
     assert inspect(record, raiseerr=False) is None
     assert (record.conversation_id, record.parent_message_id) == (conversation.id, old.id)
     assert record.inputs == {"empty": "", "list": [], "zero": 0, "false": False, "none": None}
@@ -225,7 +228,6 @@ def test_empty_conversation_and_strict_timestamp_ties_preserve_legacy_page_behav
 ) -> None:
     repository = MessageRepository(
         session_factory=sqlite_session_factory,
-        extra_contents=SQLAlchemyExecutionExtraContentRepository(session_maker=sqlite_session_factory),
     )
     assert repository.get_message_page(
         installed_app=installation,
@@ -257,7 +259,7 @@ def test_empty_conversation_and_strict_timestamp_ties_preserve_legacy_page_behav
         app_owner_tenant_id=installation.app_owner_tenant_id,
         actor=MessageAccount(account_id=_ACCOUNT_ID),
         conversation_id=conversation.id,
-        first_id=page.data[0].id,
+        first_id=page.data[0].record.id,
         limit=1,
     ) == MessagePage(limit=1, has_more=False, data=())
 
@@ -276,7 +278,6 @@ def test_listing_checks_each_conversation_ownership_predicate(
     with pytest.raises(ConversationNotExistsError):
         MessageRepository(
             session_factory=sqlite_session_factory,
-            extra_contents=SQLAlchemyExecutionExtraContentRepository(session_maker=sqlite_session_factory),
         ).get_message_page(
             installed_app=installation,
             app_id=installation.app_id,
@@ -296,7 +297,6 @@ def test_cursor_must_belong_to_the_requested_conversation(
         other_message = _message(session, _conversation(session, installation))
     repository = MessageRepository(
         session_factory=sqlite_session_factory,
-        extra_contents=SQLAlchemyExecutionExtraContentRepository(session_maker=sqlite_session_factory),
     )
     for cursor in (other_message.id, str(uuid4())):
         with pytest.raises(FirstMessageNotExistsError):
@@ -344,7 +344,6 @@ def test_read_revalidates_installation_after_admission(
         ref = replace(ref, app_owner_tenant_id=str(uuid4()))
     repository = MessageRepository(
         session_factory=sqlite_session_factory,
-        extra_contents=SQLAlchemyExecutionExtraContentRepository(session_maker=sqlite_session_factory),
     )
     with pytest.raises(InstalledAppNotFoundError):
         repository.get_message_page(
@@ -367,7 +366,7 @@ class _ActorHarness:
     factory: sessionmaker[Session]
     sessions: list[Session]
 
-    def page(self, *, first_id: str | None = None, limit: int = 2) -> MessagePage[MessageRecord]:
+    def page(self, *, first_id: str | None = None, limit: int = 2) -> MessagePage[MessageSource[MessageRecord]]:
         return self.repository.get_message_page(
             app_id=self.installation.app_id,
             app_owner_tenant_id=self.installation.app_owner_tenant_id,
@@ -412,7 +411,6 @@ def actor_harness(
     return _ActorHarness(
         repository=MessageRepository(
             session_factory=sqlite_session_factory,
-            extra_contents=SQLAlchemyExecutionExtraContentRepository(session_maker=sqlite_session_factory),
         ),
         installation=installation,
         actor=actor,
@@ -431,11 +429,11 @@ def test_account_and_end_user_history_empty_pages_and_order(actor_harness: _Acto
         newest = _message(session, harness.conversation, created_at=_TIME + timedelta(hours=1))
         decoy = _message(session, _conversation(session, harness.installation))
     page = harness.page()
-    assert [message.id for message in page.data] == [middle.id, newest.id]
+    assert [message.record.id for message in page.data] == [middle.id, newest.id]
     assert page.has_more is True
-    assert decoy.id not in {message.id for message in page.data}
+    assert decoy.id not in {message.record.id for message in page.data}
     last = harness.page(first_id=middle.id)
-    assert [message.id for message in last.data] == [older.id]
+    assert [message.record.id for message in last.data] == [older.id]
     assert last.has_more is False
     harness.assert_closed()
 
@@ -478,7 +476,7 @@ def test_message_and_cursor_must_match_app_even_with_valid_conversation(actor_ha
         decoy = _message(session, harness.conversation, created_at=_TIME + timedelta(hours=1))
         decoy.app_id = str(uuid4())
     page = harness.page(limit=1)
-    assert [message.id for message in page.data] == [valid.id]
+    assert [message.record.id for message in page.data] == [valid.id]
     assert page.has_more is False
     with pytest.raises(FirstMessageNotExistsError):
         harness.page(first_id=decoy.id)
@@ -523,7 +521,6 @@ def test_console_uses_actual_app_mode_for_ownership(
         session.execute(update(Conversation).where(Conversation.id == conversation.id).values({mismatch: value}))
     repository = MessageRepository(
         session_factory=sqlite_session_factory,
-        extra_contents=SQLAlchemyExecutionExtraContentRepository(session_maker=sqlite_session_factory),
     )
     if mode == AppMode.AGENT:
         with pytest.raises(ConversationNotExistsError):
@@ -544,7 +541,7 @@ def test_console_uses_actual_app_mode_for_ownership(
             first_id=None,
             limit=1,
         )
-        assert [item.id for item in page.data] == [message.id]
+        assert [item.record.id for item in page.data] == [message.id]
 
 
 def test_console_strict_timestamp_has_more_and_cursor_scope(
@@ -559,7 +556,6 @@ def test_console_strict_timestamp_has_more_and_cursor_scope(
         decoy.app_id = str(uuid4())
     repository = MessageRepository(
         session_factory=sqlite_session_factory,
-        extra_contents=SQLAlchemyExecutionExtraContentRepository(session_maker=sqlite_session_factory),
     )
     page = repository.get_console_message_page(
         app_id=installation.app_id,
@@ -578,7 +574,7 @@ def test_console_strict_timestamp_has_more_and_cursor_scope(
         first_id=first.id,
         limit=1,
     )
-    assert [item.id for item in final.data] == [older.id]
+    assert [item.record.id for item in final.data] == [older.id]
     assert final.has_more is False
     with sqlite_session_factory.begin() as session:
         session.execute(update(Message).where(Message.id == older.id).values(created_at=_TIME))
@@ -671,7 +667,7 @@ def test_console_detaches_annotation_feedback_file_and_input_data(actor_harness:
             )
         )
     if detail:
-        record = harness.repository.get_console_message(
+        source = harness.repository.get_console_message(
             app_id=harness.installation.app_id,
             app_owner_tenant_id=harness.installation.app_owner_tenant_id,
             account_id=_ACCOUNT_ID,
@@ -686,7 +682,8 @@ def test_console_detaches_annotation_feedback_file_and_input_data(actor_harness:
             first_id=None,
             limit=20,
         )
-        record = page.data[0]
+        source = page.data[0]
+    record = source.record
     harness.assert_closed()
     assert inspect(record, raiseerr=False) is None
     assert record.message == {"messages": [{"role": "user", "text": "Question"}]}
@@ -713,25 +710,21 @@ def test_console_detaches_annotation_feedback_file_and_input_data(actor_harness:
         "Original",
         "admin",
     )
-    file = record.message_files[0]
+    assert record.message_files == []
+    file = source.files[0]
     assert inspect(file, raiseerr=False) is None
-    assert (
-        file.id,
-        file.filename,
-        file.type,
-        file.mime_type,
-        file.size,
-        file.transfer_method,
-        file.upload_file_id,
-    ) == (attachment.id, "report.txt", "document", "text/plain", 7, "local_file", upload.id)
-    assert file.url is not None
-    assert upload.id in file.url
-    assert upload.id in record.answer
-    assert "sign=old" not in record.answer
-    input_file = record.inputs["file"]
-    assert isinstance(input_file, File)
-    assert input_file.filename == "report.txt"
-    assert input_file.remote_url == "https://example.com/report.txt"
+    assert (file.id, file.type, file.transfer_method, file.upload_file_id, file.url, file.belongs_to) == (
+        attachment.id,
+        "document",
+        "local_file",
+        upload.id,
+        None,
+        None,
+    )
+    assert record.answer == message.answer
+    assert "sign=old" in record.answer
+    assert record.inputs == message._inputs
+    assert isinstance(record.inputs["file"], dict)
     assert record.extra_contents == []
 
 
@@ -778,7 +771,6 @@ def test_console_revalidates_entire_owner_chain(
     with pytest.raises(expected_error):
         MessageRepository(
             session_factory=sqlite_session_factory,
-            extra_contents=SQLAlchemyExecutionExtraContentRepository(session_maker=sqlite_session_factory),
         ).get_console_message_page(
             app_id=installation.app_id,
             app_owner_tenant_id=installation.app_owner_tenant_id,
@@ -799,7 +791,6 @@ def test_console_empty_conversation_and_cursor_from_other_conversation(
         other = _message(session, _conversation(session, installation))
     repository = MessageRepository(
         session_factory=sqlite_session_factory,
-        extra_contents=SQLAlchemyExecutionExtraContentRepository(session_maker=sqlite_session_factory),
     )
     assert repository.get_console_message_page(
         app_id=installation.app_id,
@@ -835,14 +826,14 @@ def test_console_detail_preserves_app_wide_access_for_every_mode(
         message = _message(session, conversation)
     repository = MessageRepository(
         session_factory=sqlite_session_factory,
-        extra_contents=SQLAlchemyExecutionExtraContentRepository(session_maker=sqlite_session_factory),
     )
-    record = repository.get_console_message(
+    source = repository.get_console_message(
         app_id=installation.app_id,
         app_owner_tenant_id=installation.app_owner_tenant_id,
         account_id=_ACCOUNT_ID,
         message_id=message.id,
     )
+    record = source.record
     assert record.id == message.id
     assert record.conversation_id == conversation.id
     assert record.from_account_id == other_account.id
@@ -883,7 +874,6 @@ def test_console_detail_rechecks_app_tenant_actor_and_message_ownership(
     with pytest.raises(expected_error):
         MessageRepository(
             session_factory=sqlite_session_factory,
-            extra_contents=SQLAlchemyExecutionExtraContentRepository(session_maker=sqlite_session_factory),
         ).get_console_message(
             app_id=installation.app_id,
             app_owner_tenant_id=installation.app_owner_tenant_id,
@@ -892,78 +882,103 @@ def test_console_detail_rechecks_app_tenant_actor_and_message_ownership(
         )
 
 
-@pytest.mark.parametrize("submitted", [False, True], ids=["waiting", "submitted"])
-def test_console_detail_loads_complete_extra_content_after_its_session_closes(
-    sqlite_session_factory: sessionmaker[Session], submitted: bool
-) -> None:
-    with sqlite_session_factory() as session:
-        fixture = create_human_input_message_fixture(session)
-        if not submitted:
-            fixture.form.status = HumanInputFormStatus.WAITING
-            fixture.form.selected_action_id = None
-            fixture.form.submitted_at = None
-            fixture.form.submitted_data = None
-        session.commit()
-        app_id, tenant_id = fixture.app.id, fixture.app.tenant_id
-        account_id, message_id = fixture.account.id, fixture.message.id
-        form_id, workflow_run_id = fixture.form.id, fixture.message.workflow_run_id
-        expiration_time = int(fixture.form.expiration_time.timestamp())
+def test_all_message_reads_are_select_only_raw_snapshots_without_network(actor_harness: _ActorHarness) -> None:
+    harness = actor_harness
+    raw_inputs = {
+        "file": {
+            "dify_model_identity": FILE_MODEL_IDENTITY,
+            "transfer_method": "remote_url",
+            "type": "document",
+            "url": "https://example.com/report.txt",
+        },
+        "nested": {"values": [1, None, False]},
+    }
+    with harness.factory.begin() as session:
+        message = _message(session, harness.conversation)
+        message.inputs = raw_inputs
+        message.answer = "[tool](/files/tools/legacy.txt?timestamp=1&nonce=old&sign=old)"
+        remote = MessageFile(
+            message_id=message.id,
+            type=FileType.DOCUMENT,
+            transfer_method=FileTransferMethod.REMOTE_URL,
+            url="https://example.com/report.txt",
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by=_ACCOUNT_ID,
+        )
+        legacy_tool = MessageFile(
+            message_id=message.id,
+            type=FileType.DOCUMENT,
+            transfer_method=FileTransferMethod.TOOL_FILE,
+            url="https://example.com/legacy.txt",
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by=_ACCOUNT_ID,
+        )
+        session.add_all([remote, legacy_tool])
+    statements: list[str] = []
+    commits: list[Session] = []
+    network_guard_active = True
 
-    message_sessions: list[Session] = []
-    content_sessions: list[Session] = []
-    contents_factory = sessionmaker(bind=sqlite_session_factory.kw["bind"], expire_on_commit=False)
+    def reject_network(event_name: str, _arguments: tuple[object, ...]) -> None:
+        # Observe the real Python I/O boundary without replacing domain methods.
+        # Audit hooks cannot be removed, so this guard is active only for these reads.
+        if network_guard_active and event_name.startswith("socket."):
+            raise AssertionError(f"Message database snapshot attempted network I/O: {event_name}")
 
-    def record_message_session(session: Session, _transaction: SessionTransaction, _connection: Connection) -> None:
-        message_sessions.append(session)
-
-    def assert_message_session_closed(
-        session: Session, _transaction: SessionTransaction, _connection: Connection
+    def record_sql(
+        _connection: Connection,
+        _cursor: object,
+        statement: str,
+        _parameters: object,
+        _context: object,
+        _executemany: bool,
     ) -> None:
-        assert message_sessions
-        assert all(not previous.in_transaction() and not previous.identity_map for previous in message_sessions)
-        content_sessions.append(session)
+        statements.append(statement)
 
-    event.listen(sqlite_session_factory, "after_begin", record_message_session)
-    event.listen(contents_factory, "after_begin", assert_message_session_closed)
+    def record_commit(session: Session) -> None:
+        commits.append(session)
+
+    engine = harness.factory.kw["bind"]
+    sys.addaudithook(reject_network)
+    event.listen(engine, "before_cursor_execute", record_sql)
+    event.listen(harness.factory, "before_commit", record_commit)
     try:
-        record = MessageRepository(
-            session_factory=sqlite_session_factory,
-            extra_contents=SQLAlchemyExecutionExtraContentRepository(session_maker=contents_factory),
-        ).get_console_message(
-            app_id=app_id,
-            app_owner_tenant_id=tenant_id,
-            account_id=account_id,
-            message_id=message_id,
+        actor_source = harness.page().data[0]
+        console_source = harness.repository.get_console_message_page(
+            app_id=harness.installation.app_id,
+            app_owner_tenant_id=harness.installation.app_owner_tenant_id,
+            account_id=_ACCOUNT_ID,
+            conversation_id=harness.conversation.id,
+            first_id=None,
+            limit=20,
+        ).data[0]
+        detail_source = harness.repository.get_console_message(
+            app_id=harness.installation.app_id,
+            app_owner_tenant_id=harness.installation.app_owner_tenant_id,
+            account_id=_ACCOUNT_ID,
+            message_id=message.id,
         )
     finally:
-        event.remove(sqlite_session_factory, "after_begin", record_message_session)
-        event.remove(contents_factory, "after_begin", assert_message_session_closed)
-    assert content_sessions
-    assert all(not session.in_transaction() and not session.identity_map for session in content_sessions)
-    expected_content: dict[str, JsonValue] = {
-        "workflow_run_id": workflow_run_id,
-        "type": "human_input",
-        "submitted": submitted,
-        "form_definition": {
-            "form_id": form_id,
-            "node_id": "node-id",
-            "node_title": "Approval",
-            "form_content": "Rendered block",
-            "inputs": [],
-            "actions": [{"id": "approve", "title": "Approve request", "button_style": "default"}],
-            "display_in_ui": True,
-            "resolved_default_values": {},
-            "expiration_time": expiration_time,
-        },
-    }
-    if submitted:
-        expected_content["form_submission_data"] = {
-            "node_id": "node-id",
-            "node_title": "Approval",
-            "rendered_content": "Rendered block",
-            "action_id": "approve",
-            "action_text": "Approve request",
-            "submitted_data": {"name": "Alice"},
-        }
-    assert record.id == message_id
-    assert record.extra_contents == [expected_content]
+        network_guard_active = False
+        event.remove(engine, "before_cursor_execute", record_sql)
+        event.remove(harness.factory, "before_commit", record_commit)
+    assert statements
+    assert all(statement.lstrip().upper().startswith("SELECT") for statement in statements)
+    assert commits == []
+    harness.assert_closed()
+    for source in (actor_source, console_source, detail_source):
+        assert source.record.id == message.id
+        assert source.record.inputs == raw_inputs
+        assert source.record.answer == message.answer
+        assert source.record.message_files == []
+        assert source.record.extra_contents == []
+        refs = {file.id: file for file in source.files}
+        assert refs.keys() == {remote.id, legacy_tool.id}
+        assert refs[remote.id].url == "https://example.com/report.txt"
+        assert refs[remote.id].transfer_method == "remote_url"
+        assert refs[legacy_tool.id].upload_file_id is None
+        assert refs[legacy_tool.id].url == "https://example.com/legacy.txt"
+        assert refs[legacy_tool.id].transfer_method == "tool_file"
+    with harness.factory() as session:
+        persisted = session.get(MessageFile, legacy_tool.id)
+        assert persisted is not None
+        assert persisted.upload_file_id is None

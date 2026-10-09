@@ -19,7 +19,6 @@ from models import Account, App, AppMode, Conversation, EndUser, Message
 from models.enums import ConversationFromSource, EndUserType, FeedbackFromSource, FeedbackRating
 from models.model import InstalledApp, MessageFeedback
 from repositories.message_repository import MessageRepository
-from repositories.sqlalchemy_execution_extra_content_repository import SQLAlchemyExecutionExtraContentRepository
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.entities.message_entities import MessageAccount, MessageActor, MessageEndUser
 from services.errors.message import FeedbackRatingRequiredError, MessageActorNotFoundError, MessageNotExistsError
@@ -126,11 +125,7 @@ def harness(
         committed_sessions.append(session)
 
     return _Harness(
-        service=MessageFeedbackService(
-            repository=MessageRepository(
-                session_factory=factory, extra_contents=SQLAlchemyExecutionExtraContentRepository(session_maker=factory)
-            )
-        ),
+        service=MessageFeedbackService(repository=MessageRepository(session_factory=factory)),
         app=app,
         account=account,
         end_user=end_user,

@@ -1,23 +1,69 @@
 """Web message history through real passport admission and detached SQLite reads."""
 
 import json
+from collections.abc import Callable, Iterator
 from datetime import datetime, timedelta
 from decimal import Decimal
 from http import HTTPStatus
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from threading import Thread
+from typing import override
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import delete, update
+from sqlalchemy import delete, event, update
+from sqlalchemy.orm import Session
 from werkzeug.test import TestResponse
 
+from core.helper import http_client_pooling
 from graphon.file import FileTransferMethod, FileType
-from models.enums import ConversationFromSource, CreatorUserRole, FeedbackFromSource, FeedbackRating
+from models.enums import (
+    ConversationFromSource,
+    CreatorUserRole,
+    FeedbackFromSource,
+    FeedbackRating,
+    MessageFileBelongsTo,
+)
 from models.model import App, AppMode, Conversation, EndUser, Message, MessageAgentThought, MessageFeedback, MessageFile
 from tests.unit_tests.controllers.web.test_message_feedback import _Harness
 from tests.unit_tests.controllers.web.test_message_feedback import harness as admission_harness
 from tests.unit_tests.model_factories import make_message
 
 harness = admission_harness
+
+
+@pytest.fixture
+def remote_files(
+    harness: _Harness, config_overrides: Callable[..., None], monkeypatch: pytest.MonkeyPatch
+) -> Iterator[tuple[str, list[tuple[str, str, bool]]]]:
+    config_overrides(SSRF_PROXY_HTTP_URL="", SSRF_PROXY_HTTPS_URL="", SSRF_PROXY_ALL_URL="")
+    requests: list[tuple[str, str, bool]] = []
+
+    class Handler(BaseHTTPRequestHandler):
+        @override
+        def log_message(self, format: str, *args: object) -> None:
+            pass
+
+        def do_HEAD(self) -> None:
+            requests.append((self.command, self.path, any(session.in_transaction() for session in harness.sessions)))
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", "application/octet-stream")
+            self.send_header("Content-Length", "42")
+            self.send_header("Content-Disposition", "attachment; filename*=UTF-8''downloaded%20image.png")
+            self.end_headers()
+
+    http_pool = http_client_pooling.HttpClientPoolFactory()
+    monkeypatch.setattr(http_client_pooling, "_factory", http_pool)
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    thread = Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        yield f"http://127.0.0.1:{server.server_port}", requests
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join()
+        http_pool.close_all()
 
 
 def _get(harness: _Harness, **query: object) -> TestResponse:
@@ -28,7 +74,10 @@ def _get(harness: _Harness, **query: object) -> TestResponse:
     )
 
 
-def test_message_list_preserves_wire_shape_and_loaded_relationships(harness: _Harness) -> None:
+def test_message_list_preserves_wire_shape_and_loaded_relationships(
+    harness: _Harness, remote_files: tuple[str, list[tuple[str, str, bool]]]
+) -> None:
+    remote_url, requests = remote_files
     created_at = datetime(2024, 1, 1, 12)
     thought = MessageAgentThought(
         message_id=harness.message.id,
@@ -48,7 +97,17 @@ def test_message_list_preserves_wire_shape_and_loaded_relationships(harness: _Ha
         transfer_method=FileTransferMethod.REMOTE_URL,
         created_by_role=CreatorUserRole.END_USER,
         created_by=harness.end_user.id,
-        url="https://example.com/image.png",
+        belongs_to=MessageFileBelongsTo.USER,
+        url=f"{remote_url}/user-image.png",
+    )
+    assistant_attachment = MessageFile(
+        message_id=harness.message.id,
+        type=FileType.IMAGE,
+        transfer_method=FileTransferMethod.REMOTE_URL,
+        created_by_role=CreatorUserRole.END_USER,
+        created_by=harness.end_user.id,
+        belongs_to=MessageFileBelongsTo.ASSISTANT,
+        url=f"{remote_url}/assistant-image.png",
     )
     resource_id = str(uuid4())
     metadata = {
@@ -60,19 +119,22 @@ def test_message_list_preserves_wire_shape_and_loaded_relationships(harness: _Ha
             update(Message)
             .where(Message.id == harness.message.id)
             .values(
-                _inputs={"text": "hello", "nested": {"value": [1, None]}},
-                message_metadata=json.dumps(metadata),
-                created_at=created_at,
-                message_tokens=3,
-                answer_tokens=5,
-                total_price=Decimal("0.0012"),
-                provider_response_latency=0.25,
+                {
+                    Message._inputs: {"text": "hello", "nested": {"value": [1, None]}},
+                    Message.message_metadata: json.dumps(metadata),
+                    Message.created_at: created_at,
+                    Message.message_tokens: 3,
+                    Message.answer_tokens: 5,
+                    Message.total_price: Decimal("0.0012"),
+                    Message.provider_response_latency: 0.25,
+                }
             )
         )
         session.add_all(
             [
                 thought,
                 attachment,
+                assistant_attachment,
                 MessageFeedback(
                     app_id=harness.target.id,
                     conversation_id=harness.message.conversation_id,
@@ -84,8 +146,19 @@ def test_message_list_preserves_wire_shape_and_loaded_relationships(harness: _Ha
             ]
         )
 
-    response = _get(harness)
+    commits: list[Session] = []
+
+    def record_commit(session: Session) -> None:
+        commits.append(session)
+
+    event.listen(Session, "before_commit", record_commit)
+    try:
+        response = _get(harness)
+    finally:
+        event.remove(Session, "before_commit", record_commit)
     assert response.status_code == HTTPStatus.OK
+    assert not commits
+    assert sorted(requests) == [("HEAD", "/assistant-image.png", False), ("HEAD", "/user-image.png", False)]
     assert response.headers["Content-Type"] == "application/json"
     body = response.get_json()
     assert body["limit"] == 20
@@ -139,11 +212,18 @@ def test_message_list_preserves_wire_shape_and_loaded_relationships(harness: _Ha
     assert actual_thought["tool_labels"] == {"search": "Search"}
     assert actual_thought["files"] == ["file-a"]
     assert actual_thought["created_at"] == int(created_at.timestamp())
-    [actual_file] = item["message_files"]
-    assert actual_file["id"] == attachment.id
-    assert actual_file["url"] == attachment.url
-    assert actual_file["transfer_method"] == "remote_url"
-    assert actual_file["type"] == "image"
+    assert len(item["message_files"]) == 2
+    actual_files = {file["id"]: file for file in item["message_files"]}
+    for expected in (attachment, assistant_attachment):
+        actual_file = actual_files[expected.id]
+        assert expected.belongs_to is not None
+        assert actual_file["url"] == expected.url
+        assert actual_file["transfer_method"] == "remote_url"
+        assert actual_file["type"] == "image"
+        assert actual_file["belongs_to"] == expected.belongs_to.value
+        assert actual_file["filename"] == "downloaded image.png"
+        assert actual_file["mime_type"] == "image/png"
+        assert actual_file["size"] == 42
     harness.assert_closed()
 
 

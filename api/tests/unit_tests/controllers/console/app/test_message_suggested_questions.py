@@ -41,7 +41,6 @@ from models.provider import Provider
 from repositories.app.agent_app_repository import AgentAppRepository
 from repositories.message_repository import MessageRepository
 from repositories.recommended_app_catalog_repository import DatabaseRecommendedAppCatalogRepository
-from repositories.sqlalchemy_execution_extra_content_repository import SQLAlchemyExecutionExtraContentRepository
 from services.agent.roster_package_exporter import RosterAgentPackageExporter
 from services.app.agent_app_service import AgentAppAccessService
 from services.entities.message_entities import MessageAccount
@@ -181,7 +180,6 @@ def harness(
         session_factory=sqlite_session_factory,
         repository=MessageRepository(
             session_factory=sqlite_session_factory,
-            extra_contents=SQLAlchemyExecutionExtraContentRepository(session_maker=sqlite_session_factory),
         ),
     )
     services = _Services(
