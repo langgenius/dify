@@ -452,7 +452,6 @@ project-excludes = [
   "core/rag/indexing/processor/test_qa_index_processor.py",
   "core/rag/indexing/test_index_processor.py",
   "core/rag/indexing/test_index_processor_base.py",
-  "core/rag/pipeline/test_queue.py",
   "core/rag/rerank/test_reranker.py",
   "core/rag/retrieval/test_dataset_retrieval.py",
   "core/rag/retrieval/test_dataset_retrieval_methods.py",
