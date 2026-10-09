@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.agent.publish_visibility import agent_has_workflow_callable_active_snapshot
 from core.trigger.constants import TRIGGER_NODE_TYPES
+from enums.agent import WorkflowAgentBindingType
 from libs.datetime_utils import naive_utc_now
 from libs.pagination import PaginatedResult, paginate_query
 from machinery.context import RequestContext
@@ -33,13 +34,15 @@ from models.agent import (
     AgentScope,
     AgentStatus,
     AgentWorkspaceBinding,
-    WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
+from models.api_based_extension import APIBasedExtension
 from models.enums import AppStatus
 from models.model import App, AppMode, AppModelConfig, AppStar, IconType
 from models.skill import AgentSkillBinding
 from models.workflow import Workflow
+from models.workflow_conversion import ConversionExtension, ConvertedWorkflow, WorkflowConversionSource
+from repositories.app.creation_records import create_installed_app_record, create_site_record
 from repositories.app.response import app_record, app_summary
 from repositories.tag_repository import TagRepository
 from services.agent.errors import (
@@ -48,7 +51,6 @@ from services.agent.errors import (
 )
 from services.app.console_service import ConsoleAppNotFoundError, ConsoleApps
 from services.app.query_service import AppQueryStore
-from services.app_creation_records import create_installed_app_record, create_site_record
 from services.entities.app_entities import (
     RECENT_APP_MODES,
     AppChange,
@@ -71,15 +73,17 @@ from services.entities.app_entities import (
     UpdateAppParams,
 )
 from services.errors.base import NoPermissionError
+from services.errors.workflow_service import WorkflowConversionError
 from services.openapi.visibility import apply_openapi_gate, is_openapi_visible
+from services.workflow.contracts import PreparedDraftSync
 
 logger = logging.getLogger(__name__)
 _app_trace_settings_adapter = TypeAdapter(AppTraceSettings)
 
 
-def find_console_app(session: Session, *, workspace_id: str, app_id: str) -> App | None:
-    """Shared normal-app lookup, including the hidden workflow backing-app gate."""
-    app = session.scalar(
+def find_normal_app(session: Session, *, workspace_id: str, app_id: str, refresh: bool = False) -> App | None:
+    """Shared owner-scoped lookup; imports explicitly refresh an attached target."""
+    return session.scalar(
         select(App)
         .where(
             App.id == app_id,
@@ -87,7 +91,13 @@ def find_console_app(session: Session, *, workspace_id: str, app_id: str) -> App
             App.status == AppStatus.NORMAL,
         )
         .limit(1)
+        .execution_options(populate_existing=refresh)
     )
+
+
+def find_console_app(session: Session, *, workspace_id: str, app_id: str) -> App | None:
+    """Shared normal-app lookup, including the hidden workflow backing-app gate."""
+    app = find_normal_app(session, workspace_id=workspace_id, app_id=app_id)
     if app is not None:
         binding = app.agent_app_binding_with_session(session=session, include_archived=True)
         if binding is not None and binding.scope == AgentScope.WORKFLOW_ONLY:
@@ -116,6 +126,18 @@ def console_app_actor(session: Session, context: RequestContext) -> Account:
 class ConsoleAppRepository(ConsoleApps, AppQueryStore):
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
+
+    def maintainers(self, context: RequestContext, app_ids: list[str]) -> dict[str, str | None]:
+        """Requested normal apps scoped to the admitted workspace."""
+        if not app_ids:
+            return {}
+        with self._session_factory() as session:
+            rows = session.execute(
+                select(App.id, App.maintainer).where(
+                    App.id.in_(app_ids), App.tenant_id == context.active_workspace_id, App.status == AppStatus.NORMAL
+                )
+            )
+            return dict(rows.tuples().all())
 
     @override
     def find_visible_app(self, app_id: str, tenant_id: str) -> AppSummary | None:
@@ -601,6 +623,77 @@ class ConsoleAppRepository(ConsoleApps, AppQueryStore):
             return
 
         session.delete(existing_star)
+
+    def conversion_source(self, context: RequestContext, app_id: str) -> WorkflowConversionSource:
+        with self._session_factory() as session:
+            app = require_console_app(session, context, app_id)
+            config = (
+                session.scalar(
+                    select(AppModelConfig).where(
+                        AppModelConfig.id == app.app_model_config_id, AppModelConfig.app_id == app.id
+                    )
+                )
+                if app.app_model_config_id
+                else None
+            )
+            return WorkflowConversionSource(
+                id=app.id,
+                tenant_id=app.tenant_id,
+                mode=AppMode(app.mode),
+                name=app.name,
+                icon_type=app.icon_type,
+                icon=app.icon,
+                icon_background=app.icon_background,
+                enable_site=app.enable_site,
+                enable_api=app.enable_api,
+                api_rpm=app.api_rpm,
+                api_rph=app.api_rph,
+                is_public=app.is_public,
+                model_config_id=config.id if config else None,
+                # Annotation replies are not carried into the converted workflow.
+                model_config=config.to_dict(annotation_reply={"enabled": False}) if config else None,
+            )
+
+    def conversion_extensions(self, context: RequestContext, ids: set[str]) -> list[ConversionExtension]:
+        if not ids:
+            return []
+        with self._session_factory() as session:
+            records = [
+                ConversionExtension(row.id, row.name, row.api_endpoint, row.api_key)
+                for row in session.scalars(
+                    select(APIBasedExtension).where(
+                        APIBasedExtension.tenant_id == context.active_workspace_id, APIBasedExtension.id.in_(ids)
+                    )
+                )
+            ]
+        if missing := ids - {record.id for record in records}:
+            raise WorkflowConversionError(f"API Based Extension not found, id: {min(missing)}")
+        return records
+
+    def create_converted(
+        self,
+        context: RequestContext,
+        source_id: str,
+        params: CreateAppParams,
+        settings: AppCreationSettings,
+        workflow: ConvertedWorkflow,
+    ) -> AppEvent:
+        from repositories.workflow.definition_repository import WorkflowDefinitionStore
+
+        with self._session_factory.begin() as session:
+            require_console_app(session, context, source_id)
+            account = console_app_actor(session, context)
+            app = self.insert_app_record(context.active_workspace_id, params, account, settings, session=session)
+            WorkflowDefinitionStore.sync_draft_workflow(
+                app_model=app,
+                graph=workflow.graph,
+                features=workflow.features,
+                account_id=context.account_id,
+                prepared=PreparedDraftSync(source=None, environment=None),
+                conversation_variables=[],
+                session=session,
+            )
+            return AppEvent(app.id, app.tenant_id, app.mode)
 
     @staticmethod
     def insert_app_record(
