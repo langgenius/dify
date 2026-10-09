@@ -91,7 +91,7 @@ from graphon.graph_events import (
 )
 from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
-from models.workflow import Workflow
+from models.workflow import Workflow, WorkflowType
 from tasks.mail_human_input_delivery_task import dispatch_human_input_email_task
 
 logger = logging.getLogger(__name__)
@@ -426,6 +426,7 @@ class WorkflowBasedAppRunner:
             node_type=node_type,
             node_data=target_node_config.data,
             variable_mapping=variable_mapping,
+            supports_conversation=workflow.type == WorkflowType.CHAT,
         )
 
         load_into_variable_pool(
