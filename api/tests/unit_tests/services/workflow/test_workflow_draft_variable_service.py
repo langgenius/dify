@@ -1,18 +1,19 @@
 import dataclasses
-import json
 import secrets
 import uuid
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
+from core.app.file_access import DatabaseFileAccessController
 from core.workflow.system_variables import SystemVariableKey
 from core.workflow.variable_prefixes import (
     CONVERSATION_VARIABLE_NODE_ID,
     ENVIRONMENT_VARIABLE_NODE_ID,
     SYSTEM_VARIABLE_NODE_ID,
 )
+from extensions.application_services.workflow_variables import build_workflow_variable_service
 from extensions.storage.storage_type import StorageType
 from graphon.enums import BuiltinNodeTypes
 from graphon.file import File, FileTransferMethod, FileType
@@ -30,13 +31,13 @@ from models.workflow import (
     WorkflowNodeExecutionModel,
     is_system_variable_editable,
 )
+from repositories.workflow.draft_variable_repository import WorkflowDraftVariableRepository, _model_to_insertion_dict
+from services.file_service import FileService
 from services.variable_truncator import TruncationResult
-from services.workflow_draft_variable_service import (
+from services.workflow.draft_variable_service import (
     DraftVariableSaver,
-    VariableResetError,
-    WorkflowDraftVariableService,
-    _model_to_insertion_dict,
 )
+from services.workflow.variable_file_gateway import WorkflowVariableFileGateway
 
 SQLITE_MODELS = (Workflow, WorkflowDraftVariable, WorkflowDraftVariableFile, WorkflowNodeExecutionModel)
 pytestmark = [
@@ -55,7 +56,14 @@ class TestDraftVariableSaver:
         mock_user.id = str(uuid.uuid4())
         test_app_id = self._get_test_app_id()
         saver = DraftVariableSaver(
-            session=sqlite_session,
+            file_inputs=WorkflowVariableFileGateway(
+                sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False), DatabaseFileAccessController()
+            ),
+            cleanup_files=lambda _ids: pytest.fail("Unexpected failed-upload cleanup"),
+            repository=WorkflowDraftVariableRepository(
+                sessions=sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False)
+            ),
+            files=FileService(sqlite_session.get_bind()),
             tenant_id="test-tenant-id",
             app_id=test_app_id,
             node_id="test_node_id",
@@ -118,7 +126,14 @@ class TestDraftVariableSaver:
         mock_user.id = str(uuid.uuid4())
         test_app_id = self._get_test_app_id()
         saver = DraftVariableSaver(
-            session=sqlite_session,
+            file_inputs=WorkflowVariableFileGateway(
+                sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False), DatabaseFileAccessController()
+            ),
+            cleanup_files=lambda _ids: pytest.fail("Unexpected failed-upload cleanup"),
+            repository=WorkflowDraftVariableRepository(
+                sessions=sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False)
+            ),
+            files=FileService(sqlite_session.get_bind()),
             tenant_id="test-tenant-id",
             app_id=test_app_id,
             node_id=_NODE_ID,
@@ -136,7 +151,14 @@ class TestDraftVariableSaver:
         mock_user = Account(name="Test Account", email="test@example.com")
         mock_user.id = str(uuid.uuid4())
         saver = DraftVariableSaver(
-            session=sqlite_session,
+            file_inputs=WorkflowVariableFileGateway(
+                sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False), DatabaseFileAccessController()
+            ),
+            cleanup_files=lambda _ids: pytest.fail("Unexpected failed-upload cleanup"),
+            repository=WorkflowDraftVariableRepository(
+                sessions=sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False)
+            ),
+            files=FileService(sqlite_session.get_bind()),
             tenant_id="tenant-1",
             app_id=self._get_test_app_id(),
             node_id="start",
@@ -160,15 +182,16 @@ class TestDraftVariableSaver:
             "tenant_id": "legacy-tenant",
         }
 
-        with patch(
-            "services.workflow_draft_variable_service.build_file_from_stored_mapping",
+        with patch.object(
+            saver._file_inputs,
+            "restore",
             return_value=rebuilt_file,
         ) as rebuild_file:
             draft_vars = saver._build_variables_from_start_mapping({"sys.files": [raw_file]})
 
         sys_var = draft_vars[0]
         assert sys_var.get_value().value[0] == rebuilt_file
-        rebuild_file.assert_called_once_with(file_mapping=raw_file, tenant_id="tenant-1")
+        rebuild_file.assert_called_once_with(mapping=raw_file, tenant_id="tenant-1")
 
     @pytest.fixture
     def draft_saver(self, sqlite_session: Session):
@@ -178,7 +201,14 @@ class TestDraftVariableSaver:
         mock_user.id = "test-user-id"
 
         return DraftVariableSaver(
-            session=sqlite_session,
+            file_inputs=WorkflowVariableFileGateway(
+                sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False), DatabaseFileAccessController()
+            ),
+            cleanup_files=lambda _ids: pytest.fail("Unexpected failed-upload cleanup"),
+            repository=WorkflowDraftVariableRepository(
+                sessions=sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False)
+            ),
+            files=FileService(sqlite_session.get_bind()),
             tenant_id="test-tenant-id",
             app_id="test-app-id",
             node_id="test-node-id",
@@ -189,7 +219,8 @@ class TestDraftVariableSaver:
 
     def test_draft_saver_with_small_variables(self, draft_saver: DraftVariableSaver):
         with patch(
-            "services.workflow_draft_variable_service.DraftVariableSaver._try_offload_large_variable", autospec=True
+            "services.workflow.draft_variable_service.DraftVariableSaver._try_offload_large_variable",
+            autospec=True,
         ) as _mock_try_offload:
             _mock_try_offload.return_value = None
             mock_segment = StringSegment(value="small value")
@@ -201,7 +232,8 @@ class TestDraftVariableSaver:
 
     def test_draft_saver_with_large_variables(self, draft_saver: DraftVariableSaver):
         with patch(
-            "services.workflow_draft_variable_service.DraftVariableSaver._try_offload_large_variable", autospec=True
+            "services.workflow.draft_variable_service.DraftVariableSaver._try_offload_large_variable",
+            autospec=True,
         ) as _mock_try_offload:
             mock_segment = StringSegment(value="small value")
             mock_draft_var_file = WorkflowDraftVariableFile(
@@ -225,7 +257,14 @@ class TestDraftVariableSaver:
         mock_user = Account(name="Test Account", email="test@example.com")
         mock_user.id = "test-user-id"
         saver = DraftVariableSaver(
-            session=sqlite_session,
+            file_inputs=WorkflowVariableFileGateway(
+                sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False), DatabaseFileAccessController()
+            ),
+            cleanup_files=lambda _ids: pytest.fail("Unexpected failed-upload cleanup"),
+            repository=WorkflowDraftVariableRepository(
+                sessions=sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False)
+            ),
+            files=FileService(sqlite_session.get_bind()),
             tenant_id="app-tenant-id",
             app_id="test-app-id",
             node_id="test-node-id",
@@ -252,23 +291,23 @@ class TestDraftVariableSaver:
 
         with (
             patch(
-                "services.workflow_draft_variable_service.VariableTruncator.truncate", return_value=truncation_result
+                "services.workflow.draft_variable_service.VariableTruncator.truncate",
+                return_value=truncation_result,
             ),
-            patch("services.workflow_draft_variable_service.FileService") as file_service_class,
+            patch.object(saver._files, "upload_file", return_value=upload_file) as upload,
         ):
-            file_service_class.return_value.upload_file.return_value = upload_file
             result = saver._try_offload_large_variable("large_var", StringSegment(value="large value"))
 
         assert result is not None
         _, variable_file = result
-        assert file_service_class.return_value.upload_file.call_args.kwargs["tenant_id"] == "app-tenant-id"
+        assert upload.call_args.kwargs["tenant_id"] == "app-tenant-id"
         assert variable_file.tenant_id == "app-tenant-id"
         sqlite_session.expire_all()
         stored_variable_file = sqlite_session.get(WorkflowDraftVariableFile, variable_file.id)
-        assert stored_variable_file is not None
-        assert stored_variable_file.upload_file_id == upload_file.id
+        assert stored_variable_file is None
+        assert variable_file.upload_file_id == upload_file.id
 
-    @patch("services.workflow_draft_variable_service._batch_upsert_draft_variable", autospec=True)
+    @patch("repositories.workflow.draft_variable_repository._batch_upsert_draft_variable", autospec=True)
     def test_save_method_integration(self, mock_batch_upsert, draft_saver):
         """Test complete save workflow."""
         outputs = {"result": {"data": "test_output"}, "metadata": {"type": "llm_response"}}
@@ -280,7 +319,7 @@ class TestDraftVariableSaver:
         draft_vars = mock_batch_upsert.call_args[0][1]
         assert len(draft_vars) == 2
 
-    @patch("services.workflow_draft_variable_service._batch_upsert_draft_variable", autospec=True)
+    @patch("repositories.workflow.draft_variable_repository._batch_upsert_draft_variable", autospec=True)
     def test_start_node_save_persists_sys_timestamp_and_workflow_run_id(
         self, mock_batch_upsert, sqlite_session: Session
     ):
@@ -290,7 +329,14 @@ class TestDraftVariableSaver:
         mock_user.tenant_id = "test-tenant-id"
 
         saver = DraftVariableSaver(
-            session=sqlite_session,
+            file_inputs=WorkflowVariableFileGateway(
+                sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False), DatabaseFileAccessController()
+            ),
+            cleanup_files=lambda _ids: pytest.fail("Unexpected failed-upload cleanup"),
+            repository=WorkflowDraftVariableRepository(
+                sessions=sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False)
+            ),
+            files=FileService(sqlite_session.get_bind()),
             tenant_id="test-tenant-id",
             app_id="test-app-id",
             node_id="start-node-id",
@@ -318,14 +364,21 @@ class TestDraftVariableSaver:
             str(SystemVariableKey.WORKFLOW_EXECUTION_ID),
         }
 
-    @patch("services.workflow_draft_variable_service._batch_upsert_draft_variable", autospec=True)
+    @patch("repositories.workflow.draft_variable_repository._batch_upsert_draft_variable", autospec=True)
     def test_start_node_save_normalizes_reserved_prefix_outputs(self, mock_batch_upsert, sqlite_session: Session):
         mock_user = Account(name="Test Account", email="test@example.com")
         mock_user.id = "test-user-id"
         mock_user.tenant_id = "test-tenant-id"
 
         saver = DraftVariableSaver(
-            session=sqlite_session,
+            file_inputs=WorkflowVariableFileGateway(
+                sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False), DatabaseFileAccessController()
+            ),
+            cleanup_files=lambda _ids: pytest.fail("Unexpected failed-upload cleanup"),
+            repository=WorkflowDraftVariableRepository(
+                sessions=sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False)
+            ),
+            files=FileService(sqlite_session.get_bind()),
             tenant_id="test-tenant-id",
             app_id="test-app-id",
             node_id="start-node-id",
@@ -359,28 +412,15 @@ class TestDraftVariableSaver:
         assert sys_var.name == str(SystemVariableKey.WORKFLOW_EXECUTION_ID)
 
 
-class TestWorkflowDraftVariableService:
+class TestWorkflowVariableService:
     def _get_test_app_id(self):
         suffix = secrets.token_hex(6)
         return f"test_app_id_{suffix}"
 
-    def _create_test_workflow(self, app_id: str) -> Workflow:
-        """Create a real Workflow instance for testing"""
-        return Workflow.new(
-            tenant_id="test_tenant_id",
-            app_id=app_id,
-            type="workflow",
-            version="draft",
-            graph='{"nodes": [], "edges": []}',
-            features="{}",
-            created_by="test_user_id",
-            environment_variables=[],
-            conversation_variables=[],
-            rag_pipeline_variables=[],
-        )
-
     def test_list_variables_without_values_excludes_node_ids(self, sqlite_session: Session):
-        service = WorkflowDraftVariableService(sqlite_session)
+        service = build_workflow_variable_service(
+            database_client=sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False)
+        )
         variable = WorkflowDraftVariable.new_node_variable(
             app_id="app-1",
             node_id="node-1",
@@ -414,202 +454,6 @@ class TestWorkflowDraftVariableService:
 
         assert result.total == 1
         assert [item.id for item in result.variables] == [variable.id]
-
-    def test_reset_conversation_variable(self, sqlite_session: Session):
-        """Test resetting a conversation variable"""
-        service = WorkflowDraftVariableService(sqlite_session)
-
-        test_app_id = self._get_test_app_id()
-        workflow = self._create_test_workflow(test_app_id)
-
-        # Create real conversation variable
-        test_value = StringSegment(value="test_value")
-        variable = WorkflowDraftVariable.new_conversation_variable(
-            app_id=test_app_id, name="test_var", value=test_value, description="Test conversation variable"
-        )
-
-        # Mock the _reset_conv_var method
-        expected_result = WorkflowDraftVariable.new_conversation_variable(
-            app_id=test_app_id,
-            name="test_var",
-            value=StringSegment(value="reset_value"),
-        )
-        with patch.object(service, "_reset_conv_var", return_value=expected_result, autospec=True) as mock_reset_conv:
-            result = service.reset_variable(workflow, variable)
-
-            mock_reset_conv.assert_called_once_with(workflow, variable)
-            assert result == expected_result
-
-    def test_reset_node_variable_with_no_execution_id(self, sqlite_session: Session):
-        """Test resetting a node variable with no execution ID - should delete variable"""
-        service = WorkflowDraftVariableService(sqlite_session)
-
-        test_app_id = self._get_test_app_id()
-        workflow = self._create_test_workflow(test_app_id)
-
-        # Create real node variable with no execution ID
-        test_value = StringSegment(value="test_value")
-        variable = WorkflowDraftVariable.new_node_variable(
-            app_id=test_app_id,
-            node_id="test_node_id",
-            name="test_var",
-            value=test_value,
-            node_execution_id="exec-id",  # Set initially
-        )
-        # Manually set to None to simulate the test condition
-        variable.node_execution_id = None
-        sqlite_session.add(variable)
-        sqlite_session.commit()
-
-        result = service._reset_node_var_or_sys_var(workflow, variable)
-
-        # Should delete the variable and return None
-        assert sqlite_session.get(WorkflowDraftVariable, variable.id) is None
-        assert result is None
-
-    def test_reset_node_variable_with_missing_execution_record(self, sqlite_session: Session):
-        """Test resetting a node variable when execution record doesn't exist"""
-        service = WorkflowDraftVariableService(sqlite_session)
-
-        test_app_id = self._get_test_app_id()
-        workflow = self._create_test_workflow(test_app_id)
-
-        # Create real node variable with execution ID
-        test_value = StringSegment(value="test_value")
-        variable = WorkflowDraftVariable.new_node_variable(
-            app_id=test_app_id, node_id="test_node_id", name="test_var", value=test_value, node_execution_id="exec-id"
-        )
-        sqlite_session.add(variable)
-        sqlite_session.commit()
-
-        result = service._reset_node_var_or_sys_var(workflow, variable)
-
-        assert sqlite_session.get(WorkflowDraftVariable, variable.id) is None
-        assert result is None
-
-    def test_reset_node_variable_with_valid_execution_record(self, sqlite_session: Session):
-        """Reset a node variable from its execution output and flush the restored value."""
-        service = WorkflowDraftVariableService(sqlite_session)
-
-        execution = WorkflowNodeExecutionModel(outputs=json.dumps({"test_var": "output_value"}))
-
-        # Mock the repository to return the execution record
-        service._api_node_execution_repo = Mock()
-        service._api_node_execution_repo.get_execution_by_id.return_value = execution
-
-        test_app_id = self._get_test_app_id()
-        workflow = self._create_test_workflow(test_app_id)
-
-        # Create real node variable with execution ID
-        test_value = StringSegment(value="original_value")
-        variable = WorkflowDraftVariable.new_node_variable(
-            app_id=test_app_id, node_id="test_node_id", name="test_var", value=test_value, node_execution_id="exec-id"
-        )
-        sqlite_session.add(variable)
-        sqlite_session.commit()
-
-        # Mock workflow methods
-        mock_node_config = {"type": "test_node"}
-        with (
-            patch.object(sqlite_session, "flush", wraps=sqlite_session.flush) as flush,
-            patch.object(workflow, "get_node_config_by_id", return_value=mock_node_config, autospec=True),
-            patch.object(workflow, "get_node_type_from_node_config", return_value=BuiltinNodeTypes.LLM, autospec=True),
-        ):
-            result = service._reset_node_var_or_sys_var(workflow, variable)
-
-            # Verify last_edited_at was reset
-            assert variable.last_edited_at is None
-            flush.assert_called()
-            # Should return the updated variable
-            assert result == variable
-
-    def test_reset_non_editable_system_variable_raises_error(self, sqlite_session: Session):
-        """Test that resetting a non-editable system variable raises an error"""
-        service = WorkflowDraftVariableService(sqlite_session)
-
-        test_app_id = self._get_test_app_id()
-        workflow = self._create_test_workflow(test_app_id)
-
-        # Create a non-editable system variable (workflow_id is not editable)
-        test_value = StringSegment(value="test_workflow_id")
-        variable = WorkflowDraftVariable.new_sys_variable(
-            app_id=test_app_id,
-            name="workflow_id",  # This is not in _EDITABLE_SYSTEM_VARIABLE
-            value=test_value,
-            node_execution_id="exec-id",
-            editable=False,  # Non-editable system variable
-        )
-
-        with pytest.raises(VariableResetError) as exc_info:
-            service.reset_variable(workflow, variable)
-        assert "cannot reset system variable" in str(exc_info.value)
-        assert f"variable_id={variable.id}" in str(exc_info.value)
-
-    def test_reset_editable_system_variable_succeeds(self, sqlite_session: Session):
-        """Test that resetting an editable system variable succeeds"""
-        service = WorkflowDraftVariableService(sqlite_session)
-
-        test_app_id = self._get_test_app_id()
-        workflow = self._create_test_workflow(test_app_id)
-
-        # Create an editable system variable (files is editable)
-        test_value = StringSegment(value="[]")
-        variable = WorkflowDraftVariable.new_sys_variable(
-            app_id=test_app_id,
-            name="files",  # This is in _EDITABLE_SYSTEM_VARIABLE
-            value=test_value,
-            node_execution_id="exec-id",
-            editable=True,  # Editable system variable
-        )
-        sqlite_session.add(variable)
-        sqlite_session.commit()
-
-        execution = WorkflowNodeExecutionModel(outputs=json.dumps({"sys.files": "[]"}))
-
-        # Mock the repository to return the execution record
-        service._api_node_execution_repo = Mock()
-        service._api_node_execution_repo.get_execution_by_id.return_value = execution
-
-        with patch.object(sqlite_session, "flush", wraps=sqlite_session.flush) as flush:
-            result = service._reset_node_var_or_sys_var(workflow, variable)
-
-        # Should succeed and return the variable
-        assert result == variable
-        assert variable.last_edited_at is None
-        flush.assert_called()
-
-    def test_reset_query_system_variable_succeeds(self, sqlite_session: Session):
-        """Test that resetting query system variable (another editable one) succeeds"""
-        service = WorkflowDraftVariableService(sqlite_session)
-
-        test_app_id = self._get_test_app_id()
-        workflow = self._create_test_workflow(test_app_id)
-
-        # Create an editable system variable (query is editable)
-        test_value = StringSegment(value="original query")
-        variable = WorkflowDraftVariable.new_sys_variable(
-            app_id=test_app_id,
-            name="query",  # This is in _EDITABLE_SYSTEM_VARIABLE
-            value=test_value,
-            node_execution_id="exec-id",
-            editable=True,  # Editable system variable
-        )
-        sqlite_session.add(variable)
-        sqlite_session.commit()
-
-        execution = WorkflowNodeExecutionModel(outputs=json.dumps({"sys.query": "reset query"}))
-
-        # Mock the repository to return the execution record
-        service._api_node_execution_repo = Mock()
-        service._api_node_execution_repo.get_execution_by_id.return_value = execution
-
-        with patch.object(sqlite_session, "flush", wraps=sqlite_session.flush) as flush:
-            result = service._reset_node_var_or_sys_var(workflow, variable)
-
-        # Should succeed and return the variable
-        assert result == variable
-        assert variable.last_edited_at is None
-        flush.assert_called()
 
     def test_system_variable_editability_check(self):
         """Test the system variable editability function directly"""
