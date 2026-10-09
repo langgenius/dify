@@ -7,7 +7,7 @@ from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
 from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
-from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
+from enums.human_input import HumanInputFormKind, HumanInputFormStatus
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from graphon.enums import WorkflowExecutionStatus

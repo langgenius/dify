@@ -6,14 +6,9 @@ from datetime import datetime, timedelta
 
 import pytest
 
-from core.workflow.nodes.human_input.entities import (
-    ParagraphInputConfig,
-    UserActionConfig,
-)
-from core.workflow.nodes.human_input.enums import (
-    TimeoutUnit,
-)
+from enums.human_input import TimeoutUnit
 from libs.datetime_utils import naive_utc_now
+from models.human_input_entities import ParagraphInputConfig, UserActionConfig
 
 from .support import FormSubmissionData, FormSubmissionRequest, HumanInputForm
 

@@ -1,5 +1,6 @@
 [importlinter]
 root_packages =
+    enums
     core
     core.rag.extractor.entity
     constants
@@ -49,7 +50,7 @@ ignore_imports =
     core.app.apps.message_based_app_generator -> services.errors.app_model_config
     core.app.apps.message_based_app_generator -> services.errors.conversation
     core.app.apps.message_based_app_generator -> services.errors.message
-    core.app.apps.pipeline.pipeline_generator -> services
+    core.app.apps.pipeline.pipeline_generator -> services.rag_pipeline.rag_pipeline_task_proxy
     core.app.apps.pipeline.pipeline_generator -> services.knowledge.dataset_service
     core.app.apps.pipeline.pipeline_generator -> services.data_source.provider_service
     core.app.apps.pipeline.pipeline_generator -> services.feature_service
@@ -65,7 +66,7 @@ ignore_imports =
     core.app.workflow.layers.persistence -> services.workflow.inspector_events
     core.helper.credential_utils -> services.enterprise.plugin_manager_service
     core.helper.credential_utils -> services.system_feature_service
-    core.mcp.auth_client -> services
+    core.mcp.auth_client -> services.tools.mcp_tools_manage_service
     core.provider_manager -> services.credit_pool_service
     core.provider_manager -> services.feature_service
     core.rag.datasource.retrieval_service -> services.knowledge.external.service
@@ -81,14 +82,16 @@ ignore_imports =
     core.rag.summary_index.summary_index -> tasks.generate_summary_index_task
     core.repositories.sqlalchemy_workflow_node_execution_repository -> services.file_service
     core.repositories.sqlalchemy_workflow_node_execution_repository -> services.variable_truncator
-    core.tools.tool_manager -> services
-    core.workflow.node_runtime -> services
+    core.tools.tool_manager -> services.tools.builtin_tools_manage_service
+    core.tools.tool_manager -> services.tools.mcp_tools_manage_service
+    core.tools.tool_manager -> services.tools.tools_transform_service
+    core.workflow.node_runtime -> services.tools.builtin_tools_manage_service
     # Node construction delegates datasource dependency assembly to the composition root.
     core.workflow.node_factory -> extensions.application_services.data_sources
-    core.workflow.nodes.agent.message_transformer -> services
+    core.workflow.nodes.agent.message_transformer -> services.tools.builtin_tools_manage_service
     core.workflow.nodes.agent_v2.agent_node -> services.agent.prompt_mentions
     core.workflow.nodes.agent_v2.agent_node -> services.agent.workspace_service
-    core.workflow.nodes.agent_v2.dify_tools_builder -> services
+    core.workflow.nodes.agent_v2.dify_tools_builder -> services.tools.mcp_tools_manage_service
     core.workflow.nodes.agent_v2.runtime_feature_manifest -> services.agent.knowledge_datasets
     core.workflow.nodes.agent_v2.runtime_request_builder -> services.agent.prompt_mentions
     core.workflow.nodes.agent_v2.runtime_request_builder -> services.skill_management_service
@@ -1105,5 +1108,24 @@ forbidden_modules =
     models
     repositories
     services.account.adapters
+    sqlalchemy
+    werkzeug
+
+[importlinter:contract:human-input-contract-boundary]
+name = Shared Human Input contracts are independent of application and persistence layers
+type = forbidden
+source_modules =
+    models.human_input_entities
+    models.human_input_delivery
+    models.human_input_contracts
+    models._human_input_exc
+    enums.human_input
+forbidden_modules =
+    core
+    services
+    repositories
+    controllers
+    extensions
+    flask
     sqlalchemy
     werkzeug

@@ -5,8 +5,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 from graphon.entities.pause_reason import PauseReasonType, SchedulingPause
-
-from .entities import FormInputConfig, UserActionConfig
+from models.human_input_entities import FormInputConfig, UserActionConfig
 
 
 class DifyHITLEventType(StrEnum):

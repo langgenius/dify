@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from typing import Protocol
 
 from configs import dify_config
-from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
+from enums.human_input import HumanInputFormKind, HumanInputFormStatus
 from libs.datetime_utils import ensure_naive_utc, naive_utc_now
 from models.account import Account
 from models.enums import CreatorUserRole

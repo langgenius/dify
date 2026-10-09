@@ -11,17 +11,12 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
-from core.workflow.human_input_adapter import EmailDeliveryConfig, EmailDeliveryMethod
+from enums.human_input import RecipientType
 from extensions.ext_database import db
 from extensions.ext_mail import mail
 from graphon.runtime import GraphRuntimeState, VariablePool
-from models.human_input import (
-    DeliveryMethodType,
-    HumanInputDelivery,
-    HumanInputForm,
-    HumanInputFormRecipient,
-    RecipientType,
-)
+from models.human_input import DeliveryMethodType, HumanInputDelivery, HumanInputForm, HumanInputFormRecipient
+from models.human_input_delivery import EmailDeliveryConfig, EmailDeliveryMethod
 from repositories.factory import DifyAPIRepositoryFactory
 from services.feature_service import FeatureService
 
