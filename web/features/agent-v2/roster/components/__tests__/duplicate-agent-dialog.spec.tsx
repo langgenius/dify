@@ -16,16 +16,7 @@ vi.mock('@tanstack/react-query', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/icon-picker', () => ({
-  __esModule: true,
-  IconPickerDialog: ({
-    defaultValue,
-    open,
-  }: {
-    defaultValue?: { icon: string; background: string }
-    open: boolean
-  }) => (open ? <span>{`${defaultValue?.icon}:${defaultValue?.background}`}</span> : null),
-}))
+vi.mock('@/app/components/base/icon-picker', () => import('@/test/icon-picker-mock'))
 
 vi.mock('@/service/console', () => ({
   consoleQuery: {

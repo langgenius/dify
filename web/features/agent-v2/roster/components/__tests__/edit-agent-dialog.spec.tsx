@@ -24,29 +24,7 @@ vi.mock('@/app/notifications', () => ({
   toast: toastMock,
 }))
 
-vi.mock('@/app/components/base/icon-picker', () => ({
-  __esModule: true,
-  IconPickerDialog: ({
-    defaultValue,
-    onConfirm,
-    open,
-  }: {
-    defaultValue?: { icon: string; background: string }
-    onConfirm: (payload: { type: 'emoji'; icon: string; background: string }) => void
-    open: boolean
-  }) =>
-    open ? (
-      <div>
-        <span>{`${defaultValue?.icon}:${defaultValue?.background}`}</span>
-        <button
-          type="button"
-          onClick={() => onConfirm({ type: 'emoji', icon: '🧠', background: '#E0F2FE' })}
-        >
-          Select brain icon
-        </button>
-      </div>
-    ) : null,
-}))
+vi.mock('@/app/components/base/icon-picker', () => import('@/test/icon-picker-mock'))
 
 vi.mock('@/service/console', () => ({
   consoleQuery: {
