@@ -1599,10 +1599,12 @@ forbidden_modules =
 allow_indirect_imports = True
 
 [importlinter:contract:tool-engine-persistence-boundary]
-name = Tool Engine receives Sessions but cannot source persistence dependencies
+name = Tool invocation receives Sessions but cannot source persistence dependencies
 type = forbidden
 source_modules =
     services.tools.tool_engine
+    core.tools.__base.tool
+    services.tools.dataset.tool
 forbidden_modules =
     extensions.ext_database
     core.db
@@ -1632,12 +1634,10 @@ source_modules =
     core.rag.rerank.rerank_model
     services.knowledge.retrieval.reranking
     services.knowledge_retrieval_inner_service
-    services.tools.dataset.tool
     services.app.generation.adapters.chat_runner
     services.app.generation.adapters.completion_runner
     services.workflow.execution.adapters.knowledge_retrieval
     services.workflow.execution.adapters.human_input_events
-    core.tools.__base.tool
 forbidden_modules =
     sqlalchemy
     repositories
