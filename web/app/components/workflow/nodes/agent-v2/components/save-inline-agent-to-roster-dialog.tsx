@@ -21,7 +21,6 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useMutation } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { IconPickerDialog } from '@/app/components/base/icon-picker'
 import { createAgentIconSelection } from '@/features/agent-v2/roster/components/agent-form'
 import { AgentFormFields } from '@/features/agent-v2/roster/components/agent-form-fields'
 import { consoleQuery } from '@/service/console'
@@ -63,7 +62,6 @@ function SaveInlineAgentToRosterFormSession({
     icon: createAgentIconSelection(initialAgent),
   }))
   const [agentIcon, setAgentIcon] = useState(initialValues.icon)
-  const [iconPickerOpen, setIconPickerOpen] = useState(false)
 
   return (
     <>
@@ -84,7 +82,7 @@ function SaveInlineAgentToRosterFormSession({
           defaultValues={initialValues.fields}
           icon={agentIcon}
           iconAriaLabel={t(($) => $['roster.saveToRosterForm.changeIcon'], { ns: 'agentRoster' })}
-          onIconClick={() => setIconPickerOpen(true)}
+          onIconChange={setAgentIcon}
         />
         <div className="flex shrink-0 justify-end gap-2 px-6 pt-5 pb-6">
           <Button type="button" className="min-w-18" onClick={onCancel} disabled={pending}>
@@ -95,12 +93,6 @@ function SaveInlineAgentToRosterFormSession({
           </Button>
         </div>
       </Form>
-      <IconPickerDialog
-        open={iconPickerOpen}
-        defaultValue={agentIcon.type === 'link' ? undefined : agentIcon}
-        onOpenChange={setIconPickerOpen}
-        onConfirm={setAgentIcon}
-      />
     </>
   )
 }
