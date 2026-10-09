@@ -24,7 +24,6 @@ from core.model_manager import ModelManager
 from core.ops import ops_trace_manager
 from core.plugin.entities.plugin_daemon import PluginModelProviderDeclaration
 from core.plugin.impl import base as plugin_base
-from core.plugin.impl.exc import PluginNotFoundError
 from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
 from core.plugin.plugin_service import PluginService
 from extensions.ext_database import db
@@ -252,8 +251,11 @@ def test_console_missing_plugin_token_error_propagates_but_invocation_returns_em
     assert requests[0].url.path == f"/plugin/{scenario.context.tenant_id}/dispatch/llm/{suffix}"
     assert not active_sessions
     errors = [record.exc_info[1] for record in caplog.records if record.exc_info and record.exc_info[1] is not None]
+    # The daemon's -404 JSON response is translated to ValueError by the
+    # streaming transport; only -500 responses deserialize a plugin exception.
     assert any(
-        isinstance(error, PluginNotFoundError) or isinstance(error.__cause__, PluginNotFoundError) for error in errors
+        isinstance(error, ValueError) and "plugin not found" in str(error) and "code: -404" in str(error)
+        for error in errors
     )
     payload = response.get_json()
     assert isinstance(payload, dict)
